@@ -94,17 +94,18 @@ export function WorkoutLogForm({ session }: { session: Session }) {
               {group.map((set, indexInGroup) => {
                 const index = sets.findIndex((item) => item.id === set.id);
                 return (
-                  <div key={set.id} className="grid grid-cols-12 items-end gap-2">
+                  <div key={set.id} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-12">
                     <input type="hidden" name={`sets.${index}.exerciseName`} value={set.exerciseName} />
                     <input type="hidden" name={`sets.${index}.setNumber`} value={set.setNumber} />
-                    <p className="col-span-2 pb-3 text-sm text-muted">Set {indexInGroup + 1}</p>
-                    <label className="col-span-3 block text-xs">
+                    <p className="col-span-2 text-sm text-muted sm:pb-3">Set {indexInGroup + 1}</p>
+                    <label className="block text-xs sm:col-span-3">
                       Reps
                       <input
                         name={`sets.${index}.reps`}
                         type="number"
                         min={0}
                         max={200}
+                        inputMode="numeric"
                         value={set.reps ?? ""}
                         onChange={(event) =>
                           updateSet(set.id, {
@@ -114,7 +115,7 @@ export function WorkoutLogForm({ session }: { session: Session }) {
                         className="mt-1 w-full rounded-lg border border-line bg-background px-2 py-2"
                       />
                     </label>
-                    <label className="col-span-3 block text-xs">
+                    <label className="block text-xs sm:col-span-3">
                       Load
                       <input
                         name={`sets.${index}.loadValue`}
@@ -122,6 +123,7 @@ export function WorkoutLogForm({ session }: { session: Session }) {
                         min={0}
                         max={2000}
                         step="0.5"
+                        inputMode="decimal"
                         value={set.loadValue ?? ""}
                         onChange={(event) =>
                           updateSet(set.id, {
@@ -132,7 +134,7 @@ export function WorkoutLogForm({ session }: { session: Session }) {
                         className="mt-1 w-full rounded-lg border border-line bg-background px-2 py-2"
                       />
                     </label>
-                    <label className="col-span-2 block text-xs">
+                    <label className="block text-xs sm:col-span-2">
                       Unit
                       <select
                         name={`sets.${index}.loadUnit`}
@@ -144,7 +146,7 @@ export function WorkoutLogForm({ session }: { session: Session }) {
                         <option value="kg">kg</option>
                       </select>
                     </label>
-                    <label className="col-span-2 flex items-center gap-2 pb-3 text-xs">
+                    <label className="flex items-center gap-2 text-xs sm:col-span-2 sm:pb-3">
                       <input
                         name={`sets.${index}.completed`}
                         type="checkbox"

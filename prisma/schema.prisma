@@ -118,6 +118,7 @@ model WorkoutSet {
   session          WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
   exerciseName     String
   setNumber        Int
+  sortOrder        Int            @default(0)
   reps             Int?
   loadValue        Float?
   loadUnit         String         @default("lb")

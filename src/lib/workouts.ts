@@ -32,7 +32,7 @@ export async function listWorkoutSessionsForUser(userId: string) {
     where: { userId },
     orderBy: { performedAt: "desc" },
     include: {
-      sets: { orderBy: [{ exerciseName: "asc" }, { setNumber: "asc" }] },
+      sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] },
       programDay: { include: { program: true } },
     },
   });
@@ -45,7 +45,7 @@ export async function getWorkoutSessionForUser(
   const session = await prisma.workoutSession.findUnique({
     where: { id: workoutId },
     include: {
-      sets: { orderBy: [{ exerciseName: "asc" }, { setNumber: "asc" }] },
+      sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] },
       programDay: { include: { program: true, exercises: true } },
     },
   });
@@ -62,6 +62,7 @@ export async function startWorkoutFromDay(input: {
     Array.from({ length: exercise.sets }, (_, index) => ({
       exerciseName: exercise.name,
       setNumber: index + 1,
+      sortOrder: exercise.sortOrder * 10 + index,
       reps: null,
       loadValue: null,
       loadUnit: input.preferredUnits,
@@ -144,9 +145,10 @@ export async function updateWorkoutSessionForUser(input: {
         notes,
         status: input.status,
         sets: {
-          create: input.sets.map((set) => ({
+          create: input.sets.map((set, index) => ({
             exerciseName: set.exerciseName.trim(),
             setNumber: set.setNumber,
+            sortOrder: index,
             reps: set.reps,
             loadValue: set.loadValue,
             loadUnit: set.loadUnit,
