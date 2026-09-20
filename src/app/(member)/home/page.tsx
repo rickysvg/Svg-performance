@@ -5,6 +5,7 @@ import { getDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { buildProgressSummary } from "@/lib/progress";
 import { DemoBadge } from "@/components/DemoBadge";
+import { getTodayNutritionSummary } from "@/lib/nutrition";
 
 function formatDate(value: string | null) {
   if (!value) return "No sessions yet";
@@ -16,10 +17,11 @@ function formatDate(value: string | null) {
 
 export default async function HomePage() {
   const user = await requireUser();
-  const [profile, program, sessions] = await Promise.all([
+  const [profile, program, sessions, foodToday] = await Promise.all([
     getProfileForUser(user.id),
     getDemoProgram(),
     listWorkoutSessionsForUser(user.id),
+    getTodayNutritionSummary(user.id),
   ]);
 
   const units = profile?.preferredUnits ?? "lb";
@@ -126,6 +128,14 @@ export default async function HomePage() {
             </Link>
           </div>
         )}
+        <p className="mt-4 text-sm text-muted">
+          Fuel today (manual estimates): {foodToday.entryCount} item
+          {foodToday.entryCount === 1 ? "" : "s"} ·{" "}
+          {Math.round(foodToday.calories)} kcal.{" "}
+          <Link href="/nutrition" className="text-accent underline">
+            Log food
+          </Link>
+        </p>
       </section>
     </main>
   );

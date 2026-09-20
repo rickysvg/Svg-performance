@@ -18,25 +18,11 @@ import {
   updateWorkoutSessionForUser,
 } from "@/lib/workouts";
 import { convertLoad } from "@/lib/units";
-
-async function makeUser(email: string, claimsGymMembership = false) {
-  return registerAccount({
-    email,
-    password: "password12",
-    displayName: email.split("@")[0],
-    isAdultConfirmed: true,
-    claimsGymMembership,
-  });
-}
+import { makeUser, resetDatabase } from "./helpers";
 
 describe("auth", () => {
   beforeEach(async () => {
-    await prisma.workoutSet.deleteMany();
-    await prisma.workoutSession.deleteMany();
-    await prisma.passwordResetToken.deleteMany();
-    await prisma.session.deleteMany();
-    await prisma.profile.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDatabase();
   });
 
   afterAll(async () => {
@@ -80,6 +66,8 @@ describe("auth", () => {
       hoursPerWeek: 4,
       preferredUnits: "lb",
       claimsGymMembership: true,
+      foodPreferences: "",
+      allergies: "",
     });
     expect(updated.gymMembershipVerified).toBe(false);
   });
@@ -112,12 +100,7 @@ describe("auth", () => {
 
 describe("ownership isolation", () => {
   beforeEach(async () => {
-    await prisma.workoutSet.deleteMany();
-    await prisma.workoutSession.deleteMany();
-    await prisma.passwordResetToken.deleteMany();
-    await prisma.session.deleteMany();
-    await prisma.profile.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDatabase();
   });
 
   afterAll(async () => {

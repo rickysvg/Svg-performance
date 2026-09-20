@@ -52,10 +52,23 @@ export function tokensMatch(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
+export type UserRole = "member" | "coach" | "admin";
+
 export type PublicUser = {
   id: string;
   email: string;
+  role: UserRole;
 };
+
+export function toPublicUser(user: {
+  id: string;
+  email: string;
+  role: string;
+}): PublicUser {
+  const role: UserRole =
+    user.role === "admin" || user.role === "coach" ? user.role : "member";
+  return { id: user.id, email: user.email, role };
+}
 
 export async function registerAccount(input: {
   email: string;
@@ -104,7 +117,7 @@ export async function registerAccount(input: {
     },
   });
 
-  return { id: user.id, email: user.email };
+  return toPublicUser(user);
 }
 
 export async function authenticate(
@@ -121,7 +134,7 @@ export async function authenticate(
   if (!ok) {
     throw new AuthError("Email or password is incorrect.");
   }
-  return { id: user.id, email: user.email };
+  return toPublicUser(user);
 }
 
 export async function createSessionRecord(userId: string): Promise<{
@@ -156,7 +169,7 @@ export async function getUserBySessionToken(
     }
     return null;
   }
-  return { id: session.user.id, email: session.user.email };
+  return toPublicUser(session.user);
 }
 
 export async function destroySession(rawToken: string | undefined | null) {

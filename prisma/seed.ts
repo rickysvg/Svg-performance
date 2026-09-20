@@ -188,6 +188,91 @@ async function main() {
       },
     },
   });
+
+  const lessons = [
+    {
+      slug: "demo-stance-base",
+      title: "DEMO — Stance and first step",
+      summary: "A beginner stance checklist. Not paid video instruction.",
+      skillLevel: "beginner",
+      topic: "stance",
+      coachName: "SVG coaching staff",
+      equipment: "Open mat",
+      notes:
+        "Feet about shoulder width. Hands up. Chin down. This DEMO note is a reminder, not a replacement for class.",
+      drills: "Shadow 3 rounds of 1 minute: step in, step out, reset the stance.",
+      needsSupervision: false,
+      supervisedNote: "",
+      status: "published",
+      isDemo: true,
+    },
+    {
+      slug: "demo-jab-cue",
+      title: "DEMO — One jab cue",
+      summary: "A single jab reminder for adults new to striking.",
+      skillLevel: "beginner",
+      topic: "striking",
+      coachName: "SVG coaching staff",
+      equipment: "Open mat or bag",
+      notes: "Turn the shoulder, do not reach with the chin. Ask a coach to watch one set.",
+      drills: "10 jabs, walk back, reset. Three easy sets.",
+      needsSupervision: true,
+      supervisedNote: "Do this on the bag or with a coach. Do not spar this drill unsupervised.",
+      status: "published",
+      isDemo: true,
+    },
+    {
+      slug: "demo-hip-escape",
+      title: "DEMO — Hip escape reminder",
+      summary: "A jiu-jitsu movement note for class homework.",
+      skillLevel: "beginner",
+      topic: "jiu-jitsu",
+      coachName: "SVG coaching staff",
+      equipment: "Open mat",
+      notes: "Shrimp to create space. Slow is fine. Stop if the neck feels wrong.",
+      drills: "8 hip escapes each side, rest, repeat twice.",
+      needsSupervision: true,
+      supervisedNote: "Practice with a partner or coach so someone can watch your neck and shoulders.",
+      status: "published",
+      isDemo: true,
+    },
+    {
+      slug: "demo-draft-only",
+      title: "DEMO — Draft only (members should not see this)",
+      summary: "Unpublished draft used to test admin publishing.",
+      skillLevel: "intermediate",
+      topic: "wrestling",
+      coachName: "SVG coaching staff",
+      equipment: "None",
+      notes: "If you can read this as a member, publishing is broken.",
+      drills: "None.",
+      needsSupervision: false,
+      supervisedNote: "",
+      status: "draft",
+      isDemo: true,
+    },
+  ];
+
+  for (const lesson of lessons) {
+    await prisma.lesson.upsert({
+      where: { slug: lesson.slug },
+      update: lesson,
+      create: lesson,
+    });
+  }
+
+  const bootstrap = process.env.ADMIN_BOOTSTRAP_EMAIL?.trim();
+  if (bootstrap) {
+    const admin = await prisma.user.findUnique({
+      where: { email: bootstrap.toLowerCase() },
+    });
+    if (admin && admin.role !== "admin") {
+      await prisma.user.update({
+        where: { id: admin.id },
+        data: { role: "admin" },
+      });
+    }
+  }
 }
 
 main()

@@ -15,6 +15,8 @@ export type ProfileRecord = {
   weeklyAvailability: string[];
   hoursPerWeek: number | null;
   preferredUnits: LoadUnit;
+  foodPreferences: string;
+  allergies: string;
 };
 
 function parseJsonArray(value: string): string[] {
@@ -40,6 +42,8 @@ export function toProfileRecord(row: {
   weeklyAvailabilityJson: string;
   hoursPerWeek: number | null;
   preferredUnits: string;
+  foodPreferences: string;
+  allergies: string;
 }): ProfileRecord {
   return {
     userId: row.userId,
@@ -53,6 +57,8 @@ export function toProfileRecord(row: {
     weeklyAvailability: parseJsonArray(row.weeklyAvailabilityJson),
     hoursPerWeek: row.hoursPerWeek,
     preferredUnits: isLoadUnit(row.preferredUnits) ? row.preferredUnits : "lb",
+    foodPreferences: row.foodPreferences,
+    allergies: row.allergies,
   };
 }
 
@@ -84,6 +90,8 @@ export async function updateProfileForUser(
     hoursPerWeek: number | null;
     preferredUnits: string;
     claimsGymMembership: boolean;
+    foodPreferences: string;
+    allergies: string;
   },
 ): Promise<ProfileRecord> {
   const displayName = input.displayName.trim().slice(0, 80);
@@ -126,6 +134,8 @@ export async function updateProfileForUser(
       hoursPerWeek,
       preferredUnits: input.preferredUnits,
       claimsGymMembership: Boolean(input.claimsGymMembership),
+      foodPreferences: input.foodPreferences.trim().slice(0, 400),
+      allergies: input.allergies.trim().slice(0, 400),
       // Never allow a member to self-verify gym membership.
     },
   });

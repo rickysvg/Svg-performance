@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
+import { isAdmin } from "@/lib/roles";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -23,32 +24,35 @@ export default async function ProfilePage() {
       <ChangePasswordForm />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Coming later</h2>
+        <h2 className="text-lg font-semibold">More</h2>
         <ul className="space-y-2 text-sm">
-          <li>
-            <Link href="/nutrition" className="text-accent underline-offset-4 hover:underline">
-              Nutrition
-            </Link>{" "}
-            <span className="text-muted">— M2 stub</span>
-          </li>
-          <li>
-            <Link href="/learn" className="text-accent underline-offset-4 hover:underline">
-              Learn
-            </Link>{" "}
-            <span className="text-muted">— M2 stub</span>
-          </li>
           <li>
             <Link href="/coach" className="text-accent underline-offset-4 hover:underline">
               Coach Savage AI
-            </Link>{" "}
-            <span className="text-muted">— M2 stub</span>
+            </Link>
+          </li>
+          <li>
+            <Link href="/progress" className="text-accent underline-offset-4 hover:underline">
+              Progress
+            </Link>
+          </li>
+          <li>
+            <Link href="/shop" className="text-accent underline-offset-4 hover:underline">
+              Shop
+            </Link>
           </li>
           <li>
             <Link href="/pricing" className="text-accent underline-offset-4 hover:underline">
-              Draft pricing
-            </Link>{" "}
-            <span className="text-muted">— proposal only</span>
+              Draft pricing (TEST)
+            </Link>
           </li>
+          {isAdmin(user) ? (
+            <li>
+              <Link href="/admin" className="text-accent underline-offset-4 hover:underline">
+                Admin
+              </Link>
+            </li>
+          ) : null}
         </ul>
       </section>
     </main>

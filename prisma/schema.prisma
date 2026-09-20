@@ -11,12 +11,18 @@ model User {
   id                  String               @id @default(cuid())
   email               String               @unique
   passwordHash        String
+  role                String               @default("member")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   profile             Profile?
   sessions            Session[]
   passwordResetTokens PasswordResetToken[]
   workoutSessions     WorkoutSession[]
+  nutritionEntries    NutritionEntry[]
+  savedMeals          SavedMeal[]
+  lessonProgress      LessonProgress[]
+  chatThreads         ChatThread[]
+  subscriptions       Subscription[]
 }
 
 model Session {
@@ -56,6 +62,8 @@ model Profile {
   weeklyAvailabilityJson String   @default("[]")
   hoursPerWeek           Int?
   preferredUnits         String   @default("lb")
+  foodPreferences        String   @default("")
+  allergies              String   @default("")
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
@@ -126,4 +134,119 @@ model WorkoutSet {
   notes            String         @default("")
 
   @@index([workoutSessionId])
+}
+
+model NutritionEntry {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedMealId  String?
+  savedMeal    SavedMeal? @relation(fields: [savedMealId], references: [id], onDelete: SetNull)
+  eatenAt      DateTime
+  mealType     String
+  name         String
+  servings     Float     @default(1)
+  servingLabel String    @default("serving")
+  calories     Float
+  proteinG     Float
+  carbsG       Float
+  fatG         Float
+  notes        String    @default("")
+  source       String    @default("manual_estimate")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, eatenAt])
+}
+
+model SavedMeal {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  servingLabel String            @default("serving")
+  calories     Float
+  proteinG     Float
+  carbsG       Float
+  fatG         Float
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  entries      NutritionEntry[]
+
+  @@index([userId])
+}
+
+model Lesson {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  title            String
+  summary          String
+  skillLevel       String
+  topic            String
+  coachName        String
+  equipment        String           @default("")
+  notes            String           @default("")
+  drills           String           @default("")
+  supervisedNote   String           @default("")
+  needsSupervision Boolean          @default(false)
+  status           String           @default("draft")
+  isDemo           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  progress         LessonProgress[]
+}
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  bookmarked  Boolean   @default(false)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, lessonId])
+}
+
+model ChatThread {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id             String     @id @default(cuid())
+  threadId       String
+  thread         ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  refused        Boolean    @default(false)
+  refusalCode    String     @default("")
+  offline        Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  @@index([threadId])
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 String
+  status               String   @default("incomplete")
+  stripeCustomerId     String   @default("")
+  stripeSubscriptionId String   @default("")
+  stripePriceId        String   @default("")
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
 }

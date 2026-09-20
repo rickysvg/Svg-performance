@@ -19,7 +19,20 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 - `claimsGymMembership` is a self-report checkbox.
 - `gymMembershipVerified` defaults to `false` and **cannot** be set from the profile form or register action.
-- Draft prices $19 / $29 live on `/pricing` as a proposal. There is no Stripe key usage and no charge.
+- Only `role=admin` can flip verification (`setGymMembershipVerified`).
+- Draft prices $19 / $29 live on `/pricing` as PROPOSAL / Stripe TEST.
+- Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
+- If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid. Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
+- If keys are present, Nutrition / Learn / Coach require a webhook-confirmed active subscription.
+- Live `sk_live_` secrets are rejected.
+
+## Milestone 2
+
+- **Nutrition:** private manual estimates (`source=manual_estimate`). Owner can correct. No photo AI.
+- **Learn:** seeded DEMO lessons + one draft. Members see published only. Admin draft/publish.
+- **Coach Savage AI:** safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty. Knowledge stubs live in `content/coach-savage/` for later file upload.
+- **Roles:** `member` (default), `coach` (reserved), `admin`. Promote with `npm run admin:promote`.
+- **Stripe package** is used for TEST Checkout + webhook signature helpers. No raw cards stored.
 
 ## Demo program
 
@@ -43,6 +56,6 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - If the row exists but belongs to someone else, the data layer throws `ForbiddenError`. Pages map that to a generic not-found so IDs are not confirmed to strangers.
 - Tests cover user A vs user B ID swapping.
 
-## Out of scope (visible stubs only)
+## Out of scope
 
-- Nutrition log, Learn library, Coach Savage AI chat, live billing, Gymdesk, fight-camp weight cuts, native apps.
+- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library.

@@ -123,6 +123,27 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
         </div>
       </fieldset>
 
+      <label className="block">
+        <span className="text-sm font-medium">Food preferences</span>
+        <textarea
+          name="foodPreferences"
+          defaultValue={profile.foodPreferences}
+          rows={2}
+          placeholder="Example: I eat meat, I skip dairy."
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+      </label>
+      <label className="block">
+        <span className="text-sm font-medium">Allergies or foods to avoid</span>
+        <textarea
+          name="allergies"
+          defaultValue={profile.allergies}
+          rows={2}
+          placeholder="Example: peanuts. Always verify ingredients yourself."
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+      </label>
+
       <label className="flex items-start gap-3 rounded-xl border border-line p-3">
         <input
           type="checkbox"

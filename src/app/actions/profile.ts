@@ -23,6 +23,8 @@ export async function saveProfileAction(
       hoursPerWeek: hoursRaw === "" ? null : Number(hoursRaw),
       preferredUnits: String(formData.get("preferredUnits") ?? "lb"),
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
+      foodPreferences: String(formData.get("foodPreferences") ?? ""),
+      allergies: String(formData.get("allergies") ?? ""),
     });
     revalidatePath("/home");
     revalidatePath("/profile");
