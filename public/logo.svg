@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" fill="none" role="img" aria-labelledby="logoTitle">
+  <title id="logoTitle">SVG MMA Academy</title>
+  <path d="M80 250 L190 132 L268 188 L400 78 L535 198 L650 108 L790 228 L860 176" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M790 72 L806 116 L854 116 L816 144 L830 188 L790 162 L750 188 L764 144 L726 116 L774 116 Z" fill="#FFFFFF"/>
+  <path d="M70 280c0-8 6-16 18-16h168c52 0 86 28 86 78 0 34-16 58-44 70 32 12 50 38 50 76 0 54-40 86-98 86H88c-12 0-18-8-18-16V280zm78 28v64h92c22 0 34-12 34-32s-12-32-34-32H148zm0 120v72h104c28 0 44-14 44-38s-16-34-44-34H148z" fill="#FFFFFF"/>
+  <path d="M368 270h92l132 248h-78l-24-48H338l-24 48h-78l132-248zm16 154h108l-54-112-54 112z" fill="#CFFF00"/>
+  <path d="M368 270h42v36l-28 8-14-44z" fill="#05070A"/>
+  <path d="M650 264c0-8 6-16 18-16h176c64 0 104 36 104 92 0 40-20 70-56 84l88 120c6 8 2 20-10 20h-82c-10 0-16-4-20-12l-78-112h-52v108c0 8-6 16-18 16h-52c-12 0-18-8-18-16V264zm88 32v84h88c28 0 44-16 44-42s-16-42-44-42h-88z" fill="#FFFFFF"/>
+  <path d="M148 308h70" stroke="#05070A" stroke-width="14" stroke-linecap="square"/>
+  <path d="M738 308h70" stroke="#05070A" stroke-width="14" stroke-linecap="square"/>
+  <text x="500" y="640" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="48" letter-spacing="16" font-weight="600">MMA ACADEMY</text>
+</svg>

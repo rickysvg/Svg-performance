@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  profile             Profile?
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  workoutSessions     WorkoutSession[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Profile {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName            String   @default("")
+  isAdultConfirmed       Boolean  @default(false)
+  claimsGymMembership    Boolean  @default(false)
+  gymMembershipVerified  Boolean  @default(false)
+  goals                  String   @default("")
+  experienceLevel        String   @default("beginner")
+  equipmentJson          String   @default("[]")
+  weeklyAvailabilityJson String   @default("[]")
+  hoursPerWeek           Int?
+  preferredUnits         String   @default("lb")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Program {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String
+  isDemo      Boolean      @default(true)
+  days        ProgramDay[]
+}
+
+model ProgramDay {
+  id              String            @id @default(cuid())
+  programId       String
+  program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  dayNumber       Int
+  title           String
+  focus           String
+  exercises       ProgramExercise[]
+  workoutSessions WorkoutSession[]
+
+  @@unique([programId, dayNumber])
+}
+
+model ProgramExercise {
+  id           String     @id @default(cuid())
+  programDayId String
+  day          ProgramDay @relation(fields: [programDayId], references: [id], onDelete: Cascade)
+  sortOrder    Int
+  name         String
+  sets         Int
+  reps         String
+  loadText     String
+  restSeconds  Int
+  notes        String     @default("")
+}
+
+model WorkoutSession {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programDayId String?
+  programDay   ProgramDay? @relation(fields: [programDayId], references: [id], onDelete: SetNull)
+  title        String
+  performedAt  DateTime
+  notes        String      @default("")
+  status       String      @default("complete")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  sets         WorkoutSet[]
+
+  @@index([userId, performedAt])
+}
+
+model WorkoutSet {
+  id               String         @id @default(cuid())
+  workoutSessionId String
+  session          WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exerciseName     String
+  setNumber        Int
+  reps             Int?
+  loadValue        Float?
+  loadUnit         String         @default("lb")
+  completed        Boolean        @default(true)
+  notes            String         @default("")
+
+  @@index([workoutSessionId])
+}
