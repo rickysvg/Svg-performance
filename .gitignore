@@ -33,11 +33,11 @@ yarn-error.log*
 .env.*
 !.env.example
 
-# local sqlite files
-/prisma/*.db
-/prisma/*.db-journal
-/prisma/*.db-shm
-/prisma/*.db-wal
+# local sqlite files (Prisma resolves file:./dev.db inside prisma/)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
 
 # vercel
 .vercel

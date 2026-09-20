@@ -5,7 +5,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 ## Stack
 
 - **Next.js App Router + TypeScript + Tailwind v4.** Matches the requested preview stack and stays one repo.
-- **Prisma 6 + SQLite file database.** Postgres is the better production home, but this cloud preview VM does not provide a managed Postgres box. SQLite lets register / login / workout logs work on a laptop with no extra service. Switching later means changing `provider` and `DATABASE_URL`, then running a new migration.
+- **Prisma 6 + SQLite file database.** Postgres is the better production home, but this cloud preview VM does not provide a managed Postgres box. SQLite lets register / login / workout logs work on a laptop with no extra service (`DATABASE_URL=file:./dev.db` → `prisma/dev.db`). Switching later means changing `provider` and `DATABASE_URL`, then running a new migration.
 - **Custom email/password auth (not Clerk, not Auth.js).** No paid account. Sessions are random tokens stored hashed in the database and sent as an httpOnly cookie (`svg_session`). Easier to test ownership than a hosted auth product.
 - **Vitest** for auth and ownership tests against a separate `prisma/test.db`.
 

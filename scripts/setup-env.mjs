@@ -9,7 +9,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const secret = randomBytes(32).toString("hex");
-const contents = `DATABASE_URL="file:./prisma/dev.db"
+const contents = `DATABASE_URL="file:./dev.db"
 AUTH_SECRET="${secret}"
 APP_URL="http://localhost:3000"
 SMTP_HOST=

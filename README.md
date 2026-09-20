@@ -51,7 +51,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 
 | Name | What it is for |
 | --- | --- |
-| `DATABASE_URL` | Database location. Preview default: `file:./prisma/dev.db` |
+| `DATABASE_URL` | Database location. Preview default: `file:./dev.db` (Prisma puts that file in `prisma/dev.db`) |
 | `AUTH_SECRET` | Long random string used to hash session and reset tokens |
 | `APP_URL` | Public address of the app, used in reset links (`http://localhost:3000` locally) |
 | `SMTP_HOST` | Optional mail server. Leave empty in preview. |
@@ -85,7 +85,7 @@ Last run during this build: see the pull request notes after `npm test`.
 
 ## Database notes
 
-- Preview: **SQLite** file at `prisma/dev.db` (created by setup, not committed).
+- Preview: **SQLite** file at `prisma/dev.db` (Prisma URL is `file:./dev.db`, created by setup, not committed).
 - Tables live in `prisma/schema.prisma`. Migrations live in `prisma/migrations`.
 - Production later: switch Prisma to PostgreSQL and set `DATABASE_URL` to the hosted database. Do not copy the SQLite file into production.
 
