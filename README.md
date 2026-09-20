@@ -70,7 +70,7 @@ npm test
 
 These tests create two users and prove that user B cannot read, change, or delete user A’s workout by guessing an ID. They also cover signup, login, password reset, and the gym-member checkbox **not** verifying membership.
 
-Last run during this build: see the pull request notes after `npm test`.
+Last automated run in this repo: **9 passed** (signup/login, password reset, gym-member checkbox does not self-verify, and user B cannot read/edit/delete user A’s workout).
 
 ## Preview walkthrough (for handoff)
 
