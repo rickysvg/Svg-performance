@@ -29,7 +29,7 @@ export function QuickAddFab() {
             className="block px-4 py-3 text-sm hover:bg-accent/10"
             onClick={() => setOpen(false)}
           >
-            Log body metric
+            Log metric or photo
           </Link>
         </div>
       ) : null}

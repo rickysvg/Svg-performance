@@ -9,6 +9,11 @@ import {
   deletePhotoPlaceholderForUser,
   upsertPhotoPlaceholderForUser,
 } from "@/lib/body-metrics";
+import {
+  createProgressPhotoForUser,
+  deleteProgressPhotoForUser,
+  updateProgressPhotoForUser,
+} from "@/lib/progress-photos";
 
 export type BodyMetricActionState = { error?: string; success?: string };
 
@@ -70,4 +75,54 @@ export async function deletePhotoPlaceholderAction(formData: FormData) {
   const user = await requireUserOrThrow();
   await deletePhotoPlaceholderForUser(String(formData.get("photoId") ?? ""), user.id);
   revalidatePath("/progress");
+}
+
+export async function uploadProgressPhotoAction(
+  _prev: BodyMetricActionState,
+  formData: FormData,
+): Promise<BodyMetricActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const uploaded = formData.get("file");
+    if (!(uploaded instanceof Blob) || uploaded.size === 0) {
+      return { error: "Choose a jpeg, png, or webp photo." };
+    }
+    const bytes = new Uint8Array(await uploaded.arrayBuffer());
+    await createProgressPhotoForUser(user.id, {
+      bytes,
+      claimedType: uploaded.type,
+      caption: String(formData.get("caption") ?? ""),
+      recordedAt: parseRecordedAt(String(formData.get("recordedAt") ?? "")),
+    });
+    revalidatePath("/progress");
+    revalidatePath("/home");
+    return { success: "Photo saved. Only you can see it in this preview." };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function updateProgressPhotoAction(
+  _prev: BodyMetricActionState,
+  formData: FormData,
+): Promise<BodyMetricActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    await updateProgressPhotoForUser(String(formData.get("photoId") ?? ""), user.id, {
+      caption: String(formData.get("caption") ?? ""),
+      recordedAt: parseRecordedAt(String(formData.get("recordedAt") ?? "")),
+    });
+    revalidatePath("/progress");
+    revalidatePath(`/progress/photos/${String(formData.get("photoId") ?? "")}`);
+    return { success: "Caption and date updated." };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function deleteProgressPhotoAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  await deleteProgressPhotoForUser(String(formData.get("photoId") ?? ""), user.id);
+  revalidatePath("/progress");
+  revalidatePath("/home");
 }

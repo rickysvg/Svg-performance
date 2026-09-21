@@ -33,6 +33,10 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# member progress photo binaries (local preview storage)
+/uploads/progress-photos/**
+!/uploads/progress-photos/.gitkeep
+
 # local sqlite files (Prisma resolves file:./dev.db inside prisma/)
 *.db
 *.db-journal

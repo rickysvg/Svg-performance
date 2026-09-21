@@ -13,7 +13,7 @@ It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim 
 3. Use Home for: greeting, a **week strip**, nutrition goal rings (estimates), today’s DEMO workout card, days active this week (no shame copy), unfinished lesson, coach help status, and shop.
 4. Open the one **DEMO** strength & conditioning program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
-6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, photo placeholders (no uploads), plus workout charts. No fake watch sync.
+6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), plus workout charts. No fake watch sync.
 7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later.
 8. Browse a small **DEMO** Learn library. Bookmark or mark complete. Admins can draft/publish.
 9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
@@ -81,6 +81,8 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_PRICE_ELITE_GYM` / `_NON` | Optional. Elite Online $299 / $349 (cap ~6) |
 | `STRIPE_PRICE_VIP` | Optional. SVG VIP $699 (cap 2) |
 | `STRIPE_PRICE_PLATINUM` | Optional. Platinum VIP $1,199 (cap 1) |
+| `PROGRESS_PHOTO_DIR` | Optional. Local folder for progress photos (default `uploads/progress-photos`). Never commit those files |
+| `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
 
 Never put a live `sk_live_` key in this preview. Live keys are rejected.
 
@@ -134,6 +136,7 @@ Coverage includes:
 - Coach/admin report role gates; help-request statuses; no food-diary dump
 - Home weekly activity copy (no shame)
 - Body metric / photo-placeholder ownership (user B cannot touch user A’s numbers)
+- Progress photo files: owner-only read/edit/delete; jpeg/png/webp only; coaches cannot open another member’s file
 - Every seeded DEMO exercise has a YouTube form URL **or** an explicit pending flag
 - Plan entitlements: Member Access vs Performance vs Elite; gym-price verify; Elite cap + waitlist
 - Coach Savage ≠ Ricky disclaimer string; VIP included strategy credit on Book requests
@@ -149,7 +152,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 5. Learn → open a DEMO lesson → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
 7. Home → greeting, week strip, nutrition rings, today’s workout card, + button, days active this week, optional reminder after your hour
-8. Progress → type a body weight; leave sleep empty and read the “no fake device sync” note; see photo placeholders
+8. Progress → type a body weight; leave sleep empty and read the “no fake device sync” note; upload a jpeg/png/webp photo (private to you)
 9. Profile → turn a reminder off; optional nutrition targets
 10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist
 11. Plan → see current plan + credits; Book → send a mindset request (not a calendar slot)
@@ -168,7 +171,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Fuel: DEMO search or saved meal fills the form; estimates stay labeled; owner can correct; another account cannot open that log.
 - [ ] Learn: members see published DEMO lessons only; bookmark / complete stick.
 - [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
-- [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; photo boxes are placeholders, not uploads.
+- [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
 - [ ] Subscription TEST: without keys, checkout stays off. With TEST keys + webhook forward, access flips only after the webhook. Cancel / failed payment do not leave someone “paid.”
 - [ ] Pricing shows App / Coaching / VIP, gym vs nonmember, PROPOSAL / TEST, and “dues are separate.”
@@ -201,6 +204,7 @@ Do not use days-active copy as a public leaderboard.
 
 - One DEMO strength program. DEMO lessons only. Not a personalized coach plan.
 - Food numbers are estimates (typed or from a tiny DEMO list). No barcode database, no photo AI.
+- Progress photos are stored on the server disk in this preview (not S3). Only the owner can view them. No public CDN.
 - Form videos are public YouTube references, not SVG coaching films. Two DEMO moves are pending coach review.
 - Coach Savage knowledge is a fillable pack in `content/coach-savage/`. Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.

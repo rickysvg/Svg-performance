@@ -30,6 +30,7 @@ model User {
   metricEvents             MetricEvent[]
   bodyMetrics              BodyMetric[]
   bodyPhotoPlaceholders    BodyPhotoPlaceholder[]
+  progressPhotos           ProgressPhoto[]
   coachingCredits          CoachingCredit[]
   planWaitlist             PlanWaitlist[]
   bookingRequests          BookingRequest[]
@@ -383,6 +384,21 @@ model BookingRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+model ProgressPhoto {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storedName String
+  mimeType   String
+  byteSize   Int
+  caption    String   @default("")
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, recordedAt])
 }
 
 model BodyPhotoPlaceholder {

@@ -6,16 +6,10 @@ import { buildProgressSummary } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
-import { PhotoPlaceholderForm } from "@/components/progress/PhotoPlaceholderForm";
-import {
-  deleteBodyMetricAction,
-  deletePhotoPlaceholderAction,
-} from "@/app/actions/body-metrics";
-import {
-  getLatestBodyMetricsForUser,
-  listPhotoPlaceholdersForUser,
-  PHOTO_SLOTS,
-} from "@/lib/body-metrics";
+import { PhotoUploadForm } from "@/components/progress/PhotoUploadForm";
+import { deleteBodyMetricAction, deleteProgressPhotoAction } from "@/app/actions/body-metrics";
+import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { listProgressPhotosForUser, progressPhotoSrc } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
 
 function MetricTile({
@@ -42,7 +36,7 @@ export default async function ProgressPage() {
     getProfileForUser(user.id),
     listWorkoutSessionsForUser(user.id),
     getLatestBodyMetricsForUser(user.id),
-    listPhotoPlaceholdersForUser(user.id),
+    listProgressPhotosForUser(user.id),
     getNutritionSummaryForDay(user.id),
     getRecentNutritionDays(user.id, 7),
   ]);
@@ -53,7 +47,6 @@ export default async function ProgressPage() {
   const hr = latestMetrics.get("restingHr");
   const lean = latestMetrics.get("leanMass");
   const fat = latestMetrics.get("bodyFat");
-  const photosBySlot = new Map(photos.map((row) => [row.slot, row]));
   const weekCalories = foodWeek.reduce((sum, day) => sum + day.calories, 0);
   const daysWithFood = foodWeek.filter((day) => day.entryCount > 0).length;
 
@@ -114,40 +107,42 @@ export default async function ProgressPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Photos</h2>
+        <h2 className="font-semibold">Progress photos</h2>
         <p className="mt-1 text-sm text-muted">
-          Gray boxes are placeholders. We do not store camera files in this preview.
+          Private to you. Coaches and admins cannot see these in this preview. Photos are
+          not written into analytics events.
         </p>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {PHOTO_SLOTS.map((slot) => {
-            const row = photosBySlot.get(slot);
-            return (
-              <div
-                key={slot}
-                className="flex aspect-square flex-col items-center justify-center rounded-xl bg-line/70 text-center text-xs text-muted"
-              >
-                <span className="capitalize">{slot}</span>
-                {row ? (
-                  <>
-                    <span className="mt-1 text-foreground">
-                      {row.recordedAt.toLocaleDateString()}
-                    </span>
-                    {row.caption ? <span className="mt-1 px-1">{row.caption}</span> : null}
-                    <form action={deletePhotoPlaceholderAction} className="mt-2">
-                      <input type="hidden" name="photoId" value={row.id} />
-                      <button type="submit" className="text-[11px] text-danger underline">
-                        Clear
-                      </button>
-                    </form>
-                  </>
-                ) : (
-                  <span className="mt-1">Empty</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <PhotoPlaceholderForm />
+        {photos.length === 0 ? (
+          <EmptyState title="No photos yet">
+            Upload a jpeg, png, or webp from your camera roll. 5 MB max. Only you can open it.
+          </EmptyState>
+        ) : (
+          <ul className="mt-4 grid grid-cols-2 gap-3">
+            {photos.map((photo) => (
+              <li key={photo.id} className="overflow-hidden rounded-xl border border-line">
+                <Link href={`/progress/photos/${photo.id}`} className="block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={progressPhotoSrc(photo.id)}
+                    alt={photo.caption || "Progress photo"}
+                    className="aspect-square w-full object-cover"
+                  />
+                  <span className="block px-2 py-2 text-xs text-muted">
+                    {photo.recordedAt.toLocaleDateString()}
+                    {photo.caption ? ` · ${photo.caption}` : ""}
+                  </span>
+                </Link>
+                <form action={deleteProgressPhotoAction} className="px-2 pb-2">
+                  <input type="hidden" name="photoId" value={photo.id} />
+                  <button type="submit" className="text-[11px] text-danger underline">
+                    Delete
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <PhotoUploadForm />
       </section>
 
       <BodyMetricForm preferredUnits={units} />

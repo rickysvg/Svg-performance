@@ -53,7 +53,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - **Home UX:** Inspired by Fight Science Collective *layout ideas only* (greeting, week strip, nutrition rings, workout card, FAB). We did not copy their logo, red medical cross, colors, or assets. SVG uses black / white / `#D0FF00`, academy-first copy, and our own logo.
 - **Nav:** Phone bar is **Home · Train · Fuel · Learn · Coach**. Shop is on Home plus the header so it stays reachable without crowding a sixth tab.
 - **Nutrition rings:** Today’s (or selected day’s) food logs vs profile targets. New accounts start at DEMO estimates **2200 / 140 g / 220 g / 70 g** — not copied from another gym’s numbers. Always labeled estimates.
-- **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / HR / LBM / body fat can be typed **or** left as “Coming soon — no fake device sync.” Photo slots are placeholders (date + caption, no image files).
+- **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / HR / LBM / body fat can be typed **or** left as “Coming soon — no fake device sync.” Milestone 6 replaces photo placeholders with real owner-only uploads.
 - **Wearables:** None. No invented Apple Watch / Whoop / Oura connections.
 
 ## Form video selection rules
@@ -89,7 +89,7 @@ Current pending DEMO moves: squat jump / box step-up, and lateral bound / side s
 
 ## Authorization
 
-- Workout / food / saved-meal / chat / **body metric / photo placeholder** read / update / delete always filters by `userId`.
+- Workout / food / saved-meal / chat / **body metric / photo placeholder / progress photo** read / update / delete always filters by `userId`. Progress photo bytes are served only on an auth-gated route. Coaches/admins do **not** get a gallery in this milestone.
 - If the row exists but belongs to someone else, the data layer throws `ForbiddenError`. Pages map that to a generic not-found so IDs are not confirmed to strangers.
 - Tests cover user A vs user B ID swapping, coach vs unassigned member, and Stripe gym-plan webhooks on unverified profiles.
 
@@ -104,6 +104,14 @@ Current pending DEMO moves: squat jump / box step-up, and lateral bound / side s
 - **Stripe TEST** env names exist for every paid SKU. `gym` / `standalone` webhooks still map to catalog `performance` so M2–M4 tests stay valid.
 - **Coach Savage ≠ Ricky** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
 - **No live billing.** Missing keys = honest off + preview entitlements (tools stay open like M1–M4).
+
+## Milestone 6
+
+- **Real progress photos** live under `uploads/progress-photos/{userId}/` (or `PROGRESS_PHOTO_DIR`). Binaries are gitignored. We do not put them in `public/`.
+- **Types:** jpeg / png / webp by magic bytes, 5 MB cap. Other types get a clear error.
+- **Serve:** `/api/progress-photos/[id]` checks the session and ownership. Cache-Control is private, no-store.
+- **S3 later:** env names only (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT`). Not connected.
+- **Privacy copy** on Progress: private to you; not used in analytics events. Old placeholder rows stay in the DB but the UI no longer writes them.
 
 ## Out of scope
 
