@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
@@ -95,7 +96,7 @@ export async function createNutritionEntryForUser(
       throw new ForbiddenError("That saved meal is not yours.");
     }
   }
-  return prisma.nutritionEntry.create({
+  const entry = await prisma.nutritionEntry.create({
     data: {
       userId,
       savedMealId: input.savedMealId || null,
@@ -103,6 +104,8 @@ export async function createNutritionEntryForUser(
       ...data,
     },
   });
+  await recordMetric(METRIC_NAMES.foodLogged, userId);
+  return entry;
 }
 
 export async function updateNutritionEntryForUser(
@@ -142,6 +145,22 @@ export async function listSavedMealsForUser(userId: string) {
     where: { userId },
     orderBy: { name: "asc" },
   });
+}
+
+export async function getSavedMealForUser(mealId: string, userId: string) {
+  const row = await prisma.savedMeal.findUnique({ where: { id: mealId } });
+  if (!row) {
+    throw new NotFoundError("Saved meal not found.");
+  }
+  if (row.userId !== userId) {
+    throw new ForbiddenError("You cannot access another member's saved meal.");
+  }
+  return row;
+}
+
+export async function deleteSavedMealForUser(mealId: string, userId: string) {
+  await getSavedMealForUser(mealId, userId);
+  await prisma.savedMeal.delete({ where: { id: mealId } });
 }
 
 export async function createSavedMealForUser(

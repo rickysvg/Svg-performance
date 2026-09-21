@@ -17,7 +17,13 @@ export async function getLatestSubscription(userId: string) {
 
 export async function hasWebhookGrantedAccess(userId: string) {
   const subscription = await getLatestSubscription(userId);
-  return subscription?.status === "active";
+  if (subscription?.status !== "active") {
+    return false;
+  }
+  if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) {
+    return false;
+  }
+  return true;
 }
 
 /**

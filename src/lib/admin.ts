@@ -34,6 +34,10 @@ export async function setGymMembershipVerified(input: {
 }
 
 export async function promoteUserToAdmin(email: string) {
+  return promoteUserToRole(email, "admin");
+}
+
+export async function promoteUserToRole(email: string, role: "admin" | "coach") {
   const user = await prisma.user.findUnique({
     where: { email: normalizeEmail(email) },
   });
@@ -42,7 +46,7 @@ export async function promoteUserToAdmin(email: string) {
   }
   return prisma.user.update({
     where: { id: user.id },
-    data: { role: "admin" },
+    data: { role },
   });
 }
 

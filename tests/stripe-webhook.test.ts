@@ -62,6 +62,7 @@ describe("stripe webhook path", () => {
     const admin = await makeUser("stripe-admin@example.com", false, "admin");
     const user = await makeUser("paid@example.com");
     await applyStripeEvent({
+      id: "evt_grant_1",
       type: "checkout.session.completed",
       data: {
         object: {
@@ -75,6 +76,7 @@ describe("stripe webhook path", () => {
     expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
 
     await applyStripeEvent({
+      id: "evt_fail_1",
       type: "invoice.payment_failed",
       data: {
         object: {
@@ -85,10 +87,85 @@ describe("stripe webhook path", () => {
     });
     expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
 
+    await applyStripeEvent({
+      id: "evt_renew_1",
+      type: "invoice.paid",
+      data: {
+        object: {
+          metadata: { userId: user.id, plan: "standalone" },
+          subscription: "sub_test_2",
+          current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+
     await setGymMembershipVerified({
       adminUserId: admin.id,
       targetUserId: user.id,
       verified: true,
     });
+  });
+
+  it("skips duplicate event ids", async () => {
+    const user = await makeUser("dup@example.com");
+    const event = {
+      id: "evt_duplicate",
+      type: "checkout.session.completed" as const,
+      data: {
+        object: {
+          metadata: { userId: user.id, plan: "standalone" },
+          subscription: "sub_dup",
+        },
+      },
+    };
+    await applyStripeEvent(event);
+    const second = await applyStripeEvent(event);
+    expect(second).toMatchObject({ skipped: true, reason: "duplicate" });
+    expect(await prisma.stripeEventLog.count({ where: { stripeEventId: "evt_duplicate" } })).toBe(
+      1,
+    );
+  });
+
+  it("treats cancel and expired period as no access", async () => {
+    const user = await makeUser("cancel@example.com");
+    await applyStripeEvent({
+      id: "evt_active_then_cancel",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          metadata: { userId: user.id, plan: "standalone" },
+          subscription: "sub_cancel",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+
+    await applyStripeEvent({
+      id: "evt_canceled",
+      type: "customer.subscription.deleted",
+      data: {
+        object: {
+          id: "sub_cancel",
+          metadata: { userId: user.id, plan: "standalone" },
+          status: "canceled",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
+
+    const expiring = await makeUser("expire@example.com");
+    await applyStripeEvent({
+      id: "evt_expired_period",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          metadata: { userId: expiring.id, plan: "standalone" },
+          subscription: "sub_exp",
+          current_period_end: Math.floor(Date.now() / 1000) - 60,
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(expiring.id)).toBe(false);
   });
 });

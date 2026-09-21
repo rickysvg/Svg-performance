@@ -21,8 +21,13 @@ model User {
   nutritionEntries    NutritionEntry[]
   savedMeals          SavedMeal[]
   lessonProgress      LessonProgress[]
-  chatThreads         ChatThread[]
-  subscriptions       Subscription[]
+  chatThreads              ChatThread[]
+  subscriptions            Subscription[]
+  reminderPrefs            ReminderPrefs?
+  coachAssignmentsAsCoach  CoachAssignment[] @relation("CoachAssignments")
+  coachAssignmentsAsMember CoachAssignment[] @relation("MemberAssignments")
+  helpRequests             HelpRequest[]
+  metricEvents             MetricEvent[]
 }
 
 model Session {
@@ -249,4 +254,61 @@ model Subscription {
 
   @@index([userId])
   @@index([stripeSubscriptionId])
+}
+
+model ReminderPrefs {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutEnabled         Boolean   @default(true)
+  foodEnabled            Boolean   @default(true)
+  preferredHour          Int       @default(18)
+  timezoneOffsetMinutes  Int       @default(0)
+  lastWorkoutRemindedAt  DateTime?
+  lastFoodRemindedAt     DateTime?
+  updatedAt              DateTime  @updatedAt
+}
+
+model CoachAssignment {
+  id           String   @id @default(cuid())
+  coachUserId  String
+  memberUserId String
+  coach        User     @relation("CoachAssignments", fields: [coachUserId], references: [id], onDelete: Cascade)
+  member       User     @relation("MemberAssignments", fields: [memberUserId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([coachUserId, memberUserId])
+  @@index([memberUserId])
+}
+
+model HelpRequest {
+  id           String   @id @default(cuid())
+  memberUserId String
+  member       User     @relation(fields: [memberUserId], references: [id], onDelete: Cascade)
+  topic        String
+  note         String   @default("")
+  status       String   @default("open")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([memberUserId])
+  @@index([status])
+}
+
+model StripeEventLog {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  eventType     String
+  processedAt   DateTime @default(now())
+}
+
+model MetricEvent {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId])
 }

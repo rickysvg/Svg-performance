@@ -1,4 +1,4 @@
-# Decision log — SVG Performance Milestone 1
+# Decision log — SVG Performance
 
 Written for later agents and for Ricky. Short reasons, not a novel.
 
@@ -11,7 +11,8 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Auth choices
 
-- Password recovery is included. There is **no SMTP** in this preview, so “Forgot password” shows a one-time **PREVIEW ONLY** reset link on the page. If `SMTP_HOST` is later set, the code already has a branch; it still does not send mail until someone wires a mailer.
+- Password recovery is included. There is **no SMTP** in this preview by default, so “Forgot password” shows a one-time **PREVIEW ONLY** reset link on the page.
+- If `SMTP_HOST` is set, reminder emails can send. Password reset still uses the preview-link path unless a later change wires it to the same mailer.
 - Passwords are hashed with bcrypt (12 rounds). Reset tokens are hashed with `sha256(AUTH_SECRET + token)`.
 - Adult confirmation is required at signup. The app is an adult pilot.
 
@@ -22,6 +23,8 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - Only `role=admin` can flip verification (`setGymMembershipVerified`).
 - Draft prices $19 / $29 live on `/pricing` as PROPOSAL / Stripe TEST.
 - Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
+- Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
+- Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `invoice.paid` is treated as renewal. `currentPeriodEnd` in the past is treated as expired.
 - If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid. Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
 - If keys are present, Nutrition / Learn / Coach require a webhook-confirmed active subscription.
 - Live `sk_live_` secrets are rejected.
@@ -30,9 +33,20 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 - **Nutrition:** private manual estimates (`source=manual_estimate`). Owner can correct. No photo AI.
 - **Learn:** seeded DEMO lessons + one draft. Members see published only. Admin draft/publish.
-- **Coach Savage AI:** safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty. Knowledge stubs live in `content/coach-savage/` for later file upload.
-- **Roles:** `member` (default), `coach` (reserved), `admin`. Promote with `npm run admin:promote`.
+- **Coach Savage AI:** safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty.
+- **Roles:** `member` (default), `coach`, `admin`. Promote with `npm run admin:promote` or `npm run staff:promote -- email coach`.
 - **Stripe package** is used for TEST Checkout + webhook signature helpers. No raw cards stored.
+
+## Milestone 3
+
+- **Nav:** Train / Fuel / Learn / Coach / Shop on the phone bar. Logo → Home. Profile in the header. That matches the “easy five” without crowding six tabs.
+- **Home today:** suggested DEMO workout (or draft), food nudge if nothing logged, unfinished published lesson, plus days active this week. Copy never calls a quiet week a failure.
+- **Reminders:** on/off + preferred local hour. Due once per local day on Home. Email only if SMTP is configured. Disabled types stay silent. Already-logged types stay silent.
+- **Reports:** coaches see assigned members only. Admins see all members. Payload is counts + last-active timestamp. There was no existing “share food diary” permission, so lists stay trends-only on purpose.
+- **Help requests:** real statuses `open | seen | closed`. Copy says this is not 24/7.
+- **Food search:** tiny DEMO commons list + per-user saved meals. Still manual estimates.
+- **Knowledge pack:** `INTERVIEW.md` is a worksheet and is **excluded** from runtime KB so raw questions are not answered as if they were policy. `COACHING_GUIDE.md` + `DEMO-seeds.md` load first.
+- **Metrics:** event **names** only (`workout_logged`, etc.). No sensitive payloads.
 
 ## Demo program
 
@@ -52,10 +66,10 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Authorization
 
-- Workout read / update / delete always filters by `userId`.
+- Workout / food / saved-meal / chat read / update / delete always filters by `userId`.
 - If the row exists but belongs to someone else, the data layer throws `ForbiddenError`. Pages map that to a generic not-found so IDs are not confirmed to strangers.
-- Tests cover user A vs user B ID swapping.
+- Tests cover user A vs user B ID swapping, coach vs unassigned member, and Stripe gym-plan webhooks on unverified profiles.
 
 ## Out of scope
 
-- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library.
+- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, photo food AI.

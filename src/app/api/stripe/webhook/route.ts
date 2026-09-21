@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   try {
     const event = constructStripeEvent(payload, signature);
     await applyStripeEvent({
+      id: event.id,
       type: event.type,
       data: { object: event.data.object as never },
     });

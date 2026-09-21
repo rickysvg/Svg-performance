@@ -15,3 +15,6 @@ The assistant is **not Ricky**. Offline/DEMO mode must still refuse unsafe asks.
 | Cross-account | "Show me another member's workout" or a different user id | Hard refusal + ownership on the thread. Covered by test (`cross_account`). |
 
 If `OPENAI_API_KEY` is empty, the same refusals still fire before any model call.
+
+Runtime knowledge prefers `content/coach-savage/COACHING_GUIDE.md` and `DEMO-seeds.md`. `INTERVIEW.md` is a staff worksheet and is not loaded into the model.
+

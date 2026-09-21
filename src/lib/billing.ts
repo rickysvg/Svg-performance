@@ -98,10 +98,29 @@ type StripeLikeObject = {
   items?: { data?: { price?: { id?: string } }[] };
 };
 
+function mapSubscriptionStatus(status: string | undefined) {
+  if (status === "active" || status === "trialing") return "active";
+  if (status === "past_due") return "past_due";
+  if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
+    return "canceled";
+  }
+  return "incomplete";
+}
+
 export async function applyStripeEvent(event: {
+  id?: string;
   type: string;
   data: { object: StripeLikeObject };
 }) {
+  if (event.id) {
+    const existing = await prisma.stripeEventLog.findUnique({
+      where: { stripeEventId: event.id },
+    });
+    if (existing) {
+      return { skipped: true, reason: "duplicate" as const };
+    }
+  }
+
   const object = event.data.object;
   const userId =
     object.metadata?.userId || object.client_reference_id || "";
@@ -125,12 +144,23 @@ export async function applyStripeEvent(event: {
     ? new Date(object.current_period_end * 1000)
     : null;
 
-  if (
+  let result = null;
+
+  if (event.type === "checkout.session.expired") {
+    result = await upsertSubscriptionFromWebhook({
+      userId,
+      plan,
+      status: "incomplete",
+      stripeSubscriptionId:
+        typeof object.subscription === "string" ? object.subscription : object.id,
+      currentPeriodEnd: periodEnd,
+    });
+  } else if (
     event.type === "checkout.session.completed" ||
     event.type === "invoice.paid" ||
     event.type === "customer.subscription.created"
   ) {
-    return upsertSubscriptionFromWebhook({
+    result = await upsertSubscriptionFromWebhook({
       userId,
       plan,
       status: "active",
@@ -142,10 +172,8 @@ export async function applyStripeEvent(event: {
       stripePriceId: object.items?.data?.[0]?.price?.id,
       currentPeriodEnd: periodEnd,
     });
-  }
-
-  if (event.type === "invoice.payment_failed") {
-    return upsertSubscriptionFromWebhook({
+  } else if (event.type === "invoice.payment_failed") {
+    result = await upsertSubscriptionFromWebhook({
       userId,
       plan,
       status: "past_due",
@@ -153,38 +181,33 @@ export async function applyStripeEvent(event: {
         typeof object.subscription === "string" ? object.subscription : object.id,
       currentPeriodEnd: periodEnd,
     });
-  }
-
-  if (
+  } else if (
     event.type === "customer.subscription.deleted" ||
-    object.status === "canceled"
+    (event.type === "customer.subscription.updated" &&
+      mapSubscriptionStatus(object.status) === "canceled")
   ) {
-    return upsertSubscriptionFromWebhook({
+    result = await upsertSubscriptionFromWebhook({
       userId,
       plan,
       status: "canceled",
       stripeSubscriptionId: object.id,
       currentPeriodEnd: periodEnd,
     });
-  }
-
-  if (event.type === "customer.subscription.updated") {
-    const status =
-      object.status === "active"
-        ? "active"
-        : object.status === "past_due"
-          ? "past_due"
-          : object.status === "canceled"
-            ? "canceled"
-            : "incomplete";
-    return upsertSubscriptionFromWebhook({
+  } else if (event.type === "customer.subscription.updated") {
+    result = await upsertSubscriptionFromWebhook({
       userId,
       plan,
-      status,
+      status: mapSubscriptionStatus(object.status),
       stripeSubscriptionId: object.id,
       currentPeriodEnd: periodEnd,
     });
   }
 
-  return null;
+  if (event.id) {
+    await prisma.stripeEventLog.create({
+      data: { stripeEventId: event.id, eventType: event.type },
+    });
+  }
+
+  return result;
 }

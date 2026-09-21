@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 
 export const LESSON_LEVELS = ["beginner", "intermediate", "advanced"] as const;
 export const LESSON_TOPICS = [
@@ -166,23 +167,26 @@ export async function toggleLessonComplete(userId: string, lessonId: string) {
   }
   const existing = await getLessonProgress(userId, lessonId);
   const completed = !existing?.completed;
-  if (!existing) {
-    return prisma.lessonProgress.create({
-      data: {
-        userId,
-        lessonId,
-        completed,
-        completedAt: completed ? new Date() : null,
-      },
-    });
+  const row = !existing
+    ? await prisma.lessonProgress.create({
+        data: {
+          userId,
+          lessonId,
+          completed,
+          completedAt: completed ? new Date() : null,
+        },
+      })
+    : await prisma.lessonProgress.update({
+        where: { id: existing.id },
+        data: {
+          completed,
+          completedAt: completed ? new Date() : null,
+        },
+      });
+  if (completed) {
+    await recordMetric(METRIC_NAMES.lessonCompleted, userId);
   }
-  return prisma.lessonProgress.update({
-    where: { id: existing.id },
-    data: {
-      completed,
-      completedAt: completed ? new Date() : null,
-    },
-  });
+  return row;
 }
 
 export async function tryReadLessonForUser(lessonId: string, userId: string) {

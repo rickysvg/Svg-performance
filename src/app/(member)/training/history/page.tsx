@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { DemoBadge } from "@/components/DemoBadge";
+import { EmptyState } from "@/components/EmptyState";
 
 export default async function HistoryPage() {
   const user = await requireUser();
@@ -20,9 +21,16 @@ export default async function HistoryPage() {
       </div>
 
       {sessions.length === 0 ? (
-        <p className="rounded-2xl border border-line bg-card p-5 text-sm text-muted">
-          No sessions yet. Start one from the DEMO program.
-        </p>
+        <EmptyState
+          title="No sessions yet"
+          action={
+            <Link href="/training" className="text-accent underline">
+              Start a DEMO session
+            </Link>
+          }
+        >
+          Logged sessions persist after refresh. Open any row to correct a mistake.
+        </EmptyState>
       ) : (
         <ul className="space-y-3">
           {sessions.map((session) => (

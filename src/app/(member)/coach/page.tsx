@@ -3,6 +3,7 @@ import { canUseMemberTools } from "@/lib/access";
 import { PaywallNotice } from "@/components/PaywallNotice";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import { CoachChatForm } from "@/components/coach/CoachChatForm";
+import { EmptyState } from "@/components/EmptyState";
 
 export default async function CoachPage() {
   const user = await requireUser();
@@ -29,10 +30,11 @@ export default async function CoachPage() {
       </div>
       <div className="space-y-3">
         {thread.messages.length === 0 ? (
-          <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">
-            Ask about showing up, a missed session, or a simple technique cue.
-            For live eyes, talk to a coach on the floor.
-          </p>
+          <EmptyState title="Ask Coach Savage AI">
+            Try a missed class, a simple technique cue, or how heavy a lift should
+            feel. For live eyes, talk to a coach on the floor. Safety rails still
+            refuse pain, medical, and weight-cut asks — even offline.
+          </EmptyState>
         ) : (
           thread.messages.map((message) => (
             <article

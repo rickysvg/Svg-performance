@@ -10,6 +10,7 @@ import {
   listPublishedLessons,
 } from "@/lib/lessons";
 import { DemoBadge } from "@/components/DemoBadge";
+import { EmptyState } from "@/components/EmptyState";
 
 export default async function LearnPage({
   searchParams,
@@ -86,9 +87,9 @@ export default async function LearnPage({
       </form>
 
       {lessons.length === 0 ? (
-        <p className="rounded-2xl border border-line bg-card p-5 text-sm text-muted">
-          No published lessons match that filter.
-        </p>
+        <EmptyState title="No published lessons match that filter">
+          Try clearing search, or ask an admin to publish a DEMO lesson.
+        </EmptyState>
       ) : (
         <ul className="space-y-3">
           {lessons.map((lesson) => {

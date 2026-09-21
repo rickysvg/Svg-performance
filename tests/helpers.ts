@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { registerAccount } from "@/lib/auth";
 
 export async function resetDatabase() {
+  await prisma.metricEvent.deleteMany();
+  await prisma.stripeEventLog.deleteMany();
+  await prisma.helpRequest.deleteMany();
+  await prisma.coachAssignment.deleteMany();
+  await prisma.reminderPrefs.deleteMany();
   await prisma.chatMessage.deleteMany();
   await prisma.chatThread.deleteMany();
   await prisma.lessonProgress.deleteMany();
@@ -19,7 +24,7 @@ export async function resetDatabase() {
 export async function makeUser(
   email: string,
   claimsGymMembership = false,
-  role: "member" | "admin" = "member",
+  role: "member" | "coach" | "admin" = "member",
 ) {
   const user = await registerAccount({
     email,
@@ -28,9 +33,9 @@ export async function makeUser(
     isAdultConfirmed: true,
     claimsGymMembership,
   });
-  if (role === "admin") {
-    await prisma.user.update({ where: { id: user.id }, data: { role: "admin" } });
-    return { ...user, role: "admin" as const };
+  if (role !== "member") {
+    await prisma.user.update({ where: { id: user.id }, data: { role } });
+    return { ...user, role };
   }
   return { ...user, role: "member" as const };
 }

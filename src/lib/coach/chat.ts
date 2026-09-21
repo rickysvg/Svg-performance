@@ -9,6 +9,11 @@ export function isOpenAiConfigured() {
 
 function offlineReply(message: string, experienceLevel: string) {
   const text = message.toLowerCase();
+  const kb = loadKnowledgeBase();
+  const hasGuide = kb.includes("COACHING_GUIDE.md");
+  const guideNote = hasGuide
+    ? "I am using the DEMO coaching guide and seed answers."
+    : "I only have the small DEMO knowledge stubs.";
   const levelNote =
     experienceLevel === "beginner"
       ? "You marked yourself new to lifting, so keep loads you can control."
@@ -17,15 +22,15 @@ function offlineReply(message: string, experienceLevel: string) {
         : "Match the work to how you actually recover this week.";
 
   if (/missed|skip(ped)?|fell off|inconsistent/.test(text)) {
-    return `${levelNote} Missing a session is not a verdict. Pick the next date you will train and do that one session. Do not stack a punishment workout. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${levelNote} ${guideNote} Missing a session is not a verdict (COACHING_GUIDE.md / DEMO-seeds.md). Pick the next date you will train and do that one session. Do not stack a punishment workout. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
   }
   if (/technique|jab|takedown|guard|stance|how do i/.test(text)) {
-    return `${levelNote} I can give one simple cue from the DEMO notes, but live eyes beat this chat. Ask a coach on the floor to watch one round. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${levelNote} ${guideNote} One simple cue from the DEMO notes, then live eyes on the floor. I do not invent a full paid curriculum. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
   }
   if (/discourag|fail|setback|plateau/.test(text)) {
-    return `${levelNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${levelNote} ${guideNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
   }
-  return `${levelNote} I only have the small DEMO knowledge stubs, so I may be missing gym-specific detail. Ask a coach on the floor if this does not fit your class. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+  return `${levelNote} ${guideNote} If the notes do not cover this, I will not guess gym-specific policy. Ask a coach on the floor. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
 }
 
 async function liveReply(input: {

@@ -13,7 +13,8 @@
     "db:seed": "prisma db seed",
     "test": "vitest run",
     "test:watch": "vitest",
-    "admin:promote": "tsx scripts/promote-admin.ts"
+    "admin:promote": "tsx scripts/promote-admin.ts",
+    "staff:promote": "tsx scripts/promote-role.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { ForbiddenError, NotFoundError, AppError } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { getProgramDayById } from "@/lib/programs";
+import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -121,10 +122,12 @@ export async function updateWorkoutSessionForUser(input: {
   status: "draft" | "complete";
   sets: WorkoutSetInput[];
 }) {
-  const existing = await prisma.workoutSession.findUnique({
-    where: { id: input.workoutId },
-  });
-  assertOwnSession(existing, input.userId);
+  const existing = assertOwnSession(
+    await prisma.workoutSession.findUnique({
+      where: { id: input.workoutId },
+    }),
+    input.userId,
+  );
   validateSets(input.sets);
 
   const title = input.title.trim().slice(0, 120) || "Workout";
@@ -133,7 +136,7 @@ export async function updateWorkoutSessionForUser(input: {
     throw new AppError("WORKOUT", "Enter a valid date.");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     await tx.workoutSet.deleteMany({
       where: { workoutSessionId: input.workoutId },
     });
@@ -160,6 +163,10 @@ export async function updateWorkoutSessionForUser(input: {
       include: { sets: true },
     });
   });
+  if (input.status === "complete" && existing.status !== "complete") {
+    await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
+  }
+  return updated;
 }
 
 export async function deleteWorkoutSessionForUser(

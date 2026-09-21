@@ -2,7 +2,14 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { logoutAction } from "@/app/actions/auth";
 
-export function AppHeader({ email }: { email?: string }) {
+export function AppHeader({
+  email,
+  role,
+}: {
+  email?: string;
+  role?: string;
+}) {
+  const staff = role === "admin" || role === "coach";
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
@@ -14,14 +21,30 @@ export function AppHeader({ email }: { email?: string }) {
           </div>
         </Link>
         {email ? (
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="touch-target rounded-full border border-line px-4 text-sm text-foreground hover:border-accent"
+          <div className="flex items-center gap-2">
+            {staff ? (
+              <Link
+                href="/staff/reports"
+                className="touch-target inline-flex items-center rounded-full border border-line px-3 text-xs hover:border-accent"
+              >
+                Staff
+              </Link>
+            ) : null}
+            <Link
+              href="/profile"
+              className="touch-target inline-flex items-center rounded-full border border-line px-3 text-xs hover:border-accent"
             >
-              Log out
-            </button>
-          </form>
+              Profile
+            </Link>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="touch-target rounded-full border border-line px-4 text-sm text-foreground hover:border-accent"
+              >
+                Log out
+              </button>
+            </form>
+          </div>
         ) : (
           <Link
             href="/login"

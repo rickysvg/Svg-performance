@@ -20,6 +20,10 @@ export default async function AdminPage() {
         <Link href="/admin/lessons" className="text-accent underline-offset-4 hover:underline">
           Publish lessons
         </Link>
+        {" · "}
+        <Link href="/staff/reports" className="text-accent underline-offset-4 hover:underline">
+          Member trends
+        </Link>
       </p>
       <ul className="space-y-3">
         {users.map((user) => (

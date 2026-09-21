@@ -4,6 +4,7 @@ import { getProfileForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { buildProgressSummary } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
+import { EmptyState } from "@/components/EmptyState";
 
 export default async function ProgressPage() {
   const user = await requireUser();
@@ -25,13 +26,16 @@ export default async function ProgressPage() {
       </div>
 
       {summary.sessionCount === 0 ? (
-        <div className="rounded-2xl border border-line bg-card p-5 text-sm text-muted">
-          Nothing to chart yet.{" "}
-          <Link href="/training" className="text-accent underline">
-            Log a DEMO session
-          </Link>{" "}
-          and come back.
-        </div>
+        <EmptyState
+          title="Nothing to chart yet"
+          action={
+            <Link href="/training" className="text-accent underline">
+              Log a DEMO session
+            </Link>
+          }
+        >
+          Progress is built only from workouts you save.
+        </EmptyState>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3">

@@ -48,4 +48,5 @@ export const MEMBER_ROUTES = [
   "/nutrition",
   "/learn",
   "/coach",
+  "/staff",
 ];

@@ -10,6 +10,7 @@ import {
 } from "@/lib/nutrition";
 import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
 import { SavedMealForm } from "@/components/nutrition/SavedMealForm";
+import { EmptyState } from "@/components/EmptyState";
 
 export default async function NutritionPage() {
   const user = await requireUser();
@@ -58,10 +59,10 @@ export default async function NutritionPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Your log</h2>
-        {entries.length === 0 ? (
-          <p className="rounded-2xl border border-line bg-card p-5 text-sm text-muted">
-            No meals yet. Add one above.
-          </p>
+      {entries.length === 0 ? (
+          <EmptyState title="No meals yet">
+            Search a DEMO food or type an estimate above. Numbers stay yours to correct.
+          </EmptyState>
         ) : (
           <ul className="space-y-3">
             {entries.map((entry) => (

@@ -27,6 +27,22 @@ export async function requireAdminOrThrow(): Promise<PublicUser> {
   return user;
 }
 
+export async function requireStaff(): Promise<PublicUser> {
+  const user = await requireUser();
+  if (!isStaff(user)) {
+    redirect("/home");
+  }
+  return user;
+}
+
+export async function requireStaffOrThrow(): Promise<PublicUser> {
+  const user = await requireUserOrThrow();
+  if (!isStaff(user)) {
+    throw new ForbiddenError("Only a coach or admin can do that.");
+  }
+  return user;
+}
+
 export function assertRole(user: PublicUser, role: UserRole) {
   if (user.role !== role) {
     throw new ForbiddenError("You do not have permission for that.");

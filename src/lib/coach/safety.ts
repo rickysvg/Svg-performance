@@ -89,6 +89,8 @@ export function safetyPreamble() {
     "No independent rapid weight-cut, sauna, diuretic, or laxative protocols.",
     "Only use the current member's permitted records. Refuse cross-account requests.",
     "If information is missing, say so and offer a coach handoff on the floor.",
+    "Prefer COACHING_GUIDE.md and DEMO-labeled seeds. Cite the file name when you use a note.",
+    "If a guide section is still a TODO, or the notes do not cover the question, admit the gap.",
     "DEMO knowledge only unless a later approved file is loaded.",
   ].join(" ");
 }
