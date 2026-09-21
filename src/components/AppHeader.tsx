@@ -31,6 +31,12 @@ export function AppHeader({
               </Link>
             ) : null}
             <Link
+              href="/shop"
+              className="touch-target inline-flex items-center rounded-full border border-line px-3 text-xs hover:border-accent"
+            >
+              Shop
+            </Link>
+            <Link
               href="/profile"
               className="touch-target inline-flex items-center rounded-full border border-line px-3 text-xs hover:border-accent"
             >

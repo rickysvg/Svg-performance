@@ -68,6 +68,8 @@ describe("home aggregation and weekly activity", () => {
     expect(today.suggestedDay).toBeTruthy();
     expect(today.foodNudge).toBeNull();
     expect(today.incompleteLesson).toBeTruthy();
+    expect(today.targets.calories).toBe(2200);
+    expect(today.firstName).toBe("streak");
   });
 });
 

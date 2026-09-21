@@ -2,18 +2,18 @@
 
 Private-preview web app for **SVG MMA Academy** (Ricky Maynez, El Paso).
 
-This is a member companion you can run on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and (in this milestone) get Home reminders, a no-shame weekly activity count, and coach trend reports.
+This is a member companion you can run on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, week strip, nutrition rings, and a + button.
 
-It does **not** charge live cards, talk to Gymdesk, or claim Ricky types each AI reply.
+It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim Ricky types each AI reply.
 
 ## What you can do in this preview
 
 1. Create an account, log in, log out, and reset a password.
 2. Save a short adult profile (goal, experience, equipment, available days, lb or kg, food preferences).
-3. Use Home for: goal, **today** (suggested workout, food nudge, unfinished lesson), progress, and **days active this week** (no shame copy).
-4. Open the one **DEMO** strength & conditioning program (sets, reps, load, rest).
+3. Use Home for: greeting, a **week strip**, nutrition goal rings (estimates), today’s DEMO workout card, days active this week (no shame copy), unfinished lesson, coach help status, and shop.
+4. Open the one **DEMO** strength & conditioning program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
-6. See a simple progress view built from those logs.
+6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, photo placeholders (no uploads), plus workout charts. No fake watch sync.
 7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later.
 8. Browse a small **DEMO** Learn library. Bookmark or mark complete. Admins can draft/publish.
 9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
@@ -23,7 +23,7 @@ It does **not** charge live cards, talk to Gymdesk, or claim Ricky types each AI
 13. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
 14. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
 
-Bottom navigation (phone): **Train · Fuel · Learn · Coach · Shop**. The logo goes to Home. Profile is in the header.
+Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop is on Home and in the header. The + button is a quick add for workout, food, or a body metric. Profile is in the header.
 
 ## What you need on your computer
 
@@ -126,6 +126,8 @@ Coverage includes:
 - Reminder prefs, no-spam, SMTP on vs in-app only
 - Coach/admin report role gates; help-request statuses; no food-diary dump
 - Home weekly activity copy (no shame)
+- Body metric / photo-placeholder ownership (user B cannot touch user A’s numbers)
+- Every seeded DEMO exercise has a YouTube form URL **or** an explicit pending flag
 
 See `EVALS.md` for the Coach Savage evaluation set.
 
@@ -133,15 +135,16 @@ See `EVALS.md` for the Coach Savage evaluation set.
 
 1. `npm install && npm run setup && npm run dev`
 2. Create an account (18+ required)
-3. Training → start **DEMO — Day 1** → save a workout → refresh History
+3. Training → start **DEMO — Day 1** → tap **Watch form** (YouTube) → save a workout → refresh History
 4. Fuel → search “chicken” in the DEMO list or save a meal → log an estimate → correct a number
 5. Learn → open a DEMO lesson → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
-7. Home → see today (workout / food / lesson), days active this week, optional reminder after your hour
-8. Profile → turn a reminder off
-9. Pricing → confirm checkout is off unless TEST keys exist
-10. Promote an admin, verify a gym member, confirm the $19 price is still TEST-only
-11. Promote a coach, assign a member, open Staff → trends (no food names)
+7. Home → greeting, week strip, nutrition rings, today’s workout card, + button, days active this week, optional reminder after your hour
+8. Progress → type a body weight; leave sleep empty and read the “no fake device sync” note; see photo placeholders
+9. Profile → turn a reminder off; optional nutrition targets
+10. Pricing → confirm checkout is off unless TEST keys exist
+11. Promote an admin, verify a gym member, confirm the $19 price is still TEST-only
+12. Promote a coach, assign a member, open Staff → trends (no food names)
 
 ## Pilot go / no-go checklist
 
@@ -149,12 +152,13 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 
 - [ ] Signup works (18+ confirmation). Logout / login / password reset behave.
 - [ ] Gym checkbox does **not** unlock $19 or paid tools by itself.
-- [ ] Home shows a goal, a today workout, a food nudge or today’s fuel, and an unfinished lesson when one exists.
+- [ ] Home shows a greeting, week strip, nutrition rings (estimates), a today workout card, and a + quick-add.
 - [ ] Days-active copy never shames a quiet week.
-- [ ] Train: DEMO program opens; a logged workout survives refresh; a wrong number can be corrected.
+- [ ] Train: DEMO program opens; **Watch form** opens a YouTube technique video (or shows pending); a logged workout survives refresh; a wrong number can be corrected.
 - [ ] Fuel: DEMO search or saved meal fills the form; estimates stay labeled; owner can correct; another account cannot open that log.
 - [ ] Learn: members see published DEMO lessons only; bookmark / complete stick.
 - [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
+- [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; photo boxes are placeholders, not uploads.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
 - [ ] Subscription TEST: without keys, checkout stays off. With TEST keys + webhook forward, access flips only after the webhook. Cancel / failed payment do not leave someone “paid.”
 - [ ] Privacy: staff trends do not list meals. Help requests move open → seen → closed.
@@ -183,6 +187,7 @@ Do not use days-active copy as a public leaderboard.
 
 - One DEMO strength program. DEMO lessons only. Not a personalized coach plan.
 - Food numbers are estimates (typed or from a tiny DEMO list). No barcode database, no photo AI.
+- Form videos are public YouTube references, not SVG coaching films. Two DEMO moves are pending coach review.
 - Coach Savage knowledge is a fillable pack in `content/coach-savage/`. Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.
 - Stripe is TEST structure only until keys + webhook forwarding are added. No live mode.

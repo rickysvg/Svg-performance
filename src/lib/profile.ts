@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { EQUIPMENT_OPTIONS, WEEKDAYS } from "@/lib/constants";
+import { DEMO_NUTRITION_TARGETS, EQUIPMENT_OPTIONS, WEEKDAYS } from "@/lib/constants";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 
 export type ProfileRecord = {
@@ -17,6 +17,10 @@ export type ProfileRecord = {
   preferredUnits: LoadUnit;
   foodPreferences: string;
   allergies: string;
+  calorieTarget: number;
+  proteinTargetG: number;
+  carbsTargetG: number;
+  fatTargetG: number;
 };
 
 function parseJsonArray(value: string): string[] {
@@ -44,6 +48,10 @@ export function toProfileRecord(row: {
   preferredUnits: string;
   foodPreferences: string;
   allergies: string;
+  calorieTarget: number;
+  proteinTargetG: number;
+  carbsTargetG: number;
+  fatTargetG: number;
 }): ProfileRecord {
   return {
     userId: row.userId,
@@ -59,6 +67,24 @@ export function toProfileRecord(row: {
     preferredUnits: isLoadUnit(row.preferredUnits) ? row.preferredUnits : "lb",
     foodPreferences: row.foodPreferences,
     allergies: row.allergies,
+    calorieTarget: row.calorieTarget,
+    proteinTargetG: row.proteinTargetG,
+    carbsTargetG: row.carbsTargetG,
+    fatTargetG: row.fatTargetG,
+  };
+}
+
+export function firstNameFrom(displayName: string) {
+  const part = displayName.trim().split(/\s+/)[0];
+  return part || "";
+}
+
+export function nutritionTargetsFromProfile(profile: ProfileRecord | null) {
+  return {
+    calories: profile?.calorieTarget || DEMO_NUTRITION_TARGETS.calories,
+    proteinG: profile?.proteinTargetG || DEMO_NUTRITION_TARGETS.proteinG,
+    carbsG: profile?.carbsTargetG || DEMO_NUTRITION_TARGETS.carbsG,
+    fatG: profile?.fatTargetG || DEMO_NUTRITION_TARGETS.fatG,
   };
 }
 
@@ -92,6 +118,10 @@ export async function updateProfileForUser(
     claimsGymMembership: boolean;
     foodPreferences: string;
     allergies: string;
+    calorieTarget?: number;
+    proteinTargetG?: number;
+    carbsTargetG?: number;
+    fatTargetG?: number;
   },
 ): Promise<ProfileRecord> {
   const displayName = input.displayName.trim().slice(0, 80);
@@ -123,6 +153,45 @@ export async function updateProfileForUser(
     throw new NotFoundError("Profile not found.");
   }
 
+  function parseTarget(value: number | undefined, fallback: number, min: number, max: number, label: string) {
+    if (value == null || Number.isNaN(value)) {
+      return fallback;
+    }
+    if (!Number.isFinite(value) || value < min || value > max) {
+      throw new AppError("PROFILE", `${label} should be between ${min} and ${max}.`);
+    }
+    return Math.round(value);
+  }
+
+  const calorieTarget = parseTarget(
+    input.calorieTarget,
+    existing.calorieTarget,
+    800,
+    5000,
+    "Calories",
+  );
+  const proteinTargetG = parseTarget(
+    input.proteinTargetG,
+    existing.proteinTargetG,
+    40,
+    400,
+    "Protein",
+  );
+  const carbsTargetG = parseTarget(
+    input.carbsTargetG,
+    existing.carbsTargetG,
+    40,
+    600,
+    "Carbs",
+  );
+  const fatTargetG = parseTarget(
+    input.fatTargetG,
+    existing.fatTargetG,
+    20,
+    250,
+    "Fat",
+  );
+
   const row = await prisma.profile.update({
     where: { userId },
     data: {
@@ -136,6 +205,10 @@ export async function updateProfileForUser(
       claimsGymMembership: Boolean(input.claimsGymMembership),
       foodPreferences: input.foodPreferences.trim().slice(0, 400),
       allergies: input.allergies.trim().slice(0, 400),
+      calorieTarget,
+      proteinTargetG,
+      carbsTargetG,
+      fatTargetG,
       // Never allow a member to self-verify gym membership.
     },
   });

@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/session";
 import { getDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { startSessionAction } from "@/app/actions/workouts";
+import { WatchFormInline } from "@/components/training/WatchForm";
 
 export default async function TrainingPage() {
   const user = await requireUser();
@@ -45,6 +46,7 @@ export default async function TrainingPage() {
                       {exercise.sets} × {exercise.reps} · {exercise.loadText} · rest {exercise.restSeconds}s
                     </span>
                   </span>
+                  <WatchFormInline url={exercise.formVideoUrl} pending={exercise.formVideoPending} />
                 </li>
               ))}
             </ul>

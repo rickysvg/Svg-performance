@@ -14,6 +14,10 @@ export async function saveProfileAction(
   try {
     const user = await requireUserOrThrow();
     const hoursRaw = String(formData.get("hoursPerWeek") ?? "").trim();
+    const optionalNumber = (key: string) => {
+      const raw = String(formData.get(key) ?? "").trim();
+      return raw === "" ? undefined : Number(raw);
+    };
     await updateProfileForUser(user.id, {
       displayName: String(formData.get("displayName") ?? ""),
       goals: String(formData.get("goals") ?? ""),
@@ -25,10 +29,15 @@ export async function saveProfileAction(
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
       foodPreferences: String(formData.get("foodPreferences") ?? ""),
       allergies: String(formData.get("allergies") ?? ""),
+      calorieTarget: optionalNumber("calorieTarget"),
+      proteinTargetG: optionalNumber("proteinTargetG"),
+      carbsTargetG: optionalNumber("carbsTargetG"),
+      fatTargetG: optionalNumber("fatTargetG"),
     });
     revalidatePath("/home");
     revalidatePath("/profile");
     revalidatePath("/training");
+    revalidatePath("/progress");
     return { success: "Profile saved." };
   } catch (error) {
     return { error: publicErrorMessage(error) };

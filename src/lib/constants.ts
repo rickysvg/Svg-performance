@@ -39,6 +39,14 @@ export const GOAL_PROMPTS = [
   "Stay consistent between classes",
 ] as const;
 
+/** DEMO daily targets used until a member types their own. Estimates only. */
+export const DEMO_NUTRITION_TARGETS = {
+  calories: 2200,
+  proteinG: 140,
+  carbsG: 220,
+  fatG: 70,
+} as const;
+
 export const MEMBER_ROUTES = [
   "/home",
   "/training",

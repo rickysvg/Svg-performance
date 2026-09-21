@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { getDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
-import { getTodayNutritionSummary, startOfLocalDay } from "@/lib/nutrition";
+import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
+import { getProfileForUser, firstNameFrom, nutritionTargetsFromProfile } from "@/lib/profile";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -58,14 +59,55 @@ export async function getWeeklyActivity(userId: string, now = new Date()): Promi
   };
 }
 
-export async function getHomeToday(userId: string) {
-  const [program, sessions, foodToday, lessons, progress, activity] = await Promise.all([
+export function parseDayParam(value: string | undefined, now = new Date()) {
+  if (!value) return startOfLocalDay(now);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return startOfLocalDay(now);
+  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (Number.isNaN(parsed.getTime())) return startOfLocalDay(now);
+  return startOfLocalDay(parsed);
+}
+
+export function mondayOf(date: Date) {
+  const start = startOfLocalDay(date);
+  const weekday = start.getDay(); // 0 Sunday
+  const diff = weekday === 0 ? -6 : 1 - weekday;
+  start.setDate(start.getDate() + diff);
+  return start;
+}
+
+export function weekStripDays(selected: Date) {
+  const monday = mondayOf(selected);
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + index);
+    return day;
+  });
+}
+
+export function sameLocalDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export function formatDayParam(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export async function getHomeToday(userId: string, selectedDay = new Date()) {
+  const selected = startOfLocalDay(selectedDay);
+  const [program, sessions, foodToday, lessons, progress, activity, profile] = await Promise.all([
     getDemoProgram(),
     listWorkoutSessionsForUser(userId),
-    getTodayNutritionSummary(userId),
+    getNutritionSummaryForDay(userId, selected),
     listPublishedLessons(),
     listLessonProgressForUser(userId),
     getWeeklyActivity(userId),
+    getProfileForUser(userId),
   ]);
 
   const completedDayIds = new Set(
@@ -76,6 +118,10 @@ export async function getHomeToday(userId: string) {
   const draft = sessions.find((session) => session.status === "draft");
   const suggestedDay =
     program.days.find((day) => !completedDayIds.has(day.id)) ?? program.days[0] ?? null;
+  const loggedOnSelected = sessions.find(
+    (session) =>
+      session.status === "complete" && sameLocalDay(session.performedAt, selected),
+  );
 
   const completedLessonIds = new Set(
     progress.filter((row) => row.completed).map((row) => row.lessonId),
@@ -84,14 +130,20 @@ export async function getHomeToday(userId: string) {
     lessons.find((lesson) => !completedLessonIds.has(lesson.id)) ?? null;
 
   return {
+    selected,
+    isToday: sameLocalDay(selected, new Date()),
     suggestedDay,
-    draft,
+    draft: sameLocalDay(selected, new Date()) ? draft : undefined,
+    loggedOnSelected: loggedOnSelected ?? null,
     foodToday,
     foodNudge:
       foodToday.entryCount === 0
-        ? "No food logged today yet. A rough estimate is enough."
+        ? "No food logged this day yet. A rough estimate is enough."
         : null,
     incompleteLesson,
     activity,
+    targets: nutritionTargetsFromProfile(profile),
+    firstName: firstNameFrom(profile?.displayName ?? ""),
+    goals: profile?.goals ?? "",
   };
 }

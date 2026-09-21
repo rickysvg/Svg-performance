@@ -4,11 +4,13 @@ import { getProfileForUser, profileIsComplete } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { buildProgressSummary } from "@/lib/progress";
 import { DemoBadge } from "@/components/DemoBadge";
-import { EmptyState } from "@/components/EmptyState";
-import { getHomeToday } from "@/lib/home";
+import { getHomeToday, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { listHelpRequestsForMember } from "@/lib/help";
 import { HelpRequestForm } from "@/components/help/HelpRequestForm";
+import { WeekStrip } from "@/components/home/WeekStrip";
+import { NutritionRings } from "@/components/home/NutritionRings";
+import { SHOP_HOME } from "@/lib/shop";
 
 function formatDate(value: string | null) {
   if (!value) return "No sessions yet";
@@ -18,12 +20,18 @@ function formatDate(value: string | null) {
   });
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ day?: string }>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
+  const selected = parseDayParam(params.day);
   const [profile, sessions, today, reminderResult, helpRequests] = await Promise.all([
     getProfileForUser(user.id),
     listWorkoutSessionsForUser(user.id),
-    getHomeToday(user.id),
+    getHomeToday(user.id, selected),
     processDueRemindersForUser(user.id, user.email),
     listHelpRequestsForMember(user.id),
   ]);
@@ -31,14 +39,13 @@ export default async function HomePage() {
   const units = profile?.preferredUnits ?? "lb";
   const progress = buildProgressSummary(sessions, units);
   const openHelp = helpRequests.filter((row) => row.status === "open");
+  const greetingName = today.firstName || "athlete";
 
   return (
     <main className="space-y-6">
       <div>
-        <p className="text-sm text-muted">
-          {profile?.displayName ? `Hey ${profile.displayName}` : "Welcome"}
-        </p>
-        <h1 className="text-2xl font-semibold">Your training snapshot</h1>
+        <p className="text-sm text-muted">Let&apos;s go,</p>
+        <h1 className="text-4xl font-semibold tracking-tight">{greetingName}</h1>
       </div>
 
       {!profile || !profileIsComplete(profile) ? (
@@ -71,47 +78,58 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-sm uppercase tracking-wide text-muted">
-          Days active this week
-        </h2>
-        <p className="mt-2 text-lg font-semibold">
-          {today.activity.daysActive} of 7 days
-        </p>
-        <p className="mt-1 text-sm text-muted">{today.activity.message}</p>
-      </section>
+      <WeekStrip selected={today.selected} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-sm uppercase tracking-wide text-muted">
-          What am I working toward?
-        </h2>
-        <p className="mt-2 text-lg font-semibold">
-          {profile?.goals || "Add a goal on your profile."}
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Daily nutrition goal</h2>
+          <Link href="/nutrition" className="text-accent" aria-label="Open nutrition">
+            ›
+          </Link>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Manual estimates vs your targets (DEMO defaults until you change them on Profile).
+          Not a coach-assigned meal plan.
         </p>
-        {profile?.experienceLevel ? (
-          <p className="mt-2 text-sm text-muted">
-            Experience: {profile.experienceLevel}
-            {profile.weeklyAvailability.length
-              ? ` · ${profile.weeklyAvailability.length} days marked available`
-              : ""}
-          </p>
-        ) : null}
-        {profile?.claimsGymMembership && !profile.gymMembershipVerified ? (
-          <p className="mt-3 text-xs text-muted">
-            You checked “I train at SVG.” That is only a note. It does not unlock
-            the $19 price until an admin verifies you.
-          </p>
-        ) : null}
+        <div className="mt-4">
+          <NutritionRings
+            calories={today.foodToday.calories}
+            proteinG={today.foodToday.proteinG}
+            carbsG={today.foodToday.carbsG}
+            fatG={today.foodToday.fatG}
+            targets={today.targets}
+          />
+        </div>
+        <p className="mt-3 text-sm text-muted">
+          {today.foodNudge ??
+            `${today.foodToday.entryCount} item${
+              today.foodToday.entryCount === 1 ? "" : "s"
+            } logged this day.`}{" "}
+          <Link href="/nutrition" className="text-accent underline">
+            Log food
+          </Link>
+        </p>
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm uppercase tracking-wide text-muted">
-            Today
+          <h2 className="text-lg font-semibold">
+            {today.isToday ? "Today’s workout" : "Workout this day"}
           </h2>
           <DemoBadge />
         </div>
-        {today.draft ? (
+        {today.loggedOnSelected ? (
+          <div className="mt-3">
+            <p className="text-lg font-semibold">{today.loggedOnSelected.title}</p>
+            <p className="mt-1 text-sm text-muted">Logged and saved.</p>
+            <Link
+              href={`/training/log/${today.loggedOnSelected.id}`}
+              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
+            >
+              Review or correct
+            </Link>
+          </div>
+        ) : today.draft ? (
           <div className="mt-3">
             <p className="text-lg font-semibold">Finish your draft session</p>
             <p className="mt-1 text-sm text-muted">{today.draft.title}</p>
@@ -127,7 +145,7 @@ export default async function HomePage() {
             <p className="text-lg font-semibold">{today.suggestedDay.title}</p>
             <p className="mt-1 text-sm text-muted">{today.suggestedDay.focus}</p>
             <Link
-              href="/training"
+              href={`/training/${today.suggestedDay.id}`}
               className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
             >
               Open today&apos;s DEMO session
@@ -138,67 +156,79 @@ export default async function HomePage() {
             No DEMO day is loaded yet. Open Training after setup.
           </p>
         )}
-        <div className="mt-5 space-y-2 border-t border-line pt-4 text-sm">
-          <p>
-            {today.foodNudge ??
-              `Fuel today (manual estimates): ${today.foodToday.entryCount} item${
-                today.foodToday.entryCount === 1 ? "" : "s"
-              } · ${Math.round(today.foodToday.calories)} kcal.`}{" "}
-            <Link href="/nutrition" className="text-accent underline">
-              Log food
-            </Link>
-          </p>
-          {today.incompleteLesson ? (
-            <p>
-              Lesson still open: {today.incompleteLesson.title}.{" "}
-              <Link
-                href={`/learn/${today.incompleteLesson.slug}`}
-                className="text-accent underline"
-              >
-                Continue
-              </Link>
-            </p>
-          ) : (
-            <p className="text-muted">
-              No unfinished published lesson right now.{" "}
-              <Link href="/learn" className="text-accent underline">
-                Browse Learn
-              </Link>
-            </p>
-          )}
-        </div>
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-sm uppercase tracking-wide text-muted">
-          What progress am I making?
+          Days active this week
         </h2>
-        {progress.sessionCount === 0 ? (
-          <EmptyState title="No completed workouts yet" action={
-            <Link href="/training" className="text-accent underline">
-              Log one from Training
-            </Link>
-          }>
-            Home will show your latest session after you save it.
-          </EmptyState>
-        ) : (
-          <div className="mt-3 space-y-2">
-            <p className="text-lg font-semibold">
-              {progress.sessionCount} completed session
-              {progress.sessionCount === 1 ? "" : "s"}
-            </p>
-            <p className="text-sm text-muted">
-              Last: {progress.lastSessionTitle} · {formatDate(progress.lastSessionAt)}
-            </p>
-            <Link
-              href="/progress"
-              className="inline-flex text-sm text-accent underline-offset-4 hover:underline"
-            >
-              See charts
-            </Link>
-          </div>
-        )}
+        <p className="mt-2 text-lg font-semibold">
+          {today.activity.daysActive} of 7 days
+        </p>
+        <p className="mt-1 text-sm text-muted">{today.activity.message}</p>
       </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Quick links</h2>
+        {today.incompleteLesson ? (
+          <Link
+            href={`/learn/${today.incompleteLesson.slug}`}
+            className="block rounded-2xl border border-line bg-card p-4"
+          >
+            <p className="text-xs uppercase tracking-wide text-muted">Unfinished lesson</p>
+            <p className="mt-1 font-semibold">{today.incompleteLesson.title}</p>
+            <p className="mt-1 text-sm text-muted">Continue when you have a few minutes.</p>
+          </Link>
+        ) : (
+          <Link href="/learn" className="block rounded-2xl border border-line bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted">Learn</p>
+            <p className="mt-1 font-semibold">Browse DEMO lessons</p>
+          </Link>
+        )}
+        <Link href="/progress" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">My Progress</p>
+          {progress.sessionCount === 0 ? (
+            <p className="mt-1 text-sm text-muted">No completed workouts yet — charts wait on a saved session.</p>
+          ) : (
+            <p className="mt-1 text-sm">
+              {progress.sessionCount} completed session{progress.sessionCount === 1 ? "" : "s"} · last{" "}
+              {formatDate(progress.lastSessionAt)}
+            </p>
+          )}
+        </Link>
+        <article className="rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Coach help</p>
+          <p className="mt-1 font-semibold">
+            {openHelp.length > 0
+              ? `${openHelp.length} open request${openHelp.length === 1 ? "" : "s"} · ${openHelp[0].status}`
+              : "No open request"}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Status is open / seen / closed. Not a 24/7 chat promise.
+          </p>
+        </article>
+        <a
+          href={SHOP_HOME}
+          target="_blank"
+          rel="noreferrer"
+          className="block rounded-2xl border border-line bg-card p-4"
+        >
+          <p className="text-xs uppercase tracking-wide text-muted">Shop</p>
+          <p className="mt-1 font-semibold">SVG &amp; CO (live store)</p>
+          <p className="mt-1 text-sm text-muted">We do not invent products or prices here.</p>
+        </a>
+      </section>
+
+      {profile?.claimsGymMembership && !profile.gymMembershipVerified ? (
+        <p className="text-xs text-muted">
+          You checked “I train at SVG.” That is only a note. It does not unlock
+          the $19 price until an admin verifies you.
+        </p>
+      ) : null}
+
+      {profile?.goals ? (
+        <p className="text-sm text-muted">Working toward: {profile.goals}</p>
+      ) : null}
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-sm uppercase tracking-wide text-muted">

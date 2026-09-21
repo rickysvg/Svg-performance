@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
 import { getProgramDayById } from "@/lib/programs";
+import { WatchForm } from "@/components/training/WatchForm";
 import { startSessionAction } from "@/app/actions/workouts";
 
 export default async function TrainingDayPage({
@@ -61,6 +62,7 @@ export default async function TrainingDayPage({
             {exercise.notes ? (
               <p className="mt-3 text-sm text-muted">{exercise.notes}</p>
             ) : null}
+            <WatchForm url={exercise.formVideoUrl} pending={exercise.formVideoPending} />
           </li>
         ))}
       </ol>

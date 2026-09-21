@@ -200,13 +200,17 @@ export function endOfLocalDay(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
 }
 
-export async function getTodayNutritionSummary(userId: string) {
-  const entries = await prisma.nutritionEntry.findMany({
-    where: {
-      userId,
-      eatenAt: { gte: startOfLocalDay(), lt: endOfLocalDay() },
-    },
-  });
+export type NutritionDaySummary = {
+  entryCount: number;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+};
+
+function summarizeEntries(
+  entries: Array<{ calories: number; proteinG: number; carbsG: number; fatG: number }>,
+): NutritionDaySummary {
   return {
     entryCount: entries.length,
     calories: entries.reduce((sum, row) => sum + row.calories, 0),
@@ -214,4 +218,48 @@ export async function getTodayNutritionSummary(userId: string) {
     carbsG: entries.reduce((sum, row) => sum + row.carbsG, 0),
     fatG: entries.reduce((sum, row) => sum + row.fatG, 0),
   };
+}
+
+export async function getNutritionSummaryForDay(userId: string, day = new Date()) {
+  const entries = await prisma.nutritionEntry.findMany({
+    where: {
+      userId,
+      eatenAt: { gte: startOfLocalDay(day), lt: endOfLocalDay(day) },
+    },
+  });
+  return summarizeEntries(entries);
+}
+
+export async function getTodayNutritionSummary(userId: string) {
+  return getNutritionSummaryForDay(userId);
+}
+
+export async function getRecentNutritionDays(userId: string, days = 7, now = new Date()) {
+  const start = startOfLocalDay(now);
+  start.setDate(start.getDate() - (days - 1));
+  const entries = await prisma.nutritionEntry.findMany({
+    where: { userId, eatenAt: { gte: start } },
+    orderBy: { eatenAt: "asc" },
+  });
+  const byDay = new Map<string, NutritionDaySummary>();
+  for (let i = 0; i < days; i += 1) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    byDay.set(dayKey(d), { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
+  }
+  for (const row of entries) {
+    const key = dayKey(row.eatenAt);
+    const current = byDay.get(key);
+    if (!current) continue;
+    current.entryCount += 1;
+    current.calories += row.calories;
+    current.proteinG += row.proteinG;
+    current.carbsG += row.carbsG;
+    current.fatG += row.fatG;
+  }
+  return [...byDay.entries()].map(([key, summary]) => ({ day: key, ...summary }));
+}
+
+function dayKey(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }

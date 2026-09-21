@@ -144,6 +144,60 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
         />
       </label>
 
+      <fieldset className="rounded-xl border border-line p-3">
+        <legend className="text-sm font-medium">Daily nutrition targets (estimates)</legend>
+        <p className="mt-1 text-xs text-muted">
+          Used on Home rings. These are your numbers or DEMO defaults — not a personalized
+          meal plan from a coach.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="block text-sm">
+            Calories
+            <input
+              name="calorieTarget"
+              type="number"
+              min={800}
+              max={5000}
+              defaultValue={profile.calorieTarget}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            />
+          </label>
+          <label className="block text-sm">
+            Protein (g)
+            <input
+              name="proteinTargetG"
+              type="number"
+              min={40}
+              max={400}
+              defaultValue={profile.proteinTargetG}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            />
+          </label>
+          <label className="block text-sm">
+            Carbs (g)
+            <input
+              name="carbsTargetG"
+              type="number"
+              min={40}
+              max={600}
+              defaultValue={profile.carbsTargetG}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            />
+          </label>
+          <label className="block text-sm">
+            Fat (g)
+            <input
+              name="fatTargetG"
+              type="number"
+              min={20}
+              max={250}
+              defaultValue={profile.fatTargetG}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            />
+          </label>
+        </div>
+      </fieldset>
+
       <label className="flex items-start gap-3 rounded-xl border border-line p-3">
         <input
           type="checkbox"

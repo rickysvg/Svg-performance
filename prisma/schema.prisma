@@ -28,6 +28,8 @@ model User {
   coachAssignmentsAsMember CoachAssignment[] @relation("MemberAssignments")
   helpRequests             HelpRequest[]
   metricEvents             MetricEvent[]
+  bodyMetrics              BodyMetric[]
+  bodyPhotoPlaceholders    BodyPhotoPlaceholder[]
 }
 
 model Session {
@@ -69,6 +71,10 @@ model Profile {
   preferredUnits         String   @default("lb")
   foodPreferences        String   @default("")
   allergies              String   @default("")
+  calorieTarget          Int      @default(2200)
+  proteinTargetG         Int      @default(140)
+  carbsTargetG           Int      @default(220)
+  fatTargetG             Int      @default(70)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
@@ -104,8 +110,10 @@ model ProgramExercise {
   sets         Int
   reps         String
   loadText     String
-  restSeconds  Int
-  notes        String     @default("")
+  restSeconds      Int
+  notes            String  @default("")
+  formVideoUrl     String  @default("")
+  formVideoPending Boolean @default(false)
 }
 
 model WorkoutSession {
@@ -310,5 +318,34 @@ model MetricEvent {
   createdAt DateTime @default(now())
 
   @@index([name, createdAt])
+  @@index([userId])
+}
+
+model BodyMetric {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String
+  value      Float
+  unit       String
+  recordedAt DateTime
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, kind, recordedAt])
+}
+
+model BodyPhotoPlaceholder {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot       String
+  caption    String   @default("")
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, slot])
   @@index([userId])
 }

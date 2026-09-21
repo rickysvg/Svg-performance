@@ -48,10 +48,33 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - **Knowledge pack:** `INTERVIEW.md` is a worksheet and is **excluded** from runtime KB so raw questions are not answered as if they were policy. `COACHING_GUIDE.md` + `DEMO-seeds.md` load first.
 - **Metrics:** event **names** only (`workout_logged`, etc.). No sensitive payloads.
 
+## Milestone 4
+
+- **Home UX:** Inspired by Fight Science Collective *layout ideas only* (greeting, week strip, nutrition rings, workout card, FAB). We did not copy their logo, red medical cross, colors, or assets. SVG uses black / white / `#D0FF00`, academy-first copy, and our own logo.
+- **Nav:** Phone bar is **Home · Train · Fuel · Learn · Coach**. Shop is on Home plus the header so it stays reachable without crowding a sixth tab.
+- **Nutrition rings:** Today’s (or selected day’s) food logs vs profile targets. New accounts start at DEMO estimates **2200 / 140 g / 220 g / 70 g** — not copied from another gym’s numbers. Always labeled estimates.
+- **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / HR / LBM / body fat can be typed **or** left as “Coming soon — no fake device sync.” Photo slots are placeholders (date + caption, no image files).
+- **Wearables:** None. No invented Apple Watch / Whoop / Oura connections.
+
+## Form video selection rules
+
+Every DEMO exercise stores `formVideoUrl` (YouTube) **or** `formVideoPending=true` with an empty URL. UI copy is **Watch form** plus “Form reference (YouTube) — not an SVG-produced video.” Pending shows “Video pending coach review.”
+
+How we pick a link:
+
+1. Prefer well-known strength / coaching education channels (NASM, Jeff Nippard, ATHLEAN-X, Starting Strength / Rippetoe, Mark Wildman, Calisthenic Movement, MuscleWiki, Jump Rope Dudes, BJ Gaddour).
+2. Prefer long-form technique videos with strong views / like engagement over entertainment fails and over random shorts.
+3. Prefer official “how to / proper form” titles. We do not embed paid course media or Fight Science content.
+4. If we cannot verify a high-quality video for that movement, we leave the URL empty and set pending. We do **not** guess a weak short.
+5. Links open on YouTube. They are not claimed as SVG IP.
+
+Current pending DEMO moves: squat jump / box step-up, and lateral bound / side step-over.
+
 ## Demo program
 
 - One seeded program: `DEMO — Strength Base for Class` (3 days, sets / reps / load text / rest).
 - Labeled DEMO in the UI. Not claimed as a coach-assigned fight-camp plan.
+- Each exercise has a curated YouTube form link or an explicit pending flag.
 
 ## Shop
 
@@ -66,10 +89,10 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Authorization
 
-- Workout / food / saved-meal / chat read / update / delete always filters by `userId`.
+- Workout / food / saved-meal / chat / **body metric / photo placeholder** read / update / delete always filters by `userId`.
 - If the row exists but belongs to someone else, the data layer throws `ForbiddenError`. Pages map that to a generic not-found so IDs are not confirmed to strangers.
 - Tests cover user A vs user B ID swapping, coach vs unassigned member, and Stripe gym-plan webhooks on unverified profiles.
 
 ## Out of scope
 
-- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, photo food AI.
+- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, photo food AI, claiming YouTube form videos as SVG IP, cloning Fight Science Collective brand/assets or Groups.

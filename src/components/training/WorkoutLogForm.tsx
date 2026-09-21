@@ -9,9 +9,16 @@ import {
 } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
+import { WatchForm } from "@/components/training/WatchForm";
+import { lookupFormVideo } from "@/lib/form-videos";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 
-type Session = WorkoutSession & { sets: WorkoutSet[] };
+type Session = WorkoutSession & {
+  sets: WorkoutSet[];
+  programDay?: {
+    exercises: { name: string; formVideoUrl: string; formVideoPending: boolean }[];
+  } | null;
+};
 
 function toDateInput(value: Date | string) {
   const date = new Date(value);
@@ -87,9 +94,12 @@ export function WorkoutLogForm({ session }: { session: Session }) {
           />
         </label>
 
-        {grouped.map(([name, group]) => (
+        {grouped.map(([name, group]) => {
+          const form = lookupFormVideo(name, session.programDay?.exercises);
+          return (
           <fieldset key={name} className="rounded-2xl border border-line bg-card p-4">
             <legend className="px-1 text-base font-semibold">{name}</legend>
+            <WatchForm url={form.url} pending={form.pending} />
             <div className="space-y-3">
               {group.map((set, indexInGroup) => {
                 const index = sets.findIndex((item) => item.id === set.id);
@@ -163,7 +173,8 @@ export function WorkoutLogForm({ session }: { session: Session }) {
               })}
             </div>
           </fieldset>
-        ))}
+          );
+        })}
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <button

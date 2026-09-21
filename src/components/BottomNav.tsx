@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
+  { href: "/home", label: "Home" },
   { href: "/training", label: "Train" },
   { href: "/nutrition", label: "Fuel" },
   { href: "/learn", label: "Learn" },
   { href: "/coach", label: "Coach" },
-  { href: "/shop", label: "Shop" },
 ];
 
 export function BottomNav() {
@@ -21,7 +21,9 @@ export function BottomNav() {
       <ul className="mx-auto grid max-w-3xl grid-cols-5">
         {LINKS.map((link) => {
           const active =
-            current === link.href || current.startsWith(`${link.href}/`);
+            link.href === "/home"
+              ? current === "/home"
+              : current === link.href || current.startsWith(`${link.href}/`);
           return (
             <li key={link.href}>
               <Link
