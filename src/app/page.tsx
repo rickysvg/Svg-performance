@@ -12,10 +12,7 @@ export default async function MarketingPage() {
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10">
         <section className="flex flex-col items-center text-center">
           <Logo size="lg" priority />
-          <p className="mt-6 text-sm uppercase tracking-[0.35em] text-accent">
-            SVG Performance
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">
             Train with purpose between classes.
           </h1>
           <p className="mt-4 max-w-xl text-muted">

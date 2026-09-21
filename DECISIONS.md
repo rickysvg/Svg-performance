@@ -60,9 +60,9 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Brand
 
-- Attached logo files were shown in the request but were not persisted as PNG/JPG on disk in this workspace.
-- The UI uses a reconstructed SVG wordmark (`public/logo.svg`) matching the mountain + SVG + “MMA ACADEMY” layout.
-- Accent hex **`#CFFF00`** was sampled from the neon V in the attached logo (bright lime-yellow). Black / white / that accent only.
+- Official **SVG Performance** lockup (mountain, star, SVG + PERFORMANCE bar) lives at `public/svg-performance-logo.png` and is the primary `Logo` mark (sm/md/lg). Alt text is “SVG Performance”.
+- Older MMA Academy SVGs (`public/logo.svg`, `public/logo-mark.svg`) remain on disk as unused fallbacks only. The UI does not show them.
+- Accent hex **`#D0FF00`** was sampled from the neon V and the PERFORMANCE bar on that official mark (replacing the old MMA Academy `#CFFF00`). Black / white / that neon only, high contrast, athletic.
 
 ## Authorization
 

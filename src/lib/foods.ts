@@ -22,6 +22,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 35,
     carbsG: 0,
     fatG: 4,
+    isDemo: true,
   },
   {
     id: "demo-ground-turkey",
@@ -31,6 +32,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 28,
     carbsG: 0,
     fatG: 8,
+    isDemo: true,
   },
   {
     id: "demo-salmon",
@@ -40,6 +42,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 25,
     carbsG: 0,
     fatG: 14,
+    isDemo: true,
   },
   {
     id: "demo-eggs",
@@ -49,6 +52,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 12,
     carbsG: 2,
     fatG: 14,
+    isDemo: true,
   },
   {
     id: "demo-greek-yogurt",
@@ -58,6 +62,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 20,
     carbsG: 8,
     fatG: 0,
+    isDemo: true,
   },
   {
     id: "demo-protein-shake",
@@ -67,6 +72,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 24,
     carbsG: 3,
     fatG: 1,
+    isDemo: true,
   },
   {
     id: "demo-white-rice",
@@ -76,6 +82,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 4,
     carbsG: 45,
     fatG: 0.5,
+    isDemo: true,
   },
   {
     id: "demo-brown-rice",
@@ -85,6 +92,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 5,
     carbsG: 45,
     fatG: 2,
+    isDemo: true,
   },
   {
     id: "demo-oatmeal",
@@ -94,6 +102,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 6,
     carbsG: 28,
     fatG: 3,
+    isDemo: true,
   },
   {
     id: "demo-sweet-potato",
@@ -103,6 +112,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 2,
     carbsG: 26,
     fatG: 0,
+    isDemo: true,
   },
   {
     id: "demo-black-beans",
@@ -112,6 +122,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 7,
     carbsG: 20,
     fatG: 0.5,
+    isDemo: true,
   },
   {
     id: "demo-banana",
@@ -121,6 +132,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 1,
     carbsG: 27,
     fatG: 0,
+    isDemo: true,
   },
   {
     id: "demo-apple",
@@ -130,6 +142,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 0,
     carbsG: 25,
     fatG: 0,
+    isDemo: true,
   },
   {
     id: "demo-avocado",
@@ -139,6 +152,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 1,
     carbsG: 6,
     fatG: 11,
+    isDemo: true,
   },
   {
     id: "demo-peanut-butter",
@@ -148,6 +162,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 4,
     carbsG: 3,
     fatG: 8,
+    isDemo: true,
   },
   {
     id: "demo-broccoli",
@@ -157,6 +172,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 4,
     carbsG: 11,
     fatG: 0.5,
+    isDemo: true,
   },
   {
     id: "demo-mixed-salad",
@@ -166,6 +182,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 2,
     carbsG: 4,
     fatG: 0,
+    isDemo: true,
   },
   {
     id: "demo-tortilla",
@@ -175,6 +192,7 @@ export const DEMO_FOODS: DemoFood[] = [
     proteinG: 4,
     carbsG: 22,
     fatG: 3,
+    isDemo: true,
   },
 ];
 

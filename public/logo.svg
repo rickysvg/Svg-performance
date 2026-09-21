@@ -2,6 +2,6 @@
   <title id="logoTitle">SVG MMA Academy</title>
   <path d="M90 248 L200 128 L275 186 L405 72 L540 196 L655 108 L800 228 L870 172" stroke="#FFFFFF" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
   <path d="M800 68 L816 112 L864 112 L826 140 L840 184 L800 158 L760 184 L774 140 L736 112 L784 112 Z" fill="#FFFFFF"/>
-  <text x="500" y="500" text-anchor="middle" fill="#FFFFFF" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="230" font-weight="900" letter-spacing="-8">S<tspan fill="#CFFF00">V</tspan>G</text>
+  <text x="500" y="500" text-anchor="middle" fill="#FFFFFF" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="230" font-weight="900" letter-spacing="-8">S<tspan fill="#D0FF00">V</tspan>G</text>
   <text x="500" y="610" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="600" letter-spacing="14">MMA ACADEMY</text>
 </svg>
