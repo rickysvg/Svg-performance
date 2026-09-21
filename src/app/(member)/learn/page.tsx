@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { canUseMemberTools } from "@/lib/access";
+import { canUseFeature } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/PaywallNotice";
 import { isAdmin } from "@/lib/roles";
 import {
@@ -18,8 +18,11 @@ export default async function LearnPage({
   searchParams: Promise<{ q?: string; topic?: string; level?: string }>;
 }) {
   const user = await requireUser();
-  const access = await canUseMemberTools(user.id);
-  if (!access.allowed) {
+  const [fullLibrary, beginnerLibrary] = await Promise.all([
+    canUseFeature(user.id, "learn_full"),
+    canUseFeature(user.id, "learn_beginner"),
+  ]);
+  if (!beginnerLibrary && !fullLibrary) {
     return <PaywallNotice feature="Learn" />;
   }
   const query = await searchParams;
@@ -27,7 +30,7 @@ export default async function LearnPage({
     listPublishedLessons({
       search: query.q,
       topic: query.topic,
-      skillLevel: query.level,
+      skillLevel: fullLibrary ? query.level : "beginner",
     }),
     listLessonProgressForUser(user.id),
   ]);
@@ -41,6 +44,9 @@ export default async function LearnPage({
           <p className="mt-1 text-sm text-muted">
             Short MMA notes. DEMO lessons are labeled and are not paid SVG video
             instruction.
+            {!fullLibrary
+              ? " Member Access shows selected beginner notes only. Upgrade to SVG Performance for the full library."
+              : ""}
           </p>
         </div>
         {isAdmin(user) ? (
@@ -71,11 +77,12 @@ export default async function LearnPage({
         </select>
         <select
           name="level"
-          defaultValue={query.level ?? ""}
-          className="rounded-xl border border-line bg-background px-3 py-3"
+          defaultValue={fullLibrary ? (query.level ?? "") : "beginner"}
+          disabled={!fullLibrary}
+          className="rounded-xl border border-line bg-background px-3 py-3 disabled:opacity-70"
         >
-          <option value="">All levels</option>
-          {LESSON_LEVELS.map((level) => (
+          {fullLibrary ? <option value="">All levels</option> : null}
+          {(fullLibrary ? LESSON_LEVELS : (["beginner"] as const)).map((level) => (
             <option key={level} value={level}>
               {level}
             </option>

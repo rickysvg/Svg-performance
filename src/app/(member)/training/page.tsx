@@ -5,11 +5,13 @@ import { getDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { startSessionAction } from "@/app/actions/workouts";
 import { WatchFormInline } from "@/components/training/WatchForm";
+import { canUseFeature } from "@/lib/entitlements";
 
 export default async function TrainingPage() {
   const user = await requireUser();
   const program = await getDemoProgram();
   const sessions = await listWorkoutSessionsForUser(user.id);
+  const conditioning = await canUseFeature(user.id, "conditioning");
 
   return (
     <main className="space-y-6">
@@ -23,6 +25,23 @@ export default async function TrainingPage() {
         </div>
         <DemoBadge />
       </div>
+
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="font-semibold">Fighter Conditioning</h2>
+        {conditioning ? (
+          <p className="mt-2 text-sm text-muted">
+            Shared combat S&amp;C / mobility blocks publish here when ready. This DEMO
+            starter stays labeled DEMO and is not a 1:1 assigned fight camp.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-muted">
+            Structured fighter conditioning is on the $49 / $59 plan.{" "}
+            <Link href="/pricing" className="text-accent underline">
+              See App Plans
+            </Link>
+          </p>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-accent/40 bg-card p-5">
         <p className="text-xs font-bold uppercase tracking-wide text-accent">

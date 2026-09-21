@@ -57,4 +57,6 @@ export const MEMBER_ROUTES = [
   "/learn",
   "/coach",
   "/staff",
+  "/book",
+  "/plan",
 ];

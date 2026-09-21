@@ -46,6 +46,16 @@ export default async function ProfilePage() {
             </Link>
           </li>
           <li>
+            <Link href="/plan" className="text-accent underline-offset-4 hover:underline">
+              My plan &amp; credits
+            </Link>
+          </li>
+          <li>
+            <Link href="/book" className="text-accent underline-offset-4 hover:underline">
+              Book with Ricky
+            </Link>
+          </li>
+          <li>
             <Link href="/pricing" className="text-accent underline-offset-4 hover:underline">
               Draft pricing (TEST)
             </Link>

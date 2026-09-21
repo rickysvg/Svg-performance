@@ -66,8 +66,11 @@ export default async function MarketingPage() {
             <li>Auth, workout logs, and your profile are real and stored in a database.</li>
             <li>The strength program is clearly marked DEMO.</li>
             <li>Saying “I am a gym member” does not unlock a discount or paid access.</li>
-            <li>Draft prices ($19 / $29) are a proposal only. There is no live checkout.</li>
-            <li>Nutrition, Learn, and Coach Savage AI are labeled placeholders for later.</li>
+            <li>
+              Draft prices (App Plans, Online Coaching, VIP) are a proposal / Stripe TEST
+              only. There is no live checkout. Paid plans are additional to gym dues.
+            </li>
+            <li>Coach Savage AI is not Ricky. Weight-cut services are not sold here.</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/pricing" className="text-sm text-accent underline-offset-4 hover:underline">

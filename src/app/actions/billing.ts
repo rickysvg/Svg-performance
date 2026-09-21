@@ -1,13 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { assertCanCheckoutPlan, isPlanId, priceIdForPlan } from "@/lib/billing";
 import { getStripe } from "@/lib/stripe";
 import { AppError } from "@/lib/errors";
 import { publicErrorMessage } from "@/lib/errors";
+import { joinWaitlist } from "@/lib/waitlist";
 
-export type BillingActionState = { error?: string };
+export type BillingActionState = { error?: string; success?: string };
 
 export async function startCheckoutAction(
   _prev: BillingActionState,
@@ -45,6 +47,21 @@ export async function startCheckoutAction(
     if (error && typeof error === "object" && "digest" in error) {
       throw error;
     }
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function joinWaitlistAction(
+  _prev: BillingActionState,
+  formData: FormData,
+): Promise<BillingActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    await joinWaitlist(user.id, String(formData.get("plan") ?? ""));
+    revalidatePath("/pricing");
+    revalidatePath("/plan");
+    return { success: "You are on the waitlist. This is not a charge." };
+  } catch (error) {
     return { error: publicErrorMessage(error) };
   }
 }

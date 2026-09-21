@@ -2,50 +2,49 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { getProfileForUser } from "@/lib/profile";
 import { isStripeConfigured } from "@/lib/access";
+import { ensureCreditsForPlan } from "@/lib/credits";
+import { isPlanAtCap } from "@/lib/waitlist";
+import {
+  CHECKOUT_SKUS,
+  type CheckoutSkuId,
+  isCheckoutSkuId,
+  normalizePlanId,
+  PLAN_CATALOG,
+  PLANS,
+} from "@/lib/plans";
 
-export const PLANS = {
-  gym: {
-    id: "gym",
-    label: "Verified gym member",
-    amountLabel: "$19/mo",
-    envPrice: "STRIPE_PRICE_GYM",
-  },
-  standalone: {
-    id: "standalone",
-    label: "Standalone subscriber",
-    amountLabel: "$29/mo",
-    envPrice: "STRIPE_PRICE_STANDALONE",
-  },
-} as const;
+export { PLANS, isPlanId, isCheckoutSkuId } from "@/lib/plans";
+export type { CheckoutSkuId as PlanId } from "@/lib/plans";
 
-export type PlanId = keyof typeof PLANS;
-
-export function isPlanId(value: string): value is PlanId {
-  return value === "gym" || value === "standalone";
-}
-
-export async function assertCanCheckoutPlan(userId: string, plan: PlanId) {
+export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId) {
   if (!isStripeConfigured()) {
     throw new AppError(
       "BILLING",
       "Stripe TEST keys are not configured. Checkout is shown as a proposal only.",
     );
   }
-  if (plan === "gym") {
+  const sku = CHECKOUT_SKUS[plan];
+  if (sku.requiresGymVerify) {
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {
       throw new ForbiddenError(
-        "The $19 gym price is only available after an admin verifies your SVG membership. Checking the box yourself is not enough.",
+        "Gym-member prices are only available after an admin verifies your SVG membership. Checking the box yourself is not enough.",
       );
     }
-    if (!process.env.STRIPE_PRICE_GYM) {
-      throw new AppError("BILLING", "STRIPE_PRICE_GYM is not set.");
-    }
+  }
+  if (!process.env[sku.envPrice]) {
+    throw new AppError("BILLING", `${sku.envPrice} is not set.`);
+  }
+  if (await isPlanAtCap(sku.catalogId)) {
+    throw new AppError(
+      "WAITLIST",
+      `${sku.catalogId} is at its pilot cap. Join the waitlist instead of checkout.`,
+    );
   }
 }
 
-export function priceIdForPlan(plan: PlanId) {
-  const envName = PLANS[plan].envPrice;
+export function priceIdForPlan(plan: CheckoutSkuId) {
+  const envName = CHECKOUT_SKUS[plan].envPrice;
   const value = process.env[envName];
   if (!value) {
     throw new AppError("BILLING", `${envName} is not set.`);
@@ -55,12 +54,13 @@ export function priceIdForPlan(plan: PlanId) {
 
 export async function upsertSubscriptionFromWebhook(input: {
   userId: string;
-  plan: PlanId;
+  plan: string;
   status: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   stripePriceId?: string;
   currentPeriodEnd?: Date | null;
+  source?: string;
 }) {
   const existing = input.stripeSubscriptionId
     ? await prisma.subscription.findFirst({
@@ -79,6 +79,7 @@ export async function upsertSubscriptionFromWebhook(input: {
     stripeSubscriptionId: input.stripeSubscriptionId ?? "",
     stripePriceId: input.stripePriceId ?? "",
     currentPeriodEnd: input.currentPeriodEnd ?? null,
+    source: input.source ?? "webhook",
   };
 
   if (existing) {
@@ -107,6 +108,12 @@ function mapSubscriptionStatus(status: string | undefined) {
   return "incomplete";
 }
 
+function requiresGymVerify(planRaw: string) {
+  if (planRaw === "gym") return true;
+  if (isCheckoutSkuId(planRaw)) return CHECKOUT_SKUS[planRaw].requiresGymVerify;
+  return false;
+}
+
 export async function applyStripeEvent(event: {
   id?: string;
   type: string;
@@ -125,13 +132,15 @@ export async function applyStripeEvent(event: {
   const userId =
     object.metadata?.userId || object.client_reference_id || "";
   const planRaw = object.metadata?.plan || "standalone";
-  const plan: PlanId = planRaw === "gym" ? "gym" : "standalone";
+  const catalogPlan = isCheckoutSkuId(planRaw)
+    ? CHECKOUT_SKUS[planRaw].catalogId
+    : normalizePlanId(planRaw);
 
   if (!userId) {
     throw new AppError("BILLING", "Webhook event is missing the member id.");
   }
 
-  if (plan === "gym") {
+  if (requiresGymVerify(planRaw)) {
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {
       throw new ForbiddenError(
@@ -149,7 +158,7 @@ export async function applyStripeEvent(event: {
   if (event.type === "checkout.session.expired") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan,
+      plan: catalogPlan,
       status: "incomplete",
       stripeSubscriptionId:
         typeof object.subscription === "string" ? object.subscription : object.id,
@@ -162,7 +171,7 @@ export async function applyStripeEvent(event: {
   ) {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan,
+      plan: catalogPlan,
       status: "active",
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId:
@@ -172,10 +181,13 @@ export async function applyStripeEvent(event: {
       stripePriceId: object.items?.data?.[0]?.price?.id,
       currentPeriodEnd: periodEnd,
     });
+    if (result.status === "active") {
+      await ensureCreditsForPlan(userId, catalogPlan);
+    }
   } else if (event.type === "invoice.payment_failed") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan,
+      plan: catalogPlan,
       status: "past_due",
       stripeSubscriptionId:
         typeof object.subscription === "string" ? object.subscription : object.id,
@@ -188,7 +200,7 @@ export async function applyStripeEvent(event: {
   ) {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan,
+      plan: catalogPlan,
       status: "canceled",
       stripeSubscriptionId: object.id,
       currentPeriodEnd: periodEnd,
@@ -196,11 +208,14 @@ export async function applyStripeEvent(event: {
   } else if (event.type === "customer.subscription.updated") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan,
+      plan: catalogPlan,
       status: mapSubscriptionStatus(object.status),
       stripeSubscriptionId: object.id,
       currentPeriodEnd: periodEnd,
     });
+    if (result.status === "active") {
+      await ensureCreditsForPlan(userId, catalogPlan);
+    }
   }
 
   if (event.id) {
@@ -210,4 +225,28 @@ export async function applyStripeEvent(event: {
   }
 
   return result;
+}
+
+export async function assignPlanForPilot(input: {
+  adminUserId: string;
+  targetUserId: string;
+  plan: string;
+}) {
+  const admin = await prisma.user.findUnique({ where: { id: input.adminUserId } });
+  if (!admin || admin.role !== "admin") {
+    throw new ForbiddenError("Only an admin can assign a plan for the pilot.");
+  }
+  const catalogPlan = normalizePlanId(input.plan);
+  // Admin override is the pilot escape hatch — caps apply to self-serve checkout only.
+  const periodEnd = new Date();
+  periodEnd.setUTCDate(periodEnd.getUTCDate() + 30);
+  const row = await upsertSubscriptionFromWebhook({
+    userId: input.targetUserId,
+    plan: catalogPlan,
+    status: catalogPlan === "member_access" ? "canceled" : "active",
+    currentPeriodEnd: catalogPlan === "member_access" ? null : periodEnd,
+    source: "admin",
+  });
+  await ensureCreditsForPlan(input.targetUserId, catalogPlan);
+  return { ...row, label: PLAN_CATALOG[catalogPlan].label };
 }

@@ -4,6 +4,7 @@ import { PaywallNotice } from "@/components/PaywallNotice";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import { CoachChatForm } from "@/components/coach/CoachChatForm";
 import { EmptyState } from "@/components/EmptyState";
+import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 
 export default async function CoachPage() {
   const user = await requireUser();
@@ -27,6 +28,7 @@ export default async function CoachPage() {
           each reply. It will refuse pain, concussion, medical, shame, rapid
           weight-cut, and other-member record requests.
         </p>
+        <AiDisclaimer className="mt-3 rounded-xl border border-accent/40 bg-accent/10 p-3" />
       </div>
       <div className="space-y-3">
         {thread.messages.length === 0 ? (

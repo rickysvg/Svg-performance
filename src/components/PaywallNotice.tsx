@@ -8,8 +8,9 @@ export function PaywallNotice({ feature }: { feature: string }) {
       </p>
       <h1 className="mt-2 text-2xl font-semibold">{feature}</h1>
       <p className="mt-2 text-sm text-muted">
-        Stripe TEST keys are configured on this server, so access is granted
-        only after a verified webhook — not after the browser redirect.
+        Stripe TEST keys are configured on this server, so this tool needs a
+        webhook-confirmed Performance+ plan — not just the browser redirect.
+        Member Access still has basic training, progress, shop, and beginner Learn.
       </p>
       <Link
         href="/pricing"

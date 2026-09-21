@@ -21,12 +21,12 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - `claimsGymMembership` is a self-report checkbox.
 - `gymMembershipVerified` defaults to `false` and **cannot** be set from the profile form or register action.
 - Only `role=admin` can flip verification (`setGymMembershipVerified`).
-- Draft prices $19 / $29 live on `/pricing` as PROPOSAL / Stripe TEST.
+- Draft catalog lives on `/pricing` as three sections (App Plans, Online Coaching, VIP Experiences) with gym vs nonmember columns and PROPOSAL / TEST labels. $19 / $29 remain the SVG Performance gym / nonmember pair.
 - Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
 - Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
 - Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `invoice.paid` is treated as renewal. `currentPeriodEnd` in the past is treated as expired.
 - If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid. Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
-- If keys are present, Nutrition / Learn / Coach require a webhook-confirmed active subscription.
+- If keys are present, Nutrition / Coach Savage require a webhook-confirmed **Performance+** plan. Learn stays open on Member Access as **beginner-only**. Training / progress / shop stay open.
 - Live `sk_live_` secrets are rejected.
 
 ## Milestone 2
@@ -92,6 +92,18 @@ Current pending DEMO moves: squat jump / box step-up, and lateral bound / side s
 - Workout / food / saved-meal / chat / **body metric / photo placeholder** read / update / delete always filters by `userId`.
 - If the row exists but belongs to someone else, the data layer throws `ForbiddenError`. Pages map that to a generic not-found so IDs are not confirmed to strangers.
 - Tests cover user A vs user B ID swapping, coach vs unassigned member, and Stripe gym-plan webhooks on unverified profiles.
+
+## Milestone 5
+
+- **Authoritative prices** are the draft table in `PRICING_MODEL` / owner brief. We did not invent discounts or weight-cut SKUs.
+- **One active monthly plan.** Higher replaces lower. Paid plans are additional to gym dues (copy on Pricing / Plan).
+- **Entitlements** are code + `Subscription.plan` (catalog ids). Feature flags: training, progress, shop, learn_beginner, learn_full, nutrition, ai, conditioning, coaching.
+- **Credits** (`CoachingCredit`) reset conceptually per UTC month. Admin marks used after the session. Members cannot self-spend.
+- **Caps:** Elite 6, VIP 2, Platinum 1. Self-serve checkout joins waitlist when full. Admin assign/override ignores the cap so the pilot can still move seats.
+- **Book with Ricky** stores a request (`preferredTimes`) — not Zoom, not a deposit. VIP/Platinum flag `usesIncludedCredit` when a strategy credit remains. Intensives are Platinum-only stubs (El Paso $1500 / travel from $4500).
+- **Stripe TEST** env names exist for every paid SKU. `gym` / `standalone` webhooks still map to catalog `performance` so M2–M4 tests stay valid.
+- **Coach Savage ≠ Ricky** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
+- **No live billing.** Missing keys = honest off + preview entitlements (tools stay open like M1–M4).
 
 ## Out of scope
 

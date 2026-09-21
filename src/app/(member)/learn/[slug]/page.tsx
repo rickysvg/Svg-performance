@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/session";
 import { DemoBadge } from "@/components/DemoBadge";
 import { getLessonProgress, getPublishedLessonBySlug } from "@/lib/lessons";
 import { toggleBookmarkAction, toggleCompleteAction } from "@/app/actions/lessons";
+import { canUseFeature } from "@/lib/entitlements";
+import { PaywallNotice } from "@/components/PaywallNotice";
 
 export default async function LessonPage({
   params,
@@ -19,6 +21,10 @@ export default async function LessonPage({
     notFound();
   }
   const progress = await getLessonProgress(user.id, lesson.id);
+  const fullLibrary = await canUseFeature(user.id, "learn_full");
+  if (!fullLibrary && lesson.skillLevel !== "beginner") {
+    return <PaywallNotice feature="Full Learn library" />;
+  }
 
   return (
     <main className="space-y-6">

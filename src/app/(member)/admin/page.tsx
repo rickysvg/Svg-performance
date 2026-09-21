@@ -17,6 +17,10 @@ export default async function AdminPage() {
         </p>
       </div>
       <p>
+        <Link href="/admin/plans" className="text-accent underline-offset-4 hover:underline">
+          Plans &amp; credits
+        </Link>
+        {" · "}
         <Link href="/admin/lessons" className="text-accent underline-offset-4 hover:underline">
           Publish lessons
         </Link>

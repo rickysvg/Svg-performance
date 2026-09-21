@@ -3,13 +3,14 @@
 import { useActionState } from "react";
 import { startCheckoutAction, type BillingActionState } from "@/app/actions/billing";
 import { StatusBanner } from "@/components/StatusBanner";
+import type { CheckoutSkuId } from "@/lib/plans";
 
 export function CheckoutButton({
   plan,
   label,
   disabledReason,
 }: {
-  plan: "gym" | "standalone";
+  plan: CheckoutSkuId;
   label: string;
   disabledReason?: string;
 }) {

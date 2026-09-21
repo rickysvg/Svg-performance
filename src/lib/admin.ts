@@ -8,6 +8,7 @@ export async function listUsersForAdmin() {
     include: {
       profile: true,
       subscriptions: { orderBy: { updatedAt: "desc" }, take: 1 },
+      coachingCredits: true,
     },
   });
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { normalizePlanId, planHasFeature } from "@/lib/plans";
 
 export function isStripeConfigured() {
   return Boolean(
@@ -28,8 +29,9 @@ export async function hasWebhookGrantedAccess(userId: string) {
 
 /**
  * Training (M1) stays open for every signed-in member.
- * Nutrition / Learn / Coach require a webhook-confirmed subscription
+ * Nutrition / Coach Savage require Performance+ (nutrition feature)
  * only when Stripe TEST keys are actually configured.
+ * Learn stays reachable on Member Access as beginner-only.
  */
 export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
@@ -38,7 +40,12 @@ export async function canUseMemberTools(userId: string): Promise<{
   if (!isStripeConfigured()) {
     return { allowed: true, reason: "preview" };
   }
-  if (await hasWebhookGrantedAccess(userId)) {
+  const subscription = await getLatestSubscription(userId);
+  if (
+    subscription?.status === "active" &&
+    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) &&
+    planHasFeature(normalizePlanId(subscription.plan), "nutrition")
+  ) {
     return { allowed: true, reason: "subscribed" };
   }
   return { allowed: false, reason: "paywall" };

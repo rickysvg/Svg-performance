@@ -13,6 +13,8 @@ const PROTECTED = [
   "/admin",
   "/staff",
   "/shop",
+  "/book",
+  "/plan",
 ];
 
 export function proxy(request: NextRequest) {
@@ -43,6 +45,8 @@ export const config = {
     "/admin/:path*",
     "/staff/:path*",
     "/shop/:path*",
+    "/book/:path*",
+    "/plan/:path*",
     "/home",
     "/training",
     "/progress",
@@ -53,5 +57,7 @@ export const config = {
     "/admin",
     "/staff",
     "/shop",
+    "/book",
+    "/plan",
   ],
 };

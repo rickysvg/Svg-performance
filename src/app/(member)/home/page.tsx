@@ -185,6 +185,16 @@ export default async function HomePage({
             <p className="mt-1 font-semibold">Browse DEMO lessons</p>
           </Link>
         )}
+        <Link href="/plan" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">My plan</p>
+          <p className="mt-1 font-semibold">Credits and upgrade path</p>
+          <p className="mt-1 text-sm text-muted">Paid plans are additional to gym dues.</p>
+        </Link>
+        <Link href="/book" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Book with Ricky</p>
+          <p className="mt-1 font-semibold">Mindset $75 / Strategy $125</p>
+          <p className="mt-1 text-sm text-muted">Request times only — not a live calendar.</p>
+        </Link>
         <Link href="/progress" className="block rounded-2xl border border-line bg-card p-4">
           <p className="text-xs uppercase tracking-wide text-muted">My Progress</p>
           {progress.sessionCount === 0 ? (

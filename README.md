@@ -19,11 +19,13 @@ It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim 
 9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
 10. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
 11. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
-12. See draft $19 / $29 TEST prices. Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page.
-13. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
-14. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
+12. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page.
+13. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
+14. **Book with Ricky**: Fighter Mindset $75/30, Entrepreneur Strategy $125/45, plus Platinum intensive request stubs. Not a live calendar. Coach Savage is not Ricky.
+15. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
+16. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
 
-Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop is on Home and in the header. The + button is a quick add for workout, food, or a body metric. Profile is in the header.
+Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and **Book** are in the header (and on Home). The + button is a quick add for workout, food, or a body metric. Profile is in the header. Paid app plans are **additional to gym dues**.
 
 ## What you need on your computer
 
@@ -72,8 +74,13 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = Coach Savage stays offline/DEMO |
 | `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
-| `STRIPE_PRICE_GYM` | Optional. TEST price id for $19 gym plan |
-| `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for $29 plan |
+| `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym ($19) |
+| `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for SVG Performance nonmember ($29) |
+| `STRIPE_PRICE_CONDITIONING_GYM` / `_NON` | Optional. Fighter Conditioning $49 / $59 |
+| `STRIPE_PRICE_DEVELOPMENT_GYM` / `_NON` | Optional. Fighter Development $149 / $179 |
+| `STRIPE_PRICE_ELITE_GYM` / `_NON` | Optional. Elite Online $299 / $349 (cap ~6) |
+| `STRIPE_PRICE_VIP` | Optional. SVG VIP $699 (cap 2) |
+| `STRIPE_PRICE_PLATINUM` | Optional. Platinum VIP $1,199 (cap 1) |
 
 Never put a live `sk_live_` key in this preview. Live keys are rejected.
 
@@ -89,7 +96,7 @@ Do this only with **test** keys. Do not turn on live billing.
 
 1. Create a Stripe account and stay in **Test mode** (toggle in the Stripe dashboard).
 2. Copy the **secret key** that starts with `sk_test_` into `STRIPE_SECRET_KEY`.
-3. In Stripe, create two recurring prices (monthly). Put the price ids in `STRIPE_PRICE_GYM` ($19 idea) and `STRIPE_PRICE_STANDALONE` ($29 idea).
+3. In Stripe, create monthly recurring TEST prices for the plans you want to try. At minimum put ids in `STRIPE_PRICE_GYM` ($19) and `STRIPE_PRICE_STANDALONE` ($29). Other names are in the table above. Gym-member prices still need an admin verify.
 4. On your laptop, install the Stripe CLI, then forward webhooks:
 
    ```bash
@@ -128,6 +135,8 @@ Coverage includes:
 - Home weekly activity copy (no shame)
 - Body metric / photo-placeholder ownership (user B cannot touch user A’s numbers)
 - Every seeded DEMO exercise has a YouTube form URL **or** an explicit pending flag
+- Plan entitlements: Member Access vs Performance vs Elite; gym-price verify; Elite cap + waitlist
+- Coach Savage ≠ Ricky disclaimer string; VIP included strategy credit on Book requests
 
 See `EVALS.md` for the Coach Savage evaluation set.
 
@@ -142,9 +151,10 @@ See `EVALS.md` for the Coach Savage evaluation set.
 7. Home → greeting, week strip, nutrition rings, today’s workout card, + button, days active this week, optional reminder after your hour
 8. Progress → type a body weight; leave sleep empty and read the “no fake device sync” note; see photo placeholders
 9. Profile → turn a reminder off; optional nutrition targets
-10. Pricing → confirm checkout is off unless TEST keys exist
-11. Promote an admin, verify a gym member, confirm the $19 price is still TEST-only
-12. Promote a coach, assign a member, open Staff → trends (no food names)
+10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist
+11. Plan → see current plan + credits; Book → send a mindset request (not a calendar slot)
+12. Promote an admin, verify a gym member, assign a plan on Admin → Plans & credits
+13. Promote a coach, assign a member, open Staff → trends (no food names)
 
 ## Pilot go / no-go checklist
 
@@ -161,8 +171,12 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; photo boxes are placeholders, not uploads.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
 - [ ] Subscription TEST: without keys, checkout stays off. With TEST keys + webhook forward, access flips only after the webhook. Cancel / failed payment do not leave someone “paid.”
+- [ ] Pricing shows App / Coaching / VIP, gym vs nonmember, PROPOSAL / TEST, and “dues are separate.”
+- [ ] Member Access (keys on, no sub) still trains and sees beginner Learn; Fuel / Coach stay paywalled.
+- [ ] Book with Ricky stores a request. VIP/Platinum can flag an included strategy credit. Intensives stay a Platinum stub.
+- [ ] Elite / VIP / Platinum show a waitlist when the pilot cap is full.
 - [ ] Privacy: staff trends do not list meals. Help requests move open → seen → closed.
-- [ ] Admin can verify gym membership and assign a coach.
+- [ ] Admin can verify gym membership, assign a pilot plan, and mark a credit used.
 - [ ] Reminders can be turned off in one screen.
 
 If any of those fail, do **not** expand the pilot yet.
