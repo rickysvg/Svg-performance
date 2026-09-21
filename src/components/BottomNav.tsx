@@ -26,7 +26,7 @@ export function BottomNav() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className={`touch-target flex flex-col items-center justify-center px-1 py-2 text-xs ${
+                className={`touch-target flex flex-col items-center justify-center px-1 py-2 text-[11px] leading-tight whitespace-nowrap ${
                   active ? "font-semibold text-accent" : "text-muted"
                 }`}
                 aria-current={active ? "page" : undefined}
