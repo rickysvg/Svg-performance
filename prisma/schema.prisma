@@ -1,0 +1,678 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String
+  role                String               @default("member")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  profile             Profile?
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  workoutSessions     WorkoutSession[]
+  nutritionEntries    NutritionEntry[]
+  savedMeals          SavedMeal[]
+  lessonProgress      LessonProgress[]
+  chatThreads              ChatThread[]
+  subscriptions            Subscription[]
+  reminderPrefs            ReminderPrefs?
+  coachAssignmentsAsCoach  CoachAssignment[] @relation("CoachAssignments")
+  coachAssignmentsAsMember CoachAssignment[] @relation("MemberAssignments")
+  helpRequests             HelpRequest[]
+  metricEvents             MetricEvent[]
+  bodyMetrics              BodyMetric[]
+  bodyPhotoPlaceholders    BodyPhotoPlaceholder[]
+  progressPhotos           ProgressPhoto[]
+  coachingCredits          CoachingCredit[]
+  planWaitlist             PlanWaitlist[]
+  bookingRequests          BookingRequest[]
+  pathEnrollments          PathEnrollment[]
+  pathCompletions          PathStepCompletion[]
+  journalEntries           JournalEntry[]
+  weeklyComments           WeeklyCoachComment[]
+  coachingAdjustments      CoachingAdjustment[]
+  polarConnection          PolarConnection?
+  hrRestingSamples         HrRestingSample[]
+  hrWorkoutSessions        HrWorkoutSession[]
+  pilotInvitesCreated      PilotInvite[]          @relation("InviteAuthor")
+  trainingClips            TrainingClip[]
+  clipNotesAuthored        ClipTimestampNote[]    @relation("ClipNoteAuthor")
+  challengeEnrollments     ChallengeEnrollment[]
+  groceryLists             GroceryList[]
+  weeklyFocusAuthored      WeeklyFocusVideo[]     @relation("FocusAuthor")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Profile {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName            String   @default("")
+  isAdultConfirmed       Boolean  @default(false)
+  claimsGymMembership    Boolean  @default(false)
+  gymMembershipVerified  Boolean  @default(false)
+  goals                  String    @default("")
+  goalKey                String    @default("")
+  experienceLevel        String    @default("beginner")
+  primaryFocus           String    @default("")
+  equipmentJson          String    @default("[]")
+  weeklyAvailabilityJson String    @default("[]")
+  hoursPerWeek           Int?
+  sessionsPerWeek        Int?
+  preferredUnits         String    @default("lb")
+  foodPreferences        String    @default("")
+  allergies              String    @default("")
+  trainingLimitations        String    @default("")
+  onboardingCompletedAt      DateTime?
+  onboardingDeepCompletedAt  DateTime?
+  currentWeight              Float?
+  goalWeight                 Float?
+  sessionLengthMin           Int?
+  trainingLocation           String    @default("")
+  competitionStatus          String    @default("")
+  nextFightDate              DateTime?
+  coachingTone               String    @default("")
+  obstaclesJson              String    @default("[]")
+  calorieTarget          Int      @default(2200)
+  proteinTargetG         Int      @default(140)
+  carbsTargetG           Int      @default(220)
+  fatTargetG             Int      @default(70)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Program {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String
+  isDemo      Boolean      @default(true)
+  days        ProgramDay[]
+}
+
+model ProgramDay {
+  id              String            @id @default(cuid())
+  programId       String
+  program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  dayNumber       Int
+  title           String
+  focus           String
+  exercises       ProgramExercise[]
+  workoutSessions WorkoutSession[]
+
+  @@unique([programId, dayNumber])
+}
+
+model ProgramExercise {
+  id           String     @id @default(cuid())
+  programDayId String
+  day          ProgramDay @relation(fields: [programDayId], references: [id], onDelete: Cascade)
+  sortOrder    Int
+  name         String
+  sets         Int
+  reps         String
+  loadText     String
+  restSeconds      Int
+  notes            String  @default("")
+  formVideoUrl     String  @default("")
+  formVideoPending Boolean @default(false)
+}
+
+model WorkoutSession {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programDayId String?
+  programDay   ProgramDay? @relation(fields: [programDayId], references: [id], onDelete: SetNull)
+  title        String
+  performedAt  DateTime
+  notes        String      @default("")
+  status       String      @default("complete")
+  difficultyRating String  @default("")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  sets         WorkoutSet[]
+  hrLogs       HrWorkoutSession[]
+
+  @@index([userId, performedAt])
+}
+
+model WorkoutSet {
+  id               String         @id @default(cuid())
+  workoutSessionId String
+  session          WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exerciseName     String
+  setNumber        Int
+  sortOrder        Int            @default(0)
+  reps             Int?
+  loadValue        Float?
+  loadUnit         String         @default("lb")
+  completed        Boolean        @default(true)
+  notes            String         @default("")
+
+  @@index([workoutSessionId])
+}
+
+model NutritionEntry {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedMealId  String?
+  savedMeal    SavedMeal? @relation(fields: [savedMealId], references: [id], onDelete: SetNull)
+  eatenAt      DateTime
+  mealType     String
+  name         String
+  servings     Float     @default(1)
+  servingLabel String    @default("serving")
+  calories     Float
+  proteinG     Float
+  carbsG       Float
+  fatG         Float
+  notes        String    @default("")
+  source       String    @default("manual_estimate")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, eatenAt])
+}
+
+model SavedMeal {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  servingLabel    String            @default("serving")
+  calories        Float
+  proteinG        Float
+  carbsG          Float
+  fatG            Float
+  ingredientsJson String            @default("[]")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  entries         NutritionEntry[]
+
+  @@index([userId])
+}
+
+model Lesson {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  title            String
+  summary          String
+  skillLevel       String
+  topic            String
+  coachName        String
+  equipment        String           @default("")
+  notes            String           @default("")
+  drills           String           @default("")
+  keyDetails       String           @default("")
+  youtubeUrl       String           @default("")
+  videoPending     Boolean          @default(false)
+  supervisedNote   String           @default("")
+  needsSupervision Boolean          @default(false)
+  status           String           @default("draft")
+  isDemo           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  progress         LessonProgress[]
+}
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  bookmarked  Boolean   @default(false)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, lessonId])
+}
+
+model ChatThread {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id             String     @id @default(cuid())
+  threadId       String
+  thread         ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  refused        Boolean    @default(false)
+  refusalCode    String     @default("")
+  offline        Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  @@index([threadId])
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 String
+  status               String   @default("incomplete")
+  stripeCustomerId     String   @default("")
+  stripeSubscriptionId String   @default("")
+  stripePriceId        String   @default("")
+  currentPeriodEnd     DateTime?
+  source               String   @default("webhook")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+}
+
+model ReminderPrefs {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutEnabled         Boolean   @default(true)
+  foodEnabled            Boolean   @default(true)
+  quoteEnabled           Boolean   @default(true)
+  preferredHour          Int       @default(18)
+  timezoneOffsetMinutes  Int       @default(0)
+  lastWorkoutRemindedAt  DateTime?
+  lastFoodRemindedAt     DateTime?
+  lastQuoteRemindedAt    DateTime?
+  bookingEnabled         Boolean   @default(true)
+  lastBookingRemindedAt  DateTime?
+  updatedAt              DateTime  @updatedAt
+}
+
+model CoachAssignment {
+  id           String   @id @default(cuid())
+  coachUserId  String
+  memberUserId String
+  coach        User     @relation("CoachAssignments", fields: [coachUserId], references: [id], onDelete: Cascade)
+  member       User     @relation("MemberAssignments", fields: [memberUserId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([coachUserId, memberUserId])
+  @@index([memberUserId])
+}
+
+model HelpRequest {
+  id           String   @id @default(cuid())
+  memberUserId String
+  member       User     @relation(fields: [memberUserId], references: [id], onDelete: Cascade)
+  topic        String
+  note         String   @default("")
+  status       String   @default("open")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([memberUserId])
+  @@index([status])
+}
+
+model StripeEventLog {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  eventType     String
+  processedAt   DateTime @default(now())
+}
+
+model MetricEvent {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId])
+}
+
+model BodyMetric {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String
+  value      Float
+  unit       String
+  recordedAt DateTime
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, kind, recordedAt])
+}
+
+model CoachingCredit {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String
+  periodStart DateTime
+  allotted    Int
+  used        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, kind, periodStart])
+  @@index([userId])
+}
+
+model PlanWaitlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      String
+  status    String   @default("waiting")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, plan])
+  @@index([plan, status])
+}
+
+model BookingRequest {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind               String
+  preferredTimes     String   @default("")
+  note               String   @default("")
+  status             String   @default("open")
+  usesIncludedCredit Boolean  @default(false)
+  nextSteps          String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ProgressPhoto {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storedName String
+  mimeType   String
+  byteSize   Int
+  caption    String   @default("")
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, recordedAt])
+}
+
+model PathEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathSlug  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, pathSlug])
+  @@index([userId])
+}
+
+model PathStepCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathSlug    String
+  stepKey     String
+  completedAt DateTime @default(now())
+
+  @@unique([userId, pathSlug, stepKey])
+  @@index([userId])
+}
+
+model JournalEntry {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  body      String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  feedback  JournalFeedback[]
+
+  @@index([userId, createdAt])
+}
+
+model JournalFeedback {
+  id           String       @id @default(cuid())
+  entryId      String
+  entry        JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  authorUserId String
+  body         String
+  actionItems  String       @default("")
+  createdAt    DateTime     @default(now())
+
+  @@index([entryId])
+}
+
+model WeeklyCoachComment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartKey String
+  authorUserId String
+  body         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, weekStartKey])
+  @@index([userId])
+}
+
+model CoachingAdjustment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authorUserId String
+  body         String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PolarConnection {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  polarUserId  String    @default("")
+  accessToken  String
+  tokenType    String    @default("Bearer")
+  expiresAt    DateTime?
+  connectedAt  DateTime  @default(now())
+  lastSyncedAt DateTime?
+  lastError    String    @default("")
+}
+
+model HrRestingSample {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bpm        Int
+  recordedAt DateTime
+  source     String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, recordedAt])
+}
+
+model HrWorkoutSession {
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutSessionId String?
+  workoutSession   WorkoutSession? @relation(fields: [workoutSessionId], references: [id], onDelete: SetNull)
+  startedAt        DateTime
+  endedAt          DateTime
+  avgBpm           Int
+  maxBpm           Int
+  source           String
+  externalId       String          @default("")
+  zone1Seconds     Int             @default(0)
+  zone2Seconds     Int             @default(0)
+  zone3Seconds     Int             @default(0)
+  zone4Seconds     Int             @default(0)
+  zone5Seconds     Int             @default(0)
+  createdAt        DateTime        @default(now())
+
+  @@index([userId, startedAt])
+  @@index([userId, source, externalId])
+}
+
+model BodyPhotoPlaceholder {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot       String
+  caption    String   @default("")
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, slot])
+  @@index([userId])
+}
+
+model PilotInvite {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  status      String    @default("invited")
+  invitedById String
+  invitedBy   User      @relation("InviteAuthor", fields: [invitedById], references: [id], onDelete: Cascade)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  joinedAt    DateTime?
+
+  @@index([status])
+}
+
+model TrainingClip {
+  id              String               @id @default(cuid())
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storedName      String
+  mimeType        String
+  byteSize        Int
+  title           String               @default("")
+  memberNote      String               @default("")
+  feedbackSeenAt  DateTime?
+  createdAt       DateTime             @default(now())
+  notes           ClipTimestampNote[]
+
+  @@index([userId, createdAt])
+}
+
+model ClipTimestampNote {
+  id           String       @id @default(cuid())
+  clipId       String
+  clip         TrainingClip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User         @relation("ClipNoteAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  seconds      Int
+  correction   String
+  drill        String       @default("")
+  createdAt    DateTime     @default(now())
+
+  @@index([clipId, seconds])
+}
+
+model SvgChallenge {
+  id                String                 @id @default(cuid())
+  title             String
+  monthKey          String                 @unique
+  summary           String                 @default("")
+  beginnerGoalDays  Int                    @default(8)
+  advancedGoalDays  Int                    @default(16)
+  active            Boolean                @default(false)
+  isDemo            Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  enrollments       ChallengeEnrollment[]
+}
+
+model ChallengeEnrollment {
+  id           String       @id @default(cuid())
+  challengeId  String
+  challenge    SvgChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track        String
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+}
+
+model GroceryList {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  itemsJson String   @default("[]")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model WeeklyFocusVideo {
+  id           String   @id @default(cuid())
+  title        String
+  weekStart    DateTime
+  videoUrl     String   @default("")
+  storedName   String   @default("")
+  mimeType     String   @default("")
+  byteSize     Int      @default(0)
+  scriptNotes  String   @default("")
+  status       String   @default("draft")
+  isDemo       Boolean  @default(false)
+  authorUserId String
+  author       User     @relation("FocusAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([weekStart, status])
+}
