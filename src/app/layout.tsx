@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SVG Performance",
   description:
-    "Private preview member companion for SVG MMA Academy — training logs, a DEMO strength program, and shop links.",
+    "Private preview for anyone who wants to improve performance — combat athletes and people getting in shape. From Ricky / SVG MMA Academy in El Paso.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -32,11 +32,11 @@ export const EXPERIENCE_LEVELS = [
 ] as const;
 
 export const GOAL_OPTIONS = [
-  { value: "stronger-for-class", label: "Get stronger for class" },
+  { value: "stronger-for-class", label: "Get stronger for training" },
   { value: "conditioning", label: "Improve conditioning" },
   { value: "build-muscle", label: "Build muscle" },
-  { value: "more-athletic", label: "Feel more athletic" },
-  { value: "stay-consistent", label: "Stay consistent between classes" },
+  { value: "more-athletic", label: "Get in shape / feel more athletic" },
+  { value: "stay-consistent", label: "Stay consistent" },
   { value: "other", label: "Something else" },
 ] as const;
 

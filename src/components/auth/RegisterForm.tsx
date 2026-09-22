@@ -73,11 +73,12 @@ export function RegisterForm() {
           className="mt-1 h-5 w-5 accent-accent"
         />
         <span className="text-sm">
-          I train at SVG MMA Academy.{" "}
+          Optional. I train at SVG MMA Academy.{" "}
           <strong className="text-foreground">
-            This claim does not grant member pricing or extra access.
+            This does not grant member pricing or extra access.
           </strong>{" "}
-          A coach or admin must verify membership separately.
+          You do not have to train at SVG to use this preview. A coach or admin
+          must verify gym membership separately.
         </span>
       </label>
       <button
