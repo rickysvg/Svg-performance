@@ -27,6 +27,12 @@ export function SavedMealForm() {
         placeholder="serving"
         className="w-full rounded-xl border border-line bg-background px-3 py-3"
       />
+      <textarea
+        name="ingredients"
+        rows={2}
+        placeholder="Ingredients (optional): 4 oz chicken breast, 1 cup rice"
+        className="w-full rounded-xl border border-line bg-background px-3 py-3"
+      />
       <div className="grid grid-cols-2 gap-3">
         <input name="calories" type="number" min={0} placeholder="kcal" className="rounded-xl border border-line bg-background px-3 py-3" />
         <input name="proteinG" type="number" min={0} placeholder="protein g" className="rounded-xl border border-line bg-background px-3 py-3" />

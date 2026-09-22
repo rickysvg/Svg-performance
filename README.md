@@ -10,11 +10,11 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 
 1. Create an account, answer a short first-run survey (goal, experience, martial art, equipment, days, units), log in, log out, and reset a password. New accounts cannot open Home until that required intake is saved.
 2. Finish the required intake (name, goal, experience, martial art, equipment, days, units; optional limitations/diet/allergies). An optional second screen (weight, session length, location, competition, coaching tone, obstacles) can be skipped. Edit either later on Profile.
-3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), a **Today** guide (workout + goal + recommended tutorial + next check-in; beginner vs fighter copy from intake), a **weekly wrap** (last 7 days, counts only), a **week strip**, nutrition goal rings (estimates), days active this week (no shame copy), unfinished lesson, coach help status, and shop.
+3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), a **Today** guide, this week’s **60–90s SVG focus video** (Performance+), a **monthly challenge** card, a **weekly wrap**, a **week strip**, nutrition rings, days active, unfinished lesson, coach help, and shop.
 4. Follow a **DEMO training path** (Beginner Foundations, Build Your Gas Tank, or Strength for Combat) with milestones. Default comes from onboarding. Open the DEMO strength program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open **Heart rate** to import Apple Health / watch workouts (JSON, XML, or CSV), type RHR, or optionally connect Polar. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. Apple Watch is not shown as connected on the web.
-7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later.
+7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later. **Meal-prep v1** on Fuel scales portions, applies simple swaps, and builds a grocery list (verify allergies yourself).
 8. Browse a **DEMO** Learn library filtered by athlete level (starts at Beginner) and martial art (MMA, Muay Thai, Boxing, Wrestling, Jiu-Jitsu, Cagework). Open a lesson for written key details plus a labeled YouTube reference (or “Video pending coach review”). Bookmark or mark complete. Admins can draft/publish.
 9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
 10. Keep a **personal coaching journal** (goals, notes, questions, lessons). Owner-only unless an assigned coach adds feedback + action items on Fighter Development+. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
@@ -23,8 +23,11 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 13. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page. Copy mentions Affirm / Klarna pay-over-time when available; without keys that stays coming soon.
 14. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
 15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. Coach Savage is not Ricky.
-16. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
+16. Admins can verify gym members, invite emails, assign a 30-day pilot plan, adjust credits, run comment queues, and see simple signup / weekly-active counts. Checking “I train at SVG” still grants nothing.
 17. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
+18. **Timestamped clips** (Fighter Development+): private mp4/webm upload; assigned coach adds mm:ss notes + a drill. Not a live stream. Local disk; S3 later (names only).
+19. **Monthly SVG challenge** (Beginner / Advanced tracks): opt in; score is days you logged a workout and/or meal — not heaviest lift. Seeded DEMO month.
+20. Admins schedule a **weekly 60–90s focus video** (YouTube/Vimeo or upload). Drafts stay hidden. Today shows the published week for Performance+.
 
 Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and **Book** are in the header (and on Home). The + button is a quick add for workout, food, a body metric, or heart rate. Profile is in the header. Paid app plans are **additional to gym dues**.
 
@@ -83,6 +86,8 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_PRICE_VIP` | Optional. SVG VIP $699 (cap 2) |
 | `STRIPE_PRICE_PLATINUM` | Optional. SVG Platinum VIP $1,199 (cap 1) |
 | `PROGRESS_PHOTO_DIR` | Optional. Local folder for progress photos (default `uploads/progress-photos`). Never commit those files |
+| `TRAINING_CLIP_DIR` | Optional. Local folder for private training clips (default `uploads/training-clips`) |
+| `FOCUS_VIDEO_DIR` | Optional. Local folder for uploaded weekly focus clips (default `uploads/focus-videos`) |
 | `POLAR_CLIENT_ID` `POLAR_CLIENT_SECRET` `POLAR_REDIRECT_URI` | Optional. Polar AccessLink. Empty = Connect Polar (TEST) / not configured |
 | `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
 
@@ -189,6 +194,7 @@ Coverage includes:
 - Gym checkbox does not verify; only an admin can
 - Stripe webhook signature, duplicates, failed payment, cancel, renewal, expiration
 - Affirm/Klarna payment-method selection by amount; webhook still grants access the same way; no fake BNPL success without keys
+- Pilot invites (invited → joined on signup); clip ownership; challenge days-active scoring; meal-prep grocery merge; focus video draft vs published
 - Reminder prefs, no-spam, SMTP on vs in-app only
 - Coach/admin report role gates; help-request statuses; no food-diary dump
 - Home weekly activity copy (no shame)
@@ -213,8 +219,10 @@ See `EVALS.md` for the Coach Savage evaluation set.
 9. Profile → turn a reminder off; optional nutrition targets
 10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist; Affirm/Klarna copy is coming soon without keys
 11. Plan → see current plan + credits; Book → send a mindset request (not a calendar slot)
-12. Promote an admin, verify a gym member, assign a plan on Admin → Plans & credits
-13. Promote a coach, assign a member, open Staff → trends (no food names)
+12. Promote an admin, open **Admin** (invites, queues, counts), verify a gym member, assign a plan
+13. Promote a coach, assign a member, open Staff → trends (no food names); review a training clip if one exists
+14. Fuel → Meal-prep: set portions on a saved meal → grocery list
+15. Home → monthly challenge opt-in; Today shows this week’s focus video (or a Performance+ teaser)
 
 ## Pilot go / no-go checklist
 
@@ -244,8 +252,13 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Book with Ricky stores a request. VIP/Platinum can flag an included strategy credit. Intensives stay a Platinum stub.
 - [ ] Elite / VIP / Platinum show a waitlist when the pilot cap is full.
 - [ ] Privacy: staff trends do not list meals. Help requests move open → seen → closed.
-- [ ] Admin can verify gym membership, assign a pilot plan, and mark a credit used.
+- [ ] Admin can verify gym membership, assign a pilot plan, restore/mark a credit, invite emails, and see signup / weekly-active counts (counts only).
 - [ ] Reminders can be turned off in one screen.
+- [ ] Timestamped clips: Fighter Development+ can upload; another member cannot open the file; assigned coach can add mm:ss + drill. Not shown as a live stream.
+- [ ] Monthly challenge: opt-in beginner/advanced; progress is days active, not heaviest lift. Quiet days stay okay.
+- [ ] Meal-prep builds a grocery list from saved meals + optional swaps. Allergy line says verify ingredients. Estimates stay labeled.
+- [ ] Weekly focus video: drafts hidden; published week shows on Today for Performance+. Member Access sees a teaser. Not a live stream.
+- [ ] **Go-live pack:** repo is private; this PR is reviewed; hosted preview URL is written down only after a real deploy (Dockerfile / Vercel steps below — no URL is claimed here); Stripe stays TEST; invite list is 15–20 adults; DEMO vs real content labels are honest; Elite/VIP response times are on Pricing; no live billing until Ricky authorizes it.
 
 If any of those fail, do **not** expand the pilot yet.
 
@@ -259,6 +272,32 @@ Suggested questions for a 4–8 week private pilot:
 - **Second-month renewal (TEST):** of members who got an `invoice.paid` webhook, how many got another `invoice.paid` about 30 days later vs `customer.subscription.deleted` / `past_due`? Stripe TEST is still not live money.
 
 Do not use days-active copy as a public leaderboard.
+
+## Hosted preview (no live URL claimed)
+
+This repo includes a `Dockerfile` and `vercel.json`. They do **not** mean a public site exists until you deploy with your own account.
+
+**Vercel / similar**
+
+1. Import the GitHub repo on your hosting account.
+2. Set env names from `.env.example` (at least `AUTH_SECRET`, `DATABASE_URL`, `APP_URL`). SQLite-on-Vercel is a poor fit; use a hosted Postgres URL when you leave the laptop preview.
+3. Keep Stripe keys as `sk_test_` only. Add `STRIPE_WEBHOOK_SECRET` from `stripe listen` or the Dashboard TEST webhook.
+4. After deploy succeeds, write the real URL into `APP_URL`. Do not paste a guessed URL into marketing.
+
+**Docker (laptop or a VPS you control)**
+
+```bash
+docker build -t svg-performance .
+docker run --rm -p 3000:3000 --env-file .env svg-performance
+```
+
+Mount a volume over `prisma/dev.db` and `uploads/` if you want data to survive the container.
+
+**Stripe TEST on a host**
+
+Same beginner walkthrough as above. Point `stripe listen --forward-to {APP_URL}/api/stripe/webhook` or add a TEST webhook in the Dashboard. Affirm/Klarna still need Dashboard TEST payment methods.
+
+There is **no** production URL in this document on purpose.
 
 ## Database notes
 
@@ -284,11 +323,8 @@ Do not use days-active copy as a public leaderboard.
 - Ricky voice-note of the week
 - Offline workout cards
 - Native / PWA push beyond the existing reminder pattern (in-app after the preferred hour; email if SMTP)
-- Fighter-week challenge badges
-- Timestamped video review tool
-- Full meal-prep grocery generator
-- Monthly challenge engine
-- Ricky weekly video CMS and coach-authored shorts CMS
+- Fighter-week challenge badges (separate from the monthly consistency challenge)
+- Coach-authored shorts CMS beyond the weekly 60–90s focus video
 - Coach Savage long-term memory with consent UI
 
 ## Source

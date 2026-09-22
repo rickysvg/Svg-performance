@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdminOrThrow } from "@/lib/roles";
 import { setGymMembershipVerified } from "@/lib/admin";
 import { assignPlanForPilot } from "@/lib/billing";
-import { markCreditUsed } from "@/lib/credits";
+import { markCreditUsed, restoreCredit } from "@/lib/credits";
 import { setBookingStatus } from "@/lib/bookings";
+import { createPilotInvite, deletePilotInvite } from "@/lib/invites";
 import { publicErrorMessage } from "@/lib/errors";
 
 export type AdminActionState = { error?: string; success?: string };
@@ -13,6 +14,8 @@ export type AdminActionState = { error?: string; success?: string };
 function refreshAdminPaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/plans");
+  revalidatePath("/admin/invites");
+  revalidatePath("/admin/queues");
   revalidatePath("/pricing");
   revalidatePath("/plan");
   revalidatePath("/book");
@@ -89,4 +92,46 @@ export async function setBookingStatusAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+}
+
+export async function restoreCreditAction(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const admin = await requireAdminOrThrow();
+    await restoreCredit({
+      adminUserId: admin.id,
+      targetUserId: String(formData.get("targetUserId") ?? ""),
+      kind: String(formData.get("kind") ?? ""),
+    });
+    refreshAdminPaths();
+    return { success: "Restored one credit for this billing month." };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function createInviteAction(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const admin = await requireAdminOrThrow();
+    await createPilotInvite({
+      adminUserId: admin.id,
+      email: String(formData.get("email") ?? ""),
+      note: String(formData.get("note") ?? ""),
+    });
+    refreshAdminPaths();
+    return { success: "Invite saved. Status stays invited until they create an account." };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function deleteInviteAction(formData: FormData) {
+  const admin = await requireAdminOrThrow();
+  await deletePilotInvite(admin.id, String(formData.get("inviteId") ?? ""));
+  refreshAdminPaths();
 }

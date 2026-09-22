@@ -117,6 +117,13 @@ export async function registerAccount(input: {
     },
   });
 
+  await prisma.pilotInvite
+    .updateMany({
+      where: { email, status: "invited" },
+      data: { status: "joined", joinedAt: new Date() },
+    })
+    .catch(() => undefined);
+
   return toPublicUser(user);
 }
 

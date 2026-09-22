@@ -35,6 +35,11 @@ export function AppHeader({
             aria-label="Account"
             className="-mx-1 flex flex-wrap items-center gap-x-2 gap-y-2 sm:justify-end"
           >
+            {!hideMemberLinks && role === "admin" ? (
+              <Link href="/admin" className={chipClass}>
+                Admin
+              </Link>
+            ) : null}
             {!hideMemberLinks && staff ? (
               <Link href="/staff/reports" className={chipClass}>
                 Staff

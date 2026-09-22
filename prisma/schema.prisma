@@ -42,6 +42,12 @@ model User {
   polarConnection          PolarConnection?
   hrRestingSamples         HrRestingSample[]
   hrWorkoutSessions        HrWorkoutSession[]
+  pilotInvitesCreated      PilotInvite[]          @relation("InviteAuthor")
+  trainingClips            TrainingClip[]
+  clipNotesAuthored        ClipTimestampNote[]    @relation("ClipNoteAuthor")
+  challengeEnrollments     ChallengeEnrollment[]
+  groceryLists             GroceryList[]
+  weeklyFocusAuthored      WeeklyFocusVideo[]     @relation("FocusAuthor")
 }
 
 model Session {
@@ -201,18 +207,19 @@ model NutritionEntry {
 }
 
 model SavedMeal {
-  id           String            @id @default(cuid())
-  userId       String
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  servingLabel String            @default("serving")
-  calories     Float
-  proteinG     Float
-  carbsG       Float
-  fatG         Float
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  entries      NutritionEntry[]
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  servingLabel    String            @default("serving")
+  calories        Float
+  proteinG        Float
+  carbsG          Float
+  fatG            Float
+  ingredientsJson String            @default("[]")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  entries         NutritionEntry[]
 
   @@index([userId])
 }
@@ -567,4 +574,105 @@ model BodyPhotoPlaceholder {
 
   @@unique([userId, slot])
   @@index([userId])
+}
+
+model PilotInvite {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  status      String    @default("invited")
+  invitedById String
+  invitedBy   User      @relation("InviteAuthor", fields: [invitedById], references: [id], onDelete: Cascade)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  joinedAt    DateTime?
+
+  @@index([status])
+}
+
+model TrainingClip {
+  id              String               @id @default(cuid())
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storedName      String
+  mimeType        String
+  byteSize        Int
+  title           String               @default("")
+  memberNote      String               @default("")
+  feedbackSeenAt  DateTime?
+  createdAt       DateTime             @default(now())
+  notes           ClipTimestampNote[]
+
+  @@index([userId, createdAt])
+}
+
+model ClipTimestampNote {
+  id           String       @id @default(cuid())
+  clipId       String
+  clip         TrainingClip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User         @relation("ClipNoteAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  seconds      Int
+  correction   String
+  drill        String       @default("")
+  createdAt    DateTime     @default(now())
+
+  @@index([clipId, seconds])
+}
+
+model SvgChallenge {
+  id                String                 @id @default(cuid())
+  title             String
+  monthKey          String                 @unique
+  summary           String                 @default("")
+  beginnerGoalDays  Int                    @default(8)
+  advancedGoalDays  Int                    @default(16)
+  active            Boolean                @default(false)
+  isDemo            Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  enrollments       ChallengeEnrollment[]
+}
+
+model ChallengeEnrollment {
+  id           String       @id @default(cuid())
+  challengeId  String
+  challenge    SvgChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track        String
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+}
+
+model GroceryList {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  itemsJson String   @default("[]")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model WeeklyFocusVideo {
+  id           String   @id @default(cuid())
+  title        String
+  weekStart    DateTime
+  videoUrl     String   @default("")
+  storedName   String   @default("")
+  mimeType     String   @default("")
+  byteSize     Int      @default(0)
+  scriptNotes  String   @default("")
+  status       String   @default("draft")
+  isDemo       Boolean  @default(false)
+  authorUserId String
+  author       User     @relation("FocusAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([weekStart, status])
 }

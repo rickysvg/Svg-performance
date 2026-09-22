@@ -415,6 +415,48 @@ async function main() {
       });
     }
   }
+
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  await prisma.svgChallenge.upsert({
+    where: { monthKey },
+    create: {
+      title: "DEMO — Show up this month",
+      monthKey,
+      summary:
+        "Consistency only: log a workout and/or a meal on enough days. Not a heaviest-lift contest. Labeled DEMO.",
+      beginnerGoalDays: 8,
+      advancedGoalDays: 16,
+      active: true,
+      isDemo: true,
+    },
+    update: { active: true },
+  });
+
+  const anyAdmin = await prisma.user.findFirst({ where: { role: "admin" } });
+  if (anyAdmin) {
+    const monday = new Date(now);
+    const weekday = monday.getDay();
+    const diff = weekday === 0 ? -6 : 1 - weekday;
+    monday.setDate(monday.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    const existingFocus = await prisma.weeklyFocusVideo.findFirst({
+      where: { weekStart: monday, isDemo: true },
+    });
+    if (!existingFocus) {
+      await prisma.weeklyFocusVideo.create({
+        data: {
+          title: "DEMO — This week's 60–90s focus",
+          weekStart: monday,
+          videoUrl: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
+          scriptNotes: "Labeled DEMO. External YouTube technique reference — not a live Ricky stream.",
+          status: "published",
+          isDemo: true,
+          authorUserId: anyAdmin.id,
+        },
+      });
+    }
+  }
 }
 
 main()

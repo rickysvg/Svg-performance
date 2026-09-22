@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
+import { parseIngredientLines } from "@/lib/meal-prep";
 
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
@@ -172,6 +173,7 @@ export async function createSavedMealForUser(
     proteinG: number;
     carbsG: number;
     fatG: number;
+    ingredientsText?: string;
   },
 ) {
   const data = validateNutritionInput({
@@ -179,6 +181,7 @@ export async function createSavedMealForUser(
     mealType: "snack",
     servings: 1,
   });
+  const ingredients = parseIngredientLines(input.ingredientsText ?? "");
   return prisma.savedMeal.create({
     data: {
       userId,
@@ -188,6 +191,7 @@ export async function createSavedMealForUser(
       proteinG: data.proteinG,
       carbsG: data.carbsG,
       fatG: data.fatG,
+      ingredientsJson: JSON.stringify(ingredients),
     },
   });
 }

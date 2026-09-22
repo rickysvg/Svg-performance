@@ -42,7 +42,7 @@ export default async function StaffReportsPage() {
             <>
               {" · "}
               <Link href="/admin" className="text-accent underline">
-                Admin verify
+                Pilot toolkit
               </Link>
             </>
           ) : null}

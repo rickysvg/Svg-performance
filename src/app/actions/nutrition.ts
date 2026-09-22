@@ -91,6 +91,7 @@ export async function saveMealTemplateAction(
       proteinG: Number(formData.get("proteinG") ?? 0),
       carbsG: Number(formData.get("carbsG") ?? 0),
       fatG: Number(formData.get("fatG") ?? 0),
+      ingredientsText: String(formData.get("ingredients") ?? ""),
     });
     revalidatePath("/nutrition");
     return { success: "Saved meal stored for reuse." };

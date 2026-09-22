@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
 import { PaywallNotice } from "@/components/PaywallNotice";
@@ -65,6 +66,11 @@ export default async function CoachPage() {
         )}
       </div>
       <CoachChatForm />
+      <p className="text-sm">
+        <Link href="/clips" className="text-accent underline">
+          Timestamped training clips (Fighter Development+)
+        </Link>
+      </p>
     </main>
   );
 }

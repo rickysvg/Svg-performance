@@ -167,6 +167,15 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - Phase 2: native iOS companion / HealthKit for automatic Watch sync. Not faked on web.
 - Garmin OAuth, medical diagnosis, and fake live streaming are out of scope.
 
+## Pilot launch pack
+
+- **Admin toolkit** on `/admin`: invite list (invited/joined), fast plan assign + gym verify + credit use/restore, queues (weekly comments, journal, Book, waitlist, clips), counts only (signups, weekly actives).
+- **Timestamped clips** are Fighter Development+. Local `uploads/training-clips`. Owner + assigned coach + admin. mm:ss + correction + drill. First notes can celebrate. Not a live stream. S3 env names already documented, still not wired.
+- **Monthly challenge** scores days with a workout and/or food log. Beginner vs advanced day goals. Opt-in. DEMO seed for the current month.
+- **Meal-prep** scales saved-meal ingredients, optional simple swaps, grocery list, allergy verify reminder. Still estimates.
+- **Weekly focus video** is draft/published. Today for Performance+ (`daily_quote` feature). YouTube/Vimeo or local upload. Labeled DEMO when seeded.
+- **Hosted preview:** Dockerfile + vercel.json. No public URL is claimed until Ricky deploys.
+
 ## Out of scope
 
 - Fight-camp weight cuts, Gymdesk, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups, faking Apple Watch connected on web, faking a successful Affirm/Klarna purchase.

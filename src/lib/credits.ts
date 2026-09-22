@@ -94,6 +94,40 @@ export async function markCreditUsed(input: {
   });
 }
 
+export async function restoreCredit(input: {
+  adminUserId: string;
+  targetUserId: string;
+  kind: string;
+}) {
+  const admin = await prisma.user.findUnique({ where: { id: input.adminUserId } });
+  if (!admin || admin.role !== "admin") {
+    throw new ForbiddenError("Only an admin can restore a credit.");
+  }
+  if (!isCreditKind(input.kind)) {
+    throw new AppError("CREDIT", "Pick a valid credit type.");
+  }
+  const periodStart = startOfUtcMonth();
+  const row = await prisma.coachingCredit.findUnique({
+    where: {
+      userId_kind_periodStart: {
+        userId: input.targetUserId,
+        kind: input.kind,
+        periodStart,
+      },
+    },
+  });
+  if (!row) {
+    throw new NotFoundError("No credit of that type is allotted this month.");
+  }
+  if (row.used <= 0) {
+    throw new AppError("CREDIT", "Nothing to restore — used is already 0.");
+  }
+  return prisma.coachingCredit.update({
+    where: { id: row.id },
+    data: { used: row.used - 1 },
+  });
+}
+
 export async function creditsForCurrentPlan(userId: string) {
   const planId = await getEffectivePlanId(userId);
   await ensureCreditsForPlan(userId, planId);

@@ -20,6 +20,14 @@ export const CELEBRATION_COPY: Record<string, { title: string; body: string }> =
     title: "Photo saved",
     body: "Private to you. That’s a real check-in.",
   },
+  clip: {
+    title: "Coach notes are in",
+    body: "Open the timestamps. Practice the drill. This is not a live stream.",
+  },
+  challenge: {
+    title: "Challenge month complete",
+    body: "You showed up enough days. Consistency, not heaviest lift.",
+  },
   milestone: {
     title: "Milestone done",
     body: "That’s a DEMO path step in the book. Keep the next one honest.",

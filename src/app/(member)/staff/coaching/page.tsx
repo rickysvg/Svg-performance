@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/roles";
 import { listMemberTrendsForStaff } from "@/lib/reports";
 import { listJournalEntriesForStaff } from "@/lib/journal";
 import { listBookingRequestsForUser } from "@/lib/bookings";
+import { listTrainingClipsForStaff, formatTimestamp } from "@/lib/clips";
 import { WeeklyCommentForm } from "@/components/staff/WeeklyCommentForm";
 import { JournalFeedbackForm } from "@/components/staff/JournalFeedbackForm";
 import { BookingNextStepsForm } from "@/components/staff/BookingNextStepsForm";
@@ -37,13 +38,18 @@ export default async function StaffCoachingPage({
   }
 
   const planId = await getEffectivePlanId(member.userId);
-  const [journal, bookings] = await Promise.all([
+  const [journal, bookings, clips] = await Promise.all([
     listJournalEntriesForStaff({
       staffUserId: staff.id,
       staffRole: staff.role,
       memberUserId: member.userId,
     }),
     listBookingRequestsForUser(member.userId),
+    listTrainingClipsForStaff({
+      staffUserId: staff.id,
+      staffRole: staff.role,
+      memberUserId: member.userId,
+    }),
   ]);
 
   return (
@@ -77,6 +83,28 @@ export default async function StaffCoachingPage({
           Open
         </button>
       </form>
+
+      {planHasCoachReview(planId) ? (
+        <section className="rounded-2xl border border-line bg-card p-5">
+          <h2 className="font-semibold">Training clips</h2>
+          {clips.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">No clips yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {clips.map((clip) => (
+                <li key={clip.id}>
+                  <Link href={`/clips/${clip.id}`} className="text-accent underline">
+                    {clip.title}
+                  </Link>
+                  {" · "}
+                  {clip.notes.length} note{clip.notes.length === 1 ? "" : "s"}
+                  {clip.notes[0] ? ` · ${formatTimestamp(clip.notes[0].seconds)}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       {planHasCoachReview(planId) ? (
         <section className="rounded-2xl border border-line bg-card p-5">

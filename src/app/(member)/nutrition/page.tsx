@@ -56,6 +56,11 @@ export default async function NutritionPage() {
 
       <NutritionEntryForm savedMeals={saved} />
       <SavedMealForm />
+      <p className="text-sm">
+        <Link href="/nutrition/prep" className="text-accent underline">
+          Meal-prep → portions, swaps, grocery list
+        </Link>
+      </p>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Your log</h2>

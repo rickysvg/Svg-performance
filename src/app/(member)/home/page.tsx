@@ -17,6 +17,10 @@ import { getWeeklyWrapped } from "@/lib/wrapped";
 import { WeeklyWrappedCard } from "@/components/home/WeeklyWrappedCard";
 import { getTodayGuide } from "@/lib/today";
 import { TodayGuide } from "@/components/home/TodayGuide";
+import { getFocusVideoForMember } from "@/lib/focus-videos";
+import { TodayFocusVideo } from "@/components/home/TodayFocusVideo";
+import { getChallengeProgressForUser } from "@/lib/challenges";
+import { ChallengeHomeCard } from "@/components/home/ChallengeHomeCard";
 
 function formatDate(value: string | null) {
   if (!value) return "No sessions yet";
@@ -34,7 +38,7 @@ export default async function HomePage({
   const user = await requireUser();
   const params = await searchParams;
   const selected = parseDayParam(params.day);
-  const [profile, sessions, today, reminderResult, helpRequests, quoteCard, wrap, guide] =
+  const [profile, sessions, today, reminderResult, helpRequests, quoteCard, wrap, guide, focus, challenge] =
     await Promise.all([
       getProfileForUser(user.id),
       listWorkoutSessionsForUser(user.id),
@@ -44,6 +48,8 @@ export default async function HomePage({
       getDailyQuoteCard(user.id),
       getWeeklyWrapped(user.id),
       getTodayGuide(user.id, selected),
+      getFocusVideoForMember(user.id, selected),
+      getChallengeProgressForUser(user.id),
     ]);
   const difficulty = recentDifficultyAverage(sessions);
 
@@ -105,6 +111,10 @@ export default async function HomePage({
       />
 
       <TodayGuide guide={guide} />
+
+      <TodayFocusVideo access={focus} />
+
+      <ChallengeHomeCard progress={challenge} />
 
       <WeeklyWrappedCard wrap={wrap} />
 
