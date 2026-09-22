@@ -106,6 +106,12 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - Thumbnails live in `public/exercise-thumbs/` (square curated silhouettes mapped by exercise slug). They are list aids, not SVG-produced coaching film. YouTube **Watch form** links stay on each exercise.
 - Previous column reads the member’s last **completed** session for that exercise name. First-time moves stay empty. Save still delete+recreates `WorkoutSet` rows.
 
+## Calendar list
+
+- `/training/calendar` is a vertical **Today / Tomorrow / weekday** list (Fight Science Collective *layout only*). Palette stays SVG black / white / lime. We did not copy their logo, red, or four-icon nav. Existing Home / Train / Fuel / Learn / Coach bar and + FAB stay.
+- Cards come from DEMO program days laid onto the member’s weekly availability (default Mon / Wed / Fri). Empty days are a heading + divider. Sunday can show the weekly SVG report; an enrolled monthly challenge can sit on Saturday.
+- Workout cards open `/training/[dayId]` (day overview → Start Now). Copy says this is a DEMO week, not a live coach calendar, Watch sync, or Gymdesk.
+
 ## Shop
 
 - In-app shop only links to live `https://www.svgandco.com` pages that were fetched during this build.

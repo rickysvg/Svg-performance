@@ -15,13 +15,18 @@ export function WeekStrip({ selected }: { selected: Date }) {
     <section className="rounded-2xl border border-line bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold">{monthLabel}</p>
-        {sameLocalDay(selected, today) ? (
-          <span className="text-sm font-semibold text-accent">Today</span>
-        ) : (
-          <Link href="/home" className="text-sm text-accent underline">
-            Jump to today
+        <div className="flex items-center gap-3">
+          <Link href="/training/calendar" className="text-sm text-accent underline">
+            Calendar
           </Link>
-        )}
+          {sameLocalDay(selected, today) ? (
+            <span className="text-sm font-semibold text-accent">Today</span>
+          ) : (
+            <Link href="/home" className="text-sm text-accent underline">
+              Jump to today
+            </Link>
+          )}
+        </div>
       </div>
       <div className="-mx-1 flex gap-1 overflow-x-auto pb-1">
         {days.map((day, index) => {
