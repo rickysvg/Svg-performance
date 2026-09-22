@@ -212,7 +212,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 
 1. `npm install && npm run setup && npm run dev`
 2. Create an account (18+ required) → finish the required intake → optional deeper screen (or Skip) → land on Home
-3. Training → start the suggested DEMO day → tap **Watch form** (YouTube) → save a workout → refresh History
+3. Training → open a DEMO day (equipment chips + movement thumbs) → **Start Now** → log Previous / Reps / Lbs → tap **Watch form** (YouTube) → Save → refresh History
 4. Fuel → search “chicken” in the DEMO list or save a meal → log an estimate → correct a number
 5. Learn → starts on Beginner → tap Boxing or Intermediate and watch the list change → open a lesson → read key details → **Watch on YouTube** (or pending) → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
@@ -239,7 +239,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Training paths enroll from onboarding default; a logged DEMO day can complete a milestone. Journal entries stay private. Weekly report is labeled Automated SVG summary.
 - [ ] Home weekly wrap shows last-7-day counts (days trained, workouts, meals, lessons, avg feel if rated). Quiet week copy is okay, not shame. No meal names on the card.
 - [ ] Days-active copy never shames a quiet week.
-- [ ] Train: DEMO program opens; **Watch form** opens a YouTube technique video (or shows pending); a logged workout survives refresh; a wrong number can be corrected.
+- [ ] Train: DEMO day shows equipment chips + movement thumbs; **Start Now** opens the logger (Previous / Reps / Lbs); **Watch form** opens a YouTube technique video (or shows pending); a logged workout survives refresh; a wrong number can be corrected.
 - [ ] Fuel: DEMO search or saved meal fills the form; estimates stay labeled; owner can correct; another account cannot open that log.
 - [ ] Learn: members see published DEMO lessons only; Beginner + martial-art chips change results; a lesson shows key details and Watch on YouTube (or pending); bookmark / complete stick.
 - [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
