@@ -29,6 +29,7 @@ describe("reminder preferences", () => {
     await saveReminderPrefs(user.id, {
       workoutEnabled: true,
       foodEnabled: false,
+      quoteEnabled: false,
       preferredHour: 18,
       timezoneOffsetMinutes: 0,
     });
@@ -42,6 +43,7 @@ describe("reminder preferences", () => {
     await saveReminderPrefs(user.id, {
       workoutEnabled: true,
       foodEnabled: true,
+      quoteEnabled: false,
       preferredHour: 8,
       timezoneOffsetMinutes: 0,
     });
@@ -57,6 +59,7 @@ describe("reminder preferences", () => {
     await saveReminderPrefs(user.id, {
       workoutEnabled: false,
       foodEnabled: true,
+      quoteEnabled: false,
       preferredHour: 6,
       timezoneOffsetMinutes: 0,
     });
@@ -80,6 +83,7 @@ describe("reminder preferences", () => {
     await saveReminderPrefs(user.id, {
       workoutEnabled: true,
       foodEnabled: false,
+      quoteEnabled: false,
       preferredHour: 1,
       timezoneOffsetMinutes: 0,
     });
@@ -92,6 +96,7 @@ describe("reminder preferences", () => {
     await saveReminderPrefs(user2.id, {
       workoutEnabled: true,
       foodEnabled: false,
+      quoteEnabled: false,
       preferredHour: 1,
       timezoneOffsetMinutes: 0,
     });
@@ -142,6 +147,7 @@ describe("reminder preferences", () => {
     await saveReminderPrefs(user.id, {
       workoutEnabled: true,
       foodEnabled: false,
+      quoteEnabled: false,
       preferredHour: 18,
       timezoneOffsetMinutes: 0,
     });

@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
+import {
+  recentDifficultyAverage,
+  tooEasyCoachNote,
+  tooEasyStreak,
+} from "@/lib/difficulty";
 
 export type MemberTrend = {
   userId: string;
@@ -10,6 +15,9 @@ export type MemberTrend = {
   aiHandoffFlags: number;
   lastActiveAt: string | null;
   openHelpRequests: number;
+  recentDifficultyLabel: string;
+  tooEasyStreak: number;
+  tooEasyNote: string;
 };
 
 function assertStaff(role: string) {
@@ -99,7 +107,9 @@ export async function listMemberTrendsForStaff(input: {
     where: { id: { in: memberIds } },
     include: {
       profile: true,
-      workoutSessions: { select: { status: true, performedAt: true, updatedAt: true } },
+      workoutSessions: {
+        select: { status: true, performedAt: true, updatedAt: true, difficultyRating: true },
+      },
       lessonProgress: { select: { completed: true, completedAt: true } },
       chatThreads: {
         include: {
@@ -118,6 +128,8 @@ export async function listMemberTrendsForStaff(input: {
 
   return members.map((member) => {
     const workouts = member.workoutSessions.filter((row) => row.status === "complete");
+    const difficulty = recentDifficultyAverage(workouts);
+    const easyStreak = tooEasyStreak(workouts);
     const lessons = member.lessonProgress.filter((row) => row.completed);
     const handoffs = member.chatThreads.reduce(
       (sum, thread) => sum + thread.messages.length,
@@ -144,6 +156,9 @@ export async function listMemberTrendsForStaff(input: {
       aiHandoffFlags: handoffs,
       lastActiveAt: timestamps[0]?.toISOString() ?? null,
       openHelpRequests: member.helpRequests.filter((row) => row.status === "open").length,
+      recentDifficultyLabel: difficulty.label,
+      tooEasyStreak: easyStreak,
+      tooEasyNote: tooEasyCoachNote(easyStreak),
     };
   });
 }

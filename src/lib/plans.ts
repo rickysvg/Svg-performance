@@ -40,7 +40,8 @@ export type FeatureId =
   | "nutrition"
   | "ai"
   | "conditioning"
-  | "coaching";
+  | "coaching"
+  | "daily_quote";
 
 export type PlanCredits = Partial<Record<CreditKind, number>>;
 
@@ -74,6 +75,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "One starter DEMO program",
       "Gym announcements (when posted)",
       "Shop links to svgandco.com",
+      "One free daily-quote teaser (full quotes on Performance+)",
     ],
     rank: 0,
     features: ["training", "progress", "shop", "learn_beginner"],
@@ -94,6 +96,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "Calorie / macro tracking (manual estimates)",
       "Meal ideas and progress charts",
       "Coach Savage AI (not Ricky)",
+      "Daily motivational quote",
     ],
     rank: 1,
     features: [
@@ -104,6 +107,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "learn_full",
       "nutrition",
       "ai",
+      "daily_quote",
     ],
     credits: {},
     cap: null,
@@ -133,6 +137,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "nutrition",
       "ai",
       "conditioning",
+      "daily_quote",
     ],
     credits: {},
     cap: null,
@@ -162,6 +167,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "coaching",
+      "daily_quote",
     ],
     credits: { coaching_call_30: 1, video_review: 2 },
     cap: null,
@@ -192,6 +198,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "coaching",
+      "daily_quote",
     ],
     credits: { checkin_30: 2, video_review: 2 },
     cap: 6,
@@ -221,6 +228,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "coaching",
+      "daily_quote",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 4, strategy_45: 1 },
     cap: 2,
@@ -251,6 +259,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "coaching",
+      "daily_quote",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 8, strategy_45: 2 },
     cap: 1,

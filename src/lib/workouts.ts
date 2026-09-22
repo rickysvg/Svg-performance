@@ -3,6 +3,7 @@ import { ForbiddenError, NotFoundError, AppError } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
+import { parseDifficultyRating } from "@/lib/difficulty";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -121,6 +122,7 @@ export async function updateWorkoutSessionForUser(input: {
   notes: string;
   status: "draft" | "complete";
   sets: WorkoutSetInput[];
+  difficultyRating?: string | null;
 }) {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -147,6 +149,10 @@ export async function updateWorkoutSessionForUser(input: {
         performedAt: input.performedAt,
         notes,
         status: input.status,
+        difficultyRating:
+          input.difficultyRating === undefined
+            ? existing.difficultyRating
+            : parseDifficultyRating(input.difficultyRating) ?? "",
         sets: {
           create: input.sets.map((set, index) => ({
             exerciseName: set.exerciseName.trim(),
@@ -178,6 +184,28 @@ export async function deleteWorkoutSessionForUser(
   });
   assertOwnSession(existing, userId);
   await prisma.workoutSession.delete({ where: { id: workoutId } });
+}
+
+export async function rateWorkoutSessionForUser(input: {
+  userId: string;
+  workoutId: string;
+  difficultyRating: string;
+}) {
+  const existing = assertOwnSession(
+    await prisma.workoutSession.findUnique({ where: { id: input.workoutId } }),
+    input.userId,
+  );
+  if (existing.status !== "complete") {
+    throw new AppError("WORKOUT", "Save the session first, then rate how it felt.");
+  }
+  const rating = parseDifficultyRating(input.difficultyRating);
+  if (!rating) {
+    throw new AppError("WORKOUT", "Pick how the session felt.");
+  }
+  return prisma.workoutSession.update({
+    where: { id: input.workoutId },
+    data: { difficultyRating: rating },
+  });
 }
 
 /**

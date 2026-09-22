@@ -108,6 +108,25 @@ export function formatDayParam(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+export async function hasActivityOnLocalDay(userId: string, day: Date) {
+  const start = startOfLocalDay(day);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const [workouts, foods] = await Promise.all([
+    prisma.workoutSession.count({
+      where: {
+        userId,
+        status: "complete",
+        performedAt: { gte: start, lt: end },
+      },
+    }),
+    prisma.nutritionEntry.count({
+      where: { userId, eatenAt: { gte: start, lt: end } },
+    }),
+  ]);
+  return workouts + foods > 0;
+}
+
 export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const selected = startOfLocalDay(selectedDay);
   const [program, sessions, foodToday, allLessons, progress, activity, profile] =
@@ -173,6 +192,7 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     targets: nutritionTargetsFromProfile(profile),
     firstName: firstNameFrom(profile?.displayName ?? ""),
     goals: profile?.goals ?? "",
+    sessions,
     needsDeepPrompt: needsDeepOnboardingPrompt(profile),
     sessionHint: sessionLengthHint(profile?.sessionLengthMin ?? null),
     locationHint: trainingLocationHint(profile?.trainingLocation ?? ""),

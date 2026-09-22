@@ -14,6 +14,7 @@ export function ReminderPrefsForm({
   prefs: {
     workoutEnabled: boolean;
     foodEnabled: boolean;
+    quoteEnabled: boolean;
     preferredHour: number;
     timezoneOffsetMinutes: number;
   };
@@ -34,8 +35,8 @@ export function ReminderPrefsForm({
       <h2 className="text-lg font-semibold">Reminders</h2>
       <p className="text-sm text-muted">
         Home shows a due reminder once per day after your preferred hour. Turn
-        either type off anytime. We do not send push notifications in this
-        preview.
+        any type off anytime. True mobile push is later — this preview is in-app
+        on Home, plus email if SMTP is set.
       </p>
       <p className="text-xs text-muted">
         {smtpConfigured
@@ -59,6 +60,14 @@ export function ReminderPrefsForm({
           defaultChecked={prefs.foodEnabled}
         />
         Food log reminder
+      </label>
+      <label className="flex items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="quoteEnabled"
+          defaultChecked={prefs.quoteEnabled}
+        />
+        Daily quote reminder (Performance+ / paid catalog)
       </label>
       <label className="block text-sm">
         Preferred local hour (0–23)

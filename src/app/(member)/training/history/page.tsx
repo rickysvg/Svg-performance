@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/session";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { DemoBadge } from "@/components/DemoBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { difficultyLabel } from "@/lib/difficulty";
 
 export default async function HistoryPage() {
   const user = await requireUser();
@@ -46,6 +47,11 @@ export default async function HistoryPage() {
                 <p className="mt-1 text-sm text-muted">
                   {new Date(session.performedAt).toLocaleString()} · {session.status} ·{" "}
                   {session.sets.length} sets
+                  {difficultyLabel(session.difficultyRating)
+                    ? ` · ${difficultyLabel(session.difficultyRating)}`
+                    : session.status === "complete"
+                      ? " · rate how it felt"
+                      : ""}
                 </p>
               </Link>
             </li>

@@ -3,14 +3,17 @@ import { AppError } from "@/lib/errors";
 import { isSmtpConfigured, sendMail } from "@/lib/mail";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { startOfLocalDay, endOfLocalDay } from "@/lib/nutrition";
+import { canUseFeature } from "@/lib/entitlements";
+import { quoteForLocalDate } from "@/lib/quotes";
 
 export const DEFAULT_REMINDER_HOUR = 18;
 
-export type ReminderKind = "workout" | "food";
+export type ReminderKind = "workout" | "food" | "quote";
 
 export type ReminderPrefsInput = {
   workoutEnabled: boolean;
   foodEnabled: boolean;
+  quoteEnabled?: boolean;
   preferredHour: number;
   timezoneOffsetMinutes: number;
 };
@@ -52,6 +55,7 @@ export function validateReminderPrefs(input: ReminderPrefsInput): ReminderPrefsI
   return {
     workoutEnabled: Boolean(input.workoutEnabled),
     foodEnabled: Boolean(input.foodEnabled),
+    quoteEnabled: input.quoteEnabled !== false,
     preferredHour: hour,
     timezoneOffsetMinutes: Math.round(offset),
   };
@@ -67,6 +71,7 @@ export async function getOrCreateReminderPrefs(userId: string) {
       userId,
       workoutEnabled: true,
       foodEnabled: true,
+      quoteEnabled: true,
       preferredHour: DEFAULT_REMINDER_HOUR,
       timezoneOffsetMinutes: 0,
     },
@@ -139,6 +144,17 @@ export async function getDueReminders(
       message: "Reminder: add a food estimate when you have a minute. Estimates are fine.",
     });
   }
+  if (
+    prefs.quoteEnabled &&
+    (await canUseFeature(userId, "daily_quote")) &&
+    !sameLocalDay(prefs.lastQuoteRemindedAt, now, prefs.timezoneOffsetMinutes)
+  ) {
+    const quote = quoteForLocalDate(now);
+    due.push({
+      kind: "quote",
+      message: `Today’s quote: “${quote.text}”`,
+    });
+  }
   return due;
 }
 
@@ -158,6 +174,7 @@ export async function markRemindersShown(
         ? now
         : prefs.lastWorkoutRemindedAt,
       lastFoodRemindedAt: kinds.includes("food") ? now : prefs.lastFoodRemindedAt,
+      lastQuoteRemindedAt: kinds.includes("quote") ? now : prefs.lastQuoteRemindedAt,
     },
   });
   await recordMetric(METRIC_NAMES.reminderShown, userId);

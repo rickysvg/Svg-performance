@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
 import { requireAdminOrThrow } from "@/lib/roles";
 import { canUseFeature } from "@/lib/entitlements";
@@ -53,8 +54,12 @@ export async function toggleCompleteAction(formData: FormData) {
   if (!allowed) {
     throw new AppError("PAYWALL", "Learn is locked until Stripe TEST confirms payment.");
   }
-  await toggleLessonComplete(user.id, String(formData.get("lessonId") ?? ""));
+  const row = await toggleLessonComplete(user.id, String(formData.get("lessonId") ?? ""));
+  const slug = String(formData.get("slug") ?? "").trim();
   revalidatePath("/learn");
+  if (row.completed && slug) {
+    redirect(`/learn/${slug}?celebrate=lesson`);
+  }
 }
 
 export async function saveLessonAction(

@@ -101,6 +101,14 @@ export default async function StaffReportsPage() {
                   <dd className="font-medium">{row.openHelpRequests}</dd>
                 </div>
               </dl>
+              {row.recentDifficultyLabel ? (
+                <p className="mt-3 text-sm text-muted">
+                  Recent session feel: {row.recentDifficultyLabel}
+                </p>
+              ) : null}
+              {row.tooEasyNote ? (
+                <p className="mt-1 text-sm text-muted">{row.tooEasyNote}</p>
+              ) : null}
               <p className="mt-3 text-xs text-muted">
                 Last active: {formatActive(row.lastActiveAt)}
               </p>

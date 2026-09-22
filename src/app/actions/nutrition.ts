@@ -11,6 +11,7 @@ import {
   deleteNutritionEntryForUser,
   updateNutritionEntryForUser,
 } from "@/lib/nutrition";
+import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 
 export type NutritionActionState = { error?: string; success?: string };
@@ -47,10 +48,12 @@ export async function saveNutritionEntryAction(
   _prev: NutritionActionState,
   formData: FormData,
 ): Promise<NutritionActionState> {
+  let celebrateStreak = false;
   try {
     const user = await requireNutritionUser();
     const entryId = String(formData.get("entryId") ?? "");
     const payload = parseEntry(formData);
+    celebrateStreak = !entryId ? !(await hasActivityOnLocalDay(user.id, payload.eatenAt)) : false;
     if (entryId) {
       await updateNutritionEntryForUser(entryId, user.id, payload);
     } else {
@@ -58,10 +61,13 @@ export async function saveNutritionEntryAction(
     }
     revalidatePath("/nutrition");
     revalidatePath("/home");
-    return { success: "Food log saved. These numbers are your manual estimates." };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+  if (celebrateStreak) {
+    redirect("/nutrition?celebrate=streak");
+  }
+  return { success: "Food log saved. These numbers are your manual estimates." };
 }
 
 export async function deleteNutritionEntryAction(formData: FormData) {

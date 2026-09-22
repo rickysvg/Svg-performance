@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
 import { publicErrorMessage } from "@/lib/errors";
 import {
@@ -96,10 +97,10 @@ export async function uploadProgressPhotoAction(
     });
     revalidatePath("/progress");
     revalidatePath("/home");
-    return { success: "Photo saved. Only you can see it in this preview." };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+  redirect("/progress?celebrate=photo");
 }
 
 export async function updateProgressPhotoAction(

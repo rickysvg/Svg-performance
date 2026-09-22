@@ -144,6 +144,7 @@ model WorkoutSession {
   performedAt  DateTime
   notes        String      @default("")
   status       String      @default("complete")
+  difficultyRating String  @default("")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   sets         WorkoutSet[]
@@ -292,10 +293,12 @@ model ReminderPrefs {
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workoutEnabled         Boolean   @default(true)
   foodEnabled            Boolean   @default(true)
+  quoteEnabled           Boolean   @default(true)
   preferredHour          Int       @default(18)
   timezoneOffsetMinutes  Int       @default(0)
   lastWorkoutRemindedAt  DateTime?
   lastFoodRemindedAt     DateTime?
+  lastQuoteRemindedAt    DateTime?
   updatedAt              DateTime  @updatedAt
 }
 

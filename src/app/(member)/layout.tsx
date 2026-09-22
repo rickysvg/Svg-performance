@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
+import { Celebration } from "@/components/celebration/Celebration";
 import { requireOnboardedUser } from "@/lib/session";
 
 export default async function MemberLayout({
@@ -18,6 +20,9 @@ export default async function MemberLayout({
       </div>
       <QuickAddFab />
       <BottomNav />
+      <Suspense fallback={null}>
+        <Celebration />
+      </Suspense>
     </div>
   );
 }

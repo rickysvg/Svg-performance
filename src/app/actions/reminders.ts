@@ -16,6 +16,7 @@ export async function saveReminderPrefsAction(
     await saveReminderPrefs(user.id, {
       workoutEnabled: formData.get("workoutEnabled") === "on",
       foodEnabled: formData.get("foodEnabled") === "on",
+      quoteEnabled: formData.get("quoteEnabled") === "on",
       preferredHour: Number(formData.get("preferredHour") ?? 18),
       timezoneOffsetMinutes: Number(formData.get("timezoneOffsetMinutes") ?? 0),
     });

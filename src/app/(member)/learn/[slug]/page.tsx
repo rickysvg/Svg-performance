@@ -102,6 +102,7 @@ export default async function LessonPage({
         </form>
         <form action={toggleCompleteAction} className="flex-1">
           <input type="hidden" name="lessonId" value={lesson.id} />
+          <input type="hidden" name="slug" value={lesson.slug} />
           <button className="touch-target w-full rounded-full bg-accent font-semibold text-black">
             {progress?.completed ? "Mark not complete" : "Mark complete"}
           </button>

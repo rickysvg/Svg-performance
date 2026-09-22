@@ -11,6 +11,9 @@ import { HelpRequestForm } from "@/components/help/HelpRequestForm";
 import { WeekStrip } from "@/components/home/WeekStrip";
 import { NutritionRings } from "@/components/home/NutritionRings";
 import { SHOP_HOME } from "@/lib/shop";
+import { getDailyQuoteCard } from "@/lib/quotes";
+import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
+import { memberDifficultyCopy, recentDifficultyAverage } from "@/lib/difficulty";
 
 function formatDate(value: string | null) {
   if (!value) return "No sessions yet";
@@ -28,13 +31,15 @@ export default async function HomePage({
   const user = await requireUser();
   const params = await searchParams;
   const selected = parseDayParam(params.day);
-  const [profile, sessions, today, reminderResult, helpRequests] = await Promise.all([
+  const [profile, sessions, today, reminderResult, helpRequests, quoteCard] = await Promise.all([
     getProfileForUser(user.id),
     listWorkoutSessionsForUser(user.id),
     getHomeToday(user.id, selected),
     processDueRemindersForUser(user.id, user.email),
     listHelpRequestsForMember(user.id),
+    getDailyQuoteCard(user.id),
   ]);
+  const difficulty = recentDifficultyAverage(sessions);
 
   const units = profile?.preferredUnits ?? "lb";
   const progress = buildProgressSummary(sessions, units);
@@ -86,6 +91,12 @@ export default async function HomePage({
           </p>
         </section>
       ) : null}
+
+      <DailyQuoteCard
+        quote={quoteCard.quote}
+        unlocked={quoteCard.unlocked}
+        teaser={quoteCard.teaser}
+      />
 
       <WeekStrip selected={today.selected} />
 
@@ -185,6 +196,7 @@ export default async function HomePage({
           {today.activity.daysActive} of 7 days
         </p>
         <p className="mt-1 text-sm text-muted">{today.activity.message}</p>
+        <p className="mt-3 text-xs text-muted">{memberDifficultyCopy(difficulty)}</p>
       </section>
 
       <section className="space-y-3">

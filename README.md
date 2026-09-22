@@ -10,7 +10,7 @@ It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim 
 
 1. Create an account, answer a short first-run survey (goal, experience, martial art, equipment, days, units), log in, log out, and reset a password. New accounts cannot open Home until that required intake is saved.
 2. Finish the required intake (name, goal, experience, martial art, equipment, days, units; optional limitations/diet/allergies). An optional second screen (weight, session length, location, competition, coaching tone, obstacles) can be skipped. Edit either later on Profile.
-3. Use Home for: greeting, a **week strip**, nutrition goal rings (estimates), today’s DEMO workout card, days active this week (no shame copy), unfinished lesson, coach help status, and shop.
+3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), a **week strip**, nutrition goal rings (estimates), today’s DEMO workout card, days active this week (no shame copy), unfinished lesson, coach help status, and shop.
 4. Open the one **DEMO** strength & conditioning program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), plus workout charts. No fake watch sync.
@@ -131,6 +131,8 @@ Coverage includes:
 - Learn filters: beginner default; boxing/intermediate change the result set; pending video UX
 - Onboarding gate: incomplete users stay on `/onboarding`; completed users reach Home; answers persist and edit on Profile
 - Optional deeper onboarding: skip still reaches Home; complete step 2 persists weight/session/tone/competition; Home prompt if skipped; weight does not change DEMO nutrition targets
+- Daily quote: Performance+ / paid catalog get the full line; Member Access sees a locked teaser; reminder uses the same in-app / SMTP pattern (no mobile push yet)
+- Difficulty rating persists on a completed session; too-easy streaks flag for coaches without shame copy
 - Coach Savage refusals: pain, weight-cut, cross-account
 - Knowledge pack loads the guide + DEMO seeds, not the interview worksheet
 - Gym checkbox does not verify; only an admin can
@@ -176,6 +178,8 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Fuel: DEMO search or saved meal fills the form; estimates stay labeled; owner can correct; another account cannot open that log.
 - [ ] Learn: members see published DEMO lessons only; Beginner + martial-art chips change results; a lesson shows key details and Watch on YouTube (or pending); bookmark / complete stick.
 - [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
+- [ ] Home shows today’s quote for a Performance+ / preview account, and a teaser when Stripe is on and the plan is Member Access. Quote reminder can be turned off under Profile → Reminders. True mobile push is later.
+- [ ] After saving a workout, completing a lesson, adding a first-of-day log, or uploading a photo, a short celebration appears (respects reduced motion). Completing a workout asks how it felt; history and staff trends show the rating / recent feel.
 - [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
 - [ ] Subscription TEST: without keys, checkout stays off. With TEST keys + webhook forward, access flips only after the webhook. Cancel / failed payment do not leave someone “paid.”

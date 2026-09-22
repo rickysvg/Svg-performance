@@ -6,10 +6,12 @@ import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import {
   deleteWorkoutSessionForUser,
+  rateWorkoutSessionForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
   type WorkoutSetInput,
 } from "@/lib/workouts";
+import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 
@@ -50,15 +52,19 @@ export async function saveWorkoutAction(
   _prev: WorkoutActionState,
   formData: FormData,
 ): Promise<WorkoutActionState> {
+  let redirectPath = "";
   try {
     const user = await requireUserOrThrow();
     const workoutId = String(formData.get("workoutId") ?? "");
     const intent = String(formData.get("intent") ?? "complete");
+    const performedAt = new Date(String(formData.get("performedAt") ?? ""));
+    const alreadyActive =
+      intent === "complete" ? await hasActivityOnLocalDay(user.id, performedAt) : true;
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId,
       title: String(formData.get("title") ?? "Workout"),
-      performedAt: new Date(String(formData.get("performedAt") ?? "")),
+      performedAt,
       notes: String(formData.get("notes") ?? ""),
       status: intent === "draft" ? "draft" : "complete",
       sets: parseSets(formData),
@@ -68,15 +74,38 @@ export async function saveWorkoutAction(
     revalidatePath("/training/history");
     revalidatePath("/progress");
     revalidatePath(`/training/log/${workoutId}`);
-    return {
-      success:
-        intent === "draft"
-          ? "Draft saved. You can finish it later."
-          : "Workout saved. Refresh anytime — it will still be here.",
-    };
+    if (intent === "complete") {
+      const celebrate = alreadyActive ? "workout" : "streak";
+      redirectPath = `/training/log/${workoutId}?celebrate=${celebrate}&rate=1`;
+    } else {
+      return { success: "Draft saved. You can finish it later." };
+    }
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+  redirect(redirectPath);
+}
+
+export async function rateWorkoutAction(
+  _prev: WorkoutActionState,
+  formData: FormData,
+): Promise<WorkoutActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const workoutId = String(formData.get("workoutId") ?? "");
+    await rateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId,
+      difficultyRating: String(formData.get("difficultyRating") ?? ""),
+    });
+    revalidatePath("/home");
+    revalidatePath("/training/history");
+    revalidatePath("/progress");
+    revalidatePath(`/training/log/${workoutId}`);
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+  redirect(`/training/log/${String(formData.get("workoutId") ?? "")}`);
 }
 
 export async function deleteWorkoutAction(formData: FormData) {
