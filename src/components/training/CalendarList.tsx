@@ -64,7 +64,7 @@ export function CalendarList({ days }: { days: CalendarDay[] }) {
               ))}
             </ul>
           ) : (
-            <div className="border-b border-line/70" />
+            <div className="h-px bg-line" />
           )}
         </li>
       ))}
