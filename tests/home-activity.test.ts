@@ -2,9 +2,11 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { getHomeToday, getWeeklyActivity, weeklyActivityCopy } from "@/lib/home";
+import { getTodayGuide } from "@/lib/today";
+import { getPathProgress } from "@/lib/paths";
 import { createNutritionEntryForUser } from "@/lib/nutrition";
 import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
-import { getDemoProgram } from "@/lib/programs";
+import { DEMO_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import { listRuntimeKnowledgeFiles, loadKnowledgeBase } from "@/lib/coach/knowledge";
 
 describe("home aggregation and weekly activity", () => {
@@ -70,6 +72,62 @@ describe("home aggregation and weekly activity", () => {
     expect(today.incompleteLesson).toBeTruthy();
     expect(today.targets.calories).toBe(2200);
     expect(today.firstName).toBe("streak");
+  });
+
+  it("keeps Home and Today usable when the DEMO program is not seeded", async () => {
+    const snapshot = await prisma.program.findUnique({
+      where: { slug: DEMO_PROGRAM_SLUG },
+      include: { days: { include: { exercises: true }, orderBy: { dayNumber: "asc" } } },
+    });
+    expect(snapshot).toBeTruthy();
+    await prisma.program.delete({ where: { slug: DEMO_PROGRAM_SLUG } });
+    try {
+      const user = await makeUser("empty-seed-home@example.com");
+      const today = await getHomeToday(user.id);
+      expect(today.suggestedDay).toBeNull();
+      expect(today.suggestionCopy).toMatch(/not loaded/i);
+      expect(today.activity.daysActive).toBe(0);
+
+      const path = await getPathProgress(user.id);
+      expect(path.path.slug).toBeTruthy();
+
+      const guide = await getTodayGuide(user.id);
+      expect(guide.path.path.title).toBeTruthy();
+      expect(guide.today.suggestedDay).toBeNull();
+    } finally {
+      if (snapshot) {
+        await prisma.program.create({
+          data: {
+            slug: snapshot.slug,
+            title: snapshot.title,
+            description: snapshot.description,
+            isDemo: snapshot.isDemo,
+            days: {
+              create: snapshot.days.map((day) => ({
+                dayNumber: day.dayNumber,
+                title: day.title,
+                focus: day.focus,
+                exercises: {
+                  create: day.exercises
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((exercise) => ({
+                      sortOrder: exercise.sortOrder,
+                      name: exercise.name,
+                      sets: exercise.sets,
+                      reps: exercise.reps,
+                      loadText: exercise.loadText,
+                      restSeconds: exercise.restSeconds,
+                      notes: exercise.notes,
+                      formVideoUrl: exercise.formVideoUrl,
+                      formVideoPending: exercise.formVideoPending,
+                    })),
+                },
+              })),
+            },
+          },
+        });
+      }
+    }
   });
 });
 

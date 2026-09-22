@@ -3,19 +3,19 @@ import { requireUser } from "@/lib/session";
 import { getProfileForUser, profileIsComplete } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { buildProgressSummary } from "@/lib/progress";
-import { getHomeToday, parseDayParam } from "@/lib/home";
+import { emptyHomeToday, getHomeToday, homeLoad, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { listHelpRequestsForMember } from "@/lib/help";
 import { HelpRequestForm } from "@/components/help/HelpRequestForm";
 import { WeekStrip } from "@/components/home/WeekStrip";
 import { NutritionRings } from "@/components/home/NutritionRings";
 import { SHOP_HOME } from "@/lib/shop";
-import { getDailyQuoteCard } from "@/lib/quotes";
+import { DAILY_QUOTES, getDailyQuoteCard, teaserFromQuote } from "@/lib/quotes";
 import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
 import { memberDifficultyCopy, recentDifficultyAverage } from "@/lib/difficulty";
-import { getWeeklyWrapped } from "@/lib/wrapped";
+import { getWeeklyWrapped, lastSevenLocalDays, weeklyWrappedCopy } from "@/lib/wrapped";
 import { WeeklyWrappedCard } from "@/components/home/WeeklyWrappedCard";
-import { getTodayGuide } from "@/lib/today";
+import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { TodayGuide } from "@/components/home/TodayGuide";
 import { getFocusVideoForMember } from "@/lib/focus-videos";
 import { TodayFocusVideo } from "@/components/home/TodayFocusVideo";
@@ -38,18 +38,48 @@ export default async function HomePage({
   const user = await requireUser();
   const params = await searchParams;
   const selected = parseDayParam(params.day);
+  const quietWrap = lastSevenLocalDays(selected);
+  const fallbackQuote = DAILY_QUOTES[0];
   const [profile, sessions, today, reminderResult, helpRequests, quoteCard, wrap, guide, focus, challenge] =
     await Promise.all([
-      getProfileForUser(user.id),
-      listWorkoutSessionsForUser(user.id),
-      getHomeToday(user.id, selected),
-      processDueRemindersForUser(user.id, user.email),
-      listHelpRequestsForMember(user.id),
-      getDailyQuoteCard(user.id),
-      getWeeklyWrapped(user.id),
-      getTodayGuide(user.id, selected),
-      getFocusVideoForMember(user.id, selected),
-      getChallengeProgressForUser(user.id),
+      homeLoad("profile", getProfileForUser(user.id), null),
+      homeLoad("sessions", listWorkoutSessionsForUser(user.id), []),
+      homeLoad("today", getHomeToday(user.id, selected), emptyHomeToday(selected)),
+      homeLoad(
+        "reminders",
+        processDueRemindersForUser(user.id, user.email),
+        { due: [], emailed: false, smtpConfigured: false },
+      ),
+      homeLoad("help", listHelpRequestsForMember(user.id), []),
+      homeLoad("quote", getDailyQuoteCard(user.id), {
+        quote: fallbackQuote,
+        unlocked: false,
+        teaser: teaserFromQuote(fallbackQuote),
+      }),
+      homeLoad("wrap", getWeeklyWrapped(user.id), {
+        from: quietWrap.from,
+        to: quietWrap.to,
+        daysTrained: 0,
+        workoutsLogged: 0,
+        mealsLogged: 0,
+        lessonsCompleted: 0,
+        ratedWorkouts: 0,
+        avgDifficulty: null,
+        avgDifficultyLabel: "",
+        copy: weeklyWrappedCopy({
+          daysTrained: 0,
+          workoutsLogged: 0,
+          mealsLogged: 0,
+          lessonsCompleted: 0,
+        }),
+      }),
+      homeLoad("guide", getTodayGuide(user.id, selected), emptyTodayGuide(selected)),
+      homeLoad("focus", getFocusVideoForMember(user.id, selected), {
+        unlocked: false,
+        video: null,
+        planId: "member_access" as const,
+      }),
+      homeLoad("challenge", getChallengeProgressForUser(user.id), null),
     ]);
   const difficulty = recentDifficultyAverage(sessions);
 

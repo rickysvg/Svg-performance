@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getDemoProgram } from "@/lib/programs";
+import { findDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
@@ -127,11 +127,49 @@ export async function hasActivityOnLocalDay(userId: string, day: Date) {
   return workouts + foods > 0;
 }
 
+export async function homeLoad<T>(label: string, task: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await task;
+  } catch (error) {
+    console.error(`[home] ${label} failed`, error);
+    return fallback;
+  }
+}
+
+export function emptyHomeToday(selectedDay = new Date()) {
+  const selected = startOfLocalDay(selectedDay);
+  return {
+    selected,
+    isToday: sameLocalDay(selected, new Date()),
+    suggestedDay: null,
+    suggestionCopy:
+      "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
+    draft: undefined,
+    loggedOnSelected: null,
+    foodToday: { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    foodNudge: "No food logged this day yet. A rough estimate is enough.",
+    incompleteLesson: null,
+    activity: {
+      daysActive: 0,
+      totalDays: 7 as const,
+      message: weeklyActivityCopy(0),
+    },
+    targets: nutritionTargetsFromProfile(null),
+    firstName: "",
+    goals: "",
+    sessions: [] as Awaited<ReturnType<typeof listWorkoutSessionsForUser>>,
+    needsDeepPrompt: false,
+    sessionHint: "",
+    locationHint: "",
+    competitionNote: "",
+  };
+}
+
 export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const selected = startOfLocalDay(selectedDay);
   const [program, sessions, foodToday, allLessons, progress, activity, profile] =
     await Promise.all([
-      getDemoProgram(),
+      findDemoProgram(),
       listWorkoutSessionsForUser(userId),
       getNutritionSummaryForDay(userId, selected),
       listPublishedLessons(),
@@ -146,7 +184,7 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
       .map((session) => session.programDayId as string),
   );
   const draft = sessions.find((session) => session.status === "draft");
-  const suggestedDay = suggestDemoProgramDay(program.days, completedDayIds, {
+  const suggestedDay = suggestDemoProgramDay(program?.days ?? [], completedDayIds, {
     goalKey: profile?.goalKey,
     primaryFocus: profile?.primaryFocus,
   });
@@ -176,10 +214,12 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     selected,
     isToday: sameLocalDay(selected, new Date()),
     suggestedDay,
-    suggestionCopy: demoSuggestionCopy({
-      goalKey: profile?.goalKey,
-      primaryFocus: profile?.primaryFocus,
-    }),
+    suggestionCopy: program
+      ? demoSuggestionCopy({
+          goalKey: profile?.goalKey,
+          primaryFocus: profile?.primaryFocus,
+        })
+      : "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
     draft: sameLocalDay(selected, new Date()) ? draft : undefined,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,

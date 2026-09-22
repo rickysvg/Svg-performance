@@ -3,8 +3,8 @@ import { NotFoundError } from "@/lib/errors";
 
 export const DEMO_PROGRAM_SLUG = "demo-strength-base";
 
-export async function getDemoProgram() {
-  const program = await prisma.program.findUnique({
+export async function findDemoProgram() {
+  return prisma.program.findUnique({
     where: { slug: DEMO_PROGRAM_SLUG },
     include: {
       days: {
@@ -15,6 +15,10 @@ export async function getDemoProgram() {
       },
     },
   });
+}
+
+export async function getDemoProgram() {
+  const program = await findDemoProgram();
   if (!program) {
     throw new NotFoundError(
       "The DEMO program is missing. Run npm run db:setup to load it.",

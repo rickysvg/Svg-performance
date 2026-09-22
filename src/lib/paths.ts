@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { getDemoProgram } from "@/lib/programs";
+import { findDemoProgram } from "@/lib/programs";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
 import { getProfileForUser } from "@/lib/profile";
 import { preferredLearnLevel, preferredLearnTopic } from "@/lib/onboarding";
@@ -249,7 +249,7 @@ export async function markPathStepComplete(userId: string, pathSlug: string, ste
 
 async function autoCompleteHints(userId: string, path: TrainingPath) {
   const [program, sessions, lessons, progress, journalCount, bookings] = await Promise.all([
-    getDemoProgram(),
+    findDemoProgram(),
     prisma.workoutSession.findMany({
       where: { userId, status: "complete" },
       select: { programDayId: true, difficultyRating: true },
@@ -261,7 +261,7 @@ async function autoCompleteHints(userId: string, path: TrainingPath) {
   ]);
   const completedDayNumbers = new Set(
     sessions
-      .map((row) => program.days.find((day) => day.id === row.programDayId)?.dayNumber)
+      .map((row) => program?.days.find((day) => day.id === row.programDayId)?.dayNumber)
       .filter((n): n is number => n != null),
   );
   const completedLessons = progress.filter((row) => row.completed).length;
