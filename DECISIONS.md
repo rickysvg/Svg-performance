@@ -16,6 +16,10 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - Passwords are hashed with bcrypt (12 rounds). Reset tokens are hashed with `sha256(AUTH_SECRET + token)`.
 - Adult confirmation is required at signup. The app is an adult pilot.
 
+## Home resilience
+
+- Hosted Vercel runs `prisma db push` on empty Neon. It does **not** run the laptop seed. `getDemoProgram()` used to throw `NotFoundError` (“run npm run db:setup”), which took down `/home` via `getHomeToday` and `getTodayGuide` → `autoCompleteHints`. Home now treats a missing DEMO program as an empty CTA. Optional Home widgets are caught so one missing table/seed cannot replace the page with the error boundary.
+
 ## Audience
 
 - SVG Performance is **not** SVG-members-only. It is for anybody who wants to improve performance — especially combat sports athletes, and also people getting in shape. SVG MMA Academy members are a welcome segment (admin gym-verify + member rates), not the only audience. El Paso / SVG is origin, not a gate.

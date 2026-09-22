@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
-import { getDemoProgram } from "@/lib/programs";
+import { findDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { startSessionAction } from "@/app/actions/workouts";
 import { WatchFormInline } from "@/components/training/WatchForm";
@@ -9,7 +9,7 @@ import { canUseFeature } from "@/lib/entitlements";
 
 export default async function TrainingPage() {
   const user = await requireUser();
-  const program = await getDemoProgram();
+  const program = await findDemoProgram();
   const sessions = await listWorkoutSessionsForUser(user.id);
   const conditioning = await canUseFeature(user.id, "conditioning");
 
@@ -47,12 +47,17 @@ export default async function TrainingPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
           DEMO program
         </p>
-        <h2 className="mt-1 text-xl font-semibold">{program.title}</h2>
-        <p className="mt-2 text-sm text-muted">{program.description}</p>
+        <h2 className="mt-1 text-xl font-semibold">
+          {program?.title ?? "DEMO program not loaded yet"}
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          {program?.description ??
+            "This hosted preview has no seeded DEMO days yet. Your account is fine. An admin can run the laptop seed, or we can load the template later. It is not a live billing or Gymdesk issue."}
+        </p>
       </section>
 
       <div className="space-y-4">
-        {program.days.map((day) => (
+        {(program?.days ?? []).map((day) => (
           <article key={day.id} className="rounded-2xl border border-line bg-card p-5">
             <h3 className="text-lg font-semibold">{day.title}</h3>
             <p className="text-sm text-muted">{day.focus}</p>

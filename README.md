@@ -329,7 +329,7 @@ The build runs `node scripts/prisma-prepare.mjs --deploy`, which generates the P
 
 ### E. Optional: DEMO program and lessons on the host
 
-The first deploy has empty tables (no DEMO program until you seed). From your laptop, in this project folder:
+The first deploy has empty tables (no DEMO program until you seed). Home still loads — it shows an empty training CTA instead of “This page hit a snag.” Seed when you want the DEMO days and lessons:
 
 ```bash
 DATABASE_URL="postgresql://PASTE_THE_SAME_NEON_STRING" npm run db:seed

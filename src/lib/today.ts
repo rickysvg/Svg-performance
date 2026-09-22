@@ -8,10 +8,12 @@ import { listBookingRequestsForUser, bookingLabel } from "@/lib/bookings";
 import { listHelpRequestsForMember } from "@/lib/help";
 import {
   ensureDefaultPath,
+  getPathBySlug,
   getPathProgress,
   recommendedLessonForUser,
   todayLane,
 } from "@/lib/paths";
+import { emptyHomeToday } from "@/lib/home";
 
 export function todayPriorityCopy(lane: "beginner" | "fighter") {
   if (lane === "fighter") {
@@ -23,6 +25,35 @@ export function todayPriorityCopy(lane: "beginner" | "fighter") {
   return {
     headline: "Beginner priorities today",
     body: "Keep it simple: one DEMO session and one tutorial. A written goal beats a complicated plan.",
+  };
+}
+
+export function emptyTodayGuide(selectedDay = new Date()) {
+  const path = getPathBySlug("beginner-foundations");
+  return {
+    today: emptyHomeToday(selectedDay),
+    lane: "beginner" as const,
+    priority: todayPriorityCopy("beginner"),
+    goal: "Add a goal on Profile so Today can show it.",
+    hasGoal: false,
+    path: {
+      path: path!,
+      enrollmentSlug: "beginner-foundations",
+      doneKeys: [] as string[],
+      nextStep: path?.steps[0] ?? null,
+      completedCount: 0,
+      totalSteps: path?.steps.length ?? 0,
+      complete: false,
+    },
+    lesson: null,
+    checkIn: {
+      title: "No check-in on the calendar",
+      body: "This app does not invent Ricky’s schedule. Request a time on Book when you want a human call.",
+      href: "/book",
+      kind: "empty" as const,
+    },
+    planLabel: PLAN_CATALOG.member_access.label,
+    planId: "member_access" as const,
   };
 }
 
