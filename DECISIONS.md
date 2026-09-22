@@ -5,7 +5,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 ## Stack
 
 - **Next.js App Router + TypeScript + Tailwind v4.** Matches the requested preview stack and stays one repo.
-- **Prisma 6 + SQLite file database.** Postgres is the better production home, but this cloud preview VM does not provide a managed Postgres box. SQLite lets register / login / workout logs work on a laptop with no extra service (`DATABASE_URL=file:./dev.db` → `prisma/dev.db`). Switching later means changing `provider` and `DATABASE_URL`, then running a new migration.
+- **Prisma 6 + SQLite on the laptop, Postgres on a host.** `prisma/schema.prisma` stays `provider = "sqlite"` so `npm run setup` / `npm run dev` / `npm test` keep using `file:./dev.db`. Hosted preview (Vercel + Neon or Vercel Postgres) sets `DATABASE_URL=postgresql://…`. `scripts/prisma-prepare.mjs` writes `schema.postgres.prisma` and runs `prisma db push` (SQLite migration SQL is not replayed on Postgres). Vercel builds fail if `DATABASE_URL` is missing or still a `file:` URL. No secrets in the repo. No live URL is claimed.
 - **Custom email/password auth (not Clerk, not Auth.js).** No paid account. Sessions are random tokens stored hashed in the database and sent as an httpOnly cookie (`svg_session`). Easier to test ownership than a hosted auth product.
 - **Vitest** for auth and ownership tests against a separate `prisma/test.db`.
 
@@ -174,7 +174,7 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - **Monthly challenge** scores days with a workout and/or food log. Beginner vs advanced day goals. Opt-in. DEMO seed for the current month.
 - **Meal-prep** scales saved-meal ingredients, optional simple swaps, grocery list, allergy verify reminder. Still estimates.
 - **Weekly focus video** is draft/published. Today for Performance+ (`daily_quote` feature). YouTube/Vimeo or local upload. Labeled DEMO when seeded.
-- **Hosted preview:** Dockerfile + vercel.json. No public URL is claimed until Ricky deploys.
+- **Hosted preview:** Dockerfile + vercel.json + Neon/Vercel Postgres. `vercel.json` build is `prisma-prepare --deploy && next build`. No public URL is claimed until Ricky deploys from his account. SQLite stays laptop-only.
 
 ## Out of scope
 
