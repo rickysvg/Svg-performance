@@ -11,14 +11,20 @@ export default async function MarketingPage() {
       <AppHeader email={user?.email} />
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10">
         <section className="flex flex-col items-center text-center">
-          <Logo variant="lockup" size="lg" priority />
+          <Logo
+            variant="lockup"
+            size="lg"
+            priority
+            className="h-auto w-full max-w-[20.5rem] sm:max-w-[22.5rem]"
+          />
           <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Train with purpose between classes.
+            Train with purpose. Get better.
           </h1>
           <p className="mt-4 max-w-xl text-muted">
-            A private-preview companion for SVG MMA Academy adults in El Paso.
-            See what you are working toward, what to do today, and the progress
-            you are actually logging.
+            SVG Performance is for anybody who wants to improve — especially
+            combat sports athletes, and also people just getting in shape. Built
+            by Ricky at SVG MMA Academy in El Paso. You do not have to train at
+            SVG to use this preview.
           </p>
           <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
             {user ? (
@@ -49,7 +55,7 @@ export default async function MarketingPage() {
 
         <section className="grid gap-4 sm:grid-cols-3">
           {[
-            ["What am I working toward?", "Save a simple adult profile and a goal you can see on Home."],
+            ["What am I working toward?", "Save a simple profile and a goal you can see on Home."],
             ["What should I do today?", "Open the labeled DEMO strength program and start a session."],
             ["What progress am I making?", "Logged workouts stay after refresh. Charts use your own data."],
           ].map(([title, body]) => (
@@ -65,7 +71,11 @@ export default async function MarketingPage() {
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
             <li>Auth, workout logs, and your profile are real and stored in a database.</li>
             <li>The strength program is clearly marked DEMO.</li>
-            <li>Saying “I am a gym member” does not unlock a discount or paid access.</li>
+            <li>
+              Anyone 18+ can create an account. Checking “I train at SVG” does
+              not unlock member pricing — an admin verifies gym membership
+              separately.
+            </li>
             <li>
               Draft prices (App Plans, Online Coaching, VIP) are a proposal / Stripe TEST
               only. There is no live checkout. Paid plans are additional to gym dues.

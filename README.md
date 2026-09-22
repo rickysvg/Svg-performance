@@ -1,8 +1,10 @@
 # SVG Performance
 
-Private-preview web app for **SVG MMA Academy** (Ricky Maynez, El Paso).
+Private-preview web app from **Ricky Maynez / SVG MMA Academy** (El Paso).
 
-This is a member companion you can run on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, week strip, nutrition rings, and a + button.
+SVG Performance is **not** gym-members-only. It is for **anybody** who wants to improve performance — especially combat sports athletes, and also people just getting in shape. SVG members are welcome (gym verify / member pricing). You do not have to train at SVG to create an account.
+
+You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, week strip, nutrition rings, and a + button.
 
 It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing, or claim Ricky types each AI reply.
 

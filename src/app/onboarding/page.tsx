@@ -20,9 +20,10 @@ export default async function OnboardingPage() {
       <main className="mx-auto max-w-md px-4 py-8">
         <h1 className="text-2xl font-semibold">A few vital questions</h1>
         <p className="mt-2 text-sm text-muted">
-          We&apos;ll use this to tailor your app experience — Learn level, Home
-          suggestions, and units. After this, an optional two-minute screen can
-          be skipped. This is not a custom Elite coaching plan.
+          We&apos;ll use this to tailor your app — Learn level, Home
+          suggestions, and units. For combat athletes, class training, and
+          people getting in shape. After this, an optional two-minute screen
+          can be skipped. This is not a custom Elite coaching plan.
         </p>
         <div className="mt-6">
           <OnboardingForm profile={status.profile} />

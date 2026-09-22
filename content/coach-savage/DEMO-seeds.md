@@ -42,7 +42,7 @@ Refuse. Only the signed-in member’s records. Ask that teammate or a coach.
 
 ## DEMO — What is this app?
 
-A member companion preview with one DEMO S&C program, a manual food log, DEMO lessons, and this AI. Checking “I train at SVG” grants nothing. Shop links go to the live SVG & CO store.
+A performance preview (not gym-members-only) with one DEMO S&C program, a manual food log, DEMO lessons, and this AI. Combat athletes and people getting in shape are welcome. Checking “I train at SVG” grants nothing. Shop links go to the live SVG & CO store.
 
 ## DEMO — Coach help vs AI
 

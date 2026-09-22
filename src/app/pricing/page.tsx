@@ -127,10 +127,13 @@ export default async function PricingPage() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold">SVG Performance pricing</h1>
         <p className="mt-3 text-muted">
-          Paid app plans are <strong className="text-foreground">additional to gym dues</strong>.
-          One monthly subscription at a time — a higher plan replaces the lower one.
-          Cards and BNPL loan details never touch this app. Access is granted only after
-          a verified webhook.
+          Anyone can use this preview. SVG gym members may see member rates after
+          an admin verifies them — checking a box does not unlock a price.
+          Paid app plans are{" "}
+          <strong className="text-foreground">additional to gym dues</strong> if
+          you train at a gym. One monthly subscription at a time — a higher plan
+          replaces the lower one. Cards and BNPL loan details never touch this
+          app. Access is granted only after a verified webhook.
         </p>
         <AiDisclaimer className="mt-3" />
         <FinancingNote configured={configured} className="mt-4" />

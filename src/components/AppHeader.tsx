@@ -19,18 +19,20 @@ export function AppHeader({
   const staff = role === "admin" || role === "coach";
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5">
         <Link
           href={homeHref ?? (email ? "/home" : "/")}
-          className="flex min-w-0 shrink-0 items-center gap-3"
+          className="flex min-w-0 items-center gap-2.5"
         >
           <Logo variant="mark" size="sm" />
-          <p className="min-w-0 truncate text-xs text-muted">Member companion preview</p>
+          <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+            SVG Performance
+          </span>
         </Link>
         {email ? (
           <nav
             aria-label="Account"
-            className="-mx-1 flex flex-wrap items-center gap-x-2 gap-y-2 sm:justify-end"
+            className="-mx-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-2"
           >
             {!hideMemberLinks && role === "admin" ? (
               <Link href="/admin" className={chipClass}>
@@ -62,7 +64,7 @@ export function AppHeader({
             </form>
           </nav>
         ) : (
-          <Link href="/login" className={`${chipClass} self-start`}>
+          <Link href="/login" className={chipClass}>
             Log in
           </Link>
         )}

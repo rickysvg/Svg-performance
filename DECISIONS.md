@@ -16,6 +16,10 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - Passwords are hashed with bcrypt (12 rounds). Reset tokens are hashed with `sha256(AUTH_SECRET + token)`.
 - Adult confirmation is required at signup. The app is an adult pilot.
 
+## Audience
+
+- SVG Performance is **not** SVG-members-only. It is for anybody who wants to improve performance — especially combat sports athletes, and also people getting in shape. SVG MMA Academy members are a welcome segment (admin gym-verify + member rates), not the only audience. El Paso / SVG is origin, not a gate.
+
 ## Gym membership vs payment
 
 - `claimsGymMembership` is a self-report checkbox.
@@ -99,12 +103,11 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 
 ## Brand
 
-- Official **SVG Performance** art is `public/svg-performance-logo.png` (source square lockup with a baked-in black background). The UI uses transparent cuts of that same art:
-  - `variant="lockup"` → `svg-performance-lockup.svg` (mountain, star, SVG + PERFORMANCE bar) on landing.
-  - `variant="mark"` → `svg-performance-mark.svg` (mountain, star, SVG — no bar) in the sticky header at ~36px tall.
-- Header does **not** repeat the “SVG Performance” wordmark next to a lockup that already says PERFORMANCE. Subtitle only: “Member companion preview”.
-- Older MMA Academy SVGs (`public/logo.svg`, `public/logo-mark.svg`) remain on disk as unused fallbacks only. The UI does not show them.
-- Accent hex **`#D0FF00`** was sampled from the neon V and the PERFORMANCE bar on that official mark (replacing the old MMA Academy `#CFFF00`). Black / white / that neon only, high contrast, athletic.
+- Official **SVG Performance** lockup is Ricky’s transparent artwork (`public/svg-performance-lockup.png`): detailed mountains, lime outline star, white **S**, lime **V**, white **G**, lime **PERFORMANCE** bar. We render that PNG — we do not redraw it as a simplified house-peak SVG.
+  - `variant="lockup"` → full official PNG on the landing hero (transparent, no black tile).
+  - `variant="mark"` → `svg-performance-mark.png` (mountains + lime star only — no SVG letters, no PERFORMANCE bar) in the sticky header at ~32px tall, beside bold white **SVG Performance**.
+- The older square `public/svg-performance-logo.png` (black background) is kept as a color/shape reference only. MMA Academy files (`public/logo.svg`, `public/logo-mark.svg`) stay unused.
+- Accent neon is the official lime (`#CBF805` / `#D0FF00`). Black / white / that neon only.
 
 ## Authorization
 

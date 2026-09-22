@@ -406,8 +406,9 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           className="mt-1 h-5 w-5 accent-accent"
         />
         <span className="text-sm">
-          I train at SVG MMA Academy. This does <strong>not</strong> verify
-          membership or change price.
+          Optional. I train at SVG MMA Academy. This does{" "}
+          <strong>not</strong> verify membership or change price. You do not
+          have to train at SVG to use this app.
         </span>
       </label>
 

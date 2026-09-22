@@ -9,8 +9,9 @@ export default function RegisterPage() {
       <main className="mx-auto max-w-md px-4 py-10">
         <h1 className="text-2xl font-semibold">Create a preview account</h1>
         <p className="mt-2 text-sm text-muted">
-          Adults only. Checking “I am a gym member” does not grant a discount
-          or extra access. Membership is verified separately by an admin later.
+          Adults (18+) only. Open to combat athletes, people getting in shape,
+          and SVG MMA Academy members. Checking “I train at SVG” does not
+          unlock member pricing — an admin verifies that separately.
         </p>
         <RegisterForm />
         <p className="mt-6 text-sm text-muted">
