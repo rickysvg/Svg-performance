@@ -11,7 +11,12 @@ export default async function MarketingPage() {
       <AppHeader email={user?.email} />
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10">
         <section className="flex flex-col items-center text-center">
-          <Logo variant="lockup" size="lg" priority />
+          <Logo
+            variant="lockup"
+            size="lg"
+            priority
+            className="h-auto w-full max-w-[20.5rem] sm:max-w-[22.5rem]"
+          />
           <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">
             Train with purpose between classes.
           </h1>
