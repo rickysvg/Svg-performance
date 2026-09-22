@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { DemoBadge } from "@/components/DemoBadge";
-import { disconnectPolarAction, loadDemoHeartAction, syncPolarAction } from "@/app/actions/heart";
+import { disconnectPolarAction, syncPolarAction } from "@/app/actions/heart";
 import type { getHeartDeviceStatus } from "@/lib/heart";
 
 type Status = Awaited<ReturnType<typeof getHeartDeviceStatus>>;
@@ -16,10 +15,10 @@ export function PolarConnectCard({
     <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">Polar</h2>
+          <h2 className="font-semibold">Polar (optional)</h2>
           <p className="mt-1 text-sm text-muted">
-            Phase 1 Polar-first. Apple Watch full sync is Phase 2 (HealthKit / native). We do
-            not show Apple Watch as connected on the web.
+            Secondary to Apple Health. Connect Polar AccessLink if you use a Polar
+            strap or watch. Apple Watch pairing is not this card.
           </p>
         </div>
         {status.polarConnected ? (
@@ -67,7 +66,7 @@ export function PolarConnectCard({
         ) : (
           <Link
             href="/api/polar/connect"
-            className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 font-semibold text-black"
+            className="touch-target inline-flex items-center justify-center rounded-full border border-line px-4 font-medium"
           >
             Connect Polar
           </Link>
@@ -75,10 +74,9 @@ export function PolarConnectCard({
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted">
-            Polar AccessLink is not configured on this preview. Add{" "}
-            <code>POLAR_CLIENT_ID</code>, <code>POLAR_CLIENT_SECRET</code>, and{" "}
-            <code>POLAR_REDIRECT_URI</code>, then restart. Until then the Connect button stays
-            TEST-only.
+            Polar is optional. Add <code>POLAR_CLIENT_ID</code>,{" "}
+            <code>POLAR_CLIENT_SECRET</code>, and <code>POLAR_REDIRECT_URI</code> if you
+            want AccessLink. Until then Connect Polar (TEST) stays off.
           </p>
           <button
             type="button"
@@ -89,21 +87,6 @@ export function PolarConnectCard({
           </button>
         </div>
       )}
-
-      <div className="border-t border-line pt-3">
-        <p className="text-xs text-muted">
-          Apple Watch is not connected. You can type HR, import an Apple Health export / watch
-          workout CSV, or load labeled DEMO samples.
-        </p>
-        <form action={loadDemoHeartAction} className="mt-3">
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 text-sm text-accent underline-offset-4 hover:underline"
-          >
-            Load DEMO heart-rate samples <DemoBadge />
-          </button>
-        </form>
-      </div>
     </section>
   );
 }

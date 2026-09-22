@@ -49,7 +49,7 @@ export default async function ProfilePage() {
           </li>
           <li>
             <Link href="/heart" className="text-accent underline-offset-4 hover:underline">
-              Heart rate (Polar / import)
+              Heart rate (Apple Health / Polar)
             </Link>
           </li>
           <li>

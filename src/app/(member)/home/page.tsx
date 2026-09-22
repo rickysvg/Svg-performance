@@ -200,9 +200,10 @@ export default async function HomePage({
         </Link>
         <Link href="/heart" className="block rounded-2xl border border-line bg-card p-4">
           <p className="text-xs uppercase tracking-wide text-muted">Heart rate</p>
-          <p className="mt-1 font-semibold">Polar, manual, or import</p>
+          <p className="mt-1 font-semibold">Apple Health export, then Polar</p>
           <p className="mt-1 text-sm text-muted">
-            Apple Watch is not connected on the web. Analysis is not medical advice.
+            Import a Health / watch workout file. Apple Watch is not connected on
+            the web. Analysis is not medical advice.
           </p>
         </Link>
         <Link href="/progress" className="block rounded-2xl border border-line bg-card p-4">

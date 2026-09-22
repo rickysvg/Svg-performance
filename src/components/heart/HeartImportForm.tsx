@@ -7,32 +7,38 @@ import { StatusBanner } from "@/components/StatusBanner";
 export function HeartImportForm() {
   const [state, action, pending] = useActionState(importHeartCsvAction, {} as HeartActionState);
   return (
-    <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Import Apple Health export / watch workout</h2>
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-background p-4">
+      <h3 className="font-medium">Import Health export / watch workout</h3>
       <p className="text-sm text-muted">
-        File or paste. Labeled import. Apple Watch is not connected on the web — this is a
-        CSV you exported, not a live pairing.
+        JSON (Health Auto Export), Apple Health XML, or CSV. Labeled{" "}
+        <code>apple_health</code> / <code>apple_watch_import</code>. This is a file you
+        exported — not a live Watch pairing.
       </p>
       <StatusBanner error={state.error} success={state.success} />
       <label className="block space-y-2 text-sm">
-        <span>CSV file</span>
-        <input name="file" type="file" accept=".csv,text/csv,text/plain" className="w-full text-sm" />
+        <span>File</span>
+        <input
+          name="file"
+          type="file"
+          accept=".csv,.json,.xml,text/csv,application/json,text/xml,text/plain"
+          className="w-full text-sm"
+        />
       </label>
       <label className="block space-y-2 text-sm">
-        <span>Or paste CSV</span>
+        <span>Or paste JSON / CSV / XML</span>
         <textarea
           name="csv"
           rows={5}
-          className="w-full rounded-xl border border-line bg-background px-3 py-3 font-mono text-xs"
-          placeholder={"type,recordedAt,bpm\nresting,2026-09-20,58\ntype,startedAt,endedAt,avgBpm,maxBpm,zone1Seconds,zone2Seconds,zone3Seconds,zone4Seconds,zone5Seconds\nworkout,2026-09-20T10:00,2026-09-20T10:45,148,178,300,600,900,400,100"}
+          className="w-full rounded-xl border border-line bg-card px-3 py-3 font-mono text-xs"
+          placeholder={'{"data":{"metrics":[{"name":"resting_heart_rate","data":[{"date":"2026-09-20","qty":58}]}],"workouts":[{"start":"2026-09-20T10:00:00","end":"2026-09-20T10:45:00","avgHeartRate":148,"maxHeartRate":178}]}}'}
         />
       </label>
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full border border-line font-medium disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
       >
-        {pending ? "Importing…" : "Import CSV"}
+        {pending ? "Importing…" : "Import Apple Health file"}
       </button>
     </form>
   );

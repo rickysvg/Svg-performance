@@ -8,7 +8,14 @@ import {
   type PolarFetch,
 } from "@/lib/polar";
 
-export const HR_SOURCES = ["manual", "polar", "import", "demo"] as const;
+export const HR_SOURCES = [
+  "manual",
+  "polar",
+  "import",
+  "demo",
+  "apple_health",
+  "apple_watch_import",
+] as const;
 export type HrSource = (typeof HR_SOURCES)[number];
 
 export const HR_NOT_MEDICAL_ADVICE =
@@ -24,6 +31,10 @@ export function hrSourceLabel(source: string) {
   switch (source) {
     case "polar":
       return "From Polar";
+    case "apple_health":
+      return "Imported from Apple Health";
+    case "apple_watch_import":
+      return "Imported watch workout (Health export)";
     case "import":
       return "Imported (Apple Health export / watch workout)";
     case "demo":
@@ -74,6 +85,7 @@ export async function getHeartDeviceStatus(userId: string) {
     lastSyncedAt: polarConnected ? connection?.lastSyncedAt ?? null : null,
     lastError: polarConnected ? connection?.lastError ?? "" : "",
     appleWatchConnected: false as const,
+    appleHealthKitBridge: false as const,
   };
 }
 
@@ -431,6 +443,177 @@ export async function getProgressHeartTiles(userId: string) {
   return { rhr, lastWorkout: workout };
 }
 
+export function parseHeartExport(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new AppError("HEART", "The file was empty.");
+  }
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    return parseHealthJson(trimmed);
+  }
+  if (
+    trimmed.includes("<HealthData") ||
+    trimmed.includes("HKQuantityTypeIdentifier") ||
+    trimmed.includes("<Workout")
+  ) {
+    return parseAppleHealthXml(trimmed);
+  }
+  return parseHeartCsv(trimmed);
+}
+
+export function parseHealthJson(text: string) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new AppError("HEART", "That JSON was not valid Apple Health / Health Auto Export data.");
+  }
+  const resting: { bpm: number; recordedAt: Date; source: HrSource }[] = [];
+  const workouts: WorkoutHrInput[] = [];
+  const root = asJsonRecord(parsed);
+  const data = asJsonRecord(root.data ?? parsed);
+  const metrics = asJsonArray(data.metrics ?? root.metrics ?? (Array.isArray(parsed) ? parsed : []));
+  const workoutRows = asJsonArray(data.workouts ?? root.workouts ?? data.workout ?? []);
+
+  for (const metric of metrics) {
+    const row = asJsonRecord(metric);
+    const name = String(row.name ?? row.metric ?? row.type ?? "").toLowerCase();
+    const isResting =
+      name.includes("resting_heart") ||
+      name.includes("resting-heart") ||
+      name.includes("resting heart");
+    if (!isResting) continue;
+    for (const point of asJsonArray(row.data ?? row.values ?? [])) {
+      const sample = asJsonRecord(point);
+      const bpm = Number(sample.qty ?? sample.value ?? sample.bpm ?? sample.Avg ?? sample.avg);
+      const recordedAt = parseFlexibleDate(
+        String(sample.date ?? sample.start ?? sample.recordedAt ?? sample.startDate ?? ""),
+      );
+      if (bpm && recordedAt) {
+        resting.push({ bpm, recordedAt, source: "apple_health" });
+      }
+    }
+  }
+
+  for (const item of workoutRows) {
+    const workout = parseJsonWorkout(item);
+    if (workout) workouts.push(workout);
+  }
+
+  if (resting.length === 0 && workouts.length === 0) {
+    throw new AppError("HEART", "No resting HR or workout HR found in that Apple Health JSON.");
+  }
+  return { resting, workouts };
+}
+
+function parseJsonWorkout(raw: unknown): WorkoutHrInput | null {
+  const row = asJsonRecord(raw);
+  const startedAt = parseFlexibleDate(
+    String(row.start ?? row.startDate ?? row.startedAt ?? row.start_time ?? ""),
+  );
+  const endedAt = parseFlexibleDate(
+    String(row.end ?? row.endDate ?? row.endedAt ?? row.end_time ?? ""),
+  );
+  if (!startedAt) return null;
+  const hr = asJsonRecord(row.heartRate ?? row.heart_rate ?? {});
+  const samples = asJsonArray(row.heartRateData ?? row.heart_rate_data ?? row.samples ?? []);
+  const points: HrSamplePoint[] = [];
+  for (const sample of samples) {
+    const point = asJsonRecord(sample);
+    const at = parseFlexibleDate(String(point.date ?? point.start ?? point.timestamp ?? ""));
+    const bpm = Number(point.Avg ?? point.avg ?? point.qty ?? point.value ?? point.bpm);
+    if (at && bpm) points.push({ at, bpm });
+  }
+  let avgBpm = Number(
+    hr.avg ?? hr.average ?? row.avgHeartRate ?? row.avgBpm ?? row.averageHeartRate ?? 0,
+  );
+  let maxBpm = Number(
+    hr.max ?? hr.maximum ?? row.maxHeartRate ?? row.maxBpm ?? row.maximumHeartRate ?? 0,
+  );
+  let zones = {
+    zone1Seconds: Number(row.zone1Seconds ?? 0),
+    zone2Seconds: Number(row.zone2Seconds ?? 0),
+    zone3Seconds: Number(row.zone3Seconds ?? 0),
+    zone4Seconds: Number(row.zone4Seconds ?? 0),
+    zone5Seconds: Number(row.zone5Seconds ?? 0),
+  };
+  if (points.length > 0) {
+    const bpms = points.map((point) => point.bpm);
+    if (!avgBpm) avgBpm = Math.round(bpms.reduce((sum, value) => sum + value, 0) / bpms.length);
+    if (!maxBpm) maxBpm = Math.max(...bpms);
+    zones = zonesFromSamples(points);
+  }
+  if (!avgBpm && !maxBpm) return null;
+  const end = endedAt ?? (points.at(-1)?.at ?? new Date(startedAt.getTime() + 45 * 60 * 1000));
+  return {
+    startedAt,
+    endedAt: end,
+    avgBpm: avgBpm || maxBpm,
+    maxBpm: maxBpm || avgBpm,
+    source: "apple_watch_import",
+    externalId: String(row.id ?? row.uuid ?? ""),
+    ...zones,
+  };
+}
+
+export function parseAppleHealthXml(text: string) {
+  const resting: { bpm: number; recordedAt: Date; source: HrSource }[] = [];
+  const workouts: WorkoutHrInput[] = [];
+  const recordRe =
+    /<Record\b([^>]*type="HKQuantityTypeIdentifierRestingHeartRate"[^>]*)\/?>/gi;
+  let recordMatch: RegExpExecArray | null;
+  while ((recordMatch = recordRe.exec(text))) {
+    const attrs = recordMatch[1];
+    const bpm = Number(xmlAttr(attrs, "value"));
+    const recordedAt = parseFlexibleDate(xmlAttr(attrs, "startDate") || xmlAttr(attrs, "endDate"));
+    if (bpm && recordedAt) {
+      resting.push({ bpm, recordedAt, source: "apple_health" });
+    }
+  }
+
+  const workoutRe = /<Workout\b([^>]*)>([\s\S]*?)<\/Workout>/gi;
+  let workoutMatch: RegExpExecArray | null;
+  while ((workoutMatch = workoutRe.exec(text))) {
+    const attrs = workoutMatch[1];
+    const body = workoutMatch[2];
+    const startedAt = parseFlexibleDate(xmlAttr(attrs, "startDate"));
+    const endedAt = parseFlexibleDate(xmlAttr(attrs, "endDate"));
+    const stats = /<WorkoutStatistics\b([^>]*HeartRate[^>]*)\/?>/i.exec(body);
+    const statAttrs = stats?.[1] ?? "";
+    const avgBpm = Number(xmlAttr(statAttrs, "average") || xmlAttr(attrs, "average"));
+    const maxBpm = Number(xmlAttr(statAttrs, "maximum") || xmlAttr(attrs, "maximum"));
+    if (!startedAt || (!avgBpm && !maxBpm)) continue;
+    workouts.push({
+      startedAt,
+      endedAt: endedAt ?? new Date(startedAt.getTime() + 45 * 60 * 1000),
+      avgBpm: avgBpm || maxBpm,
+      maxBpm: maxBpm || avgBpm,
+      source: "apple_watch_import",
+    });
+  }
+
+  if (resting.length === 0 && workouts.length === 0) {
+    throw new AppError("HEART", "No resting HR or workout HR found in that Apple Health XML.");
+  }
+  return { resting, workouts };
+}
+
+function xmlAttr(attrs: string, name: string) {
+  const match = new RegExp(`${name}="([^"]*)"`, "i").exec(attrs);
+  return match?.[1] ?? "";
+}
+
+function asJsonRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asJsonArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function parseHeartCsv(text: string) {
   const lines = text
     .split(/\r?\n/)
@@ -458,7 +641,9 @@ export function parseHeartCsv(text: string) {
     const inferred =
       type === "resting" || type === "workout" || type === "sample"
         ? type
-        : header.includes("resting heart rate (bpm)") || header.includes("restinghr")
+        : header.includes("resting heart rate (bpm)") ||
+            header.includes("resting heart rate (count/min)") ||
+            header.includes("restinghr")
           ? "resting"
           : header.includes("avgbpm") || header.includes("startedat")
             ? "workout"
@@ -486,7 +671,7 @@ export function parseHeartCsv(text: string) {
         endedAt,
         avgBpm: Number(row.avgbpm || cells[3]),
         maxBpm: Number(row.maxbpm || cells[4]),
-        source: "import",
+        source: "apple_watch_import",
         zone1Seconds: Number(row.zone1seconds || cells[5] || 0),
         zone2Seconds: Number(row.zone2seconds || cells[6] || 0),
         zone3Seconds: Number(row.zone3seconds || cells[7] || 0),
@@ -514,7 +699,7 @@ export function parseHeartCsv(text: string) {
       endedAt: ordered[ordered.length - 1].at,
       avgBpm: Math.round(bpms.reduce((sum, value) => sum + value, 0) / bpms.length),
       maxBpm: Math.max(...bpms),
-      source: "import",
+      source: "apple_watch_import",
       ...zones,
     });
   }
@@ -527,14 +712,25 @@ export function parseHeartCsv(text: string) {
 }
 
 export async function importHeartCsvForUser(userId: string, csv: string) {
-  const parsed = parseHeartCsv(csv);
+  return importHeartExportForUser(userId, csv);
+}
+
+export async function importHeartExportForUser(userId: string, text: string) {
+  const parsed = parseHeartExport(text);
   const created = { resting: 0, workouts: 0 };
   for (const row of parsed.resting) {
-    await createRestingSampleForUser(userId, { ...row, source: "import" });
+    await createRestingSampleForUser(userId, {
+      bpm: row.bpm,
+      recordedAt: row.recordedAt,
+      source: "source" in row && typeof row.source === "string" ? row.source : "apple_health",
+    });
     created.resting += 1;
   }
   for (const row of parsed.workouts) {
-    await createWorkoutHrForUser(userId, { ...row, source: "import" });
+    await createWorkoutHrForUser(userId, {
+      ...row,
+      source: row.source || "apple_watch_import",
+    });
     created.workouts += 1;
   }
   return created;
@@ -653,9 +849,16 @@ export async function disconnectPolarConnectionForUser(userId: string) {
 
 function looksLikeHeader(header: string[]) {
   return header.some((cell) =>
-    ["type", "bpm", "date", "timestamp", "startedat", "resting heart rate (bpm)", "avgbpm"].includes(
-      cell,
-    ),
+    [
+      "type",
+      "bpm",
+      "date",
+      "timestamp",
+      "startedat",
+      "resting heart rate (bpm)",
+      "resting heart rate (count/min)",
+      "avgbpm",
+    ].includes(cell),
   );
 }
 

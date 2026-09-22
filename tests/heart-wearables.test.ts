@@ -13,8 +13,12 @@ import {
   getRestingSampleForUser,
   getWorkoutHrForUser,
   importHeartCsvForUser,
+  importHeartExportForUser,
   loadDemoHeartDataForUser,
+  parseAppleHealthXml,
+  parseHealthJson,
   parseHeartCsv,
+  parseHeartExport,
   syncPolarForUser,
   zoneIndexForBpm,
   zonesFromSamples,
@@ -83,6 +87,7 @@ describe("heart rate wearables", () => {
     expect(empty.polarConfigured).toBe(false);
     expect(empty.polarConnected).toBe(false);
     expect(empty.appleWatchConnected).toBe(false);
+    expect(empty.appleHealthKitBridge).toBe(false);
 
     await prisma.polarConnection.create({
       data: {
@@ -167,7 +172,7 @@ describe("heart rate wearables", () => {
     expect(analysis.weeklyZones.zone4 + analysis.weeklyZones.zone5).toBeGreaterThanOrEqual(40);
   });
 
-  it("imports CSV as source=import and updates Progress HR tiles", async () => {
+  it("imports CSV as Apple Health / watch-workout sources and updates Progress tiles", async () => {
     const user = await makeUser("hr-import@example.com");
     const csv = [
       "type,recordedAt,bpm",
@@ -178,13 +183,70 @@ describe("heart rate wearables", () => {
     const parsed = parseHeartCsv(csv);
     expect(parsed.resting).toHaveLength(1);
     expect(parsed.workouts).toHaveLength(1);
+    expect(parsed.workouts[0].source).toBe("apple_watch_import");
     await importHeartCsvForUser(user.id, csv);
     const tiles = await getProgressHeartTiles(user.id);
     expect(tiles.rhr?.value).toBe("57 bpm");
-    expect(tiles.rhr?.hint).toContain("Imported");
+    expect(tiles.rhr?.source).toBe("apple_health");
+    expect(tiles.rhr?.hint).toContain("Apple Health");
     expect(tiles.lastWorkout?.value).toBe("141 / 172 bpm");
-    expect(tiles.lastWorkout?.hint).toContain("Imported");
+    expect(tiles.lastWorkout?.source).toBe("apple_watch_import");
     expect(tiles.lastWorkout?.hint.toLowerCase()).not.toContain("apple watch connected");
+  });
+
+  it("parses Health Auto Export JSON and Apple Health XML without marking Watch connected", async () => {
+    const user = await makeUser("hr-apple@example.com");
+    const json = JSON.stringify({
+      data: {
+        metrics: [
+          {
+            name: "resting_heart_rate",
+            data: [{ date: "2026-09-21 07:00:00", qty: 54 }],
+          },
+        ],
+        workouts: [
+          {
+            id: "w1",
+            start: "2026-09-21T10:00:00",
+            end: "2026-09-21T10:40:00",
+            avgHeartRate: 150,
+            maxHeartRate: 174,
+            heartRateData: [
+              { date: "2026-09-21T10:00:00", Avg: 120 },
+              { date: "2026-09-21T10:01:00", Avg: 140 },
+              { date: "2026-09-21T10:02:00", Avg: 165 },
+            ],
+          },
+        ],
+      },
+    });
+    const fromJson = parseHealthJson(json);
+    expect(fromJson.resting[0]?.source).toBe("apple_health");
+    expect(fromJson.workouts[0]?.source).toBe("apple_watch_import");
+    expect(parseHeartExport(json).resting).toHaveLength(1);
+
+    const xml = `
+      <HealthData>
+        <Record type="HKQuantityTypeIdentifierRestingHeartRate" startDate="2026-09-20 07:00:00 -0600" value="56" unit="count/min"/>
+        <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" startDate="2026-09-20 10:00:00 -0600" endDate="2026-09-20 10:45:00 -0600">
+          <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" average="144" maximum="170" unit="count/min"/>
+        </Workout>
+      </HealthData>
+    `;
+    const fromXml = parseAppleHealthXml(xml);
+    expect(fromXml.resting[0]?.bpm).toBe(56);
+    expect(fromXml.resting[0]?.source).toBe("apple_health");
+    expect(fromXml.workouts[0]?.avgBpm).toBe(144);
+    expect(fromXml.workouts[0]?.source).toBe("apple_watch_import");
+
+    await importHeartExportForUser(user.id, json);
+    const tiles = await getProgressHeartTiles(user.id);
+    expect(tiles.rhr?.value).toBe("54 bpm");
+    expect(tiles.rhr?.source).toBe("apple_health");
+    expect(tiles.lastWorkout?.source).toBe("apple_watch_import");
+    const status = await getHeartDeviceStatus(user.id);
+    expect(status.appleWatchConnected).toBe(false);
+    expect(status.appleHealthKitBridge).toBe(false);
   });
 
   it("loads DEMO samples labeled demo, never as Polar/Apple connected", async () => {

@@ -24,8 +24,8 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
       <h2 className="text-lg font-semibold">Log a body metric</h2>
       <p className="text-sm text-muted">
-        Type a number yourself. Polar and CSV import live on Heart rate. Sleep / lean / fat
-        stay typed — no fake Apple Watch pairing.
+        Type a number yourself. Apple Health import and Polar live on Heart rate. Sleep /
+        lean / fat stay typed — no fake Apple Watch pairing.
       </p>
       <StatusBanner error={state.error} success={state.success} />
       <label className="block text-sm">

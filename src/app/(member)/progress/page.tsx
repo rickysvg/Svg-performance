@@ -62,8 +62,8 @@ export default async function ProgressPage() {
         <div>
           <h1 className="text-2xl font-semibold">My Progress</h1>
           <p className="mt-1 text-sm text-muted">
-            Body numbers you type, Polar when it is connected, or a labeled import. Apple
-            Watch is not connected on the web.
+            Body numbers you type, Apple Health / watch workout imports, or Polar when
+            it is connected. Apple Watch is not connected on the web.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -91,7 +91,7 @@ export default async function ProgressPage() {
             heartTiles.rhr?.hint ??
             (typedHr
               ? "Typed by you"
-              : "Empty until you type one, import a CSV, or pull Polar")
+              : "Empty until you import Apple Health, type one, or pull Polar")
           }
         />
         <MetricTile
@@ -99,7 +99,7 @@ export default async function ProgressPage() {
           value={heartTiles.lastWorkout?.value ?? "—"}
           hint={
             heartTiles.lastWorkout?.hint ??
-            "Avg / max after a session — manual, Polar, import, or DEMO"
+            "Avg / max — Apple Health import, manual, Polar, or DEMO"
           }
         />
         <MetricTile

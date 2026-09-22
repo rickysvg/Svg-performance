@@ -94,7 +94,7 @@ export async function importHeartCsvAction(
     const result = await importHeartCsvForUser(user.id, csv);
     revalidateHeart();
     return {
-      success: `Imported ${result.resting} resting and ${result.workouts} workout row(s). Labeled import — Apple Watch is not connected on the web.`,
+      success: `Imported ${result.resting} Apple Health resting and ${result.workouts} watch-workout row(s). Apple Watch is not connected on the web.`,
     };
   } catch (error) {
     return { error: publicErrorMessage(error) };

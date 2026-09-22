@@ -9,29 +9,36 @@ import {
 } from "@/lib/heart";
 import { DemoBadge } from "@/components/DemoBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { AppleHealthCard } from "@/components/heart/AppleHealthCard";
 import { PolarConnectCard } from "@/components/heart/PolarConnectCard";
 import { HrRestingForm } from "@/components/heart/HrRestingForm";
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
-import { HeartImportForm } from "@/components/heart/HeartImportForm";
 import { ZoneChart } from "@/components/heart/ZoneChart";
 import { deleteRestingHrAction, deleteWorkoutHrAction } from "@/app/actions/heart";
 
-function polarFlash(value?: string) {
-  if (value === "connected") return "Polar connected. Pull recent activities when you want a refresh.";
-  if (value === "demo") {
+function flashMessage(query: { polar?: string; demo?: string; imported?: string }) {
+  if (query.imported === "1") {
+    return "Imported Apple Health / watch workout data. Apple Watch is not connected on the web.";
+  }
+  if (query.demo === "1") {
     return "Loaded labeled DEMO heart-rate samples. Not a real Polar or Apple Watch connection.";
   }
-  if (value === "not-configured") {
-    return "Polar keys are not set on this preview. Connect Polar (TEST) stays off until env is added.";
+  if (query.polar === "connected") return "Polar connected. Pull recent activities when you want a refresh.";
+  if (query.polar === "not-configured") {
+    return "Polar keys are not set. Apple Health import still works.";
   }
-  if (value === "error") return "Polar authorization did not finish. Try Connect Polar again.";
+  if (query.polar === "error") return "Polar authorization did not finish. Try Connect Polar again.";
   return undefined;
+}
+
+function isAppleSource(source: string) {
+  return source === "apple_health" || source === "apple_watch_import" || source === "import";
 }
 
 export default async function HeartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ polar?: string; demo?: string }>;
+  searchParams: Promise<{ polar?: string; demo?: string; imported?: string }>;
 }) {
   const user = await requireUser();
   const query = await searchParams;
@@ -41,27 +48,28 @@ export default async function HeartPage({
     listRestingSamplesForUser(user.id),
     listWorkoutHrForUser(user.id),
   ]);
-  const flash = polarFlash(query.polar) || (query.demo === "1" ? polarFlash("demo") : undefined);
+  const flash = flashMessage(query);
 
   return (
     <main className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Heart rate</h1>
         <p className="mt-1 text-sm text-muted">
-          Polar when env keys exist. Otherwise manual, CSV import, or labeled DEMO. Apple
-          Watch is not connected on the web.
+          Primary path is Apple Health / Watch export. Polar is optional. Manual
+          entry is a backup. Analysis is not medical advice. Apple Watch is not
+          connected on the web.
         </p>
       </div>
 
-      <PolarConnectCard status={status} message={flash} />
+      <AppleHealthCard status={status} message={flash && !query.polar ? flash : undefined} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="font-semibold">Breakdown</h2>
         <p className="mt-1 text-xs text-muted">{analysis.disclaimer}</p>
         {!analysis.latestRhr && !analysis.lastWorkout ? (
           <EmptyState title="No heart-rate data yet">
-            Type a resting HR, record avg/max after a workout, import a CSV, connect Polar
-            when keys exist, or load labeled DEMO samples.
+            Import an Apple Health export, type a resting HR, record avg/max after a
+            workout, connect Polar if keys exist, or load labeled DEMO samples.
           </EmptyState>
         ) : (
           <div className="mt-4 space-y-4">
@@ -130,7 +138,8 @@ export default async function HeartPage({
 
       <HrRestingForm />
       <HrWorkoutForm />
-      <HeartImportForm />
+
+      <PolarConnectCard status={status} message={query.polar ? flash : undefined} />
 
       {resting.length > 0 ? (
         <section className="rounded-2xl border border-line bg-card p-5">
@@ -146,6 +155,7 @@ export default async function HeartPage({
                   <span className="block text-xs text-muted">
                     {row.recordedAt.toLocaleString()} · {hrSourceLabel(row.source)}
                     {row.source === "demo" ? " · DEMO" : ""}
+                    {isAppleSource(row.source) ? " · import" : ""}
                   </span>
                 </span>
                 <form action={deleteRestingHrAction}>
@@ -174,6 +184,7 @@ export default async function HeartPage({
                   <span className="block text-xs text-muted">
                     {row.startedAt.toLocaleString()} · {hrSourceLabel(row.source)}
                     {row.source === "demo" ? " · DEMO" : ""}
+                    {isAppleSource(row.source) ? " · import" : ""}
                   </span>
                 </span>
                 <form action={deleteWorkoutHrAction}>
@@ -193,7 +204,8 @@ export default async function HeartPage({
         <Link href="/progress" className="text-accent underline">
           My Progress
         </Link>
-        . Record HR after a logged workout from the session screen.
+        . Record HR after a logged workout from the session screen. Phase 2 is a native
+        iOS companion with HealthKit for automatic Watch sync.
       </p>
     </main>
   );

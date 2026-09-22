@@ -53,8 +53,8 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - **Home UX:** Inspired by Fight Science Collective *layout ideas only* (greeting, week strip, nutrition rings, workout card, FAB). We did not copy their logo, red medical cross, colors, or assets. SVG uses black / white / `#D0FF00`, academy-first copy, and our own logo.
 - **Nav:** Phone bar is **Home · Train · Fuel · Learn · Coach**. Shop is on Home plus the header so it stays reachable without crowding a sixth tab.
 - **Nutrition rings:** Today’s (or selected day’s) food logs vs profile targets. New accounts start at DEMO estimates **2200 / 140 g / 220 g / 70 g** — not copied from another gym’s numbers. Always labeled estimates.
-- **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / LBM / body fat stay typed. Resting HR on Progress prefers `HrRestingSample` (Polar / import / manual / DEMO) and falls back to the typed body metric.
-- **Wearables (Phase 1 Polar-first):** Polar AccessLink OAuth when `POLAR_CLIENT_ID` / `POLAR_CLIENT_SECRET` / `POLAR_REDIRECT_URI` exist. Without keys, UI is Connect Polar (TEST) + setup copy. Tokens live server-side only. “Polar connected” requires keys **and** a stored token. Apple Watch is never shown as connected on the web. Phase 1 Apple path is manual + CSV labeled “Apple Health export / watch workout.” DEMO samples are labeled DEMO. Analysis (`/heart`) is RHR 7/30, last workout avg/max/zones, weekly zone bars, plain-language insights, always **not medical advice**. Workout complete can record optional avg/max. Polar pull is graceful if the API is down. We do not store raw HR streams in analytics events.
+- **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / LBM / body fat stay typed. Resting HR on Progress prefers `HrRestingSample` (Apple Health / Polar / manual / DEMO) and falls back to the typed body metric.
+- **Wearables (Phase 1 Apple Health first):** Primary UI is Connect Apple Health with honest “web cannot pair Watch” copy plus JSON / XML / CSV import (`apple_health`, `apple_watch_import`). Polar AccessLink stays available but secondary. Manual avg/max is a backup. “Apple Watch connected” is never shown; `appleHealthKitBridge` is always false. Polar “connected” still requires env keys **and** a stored token. DEMO samples are labeled DEMO. Analysis (`/heart`) is RHR 7/30, last workout avg/max/zones, weekly zone bars, plain-language insights, always **not medical advice**. Phase 2 is a native iOS companion / HealthKit. We do not store raw HR streams in analytics events.
 
 ## Form video selection rules
 
@@ -158,11 +158,13 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - **Journal** is owner-only. Coaching tiers can receive human feedback + action items. No generated Ricky voice.
 - **Book with Ricky** shows remaining credits, a prepare checklist per offer, preferred-time requests, and post-call next steps (staff-written). Booking reminders reuse ReminderPrefs (`bookingEnabled`) — in-app after the preferred hour; email if SMTP.
 
-## Heart rate wearables (Phase 1)
+## Heart rate wearables (Phase 1 — Apple Health first)
 
-- Tables: `PolarConnection`, `HrRestingSample`, `HrWorkoutSession` (zone1–5 seconds). Sources: `manual | polar | import | demo`.
-- Polar register-user after OAuth; pull `/v3/exercises?zones=true` and `/v3/users/nightly-recharge`. Injectable fetch for tests.
-- Full Apple Watch / HealthKit, Garmin OAuth, medical diagnosis, and fake live streaming are out of scope.
+- Tables: `PolarConnection`, `HrRestingSample`, `HrWorkoutSession` (zone1–5 seconds). Sources: `manual | polar | import | demo | apple_health | apple_watch_import`.
+- Primary import: Health Auto Export JSON, Apple Health `export.xml` (resting `Record` + `Workout`/`WorkoutStatistics`), and CSV. Resting → `apple_health`. Workouts → `apple_watch_import`.
+- Polar remains optional (OAuth + pull) and sits below Apple Health on `/heart`.
+- Phase 2: native iOS companion / HealthKit for automatic Watch sync. Not faked on web.
+- Garmin OAuth, medical diagnosis, and fake live streaming are out of scope.
 
 ## Out of scope
 
