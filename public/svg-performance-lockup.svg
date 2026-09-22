@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="72 64 880 800" role="img" aria-labelledby="perfLockupTitle">
+  <title id="perfLockupTitle">SVG Performance</title>
+  <!-- Official SVG Performance lockup, transparent (no baked-in black square). -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linejoin="miter" stroke-linecap="square">
+    <path d="M96 430 L250 210 L340 290 L500 90 L928 430"/>
+  </g>
+  <path
+    d="M738 148 L758 208 L822 208 L770 246 L790 308 L738 270 L686 308 L706 246 L654 208 L718 208 Z"
+    fill="#D0FF00"
+    stroke="#111111"
+    stroke-width="6"
+  />
+  <text
+    x="512"
+    y="640"
+    text-anchor="middle"
+    font-family="Arial Black, Impact, Arial, Helvetica, sans-serif"
+    font-size="250"
+    font-weight="900"
+    letter-spacing="-10"
+  >
+    <tspan fill="#FFFFFF">S</tspan><tspan fill="#D0FF00">V</tspan><tspan fill="#FFFFFF">G</tspan>
+  </text>
+  <rect x="130" y="708" width="764" height="136" fill="#D0FF00"/>
+  <text
+    x="512"
+    y="802"
+    text-anchor="middle"
+    fill="#141800"
+    font-family="Impact, Arial Black, Arial, Helvetica, sans-serif"
+    font-size="72"
+    font-weight="800"
+    letter-spacing="4"
+    textLength="700"
+    lengthAdjust="spacingAndGlyphs"
+  >PERFORMANCE</text>
+</svg>

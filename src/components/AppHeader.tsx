@@ -24,11 +24,8 @@ export function AppHeader({
           href={homeHref ?? (email ? "/home" : "/")}
           className="flex min-w-0 shrink-0 items-center gap-3"
         >
-          <Logo size="sm" />
-          <div className="min-w-0 leading-tight">
-            <p className="text-sm font-semibold tracking-wide">SVG Performance</p>
-            <p className="text-xs text-muted">Member companion preview</p>
-          </div>
+          <Logo variant="mark" size="sm" />
+          <p className="min-w-0 truncate text-xs text-muted">Member companion preview</p>
         </Link>
         {email ? (
           <nav
