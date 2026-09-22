@@ -101,47 +101,24 @@ export async function importHeartCsvAction(
   }
 }
 
-export async function loadDemoHeartAction(
-  _formData?: FormData,
-): Promise<HeartActionState> {
-  try {
-    const user = await requireUserOrThrow();
-    const result = await loadDemoHeartDataForUser(user.id);
-    revalidateHeart();
-    if (!result.created) {
-      return { success: "DEMO heart-rate samples are already on this account." };
-    }
-  } catch (error) {
-    return { error: publicErrorMessage(error) };
-  }
+/** Native <form action> must return void — these cards do not use useActionState. */
+export async function loadDemoHeartAction(_formData?: FormData): Promise<void> {
+  const user = await requireUserOrThrow();
+  await loadDemoHeartDataForUser(user.id);
+  revalidateHeart();
   redirect("/heart?demo=1");
 }
 
-export async function syncPolarAction(_formData?: FormData): Promise<HeartActionState> {
-  try {
-    const user = await requireUserOrThrow();
-    const result = await syncPolarForUser(user.id);
-    revalidateHeart();
-    return {
-      success: `Pulled ${result.workouts} Polar workout(s) and ${result.resting} overnight HR sample(s).`,
-    };
-  } catch (error) {
-    revalidatePath("/heart");
-    return { error: publicErrorMessage(error) };
-  }
+export async function syncPolarAction(_formData?: FormData): Promise<void> {
+  const user = await requireUserOrThrow();
+  await syncPolarForUser(user.id);
+  revalidateHeart();
 }
 
-export async function disconnectPolarAction(
-  _formData?: FormData,
-): Promise<HeartActionState> {
-  try {
-    const user = await requireUserOrThrow();
-    await disconnectPolarConnectionForUser(user.id);
-    revalidateHeart();
-    return { success: "Polar disconnected on this preview." };
-  } catch (error) {
-    return { error: publicErrorMessage(error) };
-  }
+export async function disconnectPolarAction(_formData?: FormData): Promise<void> {
+  const user = await requireUserOrThrow();
+  await disconnectPolarConnectionForUser(user.id);
+  revalidateHeart();
 }
 
 export async function deleteRestingHrAction(formData: FormData) {
