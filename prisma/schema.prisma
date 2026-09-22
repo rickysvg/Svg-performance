@@ -78,8 +78,17 @@ model Profile {
   preferredUnits         String    @default("lb")
   foodPreferences        String    @default("")
   allergies              String    @default("")
-  trainingLimitations    String    @default("")
-  onboardingCompletedAt  DateTime?
+  trainingLimitations        String    @default("")
+  onboardingCompletedAt      DateTime?
+  onboardingDeepCompletedAt  DateTime?
+  currentWeight              Float?
+  goalWeight                 Float?
+  sessionLengthMin           Int?
+  trainingLocation           String    @default("")
+  competitionStatus          String    @default("")
+  nextFightDate              DateTime?
+  coachingTone               String    @default("")
+  obstaclesJson              String    @default("[]")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
   carbsTargetG           Int      @default(220)

@@ -26,7 +26,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
           <div className="h-full w-full rounded-full bg-accent/70" />
         </div>
         <p className="mt-2 text-xs text-muted">
-          Required first. Optional notes can be skipped.
+          Required first. Next screen is optional and can be skipped.
         </p>
       </div>
       <StatusBanner error={state.error} />
@@ -208,7 +208,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Save and go to Home"}
+        {pending ? "Saving…" : "Save and continue"}
       </button>
     </form>
   );

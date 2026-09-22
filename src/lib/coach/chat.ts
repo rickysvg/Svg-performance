@@ -2,12 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { detectSafetyRefusal, safetyPreamble } from "@/lib/coach/safety";
 import { loadKnowledgeBase } from "@/lib/coach/knowledge";
+import { coachingToneNote } from "@/lib/onboarding";
 
 export function isOpenAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
-function offlineReply(message: string, experienceLevel: string) {
+function offlineReply(message: string, experienceLevel: string, coachingTone = "") {
   const text = message.toLowerCase();
   const kb = loadKnowledgeBase();
   const hasGuide = kb.includes("COACHING_GUIDE.md");
@@ -20,27 +21,32 @@ function offlineReply(message: string, experienceLevel: string) {
       : experienceLevel === "advanced"
         ? "You have a consistent lifting base — stay honest, do not add junk volume."
         : "Match the work to how you actually recover this week.";
+  const toneNote = coachingToneNote(coachingTone);
 
   if (/missed|skip(ped)?|fell off|inconsistent/.test(text)) {
-    return `${levelNote} ${guideNote} Missing a session is not a verdict (COACHING_GUIDE.md / DEMO-seeds.md). Pick the next date you will train and do that one session. Do not stack a punishment workout. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} Missing a session is not a verdict (COACHING_GUIDE.md / DEMO-seeds.md). Pick the next date you will train and do that one session. Do not stack a punishment workout. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
   }
   if (/technique|jab|takedown|guard|stance|how do i/.test(text)) {
-    return `${levelNote} ${guideNote} One simple cue from the DEMO notes, then live eyes on the floor. I do not invent a full paid curriculum. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} One simple cue from the DEMO notes, then live eyes on the floor. I do not invent a full paid curriculum. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
   }
   if (/discourag|fail|setback|plateau/.test(text)) {
-    return `${levelNote} ${guideNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
   }
-  return `${levelNote} ${guideNote} If the notes do not cover this, I will not guess gym-specific policy. Ask a coach on the floor. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+  return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} If the notes do not cover this, I will not guess gym-specific policy. Ask a coach on the floor. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
 }
 
 async function liveReply(input: {
   message: string;
   experienceLevel: string;
+  coachingTone?: string;
   ownSummary: string;
 }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
-    return { content: offlineReply(input.message, input.experienceLevel), offline: true };
+    return {
+      content: offlineReply(input.message, input.experienceLevel, input.coachingTone),
+      offline: true,
+    };
   }
   const system = [
     safetyPreamble(),
@@ -67,7 +73,7 @@ async function liveReply(input: {
   });
   if (!response.ok) {
     return {
-      content: `${offlineReply(input.message, input.experienceLevel)} (Live model request failed, so you are seeing the offline answer.)`,
+      content: `${offlineReply(input.message, input.experienceLevel, input.coachingTone)} (Live model request failed, so you are seeing the offline answer.)`,
       offline: true,
     };
   }
@@ -116,6 +122,7 @@ export async function sendCoachMessage(input: {
   userId: string;
   message: string;
   experienceLevel?: string;
+  coachingTone?: string;
   mentionedUserId?: string;
 }) {
   const message = input.message.trim().slice(0, 2000);
@@ -150,10 +157,18 @@ export async function sendCoachMessage(input: {
     return { threadId: thread.id, assistant: saved, refused: true };
   }
 
-  const ownSummary = `Experience: ${input.experienceLevel || "unknown"}. Only this user id ${input.userId} may be discussed.`;
+  const ownSummary = [
+    `Experience: ${input.experienceLevel || "unknown"}.`,
+    input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
+    `Only this user id ${input.userId} may be discussed.`,
+    "Do not invent a medical or calorie plan from any stored weight.",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const reply = await liveReply({
     message,
     experienceLevel: input.experienceLevel || "beginner",
+    coachingTone: input.coachingTone,
     ownSummary,
   });
   const saved = await prisma.chatMessage.create({

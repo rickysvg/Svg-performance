@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
 import {
+  COMPETITION_STATUS_OPTIONS,
+  COACHING_TONE_OPTIONS,
   EQUIPMENT_OPTIONS,
   EXPERIENCE_LEVELS,
   FOCUS_OPTIONS,
   GOAL_OPTIONS,
+  OBSTACLE_OPTIONS,
+  SESSION_LENGTH_OPTIONS,
+  TRAINING_LOCATION_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
 import { isLoadUnit } from "@/lib/units";
@@ -68,12 +73,27 @@ export function shouldBlockMemberRoute(onboardingCompletedAt: Date | null) {
   return !onboardingCompletedAt;
 }
 
+export function hasCompletedDeepOnboarding(profile: {
+  onboardingDeepCompletedAt: Date | null;
+} | null) {
+  return Boolean(profile?.onboardingDeepCompletedAt);
+}
+
+export function needsDeepOnboardingPrompt(profile: {
+  onboardingCompletedAt: Date | null;
+  onboardingDeepCompletedAt: Date | null;
+} | null) {
+  return Boolean(profile?.onboardingCompletedAt && !profile.onboardingDeepCompletedAt);
+}
+
 export async function getOnboardingStatus(userId: string) {
   const profile = await prisma.profile.findUnique({ where: { userId } });
   return {
     profile: profile ? toProfileRecord(profile) : null,
     completedAt: profile?.onboardingCompletedAt ?? null,
     completed: hasCompletedOnboarding(profile),
+    deepCompletedAt: profile?.onboardingDeepCompletedAt ?? null,
+    deepCompleted: hasCompletedDeepOnboarding(profile),
   };
 }
 
@@ -212,6 +232,154 @@ export function suggestDemoProgramDay<T extends { id: string; dayNumber: number 
   const pool = unused.length > 0 ? unused : days;
   const preferred = preferredDemoDayNumber(prefs);
   return pool.find((day) => day.dayNumber === preferred) ?? pool[0] ?? null;
+}
+
+export type DeepOnboardingInput = {
+  currentWeight: number | null;
+  goalWeight: number | null;
+  sessionLengthMin: number | null;
+  trainingLocation: string;
+  competitionStatus: string;
+  nextFightDate: Date | null;
+  coachingTone: string;
+  obstacles: string[];
+};
+
+function parseOptionalWeight(value: number | null, units: string, label: string) {
+  if (value == null || Number.isNaN(value)) {
+    return null;
+  }
+  const min = units === "kg" ? 20 : 50;
+  const max = units === "kg" ? 250 : 500;
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new AppError("ONBOARDING", `${label} should be between ${min} and ${max} ${units}.`);
+  }
+  return Math.round(value * 10) / 10;
+}
+
+export function validateDeepOnboardingInput(
+  input: DeepOnboardingInput,
+  units: string,
+): DeepOnboardingInput {
+  const sessionLengthMin =
+    input.sessionLengthMin == null
+      ? null
+      : SESSION_LENGTH_OPTIONS.some((item) => item.value === input.sessionLengthMin)
+        ? input.sessionLengthMin
+        : null;
+  const trainingLocation = TRAINING_LOCATION_OPTIONS.some(
+    (item) => item.value === input.trainingLocation,
+  )
+    ? input.trainingLocation
+    : "";
+  const competitionStatus = COMPETITION_STATUS_OPTIONS.some(
+    (item) => item.value === input.competitionStatus,
+  )
+    ? input.competitionStatus
+    : "";
+  const coachingTone = COACHING_TONE_OPTIONS.some((item) => item.value === input.coachingTone)
+    ? input.coachingTone
+    : "";
+  const obstacles = input.obstacles.filter((item) =>
+    OBSTACLE_OPTIONS.some((option) => option.value === item),
+  );
+  let nextFightDate = input.nextFightDate;
+  if (nextFightDate && Number.isNaN(nextFightDate.getTime())) {
+    throw new AppError("ONBOARDING", "Use a real next-fight date or leave it blank.");
+  }
+  if (competitionStatus === "none" || competitionStatus === "") {
+    nextFightDate = null;
+  }
+  return {
+    currentWeight: parseOptionalWeight(input.currentWeight, units, "Current body weight"),
+    goalWeight: parseOptionalWeight(input.goalWeight, units, "Goal weight"),
+    sessionLengthMin,
+    trainingLocation,
+    competitionStatus,
+    nextFightDate,
+    coachingTone,
+    obstacles,
+  };
+}
+
+export async function saveDeepOnboardingForUser(userId: string, input: DeepOnboardingInput) {
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing) {
+    throw new NotFoundError("Profile not found.");
+  }
+  if (!existing.onboardingCompletedAt) {
+    throw new AppError("ONBOARDING", "Finish the required questions first.");
+  }
+  const data = validateDeepOnboardingInput(input, existing.preferredUnits);
+  const row = await prisma.profile.update({
+    where: { userId },
+    data: {
+      currentWeight: data.currentWeight,
+      goalWeight: data.goalWeight,
+      sessionLengthMin: data.sessionLengthMin,
+      trainingLocation: data.trainingLocation,
+      competitionStatus: data.competitionStatus,
+      nextFightDate: data.nextFightDate,
+      coachingTone: data.coachingTone,
+      obstaclesJson: JSON.stringify(data.obstacles),
+      onboardingDeepCompletedAt: existing.onboardingDeepCompletedAt ?? new Date(),
+    },
+  });
+  return toProfileRecord(row);
+}
+
+export function sessionLengthHint(sessionLengthMin: number | null) {
+  if (!sessionLengthMin) {
+    return "";
+  }
+  return `You said typical sessions are ${sessionLengthMin} minutes. This DEMO day is a template — stop when the work is honest.`;
+}
+
+export function trainingLocationHint(location: string) {
+  if (location === "home") {
+    return "You train at home. The DEMO template uses simple equipment.";
+  }
+  if (location === "gym") {
+    return "You train at the gym. The DEMO template still stays labeled DEMO.";
+  }
+  if (location === "both") {
+    return "You train at the gym and at home. The DEMO template uses simple equipment on purpose.";
+  }
+  return "";
+}
+
+export function competitionNote(status: string, nextFightDate: Date | null) {
+  if (status !== "amateur" && status !== "pro") {
+    return "";
+  }
+  const label = status === "pro" ? "Pro" : "Amateur";
+  const date = nextFightDate
+    ? ` Next fight on file: ${nextFightDate.toLocaleDateString()}.`
+    : "";
+  return `${label} status is saved for later fight-camp tools.${date} This app still does not run a fight camp.`;
+}
+
+export function coachingToneNote(tone: string) {
+  if (tone === "tough") {
+    return "Preferred tone: more tough. Keep the standard high. No sugarcoating — still no shame.";
+  }
+  if (tone === "encouraging") {
+    return "Preferred tone: more encouraging. Lead with what is working, then one next step.";
+  }
+  if (tone === "balanced") {
+    return "Preferred tone: balanced. Be direct and even.";
+  }
+  return "";
+}
+
+export function obstacleNote(obstacles: string[]) {
+  const labels = obstacles
+    .map((item) => OBSTACLE_OPTIONS.find((option) => option.value === item)?.label)
+    .filter((label): label is string => Boolean(label));
+  if (labels.length === 0) {
+    return "";
+  }
+  return `Biggest obstacle on file: ${labels.join(", ")}. We will not invent a medical plan from that.`;
 }
 
 export function demoSuggestionCopy(prefs: { goalKey?: string; primaryFocus?: string }) {

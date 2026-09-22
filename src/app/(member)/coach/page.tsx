@@ -2,6 +2,8 @@ import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
 import { PaywallNotice } from "@/components/PaywallNotice";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
+import { getProfileForUser } from "@/lib/profile";
+import { coachingToneNote } from "@/lib/onboarding";
 import { CoachChatForm } from "@/components/coach/CoachChatForm";
 import { EmptyState } from "@/components/EmptyState";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
@@ -12,8 +14,12 @@ export default async function CoachPage() {
   if (!access.allowed) {
     return <PaywallNotice feature="Coach Savage AI" />;
   }
-  const thread = await getOrCreateThread(user.id);
+  const [thread, profile] = await Promise.all([
+    getOrCreateThread(user.id),
+    getProfileForUser(user.id),
+  ]);
   const live = isOpenAiConfigured();
+  const toneCopy = coachingToneNote(profile?.coachingTone ?? "");
 
   return (
     <main className="space-y-6">
@@ -29,6 +35,7 @@ export default async function CoachPage() {
           weight-cut, and other-member record requests.
         </p>
         <AiDisclaimer className="mt-3 rounded-xl border border-accent/40 bg-accent/10 p-3" />
+        {toneCopy ? <p className="mt-3 text-sm text-muted">{toneCopy}</p> : null}
       </div>
       <div className="space-y-3">
         {thread.messages.length === 0 ? (

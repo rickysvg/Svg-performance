@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
 import {
+  COMPETITION_STATUS_OPTIONS,
+  COACHING_TONE_OPTIONS,
   DEMO_NUTRITION_TARGETS,
   EQUIPMENT_OPTIONS,
   FOCUS_OPTIONS,
   GOAL_OPTIONS,
+  OBSTACLE_OPTIONS,
+  SESSION_LENGTH_OPTIONS,
+  TRAINING_LOCATION_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
@@ -32,6 +37,15 @@ export type ProfileRecord = {
   carbsTargetG: number;
   fatTargetG: number;
   onboardingCompletedAt: Date | null;
+  onboardingDeepCompletedAt: Date | null;
+  currentWeight: number | null;
+  goalWeight: number | null;
+  sessionLengthMin: number | null;
+  trainingLocation: string;
+  competitionStatus: string;
+  nextFightDate: Date | null;
+  coachingTone: string;
+  obstacles: string[];
 };
 
 function parseJsonArray(value: string): string[] {
@@ -68,6 +82,15 @@ export function toProfileRecord(row: {
   carbsTargetG: number;
   fatTargetG: number;
   onboardingCompletedAt: Date | null;
+  onboardingDeepCompletedAt: Date | null;
+  currentWeight: number | null;
+  goalWeight: number | null;
+  sessionLengthMin: number | null;
+  trainingLocation: string;
+  competitionStatus: string;
+  nextFightDate: Date | null;
+  coachingTone: string;
+  obstaclesJson: string;
 }): ProfileRecord {
   return {
     userId: row.userId,
@@ -87,6 +110,15 @@ export function toProfileRecord(row: {
     foodPreferences: row.foodPreferences,
     allergies: row.allergies,
     trainingLimitations: row.trainingLimitations,
+    onboardingDeepCompletedAt: row.onboardingDeepCompletedAt,
+    currentWeight: row.currentWeight,
+    goalWeight: row.goalWeight,
+    sessionLengthMin: row.sessionLengthMin,
+    trainingLocation: row.trainingLocation,
+    competitionStatus: row.competitionStatus,
+    nextFightDate: row.nextFightDate,
+    coachingTone: row.coachingTone,
+    obstacles: parseJsonArray(row.obstaclesJson),
     calorieTarget: row.calorieTarget,
     proteinTargetG: row.proteinTargetG,
     carbsTargetG: row.carbsTargetG,
@@ -144,6 +176,14 @@ export async function updateProfileForUser(
     foodPreferences: string;
     allergies: string;
     trainingLimitations?: string;
+    currentWeight?: number | null;
+    goalWeight?: number | null;
+    sessionLengthMin?: number | null;
+    trainingLocation?: string;
+    competitionStatus?: string;
+    nextFightDate?: Date | null;
+    coachingTone?: string;
+    obstacles?: string[];
     calorieTarget?: number;
     proteinTargetG?: number;
     carbsTargetG?: number;
@@ -211,6 +251,36 @@ export async function updateProfileForUser(
     return Math.round(value);
   }
 
+  function parseOptionalWeight(value: number | null | undefined, fallback: number | null, label: string) {
+    if (value === undefined) {
+      return fallback;
+    }
+    if (value == null || Number.isNaN(value)) {
+      return null;
+    }
+    const min = input.preferredUnits === "kg" ? 20 : 50;
+    const max = input.preferredUnits === "kg" ? 250 : 500;
+    if (!Number.isFinite(value) || value < min || value > max) {
+      throw new AppError("PROFILE", `${label} should be between ${min} and ${max} ${input.preferredUnits}.`);
+    }
+    return Math.round(value * 10) / 10;
+  }
+
+  const currentWeight = parseOptionalWeight(input.currentWeight, existing.currentWeight, "Current body weight");
+  const goalWeight = parseOptionalWeight(input.goalWeight, existing.goalWeight, "Goal weight");
+  const competitionStatus =
+    input.competitionStatus === undefined
+      ? existing.competitionStatus
+      : COMPETITION_STATUS_OPTIONS.some((item) => item.value === input.competitionStatus)
+        ? input.competitionStatus
+        : existing.competitionStatus;
+  const nextFightDate =
+    input.nextFightDate === undefined
+      ? existing.nextFightDate
+      : competitionStatus === "none" || competitionStatus === ""
+        ? null
+        : input.nextFightDate;
+
   const calorieTarget = parseTarget(
     input.calorieTarget,
     existing.calorieTarget,
@@ -260,6 +330,48 @@ export async function updateProfileForUser(
         input.trainingLimitations === undefined
           ? existing.trainingLimitations
           : input.trainingLimitations.trim().slice(0, 500),
+      currentWeight,
+      goalWeight,
+      sessionLengthMin:
+        input.sessionLengthMin === undefined
+          ? existing.sessionLengthMin
+          : input.sessionLengthMin == null ||
+              SESSION_LENGTH_OPTIONS.some((item) => item.value === input.sessionLengthMin)
+            ? input.sessionLengthMin
+            : existing.sessionLengthMin,
+      trainingLocation:
+        input.trainingLocation === undefined
+          ? existing.trainingLocation
+          : TRAINING_LOCATION_OPTIONS.some((item) => item.value === input.trainingLocation)
+            ? input.trainingLocation
+            : existing.trainingLocation,
+      competitionStatus,
+      nextFightDate,
+      coachingTone:
+        input.coachingTone === undefined
+          ? existing.coachingTone
+          : COACHING_TONE_OPTIONS.some((item) => item.value === input.coachingTone)
+            ? input.coachingTone
+            : existing.coachingTone,
+      obstaclesJson:
+        input.obstacles === undefined
+          ? existing.obstaclesJson
+          : JSON.stringify(
+              input.obstacles.filter((item) =>
+                OBSTACLE_OPTIONS.some((option) => option.value === item),
+              ),
+            ),
+      onboardingDeepCompletedAt:
+        existing.onboardingDeepCompletedAt ??
+        (input.currentWeight != null ||
+        input.goalWeight != null ||
+        input.sessionLengthMin != null ||
+        input.trainingLocation ||
+        input.competitionStatus ||
+        input.coachingTone ||
+        (input.obstacles && input.obstacles.length > 0)
+          ? new Date()
+          : existing.onboardingDeepCompletedAt),
       calorieTarget,
       proteinTargetG,
       carbsTargetG,

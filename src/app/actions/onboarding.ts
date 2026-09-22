@@ -1,7 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { completeOnboardingForUser } from "@/lib/onboarding";
+import {
+  completeOnboardingForUser,
+  getOnboardingStatus,
+  saveDeepOnboardingForUser,
+} from "@/lib/onboarding";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 
@@ -11,6 +15,14 @@ function optionalNumber(raw: string) {
   const value = raw.trim();
   if (value === "") return null;
   return Number(value);
+}
+
+function optionalDate(raw: string) {
+  const value = raw.trim();
+  if (value === "") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return new Date(value);
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 export async function completeOnboardingAction(
@@ -32,6 +44,37 @@ export async function completeOnboardingAction(
       trainingLimitations: String(formData.get("trainingLimitations") ?? ""),
       foodPreferences: String(formData.get("foodPreferences") ?? ""),
       allergies: String(formData.get("allergies") ?? ""),
+    });
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+  redirect("/onboarding/deeper");
+}
+
+export async function skipDeepOnboardingAction() {
+  const user = await requireUserOrThrow();
+  const status = await getOnboardingStatus(user.id);
+  if (!status.completed) {
+    redirect("/onboarding");
+  }
+  redirect("/home");
+}
+
+export async function saveDeepOnboardingAction(
+  _prev: OnboardingActionState,
+  formData: FormData,
+): Promise<OnboardingActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    await saveDeepOnboardingForUser(user.id, {
+      currentWeight: optionalNumber(String(formData.get("currentWeight") ?? "")),
+      goalWeight: optionalNumber(String(formData.get("goalWeight") ?? "")),
+      sessionLengthMin: optionalNumber(String(formData.get("sessionLengthMin") ?? "")),
+      trainingLocation: String(formData.get("trainingLocation") ?? ""),
+      competitionStatus: String(formData.get("competitionStatus") ?? ""),
+      nextFightDate: optionalDate(String(formData.get("nextFightDate") ?? "")),
+      coachingTone: String(formData.get("coachingTone") ?? ""),
+      obstacles: formData.getAll("obstacles").map(String),
     });
   } catch (error) {
     return { error: publicErrorMessage(error) };

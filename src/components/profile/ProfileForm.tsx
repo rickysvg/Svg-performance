@@ -4,10 +4,15 @@ import { useActionState } from "react";
 import { saveProfileAction, type ProfileActionState } from "@/app/actions/profile";
 import { StatusBanner } from "@/components/StatusBanner";
 import {
+  COMPETITION_STATUS_OPTIONS,
+  COACHING_TONE_OPTIONS,
   EQUIPMENT_OPTIONS,
   EXPERIENCE_LEVELS,
   FOCUS_OPTIONS,
   GOAL_OPTIONS,
+  OBSTACLE_OPTIONS,
+  SESSION_LENGTH_OPTIONS,
+  TRAINING_LOCATION_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
 import type { ProfileRecord } from "@/lib/profile";
@@ -206,6 +211,138 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           Always verify ingredients yourself. Food numbers in this app are estimates.
         </span>
       </label>
+
+      <fieldset className="rounded-xl border border-line p-3">
+        <legend className="text-sm font-medium">Deeper profile (optional)</legend>
+        <p className="mt-1 text-xs text-muted">
+          Same answers as the optional onboarding screen. Weight is display-only in{" "}
+          {profile.preferredUnits} — not a medical plan.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="block text-sm">
+            Current weight ({profile.preferredUnits})
+            <input
+              name="currentWeight"
+              type="number"
+              step="0.1"
+              min={profile.preferredUnits === "kg" ? 20 : 50}
+              max={profile.preferredUnits === "kg" ? 250 : 500}
+              defaultValue={profile.currentWeight ?? ""}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            />
+          </label>
+          <label className="block text-sm">
+            Goal weight ({profile.preferredUnits})
+            <input
+              name="goalWeight"
+              type="number"
+              step="0.1"
+              min={profile.preferredUnits === "kg" ? 20 : 50}
+              max={profile.preferredUnits === "kg" ? 250 : 500}
+              defaultValue={profile.goalWeight ?? ""}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            />
+          </label>
+        </div>
+        <fieldset className="mt-3">
+          <legend className="text-sm font-medium">Typical session length</legend>
+          <div className="mt-2 flex flex-wrap gap-4">
+            {SESSION_LENGTH_OPTIONS.map((item) => (
+              <label key={item.value} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="sessionLengthMin"
+                  value={item.value}
+                  defaultChecked={profile.sessionLengthMin === item.value}
+                  className="h-5 w-5 accent-accent"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="mt-3">
+          <legend className="text-sm font-medium">Training location</legend>
+          <div className="mt-2 flex flex-wrap gap-4">
+            {TRAINING_LOCATION_OPTIONS.map((item) => (
+              <label key={item.value} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="trainingLocation"
+                  value={item.value}
+                  defaultChecked={profile.trainingLocation === item.value}
+                  className="h-5 w-5 accent-accent"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="mt-3">
+          <legend className="text-sm font-medium">Competition status</legend>
+          <div className="mt-2 grid gap-2">
+            {COMPETITION_STATUS_OPTIONS.map((item) => (
+              <label key={item.value} className="flex items-center gap-3 text-sm">
+                <input
+                  type="radio"
+                  name="competitionStatus"
+                  value={item.value}
+                  defaultChecked={profile.competitionStatus === item.value}
+                  className="h-5 w-5 accent-accent"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <label className="mt-3 block text-sm">
+          Next fight date (optional)
+          <input
+            name="nextFightDate"
+            type="date"
+            defaultValue={
+              profile.nextFightDate
+                ? `${profile.nextFightDate.getFullYear()}-${String(profile.nextFightDate.getMonth() + 1).padStart(2, "0")}-${String(profile.nextFightDate.getDate()).padStart(2, "0")}`
+                : ""
+            }
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          />
+        </label>
+        <fieldset className="mt-3">
+          <legend className="text-sm font-medium">Preferred coaching tone</legend>
+          <div className="mt-2 grid gap-2">
+            {COACHING_TONE_OPTIONS.map((item) => (
+              <label key={item.value} className="flex items-center gap-3 text-sm">
+                <input
+                  type="radio"
+                  name="coachingTone"
+                  value={item.value}
+                  defaultChecked={profile.coachingTone === item.value}
+                  className="h-5 w-5 accent-accent"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="mt-3">
+          <legend className="text-sm font-medium">Biggest obstacle</legend>
+          <div className="mt-2 grid gap-2">
+            {OBSTACLE_OPTIONS.map((item) => (
+              <label key={item.value} className="flex items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  name="obstacles"
+                  value={item.value}
+                  defaultChecked={profile.obstacles.includes(item.value)}
+                  className="h-5 w-5 accent-accent"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </fieldset>
 
       <fieldset className="rounded-xl border border-line p-3">
         <legend className="text-sm font-medium">Daily nutrition targets (estimates)</legend>

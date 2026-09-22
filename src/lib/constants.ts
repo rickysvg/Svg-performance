@@ -52,6 +52,38 @@ export const FOCUS_OPTIONS = [
 
 export const GOAL_PROMPTS = GOAL_OPTIONS.map((goal) => goal.label);
 
+export const SESSION_LENGTH_OPTIONS = [
+  { value: 30, label: "30 min" },
+  { value: 45, label: "45 min" },
+  { value: 60, label: "60 min" },
+] as const;
+
+export const TRAINING_LOCATION_OPTIONS = [
+  { value: "gym", label: "Gym" },
+  { value: "home", label: "Home" },
+  { value: "both", label: "Both" },
+] as const;
+
+export const COMPETITION_STATUS_OPTIONS = [
+  { value: "none", label: "Not competing" },
+  { value: "amateur", label: "Amateur" },
+  { value: "pro", label: "Pro" },
+] as const;
+
+export const COACHING_TONE_OPTIONS = [
+  { value: "tough", label: "More tough" },
+  { value: "balanced", label: "Balanced" },
+  { value: "encouraging", label: "More encouraging" },
+] as const;
+
+export const OBSTACLE_OPTIONS = [
+  { value: "consistency", label: "Consistency" },
+  { value: "nutrition", label: "Nutrition" },
+  { value: "technique", label: "Technique" },
+  { value: "recovery", label: "Recovery" },
+  { value: "time", label: "Time" },
+] as const;
+
 /** DEMO daily targets used until a member types their own. Estimates only. */
 export const DEMO_NUTRITION_TARGETS = {
   calories: 2200,

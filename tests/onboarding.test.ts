@@ -6,12 +6,31 @@ import {
   completeOnboardingForUser,
   getOnboardingStatus,
   memberEntryPath,
+  needsDeepOnboardingPrompt,
   preferredDemoDayNumber,
+  saveDeepOnboardingForUser,
   shouldBlockMemberRoute,
   suggestDemoProgramDay,
 } from "@/lib/onboarding";
 import { getHomeToday } from "@/lib/home";
+import { DEMO_NUTRITION_TARGETS } from "@/lib/constants";
+import { sendCoachMessage } from "@/lib/coach/chat";
 import { makeUser, resetDatabase } from "./helpers";
+
+const requiredIntake = {
+  displayName: "Ready",
+  goalKey: "conditioning",
+  goalNote: "Last a full class",
+  experienceLevel: "intermediate",
+  primaryFocus: "boxing",
+  equipment: ["Dumbbells"],
+  weeklyAvailability: ["Monday", "Wednesday"],
+  sessionsPerWeek: 3,
+  preferredUnits: "kg",
+  trainingLimitations: "Old knee — no jumping",
+  foodPreferences: "I eat meat",
+  allergies: "peanuts",
+};
 
 describe("onboarding gate and persistence", () => {
   beforeEach(async () => {
@@ -49,20 +68,7 @@ describe("onboarding gate and persistence", () => {
       }),
     ).rejects.toBeInstanceOf(AppError);
 
-    const saved = await completeOnboardingForUser(user.id, {
-      displayName: "Ready",
-      goalKey: "conditioning",
-      goalNote: "Last a full class",
-      experienceLevel: "intermediate",
-      primaryFocus: "boxing",
-      equipment: ["Dumbbells"],
-      weeklyAvailability: ["Monday", "Wednesday"],
-      sessionsPerWeek: 3,
-      preferredUnits: "kg",
-      trainingLimitations: "Old knee — no jumping",
-      foodPreferences: "I eat meat",
-      allergies: "peanuts",
-    });
+    const saved = await completeOnboardingForUser(user.id, { ...requiredIntake });
 
     expect(saved.onboardingCompletedAt).toBeTruthy();
     expect(saved.displayName).toBe("Ready");
@@ -168,5 +174,154 @@ describe("onboarding gate and persistence", () => {
     expect(today.suggestionCopy).toMatch(/Not a custom Elite/i);
     expect(today.incompleteLesson?.topic).toBe("boxing");
     expect(today.incompleteLesson?.skillLevel).toBe("intermediate");
+  });
+
+  it("lets a member skip step 2 and still reach Home with a soft prompt", async () => {
+    const user = await makeUser("skip-deep@example.com");
+    await completeOnboardingForUser(user.id, { ...requiredIntake, displayName: "Skip" });
+
+    const afterRequired = await getOnboardingStatus(user.id);
+    expect(afterRequired.completed).toBe(true);
+    expect(afterRequired.deepCompleted).toBe(false);
+    expect(shouldBlockMemberRoute(afterRequired.completedAt)).toBe(false);
+    expect(memberEntryPath(afterRequired.completedAt)).toBe("/home");
+    expect(needsDeepOnboardingPrompt(afterRequired.profile)).toBe(true);
+
+    const today = await getHomeToday(user.id);
+    expect(today.needsDeepPrompt).toBe(true);
+    expect(today.sessionHint).toBe("");
+    expect(today.targets.calories).toBe(DEMO_NUTRITION_TARGETS.calories);
+  });
+
+  it("persists step 2 answers and uses them without inventing a meal plan", async () => {
+    const user = await makeUser("deep@example.com");
+    await completeOnboardingForUser(user.id, { ...requiredIntake, displayName: "Deep" });
+
+    await expect(
+      saveDeepOnboardingForUser(user.id, {
+        currentWeight: 4,
+        goalWeight: null,
+        sessionLengthMin: 45,
+        trainingLocation: "gym",
+        competitionStatus: "amateur",
+        nextFightDate: new Date(2026, 10, 8),
+        coachingTone: "tough",
+        obstacles: ["consistency"],
+      }),
+    ).rejects.toBeInstanceOf(AppError);
+
+    const fightDate = new Date(2026, 10, 8);
+    const saved = await saveDeepOnboardingForUser(user.id, {
+      currentWeight: 82.4,
+      goalWeight: 79,
+      sessionLengthMin: 45,
+      trainingLocation: "gym",
+      competitionStatus: "amateur",
+      nextFightDate: fightDate,
+      coachingTone: "tough",
+      obstacles: ["consistency", "time"],
+    });
+
+    expect(saved.onboardingDeepCompletedAt).toBeTruthy();
+    expect(saved.currentWeight).toBe(82.4);
+    expect(saved.goalWeight).toBe(79);
+    expect(saved.sessionLengthMin).toBe(45);
+    expect(saved.trainingLocation).toBe("gym");
+    expect(saved.competitionStatus).toBe("amateur");
+    expect(saved.nextFightDate?.toDateString()).toBe(fightDate.toDateString());
+    expect(saved.coachingTone).toBe("tough");
+    expect(saved.obstacles).toEqual(["consistency", "time"]);
+    expect(saved.calorieTarget).toBe(DEMO_NUTRITION_TARGETS.calories);
+    expect(saved.proteinTargetG).toBe(DEMO_NUTRITION_TARGETS.proteinG);
+
+    const after = await getOnboardingStatus(user.id);
+    expect(after.deepCompleted).toBe(true);
+    expect(needsDeepOnboardingPrompt(after.profile)).toBe(false);
+
+    const today = await getHomeToday(user.id);
+    expect(today.needsDeepPrompt).toBe(false);
+    expect(today.sessionHint).toMatch(/45 minutes/);
+    expect(today.locationHint).toMatch(/gym/i);
+    expect(today.competitionNote).toMatch(/Amateur/);
+    expect(today.competitionNote).toMatch(/does not run a fight camp/i);
+    expect(today.targets.calories).toBe(DEMO_NUTRITION_TARGETS.calories);
+
+    const edited = await updateProfileForUser(user.id, {
+      displayName: "Deep",
+      experienceLevel: "intermediate",
+      equipment: ["Dumbbells"],
+      weeklyAvailability: ["Monday", "Wednesday"],
+      hoursPerWeek: null,
+      preferredUnits: "kg",
+      claimsGymMembership: false,
+      foodPreferences: "I eat meat",
+      allergies: "peanuts",
+      sessionLengthMin: 60,
+      trainingLocation: "both",
+      competitionStatus: "none",
+      nextFightDate: fightDate,
+      coachingTone: "encouraging",
+      obstacles: ["recovery"],
+    });
+    expect(edited.sessionLengthMin).toBe(60);
+    expect(edited.trainingLocation).toBe("both");
+    expect(edited.competitionStatus).toBe("none");
+    expect(edited.nextFightDate).toBeNull();
+    expect(edited.coachingTone).toBe("encouraging");
+    expect(edited.obstacles).toEqual(["recovery"]);
+    expect(edited.currentWeight).toBe(82.4);
+    expect(edited.onboardingDeepCompletedAt).toBeTruthy();
+  });
+
+  it("does not allow deeper answers before the required intake", async () => {
+    const user = await makeUser("too-soon@example.com");
+    await expect(
+      saveDeepOnboardingForUser(user.id, {
+        currentWeight: 180,
+        goalWeight: null,
+        sessionLengthMin: 30,
+        trainingLocation: "home",
+        competitionStatus: "none",
+        nextFightDate: null,
+        coachingTone: "balanced",
+        obstacles: ["nutrition"],
+      }),
+    ).rejects.toBeInstanceOf(AppError);
+  });
+});
+
+describe("deeper onboarding personalization", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("uses the preferred Coach Savage tone in offline replies", async () => {
+    const user = await makeUser("tone@example.com");
+    await completeOnboardingForUser(user.id, { ...requiredIntake, displayName: "Tone" });
+    await saveDeepOnboardingForUser(user.id, {
+      currentWeight: null,
+      goalWeight: null,
+      sessionLengthMin: 30,
+      trainingLocation: "home",
+      competitionStatus: "none",
+      nextFightDate: null,
+      coachingTone: "encouraging",
+      obstacles: ["technique"],
+    });
+
+    const result = await sendCoachMessage({
+      userId: user.id,
+      message: "I skipped class yesterday.",
+      experienceLevel: "intermediate",
+      coachingTone: "encouraging",
+    });
+    expect(result.refused).toBe(false);
+    expect(result.assistant.content).toMatch(/more encouraging/i);
+    expect(result.assistant.content).toMatch(/offline|DEMO/i);
+    expect(result.assistant.content).not.toMatch(/calorie target|2200/i);
   });
 });

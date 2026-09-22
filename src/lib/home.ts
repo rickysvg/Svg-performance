@@ -5,10 +5,14 @@ import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
 import { getProfileForUser, firstNameFrom, nutritionTargetsFromProfile } from "@/lib/profile";
 import {
+  competitionNote,
   demoSuggestionCopy,
+  needsDeepOnboardingPrompt,
   preferredLearnLevel,
   preferredLearnTopic,
+  sessionLengthHint,
   suggestDemoProgramDay,
+  trainingLocationHint,
 } from "@/lib/onboarding";
 
 export type WeeklyActivity = {
@@ -169,5 +173,12 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     targets: nutritionTargetsFromProfile(profile),
     firstName: firstNameFrom(profile?.displayName ?? ""),
     goals: profile?.goals ?? "",
+    needsDeepPrompt: needsDeepOnboardingPrompt(profile),
+    sessionHint: sessionLengthHint(profile?.sessionLengthMin ?? null),
+    locationHint: trainingLocationHint(profile?.trainingLocation ?? ""),
+    competitionNote: competitionNote(
+      profile?.competitionStatus ?? "",
+      profile?.nextFightDate ?? null,
+    ),
   };
 }

@@ -57,6 +57,15 @@ export default async function HomePage({
         </div>
       ) : null}
 
+      {today.needsDeepPrompt ? (
+        <div className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-sm">
+          2-minute deeper profile for better programming.{" "}
+          <Link href="/onboarding/deeper" className="font-semibold text-accent underline">
+            Add optional details
+          </Link>
+        </div>
+      ) : null}
+
       {reminderResult.due.length > 0 ? (
         <section className="rounded-2xl border border-accent/40 bg-accent/10 p-5">
           <h2 className="text-sm uppercase tracking-wide text-muted">Reminders</h2>
@@ -145,6 +154,15 @@ export default async function HomePage({
             <p className="text-lg font-semibold">{today.suggestedDay.title}</p>
             <p className="mt-1 text-sm text-muted">{today.suggestedDay.focus}</p>
             <p className="mt-2 text-xs text-muted">{today.suggestionCopy}</p>
+            {today.sessionHint ? (
+              <p className="mt-2 text-xs text-muted">{today.sessionHint}</p>
+            ) : null}
+            {today.locationHint ? (
+              <p className="mt-2 text-xs text-muted">{today.locationHint}</p>
+            ) : null}
+            {today.competitionNote ? (
+              <p className="mt-2 text-xs text-muted">{today.competitionNote}</p>
+            ) : null}
             <Link
               href={`/training/${today.suggestedDay.id}`}
               className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"

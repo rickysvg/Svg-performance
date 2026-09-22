@@ -134,8 +134,9 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - New accounts get `onboardingCompletedAt = null`. Member routes under `(member)` call `requireOnboardedUser()` and send them to `/onboarding`. Login/register also land there until the survey is saved.
 - Required: display name, goal enum (+ optional note), experience, primary focus (six arts + general fitness), equipment, weekly days, units. Optional: limitations, diet, allergies, sessions/week. Adult checkbox stays on signup only.
 - Personalization is honest DEMO matching: Learn default level (and art when the focus is one of the six); Home suggests an unused DEMO day (conditioning → Day 3, striking arts → Day 2, grappling/cage → Day 1). Copy says this is not custom Elite coaching.
-- Nutrition targets stay the DEMO 2200 / 140 g / 220 g / 70 g estimates. We do not invent a medical calorie plan from the goal.
+- Nutrition targets stay the DEMO 2200 / 140 g / 220 g / 70 g estimates. We do not invent a medical calorie plan from the goal or from optional body-weight answers.
 - Answers live on `Profile` and can be edited later. Completing onboarding again (if they already finished) does not clear the original timestamp.
+- After required submit, `/onboarding/deeper` is optional. Skip leaves `onboardingDeepCompletedAt` null and still opens Home. Completing step 2 stores current/goal weight (display units only), session length (30/45/60), gym/home/both, competition status + optional fight date, coaching tone, and obstacles. Home shows a soft “2-minute deeper profile for better programming” prompt until step 2 is saved. Honest uses only: Coach Savage tone, session-length / location hints, competition flags for later fight-camp UI. No medical plan from weight.
 
 ## Out of scope
 

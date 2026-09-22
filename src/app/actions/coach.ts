@@ -29,6 +29,7 @@ export async function sendCoachMessageAction(
       userId: user.id,
       message: String(formData.get("message") ?? ""),
       experienceLevel: profile?.experienceLevel,
+      coachingTone: profile?.coachingTone,
       mentionedUserId: mentioned || undefined,
     });
     revalidatePath("/coach");

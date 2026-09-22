@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
+import { getProfileForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
+import { sessionLengthHint, trainingLocationHint } from "@/lib/onboarding";
 import { WatchForm } from "@/components/training/WatchForm";
 import { startSessionAction } from "@/app/actions/workouts";
 
@@ -11,7 +13,8 @@ export default async function TrainingDayPage({
 }: {
   params: Promise<{ dayId: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const profile = await getProfileForUser(user.id);
   const { dayId } = await params;
   let day;
   try {
@@ -32,6 +35,16 @@ export default async function TrainingDayPage({
           </p>
           <h1 className="text-2xl font-semibold">{day.title}</h1>
           <p className="mt-1 text-sm text-muted">{day.focus}</p>
+          {sessionLengthHint(profile?.sessionLengthMin ?? null) ? (
+            <p className="mt-2 text-xs text-muted">
+              {sessionLengthHint(profile?.sessionLengthMin ?? null)}
+            </p>
+          ) : null}
+          {trainingLocationHint(profile?.trainingLocation ?? "") ? (
+            <p className="mt-1 text-xs text-muted">
+              {trainingLocationHint(profile?.trainingLocation ?? "")}
+            </p>
+          ) : null}
         </div>
         {day.program.isDemo ? <DemoBadge /> : null}
       </div>
