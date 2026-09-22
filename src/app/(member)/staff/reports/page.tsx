@@ -34,6 +34,10 @@ export default async function StaffReportsPage() {
           <Link href="/staff/help" className="text-accent underline">
             Help requests
           </Link>
+          {" · "}
+          <Link href="/staff/coaching" className="text-accent underline">
+            Coach notes
+          </Link>
           {isAdmin(staff) ? (
             <>
               {" · "}
@@ -112,6 +116,12 @@ export default async function StaffReportsPage() {
               <p className="mt-3 text-xs text-muted">
                 Last active: {formatActive(row.lastActiveAt)}
               </p>
+              <Link
+                href={`/staff/coaching?member=${row.userId}`}
+                className="mt-2 inline-block text-sm text-accent underline"
+              >
+                Write coach notes
+              </Link>
             </li>
           ))}
         </ul>

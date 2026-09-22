@@ -438,6 +438,20 @@ export function planHasFeature(plan: CatalogPlanId, feature: FeatureId) {
   return PLAN_CATALOG[plan].features.includes(feature);
 }
 
+export function planAtLeast(planId: CatalogPlanId, minimum: CatalogPlanId) {
+  return PLAN_CATALOG[planId].rank >= PLAN_CATALOG[minimum].rank;
+}
+
+/** Fighter Development+ — coach/Ricky comment slots, journal feedback. */
+export function planHasCoachReview(planId: CatalogPlanId) {
+  return planAtLeast(planId, "fighter_development");
+}
+
+/** Elite+ — weekly review + simple adjustment log. */
+export function planHasEliteReview(planId: CatalogPlanId) {
+  return planAtLeast(planId, "elite");
+}
+
 export function plansInSection(section: CatalogPlan["section"]) {
   return CATALOG_PLAN_IDS.map((id) => PLAN_CATALOG[id]).filter((plan) => plan.section === section);
 }

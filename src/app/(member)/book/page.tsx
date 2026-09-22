@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/session";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { remainingCredit, creditsForCurrentPlan } from "@/lib/credits";
-import { listBookingRequestsForUser, bookingLabel } from "@/lib/bookings";
+import { listBookingRequestsForUser, bookingLabel, bookingPrep } from "@/lib/bookings";
 import { BookingRequestForm } from "@/components/bookings/BookingRequestForm";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { BOOKING_OFFERS, PLAN_CATALOG, type BookingKind } from "@/lib/plans";
@@ -74,6 +74,12 @@ export default async function BookPage() {
                 <span className="text-base text-muted"> / {offer.duration}</span>
               </p>
               <p className="mt-2 text-sm text-muted">{offer.summary}</p>
+              <p className="mt-3 text-xs font-semibold uppercase text-muted">Prepare</p>
+              <ul className="mt-1 list-disc pl-5 text-sm text-muted">
+                {bookingPrep(kind).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
             </article>
           );
         })}
@@ -98,6 +104,11 @@ export default async function BookPage() {
           El Paso: {BOOKING_OFFERS.intensive_elpaso.priceLabel}. Travel:{" "}
           {BOOKING_OFFERS.intensive_travel.priceLabel}. Request stub only — no deposit.
         </p>
+        <ul className="mt-3 list-disc pl-5 text-sm text-muted">
+          {bookingPrep("intensive_elpaso").map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
         {intensiveKinds.length > 0 ? (
           <div className="mt-4">
             <BookingRequestForm kinds={intensiveKinds} defaultKind="intensive_elpaso" />
@@ -121,6 +132,16 @@ export default async function BookPage() {
                 <span className="font-medium">{bookingLabel(row.kind)}</span> · {row.status}
                 {row.usesIncludedCredit ? " · uses included credit" : ""}
                 <span className="block text-muted">{row.preferredTimes}</span>
+                {row.nextSteps ? (
+                  <span className="mt-1 block">
+                    <span className="text-xs uppercase text-muted">Agreed next steps</span>
+                    <span className="block whitespace-pre-wrap">{row.nextSteps}</span>
+                  </span>
+                ) : (
+                  <span className="block text-xs text-muted">
+                    Next steps stay empty until a coach writes them after the call.
+                  </span>
+                )}
               </li>
             ))}
           </ul>

@@ -2,6 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { registerAccount } from "@/lib/auth";
 
 export async function resetDatabase() {
+  await prisma.journalFeedback.deleteMany();
+  await prisma.journalEntry.deleteMany();
+  await prisma.weeklyCoachComment.deleteMany();
+  await prisma.coachingAdjustment.deleteMany();
+  await prisma.pathStepCompletion.deleteMany();
+  await prisma.pathEnrollment.deleteMany();
   await prisma.progressPhoto.deleteMany();
   await prisma.bookingRequest.deleteMany();
   await prisma.planWaitlist.deleteMany();

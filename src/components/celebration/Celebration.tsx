@@ -20,6 +20,10 @@ export const CELEBRATION_COPY: Record<string, { title: string; body: string }> =
     title: "Photo saved",
     body: "Private to you. That’s a real check-in.",
   },
+  milestone: {
+    title: "Milestone done",
+    body: "That’s a DEMO path step in the book. Keep the next one honest.",
+  },
 };
 
 function prefersReducedMotion() {

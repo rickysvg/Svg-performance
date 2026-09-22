@@ -3,7 +3,6 @@ import { requireUser } from "@/lib/session";
 import { getProfileForUser, profileIsComplete } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { buildProgressSummary } from "@/lib/progress";
-import { DemoBadge } from "@/components/DemoBadge";
 import { getHomeToday, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { listHelpRequestsForMember } from "@/lib/help";
@@ -16,6 +15,8 @@ import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
 import { memberDifficultyCopy, recentDifficultyAverage } from "@/lib/difficulty";
 import { getWeeklyWrapped } from "@/lib/wrapped";
 import { WeeklyWrappedCard } from "@/components/home/WeeklyWrappedCard";
+import { getTodayGuide } from "@/lib/today";
+import { TodayGuide } from "@/components/home/TodayGuide";
 
 function formatDate(value: string | null) {
   if (!value) return "No sessions yet";
@@ -33,7 +34,7 @@ export default async function HomePage({
   const user = await requireUser();
   const params = await searchParams;
   const selected = parseDayParam(params.day);
-  const [profile, sessions, today, reminderResult, helpRequests, quoteCard, wrap] =
+  const [profile, sessions, today, reminderResult, helpRequests, quoteCard, wrap, guide] =
     await Promise.all([
       getProfileForUser(user.id),
       listWorkoutSessionsForUser(user.id),
@@ -42,6 +43,7 @@ export default async function HomePage({
       listHelpRequestsForMember(user.id),
       getDailyQuoteCard(user.id),
       getWeeklyWrapped(user.id),
+      getTodayGuide(user.id, selected),
     ]);
   const difficulty = recentDifficultyAverage(sessions);
 
@@ -102,6 +104,8 @@ export default async function HomePage({
         teaser={quoteCard.teaser}
       />
 
+      <TodayGuide guide={guide} />
+
       <WeeklyWrappedCard wrap={wrap} />
 
       <WeekStrip selected={today.selected} />
@@ -138,63 +142,6 @@ export default async function HomePage({
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">
-            {today.isToday ? "Today’s workout" : "Workout this day"}
-          </h2>
-          <DemoBadge />
-        </div>
-        {today.loggedOnSelected ? (
-          <div className="mt-3">
-            <p className="text-lg font-semibold">{today.loggedOnSelected.title}</p>
-            <p className="mt-1 text-sm text-muted">Logged and saved.</p>
-            <Link
-              href={`/training/log/${today.loggedOnSelected.id}`}
-              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
-            >
-              Review or correct
-            </Link>
-          </div>
-        ) : today.draft ? (
-          <div className="mt-3">
-            <p className="text-lg font-semibold">Finish your draft session</p>
-            <p className="mt-1 text-sm text-muted">{today.draft.title}</p>
-            <Link
-              href={`/training/log/${today.draft.id}`}
-              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
-            >
-              Continue draft
-            </Link>
-          </div>
-        ) : today.suggestedDay ? (
-          <div className="mt-3">
-            <p className="text-lg font-semibold">{today.suggestedDay.title}</p>
-            <p className="mt-1 text-sm text-muted">{today.suggestedDay.focus}</p>
-            <p className="mt-2 text-xs text-muted">{today.suggestionCopy}</p>
-            {today.sessionHint ? (
-              <p className="mt-2 text-xs text-muted">{today.sessionHint}</p>
-            ) : null}
-            {today.locationHint ? (
-              <p className="mt-2 text-xs text-muted">{today.locationHint}</p>
-            ) : null}
-            {today.competitionNote ? (
-              <p className="mt-2 text-xs text-muted">{today.competitionNote}</p>
-            ) : null}
-            <Link
-              href={`/training/${today.suggestedDay.id}`}
-              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
-            >
-              Open today&apos;s DEMO session
-            </Link>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-muted">
-            No DEMO day is loaded yet. Open Training after setup.
-          </p>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-sm uppercase tracking-wide text-muted">
           Days active this week
         </h2>
@@ -222,6 +169,25 @@ export default async function HomePage({
             <p className="mt-1 font-semibold">Browse DEMO lessons</p>
           </Link>
         )}
+        <Link href="/paths" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Training path</p>
+          <p className="mt-1 font-semibold">{guide.path.path.title}</p>
+          <p className="mt-1 text-sm text-muted">
+            {guide.path.nextStep
+              ? `Next: ${guide.path.nextStep.title}`
+              : "DEMO milestones complete on this path."}
+          </p>
+        </Link>
+        <Link href="/journal" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Journal</p>
+          <p className="mt-1 font-semibold">Notes, goals, questions</p>
+          <p className="mt-1 text-sm text-muted">Private until a coach writes feedback.</p>
+        </Link>
+        <Link href="/report" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Weekly report</p>
+          <p className="mt-1 font-semibold">Automated SVG summary</p>
+          <p className="mt-1 text-sm text-muted">Richer than the count wrap. Not a Ricky note.</p>
+        </Link>
         <Link href="/plan" className="block rounded-2xl border border-line bg-card p-4">
           <p className="text-xs uppercase tracking-wide text-muted">My plan</p>
           <p className="mt-1 font-semibold">Credits and upgrade path</p>

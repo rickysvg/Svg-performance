@@ -48,6 +48,21 @@ export default async function ProfilePage() {
             </Link>
           </li>
           <li>
+            <Link href="/paths" className="text-accent underline-offset-4 hover:underline">
+              Training paths
+            </Link>
+          </li>
+          <li>
+            <Link href="/journal" className="text-accent underline-offset-4 hover:underline">
+              Coaching journal
+            </Link>
+          </li>
+          <li>
+            <Link href="/report" className="text-accent underline-offset-4 hover:underline">
+              Weekly SVG report
+            </Link>
+          </li>
+          <li>
             <Link href="/plan" className="text-accent underline-offset-4 hover:underline">
               My plan &amp; credits
             </Link>

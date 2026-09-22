@@ -8,6 +8,7 @@ import { PLAN_CATALOG, CREDIT_LABELS, normalizePlanId } from "@/lib/plans";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
 import { AdminCreditForm } from "@/components/admin/AdminCreditForm";
 import { AdminBookingStatusForm } from "@/components/admin/AdminBookingStatusForm";
+import { BookingNextStepsForm } from "@/components/staff/BookingNextStepsForm";
 
 export default async function AdminPlansPage() {
   await requireAdmin();
@@ -111,6 +112,7 @@ export default async function AdminPlansPage() {
                 <p className="mt-1 text-sm">{row.preferredTimes}</p>
                 {row.note ? <p className="text-sm text-muted">{row.note}</p> : null}
                 <AdminBookingStatusForm requestId={row.id} status={row.status} />
+                <BookingNextStepsForm requestId={row.id} defaultValue={row.nextSteps} />
               </li>
             ))}
           </ul>

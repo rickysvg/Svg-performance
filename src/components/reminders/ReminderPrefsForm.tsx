@@ -15,6 +15,7 @@ export function ReminderPrefsForm({
     workoutEnabled: boolean;
     foodEnabled: boolean;
     quoteEnabled: boolean;
+    bookingEnabled: boolean;
     preferredHour: number;
     timezoneOffsetMinutes: number;
   };
@@ -68,6 +69,14 @@ export function ReminderPrefsForm({
           defaultChecked={prefs.quoteEnabled}
         />
         Daily quote reminder (Performance+ / paid catalog)
+      </label>
+      <label className="flex items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="bookingEnabled"
+          defaultChecked={prefs.bookingEnabled}
+        />
+        Open Book with Ricky request reminder
       </label>
       <label className="block text-sm">
         Preferred local hour (0–23)

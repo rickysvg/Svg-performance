@@ -1,8 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { BOOKING_OFFERS, isBookingKind } from "@/lib/plans";
+import { BOOKING_OFFERS, isBookingKind, type BookingKind } from "@/lib/plans";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { remainingCredit } from "@/lib/credits";
+import { assertCanViewMemberTrend } from "@/lib/reports";
+
+export const BOOKING_PREP: Record<BookingKind, string[]> = {
+  mindset: [
+    "Write one training or fight problem you want to talk through.",
+    "Note what has been working and what has not this month.",
+    "This is a request, not a confirmed calendar slot. Coach Savage is not Ricky.",
+  ],
+  entrepreneur: [
+    "Bring one business or career question — no promised results.",
+    "Separate gym training check-ins from this extra.",
+    "List preferred times. We do not invent Ricky’s calendar.",
+  ],
+  intensive_elpaso: [
+    "Read the Platinum package copy. This is a request stub, not a deposit.",
+    "Travel to El Paso is on you unless quoted otherwise.",
+    "Bring training history and one written goal. No invented itinerary until a coach writes next steps.",
+  ],
+  intensive_travel: [
+    "Request stub only. Travel expenses are quoted separately.",
+    "Do not treat this form as a booked intensive.",
+    "After a coach writes next steps, they show on Book.",
+  ],
+};
 
 export async function createBookingRequestForUser(
   userId: string,
@@ -82,4 +106,33 @@ export function bookingLabel(kind: string) {
     return BOOKING_OFFERS[kind as keyof typeof BOOKING_OFFERS].label;
   }
   return kind;
+}
+
+export function bookingPrep(kind: string) {
+  if (isBookingKind(kind)) {
+    return BOOKING_PREP[kind];
+  }
+  return [];
+}
+
+export async function setBookingNextSteps(input: {
+  staffUserId: string;
+  staffRole: string;
+  requestId: string;
+  nextSteps: string;
+}) {
+  const row = await prisma.bookingRequest.findUnique({ where: { id: input.requestId } });
+  if (!row) {
+    throw new NotFoundError("Booking request not found.");
+  }
+  await assertCanViewMemberTrend({
+    staffUserId: input.staffUserId,
+    staffRole: input.staffRole,
+    memberUserId: row.userId,
+  });
+  const nextSteps = input.nextSteps.trim().slice(0, 2000);
+  return prisma.bookingRequest.update({
+    where: { id: input.requestId },
+    data: { nextSteps },
+  });
 }

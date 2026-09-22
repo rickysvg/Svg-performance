@@ -9,9 +9,14 @@ export function WeeklyWrappedCard({ wrap }: { wrap: WeeklyWrapped }) {
           <p className="text-xs uppercase tracking-wide text-muted">Weekly wrap</p>
           <h2 className="mt-1 text-lg font-semibold">Last 7 days</h2>
         </div>
-        <Link href="/progress#personal-records" className="text-sm text-accent underline">
-          PRs
-        </Link>
+        <div className="flex gap-3 text-sm">
+          <Link href="/report" className="text-accent underline">
+            Full report
+          </Link>
+          <Link href="/progress#personal-records" className="text-accent underline">
+            PRs
+          </Link>
+        </div>
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>

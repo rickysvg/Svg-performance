@@ -149,6 +149,15 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - These features do not gate first-run onboarding.
 - Still later (README backlog only): Ricky voice-note of the week, offline workout cards, native/PWA push beyond existing reminders, fighter-week challenge badges.
 
+## Coaching experience (Today, report, paths, journal, Book)
+
+- **Today** on Home is one card: next workout (path or DEMO day), current goal from intake, recommended Learn tutorial (level + art filters), next check-in from remaining credits / open Book request / open help / Platinum intensive stub. Beginner vs fighter copy uses experience + competition status. We never invent a fight date or a Ricky comment.
+- **Weekly SVG report** (`/report`) is richer than the count wrap: strength signal from loads/PRs, conditioning note if a session mentioned it, difficulty trend, suggested next path step. Always labeled **Automated SVG summary**. Quiet weeks stay okay, not a report card.
+- **Coach comment slot** is Fighter Development+ (`planHasCoachReview`). **Adjustment log** is Elite+ (`planHasEliteReview`). Empty until an assigned coach or admin writes it. Unassigned coaches are forbidden. Preview (Stripe off) treats the member as Platinum so the slot is visible and still empty.
+- **Training paths** live in code (`src/lib/paths.ts`): Beginner Foundations, Build Your Gas Tank, Strength for Combat. Enrollments and completions are in the DB. Default path from onboarding. Workout / lesson / journal / rating steps can auto-complete from existing logs. Manual “mark done” can fire `?celebrate=milestone`.
+- **Journal** is owner-only. Coaching tiers can receive human feedback + action items. No generated Ricky voice.
+- **Book with Ricky** shows remaining credits, a prepare checklist per offer, preferred-time requests, and post-call next steps (staff-written). Booking reminders reuse ReminderPrefs (`bookingEnabled`) — in-app after the preferred hour; email if SMTP.
+
 ## Out of scope
 
 - Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups.

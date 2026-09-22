@@ -8,12 +8,13 @@ import { quoteForLocalDate } from "@/lib/quotes";
 
 export const DEFAULT_REMINDER_HOUR = 18;
 
-export type ReminderKind = "workout" | "food" | "quote";
+export type ReminderKind = "workout" | "food" | "quote" | "booking";
 
 export type ReminderPrefsInput = {
   workoutEnabled: boolean;
   foodEnabled: boolean;
   quoteEnabled?: boolean;
+  bookingEnabled?: boolean;
   preferredHour: number;
   timezoneOffsetMinutes: number;
 };
@@ -56,6 +57,7 @@ export function validateReminderPrefs(input: ReminderPrefsInput): ReminderPrefsI
     workoutEnabled: Boolean(input.workoutEnabled),
     foodEnabled: Boolean(input.foodEnabled),
     quoteEnabled: input.quoteEnabled !== false,
+    bookingEnabled: input.bookingEnabled !== false,
     preferredHour: hour,
     timezoneOffsetMinutes: Math.round(offset),
   };
@@ -72,6 +74,7 @@ export async function getOrCreateReminderPrefs(userId: string) {
       workoutEnabled: true,
       foodEnabled: true,
       quoteEnabled: true,
+      bookingEnabled: true,
       preferredHour: DEFAULT_REMINDER_HOUR,
       timezoneOffsetMinutes: 0,
     },
@@ -155,6 +158,21 @@ export async function getDueReminders(
       message: `Today’s quote: “${quote.text}”`,
     });
   }
+  if (
+    prefs.bookingEnabled &&
+    !sameLocalDay(prefs.lastBookingRemindedAt, now, prefs.timezoneOffsetMinutes)
+  ) {
+    const open = await prisma.bookingRequest.count({
+      where: { userId, status: { in: ["open", "seen"] } },
+    });
+    if (open > 0) {
+      due.push({
+        kind: "booking",
+        message:
+          "Reminder: you have an open Book with Ricky request. Preferred times are on file. This is not a confirmed slot.",
+      });
+    }
+  }
   return due;
 }
 
@@ -175,6 +193,7 @@ export async function markRemindersShown(
         : prefs.lastWorkoutRemindedAt,
       lastFoodRemindedAt: kinds.includes("food") ? now : prefs.lastFoodRemindedAt,
       lastQuoteRemindedAt: kinds.includes("quote") ? now : prefs.lastQuoteRemindedAt,
+      lastBookingRemindedAt: kinds.includes("booking") ? now : prefs.lastBookingRemindedAt,
     },
   });
   await recordMetric(METRIC_NAMES.reminderShown, userId);

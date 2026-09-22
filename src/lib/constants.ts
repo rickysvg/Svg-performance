@@ -104,4 +104,7 @@ export const MEMBER_ROUTES = [
   "/staff",
   "/book",
   "/plan",
+  "/paths",
+  "/journal",
+  "/report",
 ];

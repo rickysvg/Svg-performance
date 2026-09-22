@@ -34,6 +34,11 @@ model User {
   coachingCredits          CoachingCredit[]
   planWaitlist             PlanWaitlist[]
   bookingRequests          BookingRequest[]
+  pathEnrollments          PathEnrollment[]
+  pathCompletions          PathStepCompletion[]
+  journalEntries           JournalEntry[]
+  weeklyComments           WeeklyCoachComment[]
+  coachingAdjustments      CoachingAdjustment[]
 }
 
 model Session {
@@ -299,6 +304,8 @@ model ReminderPrefs {
   lastWorkoutRemindedAt  DateTime?
   lastFoodRemindedAt     DateTime?
   lastQuoteRemindedAt    DateTime?
+  bookingEnabled         Boolean   @default(true)
+  lastBookingRemindedAt  DateTime?
   updatedAt              DateTime  @updatedAt
 }
 
@@ -399,6 +406,7 @@ model BookingRequest {
   note               String   @default("")
   status             String   @default("open")
   usesIncludedCredit Boolean  @default(false)
+  nextSteps          String   @default("")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -419,6 +427,80 @@ model ProgressPhoto {
   updatedAt  DateTime @updatedAt
 
   @@index([userId, recordedAt])
+}
+
+model PathEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathSlug  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, pathSlug])
+  @@index([userId])
+}
+
+model PathStepCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathSlug    String
+  stepKey     String
+  completedAt DateTime @default(now())
+
+  @@unique([userId, pathSlug, stepKey])
+  @@index([userId])
+}
+
+model JournalEntry {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  body      String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  feedback  JournalFeedback[]
+
+  @@index([userId, createdAt])
+}
+
+model JournalFeedback {
+  id           String       @id @default(cuid())
+  entryId      String
+  entry        JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  authorUserId String
+  body         String
+  actionItems  String       @default("")
+  createdAt    DateTime     @default(now())
+
+  @@index([entryId])
+}
+
+model WeeklyCoachComment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartKey String
+  authorUserId String
+  body         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, weekStartKey])
+  @@index([userId])
+}
+
+model CoachingAdjustment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authorUserId String
+  body         String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model BodyPhotoPlaceholder {
