@@ -36,7 +36,7 @@ Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and
 - Node.js 20 or newer
 - npm (comes with Node)
 
-No Postgres install is required for this preview. The app uses a local SQLite file.
+No Postgres install is required on your laptop. Local setup uses a SQLite file. A phone-friendly hosted preview uses Postgres (Neon or Vercel Postgres) — steps below.
 
 ## First-time setup
 
@@ -70,7 +70,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 
 | Name | What it is for |
 | --- | --- |
-| `DATABASE_URL` | Database location. Preview default: `file:./dev.db` |
+| `DATABASE_URL` | Laptop: `file:./dev.db`. Hosted: a `postgresql://…` string from Neon or Vercel Postgres. Never a SQLite file on Vercel. |
 | `AUTH_SECRET` | Long random string used to hash session and reset tokens |
 | `APP_URL` | Public address (`http://localhost:3000` locally) |
 | `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `SMTP_FROM` | Optional mail. Empty = password reset shows a PREVIEW link; reminders stay **in-app on Home only** |
@@ -258,7 +258,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Monthly challenge: opt-in beginner/advanced; progress is days active, not heaviest lift. Quiet days stay okay.
 - [ ] Meal-prep builds a grocery list from saved meals + optional swaps. Allergy line says verify ingredients. Estimates stay labeled.
 - [ ] Weekly focus video: drafts hidden; published week shows on Today for Performance+. Member Access sees a teaser. Not a live stream.
-- [ ] **Go-live pack:** repo is private; this PR is reviewed; hosted preview URL is written down only after a real deploy (Dockerfile / Vercel steps below — no URL is claimed here); Stripe stays TEST; invite list is 15–20 adults; DEMO vs real content labels are honest; Elite/VIP response times are on Pricing; no live billing until Ricky authorizes it.
+- [ ] **Go-live pack:** repo is private; this PR is reviewed; hosted preview URL is written down only after a real Vercel+Neon (or Docker) deploy (steps below — no URL is claimed here); Stripe stays TEST; invite list is 15–20 adults; DEMO vs real content labels are honest; Elite/VIP response times are on Pricing; no live billing until Ricky authorizes it.
 
 If any of those fail, do **not** expand the pilot yet.
 
@@ -273,36 +273,95 @@ Suggested questions for a 4–8 week private pilot:
 
 Do not use days-active copy as a public leaderboard.
 
-## Hosted preview (no live URL claimed)
+## Hosted preview (phone-friendly URL — none is claimed here)
 
-This repo includes a `Dockerfile` and `vercel.json`. They do **not** mean a public site exists until you deploy with your own account.
+This repo can run on **Vercel + Neon (or Vercel Postgres)**. The files `vercel.json` and `Dockerfile` do **not** mean a public site exists until you deploy with **your** accounts. This README never invents a live URL.
 
-**Vercel / similar**
+SQLite (`file:./dev.db`) stays for the laptop only. Vercel’s disk is not a real database. Hosted deploys **must** use Postgres.
 
-1. Import the GitHub repo on your hosting account.
-2. Set env names from `.env.example` (at least `AUTH_SECRET`, `DATABASE_URL`, `APP_URL`). SQLite-on-Vercel is a poor fit; use a hosted Postgres URL when you leave the laptop preview.
-3. Keep Stripe keys as `sk_test_` only. Add `STRIPE_WEBHOOK_SECRET` from `stripe listen` or the Dashboard TEST webhook.
-4. After deploy succeeds, write the real URL into `APP_URL`. Do not paste a guessed URL into marketing.
+### A. Create a Postgres database (Neon — free)
 
-**Docker (laptop or a VPS you control)**
+1. Open [https://neon.tech](https://neon.tech) and create an account (GitHub login is fine).
+2. Click **New project**. Name it something like `svg-performance-preview`. Pick any region close to you. Create.
+3. On the project page, find **Connection string**. Copy the string that starts with `postgresql://`.
+4. If Neon shows two strings, start with the one that does **not** have `-pooler` in the host name (that one is simpler for the first deploy). If a later build asks for a pooled URL, you can switch.
+5. Keep that string private. Do not paste it into this repo or into a public chat.
+
+**Vercel Postgres** is also fine: in a Vercel project, Storage → Create Database → Postgres, then copy `DATABASE_URL`.
+
+### B. Create a random AUTH_SECRET
+
+On your laptop, in a terminal:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Copy the printed line. That is `AUTH_SECRET`. Not a Stripe key.
+
+### C. Import the GitHub repo on Vercel
+
+1. Open [https://vercel.com](https://vercel.com) and sign in (GitHub is easiest).
+2. **Add New… → Project** and import `rickysvg/Svg-performance` (or your fork).
+3. Framework should be **Next.js**. Leave the root folder as `.`
+4. **Do not deploy yet.** Open **Environment Variables** and add these three names (Production + Preview):
+
+   | Name | Value |
+   | --- | --- |
+   | `AUTH_SECRET` | The random string from step B |
+   | `DATABASE_URL` | The `postgresql://…` string from Neon (not `file:./dev.db`) |
+   | `APP_URL` | Leave a placeholder like `https://example.vercel.app` for the first deploy, then fix it in step D |
+
+5. Leave every `STRIPE_*` name **empty** unless you are ready for Stripe **TEST** (`sk_test_…` only). Never `sk_live_`.
+6. Click **Deploy**. Wait until Vercel says the build succeeded.
+7. Open the URL Vercel shows you on your phone. That is your preview. Write it down yourself. This document still does not claim one.
+
+The build runs `node scripts/prisma-prepare.mjs --deploy`, which generates the Postgres Prisma client and runs `prisma db push` (creates tables). It will **fail on purpose** if `DATABASE_URL` is missing or still a SQLite `file:` URL.
+
+### D. Put the real URL into APP_URL
+
+1. Copy the URL Vercel actually gave you (it looks like `https://something.vercel.app`).
+2. Vercel → Project → Settings → Environment Variables → `APP_URL` → paste that real URL.
+3. Redeploy once (Deployments → … → Redeploy). Password-reset links and Stripe return URLs need this.
+4. Do not put a guessed URL on flyers or Instagram until you have opened it yourself.
+
+### E. Optional: DEMO program and lessons on the host
+
+The first deploy has empty tables (no DEMO program until you seed). From your laptop, in this project folder:
+
+```bash
+DATABASE_URL="postgresql://PASTE_THE_SAME_NEON_STRING" npm run db:seed
+```
+
+That writes the labeled DEMO program and DEMO lessons into Neon. It does not enable live billing.
+
+Then create your admin account on the hosted site and run (still on the laptop, same `DATABASE_URL`):
+
+```bash
+DATABASE_URL="postgresql://PASTE_THE_SAME_NEON_STRING" npm run admin:promote -- you@example.com
+```
+
+### F. Stripe TEST on a host (optional, later)
+
+Same beginner walkthrough as the laptop Stripe section. Point a Dashboard **TEST** webhook or `stripe listen --forward-to {your-real-APP_URL}/api/stripe/webhook`. Affirm/Klarna still need Dashboard TEST payment methods. **No live mode.**
+
+### Docker (laptop or a VPS you control)
 
 ```bash
 docker build -t svg-performance .
 docker run --rm -p 3000:3000 --env-file .env svg-performance
 ```
 
-Mount a volume over `prisma/dev.db` and `uploads/` if you want data to survive the container.
-
-**Stripe TEST on a host**
-
-Same beginner walkthrough as above. Point `stripe listen --forward-to {APP_URL}/api/stripe/webhook` or add a TEST webhook in the Dashboard. Affirm/Klarna still need Dashboard TEST payment methods.
+- Laptop SQLite: keep `DATABASE_URL=file:./dev.db` and mount a volume over `prisma/` and `uploads/` if you want data to survive the container.
+- VPS Postgres: set `DATABASE_URL` to your `postgresql://…` string. On start the container runs the same prepare + `db push` path.
 
 There is **no** production URL in this document on purpose.
 
 ## Database notes
 
-- Preview: **SQLite** at `prisma/dev.db` (not committed).
-- Production later: switch Prisma to PostgreSQL.
+- **Laptop / `npm test`:** SQLite. `npm run setup` still uses `file:./dev.db` and the existing Prisma migrations.
+- **Hosted preview:** Postgres. `scripts/prisma-prepare.mjs` copies `prisma/schema.prisma` → `prisma/schema.postgres.prisma` and runs `db push`. We do not replay SQLite migration SQL on Postgres (those files are SQLite-only).
+- Never commit `.env` or a real connection string.
 
 ## Known limitations
 
@@ -330,6 +389,7 @@ There is **no** production URL in this document on purpose.
 ## Source
 
 - App code: `src/`
-- Database: `prisma/`
+- Database: `prisma/` (SQLite schema + generated `schema.postgres.prisma`)
+- Hosted DB helper: `scripts/prisma-prepare.mjs`
 - Coach notes: `content/coach-savage/`
 - Why we chose these tools: `DECISIONS.md`

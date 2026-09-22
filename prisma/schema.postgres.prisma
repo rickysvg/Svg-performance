@@ -1,3 +1,7 @@
+// Generated from prisma/schema.prisma by scripts/prisma-prepare.mjs.
+// Hosted preview uses this file when DATABASE_URL starts with postgresql://.
+// Do not edit by hand — change schema.prisma and re-run the script.
+
 // Laptop / tests: SQLite. Hosted preview: scripts/prisma-prepare.mjs copies this
 // file to schema.postgres.prisma when DATABASE_URL starts with postgresql://.
 generator client {
@@ -5,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
