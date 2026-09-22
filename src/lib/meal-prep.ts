@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { DEMO_FOODS } from "@/lib/foods";
 import { getProfileForUser } from "@/lib/profile";
+import { SIMPLE_SWAPS } from "@/lib/meal-prep-swaps";
+
+export { SIMPLE_SWAPS };
 
 export type GroceryItem = {
   name: string;
@@ -30,17 +33,6 @@ const DEMO_INGREDIENTS: Record<string, GroceryItem[]> = {
   "demo-broccoli": [{ name: "broccoli", quantity: 1, unit: "cup" }],
   "demo-spinach": [{ name: "spinach", quantity: 2, unit: "cup" }],
   "demo-olive-oil": [{ name: "olive oil", quantity: 1, unit: "tbsp" }],
-};
-
-export const SIMPLE_SWAPS: Record<string, string> = {
-  "chicken breast": "turkey breast",
-  "ground turkey": "lean ground beef",
-  "salmon fillet": "cod",
-  "white rice, dry": "cauliflower rice",
-  "brown rice, dry": "quinoa, dry",
-  "whey protein": "plant protein",
-  eggs: "egg whites",
-  banana: "berries",
 };
 
 export function parseIngredientsJson(raw: string): GroceryItem[] {

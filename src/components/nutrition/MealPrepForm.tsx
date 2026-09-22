@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { generateGroceryListAction, type MealPrepActionState } from "@/app/actions/meal-prep";
 import { StatusBanner } from "@/components/StatusBanner";
-import { SIMPLE_SWAPS } from "@/lib/meal-prep";
+import { SIMPLE_SWAPS } from "@/lib/meal-prep-swaps";
 
 export function MealPrepForm({
   meals,
