@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { canUseFeature } from "@/lib/entitlements";
@@ -6,11 +7,40 @@ import { isAdmin } from "@/lib/roles";
 import {
   LESSON_LEVELS,
   LESSON_TOPICS,
+  buildLearnHref,
+  lessonLevelLabel,
+  lessonTopicLabel,
   listLessonProgressForUser,
   listPublishedLessons,
+  resolveLearnLevelFilter,
+  resolveLearnTopicFilter,
 } from "@/lib/lessons";
+import { resolveLessonVideo } from "@/lib/lesson-videos";
 import { DemoBadge } from "@/components/DemoBadge";
 import { EmptyState } from "@/components/EmptyState";
+
+function Chip({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`touch-target inline-flex items-center rounded-full border px-3 py-2 text-sm font-semibold ${
+        active
+          ? "border-accent bg-accent text-black"
+          : "border-line bg-background text-foreground hover:border-accent"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default async function LearnPage({
   searchParams,
@@ -26,11 +56,14 @@ export default async function LearnPage({
     return <PaywallNotice feature="Learn" />;
   }
   const query = await searchParams;
+  const skillLevel = resolveLearnLevelFilter(query.level, fullLibrary);
+  const topic = resolveLearnTopicFilter(query.topic);
+  const selectedLevel = skillLevel ?? "all";
   const [lessons, progress] = await Promise.all([
     listPublishedLessons({
       search: query.q,
-      topic: query.topic,
-      skillLevel: fullLibrary ? query.level : "beginner",
+      topic,
+      skillLevel,
     }),
     listLessonProgressForUser(user.id),
   ]);
@@ -42,7 +75,8 @@ export default async function LearnPage({
         <div>
           <h1 className="text-2xl font-semibold">Learn</h1>
           <p className="mt-1 text-sm text-muted">
-            Short MMA notes. DEMO lessons are labeled and are not paid SVG video
+            Filter by athlete level and martial art. DEMO lessons include written
+            details plus a labeled YouTube reference — not paid SVG video
             instruction.
             {!fullLibrary
               ? " Member Access shows selected beginner notes only. Upgrade to SVG Performance for the full library."
@@ -56,51 +90,75 @@ export default async function LearnPage({
         ) : null}
       </div>
 
-      <form className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-3">
+      <form className="rounded-2xl border border-line bg-card p-4">
+        {skillLevel ? <input type="hidden" name="level" value={skillLevel} /> : (
+          <input type="hidden" name="level" value="all" />
+        )}
+        {topic ? <input type="hidden" name="topic" value={topic} /> : null}
         <input
           name="q"
           defaultValue={query.q}
           placeholder="Search"
-          className="rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
         />
-        <select
-          name="topic"
-          defaultValue={query.topic ?? ""}
-          className="rounded-xl border border-line bg-background px-3 py-3"
-        >
-          <option value="">All topics</option>
-          {LESSON_TOPICS.map((topic) => (
-            <option key={topic} value={topic}>
-              {topic}
-            </option>
-          ))}
-        </select>
-        <select
-          name="level"
-          defaultValue={fullLibrary ? (query.level ?? "") : "beginner"}
-          disabled={!fullLibrary}
-          className="rounded-xl border border-line bg-background px-3 py-3 disabled:opacity-70"
-        >
-          {fullLibrary ? <option value="">All levels</option> : null}
-          {(fullLibrary ? LESSON_LEVELS : (["beginner"] as const)).map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-        <button className="touch-target rounded-full bg-accent font-semibold text-black sm:col-span-3">
-          Filter
+        <button className="touch-target mt-3 w-full rounded-full bg-accent font-semibold text-black">
+          Search
         </button>
       </form>
 
+      <section className="space-y-3">
+        <p className="text-xs uppercase tracking-wide text-muted">Athlete level</p>
+        <div className="flex flex-wrap gap-2">
+          {(fullLibrary ? LESSON_LEVELS : (["beginner"] as const)).map((level) => (
+            <Chip
+              key={level}
+              href={buildLearnHref({ q: query.q, topic, level })}
+              active={selectedLevel === level}
+            >
+              {lessonLevelLabel(level)}
+            </Chip>
+          ))}
+          {fullLibrary ? (
+            <Chip
+              href={buildLearnHref({ q: query.q, topic, level: "all" })}
+              active={selectedLevel === "all"}
+            >
+              All levels
+            </Chip>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <p className="text-xs uppercase tracking-wide text-muted">Martial art</p>
+        <div className="flex flex-wrap gap-2">
+          <Chip
+            href={buildLearnHref({ q: query.q, level: selectedLevel })}
+            active={!topic}
+          >
+            All arts
+          </Chip>
+          {LESSON_TOPICS.map((art) => (
+            <Chip
+              key={art}
+              href={buildLearnHref({ q: query.q, topic: art, level: selectedLevel })}
+              active={topic === art}
+            >
+              {lessonTopicLabel(art)}
+            </Chip>
+          ))}
+        </div>
+      </section>
+
       {lessons.length === 0 ? (
         <EmptyState title="No published lessons match that filter">
-          Try clearing search, or ask an admin to publish a DEMO lesson.
+          Try another level or martial art, or ask an admin to publish a DEMO lesson.
         </EmptyState>
       ) : (
         <ul className="space-y-3">
           {lessons.map((lesson) => {
             const row = progressMap.get(lesson.id);
+            const video = resolveLessonVideo(lesson);
             return (
               <li key={lesson.id}>
                 <Link
@@ -113,7 +171,8 @@ export default async function LearnPage({
                   </div>
                   <p className="mt-1 text-sm text-muted">{lesson.summary}</p>
                   <p className="mt-2 text-xs text-muted">
-                    {lesson.topic} · {lesson.skillLevel}
+                    {lessonTopicLabel(lesson.topic)} · {lessonLevelLabel(lesson.skillLevel)}
+                    {video.pending ? " · video pending" : " · YouTube reference"}
                     {row?.bookmarked ? " · bookmarked" : ""}
                     {row?.completed ? " · completed" : ""}
                   </p>

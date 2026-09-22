@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { DemoBadge } from "@/components/DemoBadge";
-import { getLessonProgress, getPublishedLessonBySlug } from "@/lib/lessons";
+import { getLessonProgress, getPublishedLessonBySlug, lessonLevelLabel, lessonTopicLabel } from "@/lib/lessons";
+import { parseLessonKeyDetails, resolveLessonVideo } from "@/lib/lesson-videos";
 import { toggleBookmarkAction, toggleCompleteAction } from "@/app/actions/lessons";
 import { canUseFeature } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/PaywallNotice";
+import { WatchForm } from "@/components/training/WatchForm";
 
 export default async function LessonPage({
   params,
@@ -25,6 +27,8 @@ export default async function LessonPage({
   if (!fullLibrary && lesson.skillLevel !== "beginner") {
     return <PaywallNotice feature="Full Learn library" />;
   }
+  const video = resolveLessonVideo(lesson);
+  const keyDetails = parseLessonKeyDetails(lesson.keyDetails);
 
   return (
     <main className="space-y-6">
@@ -34,7 +38,7 @@ export default async function LessonPage({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase text-muted">
-            {lesson.topic} · {lesson.skillLevel} · {lesson.coachName}
+            {lessonTopicLabel(lesson.topic)} · {lessonLevelLabel(lesson.skillLevel)} · {lesson.coachName}
           </p>
           <h1 className="text-2xl font-semibold">{lesson.title}</h1>
         </div>
@@ -50,12 +54,44 @@ export default async function LessonPage({
         </p>
       ) : null}
       <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="font-semibold">YouTube reference</h2>
+        <p className="mt-1 text-sm text-muted">
+          External technique video for this move. Not an SVG-produced film and not a paid course library.
+        </p>
+        <WatchForm
+          url={video.url}
+          pending={video.pending}
+          actionLabel="Watch on YouTube"
+          caption="YouTube reference — not an SVG-produced video"
+        />
+      </section>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="font-semibold">Details to watch for</h2>
+        {keyDetails.length > 0 ? (
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+            {keyDetails.map((detail) => (
+              <li key={detail}>{detail}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Key details pending coach review.</p>
+        )}
+      </section>
+      <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="font-semibold">Notes</h2>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{lesson.notes}</p>
+        {lesson.notes.trim() ? (
+          <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{lesson.notes}</p>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Written notes pending coach review.</p>
+        )}
       </section>
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="font-semibold">Drills</h2>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{lesson.drills}</p>
+        {lesson.drills.trim() ? (
+          <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{lesson.drills}</p>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Drills pending coach review.</p>
+        )}
       </section>
       <div className="flex flex-col gap-3 sm:flex-row">
         <form action={toggleBookmarkAction} className="flex-1">

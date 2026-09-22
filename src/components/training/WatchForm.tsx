@@ -3,9 +3,13 @@ import { isYoutubeFormUrl } from "@/lib/form-videos";
 export function WatchForm({
   url,
   pending,
+  actionLabel = "Watch form",
+  caption = "Form reference (YouTube) — not an SVG-produced video",
 }: {
   url: string;
   pending: boolean;
+  actionLabel?: string;
+  caption?: string;
 }) {
   if (pending || !url || !isYoutubeFormUrl(url)) {
     return (
@@ -22,10 +26,8 @@ export function WatchForm({
       rel="noreferrer"
       className="touch-target mt-3 inline-flex flex-col justify-center rounded-full border border-accent/50 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
     >
-      Watch form
-      <span className="text-[11px] font-normal text-muted">
-        Form reference (YouTube) — not an SVG-produced video
-      </span>
+      {actionLabel}
+      <span className="text-[11px] font-normal text-muted">{caption}</span>
     </a>
   );
 }

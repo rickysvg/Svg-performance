@@ -32,7 +32,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 ## Milestone 2
 
 - **Nutrition:** private manual estimates (`source=manual_estimate`). Owner can correct. No photo AI.
-- **Learn:** seeded DEMO lessons + one draft. Members see published only. Admin draft/publish.
+- **Learn:** seeded DEMO lessons + one draft. Members see published only. Admin draft/publish. Topic values are martial arts (mma, muay-thai, boxing, wrestling, jiu-jitsu, cagework). Browse defaults to Beginner.
 - **Coach Savage AI:** safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty.
 - **Roles:** `member` (default), `coach`, `admin`. Promote with `npm run admin:promote` or `npm run staff:promote -- email coach`.
 - **Stripe package** is used for TEST Checkout + webhook signature helpers. No raw cards stored.
@@ -69,6 +69,22 @@ How we pick a link:
 5. Links open on YouTube. They are not claimed as SVG IP.
 
 Current pending DEMO moves: squat jump / box step-up, and lateral bound / side step-over.
+
+## Learn technique video selection rules
+
+Every DEMO lesson stores `youtubeUrl` (YouTube watch link) **or** `videoPending=true` with an empty URL, plus written `notes` and bullet `keyDetails` (“details to watch for”). UI copy is **Watch on YouTube** plus “YouTube reference — not an SVG-produced video.” Pending shows “Video pending coach review.” Notes-only or video-only lessons are allowed; empty sections say pending.
+
+How we pick a Learn link:
+
+1. Prefer well-known instructional channels for that art (eBoxing Academy, Tony Jeffries, Kingdom Martial Arts Academy, TeachMeGrappling, Stephan Kesting, Henry Akins, Greg Jackson, Chess Club Jiu-Jitsu sprawl).
+2. Prefer long-form technique or illustrated-detail videos with strong engagement over fight highlights and over random shorts.
+3. Prefer official “how to / details” titles. We do not embed paid course libraries or claim SVG produced the film.
+4. If we cannot verify a high-quality public video for that move, we leave the URL empty and set pending. We do **not** guess a weak short.
+5. Links open on YouTube. They are not claimed as SVG IP.
+
+Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The unpublished draft is also pending.
+
+Browse starts at **Beginner**. Intermediate samples exist so the level + martial-art chips change results. Member Access (Stripe keys on) stays beginner-only.
 
 ## Demo program
 
@@ -115,4 +131,4 @@ Current pending DEMO moves: squat jump / box step-up, and lateral bound / side s
 
 ## Out of scope
 
-- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, photo food AI, claiming YouTube form videos as SVG IP, cloning Fight Science Collective brand/assets or Groups.
+- Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups.

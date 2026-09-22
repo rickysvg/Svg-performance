@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
-import { listAllLessonsForAdmin } from "@/lib/lessons";
+import { lessonLevelLabel, lessonTopicLabel, listAllLessonsForAdmin } from "@/lib/lessons";
 import { publishLessonAction } from "@/app/actions/lessons";
 import { DemoBadge } from "@/components/DemoBadge";
 
@@ -30,7 +30,8 @@ export default async function AdminLessonsPage() {
               {lesson.isDemo ? <DemoBadge /> : null}
             </div>
             <p className="text-sm text-muted">
-              {lesson.status} · {lesson.topic} · {lesson.skillLevel}
+              {lesson.status} · {lessonTopicLabel(lesson.topic)} · {lessonLevelLabel(lesson.skillLevel)}
+              {lesson.videoPending || !lesson.youtubeUrl ? " · video pending" : " · YouTube"}
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
               <Link href={`/admin/lessons/${lesson.id}`} className="text-sm text-accent underline">

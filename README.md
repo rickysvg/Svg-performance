@@ -15,7 +15,7 @@ It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim 
 5. Log a session, see it in history, and fix a mistaken number.
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), plus workout charts. No fake watch sync.
 7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later.
-8. Browse a small **DEMO** Learn library. Bookmark or mark complete. Admins can draft/publish.
+8. Browse a **DEMO** Learn library filtered by athlete level (starts at Beginner) and martial art (MMA, Muay Thai, Boxing, Wrestling, Jiu-Jitsu, Cagework). Open a lesson for written key details plus a labeled YouTube reference (or “Video pending coach review”). Bookmark or mark complete. Admins can draft/publish.
 9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
 10. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
 11. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
@@ -128,6 +128,7 @@ Coverage includes:
 - Nutrition ownership (user B cannot edit user A’s food log or saved meals)
 - DEMO food search + saved meals
 - Draft lessons stay hidden until an admin publishes
+- Learn filters: beginner default; boxing/intermediate change the result set; pending video UX
 - Coach Savage refusals: pain, weight-cut, cross-account
 - Knowledge pack loads the guide + DEMO seeds, not the interview worksheet
 - Gym checkbox does not verify; only an admin can
@@ -149,7 +150,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 2. Create an account (18+ required)
 3. Training → start **DEMO — Day 1** → tap **Watch form** (YouTube) → save a workout → refresh History
 4. Fuel → search “chicken” in the DEMO list or save a meal → log an estimate → correct a number
-5. Learn → open a DEMO lesson → bookmark / complete
+5. Learn → starts on Beginner → tap Boxing or Intermediate and watch the list change → open a lesson → read key details → **Watch on YouTube** (or pending) → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
 7. Home → greeting, week strip, nutrition rings, today’s workout card, + button, days active this week, optional reminder after your hour
 8. Progress → type a body weight; leave sleep empty and read the “no fake device sync” note; upload a jpeg/png/webp photo (private to you)
@@ -169,7 +170,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Days-active copy never shames a quiet week.
 - [ ] Train: DEMO program opens; **Watch form** opens a YouTube technique video (or shows pending); a logged workout survives refresh; a wrong number can be corrected.
 - [ ] Fuel: DEMO search or saved meal fills the form; estimates stay labeled; owner can correct; another account cannot open that log.
-- [ ] Learn: members see published DEMO lessons only; bookmark / complete stick.
+- [ ] Learn: members see published DEMO lessons only; Beginner + martial-art chips change results; a lesson shows key details and Watch on YouTube (or pending); bookmark / complete stick.
 - [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
 - [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
@@ -205,7 +206,7 @@ Do not use days-active copy as a public leaderboard.
 - One DEMO strength program. DEMO lessons only. Not a personalized coach plan.
 - Food numbers are estimates (typed or from a tiny DEMO list). No barcode database, no photo AI.
 - Progress photos are stored on the server disk in this preview (not S3). Only the owner can view them. No public CDN.
-- Form videos are public YouTube references, not SVG coaching films. Two DEMO moves are pending coach review.
+- Form videos and Learn technique videos are public YouTube references, not SVG coaching films. Two DEMO strength moves and one DEMO cage-exit lesson are pending coach review.
 - Coach Savage knowledge is a fillable pack in `content/coach-savage/`. Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.
 - Stripe is TEST structure only until keys + webhook forwarding are added. No live mode.

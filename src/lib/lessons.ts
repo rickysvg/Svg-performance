@@ -1,16 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { isYoutubeFormUrl } from "@/lib/form-videos";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 
 export const LESSON_LEVELS = ["beginner", "intermediate", "advanced"] as const;
 export const LESSON_TOPICS = [
-  "stance",
-  "striking",
+  "mma",
+  "muay-thai",
+  "boxing",
   "wrestling",
   "jiu-jitsu",
-  "conditioning",
-  "recovery",
+  "cagework",
 ] as const;
+
+export const LESSON_LEVEL_LABELS: Record<(typeof LESSON_LEVELS)[number], string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+};
+
+export const LESSON_TOPIC_LABELS: Record<(typeof LESSON_TOPICS)[number], string> = {
+  mma: "MMA",
+  "muay-thai": "Muay Thai",
+  boxing: "Boxing",
+  wrestling: "Wrestling",
+  "jiu-jitsu": "Jiu-Jitsu",
+  cagework: "Cagework",
+};
 
 export type LessonInput = {
   slug: string;
@@ -22,6 +38,9 @@ export type LessonInput = {
   equipment: string;
   notes: string;
   drills: string;
+  keyDetails: string;
+  youtubeUrl: string;
+  videoPending: boolean;
   needsSupervision: boolean;
   supervisedNote: string;
   isDemo: boolean;
@@ -45,11 +64,22 @@ export function validateLessonInput(input: LessonInput): LessonInput {
     throw new AppError("LESSON", "Pick a valid skill level.");
   }
   if (!LESSON_TOPICS.includes(input.topic as (typeof LESSON_TOPICS)[number])) {
-    throw new AppError("LESSON", "Pick a valid topic.");
+    throw new AppError("LESSON", "Pick a valid martial art.");
   }
   const slug = slugify(input.slug || title);
   if (!slug) {
     throw new AppError("LESSON", "A lesson needs a short URL slug.");
+  }
+  const videoPending = Boolean(input.videoPending);
+  const youtubeUrl = input.youtubeUrl.trim();
+  if (!videoPending && youtubeUrl && !isYoutubeFormUrl(youtubeUrl)) {
+    throw new AppError(
+      "LESSON",
+      "Use a regular YouTube watch link (not Shorts) or mark the video as pending.",
+    );
+  }
+  if (!videoPending && !youtubeUrl) {
+    throw new AppError("LESSON", "Add a YouTube reference or mark the video as pending.");
   }
   return {
     slug,
@@ -61,10 +91,62 @@ export function validateLessonInput(input: LessonInput): LessonInput {
     equipment: input.equipment.trim().slice(0, 200),
     notes: input.notes.trim().slice(0, 4000),
     drills: input.drills.trim().slice(0, 4000),
+    keyDetails: input.keyDetails.trim().slice(0, 4000),
+    youtubeUrl: videoPending ? "" : youtubeUrl,
+    videoPending,
     needsSupervision: Boolean(input.needsSupervision),
     supervisedNote: input.supervisedNote.trim().slice(0, 500),
     isDemo: Boolean(input.isDemo),
   };
+}
+
+export function lessonLevelLabel(level: string) {
+  return LESSON_LEVEL_LABELS[level as (typeof LESSON_LEVELS)[number]] ?? level;
+}
+
+export function lessonTopicLabel(topic: string) {
+  return LESSON_TOPIC_LABELS[topic as (typeof LESSON_TOPICS)[number]] ?? topic;
+}
+
+export function resolveLearnLevelFilter(
+  level: string | undefined,
+  fullLibrary: boolean,
+): string | undefined {
+  if (!fullLibrary) {
+    return "beginner";
+  }
+  if (!level || level === "beginner") {
+    return "beginner";
+  }
+  if (level === "all") {
+    return undefined;
+  }
+  if (LESSON_LEVELS.includes(level as (typeof LESSON_LEVELS)[number])) {
+    return level;
+  }
+  return "beginner";
+}
+
+export function resolveLearnTopicFilter(topic: string | undefined): string | undefined {
+  if (topic && LESSON_TOPICS.includes(topic as (typeof LESSON_TOPICS)[number])) {
+    return topic;
+  }
+  return undefined;
+}
+
+export function buildLearnHref(query: { q?: string; topic?: string; level?: string }) {
+  const params = new URLSearchParams();
+  if (query.q?.trim()) {
+    params.set("q", query.q.trim());
+  }
+  if (query.topic) {
+    params.set("topic", query.topic);
+  }
+  if (query.level && query.level !== "beginner") {
+    params.set("level", query.level);
+  }
+  const search = params.toString();
+  return search ? `/learn?${search}` : "/learn";
 }
 
 export async function listPublishedLessons(query?: {
