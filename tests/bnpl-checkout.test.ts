@@ -14,6 +14,10 @@ import {
 } from "@/lib/bnpl";
 import { createBnplCheckoutSession, getStripe } from "@/lib/stripe";
 
+type CheckoutCreateParams = Stripe.Checkout.SessionCreateParams & {
+  automatic_payment_methods?: { enabled?: boolean };
+};
+
 function restoreStripeEnv(snapshot: Record<string, string | undefined>) {
   for (const [key, value] of Object.entries(snapshot)) {
     if (value === undefined) delete process.env[key];
@@ -99,11 +103,11 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
 
   it("asks Checkout for Affirm/Klarna when the amount allows", async () => {
     process.env.STRIPE_PRICE_PLATINUM = "price_plat_test";
-    const calls: Stripe.Checkout.SessionCreateParams[] = [];
+    const calls: CheckoutCreateParams[] = [];
     const stripe = {
       checkout: {
         sessions: {
-          create: async (params: Stripe.Checkout.SessionCreateParams) => {
+          create: async (params: CheckoutCreateParams) => {
             calls.push(params);
             return { url: "https://checkout.stripe.com/c/pay/cs_test_bnpl" };
           },
@@ -131,11 +135,11 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
 
   it("falls back to automatic payment methods, then card, if Stripe rejects BNPL types", async () => {
     process.env.STRIPE_PRICE_PLATINUM = "price_plat_test";
-    const calls: Stripe.Checkout.SessionCreateParams[] = [];
+    const calls: CheckoutCreateParams[] = [];
     const stripe = {
       checkout: {
         sessions: {
-          create: async (params: Stripe.Checkout.SessionCreateParams) => {
+          create: async (params: CheckoutCreateParams) => {
             calls.push(params);
             if (params.payment_method_types?.includes("affirm")) {
               throw { message: "The payment method type `affirm` is invalid for this mode" };

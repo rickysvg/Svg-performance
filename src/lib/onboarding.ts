@@ -375,7 +375,7 @@ export function coachingToneNote(tone: string) {
 export function obstacleNote(obstacles: string[]) {
   const labels = obstacles
     .map((item) => OBSTACLE_OPTIONS.find((option) => option.value === item)?.label)
-    .filter((label): label is string => Boolean(label));
+    .filter((label): label is (typeof OBSTACLE_OPTIONS)[number]["label"] => Boolean(label));
   if (labels.length === 0) {
     return "";
   }

@@ -45,7 +45,7 @@ export function recentDifficultyAverage(sessions: RatedSession[], take = 8) {
     .slice(0, take);
   const scores = rated
     .map((row) => difficultyScore(row.difficultyRating))
-    .filter((score): score is number => score != null);
+    .filter((score): score is 1 | 2 | 3 | 4 | 5 => score != null);
   if (scores.length === 0) {
     return { count: 0, average: null, label: "" };
   }

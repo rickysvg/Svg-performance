@@ -60,7 +60,7 @@ export async function createBnplCheckoutSession(
       return await stripe.checkout.sessions.create({
         ...base,
         automatic_payment_methods: { enabled: true },
-      });
+      } as Stripe.Checkout.SessionCreateParams);
     } catch (fallbackError) {
       if (!isBnplStripeError(fallbackError)) throw fallbackError;
       return stripe.checkout.sessions.create({
