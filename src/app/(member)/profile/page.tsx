@@ -48,6 +48,11 @@ export default async function ProfilePage() {
             </Link>
           </li>
           <li>
+            <Link href="/heart" className="text-accent underline-offset-4 hover:underline">
+              Heart rate (Polar / import)
+            </Link>
+          </li>
+          <li>
             <Link href="/paths" className="text-accent underline-offset-4 hover:underline">
               Training paths
             </Link>

@@ -14,6 +14,7 @@ import {
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import { createWorkoutHrForUser } from "@/lib/heart";
 
 export type WorkoutActionState = { error?: string; success?: string };
 
@@ -69,10 +70,23 @@ export async function saveWorkoutAction(
       status: intent === "draft" ? "draft" : "complete",
       sets: parseSets(formData),
     });
+    const avgRaw = String(formData.get("hrAvgBpm") ?? "").trim();
+    const maxRaw = String(formData.get("hrMaxBpm") ?? "").trim();
+    if (intent === "complete" && avgRaw && maxRaw) {
+      await createWorkoutHrForUser(user.id, {
+        workoutSessionId: workoutId,
+        startedAt: performedAt,
+        endedAt: new Date(performedAt.getTime() + 45 * 60 * 1000),
+        avgBpm: Number(avgRaw),
+        maxBpm: Number(maxRaw),
+        source: "manual",
+      });
+    }
     revalidatePath("/home");
     revalidatePath("/training");
     revalidatePath("/training/history");
     revalidatePath("/progress");
+    revalidatePath("/heart");
     revalidatePath(`/training/log/${workoutId}`);
     if (intent === "complete") {
       const celebrate = alreadyActive ? "workout" : "streak";

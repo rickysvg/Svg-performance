@@ -107,4 +107,5 @@ export const MEMBER_ROUTES = [
   "/paths",
   "/journal",
   "/report",
+  "/heart",
 ];

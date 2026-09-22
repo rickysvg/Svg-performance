@@ -13,6 +13,7 @@ import { listProgressPhotosForUser, progressPhotoSrc } from "@/lib/progress-phot
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
 import { getPersonalRecordsForUser } from "@/lib/records";
 import { PersonalRecordsBoard } from "@/components/progress/PersonalRecordsBoard";
+import { getProgressHeartTiles } from "@/lib/heart";
 
 function MetricTile({
   title,
@@ -34,20 +35,22 @@ function MetricTile({
 
 export default async function ProgressPage() {
   const user = await requireUser();
-  const [profile, sessions, latestMetrics, photos, foodToday, foodWeek] = await Promise.all([
-    getProfileForUser(user.id),
-    listWorkoutSessionsForUser(user.id),
-    getLatestBodyMetricsForUser(user.id),
-    listProgressPhotosForUser(user.id),
-    getNutritionSummaryForDay(user.id),
-    getRecentNutritionDays(user.id, 7),
-  ]);
+  const [profile, sessions, latestMetrics, photos, foodToday, foodWeek, heartTiles] =
+    await Promise.all([
+      getProfileForUser(user.id),
+      listWorkoutSessionsForUser(user.id),
+      getLatestBodyMetricsForUser(user.id),
+      listProgressPhotosForUser(user.id),
+      getNutritionSummaryForDay(user.id),
+      getRecentNutritionDays(user.id, 7),
+      getProgressHeartTiles(user.id),
+    ]);
   const units = profile?.preferredUnits ?? "lb";
   const records = await getPersonalRecordsForUser(user.id, units);
   const summary = buildProgressSummary(sessions, units);
   const weight = latestMetrics.get("weight");
   const sleep = latestMetrics.get("sleepHours");
-  const hr = latestMetrics.get("restingHr");
+  const typedHr = latestMetrics.get("restingHr");
   const lean = latestMetrics.get("leanMass");
   const fat = latestMetrics.get("bodyFat");
   const weekCalories = foodWeek.reduce((sum, day) => sum + day.calories, 0);
@@ -59,24 +62,45 @@ export default async function ProgressPage() {
         <div>
           <h1 className="text-2xl font-semibold">My Progress</h1>
           <p className="mt-1 text-sm text-muted">
-            Body numbers you type plus workouts and food you logged. Coming soon — no fake
-            wearable sync.
+            Body numbers you type, Polar when it is connected, or a labeled import. Apple
+            Watch is not connected on the web.
           </p>
         </div>
-        <Link
-          href="/profile"
-          className="touch-target inline-flex items-center rounded-full border border-line px-3 text-sm"
-          aria-label="Progress settings (profile)"
-        >
-          Settings
-        </Link>
+        <div className="flex flex-col items-end gap-2">
+          <Link
+            href="/heart"
+            className="touch-target inline-flex items-center rounded-full border border-accent px-3 text-sm"
+          >
+            Heart rate
+          </Link>
+          <Link
+            href="/profile"
+            className="touch-target inline-flex items-center rounded-full border border-line px-3 text-sm"
+            aria-label="Progress settings (profile)"
+          >
+            Settings
+          </Link>
+        </div>
       </div>
 
       <section className="grid grid-cols-2 gap-3">
         <MetricTile
           title="Resting Heart Rate"
-          value={hr ? `${hr.value} ${hr.unit}` : "—"}
-          hint={hr ? "Typed by you" : "Manual, or Coming soon — no fake device sync"}
+          value={heartTiles.rhr?.value ?? (typedHr ? `${typedHr.value} ${typedHr.unit}` : "—")}
+          hint={
+            heartTiles.rhr?.hint ??
+            (typedHr
+              ? "Typed by you"
+              : "Empty until you type one, import a CSV, or pull Polar")
+          }
+        />
+        <MetricTile
+          title="Last workout HR"
+          value={heartTiles.lastWorkout?.value ?? "—"}
+          hint={
+            heartTiles.lastWorkout?.hint ??
+            "Avg / max after a session — manual, Polar, import, or DEMO"
+          }
         />
         <MetricTile
           title="Sleep"

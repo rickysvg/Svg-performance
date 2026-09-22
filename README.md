@@ -4,7 +4,7 @@ Private-preview web app for **SVG MMA Academy** (Ricky Maynez, El Paso).
 
 This is a member companion you can run on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, week strip, nutrition rings, and a + button.
 
-It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim Ricky types each AI reply.
+It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing, or claim Ricky types each AI reply.
 
 ## What you can do in this preview
 
@@ -13,19 +13,20 @@ It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim 
 3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), a **Today** guide (workout + goal + recommended tutorial + next check-in; beginner vs fighter copy from intake), a **weekly wrap** (last 7 days, counts only), a **week strip**, nutrition goal rings (estimates), days active this week (no shame copy), unfinished lesson, coach help status, and shop.
 4. Follow a **DEMO training path** (Beginner Foundations, Build Your Gas Tank, or Strength for Combat) with milestones. Default comes from onboarding. Open the DEMO strength program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
-6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. No fake watch sync.
+6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open **Heart rate** for Polar (when env keys exist), manual RHR / workout HR, CSV import, and zone analysis. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. Apple Watch is not shown as connected on the web.
 7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later.
 8. Browse a **DEMO** Learn library filtered by athlete level (starts at Beginner) and martial art (MMA, Muay Thai, Boxing, Wrestling, Jiu-Jitsu, Cagework). Open a lesson for written key details plus a labeled YouTube reference (or “Video pending coach review”). Bookmark or mark complete. Admins can draft/publish.
 9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
 10. Keep a **personal coaching journal** (goals, notes, questions, lessons). Owner-only unless an assigned coach adds feedback + action items on Fighter Development+. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
-11. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
-12. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page.
-13. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
-14. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. Coach Savage is not Ricky.
-15. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
-16. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
+11. Connect **Polar** when `POLAR_CLIENT_ID` / `POLAR_CLIENT_SECRET` / `POLAR_REDIRECT_URI` are set. Without keys, Heart rate shows Connect Polar (TEST) and stays honest. Type RHR, record workout avg/max, import an Apple Health export / watch workout CSV (labeled import), or load labeled **DEMO** samples. Analysis is **not medical advice**.
+12. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
+13. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page.
+14. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
+15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. Coach Savage is not Ricky.
+16. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
+17. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
 
-Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and **Book** are in the header (and on Home). The + button is a quick add for workout, food, or a body metric. Profile is in the header. Paid app plans are **additional to gym dues**.
+Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and **Book** are in the header (and on Home). The + button is a quick add for workout, food, a body metric, or heart rate. Profile is in the header. Paid app plans are **additional to gym dues**.
 
 ## What you need on your computer
 
@@ -82,7 +83,20 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_PRICE_VIP` | Optional. SVG VIP $699 (cap 2) |
 | `STRIPE_PRICE_PLATINUM` | Optional. Platinum VIP $1,199 (cap 1) |
 | `PROGRESS_PHOTO_DIR` | Optional. Local folder for progress photos (default `uploads/progress-photos`). Never commit those files |
+| `POLAR_CLIENT_ID` `POLAR_CLIENT_SECRET` `POLAR_REDIRECT_URI` | Optional. Polar AccessLink. Empty = Connect Polar (TEST) / not configured |
 | `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
+
+If Polar keys are missing: Heart rate still works with manual entry, CSV import, and labeled DEMO samples. Connect Polar (TEST) stays off. We never show Apple Watch as connected.
+
+## Polar AccessLink (TEST)
+
+1. Create a Polar AccessLink client at the Polar developer portal.
+2. Set redirect URI to `{APP_URL}/api/polar/callback` (local: `http://localhost:3000/api/polar/callback`).
+3. Put `POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET`, and `POLAR_REDIRECT_URI` in `.env`. Restart `npm run dev`.
+4. Open **Heart rate** → **Connect Polar**. After Polar approves, use **Pull recent activities**.
+5. Without keys: Connect Polar (TEST) stays disabled. Use manual HR, CSV import, or Load DEMO samples.
+
+Never put Polar secrets in git.
 
 Never put a live `sk_live_` key in this preview. Live keys are rejected.
 
@@ -140,6 +154,8 @@ Coverage includes:
 - Training paths: enroll, auto-complete milestones from logged DEMO days, celebration on manual mark-done
 - Journal owner-only; coach feedback + action items on coaching tiers; user B cannot read user A
 - Book next steps stay empty until staff writes them; booking reminder uses the existing in-app / SMTP pattern
+- Heart rate ownership (user B cannot read/delete user A); Polar “connected” only with env keys + a stored token; Apple Watch connected is always false
+- Zone math from sample fixtures; RHR trend / high-zone insights; CSV import labeled import; DEMO samples labeled DEMO
 - Coach Savage refusals: pain, weight-cut, cross-account
 - Knowledge pack loads the guide + DEMO seeds, not the interview worksheet
 - Gym checkbox does not verify; only an admin can
@@ -164,7 +180,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 5. Learn → starts on Beginner → tap Boxing or Intermediate and watch the list change → open a lesson → read key details → **Watch on YouTube** (or pending) → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
 7. Home → greeting, daily quote, **Today** (goal + path + workout + tutorial + check-in), **weekly wrap** (last 7 days, counts only; a quiet week just says okay), week strip, nutrition rings, + button, days active this week, optional reminder after your hour
-8. Progress → type a body weight; leave sleep empty and read the “no fake device sync” note; upload a jpeg/png/webp photo (private to you); see the **personal records** board (empty until a load or an active day, then heaviest load + longest streak)
+8. Progress → type a body weight; open Heart rate for Polar / manual / import; leave Apple Watch disconnected on the web; upload a jpeg/png/webp photo (private to you); see the **personal records** board (empty until a load or an active day, then heaviest load + longest streak)
 9. Profile → turn a reminder off; optional nutrition targets
 10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist
 11. Plan → see current plan + credits; Book → send a mindset request (not a calendar slot)
@@ -190,7 +206,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
 - [ ] Home shows today’s quote for a Performance+ / preview account, and a teaser when Stripe is on and the plan is Member Access. Quote reminder can be turned off under Profile → Reminders. True mobile push is later.
 - [ ] After saving a workout, completing a lesson, adding a first-of-day log, or uploading a photo, a short celebration appears (respects reduced motion). Completing a workout asks how it felt; history and staff trends show the rating / recent feel.
-- [ ] Progress: a typed body weight saves; sleep/HR can stay empty with “no fake device sync”; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
+- [ ] Progress: a typed body weight saves; Heart rate tiles fill from Polar / manual / import / DEMO when data exists; Apple Watch is not shown as connected; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
 - [ ] Progress personal records: empty until a logged load or active day; then heaviest load per exercise and longest days-active streak, recalculated from existing logs.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
 - [ ] Subscription TEST: without keys, checkout stays off. With TEST keys + webhook forward, access flips only after the webhook. Cancel / failed payment do not leave someone “paid.”
@@ -229,10 +245,13 @@ Do not use days-active copy as a public leaderboard.
 - Coach Savage knowledge is a fillable pack in `content/coach-savage/`. Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.
 - Stripe is TEST structure only until keys + webhook forwarding are added. No live mode.
-- No Gymdesk, no fight-camp weight-cut tools, no wearables, no voice, no native apps.
+- Polar AccessLink is Phase 1. Apple Watch continuous sync is Phase 2 (HealthKit / native). Garmin OAuth is later. No medical diagnosis.
+- No Gymdesk, no fight-camp weight-cut tools, no voice, no native apps.
 
 ### Later / not in this pass (backlog only)
 
+- Full Apple Watch / Apple Health sync (native companion)
+- Garmin full OAuth
 - Ricky voice-note of the week
 - Offline workout cards
 - Native / PWA push beyond the existing reminder pattern (in-app after the preferred hour; email if SMTP)

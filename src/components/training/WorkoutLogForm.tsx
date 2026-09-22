@@ -93,6 +93,34 @@ export function WorkoutLogForm({ session }: { session: Session }) {
             className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
           />
         </label>
+        <fieldset className="rounded-2xl border border-line bg-card p-4">
+          <legend className="px-1 text-sm font-medium">Record HR (optional)</legend>
+          <p className="mb-3 text-xs text-muted">
+            Manual avg / max if no Polar pull. Not a live watch stream.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-2 text-sm">
+              <span>Average bpm</span>
+              <input
+                name="hrAvgBpm"
+                type="number"
+                min={30}
+                max={230}
+                className="w-full rounded-xl border border-line bg-background px-3 py-3"
+              />
+            </label>
+            <label className="block space-y-2 text-sm">
+              <span>Max bpm</span>
+              <input
+                name="hrMaxBpm"
+                type="number"
+                min={30}
+                max={230}
+                className="w-full rounded-xl border border-line bg-background px-3 py-3"
+              />
+            </label>
+          </div>
+        </fieldset>
 
         {grouped.map(([name, group]) => {
           const form = lookupFormVideo(name, session.programDay?.exercises);

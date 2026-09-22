@@ -198,6 +198,13 @@ export default async function HomePage({
           <p className="mt-1 font-semibold">Mindset $75 / Strategy $125</p>
           <p className="mt-1 text-sm text-muted">Request times only — not a live calendar.</p>
         </Link>
+        <Link href="/heart" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Heart rate</p>
+          <p className="mt-1 font-semibold">Polar, manual, or import</p>
+          <p className="mt-1 text-sm text-muted">
+            Apple Watch is not connected on the web. Analysis is not medical advice.
+          </p>
+        </Link>
         <Link href="/progress" className="block rounded-2xl border border-line bg-card p-4">
           <p className="text-xs uppercase tracking-wide text-muted">My Progress</p>
           {progress.sessionCount === 0 ? (

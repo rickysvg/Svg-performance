@@ -26,10 +26,17 @@ export function QuickAddFab() {
           </Link>
           <Link
             href="/progress"
-            className="block px-4 py-3 text-sm hover:bg-accent/10"
+            className="block border-b border-line px-4 py-3 text-sm hover:bg-accent/10"
             onClick={() => setOpen(false)}
           >
             Log metric or photo
+          </Link>
+          <Link
+            href="/heart"
+            className="block px-4 py-3 text-sm hover:bg-accent/10"
+            onClick={() => setOpen(false)}
+          >
+            Log heart rate
           </Link>
         </div>
       ) : null}
