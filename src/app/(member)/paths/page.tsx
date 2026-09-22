@@ -45,7 +45,7 @@ export default async function PathsPage() {
                   : "All DEMO milestones on this path are complete."}
               </p>
             ) : null}
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="mt-4 flex flex-col items-start gap-3">
               <Link href={`/paths/${path.slug}`} className="text-sm text-accent underline">
                 View milestones
               </Link>

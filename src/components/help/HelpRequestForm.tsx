@@ -16,12 +16,12 @@ export function HelpRequestForm() {
   return (
     <form action={action} className="space-y-3">
       <StatusBanner error={state.error} success={state.success} />
-      <label className="block text-sm">
-        Topic
+      <label className="block space-y-2 text-sm">
+        <span>Topic</span>
         <select
           name="topic"
           defaultValue="training"
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           {HELP_TOPICS.map((topic) => (
             <option key={topic} value={topic}>
@@ -30,13 +30,13 @@ export function HelpRequestForm() {
           ))}
         </select>
       </label>
-      <label className="block text-sm">
-        Note
+      <label className="block space-y-2 text-sm">
+        <span>Note</span>
         <textarea
           name="note"
           required
           rows={3}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
           placeholder="What should the coach look at?"
         />
       </label>

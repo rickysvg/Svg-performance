@@ -69,7 +69,7 @@ export default async function TrainingPage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href={`/training/${day.id}`}
                 className="touch-target inline-flex items-center rounded-full border border-line px-4 text-sm"

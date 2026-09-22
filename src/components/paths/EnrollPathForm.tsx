@@ -13,13 +13,13 @@ export function EnrollPathForm({
 }) {
   const [state, action, pending] = useActionState(enrollPathAction, {} as PathActionState);
   return (
-    <form action={action}>
+    <form action={action} className="w-full max-w-xs space-y-2">
       <StatusBanner error={state.error} />
       <input type="hidden" name="pathSlug" value={pathSlug} />
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : label}
       </button>

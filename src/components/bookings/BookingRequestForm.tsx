@@ -22,12 +22,12 @@ export function BookingRequestForm({
   return (
     <form action={action} className="space-y-3">
       <StatusBanner error={state.error} success={state.success} />
-      <label className="block text-sm">
-        Session
+      <label className="block space-y-2 text-sm">
+        <span>Session</span>
         <select
           name="kind"
           defaultValue={defaultKind}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           {kinds.map((kind) => (
             <option key={kind} value={kind}>
@@ -36,22 +36,22 @@ export function BookingRequestForm({
           ))}
         </select>
       </label>
-      <label className="block text-sm">
-        Preferred days or times
+      <label className="block space-y-2 text-sm">
+        <span>Preferred days or times</span>
         <textarea
           name="preferredTimes"
           required
           rows={3}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
           placeholder="Example: Tue/Thu after 5pm El Paso time. This is a request, not a booked slot."
         />
       </label>
-      <label className="block text-sm">
-        Note
+      <label className="block space-y-2 text-sm">
+        <span>Note</span>
         <textarea
           name="note"
           rows={3}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
           placeholder="What should Ricky know? No promised business results."
         />
       </label>

@@ -30,7 +30,7 @@ export default async function JournalPage({
         </p>
       </div>
 
-      <form className="flex gap-2">
+      <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           name="q"
           defaultValue={params.q ?? ""}
@@ -39,7 +39,7 @@ export default async function JournalPage({
         />
         <button
           type="submit"
-          className="touch-target rounded-full border border-line px-4 text-sm"
+          className="touch-target shrink-0 rounded-full border border-line px-4 text-sm"
         >
           Search
         </button>

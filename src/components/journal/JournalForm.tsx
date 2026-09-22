@@ -14,12 +14,12 @@ export function JournalForm() {
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
       <h2 className="font-semibold">New entry</h2>
       <StatusBanner error={state.error} success={state.success} />
-      <label className="block text-sm">
-        Type
+      <label className="block space-y-2 text-sm">
+        <span>Type</span>
         <select
           name="kind"
           defaultValue="note"
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           {JOURNAL_KINDS.map((kind) => (
             <option key={kind} value={kind}>
@@ -28,21 +28,21 @@ export function JournalForm() {
           ))}
         </select>
       </label>
-      <label className="block text-sm">
-        Title
+      <label className="block space-y-2 text-sm">
+        <span>Title</span>
         <input
           name="title"
           required
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
         />
       </label>
-      <label className="block text-sm">
-        Notes
+      <label className="block space-y-2 text-sm">
+        <span>Notes</span>
         <textarea
           name="body"
           required
           rows={4}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="w-full rounded-xl border border-line bg-background px-3 py-3"
           placeholder="Your words. A coach can add feedback later on coaching tiers."
         />
       </label>

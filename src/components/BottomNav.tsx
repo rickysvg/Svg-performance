@@ -16,7 +16,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="sticky bottom-0 z-20 border-t border-line bg-background/95 backdrop-blur"
+      className="sticky bottom-0 z-20 border-t border-line bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
       <ul className="mx-auto grid max-w-3xl grid-cols-5">
         {LINKS.map((link) => {

@@ -45,15 +45,15 @@ function Ring({
           transform="rotate(-90 36 36)"
         />
       </svg>
-      <p className="mt-1 text-xs uppercase tracking-wide text-muted">{label}</p>
-      <p className="text-sm font-semibold">
+      <p className="mt-2 text-xs uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-1 text-sm font-semibold">
         {Math.round(value)}
         <span className="font-normal text-muted">
           {" "}
           / {Math.round(target)} {unit}
         </span>
       </p>
-      <p className="text-[11px] text-muted">{Math.round(left)} left</p>
+      <p className="mt-1 text-[11px] text-muted">{Math.round(left)} left</p>
     </div>
   );
 }
@@ -72,7 +72,7 @@ export function NutritionRings({
   targets: { calories: number; proteinG: number; carbsG: number; fatG: number };
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
       <Ring label="Calories" value={calories} target={targets.calories} unit="cal" />
       <Ring label="Protein" value={proteinG} target={targets.proteinG} unit="g" />
       <Ring label="Carbs" value={carbsG} target={targets.carbsG} unit="g" />
