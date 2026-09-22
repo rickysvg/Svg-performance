@@ -144,6 +144,7 @@ export default async function HomePage({
           <div className="mt-3">
             <p className="text-lg font-semibold">{today.suggestedDay.title}</p>
             <p className="mt-1 text-sm text-muted">{today.suggestedDay.focus}</p>
+            <p className="mt-2 text-xs text-muted">{today.suggestionCopy}</p>
             <Link
               href={`/training/${today.suggestedDay.id}`}
               className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"

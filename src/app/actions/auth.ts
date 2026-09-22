@@ -13,6 +13,7 @@ import {
 import { publicErrorMessage } from "@/lib/errors";
 import {
   clearSessionCookie,
+  postAuthPath,
   readSessionToken,
   requireUserOrThrow,
   setSessionCookie,
@@ -24,6 +25,7 @@ export async function registerAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  let nextPath = "/onboarding";
   try {
     const password = String(formData.get("password") ?? "");
     const confirm = String(formData.get("confirmPassword") ?? "");
@@ -39,16 +41,18 @@ export async function registerAction(
     });
     const session = await createSessionRecord(user.id);
     await setSessionCookie(session.token, session.expiresAt);
+    nextPath = await postAuthPath(user.id);
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/home");
+  redirect(nextPath);
 }
 
 export async function loginAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  let nextPath = "/home";
   try {
     const user = await authenticate(
       String(formData.get("email") ?? ""),
@@ -56,10 +60,11 @@ export async function loginAction(
     );
     const session = await createSessionRecord(user.id);
     await setSessionCookie(session.token, session.expiresAt);
+    nextPath = await postAuthPath(user.id);
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/home");
+  redirect(nextPath);
 }
 
 export async function logoutAction() {

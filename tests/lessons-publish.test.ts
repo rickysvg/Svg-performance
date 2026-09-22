@@ -53,10 +53,14 @@ describe("Learn level and martial-art filters", () => {
 
   it("defaults browse to beginner and keeps Member Access on beginner", () => {
     expect(resolveLearnLevelFilter(undefined, true)).toBe("beginner");
-    expect(resolveLearnLevelFilter("all", true)).toBeUndefined();
+    expect(resolveLearnLevelFilter(undefined, true, "intermediate")).toBe("intermediate");
+    expect(resolveLearnLevelFilter("beginner", true, "intermediate")).toBe("beginner");
+    expect(resolveLearnLevelFilter("all", true, "intermediate")).toBeUndefined();
     expect(resolveLearnLevelFilter("intermediate", true)).toBe("intermediate");
-    expect(resolveLearnLevelFilter("intermediate", false)).toBe("beginner");
+    expect(resolveLearnLevelFilter("intermediate", false, "advanced")).toBe("beginner");
     expect(resolveLearnTopicFilter("boxing")).toBe("boxing");
+    expect(resolveLearnTopicFilter(undefined, "muay-thai")).toBe("muay-thai");
+    expect(resolveLearnTopicFilter("all", "boxing")).toBeUndefined();
     expect(resolveLearnTopicFilter("stance")).toBeUndefined();
   });
 

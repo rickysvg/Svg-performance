@@ -14,21 +14,26 @@ export async function saveProfileAction(
   try {
     const user = await requireUserOrThrow();
     const hoursRaw = String(formData.get("hoursPerWeek") ?? "").trim();
+    const sessionsRaw = String(formData.get("sessionsPerWeek") ?? "").trim();
     const optionalNumber = (key: string) => {
       const raw = String(formData.get(key) ?? "").trim();
       return raw === "" ? undefined : Number(raw);
     };
     await updateProfileForUser(user.id, {
       displayName: String(formData.get("displayName") ?? ""),
-      goals: String(formData.get("goals") ?? ""),
+      goalKey: String(formData.get("goalKey") ?? ""),
+      goalNote: String(formData.get("goalNote") ?? ""),
       experienceLevel: String(formData.get("experienceLevel") ?? "beginner"),
+      primaryFocus: String(formData.get("primaryFocus") ?? ""),
       equipment: formData.getAll("equipment").map(String),
       weeklyAvailability: formData.getAll("weeklyAvailability").map(String),
       hoursPerWeek: hoursRaw === "" ? null : Number(hoursRaw),
+      sessionsPerWeek: sessionsRaw === "" ? null : Number(sessionsRaw),
       preferredUnits: String(formData.get("preferredUnits") ?? "lb"),
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
       foodPreferences: String(formData.get("foodPreferences") ?? ""),
       allergies: String(formData.get("allergies") ?? ""),
+      trainingLimitations: String(formData.get("trainingLimitations") ?? ""),
       calorieTarget: optionalNumber("calorieTarget"),
       proteinTargetG: optionalNumber("proteinTargetG"),
       carbsTargetG: optionalNumber("carbsTargetG"),

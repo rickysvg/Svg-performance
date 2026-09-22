@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@/lib/constants";
 import { getUserBySessionToken, type PublicUser } from "@/lib/auth";
 import { AuthError } from "@/lib/errors";
+import { getOnboardingStatus, memberEntryPath } from "@/lib/onboarding";
 
 export async function readSessionToken() {
   const jar = await cookies();
@@ -27,6 +28,20 @@ export async function requireUserOrThrow(): Promise<PublicUser> {
     throw new AuthError("Sign in to continue.");
   }
   return user;
+}
+
+export async function requireOnboardedUser(): Promise<PublicUser> {
+  const user = await requireUser();
+  const status = await getOnboardingStatus(user.id);
+  if (!status.completed) {
+    redirect("/onboarding");
+  }
+  return user;
+}
+
+export async function postAuthPath(userId: string) {
+  const status = await getOnboardingStatus(userId);
+  return memberEntryPath(status.completedAt);
 }
 
 export async function setSessionCookie(token: string, expiresAt: Date) {

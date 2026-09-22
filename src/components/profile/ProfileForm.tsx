@@ -6,6 +6,8 @@ import { StatusBanner } from "@/components/StatusBanner";
 import {
   EQUIPMENT_OPTIONS,
   EXPERIENCE_LEVELS,
+  FOCUS_OPTIONS,
+  GOAL_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
 import type { ProfileRecord } from "@/lib/profile";
@@ -32,12 +34,31 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       </label>
 
       <label className="block">
-        <span className="text-sm font-medium">What are you working toward?</span>
+        <span className="text-sm font-medium">Main goal</span>
+        <select
+          name="goalKey"
+          defaultValue={profile.goalKey || "other"}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        >
+          {GOAL_OPTIONS.map((goal) => (
+            <option key={goal.value} value={goal.value}>
+              {goal.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="text-sm font-medium">More about that goal (optional)</span>
         <textarea
-          name="goals"
-          defaultValue={profile.goals}
-          rows={3}
-          placeholder="Example: Get stronger for class and stay consistent twice a week."
+          name="goalNote"
+          defaultValue={
+            profile.goalKey && profile.goals.startsWith(
+              GOAL_OPTIONS.find((goal) => goal.value === profile.goalKey)?.label ?? "___",
+            )
+              ? profile.goals.replace(/^.+?—\s*/, "")
+              : profile.goals
+          }
+          rows={2}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
       </label>
@@ -52,6 +73,21 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           {EXPERIENCE_LEVELS.map((level) => (
             <option key={level.value} value={level.value}>
               {level.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block">
+        <span className="text-sm font-medium">Primary martial art / focus</span>
+        <select
+          name="primaryFocus"
+          defaultValue={profile.primaryFocus || "mma"}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        >
+          {FOCUS_OPTIONS.map((focus) => (
+            <option key={focus.value} value={focus.value}>
+              {focus.label}
             </option>
           ))}
         </select>
@@ -94,6 +130,18 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       </fieldset>
 
       <label className="block">
+        <span className="text-sm font-medium">Sessions per week (optional)</span>
+        <input
+          name="sessionsPerWeek"
+          type="number"
+          min={1}
+          max={14}
+          defaultValue={profile.sessionsPerWeek ?? ""}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+      </label>
+
+      <label className="block">
         <span className="text-sm font-medium">Hours per week (optional)</span>
         <input
           name="hoursPerWeek"
@@ -124,6 +172,18 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       </fieldset>
 
       <label className="block">
+        <span className="text-sm font-medium">Training limitations (optional)</span>
+        <textarea
+          name="trainingLimitations"
+          defaultValue={profile.trainingLimitations}
+          rows={2}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          Shared with a coach if you request help. Coach Savage AI will not diagnose or treat.
+        </span>
+      </label>
+      <label className="block">
         <span className="text-sm font-medium">Food preferences</span>
         <textarea
           name="foodPreferences"
@@ -142,6 +202,9 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           placeholder="Example: peanuts. Always verify ingredients yourself."
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
+        <span className="mt-1 block text-xs text-muted">
+          Always verify ingredients yourself. Food numbers in this app are estimates.
+        </span>
       </label>
 
       <fieldset className="rounded-xl border border-line p-3">

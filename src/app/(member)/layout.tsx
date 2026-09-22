@@ -1,14 +1,14 @@
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
-import { requireUser } from "@/lib/session";
+import { requireOnboardedUser } from "@/lib/session";
 
 export default async function MemberLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireUser();
+  const user = await requireOnboardedUser();
 
   return (
     <div className="flex min-h-full flex-col">

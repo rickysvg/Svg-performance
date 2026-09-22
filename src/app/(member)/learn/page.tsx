@@ -16,6 +16,8 @@ import {
   resolveLearnTopicFilter,
 } from "@/lib/lessons";
 import { resolveLessonVideo } from "@/lib/lesson-videos";
+import { preferredLearnLevel, preferredLearnTopic } from "@/lib/onboarding";
+import { getProfileForUser } from "@/lib/profile";
 import { DemoBadge } from "@/components/DemoBadge";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -56,8 +58,13 @@ export default async function LearnPage({
     return <PaywallNotice feature="Learn" />;
   }
   const query = await searchParams;
-  const skillLevel = resolveLearnLevelFilter(query.level, fullLibrary);
-  const topic = resolveLearnTopicFilter(query.topic);
+  const profile = await getProfileForUser(user.id);
+  const skillLevel = resolveLearnLevelFilter(
+    query.level,
+    fullLibrary,
+    preferredLearnLevel(profile),
+  );
+  const topic = resolveLearnTopicFilter(query.topic, preferredLearnTopic(profile));
   const selectedLevel = skillLevel ?? "all";
   const [lessons, progress] = await Promise.all([
     listPublishedLessons({
@@ -75,9 +82,9 @@ export default async function LearnPage({
         <div>
           <h1 className="text-2xl font-semibold">Learn</h1>
           <p className="mt-1 text-sm text-muted">
-            Filter by athlete level and martial art. DEMO lessons include written
-            details plus a labeled YouTube reference — not paid SVG video
-            instruction.
+            Filter by athlete level and martial art. Defaults follow your intake
+            (editable here anytime). DEMO lessons include written details plus a
+            labeled YouTube reference — not paid SVG video instruction.
             {!fullLibrary
               ? " Member Access shows selected beginner notes only. Upgrade to SVG Performance for the full library."
               : ""}
@@ -133,7 +140,7 @@ export default async function LearnPage({
         <p className="text-xs uppercase tracking-wide text-muted">Martial art</p>
         <div className="flex flex-wrap gap-2">
           <Chip
-            href={buildLearnHref({ q: query.q, level: selectedLevel })}
+            href={buildLearnHref({ q: query.q, level: selectedLevel, topic: "all" })}
             active={!topic}
           >
             All arts

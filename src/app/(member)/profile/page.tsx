@@ -27,7 +27,9 @@ export default async function ProfilePage() {
     <main className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Profile</h1>
-        <p className="mt-1 text-sm text-muted">{user.email}</p>
+        <p className="mt-1 text-sm text-muted">
+          {user.email}. Intake answers can be edited here anytime.
+        </p>
       </div>
 
       <ProfileForm profile={profile} />

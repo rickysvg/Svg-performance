@@ -129,6 +129,14 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - **S3 later:** env names only (`S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT`). Not connected.
 - **Privacy copy** on Progress: private to you; not used in analytics events. Old placeholder rows stay in the DB but the UI no longer writes them.
 
+## First-run onboarding
+
+- New accounts get `onboardingCompletedAt = null`. Member routes under `(member)` call `requireOnboardedUser()` and send them to `/onboarding`. Login/register also land there until the survey is saved.
+- Required: display name, goal enum (+ optional note), experience, primary focus (six arts + general fitness), equipment, weekly days, units. Optional: limitations, diet, allergies, sessions/week. Adult checkbox stays on signup only.
+- Personalization is honest DEMO matching: Learn default level (and art when the focus is one of the six); Home suggests an unused DEMO day (conditioning → Day 3, striking arts → Day 2, grappling/cage → Day 1). Copy says this is not custom Elite coaching.
+- Nutrition targets stay the DEMO 2200 / 140 g / 220 g / 70 g estimates. We do not invent a medical calorie plan from the goal.
+- Answers live on `Profile` and can be edited later. Completing onboarding again (if they already finished) does not clear the original timestamp.
+
 ## Out of scope
 
 - Fight-camp weight cuts, Gymdesk, wearables, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups.

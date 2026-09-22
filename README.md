@@ -8,8 +8,8 @@ It does **not** charge live cards, talk to Gymdesk, connect wearables, or claim 
 
 ## What you can do in this preview
 
-1. Create an account, log in, log out, and reset a password.
-2. Save a short adult profile (goal, experience, equipment, available days, lb or kg, food preferences).
+1. Create an account, answer a short first-run survey (goal, experience, martial art, equipment, days, units), log in, log out, and reset a password. New accounts cannot open Home until that intake is saved.
+2. Finish a first-run intake (name, goal, experience, martial art, equipment, days, units; optional limitations/diet/allergies). Edit it later on Profile.
 3. Use Home for: greeting, a **week strip**, nutrition goal rings (estimates), today’s DEMO workout card, days active this week (no shame copy), unfinished lesson, coach help status, and shop.
 4. Open the one **DEMO** strength & conditioning program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
@@ -129,6 +129,7 @@ Coverage includes:
 - DEMO food search + saved meals
 - Draft lessons stay hidden until an admin publishes
 - Learn filters: beginner default; boxing/intermediate change the result set; pending video UX
+- Onboarding gate: incomplete users stay on `/onboarding`; completed users reach Home; answers persist and edit on Profile
 - Coach Savage refusals: pain, weight-cut, cross-account
 - Knowledge pack loads the guide + DEMO seeds, not the interview worksheet
 - Gym checkbox does not verify; only an admin can
@@ -147,8 +148,8 @@ See `EVALS.md` for the Coach Savage evaluation set.
 ## Preview walkthrough
 
 1. `npm install && npm run setup && npm run dev`
-2. Create an account (18+ required)
-3. Training → start **DEMO — Day 1** → tap **Watch form** (YouTube) → save a workout → refresh History
+2. Create an account (18+ required) → finish the intake survey → land on Home
+3. Training → start the suggested DEMO day → tap **Watch form** (YouTube) → save a workout → refresh History
 4. Fuel → search “chicken” in the DEMO list or save a meal → log an estimate → correct a number
 5. Learn → starts on Beginner → tap Boxing or Intermediate and watch the list change → open a lesson → read key details → **Watch on YouTube** (or pending) → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
@@ -164,7 +165,8 @@ See `EVALS.md` for the Coach Savage evaluation set.
 
 Use this before inviting ~15–20 adults. Check a box only if you actually tried it.
 
-- [ ] Signup works (18+ confirmation). Logout / login / password reset behave.
+- [ ] Signup works (18+ confirmation). New accounts hit `/onboarding` and cannot open Home until the survey is saved. Logout / login / password reset behave.
+- [ ] Intake answers persist and can be edited on Profile. Learn defaults to that experience (and art when it is one of the six). Home suggests a DEMO day from the answers — still labeled DEMO.
 - [ ] Gym checkbox does **not** unlock $19 or paid tools by itself.
 - [ ] Home shows a greeting, week strip, nutrition rings (estimates), a today workout card, and a + quick-add.
 - [ ] Days-active copy never shames a quiet week.

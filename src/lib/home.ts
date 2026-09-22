@@ -4,6 +4,12 @@ import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
 import { getProfileForUser, firstNameFrom, nutritionTargetsFromProfile } from "@/lib/profile";
+import {
+  demoSuggestionCopy,
+  preferredLearnLevel,
+  preferredLearnTopic,
+  suggestDemoProgramDay,
+} from "@/lib/onboarding";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -100,15 +106,16 @@ export function formatDayParam(date: Date) {
 
 export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const selected = startOfLocalDay(selectedDay);
-  const [program, sessions, foodToday, lessons, progress, activity, profile] = await Promise.all([
-    getDemoProgram(),
-    listWorkoutSessionsForUser(userId),
-    getNutritionSummaryForDay(userId, selected),
-    listPublishedLessons(),
-    listLessonProgressForUser(userId),
-    getWeeklyActivity(userId),
-    getProfileForUser(userId),
-  ]);
+  const [program, sessions, foodToday, allLessons, progress, activity, profile] =
+    await Promise.all([
+      getDemoProgram(),
+      listWorkoutSessionsForUser(userId),
+      getNutritionSummaryForDay(userId, selected),
+      listPublishedLessons(),
+      listLessonProgressForUser(userId),
+      getWeeklyActivity(userId),
+      getProfileForUser(userId),
+    ]);
 
   const completedDayIds = new Set(
     sessions
@@ -116,8 +123,10 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
       .map((session) => session.programDayId as string),
   );
   const draft = sessions.find((session) => session.status === "draft");
-  const suggestedDay =
-    program.days.find((day) => !completedDayIds.has(day.id)) ?? program.days[0] ?? null;
+  const suggestedDay = suggestDemoProgramDay(program.days, completedDayIds, {
+    goalKey: profile?.goalKey,
+    primaryFocus: profile?.primaryFocus,
+  });
   const loggedOnSelected = sessions.find(
     (session) =>
       session.status === "complete" && sameLocalDay(session.performedAt, selected),
@@ -126,13 +135,28 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const completedLessonIds = new Set(
     progress.filter((row) => row.completed).map((row) => row.lessonId),
   );
+  const preferredLevel = preferredLearnLevel(profile);
+  const preferredTopic = preferredLearnTopic(profile);
+  const matchedLessons = allLessons.filter((lesson) => {
+    const levelOk = lesson.skillLevel === preferredLevel;
+    const topicOk = !preferredTopic || lesson.topic === preferredTopic;
+    return levelOk && topicOk;
+  });
+  const fallbackLessons = allLessons.filter((lesson) => lesson.skillLevel === "beginner");
+  const lessonPool = matchedLessons.length > 0 ? matchedLessons : fallbackLessons;
   const incompleteLesson =
-    lessons.find((lesson) => !completedLessonIds.has(lesson.id)) ?? null;
+    lessonPool.find((lesson) => !completedLessonIds.has(lesson.id)) ??
+    allLessons.find((lesson) => !completedLessonIds.has(lesson.id)) ??
+    null;
 
   return {
     selected,
     isToday: sameLocalDay(selected, new Date()),
     suggestedDay,
+    suggestionCopy: demoSuggestionCopy({
+      goalKey: profile?.goalKey,
+      primaryFocus: profile?.primaryFocus,
+    }),
     draft: sameLocalDay(selected, new Date()) ? draft : undefined,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,

@@ -111,25 +111,39 @@ export function lessonTopicLabel(topic: string) {
 export function resolveLearnLevelFilter(
   level: string | undefined,
   fullLibrary: boolean,
+  preferredLevel?: string,
 ): string | undefined {
   if (!fullLibrary) {
-    return "beginner";
-  }
-  if (!level || level === "beginner") {
     return "beginner";
   }
   if (level === "all") {
     return undefined;
   }
-  if (LESSON_LEVELS.includes(level as (typeof LESSON_LEVELS)[number])) {
+  if (level && LESSON_LEVELS.includes(level as (typeof LESSON_LEVELS)[number])) {
     return level;
+  }
+  if (preferredLevel && LESSON_LEVELS.includes(preferredLevel as (typeof LESSON_LEVELS)[number])) {
+    return preferredLevel;
   }
   return "beginner";
 }
 
-export function resolveLearnTopicFilter(topic: string | undefined): string | undefined {
+export function resolveLearnTopicFilter(
+  topic: string | undefined,
+  preferredTopic?: string,
+): string | undefined {
+  if (topic === "all") {
+    return undefined;
+  }
   if (topic && LESSON_TOPICS.includes(topic as (typeof LESSON_TOPICS)[number])) {
     return topic;
+  }
+  if (
+    !topic &&
+    preferredTopic &&
+    LESSON_TOPICS.includes(preferredTopic as (typeof LESSON_TOPICS)[number])
+  ) {
+    return preferredTopic;
   }
   return undefined;
 }
@@ -142,7 +156,7 @@ export function buildLearnHref(query: { q?: string; topic?: string; level?: stri
   if (query.topic) {
     params.set("topic", query.topic);
   }
-  if (query.level && query.level !== "beginner") {
+  if (query.level) {
     params.set("level", query.level);
   }
   const search = params.toString();

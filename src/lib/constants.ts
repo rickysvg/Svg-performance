@@ -26,18 +26,31 @@ export const WEEKDAYS = [
 ] as const;
 
 export const EXPERIENCE_LEVELS = [
-  { value: "beginner", label: "New to lifting" },
-  { value: "intermediate", label: "Some lifting experience" },
-  { value: "advanced", label: "Consistent lifter" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
 ] as const;
 
-export const GOAL_PROMPTS = [
-  "Get stronger for class",
-  "Improve conditioning",
-  "Build muscle",
-  "Feel more athletic",
-  "Stay consistent between classes",
+export const GOAL_OPTIONS = [
+  { value: "stronger-for-class", label: "Get stronger for class" },
+  { value: "conditioning", label: "Improve conditioning" },
+  { value: "build-muscle", label: "Build muscle" },
+  { value: "more-athletic", label: "Feel more athletic" },
+  { value: "stay-consistent", label: "Stay consistent between classes" },
+  { value: "other", label: "Something else" },
 ] as const;
+
+export const FOCUS_OPTIONS = [
+  { value: "mma", label: "MMA" },
+  { value: "muay-thai", label: "Muay Thai" },
+  { value: "boxing", label: "Boxing" },
+  { value: "wrestling", label: "Wrestling" },
+  { value: "jiu-jitsu", label: "Jiu-Jitsu" },
+  { value: "cagework", label: "Cagework" },
+  { value: "general-fitness", label: "General fitness" },
+] as const;
+
+export const GOAL_PROMPTS = GOAL_OPTIONS.map((goal) => goal.label);
 
 /** DEMO daily targets used until a member types their own. Estimates only. */
 export const DEMO_NUTRITION_TARGETS = {

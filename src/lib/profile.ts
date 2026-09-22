@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { DEMO_NUTRITION_TARGETS, EQUIPMENT_OPTIONS, WEEKDAYS } from "@/lib/constants";
+import {
+  DEMO_NUTRITION_TARGETS,
+  EQUIPMENT_OPTIONS,
+  FOCUS_OPTIONS,
+  GOAL_OPTIONS,
+  WEEKDAYS,
+} from "@/lib/constants";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 
 export type ProfileRecord = {
@@ -10,17 +16,22 @@ export type ProfileRecord = {
   claimsGymMembership: boolean;
   gymMembershipVerified: boolean;
   goals: string;
+  goalKey: string;
   experienceLevel: string;
+  primaryFocus: string;
   equipment: string[];
   weeklyAvailability: string[];
   hoursPerWeek: number | null;
+  sessionsPerWeek: number | null;
   preferredUnits: LoadUnit;
   foodPreferences: string;
   allergies: string;
+  trainingLimitations: string;
   calorieTarget: number;
   proteinTargetG: number;
   carbsTargetG: number;
   fatTargetG: number;
+  onboardingCompletedAt: Date | null;
 };
 
 function parseJsonArray(value: string): string[] {
@@ -41,17 +52,22 @@ export function toProfileRecord(row: {
   claimsGymMembership: boolean;
   gymMembershipVerified: boolean;
   goals: string;
+  goalKey: string;
   experienceLevel: string;
+  primaryFocus: string;
   equipmentJson: string;
   weeklyAvailabilityJson: string;
   hoursPerWeek: number | null;
+  sessionsPerWeek: number | null;
   preferredUnits: string;
   foodPreferences: string;
   allergies: string;
+  trainingLimitations: string;
   calorieTarget: number;
   proteinTargetG: number;
   carbsTargetG: number;
   fatTargetG: number;
+  onboardingCompletedAt: Date | null;
 }): ProfileRecord {
   return {
     userId: row.userId,
@@ -60,17 +76,22 @@ export function toProfileRecord(row: {
     claimsGymMembership: row.claimsGymMembership,
     gymMembershipVerified: row.gymMembershipVerified,
     goals: row.goals,
+    goalKey: row.goalKey,
     experienceLevel: row.experienceLevel,
+    primaryFocus: row.primaryFocus,
     equipment: parseJsonArray(row.equipmentJson),
     weeklyAvailability: parseJsonArray(row.weeklyAvailabilityJson),
     hoursPerWeek: row.hoursPerWeek,
+    sessionsPerWeek: row.sessionsPerWeek,
     preferredUnits: isLoadUnit(row.preferredUnits) ? row.preferredUnits : "lb",
     foodPreferences: row.foodPreferences,
     allergies: row.allergies,
+    trainingLimitations: row.trainingLimitations,
     calorieTarget: row.calorieTarget,
     proteinTargetG: row.proteinTargetG,
     carbsTargetG: row.carbsTargetG,
     fatTargetG: row.fatTargetG,
+    onboardingCompletedAt: row.onboardingCompletedAt,
   };
 }
 
@@ -109,15 +130,20 @@ export async function updateProfileForUser(
   userId: string,
   input: {
     displayName: string;
-    goals: string;
+    goals?: string;
+    goalKey?: string;
+    goalNote?: string;
     experienceLevel: string;
+    primaryFocus?: string;
     equipment: string[];
     weeklyAvailability: string[];
     hoursPerWeek: number | null;
+    sessionsPerWeek?: number | null;
     preferredUnits: string;
     claimsGymMembership: boolean;
     foodPreferences: string;
     allergies: string;
+    trainingLimitations?: string;
     calorieTarget?: number;
     proteinTargetG?: number;
     carbsTargetG?: number;
@@ -125,7 +151,6 @@ export async function updateProfileForUser(
   },
 ): Promise<ProfileRecord> {
   const displayName = input.displayName.trim().slice(0, 80);
-  const goals = input.goals.trim().slice(0, 500);
   if (!["beginner", "intermediate", "advanced"].includes(input.experienceLevel)) {
     throw new AppError("PROFILE", "Pick a valid experience level.");
   }
@@ -151,6 +176,29 @@ export async function updateProfileForUser(
   const existing = await prisma.profile.findUnique({ where: { userId } });
   if (!existing) {
     throw new NotFoundError("Profile not found.");
+  }
+
+  const goalKey = GOAL_OPTIONS.some((goal) => goal.value === input.goalKey)
+    ? (input.goalKey as string)
+    : existing.goalKey;
+  const goalNote = (input.goalNote ?? "").trim().slice(0, 400);
+  const goalLabel = GOAL_OPTIONS.find((goal) => goal.value === goalKey)?.label ?? "";
+  const goals = input.goals?.trim()
+    ? input.goals.trim().slice(0, 500)
+    : goalNote
+      ? `${goalLabel || "Goal"} — ${goalNote}`
+      : goalLabel || existing.goals;
+  const primaryFocus = FOCUS_OPTIONS.some((item) => item.value === input.primaryFocus)
+    ? (input.primaryFocus as string)
+    : existing.primaryFocus;
+  let sessionsPerWeek = input.sessionsPerWeek === undefined
+    ? existing.sessionsPerWeek
+    : input.sessionsPerWeek;
+  if (sessionsPerWeek != null) {
+    if (!Number.isFinite(sessionsPerWeek) || sessionsPerWeek < 1 || sessionsPerWeek > 14) {
+      throw new AppError("PROFILE", "Sessions per week should be between 1 and 14.");
+    }
+    sessionsPerWeek = Math.round(sessionsPerWeek);
   }
 
   function parseTarget(value: number | undefined, fallback: number, min: number, max: number, label: string) {
@@ -197,14 +245,21 @@ export async function updateProfileForUser(
     data: {
       displayName,
       goals,
+      goalKey,
       experienceLevel: input.experienceLevel,
+      primaryFocus,
       equipmentJson: JSON.stringify(equipment),
       weeklyAvailabilityJson: JSON.stringify(weeklyAvailability),
       hoursPerWeek,
+      sessionsPerWeek,
       preferredUnits: input.preferredUnits,
       claimsGymMembership: Boolean(input.claimsGymMembership),
       foodPreferences: input.foodPreferences.trim().slice(0, 400),
       allergies: input.allergies.trim().slice(0, 400),
+      trainingLimitations:
+        input.trainingLimitations === undefined
+          ? existing.trainingLimitations
+          : input.trainingLimitations.trim().slice(0, 500),
       calorieTarget,
       proteinTargetG,
       carbsTargetG,
@@ -218,9 +273,12 @@ export async function updateProfileForUser(
 
 export function profileIsComplete(profile: ProfileRecord): boolean {
   return Boolean(
-    profile.displayName &&
+    profile.onboardingCompletedAt &&
+      profile.displayName &&
       profile.goals &&
       profile.experienceLevel &&
+      profile.primaryFocus &&
+      profile.equipment.length > 0 &&
       profile.weeklyAvailability.length > 0,
   );
 }
