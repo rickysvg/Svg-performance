@@ -102,7 +102,10 @@ export default async function BookPage() {
         <h2 className="font-semibold">Platinum intensives</h2>
         <p className="mt-2 text-sm text-muted">
           El Paso: {BOOKING_OFFERS.intensive_elpaso.priceLabel}. Travel:{" "}
-          {BOOKING_OFFERS.intensive_travel.priceLabel}. Request stub only — no deposit.
+          {BOOKING_OFFERS.intensive_travel.priceLabel}. Request stub only — no
+          deposit. Higher-ticket intensives are a main Affirm/Klarna use case
+          once Stripe TEST checkout exists for them; this Book form does not
+          fake a loan or a successful buy.
         </p>
         <ul className="mt-3 list-disc pl-5 text-sm text-muted">
           {bookingPrep("intensive_elpaso").map((item) => (

@@ -5,6 +5,7 @@ import { creditsForCurrentPlan } from "@/lib/credits";
 import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
+import { FinancingNote } from "@/components/billing/FinancingNote";
 
 export default async function PlanPage() {
   const user = await requireUser();
@@ -54,6 +55,8 @@ export default async function PlanPage() {
           </Link>
         )}
       </section>
+
+      <FinancingNote configured={configured} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="font-semibold">This billing month&apos;s credits</h2>

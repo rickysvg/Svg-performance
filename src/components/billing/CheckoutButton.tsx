@@ -9,17 +9,24 @@ export function CheckoutButton({
   plan,
   label,
   disabledReason,
+  financingHint,
 }: {
   plan: CheckoutSkuId;
   label: string;
   disabledReason?: string;
+  financingHint?: string;
 }) {
   const [state, action, pending] = useActionState(
     startCheckoutAction,
     {} as BillingActionState,
   );
   if (disabledReason) {
-    return <p className="text-sm text-muted">{disabledReason}</p>;
+    return (
+      <div className="space-y-1">
+        <p className="text-sm text-muted">{disabledReason}</p>
+        {financingHint ? <p className="text-xs text-muted">{financingHint}</p> : null}
+      </div>
+    );
   }
   return (
     <form action={action} className="space-y-2">
@@ -32,6 +39,7 @@ export function CheckoutButton({
       >
         {pending ? "Opening Stripe…" : label}
       </button>
+      {financingHint ? <p className="text-xs text-muted">{financingHint}</p> : null}
     </form>
   );
 }

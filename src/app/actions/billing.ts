@@ -3,8 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
-import { assertCanCheckoutPlan, isPlanId, priceIdForPlan } from "@/lib/billing";
-import { getStripe } from "@/lib/stripe";
+import { assertCanCheckoutPlan, isPlanId } from "@/lib/billing";
+import { createBnplCheckoutSession, getStripe } from "@/lib/stripe";
 import { AppError } from "@/lib/errors";
 import { publicErrorMessage } from "@/lib/errors";
 import { joinWaitlist } from "@/lib/waitlist";
@@ -26,18 +26,15 @@ export async function startCheckoutAction(
     if (!stripe) {
       throw new AppError(
         "BILLING",
-        "Stripe TEST is not configured. No card will be charged.",
+        "Stripe TEST is not configured. No card or Affirm/Klarna charge will be created.",
       );
     }
     const appUrl = process.env.APP_URL || "http://localhost:3000";
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      client_reference_id: user.id,
-      success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/billing/cancel`,
-      line_items: [{ price: priceIdForPlan(planRaw), quantity: 1 }],
-      metadata: { userId: user.id, plan: planRaw },
-      subscription_data: { metadata: { userId: user.id, plan: planRaw } },
+    const session = await createBnplCheckoutSession(stripe, {
+      userId: user.id,
+      plan: planRaw,
+      successUrl: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${appUrl}/billing/cancel`,
     });
     if (!session.url) {
       throw new AppError("BILLING", "Stripe did not return a checkout URL.");

@@ -20,7 +20,7 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 10. Keep a **personal coaching journal** (goals, notes, questions, lessons). Owner-only unless an assigned coach adds feedback + action items on Fighter Development+. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
 11. **Heart rate (Apple Health first):** import a Health Auto Export JSON, Apple Health `export.xml`, or CSV from iPhone Health / Shortcuts. Rows are labeled `apple_health` or `apple_watch_import`. The web app cannot pair a Watch. Polar is optional (env keys). Manual avg/max is a backup. Analysis is **not medical advice**. Automatic Watch sync is Phase 2 (native iOS / HealthKit).
 12. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
-13. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page.
+13. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page. Copy mentions Affirm / Klarna pay-over-time when available; without keys that stays coming soon.
 14. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
 15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. Coach Savage is not Ricky.
 16. Admins can verify gym members. Checking “I train at SVG” still grants nothing.
@@ -81,7 +81,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_PRICE_DEVELOPMENT_GYM` / `_NON` | Optional. Fighter Development $149 / $179 |
 | `STRIPE_PRICE_ELITE_GYM` / `_NON` | Optional. Elite Online $299 / $349 (cap ~6) |
 | `STRIPE_PRICE_VIP` | Optional. SVG VIP $699 (cap 2) |
-| `STRIPE_PRICE_PLATINUM` | Optional. Platinum VIP $1,199 (cap 1) |
+| `STRIPE_PRICE_PLATINUM` | Optional. SVG Platinum VIP $1,199 (cap 1) |
 | `PROGRESS_PHOTO_DIR` | Optional. Local folder for progress photos (default `uploads/progress-photos`). Never commit those files |
 | `POLAR_CLIENT_ID` `POLAR_CLIENT_SECRET` `POLAR_REDIRECT_URI` | Optional. Polar AccessLink. Empty = Connect Polar (TEST) / not configured |
 | `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
@@ -111,7 +111,9 @@ Never put Polar secrets in git.
 
 Never put a live `sk_live_` key in this preview. Live keys are rejected.
 
-If Stripe keys are missing: checkout buttons stay off and nobody is marked paid. Training still works.
+Affirm, Klarna, and similar pay-over-time methods use those same TEST keys. Stripe does not require extra Affirm/Klarna secrets for Checkout. Turn the methods on in the Stripe Dashboard (TEST).
+
+If Stripe keys are missing: checkout buttons stay off and nobody is marked paid. Training still works. Pricing still shows the Affirm/Klarna message as **coming soon** — we do not fake a successful buy.
 
 If OpenAI is missing: Coach Savage still refuses unsafe asks and answers common questions from DEMO notes.
 
@@ -131,15 +133,30 @@ Do this only with **test** keys. Do not turn on live billing.
    ```
 
 5. Copy the CLI `whsec_...` value into `STRIPE_WEBHOOK_SECRET`. Restart `npm run dev`.
-6. Log in, open **Pricing**, start TEST checkout. Use Stripe’s test card `4242 4242 4242 4242`, any future date, any CVC.
-7. The success page does **not** unlock tools. Access changes after the webhook (`checkout.session.completed` or `invoice.paid`).
+6. Log in, open **Pricing**, start TEST checkout. Use Stripe’s test card `4242 4242 4242 4242`, any future date, any CVC. If Affirm/Klarna appear, that is Stripe TEST — still not live money. We never invent a successful Affirm/Klarna purchase when keys are missing.
+7. The success page does **not** unlock tools. Access changes after the webhook (`checkout.session.completed` or `invoice.paid`), the same for card or BNPL. SVG does not store loan details.
 8. Duplicate webhooks are ignored. Failed payment → `past_due` (tools lock if keys are on). Cancel → no access. If the period end date is in the past, access is treated as expired.
 
 Gym $19 still needs an **admin verify**. The gym checkbox never grants a price by itself.
 
-Without keys: Pricing shows “not configured.” Nobody is faked as paid.
+Without keys: Pricing shows “not configured” and Affirm/Klarna as coming soon. Nobody is faked as paid.
 
-Cards never touch this app.
+Cards and BNPL loans never touch this app’s database.
+
+## Affirm / Klarna (TEST)
+
+Do this only in **Stripe Test mode**. Do not enable live charges.
+
+1. Stripe Dashboard → **Settings → Payment methods** (Test mode). Enable **Affirm** and **Klarna**. Afterpay/Clearpay is optional similar BNPL.
+2. No extra env names beyond the Stripe TEST keys already listed. Stripe Checkout uses `STRIPE_SECRET_KEY`.
+3. Amount / currency (USD, typical Stripe TEST minimums — confirm in Dashboard):
+   - Klarna: about **$10+**
+   - Afterpay/Clearpay: about **$35+**
+   - Affirm: about **$50–$30,000**
+4. That means $19 / $29 Performance SKUs can offer Klarna when Dashboard allows, but not Affirm. Fighter Conditioning $59+, Development, Elite, VIP, and Platinum are the Affirm-sized plans. Intensives ($1,500 / from $4,500) are a main use case, but this preview’s Book stubs are **not** Stripe Checkout.
+5. **US / eligibility:** Affirm is primarily US. Klarna depends on Stripe + shopper location. Not everyone qualifies. Affirm or Klarna decide approval — SVG does not.
+6. Subscription Checkout sometimes rejects Affirm. This app tries explicit `payment_method_types`, then Dashboard `automatic_payment_methods`, then card-only. Still TEST.
+7. Without keys: UI says coming soon. Checkout stays off. We do not fake BNPL success.
 
 ## Tests
 
@@ -171,6 +188,7 @@ Coverage includes:
 - Knowledge pack loads the guide + DEMO seeds, not the interview worksheet
 - Gym checkbox does not verify; only an admin can
 - Stripe webhook signature, duplicates, failed payment, cancel, renewal, expiration
+- Affirm/Klarna payment-method selection by amount; webhook still grants access the same way; no fake BNPL success without keys
 - Reminder prefs, no-spam, SMTP on vs in-app only
 - Coach/admin report role gates; help-request statuses; no food-diary dump
 - Home weekly activity copy (no shame)
@@ -193,7 +211,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 7. Home → greeting, daily quote, **Today** (goal + path + workout + tutorial + check-in), **weekly wrap** (last 7 days, counts only; a quiet week just says okay), week strip, nutrition rings, + button, days active this week, optional reminder after your hour
 8. Progress → type a body weight; open Heart rate and import an Apple Health file (Watch stays disconnected on the web); upload a jpeg/png/webp photo (private to you); see the **personal records** board (empty until a load or an active day, then heaviest load + longest streak)
 9. Profile → turn a reminder off; optional nutrition targets
-10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist
+10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist; Affirm/Klarna copy is coming soon without keys
 11. Plan → see current plan + credits; Book → send a mindset request (not a calendar slot)
 12. Promote an admin, verify a gym member, assign a plan on Admin → Plans & credits
 13. Promote a coach, assign a member, open Staff → trends (no food names)
@@ -220,8 +238,8 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Progress: a typed body weight saves; Heart rate tiles fill from Apple Health import / Polar / manual / DEMO when data exists; Apple Watch is not shown as connected; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
 - [ ] Progress personal records: empty until a logged load or active day; then heaviest load per exercise and longest days-active streak, recalculated from existing logs.
 - [ ] Shop links open live svgandco.com pages (names only, no invented prices).
-- [ ] Subscription TEST: without keys, checkout stays off. With TEST keys + webhook forward, access flips only after the webhook. Cancel / failed payment do not leave someone “paid.”
-- [ ] Pricing shows App / Coaching / VIP, gym vs nonmember, PROPOSAL / TEST, and “dues are separate.”
+- [ ] Subscription TEST: without keys, checkout stays off and Affirm/Klarna is coming soon (no fake buy). With TEST keys + webhook forward, access flips only after the webhook for card or BNPL. Cancel / failed payment do not leave someone “paid.”
+- [ ] Pricing shows App / Coaching / VIP, gym vs nonmember, PROPOSAL / TEST, “dues are separate,” and “Pay over time with Affirm or Klarna when available.”
 - [ ] Member Access (keys on, no sub) still trains and sees beginner Learn; Fuel / Coach stay paywalled.
 - [ ] Book with Ricky stores a request. VIP/Platinum can flag an included strategy credit. Intensives stay a Platinum stub.
 - [ ] Elite / VIP / Platinum show a waitlist when the pilot cap is full.
@@ -255,7 +273,7 @@ Do not use days-active copy as a public leaderboard.
 - Form videos and Learn technique videos are public YouTube references, not SVG coaching films. Two DEMO strength moves and one DEMO cage-exit lesson are pending coach review.
 - Coach Savage knowledge is a fillable pack in `content/coach-savage/`. Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.
-- Stripe is TEST structure only until keys + webhook forwarding are added. No live mode.
+- Stripe is TEST structure only until keys + webhook forwarding are added. No live mode. Affirm/Klarna need Dashboard TEST payment methods; still not live money.
 - Apple Health Phase 1 is file import only. Automatic Watch sync needs a native iOS companion / HealthKit (Phase 2). Polar is optional. Garmin OAuth is later. No medical diagnosis.
 - No Gymdesk, no fight-camp weight-cut tools, no voice, no native apps.
 

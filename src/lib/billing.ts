@@ -97,6 +97,8 @@ type StripeLikeObject = {
   status?: string;
   current_period_end?: number;
   items?: { data?: { price?: { id?: string } }[] };
+  /** Ignored: card vs Affirm/Klarna does not change access. Loan details are never stored. */
+  payment_method_types?: string[];
 };
 
 function mapSubscriptionStatus(status: string | undefined) {

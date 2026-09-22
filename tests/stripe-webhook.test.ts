@@ -168,4 +168,59 @@ describe("stripe webhook path", () => {
     });
     expect(await hasWebhookGrantedAccess(expiring.id)).toBe(false);
   });
+
+  it("grants access the same way after Affirm or Klarna TEST checkout completes", async () => {
+    const affirmUser = await makeUser("affirm@example.com");
+    await applyStripeEvent({
+      id: "evt_bnpl_affirm",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_affirm",
+          metadata: { userId: affirmUser.id, plan: "platinum" },
+          client_reference_id: affirmUser.id,
+          subscription: "sub_affirm",
+          payment_method_types: ["affirm"],
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(affirmUser.id)).toBe(true);
+    const affirmSub = await prisma.subscription.findFirst({ where: { userId: affirmUser.id } });
+    expect(affirmSub).toMatchObject({
+      plan: "platinum",
+      status: "active",
+      source: "webhook",
+    });
+    expect(affirmSub).not.toHaveProperty("loanDetails");
+    expect(Object.keys(affirmSub ?? {})).not.toEqual(expect.arrayContaining(["loanId", "loan"]));
+
+    const klarnaUser = await makeUser("klarna@example.com");
+    await applyStripeEvent({
+      id: "evt_bnpl_klarna",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_klarna",
+          metadata: { userId: klarnaUser.id, plan: "vip" },
+          client_reference_id: klarnaUser.id,
+          subscription: "sub_klarna",
+          payment_method_types: ["klarna"],
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(klarnaUser.id)).toBe(true);
+
+    await applyStripeEvent({
+      id: "evt_bnpl_klarna_fail",
+      type: "invoice.payment_failed",
+      data: {
+        object: {
+          metadata: { userId: klarnaUser.id, plan: "vip" },
+          subscription: "sub_klarna",
+          payment_method_types: ["klarna"],
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(klarnaUser.id)).toBe(false);
+  });
 });

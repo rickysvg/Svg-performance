@@ -11,7 +11,7 @@ export default async function BillingCancelPage() {
         <h1 className="text-2xl font-semibold">Checkout canceled</h1>
         <p className="mt-3 text-sm text-muted">
           No access change was made. Failed or canceled TEST payments never
-          grant a plan.
+          grant a plan — including Affirm or Klarna.
         </p>
         <Link href="/pricing" className="mt-6 inline-flex text-accent underline">
           Back to pricing

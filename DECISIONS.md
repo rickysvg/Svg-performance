@@ -25,7 +25,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
 - Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
 - Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `invoice.paid` is treated as renewal. `currentPeriodEnd` in the past is treated as expired.
-- If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid. Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
+- If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid (including Affirm/Klarna). Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
 - If keys are present, Nutrition / Coach Savage require a webhook-confirmed **Performance+** plan. Learn stays open on Member Access as **beginner-only**. Training / progress / shop stay open.
 - Live `sk_live_` secrets are rejected.
 
@@ -35,7 +35,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - **Learn:** seeded DEMO lessons + one draft. Members see published only. Admin draft/publish. Topic values are martial arts (mma, muay-thai, boxing, wrestling, jiu-jitsu, cagework). Browse defaults to Beginner.
 - **Coach Savage AI:** safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty.
 - **Roles:** `member` (default), `coach`, `admin`. Promote with `npm run admin:promote` or `npm run staff:promote -- email coach`.
-- **Stripe package** is used for TEST Checkout + webhook signature helpers. No raw cards stored.
+- **Stripe package** is used for TEST Checkout + webhook signature helpers. No raw cards or BNPL loan records stored.
 
 ## Milestone 3
 
@@ -118,6 +118,7 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - **Caps:** Elite 6, VIP 2, Platinum 1. Self-serve checkout joins waitlist when full. Admin assign/override ignores the cap so the pilot can still move seats.
 - **Book with Ricky** stores a request (`preferredTimes`) — not Zoom, not a deposit. VIP/Platinum flag `usesIncludedCredit` when a strategy credit remains. Intensives are Platinum-only stubs (El Paso $1500 / travel from $4500).
 - **Stripe TEST** env names exist for every paid SKU. `gym` / `standalone` webhooks still map to catalog `performance` so M2–M4 tests stay valid.
+- **Affirm / Klarna / similar BNPL** are TEST Checkout payment methods, not a second billing stack. Checkout sends `payment_method_types` (card + Klarna/Afterpay/Affirm when the USD amount allows), then Dashboard `automatic_payment_methods` if Stripe rejects a type (common for Affirm on `mode: subscription`), then card-only. No extra secrets. Approval is Affirm’s/Klarna’s. We do not store loan details on `Subscription`. Missing keys = coming-soon copy, checkout off, never a fake BNPL success. Webhooks still grant access the same way regardless of card vs BNPL. Intensives stay Book stubs.
 - **Coach Savage ≠ Ricky** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
 - **No live billing.** Missing keys = honest off + preview entitlements (tools stay open like M1–M4).
 
@@ -168,4 +169,4 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 
 ## Out of scope
 
-- Fight-camp weight cuts, Gymdesk, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups, faking Apple Watch connected on web.
+- Fight-camp weight cuts, Gymdesk, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups, faking Apple Watch connected on web, faking a successful Affirm/Klarna purchase.

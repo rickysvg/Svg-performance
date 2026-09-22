@@ -2,12 +2,14 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
+import { FinancingNote } from "@/components/billing/FinancingNote";
 import { WaitlistButton } from "@/components/billing/WaitlistButton";
 import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { listSeatStatus } from "@/lib/waitlist";
+import { BNPL_COPY, skuHighlightsFinancing } from "@/lib/bnpl";
 import {
   BOOKING_OFFERS,
   type CatalogPlan,
@@ -67,6 +69,11 @@ export default async function PricingPage() {
             {atCap ? " — full. Join the waitlist." : ""}
           </p>
         ) : null}
+        {skus.some((sku) => skuHighlightsFinancing(sku.id)) ? (
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-accent">
+            Pay over time when available
+          </p>
+        ) : null}
         {plan.responseTime ? (
           <p className="mt-2 text-sm">Human response: {plan.responseTime}</p>
         ) : null}
@@ -100,6 +107,9 @@ export default async function PricingPage() {
                       : ""
                 }`}
                 disabledReason={checkoutDisabled(sku.requiresGymVerify)}
+                financingHint={
+                  skuHighlightsFinancing(sku.id) ? BNPL_COPY.whenAvailable : undefined
+                }
               />
             ))
           )}
@@ -119,9 +129,11 @@ export default async function PricingPage() {
         <p className="mt-3 text-muted">
           Paid app plans are <strong className="text-foreground">additional to gym dues</strong>.
           One monthly subscription at a time — a higher plan replaces the lower one.
-          Cards never touch this app. Access is granted only after a verified webhook.
+          Cards and BNPL loan details never touch this app. Access is granted only after
+          a verified webhook.
         </p>
         <AiDisclaimer className="mt-3" />
+        <FinancingNote configured={configured} className="mt-4" />
         {currentPlan ? (
           <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
             Current catalog plan: <strong>{PLAN_CATALOG[currentPlan].label}</strong>
@@ -137,7 +149,7 @@ export default async function PricingPage() {
         {!configured ? (
           <p className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
             Stripe TEST keys are not in this environment. Checkout buttons stay
-            off on purpose so we do not fake paid access.
+            off on purpose so we do not fake paid access or an Affirm/Klarna buy.
           </p>
         ) : null}
 
@@ -176,6 +188,8 @@ export default async function PricingPage() {
             <h3 className="mt-2 text-xl font-semibold">Platinum intensives</h3>
             <p className="mt-2 text-sm text-muted">
               {BOOKING_OFFERS.intensive_elpaso.summary} Not a live deposit.
+              Intensives are a main pay-over-time use case, but this preview does
+              not run Affirm or Klarna on Book stubs — we do not fake a purchase.
             </p>
             <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">
               <li>
@@ -204,6 +218,11 @@ export default async function PricingPage() {
             <li>Elite / VIP: human reply within 2 business days. Platinum: next business day. Coach Savage is not that inbox.</li>
             <li>Weight-cut services are not sold here.</li>
             <li>No launch discounts in this preview. TEST checkout never uses live keys.</li>
+            <li>
+              Affirm / Klarna approval is theirs, not SVG’s. We do not store loan
+              details. Not everyone qualifies. US shoppers and Stripe amount
+              minimums apply.
+            </li>
           </ul>
         </section>
 
