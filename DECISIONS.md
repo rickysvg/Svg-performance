@@ -99,7 +99,10 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 
 ## Brand
 
-- Official **SVG Performance** lockup (mountain, star, SVG + PERFORMANCE bar) lives at `public/svg-performance-logo.png` and is the primary `Logo` mark (sm/md/lg). Alt text is “SVG Performance”.
+- Official **SVG Performance** art is `public/svg-performance-logo.png` (source square lockup with a baked-in black background). The UI uses transparent cuts of that same art:
+  - `variant="lockup"` → `svg-performance-lockup.svg` (mountain, star, SVG + PERFORMANCE bar) on landing.
+  - `variant="mark"` → `svg-performance-mark.svg` (mountain, star, SVG — no bar) in the sticky header at ~36px tall.
+- Header does **not** repeat the “SVG Performance” wordmark next to a lockup that already says PERFORMANCE. Subtitle only: “Member companion preview”.
 - Older MMA Academy SVGs (`public/logo.svg`, `public/logo-mark.svg`) remain on disk as unused fallbacks only. The UI does not show them.
 - Accent hex **`#D0FF00`** was sampled from the neon V and the PERFORMANCE bar on that official mark (replacing the old MMA Academy `#CFFF00`). Black / white / that neon only, high contrast, athletic.
 
