@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
 import { publicErrorMessage } from "@/lib/errors";
 import {
@@ -107,14 +108,13 @@ export async function loadDemoHeartAction(
     const user = await requireUserOrThrow();
     const result = await loadDemoHeartDataForUser(user.id);
     revalidateHeart();
-    return {
-      success: result.created
-        ? "Loaded labeled DEMO heart-rate samples. Not a real Polar or Apple Watch connection."
-        : "DEMO heart-rate samples are already on this account.",
-    };
+    if (!result.created) {
+      return { success: "DEMO heart-rate samples are already on this account." };
+    }
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+  redirect("/heart?demo=1");
 }
 
 export async function syncPolarAction(_formData?: FormData): Promise<HeartActionState> {

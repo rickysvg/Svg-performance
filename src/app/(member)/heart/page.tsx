@@ -18,6 +18,9 @@ import { deleteRestingHrAction, deleteWorkoutHrAction } from "@/app/actions/hear
 
 function polarFlash(value?: string) {
   if (value === "connected") return "Polar connected. Pull recent activities when you want a refresh.";
+  if (value === "demo") {
+    return "Loaded labeled DEMO heart-rate samples. Not a real Polar or Apple Watch connection.";
+  }
   if (value === "not-configured") {
     return "Polar keys are not set on this preview. Connect Polar (TEST) stays off until env is added.";
   }
@@ -28,7 +31,7 @@ function polarFlash(value?: string) {
 export default async function HeartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ polar?: string }>;
+  searchParams: Promise<{ polar?: string; demo?: string }>;
 }) {
   const user = await requireUser();
   const query = await searchParams;
@@ -38,6 +41,7 @@ export default async function HeartPage({
     listRestingSamplesForUser(user.id),
     listWorkoutHrForUser(user.id),
   ]);
+  const flash = polarFlash(query.polar) || (query.demo === "1" ? polarFlash("demo") : undefined);
 
   return (
     <main className="space-y-6">
@@ -49,7 +53,7 @@ export default async function HeartPage({
         </p>
       </div>
 
-      <PolarConnectCard status={status} message={polarFlash(query.polar)} />
+      <PolarConnectCard status={status} message={flash} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="font-semibold">Breakdown</h2>
