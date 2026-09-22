@@ -58,7 +58,7 @@ export default async function TrainingDayPage({
         <EquipmentRow chips={equipment} />
       </div>
 
-      <ol className="flex-1 border-t border-line">
+      <ol className="flex-1 border-t border-line pb-32">
         {day.exercises.map((exercise) => (
           <li
             key={exercise.id}
@@ -86,7 +86,7 @@ export default async function TrainingDayPage({
 
       <form
         action={startSessionAction}
-        className="sticky bottom-20 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 backdrop-blur"
+        className="sticky bottom-28 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pr-20 backdrop-blur"
       >
         <input type="hidden" name="programDayId" value={day.id} />
         <button

@@ -186,58 +186,61 @@ export function WorkoutLogForm({
         <input type="hidden" name="workoutId" value={session.id} />
         <input type="hidden" name="setCount" value={sets.length} />
 
-        <label className="block text-sm">
-          <span className="text-muted">When</span>
-          <input
-            name="performedAt"
-            type="datetime-local"
-            defaultValue={toDateInput(session.performedAt)}
-            className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
-          />
-        </label>
-
         {showNotes ? (
-          <label className="block">
-            <span className="text-sm font-medium">Notes</span>
-            <textarea
-              name="notes"
-              defaultValue={session.notes}
-              rows={3}
-              className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
-            />
-          </label>
-        ) : (
-          <input type="hidden" name="notes" defaultValue={session.notes} />
-        )}
-
-        <fieldset className="rounded-2xl border border-line bg-card p-4">
-          <legend className="px-1 text-sm font-medium">Record HR (optional)</legend>
-          <p className="mb-3 text-xs text-muted">
-            Manual avg / max if no Polar pull. Not a live watch stream.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-2 text-sm">
-              <span>Average bpm</span>
+          <div className="space-y-4 rounded-2xl border border-line bg-card p-4">
+            <label className="block text-sm">
+              <span className="text-muted">When</span>
               <input
-                name="hrAvgBpm"
-                type="number"
-                min={30}
-                max={230}
-                className="w-full rounded-xl border border-line bg-background px-3 py-3"
+                name="performedAt"
+                type="datetime-local"
+                defaultValue={toDateInput(session.performedAt)}
+                className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
               />
             </label>
-            <label className="block space-y-2 text-sm">
-              <span>Max bpm</span>
-              <input
-                name="hrMaxBpm"
-                type="number"
-                min={30}
-                max={230}
-                className="w-full rounded-xl border border-line bg-background px-3 py-3"
+            <label className="block">
+              <span className="text-sm font-medium">Notes</span>
+              <textarea
+                name="notes"
+                defaultValue={session.notes}
+                rows={3}
+                className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
               />
             </label>
+            <fieldset>
+              <legend className="text-sm font-medium">Record HR (optional)</legend>
+              <p className="mb-3 text-xs text-muted">
+                Manual avg / max if no Polar pull. Not a live watch stream.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block space-y-2 text-sm">
+                  <span>Average bpm</span>
+                  <input
+                    name="hrAvgBpm"
+                    type="number"
+                    min={30}
+                    max={230}
+                    className="w-full rounded-xl border border-line bg-background px-3 py-3"
+                  />
+                </label>
+                <label className="block space-y-2 text-sm">
+                  <span>Max bpm</span>
+                  <input
+                    name="hrMaxBpm"
+                    type="number"
+                    min={30}
+                    max={230}
+                    className="w-full rounded-xl border border-line bg-background px-3 py-3"
+                  />
+                </label>
+              </div>
+            </fieldset>
           </div>
-        </fieldset>
+        ) : (
+          <>
+            <input type="hidden" name="performedAt" defaultValue={toDateInput(session.performedAt)} />
+            <input type="hidden" name="notes" defaultValue={session.notes} />
+          </>
+        )}
 
         {grouped.map(([name, group]) => {
           const form = lookupFormVideo(name, session.programDay?.exercises);
@@ -382,7 +385,7 @@ export function WorkoutLogForm({
           </button>
         </div>
 
-        <div className="sticky bottom-20 z-10 -mx-4 space-y-3 border-t border-line bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="sticky bottom-28 z-10 -mx-4 space-y-2 border-t border-line bg-background/95 px-4 py-3 pr-20 backdrop-blur">
           <button
             type="submit"
             name="intent"
@@ -397,7 +400,7 @@ export function WorkoutLogForm({
             name="intent"
             value="draft"
             disabled={pending}
-            className="touch-target w-full rounded-full border border-line font-medium disabled:opacity-60"
+            className="touch-target w-full text-sm font-medium text-muted disabled:opacity-60"
           >
             Save draft
           </button>
