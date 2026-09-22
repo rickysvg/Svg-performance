@@ -14,6 +14,8 @@ import { SHOP_HOME } from "@/lib/shop";
 import { getDailyQuoteCard } from "@/lib/quotes";
 import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
 import { memberDifficultyCopy, recentDifficultyAverage } from "@/lib/difficulty";
+import { getWeeklyWrapped } from "@/lib/wrapped";
+import { WeeklyWrappedCard } from "@/components/home/WeeklyWrappedCard";
 
 function formatDate(value: string | null) {
   if (!value) return "No sessions yet";
@@ -31,14 +33,16 @@ export default async function HomePage({
   const user = await requireUser();
   const params = await searchParams;
   const selected = parseDayParam(params.day);
-  const [profile, sessions, today, reminderResult, helpRequests, quoteCard] = await Promise.all([
-    getProfileForUser(user.id),
-    listWorkoutSessionsForUser(user.id),
-    getHomeToday(user.id, selected),
-    processDueRemindersForUser(user.id, user.email),
-    listHelpRequestsForMember(user.id),
-    getDailyQuoteCard(user.id),
-  ]);
+  const [profile, sessions, today, reminderResult, helpRequests, quoteCard, wrap] =
+    await Promise.all([
+      getProfileForUser(user.id),
+      listWorkoutSessionsForUser(user.id),
+      getHomeToday(user.id, selected),
+      processDueRemindersForUser(user.id, user.email),
+      listHelpRequestsForMember(user.id),
+      getDailyQuoteCard(user.id),
+      getWeeklyWrapped(user.id),
+    ]);
   const difficulty = recentDifficultyAverage(sessions);
 
   const units = profile?.preferredUnits ?? "lb";
@@ -97,6 +101,8 @@ export default async function HomePage({
         unlocked={quoteCard.unlocked}
         teaser={quoteCard.teaser}
       />
+
+      <WeeklyWrappedCard wrap={wrap} />
 
       <WeekStrip selected={today.selected} />
 

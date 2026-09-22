@@ -11,6 +11,8 @@ import { deleteBodyMetricAction, deleteProgressPhotoAction } from "@/app/actions
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
 import { listProgressPhotosForUser, progressPhotoSrc } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
+import { getPersonalRecordsForUser } from "@/lib/records";
+import { PersonalRecordsBoard } from "@/components/progress/PersonalRecordsBoard";
 
 function MetricTile({
   title,
@@ -41,6 +43,7 @@ export default async function ProgressPage() {
     getRecentNutritionDays(user.id, 7),
   ]);
   const units = profile?.preferredUnits ?? "lb";
+  const records = await getPersonalRecordsForUser(user.id, units);
   const summary = buildProgressSummary(sessions, units);
   const weight = latestMetrics.get("weight");
   const sleep = latestMetrics.get("sleepHours");
@@ -171,6 +174,8 @@ export default async function ProgressPage() {
         </section>
       ) : null}
 
+      <PersonalRecordsBoard records={records} />
+
       <div>
         <h2 className="text-lg font-semibold">Workout history</h2>
         <p className="mt-1 text-sm text-muted">
@@ -210,28 +215,6 @@ export default async function ProgressPage() {
             <ProgressBars points={summary.points} />
           </section>
 
-          <section className="rounded-2xl border border-line bg-card p-5">
-            <h2 className="font-semibold">Best logged load</h2>
-            {summary.exerciseBests.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">
-                Add a load on a set to see bests here.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-2 text-sm">
-                {summary.exerciseBests.map((best) => (
-                  <li
-                    key={best.exerciseName}
-                    className="flex justify-between gap-3 border-b border-line/60 py-2 last:border-0"
-                  >
-                    <span>{best.exerciseName}</span>
-                    <span className="text-accent">
-                      {best.bestLoad} {best.unit}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </>
       )}
     </main>

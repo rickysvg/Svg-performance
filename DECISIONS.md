@@ -138,13 +138,16 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - Answers live on `Profile` and can be edited later. Completing onboarding again (if they already finished) does not clear the original timestamp.
 - After required submit, `/onboarding/deeper` is optional. Skip leaves `onboardingDeepCompletedAt` null and still opens Home. Completing step 2 stores current/goal weight (display units only), session length (30/45/60), gym/home/both, competition status + optional fight date, coaching tone, and obstacles. Home shows a soft “2-minute deeper profile for better programming” prompt until step 2 is saved. Honest uses only: Coach Savage tone, session-length / location hints, competition flags for later fight-camp UI. No medical plan from weight.
 
-## Premium feel (quotes, celebrations, difficulty)
+## Premium feel (quotes, celebrations, difficulty, wrap, PRs)
 
 - **Daily quote** is a curated in-app bank (`src/lib/quotes.ts`). Performance+ and higher (`daily_quote` feature) see the full line on Home. Member Access sees a short teaser + Pricing link — one free teaser, not the full bank. Preview (no Stripe keys) treats tools as open, so the full quote shows.
 - Quote reminder reuses ReminderPrefs (`quoteEnabled`, `lastQuoteRemindedAt`). In-app on Home after the preferred hour; email only if SMTP is set. **True mobile push is later.**
 - **Celebrations** fire after a completed workout, a newly completed lesson, a first activity of the local day (weekly-active increment), and a progress photo upload. CSS/canvas confetti in `#D0FF00` + white. `prefers-reduced-motion: reduce` skips particles and keeps the short success card.
 - **Difficulty** is stored on `WorkoutSession.difficultyRating`: too_easy / just_right / hard / very_hard / extremely_difficult. Strongly prompted on the success screen after save; skip is still allowed by leaving the page. Shown in history; recent average on Home; coach/admin trends get a too-easy streak note (3+ recent too_easy). v1 does **not** auto-progress load — it only flags too-easy streaks for a human coach. No shame copy.
+- **Weekly wrap** is a rolling last 7 local days (today minus 6 through today), not a Sunday-start calendar week. Counts: unique days with a completed workout, completed workouts, meal entries (count only — no food names), completed lessons in the window, and average rated difficulty when any ratings exist. Quiet weeks: “A quiet seven days. That is okay…” No shame. Home card.
+- **Personal records** recalculate from existing logs (no extra table). Heaviest load per exercise name (converted to preferred units). Longest days-active streak = consecutive local days with a completed workout **or** a food log (same rule as Home days-active). Current streak is 0 if today is not active. Empty state when no load PRs and longest streak is 0. Shown on Progress.
 - These features do not gate first-run onboarding.
+- Still later (README backlog only): Ricky voice-note of the week, offline workout cards, native/PWA push beyond existing reminders, fighter-week challenge badges.
 
 ## Out of scope
 
