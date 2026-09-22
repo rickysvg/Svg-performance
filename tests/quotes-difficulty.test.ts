@@ -23,11 +23,13 @@ import { listMemberTrendsForStaff } from "@/lib/reports";
 function turnStripeOn() {
   process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_dummy";
+  process.env.STRIPE_PRICE_STANDALONE = "price_standalone";
 }
 
 function turnStripeOff() {
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.STRIPE_WEBHOOK_SECRET;
+  delete process.env.STRIPE_PRICE_STANDALONE;
 }
 
 async function completeSession(
