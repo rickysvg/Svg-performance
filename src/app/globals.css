@@ -78,26 +78,43 @@ body:has(.app-splash.is-visible) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #050505;
+  overflow: hidden;
+  background: #000;
 }
 
 .app-splash-video,
 .app-splash-still {
   width: min(100vw, 100dvh);
   height: min(100vw, 100dvh);
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
   background: #000;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  /* Overscan hides encoder edges so the square never reads as a card. */
+  transform: scale(1.08);
 }
 
 .app-splash-still {
+  display: none;
   position: absolute;
+  mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
 }
 
 .app-splash-video {
   position: relative;
   z-index: 1;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.app-splash-video::-webkit-media-controls,
+.app-splash-video::-webkit-media-controls-start-playback-button,
+.app-splash-video::-webkit-media-controls-enclosure {
+  display: none !important;
+  -webkit-appearance: none;
 }
 
 .app-splash.is-exiting {
@@ -116,6 +133,7 @@ body:has(.app-splash.is-visible) {
   }
 
   .app-splash-still {
+    display: block;
     position: relative;
     animation: svg-splash-fade 0.28s ease both;
   }

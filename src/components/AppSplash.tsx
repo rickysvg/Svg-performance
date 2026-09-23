@@ -6,10 +6,9 @@ import {
   SPLASH_STORAGE_KEY,
   SPLASH_VIDEO_SRC,
   canDismissSplash,
-  playSplashWithSound,
   shouldSkipSplash,
   splashTimings,
-  waitForSplashCanPlay,
+  startSplashPlayback,
 } from "@/lib/splash";
 
 export function AppSplash() {
@@ -88,9 +87,8 @@ export function AppSplash() {
     video?.addEventListener("ended", markVideoDone);
     video?.addEventListener("error", markVideoDone);
     if (video) {
-      waitForSplashCanPlay(video)
-        .then(() => playSplashWithSound(video))
-        .catch(markVideoDone);
+      // Muted play must not dismiss the splash if the first call is early.
+      startSplashPlayback(video).catch(() => undefined);
     }
 
     const safety = window.setTimeout(markVideoDone, holdMs + 1500);
@@ -118,8 +116,9 @@ export function AppSplash() {
         ref={videoRef}
         className="app-splash-video"
         src={SPLASH_VIDEO_SRC}
-        poster={SPLASH_STILL_SRC}
+        muted
         playsInline
+        autoPlay
         preload="auto"
         disablePictureInPicture
         controls={false}
