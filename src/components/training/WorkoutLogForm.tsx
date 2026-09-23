@@ -249,7 +249,11 @@ export function WorkoutLogForm({
           return (
             <section key={name} className="rounded-2xl border border-line bg-card p-4">
               <div className="flex items-start gap-3">
-                <ExerciseThumb name={name} />
+                <ExerciseThumb
+                  name={name}
+                  formVideoUrl={form.url}
+                  formVideoPending={form.pending}
+                />
                 <div className="min-w-0 flex-1">
                   <h2 className="font-semibold">{name}</h2>
                   <p className="mt-0.5 text-sm text-muted">
