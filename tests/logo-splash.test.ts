@@ -19,9 +19,9 @@ function fileSize(rel: string) {
 
 describe("official circular badge", () => {
   it("points Logo at the official badge, not the old mountain-only mark", () => {
-    expect(LOGO_BADGE_SRC).toBe("/svg-performance-badge.webp");
-    expect(LOGO_MARK_SRC).toBe("/svg-performance-badge-mark.png");
     const logo = read("src/components/Logo.tsx");
+    expect(logo).toMatch(/LOGO_BADGE_SRC = "\/svg-performance-badge\.webp"/);
+    expect(logo).toMatch(/LOGO_MARK_SRC = "\/svg-performance-badge-mark\.png"/);
     expect(logo).not.toMatch(/svg-performance-mark\.png/);
     expect(logo).not.toMatch(/svg-performance-lockup\.png/);
     expect(logo).not.toMatch(/logo-mark\.svg/);
