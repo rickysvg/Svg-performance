@@ -271,11 +271,14 @@ model ChatThread {
   id        String        @id @default(cuid())
   userId    String
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     String        @default("")
+  art       String        @default("")
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   messages  ChatMessage[]
 
   @@index([userId])
+  @@index([userId, topic, art])
 }
 
 model ChatMessage {

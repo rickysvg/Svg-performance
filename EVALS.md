@@ -1,4 +1,4 @@
-# Coach Savage AI evaluation set
+# SVG Coach evaluation set
 
 These cases are automated in `tests/coach-safety.test.ts` plus the notes below. Run `npm test`.
 

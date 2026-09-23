@@ -80,7 +80,7 @@ export default async function MarketingPage() {
               Draft prices (App Plans, Online Coaching, VIP) are a proposal / Stripe TEST
               only. There is no live checkout. Paid plans are additional to gym dues.
             </li>
-            <li>Coach Savage AI is not Ricky. Weight-cut services are not sold here.</li>
+            <li>SVG Coach is not Ricky. Weight-cut services are not sold here.</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/pricing" className="text-sm text-accent underline-offset-4 hover:underline">

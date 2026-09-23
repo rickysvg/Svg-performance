@@ -4,7 +4,7 @@ Private-preview web app from **Ricky Maynez / SVG MMA Academy** (El Paso).
 
 SVG Performance is **not** gym-members-only. It is for **anybody** who wants to improve performance — especially combat sports athletes, and also people just getting in shape. SVG members are welcome (gym verify / member pricing). You do not have to train at SVG to create an account.
 
-You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, daily quote, today’s workout, and one nutrition card.
+You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to SVG Coach, and use a Home screen with a greeting, daily quote, today’s workout, and one nutrition card.
 
 It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing, or claim Ricky types each AI reply.
 
@@ -18,13 +18,13 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open **Heart rate** to import Apple Health / watch workouts (JSON, XML, or CSV), type RHR, or optionally connect Polar. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. Apple Watch is not shown as connected on the web.
 7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later. **Meal-prep v1** on Fuel scales portions, applies simple swaps, and builds a grocery list (verify allergies yourself).
 8. Browse a **DEMO** Learn technique library filtered by **skill level** and **martial art** (both at once). Each card shows a YouTube thumb, channel, tags, a short summary, and a technical write-up. Videos are labeled YouTube references — not SVG-produced film. Bookmark or mark complete. Admins can draft/publish. Member Access stays beginner-only when Stripe keys are on.
-9. Chat with Coach Savage AI. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
+9. Chat with **SVG Coach** (AI assistant). Pick Martial art (then an art), Conditioning, or Mental first. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
 10. Keep a **personal coaching journal** (goals, notes, questions, lessons). Owner-only unless an assigned coach adds feedback + action items on Fighter Development+. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
 11. **Heart rate (Apple Health first):** import a Health Auto Export JSON, Apple Health `export.xml`, or CSV from iPhone Health / Shortcuts. Rows are labeled `apple_health` or `apple_watch_import`. The web app cannot pair a Watch. Polar is optional (env keys). Manual avg/max is a backup. Analysis is **not medical advice**. Automatic Watch sync is Phase 2 (native iOS / HealthKit).
 12. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
 13. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page. Copy mentions Affirm / Klarna pay-over-time when available; without keys that stays coming soon.
 14. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
-15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. Coach Savage is not Ricky.
+15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. SVG Coach is not Ricky.
 16. Admins can verify gym members, invite emails, assign a 30-day pilot plan, adjust credits, run comment queues, and see simple signup / weekly-active counts. Checking “I train at SVG” still grants nothing.
 17. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
 18. **Timestamped clips** (Fighter Development+): private mp4/webm upload; assigned coach adds mm:ss notes + a drill. Not a live stream. Local disk; S3 later (names only).
@@ -77,7 +77,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `APP_URL` | Public address (`http://localhost:3000` locally) |
 | `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `SMTP_FROM` | Optional mail. Empty = password reset shows a PREVIEW link; reminders stay **in-app on Home only** |
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional. Seed promotes this existing account to admin |
-| `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = Coach Savage stays offline/DEMO |
+| `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = SVG Coach stays offline/DEMO |
 | `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
 | `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym ($19) |
@@ -122,7 +122,7 @@ Affirm, Klarna, and similar pay-over-time methods use those same TEST keys. Stri
 
 If Stripe keys are missing: checkout buttons stay off and nobody is marked paid. Training still works. Pricing still shows the Affirm/Klarna message as **coming soon** — we do not fake a successful buy.
 
-If OpenAI is missing: Coach Savage still refuses unsafe asks and answers common questions from DEMO notes.
+If OpenAI is missing: SVG Coach still refuses unsafe asks and answers common questions from DEMO notes.
 
 If SMTP is missing: reminders still appear on Home once per day after your preferred hour. No email is sent. Turn them off under Profile → Reminders.
 
@@ -191,7 +191,7 @@ Coverage includes:
 - Book next steps stay empty until staff writes them; booking reminder uses the existing in-app / SMTP pattern
 - Heart rate ownership (user B cannot read/delete user A); Polar “connected” only with env keys + a stored token; Apple Watch connected and HealthKit bridge are always false
 - Apple Health JSON / XML / CSV import labeled `apple_health` / `apple_watch_import`; zone math; RHR trend; DEMO samples labeled DEMO
-- Coach Savage refusals: pain, weight-cut, cross-account
+- SVG Coach refusals: pain, weight-cut, cross-account
 - Knowledge pack loads the guide + DEMO seeds, not the interview worksheet
 - Gym checkbox does not verify; only an admin can
 - Stripe webhook signature, duplicates, failed payment, cancel, renewal, expiration
@@ -204,9 +204,9 @@ Coverage includes:
 - Progress photo files: owner-only read/edit/delete; jpeg/png/webp only; coaches cannot open another member’s file
 - Every seeded DEMO exercise has a YouTube form URL **or** an explicit pending flag
 - Plan entitlements: Member Access vs Performance vs Elite; gym-price verify; Elite cap + waitlist
-- Coach Savage ≠ Ricky disclaimer string; VIP included strategy credit on Book requests
+- SVG Coach ≠ Ricky disclaimer string; VIP included strategy credit on Book requests
 
-See `EVALS.md` for the Coach Savage evaluation set.
+See `EVALS.md` for the SVG Coach evaluation set.
 
 ## Preview walkthrough
 
@@ -215,7 +215,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 3. Training → **Calendar** (Today / Tomorrow list, lime today-dot) → tap a DEMO workout card → day overview (YouTube form stills + play mark, silhouette if pending) → **Start Now** → log Previous / Reps / Lbs → tap a thumb or **Watch form** (YouTube) → Save → refresh History
 4. Fuel → search “chicken” in the DEMO list or save a meal → log an estimate → correct a number
 5. Learn → filter Boxing, then Intermediate, then both together → a card shows thumb, channel, tags, summary, and a technical write-up → open it → **Watch on YouTube** (or pending) → bookmark / complete
-6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
+6. Coach → pick Martial art → Boxing (or Conditioning / Mental) → ask about a missed class; also try a weight-cut question and watch the refusal. Header says SVG Coach.
 7. Home → greeting, daily quote, **Today’s workout** (type · est. minutes · N Exercises), nutrition rings, quiet Calendar / Progress links, + button. Weekly wrap, challenge, and focus video stay on Report / Challenge / Learn — not stacked on Home.
 8. Progress → type a body weight; open Heart rate and import an Apple Health file (Watch stays disconnected on the web); upload a jpeg/png/webp photo (private to you); see the **personal records** board (empty until a load or an active day, then heaviest load + longest streak)
 9. Profile → turn a reminder off; optional nutrition targets
@@ -242,7 +242,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Train: **Calendar** lists Today / Tomorrow with DEMO cards; a workout card opens the day overview (YouTube form stills when a link exists, silhouette if pending); **Start Now** opens the logger (Previous / Reps / Lbs); a thumb or **Watch form** opens a YouTube technique video (or shows pending); a logged workout survives refresh; a wrong number can be corrected.
 - [ ] Fuel: DEMO search or saved meal fills the form; estimates stay labeled; owner can correct; another account cannot open that log.
 - [ ] Learn: members see published DEMO lessons only; skill-level and martial-art chips work together; a card shows thumb, channel, summary, and technical description; Watch on YouTube is labeled as a reference (or pending); bookmark / complete stick.
-- [ ] Coach Savage: missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key.
+- [ ] SVG Coach: pick a topic (and an art when Martial art); missed-class answer is usable; pain / weight-cut / other-member asks are refused; offline still works without an OpenAI key. The UI does not say Coach Savage.
 - [ ] Home shows today’s quote for a Performance+ / preview account, and a teaser when Stripe is on and the plan is Member Access. Quote reminder can be turned off under Profile → Reminders. True mobile push is later.
 - [ ] After saving a workout, completing a lesson, adding a first-of-day log, or uploading a photo, a short celebration appears (respects reduced motion). Completing a workout asks how it felt; history and staff trends show the rating / recent feel.
 - [ ] Progress: a typed body weight saves; Heart rate tiles fill from Apple Health import / Polar / manual / DEMO when data exists; Apple Watch is not shown as connected; a jpeg/png/webp photo uploads, shows, and deletes; another account cannot open that URL.
@@ -371,7 +371,7 @@ There is **no** production URL in this document on purpose.
 - Food numbers are estimates (typed or from a tiny DEMO list). No barcode database, no photo AI.
 - Progress photos are stored on the server disk in this preview (not S3). Only the owner can view them. No public CDN.
 - Form videos and Learn technique videos are public YouTube references, not SVG coaching films. Two DEMO strength moves and one DEMO cage-exit lesson are pending coach review.
-- Coach Savage knowledge is a fillable pack in `content/coach-savage/`. Interview questions are not loaded into the model.
+- SVG Coach knowledge is a fillable pack in `content/coach-savage/` (folder name kept). Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.
 - Stripe is TEST structure only until keys + webhook forwarding are added. No live mode. Affirm/Klarna need Dashboard TEST payment methods; still not live money.
 - Apple Health Phase 1 is file import only. Automatic Watch sync needs a native iOS companion / HealthKit (Phase 2). Polar is optional. Garmin OAuth is later. No medical diagnosis.
@@ -386,7 +386,7 @@ There is **no** production URL in this document on purpose.
 - Native / PWA push beyond the existing reminder pattern (in-app after the preferred hour; email if SMTP)
 - Fighter-week challenge badges (separate from the monthly consistency challenge)
 - Coach-authored shorts CMS beyond the weekly 60–90s focus video
-- Coach Savage long-term memory with consent UI
+- SVG Coach long-term memory with consent UI
 
 ## Source
 

@@ -159,8 +159,8 @@ export default async function PricingPage() {
         <section className="mt-10 space-y-4">
           <h2 className="text-2xl font-semibold">App Plans</h2>
           <p className="text-sm text-muted">
-            Self-guided tools. Member Access is included / free preview. Fuel and Coach
-            Savage unlock at Performance.
+            Self-guided tools. Member Access is included / free preview. Fuel and SVG
+            Coach unlock at Performance.
           </p>
           {plansInSection("app").map(renderPlan)}
         </section>
@@ -218,7 +218,7 @@ export default async function PricingPage() {
             <li>Gym dues and SVG &amp; CO merch are separate from these app plans.</li>
             <li>Four privates means four in that billing month — not “every week.”</li>
             <li>Cancel or reschedule by sending a Book request. If Ricky cancels, we restore or extend that credit.</li>
-            <li>Elite / VIP: human reply within 2 business days. Platinum: next business day. Coach Savage is not that inbox.</li>
+            <li>Elite / VIP: human reply within 2 business days. Platinum: next business day. SVG Coach is not that inbox.</li>
             <li>Weight-cut services are not sold here.</li>
             <li>No launch discounts in this preview. TEST checkout never uses live keys.</li>
             <li>

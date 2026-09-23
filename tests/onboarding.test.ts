@@ -299,7 +299,7 @@ describe("deeper onboarding personalization", () => {
     await prisma.$disconnect();
   });
 
-  it("uses the preferred Coach Savage tone in offline replies", async () => {
+  it("uses the preferred SVG Coach tone in offline replies", async () => {
     const user = await makeUser("tone@example.com");
     await completeOnboardingForUser(user.id, { ...requiredIntake, displayName: "Tone" });
     await saveDeepOnboardingForUser(user.id, {

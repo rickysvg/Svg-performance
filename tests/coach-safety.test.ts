@@ -6,7 +6,7 @@ import { ForbiddenError } from "@/lib/errors";
 import { getThreadForUser } from "@/lib/coach/chat";
 import { makeUser, resetDatabase } from "./helpers";
 
-describe("Coach Savage safety", () => {
+describe("SVG Coach safety", () => {
   beforeEach(async () => {
     await resetDatabase();
   });

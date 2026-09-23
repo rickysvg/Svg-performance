@@ -1,5 +1,5 @@
 export const AI_DISCLAIMER =
-  "Coach Savage AI is not Ricky and is not a message to Ricky. It does not book you, coach you live, or replace a human call.";
+  "SVG Coach is an AI assistant. It is not Ricky and is not a message to Ricky. It does not book you, coach you live, or replace a human call.";
 
 export const CATALOG_PLAN_IDS = [
   "member_access",
@@ -89,13 +89,13 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     label: "SVG Performance",
     gymPriceLabel: "$19/mo",
     nonmemberPriceLabel: "$29/mo",
-    summary: "Self-guided app: full library, fuel logging, and Coach Savage AI.",
+    summary: "Self-guided app: full library, fuel logging, and SVG Coach.",
     includes: [
       "Everything in Member Access",
       "Full general tutorial library",
       "Calorie / macro tracking (manual estimates)",
       "Meal ideas and progress charts",
-      "Coach Savage AI (not Ricky)",
+      "SVG Coach (AI assistant, not Ricky)",
       "Daily motivational quote",
     ],
     rank: 1,
