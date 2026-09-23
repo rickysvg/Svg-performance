@@ -41,7 +41,7 @@ describe("SVG Coach topics", () => {
     expect(safetyPreamble()).toMatch(/SVG Coach/);
     expect(safetyPreamble()).not.toMatch(/Savage/i);
     expect(coachTopicContext("martial_art", "boxing")).toMatch(/Boxing/);
-    expect(coachTopicContext("martial_art", "boxing")).toMatch(/not SVG-produced/);
+    expect(coachTopicContext("martial_art", "boxing")).toMatch(/never claim they are SVG-produced/);
   });
 
   it("opens a separate thread per topic and stays on-lane offline", async () => {
