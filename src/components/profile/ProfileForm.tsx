@@ -185,7 +185,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
         <span className="mt-1 block text-xs text-muted">
-          Shared with a coach if you request help. Coach Savage AI will not diagnose or treat.
+          Shared with a coach if you request help. SVG Coach will not diagnose or treat.
         </span>
       </label>
       <label className="block">

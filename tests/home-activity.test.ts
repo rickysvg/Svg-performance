@@ -131,7 +131,7 @@ describe("home aggregation and weekly activity", () => {
   });
 });
 
-describe("Coach Savage content pack wiring", () => {
+describe("SVG Coach content pack wiring", () => {
   it("loads the guide and DEMO seeds, not the interview worksheet", () => {
     const files = listRuntimeKnowledgeFiles();
     expect(files).toContain("COACHING_GUIDE.md");

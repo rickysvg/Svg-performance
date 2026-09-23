@@ -34,14 +34,14 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
 - Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `invoice.paid` is treated as renewal. `currentPeriodEnd` in the past is treated as expired.
 - If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid (including Affirm/Klarna). Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
-- If keys are present, Nutrition / Coach Savage require a webhook-confirmed **Performance+** plan. Learn stays open on Member Access as **beginner-only**. Training / progress / shop stay open.
+- If keys are present, Nutrition / SVG Coach require a webhook-confirmed **Performance+** plan. Learn stays open on Member Access as **beginner-only**. Training / progress / shop stay open.
 - Live `sk_live_` secrets are rejected.
 
 ## Milestone 2
 
 - **Nutrition:** private manual estimates (`source=manual_estimate`). Owner can correct. No photo AI.
 - **Learn:** seeded DEMO lessons + one draft. Members see published only. Admin draft/publish. Topic values are martial arts (mma, muay-thai, boxing, wrestling, jiu-jitsu, cagework). Browse defaults to Beginner.
-- **Coach Savage AI:** safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty.
+- **SVG Coach (AI):** member-facing name. Internal routes stay `/coach`. Safety classifier runs before any model call. Offline templates if `OPENAI_API_KEY` is empty. Members pick a topic first (Martial art + art, Conditioning, or Mental). Each topic/art pair is its own thread so switching lanes does not mix history. Topic + art are injected into the system/offline context. Knowledge pack folder remains `content/coach-savage/` (staff interview files).
 - **Roles:** `member` (default), `coach`, `admin`. Promote with `npm run admin:promote` or `npm run staff:promote -- email coach`.
 - **Stripe package** is used for TEST Checkout + webhook signature helpers. No raw cards or BNPL loan records stored.
 
@@ -145,7 +145,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 - **Book with Ricky** stores a request (`preferredTimes`) — not Zoom, not a deposit. VIP/Platinum flag `usesIncludedCredit` when a strategy credit remains. Intensives are Platinum-only stubs (El Paso $1500 / travel from $4500).
 - **Stripe TEST** env names exist for every paid SKU. `gym` / `standalone` webhooks still map to catalog `performance` so M2–M4 tests stay valid.
 - **Affirm / Klarna / similar BNPL** are TEST Checkout payment methods, not a second billing stack. Checkout sends `payment_method_types` (card + Klarna/Afterpay/Affirm when the USD amount allows), then Dashboard `automatic_payment_methods` if Stripe rejects a type (common for Affirm on `mode: subscription`), then card-only. No extra secrets. Approval is Affirm’s/Klarna’s. We do not store loan details on `Subscription`. Missing keys = coming-soon copy, checkout off, never a fake BNPL success. Webhooks still grant access the same way regardless of card vs BNPL. Intensives stay Book stubs.
-- **Coach Savage ≠ Ricky** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
+- **SVG Coach ≠ Ricky** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
 - **No live billing.** Missing keys = honest off + preview entitlements (tools stay open like M1–M4).
 
 ## Milestone 6
@@ -163,7 +163,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 - Personalization is honest DEMO matching: Learn default level (and art when the focus is one of the six); Home suggests an unused DEMO day (conditioning → Day 3, striking arts → Day 2, grappling/cage → Day 1). Copy says this is not custom Elite coaching.
 - Nutrition targets stay the DEMO 2200 / 140 g / 220 g / 70 g estimates. We do not invent a medical calorie plan from the goal or from optional body-weight answers.
 - Answers live on `Profile` and can be edited later. Completing onboarding again (if they already finished) does not clear the original timestamp.
-- After required submit, `/onboarding/deeper` is optional. Skip leaves `onboardingDeepCompletedAt` null and still opens Home. Completing step 2 stores current/goal weight (display units only), session length (30/45/60), gym/home/both, competition status + optional fight date, coaching tone, and obstacles. Home shows a soft “2-minute deeper profile for better programming” prompt until step 2 is saved. Honest uses only: Coach Savage tone, session-length / location hints, competition flags for later fight-camp UI. No medical plan from weight.
+- After required submit, `/onboarding/deeper` is optional. Skip leaves `onboardingDeepCompletedAt` null and still opens Home. Completing step 2 stores current/goal weight (display units only), session length (30/45/60), gym/home/both, competition status + optional fight date, coaching tone, and obstacles. Home shows a soft “2-minute deeper profile for better programming” prompt until step 2 is saved. Honest uses only: SVG Coach tone, session-length / location hints, competition flags for later fight-camp UI. No medical plan from weight.
 
 ## Premium feel (quotes, celebrations, difficulty, wrap, PRs)
 

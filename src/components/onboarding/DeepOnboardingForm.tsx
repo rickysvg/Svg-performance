@@ -149,7 +149,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
           <h2 className="font-semibold">Coaching style</h2>
           <fieldset>
-            <legend className="text-sm font-medium">Preferred Coach Savage tone</legend>
+            <legend className="text-sm font-medium">Preferred coaching tone</legend>
             <div className="mt-2 grid gap-2">
               {COACHING_TONE_OPTIONS.map((item) => (
                 <label key={item.value} className="flex items-center gap-3 text-sm">

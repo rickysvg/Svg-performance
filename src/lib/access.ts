@@ -29,7 +29,7 @@ export async function hasWebhookGrantedAccess(userId: string) {
 
 /**
  * Training (M1) stays open for every signed-in member.
- * Nutrition / Coach Savage require Performance+ (nutrition feature)
+ * Nutrition / SVG Coach require Performance+ (nutrition feature)
  * only when Stripe TEST keys are actually configured.
  * Learn stays reachable on Member Access as beginner-only.
  */

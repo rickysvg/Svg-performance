@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { sendCoachMessageAction, type CoachActionState } from "@/app/actions/coach";
 import { StatusBanner } from "@/components/StatusBanner";
 
-export function CoachChatForm() {
+export function CoachChatForm({ topic, art }: { topic: string; art?: string }) {
   const [state, action, pending] = useActionState(
     sendCoachMessageAction,
     {} as CoachActionState,
@@ -12,6 +12,8 @@ export function CoachChatForm() {
   return (
     <form action={action} className="space-y-3">
       <StatusBanner error={state.error} />
+      <input type="hidden" name="topic" value={topic} />
+      {art ? <input type="hidden" name="art" value={art} /> : null}
       <label className="block text-sm">
         Message
         <textarea
@@ -19,7 +21,7 @@ export function CoachChatForm() {
           required
           rows={4}
           className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
-          placeholder="Ask about training between classes."
+          placeholder="Ask about this topic."
         />
       </label>
       <button

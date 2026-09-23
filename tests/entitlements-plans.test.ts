@@ -188,7 +188,7 @@ describe("M5 entitlements, caps, and booking credits", () => {
     expect(after.credits.find((row) => row.kind === "strategy_45")?.remaining).toBe(0);
   });
 
-  it("keeps the Coach Savage ≠ Ricky disclaimer", () => {
+  it("keeps the SVG Coach ≠ Ricky disclaimer", () => {
     expect(AI_DISCLAIMER).toMatch(/not Ricky/i);
     expect(PLAN_CATALOG.vip.includes.join(" ")).toMatch(/billing month/i);
   });

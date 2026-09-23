@@ -3,12 +3,23 @@ import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { detectSafetyRefusal, safetyPreamble } from "@/lib/coach/safety";
 import { loadKnowledgeBase } from "@/lib/coach/knowledge";
 import { coachingToneNote } from "@/lib/onboarding";
+import {
+  COACH_PUBLIC_NAME,
+  coachLaneLabel,
+  coachTopicContext,
+} from "@/lib/coach/topics";
 
 export function isOpenAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
-function offlineReply(message: string, experienceLevel: string, coachingTone = "") {
+function offlineReply(
+  message: string,
+  experienceLevel: string,
+  coachingTone = "",
+  topic?: string,
+  art?: string,
+) {
   const text = message.toLowerCase();
   const kb = loadKnowledgeBase();
   const hasGuide = kb.includes("COACHING_GUIDE.md");
@@ -22,17 +33,20 @@ function offlineReply(message: string, experienceLevel: string, coachingTone = "
         ? "You have a consistent lifting base — stay honest, do not add junk volume."
         : "Match the work to how you actually recover this week.";
   const toneNote = coachingToneNote(coachingTone);
+  const lane = coachLaneLabel(topic, art);
+  const laneNote = lane ? `Topic: ${lane}.` : "";
+  const signoff = `This is ${COACH_PUBLIC_NAME} in DEMO / offline mode — not Ricky typing.`;
 
   if (/missed|skip(ped)?|fell off|inconsistent/.test(text)) {
-    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} Missing a session is not a verdict (COACHING_GUIDE.md / DEMO-seeds.md). Pick the next date you will train and do that one session. Do not stack a punishment workout. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} Missing a session is not a verdict (COACHING_GUIDE.md / DEMO-seeds.md). Pick the next date you will train and do that one session. Do not stack a punishment workout. ${signoff}`;
   }
   if (/technique|jab|takedown|guard|stance|how do i/.test(text)) {
-    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} One simple cue from the DEMO notes, then live eyes on the floor. I do not invent a full paid curriculum. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} One simple cue from the DEMO notes, then live eyes on the floor. I do not invent a full paid curriculum. YouTube / Learn clips are external references, not SVG-produced film. ${signoff}`;
   }
-  if (/discourag|fail|setback|plateau/.test(text)) {
-    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+  if (/discourag|fail|setback|plateau|nerves|mindset/.test(text)) {
+    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. ${signoff}`;
   }
-  return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} If the notes do not cover this, I will not guess gym-specific policy. Ask a coach on the floor. This is Coach Savage AI in DEMO / offline mode — not Ricky typing.`;
+  return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} If the notes do not cover this, I will not guess gym-specific policy. Ask a coach on the floor. ${signoff}`;
 }
 
 async function liveReply(input: {
@@ -40,16 +54,25 @@ async function liveReply(input: {
   experienceLevel: string;
   coachingTone?: string;
   ownSummary: string;
+  topic?: string;
+  art?: string;
 }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
     return {
-      content: offlineReply(input.message, input.experienceLevel, input.coachingTone),
+      content: offlineReply(
+        input.message,
+        input.experienceLevel,
+        input.coachingTone,
+        input.topic,
+        input.art,
+      ),
       offline: true,
     };
   }
   const system = [
     safetyPreamble(),
+    coachTopicContext(input.topic, input.art),
     "Approved DEMO knowledge:",
     loadKnowledgeBase(),
     "Member context (current user only):",
@@ -73,7 +96,7 @@ async function liveReply(input: {
   });
   if (!response.ok) {
     return {
-      content: `${offlineReply(input.message, input.experienceLevel, input.coachingTone)} (Live model request failed, so you are seeing the offline answer.)`,
+      content: `${offlineReply(input.message, input.experienceLevel, input.coachingTone, input.topic, input.art)} (Live model request failed, so you are seeing the offline answer.)`,
       offline: true,
     };
   }
@@ -89,9 +112,14 @@ async function liveReply(input: {
   };
 }
 
-export async function getOrCreateThread(userId: string) {
+export async function getOrCreateThread(
+  userId: string,
+  lane?: { topic?: string; art?: string },
+) {
+  const topic = lane?.topic ?? "";
+  const art = lane?.art ?? "";
   const existing = await prisma.chatThread.findFirst({
-    where: { userId },
+    where: { userId, topic, art },
     orderBy: { updatedAt: "desc" },
     include: { messages: { orderBy: { createdAt: "asc" } } },
   });
@@ -99,7 +127,7 @@ export async function getOrCreateThread(userId: string) {
     return existing;
   }
   return prisma.chatThread.create({
-    data: { userId },
+    data: { userId, topic, art },
     include: { messages: true },
   });
 }
@@ -124,12 +152,17 @@ export async function sendCoachMessage(input: {
   experienceLevel?: string;
   coachingTone?: string;
   mentionedUserId?: string;
+  topic?: string;
+  art?: string;
 }) {
   const message = input.message.trim().slice(0, 2000);
   if (!message) {
     throw new Error("Type a message first.");
   }
-  const thread = await getOrCreateThread(input.userId);
+  const thread = await getOrCreateThread(input.userId, {
+    topic: input.topic,
+    art: input.topic === "martial_art" ? input.art : "",
+  });
   const refusal = detectSafetyRefusal(message, {
     currentUserId: input.userId,
     mentionedUserId: input.mentionedUserId,
@@ -160,6 +193,9 @@ export async function sendCoachMessage(input: {
   const ownSummary = [
     `Experience: ${input.experienceLevel || "unknown"}.`,
     input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
+    coachLaneLabel(input.topic, input.art)
+      ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
+      : "",
     `Only this user id ${input.userId} may be discussed.`,
     "Do not invent a medical or calorie plan from any stored weight.",
   ]
@@ -170,6 +206,8 @@ export async function sendCoachMessage(input: {
     experienceLevel: input.experienceLevel || "beginner",
     coachingTone: input.coachingTone,
     ownSummary,
+    topic: input.topic,
+    art: input.topic === "martial_art" ? input.art : "",
   });
   const saved = await prisma.chatMessage.create({
     data: {

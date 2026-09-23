@@ -101,7 +101,7 @@ export async function getTodayGuide(userId: string, selectedDay = new Date()) {
   } else if (remainingCredits > 0) {
     checkIn = {
       title: `${remainingCredits} coaching credit${remainingCredits === 1 ? "" : "s"} left this month`,
-      body: "Use Book with Ricky for mindset/strategy extras, or wait for a plan check-in. Coach Savage is not Ricky.",
+      body: "Use Book with Ricky for mindset/strategy extras, or wait for a plan check-in. SVG Coach is not Ricky.",
       href: "/book",
       kind: "credits",
     };

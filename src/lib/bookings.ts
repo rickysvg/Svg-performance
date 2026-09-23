@@ -9,7 +9,7 @@ export const BOOKING_PREP: Record<BookingKind, string[]> = {
   mindset: [
     "Write one training or fight problem you want to talk through.",
     "Note what has been working and what has not this month.",
-    "This is a request, not a confirmed calendar slot. Coach Savage is not Ricky.",
+    "This is a request, not a confirmed calendar slot. SVG Coach is not Ricky.",
   ],
   entrepreneur: [
     "Bring one business or career question — no promised results.",
