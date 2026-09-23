@@ -106,7 +106,7 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 
 - Day overview + active logging copy the **information architecture** of Strong-like apps (equipment chips, square movement thumbs, Start Now, Previous / Reps / Lbs table, rest banner, Add set, Insert exercise, Save). Palette stays SVG: black / white / neon lime (`#D0FF00` / `#CBF805`). We did not copy the white + red reference screens.
 - Exercise rows show the YouTube form-video still when a valid catalog / day URL exists (lime play mark; tap opens YouTube). `public/exercise-thumbs/` silhouettes are fallback only. Not claimed as SVG coaching film. YouTube **Watch form** text links stay.
-- Day overview top is a short meta stack (type, **est.** minutes from sets+rest, **N Exercises**), then equipment, then the list. Start Now / Continue stays lime — we did not add a red “Mark as Complete.”
+- Day overview top is a short meta stack (type, **est.** minutes from sets+rest, **N Exercises**), then equipment, then the list. Start Now / Continue stays lime — we did not add a red “Mark as Complete.” App header chips hide on the day and logger screens so the brief stays the focus.
 - Home is greeting + quote + today’s workout + one nutrition card. Paths, journal teases, week strip, wrap, challenge, shop, and the help form are demoted off the first screen so Today is the hero.
 - Previous column reads the member’s last **completed** session for that exercise name. First-time moves stay empty. Save still delete+recreates `WorkoutSet` rows.
 
