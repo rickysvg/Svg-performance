@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { formVideoFieldsFor } from "../src/lib/form-videos";
 import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
+import { fallbackLogMode } from "../src/lib/exercise-log-mode";
 
 const prisma = new PrismaClient();
 
@@ -83,9 +84,9 @@ async function main() {
                   name: "Front plank",
                   sets: 3,
                   reps: "30–45 sec",
-                  loadText: "Bodyweight",
-                  restSeconds: 45,
-                  notes: "Brace like someone is about to tap your stomach. Stop if the low back sags.",
+                  loadText: "Hold — no weight",
+                  restSeconds: 60,
+                  notes: "Brace like someone is about to tap your stomach. Log the hold time, not pounds.",
                   ...formVideoFieldsFor("Front plank"),
                 },
               ],
@@ -201,9 +202,9 @@ async function main() {
                   name: "Side plank",
                   sets: 3,
                   reps: "20–30 sec / side",
-                  loadText: "Bodyweight",
-                  restSeconds: 45,
-                  notes: "Hips stacked. Drop to the knee if you need to.",
+                  loadText: "Hold — no weight",
+                  restSeconds: 60,
+                  notes: "Hips stacked. Log the hold time, not pounds. Drop to the knee if you need to.",
                   ...formVideoFieldsFor("Side plank"),
                 },
               ],
@@ -579,6 +580,8 @@ async function main() {
     },
   });
 
+  await tagSeededExerciseModes();
+
   const lessons = LEARN_CATALOG.map(lessonSeedFromCatalog);
 
   for (const lesson of lessons) {
@@ -641,6 +644,41 @@ async function main() {
           authorUserId: anyAdmin.id,
         },
       });
+    }
+  }
+}
+
+async function tagSeededExerciseModes() {
+  const programs = await prisma.program.findMany({
+    include: { days: { include: { exercises: true } } },
+  });
+  for (const program of programs) {
+    for (const day of program.days) {
+      for (const exercise of day.exercises) {
+        let logMode = fallbackLogMode(exercise.name, exercise.reps);
+        if (program.slug === DEMO_SKILL_SLUG && logMode !== "timed") {
+          logMode = "timed_round";
+        }
+        const data: {
+          logMode: string;
+          reps?: string;
+          restSeconds?: number;
+          loadText?: string;
+        } = { logMode };
+        if (logMode === "timed") {
+          data.loadText = /jump rope|bike|interval/i.test(exercise.name)
+            ? exercise.loadText
+            : "Hold — no weight";
+          if (/\bplank\b/i.test(exercise.name) && exercise.restSeconds < 60) {
+            data.restSeconds = 60;
+          }
+        }
+        if (logMode === "timed_round") {
+          data.reps = "2:00";
+          data.restSeconds = 90;
+        }
+        await prisma.programExercise.update({ where: { id: exercise.id }, data });
+      }
     }
   }
 }

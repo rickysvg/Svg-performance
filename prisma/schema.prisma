@@ -148,6 +148,8 @@ model ProgramExercise {
   notes            String  @default("")
   formVideoUrl     String  @default("")
   formVideoPending Boolean @default(false)
+  /** load_reps | reps_only | timed | timed_round */
+  logMode          String  @default("load_reps")
 }
 
 model WorkoutSession {
@@ -179,6 +181,9 @@ model WorkoutSet {
   reps             Int?
   loadValue        Float?
   loadUnit         String         @default("lb")
+  /** load_reps | reps_only | timed | timed_round */
+  logMode          String         @default("load_reps")
+  durationSeconds  Int?
   completed        Boolean        @default(true)
   notes            String         @default("")
 

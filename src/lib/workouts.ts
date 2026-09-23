@@ -4,6 +4,13 @@ import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
+import { isDurationMode, isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode";
+import {
+  plannedDurationSeconds,
+  scaleBandFromPrefs,
+  scaleProgramDay,
+  type ScalePrefs,
+} from "@/lib/training-scale";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -12,6 +19,8 @@ export type WorkoutSetInput = {
   reps: number | null;
   loadValue: number | null;
   loadUnit: LoadUnit;
+  logMode?: LogMode;
+  durationSeconds?: number | null;
   completed: boolean;
   notes?: string;
 };
@@ -42,7 +51,16 @@ export async function listWorkoutSessionsForUser(userId: string) {
 
 export type PreviousSetLookup = Record<
   string,
-  Record<number, { reps: number | null; loadValue: number | null; loadUnit: string }>
+  Record<
+    number,
+    {
+      reps: number | null;
+      loadValue: number | null;
+      loadUnit: string;
+      logMode?: string;
+      durationSeconds?: number | null;
+    }
+  >
 >;
 
 /**
@@ -89,6 +107,8 @@ export async function getPreviousLoadsForUser(
         reps: set.reps,
         loadValue: set.loadValue,
         loadUnit: set.loadUnit,
+        logMode: set.logMode,
+        durationSeconds: set.durationSeconds,
       };
     }
   }
@@ -113,19 +133,35 @@ export async function startWorkoutFromDay(input: {
   userId: string;
   programDayId: string;
   preferredUnits: LoadUnit;
+  scale?: ScalePrefs | null;
 }) {
-  const day = await getProgramDayById(input.programDayId);
-  const sets = day.exercises.flatMap((exercise) =>
-    Array.from({ length: exercise.sets }, (_, index) => ({
+  const rawDay = await getProgramDayById(input.programDayId);
+  const band = scaleBandFromPrefs(input.scale);
+  const day = scaleProgramDay(
+    {
+      ...rawDay,
+      exercises: rawDay.exercises.map((exercise) => ({
+        ...exercise,
+        logMode: exercise.logMode,
+      })),
+    },
+    { band, programSlug: rawDay.program.slug },
+  );
+  const sets = day.exercises.flatMap((exercise) => {
+    const mode = resolveLogMode(exercise);
+    const duration = plannedDurationSeconds(exercise);
+    return Array.from({ length: exercise.sets }, (_, index) => ({
       exerciseName: exercise.name,
       setNumber: index + 1,
-      sortOrder: exercise.sortOrder * 10 + index,
+      sortOrder: (exercise.sortOrder ?? 0) * 10 + index,
       reps: null,
       loadValue: null,
       loadUnit: input.preferredUnits,
+      logMode: mode,
+      durationSeconds: isDurationMode(mode) ? duration : null,
       completed: false,
-    })),
-  );
+    }));
+  });
 
   return prisma.workoutSession.create({
     data: {
@@ -162,6 +198,12 @@ function validateSets(sets: WorkoutSetInput[]) {
     }
     if (set.loadValue != null && (set.loadValue < 0 || set.loadValue > 2000)) {
       throw new AppError("WORKOUT", "Load should be between 0 and 2000.");
+    }
+    if (set.durationSeconds != null && (set.durationSeconds < 0 || set.durationSeconds > 3600)) {
+      throw new AppError("WORKOUT", "Hold / round time should be under 60 minutes.");
+    }
+    if (set.logMode && !isLogMode(set.logMode)) {
+      throw new AppError("WORKOUT", "Unknown logging mode.");
     }
     if (!isLoadUnit(set.loadUnit)) {
       throw new AppError("WORKOUT", "Load unit must be lb or kg.");
@@ -209,16 +251,25 @@ export async function updateWorkoutSessionForUser(input: {
             ? existing.difficultyRating
             : parseDifficultyRating(input.difficultyRating) ?? "",
         sets: {
-          create: input.sets.map((set, index) => ({
-            exerciseName: set.exerciseName.trim(),
-            setNumber: set.setNumber,
-            sortOrder: index,
-            reps: set.reps,
-            loadValue: set.loadValue,
-            loadUnit: set.loadUnit,
-            completed: set.completed,
-            notes: (set.notes ?? "").slice(0, 200),
-          })),
+          create: input.sets.map((set, index) => {
+            const mode = resolveLogMode({
+              logMode: set.logMode,
+              name: set.exerciseName,
+            });
+            const timed = isDurationMode(mode);
+            return {
+              exerciseName: set.exerciseName.trim(),
+              setNumber: set.setNumber,
+              sortOrder: index,
+              reps: timed ? null : set.reps,
+              loadValue: timed ? null : set.loadValue,
+              loadUnit: set.loadUnit,
+              logMode: mode,
+              durationSeconds: timed ? set.durationSeconds ?? null : null,
+              completed: set.completed,
+              notes: (set.notes ?? "").slice(0, 200),
+            };
+          }),
         },
       },
       include: { sets: true },

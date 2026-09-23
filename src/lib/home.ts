@@ -14,6 +14,7 @@ import {
   trainingLocationHint,
 } from "@/lib/onboarding";
 import { planForDate, resolvePlanSessions, weekdayInAppZone, weekStrip } from "@/lib/week-plan";
+import { scaleDemoCatalog } from "@/lib/training-scale";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -181,7 +182,10 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
       getWeeklyActivity(userId),
       getProfileForUser(userId),
     ]);
-  const { strength, skill } = catalog;
+  const { strength, skill } = scaleDemoCatalog(catalog, {
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
   const hasCatalog = Boolean(strength || skill);
 
   const draft = sessions.find((session) => session.status === "draft");

@@ -14,6 +14,14 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
+  hidesLoad,
+  isDurationMode,
+  modeColumnLabel,
+  modeHint,
+  resolveLogMode,
+  type LogMode,
+} from "@/lib/exercise-log-mode";
+import {
   formatRestClock,
   formatRestPill,
   isRestActive,
@@ -34,6 +42,7 @@ type Session = WorkoutSession & {
       sets: number;
       reps: string;
       restSeconds: number;
+      logMode?: string;
       formVideoUrl: string;
       formVideoPending: boolean;
     }[];
@@ -51,6 +60,8 @@ function newClientSet(
   exerciseName: string,
   setNumber: number,
   loadUnit: string,
+  logMode: LogMode = "load_reps",
+  durationSeconds: number | null = null,
 ): WorkoutSet {
   return {
     id: `local-${crypto.randomUUID()}`,
@@ -61,6 +72,8 @@ function newClientSet(
     reps: null,
     loadValue: null,
     loadUnit,
+    logMode,
+    durationSeconds,
     completed: false,
     notes: "",
   };
@@ -158,9 +171,15 @@ export function WorkoutLogForm({
     setSets((current) => {
       const group = current.filter((set) => set.exerciseName === exerciseName);
       const unit = group[0]?.loadUnit ?? defaultUnit;
+      const planned = session.programDay?.exercises.find((row) => row.name === exerciseName);
+      const mode = resolveLogMode({
+        logMode: group[0]?.logMode ?? planned?.logMode,
+        name: exerciseName,
+        reps: planned?.reps,
+      });
       return [
         ...current,
-        newClientSet(session.id, exerciseName, group.length + 1, unit),
+        newClientSet(session.id, exerciseName, group.length + 1, unit, mode, group[0]?.durationSeconds ?? null),
       ];
     });
   }
@@ -168,9 +187,10 @@ export function WorkoutLogForm({
   function insertExercise() {
     const name = insertName.trim().slice(0, 80);
     if (!name) return;
+    const mode = resolveLogMode({ name });
     setSets((current) => [
       ...current,
-      newClientSet(session.id, name, 1, defaultUnit),
+      newClientSet(session.id, name, 1, defaultUnit, mode),
     ]);
     setInsertName("");
   }
@@ -295,8 +315,18 @@ export function WorkoutLogForm({
         {grouped.map(([name, group]) => {
           const form = lookupFormVideo(name, session.programDay?.exercises);
           const planned = session.programDay?.exercises.find((row) => row.name === name);
-          const restSeconds = planned?.restSeconds ?? 60;
+          const mode = resolveLogMode({
+            logMode: group[0]?.logMode ?? planned?.logMode,
+            name,
+            reps: planned?.reps,
+          });
+          const timed = isDurationMode(mode);
+          const restSeconds = planned?.restSeconds ?? (mode === "timed_round" ? 90 : 60);
           const thisRest = restRunning && restTimer?.exerciseName === name;
+          const columns = hidesLoad(mode)
+            ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
+            : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
+          const hint = modeHint(mode);
           return (
             <section key={name} className="rounded-2xl border border-line bg-card p-4">
               <div className="flex items-start gap-3">
@@ -313,16 +343,21 @@ export function WorkoutLogForm({
                           sets: planned.sets,
                           reps: planned.reps,
                           restSeconds: planned.restSeconds,
+                          logMode: mode,
+                          name,
                         })
-                      : `${group.length} sets`}
+                      : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
                   </p>
+                  {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
                   <WatchFormInline url={form.url} pending={form.pending} />
                 </div>
               </div>
 
               {restSeconds > 0 ? (
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-sm text-muted">Rest between each set</p>
+                  <p className="text-sm text-muted">
+                    {mode === "timed_round" ? "Rest between rounds" : "Rest between each set"}
+                  </p>
                   {thisRest ? (
                     <button
                       type="button"
@@ -347,11 +382,11 @@ export function WorkoutLogForm({
                 </div>
               ) : null}
 
-              <div className="mt-3 grid grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem] items-center gap-2 text-xs text-muted">
-                <span>Set</span>
+              <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
+                <span>{mode === "timed_round" ? "Rd" : "Set"}</span>
                 <span>Previous</span>
-                <span>Reps</span>
-                <span>{loadHeader}</span>
+                <span>{modeColumnLabel(mode)}</span>
+                {hidesLoad(mode) ? null : <span>{loadHeader}</span>}
                 <span className="sr-only">Done</span>
               </div>
 
@@ -360,10 +395,7 @@ export function WorkoutLogForm({
                   const index = sets.findIndex((item) => item.id === set.id);
                   const previous = previousLoads[name]?.[set.setNumber] ?? null;
                   return (
-                    <div
-                      key={set.id}
-                      className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem] items-center gap-2"
-                    >
+                    <div key={set.id} className={`grid ${columns} items-center gap-2`}>
                       <input
                         type="hidden"
                         name={`sets.${index}.exerciseName`}
@@ -375,44 +407,72 @@ export function WorkoutLogForm({
                         value={set.setNumber}
                       />
                       <input type="hidden" name={`sets.${index}.loadUnit`} value={set.loadUnit} />
+                      <input type="hidden" name={`sets.${index}.logMode`} value={mode} />
                       <p className="text-sm font-medium">{indexInGroup + 1}</p>
                       <p className="truncate text-sm text-muted">{previousSetLabel(previous)}</p>
-                      <label className="block">
-                        <span className="sr-only">Reps</span>
-                        <input
-                          name={`sets.${index}.reps`}
-                          type="number"
-                          min={0}
-                          max={200}
-                          inputMode="numeric"
-                          value={set.reps ?? ""}
-                          onChange={(event) =>
-                            updateSet(set.id, {
-                              reps: event.target.value === "" ? null : Number(event.target.value),
-                            })
-                          }
-                          className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="sr-only">{loadHeader}</span>
-                        <input
-                          name={`sets.${index}.loadValue`}
-                          type="number"
-                          min={0}
-                          max={2000}
-                          step="0.5"
-                          inputMode="decimal"
-                          value={set.loadValue ?? ""}
-                          onChange={(event) =>
-                            updateSet(set.id, {
-                              loadValue:
-                                event.target.value === "" ? null : Number(event.target.value),
-                            })
-                          }
-                          className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
-                        />
-                      </label>
+                      {timed ? (
+                        <label className="block">
+                          <span className="sr-only">{modeColumnLabel(mode)} seconds</span>
+                          <input
+                            name={`sets.${index}.durationSeconds`}
+                            type="number"
+                            min={0}
+                            max={3600}
+                            inputMode="numeric"
+                            placeholder="sec"
+                            value={set.durationSeconds ?? ""}
+                            onChange={(event) =>
+                              updateSet(set.id, {
+                                durationSeconds:
+                                  event.target.value === "" ? null : Number(event.target.value),
+                                logMode: mode,
+                              })
+                            }
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
+                          />
+                        </label>
+                      ) : (
+                        <label className="block">
+                          <span className="sr-only">Reps</span>
+                          <input
+                            name={`sets.${index}.reps`}
+                            type="number"
+                            min={0}
+                            max={200}
+                            inputMode="numeric"
+                            value={set.reps ?? ""}
+                            onChange={(event) =>
+                              updateSet(set.id, {
+                                reps: event.target.value === "" ? null : Number(event.target.value),
+                              })
+                            }
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
+                          />
+                        </label>
+                      )}
+                      {hidesLoad(mode) ? (
+                        <input type="hidden" name={`sets.${index}.loadValue`} value="" />
+                      ) : (
+                        <label className="block">
+                          <span className="sr-only">{loadHeader}</span>
+                          <input
+                            name={`sets.${index}.loadValue`}
+                            type="number"
+                            min={0}
+                            max={2000}
+                            step="0.5"
+                            inputMode="decimal"
+                            value={set.loadValue ?? ""}
+                            onChange={(event) =>
+                              updateSet(set.id, {
+                                loadValue:
+                                  event.target.value === "" ? null : Number(event.target.value),
+                              })
+                            }
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
+                          />
+                        </label>
+                      )}
                       <label className="flex items-center justify-center">
                         <span className="sr-only">Done</span>
                         <input
@@ -435,7 +495,7 @@ export function WorkoutLogForm({
                 onClick={() => addSet(name)}
                 className="touch-target mt-2 text-sm font-medium text-accent"
               >
-                + Add new set
+                {mode === "timed_round" ? "+ Add round" : "+ Add new set"}
               </button>
             </section>
           );

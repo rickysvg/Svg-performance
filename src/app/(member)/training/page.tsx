@@ -13,6 +13,7 @@ import {
   resolvePlanSessions,
   weekStrip,
 } from "@/lib/week-plan";
+import { scaleDemoCatalog } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 
@@ -31,7 +32,13 @@ export default async function TrainingPage() {
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
   const todayPlan = planForDate(prefs, now);
-  const planned = resolvePlanSessions(todayPlan, catalog);
+  const planned = resolvePlanSessions(
+    todayPlan,
+    scaleDemoCatalog(catalog, {
+      experienceLevel: profile?.experienceLevel,
+      competitionStatus: profile?.competitionStatus,
+    }),
+  );
   const strip = weekStrip(prefs, now);
   const week = buildCoreWeekPlan(prefs);
   const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now);
