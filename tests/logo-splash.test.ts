@@ -7,11 +7,10 @@ import {
   SPLASH_VIDEO_MS,
   SPLASH_VIDEO_SRC,
   canDismissSplash,
-  isAutoplayBlocked,
-  playSplashWithSound,
+  prepareSplashVideo,
   shouldSkipSplash,
   splashTimings,
-  waitForSplashCanPlay,
+  startSplashPlayback,
 } from "@/lib/splash";
 
 const root = process.cwd();
@@ -86,65 +85,79 @@ describe("app-open splash video", () => {
     ).toBe(true);
   });
 
-  it("tries sound first and falls back to muted autoplay without waiting for a tap", async () => {
-    expect(isAutoplayBlocked({ name: "NotAllowedError" })).toBe(true);
-    expect(isAutoplayBlocked({ name: "NotFoundError" })).toBe(false);
-
-    const blocked = {
+  it("starts muted so autoplay is allowed, and retries after the file is ready", async () => {
+    const attrs = new Map<string, string>();
+    const video = {
       muted: false,
       defaultMuted: false,
-      volume: 0.2,
+      playsInline: false,
+      readyState: 1,
+      playCount: 0,
+      setAttribute(name: string, value: string) {
+        attrs.set(name, value);
+      },
+      addEventListener() {},
+      removeEventListener() {},
       async play() {
-        if (!this.muted) {
-          const error = new Error("blocked");
-          error.name = "NotAllowedError";
-          throw error;
-        }
+        this.playCount += 1;
+        if (!this.muted) throw new Error("unmuted blocked");
       },
     };
-    await expect(playSplashWithSound(blocked)).resolves.toBe("muted");
-    expect(blocked.muted).toBe(true);
-    expect(blocked.volume).toBe(1);
+    prepareSplashVideo(video);
+    expect(video.muted).toBe(true);
+    expect(attrs.get("muted")).toBe("");
+    expect(attrs.get("playsinline")).toBe("");
 
-    const allowed = {
-      muted: true,
-      defaultMuted: true,
-      volume: 0.2,
-      play: async () => undefined,
-    };
-    await expect(playSplashWithSound(allowed)).resolves.toBe("sound");
-    expect(allowed.muted).toBe(false);
-    expect(allowed.volume).toBe(1);
+    video.readyState = 4;
+    await expect(startSplashPlayback(video)).resolves.toBe("playing");
+    expect(video.muted).toBe(true);
+    expect(video.playCount).toBe(1);
   });
 
-  it("waits until the clip can play before starting", async () => {
+  it("retries play after loadeddata when the first call is early", async () => {
     const listeners = new Map<string, () => void>();
+    let attempts = 0;
     const video = {
+      muted: true,
+      defaultMuted: true,
+      playsInline: true,
       readyState: 1,
+      setAttribute() {},
       addEventListener(type: string, fn: () => void) {
         listeners.set(type, fn);
       },
       removeEventListener(type: string) {
         listeners.delete(type);
       },
+      async play() {
+        attempts += 1;
+        if (attempts === 1) throw new Error("not ready");
+      },
     };
-    const pending = waitForSplashCanPlay(video);
-    listeners.get("canplay")?.();
-    await expect(pending).resolves.toBeUndefined();
+    const pending = startSplashPlayback(video);
+    queueMicrotask(() => {
+      video.readyState = 4;
+      listeners.get("loadeddata")?.();
+    });
+    await expect(pending).resolves.toBe("playing");
+    expect(attempts).toBe(2);
   });
 
-  it("mounts a video splash from the root layout, not the old CSS ring", () => {
+  it("mounts a muted autoplay video with a seamless black field", () => {
     const splash = read("src/components/AppSplash.tsx");
     expect(splash).toMatch(/<video/);
-    expect(splash).toMatch(/playSplashWithSound/);
-    expect(splash).toMatch(/waitForSplashCanPlay/);
+    expect(splash).toMatch(/startSplashPlayback/);
+    expect(splash).toMatch(/\bmuted\b/);
+    expect(splash).toMatch(/autoPlay/);
+    expect(splash).not.toMatch(/poster=/);
+    expect(splash).not.toMatch(/playSplashWithSound/);
     expect(splash).not.toMatch(/Tap for sound/);
-    expect(splash).not.toMatch(/app-splash-glow/);
     expect(read("src/app/layout.tsx")).toMatch(/AppSplash/);
     const css = read("src/app/globals.css");
     expect(css).toMatch(/\.app-splash-video/);
+    expect(css).toMatch(/background:\s*#000/);
+    expect(css).toMatch(/scale\(1\.08\)/);
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce/);
-    expect(css).not.toMatch(/svg-splash-glow/);
     expect(css).toMatch(/--background:\s*#ffffff/);
     expect(css).toMatch(/--accent:\s*#cbf805/);
   });
