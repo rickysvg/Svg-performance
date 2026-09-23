@@ -12,11 +12,16 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { lookupFormVideo } from "@/lib/form-videos";
+import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
-  plannedSetLine,
-  previousSetLabel,
-  restBannerSeconds,
-} from "@/lib/exercise-media";
+  formatRestClock,
+  formatRestPill,
+  isRestActive,
+  remainingRestSeconds,
+  signalRestComplete,
+  startRestTimer,
+  type RestTimerState,
+} from "@/lib/rest-timer";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 
@@ -61,18 +66,37 @@ function newClientSet(
   };
 }
 
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+      <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M8 4.5V8l2.25 1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+      <rect x="4.25" y="4.25" width="7.5" height="7.5" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 function SessionTimer() {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  const minutes = Math.floor(seconds / 60);
-  const remain = seconds % 60;
   return (
-    <span className="tabular-nums text-sm text-muted">
-      {minutes}:{String(remain).padStart(2, "0")}
-    </span>
+    <span className="tabular-nums text-sm text-muted">{formatRestClock(seconds)}</span>
   );
 }
 
@@ -90,6 +114,8 @@ export function WorkoutLogForm({
   const [sets, setSets] = useState(session.sets);
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
+  const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const grouped = useMemo(() => {
     const map = new Map<string, WorkoutSet[]>();
@@ -106,6 +132,21 @@ export function WorkoutLogForm({
   const cancelHref = session.programDayId
     ? `/training/${session.programDayId}`
     : "/training";
+  const restRemaining = remainingRestSeconds(restTimer, nowMs);
+  const restRunning = isRestActive(restTimer, nowMs);
+
+  useEffect(() => {
+    if (!restTimer) return;
+    const tick = window.setInterval(() => setNowMs(Date.now()), 250);
+    return () => window.clearInterval(tick);
+  }, [restTimer]);
+
+  useEffect(() => {
+    if (!restTimer) return;
+    if (remainingRestSeconds(restTimer, nowMs) > 0) return;
+    setRestTimer(null);
+    signalRestComplete();
+  }, [restTimer, nowMs]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
     setSets((current) =>
@@ -137,23 +178,32 @@ export function WorkoutLogForm({
   return (
     <div>
       <form action={action} className="space-y-5">
-        <header className="-mx-4 flex items-center gap-2 border-b border-line px-4 pb-3">
+        <header className="sticky top-[calc(env(safe-area-inset-top)+3rem)] z-10 -mx-4 flex items-center gap-2 border-b border-line bg-background/95 px-4 py-3 backdrop-blur">
           <Link
             href={cancelHref}
             className="touch-target inline-flex items-center text-sm font-medium text-muted"
           >
             Cancel
           </Link>
-          <div className="flex flex-1 items-center justify-center gap-3">
-            <SessionTimer />
-            <button
-              type="button"
-              onClick={() => setShowNotes((open) => !open)}
-              className="touch-target text-sm text-accent"
-            >
-              Notes
-            </button>
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-center">
+            {restRunning ? (
+              <>
+                <p className="text-3xl font-semibold tabular-nums leading-none text-accent">
+                  {formatRestClock(restRemaining)}
+                </p>
+                <SessionTimer />
+              </>
+            ) : (
+              <SessionTimer />
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setShowNotes((open) => !open)}
+            className="touch-target text-sm text-accent"
+          >
+            Notes
+          </button>
           <button
             type="submit"
             name="intent"
@@ -246,6 +296,7 @@ export function WorkoutLogForm({
           const form = lookupFormVideo(name, session.programDay?.exercises);
           const planned = session.programDay?.exercises.find((row) => row.name === name);
           const restSeconds = planned?.restSeconds ?? 60;
+          const thisRest = restRunning && restTimer?.exerciseName === name;
           return (
             <section key={name} className="rounded-2xl border border-line bg-card p-4">
               <div className="flex items-start gap-3">
@@ -270,10 +321,28 @@ export function WorkoutLogForm({
               </div>
 
               {restSeconds > 0 ? (
-                <p className="mt-3 flex items-center justify-between rounded-full bg-accent/10 px-3 py-2 text-sm text-accent">
-                  <span>Rest between each set</span>
-                  <span className="tabular-nums">{restBannerSeconds(restSeconds)}</span>
-                </p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted">Rest between each set</p>
+                  {thisRest ? (
+                    <button
+                      type="button"
+                      onClick={() => setRestTimer(null)}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent"
+                    >
+                      <StopIcon />
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setRestTimer(startRestTimer(name, restSeconds))}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-accent hover:border-accent"
+                    >
+                      <ClockIcon />
+                      {formatRestPill(restSeconds)}
+                    </button>
+                  )}
+                </div>
               ) : null}
 
               <div className="mt-3 grid grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem] items-center gap-2 text-xs text-muted">
