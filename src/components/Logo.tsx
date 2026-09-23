@@ -1,5 +1,5 @@
 type LogoVariant = "mark" | "lockup";
-type LogoSize = "sm" | "md" | "lg";
+type LogoSize = "xs" | "sm" | "md" | "lg";
 
 type LogoProps = {
   className?: string;
@@ -20,8 +20,8 @@ const ASSETS: Record<LogoVariant, { src: string; aspect: number }> = {
 };
 
 const HEIGHTS: Record<LogoVariant, Record<LogoSize, number>> = {
-  mark: { sm: 32, md: 44, lg: 64 },
-  lockup: { sm: 110, md: 160, lg: 188 },
+  mark: { xs: 22, sm: 32, md: 44, lg: 64 },
+  lockup: { xs: 88, sm: 110, md: 160, lg: 188 },
 };
 
 export function Logo({

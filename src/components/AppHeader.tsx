@@ -3,8 +3,10 @@ import { Logo } from "@/components/Logo";
 import { logoutAction } from "@/app/actions/auth";
 import { isAccountNavActive } from "@/lib/member-nav";
 
-function chipClass(active = false) {
-  return `inline-flex h-9 shrink-0 items-center justify-center rounded-full border px-3 text-xs ${
+function chipClass(active = false, compact = false) {
+  return `inline-flex shrink-0 items-center justify-center rounded-full border ${
+    compact ? "h-8 px-2.5 text-[11px]" : "h-9 px-3 text-xs"
+  } ${
     active
       ? "border-accent bg-accent/10 font-semibold text-accent"
       : "border-line text-foreground hover:border-accent"
@@ -38,12 +40,12 @@ export function AppHeader({
           : "sticky top-0 z-20 border-b border-line bg-background/95 backdrop-blur"
       }
     >
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5">
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-2">
         <Link
           href={homeHref ?? (email ? "/home" : "/")}
-          className="flex min-w-0 items-center gap-2.5"
+          className="flex min-w-0 shrink-0 items-center gap-2.5"
         >
-          <Logo variant="mark" size="sm" />
+          <Logo variant="mark" size={docked ? "xs" : "sm"} />
           <span className="hidden truncate text-sm font-semibold tracking-tight text-foreground sm:inline">
             SVG Performance
           </span>
@@ -51,36 +53,48 @@ export function AppHeader({
         {email ? (
           <nav
             aria-label="Account"
-            className="-mx-1 flex flex-nowrap items-center justify-end gap-1.5 overflow-x-auto"
+            className="flex min-w-0 flex-nowrap items-center justify-end gap-1.5"
           >
             {!hideMemberLinks && role === "admin" ? (
-              <Link href="/admin" className={chipClass(isAccountNavActive(path, "/admin"))}>
+              <Link
+                href="/admin"
+                className={chipClass(isAccountNavActive(path, "/admin"), docked)}
+              >
                 Admin
               </Link>
             ) : null}
             {!hideMemberLinks && staff ? (
               <Link
                 href="/staff/reports"
-                className={chipClass(isAccountNavActive(path, "/staff/reports"))}
+                className={chipClass(isAccountNavActive(path, "/staff/reports"), docked)}
               >
                 Staff
               </Link>
             ) : null}
             {!hideMemberLinks ? (
               <>
-                <Link href="/book" className={chipClass(isAccountNavActive(path, "/book"))}>
+                <Link
+                  href="/book"
+                  className={chipClass(isAccountNavActive(path, "/book"), docked)}
+                >
                   Book
                 </Link>
-                <Link href="/shop" className={chipClass(isAccountNavActive(path, "/shop"))}>
+                <Link
+                  href="/shop"
+                  className={chipClass(isAccountNavActive(path, "/shop"), docked)}
+                >
                   Shop
                 </Link>
-                <Link href="/profile" className={chipClass(isAccountNavActive(path, "/profile"))}>
+                <Link
+                  href="/profile"
+                  className={chipClass(isAccountNavActive(path, "/profile"), docked)}
+                >
                   Profile
                 </Link>
               </>
             ) : null}
             <form action={logoutAction} className="shrink-0">
-              <button type="submit" className={chipClass()}>
+              <button type="submit" className={chipClass(false, docked)}>
                 Log out
               </button>
             </form>
