@@ -34,9 +34,10 @@ describe("between-set rest timer", () => {
     const now = 2_000_000;
     const first = startRestTimer("Goblet squat", 90, now);
     const second = startRestTimer("Romanian deadlift", 75, now + 5_000);
-    expect(first.exerciseName).not.toBe(second.exerciseName);
+    expect(second.exerciseName).toBe("Romanian deadlift");
+    expect(second.exerciseName).not.toBe(first.exerciseName);
     expect(remainingRestSeconds(second, now + 5_000)).toBe(75);
-    expect(isRestActive(first, now + 5_000 + 80_000)).toBe(false);
     expect(isRestActive(second, now + 5_000 + 74_000)).toBe(true);
+    expect(isRestActive(second, now + 5_000 + 75_000)).toBe(false);
   });
 });
