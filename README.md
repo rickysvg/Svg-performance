@@ -180,7 +180,7 @@ Coverage includes:
 - Learn filters: beginner default; boxing/intermediate change the result set; pending video UX
 - Onboarding gate: incomplete users stay on `/onboarding`; completed users reach Home; answers persist and edit on Profile
 - Optional deeper onboarding: skip still reaches Home; complete step 2 persists weight/session/tone/competition; Home prompt if skipped; weight does not change DEMO nutrition targets
-- Daily quote: Performance+ / paid catalog get the full line; Member Access sees a locked teaser; reminder uses the same in-app / SMTP pattern (no mobile push yet)
+- Daily quote: even mix of UFC legends, well-known high achievers, and Bible verses (attribution on the card). Performance+ / paid catalog get the full line; Member Access sees a locked teaser; reminder uses the same in-app / SMTP pattern (no mobile push yet)
 - Difficulty rating persists on a completed session; too-easy streaks flag for coaches without shame copy
 - Weekly wrap: last 7 days counts (days trained, workouts, meals, lessons, avg rated feel); quiet-week copy has no shame; no food names
 - Personal records: heaviest logged load per exercise and longest days-active streak, recalculated from existing logs; empty state when nothing is logged yet
