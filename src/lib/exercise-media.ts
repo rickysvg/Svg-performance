@@ -34,7 +34,7 @@ export const EQUIPMENT_CHIPS: Record<EquipmentId, EquipmentChip> = {
   pads: { id: "pads", label: "Pads" },
 };
 
-const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
+const STRENGTH_NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Goblet squat": ["dumbbell"],
   "Romanian deadlift": ["dumbbell", "barbell"],
   "Reverse lunge": ["dumbbell"],
@@ -50,6 +50,9 @@ const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Lateral bound or side step-over": ["bodyweight"],
   "Jump rope or easy bike intervals": ["jump-rope", "bike"],
   "Side plank": ["bodyweight"],
+};
+
+const SKILL_NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Jab–cross (1–2)": ["bag"],
   "Low kick (roundhouse)": ["bag"],
   "Hands to low-kick combo": ["bag"],
@@ -73,6 +76,11 @@ const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Hip escape (shrimp)": ["bodyweight"],
   "Closed guard hip tilt": ["bodyweight"],
   "Frame and recover": ["bodyweight"],
+};
+
+const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
+  ...STRENGTH_NAME_EQUIPMENT,
+  ...SKILL_NAME_EQUIPMENT,
 };
 
 export function exerciseSlug(name: string) {
@@ -125,7 +133,7 @@ export function equipmentForExercises(names: string[]): EquipmentChip[] {
   return chips;
 }
 
-export const DEMO_EXERCISE_NAMES = Object.keys(NAME_EQUIPMENT);
+export const DEMO_EXERCISE_NAMES = Object.keys(STRENGTH_NAME_EQUIPMENT);
 
 export function plannedSetLine(input: { sets: number; reps: string; restSeconds: number }) {
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
