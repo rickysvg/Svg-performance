@@ -9,7 +9,9 @@ export type EquipmentId =
   | "bodyweight"
   | "pull-up"
   | "jump-rope"
-  | "bike";
+  | "bike"
+  | "bag"
+  | "pads";
 
 export type EquipmentChip = {
   id: EquipmentId;
@@ -28,6 +30,8 @@ export const EQUIPMENT_CHIPS: Record<EquipmentId, EquipmentChip> = {
   "pull-up": { id: "pull-up", label: "Pull-up bar" },
   "jump-rope": { id: "jump-rope", label: "Jump rope" },
   bike: { id: "bike", label: "Bike" },
+  bag: { id: "bag", label: "Heavy bag" },
+  pads: { id: "pads", label: "Pads" },
 };
 
 const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
@@ -46,6 +50,29 @@ const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Lateral bound or side step-over": ["bodyweight"],
   "Jump rope or easy bike intervals": ["jump-rope", "bike"],
   "Side plank": ["bodyweight"],
+  "Jab–cross (1–2)": ["bag"],
+  "Low kick (roundhouse)": ["bag"],
+  "Hands to low-kick combo": ["bag"],
+  "Teep (push kick)": ["bag"],
+  "Double-collar clinch posture": ["bag", "pads"],
+  "Straight knee (clinch)": ["bag", "pads"],
+  "Alternate knee rhythm": ["bag"],
+  "Exit the clinch / frame": ["bodyweight"],
+  "Boxing jab": ["bag"],
+  "Lead hook": ["bag"],
+  "1-2-3 bag rounds": ["bag"],
+  "Mount / high-posture hold": ["bodyweight"],
+  "Short punch from mount": ["bag"],
+  "Hip drive + post": ["bodyweight"],
+  "Ground-and-pound burst": ["bag"],
+  "Level change (penetration step)": ["bodyweight"],
+  "Double-leg entry": ["bodyweight"],
+  Sprawl: ["bodyweight"],
+  "Shot–sprawl reset": ["bodyweight"],
+  "Closed guard posture break": ["bodyweight"],
+  "Hip escape (shrimp)": ["bodyweight"],
+  "Closed guard hip tilt": ["bodyweight"],
+  "Frame and recover": ["bodyweight"],
 };
 
 export function exerciseSlug(name: string) {
@@ -79,6 +106,8 @@ export function equipmentForExercise(name: string): EquipmentId[] {
   if (/\bpull-?up\b|\bchin-?up\b/.test(lower)) found.push("pull-up");
   if (/\bjump rope\b/.test(lower)) found.push("jump-rope");
   if (/\bbike\b/.test(lower)) found.push("bike");
+  if (/\bbag\b/.test(lower)) found.push("bag");
+  if (/\bpad\b|\bmitt\b/.test(lower)) found.push("pads");
   if (found.length === 0) found.push("bodyweight");
   return found;
 }
@@ -120,6 +149,13 @@ export function estimateSessionMinutes(
 
 export function sessionKindLabel(input: { title: string; focus: string }) {
   const text = `${input.title} ${input.focus}`.toLowerCase();
+  if (
+    /bag|clinch|knee|ground-and-pound|guard|sprawl|shot|jab-cross-hook|martial|skill/.test(
+      text,
+    )
+  ) {
+    return "Skill";
+  }
   if (/condition|interval|cardio|gas tank/.test(text)) return "Conditioning";
   return "Strength";
 }

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { findDemoProgram } from "@/lib/programs";
+import { findDemoTrainingCatalog } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
@@ -11,9 +11,9 @@ import {
   preferredLearnLevel,
   preferredLearnTopic,
   sessionLengthHint,
-  suggestDemoProgramDay,
   trainingLocationHint,
 } from "@/lib/onboarding";
+import { suggestTodayWork } from "@/lib/skill-programs";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -167,9 +167,9 @@ export function emptyHomeToday(selectedDay = new Date()) {
 
 export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const selected = startOfLocalDay(selectedDay);
-  const [program, sessions, foodToday, allLessons, progress, activity, profile] =
+  const [catalog, sessions, foodToday, allLessons, progress, activity, profile] =
     await Promise.all([
-      findDemoProgram(),
+      findDemoTrainingCatalog(),
       listWorkoutSessionsForUser(userId),
       getNutritionSummaryForDay(userId, selected),
       listPublishedLessons(),
@@ -177,6 +177,8 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
       getWeeklyActivity(userId),
       getProfileForUser(userId),
     ]);
+  const { strength, skill } = catalog;
+  const hasCatalog = Boolean(strength || skill);
 
   const completedDayIds = new Set(
     sessions
@@ -184,9 +186,14 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
       .map((session) => session.programDayId as string),
   );
   const draft = sessions.find((session) => session.status === "draft");
-  const suggestedDay = suggestDemoProgramDay(program?.days ?? [], completedDayIds, {
-    goalKey: profile?.goalKey,
-    primaryFocus: profile?.primaryFocus,
+  const suggestedDay = suggestTodayWork({
+    strengthDays: strength?.days ?? [],
+    skillDays: skill?.days ?? [],
+    completedDayIds,
+    prefs: {
+      goalKey: profile?.goalKey,
+      primaryFocus: profile?.primaryFocus,
+    },
   });
   const loggedOnSelected = sessions.find(
     (session) =>
@@ -214,7 +221,7 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     selected,
     isToday: sameLocalDay(selected, new Date()),
     suggestedDay,
-    suggestionCopy: program
+    suggestionCopy: hasCatalog
       ? demoSuggestionCopy({
           goalKey: profile?.goalKey,
           primaryFocus: profile?.primaryFocus,

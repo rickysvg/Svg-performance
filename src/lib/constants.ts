@@ -13,6 +13,8 @@ export const EQUIPMENT_OPTIONS = [
   "Pull-up bar",
   "Jump rope",
   "Bike or assault bike",
+  "Heavy bag",
+  "Thai pads / focus mitts",
 ] as const;
 
 export const WEEKDAYS = [

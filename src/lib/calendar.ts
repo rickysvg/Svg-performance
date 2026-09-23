@@ -1,10 +1,14 @@
-import { findDemoProgram } from "@/lib/programs";
+import { findDemoTrainingCatalog } from "@/lib/programs";
 import { getProfileForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getChallengeProgressForUser } from "@/lib/challenges";
-import { suggestDemoProgramDay } from "@/lib/onboarding";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
+import {
+  filterSkillDaysForFocus,
+  mixCalendarProgramDays,
+  suggestTodayWork,
+} from "@/lib/skill-programs";
 
 export const DEFAULT_TRAINING_WEEKDAYS = ["Monday", "Wednesday", "Friday"] as const;
 
@@ -98,14 +102,17 @@ export function buildCalendarDays(input: {
   availability: string[];
   completedOnDay: Set<string>;
   startDayNumber?: number;
+  startDayId?: string;
   includeReport?: boolean;
   challenge?: { title: string; complete: boolean } | null;
   dayCount?: number;
 }): CalendarDay[] {
   const dates = listCalendarDates(input.now, input.dayCount ?? 8);
   const trainingDays = new Set(resolveTrainingWeekdays(input.availability));
-  const programDays = [...input.programDays].sort((a, b) => a.dayNumber - b.dayNumber);
-  const startIndex = programDays.findIndex((day) => day.dayNumber === input.startDayNumber);
+  const programDays = [...input.programDays];
+  const startIndex = input.startDayId
+    ? programDays.findIndex((day) => day.id === input.startDayId)
+    : programDays.findIndex((day) => day.dayNumber === input.startDayNumber);
   let cursor = startIndex >= 0 ? startIndex : 0;
 
   const days: CalendarDay[] = dates.map((date) => ({
@@ -167,12 +174,13 @@ export function buildCalendarDays(input: {
 }
 
 export async function getCalendarSchedule(userId: string, now = new Date()) {
-  const [program, profile, sessions, challenge] = await Promise.all([
-    findDemoProgram(),
+  const [catalog, profile, sessions, challenge] = await Promise.all([
+    findDemoTrainingCatalog(),
     getProfileForUser(userId),
     listWorkoutSessionsForUser(userId),
     getChallengeProgressForUser(userId),
   ]);
+  const { strength, skill } = catalog;
   const completedOnDay = new Set(
     sessions
       .filter((session) => session.status === "complete")
@@ -183,22 +191,41 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
       .filter((session) => session.status === "complete" && session.programDayId)
       .map((session) => session.programDayId as string),
   );
-  const suggested = suggestDemoProgramDay(program?.days ?? [], completedDayIds, {
-    goalKey: profile?.goalKey,
-    primaryFocus: profile?.primaryFocus,
+  const skillDays = filterSkillDaysForFocus(skill?.days ?? [], profile?.primaryFocus);
+  const suggested = suggestTodayWork({
+    strengthDays: strength?.days ?? [],
+    skillDays: skill?.days ?? [],
+    completedDayIds,
+    prefs: {
+      goalKey: profile?.goalKey,
+      primaryFocus: profile?.primaryFocus,
+    },
   });
+  const programDays = mixCalendarProgramDays(
+    (strength?.days ?? []).map((day) => ({
+      id: day.id,
+      title: day.title,
+      dayNumber: day.dayNumber,
+    })),
+    skillDays.map((day) => ({
+      id: day.id,
+      title: day.title,
+      dayNumber: day.dayNumber,
+    })),
+  );
+  const titles = [
+    skillDays.length > 0 ? skill?.title : null,
+    strength?.title,
+  ].filter((title): title is string => Boolean(title));
 
   return {
-    programTitle: program?.title ?? null,
+    programTitle: titles.join(" · ") || null,
     days: buildCalendarDays({
       now,
-      programDays: (program?.days ?? []).map((day) => ({
-        id: day.id,
-        title: day.title,
-        dayNumber: day.dayNumber,
-      })),
+      programDays,
       availability: profile?.weeklyAvailability ?? [],
       completedOnDay,
+      startDayId: suggested?.id,
       startDayNumber: suggested?.dayNumber,
       includeReport: true,
       challenge: challenge?.enrollment

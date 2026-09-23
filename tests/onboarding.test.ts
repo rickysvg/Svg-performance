@@ -169,8 +169,8 @@ describe("onboarding gate and persistence", () => {
       allergies: "",
     });
     const today = await getHomeToday(user.id);
-    expect(today.suggestedDay?.dayNumber).toBe(3);
-    expect(today.suggestionCopy).toMatch(/DEMO template/i);
+    expect(today.suggestedDay?.title).toMatch(/jab-cross-hook bag rounds/i);
+    expect(today.suggestionCopy).toMatch(/DEMO skill \+ strength/i);
     expect(today.suggestionCopy).toMatch(/Not a custom Elite/i);
     expect(today.incompleteLesson?.topic).toBe("boxing");
     expect(today.incompleteLesson?.skillLevel).toBe("intermediate");

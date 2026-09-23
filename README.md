@@ -329,13 +329,15 @@ The build runs `node scripts/prisma-prepare.mjs --deploy`, which generates the P
 
 ### E. Optional: DEMO program and lessons on the host
 
-The first deploy has empty tables (no DEMO program until you seed). Home still loads — it shows an empty training CTA instead of “This page hit a snag.” Seed when you want the DEMO days and lessons:
+The first deploy has empty tables (no DEMO program until you seed). Home still loads — it shows an empty training CTA instead of “This page hit a snag.” Seed when you want the DEMO **strength** days, DEMO **martial-arts skill** days, and lessons:
 
 ```bash
 DATABASE_URL="postgresql://PASTE_THE_SAME_NEON_STRING" npm run db:seed
 ```
 
-That writes the labeled DEMO program and DEMO lessons into Neon. It does not enable live billing.
+That writes `demo-strength-base` and `demo-combat-skills` plus DEMO lessons into Neon. It does not enable live billing.
+
+**After this skill-program change merges**, re-run that same seed against the hosted Neon URL so [https://svg-performance.vercel.app](https://svg-performance.vercel.app) shows the new bag / clinch / ground-and-pound days. A code deploy alone does not insert program rows. Use the **same** `DATABASE_URL` as the Vercel project (Project → Settings → Environment Variables).
 
 Then create your admin account on the hosted site and run (still on the laptop, same `DATABASE_URL`):
 

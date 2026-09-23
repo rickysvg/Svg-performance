@@ -1,5 +1,5 @@
 /**
- * Curated YouTube form-reference catalog for the DEMO program.
+ * Curated YouTube form-reference catalog for the DEMO strength + skill programs.
  * These are external education links, not SVG-produced coaching videos.
  */
 
@@ -100,6 +100,144 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     pending: false,
     channel: "MuscleWiki",
     title: "Simplified: Side Plank - Improve Form",
+  },
+  "Jab–cross (1–2)": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
+  "Low kick (roundhouse)": {
+    url: "https://www.youtube.com/watch?v=J9dK0uIEXIM",
+    pending: false,
+    channel: "Paul Banasiak @MuayThaiTechnician",
+    title: "Muay Thai Kick LIKE A PRO! step-by-step guide",
+  },
+  "Hands to low-kick combo": {
+    url: "https://www.youtube.com/watch?v=J9dK0uIEXIM",
+    pending: false,
+    channel: "Paul Banasiak @MuayThaiTechnician",
+    title: "Muay Thai Kick LIKE A PRO! step-by-step guide",
+  },
+  "Teep (push kick)": {
+    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
+    pending: false,
+    channel: "Kingdom Martial Arts Academy",
+    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
+  },
+  "Double-collar clinch posture": {
+    url: "https://www.youtube.com/watch?v=_hEKmkZQttU",
+    pending: false,
+    channel: "Muay Thai Clinch Technique",
+    title: "How To Turn Your Opponent To Land A Knee",
+  },
+  "Straight knee (clinch)": {
+    url: "https://www.youtube.com/watch?v=xsymld6rm24",
+    pending: false,
+    channel: "Master A / Warrior Collective",
+    title: "Muay Thai How to Develop Devastating Knees Tutorial",
+  },
+  "Alternate knee rhythm": {
+    url: "https://www.youtube.com/watch?v=xsymld6rm24",
+    pending: false,
+    channel: "Master A / Warrior Collective",
+    title: "Muay Thai How to Develop Devastating Knees Tutorial",
+  },
+  "Exit the clinch / frame": {
+    url: "https://www.youtube.com/watch?v=_hEKmkZQttU",
+    pending: false,
+    channel: "Muay Thai Clinch Technique",
+    title: "How To Turn Your Opponent To Land A Knee",
+  },
+  "Boxing jab": {
+    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
+    pending: false,
+    channel: "eBoxing Academy",
+    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
+  },
+  "Lead hook": {
+    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
+    pending: false,
+    channel: "Tony Jeffries / Sanabul",
+    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
+  },
+  "1-2-3 bag rounds": {
+    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
+    pending: false,
+    channel: "Tony Jeffries / Sanabul",
+    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
+  },
+  "Mount / high-posture hold": {
+    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
+    pending: false,
+    channel: "Coach Firas Zahabi",
+    title: "MMA Ground and Pound Tutorial",
+  },
+  "Short punch from mount": {
+    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
+    pending: false,
+    channel: "Coach Firas Zahabi",
+    title: "MMA Ground and Pound Tutorial",
+  },
+  "Hip drive + post": {
+    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
+    pending: false,
+    channel: "Coach Firas Zahabi",
+    title: "MMA Ground and Pound Tutorial",
+  },
+  "Ground-and-pound burst": {
+    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
+    pending: false,
+    channel: "Coach Firas Zahabi",
+    title: "MMA Ground and Pound Tutorial",
+  },
+  "Level change (penetration step)": {
+    url: "https://www.youtube.com/watch?v=KhEdji8BuQ0",
+    pending: false,
+    channel: "TeachMeGrappling Coach Brian",
+    title: "How to PROPERLY Finish the DOUBLE LEG! (Drill)",
+  },
+  "Double-leg entry": {
+    url: "https://www.youtube.com/watch?v=KhEdji8BuQ0",
+    pending: false,
+    channel: "TeachMeGrappling Coach Brian",
+    title: "How to PROPERLY Finish the DOUBLE LEG! (Drill)",
+  },
+  "Sprawl": {
+    url: "https://www.youtube.com/watch?v=NmqVOswRpW4",
+    pending: false,
+    channel: "Chess Club Jiu-Jitsu",
+    title: "BJJ Beginners Tutorial - How to Sprawl",
+  },
+  "Shot–sprawl reset": {
+    url: "https://www.youtube.com/watch?v=J0kcsLXX1Ms",
+    pending: false,
+    channel: "Ben Askren / BJJ Fanatics",
+    title: "Wrestling Moves - Sprawl by Ben Askren",
+  },
+  "Closed guard posture break": {
+    url: "https://www.youtube.com/watch?v=KKxD5kdOkk0",
+    pending: false,
+    channel: "Stephan Kesting",
+    title: "BJJ Closed Guard Principles",
+  },
+  "Hip escape (shrimp)": {
+    url: "https://www.youtube.com/watch?v=TQ4gJ7E6Xis",
+    pending: false,
+    channel: "Stephan Kesting",
+    title: "10 Ways to Shrimp and Improve Hip Mobility on the Ground",
+  },
+  "Closed guard hip tilt": {
+    url: "https://www.youtube.com/watch?v=KKxD5kdOkk0",
+    pending: false,
+    channel: "Stephan Kesting",
+    title: "BJJ Closed Guard Principles",
+  },
+  "Frame and recover": {
+    url: "https://www.youtube.com/watch?v=GLqJOhLn_PQ",
+    pending: false,
+    channel: "Chess Club Jiu-Jitsu",
+    title: "BJJ Beginners Tutorial - Side Control Escape to Closed Guard",
   },
 };
 

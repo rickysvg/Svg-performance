@@ -62,6 +62,12 @@ describe("workout logger media and previous loads", () => {
       "Conditioning",
     );
     expect(sessionKindLabel({ title: "Day 1 — Lower body + power", focus: "Legs" })).toBe("Strength");
+    expect(
+      sessionKindLabel({
+        title: "Heavy bag — hands to low kicks",
+        focus: "Hands first, then low-kick combinations",
+      }),
+    ).toBe("Skill");
     // 2 × (3 × (40s work + 90s rest) + 30s transition) = 840s → 14 min
     expect(
       estimateSessionMinutes([

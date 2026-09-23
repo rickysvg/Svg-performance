@@ -6,7 +6,7 @@ import { getTodayGuide } from "@/lib/today";
 import { getPathProgress } from "@/lib/paths";
 import { createNutritionEntryForUser } from "@/lib/nutrition";
 import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
-import { DEMO_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
+import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import { listRuntimeKnowledgeFiles, loadKnowledgeBase } from "@/lib/coach/knowledge";
 
 describe("home aggregation and weekly activity", () => {
@@ -75,12 +75,17 @@ describe("home aggregation and weekly activity", () => {
   });
 
   it("keeps Home and Today usable when the DEMO program is not seeded", async () => {
-    const snapshot = await prisma.program.findUnique({
-      where: { slug: DEMO_PROGRAM_SLUG },
-      include: { days: { include: { exercises: true }, orderBy: { dayNumber: "asc" } } },
+    const include = {
+      days: { include: { exercises: true }, orderBy: { dayNumber: "asc" as const } },
+    };
+    const snapshots = await Promise.all([
+      prisma.program.findUnique({ where: { slug: DEMO_PROGRAM_SLUG }, include }),
+      prisma.program.findUnique({ where: { slug: DEMO_SKILL_PROGRAM_SLUG }, include }),
+    ]);
+    expect(snapshots[0]).toBeTruthy();
+    await prisma.program.deleteMany({
+      where: { slug: { in: [DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG] } },
     });
-    expect(snapshot).toBeTruthy();
-    await prisma.program.delete({ where: { slug: DEMO_PROGRAM_SLUG } });
     try {
       const user = await makeUser("empty-seed-home@example.com");
       const today = await getHomeToday(user.id);
@@ -95,7 +100,8 @@ describe("home aggregation and weekly activity", () => {
       expect(guide.path.path.title).toBeTruthy();
       expect(guide.today.suggestedDay).toBeNull();
     } finally {
-      if (snapshot) {
+      for (const snapshot of snapshots) {
+        if (!snapshot) continue;
         await prisma.program.create({
           data: {
             slug: snapshot.slug,
