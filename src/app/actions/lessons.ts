@@ -28,6 +28,7 @@ function readLessonInput(formData: FormData): LessonInput {
     coachName: String(formData.get("coachName") ?? ""),
     equipment: String(formData.get("equipment") ?? ""),
     notes: String(formData.get("notes") ?? ""),
+    technicalDescription: String(formData.get("technicalDescription") ?? ""),
     drills: String(formData.get("drills") ?? ""),
     keyDetails: String(formData.get("keyDetails") ?? ""),
     youtubeUrl: String(formData.get("youtubeUrl") ?? ""),

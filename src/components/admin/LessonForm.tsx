@@ -20,6 +20,7 @@ type Lesson = {
   coachName: string;
   equipment: string;
   notes: string;
+  technicalDescription: string;
   drills: string;
   keyDetails: string;
   youtubeUrl: string;
@@ -57,7 +58,8 @@ export function LessonForm({ lesson }: { lesson?: Lesson }) {
       </select>
       <input name="coachName" defaultValue={lesson?.coachName ?? "SVG coaching staff"} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
       <input name="equipment" defaultValue={lesson?.equipment} placeholder="Equipment" className="w-full rounded-xl border border-line bg-card px-3 py-3" />
-      <textarea name="notes" defaultValue={lesson?.notes} placeholder="Lesson notes" rows={5} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
+      <textarea name="technicalDescription" defaultValue={lesson?.technicalDescription} placeholder="Technical description (mechanics, cues, common mistakes)" rows={5} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
+      <textarea name="notes" defaultValue={lesson?.notes} placeholder="Lesson notes" rows={4} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
       <textarea name="keyDetails" defaultValue={lesson?.keyDetails} placeholder="Details to watch for (one per line)" rows={4} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
       <textarea name="drills" defaultValue={lesson?.drills} placeholder="Drills" rows={4} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
       <input name="youtubeUrl" defaultValue={lesson?.youtubeUrl} placeholder="YouTube watch URL (not Shorts)" className="w-full rounded-xl border border-line bg-card px-3 py-3" />

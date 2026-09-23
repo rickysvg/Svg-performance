@@ -15,10 +15,7 @@ import {
   resolveLearnLevelFilter,
   resolveLearnTopicFilter,
 } from "@/lib/lessons";
-import { resolveLessonVideo } from "@/lib/lesson-videos";
-import { preferredLearnLevel, preferredLearnTopic } from "@/lib/onboarding";
-import { getProfileForUser } from "@/lib/profile";
-import { DemoBadge } from "@/components/DemoBadge";
+import { LearnLessonCard } from "@/components/learn/LearnLessonCard";
 import { EmptyState } from "@/components/EmptyState";
 
 function Chip({
@@ -33,10 +30,10 @@ function Chip({
   return (
     <Link
       href={href}
-      className={`touch-target inline-flex items-center rounded-full border px-3 py-2 text-sm font-semibold ${
+      className={`inline-flex min-h-11 items-center rounded-full border px-3 text-sm ${
         active
-          ? "border-accent bg-accent text-black"
-          : "border-line bg-background text-foreground hover:border-accent"
+          ? "border-accent text-accent"
+          : "border-line text-muted hover:border-foreground hover:text-foreground"
       }`}
     >
       {children}
@@ -58,13 +55,11 @@ export default async function LearnPage({
     return <PaywallNotice feature="Learn" />;
   }
   const query = await searchParams;
-  const profile = await getProfileForUser(user.id);
   const skillLevel = resolveLearnLevelFilter(
-    query.level,
+    query.level ?? (fullLibrary ? "all" : "beginner"),
     fullLibrary,
-    preferredLearnLevel(profile),
   );
-  const topic = resolveLearnTopicFilter(query.topic, preferredLearnTopic(profile));
+  const topic = resolveLearnTopicFilter(query.topic ?? "all");
   const selectedLevel = skillLevel ?? "all";
   const [lessons, progress] = await Promise.all([
     listPublishedLessons({
@@ -77,62 +72,43 @@ export default async function LearnPage({
   const progressMap = new Map(progress.map((row) => [row.lessonId, row]));
 
   return (
-    <main className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <main className="space-y-8">
+      <div>
+        <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold">Learn</h1>
-          <p className="mt-1 text-sm text-muted">
-            Filter by athlete level and martial art. Defaults follow your intake
-            (editable here anytime). DEMO lessons include written details plus a
-            labeled YouTube reference — not paid SVG video instruction.
-            {!fullLibrary
-              ? " Member Access shows selected beginner notes only. Upgrade to SVG Performance for the full library."
-              : ""}
-          </p>
+          {isAdmin(user) ? (
+            <Link href="/admin/lessons" className="text-sm text-muted">
+              Admin
+            </Link>
+          ) : null}
         </div>
-        {isAdmin(user) ? (
-          <Link href="/admin/lessons" className="text-sm text-accent underline">
-            Admin
-          </Link>
-        ) : null}
+        <p className="mt-2 text-sm text-muted">
+          Technique library by martial art and skill. YouTube references — not SVG-produced
+          coaching film.
+          {!fullLibrary ? " Member Access shows beginner lessons only." : ""}
+        </p>
       </div>
 
-      <form className="rounded-2xl border border-line bg-card p-4">
-        {skillLevel ? <input type="hidden" name="level" value={skillLevel} /> : (
-          <input type="hidden" name="level" value="all" />
-        )}
-        {topic ? <input type="hidden" name="topic" value={topic} /> : null}
-        <input
-          name="q"
-          defaultValue={query.q}
-          placeholder="Search"
-          className="w-full rounded-xl border border-line bg-background px-3 py-3"
-        />
-        <button className="touch-target mt-3 w-full rounded-full bg-accent font-semibold text-black">
-          Search
-        </button>
-      </form>
-
       <section className="space-y-3">
-        <p className="text-xs uppercase tracking-wide text-muted">Athlete level</p>
+        <p className="text-xs uppercase tracking-wide text-muted">Skill level</p>
         <div className="flex flex-wrap gap-2">
+          {fullLibrary ? (
+            <Chip
+              href={buildLearnHref({ q: query.q, topic: topic ?? "all", level: "all" })}
+              active={selectedLevel === "all"}
+            >
+              All
+            </Chip>
+          ) : null}
           {(fullLibrary ? LESSON_LEVELS : (["beginner"] as const)).map((level) => (
             <Chip
               key={level}
-              href={buildLearnHref({ q: query.q, topic, level })}
+              href={buildLearnHref({ q: query.q, topic: topic ?? "all", level })}
               active={selectedLevel === level}
             >
               {lessonLevelLabel(level)}
             </Chip>
           ))}
-          {fullLibrary ? (
-            <Chip
-              href={buildLearnHref({ q: query.q, topic, level: "all" })}
-              active={selectedLevel === "all"}
-            >
-              All levels
-            </Chip>
-          ) : null}
         </div>
       </section>
 
@@ -143,7 +119,7 @@ export default async function LearnPage({
             href={buildLearnHref({ q: query.q, level: selectedLevel, topic: "all" })}
             active={!topic}
           >
-            All arts
+            All
           </Chip>
           {LESSON_TOPICS.map((art) => (
             <Chip
@@ -158,33 +134,20 @@ export default async function LearnPage({
       </section>
 
       {lessons.length === 0 ? (
-        <EmptyState title="No published lessons match that filter">
-          Try another level or martial art, or ask an admin to publish a DEMO lesson.
+        <EmptyState title="No lessons match that filter">
+          Try another art or level. Pending videos stay listed when a write-up exists.
         </EmptyState>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-5">
           {lessons.map((lesson) => {
             const row = progressMap.get(lesson.id);
-            const video = resolveLessonVideo(lesson);
             return (
-              <li key={lesson.id}>
-                <Link
-                  href={`/learn/${lesson.slug}`}
-                  className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold">{lesson.title}</p>
-                    {lesson.isDemo ? <DemoBadge /> : null}
-                  </div>
-                  <p className="mt-1 text-sm text-muted">{lesson.summary}</p>
-                  <p className="mt-2 text-xs text-muted">
-                    {lessonTopicLabel(lesson.topic)} · {lessonLevelLabel(lesson.skillLevel)}
-                    {video.pending ? " · video pending" : " · YouTube reference"}
-                    {row?.bookmarked ? " · bookmarked" : ""}
-                    {row?.completed ? " · completed" : ""}
-                  </p>
-                </Link>
-              </li>
+              <LearnLessonCard
+                key={lesson.id}
+                lesson={lesson}
+                bookmarked={row?.bookmarked}
+                completed={row?.completed}
+              />
             );
           })}
         </ul>
