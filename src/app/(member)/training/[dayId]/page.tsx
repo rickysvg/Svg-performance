@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
+import { getProfileForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
@@ -23,10 +25,18 @@ export default async function TrainingDayPage({
   params: Promise<{ dayId: string }>;
 }) {
   const user = await requireUser();
+  const profile = await getProfileForUser(user.id);
   const { dayId } = await params;
   let day;
   try {
-    day = await getProgramDayById(dayId);
+    const raw = await getProgramDayById(dayId);
+    day = scaleProgramDay(raw, {
+      band: scaleBandFromPrefs({
+        experienceLevel: profile?.experienceLevel,
+        competitionStatus: profile?.competitionStatus,
+      }),
+      programSlug: raw.program.slug,
+    });
   } catch {
     notFound();
   }
@@ -63,6 +73,14 @@ export default async function TrainingDayPage({
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold leading-tight">{day.title}</h1>
             <p className="mt-1 text-sm text-muted">{day.focus}</p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-accent">
+              {scaleCopy(
+                scaleBandFromPrefs({
+                  experienceLevel: profile?.experienceLevel,
+                  competitionStatus: profile?.competitionStatus,
+                }),
+              )}
+            </p>
           </div>
           {draft ? (
             <Link
@@ -110,6 +128,8 @@ export default async function TrainingDayPage({
                     sets: exercise.sets,
                     reps: exercise.reps,
                     restSeconds: exercise.restSeconds,
+                    logMode: exercise.logMode,
+                    name: exercise.name,
                   })}
                 </p>
                 <WatchFormInline url={form.url} pending={form.pending} />

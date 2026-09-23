@@ -47,12 +47,18 @@ describe("workout logger media and previous loads", () => {
   });
 
   it("builds a coach-friendly planned line and previous label", () => {
-    expect(plannedSetLine({ sets: 4, reps: "8", restSeconds: 90 })).toBe(
+    expect(plannedSetLine({ sets: 4, reps: "8", restSeconds: 90, logMode: "load_reps" })).toBe(
       "4 sets × 8, 90s rest",
     );
-    expect(plannedSetLine({ sets: 8, reps: "20 sec on / 40 sec easy", restSeconds: 0 })).toBe(
-      "8 sets × 20 sec on / 40 sec easy",
-    );
+    expect(
+      plannedSetLine({
+        sets: 8,
+        reps: "20 sec on / 40 sec easy",
+        restSeconds: 0,
+        logMode: "timed",
+        name: "Jump rope or easy bike intervals",
+      }),
+    ).toBe("8 holds × 20 sec on / 40 sec easy");
     expect(previousSetLabel(null)).toBe("—");
     expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80lb");
     expect(previousSetLabel({ reps: 12, loadValue: null, loadUnit: "lb" })).toBe("12 reps");
@@ -165,11 +171,15 @@ describe("workout logger media and previous loads", () => {
       reps: 8,
       loadValue: 40,
       loadUnit: "lb",
+      logMode: "load_reps",
+      durationSeconds: null,
     });
     expect(previous["Goblet squat"]?.[2]).toEqual({
       reps: 8,
       loadValue: 45,
       loadUnit: "lb",
+      logMode: "load_reps",
+      durationSeconds: null,
     });
     expect(previous["Front plank"]).toBeUndefined();
 

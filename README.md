@@ -337,9 +337,9 @@ DATABASE_URL="postgresql://PASTE_THE_SAME_NEON_STRING" npm run db:seed
 
 That writes `demo-strength-base` and `demo-combat-skills` plus DEMO lessons into Neon. It does not enable live billing.
 
-Train / Home / Calendar use a **Core weekday planner** on top of those seeded days (no extra program rows for this planner). After skill-program days first land on Neon, re-seed once:
+Train / Home / Calendar use a **Core weekday planner** on top of those seeded days. Skill days are **timed rounds**; planks are **timed holds**. Experience on the profile scales round length and rest (beginner ~2 min / 90s rest; advanced/pro ~3–5 min / 30–45s). After this logging-mode change lands, **re-seed Neon** so hosted rows get `logMode` and the beginner 2:00 round prescriptions:
 
-**After DEMO skill days merge**, re-run that same seed against the hosted Neon URL so [https://svg-performance.vercel.app](https://svg-performance.vercel.app) has bag / clinch / ground-and-pound days the Core week can point at. A code deploy alone does not insert program rows. Use the **same** `DATABASE_URL` as the Vercel project (Project → Settings → Environment Variables).
+**After DEMO skill days or logging-mode changes merge**, re-run that same seed against the hosted Neon URL so [https://svg-performance.vercel.app](https://svg-performance.vercel.app) has bag / clinch / ground-and-pound days plus timed `logMode` tags. A code deploy alone does not insert or retag program rows. Use the **same** `DATABASE_URL` as the Vercel project (Project → Settings → Environment Variables). Name heuristics still treat “plank” as a hold if a host is not re-seeded yet.
 
 Then create your admin account on the hosted site and run (still on the laptop, same `DATABASE_URL`):
 

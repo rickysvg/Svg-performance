@@ -14,6 +14,7 @@ import {
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import { isLogMode } from "@/lib/exercise-log-mode";
 import { createWorkoutHrForUser } from "@/lib/heart";
 
 export type WorkoutActionState = { error?: string; success?: string };
@@ -26,6 +27,10 @@ export async function startSessionAction(formData: FormData) {
     userId: user.id,
     programDayId: String(formData.get("programDayId") ?? ""),
     preferredUnits: units,
+    scale: {
+      experienceLevel: profile?.experienceLevel,
+      competitionStatus: profile?.competitionStatus,
+    },
   });
   redirect(`/training/log/${session.id}`);
 }
@@ -37,12 +42,16 @@ function parseSets(formData: FormData): WorkoutSetInput[] {
     const repsRaw = String(formData.get(`sets.${i}.reps`) ?? "").trim();
     const loadRaw = String(formData.get(`sets.${i}.loadValue`) ?? "").trim();
     const unitRaw = String(formData.get(`sets.${i}.loadUnit`) ?? "lb");
+    const durationRaw = String(formData.get(`sets.${i}.durationSeconds`) ?? "").trim();
+    const modeRaw = String(formData.get(`sets.${i}.logMode`) ?? "");
     sets.push({
       exerciseName: String(formData.get(`sets.${i}.exerciseName`) ?? ""),
       setNumber: Number(formData.get(`sets.${i}.setNumber`) ?? i + 1),
       reps: repsRaw === "" ? null : Number(repsRaw),
       loadValue: loadRaw === "" ? null : Number(loadRaw),
       loadUnit: isLoadUnit(unitRaw) ? unitRaw : "lb",
+      logMode: isLogMode(modeRaw) ? modeRaw : undefined,
+      durationSeconds: durationRaw === "" ? null : Number(durationRaw),
       completed: formData.get(`sets.${i}.completed`) === "on",
     });
   }

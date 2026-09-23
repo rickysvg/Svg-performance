@@ -4,6 +4,7 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
+import { plannedSetLine } from "@/lib/exercise-log-mode";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
@@ -21,6 +22,7 @@ type DayExercise = {
   reps: string;
   loadText: string;
   restSeconds: number;
+  logMode?: string;
   formVideoUrl: string;
   formVideoPending: boolean;
 };
@@ -86,7 +88,13 @@ export function PlanSessionCard({
                   <span>
                     <span className="font-medium">{exercise.name}</span>
                     <span className={`block ${highlight ? "text-white/60" : "text-muted"}`}>
-                      {exercise.sets} × {exercise.reps} · {exercise.loadText}
+                      {plannedSetLine({
+                        sets: exercise.sets,
+                        reps: exercise.reps,
+                        restSeconds: exercise.restSeconds,
+                        logMode: exercise.logMode,
+                        name: exercise.name,
+                      })}
                     </span>
                   </span>
                 </span>

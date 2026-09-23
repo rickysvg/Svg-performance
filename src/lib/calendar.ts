@@ -5,6 +5,7 @@ import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
+import { scaleDemoCatalog } from "@/lib/training-scale";
 
 export const DEFAULT_TRAINING_WEEKDAYS = ["Monday", "Wednesday", "Friday"] as const;
 
@@ -176,7 +177,10 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
     listWorkoutSessionsForUser(userId),
     getChallengeProgressForUser(userId),
   ]);
-  const { strength, skill } = catalog;
+  const { strength, skill } = scaleDemoCatalog(catalog, {
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
   const completedOnDay = new Set(
     sessions
       .filter((session) => session.status === "complete")

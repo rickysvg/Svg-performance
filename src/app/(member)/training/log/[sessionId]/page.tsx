@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { requireUser } from "@/lib/session";
+import { getProfileForUser } from "@/lib/profile";
 import { getPreviousLoadsForUser, getWorkoutSessionForUser } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
+import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 
 export default async function WorkoutLogPage({
   params,
@@ -17,6 +19,7 @@ export default async function WorkoutLogPage({
   const user = await requireUser();
   const { sessionId } = await params;
   const query = await searchParams;
+  const profile = await getProfileForUser(user.id);
 
   let session;
   try {
@@ -59,7 +62,20 @@ export default async function WorkoutLogPage({
         )
       ) : null}
       <WorkoutLogForm
-        session={session}
+        session={
+          session.programDay
+            ? {
+                ...session,
+                programDay: scaleProgramDay(session.programDay, {
+                  band: scaleBandFromPrefs({
+                    experienceLevel: profile?.experienceLevel,
+                    competitionStatus: profile?.competitionStatus,
+                  }),
+                  programSlug: session.programDay.program.slug,
+                }),
+              }
+            : session
+        }
         previousLoads={await getPreviousLoadsForUser(
           user.id,
           session.sets.map((set) => set.exerciseName),

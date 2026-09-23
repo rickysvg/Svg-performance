@@ -1,3 +1,5 @@
+import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
+
 export type EquipmentId =
   | "barbell"
   | "bench"
@@ -135,22 +137,23 @@ export function equipmentForExercises(names: string[]): EquipmentChip[] {
 
 export const DEMO_EXERCISE_NAMES = Object.keys(STRENGTH_NAME_EQUIPMENT);
 
-export function plannedSetLine(input: { sets: number; reps: string; restSeconds: number }) {
-  const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
-  return `${input.sets} sets × ${input.reps}${rest}`;
-}
+export { plannedSetLine } from "@/lib/exercise-log-mode";
 
 const WORK_SECONDS_PER_SET = 40;
 const TRANSITION_SECONDS = 30;
 
 export function estimateSessionMinutes(
-  exercises: Array<{ sets: number; restSeconds: number }>,
+  exercises: Array<{ sets: number; restSeconds: number; reps?: string; logMode?: string; name?: string }>,
 ) {
   if (exercises.length === 0) return 0;
   const seconds = exercises.reduce((total, exercise) => {
     const sets = Math.max(0, exercise.sets);
     const rest = Math.max(0, exercise.restSeconds);
-    return total + sets * (WORK_SECONDS_PER_SET + rest) + TRANSITION_SECONDS;
+    const timed = isDurationMode(resolveLogMode(exercise));
+    const work = timed
+      ? parseDurationSeconds(exercise.reps ?? "") ?? WORK_SECONDS_PER_SET
+      : WORK_SECONDS_PER_SET;
+    return total + sets * (work + rest) + TRANSITION_SECONDS;
   }, 0);
   return Math.max(1, Math.round(seconds / 60));
 }
@@ -180,8 +183,14 @@ export function previousSetLabel(input: {
   reps: number | null;
   loadValue: number | null;
   loadUnit: string;
+  logMode?: string | null;
+  durationSeconds?: number | null;
 } | null) {
   if (!input) return "—";
+  if (input.durationSeconds != null && input.durationSeconds > 0) {
+    const label = input.logMode === "timed_round" ? "round" : "hold";
+    return `${input.durationSeconds}s ${label}`;
+  }
   if (input.reps != null && input.loadValue != null) {
     return `${input.reps} × ${input.loadValue}${input.loadUnit}`;
   }
