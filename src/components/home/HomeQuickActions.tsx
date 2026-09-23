@@ -7,23 +7,23 @@ const PHOTO_ACTIONS = [
     hint: "Today’s work",
     src: "/home/tiles/train.jpg",
     alt: "Sparring at SVG MMA Academy",
-    position: "center 28%",
+    position: "center 32%",
   },
   {
     href: "/coach",
     label: "Coach",
     hint: "Ask SVG Coach",
     src: "/home/tiles/coach.jpg",
-    alt: "Coach Ricky in the cage at SVG",
-    position: "center 18%",
+    alt: "Coach pointing on the mats at SVG",
+    position: "70% 28%",
   },
   {
     href: "/learn",
     label: "Learn",
     hint: "Technique",
     src: "/home/tiles/learn.jpg",
-    alt: "Technique work on the mats at SVG",
-    position: "center center",
+    alt: "Pad work in the cage at SVG",
+    position: "center 42%",
   },
   {
     href: "/progress",
@@ -31,7 +31,7 @@ const PHOTO_ACTIONS = [
     hint: "PRs + photos",
     src: "/home/tiles/progress.jpg",
     alt: "Walkout under the lights",
-    position: "center 18%",
+    position: "center 30%",
   },
 ] as const;
 
