@@ -47,7 +47,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Milestone 3
 
-- **Nav:** Train / Fuel / Learn / Coach / Shop on the phone bar. Logo → Home. Profile in the header. That matches the “easy five” without crowding six tabs.
+- **Nav:** Primary destinations **Home · Train · Fuel · Learn · Coach** sit on a sticky **top** bar with a lime (`text-accent`) selected state. Logo, Book, Shop, Profile, and Log out sit on the **bottom** account bar. That keeps the easy five without crowding a sixth primary tab.
 - **Home today:** suggested DEMO workout (or draft), food nudge if nothing logged, unfinished published lesson, plus days active this week. Copy never calls a quiet week a failure.
 - **Reminders:** on/off + preferred local hour. Due once per local day on Home. Email only if SMTP is configured. Disabled types stay silent. Already-logged types stay silent.
 - **Reports:** coaches see assigned members only. Admins see all members. Payload is counts + last-active timestamp. There was no existing “share food diary” permission, so lists stay trends-only on purpose.
@@ -59,7 +59,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 ## Milestone 4
 
 - **Home UX:** Inspired by Fight Science Collective *layout ideas only* (greeting, workout card, one supporting card, FAB). Week strip, wrap, challenge, and shop were later pulled off Home so Today stays the hero. We did not copy their logo, red medical cross, colors, or assets. SVG uses black / white / `#D0FF00`, academy-first copy, and our own logo.
-- **Nav:** Phone bar is **Home · Train · Fuel · Learn · Coach**. Shop is on Home plus the header so it stays reachable without crowding a sixth tab.
+- **Nav:** Phone primary bar is **Home · Train · Fuel · Learn · Coach** at the **top** (lime highlight). Shop is on Home plus the bottom account bar so it stays reachable without crowding a sixth tab.
 - **Nutrition rings:** Today’s (or selected day’s) food logs vs profile targets. New accounts start at DEMO estimates **2200 / 140 g / 220 g / 70 g** — not copied from another gym’s numbers. Always labeled estimates.
 - **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / LBM / body fat stay typed. Resting HR on Progress prefers `HrRestingSample` (Apple Health / Polar / manual / DEMO) and falls back to the typed body metric.
 - **Wearables (Phase 1 Apple Health first):** Primary UI is Connect Apple Health with honest “web cannot pair Watch” copy plus JSON / XML / CSV import (`apple_health`, `apple_watch_import`). Polar AccessLink stays available but secondary. Manual avg/max is a backup. “Apple Watch connected” is never shown; `appleHealthKitBridge` is always false. Polar “connected” still requires env keys **and** a stored token. DEMO samples are labeled DEMO. Analysis (`/heart`) is RHR 7/30, last workout avg/max/zones, weekly zone bars, plain-language insights, always **not medical advice**. Phase 2 is a native iOS companion / HealthKit. We do not store raw HR streams in analytics events.

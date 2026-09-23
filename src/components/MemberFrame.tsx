@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
-import { BottomNav } from "@/components/BottomNav";
+import { PrimaryNav } from "@/components/PrimaryNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
 
 function isImmersiveTrainingPath(pathname: string) {
@@ -31,7 +31,7 @@ export function MemberFrame({
 
   return (
     <div className="flex min-h-full flex-col">
-      {immersive ? null : <AppHeader email={email} role={role} />}
+      <PrimaryNav />
       <div
         className={
           immersive
@@ -42,7 +42,9 @@ export function MemberFrame({
         {children}
       </div>
       <QuickAddFab />
-      <BottomNav />
+      {immersive ? null : (
+        <AppHeader email={email} role={role} placement="bottom" currentPath={pathname} />
+      )}
     </div>
   );
 }
