@@ -1,8 +1,8 @@
 export const SESSION_COOKIE = "svg_session";
 export const SESSION_DAYS = 30;
 
-/** Sampled from the neon V and PERFORMANCE bar on the official SVG Performance logo. */
-export const BRAND_ACCENT = "#D0FF00";
+/** Official neon lime highlighter. Use as a fill with black text. */
+export const BRAND_ACCENT = "#CBF805";
 
 export const EQUIPMENT_OPTIONS = [
   "Bodyweight only",

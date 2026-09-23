@@ -42,14 +42,14 @@ function prefersReducedMotion() {
 function burst(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
-  const colors = ["#D0FF00", "#ffffff", "#8fbf00", "#e8ff8a"];
+  const colors = ["#CBF805", "#0a0a0a", "#ffffff", "#8fbf00"];
   const particles = Array.from({ length: 42 }, () => ({
     x: canvas.width / 2,
     y: canvas.height * 0.35,
     vx: (Math.random() - 0.5) * 9,
     vy: Math.random() * -8 - 2,
     size: Math.random() * 5 + 2,
-    color: colors[Math.floor(Math.random() * colors.length)] ?? "#D0FF00",
+    color: colors[Math.floor(Math.random() * colors.length)] ?? "#CBF805",
     life: 1,
   }));
   let frame = 0;

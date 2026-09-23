@@ -38,7 +38,7 @@ function Ring({
           r={radius}
           fill="none"
           stroke="currentColor"
-          className="text-accent"
+          className="text-highlighter"
           strokeWidth="6"
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`}

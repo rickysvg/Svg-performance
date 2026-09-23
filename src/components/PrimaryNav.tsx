@@ -11,27 +11,21 @@ export function PrimaryNav() {
       aria-label="Main"
       className="sticky top-0 z-20 border-b border-line bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur"
     >
-      <ul className="mx-auto grid max-w-3xl grid-cols-5">
+      <ul className="mx-auto grid max-w-3xl grid-cols-5 px-1">
         {PRIMARY_NAV_LINKS.map((link) => {
           const active = isPrimaryNavActive(current, link.href);
           return (
-            <li key={link.href}>
+            <li key={link.href} className="px-0.5 py-1.5">
               <Link
                 href={link.href}
-                className={`touch-target relative flex flex-col items-center justify-center px-1 py-2.5 text-[12px] leading-tight whitespace-nowrap ${
+                className={`touch-target flex flex-col items-center justify-center rounded-full px-1 text-[12px] leading-tight whitespace-nowrap ${
                   active
-                    ? "bg-accent/10 font-semibold text-accent"
+                    ? "bg-accent font-semibold text-black"
                     : "text-muted hover:text-foreground"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
                 {link.label}
-                {active ? (
-                  <span
-                    className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent"
-                    aria-hidden
-                  />
-                ) : null}
               </Link>
             </li>
           );

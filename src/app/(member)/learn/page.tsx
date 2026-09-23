@@ -32,7 +32,7 @@ function Chip({
       href={href}
       className={`inline-flex min-h-11 items-center rounded-full border px-3 text-sm ${
         active
-          ? "border-accent text-accent"
+          ? "border-black bg-accent font-semibold text-black"
           : "border-line text-muted hover:border-foreground hover:text-foreground"
       }`}
     >
