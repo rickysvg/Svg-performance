@@ -58,7 +58,7 @@ describe("workout logger media and previous loads", () => {
         logMode: "timed",
         name: "Jump rope or easy bike intervals",
       }),
-    ).toBe("8 holds × 20 sec on / 40 sec easy");
+    ).toBe("8 bouts × 20 sec on / 40 sec easy");
     expect(previousSetLabel(null)).toBe("—");
     expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80lb");
     expect(previousSetLabel({ reps: 12, loadValue: null, loadUnit: "lb" })).toBe("12 reps");

@@ -137,6 +137,37 @@ describe("scaled DEMO days in the database", () => {
     expect(bag?.restSeconds).toBe(90);
   });
 
+  it("reserves load_reps for weighted DEMO strength lifts only", async () => {
+    const strength = await getDemoProgram();
+    const skill = await findSkillProgram();
+    const modes = Object.fromEntries(
+      strength.days.flatMap((day) => day.exercises.map((row) => [row.name, row.logMode])),
+    );
+    expect(modes["Goblet squat"]).toBe("load_reps");
+    expect(modes["Romanian deadlift"]).toBe("load_reps");
+    expect(modes["Reverse lunge"]).toBe("load_reps");
+    expect(modes["Push-up or dumbbell bench press"]).toBe("load_reps");
+    expect(modes["One-arm row"]).toBe("load_reps");
+    expect(modes["Overhead press"]).toBe("load_reps");
+    expect(modes["Farmer carry"]).toBe("load_reps");
+    expect(modes["Kettlebell swing or hip hinge"]).toBe("load_reps");
+    expect(modes["Band pull-apart or face pull"]).toBe("reps_only");
+    expect(modes["Squat jump or box step-up"]).toBe("reps_only");
+    expect(modes["Chin-up, band-assist, or lat pulldown"]).toBe("reps_only");
+    expect(modes["Lateral bound or side step-over"]).toBe("reps_only");
+    expect(modes["Front plank"]).toBe("timed");
+    expect(modes["Side plank"]).toBe("timed");
+    expect(modes["Jump rope or easy bike intervals"]).toBe("timed");
+    expect(
+      skill?.days.flatMap((day) => day.exercises).every((row) =>
+        row.logMode === "timed_round" || row.logMode === "timed",
+      ),
+    ).toBe(true);
+    expect(skill?.days.flatMap((day) => day.exercises).some((row) => row.logMode === "load_reps")).toBe(
+      false,
+    );
+  });
+
   it("starts more plank sets and shorter rest for an advanced member", async () => {
     const user = await makeUser("adv-scale@example.com");
     const strength = await getDemoProgram();

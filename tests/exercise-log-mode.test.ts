@@ -19,7 +19,21 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Low kick (roundhouse)")).toBe("timed_round");
     expect(fallbackLogMode("Closed guard hip tilt")).toBe("timed_round");
     expect(fallbackLogMode("Goblet squat")).toBe("load_reps");
+    expect(fallbackLogMode("Romanian deadlift")).toBe("load_reps");
+    expect(fallbackLogMode("Overhead press")).toBe("load_reps");
+    expect(fallbackLogMode("One-arm row")).toBe("load_reps");
+    expect(fallbackLogMode("Farmer carry")).toBe("load_reps");
+    expect(fallbackLogMode("Kettlebell swing or hip hinge")).toBe("load_reps");
+    expect(fallbackLogMode("Reverse lunge")).toBe("load_reps");
+    expect(fallbackLogMode("Push-up or dumbbell bench press")).toBe("load_reps");
     expect(fallbackLogMode("Chin-up, band-assist, or lat pulldown")).toBe("reps_only");
+    expect(fallbackLogMode("Band pull-apart or face pull")).toBe("reps_only");
+    expect(fallbackLogMode("Squat jump or box step-up")).toBe("reps_only");
+    expect(fallbackLogMode("Lateral bound or side step-over")).toBe("reps_only");
+    expect(fallbackLogMode("Jump rope or easy bike intervals")).toBe("timed");
+    expect(fallbackLogMode("Mountain climbers")).toBe("timed");
+    expect(fallbackLogMode("Burpees")).toBe("timed");
+    expect(fallbackLogMode("Unknown mobility flow")).toBe("timed");
   });
 
   it("parses clocks and written seconds", () => {
@@ -40,6 +54,15 @@ describe("exercise log modes", () => {
         name: "Front plank",
       }),
     ).toBe("3 holds × 45–60 sec, 30s rest");
+    expect(
+      plannedSetLine({
+        sets: 8,
+        reps: "20 sec on / 40 sec easy",
+        restSeconds: 0,
+        logMode: "timed",
+        name: "Jump rope or easy bike intervals",
+      }),
+    ).toBe("8 bouts × 20 sec on / 40 sec easy");
     expect(
       plannedSetLine({
         sets: 3,
