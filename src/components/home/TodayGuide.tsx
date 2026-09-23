@@ -5,6 +5,7 @@ import {
   exerciseCountLabel,
   sessionKindLabel,
 } from "@/lib/exercise-media";
+import { SectionHeading } from "@/components/home/SectionHeading";
 
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
 
@@ -35,25 +36,28 @@ export function TodayGuide({ guide }: { guide: Guide }) {
   const count = day?.exercises.length ?? 0;
 
   return (
-    <section className="rounded-2xl border border-line bg-card px-5 py-6">
-      <p className="text-xs uppercase tracking-wide text-muted">Today’s workout</p>
-      <h2 className="mt-2 text-2xl font-semibold leading-tight">{workoutTitle}</h2>
-      {day ? (
-        <p className="mt-2 text-sm text-muted">
-          {kind} · est. {minutes} min · {exerciseCountLabel(count)}
+    <section className="space-y-4">
+      <SectionHeading title="Today’s workout" href="/training/calendar" />
+      <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+          {day ? `${kind} · est. ${minutes} min` : "Training"}
         </p>
-      ) : (
-        <p className="mt-2 text-sm text-muted">{today.suggestionCopy}</p>
-      )}
-      {today.loggedOnSelected ? (
-        <p className="mt-2 text-sm text-muted">Already logged this day.</p>
-      ) : null}
-      <Link
-        href={workoutHref}
-        className="touch-target mt-5 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
-      >
-        {workoutCta}
-      </Link>
+        <h3 className="mt-3 text-2xl font-semibold leading-tight">{workoutTitle}</h3>
+        {day ? (
+          <p className="mt-2 text-sm text-white/70">{exerciseCountLabel(count)}</p>
+        ) : (
+          <p className="mt-2 text-sm text-white/70">{today.suggestionCopy}</p>
+        )}
+        {today.loggedOnSelected ? (
+          <p className="mt-2 text-sm text-white/70">Already logged this day.</p>
+        ) : null}
+        <Link
+          href={workoutHref}
+          className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+        >
+          {workoutCta}
+        </Link>
+      </div>
     </section>
   );
 }

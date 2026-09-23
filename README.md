@@ -4,7 +4,7 @@ Private-preview web app from **Ricky Maynez / SVG MMA Academy** (El Paso).
 
 SVG Performance is **not** gym-members-only. It is for **anybody** who wants to improve performance — especially combat sports athletes, and also people just getting in shape. SVG members are welcome (gym verify / member pricing). You do not have to train at SVG to create an account.
 
-You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to SVG Coach, and use a Home screen with a greeting, daily quote, today’s workout, and one nutrition card.
+You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to SVG Coach, and use a Home screen with a lime welcome, quick-action tiles, today’s workout, a daily quote, nutrition, and an SVG & CO shop block.
 
 It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing, or claim Ricky types each AI reply.
 
@@ -12,7 +12,7 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 
 1. Create an account, answer a short first-run survey (goal, experience, martial art, equipment, days, units), log in, log out, and reset a password. New accounts cannot open Home until that required intake is saved.
 2. Finish the required intake (name, goal, experience, martial art, equipment, days, units; optional limitations/diet/allergies). An optional second screen (weight, session length, location, competition, coaching tone, obstacles) can be skipped. Edit either later on Profile.
-3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), **Today’s workout** (type, est. minutes, exercise count), and one nutrition card. Calendar / Progress / paths / journal / weekly wrap / challenge / shop live on their own screens so Home stays scannable.
+3. Use Home for: a lime **Welcome** wash, six big tiles (Train / Fuel / Learn / Coach / Calendar / Progress), **Today’s workout**, a **daily quote** (full on Performance+; Member Access sees a teaser), nutrition rings, and an SVG &amp; CO merch block (live store, names only). Paths / journal / wrap / challenge stay on their own screens.
 4. Follow a **DEMO training path** (Beginner Foundations, Build Your Gas Tank, or Strength for Combat) with milestones. Default comes from onboarding. Open the DEMO strength program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, tap the rest pill to start a between-set countdown (Stop or 0 clears it), see it in history, and fix a mistaken number.
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open **Heart rate** to import Apple Health / watch workouts (JSON, XML, or CSV), type RHR, or optionally connect Polar. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. Apple Watch is not shown as connected on the web.
@@ -234,7 +234,7 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Intake answers persist and can be edited on Profile. Learn defaults to that experience (and art when it is one of the six). Home suggests a DEMO day from the answers — still labeled DEMO.
 - [ ] After required intake, the optional deeper screen can be skipped. Home then shows “2-minute deeper profile for better programming.” Completing it (or editing Profile) saves session length, location, competition, tone, and obstacles. Weight is display-only — nutrition targets stay DEMO estimates.
 - [ ] Gym checkbox does **not** unlock $19 or paid tools by itself.
-- [ ] Home shows a greeting, daily quote, today’s workout card (type · est. minutes · exercise count), nutrition rings (estimates), and a + quick-add. Secondary items stay off the first screen.
+- [ ] Home is a white shell with a lime welcome, quick-action tiles, today’s workout (type · est. minutes · exercise count), quote, nutrition rings (estimates), SVG & CO shop block, and a + quick-add. No Chuze blue.
 - [ ] Home Today is the workout hero (title + one CTA). Goal can appear under the greeting. No invented fight date or Ricky comment.
 - [ ] Training paths enroll from onboarding default; a logged DEMO day can complete a milestone. Journal entries stay private. Weekly report is labeled Automated SVG summary.
 - [ ] Home weekly wrap shows last-7-day counts (days trained, workouts, meals, lessons, avg feel if rated). Quiet week copy is okay, not shame. No meal names on the card.

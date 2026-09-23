@@ -10,6 +10,9 @@ import { DAILY_QUOTES, getDailyQuoteCard, teaserFromQuote } from "@/lib/quotes";
 import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
 import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { TodayGuide } from "@/components/home/TodayGuide";
+import { HomeQuickActions } from "@/components/home/HomeQuickActions";
+import { HomeMerchPromo } from "@/components/home/HomeMerchPromo";
+import { SectionHeading } from "@/components/home/SectionHeading";
 
 export default async function HomePage({
   searchParams,
@@ -40,45 +43,50 @@ export default async function HomePage({
   const openHelp = helpRequests.filter((row) => row.status === "open");
 
   return (
-    <main className="space-y-10">
-      <div>
-        <p className="text-sm text-muted">Let&apos;s go,</p>
-        <h1 className="mt-1 text-4xl font-semibold tracking-tight">{greetingName}</h1>
-        {profile?.goals ? (
-          <p className="mt-2 text-sm text-muted">{profile.goals}</p>
+    <main className="space-y-8">
+      <section className="-mx-4 -mt-6 bg-accent px-4 pb-8 pt-7 text-black">
+        <p className="text-sm font-medium">Let&apos;s go</p>
+        <h1 className="mt-1 text-4xl font-semibold tracking-tight">
+          Welcome {greetingName}
+        </h1>
+        <p className="mt-2 text-sm">
+          SVG Performance · El Paso
+          {profile?.goals ? ` · ${profile.goals}` : ""}
+        </p>
+        {!profile || !profileIsComplete(profile) ? (
+          <p className="mt-4 text-sm">
+            Finish your profile so Home can show a real goal and units.{" "}
+            <Link href="/profile" className="font-semibold underline">
+              Open profile
+            </Link>
+          </p>
         ) : null}
-      </div>
-
-      {!profile || !profileIsComplete(profile) ? (
-        <p className="text-sm text-muted">
-          Finish your profile so Home can show a real goal and units.{" "}
-          <Link href="/profile" className="font-semibold text-accent">
-            Open profile
-          </Link>
-        </p>
-      ) : null}
-
-      {today.needsDeepPrompt ? (
-        <p className="text-sm text-muted">
-          Optional 2-minute deeper profile.{" "}
-          <Link href="/onboarding/deeper" className="font-semibold text-accent">
-            Add details
-          </Link>
-        </p>
-      ) : null}
+        {today.needsDeepPrompt ? (
+          <p className="mt-3 text-sm">
+            Optional 2-minute deeper profile.{" "}
+            <Link href="/onboarding/deeper" className="font-semibold underline">
+              Add details
+            </Link>
+          </p>
+        ) : null}
+      </section>
 
       {reminderResult.due.length > 0 ? (
-        <section className="space-y-2">
+        <section className="space-y-2 rounded-2xl border border-line bg-card px-4 py-4">
           {reminderResult.due.map((item) => (
             <p key={item.kind} className="text-sm text-muted">
               {item.message}
             </p>
           ))}
-          <Link href="/profile" className="text-sm text-accent">
+          <Link href="/profile" className="text-sm font-semibold underline">
             Reminder settings
           </Link>
         </section>
       ) : null}
+
+      <HomeQuickActions />
+
+      <TodayGuide guide={guide} />
 
       <DailyQuoteCard
         quote={quoteCard.quote}
@@ -86,16 +94,9 @@ export default async function HomePage({
         teaser={quoteCard.teaser}
       />
 
-      <TodayGuide guide={guide} />
-
-      <section className="rounded-2xl border border-line bg-card px-5 py-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Nutrition today</h2>
-          <Link href="/nutrition" className="text-sm font-semibold text-accent">
-            Log food
-          </Link>
-        </div>
-        <div className="mt-5">
+      <section className="space-y-4">
+        <SectionHeading title="Nutrition today" href="/nutrition" action="Log food" />
+        <div className="rounded-[2rem] border border-line bg-card px-5 py-6">
           <NutritionRings
             calories={today.foodToday.calories}
             proteinG={today.foodToday.proteinG}
@@ -106,17 +107,10 @@ export default async function HomePage({
         </div>
       </section>
 
-      <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted" aria-label="More">
-        <Link href="/training/calendar" className="hover:text-foreground">
-          Calendar
-        </Link>
-        <Link href="/progress" className="hover:text-foreground">
-          Progress
-        </Link>
-      </nav>
+      <HomeMerchPromo />
 
-      <details className="text-sm">
-        <summary className="cursor-pointer text-muted">
+      <details className="rounded-2xl border border-line bg-card px-5 py-4 text-sm">
+        <summary className="cursor-pointer font-semibold">
           Ask a coach
           {openHelp.length > 0 ? ` · ${openHelp.length} open` : ""}
         </summary>

@@ -11,19 +11,25 @@ export function DailyQuoteCard({
   teaser: string;
 }) {
   return (
-    <section>
+    <section className="rounded-[2rem] border border-line bg-card px-5 py-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+        Daily quote
+      </p>
       {unlocked ? (
         <>
-          <p className="text-lg leading-snug text-foreground">“{quote.text}”</p>
-          <p className="mt-2 text-sm text-muted">{quote.attribution}</p>
+          <p className="mt-3 text-xl font-medium leading-snug">“{quote.text}”</p>
+          <p className="mt-3 text-sm text-muted">{quote.attribution}</p>
         </>
       ) : (
         <>
-          <p className="text-lg leading-snug text-muted">“{teaser}”</p>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-3 text-xl font-medium leading-snug text-muted">“{teaser}”</p>
+          <p className="mt-3 text-sm text-muted">
             Full daily quotes are on Performance+ (and higher paid catalog plans).
           </p>
-          <Link href="/pricing" className="mt-2 inline-block text-sm font-semibold text-accent">
+          <Link
+            href="/pricing"
+            className="mt-4 inline-flex rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black"
+          >
             See App Plans
           </Link>
         </>

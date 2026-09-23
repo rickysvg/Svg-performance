@@ -8,8 +8,8 @@ function chipClass(active = false, compact = false) {
     compact ? "h-8 px-2.5 text-[11px]" : "h-9 px-3 text-xs"
   } ${
     active
-      ? "border-accent bg-accent/10 font-semibold text-accent"
-      : "border-line text-foreground hover:border-accent"
+      ? "border-black bg-accent font-semibold text-black"
+      : "border-line bg-background text-foreground hover:border-black"
   }`;
 }
 
@@ -45,7 +45,9 @@ export function AppHeader({
           href={homeHref ?? (email ? "/home" : "/")}
           className="flex min-w-0 shrink-0 items-center gap-2.5"
         >
-          <Logo variant="mark" size={docked ? "xs" : "sm"} />
+          <span className="inline-flex items-center justify-center rounded-lg bg-black px-1.5 py-1">
+            <Logo variant="mark" size={docked ? "xs" : "sm"} />
+          </span>
           <span className="hidden truncate text-sm font-semibold tracking-tight text-foreground sm:inline">
             SVG Performance
           </span>

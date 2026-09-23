@@ -36,7 +36,7 @@ function TopicChip({
       href={href}
       className={`inline-flex min-h-11 items-center rounded-full border px-3 text-sm ${
         active
-          ? "border-accent text-accent"
+          ? "border-black bg-accent font-semibold text-black"
           : "border-line text-muted hover:border-foreground hover:text-foreground"
       }`}
     >
@@ -123,7 +123,7 @@ export default async function CoachPage({
       {ready && thread ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm text-accent">
+            <span className="inline-flex min-h-11 items-center rounded-full bg-accent px-3 text-sm font-semibold text-black">
               {lane}
             </span>
             <Link href="/coach" className="text-sm text-muted hover:text-foreground">
