@@ -17,6 +17,9 @@ import {
   exerciseThumbSrc,
   plannedSetLine,
   previousSetLabel,
+  estimateSessionMinutes,
+  exerciseCountLabel,
+  sessionKindLabel,
 } from "@/lib/exercise-media";
 
 describe("workout logger media and previous loads", () => {
@@ -53,6 +56,20 @@ describe("workout logger media and previous loads", () => {
     expect(previousSetLabel(null)).toBe("—");
     expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80lb");
     expect(previousSetLabel({ reps: 12, loadValue: null, loadUnit: "lb" })).toBe("12 reps");
+    expect(exerciseCountLabel(1)).toBe("1 Exercise");
+    expect(exerciseCountLabel(5)).toBe("5 Exercises");
+    expect(sessionKindLabel({ title: "Day 3 — Hinge, pull, and conditioning", focus: "work capacity" })).toBe(
+      "Conditioning",
+    );
+    expect(sessionKindLabel({ title: "Day 1 — Lower body + power", focus: "Legs" })).toBe("Strength");
+    // 2 × (3 × (40s work + 90s rest) + 30s transition) = 840s → 14 min
+    expect(
+      estimateSessionMinutes([
+        { sets: 3, restSeconds: 90 },
+        { sets: 3, restSeconds: 90 },
+      ]),
+    ).toBe(14);
+    expect(estimateSessionMinutes([])).toBe(0);
   });
 
   it("derives unique equipment chips from a DEMO day", async () => {

@@ -97,7 +97,7 @@ export function EquipmentRow({
   return (
     <section>
       <p className="text-sm font-medium text-foreground">Equipment</p>
-      <ul className="mt-3 flex gap-4 overflow-x-auto pb-1">
+      <ul className="mt-4 flex gap-5 overflow-x-auto pb-1">
         {chips.map((chip) => (
           <li key={chip.id} className="flex w-16 shrink-0 flex-col items-center gap-2">
             <span className="flex h-12 w-12 items-center justify-center rounded-full border border-line bg-card text-foreground">

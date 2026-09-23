@@ -4,7 +4,7 @@ Private-preview web app from **Ricky Maynez / SVG MMA Academy** (El Paso).
 
 SVG Performance is **not** gym-members-only. It is for **anybody** who wants to improve performance — especially combat sports athletes, and also people just getting in shape. SVG members are welcome (gym verify / member pricing). You do not have to train at SVG to create an account.
 
-You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, week strip, nutrition rings, and a + button.
+You can run this on a laptop. A new person can create an account, follow one labeled **DEMO** strength program, save a workout, tap **Watch form** for a YouTube technique video, log a meal estimate, open a DEMO lesson, talk to Coach Savage AI, and use a Home screen with a greeting, daily quote, today’s workout, and one nutrition card.
 
 It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing, or claim Ricky types each AI reply.
 
@@ -12,7 +12,7 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 
 1. Create an account, answer a short first-run survey (goal, experience, martial art, equipment, days, units), log in, log out, and reset a password. New accounts cannot open Home until that required intake is saved.
 2. Finish the required intake (name, goal, experience, martial art, equipment, days, units; optional limitations/diet/allergies). An optional second screen (weight, session length, location, competition, coaching tone, obstacles) can be skipped. Edit either later on Profile.
-3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), a **Today** guide, this week’s **60–90s SVG focus video** (Performance+), a **monthly challenge** card, a **weekly wrap**, a **week strip**, nutrition rings, days active, unfinished lesson, coach help, and shop.
+3. Use Home for: greeting, a **daily quote** (full on Performance+; Member Access sees a teaser), **Today’s workout** (type, est. minutes, exercise count), and one nutrition card. Calendar / Progress / paths / journal / weekly wrap / challenge / shop live on their own screens so Home stays scannable.
 4. Follow a **DEMO training path** (Beginner Foundations, Build Your Gas Tank, or Strength for Combat) with milestones. Default comes from onboarding. Open the DEMO strength program (sets, reps, load, rest). Tap **Watch form** for a YouTube proper-form reference (or see “Video pending coach review”).
 5. Log a session, see it in history, and fix a mistaken number.
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open **Heart rate** to import Apple Health / watch workouts (JSON, XML, or CSV), type RHR, or optionally connect Polar. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. Apple Watch is not shown as connected on the web.
@@ -31,7 +31,7 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 19. **Monthly SVG challenge** (Beginner / Advanced tracks): opt in; score is days you logged a workout and/or meal — not heaviest lift. Seeded DEMO month.
 20. Admins schedule a **weekly 60–90s focus video** (YouTube/Vimeo or upload). Drafts stay hidden. Today shows the published week for Performance+.
 
-Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and **Book** are in the header (and on Home). The + button is a quick add for workout, food, a body metric, or heart rate. Profile is in the header. Paid app plans are **additional to gym dues**.
+Bottom navigation (phone): **Home · Train · Fuel · Learn · Coach**. Shop and **Book** are in the header. The + button is a quick add for workout, food, a body metric, or heart rate. Profile is in the header. Paid app plans are **additional to gym dues**.
 
 ## What you need on your computer
 
@@ -216,7 +216,7 @@ See `EVALS.md` for the Coach Savage evaluation set.
 4. Fuel → search “chicken” in the DEMO list or save a meal → log an estimate → correct a number
 5. Learn → filter Boxing, then Intermediate, then both together → a card shows thumb, channel, tags, summary, and a technical write-up → open it → **Watch on YouTube** (or pending) → bookmark / complete
 6. Coach → ask about a missed class; also try a weight-cut question and watch the refusal
-7. Home → greeting, daily quote, **Today** (goal + path + workout + tutorial + check-in), **weekly wrap** (last 7 days, counts only; a quiet week just says okay), week strip, nutrition rings, + button, days active this week, optional reminder after your hour
+7. Home → greeting, daily quote, **Today’s workout** (type · est. minutes · N Exercises), nutrition rings, quiet Calendar / Progress links, + button. Weekly wrap, challenge, and focus video stay on Report / Challenge / Learn — not stacked on Home.
 8. Progress → type a body weight; open Heart rate and import an Apple Health file (Watch stays disconnected on the web); upload a jpeg/png/webp photo (private to you); see the **personal records** board (empty until a load or an active day, then heaviest load + longest streak)
 9. Profile → turn a reminder off; optional nutrition targets
 10. Pricing → three sections, gym vs nonmember, checkout off unless TEST keys exist; Affirm/Klarna copy is coming soon without keys
@@ -234,8 +234,8 @@ Use this before inviting ~15–20 adults. Check a box only if you actually tried
 - [ ] Intake answers persist and can be edited on Profile. Learn defaults to that experience (and art when it is one of the six). Home suggests a DEMO day from the answers — still labeled DEMO.
 - [ ] After required intake, the optional deeper screen can be skipped. Home then shows “2-minute deeper profile for better programming.” Completing it (or editing Profile) saves session length, location, competition, tone, and obstacles. Weight is display-only — nutrition targets stay DEMO estimates.
 - [ ] Gym checkbox does **not** unlock $19 or paid tools by itself.
-- [ ] Home shows a greeting, week strip, nutrition rings (estimates), a today workout card, and a + quick-add.
-- [ ] Home Today shows a workout, the intake goal, a recommended tutorial, and a check-in/Book slot. Beginner and fighter copy differ. No invented fight date or Ricky comment.
+- [ ] Home shows a greeting, daily quote, today’s workout card (type · est. minutes · exercise count), nutrition rings (estimates), and a + quick-add. Secondary items stay off the first screen.
+- [ ] Home Today is the workout hero (title + one CTA). Goal can appear under the greeting. No invented fight date or Ricky comment.
 - [ ] Training paths enroll from onboarding default; a logged DEMO day can complete a milestone. Journal entries stay private. Weekly report is labeled Automated SVG summary.
 - [ ] Home weekly wrap shows last-7-day counts (days trained, workouts, meals, lessons, avg feel if rated). Quiet week copy is okay, not shame. No meal names on the card.
 - [ ] Days-active copy never shames a quiet week.
