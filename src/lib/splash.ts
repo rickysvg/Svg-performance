@@ -26,16 +26,54 @@ export function canDismissSplash(input: {
   return input.videoFinished && input.appReady;
 }
 
+export function isAutoplayBlocked(error: unknown) {
+  if (!error || typeof error !== "object" || !("name" in error)) return false;
+  return String(error.name) === "NotAllowedError";
+}
+
+export function waitForSplashCanPlay(video: {
+  readyState: number;
+  addEventListener: (type: string, fn: () => void) => void;
+  removeEventListener: (type: string, fn: () => void) => void;
+}) {
+  if (video.readyState >= 3) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("splash video failed to load"));
+    };
+    const cleanup = () => {
+      video.removeEventListener("canplay", onReady);
+      video.removeEventListener("error", onError);
+    };
+    video.addEventListener("canplay", onReady);
+    video.addEventListener("error", onError);
+  });
+}
+
+/**
+ * The clip’s engine/whoosh is the punch at ring-close. Try unmuted autoplay
+ * first; if the browser blocks it, play muted immediately — never wait for a tap.
+ */
 export async function playSplashWithSound(video: {
   muted: boolean;
+  defaultMuted?: boolean;
+  volume: number;
   play: () => Promise<void>;
 }) {
+  video.volume = 1;
   video.muted = false;
+  if ("defaultMuted" in video) video.defaultMuted = false;
   try {
     await video.play();
     return "sound" as const;
   } catch {
     video.muted = true;
+    if ("defaultMuted" in video) video.defaultMuted = true;
     await video.play();
     return "muted" as const;
   }

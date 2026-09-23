@@ -7,9 +7,11 @@ import {
   SPLASH_VIDEO_MS,
   SPLASH_VIDEO_SRC,
   canDismissSplash,
+  isAutoplayBlocked,
   playSplashWithSound,
   shouldSkipSplash,
   splashTimings,
+  waitForSplashCanPlay,
 } from "@/lib/splash";
 
 const root = process.cwd();
@@ -84,19 +86,51 @@ describe("app-open splash video", () => {
     ).toBe(true);
   });
 
-  it("tries sound first and falls back to muted autoplay", async () => {
+  it("tries sound first and falls back to muted autoplay without waiting for a tap", async () => {
+    expect(isAutoplayBlocked({ name: "NotAllowedError" })).toBe(true);
+    expect(isAutoplayBlocked({ name: "NotFoundError" })).toBe(false);
+
     const blocked = {
       muted: false,
+      defaultMuted: false,
+      volume: 0.2,
       async play() {
-        if (!this.muted) throw new Error("blocked");
+        if (!this.muted) {
+          const error = new Error("blocked");
+          error.name = "NotAllowedError";
+          throw error;
+        }
       },
     };
     await expect(playSplashWithSound(blocked)).resolves.toBe("muted");
     expect(blocked.muted).toBe(true);
+    expect(blocked.volume).toBe(1);
 
-    const allowed = { muted: true, play: async () => undefined };
+    const allowed = {
+      muted: true,
+      defaultMuted: true,
+      volume: 0.2,
+      play: async () => undefined,
+    };
     await expect(playSplashWithSound(allowed)).resolves.toBe("sound");
     expect(allowed.muted).toBe(false);
+    expect(allowed.volume).toBe(1);
+  });
+
+  it("waits until the clip can play before starting", async () => {
+    const listeners = new Map<string, () => void>();
+    const video = {
+      readyState: 1,
+      addEventListener(type: string, fn: () => void) {
+        listeners.set(type, fn);
+      },
+      removeEventListener(type: string) {
+        listeners.delete(type);
+      },
+    };
+    const pending = waitForSplashCanPlay(video);
+    listeners.get("canplay")?.();
+    await expect(pending).resolves.toBeUndefined();
   });
 
   it("mounts a video splash from the root layout, not the old CSS ring", () => {

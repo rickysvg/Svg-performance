@@ -9,6 +9,7 @@ import {
   playSplashWithSound,
   shouldSkipSplash,
   splashTimings,
+  waitForSplashCanPlay,
 } from "@/lib/splash";
 
 export function AppSplash() {
@@ -87,7 +88,9 @@ export function AppSplash() {
     video?.addEventListener("ended", markVideoDone);
     video?.addEventListener("error", markVideoDone);
     if (video) {
-      playSplashWithSound(video).catch(markVideoDone);
+      waitForSplashCanPlay(video)
+        .then(() => playSplashWithSound(video))
+        .catch(markVideoDone);
     }
 
     const safety = window.setTimeout(markVideoDone, holdMs + 1500);
