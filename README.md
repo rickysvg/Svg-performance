@@ -31,7 +31,7 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 19. **Monthly SVG challenge** (Beginner / Advanced tracks): opt in; score is days you logged a workout and/or meal — not heaviest lift. Seeded DEMO month.
 20. Admins schedule a **weekly 60–90s focus video** (YouTube/Vimeo or upload). Drafts stay hidden. Today shows the published week for Performance+.
 
-Primary tabs (phone, sticky top, lime highlight on the active tab): **Home · Train · Fuel · Learn · Coach**. Shop, Book, Profile, and Log out sit on the bottom account bar with the logo. The + button is a quick add for workout, food, a body metric, or heart rate. Paid app plans are **additional to gym dues**.
+Primary tabs (phone, sticky top, lime highlight on the active tab): **Home · Train · Fuel · Learn · Coach**. Shop, Book, Profile, and Log out sit on the bottom account bar with the official circular neon badge. First open shows a short full-screen splash (CSS, skipped on reduced motion and later visits). The + button is a quick add for workout, food, a body metric, or heart rate. Paid app plans are **additional to gym dues**.
 
 ## What you need on your computer
 
