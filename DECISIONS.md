@@ -100,6 +100,12 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 - Labeled DEMO in the UI. Not claimed as a coach-assigned fight-camp plan.
 - Each exercise has a curated YouTube form link or an explicit pending flag.
 
+## Workout logger layout
+
+- Day overview + active logging copy the **information architecture** of Strong-like apps (equipment chips, square movement thumbs, Start Now, Previous / Reps / Lbs table, rest banner, Add set, Insert exercise, Save). Palette stays SVG: black / white / neon lime (`#D0FF00` / `#CBF805`). We did not copy the white + red reference screens.
+- Thumbnails live in `public/exercise-thumbs/` (square curated silhouettes mapped by exercise slug). They are list aids, not SVG-produced coaching film. YouTube **Watch form** links stay on each exercise.
+- Previous column reads the member’s last **completed** session for that exercise name. First-time moves stay empty. Save still delete+recreates `WorkoutSet` rows.
+
 ## Shop
 
 - In-app shop only links to live `https://www.svgandco.com` pages that were fetched during this build.

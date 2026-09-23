@@ -1,0 +1,122 @@
+export type EquipmentId =
+  | "barbell"
+  | "bench"
+  | "cable"
+  | "dumbbell"
+  | "machine"
+  | "kettlebell"
+  | "band"
+  | "bodyweight"
+  | "pull-up"
+  | "jump-rope"
+  | "bike";
+
+export type EquipmentChip = {
+  id: EquipmentId;
+  label: string;
+};
+
+export const EQUIPMENT_CHIPS: Record<EquipmentId, EquipmentChip> = {
+  barbell: { id: "barbell", label: "Barbell" },
+  bench: { id: "bench", label: "Bench" },
+  cable: { id: "cable", label: "Cable" },
+  dumbbell: { id: "dumbbell", label: "Dumbbell" },
+  machine: { id: "machine", label: "Machine" },
+  kettlebell: { id: "kettlebell", label: "Kettlebell" },
+  band: { id: "band", label: "Band" },
+  bodyweight: { id: "bodyweight", label: "Bodyweight" },
+  "pull-up": { id: "pull-up", label: "Pull-up bar" },
+  "jump-rope": { id: "jump-rope", label: "Jump rope" },
+  bike: { id: "bike", label: "Bike" },
+};
+
+const NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
+  "Goblet squat": ["dumbbell"],
+  "Romanian deadlift": ["dumbbell", "barbell"],
+  "Reverse lunge": ["dumbbell"],
+  "Squat jump or box step-up": ["bodyweight"],
+  "Front plank": ["bodyweight"],
+  "Push-up or dumbbell bench press": ["dumbbell", "bench"],
+  "One-arm row": ["dumbbell", "bench"],
+  "Overhead press": ["barbell", "dumbbell"],
+  "Band pull-apart or face pull": ["band", "cable"],
+  "Farmer carry": ["dumbbell"],
+  "Kettlebell swing or hip hinge": ["kettlebell"],
+  "Chin-up, band-assist, or lat pulldown": ["pull-up", "band", "machine"],
+  "Lateral bound or side step-over": ["bodyweight"],
+  "Jump rope or easy bike intervals": ["jump-rope", "bike"],
+  "Side plank": ["bodyweight"],
+};
+
+export function exerciseSlug(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+export function exerciseThumbSrc(name: string) {
+  return `/exercise-thumbs/${exerciseSlug(name)}.svg`;
+}
+
+export function fallbackThumbSrc() {
+  return "/exercise-thumbs/fallback.svg";
+}
+
+export function equipmentForExercise(name: string): EquipmentId[] {
+  const exact = NAME_EQUIPMENT[name];
+  if (exact) return exact;
+  const lower = name.toLowerCase();
+  const found: EquipmentId[] = [];
+  if (/\bbarbell\b/.test(lower)) found.push("barbell");
+  if (/\bbench\b/.test(lower)) found.push("bench");
+  if (/\bcable\b|\blat pulldown\b/.test(lower)) found.push("cable");
+  if (/\bdumbbell\b/.test(lower)) found.push("dumbbell");
+  if (/\bmachine\b/.test(lower)) found.push("machine");
+  if (/\bkettlebell\b/.test(lower)) found.push("kettlebell");
+  if (/\bband\b/.test(lower)) found.push("band");
+  if (/\bpull-?up\b|\bchin-?up\b/.test(lower)) found.push("pull-up");
+  if (/\bjump rope\b/.test(lower)) found.push("jump-rope");
+  if (/\bbike\b/.test(lower)) found.push("bike");
+  if (found.length === 0) found.push("bodyweight");
+  return found;
+}
+
+export function equipmentForExercises(names: string[]): EquipmentChip[] {
+  const seen = new Set<EquipmentId>();
+  const chips: EquipmentChip[] = [];
+  for (const name of names) {
+    for (const id of equipmentForExercise(name)) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      chips.push(EQUIPMENT_CHIPS[id]);
+    }
+  }
+  return chips;
+}
+
+export const DEMO_EXERCISE_NAMES = Object.keys(NAME_EQUIPMENT);
+
+export function plannedSetLine(input: { sets: number; reps: string; restSeconds: number }) {
+  const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
+  return `${input.sets} sets × ${input.reps}${rest}`;
+}
+
+export function restBannerSeconds(seconds: number) {
+  return `${seconds}s`;
+}
+
+export function previousSetLabel(input: {
+  reps: number | null;
+  loadValue: number | null;
+  loadUnit: string;
+} | null) {
+  if (!input) return "—";
+  if (input.reps != null && input.loadValue != null) {
+    return `${input.reps} × ${input.loadValue}${input.loadUnit}`;
+  }
+  if (input.reps != null) return `${input.reps} reps`;
+  if (input.loadValue != null) return `${input.loadValue}${input.loadUnit}`;
+  return "—";
+}

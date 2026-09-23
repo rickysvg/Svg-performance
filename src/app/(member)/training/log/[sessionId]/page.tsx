@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { requireUser } from "@/lib/session";
-import { getWorkoutSessionForUser } from "@/lib/workouts";
+import { getPreviousLoadsForUser, getWorkoutSessionForUser } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -58,7 +58,14 @@ export default async function WorkoutLogPage({
           <HrWorkoutForm workoutSessionId={session.id} defaultStartedAt={startedInput} />
         )
       ) : null}
-      <WorkoutLogForm session={session} />
+      <WorkoutLogForm
+        session={session}
+        previousLoads={await getPreviousLoadsForUser(
+          user.id,
+          session.sets.map((set) => set.exerciseName),
+          session.id,
+        )}
+      />
     </main>
   );
 }

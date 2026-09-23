@@ -40,6 +40,61 @@ export async function listWorkoutSessionsForUser(userId: string) {
   });
 }
 
+export type PreviousSetLookup = Record<
+  string,
+  Record<number, { reps: number | null; loadValue: number | null; loadUnit: string }>
+>;
+
+/**
+ * Last completed session per exercise name for this member only.
+ * Used for the Previous column on the logger. Empty for first-time moves.
+ */
+export async function getPreviousLoadsForUser(
+  userId: string,
+  exerciseNames: string[],
+  excludeWorkoutId?: string,
+): Promise<PreviousSetLookup> {
+  const unique = [...new Set(exerciseNames.map((name) => name.trim()).filter(Boolean))];
+  if (unique.length === 0) {
+    return {};
+  }
+
+  const sessions = await prisma.workoutSession.findMany({
+    where: {
+      userId,
+      status: "complete",
+      ...(excludeWorkoutId ? { id: { not: excludeWorkoutId } } : {}),
+      sets: { some: { exerciseName: { in: unique } } },
+    },
+    orderBy: { performedAt: "desc" },
+    include: {
+      sets: {
+        where: { exerciseName: { in: unique } },
+        orderBy: [{ setNumber: "asc" }, { sortOrder: "asc" }],
+      },
+    },
+    take: 40,
+  });
+
+  const result: PreviousSetLookup = {};
+  for (const name of unique) {
+    const session = sessions.find((row) =>
+      row.sets.some((set) => set.exerciseName === name),
+    );
+    if (!session) continue;
+    result[name] = {};
+    for (const set of session.sets) {
+      if (set.exerciseName !== name) continue;
+      result[name][set.setNumber] = {
+        reps: set.reps,
+        loadValue: set.loadValue,
+        loadUnit: set.loadUnit,
+      };
+    }
+  }
+  return result;
+}
+
 export async function getWorkoutSessionForUser(
   workoutId: string,
   userId: string,
