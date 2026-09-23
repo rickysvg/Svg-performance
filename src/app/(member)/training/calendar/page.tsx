@@ -18,7 +18,7 @@ export default async function TrainingCalendarPage() {
           <div>
             <h1 className="text-2xl font-semibold">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              A DEMO week from your availability
+              Core week plan (DEMO) from your availability
               {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live
               coach calendar, Watch sync, or Gymdesk.
             </p>

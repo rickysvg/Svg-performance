@@ -121,6 +121,9 @@ describe("calendar schedule loader", () => {
     expect(workouts.some((row) => program.days.some((day) => row.href === `/training/${day.id}`))).toBe(
       true,
     );
+    const wednesday = schedule.days.find((day) => day.heading.startsWith("Tomorrow"));
+    const wedWorkouts = wednesday?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(wedWorkouts.length).toBe(2);
 
     const firstDay = program.days[0];
     const session = await startWorkoutFromDay({

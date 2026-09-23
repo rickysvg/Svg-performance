@@ -3,12 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { EQUIPMENT_OPTIONS } from "@/lib/constants";
 import { completeOnboardingForUser, demoSuggestionCopy } from "@/lib/onboarding";
 import { findSkillProgram, getDemoProgram } from "@/lib/programs";
-import {
-  filterSkillDaysForFocus,
-  mixCalendarProgramDays,
-  skillEquipmentNote,
-  suggestTodayWork,
-} from "@/lib/skill-programs";
+import { filterSkillDaysForFocus, skillEquipmentNote } from "@/lib/skill-programs";
 import { getHomeToday } from "@/lib/home";
 import { makeUser, resetDatabase } from "./helpers";
 
@@ -19,12 +14,6 @@ const skillDays = [
   { id: "s4", dayNumber: 4, title: "Ground-and-pound drill" },
   { id: "s5", dayNumber: 5, title: "Shot + sprawl" },
   { id: "s6", dayNumber: 6, title: "Closed guard positional drill" },
-];
-
-const strengthDays = [
-  { id: "d1", dayNumber: 1, title: "Day 1 — Lower body + power" },
-  { id: "d2", dayNumber: 2, title: "Day 2 — Upper body + grip" },
-  { id: "d3", dayNumber: 3, title: "Day 3 — Hinge, pull, and conditioning" },
 ];
 
 describe("DEMO combat skill chooser", () => {
@@ -47,35 +36,7 @@ describe("DEMO combat skill chooser", () => {
     expect(filterSkillDaysForFocus(skillDays, "general-fitness")).toEqual([]);
   });
 
-  it("starts martial artists on a skill day and then alternates to strength", () => {
-    const first = suggestTodayWork({
-      strengthDays,
-      skillDays,
-      completedDayIds: new Set(),
-      prefs: { primaryFocus: "mma", goalKey: "stronger-for-class" },
-    });
-    expect(first?.id).toBe("s1");
-
-    const afterSkill = suggestTodayWork({
-      strengthDays,
-      skillDays,
-      completedDayIds: new Set(["s1"]),
-      prefs: { primaryFocus: "mma" },
-    });
-    expect(afterSkill?.id).toBe("d1");
-
-    const fitness = suggestTodayWork({
-      strengthDays,
-      skillDays,
-      completedDayIds: new Set(),
-      prefs: { primaryFocus: "general-fitness", goalKey: "conditioning" },
-    });
-    expect(fitness?.id).toBe("d3");
-  });
-
-  it("interleaves skill and strength on the calendar and scales bag notes", () => {
-    const mixed = mixCalendarProgramDays(strengthDays, filterSkillDaysForFocus(skillDays, "boxing"));
-    expect(mixed.map((day) => day.id)).toEqual(["s3", "d1", "d2", "d3"]);
+  it("scales bag notes from intake equipment", () => {
     expect(skillEquipmentNote(["Bodyweight only"])).toMatch(/shadow/i);
     expect(skillEquipmentNote(["Heavy bag"])).toMatch(/heavy bag/i);
     expect(EQUIPMENT_OPTIONS).toContain("Heavy bag");
@@ -84,9 +45,11 @@ describe("DEMO combat skill chooser", () => {
 
   it("describes skill + strength without claiming a custom camp", () => {
     expect(demoSuggestionCopy({ primaryFocus: "mma", goalKey: "stronger-for-class" })).toMatch(
-      /DEMO skill \+ strength/,
+      /DEMO Core week plan \(skill \+ strength\)/,
     );
-    expect(demoSuggestionCopy({ primaryFocus: "general-fitness" })).toMatch(/DEMO strength template/);
+    expect(demoSuggestionCopy({ primaryFocus: "general-fitness" })).toMatch(
+      /DEMO Core week plan \(strength\)/,
+    );
     expect(demoSuggestionCopy({ primaryFocus: "muay-thai" })).toMatch(/Not a custom Elite/);
   });
 });
@@ -130,7 +93,8 @@ describe("seeded DEMO combat skills", () => {
       foodPreferences: "",
       allergies: "",
     });
-    const today = await getHomeToday(user.id);
+    const today = await getHomeToday(user.id, new Date(2026, 8, 21, 10, 0, 0));
+    expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
     expect(today.suggestedDay?.title).toMatch(/Heavy bag — hands to low kicks/i);
     expect(today.suggestionCopy).toMatch(/Muay Thai/);
     expect(today.suggestionCopy).not.toMatch(/custom fight camp|Ricky wrote/i);
