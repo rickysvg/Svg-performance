@@ -82,19 +82,19 @@ List thumbs prefer the YouTube form still (`i.ytimg.com/vi/<id>/hqdefault.jpg`, 
 
 ## Learn technique video selection rules
 
-Every DEMO lesson stores `youtubeUrl` (YouTube watch link) **or** `videoPending=true` with an empty URL, plus written `notes` and bullet `keyDetails` (“details to watch for”). UI copy is **Watch on YouTube** plus “YouTube reference — not an SVG-produced video.” Pending shows “Video pending coach review.” Notes-only or video-only lessons are allowed; empty sections say pending.
+Every DEMO lesson stores `youtubeUrl` (YouTube watch link) **or** `videoPending=true` with an empty URL, plus `summary` and `technicalDescription` in the catalog and on `Lesson`. UI copy is **Watch on YouTube** plus “YouTube reference — not an SVG-produced video.” Pending shows “Video pending coach review.”
 
 How we pick a Learn link:
 
-1. Prefer well-known instructional channels for that art (eBoxing Academy, Tony Jeffries, Kingdom Martial Arts Academy, TeachMeGrappling, Stephan Kesting, Henry Akins, Greg Jackson, Chess Club Jiu-Jitsu sprawl).
+1. Prefer well-known instructional channels for that art (eBoxing Academy, Tony Jeffries, fightTIPS, Kingdom Martial Arts Academy, Sean Fagan, Paul Banasiak, TeachMeGrappling, Stephan Kesting, Henry Akins, Chewjitsu, Chess Club Jiu-Jitsu, Greg Jackson, Ben Askren).
 2. Prefer long-form technique or illustrated-detail videos with strong engagement over fight highlights and over random shorts.
 3. Prefer official “how to / details” titles. We do not embed paid course libraries or claim SVG produced the film.
 4. If we cannot verify a high-quality public video for that move, we leave the URL empty and set pending. We do **not** guess a weak short.
 5. Links open on YouTube. They are not claimed as SVG IP.
 
-Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The unpublished draft is also pending.
+Source of truth is `src/lib/learn-catalog.ts`. Seed upserts from that list. Cards show thumb, channel, art + level, summary, and technical write-up. Preview (no Stripe keys) opens the full library on All / All; Member Access stays beginner-only.
 
-Browse starts at **Beginner**. Intermediate samples exist so the level + martial-art chips change results. Member Access (Stripe keys on) stays beginner-only.
+Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The unpublished draft is also pending.
 
 ## Demo program
 

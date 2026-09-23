@@ -37,6 +37,7 @@ export type LessonInput = {
   coachName: string;
   equipment: string;
   notes: string;
+  technicalDescription: string;
   drills: string;
   keyDetails: string;
   youtubeUrl: string;
@@ -90,6 +91,7 @@ export function validateLessonInput(input: LessonInput): LessonInput {
     coachName: input.coachName.trim().slice(0, 80) || "SVG coaching staff",
     equipment: input.equipment.trim().slice(0, 200),
     notes: input.notes.trim().slice(0, 4000),
+    technicalDescription: input.technicalDescription.trim().slice(0, 4000),
     drills: input.drills.trim().slice(0, 4000),
     keyDetails: input.keyDetails.trim().slice(0, 4000),
     youtubeUrl: videoPending ? "" : youtubeUrl,
@@ -179,6 +181,8 @@ export async function listPublishedLessons(query?: {
             OR: [
               { title: { contains: search } },
               { summary: { contains: search } },
+              { technicalDescription: { contains: search } },
+              { coachName: { contains: search } },
               { topic: { contains: search } },
             ],
           }

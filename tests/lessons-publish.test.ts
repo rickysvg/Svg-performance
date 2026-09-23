@@ -8,6 +8,11 @@ import {
   resolveLessonVideo,
 } from "@/lib/lesson-videos";
 import {
+  LEARN_CATALOG,
+  learnCatalogIssues,
+  publishedLearnCatalog,
+} from "@/lib/learn-catalog";
+import {
   getPublishedLessonBySlug,
   listPublishedLessons,
   resolveLearnLevelFilter,
@@ -73,37 +78,56 @@ describe("Learn level and martial-art filters", () => {
       skillLevel: "beginner",
     });
 
-    expect(beginner.length).toBeGreaterThan(intermediate.length);
     expect(beginner.every((lesson) => lesson.skillLevel === "beginner")).toBe(true);
     expect(intermediate.every((lesson) => lesson.skillLevel === "intermediate")).toBe(true);
     expect(intermediate.some((lesson) => lesson.slug === "demo-boxing-one-two")).toBe(true);
     expect(beginner.some((lesson) => lesson.slug === "demo-boxing-one-two")).toBe(false);
-    expect(boxing.map((lesson) => lesson.slug).sort()).toEqual(
-      ["demo-boxing-one-two", "demo-jab-cue"].sort(),
+    expect(boxing.every((lesson) => lesson.topic === "boxing")).toBe(true);
+    expect(boxing.map((lesson) => lesson.slug)).toEqual(
+      expect.arrayContaining(["demo-boxing-one-two", "demo-jab-cue", "demo-boxing-cross"]),
     );
-    expect(boxingBeginner).toHaveLength(1);
-    expect(boxingBeginner[0]?.slug).toBe("demo-jab-cue");
+    expect(boxing.length).toBeGreaterThanOrEqual(3);
+    expect(boxingBeginner.every((lesson) => lesson.topic === "boxing")).toBe(true);
+    expect(boxingBeginner.every((lesson) => lesson.skillLevel === "beginner")).toBe(true);
+    expect(boxingBeginner.some((lesson) => lesson.slug === "demo-jab-cue")).toBe(true);
+    expect(boxingBeginner.some((lesson) => lesson.slug === "demo-boxing-one-two")).toBe(false);
     expect(beginner.some((lesson) => lesson.slug === "demo-draft-only")).toBe(false);
   });
 
   it("seeds martial-art topics and YouTube or pending on every DEMO lesson", async () => {
     const arts = new Set(["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"]);
     const lessons = await prisma.lesson.findMany();
-    expect(lessons.length).toBeGreaterThanOrEqual(9);
+    expect(lessons.length).toBeGreaterThanOrEqual(18);
+    expect(learnCatalogIssues()).toEqual([]);
 
     for (const lesson of lessons) {
       expect(arts.has(lesson.topic), `${lesson.slug} topic ${lesson.topic}`).toBe(true);
       const catalog = DEMO_LESSON_VIDEOS[lesson.slug];
       expect(catalog, `missing catalog row for ${lesson.slug}`).toBeTruthy();
+      expect(lesson.summary.trim().length).toBeGreaterThan(20);
+      expect(lesson.technicalDescription.trim().length).toBeGreaterThan(40);
       const video = resolveLessonVideo(lesson);
       expect(video.pending || isYoutubeFormUrl(video.url)).toBe(true);
       if (video.pending) {
         expect(lesson.videoPending || !lesson.youtubeUrl).toBe(true);
       } else {
         expect(lesson.youtubeUrl).not.toMatch(/\/shorts\//);
+        expect(catalog.channel.length).toBeGreaterThan(2);
         expect(parseLessonKeyDetails(lesson.keyDetails).length).toBeGreaterThan(0);
       }
     }
+
+    const published = publishedLearnCatalog();
+    for (const topic of arts) {
+      expect(
+        published.filter((entry) => entry.topic === topic).length,
+        `${topic} should have more than one lesson`,
+      ).toBeGreaterThanOrEqual(2);
+    }
+    expect(published.some((entry) => entry.skillLevel === "beginner")).toBe(true);
+    expect(published.some((entry) => entry.skillLevel === "intermediate")).toBe(true);
+    expect(published.some((entry) => entry.skillLevel === "advanced")).toBe(true);
+    expect(LEARN_CATALOG.some((entry) => entry.status === "draft")).toBe(true);
   });
 
   it("shows pending-video UX when a lesson has no approved YouTube link", () => {
@@ -139,6 +163,7 @@ describe("Learn level and martial-art filters", () => {
         coachName: "SVG coaching staff",
         equipment: "",
         notes: "Notes",
+        technicalDescription: "Mechanics go here.",
         drills: "",
         keyDetails: "",
         youtubeUrl: "",

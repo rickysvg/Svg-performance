@@ -239,9 +239,10 @@ model Lesson {
   topic            String
   coachName        String
   equipment        String           @default("")
-  notes            String           @default("")
-  drills           String           @default("")
-  keyDetails       String           @default("")
+  notes                  String           @default("")
+  technicalDescription   String           @default("")
+  drills                 String           @default("")
+  keyDetails             String           @default("")
   youtubeUrl       String           @default("")
   videoPending     Boolean          @default(false)
   supervisedNote   String           @default("")
