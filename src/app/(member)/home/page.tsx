@@ -209,6 +209,11 @@ export default async function HomePage({
             <p className="mt-1 font-semibold">Browse DEMO lessons</p>
           </Link>
         )}
+        <Link href="/training/calendar" className="block rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Calendar</p>
+          <p className="mt-1 font-semibold">This week’s DEMO schedule</p>
+          <p className="mt-1 text-sm text-muted">Today / Tomorrow list — not a live coach calendar.</p>
+        </Link>
         <Link href="/paths" className="block rounded-2xl border border-line bg-card p-4">
           <p className="text-xs uppercase tracking-wide text-muted">Training path</p>
           <p className="mt-1 font-semibold">{guide.path.path.title}</p>

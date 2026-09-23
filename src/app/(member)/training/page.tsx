@@ -25,6 +25,12 @@ export default async function TrainingPage() {
         </div>
         <DemoBadge />
       </div>
+      <p className="text-sm">
+        <Link href="/training/calendar" className="font-semibold text-accent underline-offset-4 hover:underline">
+          Calendar
+        </Link>
+        <span className="text-muted"> — this week’s DEMO days in a list</span>
+      </p>
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="font-semibold">Fighter Conditioning</h2>
@@ -96,6 +102,10 @@ export default async function TrainingPage() {
       </div>
 
       <p className="text-sm">
+        <Link href="/training/calendar" className="text-accent underline-offset-4 hover:underline">
+          Calendar
+        </Link>
+        {" · "}
         <Link href="/training/history" className="text-accent underline-offset-4 hover:underline">
           Workout history ({sessions.length})
         </Link>
