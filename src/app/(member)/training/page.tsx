@@ -86,6 +86,8 @@ export default async function TrainingPage() {
           <PlanSessionCard
             key={`${session.slot}-${session.dayId ?? session.label}`}
             session={session}
+            compact
+            highlight={session.slot === "A" && planned.length > 1}
             draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
           />
         ))}

@@ -92,7 +92,7 @@ describe("Core weekday planner", () => {
       weeklyAvailability: ["Monday", "Wednesday", "Friday"],
     });
     expect(week.Monday.active).toBe(true);
-    expect(week.Monday.summary).toBe("Bag + Lift");
+    expect(week.Monday.summary).toBe("Bag+Lift");
     expect(week.Monday.sessions).toHaveLength(2);
     expect(week.Sunday.active).toBe(false);
   });
@@ -129,7 +129,7 @@ describe("Core planner on Home", () => {
     expect(today.plannedSessions[0]?.title).toMatch(/Heavy bag — hands to low kicks/i);
     expect(today.plannedSessions[1]?.title).toMatch(/Upper body/i);
     expect(today.suggestedDay?.title).toMatch(/Heavy bag/i);
-    expect(today.planSummary).toBe("Bag + Lift");
+    expect(today.planSummary).toBe("Bag+Lift");
     expect(today.weekStrip).toHaveLength(7);
 
     const resolved = resolvePlanSessions(

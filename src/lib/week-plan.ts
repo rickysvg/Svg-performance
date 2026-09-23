@@ -230,10 +230,10 @@ function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, a
   const kinds = sessions.map((session) => session.kind);
   const hasSkill = kinds.includes("skill");
   const hasLift = kinds.includes("strength") || kinds.includes("conditioning");
-  if (hasSkill && hasLift) return "Bag + Lift";
+  if (hasSkill && hasLift) return "Bag+Lift";
   if (hasSkill && sessions[0]?.optional) return "Optional";
   if (hasSkill) return "Skill";
-  if (kinds.includes("conditioning") && kinds.includes("strength")) return "Cond + Lift";
+  if (kinds.includes("conditioning") && kinds.includes("strength")) return "Cond+Lift";
   if (hasLift) return "Lift";
   if (kinds.includes("mobility")) return "Recover";
   return "Rest";
