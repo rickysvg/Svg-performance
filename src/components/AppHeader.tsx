@@ -25,14 +25,14 @@ export function AppHeader({
           className="flex min-w-0 items-center gap-2.5"
         >
           <Logo variant="mark" size="sm" />
-          <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+          <span className="hidden truncate text-sm font-semibold tracking-tight text-foreground sm:inline">
             SVG Performance
           </span>
         </Link>
         {email ? (
           <nav
             aria-label="Account"
-            className="-mx-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-2"
+            className="-mx-1 flex flex-nowrap items-center justify-end gap-1.5"
           >
             {!hideMemberLinks && role === "admin" ? (
               <Link href="/admin" className={chipClass}>

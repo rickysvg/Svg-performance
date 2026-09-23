@@ -103,6 +103,31 @@ export function plannedSetLine(input: { sets: number; reps: string; restSeconds:
   return `${input.sets} sets × ${input.reps}${rest}`;
 }
 
+const WORK_SECONDS_PER_SET = 40;
+const TRANSITION_SECONDS = 30;
+
+export function estimateSessionMinutes(
+  exercises: Array<{ sets: number; restSeconds: number }>,
+) {
+  if (exercises.length === 0) return 0;
+  const seconds = exercises.reduce((total, exercise) => {
+    const sets = Math.max(0, exercise.sets);
+    const rest = Math.max(0, exercise.restSeconds);
+    return total + sets * (WORK_SECONDS_PER_SET + rest) + TRANSITION_SECONDS;
+  }, 0);
+  return Math.max(1, Math.round(seconds / 60));
+}
+
+export function sessionKindLabel(input: { title: string; focus: string }) {
+  const text = `${input.title} ${input.focus}`.toLowerCase();
+  if (/condition|interval|cardio|gas tank/.test(text)) return "Conditioning";
+  return "Strength";
+}
+
+export function exerciseCountLabel(count: number) {
+  return `${count} Exercise${count === 1 ? "" : "s"}`;
+}
+
 export function restBannerSeconds(seconds: number) {
   return `${seconds}s`;
 }
