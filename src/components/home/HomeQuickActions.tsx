@@ -15,7 +15,7 @@ const PHOTO_ACTIONS = [
     hint: "Ask SVG Coach",
     src: "/home/tiles/coach.jpg",
     alt: "Coach pointing on the mats at SVG",
-    position: "70% 28%",
+    position: "70% 22%",
   },
   {
     href: "/learn",
