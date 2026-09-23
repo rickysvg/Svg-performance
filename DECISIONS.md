@@ -124,10 +124,12 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 
 ## Brand
 
-- Official **SVG Performance** lockup is Ricky’s transparent artwork (`public/svg-performance-lockup.png`): detailed mountains, lime outline star, white **S**, lime **V**, white **G**, lime **PERFORMANCE** bar. We render that PNG — we do not redraw it as a simplified house-peak SVG.
-  - `variant="lockup"` → full official PNG on the landing hero (transparent, no black tile).
-  - `variant="mark"` → `svg-performance-mark.png` (mountains + lime star only — no SVG letters, no PERFORMANCE bar) in the sticky header at ~32px tall, beside bold white **SVG Performance**.
-- The older square `public/svg-performance-logo.png` (black background) is kept as a color/shape reference only. MMA Academy files (`public/logo.svg`, `public/logo-mark.svg`) stay unused.
+- Official **SVG Performance** identity is Ricky’s circular neon-badge artwork (Sep 2026): lime ring, silver mountains + star, white **S**, lime **V**, white **G**, lime **PERFORMANCE** bar on black. Primary files:
+  - `public/svg-performance-badge.webp` (1024, splash + landing) via `Logo variant="badge"` / `lockup`.
+  - `public/svg-performance-badge-mark.png` (256, header / account-bar chrome) via `variant="mark"`. Same circular art, not the old mountain-only crop.
+  - `src/app/icon.png` is a 192 crop of that badge (favicon).
+- Older mountain/star lockup PNGs and MMA Academy SVGs stay in `public/` as unused archives. They are not the app identity.
+- App-open splash (`AppSplash` in the root layout) plays a CSS neon-ring + scale-fade on first visit, then writes `sessionStorage.svg_splash_seen` and dismisses. `prefers-reduced-motion` is a short fade. White shell + `#CBF805` + black from the Chuze refresh stay.
 - Accent neon is the official lime (`#CBF805` / `#D0FF00`). Black / white / that neon only.
 
 ## Authorization

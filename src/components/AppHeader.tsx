@@ -45,9 +45,7 @@ export function AppHeader({
           href={homeHref ?? (email ? "/home" : "/")}
           className="flex min-w-0 shrink-0 items-center gap-2.5"
         >
-          <span className="inline-flex items-center justify-center rounded-lg bg-black px-1.5 py-1">
-            <Logo variant="mark" size={docked ? "xs" : "sm"} />
-          </span>
+          <Logo variant="mark" size={docked ? "xs" : "sm"} />
           <span className="hidden truncate text-sm font-semibold tracking-tight text-foreground sm:inline">
             SVG Performance
           </span>
