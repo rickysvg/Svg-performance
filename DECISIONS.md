@@ -129,7 +129,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
   - `public/svg-performance-badge-mark.png` (256, header / account-bar chrome) via `variant="mark"`. Same circular art, not the old mountain-only crop.
   - `src/app/icon.png` is a 192 crop of that badge (favicon).
 - Older mountain/star lockup PNGs and MMA Academy SVGs stay in `public/` as unused archives. They are not the app identity.
-- App-open splash (`AppSplash` in the root layout) plays a CSS neon-ring + scale-fade on first visit, then writes `sessionStorage.svg_splash_seen` and dismisses. `prefers-reduced-motion` is a short fade. White shell + `#CBF805` + black from the Chuze refresh stay.
+- App-open splash (`AppSplash` in the root layout) plays Ricky’s official badge video (`public/svg-performance-splash.mp4`) on first visit: square 960 clip, trimmed to the moment the neon streak closes the ring (~8.15s). It autoplays with sound when the browser allows, otherwise muted. Dismisses when the clip ends and the app is ready, then writes `sessionStorage.svg_splash_seen`. `prefers-reduced-motion` shows the closed-ring still (`svg-performance-splash-still.webp`) with a short fade — not the video. White shell + `#CBF805` + black from the Chuze refresh stay. Header chrome still uses the official circular badge from #17.
 - Accent neon is the official lime (`#CBF805` / `#D0FF00`). Black / white / that neon only.
 
 ## Authorization

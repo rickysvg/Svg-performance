@@ -81,93 +81,27 @@ body:has(.app-splash.is-visible) {
   background: #050505;
 }
 
-.app-splash-stage {
+.app-splash-video,
+.app-splash-still {
+  width: min(100vw, 100dvh);
+  height: min(100vw, 100dvh);
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.app-splash-still {
+  position: absolute;
+}
+
+.app-splash-video {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: min(72vw, 17rem);
-  aspect-ratio: 1;
-}
-
-.app-splash-glow,
-.app-splash-ring,
-.app-splash-logo {
-  grid-area: 1 / 1;
-}
-
-.app-splash-glow {
-  width: 118%;
-  height: 118%;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    rgba(203, 248, 5, 0.28) 0%,
-    rgba(203, 248, 5, 0.08) 42%,
-    transparent 70%
-  );
-  animation: svg-splash-glow 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.app-splash-ring {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  border: 2px solid #cbf805;
-  box-shadow: 0 0 22px rgba(203, 248, 5, 0.45);
-  animation: svg-splash-ring 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.app-splash-logo {
-  width: 100%;
-  animation: svg-splash-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  z-index: 1;
 }
 
 .app-splash.is-exiting {
-  animation: svg-splash-out 0.45s ease forwards;
-}
-
-@keyframes svg-splash-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.72);
-    filter: blur(10px);
-  }
-  58% {
-    opacity: 1;
-    transform: scale(1.03);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
-  }
-}
-
-@keyframes svg-splash-glow {
-  0% {
-    opacity: 0;
-    transform: scale(0.55);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes svg-splash-ring {
-  0% {
-    opacity: 0;
-    transform: scale(0.38);
-  }
-  62% {
-    opacity: 1;
-    transform: scale(1.04);
-  }
-  100% {
-    opacity: 0.55;
-    transform: scale(1.08);
-  }
+  animation: svg-splash-out 0.28s ease forwards;
 }
 
 @keyframes svg-splash-out {
@@ -177,14 +111,12 @@ body:has(.app-splash.is-visible) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-splash-glow,
-  .app-splash-ring {
-    animation: none;
-    opacity: 0.35;
-    transform: none;
+  .app-splash-video {
+    display: none !important;
   }
 
-  .app-splash-logo {
+  .app-splash-still {
+    position: relative;
     animation: svg-splash-fade 0.28s ease both;
   }
 
