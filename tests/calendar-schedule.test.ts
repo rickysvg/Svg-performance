@@ -115,7 +115,12 @@ describe("calendar schedule loader", () => {
     );
     expect(workouts.length).toBeGreaterThan(0);
     expect(workouts.every((row) => row.href.startsWith("/training/"))).toBe(true);
-    expect(program.days.some((day) => workouts[0]?.href === `/training/${day.id}`)).toBe(true);
+    expect(workouts.some((row) => /bag|clinch|ground-and-pound|sprawl/i.test(row.title))).toBe(
+      true,
+    );
+    expect(workouts.some((row) => program.days.some((day) => row.href === `/training/${day.id}`))).toBe(
+      true,
+    );
 
     const firstDay = program.days[0];
     const session = await startWorkoutFromDay({

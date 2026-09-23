@@ -5,18 +5,26 @@ import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
 const prisma = new PrismaClient();
 
 const DEMO_SLUG = "demo-strength-base";
+const DEMO_SKILL_SLUG = "demo-combat-skills";
+
+const BAG_OR_SHADOW =
+  "Heavy bag or pads if you have them. Bodyweight only: shadow the same work at technical speed — no full power.";
+const MAT_OR_TECHNICAL =
+  "Open mat if you have one. No partner: technical reps on the floor, no slamming and no full-power shots.";
+
+async function replaceProgram(
+  slug: string,
+  data: Parameters<typeof prisma.program.create>[0]["data"],
+) {
+  const existing = await prisma.program.findUnique({ where: { slug } });
+  if (existing) {
+    await prisma.program.delete({ where: { slug } });
+  }
+  await prisma.program.create({ data });
+}
 
 async function main() {
-  const existing = await prisma.program.findUnique({
-    where: { slug: DEMO_SLUG },
-  });
-
-  if (existing) {
-    await prisma.program.delete({ where: { slug: DEMO_SLUG } });
-  }
-
-  await prisma.program.create({
-    data: {
+  await replaceProgram(DEMO_SLUG, {
       slug: DEMO_SLUG,
       title: "DEMO — Strength Base for Class",
       description:
@@ -203,6 +211,371 @@ async function main() {
           },
         ],
       },
+  });
+
+  await replaceProgram(DEMO_SKILL_SLUG, {
+    slug: DEMO_SKILL_SLUG,
+    title: "DEMO — Combat Skills",
+    description:
+      "Technique-style DEMO sessions matched to intake focus. External YouTube form references — not SVG-produced film, and not a custom fight camp Ricky wrote live.",
+    isDemo: true,
+    days: {
+      create: [
+        {
+          dayNumber: 1,
+          title: "Heavy bag — hands to low kicks",
+          focus: "Hands first, then low-kick combinations",
+          exercises: {
+            create: [
+              {
+                sortOrder: 1,
+                name: "Jab–cross (1–2)",
+                sets: 3,
+                reps: "8",
+                loadText: "Technical, snap the hands home",
+                restSeconds: 60,
+                notes: `Measure with the jab, turn the rear heel on the cross. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Jab–cross (1–2)"),
+              },
+              {
+                sortOrder: 2,
+                name: "Low kick (roundhouse)",
+                sets: 3,
+                reps: "6 / side",
+                loadText: "Shin, not a floppy foot",
+                restSeconds: 75,
+                notes: `45° lead step, hip through, hands up. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Low kick (roundhouse)"),
+              },
+              {
+                sortOrder: 3,
+                name: "Hands to low-kick combo",
+                sets: 4,
+                reps: "6",
+                loadText: "1-2 then the low kick",
+                restSeconds: 75,
+                notes: `Jab-cross, then the same-side or opposite low kick. Reset the guard before you admire it. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Hands to low-kick combo"),
+              },
+              {
+                sortOrder: 4,
+                name: "Teep (push kick)",
+                sets: 3,
+                reps: "6 / side",
+                loadText: "Push, do not punt",
+                restSeconds: 60,
+                notes: `Chamber the knee, hips behind the kick, recover to stance. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Teep (push kick)"),
+              },
+              {
+                sortOrder: 5,
+                name: "Jump rope or easy bike intervals",
+                sets: 6,
+                reps: "20 sec on / 40 sec easy",
+                loadText: "Hard but repeatable",
+                restSeconds: 0,
+                notes: "Easy gas-tank closer. Talk in a short sentence after each bout.",
+                ...formVideoFieldsFor("Jump rope or easy bike intervals"),
+              },
+            ],
+          },
+        },
+        {
+          dayNumber: 2,
+          title: "Clinch knees on the bag",
+          focus: "Posture, then straight knees",
+          exercises: {
+            create: [
+              {
+                sortOrder: 1,
+                name: "Double-collar clinch posture",
+                sets: 3,
+                reps: "30–40 sec",
+                loadText: "Chest close, elbows in",
+                restSeconds: 45,
+                notes: `Hands behind the neck or on the bag collar, posture tall. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Double-collar clinch posture"),
+              },
+              {
+                sortOrder: 2,
+                name: "Straight knee (clinch)",
+                sets: 4,
+                reps: "8 / side",
+                loadText: "Hip through, heel to glute",
+                restSeconds: 60,
+                notes: `Pull the bag down as the hip comes forward. No jumping knees. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Straight knee (clinch)"),
+              },
+              {
+                sortOrder: 3,
+                name: "Alternate knee rhythm",
+                sets: 3,
+                reps: "45 sec",
+                loadText: "Steady, not sloppy",
+                restSeconds: 60,
+                notes: `Left-right knees without losing the clinch. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Alternate knee rhythm"),
+              },
+              {
+                sortOrder: 4,
+                name: "Exit the clinch / frame",
+                sets: 3,
+                reps: "6",
+                loadText: "Frame, step off, hands up",
+                restSeconds: 45,
+                notes: "Create a frame, step off the bag, reset stance. Technical — not a shove contest.",
+                ...formVideoFieldsFor("Exit the clinch / frame"),
+              },
+              {
+                sortOrder: 5,
+                name: "Front plank",
+                sets: 3,
+                reps: "30–45 sec",
+                loadText: "Bodyweight",
+                restSeconds: 45,
+                notes: "Brace. Stop if the low back sags.",
+                ...formVideoFieldsFor("Front plank"),
+              },
+            ],
+          },
+        },
+        {
+          dayNumber: 3,
+          title: "Jab-cross-hook bag rounds",
+          focus: "Boxing bag combinations",
+          exercises: {
+            create: [
+              {
+                sortOrder: 1,
+                name: "Boxing jab",
+                sets: 3,
+                reps: "10",
+                loadText: "Snap and recover",
+                restSeconds: 45,
+                notes: `Lead shoulder covers the chin. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Boxing jab"),
+              },
+              {
+                sortOrder: 2,
+                name: "Jab–cross (1–2)",
+                sets: 4,
+                reps: "8",
+                loadText: "Step and punch together",
+                restSeconds: 60,
+                notes: `Do not leave the cross hanging. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Jab–cross (1–2)"),
+              },
+              {
+                sortOrder: 3,
+                name: "Lead hook",
+                sets: 3,
+                reps: "8",
+                loadText: "90° elbow, thumb up",
+                restSeconds: 60,
+                notes: `Throw it after a 1-2 so the weight is already transferred. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("Lead hook"),
+              },
+              {
+                sortOrder: 4,
+                name: "1-2-3 bag rounds",
+                sets: 4,
+                reps: "60 sec",
+                loadText: "Jab-cross-hook, then reset",
+                restSeconds: 60,
+                notes: `Easy rounds. Hands home after the hook. ${BAG_OR_SHADOW}`,
+                ...formVideoFieldsFor("1-2-3 bag rounds"),
+              },
+              {
+                sortOrder: 5,
+                name: "Jump rope or easy bike intervals",
+                sets: 6,
+                reps: "20 sec on / 40 sec easy",
+                loadText: "Hard but repeatable",
+                restSeconds: 0,
+                notes: "Easy closer. Stop for dizziness or chest pain.",
+                ...formVideoFieldsFor("Jump rope or easy bike intervals"),
+              },
+            ],
+          },
+        },
+        {
+          dayNumber: 4,
+          title: "Ground-and-pound drill",
+          focus: "Top control, then short strikes",
+          exercises: {
+            create: [
+              {
+                sortOrder: 1,
+                name: "Mount / high-posture hold",
+                sets: 3,
+                reps: "30 sec",
+                loadText: "Wide base, hips heavy",
+                restSeconds: 45,
+                notes: `Posture first. Bag on the floor or a dummy if you have one. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Mount / high-posture hold"),
+              },
+              {
+                sortOrder: 2,
+                name: "Short punch from mount",
+                sets: 4,
+                reps: "8",
+                loadText: "Post, then punch",
+                restSeconds: 45,
+                notes: `One hand posts, the other punches short. No wild elbows. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Short punch from mount"),
+              },
+              {
+                sortOrder: 3,
+                name: "Hip drive + post",
+                sets: 3,
+                reps: "6 / side",
+                loadText: "Stay balanced",
+                restSeconds: 45,
+                notes: `Drive the hip, post the far hand, do not get rolled. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Hip drive + post"),
+              },
+              {
+                sortOrder: 4,
+                name: "Ground-and-pound burst",
+                sets: 5,
+                reps: "15 sec",
+                loadText: "Control, then 4–6 honest shots",
+                restSeconds: 45,
+                notes: `Short bursts. Reset posture between bouts. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Ground-and-pound burst"),
+              },
+              {
+                sortOrder: 5,
+                name: "Front plank",
+                sets: 3,
+                reps: "30–45 sec",
+                loadText: "Bodyweight",
+                restSeconds: 45,
+                notes: "Brace. Stop if the low back sags.",
+                ...formVideoFieldsFor("Front plank"),
+              },
+            ],
+          },
+        },
+        {
+          dayNumber: 5,
+          title: "Shot + sprawl",
+          focus: "Wrestling entry and defensive hips",
+          exercises: {
+            create: [
+              {
+                sortOrder: 1,
+                name: "Level change (penetration step)",
+                sets: 3,
+                reps: "8",
+                loadText: "Hips under the shoulders",
+                restSeconds: 45,
+                notes: `Drop the level before the trail knee moves. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Level change (penetration step)"),
+              },
+              {
+                sortOrder: 2,
+                name: "Double-leg entry",
+                sets: 4,
+                reps: "5 / side",
+                loadText: "Technical — no blasting",
+                restSeconds: 60,
+                notes: `Cheek to the ribs, hands behind the knees, stand and turn. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Double-leg entry"),
+              },
+              {
+                sortOrder: 3,
+                name: "Sprawl",
+                sets: 4,
+                reps: "6",
+                loadText: "Hips down and back",
+                restSeconds: 45,
+                notes: `Chest covers the shot, then reset the stance. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Sprawl"),
+              },
+              {
+                sortOrder: 4,
+                name: "Shot–sprawl reset",
+                sets: 3,
+                reps: "45 sec",
+                loadText: "Easy pace",
+                restSeconds: 60,
+                notes: `One technical shot, one sprawl, stand up. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Shot–sprawl reset"),
+              },
+              {
+                sortOrder: 5,
+                name: "Side plank",
+                sets: 3,
+                reps: "20–30 sec / side",
+                loadText: "Bodyweight",
+                restSeconds: 45,
+                notes: "Hips stacked. Drop to the knee if you need to.",
+                ...formVideoFieldsFor("Side plank"),
+              },
+            ],
+          },
+        },
+        {
+          dayNumber: 6,
+          title: "Closed guard positional drill",
+          focus: "BJJ posture, hips, and frames",
+          exercises: {
+            create: [
+              {
+                sortOrder: 1,
+                name: "Closed guard posture break",
+                sets: 3,
+                reps: "6",
+                loadText: "Legs + one honest grip",
+                restSeconds: 45,
+                notes: `Break posture before you hunt a sweep. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Closed guard posture break"),
+              },
+              {
+                sortOrder: 2,
+                name: "Hip escape (shrimp)",
+                sets: 3,
+                reps: "8 / side",
+                loadText: "Hips, not a bicycle kick",
+                restSeconds: 45,
+                notes: `Plant, lift, push the hips away. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Hip escape (shrimp)"),
+              },
+              {
+                sortOrder: 3,
+                name: "Closed guard hip tilt",
+                sets: 3,
+                reps: "8",
+                loadText: "Angle, not a flat back",
+                restSeconds: 45,
+                notes: `Tilt the hips and recover. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Closed guard hip tilt"),
+              },
+              {
+                sortOrder: 4,
+                name: "Frame and recover",
+                sets: 3,
+                reps: "6",
+                loadText: "Elbow to knee",
+                restSeconds: 45,
+                notes: `Frame, shrimp, insert the knee. ${MAT_OR_TECHNICAL}`,
+                ...formVideoFieldsFor("Frame and recover"),
+              },
+              {
+                sortOrder: 5,
+                name: "Front plank",
+                sets: 3,
+                reps: "30–45 sec",
+                loadText: "Bodyweight",
+                restSeconds: 45,
+                notes: "Brace. Stop if the low back sags.",
+                ...formVideoFieldsFor("Front plank"),
+              },
+            ],
+          },
+        },
+      ],
     },
   });
 

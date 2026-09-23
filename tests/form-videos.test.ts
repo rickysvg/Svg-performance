@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { getDemoProgram } from "@/lib/programs";
+import { findSkillProgram, getDemoProgram } from "@/lib/programs";
 import {
   DEMO_FORM_VIDEOS,
   isYoutubeFormUrl,
@@ -16,8 +16,13 @@ describe("DEMO form videos", () => {
 
   it("gives every seeded DEMO exercise a YouTube URL or an explicit pending flag", async () => {
     const program = await getDemoProgram();
-    const exercises = program.days.flatMap((day) => day.exercises);
-    expect(exercises.length).toBeGreaterThanOrEqual(15);
+    const skill = await findSkillProgram();
+    const exercises = [
+      ...program.days.flatMap((day) => day.exercises),
+      ...(skill?.days ?? []).flatMap((day) => day.exercises),
+    ];
+    expect(skill?.days.length).toBeGreaterThanOrEqual(6);
+    expect(exercises.length).toBeGreaterThanOrEqual(40);
 
     for (const exercise of exercises) {
       const catalog = DEMO_FORM_VIDEOS[exercise.name];
