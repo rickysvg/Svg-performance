@@ -58,7 +58,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Milestone 4
 
-- **Home UX:** Inspired by Fight Science Collective *layout ideas only* (greeting, week strip, nutrition rings, workout card, FAB). We did not copy their logo, red medical cross, colors, or assets. SVG uses black / white / `#D0FF00`, academy-first copy, and our own logo.
+- **Home UX:** Inspired by Fight Science Collective *layout ideas only* (greeting, workout card, one supporting card, FAB). Week strip, wrap, challenge, and shop were later pulled off Home so Today stays the hero. We did not copy their logo, red medical cross, colors, or assets. SVG uses black / white / `#D0FF00`, academy-first copy, and our own logo.
 - **Nav:** Phone bar is **Home · Train · Fuel · Learn · Coach**. Shop is on Home plus the header so it stays reachable without crowding a sixth tab.
 - **Nutrition rings:** Today’s (or selected day’s) food logs vs profile targets. New accounts start at DEMO estimates **2200 / 140 g / 220 g / 70 g** — not copied from another gym’s numbers. Always labeled estimates.
 - **Progress:** Manual body metrics (`weight`, `sleepHours`, `restingHr`, `leanMass`, `bodyFat`). Sleep / LBM / body fat stay typed. Resting HR on Progress prefers `HrRestingSample` (Apple Health / Polar / manual / DEMO) and falls back to the typed body metric.
@@ -106,6 +106,8 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 
 - Day overview + active logging copy the **information architecture** of Strong-like apps (equipment chips, square movement thumbs, Start Now, Previous / Reps / Lbs table, rest banner, Add set, Insert exercise, Save). Palette stays SVG: black / white / neon lime (`#D0FF00` / `#CBF805`). We did not copy the white + red reference screens.
 - Exercise rows show the YouTube form-video still when a valid catalog / day URL exists (lime play mark; tap opens YouTube). `public/exercise-thumbs/` silhouettes are fallback only. Not claimed as SVG coaching film. YouTube **Watch form** text links stay.
+- Day overview top is a short meta stack (type, **est.** minutes from sets+rest, **N Exercises**), then equipment, then the list. Start Now / Continue stays lime — we did not add a red “Mark as Complete.”
+- Home is greeting + quote + today’s workout + one nutrition card. Paths, journal teases, week strip, wrap, challenge, shop, and the help form are demoted off the first screen so Today is the hero.
 - Previous column reads the member’s last **completed** session for that exercise name. First-time moves stay empty. Save still delete+recreates `WorkoutSet` rows.
 
 ## Calendar list
@@ -176,7 +178,7 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 
 ## Coaching experience (Today, report, paths, journal, Book)
 
-- **Today** on Home is one card: next workout (path or DEMO day), current goal from intake, recommended Learn tutorial (level + art filters), next check-in from remaining credits / open Book request / open help / Platinum intensive stub. Beginner vs fighter copy uses experience + competition status. We never invent a fight date or a Ricky comment.
+- **Today** on Home is the workout hero: DEMO day title, type / est. minutes / exercise count, one CTA. Goal can sit under the greeting. Path, tutorial, and Book check-in still exist as data (`getTodayGuide`) and on their own screens — they are not stacked on Home. We never invent a fight date or a Ricky comment.
 - **Weekly SVG report** (`/report`) is richer than the count wrap: strength signal from loads/PRs, conditioning note if a session mentioned it, difficulty trend, suggested next path step. Always labeled **Automated SVG summary**. Quiet weeks stay okay, not a report card.
 - **Coach comment slot** is Fighter Development+ (`planHasCoachReview`). **Adjustment log** is Elite+ (`planHasEliteReview`). Empty until an assigned coach or admin writes it. Unassigned coaches are forbidden. Preview (Stripe off) treats the member as Platinum so the slot is visible and still empty.
 - **Training paths** live in code (`src/lib/paths.ts`): Beginner Foundations, Build Your Gas Tank, Strength for Combat. Enrollments and completions are in the DB. Default path from onboarding. Workout / lesson / journal / rating steps can auto-complete from existing logs. Manual “mark done” can fire `?celebrate=milestone`.
