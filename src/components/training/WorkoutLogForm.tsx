@@ -332,7 +332,11 @@ export function WorkoutLogForm({
             : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
           const hint = modeHint(mode);
           return (
-            <section key={name} className="rounded-2xl border border-line bg-card p-4">
+            <section
+              key={name}
+              data-exercise-block={name}
+              className="rounded-2xl border border-line bg-card p-4"
+            >
               <div className="flex items-start gap-3">
                 <ExerciseThumb
                   name={name}
