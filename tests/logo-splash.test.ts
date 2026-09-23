@@ -137,6 +137,8 @@ describe("app-open splash video", () => {
     const splash = read("src/components/AppSplash.tsx");
     expect(splash).toMatch(/<video/);
     expect(splash).toMatch(/playSplashWithSound/);
+    expect(splash).toMatch(/waitForSplashCanPlay/);
+    expect(splash).not.toMatch(/Tap for sound/);
     expect(splash).not.toMatch(/app-splash-glow/);
     expect(read("src/app/layout.tsx")).toMatch(/AppSplash/);
     const css = read("src/app/globals.css");
