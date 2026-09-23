@@ -5,6 +5,8 @@ import { findDemoProgram } from "@/lib/programs";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { startSessionAction } from "@/app/actions/workouts";
 import { WatchFormInline } from "@/components/training/WatchForm";
+import { ExerciseThumb } from "@/components/training/ExerciseThumb";
+import { lookupFormVideo } from "@/lib/form-videos";
 import { canUseFeature } from "@/lib/entitlements";
 
 export default async function TrainingPage() {
@@ -68,17 +70,28 @@ export default async function TrainingPage() {
             <h3 className="text-lg font-semibold">{day.title}</h3>
             <p className="text-sm text-muted">{day.focus}</p>
             <ul className="mt-3 space-y-2 text-sm">
-              {day.exercises.map((exercise) => (
-                <li key={exercise.id} className="flex justify-between gap-3 border-b border-line/60 py-2 last:border-0">
-                  <span>
-                    <span className="font-medium">{exercise.name}</span>
-                    <span className="block text-muted">
-                      {exercise.sets} × {exercise.reps} · {exercise.loadText} · rest {exercise.restSeconds}s
+              {day.exercises.map((exercise) => {
+                const form = lookupFormVideo(exercise.name, day.exercises);
+                return (
+                <li key={exercise.id} className="flex items-center justify-between gap-3 border-b border-line/60 py-2 last:border-0">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <ExerciseThumb
+                      name={exercise.name}
+                      formVideoUrl={form.url}
+                      formVideoPending={form.pending}
+                      size={48}
+                    />
+                    <span>
+                      <span className="font-medium">{exercise.name}</span>
+                      <span className="block text-muted">
+                        {exercise.sets} × {exercise.reps} · {exercise.loadText} · rest {exercise.restSeconds}s
+                      </span>
                     </span>
                   </span>
-                  <WatchFormInline url={exercise.formVideoUrl} pending={exercise.formVideoPending} />
+                  <WatchFormInline url={form.url} pending={form.pending} />
                 </li>
-              ))}
+                );
+              })}
             </ul>
             <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link

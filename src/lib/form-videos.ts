@@ -30,10 +30,10 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     title: "How To ACTUALLY Do Lunges (Feat. The “Rock”)",
   },
   "Squat jump or box step-up": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
+    url: "https://www.youtube.com/watch?v=tZSYZdtbONc",
+    pending: false,
+    channel: "National Academy of Sports Medicine (NASM)",
+    title: "How to do a Squat Jump | Proper Form & Technique",
   },
   "Front plank": {
     url: "https://www.youtube.com/watch?v=kL_NJAkCQBg",
@@ -115,22 +115,37 @@ export function formVideoFieldsFor(name: string): {
 }
 
 export function isYoutubeFormUrl(url: string): boolean {
+  return Boolean(youtubeVideoId(url));
+}
+
+export function youtubeVideoId(url: string): string | null {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
     if (host !== "youtube.com" && host !== "m.youtube.com" && host !== "youtu.be") {
-      return false;
+      return null;
     }
     if (parsed.pathname.includes("/shorts/")) {
-      return false;
+      return null;
     }
     if (host === "youtu.be") {
-      return parsed.pathname.replace("/", "").length > 0;
+      const id = parsed.pathname.replace(/^\//, "").split("/")[0] ?? "";
+      return id.length > 0 ? id : null;
     }
-    return Boolean(parsed.searchParams.get("v"));
+    return parsed.searchParams.get("v");
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function youtubeThumbSrcs(url: string): string[] {
+  const id = youtubeVideoId(url);
+  if (!id) return [];
+  return [
+    `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
+    `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+  ];
 }
 
 export type FormVideoLookup = {
@@ -143,8 +158,12 @@ export function lookupFormVideo(
   exercises?: Array<{ name: string; formVideoUrl: string; formVideoPending: boolean }>,
 ): FormVideoLookup {
   const fromDay = exercises?.find((row) => row.name === name);
-  if (fromDay) {
-    return { url: fromDay.formVideoUrl, pending: fromDay.formVideoPending || !fromDay.formVideoUrl };
+  if (
+    fromDay?.formVideoUrl &&
+    !fromDay.formVideoPending &&
+    isYoutubeFormUrl(fromDay.formVideoUrl)
+  ) {
+    return { url: fromDay.formVideoUrl, pending: false };
   }
   const seeded = formVideoFieldsFor(name);
   return { url: seeded.formVideoUrl, pending: seeded.formVideoPending };

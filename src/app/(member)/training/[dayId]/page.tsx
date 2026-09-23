@@ -10,6 +10,7 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { startSessionAction } from "@/app/actions/workouts";
 import { equipmentForExercises, plannedSetLine } from "@/lib/exercise-media";
+import { lookupFormVideo } from "@/lib/form-videos";
 
 export default async function TrainingDayPage({
   params,
@@ -59,13 +60,19 @@ export default async function TrainingDayPage({
       </div>
 
       <ol className="flex-1 border-t border-line pb-32">
-        {day.exercises.map((exercise) => (
+        {day.exercises.map((exercise) => {
+          const form = lookupFormVideo(exercise.name, day.exercises);
+          return (
           <li
             key={exercise.id}
             className="flex items-center gap-3 border-b border-line py-3 pr-4"
           >
             <span className="h-14 w-1 shrink-0 rounded-full bg-accent" aria-hidden />
-            <ExerciseThumb name={exercise.name} />
+            <ExerciseThumb
+              name={exercise.name}
+              formVideoUrl={form.url}
+              formVideoPending={form.pending}
+            />
             <div className="min-w-0 flex-1">
               <h2 className="truncate font-semibold">{exercise.name}</h2>
               <p className="mt-0.5 text-sm text-muted">
@@ -78,10 +85,11 @@ export default async function TrainingDayPage({
               {exercise.notes ? (
                 <p className="mt-1 line-clamp-2 text-xs text-muted">{exercise.notes}</p>
               ) : null}
-              <WatchFormInline url={exercise.formVideoUrl} pending={exercise.formVideoPending} />
+              <WatchFormInline url={form.url} pending={form.pending} />
             </div>
           </li>
-        ))}
+          );
+        })}
       </ol>
 
       <form

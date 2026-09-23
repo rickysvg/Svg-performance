@@ -76,7 +76,9 @@ How we pick a link:
 4. If we cannot verify a high-quality video for that movement, we leave the URL empty and set pending. We do **not** guess a weak short.
 5. Links open on YouTube. They are not claimed as SVG IP.
 
-Current pending DEMO moves: squat jump / box step-up, and lateral bound / side step-over.
+Current pending DEMO moves: lateral bound / side step-over (no catalog-quality long-form we would stand behind yet). Squat jump / box step-up uses NASM’s squat-jump technique video.
+
+List thumbs prefer the YouTube form still (`i.ytimg.com/vi/<id>/hqdefault.jpg`, then mq / img.youtube.com) with a lime play mark. They open the same Watch-form URL. Pending / invalid URLs keep the local silhouette. Copy stays “Form reference (YouTube) — not an SVG-produced video.”
 
 ## Learn technique video selection rules
 
@@ -103,7 +105,7 @@ Browse starts at **Beginner**. Intermediate samples exist so the level + martial
 ## Workout logger layout
 
 - Day overview + active logging copy the **information architecture** of Strong-like apps (equipment chips, square movement thumbs, Start Now, Previous / Reps / Lbs table, rest banner, Add set, Insert exercise, Save). Palette stays SVG: black / white / neon lime (`#D0FF00` / `#CBF805`). We did not copy the white + red reference screens.
-- Thumbnails live in `public/exercise-thumbs/` (square curated silhouettes mapped by exercise slug). They are list aids, not SVG-produced coaching film. YouTube **Watch form** links stay on each exercise.
+- Exercise rows show the YouTube form-video still when a valid catalog / day URL exists (lime play mark; tap opens YouTube). `public/exercise-thumbs/` silhouettes are fallback only. Not claimed as SVG coaching film. YouTube **Watch form** text links stay.
 - Previous column reads the member’s last **completed** session for that exercise name. First-time moves stay empty. Save still delete+recreates `WorkoutSet` rows.
 
 ## Calendar list

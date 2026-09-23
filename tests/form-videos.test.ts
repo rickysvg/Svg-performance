@@ -1,7 +1,13 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { getDemoProgram } from "@/lib/programs";
-import { DEMO_FORM_VIDEOS, isYoutubeFormUrl } from "@/lib/form-videos";
+import {
+  DEMO_FORM_VIDEOS,
+  isYoutubeFormUrl,
+  lookupFormVideo,
+  youtubeThumbSrcs,
+  youtubeVideoId,
+} from "@/lib/form-videos";
 
 describe("DEMO form videos", () => {
   afterAll(async () => {
@@ -32,5 +38,26 @@ describe("DEMO form videos", () => {
     expect(isYoutubeFormUrl("https://www.youtube.com/watch?v=nfX7IFK9UNI")).toBe(true);
     expect(isYoutubeFormUrl("https://www.youtube.com/shorts/abc123xyz")).toBe(false);
     expect(isYoutubeFormUrl("https://example.com/watch?v=nfX7IFK9UNI")).toBe(false);
+  });
+
+  it("builds YouTube still URLs from a watch or youtu.be link", () => {
+    expect(youtubeVideoId("https://www.youtube.com/watch?v=nfX7IFK9UNI")).toBe("nfX7IFK9UNI");
+    expect(youtubeVideoId("https://youtu.be/nfX7IFK9UNI")).toBe("nfX7IFK9UNI");
+    expect(youtubeVideoId("https://www.youtube.com/shorts/nfX7IFK9UNI")).toBeNull();
+    expect(youtubeThumbSrcs("https://www.youtube.com/watch?v=nfX7IFK9UNI")[0]).toBe(
+      "https://i.ytimg.com/vi/nfX7IFK9UNI/hqdefault.jpg",
+    );
+  });
+
+  it("falls back to the catalog when a stored day row is still pending", () => {
+    const goblet = lookupFormVideo("Goblet squat", [
+      { name: "Goblet squat", formVideoUrl: "", formVideoPending: true },
+    ]);
+    expect(goblet.pending).toBe(false);
+    expect(isYoutubeFormUrl(goblet.url)).toBe(true);
+
+    const bound = lookupFormVideo("Lateral bound or side step-over");
+    expect(bound.pending).toBe(true);
+    expect(bound.url).toBe("");
   });
 });
