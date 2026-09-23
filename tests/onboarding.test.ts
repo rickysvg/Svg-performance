@@ -161,16 +161,17 @@ describe("onboarding gate and persistence", () => {
       experienceLevel: "intermediate",
       primaryFocus: "boxing",
       equipment: ["Bodyweight only"],
-      weeklyAvailability: ["Friday"],
+      weeklyAvailability: ["Monday", "Wednesday", "Friday"],
       sessionsPerWeek: null,
       preferredUnits: "lb",
       trainingLimitations: "",
       foodPreferences: "",
       allergies: "",
     });
-    const today = await getHomeToday(user.id);
+    const today = await getHomeToday(user.id, new Date(2026, 8, 21, 10, 0, 0));
     expect(today.suggestedDay?.title).toMatch(/jab-cross-hook bag rounds/i);
-    expect(today.suggestionCopy).toMatch(/DEMO skill \+ strength/i);
+    expect(today.plannedSessions.map((session) => session.kind)).toEqual(["skill", "strength"]);
+    expect(today.suggestionCopy).toMatch(/DEMO Core week plan \(skill \+ strength\)/i);
     expect(today.suggestionCopy).toMatch(/Not a custom Elite/i);
     expect(today.incompleteLesson?.topic).toBe("boxing");
     expect(today.incompleteLesson?.skillLevel).toBe("intermediate");

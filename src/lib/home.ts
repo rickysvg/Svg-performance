@@ -13,7 +13,7 @@ import {
   sessionLengthHint,
   trainingLocationHint,
 } from "@/lib/onboarding";
-import { suggestTodayWork } from "@/lib/skill-programs";
+import { planForDate, resolvePlanSessions, weekdayInAppZone, weekStrip } from "@/lib/week-plan";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -142,6 +142,10 @@ export function emptyHomeToday(selectedDay = new Date()) {
     selected,
     isToday: sameLocalDay(selected, new Date()),
     suggestedDay: null,
+    plannedSessions: [] as ReturnType<typeof resolvePlanSessions>,
+    weekStrip: [] as ReturnType<typeof weekStrip>,
+    planWeekday: weekdayInAppZone(selected),
+    planSummary: "",
     suggestionCopy:
       "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
@@ -180,21 +184,18 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const { strength, skill } = catalog;
   const hasCatalog = Boolean(strength || skill);
 
-  const completedDayIds = new Set(
-    sessions
-      .filter((session) => session.status === "complete" && session.programDayId)
-      .map((session) => session.programDayId as string),
-  );
   const draft = sessions.find((session) => session.status === "draft");
-  const suggestedDay = suggestTodayWork({
-    strengthDays: strength?.days ?? [],
-    skillDays: skill?.days ?? [],
-    completedDayIds,
-    prefs: {
-      goalKey: profile?.goalKey,
-      primaryFocus: profile?.primaryFocus,
-    },
-  });
+  const prefs = {
+    primaryFocus: profile?.primaryFocus,
+    weeklyAvailability: profile?.weeklyAvailability ?? [],
+    sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+  };
+  const todayPlan = planForDate(prefs, selected);
+  const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
+  const suggestedDay =
+    plannedSessions.find((session) => session.day)?.day ??
+    plannedSessions[0]?.day ??
+    null;
   const loggedOnSelected = sessions.find(
     (session) =>
       session.status === "complete" && sameLocalDay(session.performedAt, selected),
@@ -221,6 +222,10 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     selected,
     isToday: sameLocalDay(selected, new Date()),
     suggestedDay,
+    plannedSessions,
+    weekStrip: weekStrip(prefs, selected),
+    planWeekday: todayPlan.weekday,
+    planSummary: todayPlan.active ? todayPlan.summary : "Rest / skip",
     suggestionCopy: hasCatalog
       ? demoSuggestionCopy({
           goalKey: profile?.goalKey,

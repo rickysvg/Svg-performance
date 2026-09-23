@@ -388,8 +388,8 @@ export function demoSuggestionCopy(prefs: { goalKey?: string; primaryFocus?: str
   const matched = [goal, art].filter(Boolean).join(" · ");
   const skillMix =
     prefs.primaryFocus && prefs.primaryFocus !== "general-fitness"
-      ? "DEMO skill + strength templates"
-      : "DEMO strength template";
+      ? "DEMO Core week plan (skill + strength)"
+      : "DEMO Core week plan (strength)";
   if (!matched) {
     return `Suggested from the ${skillMix}. This is not a custom Elite coaching plan.`;
   }

@@ -101,7 +101,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 - Two seeded DEMO programs:
   - `DEMO — Strength Base for Class` (`demo-strength-base`, 3 days). Always listed.
   - `DEMO — Combat Skills` (`demo-combat-skills`, 6 technique days). Shown from intake `primaryFocus`: striking bag/clinch days for MMA / Muay Thai / boxing; ground-and-pound + wrestling or BJJ positional days for MMA / wrestling / jiu-jitsu / cagework. General fitness stays strength-only.
-- Home + Train + Calendar mix both pools. Martial-arts focuses start on a skill day, then alternate so strength stays in rotation. Not a custom fight camp.
+- **Core weekday planner** (`src/lib/week-plan.ts`) is the source of truth for Home / Train / Calendar — not the old single alternating pick. Average members share one Mon–Sun skeleton (bag+strength on Mon/Wed, lighter skill or recovery on Tue, grappling or second striking on Thu, conditioning+legs on Fri, optional Sat, rest Sun). `primaryFocus` picks the skill flavor; general fitness gets strength/conditioning only (no bag). Availability + `sessionsPerWeek` hide days (Saturday first). Labeled DEMO / Core — not Elite, injury, or fight-camp customization (those stay out of scope).
 - Intake can now record **Heavy bag** and **Thai pads / focus mitts**. Notes scale to shadow / technical reps when no bag is on file.
 - Labeled DEMO in the UI. Not claimed as a coach-assigned fight-camp plan.
 - Each exercise has a curated YouTube form link or an explicit pending flag. Skill-day tapes reuse Learn-catalog channels (Tony Jeffries, Banasiak, Fagan-adjacent Kingdom, Zahabi, Kesting, TeachMeGrappling) and are never claimed as SVG-produced.

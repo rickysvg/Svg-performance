@@ -52,9 +52,8 @@ export function skillEquipmentNote(equipment: string[] | undefined) {
 }
 
 /**
- * Mix strength + matching skill days. Martial-arts focuses start on a skill
- * session, then alternate so strength stays in the rotation. General fitness
- * stays on the strength DEMO only.
+ * @deprecated Core week plan (`src/lib/week-plan.ts`) is the Train / Home /
+ * Calendar source of truth. Kept for any leftover single-pick callers.
  */
 export function suggestTodayWork<T extends { id: string; dayNumber: number }>(input: {
   strengthDays: T[];

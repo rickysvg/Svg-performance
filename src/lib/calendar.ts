@@ -4,11 +4,7 @@ import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
-import {
-  filterSkillDaysForFocus,
-  mixCalendarProgramDays,
-  suggestTodayWork,
-} from "@/lib/skill-programs";
+import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 
 export const DEFAULT_TRAINING_WEEKDAYS = ["Monday", "Wednesday", "Friday"] as const;
 
@@ -186,51 +182,68 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
       .filter((session) => session.status === "complete")
       .map((session) => formatDayParam(session.performedAt)),
   );
-  const completedDayIds = new Set(
-    sessions
-      .filter((session) => session.status === "complete" && session.programDayId)
-      .map((session) => session.programDayId as string),
-  );
-  const skillDays = filterSkillDaysForFocus(skill?.days ?? [], profile?.primaryFocus);
-  const suggested = suggestTodayWork({
-    strengthDays: strength?.days ?? [],
-    skillDays: skill?.days ?? [],
-    completedDayIds,
-    prefs: {
-      goalKey: profile?.goalKey,
-      primaryFocus: profile?.primaryFocus,
-    },
-  });
-  const programDays = mixCalendarProgramDays(
-    (strength?.days ?? []).map((day) => ({
-      id: day.id,
-      title: day.title,
-      dayNumber: day.dayNumber,
-    })),
-    skillDays.map((day) => ({
-      id: day.id,
-      title: day.title,
-      dayNumber: day.dayNumber,
-    })),
-  );
-  const titles = [
-    skillDays.length > 0 ? skill?.title : null,
-    strength?.title,
-  ].filter((title): title is string => Boolean(title));
+  const prefs = {
+    primaryFocus: profile?.primaryFocus,
+    weeklyAvailability: profile?.weeklyAvailability ?? [],
+    sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+  };
+  const dates = listCalendarDates(now, 8);
+  const days: CalendarDay[] = dates.map((date) => ({
+    date,
+    heading: formatCalendarHeading(date, now),
+    isToday: sameLocalDay(date, now),
+    activities: [],
+  }));
+
+  for (const day of days) {
+    const plan = planForDate(prefs, day.date);
+    const resolved = resolvePlanSessions(plan, { strength, skill });
+    const done = completedOnDay.has(formatDayParam(day.date));
+    for (const session of resolved) {
+      if (!session.href || !session.dayId) continue;
+      day.activities.push({
+        kind: "workout",
+        title: session.title,
+        subtitle: done
+          ? "Logged this day. Open to review or run a session again."
+          : `${session.label} — Core week plan (DEMO).`,
+        href: session.href,
+        status: done ? "complete" : "scheduled",
+        programDayId: session.dayId,
+      });
+    }
+  }
+
+  const sunday = days.find((day) => weekdayName(day.date) === "Sunday");
+  if (sunday) {
+    sunday.activities.push({
+      kind: "report",
+      title: "Weekly SVG report",
+      subtitle: "Automated summary — not a grade.",
+      href: "/report",
+      status: "scheduled",
+    });
+  }
+
+  if (challenge?.enrollment) {
+    const saturday = days.find((day) => weekdayName(day.date) === "Saturday");
+    const target =
+      saturday ?? days.find((day) => day.activities.length === 0) ?? days[days.length - 1];
+    if (target) {
+      target.activities.push({
+        kind: "challenge",
+        title: challenge.challenge.title,
+        subtitle: "Monthly challenge — days you train or eat, not heaviest lift.",
+        href: "/challenges",
+        status: challenge.complete ? "complete" : "scheduled",
+      });
+    }
+  }
+
+  const titles = [skill?.title, strength?.title].filter((title): title is string => Boolean(title));
 
   return {
     programTitle: titles.join(" · ") || null,
-    days: buildCalendarDays({
-      now,
-      programDays,
-      availability: profile?.weeklyAvailability ?? [],
-      completedOnDay,
-      startDayId: suggested?.id,
-      startDayNumber: suggested?.dayNumber,
-      includeReport: true,
-      challenge: challenge?.enrollment
-        ? { title: challenge.challenge.title, complete: challenge.complete }
-        : null,
-    }),
+    days,
   };
 }
