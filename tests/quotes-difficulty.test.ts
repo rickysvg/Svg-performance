@@ -4,7 +4,13 @@ import { makeUser, resetDatabase } from "./helpers";
 import { AppError } from "@/lib/errors";
 import { canUseFeature } from "@/lib/entitlements";
 import { assignPlanForPilot } from "@/lib/billing";
-import { getDailyQuoteCard, quoteForLocalDate, teaserFromQuote } from "@/lib/quotes";
+import {
+  DAILY_QUOTES,
+  getDailyQuoteCard,
+  quoteForLocalDate,
+  quoteSourceCounts,
+  teaserFromQuote,
+} from "@/lib/quotes";
 import {
   parseDifficultyRating,
   recentDifficultyAverage,
@@ -90,6 +96,29 @@ describe("daily quotes and difficulty ratings", () => {
     expect(card.quote.text).toBe(quoteForLocalDate(new Date("2026-09-22T12:00:00")).text);
     expect(card.quote.text.length).toBeGreaterThan(20);
     expect(card.quote.text.toLowerCase()).not.toMatch(/lazy|worthless|pathetic/);
+    expect(card.quote.attribution.length).toBeGreaterThan(3);
+    expect(card.quote.attribution).not.toBe("SVG Performance");
+  });
+
+  it("keeps an even mix of UFC, achiever, and scripture quotes", () => {
+    const counts = quoteSourceCounts();
+    expect(DAILY_QUOTES.length).toBeGreaterThanOrEqual(30);
+    expect(counts.ufc).toBe(counts.achiever);
+    expect(counts.achiever).toBe(counts.scripture);
+    expect(counts.ufc).toBeGreaterThanOrEqual(10);
+    const ids = new Set(DAILY_QUOTES.map((quote) => quote.id));
+    expect(ids.size).toBe(DAILY_QUOTES.length);
+    for (const quote of DAILY_QUOTES) {
+      expect(quote.text.length).toBeGreaterThan(12);
+      expect(quote.attribution.length).toBeGreaterThan(3);
+      expect(quote.attribution).not.toMatch(/SVG Performance/i);
+      expect(quote.text.toLowerCase()).not.toMatch(/\b(lazy|worthless|pathetic|stupid)\b/);
+    }
+    expect(DAILY_QUOTES.some((quote) => /UFC/i.test(quote.attribution))).toBe(true);
+    expect(DAILY_QUOTES.some((quote) => /:\d/.test(quote.attribution))).toBe(true);
+    const first = quoteForLocalDate(new Date("2026-01-01T12:00:00"));
+    const later = quoteForLocalDate(new Date("2026-06-15T12:00:00"));
+    expect(first.id).not.toBe(later.id);
   });
 
   it("locks the full quote for Member Access when Stripe TEST is on", async () => {
