@@ -18,6 +18,8 @@ import {
   sessionKindLabel,
 } from "@/lib/exercise-media";
 import { lookupFormVideo } from "@/lib/form-videos";
+import { listExerciseNotesForUser } from "@/lib/exercise-notes";
+import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 
 export default async function TrainingDayPage({
   params,
@@ -49,6 +51,10 @@ export default async function TrainingDayPage({
   const minutes = estimateSessionMinutes(day.exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = draft ? "Continue" : "Start Now";
+  const notes = await listExerciseNotesForUser(user.id, {
+    exerciseNames: day.exercises.map((exercise) => exercise.name),
+    programDayId: day.id,
+  });
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
@@ -111,10 +117,17 @@ export default async function TrainingDayPage({
       <ol className="flex-1 border-t border-line pb-32">
         {day.exercises.map((exercise) => {
           const form = lookupFormVideo(exercise.name, day.exercises);
+          const planned = plannedSetLine({
+            sets: exercise.sets,
+            reps: exercise.reps,
+            restSeconds: exercise.restSeconds,
+            logMode: exercise.logMode,
+            name: exercise.name,
+          });
           return (
             <li
               key={exercise.id}
-              className="flex items-center gap-3.5 border-b border-line px-4 py-4"
+              className="flex items-start gap-3.5 border-b border-line px-4 py-4"
             >
               <ExerciseThumb
                 name={exercise.name}
@@ -123,16 +136,16 @@ export default async function TrainingDayPage({
               />
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold leading-snug">{exercise.name}</h2>
-                <p className="mt-1 text-sm text-muted">
-                  {plannedSetLine({
-                    sets: exercise.sets,
-                    reps: exercise.reps,
-                    restSeconds: exercise.restSeconds,
-                    logMode: exercise.logMode,
-                    name: exercise.name,
-                  })}
-                </p>
+                <p className="mt-1 text-sm text-muted">{planned}</p>
                 <WatchFormInline url={form.url} pending={form.pending} />
+                <ExerciseNotepad
+                  exerciseName={exercise.name}
+                  programDayId={day.id}
+                  workoutId={draft?.id ?? ""}
+                  logMode={exercise.logMode}
+                  plannedLine={planned}
+                  note={notes[exercise.name]}
+                />
               </div>
             </li>
           );

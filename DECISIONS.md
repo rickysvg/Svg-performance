@@ -116,6 +116,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 - Day overview top is a short meta stack (type, **est.** minutes from sets+rest, **N Exercises**), then equipment, then the list. Start Now / Continue stays lime — we did not add a red “Mark as Complete.” App header chips hide on the day and logger screens so the brief stays the focus.
 - Home is greeting + quote + today’s workout + one nutrition card. Paths, journal teases, week strip, wrap, challenge, shop, and the help form are demoted off the first screen so Today is the hero.
 - Previous column reads the member’s last **completed** session for that exercise name. First-time moves stay empty. Save still delete+recreates `WorkoutSet` rows.
+- Each exercise row (day overview + logger) has a collapsed **Notes** chip under the name. Notes persist per member + exercise + program day (`ExerciseNote`). **Ask SVG Coach** uses the same safety + offline/live path as `/coach`, scoped to that movement + logMode + planned line. Replies stay on the note, not in the main chat thread. Not a live Ricky message. No extra Coach paywall — this sits on Train.
 
 ## Calendar list
 

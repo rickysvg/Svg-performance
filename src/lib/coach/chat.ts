@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ForbiddenError, NotFoundError } from "@/lib/errors";
+import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { detectSafetyRefusal, safetyPreamble } from "@/lib/coach/safety";
 import { loadKnowledgeBase } from "@/lib/coach/knowledge";
 import { coachingToneNote } from "@/lib/onboarding";
@@ -223,4 +223,53 @@ export async function sendCoachMessage(input: {
     data: { updatedAt: new Date() },
   });
   return { threadId: thread.id, assistant: saved, refused: false };
+}
+
+/** One-off SVG Coach answer for a Train notepad. Does not write a chat thread. */
+export async function answerScopedCoachQuestion(input: {
+  userId: string;
+  message: string;
+  experienceLevel?: string;
+  coachingTone?: string;
+  topic?: string;
+  art?: string;
+}) {
+  const message = input.message.trim().slice(0, 2000);
+  if (!message) {
+    throw new AppError("VALIDATION", "Type a note or question first.");
+  }
+  const refusal = detectSafetyRefusal(message, { currentUserId: input.userId });
+  if (refusal) {
+    return {
+      content: refusal.message,
+      offline: !isOpenAiConfigured(),
+      refused: true,
+      refusalCode: refusal.code,
+    };
+  }
+  const ownSummary = [
+    `Experience: ${input.experienceLevel || "unknown"}.`,
+    input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
+    coachLaneLabel(input.topic, input.art)
+      ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
+      : "",
+    `Only this user id ${input.userId} may be discussed.`,
+    "This is a Train notepad question on one exercise. Stay practical.",
+    "Do not invent SVG-produced videos or a medical plan.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const reply = await liveReply({
+    message,
+    experienceLevel: input.experienceLevel || "beginner",
+    coachingTone: input.coachingTone,
+    ownSummary,
+    topic: input.topic,
+    art: input.topic === "martial_art" ? input.art : "",
+  });
+  return {
+    content: reply.content,
+    offline: reply.offline,
+    refused: false,
+  };
 }

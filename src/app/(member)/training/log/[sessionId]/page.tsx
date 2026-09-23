@@ -8,6 +8,7 @@ import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
+import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 
 export default async function WorkoutLogPage({
   params,
@@ -81,6 +82,13 @@ export default async function WorkoutLogPage({
           session.sets.map((set) => set.exerciseName),
           session.id,
         )}
+        notes={await listExerciseNotesForUser(user.id, {
+          exerciseNames: [
+            ...session.sets.map((set) => set.exerciseName),
+            ...(session.programDay?.exercises.map((exercise) => exercise.name) ?? []),
+          ],
+          programDayId: session.programDayId,
+        })}
       />
     </main>
   );
