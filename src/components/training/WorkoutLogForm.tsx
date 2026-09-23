@@ -326,6 +326,7 @@ export function WorkoutLogForm({
                   {thisRest ? (
                     <button
                       type="button"
+                      data-rest-stop={name}
                       onClick={() => setRestTimer(null)}
                       className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent"
                     >
@@ -335,6 +336,7 @@ export function WorkoutLogForm({
                   ) : (
                     <button
                       type="button"
+                      data-rest-start={name}
                       onClick={() => setRestTimer(startRestTimer(name, restSeconds))}
                       className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-accent hover:border-accent"
                     >
