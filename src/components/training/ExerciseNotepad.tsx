@@ -41,7 +41,7 @@ export function ExerciseNotepad({
   plannedLine?: string;
   note?: ExerciseNoteView | null;
 }) {
-  const [open, setOpen] = useState(Boolean(note?.body || note?.aiReply));
+  const [open, setOpen] = useState(false);
   const [body, setBody] = useState(note?.body ?? "");
   const [saveState, saveAction, saving] = useActionState(
     saveExerciseNoteAction,
