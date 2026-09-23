@@ -19,10 +19,12 @@ export function LearnThumb({
   url,
   pending,
   title,
+  compact = false,
 }: {
   url: string;
   pending: boolean;
   title: string;
+  compact?: boolean;
 }) {
   const watchable = !pending && Boolean(url) && isYoutubeFormUrl(url);
   const sources = useMemo(() => (watchable ? youtubeThumbSrcs(url) : []), [url, watchable]);
@@ -35,7 +37,11 @@ export function LearnThumb({
   const src = sources[Math.min(index, sources.length - 1)];
 
   return (
-    <span className="relative block aspect-video w-full overflow-hidden rounded-xl bg-card">
+    <span
+      className={`relative block w-full overflow-hidden rounded-xl bg-card ${
+        compact ? "h-36" : "aspect-video"
+      }`}
+    >
       {src ? (
         // YouTube still — not SVG coaching film.
         // eslint-disable-next-line @next/next/no-img-element

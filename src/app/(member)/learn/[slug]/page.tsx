@@ -74,7 +74,7 @@ export default async function LessonPage({
 
       <section className="space-y-2">
         <h2 className="text-xs uppercase tracking-wide text-muted">Technical description</h2>
-        {lesson.technicalDescription.trim() ? (
+        {(lesson.technicalDescription ?? "").trim() ? (
           <p className="text-sm leading-relaxed text-muted">{lesson.technicalDescription}</p>
         ) : (
           <p className="text-sm text-muted">Technical write-up pending coach review.</p>

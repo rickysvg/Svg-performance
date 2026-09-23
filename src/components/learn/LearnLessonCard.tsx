@@ -35,7 +35,7 @@ export function LearnLessonCard({
         href={`/learn/${lesson.slug}`}
         className="block space-y-3 rounded-2xl border border-line bg-card p-4"
       >
-        <LearnThumb url={video.url} pending={video.pending} title={lesson.title} />
+        <LearnThumb url={video.url} pending={video.pending} title={lesson.title} compact />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-semibold leading-snug">{lesson.title}</h2>
@@ -51,8 +51,8 @@ export function LearnLessonCard({
             {lessonLevelLabel(lesson.skillLevel)}
           </span>
         </p>
-        <p className="text-sm leading-relaxed text-foreground">{lesson.summary}</p>
-        <p className="text-sm leading-relaxed text-muted">{lesson.technicalDescription}</p>
+        <p className="text-sm leading-snug text-foreground">{lesson.summary}</p>
+        <p className="line-clamp-4 text-sm leading-snug text-muted">{lesson.technicalDescription}</p>
         <p className="text-xs text-muted">
           YouTube reference — not an SVG-produced video
           {video.pending ? " · pending coach review" : ""}
