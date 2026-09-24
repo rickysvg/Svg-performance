@@ -81,8 +81,11 @@ export function BikeSetTimer({
   const [clock, setClock] = useState<BikeIntervalSnapshot>(() => idleBikeInterval(spec));
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const completeRef = useRef(onSetComplete);
-  completeRef.current = onSetComplete;
   const running = clock.phase === "work" || clock.phase === "rest";
+
+  useEffect(() => {
+    completeRef.current = onSetComplete;
+  }, [onSetComplete]);
 
   useEffect(() => {
     if (!running || clock.paused) return;
