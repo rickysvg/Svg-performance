@@ -11,11 +11,9 @@ import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
-import {
-  bikeIntervalChrome,
-  bikeSessionForName,
-  isBikeIntervalName,
-} from "@/lib/bike-sessions";
+import { BikeSetTimer } from "@/components/training/BikeSetTimer";
+import { bikeSessionForName, isBikeIntervalName } from "@/lib/bike-sessions";
+import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
@@ -103,27 +101,6 @@ function ClockIcon() {
         strokeLinecap="round"
       />
     </svg>
-  );
-}
-
-function BikeIntervalStrip({ name }: { name: string }) {
-  const session = bikeSessionForName(name);
-  if (!session) return null;
-  return (
-    <div className="mt-3 rounded-xl border border-line bg-background p-3" data-bike-intervals>
-      <p className="font-display text-xs uppercase tracking-wide text-accent">
-        {bikeIntervalChrome(session)}
-      </p>
-      <ol className="mt-2 grid grid-cols-4 gap-1.5">
-        {Array.from({ length: session.roundsPerSet }, (_, index) => (
-          <li key={index} className="rounded-lg bg-black px-1.5 py-1.5 text-center">
-            <p className="font-display text-[11px] leading-none text-accent">{session.workSeconds}s</p>
-            <p className="mt-0.5 text-[9px] text-white">work</p>
-            <p className="text-[9px] text-white/70">{session.restSeconds}s rest</p>
-          </li>
-        ))}
-      </ol>
-    </div>
   );
 }
 
@@ -260,20 +237,22 @@ export function WorkoutLogForm({
         </header>
 
         <div className="flex items-start justify-between gap-3 pt-2">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 pr-1">
             <label className="block">
               <span className="sr-only">Workout title</span>
-              <input
+              <textarea
                 name="title"
+                data-workout-title
                 defaultValue={session.title}
-                className="font-display w-full min-w-0 bg-transparent text-2xl font-semibold tracking-wide outline-none"
+                rows={2}
+                className="font-display w-full min-w-0 resize-none overflow-visible bg-transparent text-xl font-semibold leading-tight tracking-wide break-words whitespace-pre-wrap outline-none"
               />
             </label>
             {session.programDay?.title ? (
               <p className="mt-1 text-sm text-muted">{session.programDay.title}</p>
             ) : null}
           </div>
-          {session.title.startsWith("DEMO") ? <DemoBadge /> : null}
+          {session.title.startsWith("DEMO") ? <DemoBadge className="mt-1 shrink-0" /> : null}
         </div>
 
         <StatusBanner error={state.error} success={state.success} />
@@ -345,6 +324,7 @@ export function WorkoutLogForm({
             reps: planned?.reps,
           });
           const bike = isBikeIntervalName(name);
+          const bikeSession = bike ? bikeSessionForName(name) : null;
           const timed = isDurationMode(mode) && !bike;
           const restSeconds = planned?.restSeconds ?? (bike ? 60 : mode === "timed_round" ? 90 : 60);
           const thisRest = restRunning && restTimer?.exerciseName === name;
@@ -380,7 +360,22 @@ export function WorkoutLogForm({
                       : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
-                  {bike ? <BikeIntervalStrip name={name} /> : null}
+                  {bikeSession ? (
+                    <BikeSetTimer
+                      session={bikeSession}
+                      canStart={group.some((set) => !set.completed)}
+                      onSetComplete={() => {
+                        const nextOpen = group.find((set) => !set.completed);
+                        if (!nextOpen) return;
+                        updateSet(nextOpen.id, { completed: true });
+                        const effects = bikeIntervalCompletionEffects({
+                          exerciseName: name,
+                          restBetweenSetsSeconds: restSeconds,
+                        });
+                        if (effects.rest) setRestTimer(effects.rest);
+                      }}
+                    />
+                  ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                     {previousLoads[name] ? (
                       <button
