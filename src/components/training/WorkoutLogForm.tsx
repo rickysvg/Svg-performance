@@ -18,6 +18,7 @@ import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
+  countLabel,
   hidesLoad,
   isDurationMode,
   modeColumnLabel,
@@ -361,7 +362,7 @@ export function WorkoutLogForm({
                           logMode: mode,
                           name,
                         })
-                      : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
+                      : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
                   {bikeSession ? (

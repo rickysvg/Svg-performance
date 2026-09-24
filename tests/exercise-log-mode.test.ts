@@ -105,6 +105,80 @@ describe("exercise log modes", () => {
     ).toBe("3 × 30–40s @ lbs, 90s rest");
   });
 
+  it("uses singular units for one set and labels a single timed clock as continuous", () => {
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "10s work / 50s rest × 4",
+        restSeconds: 0,
+        logMode: "timed_round",
+        name: "Daru alactic power bike",
+      }),
+    ).toBe("1 set · 10s work / 50s rest × 4");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "15:00",
+        restSeconds: 0,
+        logMode: "timed",
+        name: "Sled hamstring drag",
+      }),
+    ).toBe("15:00 continuous");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "10:00",
+        restSeconds: 0,
+        logMode: "timed",
+        name: "Sled hamstring drag",
+      }),
+    ).toBe("10:00 continuous");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "45–60 sec",
+        restSeconds: 30,
+        logMode: "timed",
+        name: "Front plank",
+      }),
+    ).toBe("1 hold × 45–60 sec, 30s rest");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "20 sec on / 40 sec easy",
+        restSeconds: 0,
+        logMode: "timed",
+        name: "Jump rope or easy bike intervals",
+      }),
+    ).toBe("1 bout × 20 sec on / 40 sec easy");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "3:00",
+        restSeconds: 45,
+        logMode: "timed_round",
+        name: "Jab–cross (1–2)",
+      }),
+    ).toBe("1 round × 3:00, 45s rest");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "8",
+        restSeconds: 90,
+        logMode: "load_reps",
+      }),
+    ).toBe("1 set × 8, 90s rest");
+    expect(
+      plannedSetLine({
+        sets: 5,
+        reps: "15s work / 15s rest × 8",
+        restSeconds: 60,
+        logMode: "timed_round",
+        name: "Assault bike intervals",
+      }),
+    ).toBe("5 sets · 15s work / 15s rest × 8, 60s between sets");
+  });
+
   it("labels previous timed sets as hold or round time", () => {
     expect(
       previousSetLabel({

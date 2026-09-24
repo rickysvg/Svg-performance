@@ -130,6 +130,14 @@ function carryDurationLabel(reps: string) {
   return raw.replace(/\s*seconds?\b/i, "s").replace(/\s*sec\b/i, "s").replace(/\s+/g, " ").trim();
 }
 
+export function countLabel(count: number, singular: string, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function isSingleClockBlock(reps: string) {
+  return /^\s*\d+\s*:\s*\d{2}\s*$/.test(reps);
+}
+
 export function plannedSetLine(input: {
   sets: number;
   reps: string;
@@ -141,22 +149,25 @@ export function plannedSetLine(input: {
   if (isBikeIntervalName(input.name ?? "")) {
     const reps = input.reps || bikeIntervalReps();
     const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between sets` : "";
-    return `${input.sets} sets · ${reps}${between}`;
+    return `${countLabel(input.sets, "set")} · ${reps}${between}`;
   }
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
   if (mode === "timed_round") {
-    return `${input.sets} rounds × ${input.reps}${rest}`;
+    return `${countLabel(input.sets, "round")} × ${input.reps}${rest}`;
   }
   if (mode === "load_timed") {
     return `${input.sets} × ${carryDurationLabel(input.reps)} @ lbs${rest}`;
   }
   if (mode === "timed") {
+    if (input.sets === 1 && input.restSeconds <= 0 && isSingleClockBlock(input.reps)) {
+      return `${input.reps.trim()} continuous`;
+    }
     const unit = isHoldName(input.name ?? "")
-      ? "holds"
+      ? countLabel(input.sets, "hold")
       : CARDIO_TIMED_NAME.test(input.name ?? "")
-        ? "bouts"
-        : "work";
-    return `${input.sets} ${unit} × ${input.reps}${rest}`;
+        ? countLabel(input.sets, "bout")
+        : countLabel(input.sets, "work", "work");
+    return `${unit} × ${input.reps}${rest}`;
   }
-  return `${input.sets} sets × ${input.reps}${rest}`;
+  return `${countLabel(input.sets, "set")} × ${input.reps}${rest}`;
 }
