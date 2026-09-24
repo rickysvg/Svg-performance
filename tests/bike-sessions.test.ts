@@ -105,7 +105,7 @@ describe("assault bike catalog", () => {
     expect(week.Thursday.active).toBe(true);
     expect(week.Friday.summary).toBe("Cond+Lift");
     expect(week.Saturday.summary).toBe("Off");
-    expect(week.Sunday.summary).toBe("Rest");
+    expect(week.Sunday.summary).toBe("Off");
 
     expect(coreSkeletonSessions("Tuesday", "mma")[0]).toMatchObject({
       kind: "conditioning",
@@ -135,7 +135,7 @@ describe("assault bike catalog", () => {
       "Bike",
       "Cond+Lift",
       "Off",
-      "Rest",
+      "Off",
     ]);
   });
 });
