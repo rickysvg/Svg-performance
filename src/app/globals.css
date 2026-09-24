@@ -22,7 +22,8 @@
   --color-muted: var(--muted);
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   --font-display: var(--font-anton);
 }
 
@@ -110,6 +111,7 @@ textarea:focus-visible {
 
 html[data-splash="done"] .app-splash {
   display: none !important;
+  pointer-events: none !important;
 }
 
 body:has(.app-splash.is-visible) {
@@ -163,7 +165,27 @@ body:has(.app-splash.is-visible) {
 }
 
 .app-splash.is-exiting {
+  pointer-events: none;
   animation: svg-splash-out 0.28s ease forwards;
+}
+
+.app-splash-skip {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 3;
+  min-height: 44px;
+  min-width: 72px;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: #cbf805;
+  color: #0a0a0a;
+  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 @keyframes svg-splash-out {

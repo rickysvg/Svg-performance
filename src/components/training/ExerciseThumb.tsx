@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { exerciseThumbSrc, fallbackThumbSrc } from "@/lib/exercise-media";
 import {
   isYoutubeFormUrl,
@@ -44,10 +44,12 @@ export function ExerciseThumb({
   );
 
   const [index, setIndex] = useState(0);
-
-  useEffect(() => {
+  const sourceKey = `${name}:${url}:${watchable}`;
+  const [seenKey, setSeenKey] = useState(sourceKey);
+  if (sourceKey !== seenKey) {
+    setSeenKey(sourceKey);
     setIndex(0);
-  }, [name, url, watchable]);
+  }
 
   const src = sources[Math.min(index, sources.length - 1)] ?? fallbackThumbSrc();
   const showingVideoStill = index < videoStills.length;

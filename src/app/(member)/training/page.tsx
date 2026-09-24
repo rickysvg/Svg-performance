@@ -2,7 +2,10 @@ import Link from "next/link";
 import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import {
+  countWorkoutSessionsForUser,
+  listDraftSessionsForUser,
+} from "@/lib/workouts";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
@@ -20,9 +23,10 @@ import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 export default async function TrainingPage() {
   const user = await requireUser();
   const now = new Date();
-  const [catalog, sessions, conditioning, profile] = await Promise.all([
+  const [catalog, drafts, sessionCount, conditioning, profile] = await Promise.all([
     findDemoTrainingCatalog(),
-    listWorkoutSessionsForUser(user.id),
+    listDraftSessionsForUser(user.id),
+    countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
   ]);
@@ -45,8 +49,8 @@ export default async function TrainingPage() {
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
   const draftsByDay = new Map(
-    sessions
-      .filter((session) => session.status === "draft" && session.programDayId)
+    drafts
+      .filter((session) => session.programDayId)
       .map((session) => [session.programDayId as string, session.id]),
   );
 
@@ -139,7 +143,7 @@ export default async function TrainingPage() {
         </Link>
         {" · "}
         <Link href="/training/history" className="text-accent underline-offset-4 hover:underline">
-          Workout history ({sessions.length})
+          Workout history ({sessionCount})
         </Link>
       </p>
     </main>

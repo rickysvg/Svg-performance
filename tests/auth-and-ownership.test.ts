@@ -12,6 +12,7 @@ import { getProfileForUser, updateProfileForUser } from "@/lib/profile";
 import { getDemoProgram } from "@/lib/programs";
 import {
   deleteWorkoutSessionForUser,
+  getOwnWorkoutSessionOrNull,
   getWorkoutSessionForUser,
   startWorkoutFromDay,
   tryReadWorkoutByIdForUser,
@@ -129,6 +130,11 @@ describe("ownership isolation", () => {
 
     const leaked = await tryReadWorkoutByIdForUser(workout.id, userB.id);
     expect(leaked).toBeNull();
+    expect(await getOwnWorkoutSessionOrNull(workout.id, userB.id)).toBeNull();
+    expect(await getOwnWorkoutSessionOrNull(workout.id, userA.id)).toMatchObject({
+      id: workout.id,
+      userId: userA.id,
+    });
 
     await expect(
       updateWorkoutSessionForUser({

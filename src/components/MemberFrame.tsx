@@ -41,7 +41,7 @@ export function MemberFrame({
       >
         {children}
       </div>
-      <QuickAddFab />
+      {pathname.startsWith("/training/log/") ? null : <QuickAddFab />}
       {immersive ? null : (
         <AppHeader email={email} role={role} placement="bottom" currentPath={pathname} />
       )}

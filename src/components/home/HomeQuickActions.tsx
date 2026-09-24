@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const PHOTO_ACTIONS = [
@@ -5,33 +6,29 @@ const PHOTO_ACTIONS = [
     href: "/training",
     label: "Train",
     hint: "Today’s work",
-    src: "/home/tiles/train.jpg",
-    alt: "Sparring at SVG MMA Academy",
-    position: "center 32%",
+    src: "/tiles/train.webp",
+    alt: "Athlete punching a heavy bag",
   },
   {
     href: "/coach",
     label: "Coach",
     hint: "Ask SVG Coach",
-    src: "/home/tiles/coach.jpg",
-    alt: "Coach pointing on the mats at SVG",
-    position: "70% 22%",
+    src: "/tiles/coach.webp",
+    alt: "Coach holding mitts in a dark gym",
   },
   {
     href: "/learn",
     label: "Learn",
     hint: "Technique",
-    src: "/home/tiles/learn.jpg",
-    alt: "Pad work in the cage at SVG",
-    position: "center 42%",
+    src: "/tiles/learn.webp",
+    alt: "Two athletes drilling a takedown",
   },
   {
     href: "/progress",
     label: "Progress",
     hint: "PRs + photos",
-    src: "/home/tiles/progress.jpg",
-    alt: "Walkout under the lights",
-    position: "center 30%",
+    src: "/tiles/progress.webp",
+    alt: "Athlete standing after a session",
   },
 ] as const;
 
@@ -42,20 +39,20 @@ const TEXT_ACTIONS = [
 
 export function HomeQuickActions() {
   return (
-    <section className="space-y-3">
+    <section className="min-w-0 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         {PHOTO_ACTIONS.map((action) => (
           <Link
             key={action.href}
             href={action.href}
-            className="relative block aspect-[4/3] min-h-[9.5rem] overflow-hidden rounded-[1.25rem] bg-black"
+            className="relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- static academy photos in /public */}
-            <img
+            <Image
               src={action.src}
               alt={action.alt}
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectPosition: action.position }}
+              fill
+              sizes="(max-width: 390px) 50vw, (max-width: 640px) 45vw, 320px"
+              className="object-cover object-center"
             />
             <span
               aria-hidden
@@ -79,7 +76,7 @@ export function HomeQuickActions() {
           <Link
             key={action.href}
             href={action.href}
-            className="flex min-h-[5.5rem] flex-col justify-between rounded-2xl border border-line bg-card px-3 py-3"
+            className="flex min-h-[5.5rem] min-w-0 w-full flex-col justify-between rounded-2xl border border-line bg-card px-3 py-3"
           >
             <span className="font-display inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-black">
               {action.label.slice(0, 1)}

@@ -9,6 +9,8 @@ describe("Anton display font", () => {
     expect(layout).toContain("Anton");
     expect(layout).toContain('"--font-anton"');
     expect(layout).toContain("anton.variable");
+    expect(layout).not.toContain("Geist_Mono");
+    expect(layout).not.toContain("geistMono");
   });
 
   it("exposes font-display and keeps body on Geist", () => {

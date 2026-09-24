@@ -14,15 +14,18 @@ const EXT_BY_MIME: Record<ProgressPhotoMime, string> = {
   "image/webp": "webp",
 };
 
+const PROGRESS_PHOTO_DIR = path.join(process.cwd(), "uploads", "progress-photos");
+
 export function progressPhotoRoot() {
-  return (
-    process.env.PROGRESS_PHOTO_DIR?.trim() ||
-    path.join(process.cwd(), "uploads", "progress-photos")
-  );
+  const fromEnv = process.env.PROGRESS_PHOTO_DIR?.trim();
+  if (fromEnv) return fromEnv;
+  return PROGRESS_PHOTO_DIR;
 }
 
 function userDir(userId: string) {
-  return path.join(progressPhotoRoot(), userId);
+  const fromEnv = process.env.PROGRESS_PHOTO_DIR?.trim();
+  if (fromEnv) return path.join(/*turbopackIgnore: true*/ fromEnv, userId);
+  return path.join(process.cwd(), "uploads", "progress-photos", userId);
 }
 
 export function detectProgressPhotoMime(bytes: Uint8Array): ProgressPhotoMime | null {
@@ -125,9 +128,9 @@ export async function createProgressPhotoForUser(
   const storedName = `${row.id}.${ext}`;
   const dir = userDir(userId);
   await mkdir(dir, { recursive: true });
-  const filePath = path.join(dir, storedName);
+  const filePath = path.join(/*turbopackIgnore: true*/ dir, storedName);
   try {
-    await writeFile(filePath, input.bytes);
+    await writeFile(/*turbopackIgnore: true*/ filePath, input.bytes);
     return prisma.progressPhoto.update({
       where: { id: row.id },
       data: { storedName },
@@ -158,9 +161,9 @@ export async function updateProgressPhotoForUser(
 
 export async function readProgressPhotoFileForUser(photoId: string, userId: string) {
   const row = await getProgressPhotoForUser(photoId, userId);
-  const filePath = path.join(userDir(row.userId), row.storedName);
+  const filePath = path.join(/*turbopackIgnore: true*/ userDir(row.userId), row.storedName);
   try {
-    const bytes = await readFile(filePath);
+    const bytes = await readFile(/*turbopackIgnore: true*/ filePath);
     return { row, bytes };
   } catch {
     throw new NotFoundError("That photo file is missing from disk.");
@@ -169,9 +172,9 @@ export async function readProgressPhotoFileForUser(photoId: string, userId: stri
 
 export async function deleteProgressPhotoForUser(photoId: string, userId: string) {
   const row = await getProgressPhotoForUser(photoId, userId);
-  const filePath = path.join(userDir(row.userId), row.storedName);
+  const filePath = path.join(/*turbopackIgnore: true*/ userDir(row.userId), row.storedName);
   await prisma.progressPhoto.delete({ where: { id: row.id } });
-  await unlink(filePath).catch(() => undefined);
+  await unlink(/*turbopackIgnore: true*/ filePath).catch(() => undefined);
   return row;
 }
 

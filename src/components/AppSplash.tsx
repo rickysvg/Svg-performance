@@ -1,36 +1,54 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   SPLASH_STILL_SRC,
   SPLASH_STORAGE_KEY,
   SPLASH_VIDEO_SRC,
   canDismissSplash,
-  shouldSkipSplash,
+  shouldMountSplashVideo,
+  shouldShowSplashOverlay,
   splashTimings,
   startSplashPlayback,
 } from "@/lib/splash";
 
+function storedSplashFlag() {
+  try {
+    return sessionStorage.getItem(SPLASH_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function initialPhase(pathname: string): "play" | "gone" {
+  if (typeof window === "undefined") return "play";
+  return shouldShowSplashOverlay({ stored: storedSplashFlag(), pathname }) ? "play" : "gone";
+}
+
 export function AppSplash() {
-  const [phase, setPhase] = useState<"play" | "exit" | "gone">("play");
+  const pathname = usePathname();
+  const [phase, setPhase] = useState<"play" | "exit" | "gone">(() => initialPhase(pathname));
+  const [mountVideo, setMountVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoFinished = useRef(false);
   const appReady = useRef(false);
+  const userSkipped = useRef(false);
   const exiting = useRef(false);
+  const reducedRef = useRef(false);
+  const exitMsRef = useRef(280);
 
   useEffect(() => {
-    try {
-      if (shouldSkipSplash(sessionStorage.getItem(SPLASH_STORAGE_KEY))) {
-        document.documentElement.dataset.splash = "done";
-        setPhase("gone");
-        return;
-      }
-    } catch {
-      /* private mode */
+    const stored = storedSplashFlag();
+    if (!shouldShowSplashOverlay({ stored, pathname })) {
+      document.documentElement.dataset.splash = "done";
+      return;
     }
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    reducedRef.current = reduced;
     const { holdMs, exitMs } = splashTimings(reduced);
+    exitMsRef.current = exitMs;
 
     const markSeenAndHide = () => {
       try {
@@ -39,6 +57,7 @@ export function AppSplash() {
         /* ignore */
       }
       document.documentElement.dataset.splash = "done";
+      setMountVideo(false);
       setPhase("gone");
     };
 
@@ -48,14 +67,15 @@ export function AppSplash() {
         !canDismissSplash({
           videoFinished: videoFinished.current,
           appReady: appReady.current,
-          reducedMotion: reduced,
+          reducedMotion: reducedRef.current,
+          userSkipped: userSkipped.current,
         })
       ) {
         return;
       }
       exiting.current = true;
       setPhase("exit");
-      window.setTimeout(markSeenAndHide, exitMs);
+      window.setTimeout(markSeenAndHide, exitMsRef.current);
     };
 
     const markReady = () => {
@@ -69,37 +89,63 @@ export function AppSplash() {
       window.addEventListener("load", markReady);
     }
 
-    if (reduced) {
-      videoFinished.current = true;
-      const hold = window.setTimeout(markReady, holdMs);
-      return () => {
-        window.clearTimeout(hold);
-        window.removeEventListener("load", markReady);
-      };
-    }
+    const boot = window.setTimeout(() => {
+      setMountVideo(shouldMountSplashVideo({ stored, pathname, reducedMotion: reduced }));
+    }, 0);
 
-    const video = videoRef.current;
-    const markVideoDone = () => {
+    const hold = reduced
+      ? window.setTimeout(() => {
+          videoFinished.current = true;
+          markReady();
+        }, holdMs)
+      : window.setTimeout(() => {
+          videoFinished.current = true;
+          beginExit();
+        }, holdMs + 400);
+
+    const onSkip = () => {
+      userSkipped.current = true;
+      beginExit();
+    };
+    const onVideoDone = () => {
       videoFinished.current = true;
       beginExit();
     };
 
+    window.addEventListener("svg-splash-skip", onSkip);
+    window.addEventListener("svg-splash-video-done", onVideoDone);
+
+    return () => {
+      window.clearTimeout(boot);
+      window.clearTimeout(hold);
+      window.removeEventListener("load", markReady);
+      window.removeEventListener("svg-splash-skip", onSkip);
+      window.removeEventListener("svg-splash-video-done", onVideoDone);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mountVideo) return;
+    const video = videoRef.current;
+    const markVideoDone = () => {
+      videoFinished.current = true;
+      window.dispatchEvent(new Event("svg-splash-video-done"));
+    };
     video?.addEventListener("ended", markVideoDone);
     video?.addEventListener("error", markVideoDone);
     if (video) {
-      // Muted play must not dismiss the splash if the first call is early.
       startSplashPlayback(video).catch(() => undefined);
     }
-
-    const safety = window.setTimeout(markVideoDone, holdMs + 1500);
-
     return () => {
       video?.removeEventListener("ended", markVideoDone);
       video?.removeEventListener("error", markVideoDone);
-      window.clearTimeout(safety);
-      window.removeEventListener("load", markReady);
     };
-  }, []);
+  }, [mountVideo]);
+
+  function skipSplash() {
+    userSkipped.current = true;
+    window.dispatchEvent(new Event("svg-splash-skip"));
+  }
 
   if (phase === "gone") return null;
 
@@ -112,17 +158,22 @@ export function AppSplash() {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={SPLASH_STILL_SRC} alt="" className="app-splash-still" />
-      <video
-        ref={videoRef}
-        className="app-splash-video"
-        src={SPLASH_VIDEO_SRC}
-        muted
-        playsInline
-        autoPlay
-        preload="auto"
-        disablePictureInPicture
-        controls={false}
-      />
+      {mountVideo ? (
+        <video
+          ref={videoRef}
+          className="app-splash-video"
+          src={SPLASH_VIDEO_SRC}
+          muted
+          playsInline
+          autoPlay
+          preload="auto"
+          disablePictureInPicture
+          controls={false}
+        />
+      ) : null}
+      <button type="button" className="app-splash-skip" onClick={skipSplash}>
+        Skip
+      </button>
     </div>
   );
 }

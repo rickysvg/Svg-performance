@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { isYoutubeFormUrl, youtubeThumbSrcs } from "@/lib/form-videos";
 
 function PlayMark() {
@@ -29,10 +29,12 @@ export function LearnThumb({
   const watchable = !pending && Boolean(url) && isYoutubeFormUrl(url);
   const sources = useMemo(() => (watchable ? youtubeThumbSrcs(url) : []), [url, watchable]);
   const [index, setIndex] = useState(0);
-
-  useEffect(() => {
+  const sourceKey = `${url}:${watchable}`;
+  const [seenKey, setSeenKey] = useState(sourceKey);
+  if (sourceKey !== seenKey) {
+    setSeenKey(sourceKey);
     setIndex(0);
-  }, [url, watchable]);
+  }
 
   const src = sources[Math.min(index, sources.length - 1)];
 

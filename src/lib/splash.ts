@@ -1,8 +1,8 @@
 export const SPLASH_STORAGE_KEY = "svg_splash_seen";
 export const SPLASH_VIDEO_SRC = "/svg-performance-splash.mp4";
 export const SPLASH_STILL_SRC = "/svg-performance-splash-still.webp";
-/** Trimmed to the frame the neon streak closes the ring (~8.15s). */
-export const SPLASH_VIDEO_MS = 8_150;
+/** Compressed clip, sped so the neon ring still closes inside the 3–4s cap. */
+export const SPLASH_VIDEO_MS = 3_800;
 
 export function splashTimings(reducedMotion: boolean) {
   if (reducedMotion) {
@@ -15,11 +15,34 @@ export function shouldSkipSplash(stored: string | null) {
   return stored === "1";
 }
 
+/** Marketing `/` only. Login and member routes never play the clip. */
+export function isSplashPath(pathname: string | null | undefined) {
+  return pathname === "/";
+}
+
+export function shouldShowSplashOverlay(input: {
+  stored: string | null;
+  pathname: string | null | undefined;
+}) {
+  return isSplashPath(input.pathname) && !shouldSkipSplash(input.stored);
+}
+
+/** Never mount <video> after the session flag, on inner pages, or for reduced motion. */
+export function shouldMountSplashVideo(input: {
+  stored: string | null;
+  pathname: string | null | undefined;
+  reducedMotion: boolean;
+}) {
+  return shouldShowSplashOverlay(input) && !input.reducedMotion;
+}
+
 export function canDismissSplash(input: {
   videoFinished: boolean;
   appReady: boolean;
   reducedMotion: boolean;
+  userSkipped?: boolean;
 }) {
+  if (input.userSkipped) return true;
   if (input.reducedMotion) {
     return input.appReady;
   }

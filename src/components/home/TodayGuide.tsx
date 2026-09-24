@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { getTodayGuide } from "@/lib/today";
+import { startSessionAction } from "@/app/actions/workouts";
 import {
   estimateSessionMinutes,
   exerciseCountLabel,
@@ -17,15 +18,60 @@ const KIND_LABEL = {
   mobility: "Recovery",
 } as const;
 
+function SessionCta({
+  dayId,
+  draftId,
+  resumeLabel = "Resume",
+  startLabel = "Start",
+}: {
+  dayId?: string;
+  draftId?: string;
+  resumeLabel?: string;
+  startLabel?: string;
+}) {
+  if (draftId) {
+    return (
+      <Link
+        href={`/training/log/${draftId}`}
+        className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+      >
+        {resumeLabel}
+      </Link>
+    );
+  }
+  if (dayId) {
+    return (
+      <form action={startSessionAction} className="mt-6">
+        <input type="hidden" name="programDayId" value={dayId} />
+        <button
+          type="submit"
+          className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+        >
+          {startLabel}
+        </button>
+      </form>
+    );
+  }
+  return (
+    <Link
+      href="/training"
+      className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+    >
+      Open Train
+    </Link>
+  );
+}
+
 export function TodayGuide({ guide }: { guide: Guide }) {
   const { today } = guide;
   const planned = today.plannedSessions ?? [];
   const workoutSessions = planned.filter((session) => session.href);
   const restOnly = planned.length > 0 && workoutSessions.length === 0;
+  const next = today.nextSession;
 
   return (
     <section className="space-y-4">
-      <SectionHeading title="Today’s plan" href="/training" />
+      <SectionHeading title="Today’s plan" href="/training" className="pr-16" />
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
       {restOnly ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
@@ -36,14 +82,20 @@ export function TodayGuide({ guide }: { guide: Guide }) {
             {planned[0]?.title ?? "Rest day"}
           </h3>
           <p className="mt-2 text-sm text-white/70">
-            {planned[0]?.subtitle ?? today.suggestionCopy}
+            {next
+              ? `Next up ${today.nextSessionWeekday}: ${next.title}`
+              : (planned[0]?.subtitle ?? today.suggestionCopy)}
           </p>
-          <Link
-            href="/training"
-            className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
-          >
-            Open Train
-          </Link>
+          <SessionCta
+            dayId={next?.dayId}
+            draftId={
+              next?.dayId && today.draft?.programDayId === next.dayId
+                ? today.draft.id
+                : undefined
+            }
+            startLabel={next ? "Start next session" : "Open Train"}
+            resumeLabel="Resume next session"
+          />
         </div>
       ) : workoutSessions.length > 0 ? (
         <div className="space-y-3">
@@ -51,14 +103,10 @@ export function TodayGuide({ guide }: { guide: Guide }) {
             const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
             const count = session.day?.exercises.length ?? 0;
             const draft = today.draft && today.draft.programDayId === session.dayId;
-            const href = draft
-              ? `/training/log/${today.draft?.id}`
-              : session.href ?? "/training";
             return (
-              <Link
+              <article
                 key={`${session.slot}-${session.dayId ?? session.label}`}
-                href={href}
-                className="block rounded-[2rem] bg-black px-5 py-6 text-white"
+                className="rounded-[2rem] bg-black px-5 py-6 text-white"
               >
                 <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
                   Session {session.slot} · {KIND_LABEL[session.kind]}
@@ -69,10 +117,11 @@ export function TodayGuide({ guide }: { guide: Guide }) {
                   {session.label}
                   {count > 0 ? ` · ${exerciseCountLabel(count)}` : ""}
                 </p>
-                <span className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black">
-                  {draft ? "Continue" : "Open session"}
-                </span>
-              </Link>
+                <SessionCta
+                  dayId={session.dayId}
+                  draftId={draft ? today.draft?.id : undefined}
+                />
+              </article>
             );
           })}
         </div>

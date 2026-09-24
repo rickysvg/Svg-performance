@@ -43,7 +43,7 @@ export function PlanSessionCard({
   const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const count = exercises.length;
   const href = draftId ? `/training/log/${draftId}` : session.href;
-  const cta = draftId ? "Continue" : session.href ? "Open session" : null;
+  const cta = draftId ? "Resume" : session.dayId ? "Start" : session.href ? "Open session" : null;
 
   return (
     <article
@@ -104,30 +104,44 @@ export function PlanSessionCard({
           })}
         </ul>
       ) : null}
-      {href ? (
+      {cta ? (
         <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <Link
-            href={href}
-            className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm font-semibold ${
-              highlight ? "bg-accent text-black" : "border border-line"
-            }`}
-          >
-            {cta}
-          </Link>
-          {session.dayId && !draftId ? (
+          {draftId ? (
+            <Link
+              href={`/training/log/${draftId}`}
+              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-black"
+            >
+              Resume
+            </Link>
+          ) : session.dayId ? (
             <form action={startSessionAction}>
               <input type="hidden" name="programDayId" value={session.dayId} />
               <button
                 type="submit"
-                className={`touch-target rounded-full px-4 text-sm font-semibold ${
-                  highlight
-                    ? "border border-white/30 text-white"
-                    : "bg-accent text-black"
-                }`}
+                className="touch-target rounded-full bg-accent px-4 text-sm font-semibold text-black"
               >
-                Start this session
+                Start
               </button>
             </form>
+          ) : href ? (
+            <Link
+              href={href}
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm font-semibold ${
+                highlight ? "bg-accent text-black" : "border border-line"
+              }`}
+            >
+              {cta}
+            </Link>
+          ) : null}
+          {session.href && (draftId || session.dayId) ? (
+            <Link
+              href={session.href}
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm font-semibold ${
+                highlight ? "border border-white/30 text-white" : "border border-line"
+              }`}
+            >
+              Preview
+            </Link>
           ) : null}
         </div>
       ) : null}

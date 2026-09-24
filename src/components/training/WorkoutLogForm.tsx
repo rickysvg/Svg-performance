@@ -30,6 +30,11 @@ import {
   startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
+import {
+  copyPreviousOntoExercise,
+  restTimerAfterSetDone,
+  seedSetsFromPrevious,
+} from "@/lib/logger-prefill";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
@@ -128,7 +133,7 @@ export function WorkoutLogForm({
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(session.sets);
+  const [sets, setSets] = useState(() => seedSetsFromPrevious(session.sets, previousLoads));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
@@ -154,16 +159,16 @@ export function WorkoutLogForm({
 
   useEffect(() => {
     if (!restTimer) return;
-    const tick = window.setInterval(() => setNowMs(Date.now()), 250);
+    const tick = window.setInterval(() => {
+      const now = Date.now();
+      setNowMs(now);
+      if (remainingRestSeconds(restTimer, now) <= 0) {
+        setRestTimer(null);
+        signalRestComplete();
+      }
+    }, 250);
     return () => window.clearInterval(tick);
   }, [restTimer]);
-
-  useEffect(() => {
-    if (!restTimer) return;
-    if (remainingRestSeconds(restTimer, nowMs) > 0) return;
-    setRestTimer(null);
-    signalRestComplete();
-  }, [restTimer, nowMs]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
     setSets((current) =>
@@ -202,44 +207,33 @@ export function WorkoutLogForm({
   return (
     <div>
       <form action={action} className="space-y-5">
-        <header className="sticky top-[calc(env(safe-area-inset-top)+3rem)] z-10 -mx-4 flex items-center gap-2 border-b border-line bg-background/95 px-4 py-3 backdrop-blur">
-          <Link
-            href={cancelHref}
-            className="touch-target inline-flex items-center text-sm font-medium text-muted"
-          >
-            Cancel
-          </Link>
-          <div className="flex min-w-0 flex-1 flex-col items-center justify-center">
-            {restRunning ? (
-              <>
-                <p className="stat-display text-3xl font-semibold leading-none text-accent">
+        <header className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-10 -mx-4 overflow-hidden border-b border-line bg-background/95 backdrop-blur">
+          <div className="flex items-center gap-2 px-4 py-2">
+            <Link
+              href={cancelHref}
+              className="touch-target inline-flex items-center text-sm font-medium text-muted"
+            >
+              Cancel
+            </Link>
+            <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5">
+              {restRunning ? (
+                <p className="stat-display rounded-full bg-accent px-3 py-1 text-2xl font-semibold leading-none text-black">
                   {formatRestClock(restRemaining)}
                 </p>
-                <SessionTimer />
-              </>
-            ) : (
+              ) : null}
               <SessionTimer />
-            )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowNotes((open) => !open)}
+              className="touch-target text-sm font-medium underline-offset-4 hover:underline"
+            >
+              Notes
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowNotes((open) => !open)}
-            className="touch-target text-sm text-accent"
-          >
-            Notes
-          </button>
-          <button
-            type="submit"
-            name="intent"
-            value="complete"
-            disabled={pending}
-            className="touch-target text-sm font-semibold text-accent disabled:opacity-60"
-          >
-            {pending ? "Saving…" : "Save"}
-          </button>
         </header>
 
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 pt-2">
           <div className="min-w-0 flex-1">
             <label className="block">
               <span className="sr-only">Workout title</span>
@@ -357,7 +351,21 @@ export function WorkoutLogForm({
                       : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
-                  <WatchFormInline url={form.url} pending={form.pending} />
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    {previousLoads[name] ? (
+                      <button
+                        type="button"
+                        data-same-as-last={name}
+                        onClick={() =>
+                          setSets((current) => copyPreviousOntoExercise(current, name, previousLoads))
+                        }
+                        className="inline-flex min-h-8 items-center rounded-full border border-line px-2.5 text-xs font-semibold"
+                      >
+                        Same as last
+                      </button>
+                    ) : null}
+                    <WatchFormInline url={form.url} pending={form.pending} />
+                  </div>
                   <ExerciseNotepad
                     exerciseName={name}
                     programDayId={session.programDayId ?? ""}
@@ -389,7 +397,7 @@ export function WorkoutLogForm({
                       type="button"
                       data-rest-stop={name}
                       onClick={() => setRestTimer(null)}
-                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold uppercase tracking-wide text-accent"
+                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-semibold uppercase tracking-wide text-black"
                     >
                       <StopIcon />
                       Stop
@@ -399,7 +407,7 @@ export function WorkoutLogForm({
                       type="button"
                       data-rest-start={name}
                       onClick={() => setRestTimer(startRestTimer(name, restSeconds))}
-                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm uppercase tracking-wide text-accent hover:border-accent"
+                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm uppercase tracking-wide hover:border-accent"
                     >
                       <ClockIcon />
                       {formatRestPill(restSeconds)}
@@ -505,9 +513,16 @@ export function WorkoutLogForm({
                           name={`sets.${index}.completed`}
                           type="checkbox"
                           checked={set.completed}
-                          onChange={(event) =>
-                            updateSet(set.id, { completed: event.target.checked })
-                          }
+                          onChange={(event) => {
+                            const completed = event.target.checked;
+                            updateSet(set.id, { completed });
+                            const nextRest = restTimerAfterSetDone({
+                              completed,
+                              exerciseName: name,
+                              restSeconds,
+                            });
+                            if (nextRest) setRestTimer(nextRest);
+                          }}
                           className="h-5 w-5 accent-accent"
                         />
                       </label>
@@ -519,7 +534,7 @@ export function WorkoutLogForm({
               <button
                 type="button"
                 onClick={() => addSet(name)}
-                className="touch-target mt-2 text-sm font-medium text-accent"
+                className="touch-target mt-2 text-sm font-medium underline-offset-4 hover:underline"
               >
                 {mode === "timed_round" ? "+ Add round" : "+ Add new set"}
               </button>
@@ -540,13 +555,14 @@ export function WorkoutLogForm({
           <button
             type="button"
             onClick={insertExercise}
-            className="touch-target text-sm font-medium text-accent"
+            className="touch-target text-sm font-medium underline-offset-4 hover:underline"
           >
             Insert exercise
           </button>
         </div>
 
-        <div className="sticky bottom-28 z-10 -mx-4 space-y-2 border-t border-line bg-background/95 px-4 py-3 pr-20 backdrop-blur">
+        <div className="h-28" aria-hidden />
+        <div className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
           <button
             type="submit"
             name="intent"
@@ -554,7 +570,7 @@ export function WorkoutLogForm({
             disabled={pending}
             className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
           >
-            {pending ? "Saving…" : "Save"}
+            {pending ? "Saving…" : "SAVE"}
           </button>
           <button
             type="submit"

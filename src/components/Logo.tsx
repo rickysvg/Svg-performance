@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type LogoVariant = "mark" | "lockup" | "badge";
 type LogoSize = "xs" | "sm" | "md" | "lg";
 
@@ -38,14 +40,17 @@ export function Logo({
   const height = HEIGHTS[variant][size];
   const width = Math.round(height * aspect);
   return (
-    // Official raster — unoptimized so Next does not muddy the neon ring.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={src}
       alt="SVG Performance"
       width={width}
       height={height}
-      fetchPriority={priority ? "high" : "auto"}
+      sizes={
+        variant === "mark"
+          ? "64px"
+          : "(max-width: 640px) 264px, 288px"
+      }
+      priority={priority}
       className={`rounded-full object-contain ${className}`.trim()}
     />
   );

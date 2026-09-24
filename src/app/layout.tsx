@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Geist, Geist_Mono } from "next/font/google";
-import { AppSplash } from "@/components/AppSplash";
+import { Anton, Geist } from "next/font/google";
 import "./globals.css";
 
 const anton = Anton({
@@ -15,11 +14,6 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "SVG Performance",
   description:
@@ -28,17 +22,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${anton.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${anton.variable} ${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full bg-background font-sans text-foreground">
         <script
           dangerouslySetInnerHTML={{
             __html: `try{if(sessionStorage.getItem("svg_splash_seen")==="1")document.documentElement.dataset.splash="done"}catch(e){}`,
           }}
         />
-        <AppSplash />
         {children}
       </body>
     </html>

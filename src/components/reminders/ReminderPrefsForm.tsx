@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import {
   saveReminderPrefsAction,
   type ReminderActionState,
@@ -25,11 +25,9 @@ export function ReminderPrefsForm({
     saveReminderPrefsAction,
     {} as ReminderActionState,
   );
-  const [offset, setOffset] = useState(prefs.timezoneOffsetMinutes);
-
-  useEffect(() => {
-    setOffset(new Date().getTimezoneOffset());
-  }, []);
+  const [offset] = useState(() =>
+    typeof window === "undefined" ? prefs.timezoneOffsetMinutes : new Date().getTimezoneOffset(),
+  );
 
   return (
     <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
