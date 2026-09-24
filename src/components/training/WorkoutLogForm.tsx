@@ -207,35 +207,33 @@ export function WorkoutLogForm({
   return (
     <div>
       <form action={action} className="space-y-5">
-        <header className="sticky top-[calc(env(safe-area-inset-top)+3rem)] z-10 -mx-4 flex items-center gap-2 border-b border-line bg-background/95 px-4 py-3 backdrop-blur">
-          <Link
-            href={cancelHref}
-            className="touch-target inline-flex items-center text-sm font-medium text-muted"
-          >
-            Cancel
-          </Link>
-          <div className="flex min-w-0 flex-1 flex-col items-center justify-center">
-            {restRunning ? (
-              <>
-                <p className="stat-display rounded-full bg-accent px-3 text-3xl font-semibold leading-none text-black">
+        <header className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-10 -mx-4 overflow-hidden border-b border-line bg-background/95 backdrop-blur">
+          <div className="flex items-center gap-2 px-4 py-2">
+            <Link
+              href={cancelHref}
+              className="touch-target inline-flex items-center text-sm font-medium text-muted"
+            >
+              Cancel
+            </Link>
+            <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5">
+              {restRunning ? (
+                <p className="stat-display rounded-full bg-accent px-3 py-1 text-2xl font-semibold leading-none text-black">
                   {formatRestClock(restRemaining)}
                 </p>
-                <SessionTimer />
-              </>
-            ) : (
+              ) : null}
               <SessionTimer />
-            )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowNotes((open) => !open)}
+              className="touch-target text-sm font-medium underline-offset-4 hover:underline"
+            >
+              Notes
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowNotes((open) => !open)}
-            className="touch-target text-sm font-medium underline-offset-4 hover:underline"
-          >
-            Notes
-          </button>
         </header>
 
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 pt-2">
           <div className="min-w-0 flex-1">
             <label className="block">
               <span className="sr-only">Workout title</span>
@@ -353,19 +351,21 @@ export function WorkoutLogForm({
                       : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
-                  {previousLoads[name] ? (
-                    <button
-                      type="button"
-                      data-same-as-last={name}
-                      onClick={() =>
-                        setSets((current) => copyPreviousOntoExercise(current, name, previousLoads))
-                      }
-                      className="mt-2 inline-flex min-h-8 items-center rounded-full border border-line px-2.5 text-xs font-semibold"
-                    >
-                      Same as last
-                    </button>
-                  ) : null}
-                  <WatchFormInline url={form.url} pending={form.pending} />
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    {previousLoads[name] ? (
+                      <button
+                        type="button"
+                        data-same-as-last={name}
+                        onClick={() =>
+                          setSets((current) => copyPreviousOntoExercise(current, name, previousLoads))
+                        }
+                        className="inline-flex min-h-8 items-center rounded-full border border-line px-2.5 text-xs font-semibold"
+                      >
+                        Same as last
+                      </button>
+                    ) : null}
+                    <WatchFormInline url={form.url} pending={form.pending} />
+                  </div>
                   <ExerciseNotepad
                     exerciseName={name}
                     programDayId={session.programDayId ?? ""}

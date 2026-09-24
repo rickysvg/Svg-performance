@@ -39,13 +39,13 @@ const TEXT_ACTIONS = [
 
 export function HomeQuickActions() {
   return (
-    <section className="space-y-3">
+    <section className="min-w-0 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         {PHOTO_ACTIONS.map((action) => (
           <Link
             key={action.href}
             href={action.href}
-            className="relative block aspect-[4/3] min-h-[9.5rem] overflow-hidden rounded-[1.25rem] bg-black"
+            className="relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black"
           >
             <Image
               src={action.src}
@@ -76,7 +76,7 @@ export function HomeQuickActions() {
           <Link
             key={action.href}
             href={action.href}
-            className="flex min-h-[5.5rem] flex-col justify-between rounded-2xl border border-line bg-card px-3 py-3"
+            className="flex min-h-[5.5rem] min-w-0 w-full flex-col justify-between rounded-2xl border border-line bg-card px-3 py-3"
           >
             <span className="font-display inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-black">
               {action.label.slice(0, 1)}
