@@ -1,51 +1,44 @@
-import { SHOP_PRODUCTS } from "@/lib/shop";
-
-function Tee() {
-  return (
-    <svg viewBox="0 0 64 64" className="h-20 w-20 text-black" aria-hidden>
-      <path
-        d="M12 20 24 14h16l12 6-8 8v24H20V28l-8-8Z"
-        fill="currentColor"
-        opacity="0.9"
-      />
-    </svg>
-  );
-}
-
-function Hoodie() {
-  return (
-    <svg viewBox="0 0 64 64" className="h-24 w-24 text-black" aria-hidden>
-      <path
-        d="M20 16c0-8 8-12 12-12s12 4 12 12l8 6-6 8v24H18V30l-6-8 8-6Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function Cap() {
-  return (
-    <svg viewBox="0 0 64 48" className="h-14 w-16 text-black" aria-hidden>
-      <path d="M10 28c4-12 14-18 22-18s18 6 22 18H10Z" fill="currentColor" />
-      <path d="M8 30h36c6 0 10 2 12 4H10c-2 0-3-2-2-4Z" fill="currentColor" />
-    </svg>
-  );
-}
+import Image from "next/image";
+import { HOME_SHOP_PRODUCTS, SHOP_PRODUCTS } from "@/lib/shop";
 
 export function HomeMerchPromo() {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-accent px-5 py-8 text-black">
+    <section className="relative min-w-0 overflow-hidden rounded-[2rem] bg-accent px-5 py-8 text-black">
       <p className="font-display text-2xl font-semibold uppercase leading-tight tracking-wide">
         Check the new SVG &amp; CO collection
       </p>
       <p className="mt-2 max-w-xs text-sm">
-        Names only — the live store has price, size, and stock. Not sold inside
-        this app.
+        Gear from SVG &amp; CO. Tap to shop on svgandco.com.
       </p>
-      <div className="mt-6 flex items-end justify-center gap-2">
-        <Tee />
-        <Hoodie />
-        <Cap />
+      <div className="mt-6 grid min-w-0 grid-cols-3 gap-2">
+        {HOME_SHOP_PRODUCTS.map((product) => (
+          <a
+            key={product.href}
+            href={product.href}
+            target="_blank"
+            rel="noreferrer"
+            className="relative block min-h-11 min-w-0 overflow-hidden rounded-2xl bg-black"
+          >
+            <span className="relative block aspect-square">
+              <Image
+                src={product.src}
+                alt={product.alt}
+                fill
+                sizes="(max-width: 390px) 30vw, (max-width: 640px) 28vw, 180px"
+                className="object-cover object-center"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"
+              />
+              <span className="absolute inset-x-0 bottom-0 px-1.5 pb-2 pt-6">
+                <span className="font-display block text-[10px] font-semibold uppercase leading-tight tracking-wide text-white">
+                  {product.shortName}
+                </span>
+              </span>
+            </span>
+          </a>
+        ))}
       </div>
       <a
         href={SHOP_PRODUCTS}
