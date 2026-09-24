@@ -32,6 +32,8 @@ import {
 } from "@/lib/rest-timer";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
+import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
+import type { ExerciseNoteView } from "@/lib/exercise-notes";
 
 type Session = WorkoutSession & {
   sets: WorkoutSet[];
@@ -60,7 +62,7 @@ function newClientSet(
   exerciseName: string,
   setNumber: number,
   loadUnit: string,
-  logMode: LogMode = "load_reps",
+  logMode: LogMode = "timed",
   durationSeconds: number | null = null,
 ): WorkoutSet {
   return {
@@ -116,9 +118,11 @@ function SessionTimer() {
 export function WorkoutLogForm({
   session,
   previousLoads = {},
+  notes = {},
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
+  notes?: Record<string, ExerciseNoteView>;
 }) {
   const [state, action, pending] = useActionState(
     saveWorkoutAction,
@@ -328,7 +332,11 @@ export function WorkoutLogForm({
             : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
           const hint = modeHint(mode);
           return (
-            <section key={name} className="rounded-2xl border border-line bg-card p-4">
+            <section
+              key={name}
+              data-exercise-block={name}
+              className="rounded-2xl border border-line bg-card p-4"
+            >
               <div className="flex items-start gap-3">
                 <ExerciseThumb
                   name={name}
@@ -350,6 +358,24 @@ export function WorkoutLogForm({
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
                   <WatchFormInline url={form.url} pending={form.pending} />
+                  <ExerciseNotepad
+                    exerciseName={name}
+                    programDayId={session.programDayId ?? ""}
+                    workoutId={session.id}
+                    logMode={mode}
+                    plannedLine={
+                      planned
+                        ? plannedSetLine({
+                            sets: planned.sets,
+                            reps: planned.reps,
+                            restSeconds: planned.restSeconds,
+                            logMode: mode,
+                            name,
+                          })
+                        : ""
+                    }
+                    note={notes[name]}
+                  />
                 </div>
               </div>
 

@@ -656,7 +656,7 @@ async function tagSeededExerciseModes() {
     for (const day of program.days) {
       for (const exercise of day.exercises) {
         let logMode = fallbackLogMode(exercise.name, exercise.reps);
-        if (program.slug === DEMO_SKILL_SLUG && logMode !== "timed") {
+        if (program.slug === DEMO_SKILL_SLUG && logMode === "load_reps") {
           logMode = "timed_round";
         }
         const data: {
@@ -666,12 +666,15 @@ async function tagSeededExerciseModes() {
           loadText?: string;
         } = { logMode };
         if (logMode === "timed") {
-          data.loadText = /jump rope|bike|interval/i.test(exercise.name)
-            ? exercise.loadText
-            : "Hold — no weight";
+          if (/\b(plank|hold|wall sit|hollow|dead hang)\b/i.test(exercise.name)) {
+            data.loadText = "Hold — no weight";
+          }
           if (/\bplank\b/i.test(exercise.name) && exercise.restSeconds < 60) {
             data.restSeconds = 60;
           }
+        }
+        if (logMode === "reps_only" && /bodyweight/i.test(exercise.loadText)) {
+          data.loadText = "Bodyweight — no lbs";
         }
         if (logMode === "timed_round") {
           data.reps = "2:00";

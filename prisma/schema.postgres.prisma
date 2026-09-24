@@ -54,6 +54,7 @@ model User {
   challengeEnrollments     ChallengeEnrollment[]
   groceryLists             GroceryList[]
   weeklyFocusAuthored      WeeklyFocusVideo[]     @relation("FocusAuthor")
+  exerciseNotes            ExerciseNote[]
 }
 
 model Session {
@@ -192,6 +193,22 @@ model WorkoutSet {
   notes            String         @default("")
 
   @@index([workoutSessionId])
+}
+
+model ExerciseNote {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseName String
+  programDayId String   @default("")
+  body         String   @default("")
+  aiReply      String   @default("")
+  aiOffline    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, exerciseName, programDayId])
+  @@index([userId, programDayId])
 }
 
 model NutritionEntry {
