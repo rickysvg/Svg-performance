@@ -22,7 +22,11 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Romanian deadlift")).toBe("load_reps");
     expect(fallbackLogMode("Overhead press")).toBe("load_reps");
     expect(fallbackLogMode("One-arm row")).toBe("load_reps");
-    expect(fallbackLogMode("Farmer carry")).toBe("load_reps");
+    expect(fallbackLogMode("Farmer carry")).toBe("load_timed");
+    expect(fallbackLogMode("Suitcase carry")).toBe("load_timed");
+    expect(fallbackLogMode("Overhead carry")).toBe("load_timed");
+    expect(fallbackLogMode("Rack carry")).toBe("load_timed");
+    expect(fallbackLogMode("Weighted hold")).toBe("load_timed");
     expect(fallbackLogMode("Kettlebell swing or hip hinge")).toBe("load_reps");
     expect(fallbackLogMode("Reverse lunge")).toBe("load_reps");
     expect(fallbackLogMode("Push-up or dumbbell bench press")).toBe("load_reps");
@@ -72,6 +76,15 @@ describe("exercise log modes", () => {
         name: "Jab–cross (1–2)",
       }),
     ).toBe("3 rounds × 3:00, 45s rest");
+    expect(
+      plannedSetLine({
+        sets: 3,
+        reps: "30–40 sec",
+        restSeconds: 90,
+        logMode: "load_timed",
+        name: "Farmer carry",
+      }),
+    ).toBe("3 × 30–40s @ lbs, 90s rest");
   });
 
   it("labels previous timed sets as hold or round time", () => {
@@ -93,5 +106,14 @@ describe("exercise log modes", () => {
         durationSeconds: 180,
       }),
     ).toBe("180s round");
+    expect(
+      previousSetLabel({
+        reps: null,
+        loadValue: 70,
+        loadUnit: "lb",
+        logMode: "load_timed",
+        durationSeconds: 40,
+      }),
+    ).toBe("40s × 70lb");
   });
 });

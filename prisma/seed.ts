@@ -142,10 +142,10 @@ async function main() {
                   sortOrder: 5,
                   name: "Farmer carry",
                   sets: 3,
-                  reps: "30–40 meters",
+                  reps: "30–40 sec",
                   loadText: "Heavy for you, walk tall",
                   restSeconds: 90,
-                  notes: "Two dumbbells, kettlebells, or even loaded bags. Short, hard steps.",
+                  notes: "Two dumbbells, kettlebells, or even loaded bags. Walk for the seconds — log lbs and time, not reps.",
                   ...formVideoFieldsFor("Farmer carry"),
                 },
               ],
@@ -656,7 +656,7 @@ async function tagSeededExerciseModes() {
     for (const day of program.days) {
       for (const exercise of day.exercises) {
         let logMode = fallbackLogMode(exercise.name, exercise.reps);
-        if (program.slug === DEMO_SKILL_SLUG && logMode === "load_reps") {
+        if (program.slug === DEMO_SKILL_SLUG && (logMode === "load_reps" || logMode === "load_timed")) {
           logMode = "timed_round";
         }
         const data: {
@@ -671,6 +671,11 @@ async function tagSeededExerciseModes() {
           }
           if (/\bplank\b/i.test(exercise.name) && exercise.restSeconds < 60) {
             data.restSeconds = 60;
+          }
+        }
+        if (logMode === "load_timed") {
+          if (/meter/i.test(exercise.reps) || !/\bsec\b|\d+\s*:/i.test(exercise.reps)) {
+            data.reps = "30–40 sec";
           }
         }
         if (logMode === "reps_only" && /bodyweight/i.test(exercise.loadText)) {

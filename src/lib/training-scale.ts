@@ -97,8 +97,9 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   },
   "Farmer carry": {
     sets: 4,
-    reps: "40–50 meters",
+    reps: "40–50 sec",
     loadText: "Heavy — walk tall",
+    restSeconds: 45,
   },
   "Kettlebell swing or hip hinge": {
     sets: 5,
@@ -186,6 +187,10 @@ export function scaleExercise(
     return scaleStrengthExercise(exercise, band, mode);
   }
 
+  if (mode === "load_timed") {
+    return scaleLoadedCarry(exercise, band, mode, restForBand(exercise.restSeconds, band));
+  }
+
   if (mode === "timed" || mode === "timed_round") {
     return scaleHoldOrInterval(exercise, band, mode);
   }
@@ -240,12 +245,48 @@ function scaleHoldOrInterval(
   return { ...exercise, logMode: mode };
 }
 
+function scaleLoadedCarry(
+  exercise: ScaleableExercise,
+  band: ScaleBand,
+  mode: LogMode,
+  rest: number,
+): ScaleableExercise {
+  if (band === "advanced") {
+    return {
+      ...exercise,
+      logMode: mode,
+      sets: Math.max(exercise.sets, 4),
+      reps: "40–50 sec",
+      loadText: "Heavy — walk tall",
+      restSeconds: 45,
+    };
+  }
+  if (band === "intermediate") {
+    return {
+      ...exercise,
+      logMode: mode,
+      reps: "35–45 sec",
+      loadText: exercise.loadText || "Heavy for you, walk tall",
+      restSeconds: rest,
+    };
+  }
+  return {
+    ...exercise,
+    logMode: mode,
+    reps: "30–40 sec",
+    restSeconds: Math.max(rest, 75),
+  };
+}
+
 function scaleStrengthExercise(
   exercise: ScaleableExercise,
   band: ScaleBand,
   mode: LogMode,
 ): ScaleableExercise {
   const rest = restForBand(exercise.restSeconds, band);
+  if (mode === "load_timed") {
+    return scaleLoadedCarry(exercise, band, mode, rest);
+  }
   if (band !== "advanced") {
     const hold = mode === "timed" ? { loadText: "Hold — no weight" } : {};
     return { ...exercise, logMode: mode, restSeconds: rest, ...hold };

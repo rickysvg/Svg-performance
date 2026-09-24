@@ -4,7 +4,13 @@ import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
-import { isDurationMode, isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode";
+import {
+  hidesLoad,
+  isDurationMode,
+  isLogMode,
+  resolveLogMode,
+  type LogMode,
+} from "@/lib/exercise-log-mode";
 import {
   plannedDurationSeconds,
   scaleBandFromPrefs,
@@ -262,7 +268,7 @@ export async function updateWorkoutSessionForUser(input: {
               setNumber: set.setNumber,
               sortOrder: index,
               reps: timed ? null : set.reps,
-              loadValue: timed ? null : set.loadValue,
+              loadValue: hidesLoad(mode) ? null : set.loadValue,
               loadUnit: set.loadUnit,
               logMode: mode,
               durationSeconds: timed ? set.durationSeconds ?? null : null,

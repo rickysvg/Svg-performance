@@ -1,4 +1,4 @@
-export const LOG_MODES = ["load_reps", "reps_only", "timed", "timed_round"] as const;
+export const LOG_MODES = ["load_reps", "load_timed", "reps_only", "timed", "timed_round"] as const;
 
 export type LogMode = (typeof LOG_MODES)[number];
 
@@ -10,8 +10,10 @@ const ROUND_NAME =
   /\b(bag|pads|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
 const BODYWEIGHT_COUNT_NAME =
   /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|pike|band pull-apart|face pull|\bdip\b)\b/i;
+const LOADED_CARRY_NAME =
+  /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
 const WEIGHTED_LIFT_NAME =
-  /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|one-arm row|\brow\b|farmer|carry|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat)\b/i;
+  /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|one-arm row|\brow\b|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat)\b/i;
 const LOADED_OPTION_NAME = /\b(dumbbell|barbell|kettlebell|bench press|bar )\b/i;
 
 export function isLogMode(value: string | null | undefined): value is LogMode {
@@ -27,6 +29,7 @@ function isHoldName(name: string) {
  * Everything else is timed, a skill round, or reps with no load column.
  */
 export function fallbackLogMode(name: string, reps = ""): LogMode {
+  if (LOADED_CARRY_NAME.test(name)) return "load_timed";
   if (isHoldName(name)) return "timed";
   if (CARDIO_TIMED_NAME.test(name)) return "timed";
   if (ROUND_NAME.test(name)) return "timed_round";
@@ -49,11 +52,11 @@ export function resolveLogMode(input: {
 }
 
 export function isDurationMode(mode: LogMode) {
-  return mode === "timed" || mode === "timed_round";
+  return mode === "timed" || mode === "timed_round" || mode === "load_timed";
 }
 
 export function hidesLoad(mode: LogMode) {
-  return mode !== "load_reps";
+  return mode !== "load_reps" && mode !== "load_timed";
 }
 
 export function formatClock(totalSeconds: number) {
@@ -86,13 +89,16 @@ export function parseDurationSeconds(value: string | number | null | undefined):
 
 export function modeColumnLabel(mode: LogMode) {
   if (mode === "timed_round") return "Round";
-  if (mode === "timed") return "Sec";
+  if (mode === "timed" || mode === "load_timed") return "Sec";
   return "Reps";
 }
 
 export function modeHint(mode: LogMode) {
   if (mode === "timed_round") {
     return "Log the round time. Rest between rounds is the pill above — not pounds.";
+  }
+  if (mode === "load_timed") {
+    return "Log seconds and lbs. Loaded carry / hold — no reps.";
   }
   if (mode === "timed") {
     return "Log the work time in seconds. Not a weight lift — no lbs.";
@@ -101,6 +107,12 @@ export function modeHint(mode: LogMode) {
     return "Bodyweight — log reps only. No lbs.";
   }
   return "";
+}
+
+function carryDurationLabel(reps: string) {
+  const raw = reps.trim();
+  if (!raw) return "40s";
+  return raw.replace(/\s*seconds?\b/i, "s").replace(/\s*sec\b/i, "s").replace(/\s+/g, " ").trim();
 }
 
 export function plannedSetLine(input: {
@@ -114,6 +126,9 @@ export function plannedSetLine(input: {
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
   if (mode === "timed_round") {
     return `${input.sets} rounds × ${input.reps}${rest}`;
+  }
+  if (mode === "load_timed") {
+    return `${input.sets} × ${carryDurationLabel(input.reps)} @ lbs${rest}`;
   }
   if (mode === "timed") {
     const unit = isHoldName(input.name ?? "")

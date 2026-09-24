@@ -136,7 +136,7 @@ export async function askExerciseNoteForUser(input: {
   const lane = coachLaneForExercise(note.exerciseName);
   const message = [
     `Exercise: ${note.exerciseName}.`,
-    `Log mode: ${mode}. Only weighted lifts (load_reps) use reps + lbs — do not invent pounds.`,
+    `Log mode: ${mode}. load_reps is reps + lbs. load_timed is seconds + lbs (loaded carry / hold), never reps. Do not invent pounds on bodyweight or skill work.`,
     planned ? `Planned work: ${planned}.` : "",
     `Member note or question: ${note.body}`,
     "Give one or two practical cues. YouTube / Learn clips are external references, not SVG-produced film.",

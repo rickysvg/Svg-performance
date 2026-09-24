@@ -52,6 +52,15 @@ describe("workout logger media and previous loads", () => {
     );
     expect(
       plannedSetLine({
+        sets: 3,
+        reps: "30–40 sec",
+        restSeconds: 90,
+        logMode: "load_timed",
+        name: "Farmer carry",
+      }),
+    ).toBe("3 × 30–40s @ lbs, 90s rest");
+    expect(
+      plannedSetLine({
         sets: 8,
         reps: "20 sec on / 40 sec easy",
         restSeconds: 0,
@@ -186,5 +195,48 @@ describe("workout logger media and previous loads", () => {
     const stranger = await getPreviousLoadsForUser(other.id, ["Goblet squat"]);
     expect(stranger["Goblet squat"]?.[1]?.loadValue).toBe(999);
     expect(stranger["Goblet squat"]?.[1]?.loadValue).not.toBe(40);
+  });
+
+  it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {
+    const user = await makeUser("carry-logger@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 2)!;
+    const draft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+    });
+    const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
+    const band = draft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
+    expect(carry.length).toBeGreaterThan(0);
+    expect(carry[0]?.logMode).toBe("load_timed");
+    expect(carry[0]?.durationSeconds).toBeGreaterThanOrEqual(30);
+    expect(carry[0]?.reps).toBeNull();
+    expect(band[0]?.logMode).toBe("reps_only");
+
+    const saved = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: draft.id,
+      title: draft.title,
+      performedAt: new Date(),
+      notes: "",
+      status: "draft",
+      sets: [
+        {
+          exerciseName: "Farmer carry",
+          setNumber: 1,
+          reps: null,
+          loadValue: 70,
+          loadUnit: "lb",
+          logMode: "load_timed",
+          durationSeconds: 40,
+          completed: true,
+        },
+      ],
+    });
+    expect(saved.sets[0]?.logMode).toBe("load_timed");
+    expect(saved.sets[0]?.durationSeconds).toBe(40);
+    expect(saved.sets[0]?.loadValue).toBe(70);
+    expect(saved.sets[0]?.reps).toBeNull();
   });
 });
