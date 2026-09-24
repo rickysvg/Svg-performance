@@ -113,6 +113,22 @@ describe("training scale bands", () => {
     expect(plank.sets).toBe(4);
     expect(plank.reps).toMatch(/45–60/);
     expect(plank.restSeconds).toBe(30);
+
+    const carry = {
+      name: "Farmer carry",
+      sets: 3,
+      reps: "30–40 sec",
+      loadText: "Heavy for you, walk tall",
+      restSeconds: 90,
+      logMode: "load_timed" as const,
+    };
+    const beginnerCarry = scaleExercise(carry, { band: "beginner", programSlug: "demo-strength-base" });
+    const advancedCarry = scaleExercise(carry, { band: "advanced", programSlug: "demo-strength-base" });
+    expect(beginnerCarry.logMode).toBe("load_timed");
+    expect(beginnerCarry.reps).toBe("30–40 sec");
+    expect(advancedCarry.sets).toBe(4);
+    expect(advancedCarry.reps).toBe("40–50 sec");
+    expect(advancedCarry.loadText).toMatch(/heavy/i);
   });
 });
 
@@ -149,7 +165,7 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["Push-up or dumbbell bench press"]).toBe("load_reps");
     expect(modes["One-arm row"]).toBe("load_reps");
     expect(modes["Overhead press"]).toBe("load_reps");
-    expect(modes["Farmer carry"]).toBe("load_reps");
+    expect(modes["Farmer carry"]).toBe("load_timed");
     expect(modes["Kettlebell swing or hip hinge"]).toBe("load_reps");
     expect(modes["Band pull-apart or face pull"]).toBe("reps_only");
     expect(modes["Squat jump or box step-up"]).toBe("reps_only");
@@ -158,6 +174,19 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["Front plank"]).toBe("timed");
     expect(modes["Side plank"]).toBe("timed");
     expect(modes["Jump rope or easy bike intervals"]).toBe("timed");
+    const counts = Object.values(modes).reduce(
+      (acc, mode) => {
+        acc[mode] = (acc[mode] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    expect(counts).toEqual({
+      load_reps: 7,
+      load_timed: 1,
+      reps_only: 4,
+      timed: 3,
+    });
     expect(
       skill?.days.flatMap((day) => day.exercises).every((row) =>
         row.logMode === "timed_round" || row.logMode === "timed",

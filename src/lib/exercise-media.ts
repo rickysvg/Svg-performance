@@ -188,7 +188,15 @@ export function previousSetLabel(input: {
 } | null) {
   if (!input) return "—";
   if (input.durationSeconds != null && input.durationSeconds > 0) {
-    const label = input.logMode === "timed_round" ? "round" : "hold";
+    if (input.loadValue != null) {
+      return `${input.durationSeconds}s × ${input.loadValue}${input.loadUnit}`;
+    }
+    const label =
+      input.logMode === "timed_round"
+        ? "round"
+        : input.logMode === "load_timed"
+          ? "carry"
+          : "hold";
     return `${input.durationSeconds}s ${label}`;
   }
   if (input.reps != null && input.loadValue != null) {
