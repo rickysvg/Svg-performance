@@ -35,6 +35,7 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Squat jump or box step-up")).toBe("reps_only");
     expect(fallbackLogMode("Lateral bound or side step-over")).toBe("reps_only");
     expect(fallbackLogMode("Jump rope or easy bike intervals")).toBe("timed");
+    expect(fallbackLogMode("Assault bike intervals")).toBe("timed_round");
     expect(fallbackLogMode("Mountain climbers")).toBe("timed");
     expect(fallbackLogMode("Burpees")).toBe("timed");
     expect(fallbackLogMode("Unknown mobility flow")).toBe("timed");
@@ -76,6 +77,15 @@ describe("exercise log modes", () => {
         name: "Jab–cross (1–2)",
       }),
     ).toBe("3 rounds × 3:00, 45s rest");
+    expect(
+      plannedSetLine({
+        sets: 4,
+        reps: "15s work / 15s rest × 8",
+        restSeconds: 60,
+        logMode: "timed_round",
+        name: "Assault bike intervals",
+      }),
+    ).toBe("4 sets · 15s work / 15s rest × 8, 60s between sets");
     expect(
       plannedSetLine({
         sets: 3,

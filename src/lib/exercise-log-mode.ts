@@ -1,3 +1,5 @@
+import { bikeIntervalReps, isBikeIntervalName } from "@/lib/bike-sessions";
+
 export const LOG_MODES = ["load_reps", "load_timed", "reps_only", "timed", "timed_round"] as const;
 
 export type LogMode = (typeof LOG_MODES)[number];
@@ -29,6 +31,7 @@ function isHoldName(name: string) {
  * Everything else is timed, a skill round, or reps with no load column.
  */
 export function fallbackLogMode(name: string, reps = ""): LogMode {
+  if (isBikeIntervalName(name)) return "timed_round";
   if (LOADED_CARRY_NAME.test(name)) return "load_timed";
   if (isHoldName(name)) return "timed";
   if (CARDIO_TIMED_NAME.test(name)) return "timed";
@@ -93,7 +96,10 @@ export function modeColumnLabel(mode: LogMode) {
   return "Reps";
 }
 
-export function modeHint(mode: LogMode) {
+export function modeHint(mode: LogMode, name?: string) {
+  if (name && isBikeIntervalName(name)) {
+    return "Mark Done after each set of 8 intervals. Rest 60s starts automatically. No lbs or reps.";
+  }
   if (mode === "timed_round") {
     return "Log the round time. Rest between rounds is the pill above — not pounds.";
   }
@@ -123,6 +129,11 @@ export function plannedSetLine(input: {
   name?: string;
 }) {
   const mode = resolveLogMode(input);
+  if (isBikeIntervalName(input.name ?? "")) {
+    const reps = input.reps || bikeIntervalReps();
+    const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between sets` : "";
+    return `${input.sets} sets · ${reps}${between}`;
+  }
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
   if (mode === "timed_round") {
     return `${input.sets} rounds × ${input.reps}${rest}`;

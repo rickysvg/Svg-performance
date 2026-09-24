@@ -15,4 +15,15 @@ describe("Logger layout", () => {
     expect(source).toContain("Same as last");
     expect(source).toContain("WatchFormInline");
   });
+
+  it("shows 15s/15s interval chrome and Set rows for assault bike", () => {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("data-bike-intervals");
+    expect(source).toContain("isBikeIntervalName");
+    expect(source).toContain("Rest between sets");
+    expect(source).toContain("restTimerAfterSetDone");
+  });
 });

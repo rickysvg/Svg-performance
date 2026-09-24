@@ -11,6 +11,11 @@ import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
+import {
+  bikeIntervalChrome,
+  bikeSessionForName,
+  isBikeIntervalName,
+} from "@/lib/bike-sessions";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
@@ -98,6 +103,27 @@ function ClockIcon() {
         strokeLinecap="round"
       />
     </svg>
+  );
+}
+
+function BikeIntervalStrip({ name }: { name: string }) {
+  const session = bikeSessionForName(name);
+  if (!session) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-background p-3" data-bike-intervals>
+      <p className="font-display text-xs uppercase tracking-wide text-accent">
+        {bikeIntervalChrome(session)}
+      </p>
+      <ol className="mt-2 grid grid-cols-4 gap-1.5">
+        {Array.from({ length: session.roundsPerSet }, (_, index) => (
+          <li key={index} className="rounded-lg bg-black px-1.5 py-1.5 text-center">
+            <p className="font-display text-[11px] leading-none text-accent">{session.workSeconds}s</p>
+            <p className="mt-0.5 text-[9px] text-white">work</p>
+            <p className="text-[9px] text-white/70">{session.restSeconds}s rest</p>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -318,13 +344,16 @@ export function WorkoutLogForm({
             name,
             reps: planned?.reps,
           });
-          const timed = isDurationMode(mode);
-          const restSeconds = planned?.restSeconds ?? (mode === "timed_round" ? 90 : 60);
+          const bike = isBikeIntervalName(name);
+          const timed = isDurationMode(mode) && !bike;
+          const restSeconds = planned?.restSeconds ?? (bike ? 60 : mode === "timed_round" ? 90 : 60);
           const thisRest = restRunning && restTimer?.exerciseName === name;
-          const columns = hidesLoad(mode)
-            ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
-            : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
-          const hint = modeHint(mode);
+          const columns = bike
+            ? "grid-cols-[2rem_1fr_2rem]"
+            : hidesLoad(mode)
+              ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
+              : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
+          const hint = modeHint(mode, name);
           return (
             <section
               key={name}
@@ -351,6 +380,7 @@ export function WorkoutLogForm({
                       : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+                  {bike ? <BikeIntervalStrip name={name} /> : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                     {previousLoads[name] ? (
                       <button
@@ -390,7 +420,11 @@ export function WorkoutLogForm({
               {restSeconds > 0 ? (
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-sm text-muted">
-                    {mode === "timed_round" ? "Rest between rounds" : "Rest between each set"}
+                    {bike
+                      ? "Rest between sets"
+                      : mode === "timed_round"
+                        ? "Rest between rounds"
+                        : "Rest between each set"}
                   </p>
                   {thisRest ? (
                     <button
@@ -417,10 +451,10 @@ export function WorkoutLogForm({
               ) : null}
 
               <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
-                <span>{mode === "timed_round" ? "Rd" : "Set"}</span>
+                <span>{bike || mode !== "timed_round" ? "Set" : "Rd"}</span>
                 <span>Previous</span>
-                <span>{modeColumnLabel(mode)}</span>
-                {hidesLoad(mode) ? null : <span>{loadHeader}</span>}
+                {bike ? null : <span>{modeColumnLabel(mode)}</span>}
+                {bike || hidesLoad(mode) ? null : <span>{loadHeader}</span>}
                 <span className="sr-only">Done</span>
               </div>
 
@@ -444,7 +478,9 @@ export function WorkoutLogForm({
                       <input type="hidden" name={`sets.${index}.logMode`} value={mode} />
                       <p className="text-sm font-medium">{indexInGroup + 1}</p>
                       <p className="truncate text-sm text-muted">{previousSetLabel(previous)}</p>
-                      {timed ? (
+                      {bike ? (
+                        <input type="hidden" name={`sets.${index}.durationSeconds`} value="" />
+                      ) : timed ? (
                         <label className="block">
                           <span className="sr-only">{modeColumnLabel(mode)} seconds</span>
                           <input
@@ -484,7 +520,7 @@ export function WorkoutLogForm({
                           />
                         </label>
                       )}
-                      {hidesLoad(mode) ? (
+                      {bike || hidesLoad(mode) ? (
                         <input type="hidden" name={`sets.${index}.loadValue`} value="" />
                       ) : (
                         <label className="block">
@@ -536,7 +572,7 @@ export function WorkoutLogForm({
                 onClick={() => addSet(name)}
                 className="touch-target mt-2 text-sm font-medium underline-offset-4 hover:underline"
               >
-                {mode === "timed_round" ? "+ Add round" : "+ Add new set"}
+                {bike || mode !== "timed_round" ? "+ Add new set" : "+ Add round"}
               </button>
             </section>
           );

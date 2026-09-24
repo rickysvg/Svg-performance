@@ -1,3 +1,4 @@
+import { BIKE_PROGRAM_DAY_NUMBER } from "@/lib/bike-sessions";
 import { WEEKDAYS } from "@/lib/constants";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 
@@ -96,44 +97,12 @@ function bagDayNumber(focus: string, slot: "power" | "technique") {
   return 3;
 }
 
-function thursdaySkillSlot(focus: string): PlanSessionSlot {
-  if (focus === "boxing") {
-    return {
-      kind: "skill",
-      label: "Second striking block",
-      programSlug: DEMO_SKILL_PROGRAM_SLUG,
-      dayNumber: 3,
-    };
-  }
-  if (focus === "muay-thai") {
-    return {
-      kind: "skill",
-      label: "Bag / pads (second block)",
-      programSlug: DEMO_SKILL_PROGRAM_SLUG,
-      dayNumber: 2,
-    };
-  }
-  if (focus === "jiu-jitsu") {
-    return {
-      kind: "skill",
-      label: "Grappling / ground",
-      programSlug: DEMO_SKILL_PROGRAM_SLUG,
-      dayNumber: 6,
-    };
-  }
-  if (focus === "wrestling") {
-    return {
-      kind: "skill",
-      label: "Grappling / ground",
-      programSlug: DEMO_SKILL_PROGRAM_SLUG,
-      dayNumber: 5,
-    };
-  }
+function bikeSlot(): PlanSessionSlot {
   return {
-    kind: "skill",
-    label: "Grappling / ground",
-    programSlug: DEMO_SKILL_PROGRAM_SLUG,
-    dayNumber: 4,
+    kind: "conditioning",
+    label: "Assault Bike",
+    programSlug: DEMO_PROGRAM_SLUG,
+    dayNumber: BIKE_PROGRAM_DAY_NUMBER,
   };
 }
 
@@ -175,7 +144,6 @@ function skillSlot(dayNumber: number, label: string): PlanSessionSlot {
 export function coreSkeletonSessions(weekday: PlanWeekday, focus?: string | null): PlanSessionSlot[] {
   const art = focus ?? "";
   const striking = isStrikingFocus(art);
-  const grappling = isGrapplingFocus(art);
 
   if (weekday === "Monday") {
     const sessions: PlanSessionSlot[] = [];
@@ -187,10 +155,7 @@ export function coreSkeletonSessions(weekday: PlanWeekday, focus?: string | null
   }
 
   if (weekday === "Tuesday") {
-    if (striking) {
-      return [skillSlot(bagDayNumber(art, "technique"), "Skill technique (lighter)")];
-    }
-    return [{ kind: "mobility", label: "Active recovery / mobility" }];
+    return [bikeSlot()];
   }
 
   if (weekday === "Wednesday") {
@@ -203,10 +168,7 @@ export function coreSkeletonSessions(weekday: PlanWeekday, focus?: string | null
   }
 
   if (weekday === "Thursday") {
-    if (grappling || striking) {
-      return [thursdaySkillSlot(art)];
-    }
-    return [{ kind: "rest", label: "Rest / skip" }];
+    return [bikeSlot()];
   }
 
   if (weekday === "Friday") {
@@ -234,6 +196,7 @@ function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, a
   if (hasSkill && sessions[0]?.optional) return "Optional";
   if (hasSkill) return "Skill";
   if (kinds.includes("conditioning") && kinds.includes("strength")) return "Cond+Lift";
+  if (kinds.includes("conditioning")) return "Bike";
   if (hasLift) return "Lift";
   if (kinds.includes("mobility")) return "Recover";
   return "Rest";
@@ -276,7 +239,8 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs): Record<PlanWeekday, DayP
 
   for (const weekday of WEEKDAYS) {
     const optionalDay = weekday === "Saturday";
-    const active = weekday === "Sunday" ? false : activeDays.has(weekday);
+    const alwaysOnBike = weekday === "Tuesday" || weekday === "Thursday";
+    const active = weekday === "Sunday" ? false : alwaysOnBike || activeDays.has(weekday);
     const sessions = coreSkeletonSessions(weekday, focus);
     let skipReason: string | undefined;
     if (!active && weekday !== "Sunday") {

@@ -89,6 +89,12 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     channel: "",
     title: "",
   },
+  "Assault bike intervals": {
+    url: "https://www.youtube.com/watch?v=G8a1IAVLdjA",
+    pending: false,
+    channel: "WOD Foundations",
+    title: "Air Bike / Assault Bike — How To Use It",
+  },
   "Jump rope or easy bike intervals": {
     url: "https://www.youtube.com/watch?v=FJmRQ5iTXKE",
     pending: false,
