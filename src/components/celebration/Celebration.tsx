@@ -84,10 +84,11 @@ export function Celebration() {
   const copy = CELEBRATION_COPY[kind];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [visible, setVisible] = useState(Boolean(copy));
-
-  useEffect(() => {
+  const [seenCopy, setSeenCopy] = useState(copy);
+  if (copy !== seenCopy) {
+    setSeenCopy(copy);
     setVisible(Boolean(copy));
-  }, [copy]);
+  }
 
   useEffect(() => {
     if (!copy || !visible) return;

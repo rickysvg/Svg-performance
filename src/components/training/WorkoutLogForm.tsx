@@ -159,16 +159,16 @@ export function WorkoutLogForm({
 
   useEffect(() => {
     if (!restTimer) return;
-    const tick = window.setInterval(() => setNowMs(Date.now()), 250);
+    const tick = window.setInterval(() => {
+      const now = Date.now();
+      setNowMs(now);
+      if (remainingRestSeconds(restTimer, now) <= 0) {
+        setRestTimer(null);
+        signalRestComplete();
+      }
+    }, 250);
     return () => window.clearInterval(tick);
   }, [restTimer]);
-
-  useEffect(() => {
-    if (!restTimer) return;
-    if (remainingRestSeconds(restTimer, nowMs) > 0) return;
-    setRestTimer(null);
-    signalRestComplete();
-  }, [restTimer, nowMs]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
     setSets((current) =>

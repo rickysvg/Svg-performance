@@ -13,9 +13,22 @@ import {
   startSplashPlayback,
 } from "@/lib/splash";
 
+function storedSplashFlag() {
+  try {
+    return sessionStorage.getItem(SPLASH_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function initialPhase(pathname: string): "play" | "gone" {
+  if (typeof window === "undefined") return "play";
+  return shouldShowSplashOverlay({ stored: storedSplashFlag(), pathname }) ? "play" : "gone";
+}
+
 export function AppSplash() {
   const pathname = usePathname();
-  const [phase, setPhase] = useState<"play" | "exit" | "gone">("play");
+  const [phase, setPhase] = useState<"play" | "exit" | "gone">(() => initialPhase(pathname));
   const [mountVideo, setMountVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoFinished = useRef(false);
@@ -26,17 +39,9 @@ export function AppSplash() {
   const exitMsRef = useRef(280);
 
   useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = sessionStorage.getItem(SPLASH_STORAGE_KEY);
-    } catch {
-      /* private mode */
-    }
-
+    const stored = storedSplashFlag();
     if (!shouldShowSplashOverlay({ stored, pathname })) {
       document.documentElement.dataset.splash = "done";
-      setPhase("gone");
-      setMountVideo(false);
       return;
     }
 
@@ -44,7 +49,6 @@ export function AppSplash() {
     reducedRef.current = reduced;
     const { holdMs, exitMs } = splashTimings(reduced);
     exitMsRef.current = exitMs;
-    setMountVideo(shouldMountSplashVideo({ stored, pathname, reducedMotion: reduced }));
 
     const markSeenAndHide = () => {
       try {
@@ -74,11 +78,9 @@ export function AppSplash() {
       window.setTimeout(markSeenAndHide, exitMsRef.current);
     };
 
-    const tryExit = () => beginExit();
-
     const markReady = () => {
       appReady.current = true;
-      tryExit();
+      beginExit();
     };
 
     if (document.readyState === "complete") {
@@ -87,6 +89,10 @@ export function AppSplash() {
       window.addEventListener("load", markReady);
     }
 
+    const boot = window.setTimeout(() => {
+      setMountVideo(shouldMountSplashVideo({ stored, pathname, reducedMotion: reduced }));
+    }, 0);
+
     const hold = reduced
       ? window.setTimeout(() => {
           videoFinished.current = true;
@@ -94,22 +100,23 @@ export function AppSplash() {
         }, holdMs)
       : window.setTimeout(() => {
           videoFinished.current = true;
-          tryExit();
+          beginExit();
         }, holdMs + 400);
 
     const onSkip = () => {
       userSkipped.current = true;
-      tryExit();
+      beginExit();
     };
     const onVideoDone = () => {
       videoFinished.current = true;
-      tryExit();
+      beginExit();
     };
 
     window.addEventListener("svg-splash-skip", onSkip);
     window.addEventListener("svg-splash-video-done", onVideoDone);
 
     return () => {
+      window.clearTimeout(boot);
       window.clearTimeout(hold);
       window.removeEventListener("load", markReady);
       window.removeEventListener("svg-splash-skip", onSkip);
