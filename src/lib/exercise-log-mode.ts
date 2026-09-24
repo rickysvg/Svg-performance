@@ -1,4 +1,4 @@
-import { bikeIntervalReps, isBikeIntervalName } from "@/lib/bike-sessions";
+import { bikeIntervalReps, bikeSessionForName, isBikeIntervalName } from "@/lib/bike-sessions";
 
 export const LOG_MODES = ["load_reps", "load_timed", "reps_only", "timed", "timed_round"] as const;
 
@@ -7,7 +7,7 @@ export type LogMode = (typeof LOG_MODES)[number];
 const HOLD_NAME =
   /\b(plank|wall sit|hollow hold|dead hang|l-sit|lsit|static hold|isometric|burst|hold)\b/i;
 const CARDIO_TIMED_NAME =
-  /\b(jump rope|easy bike|interval|burpee|mountain climber|jumping jack|shadowbox|shadow box|high knee|butt kick|mobility|stretch|yoga|jumping)\b/i;
+  /\b(jump rope|easy bike|interval|burpee|mountain climber|jumping jack|shadowbox|shadow box|high knee|butt kick|mobility|stretch|yoga|jumping|sled|front-rack march|front rack march|banded kettlebell swing)\b/i;
 const ROUND_NAME =
   /\b(bag|pads|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
 const BODYWEIGHT_COUNT_NAME =
@@ -15,7 +15,7 @@ const BODYWEIGHT_COUNT_NAME =
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
 const WEIGHTED_LIFT_NAME =
-  /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|one-arm row|\brow\b|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat)\b/i;
+  /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|floor press|one-arm row|\brow\b|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat|med-?ball|medicine ball)\b/i;
 const LOADED_OPTION_NAME = /\b(dumbbell|barbell|kettlebell|bench press|bar )\b/i;
 
 export function isLogMode(value: string | null | undefined): value is LogMode {
@@ -33,6 +33,7 @@ function isHoldName(name: string) {
 export function fallbackLogMode(name: string, reps = ""): LogMode {
   if (isBikeIntervalName(name)) return "timed_round";
   if (LOADED_CARRY_NAME.test(name)) return "load_timed";
+  if (/\bbanded kettlebell swing\b/i.test(name)) return "timed";
   if (isHoldName(name)) return "timed";
   if (CARDIO_TIMED_NAME.test(name)) return "timed";
   if (ROUND_NAME.test(name)) return "timed_round";
@@ -98,7 +99,15 @@ export function modeColumnLabel(mode: LogMode) {
 
 export function modeHint(mode: LogMode, name?: string) {
   if (name && isBikeIntervalName(name)) {
-    return "Mark Done after each set of 8 intervals. Rest 60s starts automatically. No lbs or reps.";
+    const session = bikeSessionForName(name);
+    if (session && session.restSeconds <= 0 && session.roundsPerSet === 1) {
+      return "Start the work-block timer. Mark Done when the clock ends. Timed only — no lbs or reps.";
+    }
+    if (session && session.restBetweenSetsSeconds <= 0) {
+      return "Start the interval timer. Mark Done when the last round ends. Timed only — no lbs or reps.";
+    }
+    const between = session?.restBetweenSetsSeconds ?? 60;
+    return `Mark Done after each set. Rest ${between}s starts automatically. No lbs or reps.`;
   }
   if (mode === "timed_round") {
     return "Log the round time. Rest between rounds is the pill above — not pounds.";

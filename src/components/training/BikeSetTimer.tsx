@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   bikeIntervalChrome,
+  isLongBikeClock,
   type BikeSession,
 } from "@/lib/bike-sessions";
 import {
@@ -31,35 +32,64 @@ function BikeIntervalStrip({
   activeRound: number;
   phase: BikeIntervalPhase;
 }) {
+  const longClock = isLongBikeClock(session);
+  const compact = session.roundsPerSet > 8;
+
   return (
     <div className="mt-3 rounded-xl border border-line bg-background p-3" data-bike-intervals>
       <p className="font-display text-xs uppercase tracking-wide text-highlighter">
         {bikeIntervalChrome(session)}
       </p>
-      <ol className="mt-2 grid grid-cols-4 gap-1.5">
-        {Array.from({ length: session.roundsPerSet }, (_, index) => {
-          const round = index + 1;
-          const current = activeRound === round && (phase === "work" || phase === "rest");
-          return (
-            <li
-              key={index}
-              data-bike-tile={round}
-              data-bike-tile-active={current ? phase : undefined}
-              className={`rounded-lg px-1.5 py-1.5 text-center ${
-                current
-                  ? phase === "work"
-                    ? "bg-black ring-2 ring-[#CBF805]"
-                    : "bg-black ring-2 ring-white"
-                  : "bg-black"
-              }`}
-            >
-              <p className="font-display text-[11px] leading-none text-[#CBF805]">{session.workSeconds}s</p>
-              <p className="mt-0.5 text-[9px] text-white">work</p>
-              <p className="text-[9px] text-white/80">{session.restSeconds}s rest</p>
-            </li>
-          );
-        })}
-      </ol>
+      {longClock ? (
+        <div
+          data-bike-tile={1}
+          data-bike-tile-active={phase === "work" || phase === "rest" ? phase : undefined}
+          className={`mt-2 rounded-lg px-3 py-3 text-center ${
+            phase === "work" ? "bg-black ring-2 ring-[#CBF805]" : "bg-black"
+          }`}
+        >
+          <p className="font-display text-sm leading-none text-[#CBF805]">
+            {formatRestClock(session.workSeconds)}
+          </p>
+          <p className="mt-1 text-[10px] text-white">one work block</p>
+        </div>
+      ) : compact ? (
+        <p className="mt-2 text-xs text-muted">
+          {session.roundsPerSet} timed rounds — the Start set clock drives work
+          {session.restSeconds > 0 ? " and rest" : ""}.
+        </p>
+      ) : (
+        <ol className="mt-2 grid grid-cols-4 gap-1.5">
+          {Array.from({ length: session.roundsPerSet }, (_, index) => {
+            const round = index + 1;
+            const current = activeRound === round && (phase === "work" || phase === "rest");
+            return (
+              <li
+                key={index}
+                data-bike-tile={round}
+                data-bike-tile-active={current ? phase : undefined}
+                className={`rounded-lg px-1.5 py-1.5 text-center ${
+                  current
+                    ? phase === "work"
+                      ? "bg-black ring-2 ring-[#CBF805]"
+                      : "bg-black ring-2 ring-white"
+                    : "bg-black"
+                }`}
+              >
+                <p className="font-display text-[11px] leading-none text-[#CBF805]">
+                  {session.workSeconds}s
+                </p>
+                <p className="mt-0.5 text-[9px] text-white">work</p>
+                {session.restSeconds > 0 ? (
+                  <p className="text-[9px] text-white/80">{session.restSeconds}s rest</p>
+                ) : (
+                  <p className="text-[9px] text-white/80">no rest</p>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </div>
   );
 }
@@ -82,10 +112,17 @@ export function BikeSetTimer({
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const completeRef = useRef(onSetComplete);
   const running = clock.phase === "work" || clock.phase === "rest";
+  const longClock = isLongBikeClock(session);
 
   useEffect(() => {
     completeRef.current = onSetComplete;
   }, [onSetComplete]);
+
+  useEffect(() => {
+    setClock(idleBikeInterval(spec));
+    // Reset only when the session prescription changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spec.workSeconds, spec.restSeconds, spec.roundsPerSet]);
 
   useEffect(() => {
     if (!running || clock.paused) return;
@@ -157,7 +194,9 @@ export function BikeSetTimer({
             data-bike-interval-round
             className="font-display text-xs uppercase tracking-[0.16em] text-white/80"
           >
-            Round {clock.round}/{session.roundsPerSet}
+            {longClock
+              ? "Work block"
+              : `Round ${clock.round}/${session.roundsPerSet}`}
           </p>
           <p
             className={`font-display mt-2 text-lg uppercase tracking-[0.18em] ${

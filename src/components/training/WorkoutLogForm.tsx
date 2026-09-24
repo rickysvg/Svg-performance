@@ -12,7 +12,8 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
-import { bikeSessionForName, isBikeIntervalName } from "@/lib/bike-sessions";
+import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
+import { CoachCredit } from "@/components/training/CoachCredit";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
@@ -326,7 +327,7 @@ export function WorkoutLogForm({
             reps: planned?.reps,
           });
           const bike = isBikeIntervalName(name);
-          const bikeSession = bike ? bikeSessionForName(name) : null;
+          const bikeSession = bike ? bikeSessionForLogger(name, planned) : null;
           const timed = isDurationMode(mode) && !bike;
           const restSeconds = planned?.restSeconds ?? (bike ? 60 : mode === "timed_round" ? 90 : 60);
           const thisRest = restRunning && restTimer?.exerciseName === name;
@@ -350,6 +351,7 @@ export function WorkoutLogForm({
                 />
                 <div className="min-w-0 flex-1">
                   <h2 className="font-semibold">{name}</h2>
+                  <CoachCredit name={name} />
                   <p className="mt-0.5 text-sm text-muted">
                     {planned
                       ? plannedSetLine({

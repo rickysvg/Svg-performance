@@ -1,13 +1,49 @@
 import { PrismaClient } from "@prisma/client";
 import {
-  BIKE_PROGRAM_DAY_NUMBER,
-  DEFAULT_BIKE_SESSION,
+  BIKE_SESSIONS,
   bikeIntervalReps,
   isBikeIntervalName,
+  scaleBikeSession,
 } from "../src/lib/bike-sessions";
+import {
+  FRIDAY_GPP_DAY_NUMBER,
+  FRIDAY_GPP_NAMES,
+  MON_WED_DARU_NAMES,
+  daruSeedRow,
+} from "../src/lib/daru-exercises";
 import { formVideoFieldsFor } from "../src/lib/form-videos";
 import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
 import { fallbackLogMode } from "../src/lib/exercise-log-mode";
+
+function bikeProgramDay(session: (typeof BIKE_SESSIONS)[number]) {
+  const scaled = scaleBikeSession(session, "beginner");
+  return {
+    dayNumber: session.programDayNumber,
+    title: session.title,
+    focus: session.focus,
+    exercises: {
+      create: [
+        {
+          sortOrder: 1,
+          name: scaled.name,
+          sets: scaled.sets,
+          reps: bikeIntervalReps(scaled),
+          loadText: scaled.loadText,
+          restSeconds: scaled.restBetweenSetsSeconds,
+          notes: scaled.notes,
+          ...formVideoFieldsFor(scaled.name),
+        },
+      ],
+    },
+  };
+}
+
+function daruProgramExercise(name: string, sortOrder: number) {
+  return {
+    ...daruSeedRow(name, sortOrder),
+    ...formVideoFieldsFor(name),
+  };
+}
 
 const prisma = new PrismaClient();
 
@@ -35,7 +71,7 @@ async function main() {
       slug: DEMO_SLUG,
       title: "DEMO — Strength Base for Class",
       description:
-        "A three-day strength template plus Tuesday/Thursday assault bike intervals for this private preview. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
+        "A three-day strength template plus a Tuesday/Thursday assault-bike rotation and Friday GPP for this private preview. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
       isDemo: true,
       days: {
         create: [
@@ -154,6 +190,9 @@ async function main() {
                   notes: "Two dumbbells, kettlebells, or even loaded bags. Walk for the seconds — log lbs and time, not reps.",
                   ...formVideoFieldsFor("Farmer carry"),
                 },
+                ...MON_WED_DARU_NAMES.map((name, index) =>
+                  daruProgramExercise(name, 6 + index),
+                ),
               ],
             },
           },
@@ -213,26 +252,21 @@ async function main() {
                   notes: "Hips stacked. Log the hold time, not pounds. Drop to the knee if you need to.",
                   ...formVideoFieldsFor("Side plank"),
                 },
+                ...MON_WED_DARU_NAMES.map((name, index) =>
+                  daruProgramExercise(name, 6 + index),
+                ),
               ],
             },
           },
+          ...BIKE_SESSIONS.map((session) => bikeProgramDay(session)),
           {
-            dayNumber: BIKE_PROGRAM_DAY_NUMBER,
-            title: DEFAULT_BIKE_SESSION.title,
-            focus: DEFAULT_BIKE_SESSION.focus,
+            dayNumber: FRIDAY_GPP_DAY_NUMBER,
+            title: "Day 10 — Friday GPP",
+            focus: "Sled, carry, and banded swing",
             exercises: {
-              create: [
-                {
-                  sortOrder: 1,
-                  name: DEFAULT_BIKE_SESSION.name,
-                  sets: 3,
-                  reps: bikeIntervalReps(DEFAULT_BIKE_SESSION),
-                  loadText: "All-out sprint / easy — no lbs",
-                  restSeconds: DEFAULT_BIKE_SESSION.restBetweenSetsSeconds,
-                  notes: DEFAULT_BIKE_SESSION.notes,
-                  ...formVideoFieldsFor(DEFAULT_BIKE_SESSION.name),
-                },
-              ],
+              create: FRIDAY_GPP_NAMES.map((name, index) =>
+                daruProgramExercise(name, index + 1),
+              ),
             },
           },
         ],

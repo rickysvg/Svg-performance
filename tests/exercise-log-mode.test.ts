@@ -36,6 +36,14 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Lateral bound or side step-over")).toBe("reps_only");
     expect(fallbackLogMode("Jump rope or easy bike intervals")).toBe("timed");
     expect(fallbackLogMode("Assault bike intervals")).toBe("timed_round");
+    expect(fallbackLogMode("Daru alactic power bike")).toBe("timed_round");
+    expect(fallbackLogMode("Farmer's carry")).toBe("load_timed");
+    expect(fallbackLogMode("Sled push")).toBe("timed");
+    expect(fallbackLogMode("Banded kettlebell swing")).toBe("timed");
+    expect(fallbackLogMode("Neck extension hold")).toBe("timed");
+    expect(fallbackLogMode("Floor press")).toBe("load_reps");
+    expect(fallbackLogMode("Trap-bar deadlift")).toBe("load_reps");
+    expect(fallbackLogMode("Rotational med-ball throw")).toBe("load_reps");
     expect(fallbackLogMode("Mountain climbers")).toBe("timed");
     expect(fallbackLogMode("Burpees")).toBe("timed");
     expect(fallbackLogMode("Unknown mobility flow")).toBe("timed");

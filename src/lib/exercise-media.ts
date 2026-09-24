@@ -1,4 +1,4 @@
-import { bikeWorkSecondsPerSet, isBikeIntervalName } from "@/lib/bike-sessions";
+import { bikeSessionForLogger, bikeWorkSecondsPerSet, isBikeIntervalName } from "@/lib/bike-sessions";
 import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 
 export type EquipmentId =
@@ -13,6 +13,7 @@ export type EquipmentId =
   | "pull-up"
   | "jump-rope"
   | "bike"
+  | "sled"
   | "bag"
   | "pads";
 
@@ -33,6 +34,7 @@ export const EQUIPMENT_CHIPS: Record<EquipmentId, EquipmentChip> = {
   "pull-up": { id: "pull-up", label: "Pull-up bar" },
   "jump-rope": { id: "jump-rope", label: "Jump rope" },
   bike: { id: "bike", label: "Bike" },
+  sled: { id: "sled", label: "Sled" },
   bag: { id: "bag", label: "Heavy bag" },
   pads: { id: "pads", label: "Pads" },
 };
@@ -53,6 +55,23 @@ const STRENGTH_NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Lateral bound or side step-over": ["bodyweight"],
   "Jump rope or easy bike intervals": ["jump-rope", "bike"],
   "Assault bike intervals": ["bike"],
+  "Daru alactic power bike": ["bike"],
+  "Jamieson tempo bike": ["bike"],
+  "Daru 75% endurance bike": ["bike"],
+  "Jamieson cardiac output bike": ["bike"],
+  "Leon Edwards 10/20 bike finisher": ["bike"],
+  "Trap-bar deadlift": ["barbell"],
+  "Floor press": ["dumbbell", "bench"],
+  "Landmine press": ["barbell"],
+  "Rotational med-ball throw": ["bodyweight"],
+  "Med-ball chest pass": ["bodyweight"],
+  "Sled push": ["sled"],
+  "Sled hamstring drag": ["sled"],
+  "Farmer's carry": ["dumbbell"],
+  "Banded kettlebell swing": ["kettlebell", "band"],
+  "Neck extension hold": ["bodyweight"],
+  "Banded DB front-rack march": ["dumbbell", "band"],
+  "Bent-over DB shrug": ["dumbbell"],
   "Side plank": ["bodyweight"],
 };
 
@@ -118,6 +137,7 @@ export function equipmentForExercise(name: string): EquipmentId[] {
   if (/\bpull-?up\b|\bchin-?up\b/.test(lower)) found.push("pull-up");
   if (/\bjump rope\b/.test(lower)) found.push("jump-rope");
   if (/\bbike\b/.test(lower)) found.push("bike");
+  if (/\bsled\b/.test(lower)) found.push("sled");
   if (/\bbag\b/.test(lower)) found.push("bag");
   if (/\bpad\b|\bmitt\b/.test(lower)) found.push("pads");
   if (found.length === 0) found.push("bodyweight");
@@ -153,7 +173,12 @@ export function estimateSessionMinutes(
     const rest = Math.max(0, exercise.restSeconds);
     const timed = isDurationMode(resolveLogMode(exercise));
     const work = isBikeIntervalName(exercise.name ?? "")
-      ? bikeWorkSecondsPerSet()
+      ? bikeWorkSecondsPerSet(
+          bikeSessionForLogger(exercise.name ?? "", {
+            reps: exercise.reps,
+            restSeconds: exercise.restSeconds,
+          }) ?? undefined,
+        )
       : timed
         ? parseDurationSeconds(exercise.reps ?? "") ?? WORK_SECONDS_PER_SET
         : WORK_SECONDS_PER_SET;
@@ -171,7 +196,13 @@ export function sessionKindLabel(input: { title: string; focus: string }) {
   ) {
     return "Skill";
   }
-  if (/condition|interval|cardio|gas tank|assault bike|air bike/.test(text)) return "Conditioning";
+  if (
+    /condition|interval|cardio|gas tank|assault bike|air bike|gpp|alactic|cardiac|tempo bike|endurance bike|bike finisher/.test(
+      text,
+    )
+  ) {
+    return "Conditioning";
+  }
   return "Strength";
 }
 

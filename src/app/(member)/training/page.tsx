@@ -9,6 +9,7 @@ import {
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
+import { bikeWeekIndex } from "@/lib/bike-sessions";
 import {
   buildCoreWeekPlan,
   nextActiveWeekday,
@@ -44,7 +45,7 @@ export default async function TrainingPage() {
     }),
   );
   const strip = weekStrip(prefs, now);
-  const week = buildCoreWeekPlan(prefs);
+  const week = buildCoreWeekPlan(prefs, bikeWeekIndex(now));
   const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now);
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";

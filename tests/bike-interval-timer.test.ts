@@ -118,6 +118,33 @@ describe("bike interval timer", () => {
     expect(stopBikeInterval(snapshot)).toMatchObject(idleBikeInterval(fifteen));
   });
 
+  it("treats rest=0 as work-only rounds with no REST phase", () => {
+    const clock = { workSeconds: 13 * 60, restSeconds: 0, roundsPerSet: 1 };
+    expect(bikeSetDurationSeconds(clock)).toBe(780);
+    expect(viewAtElapsed(clock, 0)).toMatchObject({
+      phase: "work",
+      round: 1,
+      remainingSeconds: 780,
+    });
+    expect(viewAtElapsed(clock, 779)).toMatchObject({
+      phase: "work",
+      remainingSeconds: 1,
+    });
+    expect(viewAtElapsed(clock, 780).phase).toBe("done");
+
+    const alactic = { workSeconds: 10, restSeconds: 50, roundsPerSet: 3 };
+    expect(viewAtElapsed(alactic, 10)).toMatchObject({ phase: "rest", round: 1 });
+    const workOnly = { workSeconds: 10, restSeconds: 0, roundsPerSet: 3 };
+    expect(bikeSetDurationSeconds(workOnly)).toBe(30);
+    expect(viewAtElapsed(workOnly, 10)).toMatchObject({
+      phase: "work",
+      round: 2,
+      remainingSeconds: 10,
+    });
+    expect(viewAtElapsed(workOnly, 29).phase).toBe("work");
+    expect(viewAtElapsed(workOnly, 30).phase).toBe("done");
+  });
+
   it("completion marks the set done and starts the 60s between-set rest", () => {
     const { snapshot, lastCue } = runTicks(fifteen, 240);
     expect(snapshot.phase).toBe("done");

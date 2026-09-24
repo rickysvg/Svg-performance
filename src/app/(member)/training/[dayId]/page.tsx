@@ -20,6 +20,7 @@ import {
 import { lookupFormVideo } from "@/lib/form-videos";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
+import { CoachCredit } from "@/components/training/CoachCredit";
 
 export default async function TrainingDayPage({
   params,
@@ -134,6 +135,7 @@ export default async function TrainingDayPage({
               />
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold leading-snug">{exercise.name}</h2>
+                <CoachCredit name={exercise.name} />
                 <p className="mt-1 text-sm text-muted">{planned}</p>
                 <WatchFormInline url={form.url} pending={form.pending} />
                 <ExerciseNotepad

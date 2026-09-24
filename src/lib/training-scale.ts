@@ -1,10 +1,12 @@
 import {
   bikeIntervalReps,
+  bikeSessionForLogger,
   bikeSessionForName,
-  bikeSetsForBand,
   bikeWorkSecondsPerSet,
   isBikeIntervalName,
+  scaleBikeSession,
 } from "@/lib/bike-sessions";
+import { daruExerciseForName } from "@/lib/daru-exercises";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
   formatClock,
@@ -211,13 +213,14 @@ export function scaleExercise(
 
 function scaleBikeInterval(exercise: ScaleableExercise, band: ScaleBand): ScaleableExercise {
   const session = bikeSessionForName(exercise.name);
+  const scaled = session ? scaleBikeSession(session, band) : null;
   return {
     ...exercise,
     logMode: "timed_round",
-    sets: bikeSetsForBand(band),
-    reps: session ? bikeIntervalReps(session) : exercise.reps,
-    restSeconds: session?.restBetweenSetsSeconds ?? 60,
-    loadText: "All-out sprint / easy — no lbs",
+    sets: scaled?.sets ?? exercise.sets,
+    reps: scaled ? bikeIntervalReps(scaled) : exercise.reps,
+    restSeconds: scaled?.restBetweenSetsSeconds ?? 60,
+    loadText: scaled?.loadText ?? "Timed — no lbs or reps",
   };
 }
 
@@ -306,6 +309,18 @@ function scaleStrengthExercise(
   band: ScaleBand,
   mode: LogMode,
 ): ScaleableExercise {
+  const daru = daruExerciseForName(exercise.name);
+  if (daru) {
+    const scaled = daru.scale[band];
+    return {
+      ...exercise,
+      logMode: daru.logMode,
+      sets: scaled.sets,
+      reps: scaled.reps,
+      restSeconds: scaled.restSeconds,
+      loadText: scaled.loadText,
+    };
+  }
   const rest = restForBand(exercise.restSeconds, band);
   if (mode === "load_timed") {
     return scaleLoadedCarry(exercise, band, mode, rest);
@@ -397,7 +412,8 @@ export function plannedDurationSeconds(exercise: ScaleableExercise): number | nu
 
 export function plannedWorkSeconds(exercise: ScaleableExercise): number | null {
   if (isBikeIntervalName(exercise.name)) {
-    return bikeWorkSecondsPerSet(bikeSessionForName(exercise.name) ?? undefined);
+    const session = bikeSessionForLogger(exercise.name, exercise);
+    return session ? bikeWorkSecondsPerSet(session) : null;
   }
   return plannedDurationSeconds(exercise);
 }
