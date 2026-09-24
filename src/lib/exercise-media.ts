@@ -1,3 +1,4 @@
+import { bikeWorkSecondsPerSet, isBikeIntervalName } from "@/lib/bike-sessions";
 import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 
 export type EquipmentId =
@@ -51,6 +52,7 @@ const STRENGTH_NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Chin-up, band-assist, or lat pulldown": ["pull-up", "band", "machine"],
   "Lateral bound or side step-over": ["bodyweight"],
   "Jump rope or easy bike intervals": ["jump-rope", "bike"],
+  "Assault bike intervals": ["bike"],
   "Side plank": ["bodyweight"],
 };
 
@@ -150,9 +152,11 @@ export function estimateSessionMinutes(
     const sets = Math.max(0, exercise.sets);
     const rest = Math.max(0, exercise.restSeconds);
     const timed = isDurationMode(resolveLogMode(exercise));
-    const work = timed
-      ? parseDurationSeconds(exercise.reps ?? "") ?? WORK_SECONDS_PER_SET
-      : WORK_SECONDS_PER_SET;
+    const work = isBikeIntervalName(exercise.name ?? "")
+      ? bikeWorkSecondsPerSet()
+      : timed
+        ? parseDurationSeconds(exercise.reps ?? "") ?? WORK_SECONDS_PER_SET
+        : WORK_SECONDS_PER_SET;
     return total + sets * (work + rest) + TRANSITION_SECONDS;
   }, 0);
   return Math.max(1, Math.round(seconds / 60));
@@ -167,7 +171,7 @@ export function sessionKindLabel(input: { title: string; focus: string }) {
   ) {
     return "Skill";
   }
-  if (/condition|interval|cardio|gas tank/.test(text)) return "Conditioning";
+  if (/condition|interval|cardio|gas tank|assault bike|air bike/.test(text)) return "Conditioning";
   return "Strength";
 }
 
@@ -204,5 +208,6 @@ export function previousSetLabel(input: {
   }
   if (input.reps != null) return `${input.reps} reps`;
   if (input.loadValue != null) return `${input.loadValue}${input.loadUnit}`;
+  if (input.logMode === "timed_round") return "Done";
   return "—";
 }

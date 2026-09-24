@@ -50,23 +50,27 @@ describe("Core weekday planner", () => {
     expect(sessions.some((session) => session.kind === "skill")).toBe(false);
   });
 
-  it("gives a grappler Thursday a grappling skill day", () => {
+  it("puts Assault Bike on Tuesday and Thursday for every focus", () => {
+    expect(coreSkeletonSessions("Tuesday", "mma")[0]).toMatchObject({
+      kind: "conditioning",
+      dayNumber: 4,
+    });
     expect(coreSkeletonSessions("Thursday", "wrestling")[0]).toMatchObject({
-      kind: "skill",
-      dayNumber: 5,
+      kind: "conditioning",
+      dayNumber: 4,
     });
     expect(coreSkeletonSessions("Thursday", "jiu-jitsu")[0]).toMatchObject({
-      kind: "skill",
-      dayNumber: 6,
+      kind: "conditioning",
+      dayNumber: 4,
     });
-    expect(coreSkeletonSessions("Thursday", "mma")[0]).toMatchObject({
-      kind: "skill",
+    expect(coreSkeletonSessions("Thursday", "general-fitness")[0]).toMatchObject({
+      kind: "conditioning",
       dayNumber: 4,
     });
   });
 
-  it("marks unavailable weekdays as rest/skip and compresses Saturday first", () => {
-    const rest = planForDate(
+  it("keeps Saturday compressed off and still always-on Bike Tue/Thu", () => {
+    const tue = planForDate(
       {
         primaryFocus: "mma",
         weeklyAvailability: ["Monday", "Wednesday", "Friday"],
@@ -74,9 +78,9 @@ describe("Core weekday planner", () => {
       },
       tuesday,
     );
-    expect(rest.active).toBe(false);
-    expect(rest.summary).toBe("Off");
-    expect(rest.skipReason).toMatch(/Not on your training days/i);
+    expect(tue.active).toBe(true);
+    expect(tue.summary).toBe("Bike");
+    expect(tue.skipReason).toBeUndefined();
 
     const days = resolveTrainingDays({
       weeklyAvailability: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],

@@ -1,4 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import {
+  BIKE_PROGRAM_DAY_NUMBER,
+  DEFAULT_BIKE_SESSION,
+  bikeIntervalReps,
+  isBikeIntervalName,
+} from "../src/lib/bike-sessions";
 import { formVideoFieldsFor } from "../src/lib/form-videos";
 import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
 import { fallbackLogMode } from "../src/lib/exercise-log-mode";
@@ -29,7 +35,7 @@ async function main() {
       slug: DEMO_SLUG,
       title: "DEMO — Strength Base for Class",
       description:
-        "A three-day strength and conditioning template for this private preview. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
+        "A three-day strength template plus Tuesday/Thursday assault bike intervals for this private preview. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
       isDemo: true,
       days: {
         create: [
@@ -206,6 +212,25 @@ async function main() {
                   restSeconds: 60,
                   notes: "Hips stacked. Log the hold time, not pounds. Drop to the knee if you need to.",
                   ...formVideoFieldsFor("Side plank"),
+                },
+              ],
+            },
+          },
+          {
+            dayNumber: BIKE_PROGRAM_DAY_NUMBER,
+            title: DEFAULT_BIKE_SESSION.title,
+            focus: DEFAULT_BIKE_SESSION.focus,
+            exercises: {
+              create: [
+                {
+                  sortOrder: 1,
+                  name: DEFAULT_BIKE_SESSION.name,
+                  sets: 3,
+                  reps: bikeIntervalReps(DEFAULT_BIKE_SESSION),
+                  loadText: "All-out sprint / easy — no lbs",
+                  restSeconds: DEFAULT_BIKE_SESSION.restBetweenSetsSeconds,
+                  notes: DEFAULT_BIKE_SESSION.notes,
+                  ...formVideoFieldsFor(DEFAULT_BIKE_SESSION.name),
                 },
               ],
             },
@@ -681,7 +706,7 @@ async function tagSeededExerciseModes() {
         if (logMode === "reps_only" && /bodyweight/i.test(exercise.loadText)) {
           data.loadText = "Bodyweight — no lbs";
         }
-        if (logMode === "timed_round") {
+        if (logMode === "timed_round" && !isBikeIntervalName(exercise.name)) {
           data.reps = "2:00";
           data.restSeconds = 90;
         }

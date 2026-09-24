@@ -1,3 +1,10 @@
+import {
+  bikeIntervalReps,
+  bikeSessionForName,
+  bikeSetsForBand,
+  bikeWorkSecondsPerSet,
+  isBikeIntervalName,
+} from "@/lib/bike-sessions";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
   formatClock,
@@ -166,6 +173,10 @@ export function scaleExercise(
   const dayNumber = input.dayNumber ?? 1;
   const band = input.band;
 
+  if (isBikeIntervalName(exercise.name)) {
+    return scaleBikeInterval(exercise, band);
+  }
+
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
     if (mode === "timed_round") {
       const seconds = skillRoundSeconds(band, dayNumber);
@@ -196,6 +207,18 @@ export function scaleExercise(
   }
 
   return { ...exercise, logMode: mode, restSeconds: restForBand(exercise.restSeconds, band) };
+}
+
+function scaleBikeInterval(exercise: ScaleableExercise, band: ScaleBand): ScaleableExercise {
+  const session = bikeSessionForName(exercise.name);
+  return {
+    ...exercise,
+    logMode: "timed_round",
+    sets: bikeSetsForBand(band),
+    reps: session ? bikeIntervalReps(session) : exercise.reps,
+    restSeconds: session?.restBetweenSetsSeconds ?? 60,
+    loadText: "All-out sprint / easy — no lbs",
+  };
 }
 
 function isHoldOrIntervalName(name: string) {
@@ -366,7 +389,15 @@ export function scaleDemoCatalog<
 }
 
 export function plannedDurationSeconds(exercise: ScaleableExercise): number | null {
+  if (isBikeIntervalName(exercise.name)) return null;
   const mode = resolveLogMode(exercise);
   if (!isDurationMode(mode)) return null;
   return parseDurationSeconds(exercise.reps);
+}
+
+export function plannedWorkSeconds(exercise: ScaleableExercise): number | null {
+  if (isBikeIntervalName(exercise.name)) {
+    return bikeWorkSecondsPerSet(bikeSessionForName(exercise.name) ?? undefined);
+  }
+  return plannedDurationSeconds(exercise);
 }

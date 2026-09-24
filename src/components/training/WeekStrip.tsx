@@ -8,6 +8,7 @@ export function WeekStrip({ days }: { days: Item[] }) {
       {days.map((day) => (
         <li key={day.weekday}>
           <div
+            data-week-chip={day.short}
             className={`flex min-h-[4.25rem] flex-col items-center justify-center rounded-2xl px-1 py-2 text-center ${
               day.isToday
                 ? "bg-black text-white"

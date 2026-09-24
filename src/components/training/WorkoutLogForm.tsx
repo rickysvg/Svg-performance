@@ -11,6 +11,9 @@ import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
+import { BikeSetTimer } from "@/components/training/BikeSetTimer";
+import { bikeSessionForName, isBikeIntervalName } from "@/lib/bike-sessions";
+import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
@@ -233,21 +236,25 @@ export function WorkoutLogForm({
           </div>
         </header>
 
-        <div className="flex items-start justify-between gap-3 pt-2">
-          <div className="min-w-0 flex-1">
-            <label className="block">
-              <span className="sr-only">Workout title</span>
-              <input
-                name="title"
-                defaultValue={session.title}
-                className="font-display w-full min-w-0 bg-transparent text-2xl font-semibold tracking-wide outline-none"
-              />
-            </label>
-            {session.programDay?.title ? (
-              <p className="mt-1 text-sm text-muted">{session.programDay.title}</p>
-            ) : null}
-          </div>
-          {session.title.startsWith("DEMO") ? <DemoBadge /> : null}
+        <div className="space-y-2 pt-2">
+          {session.title.startsWith("DEMO") ? (
+            <div className="flex justify-end">
+              <DemoBadge />
+            </div>
+          ) : null}
+          <label className="block">
+            <span className="sr-only">Workout title</span>
+            <textarea
+              name="title"
+              data-workout-title
+              defaultValue={session.title}
+              rows={2}
+              className="font-display min-h-[3.4rem] w-full min-w-0 resize-none bg-transparent text-2xl font-semibold leading-tight tracking-wide break-words whitespace-normal outline-none"
+            />
+          </label>
+          {session.programDay?.title ? (
+            <p className="text-sm text-muted">{session.programDay.title}</p>
+          ) : null}
         </div>
 
         <StatusBanner error={state.error} success={state.success} />
@@ -318,13 +325,17 @@ export function WorkoutLogForm({
             name,
             reps: planned?.reps,
           });
-          const timed = isDurationMode(mode);
-          const restSeconds = planned?.restSeconds ?? (mode === "timed_round" ? 90 : 60);
+          const bike = isBikeIntervalName(name);
+          const bikeSession = bike ? bikeSessionForName(name) : null;
+          const timed = isDurationMode(mode) && !bike;
+          const restSeconds = planned?.restSeconds ?? (bike ? 60 : mode === "timed_round" ? 90 : 60);
           const thisRest = restRunning && restTimer?.exerciseName === name;
-          const columns = hidesLoad(mode)
-            ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
-            : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
-          const hint = modeHint(mode);
+          const columns = bike
+            ? "grid-cols-[2rem_1fr_2rem]"
+            : hidesLoad(mode)
+              ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
+              : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
+          const hint = modeHint(mode, name);
           return (
             <section
               key={name}
@@ -351,6 +362,22 @@ export function WorkoutLogForm({
                       : `${group.length} ${mode === "timed_round" ? "rounds" : "sets"}`}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+                  {bikeSession ? (
+                    <BikeSetTimer
+                      session={bikeSession}
+                      canStart={group.some((set) => !set.completed)}
+                      onSetComplete={() => {
+                        const nextOpen = group.find((set) => !set.completed);
+                        if (!nextOpen) return;
+                        updateSet(nextOpen.id, { completed: true });
+                        const effects = bikeIntervalCompletionEffects({
+                          exerciseName: name,
+                          restBetweenSetsSeconds: restSeconds,
+                        });
+                        if (effects.rest) setRestTimer(effects.rest);
+                      }}
+                    />
+                  ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                     {previousLoads[name] ? (
                       <button
@@ -390,7 +417,11 @@ export function WorkoutLogForm({
               {restSeconds > 0 ? (
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-sm text-muted">
-                    {mode === "timed_round" ? "Rest between rounds" : "Rest between each set"}
+                    {bike
+                      ? "Rest between sets"
+                      : mode === "timed_round"
+                        ? "Rest between rounds"
+                        : "Rest between each set"}
                   </p>
                   {thisRest ? (
                     <button
@@ -417,10 +448,10 @@ export function WorkoutLogForm({
               ) : null}
 
               <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
-                <span>{mode === "timed_round" ? "Rd" : "Set"}</span>
+                <span>{bike || mode !== "timed_round" ? "Set" : "Rd"}</span>
                 <span>Previous</span>
-                <span>{modeColumnLabel(mode)}</span>
-                {hidesLoad(mode) ? null : <span>{loadHeader}</span>}
+                {bike ? null : <span>{modeColumnLabel(mode)}</span>}
+                {bike || hidesLoad(mode) ? null : <span>{loadHeader}</span>}
                 <span className="sr-only">Done</span>
               </div>
 
@@ -444,7 +475,9 @@ export function WorkoutLogForm({
                       <input type="hidden" name={`sets.${index}.logMode`} value={mode} />
                       <p className="text-sm font-medium">{indexInGroup + 1}</p>
                       <p className="truncate text-sm text-muted">{previousSetLabel(previous)}</p>
-                      {timed ? (
+                      {bike ? (
+                        <input type="hidden" name={`sets.${index}.durationSeconds`} value="" />
+                      ) : timed ? (
                         <label className="block">
                           <span className="sr-only">{modeColumnLabel(mode)} seconds</span>
                           <input
@@ -484,7 +517,7 @@ export function WorkoutLogForm({
                           />
                         </label>
                       )}
-                      {hidesLoad(mode) ? (
+                      {bike || hidesLoad(mode) ? (
                         <input type="hidden" name={`sets.${index}.loadValue`} value="" />
                       ) : (
                         <label className="block">
@@ -536,7 +569,7 @@ export function WorkoutLogForm({
                 onClick={() => addSet(name)}
                 className="touch-target mt-2 text-sm font-medium underline-offset-4 hover:underline"
               >
-                {mode === "timed_round" ? "+ Add round" : "+ Add new set"}
+                {bike || mode !== "timed_round" ? "+ Add new set" : "+ Add round"}
               </button>
             </section>
           );
