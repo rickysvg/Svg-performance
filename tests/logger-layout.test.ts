@@ -14,11 +14,12 @@ describe("Logger layout", () => {
     expect(source).toContain("flex flex-wrap items-center gap-x-3");
     expect(source).toContain("Same as last");
     expect(source).toContain("WatchFormInline");
-    expect(source).toContain('data-workout-title');
+    expect(source).toContain("data-workout-title");
     expect(source).toContain("textarea");
     expect(source).toContain("break-words");
-    expect(source).toContain("whitespace-pre-wrap");
-    expect(source).toContain("DemoBadge className=\"mt-1 shrink-0\"");
+    expect(source).toContain("whitespace-normal");
+    expect(source).toContain("min-h-[3.4rem]");
+    expect(source).toContain("<DemoBadge />");
   });
 
   it("shows 15s/15s interval chrome and Set rows for assault bike", () => {

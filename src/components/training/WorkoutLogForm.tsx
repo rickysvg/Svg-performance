@@ -236,23 +236,25 @@ export function WorkoutLogForm({
           </div>
         </header>
 
-        <div className="flex items-start justify-between gap-3 pt-2">
-          <div className="min-w-0 flex-1 pr-1">
-            <label className="block">
-              <span className="sr-only">Workout title</span>
-              <textarea
-                name="title"
-                data-workout-title
-                defaultValue={session.title}
-                rows={2}
-                className="font-display w-full min-w-0 resize-none overflow-visible bg-transparent text-xl font-semibold leading-tight tracking-wide break-words whitespace-pre-wrap outline-none"
-              />
-            </label>
-            {session.programDay?.title ? (
-              <p className="mt-1 text-sm text-muted">{session.programDay.title}</p>
-            ) : null}
-          </div>
-          {session.title.startsWith("DEMO") ? <DemoBadge className="mt-1 shrink-0" /> : null}
+        <div className="space-y-2 pt-2">
+          {session.title.startsWith("DEMO") ? (
+            <div className="flex justify-end">
+              <DemoBadge />
+            </div>
+          ) : null}
+          <label className="block">
+            <span className="sr-only">Workout title</span>
+            <textarea
+              name="title"
+              data-workout-title
+              defaultValue={session.title}
+              rows={2}
+              className="font-display min-h-[3.4rem] w-full min-w-0 resize-none bg-transparent text-2xl font-semibold leading-tight tracking-wide break-words whitespace-normal outline-none"
+            />
+          </label>
+          {session.programDay?.title ? (
+            <p className="text-sm text-muted">{session.programDay.title}</p>
+          ) : null}
         </div>
 
         <StatusBanner error={state.error} success={state.success} />
