@@ -71,7 +71,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
 
   return (
     <section className="space-y-4">
-      <SectionHeading title="Today’s plan" href="/training" />
+      <SectionHeading title="Today’s plan" href="/training" className="pr-16" />
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
       {restOnly ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">

@@ -37,7 +37,15 @@ export function HomeMerchPromo() {
                   aria-hidden
                   className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"
                 />
-                <span className="absolute inset-x-0 bottom-0 px-1.5 pb-2 pt-6">
+                <span
+                  className={
+                    index === 0
+                      ? "absolute inset-x-0 bottom-0 pl-1.5 pr-5 pb-2 pt-6 text-left"
+                      : index === 2
+                        ? "absolute inset-x-0 bottom-0 pl-5 pr-1.5 pb-2 pt-6 text-right"
+                        : "absolute inset-x-0 bottom-0 px-1.5 pb-2 pt-6 text-center"
+                  }
+                >
                   <span className="font-display block text-[10px] font-semibold uppercase leading-tight tracking-wide text-white">
                     {product.shortName}
                   </span>

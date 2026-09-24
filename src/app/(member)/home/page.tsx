@@ -95,7 +95,7 @@ export default async function HomePage({
       />
 
       <section className="space-y-4">
-        <SectionHeading title="Nutrition today" href="/nutrition" action="Log food" />
+        <SectionHeading title="Nutrition today" href="/nutrition" action="Log food" className="pr-16" />
         <div className="rounded-[2rem] border border-line bg-card px-5 py-6">
           <NutritionRings
             calories={today.foodToday.calories}

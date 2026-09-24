@@ -62,6 +62,9 @@ describe("Home shop promo", () => {
     ]);
     expect(source).toContain("w-[42%]");
     expect(source).toContain("z-10");
+    expect(source).toContain("pr-5");
+    expect(source).toContain("pl-5");
+    expect(source).toContain("text-right");
     expect(source).toContain('target="_blank"');
     expect(source).toContain('rel="noreferrer"');
     expect(source).toContain("min-h-11");
