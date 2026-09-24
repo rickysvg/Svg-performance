@@ -24,6 +24,7 @@ export function bikeSetDurationSeconds(spec: BikeIntervalSpec) {
   const work = Math.max(0, spec.workSeconds);
   const rest = Math.max(0, spec.restSeconds);
   const rounds = Math.max(1, spec.roundsPerSet);
+  if (rest <= 0) return rounds * work;
   return rounds * (work + rest);
 }
 
@@ -46,7 +47,6 @@ export function viewAtElapsed(spec: BikeIntervalSpec, elapsedSeconds: number): B
   const work = Math.max(0, spec.workSeconds);
   const rest = Math.max(0, spec.restSeconds);
   const rounds = Math.max(1, spec.roundsPerSet);
-  const cycle = work + rest;
   const total = bikeSetDurationSeconds(spec);
   const elapsed = Math.max(0, elapsedSeconds);
 
@@ -61,6 +61,20 @@ export function viewAtElapsed(spec: BikeIntervalSpec, elapsedSeconds: number): B
     };
   }
 
+  if (rest <= 0) {
+    const index = work > 0 ? Math.floor(elapsed / work) : 0;
+    const into = work > 0 ? elapsed - index * work : 0;
+    return {
+      spec,
+      phase: "work",
+      round: index + 1,
+      remainingSeconds: work - into,
+      elapsedSeconds: elapsed,
+      paused: false,
+    };
+  }
+
+  const cycle = work + rest;
   const index = cycle > 0 ? Math.floor(elapsed / cycle) : 0;
   const into = cycle > 0 ? elapsed - index * cycle : 0;
   const inWork = into < work;

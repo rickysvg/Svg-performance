@@ -32,7 +32,7 @@ describe("workout logger media and previous loads", () => {
   });
 
   it("maps every DEMO exercise to a slug, equipment, and square thumb file", () => {
-    expect(DEMO_EXERCISE_NAMES).toHaveLength(16);
+    expect(DEMO_EXERCISE_NAMES).toHaveLength(33);
     for (const name of DEMO_EXERCISE_NAMES) {
       const slug = exerciseSlug(name);
       expect(slug.length).toBeGreaterThan(2);
@@ -67,7 +67,7 @@ describe("workout logger media and previous loads", () => {
         logMode: "timed",
         name: "Jump rope or easy bike intervals",
       }),
-    ).toBe("8 bouts × 20 sec on / 40 sec easy");
+    ).toBe("8 sets × 20 sec on / 40 sec easy");
     expect(previousSetLabel(null)).toBe("—");
     expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80lb");
     expect(previousSetLabel({ reps: 12, loadValue: null, loadUnit: "lb" })).toBe("12 reps");

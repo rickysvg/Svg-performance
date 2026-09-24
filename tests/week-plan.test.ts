@@ -57,15 +57,19 @@ describe("Core weekday planner", () => {
     });
     expect(coreSkeletonSessions("Thursday", "wrestling")[0]).toMatchObject({
       kind: "conditioning",
-      dayNumber: 4,
+      dayNumber: 7,
     });
     expect(coreSkeletonSessions("Thursday", "jiu-jitsu")[0]).toMatchObject({
       kind: "conditioning",
-      dayNumber: 4,
+      dayNumber: 7,
     });
     expect(coreSkeletonSessions("Thursday", "general-fitness")[0]).toMatchObject({
       kind: "conditioning",
-      dayNumber: 4,
+      dayNumber: 7,
+    });
+    expect(coreSkeletonSessions("Friday", "mma")[0]).toMatchObject({
+      kind: "conditioning",
+      dayNumber: 10,
     });
   });
 

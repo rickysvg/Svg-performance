@@ -1,4 +1,5 @@
-import { BIKE_PROGRAM_DAY_NUMBER } from "@/lib/bike-sessions";
+import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
+import { FRIDAY_GPP_DAY_NUMBER } from "@/lib/daru-exercises";
 import { WEEKDAYS } from "@/lib/constants";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 
@@ -97,12 +98,13 @@ function bagDayNumber(focus: string, slot: "power" | "technique") {
   return 3;
 }
 
-function bikeSlot(): PlanSessionSlot {
+function bikeSlot(weekday: "Tuesday" | "Thursday", weekIndex = 0): PlanSessionSlot {
+  const session = pickBikeSessionForPlan(weekday, weekIndex);
   return {
     kind: "conditioning",
     label: "Assault Bike",
     programSlug: DEMO_PROGRAM_SLUG,
-    dayNumber: BIKE_PROGRAM_DAY_NUMBER,
+    dayNumber: session.programDayNumber,
   };
 }
 
@@ -141,7 +143,11 @@ function skillSlot(dayNumber: number, label: string): PlanSessionSlot {
  * Core skeleton before availability / session-count compression.
  * Elite / fight-camp overrides are out of scope — do not add them here.
  */
-export function coreSkeletonSessions(weekday: PlanWeekday, focus?: string | null): PlanSessionSlot[] {
+export function coreSkeletonSessions(
+  weekday: PlanWeekday,
+  focus?: string | null,
+  weekIndex = 0,
+): PlanSessionSlot[] {
   const art = focus ?? "";
   const striking = isStrikingFocus(art);
 
@@ -155,7 +161,7 @@ export function coreSkeletonSessions(weekday: PlanWeekday, focus?: string | null
   }
 
   if (weekday === "Tuesday") {
-    return [bikeSlot()];
+    return [bikeSlot("Tuesday", weekIndex)];
   }
 
   if (weekday === "Wednesday") {
@@ -168,12 +174,12 @@ export function coreSkeletonSessions(weekday: PlanWeekday, focus?: string | null
   }
 
   if (weekday === "Thursday") {
-    return [bikeSlot()];
+    return [bikeSlot("Thursday", weekIndex)];
   }
 
   if (weekday === "Friday") {
     return [
-      strengthSlot(3, "Conditioning", "conditioning"),
+      strengthSlot(FRIDAY_GPP_DAY_NUMBER, "Conditioning", "conditioning"),
       strengthSlot(1, "Strength — legs / athletic"),
     ];
   }
@@ -232,7 +238,7 @@ export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
   return active;
 }
 
-export function buildCoreWeekPlan(prefs: PlannerPrefs): Record<PlanWeekday, DayPlan> {
+export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<PlanWeekday, DayPlan> {
   const activeDays = resolveTrainingDays(prefs);
   const focus = prefs.primaryFocus ?? "";
   const plan = {} as Record<PlanWeekday, DayPlan>;
@@ -241,7 +247,7 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs): Record<PlanWeekday, DayP
     const optionalDay = weekday === "Saturday";
     const alwaysOnBike = weekday === "Tuesday" || weekday === "Thursday";
     const active = weekday === "Sunday" ? false : alwaysOnBike || activeDays.has(weekday);
-    const sessions = coreSkeletonSessions(weekday, focus);
+    const sessions = coreSkeletonSessions(weekday, focus, weekIndex);
     let skipReason: string | undefined;
     if (!active && weekday !== "Sunday") {
       skipReason = "Not on your training days this week. Rest or do easy movement.";
@@ -263,7 +269,7 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs): Record<PlanWeekday, DayP
 
 export function planForDate(prefs: PlannerPrefs, date: Date): DayPlan {
   const weekday = weekdayInAppZone(date);
-  return buildCoreWeekPlan(prefs)[weekday];
+  return buildCoreWeekPlan(prefs, bikeWeekIndex(date))[weekday];
 }
 
 export function nextActiveDate(prefs: PlannerPrefs, from: Date): Date | null {
@@ -283,7 +289,7 @@ export function nextActiveWeekday(prefs: PlannerPrefs, from: Date): PlanWeekday 
 
 export function weekStrip(prefs: PlannerPrefs, now = new Date()) {
   const today = weekdayInAppZone(now);
-  const plan = buildCoreWeekPlan(prefs);
+  const plan = buildCoreWeekPlan(prefs, bikeWeekIndex(now));
   return WEEKDAYS.map((weekday) => ({
     weekday,
     short: weekday.slice(0, 3),

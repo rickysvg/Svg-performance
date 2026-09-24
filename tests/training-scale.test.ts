@@ -175,6 +175,19 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["Side plank"]).toBe("timed");
     expect(modes["Jump rope or easy bike intervals"]).toBe("timed");
     expect(modes["Assault bike intervals"]).toBe("timed_round");
+    expect(modes["Daru alactic power bike"]).toBe("timed_round");
+    expect(modes["Trap-bar deadlift"]).toBe("load_reps");
+    expect(modes["Floor press"]).toBe("load_reps");
+    expect(modes["Landmine press"]).toBe("load_reps");
+    expect(modes["Rotational med-ball throw"]).toBe("load_reps");
+    expect(modes["Med-ball chest pass"]).toBe("load_reps");
+    expect(modes["Bent-over DB shrug"]).toBe("load_reps");
+    expect(modes["Farmer's carry"]).toBe("load_timed");
+    expect(modes["Sled push"]).toBe("timed");
+    expect(modes["Sled hamstring drag"]).toBe("timed");
+    expect(modes["Banded kettlebell swing"]).toBe("timed");
+    expect(modes["Neck extension hold"]).toBe("timed");
+    expect(modes["Banded DB front-rack march"]).toBe("timed");
     const counts = Object.values(modes).reduce(
       (acc, mode) => {
         acc[mode] = (acc[mode] ?? 0) + 1;
@@ -183,11 +196,11 @@ describe("scaled DEMO days in the database", () => {
       {} as Record<string, number>,
     );
     expect(counts).toEqual({
-      load_reps: 7,
-      load_timed: 1,
+      load_reps: 13,
+      load_timed: 2,
       reps_only: 4,
-      timed: 3,
-      timed_round: 1,
+      timed: 8,
+      timed_round: 6,
     });
     expect(
       skill?.days.flatMap((day) => day.exercises).every((row) =>

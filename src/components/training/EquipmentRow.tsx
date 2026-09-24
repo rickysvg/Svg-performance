@@ -77,6 +77,13 @@ function Icon({ id }: { id: EquipmentId }) {
           <path d="M7 16l5-8h4l1 8M12 8l-2 4h6" />
         </svg>
       );
+    case "sled":
+      return (
+        <svg {...common}>
+          <path d="M4 17h16M6 17V9h10l2 4H8" />
+          <path d="M8 17v3M16 17v3" />
+        </svg>
+      );
     default:
       return (
         <svg {...common}>
