@@ -40,8 +40,8 @@ describe("Home shop promo", () => {
     expect(SHOP_PRODUCTS).toBe("https://www.svgandco.com/products");
     expect(HOME_SHOP_PRODUCTS.map((row) => row.href)).toEqual([
       SHOP_MMA_GLOVES,
-      SHOP_FLAME_SHORTS,
       SHOP_BIG_BOSS_RASHGUARD,
+      SHOP_FLAME_SHORTS,
     ]);
   });
 
@@ -52,14 +52,16 @@ describe("Home shop promo", () => {
     );
     expect(source).toContain('from "next/image"');
     expect(source).toContain("<Image");
-    expect(source).toContain('sizes="(max-width: 390px) 30vw, (max-width: 640px) 28vw, 180px"');
+    expect(source).toContain('sizes="(max-width: 390px) 32vw, (max-width: 640px) 30vw, 180px"');
     expect(source).toContain("product.shortName");
     expect(source).toContain("Tap to shop on svgandco.com");
     expect(HOME_SHOP_PRODUCTS.map((row) => row.shortName)).toEqual([
       "MMA GLOVES",
-      "FLAME SHORTS",
       "BIG BOSS RASHGUARD",
+      "FLAME SHORTS",
     ]);
+    expect(source).toContain("w-[42%]");
+    expect(source).toContain("z-10");
     expect(source).toContain('target="_blank"');
     expect(source).toContain('rel="noreferrer"');
     expect(source).toContain("min-h-11");

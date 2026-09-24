@@ -21,18 +21,18 @@ export const HOME_SHOP_PRODUCTS = [
     alt: "Decoder MMA hybrid sparring gloves",
   },
   {
-    shortName: "FLAME SHORTS",
-    name: "Destined Hunter Training Shorts",
-    href: SHOP_FLAME_SHORTS,
-    src: "/shop/flame-shorts.webp",
-    alt: "Destined Hunter training shorts with lime flames",
-  },
-  {
     shortName: "BIG BOSS RASHGUARD",
     name: "Big Boss Rashguard",
     href: SHOP_BIG_BOSS_RASHGUARD,
     src: "/shop/big-boss-rashguard.webp",
     alt: "Big Boss rashguard",
+  },
+  {
+    shortName: "FLAME SHORTS",
+    name: "Destined Hunter Training Shorts",
+    href: SHOP_FLAME_SHORTS,
+    src: "/shop/flame-shorts.webp",
+    alt: "Destined Hunter training shorts with lime flames",
   },
 ] as const;
 

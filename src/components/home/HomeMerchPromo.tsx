@@ -10,35 +10,42 @@ export function HomeMerchPromo() {
       <p className="mt-2 max-w-xs text-sm">
         Gear from SVG &amp; CO. Tap to shop on svgandco.com.
       </p>
-      <div className="mt-6 grid min-w-0 grid-cols-3 gap-2">
-        {HOME_SHOP_PRODUCTS.map((product) => (
-          <a
-            key={product.href}
-            href={product.href}
-            target="_blank"
-            rel="noreferrer"
-            className="relative block min-h-11 min-w-0 overflow-hidden rounded-2xl bg-black"
-          >
-            <span className="relative block aspect-square">
-              <Image
-                src={product.src}
-                alt={product.alt}
-                fill
-                sizes="(max-width: 390px) 30vw, (max-width: 640px) 28vw, 180px"
-                className="object-cover object-center"
-              />
-              <span
-                aria-hidden
-                className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"
-              />
-              <span className="absolute inset-x-0 bottom-0 px-1.5 pb-2 pt-6">
-                <span className="font-display block text-[10px] font-semibold uppercase leading-tight tracking-wide text-white">
-                  {product.shortName}
+      <div className="mt-6 flex min-w-0 items-center">
+        {HOME_SHOP_PRODUCTS.map((product, index) => {
+          const featured = index === 1;
+          return (
+            <a
+              key={product.href}
+              href={product.href}
+              target="_blank"
+              rel="noreferrer"
+              className={
+                featured
+                  ? "relative z-10 -mx-3 block min-h-11 w-[42%] min-w-0 shrink-0 overflow-hidden rounded-2xl bg-black shadow-md"
+                  : "relative z-0 block min-h-11 min-w-0 flex-1 overflow-hidden rounded-2xl bg-black"
+              }
+            >
+              <span className="relative block aspect-square">
+                <Image
+                  src={product.src}
+                  alt={product.alt}
+                  fill
+                  sizes="(max-width: 390px) 32vw, (max-width: 640px) 30vw, 180px"
+                  className="object-cover object-center"
+                />
+                <span
+                  aria-hidden
+                  className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"
+                />
+                <span className="absolute inset-x-0 bottom-0 px-1.5 pb-2 pt-6">
+                  <span className="font-display block text-[10px] font-semibold uppercase leading-tight tracking-wide text-white">
+                    {product.shortName}
+                  </span>
                 </span>
               </span>
-            </span>
-          </a>
-        ))}
+            </a>
+          );
+        })}
       </div>
       <a
         href={SHOP_PRODUCTS}
