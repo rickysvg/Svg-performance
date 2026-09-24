@@ -93,7 +93,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
                 ? today.draft.id
                 : undefined
             }
-            startLabel={next ? `Start ${next.title}` : "Open Train"}
+            startLabel={next ? "Start next session" : "Open Train"}
             resumeLabel="Resume next session"
           />
         </div>

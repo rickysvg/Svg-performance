@@ -7,7 +7,7 @@ const TILES = ["train.webp", "coach.webp", "learn.webp", "progress.webp"] as con
 describe("Home photo tiles", () => {
   it("ships ~800px WebP academy photos for Train, Coach, Learn, and Progress", () => {
     for (const name of TILES) {
-      const file = path.join(process.cwd(), "public/home/tiles", name);
+      const file = path.join(process.cwd(), "public/tiles", name);
       expect(fs.existsSync(file), file).toBe(true);
       const bytes = fs.readFileSync(file);
       expect(bytes[0]).toBe(0x52);
@@ -19,9 +19,10 @@ describe("Home photo tiles", () => {
       expect(bytes[11]).toBe(0x50);
       expect(bytes.length).toBeGreaterThan(8_000);
       expect(bytes.length).toBeLessThan(250_000);
-      expect(fs.existsSync(path.join(process.cwd(), "public/home/tiles", name.replace(".webp", ".jpg")))).toBe(
+      expect(fs.existsSync(path.join(process.cwd(), "public/tiles", name.replace(".webp", ".jpg")))).toBe(
         false,
       );
+      expect(fs.existsSync(path.join(process.cwd(), "public/home/tiles", name))).toBe(false);
     }
   });
 
@@ -39,10 +40,10 @@ describe("Home photo tiles", () => {
     expect(source).toContain('href: "/progress"');
     expect(source).toContain('href: "/nutrition"');
     expect(source).toContain('href: "/training/calendar"');
-    expect(source).toContain("/home/tiles/train.webp");
-    expect(source).toContain("/home/tiles/coach.webp");
-    expect(source).toContain("/home/tiles/learn.webp");
-    expect(source).toContain("/home/tiles/progress.webp");
+    expect(source).toContain("/tiles/train.webp");
+    expect(source).toContain("/tiles/coach.webp");
+    expect(source).toContain("/tiles/learn.webp");
+    expect(source).toContain("/tiles/progress.webp");
     expect(source).toContain("Today’s work");
     expect(source).toContain("Ask SVG Coach");
     expect(source).toContain("from-black/85");
