@@ -21,8 +21,13 @@ const PROTECTED = [
   "/heart",
 ];
 
+const PUBLIC_FILE = /\.(webp|png|jpe?g|gif|svg|ico|mp4|webm|woff2?)$/i;
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (PUBLIC_FILE.test(pathname)) {
+    return NextResponse.next();
+  }
   const isProtected = PROTECTED.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );

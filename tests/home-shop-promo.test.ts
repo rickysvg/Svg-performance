@@ -70,4 +70,11 @@ describe("Home shop promo", () => {
     expect(source).not.toMatch(/\$|price|USD/i);
     expect(source).not.toMatch(/function Tee|function Hoodie|function Cap/);
   });
+
+  it("lets /shop/*.webp through the auth proxy so next/image can read them", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/proxy.ts"), "utf8");
+    expect(source).toContain("PUBLIC_FILE");
+    expect(source).toContain("webp");
+  });
 });
+
