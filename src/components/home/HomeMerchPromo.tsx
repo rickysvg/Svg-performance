@@ -35,7 +35,7 @@ function Cap() {
 export function HomeMerchPromo() {
   return (
     <section className="relative overflow-hidden rounded-[2rem] bg-accent px-5 py-8 text-black">
-      <p className="text-2xl font-semibold leading-tight tracking-tight">
+      <p className="font-display text-2xl font-semibold uppercase leading-tight tracking-wide">
         Check the new SVG &amp; CO collection
       </p>
       <p className="mt-2 max-w-xs text-sm">
@@ -51,7 +51,7 @@ export function HomeMerchPromo() {
         href={SHOP_PRODUCTS}
         target="_blank"
         rel="noreferrer"
-        className="touch-target mt-6 inline-flex items-center justify-center rounded-full bg-black px-6 text-sm font-semibold text-highlighter"
+        className="font-display touch-target mt-6 inline-flex items-center justify-center rounded-full bg-black px-6 text-sm font-semibold uppercase tracking-[0.08em] text-highlighter"
       >
         Shop now
       </a>

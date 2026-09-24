@@ -212,7 +212,7 @@ export function WorkoutLogForm({
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center">
             {restRunning ? (
               <>
-                <p className="text-3xl font-semibold tabular-nums leading-none text-accent">
+                <p className="stat-display text-3xl font-semibold leading-none text-accent">
                   {formatRestClock(restRemaining)}
                 </p>
                 <SessionTimer />
@@ -246,7 +246,7 @@ export function WorkoutLogForm({
               <input
                 name="title"
                 defaultValue={session.title}
-                className="w-full bg-transparent text-2xl font-semibold outline-none"
+                className="font-display w-full min-w-0 bg-transparent text-2xl font-semibold tracking-wide outline-none"
               />
             </label>
             {session.programDay?.title ? (
@@ -389,7 +389,7 @@ export function WorkoutLogForm({
                       type="button"
                       data-rest-stop={name}
                       onClick={() => setRestTimer(null)}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent"
+                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold uppercase tracking-wide text-accent"
                     >
                       <StopIcon />
                       Stop
@@ -399,7 +399,7 @@ export function WorkoutLogForm({
                       type="button"
                       data-rest-start={name}
                       onClick={() => setRestTimer(startRestTimer(name, restSeconds))}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-accent hover:border-accent"
+                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm uppercase tracking-wide text-accent hover:border-accent"
                     >
                       <ClockIcon />
                       {formatRestPill(restSeconds)}

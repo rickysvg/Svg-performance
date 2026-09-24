@@ -34,7 +34,7 @@ export default async function ChallengesPage() {
         <p className="text-sm text-muted">
           Consistency scoring: days with a workout and/or food log. Not heaviest lift.
         </p>
-        <p className="mt-3 text-3xl font-semibold text-accent">
+        <p className="stat-display mt-3 text-3xl font-semibold text-accent">
           {daysActive} / {goalDays}
         </p>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-line">

@@ -23,6 +23,7 @@
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-anton);
 }
 
 html,
@@ -33,6 +34,27 @@ body {
 
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/*
+  Anton is the fight-poster display face (Ricky’s pick). Headings, lime
+  highlighter kickers, primary pills, and big stats use it. Body copy,
+  inputs, notes, and Coach replies stay Geist.
+*/
+h1,
+h2,
+h3 {
+  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+h1 {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-wrap: balance;
 }
 
 a:focus-visible,
@@ -60,6 +82,29 @@ textarea:focus-visible {
 
   .text-highlighter {
     color: var(--accent);
+  }
+
+  .font-display {
+    font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+    letter-spacing: 0.04em;
+  }
+
+  .stat-display {
+    font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/*
+  Lime fill pills (START WORKOUT / Start Now / Send). Skip bordered
+  account chips (Book / Shop / Profile) so those stay readable Geist.
+*/
+@layer components {
+  .rounded-full.bg-accent:not(.border) {
+    font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 }
 

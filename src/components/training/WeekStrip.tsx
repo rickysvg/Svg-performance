@@ -15,7 +15,7 @@ export function WeekStrip({ days }: { days: Item[] }) {
             }`}
           >
             <span
-              className={`text-[11px] font-semibold uppercase tracking-wide ${
+              className={`font-display text-[11px] font-semibold uppercase tracking-wide ${
                 day.isToday ? "text-highlighter" : "text-muted"
               }`}
             >

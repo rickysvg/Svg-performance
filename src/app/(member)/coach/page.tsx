@@ -93,7 +93,7 @@ export default async function CoachPage({
                   href={buildCoachHref({ topic: item })}
                   className="block rounded-2xl border border-line bg-card px-5 py-5"
                 >
-                  <p className="text-lg font-semibold">{COACH_TOPIC_LABELS[item]}</p>
+                  <p className="font-display text-lg font-semibold uppercase tracking-wide">{COACH_TOPIC_LABELS[item]}</p>
                   <p className="mt-1 text-sm text-muted">{COACH_TOPIC_BLURBS[item]}</p>
                 </Link>
               </li>

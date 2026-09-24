@@ -12,7 +12,7 @@ export function DailyQuoteCard({
 }) {
   return (
     <section className="rounded-[2rem] border border-line bg-card px-5 py-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+      <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-muted">
         Daily quote
       </p>
       {unlocked ? (

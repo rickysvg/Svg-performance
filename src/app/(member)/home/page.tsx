@@ -45,7 +45,7 @@ export default async function HomePage({
   return (
     <main className="space-y-8">
       <section className="-mx-4 -mt-6 bg-accent px-4 pb-8 pt-7 text-black">
-        <p className="text-sm font-medium">Let&apos;s go</p>
+        <p className="font-display text-sm font-medium uppercase tracking-[0.16em]">Let&apos;s go</p>
         <h1 className="mt-1 text-4xl font-semibold tracking-tight">
           Welcome {greetingName}
         </h1>

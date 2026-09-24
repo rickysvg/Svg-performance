@@ -43,10 +43,10 @@ export function WeekStrip({ selected }: { selected: Date }) {
                   : "border border-transparent text-muted hover:border-line"
               }`}
             >
-              <span className="block text-lg font-semibold leading-none">
+              <span className="stat-display block text-lg font-semibold leading-none">
                 {day.getDate()}
               </span>
-              <span className="mt-1 block text-[11px]">{WEEKDAY_SHORT[index]}</span>
+              <span className="font-display mt-1 block text-[11px] uppercase tracking-wide">{WEEKDAY_SHORT[index]}</span>
               {isToday ? (
                 <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-accent" />
               ) : (

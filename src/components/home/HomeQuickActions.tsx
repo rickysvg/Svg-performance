@@ -63,7 +63,7 @@ export function HomeQuickActions() {
             />
             <span className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
               <span aria-hidden className="mb-1.5 block h-0.5 w-6 rounded-full bg-accent" />
-              <span className="block text-lg font-bold leading-tight text-white">
+              <span className="font-display block text-lg font-bold uppercase leading-tight tracking-wide text-white">
                 {action.label}
               </span>
               <span className="mt-0.5 block text-[11px] font-medium text-white/80">
@@ -81,11 +81,11 @@ export function HomeQuickActions() {
             href={action.href}
             className="flex min-h-[5.5rem] flex-col justify-between rounded-2xl border border-line bg-card px-3 py-3"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-black">
+            <span className="font-display inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-black">
               {action.label.slice(0, 1)}
             </span>
             <span>
-              <span className="block text-sm font-semibold">{action.label}</span>
+              <span className="font-display block text-sm font-semibold uppercase tracking-wide">{action.label}</span>
               <span className="mt-0.5 block text-[11px] text-muted">{action.hint}</span>
             </span>
           </Link>

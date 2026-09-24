@@ -27,7 +27,7 @@ function MetricTile({
   return (
     <article className="rounded-2xl border border-line bg-card p-4">
       <p className="text-sm text-muted">{title}</p>
-      <p className="mt-3 text-2xl font-semibold">{value}</p>
+      <p className="stat-display mt-3 text-2xl font-semibold">{value}</p>
       <p className="mt-2 text-xs text-muted">{hint}</p>
     </article>
   );

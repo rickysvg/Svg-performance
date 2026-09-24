@@ -54,7 +54,7 @@ export function PlanSessionCard({
       }`}
     >
       <p
-        className={`text-xs font-bold uppercase tracking-wide ${
+        className={`font-display text-xs font-bold uppercase tracking-wide ${
           highlight ? "text-highlighter" : "text-accent"
         }`}
       >
