@@ -175,7 +175,8 @@ describe("app-open splash video", () => {
     expect(splash).toMatch(/startSplashPlayback/);
     expect(splash).toMatch(/\bmuted\b/);
     expect(splash).toMatch(/autoPlay/);
-    expect(splash).toMatch(/>Skip</);
+    expect(splash).toMatch(/app-splash-skip/);
+    expect(splash).toMatch(/Skip/);
     expect(splash).toMatch(/mountVideo/);
     expect(splash).not.toMatch(/poster=/);
     expect(splash).not.toMatch(/playSplashWithSound/);

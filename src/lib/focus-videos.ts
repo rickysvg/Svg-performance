@@ -101,8 +101,11 @@ export async function upsertFocusVideo(input: {
     storedName = `${Date.now()}-${Math.random().toString(16).slice(2)}.${mime === "video/webm" ? "webm" : "mp4"}`;
     mimeType = mime;
     byteSize = input.bytes.byteLength;
-    await mkdir(focusVideoRoot(), { recursive: true });
-    await writeFile(path.join(focusVideoRoot(), storedName), input.bytes);
+    await mkdir(/*turbopackIgnore: true*/ focusVideoRoot(), { recursive: true });
+    await writeFile(
+      path.join(/*turbopackIgnore: true*/ focusVideoRoot(), storedName),
+      input.bytes,
+    );
   }
   if (!videoUrl && !storedName && !input.id) {
     throw new AppError("FOCUS", "Paste a YouTube/Vimeo URL or upload a short clip.");
@@ -121,7 +124,9 @@ export async function upsertFocusVideo(input: {
     const existing = await prisma.weeklyFocusVideo.findUnique({ where: { id: input.id } });
     if (!existing) throw new NotFoundError("Focus video not found.");
     if (storedName && existing.storedName) {
-      await unlink(path.join(focusVideoRoot(), existing.storedName)).catch(() => undefined);
+      await unlink(
+        path.join(/*turbopackIgnore: true*/ focusVideoRoot(), existing.storedName),
+      ).catch(() => undefined);
     }
     return prisma.weeklyFocusVideo.update({ where: { id: input.id }, data });
   }
@@ -153,7 +158,9 @@ export async function readFocusVideoFile(videoId: string) {
   if (!row || !row.storedName || row.status !== "published") {
     throw new NotFoundError("Focus video not found.");
   }
-  const bytes = await readFile(path.join(focusVideoRoot(), row.storedName));
+  const bytes = await readFile(
+    path.join(/*turbopackIgnore: true*/ focusVideoRoot(), row.storedName),
+  );
   return { row, bytes };
 }
 

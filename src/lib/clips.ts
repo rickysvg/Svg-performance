@@ -25,7 +25,9 @@ export function trainingClipRoot() {
 }
 
 function userDir(userId: string) {
-  return path.join(trainingClipRoot(), userId);
+  const fromEnv = process.env.TRAINING_CLIP_DIR?.trim();
+  if (fromEnv) return path.join(/*turbopackIgnore: true*/ fromEnv, userId);
+  return path.join(process.cwd(), "uploads", "training-clips", userId);
 }
 
 export function detectTrainingClipMime(bytes: Uint8Array): TrainingClipMime | null {
@@ -120,8 +122,8 @@ export async function createTrainingClipForUser(input: {
   const mime = validateTrainingClipBytes(input.bytes, input.claimedType);
   const title = input.title.trim().slice(0, 80) || "Training clip";
   const storedName = `${Date.now()}-${Math.random().toString(16).slice(2)}.${EXT_BY_MIME[mime]}`;
-  await mkdir(userDir(input.userId), { recursive: true });
-  const diskPath = path.join(userDir(input.userId), storedName);
+  await mkdir(/*turbopackIgnore: true*/ userDir(input.userId), { recursive: true });
+  const diskPath = path.join(/*turbopackIgnore: true*/ userDir(input.userId), storedName);
   const row = await prisma.trainingClip.create({
     data: {
       userId: input.userId,
@@ -133,7 +135,7 @@ export async function createTrainingClipForUser(input: {
     },
   });
   try {
-    await writeFile(diskPath, input.bytes);
+    await writeFile(/*turbopackIgnore: true*/ diskPath, input.bytes);
   } catch (error) {
     await prisma.trainingClip.delete({ where: { id: row.id } }).catch(() => undefined);
     throw error;
@@ -230,7 +232,9 @@ export async function deleteTrainingClipForUser(userId: string, clipId: string) 
   if (!row || row.userId !== userId) {
     throw new ForbiddenError("You can only delete your own training clip.");
   }
-  await unlink(path.join(userDir(userId), row.storedName)).catch(() => undefined);
+  await unlink(
+    path.join(/*turbopackIgnore: true*/ userDir(userId), row.storedName),
+  ).catch(() => undefined);
   return prisma.trainingClip.delete({ where: { id: clipId } });
 }
 
@@ -240,7 +244,9 @@ export async function readTrainingClipFileForActor(
 ) {
   const row = await prisma.trainingClip.findUnique({ where: { id: clipId } });
   await assertClipAccess(actor, row);
-  const bytes = await readFile(path.join(userDir(row!.userId), row!.storedName));
+  const bytes = await readFile(
+    path.join(/*turbopackIgnore: true*/ userDir(row!.userId), row!.storedName),
+  );
   return { row: row!, bytes };
 }
 
