@@ -421,11 +421,9 @@ export function WorkoutLogForm({
               {restSeconds > 0 ? (
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-sm text-muted">
-                    {bike
-                      ? "Rest between sets"
-                      : mode === "timed_round"
-                        ? "Rest between rounds"
-                        : "Rest between each set"}
+                    {bike || mode === "timed_round"
+                      ? "Rest between rounds"
+                      : "Rest between each set"}
                   </p>
                   {thisRest ? (
                     <button

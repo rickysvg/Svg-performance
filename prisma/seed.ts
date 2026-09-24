@@ -239,7 +239,7 @@ async function main() {
                   reps: "20 sec on / 40 sec easy",
                   loadText: "Hard but repeatable",
                   restSeconds: 0,
-                  notes: "You should be able to talk in a short sentence after each bout. Stop for dizziness or chest pain.",
+                  notes: "You should be able to talk in a short sentence after each set. Stop for dizziness or chest pain.",
                   ...formVideoFieldsFor("Jump rope or easy bike intervals"),
                 },
                 {
@@ -334,7 +334,7 @@ async function main() {
                 reps: "20 sec on / 40 sec easy",
                 loadText: "Hard but repeatable",
                 restSeconds: 0,
-                notes: "Easy gas-tank closer. Talk in a short sentence after each bout.",
+                notes: "Easy gas-tank closer. Talk in a short sentence after each set.",
                 ...formVideoFieldsFor("Jump rope or easy bike intervals"),
               },
             ],
@@ -501,7 +501,7 @@ async function main() {
                 reps: "15 sec",
                 loadText: "Control, then 4–6 honest shots",
                 restSeconds: 45,
-                notes: `Short bursts. Reset posture between bouts. ${MAT_OR_TECHNICAL}`,
+                notes: `Short bursts. Reset posture between rounds. ${MAT_OR_TECHNICAL}`,
                 ...formVideoFieldsFor("Ground-and-pound burst"),
               },
               {

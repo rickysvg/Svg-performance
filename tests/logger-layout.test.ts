@@ -32,7 +32,7 @@ describe("Logger layout", () => {
       "utf8",
     );
     expect(source).toContain("isBikeIntervalName");
-    expect(source).toContain("Rest between sets");
+    expect(source).toContain("Rest between rounds");
     expect(source).toContain("bikeIntervalCompletionEffects");
     expect(timer).toContain("data-bike-intervals");
     expect(timer).toContain("text-[#CBF805]");

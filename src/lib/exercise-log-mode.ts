@@ -107,7 +107,7 @@ export function modeHint(mode: LogMode, name?: string) {
       return "Start the interval timer. Mark Done when the last round ends. Timed only — no lbs or reps.";
     }
     const between = session?.restBetweenSetsSeconds ?? 60;
-    return `Mark Done after each set. Rest ${between}s starts automatically. No lbs or reps.`;
+    return `Mark Done after each round. Rest ${between}s starts automatically. No lbs or reps.`;
   }
   if (mode === "timed_round") {
     return "Log the round time. Rest between rounds is the pill above — not pounds.";
@@ -148,8 +148,8 @@ export function plannedSetLine(input: {
   const mode = resolveLogMode(input);
   if (isBikeIntervalName(input.name ?? "")) {
     const reps = input.reps || bikeIntervalReps();
-    const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between sets` : "";
-    return `${countLabel(input.sets, "set")} · ${reps}${between}`;
+    const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between rounds` : "";
+    return `${countLabel(input.sets, "round")} · ${reps}${between}`;
   }
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
   if (mode === "timed_round") {
@@ -164,9 +164,7 @@ export function plannedSetLine(input: {
     }
     const unit = isHoldName(input.name ?? "")
       ? countLabel(input.sets, "hold")
-      : CARDIO_TIMED_NAME.test(input.name ?? "")
-        ? countLabel(input.sets, "bout")
-        : countLabel(input.sets, "work", "work");
+      : countLabel(input.sets, "set");
     return `${unit} × ${input.reps}${rest}`;
   }
   return `${countLabel(input.sets, "set")} × ${input.reps}${rest}`;

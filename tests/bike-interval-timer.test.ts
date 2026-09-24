@@ -72,7 +72,7 @@ describe("bike interval timer", () => {
     expect(tickBikeInterval(snapshot).snapshot.phase).toBe("done");
   });
 
-  it("beeps work-warning on the last 3 seconds of a work bout", () => {
+  it("beeps work-warning on the last 3 seconds of a work interval", () => {
     const { cues } = runTicks(fifteen, 15);
     expect(cues.filter((cue) => cue === "work-warning")).toEqual([
       "work-warning",

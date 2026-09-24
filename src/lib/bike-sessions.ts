@@ -76,7 +76,7 @@ export const BIKE_SESSIONS: BikeSession[] = [
     loadText: SPRINT_NO_LBS,
     svgScaling: false,
     notes:
-      "Warm up 3–5 min easy spin. Then 15 seconds all-out / 15 seconds rest × 8 = 1 set. Rest 1 minute between sets. Cool down 3–5 min easy spin. Timed work only — no reps or lbs.",
+      "Warm up 3–5 min easy spin. Then 15 seconds all-out / 15 seconds rest × 8 = 1 round. Rest 1 minute between rounds. Cool down 3–5 min easy spin. Timed work only — no reps or lbs.",
     scale: {
       beginner: intervalScale(15, 15, 8, 3, 60, SPRINT_NO_LBS),
       intermediate: intervalScale(15, 15, 8, 4, 60, SPRINT_NO_LBS),

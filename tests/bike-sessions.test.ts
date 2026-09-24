@@ -123,7 +123,7 @@ describe("assault bike catalog", () => {
         logMode: "timed_round",
         name: DEFAULT_BIKE_SESSION.name,
       }),
-    ).toBe("5 sets · 15s work / 15s rest × 8, 60s between sets");
+    ).toBe("5 rounds · 15s work / 15s rest × 8, 60s between rounds");
   });
 
   it("scales coach bike sessions by level with SVG scaling", () => {

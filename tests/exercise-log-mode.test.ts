@@ -75,7 +75,7 @@ describe("exercise log modes", () => {
         logMode: "timed",
         name: "Jump rope or easy bike intervals",
       }),
-    ).toBe("8 bouts × 20 sec on / 40 sec easy");
+    ).toBe("8 sets × 20 sec on / 40 sec easy");
     expect(
       plannedSetLine({
         sets: 3,
@@ -93,7 +93,7 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         name: "Assault bike intervals",
       }),
-    ).toBe("4 sets · 15s work / 15s rest × 8, 60s between sets");
+    ).toBe("4 rounds · 15s work / 15s rest × 8, 60s between rounds");
     expect(
       plannedSetLine({
         sets: 3,
@@ -114,7 +114,7 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         name: "Daru alactic power bike",
       }),
-    ).toBe("1 set · 10s work / 50s rest × 4");
+    ).toBe("1 round · 10s work / 50s rest × 4");
     expect(
       plannedSetLine({
         sets: 1,
@@ -150,7 +150,7 @@ describe("exercise log modes", () => {
         logMode: "timed",
         name: "Jump rope or easy bike intervals",
       }),
-    ).toBe("1 bout × 20 sec on / 40 sec easy");
+    ).toBe("1 set × 20 sec on / 40 sec easy");
     expect(
       plannedSetLine({
         sets: 1,
@@ -176,7 +176,25 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         name: "Assault bike intervals",
       }),
-    ).toBe("5 sets · 15s work / 15s rest × 8, 60s between sets");
+    ).toBe("5 rounds · 15s work / 15s rest × 8, 60s between rounds");
+    expect(
+      plannedSetLine({
+        sets: 5,
+        reps: "25 sec",
+        restSeconds: 60,
+        logMode: "timed",
+        name: "Sled push",
+      }),
+    ).toBe("5 sets × 25 sec, 60s rest");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "15:00",
+        restSeconds: 90,
+        logMode: "timed",
+        name: "Sled hamstring drag",
+      }),
+    ).toBe("1 set × 15:00, 90s rest");
   });
 
   it("labels previous timed sets as hold or round time", () => {
