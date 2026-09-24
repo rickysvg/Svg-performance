@@ -22,12 +22,12 @@ function PricePair({ gym, non }: { gym: string; non: string }) {
   return (
     <div className="mt-4 grid grid-cols-2 gap-3">
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted">Gym members</p>
-        <p className="mt-1 text-2xl font-semibold text-accent">{gym}</p>
+        <p className="font-display text-xs uppercase tracking-wide text-muted">Gym members</p>
+        <p className="stat-display mt-1 text-2xl font-semibold text-accent">{gym}</p>
       </div>
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted">Nonmembers</p>
-        <p className="mt-1 text-2xl font-semibold">{non}</p>
+        <p className="font-display text-xs uppercase tracking-wide text-muted">Nonmembers</p>
+        <p className="stat-display mt-1 text-2xl font-semibold">{non}</p>
       </div>
     </div>
   );
@@ -57,7 +57,7 @@ export default async function PricingPage() {
     const atCap = Boolean(seat?.atCap);
     return (
       <article key={plan.id} className="rounded-2xl border border-line bg-card p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-accent">
           PROPOSAL / TEST
         </p>
         <h3 className="mt-2 text-xl font-semibold">{plan.label}</h3>
@@ -122,7 +122,7 @@ export default async function PricingPage() {
     <div className="min-h-full">
       <AppHeader email={user?.email} />
       <main className="mx-auto max-w-3xl px-4 py-10">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-accent">
           Proposal / Stripe TEST only — not live billing
         </p>
         <h1 className="mt-2 text-3xl font-semibold">SVG Performance pricing</h1>
@@ -185,7 +185,7 @@ export default async function PricingPage() {
           {plansInSection("vip").map(renderPlan)}
 
           <article className="rounded-2xl border border-accent/40 bg-card p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-accent">
               PROPOSAL — request stub
             </p>
             <h3 className="mt-2 text-xl font-semibold">Platinum intensives</h3>

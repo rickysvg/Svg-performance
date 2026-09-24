@@ -29,7 +29,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
       {restOnly ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
             {today.planWeekday || "Training"} · {today.planSummary || "Rest"}
           </p>
           <h3 className="mt-3 text-2xl font-semibold leading-tight">
@@ -60,7 +60,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
                 href={href}
                 className="block rounded-[2rem] bg-black px-5 py-6 text-white"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+                <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
                   Session {session.slot} · {KIND_LABEL[session.kind]}
                   {minutes > 0 ? ` · est. ${minutes} min` : ""}
                 </p>
@@ -78,7 +78,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
         </div>
       ) : (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
             Training
           </p>
           <h3 className="mt-3 text-2xl font-semibold leading-tight">No DEMO day loaded</h3>

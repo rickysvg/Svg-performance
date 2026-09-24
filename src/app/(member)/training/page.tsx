@@ -74,7 +74,7 @@ export default async function TrainingPage() {
 
       <section className="space-y-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-accent">
+          <p className="font-display text-xs font-bold uppercase tracking-wide text-accent">
             Today’s plan · {todayPlan.weekday}
           </p>
           <h2 className="mt-1 text-lg font-semibold">

@@ -20,6 +20,11 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 - Hosted Vercel runs `prisma db push` on empty Neon. It does **not** run the laptop seed. `getDemoProgram()` used to throw `NotFoundError` (“run npm run db:setup”), which took down `/home` via `getHomeToday` and `getTodayGuide` → `autoCompleteHints`. Home now treats a missing DEMO program as an empty CTA. Optional Home widgets are caught so one missing table/seed cannot replace the page with the error boundary.
 
+## Typography
+
+- **Anton** (Google Font, `next/font/google`, CSS variable `--font-anton` / Tailwind `font-display`) is the heading / fight-poster face Ricky picked. Use it for `h1`–`h3`, lime highlighter kickers, primary lime pills, tab labels, and big stats (`stat-display`). `h1` is uppercase. Long exercise names wrap (`overflow-wrap: anywhere`) — do not truncate them in Anton.
+- **Geist** stays the body face: paragraphs, form inputs, notes, Coach replies, and small meta. Do not set paragraphs to Anton. Account chips (Book / Shop / Profile) stay Geist so four labels still fit the bottom bar.
+
 ## Audience
 
 - SVG Performance is **not** SVG-members-only. It is for anybody who wants to improve performance — especially combat sports athletes, and also people getting in shape. SVG MMA Academy members are a welcome segment (admin gym-verify + member rates), not the only audience. El Paso / SVG is origin, not a gate.

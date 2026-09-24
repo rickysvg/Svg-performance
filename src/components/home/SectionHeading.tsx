@@ -15,7 +15,7 @@ export function SectionHeading({
       {href ? (
         <Link
           href={href}
-          className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-foreground"
+          className="font-display shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-foreground"
         >
           {action} →
         </Link>

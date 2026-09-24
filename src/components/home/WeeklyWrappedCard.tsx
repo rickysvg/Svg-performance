@@ -21,19 +21,19 @@ export function WeeklyWrappedCard({ wrap }: { wrap: WeeklyWrapped }) {
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>
           <dt className="text-muted">Days trained</dt>
-          <dd className="text-xl font-semibold">{wrap.daysTrained}</dd>
+          <dd className="stat-display text-xl font-semibold">{wrap.daysTrained}</dd>
         </div>
         <div>
           <dt className="text-muted">Workouts logged</dt>
-          <dd className="text-xl font-semibold">{wrap.workoutsLogged}</dd>
+          <dd className="stat-display text-xl font-semibold">{wrap.workoutsLogged}</dd>
         </div>
         <div>
           <dt className="text-muted">Meals logged</dt>
-          <dd className="text-xl font-semibold">{wrap.mealsLogged}</dd>
+          <dd className="stat-display text-xl font-semibold">{wrap.mealsLogged}</dd>
         </div>
         <div>
           <dt className="text-muted">Lessons completed</dt>
-          <dd className="text-xl font-semibold">{wrap.lessonsCompleted}</dd>
+          <dd className="stat-display text-xl font-semibold">{wrap.lessonsCompleted}</dd>
         </div>
       </dl>
       <p className="mt-3 text-sm text-muted">

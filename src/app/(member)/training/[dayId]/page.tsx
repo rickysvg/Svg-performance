@@ -79,7 +79,7 @@ export default async function TrainingDayPage({
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold leading-tight">{day.title}</h1>
             <p className="mt-1 text-sm text-muted">{day.focus}</p>
-            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-accent">
+            <p className="font-display mt-2 text-xs font-semibold uppercase tracking-wide text-accent">
               {scaleCopy(
                 scaleBandFromPrefs({
                   experienceLevel: profile?.experienceLevel,
