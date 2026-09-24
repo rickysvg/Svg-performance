@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
+import { AppSplash } from "@/components/AppSplash";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/session";
 
@@ -8,6 +9,7 @@ export default async function MarketingPage() {
 
   return (
     <div className="min-h-full">
+      <AppSplash />
       <AppHeader email={user?.email} />
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10">
         <section className="flex flex-col items-center text-center">

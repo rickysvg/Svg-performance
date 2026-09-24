@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const PHOTO_ACTIONS = [
@@ -5,33 +6,29 @@ const PHOTO_ACTIONS = [
     href: "/training",
     label: "Train",
     hint: "Today’s work",
-    src: "/home/tiles/train.jpg",
-    alt: "Sparring at SVG MMA Academy",
-    position: "center 32%",
+    src: "/home/tiles/train.webp",
+    alt: "Athlete punching a heavy bag",
   },
   {
     href: "/coach",
     label: "Coach",
     hint: "Ask SVG Coach",
-    src: "/home/tiles/coach.jpg",
-    alt: "Coach pointing on the mats at SVG",
-    position: "70% 22%",
+    src: "/home/tiles/coach.webp",
+    alt: "Coach holding mitts in a dark gym",
   },
   {
     href: "/learn",
     label: "Learn",
     hint: "Technique",
-    src: "/home/tiles/learn.jpg",
-    alt: "Pad work in the cage at SVG",
-    position: "center 42%",
+    src: "/home/tiles/learn.webp",
+    alt: "Two athletes drilling a takedown",
   },
   {
     href: "/progress",
     label: "Progress",
     hint: "PRs + photos",
-    src: "/home/tiles/progress.jpg",
-    alt: "Walkout under the lights",
-    position: "center 30%",
+    src: "/home/tiles/progress.webp",
+    alt: "Athlete standing after a session",
   },
 ] as const;
 
@@ -50,12 +47,12 @@ export function HomeQuickActions() {
             href={action.href}
             className="relative block aspect-[4/3] min-h-[9.5rem] overflow-hidden rounded-[1.25rem] bg-black"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- static academy photos in /public */}
-            <img
+            <Image
               src={action.src}
               alt={action.alt}
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectPosition: action.position }}
+              fill
+              sizes="(max-width: 390px) 50vw, (max-width: 640px) 45vw, 320px"
+              className="object-cover object-center"
             />
             <span
               aria-hidden

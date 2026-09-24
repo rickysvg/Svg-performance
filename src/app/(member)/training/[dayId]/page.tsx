@@ -4,7 +4,7 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
@@ -43,10 +43,8 @@ export default async function TrainingDayPage({
     notFound();
   }
 
-  const sessions = await listWorkoutSessionsForUser(user.id);
-  const draft = sessions.find(
-    (session) => session.status === "draft" && session.programDayId === day.id,
-  );
+  const drafts = await listDraftSessionsForUser(user.id);
+  const draft = drafts.find((session) => session.programDayId === day.id);
   const equipment = equipmentForExercises(day.exercises.map((exercise) => exercise.name));
   const minutes = estimateSessionMinutes(day.exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });

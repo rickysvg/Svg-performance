@@ -302,14 +302,19 @@ export function planForDate(prefs: PlannerPrefs, date: Date): DayPlan {
   return buildCoreWeekPlan(prefs)[weekday];
 }
 
-export function nextActiveWeekday(prefs: PlannerPrefs, from: Date): PlanWeekday | null {
+export function nextActiveDate(prefs: PlannerPrefs, from: Date): Date | null {
   const plan = buildCoreWeekPlan(prefs);
   for (let offset = 1; offset <= 7; offset += 1) {
-    const cursor = new Date(from.getTime() + offset * 24 * 60 * 60 * 1000);
-    const weekday = weekdayInAppZone(cursor);
-    if (plan[weekday].active) return weekday;
+    const cursor = new Date(from);
+    cursor.setDate(from.getDate() + offset);
+    if (plan[weekdayInAppZone(cursor)].active) return cursor;
   }
   return null;
+}
+
+export function nextActiveWeekday(prefs: PlannerPrefs, from: Date): PlanWeekday | null {
+  const next = nextActiveDate(prefs, from);
+  return next ? weekdayInAppZone(next) : null;
 }
 
 export function weekStrip(prefs: PlannerPrefs, now = new Date()) {

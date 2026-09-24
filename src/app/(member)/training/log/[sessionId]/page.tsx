@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
-import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { getPreviousLoadsForUser, getWorkoutSessionForUser } from "@/lib/workouts";
+import { getOwnWorkoutSessionOrNull, getPreviousLoadsForUser } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -22,14 +21,9 @@ export default async function WorkoutLogPage({
   const query = await searchParams;
   const profile = await getProfileForUser(user.id);
 
-  let session;
-  try {
-    session = await getWorkoutSessionForUser(sessionId, user.id);
-  } catch (error) {
-    if (error instanceof ForbiddenError || error instanceof NotFoundError) {
-      notFound();
-    }
-    throw error;
+  const session = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  if (!session) {
+    notFound();
   }
 
   const promptRating =

@@ -44,15 +44,49 @@ function assertOwnSession<T extends { userId: string }>(
   return session;
 }
 
+const WORKOUT_LIST_INCLUDE = {
+  sets: { orderBy: [{ sortOrder: "asc" as const }, { setNumber: "asc" as const }] },
+  programDay: { include: { program: true } },
+};
+
+export const RECENT_SESSION_TAKE = 20;
+export const DRAFT_SESSION_TAKE = 8;
+export const PROGRESS_SESSION_TAKE = 40;
+
 export async function listWorkoutSessionsForUser(userId: string) {
   return prisma.workoutSession.findMany({
     where: { userId },
     orderBy: { performedAt: "desc" },
-    include: {
-      sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] },
-      programDay: { include: { program: true } },
-    },
+    include: WORKOUT_LIST_INCLUDE,
   });
+}
+
+export async function listRecentSessionsForUser(
+  userId: string,
+  take = RECENT_SESSION_TAKE,
+) {
+  return prisma.workoutSession.findMany({
+    where: { userId },
+    orderBy: { performedAt: "desc" },
+    take,
+    include: WORKOUT_LIST_INCLUDE,
+  });
+}
+
+export async function listDraftSessionsForUser(
+  userId: string,
+  take = DRAFT_SESSION_TAKE,
+) {
+  return prisma.workoutSession.findMany({
+    where: { userId, status: "draft" },
+    orderBy: { performedAt: "desc" },
+    take,
+    include: WORKOUT_LIST_INCLUDE,
+  });
+}
+
+export async function countWorkoutSessionsForUser(userId: string) {
+  return prisma.workoutSession.count({ where: { userId } });
 }
 
 export type PreviousSetLookup = Record<
@@ -121,16 +155,27 @@ export async function getPreviousLoadsForUser(
   return result;
 }
 
+const WORKOUT_DETAIL_INCLUDE = {
+  sets: { orderBy: [{ sortOrder: "asc" as const }, { setNumber: "asc" as const }] },
+  programDay: { include: { program: true, exercises: true } },
+};
+
+export async function getOwnWorkoutSessionOrNull(workoutId: string, userId: string) {
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: workoutId },
+    include: WORKOUT_DETAIL_INCLUDE,
+  });
+  if (!session || session.userId !== userId) return null;
+  return session;
+}
+
 export async function getWorkoutSessionForUser(
   workoutId: string,
   userId: string,
 ) {
   const session = await prisma.workoutSession.findUnique({
     where: { id: workoutId },
-    include: {
-      sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] },
-      programDay: { include: { program: true, exercises: true } },
-    },
+    include: WORKOUT_DETAIL_INCLUDE,
   });
   return assertOwnSession(session, userId);
 }

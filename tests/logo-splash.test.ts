@@ -8,6 +8,8 @@ import {
   SPLASH_VIDEO_SRC,
   canDismissSplash,
   prepareSplashVideo,
+  shouldMountSplashVideo,
+  shouldShowSplashOverlay,
   shouldSkipSplash,
   splashTimings,
   startSplashPlayback,
@@ -55,25 +57,33 @@ describe("app-open splash video", () => {
     expect(shouldSkipSplash("1")).toBe(true);
   });
 
-  it("uses the trimmed ring-close clip, not the full 10s source", () => {
+  it("uses a compressed 3–4s ring-close clip", () => {
     expect(SPLASH_VIDEO_SRC).toBe("/svg-performance-splash.mp4");
     expect(SPLASH_STILL_SRC).toBe("/svg-performance-splash-still.webp");
-    expect(SPLASH_VIDEO_MS).toBeGreaterThanOrEqual(7_500);
-    expect(SPLASH_VIDEO_MS).toBeLessThan(9_000);
-    expect(fileSize("public/svg-performance-splash.mp4")).toBeGreaterThan(200_000);
-    expect(fileSize("public/svg-performance-splash.mp4")).toBeLessThan(2_500_000);
+    expect(SPLASH_VIDEO_MS).toBeGreaterThanOrEqual(3_000);
+    expect(SPLASH_VIDEO_MS).toBeLessThanOrEqual(4_200);
+    expect(fileSize("public/svg-performance-splash.mp4")).toBeGreaterThan(80_000);
+    expect(fileSize("public/svg-performance-splash.mp4")).toBeLessThan(400_000);
     expect(fileSize("public/svg-performance-splash-still.webp")).toBeGreaterThan(8_000);
   });
 
-  it("holds for the trimmed clip, and shortens for reduced motion", () => {
+  it("holds for the compressed clip, and shortens for reduced motion", () => {
     const full = splashTimings(false);
     const reduced = splashTimings(true);
     expect(full.holdMs).toBe(SPLASH_VIDEO_MS);
-    expect(full.holdMs).toBeLessThan(9_000);
+    expect(full.holdMs).toBeLessThanOrEqual(4_200);
     expect(reduced.holdMs + reduced.exitMs).toBeLessThan(800);
   });
 
-  it("waits for the clip to finish unless reduced motion", () => {
+  it("lets Skip dismiss immediately and never remounts the video after the session flag", () => {
+    expect(
+      canDismissSplash({
+        videoFinished: false,
+        appReady: false,
+        reducedMotion: false,
+        userSkipped: true,
+      }),
+    ).toBe(true);
     expect(
       canDismissSplash({ videoFinished: false, appReady: true, reducedMotion: false }),
     ).toBe(false);
@@ -82,6 +92,22 @@ describe("app-open splash video", () => {
     ).toBe(true);
     expect(
       canDismissSplash({ videoFinished: false, appReady: true, reducedMotion: true }),
+    ).toBe(true);
+    expect(shouldShowSplashOverlay({ stored: "1", pathname: "/" })).toBe(false);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/login" })).toBe(false);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/home" })).toBe(false);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/" })).toBe(true);
+    expect(
+      shouldMountSplashVideo({ stored: "1", pathname: "/", reducedMotion: false }),
+    ).toBe(false);
+    expect(
+      shouldMountSplashVideo({ stored: null, pathname: "/login", reducedMotion: false }),
+    ).toBe(false);
+    expect(
+      shouldMountSplashVideo({ stored: null, pathname: "/", reducedMotion: true }),
+    ).toBe(false);
+    expect(
+      shouldMountSplashVideo({ stored: null, pathname: "/", reducedMotion: false }),
     ).toBe(true);
   });
 
@@ -149,14 +175,20 @@ describe("app-open splash video", () => {
     expect(splash).toMatch(/startSplashPlayback/);
     expect(splash).toMatch(/\bmuted\b/);
     expect(splash).toMatch(/autoPlay/);
+    expect(splash).toMatch(/>Skip</);
+    expect(splash).toMatch(/mountVideo/);
     expect(splash).not.toMatch(/poster=/);
     expect(splash).not.toMatch(/playSplashWithSound/);
     expect(splash).not.toMatch(/Tap for sound/);
-    expect(read("src/app/layout.tsx")).toMatch(/AppSplash/);
+    expect(read("src/app/layout.tsx")).not.toMatch(/AppSplash/);
+    expect(read("src/app/page.tsx")).toMatch(/AppSplash/);
     const css = read("src/app/globals.css");
     expect(css).toMatch(/\.app-splash-video/);
     expect(css).toMatch(/background:\s*#000/);
     expect(css).toMatch(/scale\(1\.08\)/);
+    expect(css).toMatch(/\.app-splash\.is-exiting/);
+    expect(css).toMatch(/pointer-events:\s*none/);
+    expect(css).toMatch(/\.app-splash-skip/);
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce/);
     expect(css).toMatch(/--background:\s*#ffffff/);
     expect(css).toMatch(/--accent:\s*#cbf805/);

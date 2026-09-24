@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import {
+  listDraftSessionsForUser,
+  listRecentSessionsForUser,
+} from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
 import { getProfileForUser, firstNameFrom, nutritionTargetsFromProfile } from "@/lib/profile";
@@ -13,7 +16,15 @@ import {
   sessionLengthHint,
   trainingLocationHint,
 } from "@/lib/onboarding";
-import { planForDate, resolvePlanSessions, weekdayInAppZone, weekStrip } from "@/lib/week-plan";
+import {
+  nextActiveDate,
+  planForDate,
+  resolvePlanSessions,
+  weekdayInAppZone,
+  weekStrip,
+  type CatalogDayLike,
+  type ResolvedPlanSession,
+} from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 
 export type WeeklyActivity = {
@@ -128,7 +139,11 @@ export async function hasActivityOnLocalDay(userId: string, day: Date) {
   return workouts + foods > 0;
 }
 
-export async function homeLoad<T>(label: string, task: Promise<T>, fallback: T): Promise<T> {
+export async function homeLoad<T>(
+  label: string,
+  task: Promise<T>,
+  fallback: T,
+): Promise<T> {
   try {
     return await task;
   } catch (error) {
@@ -142,7 +157,7 @@ export function emptyHomeToday(selectedDay = new Date()) {
   return {
     selected,
     isToday: sameLocalDay(selected, new Date()),
-    suggestedDay: null,
+    suggestedDay: null as CatalogDayLike | null,
     plannedSessions: [] as ReturnType<typeof resolvePlanSessions>,
     weekStrip: [] as ReturnType<typeof weekStrip>,
     planWeekday: weekdayInAppZone(selected),
@@ -162,7 +177,9 @@ export function emptyHomeToday(selectedDay = new Date()) {
     targets: nutritionTargetsFromProfile(null),
     firstName: "",
     goals: "",
-    sessions: [] as Awaited<ReturnType<typeof listWorkoutSessionsForUser>>,
+    nextSession: null as ResolvedPlanSession | null,
+    nextSessionWeekday: "" as string,
+    sessions: [] as Awaited<ReturnType<typeof listRecentSessionsForUser>>,
     needsDeepPrompt: false,
     sessionHint: "",
     locationHint: "",
@@ -172,10 +189,11 @@ export function emptyHomeToday(selectedDay = new Date()) {
 
 export async function getHomeToday(userId: string, selectedDay = new Date()) {
   const selected = startOfLocalDay(selectedDay);
-  const [catalog, sessions, foodToday, allLessons, progress, activity, profile] =
+  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile] =
     await Promise.all([
       findDemoTrainingCatalog(),
-      listWorkoutSessionsForUser(userId),
+      listRecentSessionsForUser(userId),
+      listDraftSessionsForUser(userId),
       getNutritionSummaryForDay(userId, selected),
       listPublishedLessons(),
       listLessonProgressForUser(userId),
@@ -188,7 +206,7 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
   });
   const hasCatalog = Boolean(strength || skill);
 
-  const draft = sessions.find((session) => session.status === "draft");
+  const draft = drafts[0] ?? sessions.find((session) => session.status === "draft");
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -196,8 +214,14 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
   };
   const todayPlan = planForDate(prefs, selected);
   const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
+  const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected);
+  const nextPlan = nextDate ? planForDate(prefs, nextDate) : null;
+  const nextSessions = nextPlan ? resolvePlanSessions(nextPlan, { strength, skill }) : [];
+  const nextSession: ResolvedPlanSession | null =
+    nextSessions.find((session) => session.day) ?? nextSessions[0] ?? null;
   const suggestedDay =
     plannedSessions.find((session) => session.day)?.day ??
+    nextSession?.day ??
     plannedSessions[0]?.day ??
     null;
   const loggedOnSelected = sessions.find(
@@ -227,6 +251,8 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     isToday: sameLocalDay(selected, new Date()),
     suggestedDay,
     plannedSessions,
+    nextSession: nextSession as ResolvedPlanSession | null,
+    nextSessionWeekday: nextPlan?.weekday ?? "",
     weekStrip: weekStrip(prefs, selected),
     planWeekday: todayPlan.weekday,
     planSummary: todayPlan.active ? todayPlan.summary : "Rest / skip",

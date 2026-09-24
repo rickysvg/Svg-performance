@@ -16,11 +16,12 @@ const EXT_BY_MIME: Record<TrainingClipMime, string> = {
   "video/quicktime": "mov",
 };
 
+const TRAINING_CLIP_DIR = path.join(process.cwd(), "uploads", "training-clips");
+
 export function trainingClipRoot() {
-  return (
-    process.env.TRAINING_CLIP_DIR?.trim() ||
-    path.join(process.cwd(), "uploads", "training-clips")
-  );
+  const fromEnv = process.env.TRAINING_CLIP_DIR?.trim();
+  if (fromEnv) return fromEnv;
+  return TRAINING_CLIP_DIR;
 }
 
 function userDir(userId: string) {

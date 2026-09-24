@@ -14,11 +14,12 @@ const EXT_BY_MIME: Record<ProgressPhotoMime, string> = {
   "image/webp": "webp",
 };
 
+const PROGRESS_PHOTO_DIR = path.join(process.cwd(), "uploads", "progress-photos");
+
 export function progressPhotoRoot() {
-  return (
-    process.env.PROGRESS_PHOTO_DIR?.trim() ||
-    path.join(process.cwd(), "uploads", "progress-photos")
-  );
+  const fromEnv = process.env.PROGRESS_PHOTO_DIR?.trim();
+  if (fromEnv) return fromEnv;
+  return PROGRESS_PHOTO_DIR;
 }
 
 function userDir(userId: string) {

@@ -7,11 +7,12 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { planHasFeature } from "@/lib/plans";
 import { detectTrainingClipMime, TRAINING_CLIP_MAX_BYTES } from "@/lib/clips";
 
+const FOCUS_VIDEO_DIR = path.join(process.cwd(), "uploads", "focus-videos");
+
 export function focusVideoRoot() {
-  return (
-    process.env.FOCUS_VIDEO_DIR?.trim() ||
-    path.join(process.cwd(), "uploads", "focus-videos")
-  );
+  const fromEnv = process.env.FOCUS_VIDEO_DIR?.trim();
+  if (fromEnv) return fromEnv;
+  return FOCUS_VIDEO_DIR;
 }
 
 export function parseExternalVideoUrl(raw: string) {
