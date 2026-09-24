@@ -119,12 +119,6 @@ export function BikeSetTimer({
   }, [onSetComplete]);
 
   useEffect(() => {
-    setClock(idleBikeInterval(spec));
-    // Reset only when the session prescription changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spec.workSeconds, spec.restSeconds, spec.roundsPerSet]);
-
-  useEffect(() => {
     if (!running || clock.paused) return;
     const id = window.setInterval(() => {
       setClock((current) => {

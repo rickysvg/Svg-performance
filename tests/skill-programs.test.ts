@@ -76,8 +76,9 @@ describe("seeded DEMO combat skills", () => {
       "Shot + sprawl",
       "Closed guard positional drill",
     ]);
-    expect(strength.days).toHaveLength(4);
-    expect(strength.days[3]?.title).toMatch(/assault bike/i);
+    expect(strength.days).toHaveLength(10);
+    expect(strength.days.find((day) => day.dayNumber === 4)?.title).toMatch(/assault bike/i);
+    expect(strength.days.find((day) => day.dayNumber === 10)?.title).toMatch(/GPP/i);
 
     const user = await makeUser("muay@example.com");
     await completeOnboardingForUser(user.id, {

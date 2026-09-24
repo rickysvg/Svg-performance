@@ -37,7 +37,6 @@ export type BikeSession = {
   scale: Record<ScaleBand, BikeScale>;
 };
 
-const TIMED_NO_LBS = "Timed — no lbs or reps";
 const SPRINT_NO_LBS = "All-out sprint / easy — no lbs";
 const TEMPO_NO_LBS = "70–75% effort — no lbs";
 const STEADY_NO_LBS = "Steady HR 130–150 — no lbs";

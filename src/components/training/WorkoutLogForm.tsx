@@ -366,6 +366,7 @@ export function WorkoutLogForm({
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
                   {bikeSession ? (
                     <BikeSetTimer
+                      key={`${name}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}`}
                       session={bikeSession}
                       canStart={group.some((set) => !set.completed)}
                       onSetComplete={() => {
