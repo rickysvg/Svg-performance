@@ -198,6 +198,15 @@ body:has(.app-splash.is-visible) {
   animation: svg-splash-out 0.28s ease forwards;
 }
 
+.app-splash.is-still-fallback .app-splash-video {
+  display: none !important;
+}
+
+.app-splash.is-still-fallback .app-splash-still {
+  display: block;
+  position: relative;
+}
+
 .app-splash-skip {
   position: absolute;
   top: max(1rem, env(safe-area-inset-top));
