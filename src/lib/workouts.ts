@@ -4,6 +4,7 @@ import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
+import { isBikeIntervalName } from "@/lib/bike-sessions";
 import {
   hidesLoad,
   isDurationMode,
@@ -12,7 +13,6 @@ import {
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
-  plannedDurationSeconds,
   scaleBandFromPrefs,
   scaleProgramDay,
   type ScalePrefs,
@@ -200,7 +200,6 @@ export async function startWorkoutFromDay(input: {
   );
   const sets = day.exercises.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
-    const duration = plannedDurationSeconds(exercise);
     return Array.from({ length: exercise.sets }, (_, index) => ({
       exerciseName: exercise.name,
       setNumber: index + 1,
@@ -209,7 +208,7 @@ export async function startWorkoutFromDay(input: {
       loadValue: null,
       loadUnit: input.preferredUnits,
       logMode: mode,
-      durationSeconds: isDurationMode(mode) ? duration : null,
+      durationSeconds: null,
       completed: false,
     }));
   });
@@ -225,6 +224,14 @@ export async function startWorkoutFromDay(input: {
     },
     include: { sets: true },
   });
+}
+
+function setHasAthleteLog(set: WorkoutSetInput, mode: LogMode) {
+  if (isBikeIntervalName(set.exerciseName)) return true;
+  if (isDurationMode(mode)) {
+    return set.durationSeconds != null || set.loadValue != null;
+  }
+  return set.reps != null || set.loadValue != null;
 }
 
 function validateSets(sets: WorkoutSetInput[]) {
@@ -317,7 +324,7 @@ export async function updateWorkoutSessionForUser(input: {
               loadUnit: set.loadUnit,
               logMode: mode,
               durationSeconds: timed ? set.durationSeconds ?? null : null,
-              completed: set.completed,
+              completed: set.completed && setHasAthleteLog(set, mode),
               notes: (set.notes ?? "").slice(0, 200),
             };
           }),

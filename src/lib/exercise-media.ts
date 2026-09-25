@@ -1,5 +1,10 @@
 import { bikeSessionForLogger, bikeWorkSecondsPerSet, isBikeIntervalName } from "@/lib/bike-sessions";
-import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
+import {
+  formatClock,
+  isDurationMode,
+  parseDurationSeconds,
+  resolveLogMode,
+} from "@/lib/exercise-log-mode";
 
 export type EquipmentId =
   | "barbell"
@@ -214,6 +219,13 @@ export function restBannerSeconds(seconds: number) {
   return `${seconds}s`;
 }
 
+function previousLoadText(loadValue: number, loadUnit: string) {
+  const rounded = Math.round(loadValue * 10) / 10;
+  const amount = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  const unit = loadUnit === "kg" ? "kg" : "lbs";
+  return `${amount} ${unit}`;
+}
+
 export function previousSetLabel(input: {
   reps: number | null;
   loadValue: number | null;
@@ -222,23 +234,19 @@ export function previousSetLabel(input: {
   durationSeconds?: number | null;
 } | null) {
   if (!input) return "—";
-  if (input.durationSeconds != null && input.durationSeconds > 0) {
-    if (input.loadValue != null) {
-      return `${input.durationSeconds}s × ${input.loadValue}${input.loadUnit}`;
-    }
-    const label =
-      input.logMode === "timed_round"
-        ? "round"
-        : input.logMode === "load_timed"
-          ? "carry"
-          : "hold";
-    return `${input.durationSeconds}s ${label}`;
+  const clock =
+    input.durationSeconds != null && input.durationSeconds > 0
+      ? formatClock(input.durationSeconds)
+      : null;
+  if (clock && input.loadValue != null) {
+    return `${clock} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
   }
+  if (clock) return clock;
   if (input.reps != null && input.loadValue != null) {
-    return `${input.reps} × ${input.loadValue}${input.loadUnit}`;
+    return `${input.reps} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
   }
   if (input.reps != null) return `${input.reps} reps`;
-  if (input.loadValue != null) return `${input.loadValue}${input.loadUnit}`;
+  if (input.loadValue != null) return previousLoadText(input.loadValue, input.loadUnit);
   if (input.logMode === "timed_round") return "Done";
   return "—";
 }

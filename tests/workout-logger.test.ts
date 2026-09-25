@@ -69,7 +69,8 @@ describe("workout logger media and previous loads", () => {
       }),
     ).toBe("8 sets × 20 sec on / 40 sec easy");
     expect(previousSetLabel(null)).toBe("—");
-    expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80lb");
+    expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80 lbs");
+    expect(previousSetLabel({ reps: 8, loadValue: 195, loadUnit: "lb" })).toBe("8 × 195 lbs");
     expect(previousSetLabel({ reps: 12, loadValue: null, loadUnit: "lb" })).toBe("12 reps");
     expect(exerciseCountLabel(1)).toBe("1 Exercise");
     expect(exerciseCountLabel(5)).toBe("5 Exercises");
@@ -197,6 +198,61 @@ describe("workout logger media and previous loads", () => {
     expect(stranger["Goblet squat"]?.[1]?.loadValue).not.toBe(40);
   });
 
+  it("starts a new session with empty set values (null reps, load, duration)", async () => {
+    const user = await makeUser("empty-sets@example.com");
+    const program = await getDemoProgram();
+    const day = program.days[0];
+    const draft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+    });
+    expect(draft.sets.length).toBeGreaterThan(0);
+    expect(draft.sets.some((set) => set.exerciseName === "Goblet squat")).toBe(true);
+    expect(draft.sets.some((set) => set.exerciseName === "Front plank")).toBe(true);
+    for (const set of draft.sets) {
+      expect(set.reps, set.exerciseName).toBeNull();
+      expect(set.loadValue, set.exerciseName).toBeNull();
+      expect(set.durationSeconds, set.exerciseName).toBeNull();
+      expect(set.completed, set.exerciseName).toBe(false);
+    }
+  });
+
+  it("does not save an empty lift as completed or as zero", async () => {
+    const user = await makeUser("empty-complete@example.com");
+    const program = await getDemoProgram();
+    const day = program.days[0];
+    const draft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+    });
+    const saved = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: draft.id,
+      title: draft.title,
+      performedAt: new Date(),
+      notes: "",
+      status: "draft",
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          durationSeconds: null,
+          completed: true,
+        },
+      ],
+    });
+    expect(saved.sets[0]?.reps).toBeNull();
+    expect(saved.sets[0]?.loadValue).toBeNull();
+    expect(saved.sets[0]?.durationSeconds).toBeNull();
+    expect(saved.sets[0]?.completed).toBe(false);
+  });
+
   it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {
     const user = await makeUser("carry-logger@example.com");
     const program = await getDemoProgram();
@@ -210,7 +266,8 @@ describe("workout logger media and previous loads", () => {
     const band = draft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
     expect(carry.length).toBeGreaterThan(0);
     expect(carry[0]?.logMode).toBe("load_timed");
-    expect(carry[0]?.durationSeconds).toBeGreaterThanOrEqual(30);
+    expect(carry[0]?.durationSeconds).toBeNull();
+    expect(carry[0]?.loadValue).toBeNull();
     expect(carry[0]?.reps).toBeNull();
     expect(band[0]?.logMode).toBe("reps_only");
 

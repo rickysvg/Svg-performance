@@ -38,7 +38,6 @@ import {
 import {
   copyPreviousOntoExercise,
   restTimerAfterSetDone,
-  seedSetsFromPrevious,
 } from "@/lib/logger-prefill";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
@@ -138,7 +137,7 @@ export function WorkoutLogForm({
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(() => seedSetsFromPrevious(session.sets, previousLoads));
+  const [sets, setSets] = useState(() => session.sets);
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
@@ -193,7 +192,7 @@ export function WorkoutLogForm({
       });
       return [
         ...current,
-        newClientSet(session.id, exerciseName, group.length + 1, unit, mode, group[0]?.durationSeconds ?? null),
+        newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
       ];
     });
   }
@@ -488,7 +487,6 @@ export function WorkoutLogForm({
                             min={0}
                             max={3600}
                             inputMode="numeric"
-                            placeholder="sec"
                             value={set.durationSeconds ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {

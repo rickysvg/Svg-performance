@@ -17,27 +17,6 @@ export function previousForSet(
   return previousLoads[exerciseName]?.[setNumber] ?? null;
 }
 
-export function applyPreviousToEmptySet<T extends PrefillableSet>(
-  set: T,
-  previousLoads: PreviousSetLookup,
-): T {
-  const previous = previousForSet(previousLoads, set.exerciseName, set.setNumber);
-  if (!previous) return set;
-  return {
-    ...set,
-    reps: set.reps ?? previous.reps ?? null,
-    loadValue: set.loadValue ?? previous.loadValue ?? null,
-    durationSeconds: set.durationSeconds ?? previous.durationSeconds ?? null,
-  };
-}
-
-export function seedSetsFromPrevious<T extends PrefillableSet>(
-  sets: T[],
-  previousLoads: PreviousSetLookup,
-): T[] {
-  return sets.map((set) => applyPreviousToEmptySet(set, previousLoads));
-}
-
 export function copyPreviousOntoExercise<T extends PrefillableSet>(
   sets: T[],
   exerciseName: string,

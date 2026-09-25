@@ -234,7 +234,9 @@ describe("scaled DEMO days in the database", () => {
     expect(advancedPlank).toHaveLength(4);
     expect(beginnerPlank[0]?.logMode).toBe("timed");
     expect(advancedPlank[0]?.logMode).toBe("timed");
-    expect(advancedPlank[0]?.durationSeconds).toBeGreaterThanOrEqual(45);
+    expect(advancedPlank[0]?.durationSeconds).toBeNull();
+    expect(advancedPlank[0]?.reps).toBeNull();
+    expect(advancedPlank[0]?.loadValue).toBeNull();
 
     const scaled = scaleProgramDay(
       { ...day, exercises: day.exercises },
