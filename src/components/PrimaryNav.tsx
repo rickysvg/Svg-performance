@@ -9,16 +9,18 @@ export function PrimaryNav() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 z-20 border-b border-line bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur"
+      data-primary-nav
+      className="sticky top-0 z-20 overflow-x-hidden border-b border-line bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur"
     >
-      <ul className="mx-auto grid max-w-3xl grid-cols-5 px-1">
+      <ul className="mx-auto grid max-w-3xl grid-cols-6 px-0.5">
         {PRIMARY_NAV_LINKS.map((link) => {
           const active = isPrimaryNavActive(current, link.href);
           return (
-            <li key={link.href} className="px-0.5 py-1.5">
+            <li key={link.href} className="min-w-0 px-px py-1.5">
               <Link
                 href={link.href}
-                className={`font-display touch-target flex flex-col items-center justify-center rounded-full px-1 text-[12px] uppercase leading-tight tracking-[0.08em] whitespace-nowrap ${
+                data-nav-link={link.label}
+                className={`font-display flex h-11 min-w-0 items-center justify-center rounded-full px-0.5 text-[10px] uppercase leading-none tracking-[0.04em] whitespace-nowrap ${
                   active
                     ? "bg-accent font-semibold text-black"
                     : "text-muted hover:text-foreground"

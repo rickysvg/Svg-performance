@@ -4,6 +4,7 @@ export const PRIMARY_NAV_LINKS = [
   { href: "/nutrition", label: "Fuel" },
   { href: "/learn", label: "Learn" },
   { href: "/coach", label: "Coach" },
+  { href: "/progress", label: "Progress" },
 ] as const;
 
 export type PrimaryNavHref = (typeof PRIMARY_NAV_LINKS)[number]["href"];
