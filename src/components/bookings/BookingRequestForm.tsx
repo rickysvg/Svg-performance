@@ -43,7 +43,7 @@ export function BookingRequestForm({
           required
           rows={3}
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
-          placeholder="Example: Tue/Thu after 5pm El Paso time. This is a request, not a booked slot."
+          placeholder="Example: Tue/Thu after 5pm your time zone. This is a request, not a booked slot."
         />
       </label>
       <label className="block space-y-2 text-sm">

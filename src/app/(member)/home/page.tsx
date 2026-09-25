@@ -50,7 +50,7 @@ export default async function HomePage({
           Welcome {greetingName}
         </h1>
         <p className="mt-2 text-sm">
-          SVG Performance · El Paso
+          SVG Performance
           {profile?.goals ? ` · ${profile.goals}` : ""}
         </p>
         {!profile || !profileIsComplete(profile) ? (
