@@ -30,7 +30,7 @@ export function DailyQuoteCard({
             href="/pricing"
             className="mt-4 inline-flex rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black"
           >
-            See App Plans
+            Upgrade
           </Link>
         </>
       )}

@@ -17,18 +17,35 @@ import {
   plansInSection,
   publicSkusForPlan,
 } from "@/lib/plans";
+import { ACADEMY_PRICE_HINT, paidPlanPriceCopy } from "@/lib/trial";
 
-function PricePair({ gym, non }: { gym: string; non: string }) {
+function MemberPriceBlock({
+  plan,
+  verified,
+}: {
+  plan: CatalogPlan;
+  verified: boolean;
+}) {
+  if (plan.id === "member_access") {
+    return (
+      <div className="mt-4">
+        <p className="stat-display text-2xl font-semibold text-accent">
+          {verified ? plan.gymPriceLabel : plan.nonmemberPriceLabel}
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          {verified
+            ? "Included with your verified academy membership."
+            : "Free preview of logging and beginner Learn."}
+        </p>
+      </div>
+    );
+  }
+  const copy = paidPlanPriceCopy(plan, verified);
   return (
-    <div className="mt-4 grid grid-cols-2 gap-3">
-      <div>
-        <p className="font-display text-xs uppercase tracking-wide text-muted">Gym members</p>
-        <p className="stat-display mt-1 text-2xl font-semibold text-accent">{gym}</p>
-      </div>
-      <div>
-        <p className="font-display text-xs uppercase tracking-wide text-muted">Nonmembers</p>
-        <p className="stat-display mt-1 text-2xl font-semibold">{non}</p>
-      </div>
+    <div className="mt-4">
+      <p className="stat-display text-2xl font-semibold text-accent">{copy.headline}</p>
+      {copy.perk ? <p className="mt-2 text-sm font-semibold text-black">{copy.perk}</p> : null}
+      {copy.academyHint ? <p className="mt-2 text-xs text-muted">{ACADEMY_PRICE_HINT}</p> : null}
     </div>
   );
 }
@@ -41,6 +58,7 @@ export default async function PricingPage() {
   const configured = isStripeConfigured();
   const seats = await listSeatStatus();
   const seatMap = new Map(seats.map((row) => [row.id, row]));
+  const verified = Boolean(profile?.gymMembershipVerified);
 
   function checkoutDisabled(requiresGymVerify: boolean) {
     if (!user) return "Log in first.";
@@ -62,7 +80,7 @@ export default async function PricingPage() {
         </p>
         <h3 className="mt-2 text-xl font-semibold">{plan.label}</h3>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
-        <PricePair gym={plan.gymPriceLabel} non={plan.nonmemberPriceLabel} />
+        <MemberPriceBlock plan={plan} verified={verified} />
         {seat ? (
           <p className="mt-3 text-xs text-muted">
             Pilot seats: {seat.seats} / {seat.cap}
@@ -95,7 +113,12 @@ export default async function PricingPage() {
               <p className="text-sm text-muted">Log in to join the waitlist.</p>
             )
           ) : (
-            skus.map((sku) => (
+            skus
+              .filter((sku) => {
+                if (sku.audience === "both") return true;
+                return verified ? sku.audience === "gym" : sku.audience === "nonmember";
+              })
+              .map((sku) => (
               <CheckoutButton
                 key={sku.id}
                 plan={sku.id}

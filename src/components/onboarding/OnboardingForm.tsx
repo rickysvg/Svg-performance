@@ -26,7 +26,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
           <div className="h-full w-full rounded-full bg-accent/70" />
         </div>
         <p className="mt-2 text-xs text-muted">
-          Required first. Next screen is optional and can be skipped.
+          Required first. Next you choose the free plan or a short Performance trial.
         </p>
       </div>
       <StatusBanner error={state.error} />

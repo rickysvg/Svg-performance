@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { canUseFeature } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/PaywallNotice";
+import { getTrialState } from "@/lib/trial";
 import { isAdmin } from "@/lib/roles";
 import {
   LESSON_LEVELS,
@@ -47,18 +48,16 @@ export default async function LearnPage({
   searchParams: Promise<{ q?: string; topic?: string; level?: string }>;
 }) {
   const user = await requireUser();
-  const [fullLibrary, beginnerLibrary] = await Promise.all([
+  const [fullLibrary, beginnerLibrary, trial] = await Promise.all([
     canUseFeature(user.id, "learn_full"),
     canUseFeature(user.id, "learn_beginner"),
+    getTrialState(user.id),
   ]);
   if (!beginnerLibrary && !fullLibrary) {
     return <PaywallNotice feature="Learn" />;
   }
   const query = await searchParams;
-  const skillLevel = resolveLearnLevelFilter(
-    query.level ?? (fullLibrary ? "all" : "beginner"),
-    fullLibrary,
-  );
+  const skillLevel = resolveLearnLevelFilter(query.level ?? "all", true);
   const topic = resolveLearnTopicFilter(query.topic ?? "all");
   const selectedLevel = skillLevel ?? "all";
   const [lessons, progress] = await Promise.all([
@@ -85,22 +84,22 @@ export default async function LearnPage({
         <p className="mt-2 text-sm text-muted">
           Technique library by martial art and skill. YouTube references — not SVG-produced
           coaching film.
-          {!fullLibrary ? " Member Access shows beginner lessons only." : ""}
+          {!fullLibrary
+            ? " Free plan shows every title. Intermediate and advanced videos stay locked."
+            : ""}
         </p>
       </div>
 
       <section className="space-y-3">
         <p className="text-xs uppercase tracking-wide text-muted">Skill level</p>
         <div className="flex flex-wrap gap-2">
-          {fullLibrary ? (
-            <Chip
-              href={buildLearnHref({ q: query.q, topic: topic ?? "all", level: "all" })}
-              active={selectedLevel === "all"}
-            >
-              All
-            </Chip>
-          ) : null}
-          {(fullLibrary ? LESSON_LEVELS : (["beginner"] as const)).map((level) => (
+          <Chip
+            href={buildLearnHref({ q: query.q, topic: topic ?? "all", level: "all" })}
+            active={selectedLevel === "all"}
+          >
+            All
+          </Chip>
+          {LESSON_LEVELS.map((level) => (
             <Chip
               key={level}
               href={buildLearnHref({ q: query.q, topic: topic ?? "all", level })}
@@ -147,6 +146,9 @@ export default async function LearnPage({
                 lesson={lesson}
                 bookmarked={row?.bookmarked}
                 completed={row?.completed}
+                locked={!fullLibrary && lesson.skillLevel !== "beginner"}
+                canStartTrial={trial.canStartTrial}
+                trialDays={trial.trialLengthDays}
               />
             );
           })}

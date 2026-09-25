@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
-import { PaywallNotice } from "@/components/PaywallNotice";
+import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { getTrialState } from "@/lib/trial";
 import { getProfileForUser } from "@/lib/profile";
 import {
   getTodayNutritionSummary,
@@ -16,7 +17,18 @@ export default async function NutritionPage() {
   const user = await requireUser();
   const access = await canUseMemberTools(user.id);
   if (!access.allowed) {
-    return <PaywallNotice feature="Nutrition" />;
+    const trial = await getTrialState(user.id);
+    return (
+      <main className="space-y-6">
+        <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">Fuel</h1>
+        <UpgradePreview
+          kind="fuel"
+          canStartTrial={trial.canStartTrial}
+          trialDays={trial.trialLengthDays}
+          next="/nutrition"
+        />
+      </main>
+    );
   }
 
   const [profile, entries, saved, today] = await Promise.all([

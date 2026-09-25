@@ -99,6 +99,10 @@ model Profile {
   trainingLimitations        String    @default("")
   onboardingCompletedAt      DateTime?
   onboardingDeepCompletedAt  DateTime?
+  trialStartedAt             DateTime?
+  trialEndsAt                DateTime?
+  planChoiceAt               DateTime?
+  thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
   goalWeight                 Float?
   sessionLengthMin           Int?

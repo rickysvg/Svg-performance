@@ -9,12 +9,15 @@ import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
 import { isAdmin, isStaff } from "@/lib/roles";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
+import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
+import { getTrialState } from "@/lib/trial";
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [profile, prefs] = await Promise.all([
+  const [profile, prefs, trial] = await Promise.all([
     getProfileForUser(user.id),
     getOrCreateReminderPrefs(user.id),
+    getTrialState(user.id),
   ]);
 
   if (!profile) {
@@ -32,6 +35,11 @@ export default async function ProfilePage() {
         <p className="mt-1 text-sm text-muted">
           {user.email}. Intake answers can be edited here anytime.
         </p>
+        {trial.trialActive ? (
+          <div className="mt-3">
+            <TrialDaysLeft daysLeft={trial.trialDaysLeft} />
+          </div>
+        ) : null}
       </div>
 
       <ProfileForm profile={profile} />

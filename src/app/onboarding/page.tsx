@@ -22,8 +22,9 @@ export default async function OnboardingPage() {
         <p className="mt-2 text-sm text-muted">
           We&apos;ll use this to tailor your app — Learn level, Home
           suggestions, and units. For combat athletes, class training, and
-          people getting in shape. After this, an optional two-minute screen
-          can be skipped. This is not a custom Elite coaching plan.
+          people getting in shape. After this you pick the free plan or a short
+          Performance trial. An optional two-minute screen can be skipped. This
+          is not a custom Elite coaching plan.
         </p>
         <div className="mt-6">
           <OnboardingForm profile={status.profile} />

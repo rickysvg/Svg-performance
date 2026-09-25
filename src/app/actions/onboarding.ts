@@ -48,7 +48,7 @@ export async function completeOnboardingAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/onboarding/deeper");
+  redirect("/onboarding/plan");
 }
 
 export async function skipDeepOnboardingAction() {

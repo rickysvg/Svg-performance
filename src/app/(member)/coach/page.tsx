@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
-import { PaywallNotice } from "@/components/PaywallNotice";
+import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { getTrialState } from "@/lib/trial";
 import { getOrCreateThread } from "@/lib/coach/chat";
 import { CoachLiveThread } from "@/components/coach/CoachLiveThread";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
@@ -50,7 +51,20 @@ export default async function CoachPage({
   const user = await requireUser();
   const access = await canUseMemberTools(user.id);
   if (!access.allowed) {
-    return <PaywallNotice feature={COACH_PUBLIC_NAME} />;
+    const trial = await getTrialState(user.id);
+    return (
+      <main className="space-y-6">
+        <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">
+          {COACH_PUBLIC_NAME}
+        </h1>
+        <UpgradePreview
+          kind="coach"
+          canStartTrial={trial.canStartTrial}
+          trialDays={trial.trialLengthDays}
+          next="/coach"
+        />
+      </main>
+    );
   }
   const query = await searchParams;
   const topic = resolveCoachTopic(query.topic);
