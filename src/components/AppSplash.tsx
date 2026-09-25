@@ -3,9 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
+  SPLASH_MP4_SRC,
+  SPLASH_MP4_TYPE,
+  SPLASH_PLAY_GRACE_MS,
   SPLASH_STILL_SRC,
   SPLASH_STORAGE_KEY,
-  SPLASH_VIDEO_SRC,
+  SPLASH_WEBM_SRC,
+  SPLASH_WEBM_TYPE,
+  applySplashVideoSources,
   canDismissSplash,
   shouldMountSplashVideo,
   shouldShowSplashOverlay,
@@ -30,8 +35,10 @@ export function AppSplash() {
   const pathname = usePathname();
   const [phase, setPhase] = useState<"play" | "exit" | "gone">(() => initialPhase(pathname));
   const [mountVideo, setMountVideo] = useState(false);
+  const [useStill, setUseStill] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoFinished = useRef(false);
+  const videoPlaying = useRef(false);
   const appReady = useRef(false);
   const userSkipped = useRef(false);
   const exiting = useRef(false);
@@ -125,22 +132,39 @@ export function AppSplash() {
   }, [pathname]);
 
   useEffect(() => {
-    if (!mountVideo) return;
+    if (!mountVideo || useStill) return;
     const video = videoRef.current;
     const markVideoDone = () => {
       videoFinished.current = true;
       window.dispatchEvent(new Event("svg-splash-video-done"));
     };
+    const markPlaying = () => {
+      videoPlaying.current = true;
+    };
+    const fallbackToStill = () => {
+      if (videoPlaying.current) return;
+      setUseStill(true);
+    };
     video?.addEventListener("ended", markVideoDone);
     video?.addEventListener("error", markVideoDone);
+    video?.addEventListener("playing", markPlaying);
     if (video) {
-      startSplashPlayback(video).catch(() => undefined);
+      applySplashVideoSources(video);
+      startSplashPlayback(video)
+        .then((result) => {
+          if (result === "playing") videoPlaying.current = true;
+          if (result === "stalled") fallbackToStill();
+        })
+        .catch(() => fallbackToStill());
     }
+    const grace = window.setTimeout(fallbackToStill, SPLASH_PLAY_GRACE_MS);
     return () => {
+      window.clearTimeout(grace);
       video?.removeEventListener("ended", markVideoDone);
       video?.removeEventListener("error", markVideoDone);
+      video?.removeEventListener("playing", markPlaying);
     };
-  }, [mountVideo]);
+  }, [mountVideo, useStill]);
 
   function skipSplash() {
     userSkipped.current = true;
@@ -151,25 +175,30 @@ export function AppSplash() {
 
   return (
     <div
-      className={`app-splash is-visible ${phase === "exit" ? "is-exiting" : ""}`}
+      className={`app-splash is-visible ${phase === "exit" ? "is-exiting" : ""} ${
+        useStill ? "is-still-fallback" : ""
+      }`}
       role="status"
       aria-live="polite"
       aria-label="SVG Performance loading"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={SPLASH_STILL_SRC} alt="" className="app-splash-still" />
-      {mountVideo ? (
+      {mountVideo && !useStill ? (
         <video
           ref={videoRef}
           className="app-splash-video"
-          src={SPLASH_VIDEO_SRC}
+          poster={SPLASH_STILL_SRC}
           muted
           playsInline
           autoPlay
           preload="auto"
           disablePictureInPicture
           controls={false}
-        />
+        >
+          <source src={SPLASH_WEBM_SRC} type={SPLASH_WEBM_TYPE} />
+          <source src={SPLASH_MP4_SRC} type={SPLASH_MP4_TYPE} />
+        </video>
       ) : null}
       <button type="button" className="app-splash-skip" onClick={skipSplash}>
         Skip

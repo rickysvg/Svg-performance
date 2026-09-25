@@ -1,8 +1,15 @@
 export const SPLASH_STORAGE_KEY = "svg_splash_seen";
-export const SPLASH_VIDEO_SRC = "/svg-performance-splash.mp4";
+export const SPLASH_MP4_SRC = "/svg-performance-splash.mp4";
+export const SPLASH_WEBM_SRC = "/svg-performance-splash.webm";
+/** MP4 fallback path — Safari / iOS cannot play the AV1 WebM. */
+export const SPLASH_VIDEO_SRC = SPLASH_MP4_SRC;
 export const SPLASH_STILL_SRC = "/svg-performance-splash-still.webp";
-/** Compressed clip, sped so the neon ring still closes inside the 3–4s cap. */
+export const SPLASH_WEBM_TYPE = "video/webm; codecs=av01.0.08M.08";
+export const SPLASH_MP4_TYPE = "video/mp4";
+/** Same 92-frame ring-close as the live clip, kept inside the 3–4s cap. */
 export const SPLASH_VIDEO_MS = 3_800;
+/** If playback has not started by then, show the still and keep the original hold. */
+export const SPLASH_PLAY_GRACE_MS = 800;
 
 export function splashTimings(reducedMotion: boolean) {
   if (reducedMotion) {
@@ -49,6 +56,33 @@ export function canDismissSplash(input: {
   return input.videoFinished && input.appReady;
 }
 
+export function pickSplashVideoSource(canPlayType: (type: string) => string) {
+  if (canPlayType(SPLASH_WEBM_TYPE)) {
+    return { src: SPLASH_WEBM_SRC, type: SPLASH_WEBM_TYPE };
+  }
+  return { src: SPLASH_MP4_SRC, type: SPLASH_MP4_TYPE };
+}
+
+/** Safari/iOS reports empty for AV1 WebM — pin the MP4 so it never tries the first source. */
+export function applySplashVideoSources(video: {
+  canPlayType: (type: string) => string;
+  src?: string;
+}) {
+  const chosen = pickSplashVideoSource((type) => video.canPlayType(type));
+  if (chosen.src === SPLASH_MP4_SRC) {
+    video.src = chosen.src;
+  }
+  return chosen;
+}
+
+export function shouldFallbackSplashStill(input: {
+  playing: boolean;
+  elapsedMs: number;
+  graceMs?: number;
+}) {
+  return !input.playing && input.elapsedMs >= (input.graceMs ?? SPLASH_PLAY_GRACE_MS);
+}
+
 export function waitForSplashCanPlay(video: {
   readyState: number;
   addEventListener: (type: string, fn: () => void) => void;
@@ -92,26 +126,39 @@ export function prepareSplashVideo(video: {
 /**
  * Motion first: start muted so mobile browsers actually play.
  * Sound is optional and never blocks the streak animation.
+ * If the file is still not playable after the grace window, return stalled
+ * so the still can take over on the original ~3.8s schedule.
  */
-export async function startSplashPlayback(video: {
-  muted: boolean;
-  defaultMuted?: boolean;
-  playsInline?: boolean;
-  readyState: number;
-  paused?: boolean;
-  play: () => Promise<void>;
-  setAttribute?: (name: string, value: string) => void;
-  addEventListener: (type: string, fn: () => void) => void;
-  removeEventListener: (type: string, fn: () => void) => void;
-}) {
+export async function startSplashPlayback(
+  video: {
+    muted: boolean;
+    defaultMuted?: boolean;
+    playsInline?: boolean;
+    readyState: number;
+    paused?: boolean;
+    play: () => Promise<void>;
+    setAttribute?: (name: string, value: string) => void;
+    addEventListener: (type: string, fn: () => void) => void;
+    removeEventListener: (type: string, fn: () => void) => void;
+  },
+  graceMs = SPLASH_PLAY_GRACE_MS,
+) {
   prepareSplashVideo(video);
   try {
     await video.play();
     return "playing" as const;
   } catch {
-    await waitForSplashCanPlay(video);
-    prepareSplashVideo(video);
-    await video.play();
-    return "playing" as const;
+    const ready = waitForSplashCanPlay(video);
+    const grace = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("splash play grace")), graceMs);
+    });
+    try {
+      await Promise.race([ready, grace]);
+      prepareSplashVideo(video);
+      await video.play();
+      return "playing" as const;
+    } catch {
+      return "stalled" as const;
+    }
   }
 }

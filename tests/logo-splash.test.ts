@@ -2,12 +2,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  SPLASH_MP4_SRC,
+  SPLASH_MP4_TYPE,
+  SPLASH_PLAY_GRACE_MS,
   SPLASH_STILL_SRC,
   SPLASH_STORAGE_KEY,
   SPLASH_VIDEO_MS,
   SPLASH_VIDEO_SRC,
+  SPLASH_WEBM_SRC,
+  SPLASH_WEBM_TYPE,
+  applySplashVideoSources,
   canDismissSplash,
+  pickSplashVideoSource,
   prepareSplashVideo,
+  shouldFallbackSplashStill,
   shouldMountSplashVideo,
   shouldShowSplashOverlay,
   shouldSkipSplash,
@@ -57,17 +65,24 @@ describe("app-open splash video", () => {
     expect(shouldSkipSplash("1")).toBe(true);
   });
 
-  it("uses a compressed 3–4s ring-close clip", () => {
+  it("uses a 3–4s HQ ring-close clip with AV1 WebM then MP4", () => {
     expect(SPLASH_VIDEO_SRC).toBe("/svg-performance-splash.mp4");
+    expect(SPLASH_MP4_SRC).toBe("/svg-performance-splash.mp4");
+    expect(SPLASH_WEBM_SRC).toBe("/svg-performance-splash.webm");
     expect(SPLASH_STILL_SRC).toBe("/svg-performance-splash-still.webp");
+    expect(SPLASH_WEBM_TYPE).toMatch(/av01/);
     expect(SPLASH_VIDEO_MS).toBeGreaterThanOrEqual(3_000);
     expect(SPLASH_VIDEO_MS).toBeLessThanOrEqual(4_200);
-    expect(fileSize("public/svg-performance-splash.mp4")).toBeGreaterThan(80_000);
-    expect(fileSize("public/svg-performance-splash.mp4")).toBeLessThan(400_000);
+    expect(SPLASH_PLAY_GRACE_MS).toBe(800);
+    expect(fileSize("public/svg-performance-splash.mp4")).toBeGreaterThan(1_000_000);
+    expect(fileSize("public/svg-performance-splash.mp4")).toBeLessThan(2_200_000);
+    expect(fileSize("public/svg-performance-splash.webm")).toBeGreaterThan(800_000);
+    expect(fileSize("public/svg-performance-splash.webm")).toBeLessThan(1_800_000);
     expect(fileSize("public/svg-performance-splash-still.webp")).toBeGreaterThan(8_000);
+    expect(fileSize("public/svg-performance-splash-still.webp")).toBeLessThan(200_000);
   });
 
-  it("holds for the compressed clip, and shortens for reduced motion", () => {
+  it("holds for the ring-close clip, and shortens for reduced motion", () => {
     const full = splashTimings(false);
     const reduced = splashTimings(true);
     expect(full.holdMs).toBe(SPLASH_VIDEO_MS);
@@ -169,6 +184,46 @@ describe("app-open splash video", () => {
     expect(attempts).toBe(2);
   });
 
+  it("picks AV1 WebM when the browser can play it, else MP4 for Safari/iOS", () => {
+    expect(pickSplashVideoSource(() => "probably")).toEqual({
+      src: SPLASH_WEBM_SRC,
+      type: SPLASH_WEBM_TYPE,
+    });
+    expect(pickSplashVideoSource(() => "")).toEqual({
+      src: SPLASH_MP4_SRC,
+      type: SPLASH_MP4_TYPE,
+    });
+    const safari = { canPlayType: () => "", src: "" };
+    expect(applySplashVideoSources(safari).src).toBe(SPLASH_MP4_SRC);
+    expect(safari.src).toBe(SPLASH_MP4_SRC);
+    const chrome = { canPlayType: (type: string) => (type.includes("av01") ? "probably" : ""), src: "" };
+    expect(applySplashVideoSources(chrome).src).toBe(SPLASH_WEBM_SRC);
+    expect(chrome.src).toBe("");
+  });
+
+  it("falls back to the still after the play grace without extending the hold", () => {
+    expect(shouldFallbackSplashStill({ playing: false, elapsedMs: 799 })).toBe(false);
+    expect(shouldFallbackSplashStill({ playing: false, elapsedMs: 800 })).toBe(true);
+    expect(shouldFallbackSplashStill({ playing: true, elapsedMs: 2_000 })).toBe(false);
+    expect(splashTimings(false).holdMs).toBe(SPLASH_VIDEO_MS);
+  });
+
+  it("returns stalled when the file never becomes playable", async () => {
+    const video = {
+      muted: true,
+      defaultMuted: true,
+      playsInline: true,
+      readyState: 1,
+      setAttribute() {},
+      addEventListener() {},
+      removeEventListener() {},
+      async play() {
+        throw new Error("not ready");
+      },
+    };
+    await expect(startSplashPlayback(video, 20)).resolves.toBe("stalled");
+  });
+
   it("mounts a muted autoplay video with a seamless black field", () => {
     const splash = read("src/components/AppSplash.tsx");
     expect(splash).toMatch(/<video/);
@@ -178,10 +233,14 @@ describe("app-open splash video", () => {
     expect(splash).toMatch(/app-splash-skip/);
     expect(splash).toMatch(/Skip/);
     expect(splash).toMatch(/mountVideo/);
-    expect(splash).not.toMatch(/poster=/);
+    expect(splash).toMatch(/poster=\{SPLASH_STILL_SRC\}/);
+    expect(splash).toMatch(/<source src=\{SPLASH_WEBM_SRC\} type=\{SPLASH_WEBM_TYPE\}/);
+    expect(splash).toMatch(/<source src=\{SPLASH_MP4_SRC\} type=\{SPLASH_MP4_TYPE\}/);
+    expect(splash).toMatch(/is-still-fallback/);
     expect(splash).not.toMatch(/playSplashWithSound/);
     expect(splash).not.toMatch(/Tap for sound/);
     expect(read("src/app/layout.tsx")).not.toMatch(/AppSplash/);
+    expect(read("src/app/layout.tsx")).not.toMatch(/svg-performance-splash/);
     expect(read("src/app/page.tsx")).toMatch(/AppSplash/);
     const css = read("src/app/globals.css");
     expect(css).toMatch(/\.app-splash-video/);
@@ -190,6 +249,7 @@ describe("app-open splash video", () => {
     expect(css).toMatch(/\.app-splash\.is-exiting/);
     expect(css).toMatch(/pointer-events:\s*none/);
     expect(css).toMatch(/\.app-splash-skip/);
+    expect(css).toMatch(/\.app-splash\.is-still-fallback/);
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce/);
     expect(css).toMatch(/--background:\s*#ffffff/);
     expect(css).toMatch(/--accent:\s*#cbf805/);
