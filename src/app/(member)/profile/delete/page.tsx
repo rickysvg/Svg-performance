@@ -24,7 +24,7 @@ export default async function DeleteAccountPage() {
           <li>Your profile, intake answers, and gym-membership checkbox / verify flags.</li>
           <li>Workout logs and sets, notes, nutrition, heart samples, photos, and clips.</li>
           <li>Coach chat history, journal entries, reminders, and bookings.</li>
-          <li>Plan and membership status on this app. Any Stripe TEST subscription we have on file is canceled when keys are present; if keys are off, only the local record is removed.</li>
+          <li>Your plan and membership status on this app. Any subscription is canceled, so you won&apos;t be charged again.</li>
         </ul>
         <p className="text-sm text-muted">
           Other members’ accounts stay. You will be signed out and sent to the
