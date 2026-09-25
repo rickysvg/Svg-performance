@@ -183,12 +183,12 @@ describe("weekly wrapped and personal records", () => {
 
   it("counts consecutive local days for streaks", () => {
     const keys = uniqueActiveDayKeys([
-      new Date(2026, 8, 20),
-      new Date(2026, 8, 21),
-      new Date(2026, 8, 23),
+      new Date(2026, 8, 20, 12),
+      new Date(2026, 8, 21, 12),
+      new Date(2026, 8, 23, 12),
     ]);
     expect(longestConsecutiveDays(keys)).toBe(2);
-    expect(currentConsecutiveDays(keys, new Date(2026, 8, 23))).toBe(1);
-    expect(currentConsecutiveDays(keys, new Date(2026, 8, 24))).toBe(0);
+    expect(currentConsecutiveDays(keys, new Date(2026, 8, 23, 12))).toBe(1);
+    expect(currentConsecutiveDays(keys, new Date(2026, 8, 24, 12))).toBe(0);
   });
 });

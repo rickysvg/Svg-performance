@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser, profileIsComplete } from "@/lib/profile";
+import { getProfileForUser, profileIsComplete, timeZoneForUser } from "@/lib/profile";
 import { emptyHomeToday, getHomeToday, homeLoad, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { listHelpRequestsForMember } from "@/lib/help";
@@ -21,23 +21,24 @@ export default async function HomePage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const selected = parseDayParam(params.day);
   const fallbackQuote = DAILY_QUOTES[0];
-  const [profile, today, reminderResult, helpRequests, quoteCard, guide] = await Promise.all([
-    homeLoad("profile", getProfileForUser(user.id), null),
-    homeLoad("today", getHomeToday(user.id, selected), emptyHomeToday(selected)),
+  const profile = await homeLoad("profile", getProfileForUser(user.id), null);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const selected = parseDayParam(params.day, new Date(), tz);
+  const [today, reminderResult, helpRequests, quoteCard, guide] = await Promise.all([
+    homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
     homeLoad(
       "reminders",
       processDueRemindersForUser(user.id, user.email),
       { due: [], emailed: false, smtpConfigured: false },
     ),
     homeLoad("help", listHelpRequestsForMember(user.id), []),
-    homeLoad("quote", getDailyQuoteCard(user.id), {
+    homeLoad("quote", getDailyQuoteCard(user.id, new Date(), tz), {
       quote: fallbackQuote,
       unlocked: false,
       teaser: teaserFromQuote(fallbackQuote),
     }),
-    homeLoad("guide", getTodayGuide(user.id, selected), emptyTodayGuide(selected)),
+    homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
   ]);
   const greetingName = today.firstName || "athlete";
   const openHelp = helpRequests.filter((row) => row.status === "open");

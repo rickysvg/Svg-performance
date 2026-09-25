@@ -5,6 +5,7 @@ import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { startOfLocalDay, endOfLocalDay } from "@/lib/nutrition";
 import { canUseFeature } from "@/lib/entitlements";
 import { quoteForLocalDate } from "@/lib/quotes";
+import { timeZoneForUser } from "@/lib/profile";
 
 export const DEFAULT_REMINDER_HOUR = 18;
 
@@ -90,22 +91,22 @@ export async function saveReminderPrefs(userId: string, input: ReminderPrefsInpu
   });
 }
 
-async function loggedWorkoutToday(userId: string, now: Date) {
+async function loggedWorkoutToday(userId: string, now: Date, timeZone: string) {
   const count = await prisma.workoutSession.count({
     where: {
       userId,
       status: "complete",
-      performedAt: { gte: startOfLocalDay(now), lt: endOfLocalDay(now) },
+      performedAt: { gte: startOfLocalDay(now, timeZone), lt: endOfLocalDay(now, timeZone) },
     },
   });
   return count > 0;
 }
 
-async function loggedFoodToday(userId: string, now: Date) {
+async function loggedFoodToday(userId: string, now: Date, timeZone: string) {
   const count = await prisma.nutritionEntry.count({
     where: {
       userId,
-      eatenAt: { gte: startOfLocalDay(now), lt: endOfLocalDay(now) },
+      eatenAt: { gte: startOfLocalDay(now, timeZone), lt: endOfLocalDay(now, timeZone) },
     },
   });
   return count > 0;
@@ -121,6 +122,7 @@ export async function getDueReminders(
   now = new Date(),
 ): Promise<DueReminder[]> {
   const prefs = await getOrCreateReminderPrefs(userId);
+  const tz = await timeZoneForUser(userId);
   const local = localParts(now, prefs.timezoneOffsetMinutes);
   if (local.hour < prefs.preferredHour) {
     return [];
@@ -130,7 +132,7 @@ export async function getDueReminders(
   if (
     prefs.workoutEnabled &&
     !sameLocalDay(prefs.lastWorkoutRemindedAt, now, prefs.timezoneOffsetMinutes) &&
-    !(await loggedWorkoutToday(userId, now))
+    !(await loggedWorkoutToday(userId, now, tz))
   ) {
     due.push({
       kind: "workout",
@@ -140,7 +142,7 @@ export async function getDueReminders(
   if (
     prefs.foodEnabled &&
     !sameLocalDay(prefs.lastFoodRemindedAt, now, prefs.timezoneOffsetMinutes) &&
-    !(await loggedFoodToday(userId, now))
+    !(await loggedFoodToday(userId, now, tz))
   ) {
     due.push({
       kind: "food",
@@ -152,7 +154,7 @@ export async function getDueReminders(
     (await canUseFeature(userId, "daily_quote")) &&
     !sameLocalDay(prefs.lastQuoteRemindedAt, now, prefs.timezoneOffsetMinutes)
   ) {
-    const quote = quoteForLocalDate(now);
+    const quote = quoteForLocalDate(now, tz);
     due.push({
       kind: "quote",
       message: `Today’s quote: “${quote.text}”`,

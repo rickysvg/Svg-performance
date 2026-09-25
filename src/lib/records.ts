@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
-import { startOfLocalDay } from "@/lib/nutrition";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
+import { timeZoneForUser } from "@/lib/profile";
+import {
+  APP_TIMEZONE,
+  addZonedDays,
+  dayKey as zonedDayKey,
+  startOfZonedDay,
+} from "@/lib/timezone";
 
 export type LoadRecord = {
   exerciseName: string;
@@ -18,19 +24,13 @@ export type PersonalRecords = {
   empty: boolean;
 };
 
-function dayKey(value: Date) {
-  return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
-}
-
 function parseDayKey(key: string) {
   const [year, month, date] = key.split("-").map(Number);
-  return new Date(year, month, date);
+  return Date.UTC(year, (month ?? 1) - 1, date ?? 1);
 }
 
-export function uniqueActiveDayKeys(dates: Date[]) {
-  return [...new Set(dates.map((value) => dayKey(startOfLocalDay(value))))].sort((a, b) => {
-    return parseDayKey(a).getTime() - parseDayKey(b).getTime();
-  });
+export function uniqueActiveDayKeys(dates: Date[], timeZone = APP_TIMEZONE) {
+  return [...new Set(dates.map((value) => zonedDayKey(value, timeZone)))].sort();
 }
 
 export function longestConsecutiveDays(keys: string[]) {
@@ -40,7 +40,7 @@ export function longestConsecutiveDays(keys: string[]) {
   for (let i = 1; i < keys.length; i += 1) {
     const prev = parseDayKey(keys[i - 1]!);
     const next = parseDayKey(keys[i]!);
-    const diff = Math.round((next.getTime() - prev.getTime()) / 86_400_000);
+    const diff = Math.round((next - prev) / 86_400_000);
     if (diff === 1) {
       run += 1;
       if (run > best) best = run;
@@ -51,18 +51,22 @@ export function longestConsecutiveDays(keys: string[]) {
   return best;
 }
 
-export function currentConsecutiveDays(keys: string[], now = new Date()) {
+export function currentConsecutiveDays(
+  keys: string[],
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+) {
   if (keys.length === 0) return 0;
-  const today = dayKey(startOfLocalDay(now));
+  const today = zonedDayKey(now, timeZone);
   const set = new Set(keys);
   if (!set.has(today)) {
     return 0;
   }
   let streak = 0;
-  const cursor = startOfLocalDay(now);
-  while (set.has(dayKey(cursor))) {
+  let cursor = startOfZonedDay(now, timeZone);
+  while (set.has(zonedDayKey(cursor, timeZone))) {
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    cursor = addZonedDays(cursor, -1, timeZone);
   }
   return streak;
 }
@@ -97,11 +101,13 @@ export function buildPersonalRecords(input: {
   activityDates: Date[];
   displayUnit: LoadUnit;
   now?: Date;
+  timeZone?: string;
 }): PersonalRecords {
+  const timeZone = input.timeZone ?? APP_TIMEZONE;
   const loadRecords = loadRecordsFromSessions(input.sessions, input.displayUnit);
-  const keys = uniqueActiveDayKeys(input.activityDates);
+  const keys = uniqueActiveDayKeys(input.activityDates, timeZone);
   const longestActiveStreak = longestConsecutiveDays(keys);
-  const currentActiveStreak = currentConsecutiveDays(keys, input.now);
+  const currentActiveStreak = currentConsecutiveDays(keys, input.now, timeZone);
   return {
     loadRecords,
     longestActiveStreak,
@@ -114,7 +120,9 @@ export async function getPersonalRecordsForUser(
   userId: string,
   displayUnit: LoadUnit,
   now = new Date(),
+  timeZone?: string,
 ) {
+  const tz = timeZone ?? (await timeZoneForUser(userId));
   const [sessions, foods] = await Promise.all([
     listWorkoutSessionsForUser(userId),
     prisma.nutritionEntry.findMany({
@@ -126,5 +134,5 @@ export async function getPersonalRecordsForUser(
     ...sessions.filter((row) => row.status === "complete").map((row) => row.performedAt),
     ...foods.map((row) => row.eatenAt),
   ];
-  return buildPersonalRecords({ sessions, activityDates, displayUnit, now });
+  return buildPersonalRecords({ sessions, activityDates, displayUnit, now, timeZone: tz });
 }

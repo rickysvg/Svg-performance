@@ -2,6 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseIngredientLines } from "@/lib/meal-prep";
+import { timeZoneForUser } from "@/lib/profile";
+import {
+  APP_TIMEZONE,
+  addZonedDays,
+  dayKey as zonedDayKey,
+  endOfZonedDay,
+  startOfZonedDay,
+} from "@/lib/timezone";
 
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
@@ -196,12 +204,12 @@ export async function createSavedMealForUser(
   });
 }
 
-export function startOfLocalDay(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+export function startOfLocalDay(date = new Date(), timeZone = APP_TIMEZONE) {
+  return startOfZonedDay(date, timeZone);
 }
 
-export function endOfLocalDay(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+export function endOfLocalDay(date = new Date(), timeZone = APP_TIMEZONE) {
+  return endOfZonedDay(date, timeZone);
 }
 
 export type NutritionDaySummary = {
@@ -224,35 +232,51 @@ function summarizeEntries(
   };
 }
 
-export async function getNutritionSummaryForDay(userId: string, day = new Date()) {
+export async function getNutritionSummaryForDay(
+  userId: string,
+  day = new Date(),
+  timeZone?: string,
+) {
+  const tz = timeZone ?? (await timeZoneForUser(userId));
   const entries = await prisma.nutritionEntry.findMany({
     where: {
       userId,
-      eatenAt: { gte: startOfLocalDay(day), lt: endOfLocalDay(day) },
+      eatenAt: { gte: startOfLocalDay(day, tz), lt: endOfLocalDay(day, tz) },
     },
   });
   return summarizeEntries(entries);
 }
 
-export async function getTodayNutritionSummary(userId: string) {
-  return getNutritionSummaryForDay(userId);
+export async function getTodayNutritionSummary(userId: string, timeZone?: string) {
+  return getNutritionSummaryForDay(userId, new Date(), timeZone);
 }
 
-export async function getRecentNutritionDays(userId: string, days = 7, now = new Date()) {
-  const start = startOfLocalDay(now);
-  start.setDate(start.getDate() - (days - 1));
+export async function getRecentNutritionDays(
+  userId: string,
+  days = 7,
+  now = new Date(),
+  timeZone?: string,
+) {
+  const tz = timeZone ?? (await timeZoneForUser(userId));
+  const todayStart = startOfLocalDay(now, tz);
+  const start = addZonedDays(todayStart, -(days - 1), tz);
   const entries = await prisma.nutritionEntry.findMany({
     where: { userId, eatenAt: { gte: start } },
     orderBy: { eatenAt: "asc" },
   });
   const byDay = new Map<string, NutritionDaySummary>();
   for (let i = 0; i < days; i += 1) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    byDay.set(dayKey(d), { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
+    const d = addZonedDays(start, i, tz);
+    byDay.set(zonedDayKey(d, tz), {
+      entryCount: 0,
+      calories: 0,
+      proteinG: 0,
+      carbsG: 0,
+      fatG: 0,
+    });
   }
   for (const row of entries) {
-    const key = dayKey(row.eatenAt);
+    const key = zonedDayKey(row.eatenAt, tz);
     const current = byDay.get(key);
     if (!current) continue;
     current.entryCount += 1;
@@ -262,8 +286,4 @@ export async function getRecentNutritionDays(userId: string, days = 7, now = new
     current.fatG += row.fatG;
   }
   return [...byDay.entries()].map(([key, summary]) => ({ day: key, ...summary }));
-}
-
-function dayKey(value: Date) {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }

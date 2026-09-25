@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { formatDayParam, sameLocalDay, weekStripDays } from "@/lib/home";
+import { APP_TIMEZONE, zonedParts } from "@/lib/timezone";
 
 const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function WeekStrip({ selected }: { selected: Date }) {
-  const days = weekStripDays(selected);
+export function WeekStrip({
+  selected,
+  timeZone = APP_TIMEZONE,
+}: {
+  selected: Date;
+  timeZone?: string;
+}) {
+  const days = weekStripDays(selected, timeZone);
   const today = new Date();
   const monthLabel = selected.toLocaleDateString(undefined, {
     month: "long",
     day: "numeric",
+    timeZone,
   });
 
   return (
@@ -19,7 +27,7 @@ export function WeekStrip({ selected }: { selected: Date }) {
           <Link href="/training/calendar" className="text-sm text-accent underline">
             Calendar
           </Link>
-          {sameLocalDay(selected, today) ? (
+          {sameLocalDay(selected, today, timeZone) ? (
             <span className="text-sm font-semibold text-accent">Today</span>
           ) : (
             <Link href="/home" className="text-sm text-accent underline">
@@ -30,9 +38,9 @@ export function WeekStrip({ selected }: { selected: Date }) {
       </div>
       <div className="-mx-1 flex gap-1 overflow-x-auto pb-1">
         {days.map((day, index) => {
-          const active = sameLocalDay(day, selected);
-          const isToday = sameLocalDay(day, today);
-          const href = `/home?day=${formatDayParam(day)}`;
+          const active = sameLocalDay(day, selected, timeZone);
+          const isToday = sameLocalDay(day, today, timeZone);
+          const href = `/home?day=${formatDayParam(day, timeZone)}`;
           return (
             <Link
               key={href}
@@ -44,7 +52,7 @@ export function WeekStrip({ selected }: { selected: Date }) {
               }`}
             >
               <span className="stat-display block text-lg font-semibold leading-none">
-                {day.getDate()}
+                {zonedParts(day, timeZone).day}
               </span>
               <span className="font-display mt-1 block text-[11px] uppercase tracking-wide">{WEEKDAY_SHORT[index]}</span>
               {isToday ? (

@@ -20,10 +20,10 @@ describe("calendar schedule list", () => {
     expect(ordinalDay(1)).toBe("1st");
     expect(ordinalDay(11)).toBe("11th");
     expect(formatCalendarHeading(tuesday, tuesday)).toBe("Today, September 22nd");
-    expect(formatCalendarHeading(new Date(2026, 8, 23), tuesday)).toBe(
+    expect(formatCalendarHeading(new Date(2026, 8, 23, 10, 0, 0), tuesday)).toBe(
       "Tomorrow, September 23rd",
     );
-    expect(formatCalendarHeading(new Date(2026, 8, 24), tuesday)).toBe(
+    expect(formatCalendarHeading(new Date(2026, 8, 24, 10, 0, 0), tuesday)).toBe(
       "Thursday, September 24th",
     );
   });

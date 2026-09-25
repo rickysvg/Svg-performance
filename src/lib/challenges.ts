@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
-import { startOfLocalDay } from "@/lib/nutrition";
+import { timeZoneForUser } from "@/lib/profile";
+import {
+  APP_TIMEZONE,
+  dayKey as zonedDayKey,
+  zonedCivilToUtc,
+  zonedParts,
+} from "@/lib/timezone";
 
 export const CHALLENGE_TRACKS = ["beginner", "advanced"] as const;
 export type ChallengeTrack = (typeof CHALLENGE_TRACKS)[number];
@@ -9,15 +15,17 @@ export function isChallengeTrack(value: string): value is ChallengeTrack {
   return (CHALLENGE_TRACKS as readonly string[]).includes(value);
 }
 
-export function monthKeyFrom(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+export function monthKeyFrom(date = new Date(), timeZone = APP_TIMEZONE) {
+  const { year, month } = zonedParts(date, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
-export function monthRange(monthKey: string) {
+export function monthRange(monthKey: string, timeZone = APP_TIMEZONE) {
   const [year, month] = monthKey.split("-").map(Number);
-  const start = new Date(year, (month ?? 1) - 1, 1);
-  const end = new Date(year, month ?? 1, 1);
-  return { start: startOfLocalDay(start), end: startOfLocalDay(end) };
+  const start = zonedCivilToUtc(year, month ?? 1, 1, timeZone);
+  const endMonth = (month ?? 1) === 12 ? 1 : (month ?? 1) + 1;
+  const endYear = (month ?? 1) === 12 ? year + 1 : year;
+  return { start, end: zonedCivilToUtc(endYear, endMonth, 1, timeZone) };
 }
 
 export async function listChallengesForAdmin() {
@@ -83,7 +91,12 @@ export async function getActiveChallenge() {
   });
 }
 
-export async function countActiveDaysInRange(userId: string, start: Date, end: Date) {
+export async function countActiveDaysInRange(
+  userId: string,
+  start: Date,
+  end: Date,
+  timeZone = APP_TIMEZONE,
+) {
   const [workouts, foods] = await Promise.all([
     prisma.workoutSession.findMany({
       where: { userId, status: "complete", performedAt: { gte: start, lt: end } },
@@ -96,10 +109,10 @@ export async function countActiveDaysInRange(userId: string, start: Date, end: D
   ]);
   const days = new Set<string>();
   for (const row of workouts) {
-    days.add(`${row.performedAt.getFullYear()}-${row.performedAt.getMonth()}-${row.performedAt.getDate()}`);
+    days.add(zonedDayKey(row.performedAt, timeZone));
   }
   for (const row of foods) {
-    days.add(`${row.eatenAt.getFullYear()}-${row.eatenAt.getMonth()}-${row.eatenAt.getDate()}`);
+    days.add(zonedDayKey(row.eatenAt, timeZone));
   }
   return days.size;
 }
@@ -126,16 +139,17 @@ export async function enrollInChallenge(userId: string, track: string) {
   });
 }
 
-export async function getChallengeProgressForUser(userId: string) {
+export async function getChallengeProgressForUser(userId: string, timeZone?: string) {
   const challenge = await getActiveChallenge();
   if (!challenge) {
     return null;
   }
+  const tz = timeZone ?? (await timeZoneForUser(userId));
   const enrollment = await prisma.challengeEnrollment.findUnique({
     where: { challengeId_userId: { challengeId: challenge.id, userId } },
   });
-  const { start, end } = monthRange(challenge.monthKey);
-  const daysActive = await countActiveDaysInRange(userId, start, end);
+  const { start, end } = monthRange(challenge.monthKey, tz);
+  const daysActive = await countActiveDaysInRange(userId, start, end, tz);
   const track = (enrollment?.track as ChallengeTrack | undefined) ?? "beginner";
   const goalDays = enrollment ? goalDaysForTrack(challenge, track) : challenge.beginnerGoalDays;
   const complete = Boolean(enrollment) && daysActive >= goalDays;

@@ -10,6 +10,8 @@ import {
   coachTopicContext,
 } from "@/lib/coach/topics";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
+import { timeZoneForUser } from "@/lib/profile";
+import { athleteLocalDayLine } from "@/lib/timezone";
 import {
   EMPTY_COACH_FALLBACK,
   liveModelUnavailableReply,
@@ -91,6 +93,7 @@ function ownSummary(input: {
   topic?: string;
   art?: string;
   notepad?: boolean;
+  localDay?: string;
 }) {
   return [
     `Experience: ${input.experienceLevel || "unknown"}.`,
@@ -98,6 +101,7 @@ function ownSummary(input: {
     coachLaneLabel(input.topic, input.art)
       ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
       : "",
+    input.localDay ?? "",
     `Only this user id ${input.userId} may be discussed.`,
     input.notepad
       ? "This is a Train notepad question on one exercise. Stay practical."
@@ -357,6 +361,7 @@ export async function runCoachChatStream(input: {
           coachingTone: input.body.coachingTone,
           topic,
           art,
+          localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(user.id)),
         }),
         topic,
         art,
@@ -513,6 +518,7 @@ export async function runCoachNoteStream(input: {
           topic: lane.topic,
           art: lane.art,
           notepad: true,
+          localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(user.id)),
         }),
         topic: lane.topic,
         art: lane.art,

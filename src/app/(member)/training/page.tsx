@@ -7,7 +7,7 @@ import {
   listDraftSessionsForUser,
 } from "@/lib/workouts";
 import { canUseFeature } from "@/lib/entitlements";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
 import {
@@ -36,7 +36,8 @@ export default async function TrainingPage() {
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
-  const todayPlan = planForDate(prefs, now);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const todayPlan = planForDate(prefs, now, tz);
   const planned = resolvePlanSessions(
     todayPlan,
     scaleDemoCatalog(catalog, {
@@ -44,9 +45,9 @@ export default async function TrainingPage() {
       competitionStatus: profile?.competitionStatus,
     }),
   );
-  const strip = weekStrip(prefs, now);
-  const week = buildCoreWeekPlan(prefs, bikeWeekIndex(now));
-  const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now);
+  const strip = weekStrip(prefs, now, tz);
+  const week = buildCoreWeekPlan(prefs, bikeWeekIndex(now, tz));
+  const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now, tz);
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
   const draftsByDay = new Map(

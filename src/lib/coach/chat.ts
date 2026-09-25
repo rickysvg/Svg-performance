@@ -8,6 +8,8 @@ import {
   offlineReply,
 } from "@/lib/coach/offline";
 import { coachLaneLabel, coachTopicContext } from "@/lib/coach/topics";
+import { timeZoneForUser } from "@/lib/profile";
+import { athleteLocalDayLine } from "@/lib/timezone";
 
 export { offlineReply } from "@/lib/coach/offline";
 
@@ -168,6 +170,7 @@ export async function sendCoachMessage(input: {
     coachLaneLabel(input.topic, input.art)
       ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
       : "",
+    athleteLocalDayLine(new Date(), await timeZoneForUser(input.userId)),
     `Only this user id ${input.userId} may be discussed.`,
     "Do not invent a medical or calorie plan from any stored weight.",
   ]
@@ -225,6 +228,7 @@ export async function answerScopedCoachQuestion(input: {
     coachLaneLabel(input.topic, input.art)
       ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
       : "",
+    athleteLocalDayLine(new Date(), await timeZoneForUser(input.userId)),
     `Only this user id ${input.userId} may be discussed.`,
     "This is a Train notepad question on one exercise. Stay practical.",
     "Do not invent SVG-produced videos or a medical plan.",

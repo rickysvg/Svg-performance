@@ -28,10 +28,10 @@ export function todayPriorityCopy(lane: "beginner" | "fighter") {
   };
 }
 
-export function emptyTodayGuide(selectedDay = new Date()) {
+export function emptyTodayGuide(selectedDay = new Date(), timeZone?: string) {
   const path = getPathBySlug("beginner-foundations");
   return {
-    today: emptyHomeToday(selectedDay),
+    today: emptyHomeToday(selectedDay, timeZone),
     lane: "beginner" as const,
     priority: todayPriorityCopy("beginner"),
     goal: "Add a goal on Profile so Today can show it.",
@@ -57,9 +57,13 @@ export function emptyTodayGuide(selectedDay = new Date()) {
   };
 }
 
-export async function getTodayGuide(userId: string, selectedDay = new Date()) {
+export async function getTodayGuide(
+  userId: string,
+  selectedDay = new Date(),
+  timeZone?: string,
+) {
   const [today, profile, planId] = await Promise.all([
-    getHomeToday(userId, selectedDay),
+    getHomeToday(userId, selectedDay, timeZone),
     getProfileForUser(userId),
     getEffectivePlanId(userId),
   ]);

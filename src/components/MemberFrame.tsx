@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { PrimaryNav } from "@/components/PrimaryNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
 import { shouldHideQuickAdd } from "@/lib/quick-add";
+import { TimeZoneSync } from "@/components/TimeZoneSync";
 
 function isImmersiveTrainingPath(pathname: string) {
   if (pathname.startsWith("/training/log/")) return true;
@@ -21,10 +22,12 @@ function isImmersiveTrainingPath(pathname: string) {
 export function MemberFrame({
   email,
   role,
+  timeZone,
   children,
 }: {
   email: string;
   role?: string;
+  timeZone?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -32,6 +35,7 @@ export function MemberFrame({
 
   return (
     <div className="flex min-h-full flex-col">
+      <TimeZoneSync savedTimeZone={timeZone} />
       <PrimaryNav />
       <div
         className={
