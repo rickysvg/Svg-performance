@@ -24,6 +24,7 @@ import {
   modeColumnLabel,
   modeHint,
   resolveLogMode,
+  targetInputPlaceholder,
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
@@ -38,7 +39,6 @@ import {
 import {
   copyPreviousOntoExercise,
   restTimerAfterSetDone,
-  seedSetsFromPrevious,
 } from "@/lib/logger-prefill";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
@@ -138,7 +138,7 @@ export function WorkoutLogForm({
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(() => seedSetsFromPrevious(session.sets, previousLoads));
+  const [sets, setSets] = useState(() => session.sets);
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
@@ -193,7 +193,7 @@ export function WorkoutLogForm({
       });
       return [
         ...current,
-        newClientSet(session.id, exerciseName, group.length + 1, unit, mode, group[0]?.durationSeconds ?? null),
+        newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
       ];
     });
   }
@@ -488,7 +488,7 @@ export function WorkoutLogForm({
                             min={0}
                             max={3600}
                             inputMode="numeric"
-                            placeholder="sec"
+                            placeholder={targetInputPlaceholder("seconds", planned?.reps)}
                             value={set.durationSeconds ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
@@ -497,7 +497,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center placeholder:text-muted"
                           />
                         </label>
                       ) : (
@@ -509,13 +509,14 @@ export function WorkoutLogForm({
                             min={0}
                             max={200}
                             inputMode="numeric"
+                            placeholder={targetInputPlaceholder("reps", planned?.reps)}
                             value={set.reps ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
                                 reps: event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center placeholder:text-muted"
                           />
                         </label>
                       )}

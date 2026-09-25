@@ -1,9 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  applyPreviousToEmptySet,
   copyPreviousOntoExercise,
   restTimerAfterSetDone,
-  seedSetsFromPrevious,
 } from "@/lib/logger-prefill";
 import type { PreviousSetLookup } from "@/lib/workouts";
 
@@ -18,51 +18,22 @@ const previous: PreviousSetLookup = {
 };
 
 describe("logger prefill and Done → rest", () => {
-  it("seeds empty set inputs from Previous values", () => {
-    const seeded = seedSetsFromPrevious(
-      [
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: null,
-          loadValue: null,
-          durationSeconds: null,
-        },
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 2,
-          reps: null,
-          loadValue: null,
-          durationSeconds: null,
-        },
-        {
-          exerciseName: "Mount hold",
-          setNumber: 1,
-          reps: null,
-          loadValue: null,
-          durationSeconds: null,
-        },
-      ],
-      previous,
+  it("does not auto-seed empty sets; Same as last is the only copy path", () => {
+    const prefill = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/logger-prefill.ts"),
+      "utf8",
     );
-    expect(seeded[0]).toMatchObject({ reps: 8, loadValue: 40 });
-    expect(seeded[1]).toMatchObject({ reps: 8, loadValue: 45 });
-    expect(seeded[2]).toMatchObject({ durationSeconds: 30 });
-  });
-
-  it("does not overwrite values the athlete already typed", () => {
-    const kept = applyPreviousToEmptySet(
-      {
-        exerciseName: "Goblet squat",
-        setNumber: 1,
-        reps: 10,
-        loadValue: 50,
-        durationSeconds: null,
-      },
-      previous,
+    const form = fs.readFileSync(
+      path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"),
+      "utf8",
     );
-    expect(kept.reps).toBe(10);
-    expect(kept.loadValue).toBe(50);
+    expect(prefill).not.toContain("seedSetsFromPrevious");
+    expect(prefill).not.toContain("applyPreviousToEmptySet");
+    expect(form).not.toContain("seedSetsFromPrevious");
+    expect(form).toContain("copyPreviousOntoExercise");
+    expect(form).toContain("Same as last");
+    expect(form).toContain("targetInputPlaceholder");
+    expect(form).toContain("placeholder:text-muted");
   });
 
   it("copies previous onto an exercise for Same as last", () => {
