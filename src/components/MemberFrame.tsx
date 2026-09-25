@@ -47,12 +47,19 @@ export function MemberFrame({
         {children}
       </div>
       {immersive ? null : (
-        <div className="sticky bottom-0 z-20">
-          <div className="relative">
-            {shouldHideQuickAdd(pathname) ? null : <QuickAddFab />}
-            <AppHeader email={email} role={role} placement="bottom" currentPath={pathname} />
-          </div>
-        </div>
+        <AppHeader
+          email={email}
+          role={role}
+          placement="bottom"
+          currentPath={pathname}
+          centerAction={
+            shouldHideQuickAdd(pathname) ? (
+              <span className="h-10 w-10" aria-hidden />
+            ) : (
+              <QuickAddFab variant="inline" />
+            )
+          }
+        />
       )}
     </div>
   );

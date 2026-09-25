@@ -34,13 +34,13 @@ describe("quick-add floating button", () => {
       "utf8",
     );
     expect(fab).toContain("data-quick-add-fab");
-    expect(fab).toContain("absolute bottom-0 left-14");
     expect(fab).toContain("h-10 w-10");
     expect(fab).toContain("data-plus-glyph");
-    expect(fab).toContain('items-center justify-center');
+    expect(fab).toContain("items-center justify-center");
     expect(fab).not.toMatch(/>\s*\+\s*</);
-    expect(frame).toContain("<QuickAddFab />");
+    expect(frame).toContain('<QuickAddFab variant="inline" />');
     expect(frame).toContain('placement="bottom"');
+    expect(frame).toContain("centerAction");
     expect(strip).not.toContain("pr-16");
     expect(day).toContain("data-start-bar");
     expect(day).toContain("sticky bottom-0");

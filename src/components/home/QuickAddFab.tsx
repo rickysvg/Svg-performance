@@ -44,13 +44,22 @@ function CloseGlyph() {
   );
 }
 
-export function QuickAddFab() {
+export function QuickAddFab({
+  variant = "overlay",
+}: {
+  variant?: "overlay" | "inline";
+}) {
   const [open, setOpen] = useState(false);
+  const inline = variant === "inline";
 
   return (
     <div
       data-quick-add-fab
-      className="pointer-events-none absolute bottom-0 left-14 top-0 z-30 flex items-center"
+      className={
+        inline
+          ? "relative z-30 flex items-center justify-center"
+          : "pointer-events-none absolute bottom-0 left-14 top-0 z-30 flex items-center"
+      }
     >
       {open ? (
         <div className="pointer-events-auto absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
