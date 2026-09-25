@@ -17,7 +17,7 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "SVG Performance",
   description:
-    "Private preview for anyone who wants to improve performance — combat athletes and people getting in shape. From Ricky / SVG MMA Academy in El Paso.",
+    "Private preview for anyone who wants to improve performance — combat athletes and people getting in shape. From Ricky / SVG MMA Academy.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

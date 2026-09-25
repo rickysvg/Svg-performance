@@ -46,8 +46,8 @@ export default async function MarketingPage({
           <p className="mt-4 max-w-xl text-muted">
             SVG Performance is for anybody who wants to improve — especially
             combat sports athletes, and also people just getting in shape. Built
-            by Ricky at SVG MMA Academy in El Paso. You do not have to train at
-            SVG to use this preview.
+            by Ricky at SVG MMA Academy. You do not have to train at SVG to use
+            this preview — it is for athletes anywhere.
           </p>
           <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
             {user ? (

@@ -1,6 +1,6 @@
 # SVG Performance
 
-Private-preview web app from **Ricky Maynez / SVG MMA Academy** (El Paso).
+Private-preview web app from **Ricky Maynez / SVG MMA Academy**.
 
 SVG Performance is **not** gym-members-only. It is for **anybody** who wants to improve performance — especially combat sports athletes, and also people just getting in shape. SVG members are welcome (gym verify / member pricing). You do not have to train at SVG to create an account.
 
