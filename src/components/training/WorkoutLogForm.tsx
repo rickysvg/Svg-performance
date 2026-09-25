@@ -24,7 +24,6 @@ import {
   modeColumnLabel,
   modeHint,
   resolveLogMode,
-  targetInputPlaceholder,
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
@@ -488,7 +487,6 @@ export function WorkoutLogForm({
                             min={0}
                             max={3600}
                             inputMode="numeric"
-                            placeholder={targetInputPlaceholder("seconds", planned?.reps)}
                             value={set.durationSeconds ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
@@ -497,7 +495,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center placeholder:text-muted"
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
                           />
                         </label>
                       ) : (
@@ -509,14 +507,13 @@ export function WorkoutLogForm({
                             min={0}
                             max={200}
                             inputMode="numeric"
-                            placeholder={targetInputPlaceholder("reps", planned?.reps)}
                             value={set.reps ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
                                 reps: event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center placeholder:text-muted"
+                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
                           />
                         </label>
                       )}

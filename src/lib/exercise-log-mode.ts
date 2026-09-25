@@ -91,19 +91,6 @@ export function parseDurationSeconds(value: string | number | null | undefined):
   return n;
 }
 
-/** Faint target hint for an empty logger input. Not a logged value. */
-export function targetInputPlaceholder(
-  kind: "reps" | "seconds",
-  plannedReps?: string | null,
-): string {
-  if (kind === "seconds") {
-    const seconds = parseDurationSeconds(plannedReps);
-    return seconds != null ? String(seconds) : "";
-  }
-  const match = String(plannedReps ?? "").match(/(\d+)/);
-  return match?.[1] ?? "";
-}
-
 export function modeColumnLabel(mode: LogMode) {
   if (mode === "timed_round") return "Round";
   if (mode === "timed" || mode === "load_timed") return "Sec";

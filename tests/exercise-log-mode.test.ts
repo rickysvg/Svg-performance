@@ -4,7 +4,6 @@ import {
   parseDurationSeconds,
   plannedSetLine,
   resolveLogMode,
-  targetInputPlaceholder,
 } from "@/lib/exercise-log-mode";
 import { previousSetLabel } from "@/lib/exercise-media";
 
@@ -56,8 +55,6 @@ describe("exercise log modes", () => {
     expect(parseDurationSeconds("45")).toBe(45);
     expect(parseDurationSeconds("30–45 sec")).toBe(30);
     expect(parseDurationSeconds("2:00 rounds")).toBe(120);
-    expect(targetInputPlaceholder("seconds", "30–45 sec")).toBe("30");
-    expect(targetInputPlaceholder("reps", "8–10")).toBe("8");
   });
 
   it("writes hold / round planned lines instead of lbs × reps", () => {

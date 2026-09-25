@@ -34,8 +34,11 @@ describe("logger prefill and Done → rest", () => {
     expect(form).toContain("Same as last");
     expect(form).toContain("previousSetLabel");
     expect(form).toContain(">Previous<");
-    expect(form).toContain("targetInputPlaceholder");
-    expect(form).toContain("placeholder:text-muted");
+    expect(form).not.toContain("targetInputPlaceholder");
+    expect(form).not.toContain("placeholder:text-muted");
+    expect(form).not.toMatch(/name=\{`sets\.\$\{index\}\.reps`\}[\s\S]{0,400}placeholder=/);
+    expect(form).not.toMatch(/name=\{`sets\.\$\{index\}\.durationSeconds`\}[\s\S]{0,400}placeholder=/);
+    expect(form).not.toMatch(/name=\{`sets\.\$\{index\}\.loadValue`\}[\s\S]{0,400}placeholder=/);
   });
 
   it("copies previous onto an exercise for Same as last", () => {
