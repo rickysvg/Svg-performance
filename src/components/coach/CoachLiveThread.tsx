@@ -59,8 +59,8 @@ export function CoachLiveThread({
       ...current,
       { id: userId, role: "user", content: message },
     ]);
-    const content = await start({ kind: "chat", message, topic, art });
-    const reply = content || partial;
+    const result = await start({ kind: "chat", message, topic, art });
+    const reply = result.content || partial;
     if (reply) {
       setMessages((current) => [
         ...current,
@@ -68,7 +68,7 @@ export function CoachLiveThread({
           id: `local-assistant-${Date.now()}`,
           role: "assistant",
           content: reply,
-          offline,
+          offline: result.offline || offline,
         },
       ]);
     }

@@ -28,6 +28,7 @@ export function useCoachStream() {
     setError("");
     setOffline(false);
     let assembled = "";
+    let liveOffline = false;
 
     try {
       const response = await fetch("/api/coach/stream", {
@@ -63,16 +64,18 @@ export function useCoachStream() {
             setPartial(assembled);
           } else if (event.type === "done") {
             assembled = event.content;
+            liveOffline = event.offline;
             setPartial(event.content);
             setOffline(event.offline);
           } else if (event.type === "error") {
             setError(event.message);
           } else if (event.type === "meta") {
+            liveOffline = event.offline;
             setOffline(event.offline);
           }
         }
       }
-      return assembled;
+      return { content: assembled, offline: liveOffline };
     } catch (caught) {
       if (controller.signal.aborted) {
         const kept = assembled.includes("[Stopped")
@@ -81,12 +84,12 @@ export function useCoachStream() {
             ? `${assembled}${STREAM_STOPPED_MARKER}`
             : assembled;
         setPartial(kept);
-        return kept;
+        return { content: kept, offline: liveOffline };
       }
       const message =
         caught instanceof Error ? caught.message : STREAM_FAIL_COPY;
       setError(message);
-      return "";
+      return { content: "", offline: liveOffline };
     } finally {
       setStreaming(false);
       abortRef.current = null;

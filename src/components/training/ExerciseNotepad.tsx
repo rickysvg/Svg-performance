@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { saveExerciseNoteAction, type ExerciseNoteState } from "@/app/actions/exercise-notes";
 import { StatusBanner } from "@/components/StatusBanner";
 import { useCoachStream } from "@/components/coach/useCoachStream";
@@ -46,12 +46,19 @@ export function ExerciseNotepad({
   );
   const { streaming, partial, error, offline, start, stop } = useCoachStream();
   const [liveReply, setLiveReply] = useState("");
+  const replyRef = useRef<HTMLDivElement | null>(null);
   const pending = saving || streaming;
   const shownBody = saveState.body ?? body;
   const aiReply = liveReply || partial || saveState.aiReply || note?.aiReply || "";
   const aiOffline = offline || saveState.aiOffline || note?.aiOffline || false;
   const hasNote = Boolean(shownBody || aiReply);
   const label = hasNote ? "Notes · saved" : "Notes";
+
+  useEffect(() => {
+    if (streaming || partial || liveReply) {
+      replyRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [streaming, partial, liveReply]);
 
   function payload() {
     const data = new FormData();
@@ -113,7 +120,7 @@ export function ExerciseNotepad({
               disabled={pending}
               onClick={async () => {
                 setLiveReply("");
-                const content = await start({
+                const result = await start({
                   kind: "note",
                   message: body,
                   exerciseName,
@@ -121,7 +128,7 @@ export function ExerciseNotepad({
                   logMode,
                   plannedLine,
                 });
-                if (content) setLiveReply(content);
+                if (result.content) setLiveReply(result.content);
               }}
               className="inline-flex min-h-9 items-center rounded-full bg-accent px-3 text-xs font-semibold text-black disabled:opacity-60"
             >
@@ -140,8 +147,9 @@ export function ExerciseNotepad({
           </div>
           {aiReply || streaming ? (
             <div
+              ref={replyRef}
               data-notepad-reply={exerciseName}
-              className="rounded-lg border border-accent/50 bg-card px-3 py-2"
+              className="mb-24 rounded-lg border border-accent/50 bg-card px-3 py-2"
             >
               <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
                 {COACH_PUBLIC_NAME}
