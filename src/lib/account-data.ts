@@ -6,6 +6,9 @@ import { getStripe } from "@/lib/stripe";
 import { progressPhotoRoot } from "@/lib/progress-photos";
 import { trainingClipRoot } from "@/lib/clips";
 import type { PublicUser } from "@/lib/auth";
+import { isDeleteConfirmation } from "@/lib/account-confirm";
+
+export { accountExportFilename, isDeleteConfirmation } from "@/lib/account-confirm";
 
 const EXPORT_WINDOW_MS = 15 * 60 * 1000;
 const EXPORT_MAX_PER_WINDOW = 5;
@@ -34,16 +37,6 @@ export function assertAccountExportRateLimit(userId: string, now = Date.now()) {
   }
   recent.push(now);
   exportHits.set(userId, recent);
-}
-
-export function accountExportFilename(date = new Date()) {
-  return `svg-performance-data-${date.toISOString().slice(0, 10)}.json`;
-}
-
-export function isDeleteConfirmation(input: string, email: string) {
-  const trimmed = input.trim();
-  if (!trimmed) return false;
-  return trimmed === "DELETE" || trimmed.toLowerCase() === email.trim().toLowerCase();
 }
 
 function jsonSafe<T>(value: T) {

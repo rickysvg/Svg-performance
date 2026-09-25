@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { deleteAccountAction, type DeleteAccountState } from "@/app/actions/account";
-import { isDeleteConfirmation } from "@/lib/account-data";
+import { isDeleteConfirmation } from "@/lib/account-confirm";
 import { StatusBanner } from "@/components/StatusBanner";
 
 export function DeleteAccountForm({ email }: { email: string }) {
