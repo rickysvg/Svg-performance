@@ -10,7 +10,7 @@ export default async function BillingSuccessPage() {
     <div className="min-h-full">
       <AppHeader email={user?.email} />
       <main className="mx-auto max-w-md px-4 py-10">
-        <h1 className="text-2xl font-semibold">Checkout returned</h1>
+        <h1 className="text-2xl">Checkout returned</h1>
         <p className="mt-3 text-sm text-muted">
           This page does <strong className="text-foreground">not</strong> unlock
           paid tools by itself. Access changes only after Stripe sends a

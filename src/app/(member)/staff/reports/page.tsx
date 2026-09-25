@@ -25,7 +25,7 @@ export default async function StaffReportsPage() {
     <main className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-wide text-muted">Staff</p>
-        <h1 className="text-2xl font-semibold">Member trends</h1>
+        <h1 className="text-2xl">Member trends</h1>
         <p className="mt-2 text-sm text-muted">
           High-level counts only. Private food diaries are not listed here.
           Coaches see assigned members; admins see everyone.
@@ -51,7 +51,7 @@ export default async function StaffReportsPage() {
 
       {isAdmin(staff) ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Assign a coach</h2>
+          <h2>Assign a coach</h2>
           <p className="mt-1 text-sm text-muted">
             Make a coach account with{" "}
             <code className="text-xs text-accent">npm run staff:promote -- coach@example.com coach</code>

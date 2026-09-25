@@ -38,23 +38,35 @@ body {
 }
 
 /*
-  Anton is the fight-poster display face (Ricky’s pick). Headings, lime
-  highlighter kickers, primary pills, and big stats use it. Body copy,
-  inputs, notes, and Coach replies stay Geist.
+  Anton ships only weight 400. Faux-bold (font-semibold/bold on display
+  text) smears i-dots and makes titles look cheap. Kill synthesis and
+  force regular weight on every display face.
 */
 h1,
 h2,
-h3 {
+h3,
+.font-display,
+.stat-display,
+.rounded-full.bg-accent:not(.border) {
   font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+  -webkit-font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
   letter-spacing: 0.03em;
-  line-height: 1.15;
+  line-height: 1.05;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 h1 {
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   text-wrap: balance;
 }
 
@@ -87,12 +99,24 @@ textarea:focus-visible {
 
   .font-display {
     font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+    font-weight: 400;
+    font-synthesis: none;
+    -webkit-font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
     letter-spacing: 0.04em;
+    line-height: 1.05;
+    text-transform: uppercase;
   }
 
   .stat-display {
     font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
-    letter-spacing: 0.04em;
+    font-weight: 400;
+    font-synthesis: none;
+    -webkit-font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+    text-transform: uppercase;
     font-variant-numeric: tabular-nums;
   }
 }
@@ -104,7 +128,12 @@ textarea:focus-visible {
 @layer components {
   .rounded-full.bg-accent:not(.border) {
     font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
-    letter-spacing: 0.08em;
+    font-weight: 400;
+    font-synthesis: none;
+    -webkit-font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.06em;
+    line-height: 1.05;
     text-transform: uppercase;
   }
 }
@@ -184,7 +213,9 @@ body:has(.app-splash.is-visible) {
   font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
   font-size: 0.95rem;
   font-weight: 400;
-  letter-spacing: 0.08em;
+  font-synthesis: none;
+  -webkit-font-synthesis: none;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -226,4 +257,16 @@ body:has(.app-splash.is-visible) {
   to {
     opacity: 0;
   }
+}
+
+/* Beat Tailwind font-semibold/bold on Anton — the face has no 600/700 cut. */
+h1,
+h2,
+h3,
+.font-display,
+.stat-display,
+.rounded-full.bg-accent:not(.border) {
+  font-weight: 400 !important;
+  font-synthesis: none;
+  -webkit-font-synthesis: none;
 }

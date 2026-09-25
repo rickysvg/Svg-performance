@@ -54,7 +54,7 @@ export function PlanSessionCard({
       }`}
     >
       <p
-        className={`font-display text-xs font-bold uppercase tracking-wide ${
+        className={`font-display text-xs uppercase ${
           highlight ? "text-highlighter" : "text-accent"
         }`}
       >
@@ -62,7 +62,7 @@ export function PlanSessionCard({
         {session.optional ? " · optional" : ""}
         {minutes > 0 ? ` · est. ${minutes} min` : ""}
       </p>
-      <h3 className="mt-1 text-lg font-semibold leading-tight">{session.title}</h3>
+      <h3 className="mt-1 text-lg leading-tight">{session.title}</h3>
       <p className={`mt-1 text-sm ${highlight ? "text-white/70" : "text-muted"}`}>
         {session.subtitle}
         {count > 0 ? ` · ${exerciseCountLabel(count)}` : ""}
@@ -109,7 +109,7 @@ export function PlanSessionCard({
           {draftId ? (
             <Link
               href={`/training/log/${draftId}`}
-              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-black"
+              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
             >
               Resume
             </Link>
@@ -118,7 +118,7 @@ export function PlanSessionCard({
               <input type="hidden" name="programDayId" value={session.dayId} />
               <button
                 type="submit"
-                className="touch-target rounded-full bg-accent px-4 text-sm font-semibold text-black"
+                className="touch-target rounded-full bg-accent px-4 text-sm text-black"
               >
                 Start
               </button>

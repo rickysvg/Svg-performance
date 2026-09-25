@@ -53,8 +53,8 @@ export default async function HomePage({
   return (
     <main className="space-y-8">
       <section className="-mx-4 -mt-6 bg-accent px-4 pb-8 pt-7 text-black">
-        <p className="font-display text-sm font-medium uppercase tracking-[0.16em]">Let&apos;s go</p>
-        <h1 className="mt-1 text-4xl font-semibold tracking-tight">
+        <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
+        <h1 className="mt-1 text-4xl">
           Welcome {greetingName}
         </h1>
         <p className="mt-2 text-sm">

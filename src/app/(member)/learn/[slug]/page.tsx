@@ -46,7 +46,7 @@ export default async function LessonPage({
         <LearnThumb url={video.url} pending={video.pending} title={lesson.title} />
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">Locked preview</p>
-          <h1 className="font-display mt-1 text-2xl font-semibold uppercase tracking-wide">
+          <h1 className="font-display mt-1 text-2xl uppercase tracking-wide">
             {lesson.title}
           </h1>
         </div>
@@ -74,7 +74,7 @@ export default async function LessonPage({
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold leading-tight">{lesson.title}</h1>
+          <h1 className="text-2xl leading-tight">{lesson.title}</h1>
           <p className="mt-2 text-sm text-muted">{channel}</p>
           {catalog?.youtubeTitle ? (
             <p className="mt-1 text-sm text-muted">{catalog.youtubeTitle}</p>
@@ -153,7 +153,7 @@ export default async function LessonPage({
         <form action={toggleCompleteAction} className="flex-1">
           <input type="hidden" name="lessonId" value={lesson.id} />
           <input type="hidden" name="slug" value={lesson.slug} />
-          <button className="touch-target w-full rounded-full bg-accent font-semibold text-black">
+          <button className="touch-target w-full rounded-full bg-accent text-black">
             {progress?.completed ? "Mark not complete" : "Mark complete"}
           </button>
         </form>

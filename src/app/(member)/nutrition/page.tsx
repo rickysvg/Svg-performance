@@ -20,7 +20,7 @@ export default async function NutritionPage() {
     const trial = await getTrialState(user.id);
     return (
       <main className="space-y-6">
-        <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">Fuel</h1>
+        <h1 className="font-display text-2xl uppercase tracking-wide">Fuel</h1>
         <UpgradePreview
           kind="fuel"
           canStartTrial={trial.canStartTrial}
@@ -41,7 +41,7 @@ export default async function NutritionPage() {
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Nutrition</h1>
+        <h1 className="text-2xl">Nutrition</h1>
         <p className="mt-1 text-sm text-muted">
           Manual entries only. Calories and macros are{" "}
           <strong className="text-foreground">your estimates</strong>, labeled
@@ -58,7 +58,7 @@ export default async function NutritionPage() {
       )}
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Today (manual estimates)</h2>
+        <h2>Today (manual estimates)</h2>
         <p className="mt-2 text-sm text-muted">
           {today.entryCount} item{today.entryCount === 1 ? "" : "s"} ·{" "}
           {Math.round(today.calories)} kcal · P {Math.round(today.proteinG)}g · C{" "}
@@ -75,7 +75,7 @@ export default async function NutritionPage() {
       </p>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Your log</h2>
+        <h2 className="text-lg">Your log</h2>
       {entries.length === 0 ? (
           <EmptyState title="No meals yet">
             Search a DEMO food or type an estimate above. Numbers stay yours to correct.

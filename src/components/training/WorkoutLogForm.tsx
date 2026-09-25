@@ -221,7 +221,7 @@ export function WorkoutLogForm({
             </Link>
             <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5">
               {restRunning ? (
-                <p className="stat-display rounded-full bg-accent px-3 py-1 text-2xl font-semibold leading-none text-black">
+                <p className="stat-display rounded-full bg-accent px-3 py-1 text-2xl leading-none text-black">
                   {formatRestClock(restRemaining)}
                 </p>
               ) : null}
@@ -250,7 +250,7 @@ export function WorkoutLogForm({
               data-workout-title
               defaultValue={session.title}
               rows={2}
-              className="font-display min-h-[3.4rem] w-full min-w-0 resize-none bg-transparent text-2xl font-semibold leading-tight tracking-wide break-words whitespace-normal outline-none"
+              className="font-display min-h-[3.4rem] w-full min-w-0 resize-none bg-transparent text-2xl leading-tight tracking-wide break-words whitespace-normal outline-none"
             />
           </label>
           {session.programDay?.title ? (
@@ -350,7 +350,7 @@ export function WorkoutLogForm({
                   formVideoPending={form.pending}
                 />
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold">{name}</h2>
+                  <h2>{name}</h2>
                   <CoachCredit name={name} />
                   <p className="mt-0.5 text-sm text-muted">
                     {planned
@@ -429,7 +429,7 @@ export function WorkoutLogForm({
                       type="button"
                       data-rest-stop={name}
                       onClick={() => setRestTimer(null)}
-                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-semibold uppercase tracking-wide text-black"
+                      className="font-display inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-sm uppercase tracking-wide text-black"
                     >
                       <StopIcon />
                       Stop
@@ -601,7 +601,7 @@ export function WorkoutLogForm({
             name="intent"
             value="complete"
             disabled={pending}
-            className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+            className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
           >
             {pending ? "Saving…" : "SAVE"}
           </button>

@@ -14,7 +14,7 @@ export function ChallengeHomeCard({ progress }: { progress: Progress }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-accent">Monthly challenge</p>
-          <h2 className="mt-1 font-semibold">{challenge.title}</h2>
+          <h2 className="mt-1">{challenge.title}</h2>
         </div>
         {challenge.isDemo ? <DemoBadge /> : null}
       </div>

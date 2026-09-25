@@ -31,7 +31,7 @@ export default async function ProfilePage() {
   return (
     <main className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Profile</h1>
+        <h1 className="text-2xl">Profile</h1>
         <p className="mt-1 text-sm text-muted">
           {user.email}. Intake answers can be edited here anytime.
         </p>
@@ -49,7 +49,7 @@ export default async function ProfilePage() {
       />
       <ChangePasswordForm />
       <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-lg font-semibold">Account</h2>
+        <h2 className="text-lg">Account</h2>
         <p className="text-sm text-muted">
           Sign out of this device. Your logs stay on the account.
         </p>
@@ -66,7 +66,7 @@ export default async function ProfilePage() {
       <YourDataSection />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">More</h2>
+        <h2 className="text-lg">More</h2>
         <ul className="space-y-2 text-sm">
           <li>
             <Link href="/progress" className="text-accent underline-offset-4 hover:underline">

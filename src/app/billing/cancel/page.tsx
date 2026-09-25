@@ -8,7 +8,7 @@ export default async function BillingCancelPage() {
     <div className="min-h-full">
       <AppHeader email={user?.email} />
       <main className="mx-auto max-w-md px-4 py-10">
-        <h1 className="text-2xl font-semibold">Checkout canceled</h1>
+        <h1 className="text-2xl">Checkout canceled</h1>
         <p className="mt-3 text-sm text-muted">
           No access change was made. Failed or canceled TEST payments never
           grant a plan — including Affirm or Klarna.

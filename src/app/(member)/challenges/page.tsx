@@ -12,7 +12,7 @@ export default async function ChallengesPage() {
   if (!progress) {
     return (
       <main className="space-y-4">
-        <h1 className="text-2xl font-semibold">Monthly SVG challenge</h1>
+        <h1 className="text-2xl">Monthly SVG challenge</h1>
         <EmptyState title="No active challenge">
           An admin turns on the month from the pilot toolkit.
         </EmptyState>
@@ -26,7 +26,7 @@ export default async function ChallengesPage() {
     <main className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-wide text-accent">{challenge.monthKey}</p>
-        <h1 className="mt-1 text-2xl font-semibold">{challenge.title}</h1>
+        <h1 className="mt-1 text-2xl">{challenge.title}</h1>
         {challenge.isDemo ? <DemoBadge className="mt-2" /> : null}
         <p className="mt-2 text-sm text-muted">{challenge.summary}</p>
       </div>
@@ -34,7 +34,7 @@ export default async function ChallengesPage() {
         <p className="text-sm text-muted">
           Consistency scoring: days with a workout and/or food log. Not heaviest lift.
         </p>
-        <p className="stat-display mt-3 text-3xl font-semibold text-accent">
+        <p className="stat-display mt-3 text-3xl text-accent">
           {daysActive} / {goalDays}
         </p>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-line">

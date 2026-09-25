@@ -51,7 +51,7 @@ export function WeekStrip({
                   : "border border-transparent text-muted hover:border-line"
               }`}
             >
-              <span className="stat-display block text-lg font-semibold leading-none">
+              <span className="stat-display block text-lg leading-none">
                 {zonedParts(day, timeZone).day}
               </span>
               <span className="font-display mt-1 block text-[11px] uppercase tracking-wide">{WEEKDAY_SHORT[index]}</span>

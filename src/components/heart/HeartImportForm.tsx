@@ -8,7 +8,7 @@ export function HeartImportForm() {
   const [state, action, pending] = useActionState(importHeartCsvAction, {} as HeartActionState);
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-background p-4">
-      <h3 className="font-medium">Import Health export / watch workout</h3>
+      <h3>Import Health export / watch workout</h3>
       <p className="text-sm text-muted">
         JSON (Health Auto Export), Apple Health XML, or CSV. Labeled{" "}
         <code>apple_health</code> / <code>apple_watch_import</code>. This is a file you
@@ -36,7 +36,7 @@ export function HeartImportForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Importing…" : "Import Apple Health file"}
       </button>

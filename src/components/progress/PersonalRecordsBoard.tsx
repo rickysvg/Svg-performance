@@ -5,7 +5,7 @@ export function PersonalRecordsBoard({ records }: { records: PersonalRecords }) 
   return (
     <section id="personal-records" className="space-y-4 rounded-2xl border border-line bg-card p-5">
       <div>
-        <h2 className="font-semibold">Personal records</h2>
+        <h2>Personal records</h2>
         <p className="mt-1 text-sm text-muted">
           Recalculated from workouts and activity you already logged. Not a live leaderboard.
         </p>
@@ -25,14 +25,14 @@ export function PersonalRecordsBoard({ records }: { records: PersonalRecords }) 
           <div className="grid grid-cols-2 gap-3">
             <article className="rounded-xl border border-line p-3">
               <p className="font-display text-xs uppercase tracking-wide text-muted">Longest days-active streak</p>
-              <p className="stat-display mt-1 text-2xl font-semibold">{records.longestActiveStreak}</p>
+              <p className="stat-display mt-1 text-2xl">{records.longestActiveStreak}</p>
               <p className="mt-1 text-xs text-muted">
                 Days in a row with a workout or food log. Current: {records.currentActiveStreak}.
               </p>
             </article>
             <article className="rounded-xl border border-line p-3">
               <p className="font-display text-xs uppercase tracking-wide text-muted">Load PRs</p>
-              <p className="stat-display mt-1 text-2xl font-semibold">{records.loadRecords.length}</p>
+              <p className="stat-display mt-1 text-2xl">{records.loadRecords.length}</p>
               <p className="mt-1 text-xs text-muted">Heaviest logged load per exercise name.</p>
             </article>
           </div>

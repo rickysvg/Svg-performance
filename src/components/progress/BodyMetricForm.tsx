@@ -22,7 +22,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
 
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="text-lg font-semibold">Log a body metric</h2>
+      <h2 className="text-lg">Log a body metric</h2>
       <p className="text-sm text-muted">
         Type a number yourself. Apple Health import and Polar live on Heart rate. Sleep /
         lean / fat stay typed — no fake Apple Watch pairing.
@@ -89,7 +89,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save metric"}
       </button>

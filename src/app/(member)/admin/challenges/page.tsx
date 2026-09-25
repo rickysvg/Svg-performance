@@ -14,7 +14,7 @@ export default async function AdminChallengesPage() {
         <Link href="/admin" className="text-sm text-accent underline">
           Back to toolkit
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Monthly SVG challenge</h1>
+        <h1 className="mt-2 text-2xl">Monthly SVG challenge</h1>
         <p className="mt-1 text-sm text-muted">
           Beginner and advanced tracks use days active (workout and/or food log). Not a
           heaviest-lift contest.

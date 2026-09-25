@@ -60,7 +60,7 @@ export default async function TrainingPage() {
     <main className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Training</h1>
+          <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
             Core week plan (DEMO) — one shared weekday skeleton. Not Elite
             coaching or a custom fight camp.
@@ -80,10 +80,10 @@ export default async function TrainingPage() {
 
       <section className="space-y-3">
         <div>
-          <p className="font-display text-xs font-bold uppercase tracking-wide text-accent">
+          <p className="font-display text-xs uppercase tracking-wide text-accent">
             Today’s plan · {todayPlan.weekday}
           </p>
-          <h2 className="mt-1 text-lg font-semibold">
+          <h2 className="mt-1 text-lg">
             {todayPlan.active
               ? todayPlan.summary
               : nextDay
@@ -107,7 +107,7 @@ export default async function TrainingPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Fighter Conditioning</h2>
+        <h2>Fighter Conditioning</h2>
         {conditioning ? (
           <p className="mt-2 text-sm text-muted">
             Shared combat S&amp;C / mobility blocks publish here when ready. This Core

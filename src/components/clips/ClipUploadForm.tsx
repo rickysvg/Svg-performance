@@ -11,7 +11,7 @@ export function ClipUploadForm() {
   );
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Upload a training clip</h2>
+      <h2>Upload a training clip</h2>
       <p className="text-sm text-muted">
         Private to you and an assigned coach. mp4 or webm, 25 MB max. Not a live stream.
       </p>
@@ -32,7 +32,7 @@ export function ClipUploadForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Uploading…" : "Upload clip"}
       </button>

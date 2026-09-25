@@ -12,7 +12,7 @@ export function DailyQuoteCard({
 }) {
   return (
     <section className="rounded-[2rem] border border-line bg-card px-5 py-6">
-      <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+      <p className="font-display text-xs uppercase tracking-[0.06em] text-muted">
         Daily quote
       </p>
       {unlocked ? (
@@ -28,7 +28,7 @@ export function DailyQuoteCard({
           </p>
           <Link
             href="/pricing"
-            className="mt-4 inline-flex rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black"
+            className="mt-4 inline-flex rounded-full bg-accent px-4 py-2 text-sm text-black"
           >
             Upgrade
           </Link>

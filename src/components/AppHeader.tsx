@@ -79,8 +79,8 @@ function DockLink({
     <Link
       href={href}
       data-dock-link={label}
-      className={`font-display flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 uppercase leading-none tracking-[0.04em] ${
-        active ? "bg-accent font-semibold text-black" : "text-muted hover:text-foreground"
+      className={`font-display flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 uppercase leading-none tracking-[0.06em] ${
+        active ? "bg-accent text-black" : "text-muted hover:text-foreground"
       }`}
       aria-current={active ? "page" : undefined}
     >

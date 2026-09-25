@@ -12,7 +12,7 @@ export function ChangePasswordForm() {
 
   return (
     <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
-      <h2 className="text-lg font-semibold">Change password</h2>
+      <h2 className="text-lg">Change password</h2>
       <StatusBanner error={state.error} />
       <label className="block">
         <span className="text-sm font-medium">Current password</span>

@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
     <div className="min-h-full">
       <AppHeader email={user.email} role={user.role} homeHref="/onboarding" hideMemberLinks />
       <main className="mx-auto max-w-md px-4 py-8">
-        <h1 className="text-2xl font-semibold">A few vital questions</h1>
+        <h1 className="text-2xl">A few vital questions</h1>
         <p className="mt-2 text-sm text-muted">
           We&apos;ll use this to tailor your app — Learn level, Home
           suggestions, and units. For combat athletes, class training, and

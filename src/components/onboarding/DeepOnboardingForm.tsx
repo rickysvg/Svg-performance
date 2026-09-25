@@ -44,7 +44,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
 
       <form action={action} className="space-y-6">
         <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-          <h2 className="font-semibold">Body weight</h2>
+          <h2>Body weight</h2>
           <p className="text-xs text-muted">
             Stored in {units} from your required answers. Display only — we will not invent a
             meal plan or medical target from these numbers.
@@ -76,7 +76,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         </section>
 
         <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-          <h2 className="font-semibold">How you train</h2>
+          <h2>How you train</h2>
           <fieldset>
             <legend className="text-sm font-medium">Typical session length</legend>
             <div className="mt-2 flex flex-wrap gap-4">
@@ -114,7 +114,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         </section>
 
         <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-          <h2 className="font-semibold">Competition</h2>
+          <h2>Competition</h2>
           <p className="text-xs text-muted">
             Saved as a flag for later fight-camp tools. This app still does not run a fight camp.
           </p>
@@ -147,7 +147,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         </section>
 
         <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-          <h2 className="font-semibold">Coaching style</h2>
+          <h2>Coaching style</h2>
           <fieldset>
             <legend className="text-sm font-medium">Preferred coaching tone</legend>
             <div className="mt-2 grid gap-2">
@@ -187,7 +187,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         <button
           type="submit"
           disabled={pending}
-          className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+          className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save and go to Home"}
         </button>

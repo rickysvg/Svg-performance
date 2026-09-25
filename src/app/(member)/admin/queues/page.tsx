@@ -14,7 +14,7 @@ export default async function AdminQueuesPage() {
         <Link href="/admin" className="text-sm text-accent underline">
           Back to toolkit
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Comment queues</h1>
+        <h1 className="mt-2 text-2xl">Comment queues</h1>
         <p className="mt-1 text-sm text-muted">
           Work lists only. Open a member on Staff → Coach notes to write in your own words.
           Week key {queues.weekStartKey}.
@@ -22,7 +22,7 @@ export default async function AdminQueuesPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Weekly report comments needed</h2>
+        <h2 className="text-lg">Weekly report comments needed</h2>
         {queues.commentsWaiting.length === 0 ? (
           <p className="text-sm text-muted">No empty comment slots in this sample.</p>
         ) : (
@@ -40,7 +40,7 @@ export default async function AdminQueuesPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Journal feedback needed</h2>
+        <h2 className="text-lg">Journal feedback needed</h2>
         {queues.journalWaiting.length === 0 ? (
           <p className="text-sm text-muted">No unanswered journal entries.</p>
         ) : (
@@ -61,7 +61,7 @@ export default async function AdminQueuesPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Book requests</h2>
+        <h2 className="text-lg">Book requests</h2>
         {queues.bookings.length === 0 ? (
           <p className="text-sm text-muted">No open Book requests.</p>
         ) : (
@@ -79,7 +79,7 @@ export default async function AdminQueuesPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Waitlist</h2>
+        <h2 className="text-lg">Waitlist</h2>
         {queues.waitlist.length === 0 ? (
           <p className="text-sm text-muted">Nobody is waiting.</p>
         ) : (
@@ -94,7 +94,7 @@ export default async function AdminQueuesPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Clips waiting for notes</h2>
+        <h2 className="text-lg">Clips waiting for notes</h2>
         {queues.clipsWaiting.length === 0 ? (
           <p className="text-sm text-muted">No clips waiting.</p>
         ) : (

@@ -26,7 +26,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
 
   return (
     <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
-      <h2 className="text-lg font-semibold">Training profile</h2>
+      <h2 className="text-lg">Training profile</h2>
       <StatusBanner error={state.error} success={state.success} />
 
       <label className="block">
@@ -444,7 +444,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save profile"}
       </button>

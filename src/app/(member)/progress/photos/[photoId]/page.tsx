@@ -29,7 +29,7 @@ export default async function ProgressPhotoPage({
         Back to My Progress
       </Link>
       <div>
-        <h1 className="text-2xl font-semibold">Progress photo</h1>
+        <h1 className="text-2xl">Progress photo</h1>
         <p className="mt-1 text-sm text-muted">
           Private to you. Coaches and admins cannot open this in this preview.
         </p>

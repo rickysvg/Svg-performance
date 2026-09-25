@@ -14,7 +14,7 @@ export default async function AdminInvitesPage() {
         <Link href="/admin" className="text-sm text-accent underline">
           Back to toolkit
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Pilot invites</h1>
+        <h1 className="mt-2 text-2xl">Pilot invites</h1>
         <p className="mt-1 text-sm text-muted">
           Status is invited until they create an account, then joined. This does not send
           email unless SMTP is set later.

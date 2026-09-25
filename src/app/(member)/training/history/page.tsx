@@ -15,7 +15,7 @@ export default async function HistoryPage() {
         <Link href="/training" className="text-sm text-accent underline-offset-4 hover:underline">
           Back to Training
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Workout history</h1>
+        <h1 className="mt-2 text-2xl">Workout history</h1>
         <p className="mt-1 text-sm text-muted">
           Logged sessions persist after refresh. Open any row to correct a mistake.
         </p>

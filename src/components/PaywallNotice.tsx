@@ -6,7 +6,7 @@ export function PaywallNotice({ feature }: { feature: string }) {
       <p className="text-xs font-bold uppercase tracking-wide text-accent">
         TEST subscription required
       </p>
-      <h1 className="mt-2 text-2xl font-semibold">{feature}</h1>
+      <h1 className="mt-2 text-2xl">{feature}</h1>
       <p className="mt-2 text-sm text-muted">
         Stripe TEST keys are configured on this server, so this tool needs a
         webhook-confirmed Performance+ plan — not just the browser redirect.
@@ -14,7 +14,7 @@ export function PaywallNotice({ feature }: { feature: string }) {
       </p>
       <Link
         href="/pricing"
-        className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
+        className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
       >
         View TEST plans
       </Link>

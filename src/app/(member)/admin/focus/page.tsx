@@ -14,7 +14,7 @@ export default async function AdminFocusPage() {
         <Link href="/admin" className="text-sm text-accent underline">
           Back to toolkit
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Weekly focus video</h1>
+        <h1 className="mt-2 text-2xl">Weekly focus video</h1>
         <p className="mt-1 text-sm text-muted">
           Aim for 60–90 seconds. Published videos show on Today for Performance+. Drafts
           stay hidden. Not a live stream.

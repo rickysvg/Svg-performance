@@ -29,7 +29,7 @@ export default async function StaffCoachingPage({
   if (!member) {
     return (
       <main className="space-y-4">
-        <h1 className="text-2xl font-semibold">Coach notes</h1>
+        <h1 className="text-2xl">Coach notes</h1>
         <EmptyState title="No assigned members">
           Admins assign coaches on Staff → trends.
         </EmptyState>
@@ -58,7 +58,7 @@ export default async function StaffCoachingPage({
         <Link href="/staff/reports" className="text-sm text-accent underline">
           Back to trends
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Coach notes</h1>
+        <h1 className="mt-2 text-2xl">Coach notes</h1>
         <p className="mt-1 text-sm text-muted">
           Write in your own words. Empty slots stay empty. Do not paste a fake Ricky comment.
         </p>
@@ -86,7 +86,7 @@ export default async function StaffCoachingPage({
 
       {planHasCoachReview(planId) ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Training clips</h2>
+          <h2>Training clips</h2>
           {clips.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No clips yet.</p>
           ) : (
@@ -108,7 +108,7 @@ export default async function StaffCoachingPage({
 
       {planHasCoachReview(planId) ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Weekly comment (this Monday week)</h2>
+          <h2>Weekly comment (this Monday week)</h2>
           <WeeklyCommentForm memberUserId={member.userId} />
         </section>
       ) : (
@@ -119,13 +119,13 @@ export default async function StaffCoachingPage({
 
       {planHasEliteReview(planId) ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Adjustment log</h2>
+          <h2>Adjustment log</h2>
           <AdjustmentForm memberUserId={member.userId} />
         </section>
       ) : null}
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Journal</h2>
+        <h2>Journal</h2>
         {journal.length === 0 ? (
           <p className="mt-2 text-sm text-muted">No member notes yet.</p>
         ) : (
@@ -143,7 +143,7 @@ export default async function StaffCoachingPage({
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Booking next steps</h2>
+        <h2>Booking next steps</h2>
         {bookings.length === 0 ? (
           <p className="mt-2 text-sm text-muted">No Book with Ricky requests.</p>
         ) : (

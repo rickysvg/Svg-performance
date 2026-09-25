@@ -33,7 +33,7 @@ function SessionCta({
     return (
       <Link
         href={`/training/log/${draftId}`}
-        className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+        className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
       >
         {resumeLabel}
       </Link>
@@ -45,7 +45,7 @@ function SessionCta({
         <input type="hidden" name="programDayId" value={dayId} />
         <button
           type="submit"
-          className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+          className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
         >
           {startLabel}
         </button>
@@ -55,7 +55,7 @@ function SessionCta({
   return (
     <Link
       href="/training"
-      className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+      className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
     >
       Open Train
     </Link>
@@ -75,10 +75,10 @@ export function TodayGuide({ guide }: { guide: Guide }) {
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
       {restOnly ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+          <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
             {today.planWeekday || "Training"} · {today.planSummary || "Rest"}
           </p>
-          <h3 className="mt-3 text-2xl font-semibold leading-tight">
+          <h3 className="mt-3 text-2xl leading-tight">
             {planned[0]?.title ?? "Rest day"}
           </h3>
           <p className="mt-2 text-sm text-white/70">
@@ -108,11 +108,11 @@ export function TodayGuide({ guide }: { guide: Guide }) {
                 key={`${session.slot}-${session.dayId ?? session.label}`}
                 className="rounded-[2rem] bg-black px-5 py-6 text-white"
               >
-                <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+                <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
                   Session {session.slot} · {KIND_LABEL[session.kind]}
                   {minutes > 0 ? ` · est. ${minutes} min` : ""}
                 </p>
-                <h3 className="mt-3 text-2xl font-semibold leading-tight">{session.title}</h3>
+                <h3 className="mt-3 text-2xl leading-tight">{session.title}</h3>
                 <p className="mt-2 text-sm text-white/70">
                   {session.label}
                   {count > 0 ? ` · ${exerciseCountLabel(count)}` : ""}
@@ -127,14 +127,14 @@ export function TodayGuide({ guide }: { guide: Guide }) {
         </div>
       ) : (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-highlighter">
+          <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
             Training
           </p>
-          <h3 className="mt-3 text-2xl font-semibold leading-tight">No DEMO day loaded</h3>
+          <h3 className="mt-3 text-2xl leading-tight">No DEMO day loaded</h3>
           <p className="mt-2 text-sm text-white/70">{today.suggestionCopy}</p>
           <Link
             href="/training"
-            className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm font-semibold text-black"
+            className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
           >
             Open Train
           </Link>

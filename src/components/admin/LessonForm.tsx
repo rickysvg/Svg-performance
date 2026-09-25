@@ -76,7 +76,7 @@ export function LessonForm({ lesson }: { lesson?: Lesson }) {
         <input type="checkbox" name="isDemo" defaultChecked={lesson?.isDemo ?? true} className="h-5 w-5 accent-accent" />
         Label as DEMO
       </label>
-      <button disabled={pending} className="touch-target w-full rounded-full bg-accent font-semibold text-black">
+      <button disabled={pending} className="touch-target w-full rounded-full bg-accent text-black">
         {pending ? "Saving…" : "Save lesson"}
       </button>
     </form>

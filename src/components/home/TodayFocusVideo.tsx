@@ -10,7 +10,7 @@ export function TodayFocusVideo({ access }: { access: Access }) {
     return (
       <section className="rounded-2xl border border-line bg-card p-5">
         <p className="text-xs uppercase tracking-wide text-accent">Weekly focus</p>
-        <h2 className="mt-1 font-semibold">60–90s SVG focus video</h2>
+        <h2 className="mt-1">60–90s SVG focus video</h2>
         <p className="mt-2 text-sm text-muted">
           Performance+ sees this week&apos;s published video on Today. Member Access gets
           this teaser only.
@@ -25,7 +25,7 @@ export function TodayFocusVideo({ access }: { access: Access }) {
     return (
       <section className="rounded-2xl border border-line bg-card p-5">
         <p className="text-xs uppercase tracking-wide text-accent">Weekly focus</p>
-        <h2 className="mt-1 font-semibold">No published video this week</h2>
+        <h2 className="mt-1">No published video this week</h2>
         <p className="mt-2 text-sm text-muted">
           Admins schedule a 60–90s clip from the pilot toolkit. Drafts stay hidden.
         </p>
@@ -39,7 +39,7 @@ export function TodayFocusVideo({ access }: { access: Access }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-accent">Weekly SVG focus</p>
-          <h2 className="mt-1 text-lg font-semibold">{access.video.title}</h2>
+          <h2 className="mt-1 text-lg">{access.video.title}</h2>
         </div>
         {access.video.isDemo ? <DemoBadge /> : null}
       </div>

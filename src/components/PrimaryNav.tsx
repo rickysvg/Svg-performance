@@ -18,10 +18,8 @@ export function PrimaryNav() {
             <li key={link.href} className="px-0.5 py-1.5">
               <Link
                 href={link.href}
-                className={`font-display touch-target flex flex-col items-center justify-center rounded-full px-1 text-[12px] uppercase leading-tight tracking-[0.08em] whitespace-nowrap ${
-                  active
-                    ? "bg-accent font-semibold text-black"
-                    : "text-muted hover:text-foreground"
+                className={`font-display touch-target flex flex-col items-center justify-center rounded-full px-1 text-[12px] uppercase leading-tight tracking-[0.06em] whitespace-nowrap ${
+                  active ? "bg-accent text-black" : "text-muted hover:text-foreground"
                 }`}
                 aria-current={active ? "page" : undefined}
               >

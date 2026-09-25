@@ -16,7 +16,7 @@ export default async function TrainingCalendarPage() {
         </Link>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">Calendar</h1>
+            <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
               Core week plan (DEMO) from your availability
               {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live

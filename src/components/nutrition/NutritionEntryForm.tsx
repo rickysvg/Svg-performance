@@ -99,7 +99,7 @@ export function NutritionEntryForm({
       action={action}
       className="space-y-4 rounded-2xl border border-line bg-card p-5"
     >
-      <h2 className="text-lg font-semibold">
+      <h2 className="text-lg">
         {entry ? "Correct this entry" : "Log a meal or snack"}
       </h2>
       <StatusBanner error={state.error} success={state.success} />
@@ -268,7 +268,7 @@ export function NutritionEntryForm({
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : entry ? "Save correction" : "Save estimate"}
       </button>

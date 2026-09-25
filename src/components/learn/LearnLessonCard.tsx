@@ -44,7 +44,7 @@ function LessonBody({
       </div>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-semibold leading-snug">{lesson.title}</h2>
+          <h2 className=" leading-snug">{lesson.title}</h2>
           <p className="mt-1 text-sm text-muted">{channel}</p>
         </div>
         {lesson.isDemo ? <DemoBadge /> : null}

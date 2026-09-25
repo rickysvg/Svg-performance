@@ -46,7 +46,7 @@ export default async function WorkoutLogPage({
       {session.status === "complete" ? (
         hrLog ? (
           <section className="rounded-2xl border border-line bg-card p-5">
-            <h2 className="font-semibold">Workout heart rate</h2>
+            <h2>Workout heart rate</h2>
             <p className="mt-1 text-lg font-semibold">
               {hrLog.avgBpm} avg · {hrLog.maxBpm} max
             </p>

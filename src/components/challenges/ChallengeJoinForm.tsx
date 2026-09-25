@@ -30,7 +30,7 @@ export function ChallengeJoinForm({
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-5 font-semibold text-black disabled:opacity-60"
+        className="touch-target rounded-full bg-accent px-5 text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : defaultTrack ? "Update track" : "Opt in"}
       </button>

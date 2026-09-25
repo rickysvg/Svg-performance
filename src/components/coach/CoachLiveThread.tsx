@@ -142,7 +142,7 @@ export function CoachLiveThread({
             type="submit"
             disabled={streaming || !draft.trim()}
             data-coach-send
-            className="touch-target flex-1 rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+            className="touch-target flex-1 rounded-full bg-accent text-black disabled:opacity-60"
           >
             {streaming ? "Sending…" : "Send"}
           </button>

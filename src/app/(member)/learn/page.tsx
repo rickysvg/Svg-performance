@@ -74,7 +74,7 @@ export default async function LearnPage({
     <main className="space-y-8">
       <div>
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Learn</h1>
+          <h1 className="text-2xl">Learn</h1>
           {isAdmin(user) ? (
             <Link href="/admin/lessons" className="text-sm text-muted">
               Admin

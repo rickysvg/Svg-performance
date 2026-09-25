@@ -27,7 +27,7 @@ export function CoachChatForm({ topic, art }: { topic: string; art?: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Thinking…" : "Send"}
       </button>

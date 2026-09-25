@@ -76,9 +76,9 @@ export default async function TrainingDayPage({
       <section className="space-y-6 px-4 pb-8 pt-3">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold leading-tight">{day.title}</h1>
+            <h1 className="text-2xl leading-tight">{day.title}</h1>
             <p className="mt-1 text-sm text-muted">{day.focus}</p>
-            <p className="font-display mt-2 text-xs font-semibold uppercase tracking-wide text-accent">
+            <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
               {scaleCopy(
                 scaleBandFromPrefs({
                   experienceLevel: profile?.experienceLevel,
@@ -134,7 +134,7 @@ export default async function TrainingDayPage({
                 formVideoPending={form.pending}
               />
               <div className="min-w-0 flex-1">
-                <h2 className="font-semibold leading-snug">{exercise.name}</h2>
+                <h2 className=" leading-snug">{exercise.name}</h2>
                 <CoachCredit name={exercise.name} />
                 <p className="mt-1 text-sm text-muted">{planned}</p>
                 <WatchFormInline url={form.url} pending={form.pending} />
@@ -159,7 +159,7 @@ export default async function TrainingDayPage({
         >
           <Link
             href={`/training/log/${draft.id}`}
-            className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base font-semibold text-black"
+            className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
           >
             Continue
           </Link>
@@ -173,7 +173,7 @@ export default async function TrainingDayPage({
           <input type="hidden" name="programDayId" value={day.id} />
           <button
             type="submit"
-            className="touch-target w-full rounded-full bg-accent text-base font-semibold text-black"
+            className="touch-target w-full rounded-full bg-accent text-base text-black"
           >
             {startLabel}
           </button>

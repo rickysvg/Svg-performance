@@ -9,7 +9,7 @@ export default async function NewLessonPage() {
       <Link href="/admin/lessons" className="text-sm text-accent underline">
         Back
       </Link>
-      <h1 className="text-2xl font-semibold">New lesson draft</h1>
+      <h1 className="text-2xl">New lesson draft</h1>
       <LessonForm />
     </main>
   );

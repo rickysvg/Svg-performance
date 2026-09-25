@@ -16,7 +16,7 @@ export default async function MealPrepPage() {
     const trial = await getTrialState(user.id);
     return (
       <main className="space-y-6">
-        <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">Meal-prep</h1>
+        <h1 className="font-display text-2xl uppercase tracking-wide">Meal-prep</h1>
         <UpgradePreview
           kind="fuel"
           canStartTrial={trial.canStartTrial}
@@ -38,7 +38,7 @@ export default async function MealPrepPage() {
         <Link href="/nutrition" className="text-sm text-accent underline">
           Back to Fuel
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Meal-prep</h1>
+        <h1 className="mt-2 text-2xl">Meal-prep</h1>
         <p className="mt-1 text-sm text-muted">
           Scale portions from saved meals, apply a simple swap, then generate a grocery
           list. Numbers stay <strong className="text-foreground">manual estimates</strong>
@@ -59,7 +59,7 @@ export default async function MealPrepPage() {
         <MealPrepForm meals={meals} />
       )}
       <section className="space-y-3">
-        <h2 className="font-semibold">Grocery lists</h2>
+        <h2>Grocery lists</h2>
         {lists.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
         ) : (
@@ -67,7 +67,7 @@ export default async function MealPrepPage() {
             const items = parseIngredientsJson(list.itemsJson);
             return (
               <article key={list.id} className="rounded-2xl border border-line bg-card p-4">
-                <h3 className="font-semibold">{list.title}</h3>
+                <h3>{list.title}</h3>
                 <p className="mt-1 text-xs text-muted">{list.notes}</p>
                 <ul className="mt-2 list-disc pl-5 text-sm">
                   {items.map((item) => (

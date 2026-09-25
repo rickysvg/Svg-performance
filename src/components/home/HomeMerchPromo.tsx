@@ -4,7 +4,7 @@ import { HOME_SHOP_PRODUCTS, SHOP_PRODUCTS } from "@/lib/shop";
 export function HomeMerchPromo() {
   return (
     <section className="relative min-w-0 overflow-hidden rounded-[2rem] bg-accent px-5 py-8 text-black">
-      <p className="font-display text-2xl font-semibold uppercase leading-tight tracking-wide">
+      <p className="font-display text-2xl uppercase leading-tight tracking-wide">
         Check the new SVG &amp; CO collection
       </p>
       <p className="mt-2 max-w-xs text-sm">
@@ -46,7 +46,7 @@ export function HomeMerchPromo() {
                         : "absolute inset-x-0 bottom-0 px-1.5 pb-2 pt-6 text-center"
                   }
                 >
-                  <span className="font-display block text-[10px] font-semibold uppercase leading-tight tracking-wide text-white">
+                  <span className="font-display block text-[10px] uppercase leading-tight tracking-wide text-white">
                     {product.shortName}
                   </span>
                 </span>
@@ -59,7 +59,7 @@ export function HomeMerchPromo() {
         href={SHOP_PRODUCTS}
         target="_blank"
         rel="noreferrer"
-        className="font-display touch-target mt-6 inline-flex items-center justify-center rounded-full bg-black px-6 text-sm font-semibold uppercase tracking-[0.08em] text-highlighter"
+        className="font-display touch-target mt-6 inline-flex items-center justify-center rounded-full bg-black px-6 text-sm uppercase tracking-[0.06em] text-highlighter"
       >
         Shop now
       </a>

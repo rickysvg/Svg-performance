@@ -16,7 +16,7 @@ export function AppleHealthCard({
     <section className="space-y-4 rounded-2xl border border-accent/40 bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">Connect Apple Health</h2>
+          <h2>Connect Apple Health</h2>
           <p className="mt-1 text-sm text-muted">
             The web app cannot fully pair an Apple Watch. Import a Health export,
             Shortcuts file, or watch workout here. Automatic Watch sync is Phase 2

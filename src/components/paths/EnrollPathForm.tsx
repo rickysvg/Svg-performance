@@ -19,7 +19,7 @@ export function EnrollPathForm({
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent px-4 text-sm text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : label}
       </button>
