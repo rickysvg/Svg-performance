@@ -13,7 +13,7 @@ export function isOpenAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
-function offlineReply(
+export function offlineReply(
   message: string,
   experienceLevel: string,
   coachingTone = "",

@@ -1,12 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import {
-  askExerciseNoteAction,
-  saveExerciseNoteAction,
-  type ExerciseNoteState,
-} from "@/app/actions/exercise-notes";
+import { saveExerciseNoteAction, type ExerciseNoteState } from "@/app/actions/exercise-notes";
 import { StatusBanner } from "@/components/StatusBanner";
+import { useCoachStream } from "@/components/coach/useCoachStream";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
 
@@ -47,14 +44,12 @@ export function ExerciseNotepad({
     saveExerciseNoteAction,
     {} as ExerciseNoteState,
   );
-  const [askState, askAction, asking] = useActionState(
-    askExerciseNoteAction,
-    {} as ExerciseNoteState,
-  );
-  const pending = saving || asking;
-  const shownBody = askState.body ?? saveState.body ?? body;
-  const aiReply = askState.aiReply ?? saveState.aiReply ?? note?.aiReply ?? "";
-  const aiOffline = askState.aiOffline ?? saveState.aiOffline ?? note?.aiOffline ?? false;
+  const { streaming, partial, error, offline, start, stop } = useCoachStream();
+  const [liveReply, setLiveReply] = useState("");
+  const pending = saving || streaming;
+  const shownBody = saveState.body ?? body;
+  const aiReply = liveReply || partial || saveState.aiReply || note?.aiReply || "";
+  const aiOffline = offline || saveState.aiOffline || note?.aiOffline || false;
   const hasNote = Boolean(shownBody || aiReply);
   const label = hasNote ? "Notes · saved" : "Notes";
 
@@ -87,12 +82,8 @@ export function ExerciseNotepad({
           className="mt-2 space-y-2 rounded-xl border border-line bg-background p-3"
         >
           <StatusBanner
-            error={askState.error || saveState.error}
-            success={
-              askState.error || saveState.error
-                ? undefined
-                : askState.success || saveState.success
-            }
+            error={error || saveState.error}
+            success={error || saveState.error ? undefined : saveState.success}
           />
           <label className="block">
             <span className="text-xs font-medium text-muted">Note or question</span>
@@ -120,13 +111,34 @@ export function ExerciseNotepad({
               type="button"
               data-notepad-ask={exerciseName}
               disabled={pending}
-              onClick={() => askAction(payload())}
+              onClick={async () => {
+                setLiveReply("");
+                const content = await start({
+                  kind: "note",
+                  message: body,
+                  exerciseName,
+                  programDayId,
+                  logMode,
+                  plannedLine,
+                });
+                if (content) setLiveReply(content);
+              }}
               className="inline-flex min-h-9 items-center rounded-full bg-accent px-3 text-xs font-semibold text-black disabled:opacity-60"
             >
-              {asking ? "Asking…" : `Ask ${COACH_PUBLIC_NAME}`}
+              {streaming ? "Asking…" : `Ask ${COACH_PUBLIC_NAME}`}
             </button>
+            {streaming ? (
+              <button
+                type="button"
+                data-notepad-stop={exerciseName}
+                onClick={stop}
+                className="inline-flex min-h-9 items-center rounded-full border border-line px-3 text-xs font-semibold"
+              >
+                Stop
+              </button>
+            ) : null}
           </div>
-          {aiReply ? (
+          {aiReply || streaming ? (
             <div
               data-notepad-reply={exerciseName}
               className="rounded-lg border border-accent/50 bg-card px-3 py-2"
@@ -134,8 +146,13 @@ export function ExerciseNotepad({
               <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
                 {COACH_PUBLIC_NAME}
                 {aiOffline ? " · DEMO / offline" : ""}
+                {streaming && !aiReply ? " · typing" : ""}
               </p>
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-snug">{aiReply}</p>
+              {streaming && !partial ? (
+                <p className="mt-1 font-display text-xs uppercase tracking-wide">Typing…</p>
+              ) : (
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-snug">{aiReply}</p>
+              )}
             </div>
           ) : null}
         </div>

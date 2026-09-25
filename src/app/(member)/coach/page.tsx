@@ -6,8 +6,7 @@ import { PaywallNotice } from "@/components/PaywallNotice";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import { getProfileForUser } from "@/lib/profile";
 import { coachingToneNote } from "@/lib/onboarding";
-import { CoachChatForm } from "@/components/coach/CoachChatForm";
-import { EmptyState } from "@/components/EmptyState";
+import { CoachLiveThread } from "@/components/coach/CoachLiveThread";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import {
   COACH_ARTS,
@@ -131,33 +130,12 @@ export default async function CoachPage({
             </Link>
           </div>
 
-          <div className="space-y-3">
-            {thread.messages.length === 0 ? (
-              <EmptyState title={`Ask about ${lane}`}>
-                Stay in this lane. For live eyes, talk to a coach on the floor. Safety
-                rails still refuse pain, medical, and weight-cut asks — even offline.
-              </EmptyState>
-            ) : (
-              thread.messages.map((message) => (
-                <article
-                  key={message.id}
-                  className={`rounded-2xl border p-4 text-sm ${
-                    message.role === "user"
-                      ? "border-line bg-background"
-                      : "border-line bg-card"
-                  }`}
-                >
-                  <p className="text-xs uppercase text-muted">
-                    {message.role === "user" ? "You" : COACH_PUBLIC_NAME}
-                    {message.refused ? " · safety refusal" : ""}
-                    {message.offline ? " · offline" : ""}
-                  </p>
-                  <p className="mt-2 whitespace-pre-wrap">{message.content}</p>
-                </article>
-              ))
-            )}
-          </div>
-          <CoachChatForm topic={topic!} art={art} />
+          <CoachLiveThread
+            topic={topic!}
+            art={art}
+            lane={lane}
+            initialMessages={thread.messages}
+          />
         </>
       ) : null}
 
