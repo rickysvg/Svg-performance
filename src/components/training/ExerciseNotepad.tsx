@@ -44,13 +44,12 @@ export function ExerciseNotepad({
     saveExerciseNoteAction,
     {} as ExerciseNoteState,
   );
-  const { streaming, partial, error, offline, start, stop } = useCoachStream();
+  const { streaming, partial, error, start, stop } = useCoachStream();
   const [liveReply, setLiveReply] = useState("");
   const replyRef = useRef<HTMLDivElement | null>(null);
   const pending = saving || streaming;
   const shownBody = saveState.body ?? body;
   const aiReply = liveReply || partial || saveState.aiReply || note?.aiReply || "";
-  const aiOffline = offline || saveState.aiOffline || note?.aiOffline || false;
   const hasNote = Boolean(shownBody || aiReply);
   const label = hasNote ? "Notes · saved" : "Notes";
 
@@ -153,7 +152,6 @@ export function ExerciseNotepad({
             >
               <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
                 {COACH_PUBLIC_NAME}
-                {aiOffline ? " · DEMO / offline" : ""}
                 {streaming && !aiReply ? " · typing" : ""}
               </p>
               {streaming && !partial ? (

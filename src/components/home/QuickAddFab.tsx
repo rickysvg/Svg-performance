@@ -7,9 +7,12 @@ export function QuickAddFab() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="pointer-events-none fixed right-4 bottom-24 z-30 sm:right-8">
+    <div
+      data-quick-add-fab
+      className="pointer-events-none absolute bottom-0 left-14 top-0 z-30 flex items-center"
+    >
       {open ? (
-        <div className="pointer-events-auto mb-3 w-52 overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
+        <div className="pointer-events-auto absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
           <Link
             href="/training"
             className="block border-b border-line px-4 py-3 text-sm hover:bg-accent/10"
@@ -45,7 +48,7 @@ export function QuickAddFab() {
         aria-expanded={open}
         aria-label={open ? "Close quick add" : "Quick add"}
         onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent text-3xl font-semibold text-black shadow-lg"
+        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent text-2xl font-semibold leading-none text-black"
       >
         {open ? "×" : "+"}
       </button>

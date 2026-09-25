@@ -9,11 +9,12 @@ import {
   coachLaneLabel,
   coachTopicContext,
 } from "@/lib/coach/topics";
+import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import {
-  getOrCreateThread,
-  isOpenAiConfigured,
+  EMPTY_COACH_FALLBACK,
+  liveModelUnavailableReply,
   offlineReply,
-} from "@/lib/coach/chat";
+} from "@/lib/coach/offline";
 import { coachLaneForExercise, upsertExerciseNoteForUser } from "@/lib/exercise-notes";
 import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
 import type { PublicUser } from "@/lib/auth";
@@ -165,13 +166,13 @@ async function* streamOpenAiTokens(
   });
 
   if (!response || !response.ok || !response.body) {
-    const fallback = `${offlineReply(
+    const fallback = liveModelUnavailableReply(
       input.message,
       input.experienceLevel,
       input.coachingTone,
       input.topic,
       input.art,
-    )} (Live model request failed, so you are seeing the offline answer.)`;
+    );
     yield* iterateTextChunks(fallback, { signal });
     return { offline: true };
   }
@@ -244,7 +245,7 @@ function finalizeContent(received: string, cutoff: boolean) {
   }
   return (
     text ||
-    "I do not have a clear answer from the DEMO notes. Ask a coach on the floor."
+    EMPTY_COACH_FALLBACK
   );
 }
 

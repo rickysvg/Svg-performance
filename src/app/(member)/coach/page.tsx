@@ -3,9 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
 import { PaywallNotice } from "@/components/PaywallNotice";
-import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
-import { getProfileForUser } from "@/lib/profile";
-import { coachingToneNote } from "@/lib/onboarding";
+import { getOrCreateThread } from "@/lib/coach/chat";
 import { CoachLiveThread } from "@/components/coach/CoachLiveThread";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import {
@@ -57,9 +55,6 @@ export default async function CoachPage({
   const query = await searchParams;
   const topic = resolveCoachTopic(query.topic);
   const art = topic === "martial_art" ? resolveCoachArt(query.art) : undefined;
-  const live = isOpenAiConfigured();
-  const profile = await getProfileForUser(user.id);
-  const toneCopy = coachingToneNote(profile?.coachingTone ?? "");
   const ready = Boolean(topic && (topic !== "martial_art" || art));
   const thread = ready
     ? await getOrCreateThread(user.id, { topic, art })
@@ -70,16 +65,10 @@ export default async function CoachPage({
     <main className="space-y-8">
       <div>
         <p className="text-xs uppercase tracking-wide text-muted">
-          {live ? "Live model + safety rails" : "DEMO / offline mode"}
+          Sacrifice · Vision · Greatness
         </p>
         <h1 className="text-2xl font-semibold">{COACH_PUBLIC_NAME}</h1>
-        <p className="mt-2 text-sm text-muted">
-          An AI coaching assistant inspired by SVG (Sacrifice, Vision, Greatness).
-          Not a live coach, not medical advice, and{" "}
-          <strong className="text-foreground">not Ricky</strong> typing.
-        </p>
-        <AiDisclaimer className="mt-3 text-sm text-muted" />
-        {toneCopy ? <p className="mt-3 text-sm text-muted">{toneCopy}</p> : null}
+        <AiDisclaimer className="mt-2 text-sm text-muted" />
       </div>
 
       {!topic ? (

@@ -67,8 +67,10 @@ describe("exercise notepad", () => {
       experienceLevel: "beginner",
     });
     expect(result.body).toMatch(/hold/i);
-    expect(result.aiReply).toMatch(/offline|DEMO|coach/i);
-    expect(result.aiReply).not.toMatch(/Ricky wrote/i);
+    expect(result.aiReply).toMatch(/Front plank/i);
+    expect(result.aiReply).toMatch(/hold/i);
+    expect(result.aiReply).not.toMatch(/Ricky wrote|COACHING_GUIDE|DEMO-seeds|demo mode|Topic:|API key/i);
+    expect(result.aiReply).not.toMatch(/\bbouts?\b/i);
     expect(result.aiOffline).toBe(true);
     expect(result.refused).toBe(false);
     const stored = await prisma.exerciseNote.findFirst({

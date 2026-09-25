@@ -60,10 +60,11 @@ describe("SVG Coach topics", () => {
       topic: "mental",
     });
     expect(boxing.threadId).not.toBe(mental.threadId);
-    expect(boxing.assistant.content).toMatch(/Martial art · Boxing/);
-    expect(boxing.assistant.content).toMatch(/SVG Coach/);
+    expect(boxing.assistant.content).toMatch(/jab|stance|guard/i);
+    expect(boxing.assistant.content).not.toMatch(/Topic:|DEMO|COACHING_GUIDE|offline mode/i);
     expect(boxing.assistant.content).not.toMatch(/Savage/i);
-    expect(mental.assistant.content).toMatch(/Mental/);
+    expect(mental.assistant.content).toMatch(/nerves|session|show up/i);
+    expect(mental.assistant.content).not.toMatch(/Topic:|Mental\./);
 
     const threads = await prisma.chatThread.findMany({ where: { userId: user.id } });
     expect(threads).toHaveLength(2);
