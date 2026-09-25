@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { logoutAction } from "@/app/actions/auth";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { ProfileForm } from "@/components/profile/ProfileForm";
@@ -39,6 +40,21 @@ export default async function ProfilePage() {
         smtpConfigured={isSmtpReminderDeliveryEnabled()}
       />
       <ChangePasswordForm />
+      <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-lg font-semibold">Account</h2>
+        <p className="text-sm text-muted">
+          Sign out of this device. Your logs stay on the account.
+        </p>
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            data-logout
+            className="touch-target w-full rounded-full border border-line font-semibold"
+          >
+            Log out
+          </button>
+        </form>
+      </section>
       <YourDataSection />
 
       <section className="space-y-3">

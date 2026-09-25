@@ -8,6 +8,18 @@ export const PRIMARY_NAV_LINKS = [
 
 export type PrimaryNavHref = (typeof PRIMARY_NAV_LINKS)[number]["href"];
 
+/** Bottom dock, left of the centered +. */
+export const BOTTOM_DOCK_LEFT = [
+  { href: "/book", label: "Book" },
+  { href: "/shop", label: "Shop" },
+] as const;
+
+/** Bottom dock, right of the centered +. */
+export const BOTTOM_DOCK_RIGHT = [
+  { href: "/progress", label: "Progress" },
+  { href: "/profile", label: "Profile" },
+] as const;
+
 export function isPrimaryNavActive(pathname: string, href: string) {
   if (href === "/home") return pathname === "/home";
   return pathname === href || pathname.startsWith(`${href}/`);
