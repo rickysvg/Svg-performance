@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
+import { YourDataSection } from "@/components/profile/YourDataSection";
 import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
 import { isAdmin, isStaff } from "@/lib/roles";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
@@ -38,6 +39,7 @@ export default async function ProfilePage() {
         smtpConfigured={isSmtpReminderDeliveryEnabled()}
       />
       <ChangePasswordForm />
+      <YourDataSection />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">More</h2>
