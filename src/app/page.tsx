@@ -4,14 +4,35 @@ import { AppSplash } from "@/components/AppSplash";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/session";
 
-export default async function MarketingPage() {
+export default async function MarketingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
   const user = await getCurrentUser();
+  const query = await searchParams;
+  const deleted = query.deleted === "1";
 
   return (
     <div className="min-h-full">
       <AppSplash />
       <AppHeader email={user?.email} />
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10">
+        {deleted ? (
+          <section
+            data-account-deleted
+            className="rounded-2xl border border-black/20 bg-accent px-5 py-4 text-black"
+          >
+            <p className="font-display text-xs font-bold uppercase tracking-[0.16em]">
+              Account deleted
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold">Your account is gone</h2>
+            <p className="mt-2 text-sm">
+              We erased your SVG Performance data and signed you out. You can
+              create a new preview account anytime.
+            </p>
+          </section>
+        ) : null}
         <section className="flex flex-col items-center text-center">
           <Logo
             variant="badge"
