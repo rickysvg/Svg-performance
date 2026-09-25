@@ -32,6 +32,8 @@ describe("logger prefill and Done → rest", () => {
     expect(form).not.toContain("seedSetsFromPrevious");
     expect(form).toContain("copyPreviousOntoExercise");
     expect(form).toContain("Same as last");
+    expect(form).toContain("previousSetLabel");
+    expect(form).toContain(">Previous<");
     expect(form).toContain("targetInputPlaceholder");
     expect(form).toContain("placeholder:text-muted");
   });

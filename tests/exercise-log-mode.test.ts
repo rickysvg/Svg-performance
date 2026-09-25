@@ -209,7 +209,7 @@ describe("exercise log modes", () => {
         logMode: "timed",
         durationSeconds: 45,
       }),
-    ).toBe("45s hold");
+    ).toBe("0:45");
     expect(
       previousSetLabel({
         reps: null,
@@ -218,7 +218,7 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         durationSeconds: 180,
       }),
-    ).toBe("180s round");
+    ).toBe("3:00");
     expect(
       previousSetLabel({
         reps: null,
@@ -227,6 +227,6 @@ describe("exercise log modes", () => {
         logMode: "load_timed",
         durationSeconds: 40,
       }),
-    ).toBe("40s × 70lb");
+    ).toBe("0:40 × 70 lbs");
   });
 });

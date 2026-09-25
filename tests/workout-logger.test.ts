@@ -69,7 +69,8 @@ describe("workout logger media and previous loads", () => {
       }),
     ).toBe("8 sets × 20 sec on / 40 sec easy");
     expect(previousSetLabel(null)).toBe("—");
-    expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80lb");
+    expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80 lbs");
+    expect(previousSetLabel({ reps: 8, loadValue: 195, loadUnit: "lb" })).toBe("8 × 195 lbs");
     expect(previousSetLabel({ reps: 12, loadValue: null, loadUnit: "lb" })).toBe("12 reps");
     expect(exerciseCountLabel(1)).toBe("1 Exercise");
     expect(exerciseCountLabel(5)).toBe("5 Exercises");
