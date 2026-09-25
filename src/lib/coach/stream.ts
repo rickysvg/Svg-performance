@@ -21,7 +21,6 @@ import {
   STREAM_FAIL_COPY,
   STREAM_STOPPED_MARKER,
   type CoachStreamEvent,
-  type CoachStreamKind,
   type CoachStreamRequest,
 } from "@/lib/coach/stream-types";
 
