@@ -2,51 +2,17 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { detectSafetyRefusal, safetyPreamble } from "@/lib/coach/safety";
 import { loadKnowledgeBase } from "@/lib/coach/knowledge";
-import { coachingToneNote } from "@/lib/onboarding";
 import {
-  COACH_PUBLIC_NAME,
-  coachLaneLabel,
-  coachTopicContext,
-} from "@/lib/coach/topics";
+  EMPTY_COACH_FALLBACK,
+  liveModelUnavailableReply,
+  offlineReply,
+} from "@/lib/coach/offline";
+import { coachLaneLabel, coachTopicContext } from "@/lib/coach/topics";
+
+export { offlineReply } from "@/lib/coach/offline";
 
 export function isOpenAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
-}
-
-export function offlineReply(
-  message: string,
-  experienceLevel: string,
-  coachingTone = "",
-  topic?: string,
-  art?: string,
-) {
-  const text = message.toLowerCase();
-  const kb = loadKnowledgeBase();
-  const hasGuide = kb.includes("COACHING_GUIDE.md");
-  const guideNote = hasGuide
-    ? "I am using the DEMO coaching guide and seed answers."
-    : "I only have the small DEMO knowledge stubs.";
-  const levelNote =
-    experienceLevel === "beginner"
-      ? "You marked yourself new to lifting, so keep loads you can control."
-      : experienceLevel === "advanced"
-        ? "You have a consistent lifting base — stay honest, do not add junk volume."
-        : "Match the work to how you actually recover this week.";
-  const toneNote = coachingToneNote(coachingTone);
-  const lane = coachLaneLabel(topic, art);
-  const laneNote = lane ? `Topic: ${lane}.` : "";
-  const signoff = `This is ${COACH_PUBLIC_NAME} in DEMO / offline mode — not Ricky typing.`;
-
-  if (/missed|skip(ped)?|fell off|inconsistent/.test(text)) {
-    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} Missing a session is not a verdict (COACHING_GUIDE.md / DEMO-seeds.md). Pick the next date you will train and do that one session. Do not stack a punishment workout. ${signoff}`;
-  }
-  if (/technique|jab|takedown|guard|stance|how do i/.test(text)) {
-    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} One simple cue from the DEMO notes, then live eyes on the floor. I do not invent a full paid curriculum. YouTube / Learn clips are external references, not SVG-produced film. ${signoff}`;
-  }
-  if (/discourag|fail|setback|plateau|nerves|mindset/.test(text)) {
-    return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} Setbacks happen. Shrink the next session so you can finish it. I will not pile shame on you. ${signoff}`;
-  }
-  return `${toneNote ? `${toneNote} ` : ""}${levelNote} ${guideNote} ${laneNote} If the notes do not cover this, I will not guess gym-specific policy. Ask a coach on the floor. ${signoff}`;
 }
 
 async function liveReply(input: {
@@ -96,7 +62,13 @@ async function liveReply(input: {
   });
   if (!response.ok) {
     return {
-      content: `${offlineReply(input.message, input.experienceLevel, input.coachingTone, input.topic, input.art)} (Live model request failed, so you are seeing the offline answer.)`,
+      content: liveModelUnavailableReply(
+        input.message,
+        input.experienceLevel,
+        input.coachingTone,
+        input.topic,
+        input.art,
+      ),
       offline: true,
     };
   }
@@ -107,7 +79,7 @@ async function liveReply(input: {
   return {
     content:
       content ||
-      "I do not have a clear answer from the DEMO notes. Ask a coach on the floor.",
+      EMPTY_COACH_FALLBACK,
     offline: false,
   };
 }

@@ -57,7 +57,8 @@ describe("SVG Coach streaming", () => {
     });
 
     expect(result.refused).toBe(false);
-    expect(result.content).toMatch(/offline|DEMO/i);
+    expect(result.content).toMatch(/next session|punishment/i);
+    expect(result.content).not.toMatch(/COACHING_GUIDE|demo mode|Topic:|API key/i);
     expect(result.content).not.toContain("[Stopped");
     expect(events.join("")).toBe(result.content);
     const stored = await prisma.chatMessage.findUnique({
@@ -111,7 +112,8 @@ describe("SVG Coach streaming", () => {
         experienceLevel: "beginner",
       },
     });
-    expect(full.content).toMatch(/offline|DEMO|coach/i);
+    expect(full.content).toMatch(/Front plank/i);
+    expect(full.content).not.toMatch(/demo mode|COACHING_GUIDE|Topic:/i);
     const saved = await prisma.exerciseNote.findFirst({
       where: { userId: user.id, exerciseName: "Front plank" },
     });

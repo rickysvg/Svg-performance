@@ -79,7 +79,7 @@ export function CoachLiveThread({
       {messages.length === 0 && !streaming && !partial ? (
         <EmptyState title={`Ask about ${lane}`}>
           Stay in this lane. For live eyes, talk to a coach on the floor. Safety
-          rails still refuse pain, medical, and weight-cut asks — even offline.
+          rails still refuse pain, medical, and weight-cut asks.
         </EmptyState>
       ) : (
         messages.map((message) => (
@@ -92,7 +92,6 @@ export function CoachLiveThread({
             <p className="text-xs uppercase text-muted">
               {message.role === "user" ? "You" : COACH_PUBLIC_NAME}
               {message.refused ? " · safety refusal" : ""}
-              {message.offline ? " · offline" : ""}
             </p>
             <p className="mt-2 whitespace-pre-wrap">{message.content}</p>
           </article>
@@ -106,7 +105,6 @@ export function CoachLiveThread({
         >
           <p className="text-xs uppercase text-muted">
             {COACH_PUBLIC_NAME}
-            {offline ? " · offline" : ""}
             {streaming && !partial ? " · typing" : ""}
           </p>
           {streaming && !partial ? (
@@ -143,6 +141,7 @@ export function CoachLiveThread({
           <button
             type="submit"
             disabled={streaming || !draft.trim()}
+            data-coach-send
             className="touch-target flex-1 rounded-full bg-accent font-semibold text-black disabled:opacity-60"
           >
             {streaming ? "Sending…" : "Send"}

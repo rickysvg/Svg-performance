@@ -153,7 +153,10 @@ export default async function TrainingDayPage({
       </ol>
 
       {draft ? (
-        <div className="sticky bottom-28 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pr-20 backdrop-blur">
+        <div
+          data-start-bar
+          className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
+        >
           <Link
             href={`/training/log/${draft.id}`}
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base font-semibold text-black"
@@ -164,7 +167,8 @@ export default async function TrainingDayPage({
       ) : (
         <form
           action={startSessionAction}
-          className="sticky bottom-28 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pr-20 backdrop-blur"
+          data-start-bar
+          className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
         >
           <input type="hidden" name="programDayId" value={day.id} />
           <button

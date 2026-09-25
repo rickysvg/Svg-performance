@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { PrimaryNav } from "@/components/PrimaryNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
+import { shouldHideQuickAdd } from "@/lib/quick-add";
 
 function isImmersiveTrainingPath(pathname: string) {
   if (pathname.startsWith("/training/log/")) return true;
@@ -41,7 +42,7 @@ export function MemberFrame({
       >
         {children}
       </div>
-      {pathname.startsWith("/training/log/") ? null : <QuickAddFab />}
+      {shouldHideQuickAdd(pathname) ? null : <QuickAddFab />}
       {immersive ? null : (
         <AppHeader email={email} role={role} placement="bottom" currentPath={pathname} />
       )}

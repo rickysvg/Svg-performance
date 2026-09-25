@@ -7,7 +7,10 @@ export function QuickAddFab() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="pointer-events-none fixed right-4 bottom-24 z-30 sm:right-8">
+    <div
+      data-quick-add-fab
+      className="pointer-events-none fixed right-4 bottom-[6.75rem] z-30 sm:right-8"
+    >
       {open ? (
         <div className="pointer-events-auto mb-3 w-52 overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
           <Link

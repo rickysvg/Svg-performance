@@ -4,7 +4,7 @@ type Item = ReturnType<typeof weekStrip>[number];
 
 export function WeekStrip({ days }: { days: Item[] }) {
   return (
-    <ol className="grid grid-cols-7 gap-1.5">
+    <ol data-week-strip className="grid grid-cols-7 gap-1.5 pr-16">
       {days.map((day) => (
         <li key={day.weekday}>
           <div
