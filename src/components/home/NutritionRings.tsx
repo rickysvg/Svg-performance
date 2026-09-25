@@ -46,7 +46,7 @@ function Ring({
         />
       </svg>
       <p className="mt-2 text-xs uppercase tracking-wide text-muted">{label}</p>
-      <p className="stat-display mt-1 text-sm font-semibold">
+      <p className="stat-display mt-1 text-sm">
         {Math.round(value)}
         <span className="font-normal text-muted">
           {" "}

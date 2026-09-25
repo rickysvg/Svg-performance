@@ -7,7 +7,7 @@ export default function RegisterPage() {
     <div className="min-h-full">
       <AppHeader />
       <main className="mx-auto max-w-md px-4 py-10">
-        <h1 className="text-2xl font-semibold">Create a preview account</h1>
+        <h1 className="text-2xl">Create a preview account</h1>
         <p className="mt-2 text-sm text-muted">
           Adults (18+) only. Open to combat athletes, people getting in shape,
           and SVG MMA Academy members. Checking “I train at SVG” does not

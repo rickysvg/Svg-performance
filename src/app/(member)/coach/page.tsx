@@ -54,7 +54,7 @@ export default async function CoachPage({
     const trial = await getTrialState(user.id);
     return (
       <main className="space-y-6">
-        <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">
+        <h1 className="font-display text-2xl uppercase tracking-wide">
           {COACH_PUBLIC_NAME}
         </h1>
         <UpgradePreview
@@ -81,7 +81,7 @@ export default async function CoachPage({
         <p className="text-xs uppercase tracking-wide text-muted">
           Sacrifice · Vision · Greatness
         </p>
-        <h1 className="text-2xl font-semibold">{COACH_PUBLIC_NAME}</h1>
+        <h1 className="text-2xl">{COACH_PUBLIC_NAME}</h1>
         <AiDisclaimer className="mt-2 text-sm text-muted" />
       </div>
 
@@ -95,7 +95,7 @@ export default async function CoachPage({
                   href={buildCoachHref({ topic: item })}
                   className="block rounded-2xl border border-line bg-card px-5 py-5"
                 >
-                  <p className="font-display text-lg font-semibold uppercase tracking-wide">{COACH_TOPIC_LABELS[item]}</p>
+                  <p className="font-display text-lg uppercase tracking-wide">{COACH_TOPIC_LABELS[item]}</p>
                   <p className="mt-1 text-sm text-muted">{COACH_TOPIC_BLURBS[item]}</p>
                 </Link>
               </li>
@@ -125,7 +125,7 @@ export default async function CoachPage({
       {ready && thread ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex min-h-11 items-center rounded-full bg-accent px-3 text-sm font-semibold text-black">
+            <span className="inline-flex min-h-11 items-center rounded-full bg-accent px-3 text-sm text-black">
               {lane}
             </span>
             <Link href="/coach" className="text-sm text-muted hover:text-foreground">

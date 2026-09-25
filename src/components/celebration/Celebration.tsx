@@ -127,8 +127,8 @@ export function Celebration() {
         aria-hidden
       />
       <div className="relative w-full max-w-sm rounded-2xl border border-accent/50 bg-card/95 px-5 py-4 shadow-lg">
-        <p className="font-display text-xs font-bold uppercase tracking-wide text-accent">Nice work</p>
-        <p className="font-display mt-1 text-lg font-semibold uppercase tracking-wide">{copy.title}</p>
+        <p className="font-display text-xs uppercase tracking-wide text-accent">Nice work</p>
+        <p className="font-display mt-1 text-lg uppercase tracking-wide">{copy.title}</p>
         <p className="mt-1 text-sm text-muted">{copy.body}</p>
       </div>
     </div>

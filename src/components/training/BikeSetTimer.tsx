@@ -186,14 +186,14 @@ export function BikeSetTimer({
         >
           <p
             data-bike-interval-round
-            className="font-display text-xs uppercase tracking-[0.16em] text-white/80"
+            className="font-display text-xs uppercase tracking-[0.06em] text-white/80"
           >
             {longClock
               ? "Work block"
               : `Round ${clock.round}/${session.roundsPerSet}`}
           </p>
           <p
-            className={`font-display mt-2 text-lg uppercase tracking-[0.18em] ${
+            className={`font-display mt-2 text-lg uppercase ${
               workPhase ? "text-[#CBF805]" : "text-white"
             }`}
           >

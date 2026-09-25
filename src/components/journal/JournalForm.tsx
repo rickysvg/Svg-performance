@@ -12,7 +12,7 @@ export function JournalForm() {
   );
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">New entry</h2>
+      <h2>New entry</h2>
       <StatusBanner error={state.error} success={state.success} />
       <label className="block space-y-2 text-sm">
         <span>Type</span>
@@ -49,7 +49,7 @@ export function JournalForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save entry"}
       </button>

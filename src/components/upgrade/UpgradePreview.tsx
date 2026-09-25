@@ -37,10 +37,10 @@ export function UpgradePreview({
   const copy = BLURBS[kind];
   return (
     <section className={framed ? "rounded-2xl border border-line bg-white p-5" : "bg-white"}>
-      <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-black">
+      <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
         Performance
       </p>
-      <h2 className="font-display mt-2 text-2xl font-semibold uppercase tracking-wide text-black">
+      <h2 className="font-display mt-2 text-2xl uppercase tracking-wide text-black">
         {copy.title}
       </h2>
       <p className="mt-2 text-sm text-muted">{copy.body}</p>

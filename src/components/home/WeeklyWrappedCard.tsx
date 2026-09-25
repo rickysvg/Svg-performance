@@ -7,7 +7,7 @@ export function WeeklyWrappedCard({ wrap }: { wrap: WeeklyWrapped }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">Weekly wrap</p>
-          <h2 className="mt-1 text-lg font-semibold">Last 7 days</h2>
+          <h2 className="mt-1 text-lg">Last 7 days</h2>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 text-sm sm:flex-row sm:gap-3">
           <Link href="/report" className="text-accent underline">
@@ -21,19 +21,19 @@ export function WeeklyWrappedCard({ wrap }: { wrap: WeeklyWrapped }) {
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>
           <dt className="text-muted">Days trained</dt>
-          <dd className="stat-display text-xl font-semibold">{wrap.daysTrained}</dd>
+          <dd className="stat-display text-xl">{wrap.daysTrained}</dd>
         </div>
         <div>
           <dt className="text-muted">Workouts logged</dt>
-          <dd className="stat-display text-xl font-semibold">{wrap.workoutsLogged}</dd>
+          <dd className="stat-display text-xl">{wrap.workoutsLogged}</dd>
         </div>
         <div>
           <dt className="text-muted">Meals logged</dt>
-          <dd className="stat-display text-xl font-semibold">{wrap.mealsLogged}</dd>
+          <dd className="stat-display text-xl">{wrap.mealsLogged}</dd>
         </div>
         <div>
           <dt className="text-muted">Lessons completed</dt>
-          <dd className="stat-display text-xl font-semibold">{wrap.lessonsCompleted}</dd>
+          <dd className="stat-display text-xl">{wrap.lessonsCompleted}</dd>
         </div>
       </dl>
       <p className="mt-3 text-sm text-muted">

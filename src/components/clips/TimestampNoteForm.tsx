@@ -8,7 +8,7 @@ export function TimestampNoteForm({ clipId }: { clipId: string }) {
   const [state, action, pending] = useActionState(addClipNoteAction, {} as ClipActionState);
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Add a timestamped note</h2>
+      <h2>Add a timestamped note</h2>
       <StatusBanner error={state.error} success={state.success} />
       <input type="hidden" name="clipId" value={clipId} />
       <input
@@ -32,7 +32,7 @@ export function TimestampNoteForm({ clipId }: { clipId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-5 font-semibold text-black disabled:opacity-60"
+        className="touch-target rounded-full bg-accent px-5 text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save note"}
       </button>

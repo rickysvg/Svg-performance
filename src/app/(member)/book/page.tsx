@@ -27,7 +27,7 @@ export default async function BookPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
           Request only — not a live calendar
         </p>
-        <h1 className="text-2xl font-semibold">Book with Ricky</h1>
+        <h1 className="text-2xl">Book with Ricky</h1>
         <p className="mt-2 text-sm text-muted">
           Fighter Mindset is $75 / 30 min. Entrepreneur Strategy is $125 / 45 min.
           Training check-ins stay on your coaching plan. No promised business results.
@@ -36,7 +36,7 @@ export default async function BookPage() {
       </div>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Your plan</h2>
+        <h2>Your plan</h2>
         <p className="mt-1 text-sm text-muted">
           {plan.label}
           {vipOrPlatinum
@@ -68,7 +68,7 @@ export default async function BookPage() {
           const offer = BOOKING_OFFERS[kind];
           return (
             <article key={kind} className="rounded-2xl border border-line bg-card p-5">
-              <h2 className="text-lg font-semibold">{offer.label}</h2>
+              <h2 className="text-lg">{offer.label}</h2>
               <p className="mt-2 text-2xl font-semibold text-accent">
                 {offer.priceLabel}
                 <span className="text-base text-muted"> / {offer.duration}</span>
@@ -86,7 +86,7 @@ export default async function BookPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Request a mindset or strategy extra</h2>
+        <h2>Request a mindset or strategy extra</h2>
         <p className="mt-1 text-sm text-muted">
           List a few preferred times. We do not invent Ricky&apos;s calendar.
           {vipOrPlatinum
@@ -99,7 +99,7 @@ export default async function BookPage() {
       </section>
 
       <section className="rounded-2xl border border-accent/40 bg-card p-5">
-        <h2 className="font-semibold">Platinum intensives</h2>
+        <h2>Platinum intensives</h2>
         <p className="mt-2 text-sm text-muted">
           El Paso: {BOOKING_OFFERS.intensive_elpaso.priceLabel}. Travel:{" "}
           {BOOKING_OFFERS.intensive_travel.priceLabel}. Request stub only — no
@@ -128,7 +128,7 @@ export default async function BookPage() {
 
       {requests.length > 0 ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Your requests</h2>
+          <h2>Your requests</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {requests.map((row) => (
               <li key={row.id} className="border-t border-line pt-2 first:border-0 first:pt-0">

@@ -10,10 +10,10 @@ export function ThirdWorkoutCard({
 }) {
   return (
     <section className="rounded-2xl border border-black bg-white p-5">
-      <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-black">
+      <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
         Nice work
       </p>
-      <h2 className="font-display mt-2 text-2xl font-semibold uppercase tracking-wide text-black">
+      <h2 className="font-display mt-2 text-2xl uppercase tracking-wide text-black">
         Three sessions logged
       </h2>
       <p className="mt-2 text-sm text-muted">

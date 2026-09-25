@@ -32,7 +32,7 @@ export default async function PathDetailPage({
         </Link>
         <div className="mt-3 flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">{catalog.title}</h1>
+            <h1 className="text-2xl">{catalog.title}</h1>
             <p className="mt-1 text-sm text-muted">{catalog.summary}</p>
           </div>
           <DemoBadge />
@@ -58,7 +58,7 @@ export default async function PathDetailPage({
                 Step {index + 1}
                 {done ? " · done" : next ? " · next" : ""}
               </p>
-              <h2 className="mt-1 font-semibold">{step.title}</h2>
+              <h2 className="mt-1">{step.title}</h2>
               <p className="mt-1 text-sm text-muted">{step.summary}</p>
               <Link href={step.href} className="mt-3 inline-block text-sm text-accent underline">
                 Open

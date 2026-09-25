@@ -8,7 +8,7 @@ export function FocusVideoForm() {
   const [state, action, pending] = useActionState(saveFocusVideoAction, {} as FocusActionState);
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Schedule a 60–90s focus video</h2>
+      <h2>Schedule a 60–90s focus video</h2>
       <p className="text-sm text-muted">
         Paste YouTube/Vimeo or upload a short clip. Drafts stay hidden until published.
         This is not a live stream.
@@ -55,7 +55,7 @@ export function FocusVideoForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-5 font-semibold text-black disabled:opacity-60"
+        className="touch-target rounded-full bg-accent px-5 text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save video"}
       </button>

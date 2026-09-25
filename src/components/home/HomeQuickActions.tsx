@@ -67,7 +67,7 @@ function ActionTile({
       />
       <span className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
         <span aria-hidden className="mb-1.5 block h-0.5 w-6 rounded-full bg-accent" />
-        <span className="font-display block text-lg font-bold uppercase leading-tight tracking-wide text-white">
+        <span className="font-display block text-lg uppercase leading-tight tracking-wide text-white">
           {action.label}
         </span>
         <span className="mt-0.5 block text-[11px] font-medium text-white/80">

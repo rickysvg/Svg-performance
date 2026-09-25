@@ -31,7 +31,7 @@ export function ReminderPrefsForm({
 
   return (
     <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
-      <h2 className="text-lg font-semibold">Reminders</h2>
+      <h2 className="text-lg">Reminders</h2>
       <p className="text-sm text-muted">
         Home shows a due reminder once per day after your preferred hour. Turn
         any type off anytime. True mobile push is later — this preview is in-app
@@ -90,7 +90,7 @@ export function ReminderPrefsForm({
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save reminders"}
       </button>

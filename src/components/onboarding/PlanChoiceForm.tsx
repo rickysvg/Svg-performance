@@ -13,10 +13,10 @@ export function PlanChoiceForm({
   return (
     <div className="space-y-6">
       <div>
-        <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-black">
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
           {verified ? "SVG Member Access" : "Free preview"}
         </p>
-        <h1 className="font-display mt-2 text-3xl font-semibold uppercase tracking-wide text-black">
+        <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
           {title}
         </h1>
         <p className="mt-3 text-sm text-muted">
@@ -32,7 +32,7 @@ export function PlanChoiceForm({
         <input type="hidden" name="next" value="/onboarding/deeper" />
         <button
           type="submit"
-          className="touch-target w-full rounded-full bg-accent font-semibold text-black"
+          className="touch-target w-full rounded-full bg-accent text-black"
         >
           {trialButton}
         </button>

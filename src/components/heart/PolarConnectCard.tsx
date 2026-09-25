@@ -15,7 +15,7 @@ export function PolarConnectCard({
     <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">Polar (optional)</h2>
+          <h2>Polar (optional)</h2>
           <p className="mt-1 text-sm text-muted">
             Secondary to Apple Health. Connect Polar AccessLink if you use a Polar
             strap or watch. Apple Watch pairing is not this card.
@@ -48,7 +48,7 @@ export function PolarConnectCard({
               <form action={syncPolarAction}>
                 <button
                   type="submit"
-                  className="touch-target w-full rounded-full bg-accent px-4 font-semibold text-black sm:w-auto"
+                  className="touch-target w-full rounded-full bg-accent px-4 text-black sm:w-auto"
                 >
                   Pull recent activities
                 </button>

@@ -18,7 +18,7 @@ export default async function DeepOnboardingPage() {
     <div className="min-h-full">
       <AppHeader email={user.email} role={user.role} homeHref="/home" hideMemberLinks />
       <main className="mx-auto max-w-md px-4 py-8">
-        <h1 className="text-2xl font-semibold">Optional deeper profile</h1>
+        <h1 className="text-2xl">Optional deeper profile</h1>
         <p className="mt-2 text-sm text-muted">
           About two minutes. Skip and you still land on Home. Answers stay editable in
           Profile. We use tone, session length, and competition flags honestly — we do

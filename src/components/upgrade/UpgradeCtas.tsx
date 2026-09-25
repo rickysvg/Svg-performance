@@ -19,7 +19,7 @@ export function UpgradeCtas({
         <input type="hidden" name="next" value={next} />
         <button
           type="submit"
-          className="touch-target w-full rounded-full bg-accent font-semibold text-black"
+          className="touch-target w-full rounded-full bg-accent text-black"
         >
           {trialLabel ?? "Start free trial"}
         </button>
@@ -29,7 +29,7 @@ export function UpgradeCtas({
   return (
     <Link
       href="/pricing"
-      className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent font-semibold text-black"
+      className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent text-black"
     >
       {upgradeLabel}
     </Link>

@@ -24,7 +24,7 @@ export default async function AdminPlansPage() {
   return (
     <main className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Plans &amp; credits</h1>
+        <h1 className="text-2xl">Plans &amp; credits</h1>
         <p className="mt-1 text-sm text-muted">
           Pilot override: assign a catalog plan for 30 days, mark a credit used after a
           real session, and review waitlist / booking requests. This is not live billing.
@@ -37,7 +37,7 @@ export default async function AdminPlansPage() {
       </div>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Pilot caps</h2>
+        <h2>Pilot caps</h2>
         <ul className="mt-3 space-y-1 text-sm text-muted">
           {seats.map((row) => (
             <li key={row.id}>
@@ -83,7 +83,7 @@ export default async function AdminPlansPage() {
       </ul>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Waitlist</h2>
+        <h2 className="text-lg">Waitlist</h2>
         {waitlist.length === 0 ? (
           <p className="text-sm text-muted">Nobody is waiting.</p>
         ) : (
@@ -99,7 +99,7 @@ export default async function AdminPlansPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Booking requests</h2>
+        <h2 className="text-lg">Booking requests</h2>
         {bookings.length === 0 ? (
           <p className="text-sm text-muted">No requests yet.</p>
         ) : (

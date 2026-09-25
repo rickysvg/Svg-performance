@@ -53,7 +53,7 @@ export default async function HeartPage({
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Heart rate</h1>
+        <h1 className="text-2xl">Heart rate</h1>
         <p className="mt-1 text-sm text-muted">
           Primary path is Apple Health / Watch export. Polar is optional. Manual
           entry is a backup. Analysis is not medical advice. Apple Watch is not
@@ -64,7 +64,7 @@ export default async function HeartPage({
       <AppleHealthCard status={status} message={flash && !query.polar ? flash : undefined} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Breakdown</h2>
+        <h2>Breakdown</h2>
         <p className="mt-1 text-xs text-muted">{analysis.disclaimer}</p>
         {!analysis.latestRhr && !analysis.lastWorkout ? (
           <EmptyState title="No heart-rate data yet">
@@ -143,7 +143,7 @@ export default async function HeartPage({
 
       {resting.length > 0 ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Resting samples</h2>
+          <h2>Resting samples</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {resting.slice(0, 14).map((row) => (
               <li
@@ -172,7 +172,7 @@ export default async function HeartPage({
 
       {workouts.length > 0 ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Workout HR logs</h2>
+          <h2>Workout HR logs</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {workouts.slice(0, 10).map((row) => (
               <li

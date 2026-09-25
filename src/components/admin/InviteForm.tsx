@@ -8,7 +8,7 @@ export function InviteForm() {
   const [state, action, pending] = useActionState(createInviteAction, {} as AdminActionState);
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Invite an email</h2>
+      <h2>Invite an email</h2>
       <StatusBanner error={state.error} success={state.success} />
       <input
         name="email"
@@ -25,7 +25,7 @@ export function InviteForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-5 font-semibold text-black disabled:opacity-60"
+        className="touch-target rounded-full bg-accent px-5 text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Add invite"}
       </button>

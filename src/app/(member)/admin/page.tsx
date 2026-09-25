@@ -13,7 +13,7 @@ export default async function AdminPage() {
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Pilot toolkit</h1>
+        <h1 className="text-2xl">Pilot toolkit</h1>
         <p className="mt-1 text-sm text-muted">
           Counts only — no private payloads. Gym verify still does not grant a price by
           itself. This is not live billing.

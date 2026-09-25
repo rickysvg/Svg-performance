@@ -14,7 +14,7 @@ export function HrRestingForm() {
   const [state, action, pending] = useActionState(saveRestingHrAction, {} as HeartActionState);
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Resting heart rate</h2>
+      <h2>Resting heart rate</h2>
       <p className="text-sm text-muted">Type a morning reading. Labeled manual.</p>
       <StatusBanner error={state.error} success={state.success} />
       <label className="block space-y-2 text-sm">
@@ -40,7 +40,7 @@ export function HrRestingForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save resting HR"}
       </button>

@@ -22,6 +22,10 @@ describe("Anton display font", () => {
     expect(css).toContain(".font-display");
     expect(css).toContain(".stat-display");
     expect(css).toContain(".rounded-full.bg-accent:not(.border)");
+    expect(css).toContain("font-synthesis: none");
+    expect(css).toContain("-webkit-font-synthesis: none");
+    expect(css).toContain("font-weight: 400");
+    expect(css).toContain("-webkit-font-smoothing: antialiased");
     expect(css).toMatch(/body\s*\{\s*font-family:\s*var\(--font-geist-sans\)/);
   });
 });

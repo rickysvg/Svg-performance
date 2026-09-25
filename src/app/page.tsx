@@ -23,10 +23,10 @@ export default async function MarketingPage({
             data-account-deleted
             className="rounded-2xl border border-black/20 bg-accent px-5 py-4 text-black"
           >
-            <p className="font-display text-xs font-bold uppercase tracking-[0.16em]">
+            <p className="font-display text-xs uppercase tracking-[0.06em]">
               Account deleted
             </p>
-            <h2 className="mt-1 text-2xl font-semibold">Your account is gone</h2>
+            <h2 className="mt-1 text-2xl">Your account is gone</h2>
             <p className="mt-2 text-sm">
               We erased your SVG Performance data and signed you out. You can
               create a new preview account anytime.
@@ -40,7 +40,7 @@ export default async function MarketingPage({
             priority
             className="h-auto w-full max-w-[16.5rem] sm:max-w-[18rem]"
           />
-          <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-6 text-3xl sm:text-4xl">
             Train with purpose. Get better.
           </h1>
           <p className="mt-4 max-w-xl text-muted">
@@ -53,7 +53,7 @@ export default async function MarketingPage({
             {user ? (
               <Link
                 href="/home"
-                className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base font-semibold text-black"
+                className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base text-black"
               >
                 Open my dashboard
               </Link>
@@ -61,7 +61,7 @@ export default async function MarketingPage({
               <>
                 <Link
                   href="/register"
-                  className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base font-semibold text-black"
+                  className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base text-black"
                 >
                   Create a preview account
                 </Link>
@@ -83,14 +83,14 @@ export default async function MarketingPage({
             ["What progress am I making?", "Logged workouts stay after refresh. Charts use your own data."],
           ].map(([title, body]) => (
             <article key={title} className="rounded-2xl border border-line bg-card p-5">
-              <h2 className="text-base font-semibold">{title}</h2>
+              <h2 className="text-base">{title}</h2>
               <p className="mt-2 text-sm text-muted">{body}</p>
             </article>
           ))}
         </section>
 
         <section className="rounded-2xl border border-accent/30 bg-card p-5">
-          <h2 className="text-lg font-semibold">What this preview is — and is not</h2>
+          <h2 className="text-lg">What this preview is — and is not</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
             <li>Auth, workout logs, and your profile are real and stored in a database.</li>
             <li>The strength program is clearly marked DEMO.</li>

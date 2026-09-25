@@ -22,7 +22,7 @@ export default async function EditLessonPage({
       <Link href="/admin/lessons" className="text-sm text-accent underline">
         Back
       </Link>
-      <h1 className="text-2xl font-semibold">Edit lesson</h1>
+      <h1 className="text-2xl">Edit lesson</h1>
       <LessonForm lesson={lesson} />
     </main>
   );

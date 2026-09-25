@@ -17,7 +17,7 @@ export default async function StaffHelpPage() {
         <Link href="/staff/reports" className="text-sm text-accent underline">
           Back to reports
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Coach help requests</h1>
+        <h1 className="mt-2 text-2xl">Coach help requests</h1>
         <p className="mt-2 text-sm text-muted">
           Statuses are open, seen, or closed. This is not a 24/7 promise.
         </p>

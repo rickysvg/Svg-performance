@@ -10,7 +10,7 @@ export function ChallengeAdminForm({ defaultMonth }: { defaultMonth: string }) {
   );
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Create or update a month</h2>
+      <h2>Create or update a month</h2>
       <StatusBanner error={state.error} success={state.success} />
       <input
         name="monthKey"
@@ -66,7 +66,7 @@ export function ChallengeAdminForm({ defaultMonth }: { defaultMonth: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-5 font-semibold text-black disabled:opacity-60"
+        className="touch-target rounded-full bg-accent px-5 text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save challenge"}
       </button>

@@ -16,7 +16,7 @@ export default async function PathsPage() {
     <main className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Training paths</h1>
+          <h1 className="text-2xl">Training paths</h1>
           <p className="mt-1 text-sm text-muted">
             DEMO tracks with milestones. Default comes from your intake. Today pulls the next step.
           </p>
@@ -30,7 +30,7 @@ export default async function PathsPage() {
           <article key={path.slug} className="rounded-2xl border border-line bg-card p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">{path.title}</h2>
+                <h2 className="text-lg">{path.title}</h2>
                 <p className="mt-1 text-sm text-muted">{path.summary}</p>
                 <p className="mt-2 text-xs text-muted">{path.steps.length} milestones</p>
               </div>

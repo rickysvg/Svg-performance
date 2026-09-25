@@ -11,14 +11,14 @@ export default async function WeeklyReportPage() {
     <main className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-wide text-accent">{report.labeled}</p>
-        <h1 className="text-2xl font-semibold">Weekly SVG progress report</h1>
+        <h1 className="text-2xl">Weekly SVG progress report</h1>
         <p className="mt-2 text-sm text-muted">{report.copy}</p>
       </div>
 
       <WeeklyWrappedCard wrap={report.wrap} />
 
       <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Richer than counts</h2>
+        <h2>Richer than counts</h2>
         <p className="text-sm">
           <span className="text-muted">Strength signal. </span>
           {report.strengthNote}
@@ -38,7 +38,7 @@ export default async function WeeklyReportPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Coach / Ricky comment</h2>
+        <h2>Coach / Ricky comment</h2>
         {report.showCoachSlot ? (
           report.coachCommentEmpty ? (
             <p className="mt-2 text-sm text-muted">
@@ -59,7 +59,7 @@ export default async function WeeklyReportPage() {
 
       {report.showEliteAdjustments ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Adjustment log</h2>
+          <h2>Adjustment log</h2>
           <p className="mt-1 text-sm text-muted">Elite+ simple records. Empty until a coach logs one.</p>
           {report.adjustments.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No adjustments yet.</p>

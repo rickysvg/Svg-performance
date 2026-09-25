@@ -22,7 +22,7 @@ export default async function JournalPage({
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Coaching journal</h1>
+        <h1 className="text-2xl">Coaching journal</h1>
         <p className="mt-1 text-sm text-muted">
           Goals, notes, questions, and lessons learned. Owner-only unless an assigned coach
           writes feedback
@@ -59,7 +59,7 @@ export default async function JournalPage({
                 {isJournalKind(entry.kind) ? JOURNAL_KIND_LABELS[entry.kind] : entry.kind} ·{" "}
                 {entry.createdAt.toLocaleString()}
               </p>
-              <h2 className="mt-1 font-semibold">{entry.title}</h2>
+              <h2 className="mt-1">{entry.title}</h2>
               <p className="mt-2 whitespace-pre-wrap text-sm">{entry.body}</p>
               {entry.feedback.length > 0 ? (
                 <div className="mt-3 space-y-2 border-t border-line pt-3">

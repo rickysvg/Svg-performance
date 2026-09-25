@@ -23,7 +23,7 @@ export function WeeklyCommentForm({ memberUserId }: { memberUserId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+        className="touch-target rounded-full bg-accent px-4 text-sm text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save weekly comment"}
       </button>

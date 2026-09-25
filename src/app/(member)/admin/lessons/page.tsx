@@ -14,10 +14,10 @@ export default async function AdminLessonsPage() {
         Back to admin
       </Link>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Lessons</h1>
+        <h1 className="text-2xl">Lessons</h1>
         <Link
           href="/admin/lessons/new"
-          className="touch-target inline-flex items-center rounded-full bg-accent px-4 font-semibold text-black"
+          className="touch-target inline-flex items-center rounded-full bg-accent px-4 text-black"
         >
           New draft
         </Link>

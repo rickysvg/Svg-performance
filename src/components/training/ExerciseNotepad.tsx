@@ -129,7 +129,7 @@ export function ExerciseNotepad({
                 });
                 if (result.content) setLiveReply(result.content);
               }}
-              className="inline-flex min-h-9 items-center rounded-full bg-accent px-3 text-xs font-semibold text-black disabled:opacity-60"
+              className="inline-flex min-h-9 items-center rounded-full bg-accent px-3 text-xs text-black disabled:opacity-60"
             >
               {streaming ? "Asking…" : `Ask ${COACH_PUBLIC_NAME}`}
             </button>

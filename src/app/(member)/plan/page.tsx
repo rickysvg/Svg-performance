@@ -26,7 +26,7 @@ export default async function PlanPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
           {entitlements.preview ? "Preview entitlements (Stripe off)" : "Current plan"}
         </p>
-        <h1 className="text-2xl font-semibold">{plan.label}</h1>
+        <h1 className="text-2xl">{plan.label}</h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
         {trial.trialActive ? (
           <div className="mt-3">
@@ -37,7 +37,7 @@ export default async function PlanPage() {
       </div>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Status</h2>
+        <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
           {entitlements.preview
             ? "Stripe TEST keys are not configured, so tools stay open and credits follow the highest preview catalog. Nobody is marked paid."
@@ -59,7 +59,7 @@ export default async function PlanPage() {
         ) : (
           <Link
             href="/pricing"
-            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
           >
             Upgrade on Pricing
           </Link>
@@ -69,7 +69,7 @@ export default async function PlanPage() {
       <FinancingNote configured={configured} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">This billing month&apos;s credits</h2>
+        <h2>This billing month&apos;s credits</h2>
         <p className="mt-1 text-sm text-muted">
           Counts are per UTC month, not “weekly.” An admin marks a credit used after the session.
         </p>
@@ -92,7 +92,7 @@ export default async function PlanPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">What this plan opens</h2>
+        <h2>What this plan opens</h2>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
           {plan.includes.map((item) => (
             <li key={item}>{item}</li>

@@ -30,7 +30,7 @@ function MetricTile({
   return (
     <article className="rounded-2xl border border-line bg-card p-4">
       <p className="text-sm text-muted">{title}</p>
-      <p className="stat-display mt-3 text-2xl font-semibold">{value}</p>
+      <p className="stat-display mt-3 text-2xl">{value}</p>
       <p className="mt-2 text-xs text-muted">{hint}</p>
     </article>
   );
@@ -65,7 +65,7 @@ export default async function ProgressPage() {
     <main className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">My Progress</h1>
+          <h1 className="text-2xl">My Progress</h1>
           <p className="mt-1 text-sm text-muted">
             Body numbers you type, Apple Health / watch workout imports, or Polar when
             it is connected. Apple Watch is not connected on the web.
@@ -139,7 +139,7 @@ export default async function ProgressPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="font-semibold">Progress photos</h2>
+        <h2>Progress photos</h2>
         <p className="mt-1 text-sm text-muted">
           Private to you. Coaches and admins cannot see these in this preview. Photos are
           not written into analytics events.
@@ -181,7 +181,7 @@ export default async function ProgressPage() {
 
       {latestMetrics.size > 0 ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-semibold">Latest typed metrics</h2>
+          <h2>Latest typed metrics</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {[...latestMetrics.values()].map((row) => (
               <li key={row.id} className="flex items-center justify-between gap-3 border-b border-line/60 py-2 last:border-0">
@@ -206,7 +206,7 @@ export default async function ProgressPage() {
       <PersonalRecordsBoard records={records} />
 
       <div>
-        <h2 className="text-lg font-semibold">Workout history</h2>
+        <h2 className="text-lg">Workout history</h2>
         <p className="mt-1 text-sm text-muted">
           Built only from workouts you logged. Volume is reps × load, converted
           to your preferred unit ({units}).
@@ -240,7 +240,7 @@ export default async function ProgressPage() {
           </section>
 
           <section className="rounded-2xl border border-line bg-card p-5">
-            <h2 className="font-semibold">Session volume ({units})</h2>
+            <h2>Session volume ({units})</h2>
             {showCharts ? (
               <ProgressBars points={summary.points} />
             ) : (

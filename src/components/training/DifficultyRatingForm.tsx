@@ -21,7 +21,7 @@ export function DifficultyRatingForm({
 
   return (
     <form action={action} className="space-y-4 rounded-2xl border border-accent/40 bg-card p-5">
-      <h2 className="text-lg font-semibold">How did that session feel?</h2>
+      <h2 className="text-lg">How did that session feel?</h2>
       <p className="text-sm text-muted">
         Pick one before you go. This is how the work felt — not a grade and not a shame score.
       </p>
@@ -49,7 +49,7 @@ export function DifficultyRatingForm({
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save rating"}
       </button>

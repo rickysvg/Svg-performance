@@ -25,7 +25,7 @@ export default async function ClipsPage() {
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Training clips</h1>
+        <h1 className="text-2xl">Training clips</h1>
         <p className="mt-1 text-sm text-muted">
           Private uploads. An assigned coach can add mm:ss notes and a drill. Files stay
           on this server (S3 later — names only in README).

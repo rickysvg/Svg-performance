@@ -29,7 +29,7 @@ function MemberPriceBlock({
   if (plan.id === "member_access") {
     return (
       <div className="mt-4">
-        <p className="stat-display text-2xl font-semibold text-accent">
+        <p className="stat-display text-2xl text-accent">
           {verified ? plan.gymPriceLabel : plan.nonmemberPriceLabel}
         </p>
         <p className="mt-1 text-sm text-muted">
@@ -43,7 +43,7 @@ function MemberPriceBlock({
   const copy = paidPlanPriceCopy(plan, verified);
   return (
     <div className="mt-4">
-      <p className="font-display stat-display text-2xl font-semibold text-accent">{copy.headline}</p>
+      <p className="font-display stat-display text-2xl text-accent">{copy.headline}</p>
       {copy.normally ? (
         <p className="mt-1 text-sm text-muted">
           Academy member price · normally <s>{copy.normally}</s>
@@ -79,10 +79,10 @@ export default async function PricingPage() {
     const atCap = Boolean(seat?.atCap);
     return (
       <article key={plan.id} className="rounded-2xl border border-line bg-card p-6">
-        <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-accent">
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">
           PROPOSAL / TEST
         </p>
-        <h3 className="mt-2 text-xl font-semibold">{plan.label}</h3>
+        <h3 className="mt-2 text-xl">{plan.label}</h3>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
         <MemberPriceBlock plan={plan} verified={verified} />
         {seat ? (
@@ -149,10 +149,10 @@ export default async function PricingPage() {
     <div className="min-h-full">
       <AppHeader email={user?.email} />
       <main className="mx-auto max-w-3xl px-4 py-10">
-        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-accent">
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">
           Proposal / Stripe TEST only — not live billing
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">SVG Performance pricing</h1>
+        <h1 className="mt-2 text-3xl">SVG Performance pricing</h1>
         <p className="mt-3 text-muted">
           Anyone can use this preview. SVG gym members may see member rates after
           an admin verifies them — checking a box does not unlock a price.
@@ -184,7 +184,7 @@ export default async function PricingPage() {
         ) : null}
 
         <section className="mt-10 space-y-4">
-          <h2 className="text-2xl font-semibold">App Plans</h2>
+          <h2 className="text-2xl">App Plans</h2>
           <p className="text-sm text-muted">
             Self-guided tools. Member Access is included / free preview. Fuel and SVG
             Coach unlock at Performance.
@@ -193,7 +193,7 @@ export default async function PricingPage() {
         </section>
 
         <section className="mt-10 space-y-4">
-          <h2 className="text-2xl font-semibold">Online Coaching</h2>
+          <h2 className="text-2xl">Online Coaching</h2>
           <p className="text-sm text-muted">
             Fixed quantities per billing month — not “weekly forever.” Elite is capped
             at about 6 seats.
@@ -203,7 +203,7 @@ export default async function PricingPage() {
         </section>
 
         <section className="mt-10 space-y-4">
-          <h2 className="text-2xl font-semibold">VIP Experiences</h2>
+          <h2 className="text-2xl">VIP Experiences</h2>
           <p className="text-sm text-muted">
             Same price for gym members and nonmembers. Privates are a set count per
             billing month, not a weekly promise. Caps: 2 VIP, 1 Platinum.
@@ -212,10 +212,10 @@ export default async function PricingPage() {
           {plansInSection("vip").map(renderPlan)}
 
           <article className="rounded-2xl border border-accent/40 bg-card p-6">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-accent">
+            <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">
               PROPOSAL — request stub
             </p>
-            <h3 className="mt-2 text-xl font-semibold">Platinum intensives</h3>
+            <h3 className="mt-2 text-xl">Platinum intensives</h3>
             <p className="mt-2 text-sm text-muted">
               {BOOKING_OFFERS.intensive_elpaso.summary} Not a live deposit.
               Intensives are a main pay-over-time use case, but this preview does
@@ -232,7 +232,7 @@ export default async function PricingPage() {
             </ul>
             <Link
               href="/book"
-              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 font-semibold text-black"
+              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
             >
               Request on Book with Ricky
             </Link>
@@ -240,7 +240,7 @@ export default async function PricingPage() {
         </section>
 
         <section className="mt-10 rounded-2xl border border-line bg-card p-6">
-          <h2 className="text-lg font-semibold">Pricing FAQ / terms (placeholders)</h2>
+          <h2 className="text-lg">Pricing FAQ / terms (placeholders)</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
             <li>Gym dues and SVG &amp; CO merch are separate from these app plans.</li>
             <li>Four privates means four in that billing month — not “every week.”</li>

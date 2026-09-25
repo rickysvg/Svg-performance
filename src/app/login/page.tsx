@@ -18,7 +18,7 @@ export default async function LoginPage({
     <div className="min-h-full">
       <AppHeader />
       <main className="mx-auto max-w-md px-4 py-10">
-        <h1 className="text-2xl font-semibold">Log in</h1>
+        <h1 className="text-2xl">Log in</h1>
         <p className="mt-2 text-sm text-muted">
           Welcome back. Your workouts stay on this account.
         </p>

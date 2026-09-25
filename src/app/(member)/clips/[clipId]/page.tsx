@@ -32,7 +32,7 @@ export default async function ClipDetailPage({
         <Link href={staff && !owner ? "/admin/queues" : "/clips"} className="text-sm text-accent underline">
           Back
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{clip.title}</h1>
+        <h1 className="mt-2 text-2xl">{clip.title}</h1>
         <p className="mt-1 text-sm text-muted">
           {clip.user.email}. Private file. Not a live stream.
         </p>
@@ -44,7 +44,7 @@ export default async function ClipDetailPage({
         className="w-full rounded-2xl border border-line bg-black"
       />
       <section className="space-y-3">
-        <h2 className="font-semibold">Timestamped notes</h2>
+        <h2>Timestamped notes</h2>
         {clip.notes.length === 0 ? (
           <p className="text-sm text-muted">No coach notes yet.</p>
         ) : (

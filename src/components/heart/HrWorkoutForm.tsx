@@ -20,7 +20,7 @@ export function HrWorkoutForm({
   const [state, action, pending] = useActionState(saveWorkoutHrAction, {} as HeartActionState);
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Record workout HR</h2>
+      <h2>Record workout HR</h2>
       <p className="text-sm text-muted">
         Optional avg / max if no device is connected. Zones are optional seconds.
       </p>
@@ -87,7 +87,7 @@ export function HrWorkoutForm({
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save workout HR"}
       </button>

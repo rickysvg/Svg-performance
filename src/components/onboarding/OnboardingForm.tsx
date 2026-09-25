@@ -32,7 +32,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
       <StatusBanner error={state.error} />
 
       <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-        <h2 className="font-semibold">About you</h2>
+        <h2>About you</h2>
         <label className="block">
           <span className="text-sm font-medium">What should we call you?</span>
           <input
@@ -99,7 +99,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
       </section>
 
       <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-        <h2 className="font-semibold">Training setup</h2>
+        <h2>Training setup</h2>
         <fieldset>
           <legend className="text-sm font-medium">Equipment you can use</legend>
           <div className="mt-2 grid gap-2">
@@ -165,7 +165,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
       </section>
 
       <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-        <h2 className="font-semibold">Optional notes</h2>
+        <h2>Optional notes</h2>
         <p className="text-xs text-muted">Skip any of these. You can add them later in Profile.</p>
         <label className="block">
           <span className="text-sm font-medium">Training limitations</span>
@@ -206,7 +206,7 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent font-semibold text-black disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save and continue"}
       </button>

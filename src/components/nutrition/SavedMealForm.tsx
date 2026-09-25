@@ -14,7 +14,7 @@ export function SavedMealForm() {
   );
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-semibold">Save a meal you repeat</h2>
+      <h2>Save a meal you repeat</h2>
       <StatusBanner error={state.error} success={state.success} />
       <input
         name="name"
