@@ -40,6 +40,10 @@ export type ProfileRecord = {
   fatTargetG: number;
   onboardingCompletedAt: Date | null;
   onboardingDeepCompletedAt: Date | null;
+  trialStartedAt: Date | null;
+  trialEndsAt: Date | null;
+  planChoiceAt: Date | null;
+  thirdWorkoutCardDismissedAt: Date | null;
   currentWeight: number | null;
   goalWeight: number | null;
   sessionLengthMin: number | null;
@@ -86,6 +90,10 @@ export function toProfileRecord(row: {
   fatTargetG: number;
   onboardingCompletedAt: Date | null;
   onboardingDeepCompletedAt: Date | null;
+  trialStartedAt?: Date | null;
+  trialEndsAt?: Date | null;
+  planChoiceAt?: Date | null;
+  thirdWorkoutCardDismissedAt?: Date | null;
   currentWeight: number | null;
   goalWeight: number | null;
   sessionLengthMin: number | null;
@@ -115,6 +123,10 @@ export function toProfileRecord(row: {
     allergies: row.allergies,
     trainingLimitations: row.trainingLimitations,
     onboardingDeepCompletedAt: row.onboardingDeepCompletedAt,
+    trialStartedAt: row.trialStartedAt ?? null,
+    trialEndsAt: row.trialEndsAt ?? null,
+    planChoiceAt: row.planChoiceAt ?? null,
+    thirdWorkoutCardDismissedAt: row.thirdWorkoutCardDismissedAt ?? null,
     currentWeight: row.currentWeight,
     goalWeight: row.goalWeight,
     sessionLengthMin: row.sessionLengthMin,

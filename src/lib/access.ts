@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
+import { isTrialActive } from "@/lib/trial";
 
 export function isStripeConfigured() {
   return Boolean(
@@ -32,6 +33,7 @@ export async function hasWebhookGrantedAccess(userId: string) {
  * Nutrition / SVG Coach require Performance+ (nutrition feature)
  * only when Stripe TEST keys are actually configured.
  * Learn stays reachable on Member Access as beginner-only.
+ * An active Performance trial counts as subscribed until trialEndsAt.
  */
 export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
@@ -46,6 +48,13 @@ export async function canUseMemberTools(userId: string): Promise<{
     !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) &&
     planHasFeature(normalizePlanId(subscription.plan), "nutrition")
   ) {
+    return { allowed: true, reason: "subscribed" };
+  }
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    select: { trialEndsAt: true },
+  });
+  if (isTrialActive(profile?.trialEndsAt ?? null)) {
     return { allowed: true, reason: "subscribed" };
   }
   return { allowed: false, reason: "paywall" };

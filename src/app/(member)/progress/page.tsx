@@ -14,6 +14,9 @@ import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutriti
 import { getPersonalRecordsForUser } from "@/lib/records";
 import { PersonalRecordsBoard } from "@/components/progress/PersonalRecordsBoard";
 import { getProgressHeartTiles } from "@/lib/heart";
+import { canUseFeature } from "@/lib/entitlements";
+import { getTrialState } from "@/lib/trial";
+import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 
 function MetricTile({
   title,
@@ -35,7 +38,7 @@ function MetricTile({
 
 export default async function ProgressPage() {
   const user = await requireUser();
-  const [profile, sessions, latestMetrics, photos, foodToday, foodWeek, heartTiles] =
+  const [profile, sessions, latestMetrics, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
       getProfileForUser(user.id),
       listRecentSessionsForUser(user.id, PROGRESS_SESSION_TAKE),
@@ -44,6 +47,8 @@ export default async function ProgressPage() {
       getNutritionSummaryForDay(user.id),
       getRecentNutritionDays(user.id, 7),
       getProgressHeartTiles(user.id),
+      canUseFeature(user.id, "daily_quote"),
+      getTrialState(user.id),
     ]);
   const units = profile?.preferredUnits ?? "lb";
   const records = await getPersonalRecordsForUser(user.id, units);
@@ -236,7 +241,18 @@ export default async function ProgressPage() {
 
           <section className="rounded-2xl border border-line bg-card p-5">
             <h2 className="font-semibold">Session volume ({units})</h2>
-            <ProgressBars points={summary.points} />
+            {showCharts ? (
+              <ProgressBars points={summary.points} />
+            ) : (
+              <div className="mt-3">
+                <UpgradePreview
+                  kind="charts"
+                  canStartTrial={trial.canStartTrial}
+                  trialDays={trial.trialLengthDays}
+                  next="/progress"
+                />
+              </div>
+            )}
           </section>
 
         </>

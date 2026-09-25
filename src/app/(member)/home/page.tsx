@@ -13,6 +13,9 @@ import { TodayGuide } from "@/components/home/TodayGuide";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeMerchPromo } from "@/components/home/HomeMerchPromo";
 import { SectionHeading } from "@/components/home/SectionHeading";
+import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
+import { getEffectivePlanId } from "@/lib/entitlements";
+import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 
 export default async function HomePage({
   searchParams,
@@ -25,7 +28,9 @@ export default async function HomePage({
   const profile = await homeLoad("profile", getProfileForUser(user.id), null);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
-  const [today, reminderResult, helpRequests, quoteCard, guide] = await Promise.all([
+  const planId = await getEffectivePlanId(user.id);
+  const [today, reminderResult, helpRequests, quoteCard, guide, trial, showThirdWorkout] =
+    await Promise.all([
     homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
     homeLoad(
       "reminders",
@@ -39,6 +44,8 @@ export default async function HomePage({
       teaser: teaserFromQuote(fallbackQuote),
     }),
     homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
+    getTrialState(user.id),
+    shouldShowThirdWorkoutCard(user.id, planId),
   ]);
   const greetingName = today.firstName || "athlete";
   const openHelp = helpRequests.filter((row) => row.status === "open");
@@ -85,7 +92,22 @@ export default async function HomePage({
         </section>
       ) : null}
 
-      <HomeQuickActions />
+      {showThirdWorkout ? (
+        <ThirdWorkoutCard canStartTrial={trial.canStartTrial} trialDays={trial.trialLengthDays} />
+      ) : null}
+
+      <HomeQuickActions
+        locked={
+          planId === "member_access"
+            ? [
+                { href: "/coach", kind: "coach" as const },
+                { href: "/nutrition", kind: "fuel" as const },
+              ]
+            : []
+        }
+        canStartTrial={trial.canStartTrial}
+        trialDays={trial.trialLengthDays}
+      />
 
       <TodayGuide guide={guide} />
 

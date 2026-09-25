@@ -6,13 +6,16 @@ import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
+import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
+import { getTrialState } from "@/lib/trial";
 
 export default async function PlanPage() {
   const user = await requireUser();
-  const [entitlements, creditBundle, subscription] = await Promise.all([
+  const [entitlements, creditBundle, subscription, trial] = await Promise.all([
     getMemberEntitlements(user.id),
     creditsForCurrentPlan(user.id),
     getLatestSubscription(user.id),
+    getTrialState(user.id),
   ]);
   const configured = isStripeConfigured();
   const plan = entitlements.plan;
@@ -25,6 +28,11 @@ export default async function PlanPage() {
         </p>
         <h1 className="text-2xl font-semibold">{plan.label}</h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
+        {trial.trialActive ? (
+          <div className="mt-3">
+            <TrialDaysLeft daysLeft={trial.trialDaysLeft} />
+          </div>
+        ) : null}
         <AiDisclaimer className="mt-2" />
       </div>
 
@@ -33,7 +41,9 @@ export default async function PlanPage() {
         <p className="mt-2 text-sm text-muted">
           {entitlements.preview
             ? "Stripe TEST keys are not configured, so tools stay open and credits follow the highest preview catalog. Nobody is marked paid."
-            : subscription
+            : trial.trialActive
+              ? "Performance trial is active. When it ends you return to the free plan automatically."
+              : subscription
               ? `${subscription.plan} / ${subscription.status}${
                   subscription.source === "admin" ? " · admin override" : " · webhook"
                 }`

@@ -13,7 +13,8 @@ import { catalogEntryForSlug } from "@/lib/learn-catalog";
 import { parseLessonKeyDetails, resolveLessonVideo } from "@/lib/lesson-videos";
 import { toggleBookmarkAction, toggleCompleteAction } from "@/app/actions/lessons";
 import { canUseFeature } from "@/lib/entitlements";
-import { PaywallNotice } from "@/components/PaywallNotice";
+import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { getTrialState } from "@/lib/trial";
 import { WatchForm } from "@/components/training/WatchForm";
 
 export default async function LessonPage({
@@ -30,9 +31,33 @@ export default async function LessonPage({
     notFound();
   }
   const progress = await getLessonProgress(user.id, lesson.id);
-  const fullLibrary = await canUseFeature(user.id, "learn_full");
-  if (!fullLibrary && lesson.skillLevel !== "beginner") {
-    return <PaywallNotice feature="Full Learn library" />;
+  const [fullLibrary, trial] = await Promise.all([
+    canUseFeature(user.id, "learn_full"),
+    getTrialState(user.id),
+  ]);
+  const locked = !fullLibrary && lesson.skillLevel !== "beginner";
+  if (locked) {
+    const video = resolveLessonVideo(lesson);
+    return (
+      <main className="space-y-6">
+        <Link href="/learn" className="text-sm text-muted hover:text-foreground">
+          Back to Learn
+        </Link>
+        <LearnThumb url={video.url} pending={video.pending} title={lesson.title} />
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted">Locked preview</p>
+          <h1 className="font-display mt-1 text-2xl font-semibold uppercase tracking-wide">
+            {lesson.title}
+          </h1>
+        </div>
+        <UpgradePreview
+          kind="tutorial"
+          canStartTrial={trial.canStartTrial}
+          trialDays={trial.trialLengthDays}
+          next={`/learn/${lesson.slug}`}
+        />
+      </main>
+    );
   }
   const video = resolveLessonVideo(lesson);
   const catalog = catalogEntryForSlug(lesson.slug);

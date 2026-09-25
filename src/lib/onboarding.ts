@@ -94,6 +94,7 @@ export async function getOnboardingStatus(userId: string) {
     completed: hasCompletedOnboarding(profile),
     deepCompletedAt: profile?.onboardingDeepCompletedAt ?? null,
     deepCompleted: hasCompletedDeepOnboarding(profile),
+    planChoiceAt: profile?.planChoiceAt ?? null,
   };
 }
 
