@@ -13,6 +13,7 @@ import {
   WEEKDAYS,
 } from "@/lib/constants";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import { isValidTimeZone, resolveRequestTimeZone } from "@/lib/timezone";
 
 export type ProfileRecord = {
   userId: string;
@@ -29,6 +30,7 @@ export type ProfileRecord = {
   hoursPerWeek: number | null;
   sessionsPerWeek: number | null;
   preferredUnits: LoadUnit;
+  timeZone: string;
   foodPreferences: string;
   allergies: string;
   trainingLimitations: string;
@@ -74,6 +76,7 @@ export function toProfileRecord(row: {
   hoursPerWeek: number | null;
   sessionsPerWeek: number | null;
   preferredUnits: string;
+  timeZone?: string;
   foodPreferences: string;
   allergies: string;
   trainingLimitations: string;
@@ -107,6 +110,7 @@ export function toProfileRecord(row: {
     hoursPerWeek: row.hoursPerWeek,
     sessionsPerWeek: row.sessionsPerWeek,
     preferredUnits: isLoadUnit(row.preferredUnits) ? row.preferredUnits : "lb",
+    timeZone: row.timeZone ?? "",
     foodPreferences: row.foodPreferences,
     allergies: row.allergies,
     trainingLimitations: row.trainingLimitations,
@@ -148,6 +152,29 @@ export async function getProfileForUser(
   return row ? toProfileRecord(row) : null;
 }
 
+/** Saved profile zone, then cookie, then America/Denver, then UTC. */
+export async function timeZoneForUser(userId: string, saved?: string | null) {
+  if (saved !== undefined) {
+    return resolveRequestTimeZone(saved);
+  }
+  const row = await prisma.profile.findUnique({
+    where: { userId },
+    select: { timeZone: true },
+  });
+  return resolveRequestTimeZone(row?.timeZone);
+}
+
+export async function persistDetectedTimeZone(userId: string, timeZone: string) {
+  if (!isValidTimeZone(timeZone)) return false;
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing || existing.timeZone) return false;
+  await prisma.profile.update({
+    where: { userId },
+    data: { timeZone },
+  });
+  return true;
+}
+
 export async function requireProfileForUser(
   userId: string,
 ): Promise<ProfileRecord> {
@@ -172,6 +199,7 @@ export async function updateProfileForUser(
     hoursPerWeek: number | null;
     sessionsPerWeek?: number | null;
     preferredUnits: string;
+    timeZone?: string;
     claimsGymMembership: boolean;
     foodPreferences: string;
     allergies: string;
@@ -323,6 +351,14 @@ export async function updateProfileForUser(
       hoursPerWeek,
       sessionsPerWeek,
       preferredUnits: input.preferredUnits,
+      timeZone:
+        input.timeZone === undefined
+          ? existing.timeZone
+          : input.timeZone.trim() === ""
+            ? ""
+            : isValidTimeZone(input.timeZone)
+              ? input.timeZone
+              : existing.timeZone,
       claimsGymMembership: Boolean(input.claimsGymMembership),
       foodPreferences: input.foodPreferences.trim().slice(0, 400),
       allergies: input.allergies.trim().slice(0, 400),

@@ -23,6 +23,20 @@ describe("Core weekday planner", () => {
     expect(weekdayInAppZone(thursday)).toBe("Thursday");
   });
 
+  it("uses the athlete zone, not the host clock, around UTC midnight", () => {
+    const fridayEveningUtc = new Date("2026-09-25T16:00:00.000Z");
+    expect(weekdayInAppZone(fridayEveningUtc, "Australia/Sydney")).toBe("Saturday");
+    expect(weekdayInAppZone(fridayEveningUtc, "America/Denver")).toBe("Friday");
+    expect(weekdayInAppZone(fridayEveningUtc, "Europe/London")).toBe("Friday");
+    expect(
+      planForDate(
+        { primaryFocus: "mma", weeklyAvailability: ["Monday", "Wednesday", "Friday"] },
+        fridayEveningUtc,
+        "Australia/Sydney",
+      ).weekday,
+    ).toBe("Saturday");
+  });
+
   it("gives striking Monday bag + strength", () => {
     const sessions = coreSkeletonSessions("Monday", "mma");
     expect(sessions).toHaveLength(2);

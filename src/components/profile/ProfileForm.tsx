@@ -16,6 +16,7 @@ import {
   WEEKDAYS,
 } from "@/lib/constants";
 import type { ProfileRecord } from "@/lib/profile";
+import { timezoneSelectOptions } from "@/lib/timezone";
 
 export function ProfileForm({ profile }: { profile: ProfileRecord }) {
   const [state, action, pending] = useActionState(
@@ -175,6 +176,27 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           ))}
         </div>
       </fieldset>
+
+      <label className="block" data-timezone-field>
+        <span className="text-sm font-medium">Time zone</span>
+        <select
+          name="timeZone"
+          data-timezone-select
+          defaultValue={profile.timeZone || ""}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        >
+          <option value="">Detect from this device</option>
+          {timezoneSelectOptions(profile.timeZone).map((zone) => (
+            <option key={zone.value} value={zone.value}>
+              {zone.label}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-muted">
+          Used for today, the week strip, food days, calendar, reminders, and
+          streaks. Auto-detected from this device if you have not set one.
+        </span>
+      </label>
 
       <label className="block">
         <span className="text-sm font-medium">Training limitations (optional)</span>

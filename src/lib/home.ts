@@ -5,8 +5,23 @@ import {
   listRecentSessionsForUser,
 } from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
+import {
+  APP_TIMEZONE,
+  addZonedDays,
+  dayKey as zonedDayKey,
+  endOfZonedDay,
+  mondayOfZoned,
+  sameZonedDay,
+  sundayOfZoned,
+  zonedCivilToUtc,
+} from "@/lib/timezone";
 import { listPublishedLessons, listLessonProgressForUser } from "@/lib/lessons";
-import { getProfileForUser, firstNameFrom, nutritionTargetsFromProfile } from "@/lib/profile";
+import {
+  getProfileForUser,
+  firstNameFrom,
+  nutritionTargetsFromProfile,
+  timeZoneForUser,
+} from "@/lib/profile";
 import {
   competitionNote,
   demoSuggestionCopy,
@@ -33,15 +48,8 @@ export type WeeklyActivity = {
   message: string;
 };
 
-function startOfLocalWeek(now = new Date()) {
-  const start = startOfLocalDay(now);
-  const weekday = start.getDay(); // 0 Sunday
-  start.setDate(start.getDate() - weekday);
-  return start;
-}
-
-function dayKey(value: Date) {
-  return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
+function startOfLocalWeek(now = new Date(), timeZone = APP_TIMEZONE) {
+  return sundayOfZoned(now, timeZone);
 }
 
 export function weeklyActivityCopy(daysActive: number): string {
@@ -54,8 +62,12 @@ export function weeklyActivityCopy(daysActive: number): string {
   return `You logged a workout and/or food on ${daysActive} day${daysActive === 1 ? "" : "s"} this week.`;
 }
 
-export async function getWeeklyActivity(userId: string, now = new Date()): Promise<WeeklyActivity> {
-  const weekStart = startOfLocalWeek(now);
+export async function getWeeklyActivity(
+  userId: string,
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+): Promise<WeeklyActivity> {
+  const weekStart = startOfLocalWeek(now, timeZone);
   const [workouts, foods] = await Promise.all([
     prisma.workoutSession.findMany({
       where: {
@@ -71,8 +83,8 @@ export async function getWeeklyActivity(userId: string, now = new Date()): Promi
     }),
   ]);
   const days = new Set<string>();
-  for (const row of workouts) days.add(dayKey(row.performedAt));
-  for (const row of foods) days.add(dayKey(row.eatenAt));
+  for (const row of workouts) days.add(zonedDayKey(row.performedAt, timeZone));
+  for (const row of foods) days.add(zonedDayKey(row.eatenAt, timeZone));
   const daysActive = days.size;
   return {
     daysActive,
@@ -81,49 +93,55 @@ export async function getWeeklyActivity(userId: string, now = new Date()): Promi
   };
 }
 
-export function parseDayParam(value: string | undefined, now = new Date()) {
-  if (!value) return startOfLocalDay(now);
+export function parseDayParam(
+  value: string | undefined,
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+) {
+  if (!value) return startOfLocalDay(now, timeZone);
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return startOfLocalDay(now);
-  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  if (Number.isNaN(parsed.getTime())) return startOfLocalDay(now);
-  return startOfLocalDay(parsed);
+  if (!match) return startOfLocalDay(now, timeZone);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return startOfLocalDay(now, timeZone);
+  }
+  return zonedCivilToUtc(year, month, day, timeZone);
 }
 
-export function mondayOf(date: Date) {
-  const start = startOfLocalDay(date);
-  const weekday = start.getDay(); // 0 Sunday
-  const diff = weekday === 0 ? -6 : 1 - weekday;
-  start.setDate(start.getDate() + diff);
-  return start;
+export function mondayOf(date: Date, timeZone = APP_TIMEZONE) {
+  return mondayOfZoned(date, timeZone);
 }
 
-export function weekStripDays(selected: Date) {
-  const monday = mondayOf(selected);
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(monday);
-    day.setDate(monday.getDate() + index);
-    return day;
-  });
+export function weekStripDays(selected: Date, timeZone = APP_TIMEZONE) {
+  const monday = mondayOf(selected, timeZone);
+  return Array.from({ length: 7 }, (_, index) => addZonedDays(monday, index, timeZone));
 }
 
-export function sameLocalDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
+export function sameLocalDay(a: Date, b: Date, timeZone = APP_TIMEZONE) {
+  return sameZonedDay(a, b, timeZone);
 }
 
-export function formatDayParam(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+export function formatDayParam(date: Date, timeZone = APP_TIMEZONE) {
+  return zonedDayKey(date, timeZone);
 }
 
-export async function hasActivityOnLocalDay(userId: string, day: Date) {
-  const start = startOfLocalDay(day);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+export async function hasActivityOnLocalDay(
+  userId: string,
+  day: Date,
+  timeZone = APP_TIMEZONE,
+) {
+  const start = startOfLocalDay(day, timeZone);
+  const end = endOfZonedDay(day, timeZone);
   const [workouts, foods] = await Promise.all([
     prisma.workoutSession.count({
       where: {
@@ -152,15 +170,16 @@ export async function homeLoad<T>(
   }
 }
 
-export function emptyHomeToday(selectedDay = new Date()) {
-  const selected = startOfLocalDay(selectedDay);
+export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE) {
+  const selected = startOfLocalDay(selectedDay, timeZone);
   return {
     selected,
-    isToday: sameLocalDay(selected, new Date()),
+    isToday: sameLocalDay(selected, new Date(), timeZone),
     suggestedDay: null as CatalogDayLike | null,
     plannedSessions: [] as ReturnType<typeof resolvePlanSessions>,
     weekStrip: [] as ReturnType<typeof weekStrip>,
-    planWeekday: weekdayInAppZone(selected),
+    timeZone,
+    planWeekday: weekdayInAppZone(selected, timeZone),
     planSummary: "",
     suggestionCopy:
       "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
@@ -187,18 +206,29 @@ export function emptyHomeToday(selectedDay = new Date()) {
   };
 }
 
-export async function getHomeToday(userId: string, selectedDay = new Date()) {
-  const selected = startOfLocalDay(selectedDay);
+export async function getHomeToday(
+  userId: string,
+  selectedDay = new Date(),
+  timeZone?: string,
+) {
+  const profileForZone = timeZone
+    ? null
+    : await getProfileForUser(userId);
+  const tz =
+    timeZone ??
+    (await timeZoneForUser(userId, profileForZone?.timeZone ?? null));
+  const selected = startOfLocalDay(selectedDay, tz);
+  const now = new Date();
   const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
       listDraftSessionsForUser(userId),
-      getNutritionSummaryForDay(userId, selected),
+      getNutritionSummaryForDay(userId, selected, tz),
       listPublishedLessons(),
       listLessonProgressForUser(userId),
-      getWeeklyActivity(userId),
-      getProfileForUser(userId),
+      getWeeklyActivity(userId, now, tz),
+      profileForZone ? Promise.resolve(profileForZone) : getProfileForUser(userId),
     ]);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
@@ -212,10 +242,10 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
-  const todayPlan = planForDate(prefs, selected);
+  const todayPlan = planForDate(prefs, selected, tz);
   const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
-  const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected);
-  const nextPlan = nextDate ? planForDate(prefs, nextDate) : null;
+  const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected, tz);
+  const nextPlan = nextDate ? planForDate(prefs, nextDate, tz) : null;
   const nextSessions = nextPlan ? resolvePlanSessions(nextPlan, { strength, skill }) : [];
   const nextSession: ResolvedPlanSession | null =
     nextSessions.find((session) => session.day) ?? nextSessions[0] ?? null;
@@ -226,7 +256,7 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
     null;
   const loggedOnSelected = sessions.find(
     (session) =>
-      session.status === "complete" && sameLocalDay(session.performedAt, selected),
+      session.status === "complete" && sameLocalDay(session.performedAt, selected, tz),
   );
 
   const completedLessonIds = new Set(
@@ -248,12 +278,13 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
 
   return {
     selected,
-    isToday: sameLocalDay(selected, new Date()),
+    timeZone: tz,
+    isToday: sameLocalDay(selected, now, tz),
     suggestedDay,
     plannedSessions,
     nextSession: nextSession as ResolvedPlanSession | null,
     nextSessionWeekday: nextPlan?.weekday ?? "",
-    weekStrip: weekStrip(prefs, selected),
+    weekStrip: weekStrip(prefs, selected, tz),
     planWeekday: todayPlan.weekday,
     planSummary: todayPlan.active ? todayPlan.summary : "Rest / skip",
     suggestionCopy: hasCatalog
@@ -262,7 +293,7 @@ export async function getHomeToday(userId: string, selectedDay = new Date()) {
           primaryFocus: profile?.primaryFocus,
         })
       : "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
-    draft: sameLocalDay(selected, new Date()) ? draft : undefined,
+    draft: sameLocalDay(selected, now, tz) ? draft : undefined,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,
     foodNudge:

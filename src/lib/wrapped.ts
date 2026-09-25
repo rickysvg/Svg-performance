@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { startOfLocalDay } from "@/lib/nutrition";
 import { recentDifficultyAverage } from "@/lib/difficulty";
+import { timeZoneForUser } from "@/lib/profile";
+import {
+  APP_TIMEZONE,
+  addZonedDays,
+  dayKey as zonedDayKey,
+  startOfZonedDay,
+} from "@/lib/timezone";
 
 export type WeeklyWrapped = {
   from: Date;
@@ -15,17 +21,11 @@ export type WeeklyWrapped = {
   copy: string;
 };
 
-function dayKey(value: Date) {
-  return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
-}
-
-export function lastSevenLocalDays(now = new Date()) {
-  const to = startOfLocalDay(now);
-  const from = startOfLocalDay(now);
-  from.setDate(from.getDate() - 6);
-  const end = startOfLocalDay(now);
-  end.setDate(end.getDate() + 1);
-  return { from, to, endExclusive: end };
+export function lastSevenLocalDays(now = new Date(), timeZone = APP_TIMEZONE) {
+  const to = startOfZonedDay(now, timeZone);
+  const from = addZonedDays(to, -6, timeZone);
+  const endExclusive = addZonedDays(to, 1, timeZone);
+  return { from, to, endExclusive };
 }
 
 export function weeklyWrappedCopy(input: {
@@ -42,8 +42,13 @@ export function weeklyWrappedCopy(input: {
   return "Last seven days, counts only. No meal names. Not a report card.";
 }
 
-export async function getWeeklyWrapped(userId: string, now = new Date()): Promise<WeeklyWrapped> {
-  const { from, to, endExclusive } = lastSevenLocalDays(now);
+export async function getWeeklyWrapped(
+  userId: string,
+  now = new Date(),
+  timeZone?: string,
+): Promise<WeeklyWrapped> {
+  const tz = timeZone ?? (await timeZoneForUser(userId));
+  const { from, to, endExclusive } = lastSevenLocalDays(now, tz);
   const [workouts, meals, lessons] = await Promise.all([
     prisma.workoutSession.findMany({
       where: {
@@ -64,7 +69,7 @@ export async function getWeeklyWrapped(userId: string, now = new Date()): Promis
       },
     }),
   ]);
-  const trainedDays = new Set(workouts.map((row) => dayKey(row.performedAt)));
+  const trainedDays = new Set(workouts.map((row) => zonedDayKey(row.performedAt, tz)));
   const difficulty = recentDifficultyAverage(workouts, workouts.length);
   const daysTrained = trainedDays.size;
   const workoutsLogged = workouts.length;

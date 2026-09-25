@@ -2,11 +2,11 @@ import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
 import { FRIDAY_GPP_DAY_NUMBER } from "@/lib/daru-exercises";
 import { WEEKDAYS } from "@/lib/constants";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
+import { APP_TIMEZONE, addZonedDays, weekdayInZone } from "@/lib/timezone";
+
+export { APP_TIMEZONE } from "@/lib/timezone";
 
 export const CORE_DEFAULT_TRAINING_DAYS = ["Monday", "Wednesday", "Friday"] as const;
-
-/** El Paso / SVG. Planner weekdays use this zone so hosted UTC boxes match Ricky’s week. */
-export const APP_TIMEZONE = "America/Denver";
 
 export type PlanWeekday = (typeof WEEKDAYS)[number];
 
@@ -67,11 +67,12 @@ const JS_WEEKDAYS = [
   "Saturday",
 ] as const;
 
-export function weekdayInAppZone(date: Date): PlanWeekday {
-  // Same civil weekday as Home / nutrition (`startOfLocalDay`). America/Denver
-  // is the gym zone; hosted UTC can flip after evening in El Paso — same limit
-  // as the rest of the app until a later timezone pass.
-  return JS_WEEKDAYS[date.getDay()] ?? "Monday";
+export function weekdayInAppZone(
+  date: Date,
+  timeZone = APP_TIMEZONE,
+): PlanWeekday {
+  const weekday = weekdayInZone(date, timeZone);
+  return (JS_WEEKDAYS.includes(weekday) ? weekday : "Monday") as PlanWeekday;
 }
 
 export function isStrikingFocus(focus?: string | null) {
@@ -267,29 +268,44 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
   return plan;
 }
 
-export function planForDate(prefs: PlannerPrefs, date: Date): DayPlan {
-  const weekday = weekdayInAppZone(date);
-  return buildCoreWeekPlan(prefs, bikeWeekIndex(date))[weekday];
+export function planForDate(
+  prefs: PlannerPrefs,
+  date: Date,
+  timeZone = APP_TIMEZONE,
+): DayPlan {
+  const weekday = weekdayInAppZone(date, timeZone);
+  return buildCoreWeekPlan(prefs, bikeWeekIndex(date, timeZone))[weekday];
 }
 
-export function nextActiveDate(prefs: PlannerPrefs, from: Date): Date | null {
+export function nextActiveDate(
+  prefs: PlannerPrefs,
+  from: Date,
+  timeZone = APP_TIMEZONE,
+): Date | null {
   const plan = buildCoreWeekPlan(prefs);
   for (let offset = 1; offset <= 7; offset += 1) {
-    const cursor = new Date(from);
-    cursor.setDate(from.getDate() + offset);
-    if (plan[weekdayInAppZone(cursor)].active) return cursor;
+    const cursor = addZonedDays(from, offset, timeZone);
+    if (plan[weekdayInAppZone(cursor, timeZone)].active) return cursor;
   }
   return null;
 }
 
-export function nextActiveWeekday(prefs: PlannerPrefs, from: Date): PlanWeekday | null {
-  const next = nextActiveDate(prefs, from);
-  return next ? weekdayInAppZone(next) : null;
+export function nextActiveWeekday(
+  prefs: PlannerPrefs,
+  from: Date,
+  timeZone = APP_TIMEZONE,
+): PlanWeekday | null {
+  const next = nextActiveDate(prefs, from, timeZone);
+  return next ? weekdayInAppZone(next, timeZone) : null;
 }
 
-export function weekStrip(prefs: PlannerPrefs, now = new Date()) {
-  const today = weekdayInAppZone(now);
-  const plan = buildCoreWeekPlan(prefs, bikeWeekIndex(now));
+export function weekStrip(
+  prefs: PlannerPrefs,
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+) {
+  const today = weekdayInAppZone(now, timeZone);
+  const plan = buildCoreWeekPlan(prefs, bikeWeekIndex(now, timeZone));
   return WEEKDAYS.map((weekday) => ({
     weekday,
     short: weekday.slice(0, 3),

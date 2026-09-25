@@ -4,6 +4,8 @@
  * pickBikeSessionForPlan(weekday, weekIndex) is the planner hook.
  */
 
+import { APP_TIMEZONE, mondayOfZoned, zonedCivilToUtc } from "@/lib/timezone";
+
 export const BIKE_PROGRAM_DAY_NUMBER = 4;
 export const BIKE_ROTATION_LENGTH = 3;
 
@@ -204,14 +206,11 @@ const ROTATION: Array<{ tue: string; thu: string }> = [
 ];
 
 /** Monday-based week index from a fixed epoch so Tue/Thu pairings stay stable. */
-export function bikeWeekIndex(date: Date) {
-  const cursor = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const weekday = cursor.getDay();
-  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
-  cursor.setDate(cursor.getDate() + mondayOffset);
-  const epoch = new Date(2026, 0, 5);
-  const diff = cursor.getTime() - epoch.getTime();
-  return Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+export function bikeWeekIndex(date: Date, timeZone = APP_TIMEZONE) {
+  const monday = mondayOfZoned(date, timeZone);
+  const epoch = zonedCivilToUtc(2026, 1, 5, timeZone);
+  const days = Math.round((monday.getTime() - epoch.getTime()) / 86_400_000);
+  return Math.floor(days / 7);
 }
 
 export function pickBikeSession(index = 0): BikeSession {

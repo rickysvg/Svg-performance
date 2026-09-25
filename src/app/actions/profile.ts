@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateProfileForUser } from "@/lib/profile";
+import { persistDetectedTimeZone, updateProfileForUser } from "@/lib/profile";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 
@@ -36,6 +36,7 @@ export async function saveProfileAction(
       hoursPerWeek: hoursRaw === "" ? null : Number(hoursRaw),
       sessionsPerWeek: sessionsRaw === "" ? null : Number(sessionsRaw),
       preferredUnits: String(formData.get("preferredUnits") ?? "lb"),
+      timeZone: String(formData.get("timeZone") ?? ""),
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
       foodPreferences: String(formData.get("foodPreferences") ?? ""),
       allergies: String(formData.get("allergies") ?? ""),
@@ -64,5 +65,20 @@ export async function saveProfileAction(
     return { success: "Profile saved." };
   } catch (error) {
     return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function persistDetectedTimeZoneAction(timeZone: string) {
+  try {
+    const user = await requireUserOrThrow();
+    const changed = await persistDetectedTimeZone(user.id, timeZone);
+    if (changed) {
+      revalidatePath("/home");
+      revalidatePath("/training");
+      revalidatePath("/profile");
+    }
+    return changed;
+  } catch {
+    return false;
   }
 }

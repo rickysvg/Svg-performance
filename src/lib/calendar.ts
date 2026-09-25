@@ -6,6 +6,13 @@ import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
+import { timeZoneForUser } from "@/lib/profile";
+import {
+  APP_TIMEZONE,
+  addZonedDays,
+  weekdayInZone,
+  zonedParts,
+} from "@/lib/timezone";
 
 export const DEFAULT_TRAINING_WEEKDAYS = ["Monday", "Wednesday", "Friday"] as const;
 
@@ -44,8 +51,9 @@ export type ProgramDaySummary = {
   dayNumber: number;
 };
 
-export function weekdayName(date: Date) {
-  return JS_WEEKDAYS[date.getDay()] ?? "Monday";
+export function weekdayName(date: Date, timeZone = APP_TIMEZONE) {
+  const weekday = weekdayInZone(date, timeZone);
+  return JS_WEEKDAYS.includes(weekday) ? weekday : "Monday";
 }
 
 export function ordinalDay(n: number) {
@@ -63,28 +71,32 @@ export function ordinalDay(n: number) {
   }
 }
 
-export function formatCalendarHeading(date: Date, now = new Date()) {
-  const month = date.toLocaleDateString("en-US", { month: "long" });
-  const day = ordinalDay(date.getDate());
-  if (sameLocalDay(date, now)) {
+export function formatCalendarHeading(
+  date: Date,
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+) {
+  const parts = zonedParts(date, timeZone);
+  const month = date.toLocaleDateString("en-US", { month: "long", timeZone });
+  const day = ordinalDay(parts.day);
+  if (sameLocalDay(date, now, timeZone)) {
     return `Today, ${month} ${day}`;
   }
-  const tomorrow = startOfLocalDay(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (sameLocalDay(date, tomorrow)) {
+  const tomorrow = addZonedDays(startOfLocalDay(now, timeZone), 1, timeZone);
+  if (sameLocalDay(date, tomorrow, timeZone)) {
     return `Tomorrow, ${month} ${day}`;
   }
-  const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+  const weekday = date.toLocaleDateString("en-US", { weekday: "long", timeZone });
   return `${weekday}, ${month} ${day}`;
 }
 
-export function listCalendarDates(now = new Date(), count = 8) {
-  const start = startOfLocalDay(now);
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return date;
-  });
+export function listCalendarDates(
+  now = new Date(),
+  count = 8,
+  timeZone = APP_TIMEZONE,
+) {
+  const start = startOfLocalDay(now, timeZone);
+  return Array.from({ length: count }, (_, index) => addZonedDays(start, index, timeZone));
 }
 
 export function resolveTrainingWeekdays(availability: string[]) {
@@ -103,8 +115,10 @@ export function buildCalendarDays(input: {
   includeReport?: boolean;
   challenge?: { title: string; complete: boolean } | null;
   dayCount?: number;
+  timeZone?: string;
 }): CalendarDay[] {
-  const dates = listCalendarDates(input.now, input.dayCount ?? 8);
+  const timeZone = input.timeZone ?? APP_TIMEZONE;
+  const dates = listCalendarDates(input.now, input.dayCount ?? 8, timeZone);
   const trainingDays = new Set(resolveTrainingWeekdays(input.availability));
   const programDays = [...input.programDays];
   const startIndex = input.startDayId
@@ -114,18 +128,18 @@ export function buildCalendarDays(input: {
 
   const days: CalendarDay[] = dates.map((date) => ({
     date,
-    heading: formatCalendarHeading(date, input.now),
-    isToday: sameLocalDay(date, input.now),
+    heading: formatCalendarHeading(date, input.now, timeZone),
+    isToday: sameLocalDay(date, input.now, timeZone),
     activities: [],
   }));
 
   if (programDays.length > 0) {
     for (const day of days) {
-      if (!trainingDays.has(weekdayName(day.date))) continue;
+      if (!trainingDays.has(weekdayName(day.date, timeZone))) continue;
       const program = programDays[cursor % programDays.length];
       if (!program) continue;
       cursor += 1;
-      const done = input.completedOnDay.has(formatDayParam(day.date));
+      const done = input.completedOnDay.has(formatDayParam(day.date, timeZone));
       day.activities.push({
         kind: "workout",
         title: program.title,
@@ -140,7 +154,7 @@ export function buildCalendarDays(input: {
   }
 
   if (input.includeReport !== false) {
-    const sunday = days.find((day) => weekdayName(day.date) === "Sunday");
+    const sunday = days.find((day) => weekdayName(day.date, timeZone) === "Sunday");
     if (sunday) {
       sunday.activities.push({
         kind: "report",
@@ -153,7 +167,7 @@ export function buildCalendarDays(input: {
   }
 
   if (input.challenge) {
-    const saturday = days.find((day) => weekdayName(day.date) === "Saturday");
+    const saturday = days.find((day) => weekdayName(day.date, timeZone) === "Saturday");
     const target =
       saturday ?? days.find((day) => day.activities.length === 0) ?? days[days.length - 1];
     if (target) {
@@ -171,12 +185,13 @@ export function buildCalendarDays(input: {
 }
 
 export async function getCalendarSchedule(userId: string, now = new Date()) {
-  const [catalog, profile, sessions, challenge] = await Promise.all([
+  const [catalog, profile, sessions] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
     listWorkoutSessionsForUser(userId),
-    getChallengeProgressForUser(userId),
   ]);
+  const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
+  const challenge = await getChallengeProgressForUser(userId, tz);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
@@ -184,25 +199,25 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
   const completedOnDay = new Set(
     sessions
       .filter((session) => session.status === "complete")
-      .map((session) => formatDayParam(session.performedAt)),
+      .map((session) => formatDayParam(session.performedAt, tz)),
   );
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
-  const dates = listCalendarDates(now, 8);
+  const dates = listCalendarDates(now, 8, tz);
   const days: CalendarDay[] = dates.map((date) => ({
     date,
-    heading: formatCalendarHeading(date, now),
-    isToday: sameLocalDay(date, now),
+    heading: formatCalendarHeading(date, now, tz),
+    isToday: sameLocalDay(date, now, tz),
     activities: [],
   }));
 
   for (const day of days) {
-    const plan = planForDate(prefs, day.date);
+    const plan = planForDate(prefs, day.date, tz);
     const resolved = resolvePlanSessions(plan, { strength, skill });
-    const done = completedOnDay.has(formatDayParam(day.date));
+    const done = completedOnDay.has(formatDayParam(day.date, tz));
     for (const session of resolved) {
       if (!session.href || !session.dayId) continue;
       day.activities.push({
@@ -218,7 +233,7 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
     }
   }
 
-  const sunday = days.find((day) => weekdayName(day.date) === "Sunday");
+  const sunday = days.find((day) => weekdayName(day.date, tz) === "Sunday");
   if (sunday) {
     sunday.activities.push({
       kind: "report",
@@ -230,7 +245,7 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
   }
 
   if (challenge?.enrollment) {
-    const saturday = days.find((day) => weekdayName(day.date) === "Saturday");
+    const saturday = days.find((day) => weekdayName(day.date, tz) === "Saturday");
     const target =
       saturday ?? days.find((day) => day.activities.length === 0) ?? days[days.length - 1];
     if (target) {

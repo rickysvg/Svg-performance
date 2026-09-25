@@ -1,4 +1,6 @@
 import { canUseFeature } from "@/lib/entitlements";
+import { timeZoneForUser } from "@/lib/profile";
+import { APP_TIMEZONE, dayKey } from "@/lib/timezone";
 
 export type QuoteSource = "ufc" | "achiever" | "scripture";
 
@@ -386,8 +388,8 @@ export function quoteSourceCounts(quotes: DailyQuote[] = DAILY_QUOTES) {
   );
 }
 
-export function quoteForLocalDate(now = new Date()): DailyQuote {
-  const key = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+export function quoteForLocalDate(now = new Date(), timeZone = APP_TIMEZONE): DailyQuote {
+  const key = dayKey(now, timeZone);
   let hash = 0;
   for (let i = 0; i < key.length; i += 1) {
     hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
@@ -395,8 +397,9 @@ export function quoteForLocalDate(now = new Date()): DailyQuote {
   return DAILY_QUOTES[hash % DAILY_QUOTES.length] ?? DAILY_QUOTES[0];
 }
 
-export async function getDailyQuoteCard(userId: string, now = new Date()) {
-  const quote = quoteForLocalDate(now);
+export async function getDailyQuoteCard(userId: string, now = new Date(), timeZone?: string) {
+  const tz = timeZone ?? (await timeZoneForUser(userId));
+  const quote = quoteForLocalDate(now, tz);
   const unlocked = await canUseFeature(userId, "daily_quote");
   return {
     quote,

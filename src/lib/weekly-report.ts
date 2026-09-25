@@ -4,15 +4,15 @@ import { getProfileForUser } from "@/lib/profile";
 import { getPathProgress } from "@/lib/paths";
 import { prisma } from "@/lib/prisma";
 import { mondayOf } from "@/lib/home";
+import { timeZoneForUser } from "@/lib/profile";
+import { APP_TIMEZONE, dayKey } from "@/lib/timezone";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { planHasCoachReview, planHasEliteReview } from "@/lib/plans";
 import { AppError } from "@/lib/errors";
 import { assertCanViewMemberTrend } from "@/lib/reports";
 
-export function weekStartKey(now = new Date()) {
-  const monday = mondayOf(now);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
+export function weekStartKey(now = new Date(), timeZone = APP_TIMEZONE) {
+  return dayKey(mondayOf(now, timeZone), timeZone);
 }
 
 export function automatedReportCopy(input: {
@@ -30,17 +30,18 @@ export function automatedReportCopy(input: {
 
 export async function getWeeklyProgressReport(userId: string, now = new Date()) {
   const profile = await getProfileForUser(userId);
+  const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const units = profile?.preferredUnits ?? "lb";
   const [wrap, records, path, planId, comment] = await Promise.all([
-    getWeeklyWrapped(userId, now),
-    getPersonalRecordsForUser(userId, units, now),
+    getWeeklyWrapped(userId, now, tz),
+    getPersonalRecordsForUser(userId, units, now, tz),
     getPathProgress(userId),
     getEffectivePlanId(userId),
     prisma.weeklyCoachComment.findUnique({
-      where: { userId_weekStartKey: { userId, weekStartKey: weekStartKey(now) } },
+      where: { userId_weekStartKey: { userId, weekStartKey: weekStartKey(now, tz) } },
     }),
   ]);
-  const { from, endExclusive } = lastSevenLocalDays(now);
+  const { from, endExclusive } = lastSevenLocalDays(now, tz);
   const weekLoads = records.loadRecords.filter(
     (row) => row.date >= from && row.date < endExclusive,
   );
@@ -98,7 +99,7 @@ export async function getWeeklyProgressReport(userId: string, now = new Date()) 
     showCoachSlot: planHasCoachReview(planId),
     showEliteAdjustments: planHasEliteReview(planId),
     adjustments,
-    weekStartKey: weekStartKey(now),
+    weekStartKey: weekStartKey(now, tz),
     pathTitle: path.path.title,
   };
 }
@@ -126,7 +127,8 @@ export async function upsertWeeklyCoachComment(input: {
   if (!body) {
     throw new AppError("COACHING", "Write a real comment or leave the slot empty.");
   }
-  const key = weekStartKey(input.now);
+  const tz = await timeZoneForUser(input.memberUserId);
+  const key = weekStartKey(input.now, tz);
   return prisma.weeklyCoachComment.upsert({
     where: {
       userId_weekStartKey: { userId: input.memberUserId, weekStartKey: key },
