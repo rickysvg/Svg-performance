@@ -30,16 +30,25 @@ const PHOTO_ACTIONS = [
     src: "/tiles/progress.webp",
     alt: "Athlete standing after a session",
   },
-] as const;
-
-const TEXT_ACTIONS = [
-  { href: "/nutrition", label: "Fuel", hint: "Log food" },
-  { href: "/training/calendar", label: "Calendar", hint: "This week" },
+  {
+    href: "/nutrition",
+    label: "Fuel",
+    hint: "Log food",
+    src: "/tiles/fuel.webp",
+    alt: "Athlete eating a meal-prep container in a dark gym",
+  },
+  {
+    href: "/training/calendar",
+    label: "Calendar",
+    hint: "This week",
+    src: "/tiles/calendar.webp",
+    alt: "Athlete checking off training days on a whiteboard",
+  },
 ] as const;
 
 export function HomeQuickActions() {
   return (
-    <section className="min-w-0 space-y-3">
+    <section className="min-w-0">
       <div className="grid grid-cols-2 gap-3">
         {PHOTO_ACTIONS.map((action) => (
           <Link
@@ -66,24 +75,6 @@ export function HomeQuickActions() {
               <span className="mt-0.5 block text-[11px] font-medium text-white/80">
                 {action.hint}
               </span>
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {TEXT_ACTIONS.map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="flex min-h-[5.5rem] min-w-0 w-full flex-col justify-between rounded-2xl border border-line bg-card px-3 py-3"
-          >
-            <span className="font-display inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-black">
-              {action.label.slice(0, 1)}
-            </span>
-            <span>
-              <span className="font-display block text-sm font-semibold uppercase tracking-wide">{action.label}</span>
-              <span className="mt-0.5 block text-[11px] text-muted">{action.hint}</span>
             </span>
           </Link>
         ))}
