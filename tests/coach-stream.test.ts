@@ -57,7 +57,7 @@ describe("SVG Coach streaming", () => {
     });
 
     expect(result.refused).toBe(false);
-    expect(result.content).toMatch(/next session|punishment/i);
+    expect(result.content).toMatch(/Two missed classes doesn't erase your work/);
     expect(result.content).not.toMatch(/COACHING_GUIDE|demo mode|Topic:|API key/i);
     expect(result.content).not.toContain("[Stopped");
     expect(events.join("")).toBe(result.content);

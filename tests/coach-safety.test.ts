@@ -69,8 +69,9 @@ describe("SVG Coach safety", () => {
     expect(result.refused).toBe(false);
     expect(result.assistant.offline).toBe(true);
     expect(result.assistant.content).not.toMatch(/Ricky wrote/i);
-    expect(result.assistant.content).toMatch(/next session|punishment/i);
-    expect(result.assistant.content).not.toMatch(/COACHING_GUIDE|DEMO-seeds|demo mode|Topic:|API key/i);
+    expect(result.assistant.content).toMatch(/Two missed classes doesn't erase your work/);
+    expect(result.assistant.content).toMatch(/punishment session/);
+    expect(result.assistant.content).not.toMatch(/loads you can control|COACHING_GUIDE|DEMO-seeds|demo mode|Topic:|API key/i);
     expect(result.assistant.content).not.toMatch(/\bbouts?\b/i);
   });
 });

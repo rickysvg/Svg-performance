@@ -321,7 +321,7 @@ describe("deeper onboarding personalization", () => {
       coachingTone: "encouraging",
     });
     expect(result.refused).toBe(false);
-    expect(result.assistant.content).toMatch(/Good — you asked/i);
+    expect(result.assistant.content).toMatch(/missed class|punishment session/i);
     expect(result.assistant.content).not.toMatch(/Preferred tone|DEMO|offline mode|COACHING_GUIDE/i);
     expect(result.assistant.content).not.toMatch(/calorie target|2200/i);
   });

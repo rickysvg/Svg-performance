@@ -201,7 +201,7 @@ function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, a
   if (hasSkill && hasLift) return "Bag+Lift";
   if (hasSkill && sessions[0]?.optional) return "Optional";
   if (hasSkill) return "Skill";
-  if (kinds.includes("conditioning") && kinds.includes("strength")) return "Cond+Lift";
+  if (kinds.includes("conditioning") && kinds.includes("strength")) return "GPP";
   if (kinds.includes("conditioning")) return "Bike";
   if (hasLift) return "Lift";
   if (kinds.includes("mobility")) return "Recover";

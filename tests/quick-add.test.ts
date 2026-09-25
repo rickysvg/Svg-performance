@@ -16,9 +16,13 @@ describe("quick-add floating button", () => {
     expect(shouldHideQuickAdd("/progress")).toBe(false);
   });
 
-  it("leaves Sunday chips and bottom bars clear of the +", () => {
+  it("tucks the + into the account bar so it cannot cover cards", () => {
     const fab = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/QuickAddFab.tsx"),
+      "utf8",
+    );
+    const frame = fs.readFileSync(
+      path.join(process.cwd(), "src/components/MemberFrame.tsx"),
       "utf8",
     );
     const strip = fs.readFileSync(
@@ -29,8 +33,12 @@ describe("quick-add floating button", () => {
       path.join(process.cwd(), "src/app/(member)/training/[dayId]/page.tsx"),
       "utf8",
     );
-    expect(fab).toContain("bottom-[6.75rem]");
-    expect(strip).toContain("pr-16");
+    expect(fab).toContain("data-quick-add-fab");
+    expect(fab).toContain("absolute bottom-0 left-14");
+    expect(fab).toContain("h-10 w-10");
+    expect(frame).toContain("<QuickAddFab />");
+    expect(frame).toContain('placement="bottom"');
+    expect(strip).not.toContain("pr-16");
     expect(day).toContain("data-start-bar");
     expect(day).toContain("sticky bottom-0");
     expect(day).not.toContain("pr-20");

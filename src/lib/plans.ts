@@ -1,5 +1,5 @@
 export const AI_DISCLAIMER =
-  "SVG Coach is an AI assistant. It is not Ricky and is not a message to Ricky. It does not book you, coach you live, or replace a human call.";
+  "SVG Coach is an AI assistant, not Ricky and not medical advice. For injuries or pain, talk to a coach or doctor.";
 
 export const CATALOG_PLAN_IDS = [
   "member_access",

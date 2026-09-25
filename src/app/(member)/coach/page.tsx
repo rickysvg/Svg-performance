@@ -68,12 +68,7 @@ export default async function CoachPage({
           Sacrifice · Vision · Greatness
         </p>
         <h1 className="text-2xl font-semibold">{COACH_PUBLIC_NAME}</h1>
-        <p className="mt-2 text-sm text-muted">
-          Direct answers on training, recovery, and mindset. Not a live coach, not
-          medical advice, and{" "}
-          <strong className="text-foreground">not Ricky</strong> typing.
-        </p>
-        <AiDisclaimer className="mt-3 text-sm text-muted" />
+        <AiDisclaimer className="mt-2 text-sm text-muted" />
       </div>
 
       {!topic ? (
