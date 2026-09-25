@@ -3,6 +3,47 @@
 import { useState } from "react";
 import Link from "next/link";
 
+function PlusGlyph() {
+  return (
+    <svg
+      data-plus-glyph
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden
+      className="block"
+    >
+      <rect x="7" y="2.5" width="2" height="11" rx="1" fill="currentColor" />
+      <rect x="2.5" y="7" width="11" height="2" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CloseGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden className="block">
+      <rect
+        x="2.5"
+        y="7"
+        width="11"
+        height="2"
+        rx="1"
+        fill="currentColor"
+        transform="rotate(45 8 8)"
+      />
+      <rect
+        x="2.5"
+        y="7"
+        width="11"
+        height="2"
+        rx="1"
+        fill="currentColor"
+        transform="rotate(-45 8 8)"
+      />
+    </svg>
+  );
+}
+
 export function QuickAddFab() {
   const [open, setOpen] = useState(false);
 
@@ -48,9 +89,9 @@ export function QuickAddFab() {
         aria-expanded={open}
         aria-label={open ? "Close quick add" : "Quick add"}
         onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent text-2xl font-semibold leading-none text-black"
+        className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent p-0 text-black"
       >
-        {open ? "×" : "+"}
+        {open ? <CloseGlyph /> : <PlusGlyph />}
       </button>
     </div>
   );
