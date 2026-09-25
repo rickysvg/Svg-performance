@@ -31,20 +31,15 @@ export function UpgradePreviewSheet({
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-md rounded-t-3xl bg-white p-2 shadow-xl sm:rounded-3xl">
+          <div className="relative z-10 w-full max-w-md rounded-t-3xl bg-white px-5 pt-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] shadow-xl sm:rounded-3xl sm:pb-6">
             <UpgradePreview
               kind={kind}
               canStartTrial={canStartTrial}
               trialDays={trialDays}
               next={next}
+              framed={false}
+              onDismiss={() => setOpen(false)}
             />
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="touch-target mx-auto mb-2 mt-1 block w-[calc(100%-1.5rem)] rounded-full border border-line font-semibold"
-            >
-              Not now
-            </button>
           </div>
         </div>
       ) : null}

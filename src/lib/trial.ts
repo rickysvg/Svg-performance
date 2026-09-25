@@ -143,20 +143,20 @@ export function paidPlanPriceCopy(plan: CatalogPlan, verified: boolean) {
   if (samePrice) {
     return {
       headline: plan.gymPriceLabel,
-      perk: null as string | null,
+      normally: null as string | null,
       academyHint: !verified && plan.section !== "vip",
     };
   }
   if (verified) {
     return {
       headline: plan.gymPriceLabel,
-      perk: `Academy member price ${plan.gymPriceLabel} (normally ${plan.nonmemberPriceLabel})`,
+      normally: plan.nonmemberPriceLabel,
       academyHint: false,
     };
   }
   return {
     headline: plan.nonmemberPriceLabel,
-    perk: null as string | null,
+    normally: null as string | null,
     academyHint: true,
   };
 }

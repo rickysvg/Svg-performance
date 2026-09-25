@@ -43,8 +43,12 @@ function MemberPriceBlock({
   const copy = paidPlanPriceCopy(plan, verified);
   return (
     <div className="mt-4">
-      <p className="stat-display text-2xl font-semibold text-accent">{copy.headline}</p>
-      {copy.perk ? <p className="mt-2 text-sm font-semibold text-black">{copy.perk}</p> : null}
+      <p className="font-display stat-display text-2xl font-semibold text-accent">{copy.headline}</p>
+      {copy.normally ? (
+        <p className="mt-1 text-sm text-muted">
+          Academy member price · normally <s>{copy.normally}</s>
+        </p>
+      ) : null}
       {copy.academyHint ? <p className="mt-2 text-xs text-muted">{ACADEMY_PRICE_HINT}</p> : null}
     </div>
   );

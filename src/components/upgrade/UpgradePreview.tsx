@@ -24,15 +24,19 @@ export function UpgradePreview({
   canStartTrial,
   trialDays,
   next = "/home",
+  onDismiss,
+  framed = true,
 }: {
   kind: keyof typeof BLURBS;
   canStartTrial: boolean;
   trialDays: number;
   next?: string;
+  onDismiss?: () => void;
+  framed?: boolean;
 }) {
   const copy = BLURBS[kind];
   return (
-    <section className="rounded-2xl border border-line bg-white p-5">
+    <section className={framed ? "rounded-2xl border border-line bg-white p-5" : "bg-white"}>
       <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-black">
         Performance
       </p>
@@ -40,8 +44,17 @@ export function UpgradePreview({
         {copy.title}
       </h2>
       <p className="mt-2 text-sm text-muted">{copy.body}</p>
-      <div className="mt-4">
+      <div className="mt-4 space-y-3">
         <UpgradeCtas canStartTrial={canStartTrial} trialDays={trialDays} next={next} />
+        {onDismiss ? (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
+          >
+            Not now
+          </button>
+        ) : null}
       </div>
       <p className="mt-3 text-xs text-muted">You can upgrade anytime from Profile.</p>
     </section>
