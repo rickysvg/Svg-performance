@@ -1,7 +1,7 @@
-import { resolveLogMode } from "@/lib/exercise-log-mode";
+import { isHoldName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { convertLoad, formatLoad, isLoadUnit, type LoadUnit } from "@/lib/units";
 
-export const PR_KINDS = ["heaviest", "reps_at_weight", "e1rm", "longest"] as const;
+export const PR_KINDS = ["heaviest", "reps_at_weight", "e1rm", "most_rounds", "longest"] as const;
 export type PrKind = (typeof PR_KINDS)[number];
 
 export type SetLike = {
@@ -77,12 +77,29 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+function weightUnit(best: PersonalBest, displayUnit: LoadUnit): LoadUnit {
+  if (best.unit === "kg" || best.unit === "lb") return best.unit;
+  return displayUnit;
+}
+
 function deltaText(current: number, previous: number | null, unit: string) {
   if (previous == null || previous <= 0) return "first mark";
   const diff = Math.round((current - previous) * 10) / 10;
   if (diff === 0) return "tied your last best";
   const sign = diff > 0 ? "+" : "";
   return `${sign}${diff} ${unit} on your last best`;
+}
+
+function isIsometricHold(set: SetLike) {
+  if (!isHoldName(set.exerciseName)) return false;
+  const mode = modeOf(set);
+  return mode === "timed" || mode === "load_timed";
+}
+
+/** Bike / bag interval work — most completed rounds in a session, never hold time. */
+function isIntervalRoundWork(set: SetLike) {
+  if (isHoldName(set.exerciseName)) return false;
+  return modeOf(set) === "timed_round";
 }
 
 export function bestsFromSets(
@@ -93,6 +110,7 @@ export function bestsFromSets(
   const repsAt = new Map<string, PersonalBest>();
   const e1rm = new Map<string, PersonalBest>();
   const longest = new Map<string, PersonalBest>();
+  const sessionRounds = new Map<string, { name: string; date: Date; count: number }>();
 
   for (const set of sets) {
     if (!logged(set)) continue;
@@ -149,7 +167,17 @@ export function bestsFromSets(
       }
     }
 
-    if (seconds != null && (mode === "timed" || mode === "load_timed" || mode === "timed_round")) {
+    if (isIntervalRoundWork(set)) {
+      const key = `${name}::${set.performedAt.getTime()}`;
+      const current = sessionRounds.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        sessionRounds.set(key, { name, date: set.performedAt, count: 1 });
+      }
+    }
+
+    if (seconds != null && isIsometricHold(set)) {
       const current = longest.get(name);
       if (!current || seconds > current.value) {
         longest.set(name, {
@@ -165,30 +193,64 @@ export function bestsFromSets(
     }
   }
 
-  return [...heaviest.values(), ...repsAt.values(), ...e1rm.values(), ...longest.values()];
+  const mostRounds = new Map<string, PersonalBest>();
+  for (const row of sessionRounds.values()) {
+    const current = mostRounds.get(row.name);
+    if (!current || row.count > current.value) {
+      mostRounds.set(row.name, {
+        kind: "most_rounds",
+        exerciseName: row.name,
+        value: row.count,
+        unit: "rounds",
+        reps: row.count,
+        load: null,
+        date: row.date,
+      });
+    }
+  }
+
+  return [
+    ...heaviest.values(),
+    ...repsAt.values(),
+    ...e1rm.values(),
+    ...mostRounds.values(),
+    ...longest.values(),
+  ];
 }
 
-export function headlineForBest(best: PersonalBest) {
+export function headlineForBest(best: PersonalBest, displayUnit: LoadUnit = "lb") {
   if (best.kind === "longest") {
     return formatDuration(best.value);
   }
+  if (best.kind === "most_rounds") {
+    return `${best.value} ${best.value === 1 ? "round" : "rounds"}`;
+  }
+  const unit = weightUnit(best, displayUnit);
   if (best.kind === "reps_at_weight" && best.load != null) {
-    return `${best.value} × ${formatLoad(best.load, best.unit === "kg" ? "kg" : "lb")}`;
+    return `${best.value} × ${formatLoad(best.load, unit)}`;
   }
   if (best.kind === "e1rm") {
-    return `${formatLoad(best.value, best.unit === "kg" ? "kg" : "lb")} e1RM`;
+    return `${formatLoad(best.value, unit)} e1RM`;
   }
   if (best.reps != null && best.reps > 0) {
-    return `${formatLoad(best.value, best.unit === "kg" ? "kg" : "lb")} × ${best.reps}`;
+    return `${formatLoad(best.value, unit)} × ${best.reps}`;
   }
-  return formatLoad(best.value, best.unit === "kg" ? "kg" : "lb");
+  return formatLoad(best.value, unit);
 }
 
 function kindLabel(kind: PrKind) {
   if (kind === "heaviest") return "Heaviest";
   if (kind === "reps_at_weight") return "Most reps at a load";
   if (kind === "e1rm") return "Estimated 1RM";
+  if (kind === "most_rounds") return "Most rounds";
   return "Longest hold";
+}
+
+function valueUnit(best: PersonalBest, displayUnit: LoadUnit) {
+  if (best.kind === "longest") return "sec";
+  if (best.kind === "reps_at_weight") return "reps";
+  if (best.kind === "most_rounds") return "rounds";
+  return displayUnit;
 }
 
 export function detectNewPrs(
@@ -208,13 +270,11 @@ export function detectNewPrs(
         (best.kind !== "reps_at_weight" || row.load === best.load),
     );
     if (previous && best.value <= previous.value) continue;
-    const unit =
-      best.kind === "longest" ? "sec" : best.kind === "reps_at_weight" ? "reps" : displayUnit;
     found.push({
       ...best,
       previousValue: previous?.value ?? null,
-      headline: headlineForBest(best),
-      detail: `${best.exerciseName} · ${deltaText(best.value, previous?.value ?? null, unit)} · ${formatDate(best.date)}`,
+      headline: headlineForBest(best, displayUnit),
+      detail: `${best.exerciseName} · ${deltaText(best.value, previous?.value ?? null, valueUnit(best, displayUnit))} · ${formatDate(best.date)}`,
     });
   }
 
@@ -222,12 +282,13 @@ export function detectNewPrs(
     heaviest: 0,
     e1rm: 1,
     reps_at_weight: 2,
-    longest: 3,
+    most_rounds: 3,
+    longest: 4,
   };
   return found.sort((a, b) => rank[a.kind] - rank[b.kind] || b.value - a.value);
 }
 
-export function recordListFromBests(bests: PersonalBest[]) {
+export function recordListFromBests(bests: PersonalBest[], displayUnit: LoadUnit = "lb") {
   const byExercise = new Map<string, PersonalBest[]>();
   for (const best of bests) {
     const list = byExercise.get(best.exerciseName) ?? [];
@@ -238,14 +299,15 @@ export function recordListFromBests(bests: PersonalBest[]) {
   return [...byExercise.entries()]
     .map(([exerciseName, rows]) => {
       const heaviest = rows.find((row) => row.kind === "heaviest");
+      const mostRounds = rows.find((row) => row.kind === "most_rounds");
       const longest = rows.find((row) => row.kind === "longest");
       const e1rm = rows.find((row) => row.kind === "e1rm");
-      const primary = heaviest ?? longest ?? e1rm ?? rows[0]!;
+      const primary = heaviest ?? mostRounds ?? longest ?? e1rm ?? rows[0]!;
       return {
         exerciseName,
         slug: exerciseSlug(exerciseName),
         primary,
-        headline: headlineForBest(primary),
+        headline: headlineForBest(primary, displayUnit),
         kindLabel: kindLabel(primary.kind),
         date: primary.date,
         isNew: false,

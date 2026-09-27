@@ -27,6 +27,7 @@ export type TrainingStreak = {
   longest: number;
   nextTarget: number;
   daysToNext: number;
+  todayScheduled: boolean;
   weekDots: WeekStreakDot[];
 };
 
@@ -166,13 +167,26 @@ export function buildTrainingStreak(input: {
     longestTrainingStreak(keys, input.prefs, now, timeZone),
   );
   const { nextTarget, daysToNext } = nextStreakTarget(current);
+  const weekDots = weekStreakDots(keys, input.prefs, now, timeZone);
+  const today = weekDots.find((dot) => dot.isToday);
   return {
     current,
     longest,
     nextTarget,
     daysToNext,
-    weekDots: weekStreakDots(keys, input.prefs, now, timeZone),
+    todayScheduled: today?.scheduled ?? isScheduledTrainingDay(input.prefs, now, timeZone),
+    weekDots,
   };
+}
+
+export function streakStatusLine(streak: TrainingStreak) {
+  if (!streak.todayScheduled) {
+    return "Rest day. Streak safe.";
+  }
+  if (streak.daysToNext > 0) {
+    return `train today to make it ${streak.current + 1}`;
+  }
+  return "target hit";
 }
 
 export function plannerPrefsFromProfile(profile: {

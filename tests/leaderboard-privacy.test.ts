@@ -8,7 +8,7 @@ import {
 } from "@/lib/leaderboard";
 import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
 import { getDemoProgram } from "@/lib/programs";
-import { evaluateBadges } from "@/lib/badges";
+import { evaluateBadges, liftBadgeTitle } from "@/lib/badges";
 
 async function logWorkout(userId: string, performedAt: Date) {
   const program = await getDemoProgram();
@@ -103,5 +103,49 @@ describe("leaderboard privacy and badges", () => {
     expect(badges.find((row) => row.id === "first_session")?.earned).toBe(true);
     expect(badges.find((row) => row.id === "lift_100kg")?.earned).toBe(true);
     expect(badges.find((row) => row.id === "streak_7")?.earned).toBe(false);
+  });
+
+  it("labels lift and pad badges in the athlete unit without a minus sign", () => {
+    expect(liftBadgeTitle("lift_100kg", "lb")).toBe("225 lb lift");
+    expect(liftBadgeTitle("lift_200kg", "lb")).toBe("405 lb lift");
+    expect(liftBadgeTitle("lift_100kg", "kg")).toBe("100 kg lift");
+    expect(liftBadgeTitle("lift_200kg", "kg")).toBe("200 kg lift");
+    const lb = evaluateBadges({
+      workoutCount: 1,
+      currentStreak: 1,
+      longestStreak: 1,
+      displayUnit: "lb",
+      sets: [
+        {
+          exerciseName: "Trap bar deadlift",
+          loadValue: 405,
+          loadUnit: "lb",
+          completed: true,
+          performedAt: new Date("2026-09-22T12:00:00Z"),
+        },
+      ],
+    });
+    expect(lb.find((row) => row.id === "lift_100kg")?.title).toBe("225 lb lift");
+    expect(lb.find((row) => row.id === "lift_200kg")?.title).toBe("405 lb lift");
+    expect(lb.find((row) => row.id === "lift_200kg")?.earned).toBe(true);
+    expect(lb.find((row) => row.id === "pads_250")?.title).toBe("250 pad rounds");
+    expect(lb.find((row) => row.id === "pads_250")?.title).not.toMatch(/-/);
+  });
+
+  it("does not invent other people when only the viewer has opted in", async () => {
+    const you = await makeUser("solo@example.com");
+    await prisma.profile.update({
+      where: { userId: you.id },
+      data: { displayName: "You", leaderboardOptIn: true },
+    });
+    const now = new Date("2026-09-22T18:00:00.000Z");
+    await logWorkout(you.id, now);
+    const board = await getWorkoutLeaderboard({
+      viewerId: you.id,
+      now,
+      timeZone: "America/Denver",
+    });
+    expect(board.entries.every((row) => row.isYou)).toBe(true);
+    expect(board.entries.some((row) => /Maya|Dani|Sam/.test(row.displayName))).toBe(false);
   });
 });

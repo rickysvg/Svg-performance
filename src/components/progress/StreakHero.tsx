@@ -1,4 +1,4 @@
-import type { TrainingStreak } from "@/lib/streaks";
+import { streakStatusLine, type TrainingStreak } from "@/lib/streaks";
 
 export function StreakHero({ streak }: { streak: TrainingStreak }) {
   return (
@@ -38,10 +38,7 @@ export function StreakHero({ streak }: { streak: TrainingStreak }) {
             ))}
           </ol>
           <p className="mt-3 text-sm leading-snug">
-            Best streak: {streak.longest} days
-            {streak.daysToNext > 0
-              ? ` · train today to make it ${streak.current + 1}`
-              : " · target hit"}
+            Best streak: {streak.longest} days · {streakStatusLine(streak)}
           </p>
         </div>
       </div>

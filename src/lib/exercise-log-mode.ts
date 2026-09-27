@@ -22,7 +22,7 @@ export function isLogMode(value: string | null | undefined): value is LogMode {
   return LOG_MODES.includes(value as LogMode);
 }
 
-function isHoldName(name: string) {
+export function isHoldName(name: string) {
   return HOLD_NAME.test(name);
 }
 

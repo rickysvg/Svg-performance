@@ -37,7 +37,7 @@ export function RecordsList({
                 <span className="font-display text-sm uppercase tracking-wide">
                   {row.exerciseName}
                   {isNew ? (
-                    <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-[10px] text-accent">
+                    <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-[10px] text-highlighter">
                       New PR
                     </span>
                   ) : null}

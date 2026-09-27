@@ -1,5 +1,6 @@
 /**
- * Demo athlete for Streaks / Records screenshots.
+ * Local screenshot athlete only. Never shipped as production seed.
+ * prisma/seed.ts does not create opted-in fake names or a leaderboard.
  * Run: npx tsx scripts/seed-companion-demo.ts
  */
 import { PrismaClient } from "@prisma/client";
@@ -7,11 +8,21 @@ import { hashPassword } from "../src/lib/auth";
 import { completeOnboardingForUser } from "../src/lib/onboarding";
 import { continueWithFreePlan } from "../src/lib/trial";
 import { addZonedDays, startOfZonedDay } from "../src/lib/timezone";
+import { isScheduledTrainingDay } from "../src/lib/streaks";
+import type { PlannerPrefs } from "../src/lib/week-plan";
 
 const prisma = new PrismaClient();
 const EMAIL = "streaks@example.com";
 const PASSWORD = "password12";
 const TZ = "America/Denver";
+const PREFS: PlannerPrefs = {
+  primaryFocus: "general-fitness",
+  weeklyAvailability: ["Monday", "Wednesday", "Friday"],
+  sessionsPerWeek: 5,
+};
+
+/** Leftover local screenshot accounts from the first pass — never recreate. */
+const LOCAL_FAKE_BOARD = ["maya@example.com", "dani@example.com", "sam@example.com"];
 
 async function logDay(
   userId: string,
@@ -38,7 +49,7 @@ async function logDay(
           sortOrder: index,
           reps: set.reps ?? null,
           loadValue: set.loadValue ?? null,
-          loadUnit: set.loadUnit ?? "kg",
+          loadUnit: set.loadUnit ?? "lb",
           durationSeconds: set.durationSeconds ?? null,
           logMode: set.logMode ?? "load_reps",
           completed: true,
@@ -48,12 +59,31 @@ async function logDay(
   });
 }
 
+async function deleteUserByEmail(email: string) {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (!existing) return;
+  await prisma.workoutSession.deleteMany({ where: { userId: existing.id } });
+  await prisma.bodyMetric.deleteMany({ where: { userId: existing.id } });
+  await prisma.user.delete({ where: { id: existing.id } });
+}
+
+function recentScheduledDays(now: Date, count: number) {
+  const today = startOfZonedDay(now, TZ);
+  const days: Date[] = [];
+  let cursor = addZonedDays(today, -1, TZ);
+  for (let i = 0; i < 400 && days.length < count; i += 1) {
+    if (isScheduledTrainingDay(PREFS, cursor, TZ)) {
+      days.push(cursor);
+    }
+    cursor = addZonedDays(cursor, -1, TZ);
+  }
+  return days.reverse();
+}
+
 async function main() {
-  const existing = await prisma.user.findUnique({ where: { email: EMAIL } });
-  if (existing) {
-    await prisma.workoutSession.deleteMany({ where: { userId: existing.id } });
-    await prisma.bodyMetric.deleteMany({ where: { userId: existing.id } });
-    await prisma.user.delete({ where: { id: existing.id } });
+  await deleteUserByEmail(EMAIL);
+  for (const email of LOCAL_FAKE_BOARD) {
+    await deleteUserByEmail(email);
   }
 
   const user = await prisma.user.create({
@@ -64,7 +94,7 @@ async function main() {
         create: {
           displayName: "You",
           isAdultConfirmed: true,
-          preferredUnits: "kg",
+          preferredUnits: "lb",
           timeZone: TZ,
           leaderboardOptIn: true,
         },
@@ -81,7 +111,7 @@ async function main() {
     equipment: ["Dumbbells", "Barbell / rack", "Bike or assault bike"],
     weeklyAvailability: ["Monday", "Wednesday", "Friday"],
     sessionsPerWeek: 5,
-    preferredUnits: "kg",
+    preferredUnits: "lb",
     trainingLimitations: "",
     foodPreferences: "",
     allergies: "",
@@ -93,84 +123,65 @@ async function main() {
       displayName: "You",
       leaderboardOptIn: true,
       timeZone: TZ,
-      preferredUnits: "kg",
+      preferredUnits: "lb",
     },
   });
 
-  const now = new Date("2026-09-25T18:00:00.000Z");
-  const today = startOfZonedDay(now, TZ);
-
-  // 12 scheduled days ending today so the streak hero has a real number.
-  const completedOffsets = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15];
-  for (const offset of completedOffsets) {
-    const at = addZonedDays(today, -offset, TZ);
-    const load = 150 + Math.min(30, completedOffsets.length - completedOffsets.indexOf(offset)) * 2.5;
-    await logDay(user.id, at, [
+  const now = new Date();
+  const scheduled = recentScheduledDays(now, 12);
+  for (const at of scheduled) {
+    const index = scheduled.indexOf(at);
+    const load = 295 + index * 10;
+    const bikeRounds = index === scheduled.length - 1 ? 8 : 5;
+    const sets: Array<{
+      exerciseName: string;
+      reps?: number | null;
+      loadValue?: number | null;
+      loadUnit?: string;
+      durationSeconds?: number | null;
+      logMode?: string;
+    }> = [
       {
         exerciseName: "Trap bar deadlift",
         reps: 3,
         loadValue: load,
-        loadUnit: "kg",
+        loadUnit: "lb",
         logMode: "load_reps",
       },
-      {
+    ];
+    for (let i = 0; i < bikeRounds; i += 1) {
+      sets.push({
         exerciseName: "Assault bike 15/15",
         durationSeconds: 15,
         logMode: "timed_round",
-      },
-      {
-        exerciseName: "Front plank hold",
-        durationSeconds: offset === 0 ? 160 : 90,
-        logMode: "timed",
-      },
-    ]);
+      });
+    }
+    for (let i = 0; i < 21; i += 1) {
+      sets.push({
+        exerciseName: "Pad rounds",
+        durationSeconds: 180,
+        logMode: "timed_round",
+      });
+    }
+    sets.push({
+      exerciseName: "Front plank hold",
+      durationSeconds: index === scheduled.length - 1 ? 320 : 90,
+      logMode: "timed",
+    });
+    await logDay(user.id, at, sets);
   }
 
   await prisma.bodyMetric.create({
     data: {
       userId: user.id,
       kind: "weight",
-      value: 79.8,
-      unit: "kg",
+      value: 176,
+      unit: "lb",
       recordedAt: now,
     },
   });
 
-  const others = [
-    { email: "maya@example.com", name: "Maya J.", workouts: 9 },
-    { email: "dani@example.com", name: "Dani K.", workouts: 11 },
-    { email: "sam@example.com", name: "Sam L.", workouts: 8 },
-  ];
-  for (const other of others) {
-    const prior = await prisma.user.findUnique({ where: { email: other.email } });
-    if (prior) {
-      await prisma.workoutSession.deleteMany({ where: { userId: prior.id } });
-      await prisma.user.delete({ where: { id: prior.id } });
-    }
-    const row = await prisma.user.create({
-      data: {
-        email: other.email,
-        passwordHash: await hashPassword(PASSWORD),
-        profile: {
-          create: {
-            displayName: other.name,
-            isAdultConfirmed: true,
-            leaderboardOptIn: true,
-            claimsGymMembership: true,
-            gymMembershipVerified: true,
-            timeZone: TZ,
-          },
-        },
-      },
-    });
-    for (let i = 0; i < other.workouts; i += 1) {
-      await logDay(row.id, addZonedDays(today, -i, TZ), [
-        { exerciseName: "Goblet squat", reps: 8, loadValue: 24, loadUnit: "kg" },
-      ]);
-    }
-  }
-
-  console.log(`Seeded ${EMAIL} / ${PASSWORD}`);
+  console.log(`Seeded ${EMAIL} / ${PASSWORD} (lbs, no fake leaderboard)`);
 }
 
 main()

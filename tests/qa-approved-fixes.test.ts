@@ -81,6 +81,31 @@ describe("QA-approved access and surface fixes", () => {
     expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Settings/);
   });
 
+  it("does not seed fake leaderboard people into production", () => {
+    const production = read("prisma/seed.ts");
+    expect(production).not.toMatch(/Maya J\.|Dani K\.|leaderboardOptIn/);
+    const demo = read("scripts/seed-companion-demo.ts");
+    expect(demo).toContain("Local screenshot athlete only");
+    expect(demo).toContain("LOCAL_FAKE_BOARD");
+    expect(demo).not.toMatch(/displayName: other\.name/);
+    expect(demo).toMatch(/preferredUnits: "lb"/);
+  });
+
+  it("keeps lime or white text on inverted black companion blocks", () => {
+    const challenge = read("src/components/progress/ChallengeCard.tsx");
+    const podium = read("src/components/progress/LeaderboardPodium.tsx");
+    const records = read("src/components/progress/RecordsList.tsx");
+    const pr = read("src/components/progress/NewPrHero.tsx");
+    expect(challenge).toContain("text-highlighter");
+    expect(challenge).toContain("text-white");
+    expect(challenge).not.toMatch(/bg-black[\s\S]*text-accent/);
+    expect(podium).toContain("bg-black text-highlighter");
+    expect(podium).toContain("No one else has opted in this month");
+    expect(records).toContain("bg-black px-2 py-0.5 text-[10px] text-highlighter");
+    expect(pr).toContain("bg-black");
+    expect(pr).toContain("text-[#CBF805]");
+  });
+
   it("shows register progress after 6s and a timeout retry", () => {
     const form = read("src/components/auth/RegisterForm.tsx");
     expect(form).toContain("Still working, first sign-up can take a few seconds…");

@@ -89,9 +89,10 @@ export async function getCompanionProgress(userId: string, displayUnit: LoadUnit
     longestStreak: streak.longest,
     sets: datedSets,
     firstWorkoutAt: complete.at(-1)?.performedAt ?? complete[0]?.performedAt ?? null,
+    displayUnit,
   });
   const bests = bestsFromSets(datedSets, displayUnit);
-  const records = recordListFromBests(bests);
+  const records = recordListFromBests(bests, displayUnit);
   const latestMetrics = await getLatestBodyMetricsForUser(userId);
   const weight = latestMetrics.get("weight") ?? null;
 

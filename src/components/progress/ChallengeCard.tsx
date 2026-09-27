@@ -7,12 +7,12 @@ export function ChallengeCard({
 }) {
   const width = Math.round(challenge.ratio * 100);
   return (
-    <section className="overflow-hidden rounded-2xl bg-black px-4 py-5 text-white">
+    <section id="monthly-challenge" className="overflow-hidden rounded-2xl bg-black px-4 py-5 text-white">
       <div className="flex items-start justify-between gap-3">
-        <p className="font-display text-xs uppercase tracking-wide text-accent">
+        <p className="font-display text-xs uppercase tracking-wide text-highlighter">
           {challenge.title} challenge
         </p>
-        <p className="text-xs text-white/70">
+        <p className="text-xs text-white/80">
           {challenge.daysLeft} day{challenge.daysLeft === 1 ? "" : "s"} left
         </p>
       </div>
@@ -21,10 +21,10 @@ export function ChallengeCard({
         <div className="h-full rounded-full bg-accent" style={{ width: `${width}%` }} />
       </div>
       <div className="mt-3 flex items-end justify-between gap-3 text-sm">
-        <p className="font-display text-lg uppercase tracking-wide text-accent">
+        <p className="font-display text-lg uppercase tracking-wide text-highlighter">
           {challenge.workouts} / {challenge.goal} workouts
         </p>
-        <p className="text-xs text-white/70">Scheduled training days count</p>
+        <p className="text-xs text-white/80">Scheduled training days count</p>
       </div>
     </section>
   );

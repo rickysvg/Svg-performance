@@ -28,30 +28,28 @@ async function main() {
   ]);
   console.log("after login", page.url());
 
-  async function shot(url: string, file: string) {
+  async function shot(url: string, file: string, scrollSelector?: string) {
     await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-    console.log(file, page.url());
     await page.evaluate(() => window.scrollTo(0, 0));
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    if (scrollSelector) {
+      await page.evaluate((selector) => {
+        document.querySelector(selector)?.scrollIntoView({ block: "start" });
+      }, scrollSelector);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 700));
     const dest = path.join(ART, file);
     await page.screenshot({ path: dest, type: "png" });
     console.log("wrote", dest, "at", page.url());
   }
 
-  await shot(`${BASE}/progress`, "streaks_progress.png");
-  await shot(`${BASE}/progress/streaks`, "streaks_badges.png");
-  await page.evaluate(() => {
-    document.getElementById("leaderboard")?.scrollIntoView({ block: "start" });
-  });
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  await page.screenshot({ path: path.join(ART, "streaks_leaderboard.png"), type: "png" });
-  console.log("wrote leaderboard", page.url());
-
-  await shot(`${BASE}/progress/records`, "records_list.png");
-  await shot(`${BASE}/progress/records/trap-bar-deadlift`, "records_chart.png");
+  await shot(`${BASE}/progress`, "r2_progress.png");
+  await shot(`${BASE}/progress`, "r2_restday.png");
+  await shot(`${BASE}/progress/streaks`, "r2_challenge_board.png", "#monthly-challenge");
+  await shot(`${BASE}/progress/records`, "r2_records.png");
+  await shot(`${BASE}/progress/records/trap-bar-deadlift`, "r2_chart.png");
   await shot(
-    `${BASE}/progress/records?pr=${encodeURIComponent("180 kg × 3")}&prDetail=${encodeURIComponent("Trap bar deadlift · +7.5 kg on your last best · 25 Sep")}`,
-    "records_newpr.png",
+    `${BASE}/progress/records?pr=${encodeURIComponent("405 lb × 3")}&prDetail=${encodeURIComponent("Trap bar deadlift · +10 lb on your last best · 25 Sep")}`,
+    "r2_newpr.png",
   );
 
   await browser.close();

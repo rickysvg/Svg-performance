@@ -70,7 +70,7 @@ export default async function ExerciseRecordPage({
 
       <ExerciseChart
         exerciseName={exerciseName}
-        unit={units}
+        unit={units === "kg" ? "kg" : "lbs"}
         points={points}
         range={window.locked ? requested : window.range}
         slug={slug}

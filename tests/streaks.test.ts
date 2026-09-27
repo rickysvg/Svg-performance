@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { dayKey } from "@/lib/timezone";
 import {
+  buildTrainingStreak,
   currentTrainingStreak,
   longestTrainingStreak,
+  streakStatusLine,
   weekStreakDots,
 } from "@/lib/streaks";
 import type { PlannerPrefs } from "@/lib/week-plan";
@@ -64,5 +66,20 @@ describe("training streak (scheduled days)", () => {
     expect(dots[0]?.completed).toBe(true);
     expect(dots[5]?.scheduled).toBe(false);
     expect(dots[6]?.scheduled).toBe(false);
+  });
+
+  it("says the streak is safe on a scheduled rest day", () => {
+    const sunday = new Date("2026-09-27T18:00:00.000Z");
+    const friday = new Date("2026-09-25T18:00:00.000Z");
+    const tz = "America/Denver";
+    const streak = buildTrainingStreak({
+      completedDates: [friday],
+      prefs,
+      now: sunday,
+      timeZone: tz,
+    });
+    expect(streak.todayScheduled).toBe(false);
+    expect(streakStatusLine(streak)).toBe("Rest day. Streak safe.");
+    expect(streakStatusLine(streak).toLowerCase()).not.toContain("train today");
   });
 });
