@@ -133,7 +133,7 @@ describe("badge unlock queue and seen store", () => {
     expect(read("src/app/(member)/progress/page.tsx")).toContain("h-11");
     expect(read("src/lib/badge-sfx.ts")).toContain("playFinishSfx");
     expect(read("src/lib/badge-sfx.ts")).toContain("playUnlockSfx");
-    expect(read("src/lib/badge-sfx.ts")).toContain('ACTIVE_UNLOCK_SFX: UnlockSfxName = "metal"');
+    expect(read("src/lib/badge-sfx.ts")).toContain('ACTIVE_UNLOCK_SFX: UnlockSfxName = "studio1_boom"');
     expect(read("src/lib/badge-sfx.ts")).toContain("metal:");
     expect(read("src/lib/badge-sfx.ts")).toContain("fightnight:");
     expect(read("src/lib/badge-sfx.ts")).toContain("studio1_boom:");

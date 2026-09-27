@@ -34,8 +34,8 @@ export const UNLOCK_SFX = {
 
 export type UnlockSfxName = keyof typeof UNLOCK_SFX;
 
-/** Last pick was metal. Studio logo options are ready to swap in by name. */
-export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "metal";
+/** Ricky picked studio1_boom — drives unlock and the short win sting. */
+export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "studio1_boom";
 
 let audioCtx: AudioContext | null = null;
 const buffers = new Map<string, AudioBuffer>();
