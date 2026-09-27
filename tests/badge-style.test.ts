@@ -69,9 +69,10 @@ describe("badge styles and progress", () => {
     const grid = read("src/components/progress/BadgesGrid.tsx");
     expect(grid).not.toContain('"lock"');
     expect(read("src/components/progress/BadgeMark.tsx")).not.toContain("padlock");
-    expect(grid).toContain("Lifting");
-    expect(grid).toContain("Martial Arts");
-    expect(grid).toContain("Grind");
+    expect(grid).toContain("group.label");
+    expect(read("src/lib/badges.ts")).toContain('lifting: "Lifting"');
+    expect(read("src/lib/badges.ts")).toContain('martial: "Martial Arts"');
+    expect(read("src/lib/badges.ts")).toContain('grind: "Grind"');
     expect(read("src/app/globals.css")).toContain("badge-pop");
     expect(read("src/app/globals.css")).toContain("prefers-reduced-motion");
   });
