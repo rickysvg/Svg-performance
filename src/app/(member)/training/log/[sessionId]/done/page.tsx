@@ -15,7 +15,7 @@ export default async function WorkoutDonePage({
   if (!view) notFound();
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <Link
           href={`/training/log/${sessionId}`}
@@ -28,7 +28,7 @@ export default async function WorkoutDonePage({
         <span className="w-8" aria-hidden />
       </div>
 
-      <p className="rounded-full bg-accent px-4 py-3 text-center text-sm text-black">
+      <p className="rounded-full bg-accent px-4 py-2 text-center text-sm text-black">
         Session saved · nice work
       </p>
 

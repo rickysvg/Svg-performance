@@ -64,14 +64,14 @@ export function WorkoutDoneCard({
   const ink = workTheme ? "text-white" : "text-black";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <article
-        className={`overflow-hidden rounded-[2rem] ${
+        className={`mx-auto w-full max-w-[15rem] overflow-hidden rounded-[1.75rem] ${
           style === "lime" ? "bg-accent text-black" : "bg-black text-white"
         }`}
       >
         <div
-          className="relative aspect-[9/16] px-6 py-8"
+          className="relative aspect-[9/16] px-3 py-5"
           style={
             style === "photo"
               ? {
@@ -92,13 +92,13 @@ export function WorkoutDoneCard({
           </div>
           <p
             className={`font-display mt-5 text-center text-xs uppercase tracking-[0.14em] ${
-              style === "lime" ? "text-black" : "text-accent"
+              style === "lime" ? "text-black" : "text-highlighter"
             }`}
           >
             Workout complete
           </p>
           <h2 className={`mt-2 text-center text-3xl leading-tight ${ink}`}>{title}</h2>
-          <dl className="mt-8 grid grid-cols-2 gap-3">
+          <dl className="mt-5 grid grid-cols-2 gap-2">
             {stats.map((stat) => (
               <div key={stat.key} className="rounded-2xl bg-black/20 px-3 py-4 text-center">
                 <dt className="font-display text-[11px] uppercase tracking-[0.1em] opacity-70">
@@ -108,7 +108,7 @@ export function WorkoutDoneCard({
               </div>
             ))}
           </dl>
-          <p className="font-display mt-8 text-center text-xs uppercase tracking-[0.12em]">
+          <p className="font-display mt-5 text-center text-xs uppercase tracking-[0.12em]">
             SVG Performance
           </p>
           <p className="mt-2 text-center text-xs opacity-70">{SHARE_CARD_APP_LINK}</p>

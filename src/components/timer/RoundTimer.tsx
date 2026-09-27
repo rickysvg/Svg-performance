@@ -210,7 +210,7 @@ export function RoundTimer() {
     startedAtMs == null || resolved.phase === "done" ? "Start" : pausedAtMs ? "Start" : "Pause";
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-4 pb-4">
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/training"
@@ -290,8 +290,8 @@ export function RoundTimer() {
       ) : null}
 
       <section
-        className={`rounded-[2rem] px-5 py-8 text-center ${
-          workTheme ? "bg-accent text-black" : "bg-black text-accent"
+        className={`rounded-[2rem] px-5 py-6 text-center ${
+          workTheme ? "bg-accent text-black" : "bg-black text-highlighter"
         }`}
       >
         <p className="font-display text-xs uppercase tracking-[0.12em]">
@@ -300,18 +300,26 @@ export function RoundTimer() {
         <p className="font-display mt-3 text-3xl uppercase tracking-[0.08em]">
           {resolved.phase === "rest" ? "Rest" : resolved.phase === "done" ? "Done" : "Work"}
         </p>
-        <p className="stat-display mt-2 text-[7rem] leading-none">
+        <p className="stat-display mt-1 text-[6.25rem] leading-none">
           {formatTimerClock(resolved.remainingSeconds)}
         </p>
-        <div className="mx-auto mt-6 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-black/15">
+        <div
+          className={`mx-auto mt-6 h-1.5 w-full max-w-xs overflow-hidden rounded-full ${
+            workTheme ? "bg-black/15" : "bg-white/20"
+          }`}
+        >
           <div
             className={`h-full ${workTheme ? "bg-black" : "bg-accent"}`}
             style={{ width: `${Math.round(resolved.phaseProgress * 100)}%` }}
           />
         </div>
-        <div className="mx-auto mt-2 h-1 w-full max-w-xs overflow-hidden rounded-full bg-black/10">
+        <div
+          className={`mx-auto mt-2 h-1 w-full max-w-xs overflow-hidden rounded-full ${
+            workTheme ? "bg-black/10" : "bg-white/10"
+          }`}
+        >
           <div
-            className={`h-full ${workTheme ? "bg-black/50" : "bg-accent/70"}`}
+            className={`h-full ${workTheme ? "bg-black/50" : "bg-accent/80"}`}
             style={{ width: `${Math.round(resolved.sessionProgress * 100)}%` }}
           />
         </div>
