@@ -77,20 +77,22 @@ export default async function ProgressPage() {
         </p>
       </div>
 
-      <nav className="flex gap-2" aria-label="Progress sections">
+      <nav className="flex items-center gap-2" aria-label="Progress sections">
         <Link
           href="/progress/records"
-          className="touch-target rounded-full border border-line px-3 text-sm"
+          className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
         >
           Records
         </Link>
         <Link
           href="/progress/streaks"
-          className="touch-target rounded-full border border-line px-3 text-sm"
+          className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
         >
           Streaks
         </Link>
-        <span className="touch-target rounded-full bg-black px-3 text-sm text-highlighter">Badges</span>
+        <span className="progress-tab inline-flex h-11 items-center rounded-full bg-black px-3 text-sm text-highlighter">
+          Badges
+        </span>
       </nav>
 
       <BadgesGrid

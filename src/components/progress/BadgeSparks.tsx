@@ -15,5 +15,5 @@ export function BadgeSparks({
     if (active) void preloadFxSheets();
   }, [active]);
 
-  return <CelebrationFx active={active} delayMs={delayMs} drift size={900} />;
+  return <CelebrationFx active={active} delayMs={delayMs} size={720} />;
 }

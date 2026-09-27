@@ -42,6 +42,17 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+function featherEdges(ctx: CanvasRenderingContext2D, css: number) {
+  const fade = ctx.createRadialGradient(css / 2, css / 2, css * 0.28, css / 2, css / 2, css * 0.5);
+  fade.addColorStop(0, "rgba(0,0,0,1)");
+  fade.addColorStop(0.62, "rgba(0,0,0,0.85)");
+  fade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 0, css, css);
+  ctx.globalCompositeOperation = "source-over";
+}
+
 export function SpriteFx({
   name,
   active,
@@ -95,6 +106,7 @@ export function SpriteFx({
         css,
         css,
       );
+      featherEdges(ctx, css);
     };
 
     const tick = (now: number) => {
@@ -128,7 +140,7 @@ export function SpriteFx({
   return (
     <canvas
       ref={canvasRef}
-      className={`pointer-events-none fx-sprite ${className}`}
+      className={`pointer-events-none fx-sprite fx-feather ${className}`}
       data-fx={name}
       width={css}
       height={css}
@@ -137,11 +149,152 @@ export function SpriteFx({
   );
 }
 
+type Ember = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  max: number;
+  size: number;
+  flicker: number;
+};
+
+function emberFill(life: number) {
+  if (life > 0.72) return { core: "#ffffff", bloom: "rgba(255, 246, 200, 0.95)", rim: "rgba(255, 214, 80, 0.55)" };
+  if (life > 0.4) return { core: "#fff4b0", bloom: "rgba(255, 214, 80, 0.7)", rim: "rgba(203, 248, 5, 0.45)" };
+  return { core: "#CBF805", bloom: "rgba(203, 248, 5, 0.4)", rim: "rgba(203, 248, 5, 0.12)" };
+}
+
+/** Soft hot-core motes — no long stroke bars. */
+export function EmberMotes({
+  active,
+  delayMs = 700,
+  durationMs = 1400,
+}: {
+  active: boolean;
+  delayMs?: number;
+  durationMs?: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !active || prefersReducedMotion()) return;
+    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+    if (!ctx) return;
+    const motes: Ember[] = [];
+    let raf = 0;
+    let running = true;
+    let started = 0;
+    let last = 0;
+
+    const resize = () => {
+      const css = Math.min(canvas.clientWidth || 420, FX_MAX_PX);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(css * dpr);
+      canvas.height = Math.floor(css * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const spawn = (count: number) => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const cx = w / 2;
+      const cy = h / 2;
+      for (let i = 0; i < count; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.1 + Math.random() * 4.2;
+        motes.push({
+          x: cx + (Math.random() - 0.5) * 18,
+          y: cy + (Math.random() - 0.5) * 18,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.72 - 1.1 - Math.random() * 2.4,
+          life: 1,
+          max: 380 + Math.random() * 720,
+          size: 1.4 + Math.random() * 3.6,
+          flicker: 0.7 + Math.random() * 0.6,
+        });
+      }
+    };
+
+    const tick = (now: number) => {
+      if (!running) return;
+      if (!started) {
+        started = now;
+        last = now;
+      }
+      const dt = Math.min(24, now - last);
+      last = now;
+      const elapsed = now - started;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = "lighter";
+      const after = elapsed - delayMs;
+      if (after >= 0 && after < 220) spawn(after < 80 ? 14 : 7);
+      else if (after >= 220 && after < durationMs && Math.random() < 0.35) spawn(2);
+      for (let i = motes.length - 1; i >= 0; i -= 1) {
+        const mote = motes[i]!;
+        mote.vy += 0.16 * (dt / 16);
+        mote.vx *= 0.986;
+        mote.x += mote.vx * (dt / 16);
+        mote.y += mote.vy * (dt / 16);
+        mote.life -= dt / mote.max;
+        if (mote.life <= 0) {
+          motes.splice(i, 1);
+          continue;
+        }
+        const pulse = 0.72 + 0.28 * Math.sin((now / 40) * mote.flicker);
+        const alpha = Math.max(0, mote.life) * pulse;
+        const color = emberFill(mote.life);
+        const r = mote.size * (0.7 + mote.life * 0.6);
+        const glow = ctx.createRadialGradient(mote.x, mote.y, 0, mote.x, mote.y, r * 4.2);
+        glow.addColorStop(0, color.core);
+        glow.addColorStop(0.18, color.bloom);
+        glow.addColorStop(0.55, color.rim);
+        glow.addColorStop(1, "rgba(203, 248, 5, 0)");
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(mote.x, mote.y, r * 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color.core;
+        ctx.beginPath();
+        ctx.arc(mote.x, mote.y, Math.max(0.6, r * 0.35), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      if (elapsed < delayMs + durationMs + 500 || motes.length > 0) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    resize();
+    raf = requestAnimationFrame(tick);
+    return () => {
+      running = false;
+      cancelAnimationFrame(raf);
+    };
+  }, [active, delayMs, durationMs]);
+
+  if (!active) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none fx-sprite fx-feather fx-sprite-center h-[420px] w-[420px]"
+      data-fx="ember-motes"
+      aria-hidden
+    />
+  );
+}
+
 export function CelebrationFx({
   active,
   delayMs = 700,
-  drift = false,
-  size = FX_MAX_PX,
+  size = 720,
 }: {
   active: boolean;
   delayMs?: number;
@@ -150,20 +303,10 @@ export function CelebrationFx({
 }) {
   if (!active) return null;
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" data-fx-layer="1" aria-hidden>
-      {drift ? (
-        <SpriteFx name="ember_drift" active delayMs={0} size={size} className="fx-sprite-center" />
-      ) : null}
-      <SpriteFx name="star_flash" active delayMs={delayMs} size={Math.round(size * 0.72)} className="fx-sprite-center" />
-      <SpriteFx
-        name="ring_comet"
-        active
-        delayMs={delayMs}
-        size={size}
-        holdLast
-        className="fx-sprite-center"
-      />
+    <div className="pointer-events-none absolute inset-0 overflow-hidden fx-feather-layer" data-fx-layer="1" aria-hidden>
+      <SpriteFx name="star_flash" active delayMs={delayMs} size={Math.round(size * 0.62)} className="fx-sprite-center" />
       <SpriteFx name="ember_burst" active delayMs={delayMs} size={size} className="fx-sprite-center" />
+      <EmberMotes active delayMs={delayMs} />
     </div>
   );
 }

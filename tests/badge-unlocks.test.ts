@@ -123,8 +123,14 @@ describe("badge unlock queue and seen store", () => {
     expect(overlay).not.toContain("badge-unlock-ring");
     expect(sparks).toContain("CelebrationFx");
     expect(sparks).toContain("delayMs = 700");
-    expect(read("src/components/progress/SpriteFx.tsx")).toContain("ember_drift");
-    expect(read("src/components/progress/SpriteFx.tsx")).toContain("ring_comet");
+    expect(read("src/components/progress/SpriteFx.tsx")).toContain("ember_burst");
+    expect(read("src/components/progress/SpriteFx.tsx")).toContain("star_flash");
+    expect(read("src/components/progress/SpriteFx.tsx")).toContain("EmberMotes");
+    expect(read("src/components/progress/SpriteFx.tsx")).toContain("destination-in");
+    expect(read("src/components/progress/SpriteFx.tsx")).not.toContain("ember_drift");
+    expect(read("src/app/globals.css")).toContain("fx-feather");
+    expect(read("src/app/(member)/progress/page.tsx")).toContain("progress-tab");
+    expect(read("src/app/(member)/progress/page.tsx")).toContain("h-11");
     expect(read("src/lib/badge-sfx.ts")).toContain("playFinishSfx");
     expect(read("src/lib/workout-complete.ts")).toContain("YOU PUT IN THE WORK.");
     expect(read("src/components/training/WorkoutWinScreen.tsx")).toContain("playFinishSfx");
@@ -136,6 +142,7 @@ describe("badge unlock queue and seen store", () => {
     expect(css).toContain("rotateX");
     expect(css).toContain("badge-unlock-backdrop");
     expect(css).toContain("isolation: isolate");
+    expect(css).toContain("plus-lighter");
     expect(css).toContain("mix-blend-mode: screen");
     expect(css).not.toContain("badge-unlock-rays");
     expect(css).toContain("prefers-reduced-motion");

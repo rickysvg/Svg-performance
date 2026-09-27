@@ -84,6 +84,12 @@ textarea:focus-visible {
   min-width: 44px;
 }
 
+.progress-tab {
+  box-sizing: border-box;
+  height: 2.75rem;
+  min-height: 2.75rem;
+}
+
 /*
   Neon lime is the highlighter fill. Small text that uses text-accent must stay
   readable on white, so ink it nearly black. Buttons keep bg-accent + text-black.
@@ -439,7 +445,13 @@ body:has(.app-splash.is-visible) {
 }
 
 .fx-sprite {
-  mix-blend-mode: screen;
+  mix-blend-mode: plus-lighter;
+}
+
+@supports not (mix-blend-mode: plus-lighter) {
+  .fx-sprite {
+    mix-blend-mode: screen;
+  }
 }
 
 .fx-sprite-center {
@@ -447,6 +459,12 @@ body:has(.app-splash.is-visible) {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+}
+
+.fx-feather,
+.fx-feather-layer {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 38%, transparent 70%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 38%, transparent 70%);
 }
 
 .workout-win-backdrop {
