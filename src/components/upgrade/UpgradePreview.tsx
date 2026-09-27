@@ -21,6 +21,10 @@ const BLURBS: Record<string, { title: string; body: string }> = {
     title: "The full mobility plan is in Performance",
     body: "Two routines and the daily warm-up stay free. The other routines, the 6-week progression, and check-in history open on Performance. Paid plans coming soon.",
   },
+  history: {
+    title: "Longer history is a paid feature",
+    body: "The free plan shows the last 12 weeks. One year and all-time charts are on Performance. Paid plans coming soon — no checkout on this preview.",
+  },
 };
 
 export function UpgradePreview({

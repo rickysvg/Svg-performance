@@ -8,17 +8,42 @@ import { isDeloadWeek } from "@/lib/training-cycle";
 import {
   deleteWorkoutSessionForUser,
   rateWorkoutSessionForUser,
+  startRoundWorkoutForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
   type WorkoutSetInput,
 } from "@/lib/workouts";
+import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { createWorkoutHrForUser } from "@/lib/heart";
+import {
+  detectNewPrsForSession,
+  detectUnseenBadgeUnlocksForSession,
+  unlockQueryForBadges,
+} from "@/lib/progress-companion";
 
-export type WorkoutActionState = { error?: string; success?: string };
+export type WorkoutActionState = { error?: string; success?: string; newPr?: string };
+
+export async function startRoundLogAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const profile = await getProfileForUser(user.id);
+  const units: LoadUnit = profile?.preferredUnits ?? "lb";
+  const modeRaw = String(formData.get("mode") ?? "bag");
+  const mode: TimerMode = TIMER_MODES.includes(modeRaw as TimerMode)
+    ? (modeRaw as TimerMode)
+    : "bag";
+  const session = await startRoundWorkoutForUser({
+    userId: user.id,
+    mode,
+    rounds: Number(formData.get("rounds") ?? 3),
+    workSeconds: Number(formData.get("workSeconds") ?? 180),
+    preferredUnits: units,
+  });
+  redirect(`/training/log/${session.id}`);
+}
 
 export async function startSessionAction(formData: FormData) {
   const user = await requireUserOrThrow();
@@ -82,6 +107,10 @@ export async function saveWorkoutAction(
       status: intent === "draft" ? "draft" : "complete",
       sets: parseSets(formData),
     });
+    const profile = await getProfileForUser(user.id);
+    const units: LoadUnit = profile?.preferredUnits ?? "lb";
+    const newPrs =
+      intent === "complete" ? await detectNewPrsForSession(user.id, workoutId, units) : [];
     const avgRaw = String(formData.get("hrAvgBpm") ?? "").trim();
     const maxRaw = String(formData.get("hrMaxBpm") ?? "").trim();
     if (intent === "complete" && avgRaw && maxRaw) {
@@ -98,12 +127,21 @@ export async function saveWorkoutAction(
     revalidatePath("/training");
     revalidatePath("/training/history");
     revalidatePath("/progress");
+    revalidatePath("/progress/records");
+    revalidatePath("/progress/streaks");
     revalidatePath("/heart");
     revalidatePath(`/training/log/${workoutId}`);
     revalidatePath(`/training/log/${workoutId}/done`);
     if (intent === "complete") {
-      const celebrate = alreadyActive ? "workout" : "streak";
-      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}`;
+      const celebrate = newPrs[0] ? "pr" : alreadyActive ? "workout" : "streak";
+      const prQuery = newPrs[0]
+        ? `&pr=${encodeURIComponent(newPrs[0].headline)}&prDetail=${encodeURIComponent(newPrs[0].detail)}`
+        : "";
+      const unlocked = await detectUnseenBadgeUnlocksForSession(user.id, workoutId, units);
+      const unlockQuery = unlocked.length
+        ? `&unlock=${encodeURIComponent(unlockQueryForBadges(unlocked))}`
+        : "";
+      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}${prQuery}${unlockQuery}`;
     } else {
       return { success: "Draft saved. You can finish it later." };
     }

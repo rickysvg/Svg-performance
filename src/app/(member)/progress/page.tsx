@@ -17,6 +17,10 @@ import { getProgressHeartTiles } from "@/lib/heart";
 import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
+import { StreakHero } from "@/components/progress/StreakHero";
+import { BadgesGrid } from "@/components/progress/BadgesGrid";
+import { RecordsList } from "@/components/progress/RecordsList";
 
 function MetricTile({
   title,
@@ -52,6 +56,8 @@ export default async function ProgressPage() {
     ]);
   const units = profile?.preferredUnits ?? "lb";
   const records = await getPersonalRecordsForUser(user.id, units);
+  const companion = await getCompanionProgress(user.id, units);
+  const badgeCounts = summarizeBadges(companion.badges);
   const summary = buildProgressSummary(sessions, units);
   const lastComplete = sessions.find((session) => session.status === "complete");
   const weight = latestMetrics.get("weight");
@@ -64,30 +70,72 @@ export default async function ProgressPage() {
 
   return (
     <main className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl">My Progress</h1>
-          <p className="mt-1 text-sm text-muted">
-            Body numbers you type, Apple Health / watch workout imports, or Polar when
-            it is connected. Apple Watch is not connected on the web.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Link
-            href="/heart"
-            className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
-          >
-            Heart rate
-          </Link>
-          <Link
-            href="/profile"
-            className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
-            aria-label="Progress settings (profile)"
-          >
-            Settings
-          </Link>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-3xl uppercase tracking-wide">Progress</h1>
+        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter">
+          {badgeCounts.earned}/{badgeCounts.total} earned
+        </p>
       </div>
+
+      <nav className="flex gap-2" aria-label="Progress sections">
+        <Link
+          href="/progress/records"
+          className="touch-target rounded-full border border-line px-3 text-sm"
+        >
+          Records
+        </Link>
+        <Link
+          href="/progress/streaks"
+          className="touch-target rounded-full border border-line px-3 text-sm"
+        >
+          Streaks
+        </Link>
+        <span className="touch-target rounded-full bg-black px-3 text-sm text-highlighter">Badges</span>
+      </nav>
+
+      <BadgesGrid
+        badges={companion.badges}
+        earned={badgeCounts.earned}
+        total={badgeCounts.total}
+        unit={units}
+        showHeading={false}
+      />
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/heart"
+          className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
+        >
+          Heart rate
+        </Link>
+        <Link
+          href="/profile"
+          className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
+          aria-label="Progress settings (profile)"
+        >
+          Settings
+        </Link>
+      </div>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="text-lg">Streaks</h2>
+          <Link href="/progress/streaks" className="text-sm text-accent underline">
+            Badges and board
+          </Link>
+        </div>
+        <StreakHero streak={companion.streak} />
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="text-lg">Personal records</h2>
+          <Link href="/progress/records" className="text-sm text-accent underline">
+            Charts
+          </Link>
+        </div>
+        <RecordsList records={companion.records.slice(0, 4)} />
+      </section>
 
       <section className="grid grid-cols-2 gap-3">
         <MetricTile

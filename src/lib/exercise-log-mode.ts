@@ -9,7 +9,7 @@ const HOLD_NAME =
 const CARDIO_TIMED_NAME =
   /\b(jump rope|easy bike|interval|burpee|mountain climber|jumping jack|shadowbox|shadow box|high knee|butt kick|mobility|stretch|yoga|jumping|sled|front-rack march|front rack march|banded kettlebell swing)\b/i;
 const ROUND_NAME =
-  /\b(bag|pads|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
+  /\b(bag|pads|sparring|grappling|rolling|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
 const BODYWEIGHT_COUNT_NAME =
   /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|pike|band pull-apart|face pull|\bdip\b)\b/i;
 const LOADED_CARRY_NAME =
@@ -22,7 +22,7 @@ export function isLogMode(value: string | null | undefined): value is LogMode {
   return LOG_MODES.includes(value as LogMode);
 }
 
-function isHoldName(name: string) {
+export function isHoldName(name: string) {
   return HOLD_NAME.test(name);
 }
 

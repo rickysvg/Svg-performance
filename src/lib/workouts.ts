@@ -181,6 +181,46 @@ export async function getWorkoutSessionForUser(
   return assertOwnSession(session, userId);
 }
 
+const ROUND_LOG_NAMES = {
+  bag: "Heavy bag rounds",
+  pads: "Pad rounds",
+  sparring: "Sparring rounds",
+  grappling: "Grappling rounds",
+} as const;
+
+export async function startRoundWorkoutForUser(input: {
+  userId: string;
+  mode: keyof typeof ROUND_LOG_NAMES;
+  rounds: number;
+  workSeconds: number;
+  preferredUnits: LoadUnit;
+}) {
+  const name = ROUND_LOG_NAMES[input.mode];
+  const count = Math.min(20, Math.max(1, Math.round(input.rounds)));
+  const duration = Math.min(3600, Math.max(5, Math.round(input.workSeconds)));
+  const sets = Array.from({ length: count }, (_, index) => ({
+    exerciseName: name,
+    setNumber: index + 1,
+    sortOrder: index,
+    reps: null,
+    loadValue: null,
+    loadUnit: input.preferredUnits,
+    logMode: "timed_round" as const,
+    durationSeconds: duration,
+    completed: true,
+  }));
+  return prisma.workoutSession.create({
+    data: {
+      userId: input.userId,
+      title: name,
+      performedAt: new Date(),
+      status: "draft",
+      sets: { create: sets },
+    },
+    include: { sets: true },
+  });
+}
+
 export async function startWorkoutFromDay(input: {
   userId: string;
   programDayId: string;

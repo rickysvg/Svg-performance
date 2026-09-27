@@ -11,6 +11,8 @@ import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/r
 import { EmptyState } from "@/components/EmptyState";
 import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
 import { getTrialState } from "@/lib/trial";
+import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
+import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -19,7 +21,6 @@ export default async function ProfilePage() {
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
   ]);
-
   if (!profile) {
     return (
       <EmptyState title="Profile missing">
@@ -42,6 +43,8 @@ export default async function ProfilePage() {
         ) : null}
       </div>
 
+      <SoundEffectsToggle />
+      <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
       <ProfileForm profile={profile} />
       <ReminderPrefsForm
         prefs={prefs}
