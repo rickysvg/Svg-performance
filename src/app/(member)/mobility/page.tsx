@@ -22,6 +22,14 @@ export default async function MobilityPage() {
         </p>
       </div>
 
+      <Link href="/mobility/drills" className="block rounded-[1.5rem] bg-black px-4 py-4 text-white">
+        <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Drill ideas</p>
+        <h2 className="mt-1 text-2xl text-white">Hips, kicks, and add-ons</h2>
+        <p className="mt-1 text-sm text-white/70">
+          Seated hip work, high kicks to a mark, and short power add-ons. Cues are ours. Each card links to the creator’s post.
+        </p>
+      </Link>
+
       <ul className="space-y-3">
         {LISTED_ROUTINES.map((routine) => {
           const locked = routine.access === "pro" && !pro;

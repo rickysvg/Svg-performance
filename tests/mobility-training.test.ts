@@ -99,6 +99,9 @@ describe("bike zones, plyo emphasis, and mobility gating", () => {
     const grappler = plyoBlockFor("grappler").map((row) => row.name);
     expect(striker[0]).toMatch(/land/i);
     expect(grappler[0]).toMatch(/land/i);
+    expect(striker[1]).toMatch(/pogo/i);
+    expect(grappler[1]).toMatch(/pogo/i);
+    expect(striker.join(" ")).toMatch(/Lunge to a high knee/);
     expect(striker.join(" ")).toMatch(/Jump squats/);
     expect(grappler.join(" ")).toMatch(/Farmer carry/);
     expect(striker).not.toEqual(grappler);

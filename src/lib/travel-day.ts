@@ -11,6 +11,11 @@ export type TravelBlock = {
 
 export const TRAVEL_KB: TravelBlock[] = [
   {
+    name: "Half-kneeling turn",
+    prescription: "2 sets × 6 each side",
+    cues: "Half kneel with a light bell at the chest, or empty hands. Turn the ribs and keep the hips pointed forward. Idea seen in a post by @maximilianmoves.",
+  },
+  {
     name: "Kettlebell swings",
     prescription: "10 sets × 10",
     cues: "Crisp hip snap, full lockout, then shake out. Shadowbox easy between sets so you are not smoked for later training.",
@@ -43,9 +48,24 @@ export const TRAVEL_CIRCUIT: TravelBlock[] = [
     prescription: "3 rounds × 20 s",
     cues: "Hands under shoulders. Stop if the low back sags.",
   },
+  {
+    name: "Bear-hug carry",
+    prescription: "3 walks × 20 s",
+    cues: "Hug a backpack at the chest and walk tall. If you lean back, lighten the bag. Idea seen in a post by @fit.ferris.",
+  },
 ];
 
 export const TRAVEL_CREDITS = [
+  {
+    coach: "@maximilianmoves",
+    url: "https://www.instagram.com/p/DQm7NdGDi1X/",
+    idea: "a half-kneeling turn with a kettlebell",
+  },
+  {
+    coach: "@fit.ferris",
+    url: "https://www.instagram.com/p/DZRCVVUCm5O/",
+    idea: "a bear-hug carry you can do with a backpack",
+  },
   {
     coach: "Pavel Macek / StrongFirst",
     url: "https://www.strongfirst.com/preparing-a-mma-fighter/",

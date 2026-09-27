@@ -200,7 +200,11 @@ export default async function TrainingPage() {
         <Link href="/mobility" className="font-semibold text-accent">
           Mobility
         </Link>
-        <span className="text-muted"> — hips, splits, neck, and the cooldown.</span>
+        <span className="text-muted"> — hips, splits, neck, and the cooldown. </span>
+        <Link href="/mobility/drills" className="font-semibold text-accent">
+          Hip and kick drill ideas
+        </Link>
+        <span className="text-muted"> sit with the plyo add-ons.</span>
       </p>
 
       <section className="rounded-2xl border border-line bg-card p-5">

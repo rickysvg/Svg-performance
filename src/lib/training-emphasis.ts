@@ -4,6 +4,8 @@
  * grapplers toward max strength and longer efforts. SVG chooses the accessories.
  */
 
+import { pogoPlyoDrill, strikerPlyoAddOn } from "@/lib/ig-drills";
+
 export const EMPHASIS_OPTIONS = ["balanced", "striker", "grappler"] as const;
 export type TrainingEmphasis = (typeof EMPHASIS_OPTIONS)[number];
 
@@ -40,6 +42,7 @@ export function plyoBlockFor(emphasis: TrainingEmphasis | string | null | undefi
   if (mode === "striker") {
     return [
       LANDING,
+      pogoPlyoDrill(),
       {
         name: "Broad jumps",
         prescription: "3 sets × 3",
@@ -55,6 +58,7 @@ export function plyoBlockFor(emphasis: TrainingEmphasis | string | null | undefi
         prescription: "3 sets × 4",
         cues: "Leave the ground only as high as you can land quietly.",
       },
+      strikerPlyoAddOn(),
       {
         name: "Med-ball rotational throws",
         prescription: "3 sets × 4 / side",
@@ -65,6 +69,7 @@ export function plyoBlockFor(emphasis: TrainingEmphasis | string | null | undefi
   if (mode === "grappler") {
     return [
       LANDING,
+      pogoPlyoDrill(),
       {
         name: "Broad jumps",
         prescription: "3 sets × 3",
@@ -89,6 +94,7 @@ export function plyoBlockFor(emphasis: TrainingEmphasis | string | null | undefi
   }
   return [
     LANDING,
+    pogoPlyoDrill(),
     {
       name: "Broad jumps",
       prescription: "3 sets × 3",
@@ -115,10 +121,10 @@ export function plyoBlockFor(emphasis: TrainingEmphasis | string | null | undefi
 export function accessoryNote(emphasis: TrainingEmphasis | string | null | undefined) {
   const mode = isTrainingEmphasis(emphasis) ? emphasis : "balanced";
   if (mode === "striker") {
-    return "Striker emphasis: the plyo block favors fast jumps and band shots. The Daru lifts stay on the plan.";
+    return "Striker emphasis: quiet pogo hops and a lunge-to-high-knee sit in the plyo block. Step-off-the-line work is on the drill list. The Daru lifts stay on the plan.";
   }
   if (mode === "grappler") {
-    return "Grappler emphasis: accessories lean toward a paused squat, longer carries, and the Friday neck isometrics. The Daru lifts stay on the plan.";
+    return "Grappler emphasis: quiet pogo hops, a paused squat, longer carries, a wall get-up, and the Friday neck isometrics. The Daru lifts stay on the plan.";
   }
   return "Balanced emphasis: a short power block, then the regular lifts.";
 }
