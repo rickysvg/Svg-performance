@@ -33,32 +33,30 @@ export function BadgeUnlockOverlay() {
   const pathname = usePathname();
   const unlockParam = params.get("unlock");
   const ids = useMemo(() => parseUnlockQuery(unlockParam), [unlockParam]);
+  const queueKey = ids.join(",");
   const preview = params.get("unlockPreview") === "1";
   const style = resolveBadgeStyle(params.get("badgeStyle"));
   const [queue, setQueue] = useState<UnlockBadgePayload[]>([]);
+  const [loadedKey, setLoadedKey] = useState("");
   const [index, setIndex] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [tip, setTip] = useState("");
-  const [sparks, setSparks] = useState(false);
   const reduce = prefersReducedMotion();
-  const current = queue[index] ?? null;
+  const current = queueKey && loadedKey === queueKey ? (queue[index] ?? null) : null;
 
   useEffect(() => {
-    if (ids.length === 0) {
-      setQueue([]);
-      setIndex(0);
-      return;
-    }
+    if (!queueKey) return;
     let alive = true;
     void loadUnlockBadgesAction(ids).then((rows) => {
       if (!alive) return;
       setQueue(rows);
       setIndex(0);
+      setLoadedKey(queueKey);
     });
     return () => {
       alive = false;
     };
-  }, [ids]);
+  }, [ids, queueKey]);
 
   useEffect(() => {
     if (!current) return;
@@ -68,10 +66,7 @@ export function BadgeUnlockOverlay() {
     if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
       navigator.vibrate([18, 32, 22]);
     }
-    setSparks(!reduce);
-    const stop = window.setTimeout(() => setSparks(false), 2400);
-    return () => window.clearTimeout(stop);
-  }, [current?.id, preview, reduce]);
+  }, [current, preview, reduce]);
 
   function clearUnlockParams() {
     const next = new URLSearchParams(params.toString());
@@ -88,7 +83,6 @@ export function BadgeUnlockOverlay() {
       return;
     }
     clearUnlockParams();
-    setQueue([]);
   }
 
   async function onShare() {
@@ -125,7 +119,7 @@ export function BadgeUnlockOverlay() {
       data-badge-style={style}
       data-badge-id={current.id}
     >
-      <BadgeSparks active={sparks} />
+      <BadgeSparks key={current.id} active={!reduce} />
       <div className="relative w-full max-w-sm text-center text-white">
         <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
           <div className="badge-unlock-shine-wrap mx-auto">
