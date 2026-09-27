@@ -9,6 +9,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { neonDirectUrl } from "./postgres-url.mjs";
 
 const root = process.cwd();
 const sqliteSchema = path.join(root, "prisma", "schema.prisma");
@@ -57,8 +58,22 @@ export function writePostgresSchema() {
   return postgresSchema;
 }
 
-function run(command) {
-  execSync(command, { stdio: "inherit", env: process.env, cwd: root });
+function run(command, extraEnv = {}) {
+  execSync(command, {
+    stdio: "inherit",
+    env: { ...process.env, ...extraEnv },
+    cwd: root,
+  });
+}
+
+function applyHostedAdditiveSql(databaseUrl) {
+  const file = path.join(root, "prisma", "hosted-additive.sql");
+  if (!fs.existsSync(file)) return;
+  console.log("Prisma: apply hosted additive SQL (IF NOT EXISTS, no drops).");
+  run(
+    `npx prisma db execute --schema=prisma/schema.postgres.prisma --file "${file}"`,
+    { DATABASE_URL: databaseUrl },
+  );
 }
 
 function hostedNeedsPostgresMessage() {
@@ -111,8 +126,15 @@ if (postgres) {
   console.log("Prisma: PostgreSQL (hosted / DATABASE_URL).");
   run("npx prisma generate --schema=prisma/schema.postgres.prisma");
   if (deploy) {
+    const pushUrl = process.env.DIRECT_URL?.trim() || neonDirectUrl(url) || url;
+    if (pushUrl !== url) {
+      console.log("Prisma: db push / additive SQL use the direct (non-pooler) URL.");
+    }
+    applyHostedAdditiveSql(pushUrl);
     console.log("Prisma: db push (empty Neon/Vercel Postgres is OK; no data-loss flag).");
-    run("npx prisma db push --schema=prisma/schema.postgres.prisma");
+    run("npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate", {
+      DATABASE_URL: pushUrl,
+    });
   }
 } else {
   console.log("Prisma: SQLite (laptop).");
