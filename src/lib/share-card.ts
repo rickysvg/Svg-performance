@@ -15,6 +15,8 @@ export type ShareStat = {
   key: string;
   label: string;
   value: string;
+  /** Smaller same-line unit, e.g. volume "1,125" + "lbs". */
+  unit?: string;
 };
 
 export type ShareSetLike = {
@@ -91,9 +93,12 @@ export function sessionDurationSeconds(session: ShareSessionLike) {
   return logged > 0 ? logged : 0;
 }
 
-export function formatShareVolume(volume: number, unit: LoadUnit) {
-  const label = unit === "kg" ? "KG" : "LBS";
-  return `${volume.toLocaleString("en-US")} ${label}`;
+export function shareVolumeUnit(unit: LoadUnit) {
+  return unit === "kg" ? "kg" : "lbs";
+}
+
+export function formatShareVolume(volume: number) {
+  return volume.toLocaleString("en-US");
 }
 
 export function workoutStreakDays(
@@ -123,16 +128,16 @@ export function selectShareStats(input: {
   };
 
   if (kind === "lift") {
-    push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume, unit) } : null);
+    push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume), unit: shareVolumeUnit(unit) } : null);
     push(sets > 0 ? { key: "sets", label: "Sets", value: String(sets) } : null);
     push(seconds > 0 ? { key: "time", label: "Time", value: formatClock(seconds) } : null);
   } else if (kind === "rounds") {
     push(rounds > 0 ? { key: "rounds", label: "Rounds", value: String(rounds) } : null);
     push(seconds > 0 ? { key: "time", label: "Time", value: formatClock(seconds) } : null);
-    push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume, unit) } : null);
+    push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume), unit: shareVolumeUnit(unit) } : null);
   } else {
     push(rounds > 0 ? { key: "rounds", label: "Rounds", value: String(rounds) } : null);
-    push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume, unit) } : null);
+    push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume), unit: shareVolumeUnit(unit) } : null);
     push(seconds > 0 ? { key: "time", label: "Time", value: formatClock(seconds) } : null);
   }
   if (streak > 0) {

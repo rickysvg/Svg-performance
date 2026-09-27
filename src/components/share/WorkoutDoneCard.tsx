@@ -104,7 +104,14 @@ export function WorkoutDoneCard({
                 <dt className="font-display text-[11px] uppercase tracking-[0.1em] opacity-70">
                   {stat.label}
                 </dt>
-                <dd className="stat-display mt-1 text-2xl">{stat.value}</dd>
+                <dd className="stat-display mt-1 whitespace-nowrap text-2xl">
+                  {stat.value}
+                  {stat.unit ? (
+                    <span className="ml-1 align-baseline font-sans text-[11px] font-normal normal-case tracking-normal opacity-70">
+                      {stat.unit}
+                    </span>
+                  ) : null}
+                </dd>
               </div>
             ))}
           </dl>
@@ -122,8 +129,8 @@ export function WorkoutDoneCard({
             key={item}
             type="button"
             onClick={() => setStyle(item)}
-            className={`touch-target rounded-full px-4 text-sm ${
-              style === item ? "bg-accent text-black" : "border border-line"
+            className={`touch-target rounded-full border px-4 font-sans text-sm ${
+              style === item ? "border-transparent bg-accent text-black" : "border-line"
             }`}
           >
             {STYLE_LABEL[item]}

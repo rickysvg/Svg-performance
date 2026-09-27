@@ -52,11 +52,12 @@ describe("shareable workout card stats", () => {
       ],
     });
     expect(classifyShareWorkout(lift)).toBe("lift");
-    expect(formatShareVolume(3905, "lb")).toBe("3,905 LBS");
+    expect(formatShareVolume(3905)).toBe("3,905");
     const stats = selectShareStats({ session: lift, streakDays: 4 });
     expect(stats.map((row) => row.key)).toEqual(["volume", "sets", "time", "streak"]);
-    expect(stats[0]?.value).toContain("LBS");
-    expect(stats[0]?.value).not.toContain("KG");
+    expect(stats[0]?.value).toBe("3,730");
+    expect(stats[0]?.unit).toBe("lbs");
+    expect(stats[0]?.unit).not.toBe("kg");
     expect(stats[1]?.value).toBe("3");
     expect(stats[2]?.value).toBe("65:00");
     expect(stats[3]?.value).toBe("4 days");
@@ -77,7 +78,8 @@ describe("shareable workout card stats", () => {
       ],
     });
     const stats = selectShareStats({ session: lift, displayUnit: "kg", streakDays: 0 });
-    expect(stats.find((row) => row.key === "volume")?.value).toContain("KG");
+    expect(stats.find((row) => row.key === "volume")?.value).toBe("500");
+    expect(stats.find((row) => row.key === "volume")?.unit).toBe("kg");
     expect(stats.find((row) => row.key === "streak")).toBeUndefined();
   });
 
@@ -165,8 +167,16 @@ describe("shareable workout card stats", () => {
     }
     const render = fs.readFileSync(path.join(process.cwd(), "src/lib/share-card-render.ts"), "utf8");
     expect(render).toContain("400 ");
+    expect(render).toContain("drawStatValue");
     expect(render).not.toContain("font-weight: 700");
     expect(render).toContain("SHARE_CARD_APP_LINK");
+    const card = fs.readFileSync(
+      path.join(process.cwd(), "src/components/share/WorkoutDoneCard.tsx"),
+      "utf8",
+    );
+    expect(card).toContain("whitespace-nowrap");
+    expect(card).toContain("font-sans");
+    expect(card).toContain("border-transparent");
     const save = fs.readFileSync(path.join(process.cwd(), "src/app/actions/workouts.ts"), "utf8");
     expect(save).toContain("/done?celebrate=");
   });

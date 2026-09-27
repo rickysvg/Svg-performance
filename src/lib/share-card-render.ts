@@ -142,8 +142,7 @@ export async function renderShareCardBlob(input: ShareCardDrawInput): Promise<Bl
     ctx.font = `400 28px ${display}`;
     ctx.fillText(stat.label.toUpperCase(), x + cellW / 2, y + 70);
     ctx.fillStyle = ink;
-    ctx.font = `400 56px ${display}`;
-    ctx.fillText(stat.value.toUpperCase(), x + cellW / 2, y + 145);
+    drawStatValue(ctx, stat.value, stat.unit, x + cellW / 2, y + 145, display);
   });
 
   ctx.fillStyle = ink;
@@ -161,6 +160,37 @@ export async function renderShareCardBlob(input: ShareCardDrawInput): Promise<Bl
     }, "image/png");
   });
   return blob;
+}
+
+function drawStatValue(
+  ctx: CanvasRenderingContext2D,
+  value: string,
+  unit: string | undefined,
+  centerX: number,
+  y: number,
+  display: string,
+) {
+  ctx.letterSpacing = "0.02em";
+  ctx.font = `400 56px ${display}`;
+  if (!unit) {
+    ctx.textAlign = "center";
+    ctx.fillText(value.toUpperCase(), centerX, y);
+    return;
+  }
+  const numberWidth = ctx.measureText(value).width;
+  ctx.font = `400 26px ${display}`;
+  ctx.letterSpacing = "0.06em";
+  const unitWidth = ctx.measureText(unit).width;
+  const gap = 10;
+  const start = centerX - (numberWidth + gap + unitWidth) / 2;
+  ctx.textAlign = "left";
+  ctx.font = `400 56px ${display}`;
+  ctx.letterSpacing = "0.02em";
+  ctx.fillText(value, start, y);
+  ctx.font = `400 26px ${display}`;
+  ctx.letterSpacing = "0.06em";
+  ctx.fillText(unit, start + numberWidth + gap, y);
+  ctx.textAlign = "center";
 }
 
 function wrapText(
