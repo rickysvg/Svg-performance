@@ -16,7 +16,11 @@ import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { createWorkoutHrForUser } from "@/lib/heart";
-import { detectNewPrsForSession } from "@/lib/progress-companion";
+import {
+  detectNewPrsForSession,
+  detectUnseenBadgeUnlocksForSession,
+  unlockQueryForBadges,
+} from "@/lib/progress-companion";
 
 export type WorkoutActionState = { error?: string; success?: string; newPr?: string };
 
@@ -110,7 +114,11 @@ export async function saveWorkoutAction(
       const prQuery = newPrs[0]
         ? `&pr=${encodeURIComponent(newPrs[0].headline)}&prDetail=${encodeURIComponent(newPrs[0].detail)}`
         : "";
-      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}${prQuery}`;
+      const unlocked = await detectUnseenBadgeUnlocksForSession(user.id, workoutId, units);
+      const unlockQuery = unlocked.length
+        ? `&unlock=${encodeURIComponent(unlockQueryForBadges(unlocked))}`
+        : "";
+      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}${prQuery}${unlockQuery}`;
     } else {
       return { success: "Draft saved. You can finish it later." };
     }

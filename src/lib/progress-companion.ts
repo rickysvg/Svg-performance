@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { evaluateBadges, featuredBadges, type EarnedBadge } from "@/lib/badges";
 import {
+  newlyEarnedBadges,
+  seedSeenExcludingNew,
+  serializeUnlockQuery,
+  unseenEarnedBadges,
+} from "@/lib/badge-unlocks";
+import { readSeenBadgeUnlocksForUser, writeSeenBadgeUnlocksForUser } from "@/lib/profile";
+import {
   bestsFromSets,
   detectNewPrs,
   recordListFromBests,
@@ -109,6 +116,71 @@ export async function getCompanionProgress(userId: string, displayUnit: LoadUnit
     datedSets,
     completeSessions: complete,
   };
+}
+
+export async function evaluateBadgesForUser(
+  userId: string,
+  displayUnit: LoadUnit,
+  now = new Date(),
+  excludeSessionId?: string,
+) {
+  const [profile, sessions, tz] = await Promise.all([
+    getProfileForUser(userId),
+    listWorkoutSessionsForUser(userId),
+    timeZoneForUser(userId),
+  ]);
+  const complete = sessions.filter(
+    (row) => row.status === "complete" && row.id !== excludeSessionId,
+  );
+  const prefs = plannerPrefsFromProfile(profile ?? {});
+  const streak = buildTrainingStreak({
+    completedDates: complete.map((row) => row.performedAt),
+    prefs,
+    now,
+    timeZone: tz,
+  });
+  const datedSets: DatedSetLike[] = [];
+  for (const session of complete) {
+    for (const set of session.sets) {
+      datedSets.push({ ...set, performedAt: session.performedAt });
+    }
+  }
+  return evaluateBadges({
+    workoutCount: complete.length,
+    currentStreak: streak.current,
+    longestStreak: streak.longest,
+    sets: datedSets,
+    firstWorkoutAt: complete.at(-1)?.performedAt ?? complete[0]?.performedAt ?? null,
+    displayUnit,
+  });
+}
+
+export async function detectUnseenBadgeUnlocksForSession(
+  userId: string,
+  sessionId: string,
+  displayUnit: LoadUnit,
+) {
+  const [before, after, seen] = await Promise.all([
+    evaluateBadgesForUser(userId, displayUnit, new Date(), sessionId),
+    evaluateBadgesForUser(userId, displayUnit),
+    readSeenBadgeUnlocksForUser(userId),
+  ]);
+  const fresh = newlyEarnedBadges(before, after);
+  if (seen.length === 0) {
+    const seed = seedSeenExcludingNew(
+      after.filter((row) => row.earned).map((row) => row.id),
+      fresh.map((row) => row.id),
+    );
+    if (seed.length > 0) {
+      await writeSeenBadgeUnlocksForUser(userId, seed);
+    }
+    return fresh;
+  }
+  return unseenEarnedBadges(after, seen);
+}
+
+export function unlockQueryForBadges(badges: EarnedBadge[]) {
+  return serializeUnlockQuery(badges.map((badge) => badge.id));
 }
 
 export function profilePlanner(profile: ProfileRecord | null) {

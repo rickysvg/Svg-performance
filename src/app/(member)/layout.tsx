@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { MemberFrame } from "@/components/MemberFrame";
 import { Celebration } from "@/components/celebration/Celebration";
+import { BadgeUnlockOverlay } from "@/components/progress/BadgeUnlockOverlay";
 import { requireOnboardedUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 
@@ -19,6 +20,9 @@ export default async function MemberLayout({
       </MemberFrame>
       <Suspense fallback={null}>
         <Celebration />
+      </Suspense>
+      <Suspense fallback={null}>
+        <BadgeUnlockOverlay />
       </Suspense>
     </>
   );
