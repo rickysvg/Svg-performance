@@ -19,6 +19,8 @@ const PROTECTED = [
   "/journal",
   "/report",
   "/heart",
+  "/fight-camp",
+  "/form-check",
 ];
 
 const PUBLIC_FILE = /\.(webp|png|jpe?g|gif|svg|ico|mp4|webm|woff2?)$/i;
@@ -76,5 +78,9 @@ export const config = {
     "/journal",
     "/report",
     "/heart",
+    "/fight-camp/:path*",
+    "/form-check/:path*",
+    "/fight-camp",
+    "/form-check",
   ],
 };

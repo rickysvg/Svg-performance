@@ -43,6 +43,8 @@ yarn-error.log*
 !/uploads/training-clips/.gitkeep
 /uploads/focus-videos/**
 !/uploads/focus-videos/.gitkeep
+/uploads/form-checks/**
+!/uploads/form-checks/.gitkeep
 
 # local sqlite files (Prisma resolves file:./dev.db inside prisma/)
 *.db

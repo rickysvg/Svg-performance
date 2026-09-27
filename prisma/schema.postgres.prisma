@@ -55,6 +55,8 @@ model User {
   groceryLists             GroceryList[]
   weeklyFocusAuthored      WeeklyFocusVideo[]     @relation("FocusAuthor")
   exerciseNotes            ExerciseNote[]
+  fightCamp                FightCamp?
+  formChecks               FormCheck[]
 }
 
 model Session {
@@ -714,4 +716,47 @@ model WeeklyFocusVideo {
   updatedAt    DateTime @updatedAt
 
   @@index([weekStart, status])
+}
+
+model FightCamp {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Civil date YYYY-MM-DD. Not a timestamp, so the fight day does not shift across zones. */
+  fightDateKey  String
+  weightClass   String    @default("")
+  discipline    String    @default("")
+  /** Frozen at save: 12, 8, or 6. Week math counts back from the fight date. */
+  templateWeeks Int
+  status        String    @default("active")
+  cancelledAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model FormCheck {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movement        String
+  note            String    @default("")
+  /** submitted | in_review | reviewed */
+  status          String    @default("submitted")
+  /** local filename or private blob URL. Never sent to the browser. */
+  storageKey      String
+  /** local | blob */
+  storageKind     String    @default("local")
+  mimeType        String
+  byteSize        Int
+  durationSeconds Int
+  feedback        String    @default("")
+  reviewerUserId  String    @default("")
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  feedbackSeenAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, submittedAt])
+  @@index([status, submittedAt])
 }
