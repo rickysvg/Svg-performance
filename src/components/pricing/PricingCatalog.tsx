@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { WaitlistButton } from "@/components/billing/WaitlistButton";
 import {
   academyPerkLine,
@@ -77,7 +77,7 @@ function PlanCard({
   return (
     <article
       data-plan-card={plan.id}
-      className="flex h-full flex-col rounded-2xl border border-line bg-card p-5"
+      className="flex h-full scroll-mt-32 flex-col rounded-2xl border border-line bg-card p-5"
     >
       <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
         {plan.section === "vip" ? "One-time" : plan.section === "coaching" ? "Coaching" : "App"}
@@ -135,28 +135,33 @@ function ViewToggle({
 }) {
   return (
     <div
-      role="tablist"
-      aria-label="Billing term"
-      className="sticky top-14 z-10 grid grid-cols-2 rounded-full border border-black bg-white p-1"
+      data-pricing-toggle
+      className="sticky top-14 z-10 -mx-4 bg-white px-4 pb-3 pt-2"
     >
-      {(["monthly", "prepay"] as const).map((id) => {
-        const selected = view === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            data-term-tab={id}
-            onClick={() => onChange(id)}
-            className={`touch-target rounded-full text-sm uppercase tracking-wide ${
-              selected ? "bg-accent text-black" : "bg-white text-black"
-            }`}
-          >
-            {id === "monthly" ? "Monthly" : "Prepay"}
-          </button>
-        );
-      })}
+      <div
+        role="tablist"
+        aria-label="Billing term"
+        className="grid grid-cols-2 rounded-full border border-black bg-white p-1"
+      >
+        {(["monthly", "prepay"] as const).map((id) => {
+          const selected = view === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              data-term-tab={id}
+              onClick={() => onChange(id)}
+              className={`touch-target rounded-full text-sm uppercase tracking-wide ${
+                selected ? "bg-accent text-black" : "bg-white text-black"
+              }`}
+            >
+              {id === "monthly" ? "Monthly" : "Prepay"}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -173,6 +178,7 @@ export function PricingCatalog({
   seats: SeatInfo[];
 }) {
   const [view, setView] = useState<PricingView>("monthly");
+  const didMountView = useRef(false);
   const seatMap = new Map(seats.map((row) => [row.id, row]));
   const appOffers = appOffersForView(view, foundingOpen);
   const coachingOffers = coachingOffersForView(view);
@@ -181,11 +187,30 @@ export function PricingCatalog({
     return seatMap.get(id);
   }
 
+  useLayoutEffect(() => {
+    if (!didMountView.current) {
+      didMountView.current = true;
+      return;
+    }
+    const bar = document.querySelector<HTMLElement>("[data-pricing-toggle]");
+    if (!bar) return;
+    const floor = bar.getBoundingClientRect().bottom;
+    const cards = document.querySelectorAll<HTMLElement>("[data-plan-card]");
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (rect.bottom <= bar.getBoundingClientRect().top) continue;
+      if (rect.top < floor) {
+        card.scrollIntoView({ block: "start", behavior: "auto" });
+      }
+      break;
+    }
+  }, [view]);
+
   return (
     <div data-pricing-view={view} className="space-y-10">
       <ViewToggle view={view} onChange={setView} />
 
-      <section data-pricing-section="app" className="scroll-mt-28 space-y-4">
+      <section data-pricing-section="app" className="scroll-mt-32 space-y-4">
         <h2 className="text-2xl text-black">App Plans</h2>
         <p className="text-sm text-muted">
           Self-guided tools. Member Access is free for verified academy members and a free
@@ -226,7 +251,7 @@ export function PricingCatalog({
         </div>
       </section>
 
-      <section data-pricing-section="coaching" className="scroll-mt-28 space-y-4">
+      <section data-pricing-section="coaching" className="scroll-mt-32 space-y-4">
         <h2 className="text-2xl text-black">Online Coaching</h2>
         <p className="text-sm text-muted">
           Fixed quantities per billing month — not “weekly forever.” Elite is capped at about
@@ -253,7 +278,7 @@ export function PricingCatalog({
         </div>
       </section>
 
-      <section data-pricing-section="vip" className="scroll-mt-28 space-y-4">
+      <section data-pricing-section="vip" className="scroll-mt-32 space-y-4">
         <h2 className="text-2xl text-black">VIP Experiences</h2>
         <p className="text-sm text-muted">
           One-time. Same price for academy members and everyone else. In-person intensives

@@ -140,6 +140,9 @@ describe("Ricky-approved pricing structure", () => {
     expect(catalog).toContain("Prepay");
     expect(catalog).toContain("Coming soon");
     expect(catalog).toContain("El Paso");
+    expect(catalog).toContain("data-pricing-toggle");
+    expect(catalog).toContain("sticky top-14 z-10 -mx-4 bg-white");
+    expect(catalog).toContain("scroll-mt-32");
     expect(read("src/app/pricing/page.tsx")).toContain("Paid plans coming soon");
     expect(read("src/lib/billing.ts")).toContain("Paid plans coming soon.");
   });
