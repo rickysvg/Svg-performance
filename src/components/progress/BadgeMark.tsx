@@ -12,24 +12,25 @@ export function BadgeMark({
   style = BADGE_STYLE,
   motion = true,
   large = false,
+  shine = false,
 }: {
   badge: EarnedBadge;
   style?: BadgeStyleId;
   motion?: boolean;
   large?: boolean;
+  shine?: boolean;
 }) {
   const uid = useId().replace(/:/g, "");
+  const size = large ? 200 : style === "hex" ? 80 : 72;
   return (
     <div
-      className={`badge-mark relative mx-auto flex items-center justify-center ${
-        large ? "h-40 w-40" : "h-20 w-20"
+      className={`badge-mark relative mx-auto flex items-center justify-center overflow-visible ${
+        large ? "h-[200px] w-[200px]" : "h-20 w-20"
       } ${badge.earned && motion ? "badge-earned" : ""} ${badge.earned ? "" : "badge-locked"}`}
     >
-      <div className={large ? "scale-[2.05]" : undefined}>
-        {style === "belt" ? <BadgeBelt badge={badge} uid={uid} /> : null}
-        {style === "hex" ? <BadgeHex badge={badge} uid={uid} /> : null}
-        {style === "medal" ? <BadgeMedal badge={badge} uid={uid} /> : null}
-      </div>
+      {style === "belt" ? <BadgeBelt badge={badge} uid={uid} shine={shine} size={size} /> : null}
+      {style === "hex" ? <BadgeHex badge={badge} uid={uid} shine={shine} size={size} /> : null}
+      {style === "medal" ? <BadgeMedal badge={badge} uid={uid} shine={shine} size={size} /> : null}
       {badge.earned && motion ? <span className="badge-shine" aria-hidden /> : null}
     </div>
   );

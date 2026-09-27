@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { BadgeStyleId } from "@/lib/badge-style";
 
 type Spark = {
   x: number;
@@ -19,11 +20,35 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+function rimPoint(style: BadgeStyleId, cx: number, cy: number, radius: number, angle: number) {
+  if (style === "belt") {
+    return {
+      x: cx + Math.cos(angle) * radius * 1.12,
+      y: cy + Math.sin(angle) * radius * 0.7,
+    };
+  }
+  if (style === "hex") {
+    const step = Math.PI / 3;
+    const sector = Math.floor((((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / step);
+    const a0 = -Math.PI / 2 + sector * step;
+    const a1 = a0 + step;
+    const t = ((((angle + Math.PI / 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / step - sector;
+    const x0 = cx + Math.cos(a0) * radius;
+    const y0 = cy + Math.sin(a0) * radius;
+    const x1 = cx + Math.cos(a1) * radius;
+    const y1 = cy + Math.sin(a1) * radius;
+    return { x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t };
+  }
+  return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+}
+
 export function BadgeSparks({
   active,
+  style = "medal",
   durationMs = 2400,
 }: {
   active: boolean;
+  style?: BadgeStyleId;
   durationMs?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -51,21 +76,23 @@ export function BadgeSparks({
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       const cx = w / 2;
-      const cy = h * 0.38;
-      const radius = Math.min(w, h) * 0.16;
+      const cy = style === "hex" ? h * 0.42 : h / 2;
+      const radius = style === "belt" ? Math.min(w, h) * 0.34 : Math.min(w, h) * 0.36;
       for (let i = 0; i < count; i += 1) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 1.6 + Math.random() * 6.2;
+        const origin = rimPoint(style, cx, cy, radius, angle);
+        const speed = 0.7 + Math.random() * 2.4;
+        const hot = Math.random() > 0.78;
         sparks.push({
-          x: cx + Math.cos(angle) * radius,
-          y: cy + Math.sin(angle) * radius * 0.9,
-          vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 1.4,
-          vy: Math.sin(angle) * speed - Math.random() * 2.8,
+          x: origin.x,
+          y: origin.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.85 + 0.15,
           life: 1,
-          max: 420 + Math.random() * 380,
-          size: 1 + Math.random() * 2.4,
-          streak: Math.random() > 0.45,
-          hot: Math.random() > 0.7,
+          max: 260 + Math.random() * 280,
+          size: hot ? 1.6 + Math.random() : 1.1 + Math.random() * 1.3,
+          streak: Math.random() > 0.35,
+          hot,
         });
       }
     };
@@ -77,12 +104,12 @@ export function BadgeSparks({
       const h = canvas.clientHeight;
       ctx.clearRect(0, 0, w, h);
       if (elapsed < durationMs) {
-        spawn(elapsed < 380 ? 14 : 5);
+        spawn(elapsed < 280 ? 7 : elapsed < 900 ? 3 : 1);
       }
       for (let i = sparks.length - 1; i >= 0; i -= 1) {
         const spark = sparks[i]!;
-        spark.vy += 0.11;
-        spark.vx *= 0.992;
+        spark.vy += 0.2;
+        spark.vx *= 0.984;
         spark.x += spark.vx;
         spark.y += spark.vy;
         spark.life -= 16 / spark.max;
@@ -91,13 +118,16 @@ export function BadgeSparks({
           continue;
         }
         ctx.globalAlpha = Math.max(spark.life, 0);
-        ctx.strokeStyle = spark.hot ? "#ffffff" : "#CBF805";
-        ctx.fillStyle = spark.hot ? "#fff6b0" : "#CBF805";
+        ctx.strokeStyle = spark.hot ? "#ffffff" : "#E8FF4A";
+        ctx.fillStyle = spark.hot ? "#ffffff" : "#CBF805";
+        ctx.shadowColor = spark.hot ? "#ffffff" : "#CBF805";
+        ctx.shadowBlur = spark.hot ? 6 : 4;
         ctx.lineWidth = spark.size;
+        ctx.lineCap = "round";
         if (spark.streak) {
           ctx.beginPath();
           ctx.moveTo(spark.x, spark.y);
-          ctx.lineTo(spark.x - spark.vx * 2.4, spark.y - spark.vy * 2.4);
+          ctx.lineTo(spark.x - spark.vx * 3.1, spark.y - spark.vy * 3.1);
           ctx.stroke();
         } else {
           ctx.beginPath();
@@ -105,8 +135,9 @@ export function BadgeSparks({
           ctx.fill();
         }
       }
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
-      if (elapsed < durationMs + 700 || sparks.length > 0) {
+      if (elapsed < durationMs + 500 || sparks.length > 0) {
         raf = requestAnimationFrame(tick);
       }
     };
@@ -116,13 +147,13 @@ export function BadgeSparks({
       running = false;
       cancelAnimationFrame(raf);
     };
-  }, [active, durationMs]);
+  }, [active, durationMs, style]);
 
   if (!active) return null;
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none absolute inset-0 h-full w-full"
+      className="pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2"
       aria-hidden
     />
   );

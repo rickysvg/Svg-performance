@@ -269,7 +269,7 @@ body:has(.app-splash.is-visible) {
 }
 
 .badge-mark {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .badge-shine {
@@ -336,24 +336,46 @@ body:has(.app-splash.is-visible) {
   animation: badge-unlock-fade 280ms ease-out;
 }
 
-.badge-unlock-shine-wrap {
-  position: relative;
-  overflow: hidden;
-  border-radius: 999px;
+.badge-unlock-backdrop {
+  background: rgba(6, 6, 6, 0.91);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.badge-unlock-shine {
+.badge-unlock-glow {
   pointer-events: none;
   position: absolute;
-  inset: 6%;
-  border-radius: 999px;
-  background: linear-gradient(
-    115deg,
-    transparent 28%,
-    rgba(255, 255, 255, 0.7) 48%,
-    transparent 68%
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 36%,
+    rgba(203, 248, 5, 0.26) 0%,
+    rgba(203, 248, 5, 0.08) 26%,
+    transparent 52%
   );
-  animation: badge-shine 900ms ease-in-out 80ms 1;
+}
+
+.badge-svg-shine-layer {
+  pointer-events: none;
+}
+
+.badge-svg-shine {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: badge-svg-shine 920ms ease-in-out 70ms 1 both;
+}
+
+@keyframes badge-svg-shine {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(132px);
+    opacity: 0;
+  }
 }
 
 @keyframes badge-slam {
@@ -383,7 +405,7 @@ body:has(.app-splash.is-visible) {
 @media (prefers-reduced-motion: reduce) {
   .badge-unlock-slam,
   .badge-unlock-fade,
-  .badge-unlock-shine {
+  .badge-svg-shine {
     animation: none;
   }
 }

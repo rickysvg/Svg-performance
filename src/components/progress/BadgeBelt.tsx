@@ -1,20 +1,19 @@
 import {
+  BELT_PLATE,
   faceFill,
   markFill,
   markFontSize,
   metalFor,
   type BadgeVisualProps,
 } from "@/components/progress/badge-visuals";
+import { BadgeSvgShine } from "@/components/progress/BadgeSvgShine";
 
-const PLATE =
-  "M14,40 L20,20 L30,13 L50,13 L60,20 L66,40 L60,60 L50,67 L30,67 L20,60 Z";
-
-export function BadgeBelt({ badge, uid }: BadgeVisualProps) {
+export function BadgeBelt({ badge, uid, shine, size = 72 }: BadgeVisualProps) {
   const metal = metalFor(badge);
   const plate = `belt-plate-${uid}`;
   const gloss = `belt-gloss-${uid}`;
   return (
-    <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden className="block">
+    <svg viewBox="0 0 80 80" width={size} height={size} aria-hidden className="block">
       <defs>
         <linearGradient id={plate} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor={metal.light} />
@@ -31,7 +30,7 @@ export function BadgeBelt({ badge, uid }: BadgeVisualProps) {
       <path d="M78,28 L67,22 L67,58 L78,52 Z" fill={`url(#${plate})`} stroke={metal.dark} strokeWidth="1" />
       <circle cx="7" cy="40" r="2.2" fill={metal.light} />
       <circle cx="73" cy="40" r="2.2" fill={metal.light} />
-      <path d={PLATE} fill={`url(#${plate})`} stroke={metal.dark} strokeWidth="1.6" />
+      <path d={BELT_PLATE} fill={`url(#${plate})`} stroke={metal.dark} strokeWidth="1.6" />
       <path
         d="M22,40 L27,23 L40,18 L53,23 L58,40 L53,57 L40,62 L27,57 Z"
         fill={faceFill(badge)}
@@ -59,6 +58,18 @@ export function BadgeBelt({ badge, uid }: BadgeVisualProps) {
       >
         {badge.mark}
       </text>
+      {shine ? (
+        <BadgeSvgShine
+          uid={uid}
+          clip={
+            <>
+              <path d="M2,28 L13,22 L13,58 L2,52 Z" />
+              <path d="M78,28 L67,22 L67,58 L78,52 Z" />
+              <path d={BELT_PLATE} />
+            </>
+          }
+        />
+      ) : null}
       {badge.earned ? null : (
         <text
           x="40"

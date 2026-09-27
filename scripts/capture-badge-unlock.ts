@@ -5,7 +5,7 @@ import path from "node:path";
 import puppeteer, { type Page } from "puppeteer";
 
 const ART = "/opt/cursor/artifacts";
-const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3113";
+const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3114";
 
 async function delay(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -13,27 +13,22 @@ async function delay(ms: number) {
 
 async function recordMp4(page: Page, dest: string, ms = 4000) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unlock-frames-"));
+  const interval = 1000 / 30;
+  const start = Date.now();
   let i = 0;
-  const client = await page.createCDPSession();
-  const writing: Promise<void>[] = [];
-  client.on("Page.screencastFrame", (frame: { data: string; sessionId: number }) => {
-    const file = path.join(dir, `${String(i).padStart(4, "0")}.jpg`);
+  while (Date.now() - start < ms) {
+    const frameStart = Date.now();
+    await page.screenshot({
+      path: path.join(dir, `${String(i).padStart(4, "0")}.jpg`),
+      type: "jpeg",
+      quality: 72,
+    });
     i += 1;
-    writing.push(fs.promises.writeFile(file, Buffer.from(frame.data, "base64")));
-    void client.send("Page.screencastFrameAck", { sessionId: frame.sessionId });
-  });
-  await client.send("Page.startScreencast", {
-    format: "jpeg",
-    quality: 72,
-    everyNthFrame: 1,
-    maxWidth: 390,
-    maxHeight: 844,
-  });
-  await delay(ms);
-  await client.send("Page.stopScreencast");
-  await Promise.all(writing);
+    const used = Date.now() - frameStart;
+    if (used < interval) await delay(interval - used);
+  }
   execSync(
-    `ffmpeg -y -framerate 18 -i ${dir}/%04d.jpg -c:v libx264 -pix_fmt yuv420p -crf 28 -movflags +faststart -t 4 "${dest}"`,
+    `ffmpeg -y -framerate 30 -i ${dir}/%04d.jpg -c:v libx264 -pix_fmt yuv420p -r 30 -crf 23 -movflags +faststart -t 4 "${dest}"`,
     { stdio: "inherit" },
   );
   fs.rmSync(dir, { recursive: true, force: true });
@@ -61,16 +56,16 @@ async function main() {
   ]);
 
   const styles = [
-    { id: "medal", shot: "unlock_a_medal.png", video: "unlock_a_medal.mp4" },
-    { id: "belt", shot: "unlock_b_belt.png", video: "unlock_b_belt.mp4" },
-    { id: "hex", shot: "unlock_c_hex.png", video: "unlock_c_hex.mp4" },
+    { id: "medal", shot: "unlock2_a_medal.png", video: "unlock2_a_medal.mp4" },
+    { id: "belt", shot: "unlock2_b_belt.png", video: "unlock2_b_belt.mp4" },
+    { id: "hex", shot: "unlock2_c_hex.png", video: "unlock2_c_hex.mp4" },
   ] as const;
 
   for (const style of styles) {
     const url = `${BASE}/progress?unlock=streak_7&unlockPreview=1&badgeStyle=${style.id}`;
     await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
     await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-    await delay(450);
+    await delay(380);
     await page.screenshot({ path: path.join(ART, style.shot), type: "png" });
     console.log("wrote", style.shot);
 

@@ -111,7 +111,7 @@ export function BadgeUnlockOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/88 px-5"
+      className="badge-unlock-backdrop fixed inset-0 z-50 flex items-center justify-center px-5"
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-unlock-title"
@@ -119,12 +119,12 @@ export function BadgeUnlockOverlay() {
       data-badge-style={style}
       data-badge-id={current.id}
     >
-      <BadgeSparks key={current.id} active={!reduce} />
+      <div className="badge-unlock-glow" aria-hidden />
       <div className="relative w-full max-w-sm text-center text-white">
         <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
-          <div className="badge-unlock-shine-wrap mx-auto">
-            <BadgeMark badge={badge} style={style} motion={false} large />
-            {reduce ? null : <span className="badge-unlock-shine" aria-hidden />}
+          <div className="relative mx-auto flex h-[200px] w-[200px] items-center justify-center">
+            <BadgeSparks key={current.id} active={!reduce} style={style} />
+            <BadgeMark badge={badge} style={style} motion={false} large shine={!reduce} />
           </div>
         </div>
         <h2 id="badge-unlock-title" className="font-display mt-8 text-3xl uppercase tracking-wide text-white">

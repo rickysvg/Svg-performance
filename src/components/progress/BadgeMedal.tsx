@@ -6,6 +6,7 @@ import {
   metalFor,
   type BadgeVisualProps,
 } from "@/components/progress/badge-visuals";
+import { BadgeSvgShine } from "@/components/progress/BadgeSvgShine";
 
 function AntonMark({
   x,
@@ -36,13 +37,13 @@ function AntonMark({
   );
 }
 
-export function BadgeMedal({ badge, uid }: BadgeVisualProps) {
+export function BadgeMedal({ badge, uid, shine, size = 72 }: BadgeVisualProps) {
   const metal = metalFor(badge);
   const rim = `medal-rim-${uid}`;
   const bevel = `medal-bevel-${uid}`;
   const gloss = `medal-gloss-${uid}`;
   return (
-    <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden className="block">
+    <svg viewBox="0 0 80 80" width={size} height={size} aria-hidden className="block">
       <defs>
         <linearGradient id={rim} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor={metal.light} />
@@ -75,6 +76,7 @@ export function BadgeMedal({ badge, uid }: BadgeVisualProps) {
       />
       <ellipse cx="30" cy="26" rx="16" ry="9" fill={`url(#${gloss})`} />
       <AntonMark x={40} y={badge.earned ? 40 : 36} badge={badge} />
+      {shine ? <BadgeSvgShine uid={uid} clip={<circle cx="40" cy="40" r="37" />} /> : null}
       {badge.earned ? null : (
         <text
           x="40"

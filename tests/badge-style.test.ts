@@ -22,8 +22,8 @@ describe("badge styles and progress", () => {
     expect(resolveBadgeStyle("nope")).toBe(BADGE_STYLE);
     expect(read("src/lib/badge-style.ts")).toContain("Ricky picks one");
     expect(read("src/components/progress/BadgeMedal.tsx")).toContain("linearGradient");
-    expect(read("src/components/progress/BadgeBelt.tsx")).toContain("M14,40 L20,20");
-    expect(read("src/components/progress/BadgeHex.tsx")).toContain("32,7 56,19");
+    expect(read("src/components/progress/badge-visuals.ts")).toContain("M14,40 L20,20");
+    expect(read("src/components/progress/badge-visuals.ts")).toContain("32,7 56,19");
   });
 
   it("uses big milestone marks in the athlete unit", () => {
