@@ -262,7 +262,7 @@ async function main() {
           {
             dayNumber: FRIDAY_GPP_DAY_NUMBER,
             title: "Day 10 — Friday GPP",
-            focus: "Sled, carry, and banded swing",
+            focus: "Sled, carry, swing, and neck isometrics",
             exercises: {
               create: FRIDAY_GPP_NAMES.map((name, index) =>
                 daruProgramExercise(name, index + 1),

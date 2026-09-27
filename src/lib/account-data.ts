@@ -89,6 +89,10 @@ export async function exportAccountData(userId: string) {
     challengeEnrollments,
     groceryLists,
     metricEvents,
+    mobilitySessions,
+    mobilityCheckIns,
+    readinessCheckIns,
+    testingResults,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.workoutSession.findMany({
@@ -172,6 +176,14 @@ export async function exportAccountData(userId: string) {
     }),
     prisma.groceryList.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     prisma.metricEvent.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
+    prisma.mobilitySession.findMany({
+      where: { userId },
+      include: { sets: true },
+      orderBy: { performedAt: "desc" },
+    }),
+    prisma.mobilityCheckIn.findMany({ where: { userId }, orderBy: { performedAt: "desc" } }),
+    prisma.readinessCheckIn.findMany({ where: { userId }, orderBy: { dayKey: "desc" } }),
+    prisma.testingResult.findMany({ where: { userId }, orderBy: { performedAt: "desc" } }),
   ]);
 
   return jsonSafe({
@@ -245,6 +257,10 @@ export async function exportAccountData(userId: string) {
     challengeEnrollments,
     groceryLists,
     metricEvents,
+    mobilitySessions,
+    mobilityCheckIns,
+    readinessCheckIns,
+    testingResults,
   });
 }
 

@@ -17,6 +17,10 @@ const BLURBS: Record<string, { title: string; body: string }> = {
     title: "Progress charts are in Performance",
     body: "Workout logging stays on the free plan. Charts, food tracking, and SVG Coach open with Performance.",
   },
+  mobility: {
+    title: "The full mobility plan is in Performance",
+    body: "Two routines and the daily warm-up stay free. The other routines, the 6-week progression, and check-in history open on Performance. Paid plans coming soon.",
+  },
 };
 
 export function UpgradePreview({

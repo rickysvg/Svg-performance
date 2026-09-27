@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { saveProfileAction, type ProfileActionState } from "@/app/actions/profile";
 import { StatusBanner } from "@/components/StatusBanner";
+import { EMPHASIS_CREDIT, EMPHASIS_OPTIONS, emphasisLabel } from "@/lib/training-emphasis";
 import {
   COMPETITION_STATUS_OPTIONS,
   COACHING_TONE_OPTIONS,
@@ -97,6 +98,28 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="block">
+        <span className="text-sm font-medium">Striker / grappler emphasis</span>
+        <select
+          name="trainingEmphasis"
+          defaultValue={profile.trainingEmphasis || "balanced"}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        >
+          {EMPHASIS_OPTIONS.map((value) => (
+            <option key={value} value={value}>
+              {emphasisLabel(value)}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-muted">
+          Tweaks the plyo and accessory block. Lifts stay on the same days. Inspired by{" "}
+          <a href={EMPHASIS_CREDIT.url} className="underline" target="_blank" rel="noreferrer">
+            {EMPHASIS_CREDIT.coach}
+          </a>
+          . Not their program.
+        </span>
       </label>
 
       <fieldset>

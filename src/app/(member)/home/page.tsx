@@ -11,6 +11,9 @@ import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
 import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { TodayGuide } from "@/components/home/TodayGuide";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
+import { ReadinessCard } from "@/components/home/ReadinessCard";
+import { getReadinessForDay } from "@/lib/mobility-store";
+import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { HomeMerchPromo } from "@/components/home/HomeMerchPromo";
 import { SectionHeading } from "@/components/home/SectionHeading";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
@@ -47,6 +50,12 @@ export default async function HomePage({
     getTrialState(user.id),
     shouldShowThirdWorkoutCard(user.id, planId),
   ]);
+  const dayKey = zonedDayKey(new Date(), tz);
+  const readiness = await homeLoad(
+    "readiness",
+    getReadinessForDay(user.id, dayKey),
+    null,
+  );
   const greetingName = today.firstName || "athlete";
   const openHelp = helpRequests.filter((row) => row.status === "open");
 
@@ -107,6 +116,20 @@ export default async function HomePage({
         }
         canStartTrial={trial.canStartTrial}
         trialDays={trial.trialLengthDays}
+      />
+
+      <ReadinessCard
+        dayKey={dayKey}
+        initial={
+          readiness
+            ? {
+                sleep: readiness.sleep,
+                soreness: readiness.soreness,
+                energy: readiness.energy,
+                restingHr: readiness.restingHr,
+              }
+            : null
+        }
       />
 
       <TodayGuide guide={guide} />

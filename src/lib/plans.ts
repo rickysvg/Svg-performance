@@ -48,7 +48,8 @@ export type FeatureId =
   | "ai"
   | "conditioning"
   | "coaching"
-  | "daily_quote";
+  | "daily_quote"
+  | "mobility_pro";
 
 export type PlanCredits = Partial<Record<CreditKind, number>>;
 
@@ -104,6 +105,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "Meal ideas and progress charts",
       "SVG Coach (AI coach)",
       "Daily motivational quote",
+      "Full mobility progression and check-in history",
     ],
     rank: 1,
     features: [
@@ -115,6 +117,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "nutrition",
       "ai",
       "daily_quote",
+      "mobility_pro",
     ],
     credits: {},
     cap: null,
@@ -145,6 +148,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "daily_quote",
+      "mobility_pro",
     ],
     credits: {},
     cap: null,
@@ -175,6 +179,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
     ],
     credits: { coaching_call_30: 1, video_review: 2 },
     cap: null,
@@ -206,6 +211,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
     ],
     credits: { checkin_30: 2, video_review: 2 },
     cap: 6,
@@ -236,6 +242,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 4, strategy_45: 1 },
     cap: 2,
@@ -267,6 +274,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 8, strategy_45: 2 },
     cap: 1,

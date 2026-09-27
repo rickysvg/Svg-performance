@@ -17,6 +17,7 @@ import {
   scaleProgramDay,
   type ScalePrefs,
 } from "@/lib/training-scale";
+import { deloadSetCount } from "@/lib/training-cycle";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -185,6 +186,7 @@ export async function startWorkoutFromDay(input: {
   programDayId: string;
   preferredUnits: LoadUnit;
   scale?: ScalePrefs | null;
+  deload?: boolean;
 }) {
   const rawDay = await getProgramDayById(input.programDayId);
   const band = scaleBandFromPrefs(input.scale);
@@ -200,7 +202,8 @@ export async function startWorkoutFromDay(input: {
   );
   const sets = day.exercises.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
-    return Array.from({ length: exercise.sets }, (_, index) => ({
+    const prescribed = input.deload ? deloadSetCount(exercise.sets) : exercise.sets;
+    return Array.from({ length: prescribed }, (_, index) => ({
       exerciseName: exercise.name,
       setNumber: index + 1,
       sortOrder: (exercise.sortOrder ?? 0) * 10 + index,
@@ -217,8 +220,9 @@ export async function startWorkoutFromDay(input: {
     data: {
       userId: input.userId,
       programDayId: day.id,
-      title: day.program.isDemo ? `DEMO — ${day.title}` : day.title,
+      title: `${day.program.isDemo ? `DEMO — ${day.title}` : day.title}${input.deload ? " · Deload" : ""}`,
       performedAt: new Date(),
+      notes: input.deload ? "Deload week — fewer sets. Same exercises." : "",
       status: "draft",
       sets: { create: sets },
     },
