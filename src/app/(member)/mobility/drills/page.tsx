@@ -11,8 +11,9 @@ export default function MobilityDrillsPage() {
         <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">Drill ideas</p>
         <h1 className="mt-1 text-3xl">Hips, kicks, and add-ons</h1>
         <p className="mt-2 text-sm text-muted">
-          Short ideas from public posts. SVG wrote the cues. Do the hip pieces before you chase kick height.
+          Do the hip pieces before you chase kick height.
         </p>
+        <p className="mt-3 text-sm text-muted">{IG_DRILL_DISCLAIMER}</p>
       </div>
       {IG_DRILL_GROUPS.map((group) => (
         <section key={group.id} className="space-y-3">
@@ -28,7 +29,7 @@ export default function MobilityDrillsPage() {
                 <p className="mt-1 text-sm font-semibold">{drill.prescription}</p>
                 <p className="mt-2 text-sm">{drill.cues}</p>
                 <p className="mt-3 text-xs text-muted">
-                  Idea seen in a post by {drill.credit.handle} — {drill.credit.idea}.{" "}
+                  Idea seen in a post by {drill.credit.handle}.{" "}
                   <a
                     href={drill.credit.url}
                     className="text-accent underline"
@@ -37,14 +38,13 @@ export default function MobilityDrillsPage() {
                   >
                     Their post
                   </a>
-                  . Not their program.
+                  .
                 </p>
               </li>
             ))}
           </ul>
         </section>
       ))}
-      <p className="text-xs text-muted">{IG_DRILL_DISCLAIMER}</p>
     </main>
   );
 }

@@ -22,7 +22,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${anton.variable} ${geistSans.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${anton.variable} ${geistSans.variable} h-full antialiased`}
+      // The splash script sets data-splash on this element before hydrate.
+      suppressHydrationWarning
+    >
       <body className="min-h-full bg-background font-sans text-foreground">
         <script
           dangerouslySetInnerHTML={{

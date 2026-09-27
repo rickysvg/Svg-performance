@@ -21,7 +21,7 @@ export type IgDrill = {
 };
 
 export const IG_DRILL_DISCLAIMER =
-  "These cues are written by SVG Performance. The link goes to the creator’s own post. SVG is not affiliated with them, and a credit is not an endorsement.";
+  "Ideas seen in public posts by these creators. The cues are SVG’s own. No endorsement is implied.";
 
 export const IG_DRILL_GROUPS: { id: IgDrillGroup; title: string; blurb: string }[] = [
   {

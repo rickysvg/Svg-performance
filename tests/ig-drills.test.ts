@@ -31,7 +31,8 @@ describe("instagram drill ideas", () => {
     for (const url of SKIPPED) expect(blob).not.toContain(url);
     expect(blob).not.toMatch(/\bbouts?\b/i);
     expect(blob).not.toMatch(/no shortcuts|slavic get-up|comment “|gaethje|bosu/i);
-    expect(IG_DRILL_DISCLAIMER).toMatch(/not an endorsement/i);
+    expect(IG_DRILL_DISCLAIMER).toMatch(/no endorsement is implied/i);
+    expect(IG_DRILL_DISCLAIMER).not.toMatch(/not their program/i);
     for (const drill of IG_DRILLS) {
       expect(drill.cues.length).toBeGreaterThan(40);
       expect(drill.credit.handle.startsWith("@")).toBe(true);
