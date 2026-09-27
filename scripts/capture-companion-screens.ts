@@ -3,7 +3,7 @@ import path from "node:path";
 import puppeteer from "puppeteer";
 
 const ART = "/opt/cursor/artifacts";
-const BASE = "http://localhost:3091";
+const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3111";
 
 async function main() {
   fs.mkdirSync(ART, { recursive: true });
