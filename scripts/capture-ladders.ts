@@ -34,8 +34,8 @@ async function recordMp4(page: Page, dest: string, ms = 8000) {
     `ffmpeg -y -framerate ${captureFps.toFixed(3)} -i ${dir}/%04d.jpg -c:v libx264 -pix_fmt yuv420p -r 30 -crf 18 -movflags +faststart "${silent}"`,
     { stdio: "inherit" },
   );
-  const sfx = fs.existsSync("/workspace/public/sfx/unlock_cinematic.mp3")
-    ? "/workspace/public/sfx/unlock_cinematic.mp3"
+  const sfx = fs.existsSync("/workspace/public/sfx/unlock_metal.mp3")
+    ? "/workspace/public/sfx/unlock_metal.mp3"
     : "";
   if (sfx) {
     execSync(

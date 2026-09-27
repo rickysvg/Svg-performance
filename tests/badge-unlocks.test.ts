@@ -133,7 +133,7 @@ describe("badge unlock queue and seen store", () => {
     expect(read("src/app/(member)/progress/page.tsx")).toContain("h-11");
     expect(read("src/lib/badge-sfx.ts")).toContain("playFinishSfx");
     expect(read("src/lib/badge-sfx.ts")).toContain("playUnlockSfx");
-    expect(read("src/lib/badge-sfx.ts")).toContain('ACTIVE_UNLOCK_SFX: UnlockSfxName = "cinematic"');
+    expect(read("src/lib/badge-sfx.ts")).toContain('ACTIVE_UNLOCK_SFX: UnlockSfxName = "metal"');
     expect(read("src/lib/badge-sfx.ts")).toContain("metal:");
     expect(read("src/lib/badge-sfx.ts")).toContain("fightnight:");
     expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_cinematic.mp3"))).toBe(true);

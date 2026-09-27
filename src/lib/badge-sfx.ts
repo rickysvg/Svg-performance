@@ -15,8 +15,8 @@ export const UNLOCK_SFX = {
 
 export type UnlockSfxName = keyof typeof UNLOCK_SFX;
 
-/** Ricky picks. Default is option 2 — cinematic. */
-export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "cinematic";
+/** Ricky picked option 1 — metal. */
+export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "metal";
 
 let audioCtx: AudioContext | null = null;
 const buffers = new Map<string, AudioBuffer>();
