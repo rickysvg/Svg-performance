@@ -77,6 +77,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `APP_URL` | Public address (`http://localhost:3000` locally) |
 | `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `SMTP_FROM` | Optional mail. Empty = password reset shows a PREVIEW link; reminders stay **in-app on Home only** |
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional. Seed promotes this existing account to admin |
+| `ADMIN_EMAILS` | Optional. Comma-separated emails that can open the form-check review queue, along with any account whose role is already admin |
 | `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = SVG Coach stays offline/DEMO |
 | `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
@@ -90,6 +91,8 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `PROGRESS_PHOTO_DIR` | Optional. Local folder for progress photos (default `uploads/progress-photos`). Never commit those files |
 | `TRAINING_CLIP_DIR` | Optional. Local folder for private training clips (default `uploads/training-clips`) |
 | `FOCUS_VIDEO_DIR` | Optional. Local folder for uploaded weekly focus clips (default `uploads/focus-videos`) |
+| `FORM_CHECK_DIR` | Optional. Local folder for private form-check clips (default `uploads/form-checks`). Never commit those files |
+| `BLOB_READ_WRITE_TOKEN` | Optional locally. **Set this on Vercel** (Vercel Blob store → read/write token) so form-check videos persist and stay private. Without it, hosted uploads do not save and the form says so |
 | `POLAR_CLIENT_ID` `POLAR_CLIENT_SECRET` `POLAR_REDIRECT_URI` | Optional. Polar AccessLink. Empty = Connect Polar (TEST) / not configured |
 | `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
 

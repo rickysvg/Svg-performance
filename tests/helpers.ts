@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { registerAccount } from "@/lib/auth";
 
 export async function resetDatabase() {
+  await prisma.formCheck.deleteMany();
+  await prisma.fightCamp.deleteMany();
   await prisma.clipTimestampNote.deleteMany();
   await prisma.trainingClip.deleteMany();
   await prisma.challengeEnrollment.deleteMany();

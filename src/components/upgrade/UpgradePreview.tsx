@@ -21,6 +21,14 @@ const BLURBS: Record<string, { title: string; body: string }> = {
     title: "The full mobility plan is in Performance",
     body: "Two routines and the daily warm-up stay free. The other routines, the 6-week progression, and check-in history open on Performance. Paid plans coming soon.",
   },
+  fight_camp: {
+    title: "Fight camp is in Performance",
+    body: "Build a week-by-week camp from your fight date: base, build, peak / sharpen, and a fight-week taper. Paid plans coming soon. Start a short free trial — no card — or look at pricing.",
+  },
+  form_check: {
+    title: "Form check is in Performance",
+    body: "Send two short clips a month. A real coach writes the note, and it shows up signed SVG Coach. Paid plans coming soon. Start a short free trial — no card — or look at pricing.",
+  },
   history: {
     title: "Longer history is a paid feature",
     body: "The free plan shows the last 12 weeks. One year and all-time charts are on Performance. Paid plans coming soon — no checkout on this preview.",
