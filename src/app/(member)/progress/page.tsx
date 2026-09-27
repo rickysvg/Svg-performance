@@ -19,6 +19,7 @@ import { getTrialState } from "@/lib/trial";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
 import { featuredBadges } from "@/lib/badges";
+import { resolveBadgeStyle } from "@/lib/badge-style";
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
@@ -41,7 +42,13 @@ function MetricTile({
   );
 }
 
-export default async function ProgressPage() {
+export default async function ProgressPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ badgeStyle?: string }>;
+}) {
+  const query = searchParams ? await searchParams : {};
+  const badgeStyle = resolveBadgeStyle(query.badgeStyle);
   const user = await requireUser();
   const [profile, sessions, latestMetrics, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
@@ -107,7 +114,12 @@ export default async function ProgressPage() {
         <StreakHero streak={companion.streak} />
       </section>
 
-      <BadgesGrid badges={featured} earned={badgeCounts.earned} total={badgeCounts.total} />
+      <BadgesGrid
+        badges={featured}
+        earned={badgeCounts.earned}
+        total={badgeCounts.total}
+        style={badgeStyle}
+      />
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">

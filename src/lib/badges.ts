@@ -27,10 +27,75 @@ export type BadgeDef = {
   icon: "star" | "flame" | "bike" | "barbell" | "pads" | "lock" | "hold" | "heavy";
 };
 
+export const BADGE_TIERS = ["bronze", "silver", "gold", "lime"] as const;
+export type BadgeTier = (typeof BADGE_TIERS)[number];
+
 export type EarnedBadge = BadgeDef & {
   earned: boolean;
   earnedAt: Date | null;
+  mark: string;
+  tier: BadgeTier;
+  ribbon: string;
+  progressCurrent: number;
+  progressTarget: number;
+  progressLabel: string;
 };
+
+export function badgeMark(id: BadgeId, unit: LoadUnit = "lb") {
+  if (id === "first_session") return "1";
+  if (id === "streak_7") return "7";
+  if (id === "bike_50") return "50";
+  if (id === "lift_100kg") return unit === "kg" ? "100" : "225";
+  if (id === "pads_250") return "250";
+  if (id === "streak_30") return "30";
+  if (id === "hold_5min") return "5:00";
+  if (id === "lift_200kg") return unit === "kg" ? "200" : "405";
+  if (id === "workouts_10") return "10";
+  if (id === "workouts_25") return "25";
+  if (id === "workouts_50") return "50";
+  if (id === "workouts_100") return "100";
+  return "100";
+}
+
+export function badgeTier(id: BadgeId): BadgeTier {
+  if (id === "first_session" || id === "workouts_10") return "bronze";
+  if (id === "streak_7" || id === "bike_50" || id === "workouts_25") return "silver";
+  if (
+    id === "lift_100kg" ||
+    id === "pads_250" ||
+    id === "streak_30" ||
+    id === "hold_5min" ||
+    id === "workouts_50"
+  ) {
+    return "gold";
+  }
+  return "lime";
+}
+
+export function badgeRibbon(id: BadgeId) {
+  if (id.startsWith("streak")) return "Streak";
+  if (id.startsWith("lift")) return "Lift";
+  if (id === "bike_50") return "Bike";
+  if (id === "pads_250") return "Pads";
+  if (id === "hold_5min") return "Hold";
+  if (id === "first_session") return "First";
+  return "Work";
+}
+
+function formatClock(totalSeconds: number) {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+export function badgeProgressLabel(id: BadgeId, current: number, target: number) {
+  if (id === "hold_5min") {
+    return `${formatClock(current)}/${formatClock(target)}`;
+  }
+  const shown = Math.max(0, Math.round(current));
+  return `${shown}/${target}`;
+}
 
 /** Lift milestones stored in kg and converted for display / comparison. */
 export const LIFT_BADGE_KG = {
@@ -174,6 +239,22 @@ export function evaluateBadges(input: {
 
   const earnedAt = (ok: boolean, at: Date | null = firstAt) => (ok ? at : null);
 
+  const progress: Record<BadgeId, { current: number; target: number }> = {
+    first_session: { current: Math.min(input.workoutCount, 1), target: 1 },
+    streak_7: { current: Math.min(input.longestStreak, 7), target: 7 },
+    bike_50: { current: Math.min(bike, 50), target: 50 },
+    lift_100kg: { current: Math.min(lift, lift100), target: lift100 },
+    pads_250: { current: Math.min(pads, 250), target: 250 },
+    streak_30: { current: Math.min(input.longestStreak, 30), target: 30 },
+    hold_5min: { current: Math.min(hold, 5 * 60), target: 5 * 60 },
+    lift_200kg: { current: Math.min(lift, lift200), target: lift200 },
+    workouts_10: { current: Math.min(input.workoutCount, 10), target: 10 },
+    workouts_25: { current: Math.min(input.workoutCount, 25), target: 25 },
+    workouts_50: { current: Math.min(input.workoutCount, 50), target: 50 },
+    workouts_100: { current: Math.min(input.workoutCount, 100), target: 100 },
+    streak_100: { current: Math.min(input.longestStreak, 100), target: 100 },
+  };
+
   const checks: Record<BadgeId, { ok: boolean; at: Date | null }> = {
     first_session: { ok: input.workoutCount >= 1, at: earnedAt(input.workoutCount >= 1) },
     streak_7: { ok: input.longestStreak >= 7, at: earnedAt(input.longestStreak >= 7) },
@@ -190,11 +271,20 @@ export function evaluateBadges(input: {
     streak_100: { ok: input.longestStreak >= 100, at: earnedAt(input.longestStreak >= 100) },
   };
 
-  return badgeCatalog(unit).map((def) => ({
-    ...def,
-    earned: checks[def.id].ok,
-    earnedAt: checks[def.id].at,
-  }));
+  return badgeCatalog(unit).map((def) => {
+    const row = progress[def.id];
+    return {
+      ...def,
+      earned: checks[def.id].ok,
+      earnedAt: checks[def.id].at,
+      mark: badgeMark(def.id, unit),
+      tier: badgeTier(def.id),
+      ribbon: badgeRibbon(def.id),
+      progressCurrent: row.current,
+      progressTarget: row.target,
+      progressLabel: badgeProgressLabel(def.id, row.current, row.target),
+    };
+  });
 }
 
 export function featuredBadges(badges: EarnedBadge[]) {

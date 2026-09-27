@@ -106,6 +106,17 @@ describe("QA-approved access and surface fixes", () => {
     expect(pr).toContain("text-[#CBF805]");
   });
 
+  it("ships three distinct badge styles behind one constant", () => {
+    const style = read("src/lib/badge-style.ts");
+    expect(style).toContain('["medal", "belt", "hex"]');
+    expect(style).toContain("export const BADGE_STYLE");
+    expect(read("src/components/progress/BadgeMedal.tsx")).toContain("circle");
+    expect(read("src/components/progress/BadgeBelt.tsx")).toContain("L67,22");
+    expect(read("src/components/progress/BadgeHex.tsx")).toContain("polygon");
+    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("grid-cols-4");
+    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("font-display");
+  });
+
   it("shows register progress after 6s and a timeout retry", () => {
     const form = read("src/components/auth/RegisterForm.tsx");
     expect(form).toContain("Still working, first sign-up can take a few seconds…");

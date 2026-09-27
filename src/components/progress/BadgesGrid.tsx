@@ -1,14 +1,17 @@
 import type { EarnedBadge } from "@/lib/badges";
-import { BadgeIcon } from "@/components/progress/BadgeIcon";
+import { BADGE_STYLE, type BadgeStyleId } from "@/lib/badge-style";
+import { BadgeMark } from "@/components/progress/BadgeMark";
 
 export function BadgesGrid({
   badges,
   earned,
   total,
+  style = BADGE_STYLE,
 }: {
   badges: EarnedBadge[];
   earned: number;
   total: number;
+  style?: BadgeStyleId;
 }) {
   return (
     <section id="badges" className="space-y-4">
@@ -21,14 +24,8 @@ export function BadgesGrid({
       <ul className="grid grid-cols-4 gap-x-2 gap-y-5">
         {badges.map((badge) => (
           <li key={badge.id} className="text-center">
-            <div
-              className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
-                badge.earned ? "bg-black" : "bg-card"
-              }`}
-            >
-              <BadgeIcon icon={badge.earned ? badge.icon : "lock"} earned={badge.earned} />
-            </div>
-            <p className="mt-2 font-display text-[10px] uppercase leading-tight tracking-wide">
+            <BadgeMark badge={badge} style={style} />
+            <p className="mt-1 font-display text-[10px] uppercase leading-tight tracking-wide">
               {badge.title}
             </p>
           </li>
