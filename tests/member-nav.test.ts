@@ -59,6 +59,7 @@ describe("member chrome swap", () => {
       "utf8",
     );
     expect(header).toContain("data-bottom-dock");
+    expect(header).toContain("fixed inset-x-0 bottom-0");
     expect(header).toContain("grid-cols-5");
     expect(header).toContain("data-dock-link");
     expect(header).toContain("centerAction");

@@ -56,8 +56,8 @@ describe("QA-approved access and surface fixes", () => {
 
   it("keeps Progress chips at least 44px tall", () => {
     const progress = read("src/app/(member)/progress/page.tsx");
-    expect(progress).toMatch(/min-h-11[\s\S]*Heart rate/);
-    expect(progress).toMatch(/min-h-11[\s\S]*Settings/);
+    expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Heart rate/);
+    expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Settings/);
   });
 
   it("shows register progress after 6s and a timeout retry", () => {

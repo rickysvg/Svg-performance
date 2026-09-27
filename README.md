@@ -18,13 +18,13 @@ It does **not** charge live cards, talk to Gymdesk, fake an Apple Watch pairing,
 6. See **My Progress**: type body weight / sleep / resting HR / lean mass / body fat yourself, see calories from food logs, **upload private progress photos** (jpeg/png/webp), a **personal records** board (heaviest load per exercise + longest days-active streak), plus workout charts. Open **Heart rate** to import Apple Health / watch workouts (JSON, XML, or CSV), type RHR, or optionally connect Polar. Open the **weekly SVG report** for an automated summary (strength / conditioning / difficulty / next focus). Coach comments stay empty until a human writes them. Apple Watch is not shown as connected on the web.
 7. Log meals by hand. Search a small **DEMO** food list or your saved meals. Calories/macros are **manual estimates**. Correct them later. **Meal-prep v1** on Fuel scales portions, applies simple swaps, and builds a grocery list (verify allergies yourself).
 8. Browse a **DEMO** Learn technique library filtered by **skill level** and **martial art** (both at once). Each card shows a YouTube thumb, channel, tags, a short summary, and a technical write-up. Videos are labeled YouTube references — not SVG-produced film. Bookmark or mark complete. Admins can draft/publish. Member Access stays beginner-only when Stripe keys are on.
-9. Chat with **SVG Coach** (AI assistant). Pick Martial art (then an art), Conditioning, or Mental first. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
+9. Chat with **SVG Coach** (AI coach). Pick Martial art (then an art), Conditioning, or Mental first. Safety rails refuse pain, medical, weight-cut, and other-member record requests. Knowledge prefers `COACHING_GUIDE.md` + DEMO seeds. No API key = honest offline/DEMO answers.
 10. Keep a **personal coaching journal** (goals, notes, questions, lessons). Owner-only unless an assigned coach adds feedback + action items on Fighter Development+. Request human coach help from Home (status: open / seen / closed — not a 24/7 promise).
 11. **Heart rate (Apple Health first):** import a Health Auto Export JSON, Apple Health `export.xml`, or CSV from iPhone Health / Shortcuts. Rows are labeled `apple_health` or `apple_watch_import`. The web app cannot pair a Watch. Polar is optional (env keys). Manual avg/max is a backup. Analysis is **not medical advice**. Automatic Watch sync is Phase 2 (native iOS / HealthKit).
 12. Open the real [SVG & CO shop](https://www.svgandco.com) (we do not invent products or prices).
 13. See draft **App Plans / Online Coaching / VIP Experiences** on Pricing (gym vs nonmember, PROPOSAL / TEST). Checkout only runs if Stripe TEST keys are set. Access is granted only by webhook, not by the success page. Copy mentions Affirm / Klarna pay-over-time when available; without keys that stays coming soon.
 14. See **My plan** for the current catalog plan and this month’s coaching credits. Admins can assign/override a plan for the pilot and mark a credit used.
-15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. SVG Coach is not Ricky.
+15. **Book with Ricky**: eligible call types, remaining credits, a prepare checklist, preferred times, and post-call next steps (empty until a coach writes them). Not a live calendar. SVG Coach is an AI coach.
 16. Admins can verify gym members, invite emails, assign a 30-day pilot plan, adjust credits, run comment queues, and see simple signup / weekly-active counts. Checking “I train at SVG” still grants nothing.
 17. Coaches/admins can see assigned-member **trends** (workouts, lessons, AI handoff flags, last active) — not private food diaries.
 18. **Timestamped clips** (Fighter Development+): private mp4/webm upload; assigned coach adds mm:ss notes + a drill. Not a live stream. Local disk; S3 later (names only).
@@ -204,7 +204,7 @@ Coverage includes:
 - Progress photo files: owner-only read/edit/delete; jpeg/png/webp only; coaches cannot open another member’s file
 - Every seeded DEMO exercise has a YouTube form URL **or** an explicit pending flag
 - Plan entitlements: Member Access vs Performance vs Elite; gym-price verify; Elite cap + waitlist
-- SVG Coach ≠ Ricky disclaimer string; VIP included strategy credit on Book requests
+- SVG Coach AI disclaimer string; VIP included strategy credit on Book requests
 
 See `EVALS.md` for the SVG Coach evaluation set.
 
