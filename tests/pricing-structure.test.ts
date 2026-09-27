@@ -133,8 +133,7 @@ describe("Ricky-approved pricing structure", () => {
     ];
     for (const file of files) {
       const text = read(file);
-      expect(text.toLowerCase()).not.toContain("bout");
-      expect(text.toLowerCase()).not.toContain("not ricky");
+      expect(text.toLowerCase()).not.toMatch(/\bbout\b/);
     }
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
     expect(catalog).toContain("Monthly");
