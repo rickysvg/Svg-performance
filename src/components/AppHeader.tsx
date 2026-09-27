@@ -115,7 +115,7 @@ export function AppHeader({
     return (
       <header
         data-bottom-dock
-        className="sticky bottom-0 z-20 border-t border-line bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
       >
         {!hideMemberLinks && (role === "admin" || staff) ? (
           <div className="mx-auto flex max-w-3xl justify-end gap-1.5 px-3 pt-2">

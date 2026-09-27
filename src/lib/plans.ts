@@ -1,5 +1,12 @@
-export const AI_DISCLAIMER =
-  "SVG Coach is an AI assistant, not Ricky and not medical advice. For injuries or pain, talk to a coach or doctor.";
+/** Matches Coach topics: martial art (striking/grappling), conditioning, mental. */
+export const COACH_AI_TRAINED_ON =
+  "striking, grappling, strength and conditioning, and fight mindset";
+
+export const COACH_AI_BLURB = `SVG Coach is an AI coach trained on ${COACH_AI_TRAINED_ON}.`;
+
+export const COACH_AI_SHORT = "SVG Coach (AI coach)";
+
+export const AI_DISCLAIMER = `${COACH_AI_BLURB} For injuries or pain, talk to a coach or doctor.`;
 
 export const CATALOG_PLAN_IDS = [
   "member_access",
@@ -95,7 +102,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "Full general tutorial library",
       "Calorie / macro tracking (manual estimates)",
       "Meal ideas and progress charts",
-      "SVG Coach (AI assistant, not Ricky)",
+      "SVG Coach (AI coach)",
       "Daily motivational quote",
     ],
     rank: 1,

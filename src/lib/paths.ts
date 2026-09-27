@@ -143,7 +143,7 @@ export const TRAINING_PATHS: TrainingPath[] = [
       {
         key: "check-in",
         title: "Request a human check-in or write a question",
-        summary: "Book with Ricky if you have credits, or journal a question. SVG Coach is not Ricky.",
+        summary: "Book with Ricky if you have credits, or journal a question. SVG Coach is an AI coach.",
         href: "/book",
         checkinHint: true,
       },

@@ -24,7 +24,7 @@ export function MemberFrame({
   const hidePrimaryNav = shouldHidePrimaryNav(pathname);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-dvh flex-col">
       <TimeZoneSync savedTimeZone={timeZone} />
       {hidePrimaryNav ? null : <PrimaryNav />}
       <div

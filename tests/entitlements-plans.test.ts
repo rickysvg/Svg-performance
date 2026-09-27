@@ -215,8 +215,10 @@ describe("M5 entitlements, caps, and booking credits", () => {
     expect(after.credits.find((row) => row.kind === "strategy_45")?.remaining).toBe(0);
   });
 
-  it("keeps the SVG Coach ≠ Ricky disclaimer", () => {
-    expect(AI_DISCLAIMER).toMatch(/not Ricky/i);
+  it("keeps the SVG Coach AI disclaimer", () => {
+    expect(AI_DISCLAIMER).toMatch(/AI coach trained on/i);
+    expect(AI_DISCLAIMER).not.toMatch(/not Ricky/i);
+    expect(PLAN_CATALOG.performance.includes).toContain("SVG Coach (AI coach)");
     expect(PLAN_CATALOG.vip.includes.join(" ")).toMatch(/billing month/i);
   });
 });

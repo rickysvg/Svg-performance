@@ -160,7 +160,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 - **Book with Ricky** stores a request (`preferredTimes`) — not Zoom, not a deposit. VIP/Platinum flag `usesIncludedCredit` when a strategy credit remains. Intensives are Platinum-only stubs (El Paso $1500 / travel from $4500).
 - **Stripe TEST** env names exist for every paid SKU. `gym` / `standalone` webhooks still map to catalog `performance` so M2–M4 tests stay valid.
 - **Affirm / Klarna / similar BNPL** are TEST Checkout payment methods, not a second billing stack. Checkout sends `payment_method_types` (card + Klarna/Afterpay/Affirm when the USD amount allows), then Dashboard `automatic_payment_methods` if Stripe rejects a type (common for Affirm on `mode: subscription`), then card-only. No extra secrets. Approval is Affirm’s/Klarna’s. We do not store loan details on `Subscription`. Missing keys = coming-soon copy, checkout off, never a fake BNPL success. Webhooks still grant access the same way regardless of card vs BNPL. Intensives stay Book stubs.
-- **SVG Coach ≠ Ricky** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
+- **SVG Coach is an AI coach** is a shared `AI_DISCLAIMER` on Coach, Pricing coaching/VIP, Book, and Plan.
 - **No live billing.** Missing keys = honest off + preview entitlements (tools stay open like M1–M4).
 
 ## Milestone 6

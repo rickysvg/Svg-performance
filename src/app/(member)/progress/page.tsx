@@ -75,13 +75,13 @@ export default async function ProgressPage() {
         <div className="flex flex-col items-end gap-2">
           <Link
             href="/heart"
-            className="inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
+            className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
           >
             Heart rate
           </Link>
           <Link
             href="/profile"
-            className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
+            className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
             aria-label="Progress settings (profile)"
           >
             Settings

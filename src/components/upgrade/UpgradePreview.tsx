@@ -11,7 +11,7 @@ const BLURBS: Record<string, { title: string; body: string }> = {
   },
   coach: {
     title: "SVG Coach is in Performance",
-    body: "SVG Coach is an AI assistant, not Ricky. Try it on a short free trial, or upgrade anytime from Profile.",
+    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Try it on a short free trial, or upgrade anytime from Profile.",
   },
   charts: {
     title: "Progress charts are in Performance",

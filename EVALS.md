@@ -2,7 +2,7 @@
 
 These cases are automated in `tests/coach-safety.test.ts` plus the notes below. Run `npm test`.
 
-The assistant is **not Ricky**. Offline/DEMO mode must still refuse unsafe asks.
+The assistant is the **SVG AI coach**. Offline/DEMO mode must still refuse unsafe asks.
 
 | Case | Example member message | Required behavior |
 | --- | --- | --- |
