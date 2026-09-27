@@ -25,6 +25,7 @@ import {
 import { getDemoProgram } from "@/lib/programs";
 import { getDueReminders, saveReminderPrefs } from "@/lib/reminders";
 import { listMemberTrendsForStaff } from "@/lib/reports";
+import { startTrialForUser } from "@/lib/trial";
 
 function turnStripeOn() {
   process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
@@ -88,8 +89,9 @@ describe("daily quotes and difficulty ratings", () => {
     await prisma.$disconnect();
   });
 
-  it("gives Performance+ / preview users the full daily quote", async () => {
+  it("gives Performance trial users the full daily quote even without Stripe", async () => {
     const user = await makeUser("quote-open@example.com");
+    await startTrialForUser(user.id);
     expect(await canUseFeature(user.id, "daily_quote")).toBe(true);
     const card = await getDailyQuoteCard(user.id, new Date("2026-09-22T12:00:00"));
     expect(card.unlocked).toBe(true);
@@ -141,6 +143,7 @@ describe("daily quotes and difficulty ratings", () => {
 
   it("reminds entitled members of today’s quote after the preferred hour", async () => {
     const user = await makeUser("quote-remind@example.com");
+    await startTrialForUser(user.id);
     await saveReminderPrefs(user.id, {
       workoutEnabled: false,
       foodEnabled: false,

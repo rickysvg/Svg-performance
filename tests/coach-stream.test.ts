@@ -9,6 +9,13 @@ import {
   runCoachNoteStream,
 } from "@/lib/coach/stream";
 import { coachStreamForTest } from "@/app/api/coach/stream/route";
+import { startTrialForUser } from "@/lib/trial";
+
+async function makeCoachUser(email: string) {
+  const user = await makeUser(email);
+  await startTrialForUser(user.id);
+  return user;
+}
 
 describe("SVG Coach streaming", () => {
   const previousDelay = process.env.COACH_STREAM_DELAY_MS;
@@ -41,7 +48,7 @@ describe("SVG Coach streaming", () => {
   });
 
   it("persists the full assistant message after the stream finishes", async () => {
-    const user = await makeUser("stream-full@example.com");
+    const user = await makeCoachUser("stream-full@example.com");
     const events: string[] = [];
     const result = await runCoachChatStream({
       user,
@@ -75,7 +82,7 @@ describe("SVG Coach streaming", () => {
 
   it("keeps partial text when the stream is aborted", async () => {
     process.env.COACH_STREAM_DELAY_MS = "40";
-    const user = await makeUser("stream-abort@example.com");
+    const user = await makeCoachUser("stream-abort@example.com");
     const controller = new AbortController();
     const pending = runCoachChatStream({
       user,
@@ -100,7 +107,7 @@ describe("SVG Coach streaming", () => {
   });
 
   it("persists a notepad stream and keeps a partial after abort", async () => {
-    const user = await makeUser("stream-note@example.com");
+    const user = await makeCoachUser("stream-note@example.com");
     const full = await runCoachNoteStream({
       user,
       body: {

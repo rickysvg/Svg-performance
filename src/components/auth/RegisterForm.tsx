@@ -7,38 +7,37 @@ import { StatusBanner } from "@/components/StatusBanner";
 const SLOW_MS = 6_000;
 const TIMEOUT_MS = 25_000;
 
+type PendingPhase = "working" | "slow" | "timeout";
+
 export function RegisterForm() {
   const [state, action, pending] = useActionState(
     registerAction,
     {} as ActionState,
   );
-  const [slow, setSlow] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
+  const [phase, setPhase] = useState<PendingPhase>("working");
 
   useEffect(() => {
-    if (!pending) {
-      setSlow(false);
-      setTimedOut(false);
-      return;
-    }
-    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_MS);
-    const timeoutTimer = window.setTimeout(() => setTimedOut(true), TIMEOUT_MS);
+    if (!pending) return;
+    const reset = window.setTimeout(() => setPhase("working"), 0);
+    const slowTimer = window.setTimeout(() => setPhase("slow"), SLOW_MS);
+    const timeoutTimer = window.setTimeout(() => setPhase("timeout"), TIMEOUT_MS);
     return () => {
+      window.clearTimeout(reset);
       window.clearTimeout(slowTimer);
       window.clearTimeout(timeoutTimer);
     };
   }, [pending]);
 
-  const buttonLabel = pending
-    ? slow
+  const buttonLabel = !pending
+    ? "Create account"
+    : phase === "slow" || phase === "timeout"
       ? "Still working, first sign-up can take a few seconds…"
-      : "Creating account…"
-    : "Create account";
+      : "Creating account…";
 
   return (
     <form action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} />
-      {timedOut ? (
+      {pending && phase === "timeout" ? (
         <StatusBanner error="This is taking too long. Refresh the page and try again." />
       ) : null}
       <label className="block">
