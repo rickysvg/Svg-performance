@@ -1,10 +1,10 @@
 import type { BadgeCategoryId, BadgeId } from "@/lib/badges";
+import { isLiftLadderId } from "@/lib/badges";
 import type { LoadUnit } from "@/lib/units";
 
-/** Art filename stem. Lift IDs stay lift_100kg / lift_200kg in the repo. */
+/** Art filename stem. Lift rungs pick _lb / _kg from the athlete unit. */
 export function badgeArtId(id: BadgeId, unit: LoadUnit = "lb") {
-  if (id === "lift_100kg") return unit === "kg" ? "lift_100kg" : "lift_225lb";
-  if (id === "lift_200kg") return unit === "kg" ? "lift_200kg" : "lift_405lb";
+  if (isLiftLadderId(id)) return `${id}_${unit}`;
   return id;
 }
 

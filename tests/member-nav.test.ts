@@ -73,10 +73,10 @@ describe("member chrome swap", () => {
     expect(nav).toContain("md:block");
   });
 
-  it("keeps the dock on the timer and workout-done screens", () => {
+  it("hides chrome on the timer and workout-done screens", () => {
     expect(isWorkoutDonePath("/training/log/abc/done")).toBe(true);
     expect(isImmersiveTrainingPath("/training/log/abc")).toBe(true);
-    expect(isImmersiveTrainingPath("/training/log/abc/done")).toBe(false);
+    expect(isImmersiveTrainingPath("/training/log/abc/done")).toBe(true);
     expect(isImmersiveTrainingPath("/timer")).toBe(false);
     expect(shouldHidePrimaryNav("/timer")).toBe(true);
     expect(shouldHidePrimaryNav("/training/log/abc/done")).toBe(true);

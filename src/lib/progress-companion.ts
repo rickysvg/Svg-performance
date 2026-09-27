@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { evaluateBadges, featuredBadges, type EarnedBadge } from "@/lib/badges";
 import {
+  migrateSeenBadgeIds,
   newlyEarnedBadges,
   seedSeenExcludingNew,
   serializeUnlockQuery,
-  unseenEarnedBadges,
 } from "@/lib/badge-unlocks";
 import { readSeenBadgeUnlocksForUser, writeSeenBadgeUnlocksForUser } from "@/lib/profile";
 import {
@@ -160,23 +160,23 @@ export async function detectUnseenBadgeUnlocksForSession(
   sessionId: string,
   displayUnit: LoadUnit,
 ) {
-  const [before, after, seen] = await Promise.all([
+  const [before, after, seenRaw] = await Promise.all([
     evaluateBadgesForUser(userId, displayUnit, new Date(), sessionId),
     evaluateBadgesForUser(userId, displayUnit),
     readSeenBadgeUnlocksForUser(userId),
   ]);
+  const seen = migrateSeenBadgeIds(seenRaw);
   const fresh = newlyEarnedBadges(before, after);
-  if (seen.length === 0) {
-    const seed = seedSeenExcludingNew(
-      after.filter((row) => row.earned).map((row) => row.id),
-      fresh.map((row) => row.id),
-    );
-    if (seed.length > 0) {
-      await writeSeenBadgeUnlocksForUser(userId, seed);
-    }
-    return fresh;
+  const silent = seedSeenExcludingNew(
+    after.filter((row) => row.earned).map((row) => row.id),
+    fresh.map((row) => row.id),
+  );
+  const toWrite = [...new Set([...seen, ...silent])];
+  if (toWrite.length > 0) {
+    await writeSeenBadgeUnlocksForUser(userId, toWrite);
   }
-  return unseenEarnedBadges(after, seen);
+  const already = new Set(seen);
+  return fresh.filter((row) => !already.has(row.id));
 }
 
 export function unlockQueryForBadges(badges: EarnedBadge[]) {

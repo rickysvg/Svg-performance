@@ -139,7 +139,7 @@ describe("QA-approved access and surface fixes", () => {
   it("ships category badge art grouped on Progress", () => {
     expect(read("src/components/progress/BadgeArt.tsx")).toContain("badgeArtSrc");
     expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeArt");
-    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("grid-cols-2");
+    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("data-badge-grid=\"ladders\"");
     expect(read("src/components/progress/BadgesGrid.tsx")).toContain("font-display");
   });
 

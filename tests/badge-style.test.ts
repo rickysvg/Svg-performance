@@ -15,25 +15,25 @@ function read(rel: string) {
 }
 
 describe("badge styles and progress", () => {
-  it("uses category badge art instead of belt plates", () => {
+  it("uses ladder badge art with lb/kg lift stems", () => {
     expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeArt");
     expect(read("src/components/progress/BadgeArt.tsx")).toContain("badgeArtSrc");
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/streak_7.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/bag_250_locked.webp"))).toBe(true);
-    expect(fs.existsSync(path.join(process.cwd(), "public/badges/lift_225lb_hero.webp"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/badges/lift_l3_lb_hero.webp"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/badges/lift_l3_kg.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgePlate.tsx"))).toBe(
       false,
     );
-    expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-steel-512.webp"))).toBe(false);
-    expect(badgeArtSrc("lift_100kg", "lb", "progress")).toBe("/badges/lift_225lb.webp");
-    expect(badgeArtSrc("lift_200kg", "kg", "hero")).toBe("/badges/lift_200kg_hero.webp");
+    expect(badgeArtSrc("lift_l3", "lb", "progress")).toBe("/badges/lift_l3_lb.webp");
+    expect(badgeArtSrc("lift_l5", "kg", "hero")).toBe("/badges/lift_l5_kg_hero.webp");
   });
 
   it("uses big milestone marks in the athlete unit", () => {
-    expect(badgeMark("lift_100kg", "lb")).toBe("225");
-    expect(badgeMark("lift_200kg", "lb")).toBe("405");
-    expect(badgeMark("lift_100kg", "kg")).toBe("100");
-    expect(badgeMark("lift_200kg", "kg")).toBe("200");
+    expect(badgeMark("lift_l3", "lb")).toBe("225");
+    expect(badgeMark("lift_l5", "lb")).toBe("405");
+    expect(badgeMark("lift_l3", "kg")).toBe("100");
+    expect(badgeMark("lift_l5", "kg")).toBe("180");
     expect(badgeMark("streak_7")).toBe("7");
     expect(badgeMark("streak_30")).toBe("30");
     expect(badgeMark("streak_100")).toBe("100");
@@ -42,13 +42,13 @@ describe("badge styles and progress", () => {
     expect(badgeMark("bag_250")).toBe("250");
     expect(badgeMark("sparring_50")).toBe("50");
     expect(badgeTier("first_session")).toBe("bronze");
-    expect(badgeTier("streak_7")).toBe("steel");
-    expect(badgeTier("bag_250")).toBe("steel");
-    expect(badgeTier("sparring_50")).toBe("steel");
-    expect(badgeTier("grappling_50")).toBe("steel");
-    expect(badgeTier("streak_30")).toBe("gold");
+    expect(badgeTier("streak_7")).toBe("bronze");
+    expect(badgeTier("bag_250")).toBe("gold");
+    expect(badgeTier("sparring_50")).toBe("gold");
+    expect(badgeTier("grappling_50")).toBe("gold");
+    expect(badgeTier("streak_30")).toBe("steel");
     expect(badgeTier("streak_100")).toBe("gold");
-    expect(badgeTier("lift_200kg")).toBe("gold");
+    expect(badgeTier("lift_l5")).toBe("gold");
     expect(badgeRibbon("pads_250")).toBe("Pads");
     expect(badgeRibbon("bag_250")).toBe("Bag");
   });

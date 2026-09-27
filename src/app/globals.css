@@ -84,6 +84,12 @@ textarea:focus-visible {
   min-width: 44px;
 }
 
+.progress-tab {
+  box-sizing: border-box;
+  height: 2.75rem;
+  min-height: 2.75rem;
+}
+
 /*
   Neon lime is the highlighter fill. Small text that uses text-accent must stay
   readable on white, so ink it nearly black. Buttons keep bg-accent + text-black.
@@ -287,8 +293,26 @@ body:has(.app-splash.is-visible) {
   width: 112px;
 }
 
+.badge-art-chip {
+  width: 44px;
+}
+
 .badge-art-lg {
   width: 220px;
+}
+
+.badge-chip {
+  display: inline-flex;
+  width: 44px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.badge-rung-gold {
+  filter:
+    drop-shadow(0 0 10px rgba(203, 248, 5, 0.95))
+    drop-shadow(0 0 22px rgba(255, 214, 70, 0.7))
+    drop-shadow(0 0 36px rgba(203, 248, 5, 0.45));
 }
 
 .badge-lock-dot {
@@ -420,22 +444,50 @@ body:has(.app-splash.is-visible) {
   );
 }
 
-.badge-unlock-rays {
-  pointer-events: none;
+.fx-sprite {
+  mix-blend-mode: plus-lighter;
+}
+
+@supports not (mix-blend-mode: plus-lighter) {
+  .fx-sprite {
+    mix-blend-mode: screen;
+  }
+}
+
+.fx-sprite-center {
   position: absolute;
   left: 50%;
-  top: 28%;
-  width: 420px;
-  height: 420px;
-  margin-left: -210px;
-  background: repeating-conic-gradient(
-    from 0deg,
-    rgba(203, 248, 5, 0.16) 0deg 4deg,
-    transparent 4deg 18deg
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.fx-feather,
+.fx-feather-layer {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 38%, transparent 70%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 38%, transparent 70%);
+}
+
+.workout-win-backdrop {
+  background: #000;
+  isolation: isolate;
+}
+
+.workout-win-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 28%,
+    rgba(203, 248, 5, 0.2) 0%,
+    rgba(203, 248, 5, 0.05) 26%,
+    transparent 52%
   );
-  opacity: 0;
-  mix-blend-mode: screen;
-  animation: badge-rays 900ms ease-out 900ms both;
+}
+
+.workout-win-crest {
+  width: 240px;
+  height: auto;
+  filter: drop-shadow(0 0 18px rgba(203, 248, 5, 0.45));
 }
 
 @keyframes badge-cine-in {
@@ -538,20 +590,6 @@ body:has(.app-splash.is-visible) {
   }
 }
 
-@keyframes badge-rays {
-  from {
-    opacity: 0;
-    transform: scale(0.7) rotate(0deg);
-  }
-  40% {
-    opacity: 0.85;
-  }
-  to {
-    opacity: 0.35;
-    transform: scale(1.08) rotate(18deg);
-  }
-}
-
 @keyframes badge-unlock-fade {
   from {
     opacity: 0;
@@ -566,7 +604,8 @@ body:has(.app-splash.is-visible) {
   .badge-unlock-shake,
   .badge-unlock-ring-stroke,
   .badge-unlock-ring-tip,
-  .badge-unlock-rays {
+  .fx-sprite,
+  .workout-win-crest {
     animation: none;
   }
 
