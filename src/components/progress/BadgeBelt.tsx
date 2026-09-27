@@ -1,4 +1,3 @@
-import type { EarnedBadge } from "@/lib/badges";
 import {
   faceFill,
   markFill,
