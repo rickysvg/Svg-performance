@@ -7,10 +7,12 @@ import { getProfileForUser } from "@/lib/profile";
 import {
   deleteWorkoutSessionForUser,
   rateWorkoutSessionForUser,
+  startRoundWorkoutForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
   type WorkoutSetInput,
 } from "@/lib/workouts";
+import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
@@ -23,6 +25,24 @@ import {
 } from "@/lib/progress-companion";
 
 export type WorkoutActionState = { error?: string; success?: string; newPr?: string };
+
+export async function startRoundLogAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const profile = await getProfileForUser(user.id);
+  const units: LoadUnit = profile?.preferredUnits ?? "lb";
+  const modeRaw = String(formData.get("mode") ?? "bag");
+  const mode: TimerMode = TIMER_MODES.includes(modeRaw as TimerMode)
+    ? (modeRaw as TimerMode)
+    : "bag";
+  const session = await startRoundWorkoutForUser({
+    userId: user.id,
+    mode,
+    rounds: Number(formData.get("rounds") ?? 3),
+    workSeconds: Number(formData.get("workSeconds") ?? 180),
+    preferredUnits: units,
+  });
+  redirect(`/training/log/${session.id}`);
+}
 
 export async function startSessionAction(formData: FormData) {
   const user = await requireUserOrThrow();

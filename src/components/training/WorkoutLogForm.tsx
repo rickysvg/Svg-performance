@@ -7,6 +7,7 @@ import {
   saveWorkoutAction,
   type WorkoutActionState,
 } from "@/app/actions/workouts";
+import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
@@ -575,7 +576,7 @@ export function WorkoutLogForm({
           );
         })}
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-line p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-line p-4" data-round-insert>
           <label className="block text-sm">
             <span className="font-medium">Insert exercise</span>
             <input
@@ -585,6 +586,26 @@ export function WorkoutLogForm({
               className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
             />
           </label>
+          <div className="flex flex-wrap gap-2">
+            {["Sparring rounds", "Grappling rounds", "Pad rounds", "Heavy bag rounds"].map((name) => (
+              <button
+                key={name}
+                type="button"
+                data-insert-chip={name}
+                onClick={() => {
+                  setInsertName(name);
+                  const mode = resolveLogMode({ name });
+                  setSets((current) => [
+                    ...current,
+                    newClientSet(session.id, name, 1, defaultUnit, mode, 180),
+                  ]);
+                }}
+                className="rounded-full border border-line px-3 py-2 text-xs"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={insertExercise}
@@ -601,6 +622,7 @@ export function WorkoutLogForm({
             name="intent"
             value="complete"
             disabled={pending}
+            onClick={() => primeUnlockAudio()}
             className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
           >
             {pending ? "Saving…" : "SAVE"}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { startRoundLogAction } from "@/app/actions/workouts";
 import {
   DEFAULT_CUSTOM,
   DEFAULT_TIMER_PREFS,
@@ -25,6 +26,7 @@ const MODE_LABEL: Record<TimerMode, string> = {
   bag: "Bag",
   pads: "Pads",
   sparring: "Sparring",
+  grappling: "Grappling",
 };
 
 function playTone(frequency: number, duration = 0.16, type: OscillatorType = "sine") {
@@ -223,13 +225,13 @@ export function RoundTimer() {
         <span className="w-8" aria-hidden />
       </div>
 
-      <div className="flex rounded-full bg-card p-1">
+      <div className="grid grid-cols-4 gap-1 rounded-full bg-card p-1">
         {TIMER_MODES.map((mode) => (
           <button
             key={mode}
             type="button"
             onClick={() => setPrefs((current) => ({ ...current, mode }))}
-            className={`touch-target flex-1 rounded-full text-sm ${
+            className={`touch-target rounded-full px-1 text-[11px] ${
               prefs.mode === mode ? "bg-black text-white" : "text-muted"
             }`}
           >
@@ -372,6 +374,22 @@ export function RoundTimer() {
           {primaryLabel}
         </button>
       </div>
+
+      <form action={startRoundLogAction} className="pt-2" data-round-log>
+        <input type="hidden" name="mode" value={prefs.mode} />
+        <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
+        <input
+          type="hidden"
+          name="workSeconds"
+          value={configForPreset(prefs.preset, customDraft).workSeconds}
+        />
+        <button
+          type="submit"
+          className="touch-target w-full rounded-full bg-accent text-black"
+        >
+          Log {configForPreset(prefs.preset, customDraft).rounds} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
+        </button>
+      </form>
     </div>
   );
 }

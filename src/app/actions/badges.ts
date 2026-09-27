@@ -9,8 +9,8 @@ import type { EarnedBadge } from "@/lib/badges";
 
 export type UnlockBadgePayload = Pick<
   EarnedBadge,
-  "id" | "title" | "hint" | "icon" | "mark" | "tier" | "ribbon"
->;
+  "id" | "title" | "hint" | "icon" | "mark" | "tier" | "ribbon" | "category"
+> & { unit: "lb" | "kg" };
 
 export async function loadUnlockBadgesAction(ids: string[]): Promise<UnlockBadgePayload[]> {
   const user = await requireUserOrThrow();
@@ -29,6 +29,8 @@ export async function loadUnlockBadgesAction(ids: string[]): Promise<UnlockBadge
       mark: row.mark,
       tier: row.tier,
       ribbon: row.ribbon,
+      category: row.category,
+      unit: units,
     }));
 }
 

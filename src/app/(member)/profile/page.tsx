@@ -12,9 +12,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
 import { getTrialState } from "@/lib/trial";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
-import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
-import { featuredBadges } from "@/lib/badges";
-import { BadgesGrid } from "@/components/progress/BadgesGrid";
+import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -23,12 +21,6 @@ export default async function ProfilePage() {
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
   ]);
-  const companion = profile
-    ? await getCompanionProgress(user.id, profile.preferredUnits)
-    : null;
-  const featured = companion ? featuredBadges(companion.badges) : [];
-  const badgeCounts = summarizeBadges(featured);
-
   if (!profile) {
     return (
       <EmptyState title="Profile missing">
@@ -51,9 +43,7 @@ export default async function ProfilePage() {
         ) : null}
       </div>
 
-      {companion ? (
-        <BadgesGrid badges={featured} earned={badgeCounts.earned} total={badgeCounts.total} />
-      ) : null}
+      <SoundEffectsToggle />
       <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
       <ProfileForm profile={profile} />
       <ReminderPrefsForm

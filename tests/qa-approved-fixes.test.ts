@@ -106,10 +106,10 @@ describe("QA-approved access and surface fixes", () => {
     expect(pr).toContain("text-[#CBF805]");
   });
 
-  it("ships photoreal belt plates on a four-across grid", () => {
-    expect(read("src/components/progress/BadgePlate.tsx")).toContain("plateWebp");
-    expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgePlate");
-    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("grid-cols-4");
+  it("ships category badge art grouped on Progress", () => {
+    expect(read("src/components/progress/BadgeArt.tsx")).toContain("badgeArtSrc");
+    expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeArt");
+    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("grid-cols-2");
     expect(read("src/components/progress/BadgesGrid.tsx")).toContain("font-display");
   });
 

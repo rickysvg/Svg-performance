@@ -7,7 +7,6 @@ import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { ChallengeCard } from "@/components/progress/ChallengeCard";
 import { LeaderboardPodium } from "@/components/progress/LeaderboardPodium";
-import { featuredBadges } from "@/lib/badges";
 
 export default async function StreaksPage({
   searchParams,
@@ -28,8 +27,7 @@ export default async function StreaksPage({
       timeZone: companion.timeZone,
     }),
   ]);
-  const featured = featuredBadges(companion.badges);
-  const counts = summarizeBadges(featured);
+  const counts = summarizeBadges(companion.badges);
 
   return (
     <main className="space-y-8">
@@ -46,7 +44,12 @@ export default async function StreaksPage({
       </div>
 
       <StreakHero streak={companion.streak} />
-      <BadgesGrid badges={featured} earned={counts.earned} total={counts.total} />
+      <BadgesGrid
+        badges={companion.badges}
+        earned={counts.earned}
+        total={counts.total}
+        unit={units}
+      />
       <ChallengeCard challenge={challenge} />
       <LeaderboardPodium
         entries={board.entries}

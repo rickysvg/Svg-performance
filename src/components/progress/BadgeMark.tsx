@@ -1,26 +1,27 @@
-"use client";
-
 import type { EarnedBadge } from "@/lib/badges";
-import { BadgePlate } from "@/components/progress/BadgePlate";
+import { BadgeArt } from "@/components/progress/BadgeArt";
+import type { LoadUnit } from "@/lib/units";
 
 export function BadgeMark({
   badge,
-  motion = true,
+  unit = "lb",
   large = false,
-  shine = false,
+  hero = false,
+  motion = false,
 }: {
   badge: EarnedBadge;
-  motion?: boolean;
+  unit?: LoadUnit;
   large?: boolean;
-  shine?: boolean;
+  hero?: boolean;
+  motion?: boolean;
 }) {
   return (
     <div
       className={`badge-mark relative mx-auto flex items-center justify-center overflow-visible ${
-        large ? "w-[240px]" : "h-20 w-20"
-      } ${badge.earned && motion ? "badge-earned" : ""} ${badge.earned ? "" : "badge-locked"}`}
+        large || hero ? "w-[220px]" : "w-[112px]"
+      } ${badge.earned && motion ? "badge-earned" : ""}`}
     >
-      <BadgePlate badge={badge} large={large} shine={shine} />
+      <BadgeArt badge={badge} unit={unit} large={large} hero={hero} />
     </div>
   );
 }

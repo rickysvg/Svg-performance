@@ -8,6 +8,9 @@ export const BADGE_IDS = [
   "bike_50",
   "lift_100kg",
   "pads_250",
+  "bag_250",
+  "sparring_50",
+  "grappling_50",
   "streak_30",
   "hold_5min",
   "lift_200kg",
@@ -20,11 +23,38 @@ export const BADGE_IDS = [
 
 export type BadgeId = (typeof BADGE_IDS)[number];
 
+export const BADGE_CATEGORIES = ["lifting", "cardio", "martial", "grind"] as const;
+export type BadgeCategoryId = (typeof BADGE_CATEGORIES)[number];
+
+export const BADGE_CATEGORY_LABEL: Record<BadgeCategoryId, string> = {
+  lifting: "Lifting",
+  cardio: "Cardio",
+  martial: "Martial Arts",
+  grind: "Grind",
+};
+
+export const BADGES_BY_CATEGORY: Record<BadgeCategoryId, BadgeId[]> = {
+  lifting: ["lift_100kg", "lift_200kg"],
+  cardio: ["bike_50", "hold_5min"],
+  martial: ["pads_250", "bag_250", "sparring_50", "grappling_50"],
+  grind: [
+    "first_session",
+    "streak_7",
+    "streak_30",
+    "streak_100",
+    "workouts_10",
+    "workouts_25",
+    "workouts_50",
+    "workouts_100",
+  ],
+};
+
 export type BadgeDef = {
   id: BadgeId;
   title: string;
   hint: string;
   icon: "star" | "flame" | "bike" | "barbell" | "pads" | "lock" | "hold" | "heavy";
+  category: BadgeCategoryId;
 };
 
 export const BADGE_TIERS = ["bronze", "steel", "gold"] as const;
@@ -41,12 +71,22 @@ export type EarnedBadge = BadgeDef & {
   progressLabel: string;
 };
 
+export function badgeCategory(id: BadgeId): BadgeCategoryId {
+  if (id.startsWith("lift")) return "lifting";
+  if (id === "bike_50" || id === "hold_5min") return "cardio";
+  if (id === "pads_250" || id === "bag_250" || id === "sparring_50" || id === "grappling_50") {
+    return "martial";
+  }
+  return "grind";
+}
+
 export function badgeMark(id: BadgeId, unit: LoadUnit = "lb") {
   if (id === "first_session") return "1";
   if (id === "streak_7") return "7";
   if (id === "bike_50") return "50";
   if (id === "lift_100kg") return unit === "kg" ? "100" : "225";
-  if (id === "pads_250") return "250";
+  if (id === "pads_250" || id === "bag_250") return "250";
+  if (id === "sparring_50" || id === "grappling_50") return "50";
   if (id === "streak_30") return "30";
   if (id === "hold_5min") return "5:00";
   if (id === "lift_200kg") return unit === "kg" ? "200" : "405";
@@ -64,6 +104,9 @@ export function badgeTier(id: BadgeId): BadgeTier {
     id === "bike_50" ||
     id === "lift_100kg" ||
     id === "pads_250" ||
+    id === "bag_250" ||
+    id === "sparring_50" ||
+    id === "grappling_50" ||
     id === "workouts_25"
   ) {
     return "steel";
@@ -76,6 +119,9 @@ export function badgeRibbon(id: BadgeId) {
   if (id.startsWith("lift")) return "Lift";
   if (id === "bike_50") return "Bike";
   if (id === "pads_250") return "Pads";
+  if (id === "bag_250") return "Bag";
+  if (id === "sparring_50") return "Sparring";
+  if (id === "grappling_50") return "Grappling";
   if (id === "hold_5min") return "Hold";
   if (id === "first_session") return "First";
   return "Work";
@@ -94,6 +140,10 @@ export function badgeProgressLabel(id: BadgeId, current: number, target: number)
   }
   const shown = Math.max(0, Math.round(current));
   return `${shown}/${target}`;
+}
+
+export function formatBadgeEarnedOn(date: Date) {
+  return `Earned ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }
 
 /** Lift milestones stored in kg and converted for display / comparison. */
@@ -118,44 +168,50 @@ export function liftBadgeHint(id: keyof typeof LIFT_BADGE_KG, unit: LoadUnit) {
 
 export function badgeCatalog(unit: LoadUnit = "lb"): BadgeDef[] {
   return [
-    { id: "first_session", title: "First session", hint: "Log your first workout", icon: "star" },
-    { id: "streak_7", title: "7-day streak", hint: "Seven scheduled days in a row", icon: "flame" },
-    { id: "bike_50", title: "50 bike rounds", hint: "Assault-bike rounds logged", icon: "bike" },
+    { id: "first_session", title: "First session", hint: "Log your first workout", icon: "star", category: "grind" },
+    { id: "streak_7", title: "7-day streak", hint: "Seven scheduled days in a row", icon: "flame", category: "grind" },
+    { id: "bike_50", title: "50 bike rounds", hint: "Assault-bike rounds logged", icon: "bike", category: "cardio" },
     {
       id: "lift_100kg",
       title: liftBadgeTitle("lift_100kg", unit),
       hint: liftBadgeHint("lift_100kg", unit),
       icon: "barbell",
+      category: "lifting",
     },
-    { id: "pads_250", title: "250 pad rounds", hint: "Bag or pad rounds logged", icon: "pads" },
-    { id: "streak_30", title: "30-day streak", hint: "Thirty scheduled days in a row", icon: "flame" },
-    { id: "hold_5min", title: "5 min hold", hint: "A timed hold of 5:00 or more", icon: "hold" },
+    { id: "pads_250", title: "250 pad rounds", hint: "Pad or mitt rounds logged", icon: "pads", category: "martial" },
+    { id: "bag_250", title: "250 bag rounds", hint: "Heavy bag rounds logged", icon: "pads", category: "martial" },
+    {
+      id: "sparring_50",
+      title: "50 sparring rounds",
+      hint: "Sparring rounds logged",
+      icon: "pads",
+      category: "martial",
+    },
+    {
+      id: "grappling_50",
+      title: "50 grappling rounds",
+      hint: "Grappling / rolling rounds logged",
+      icon: "pads",
+      category: "martial",
+    },
+    { id: "streak_30", title: "30-day streak", hint: "Thirty scheduled days in a row", icon: "flame", category: "grind" },
+    { id: "hold_5min", title: "5 min hold", hint: "A timed hold of 5:00 or more", icon: "hold", category: "cardio" },
     {
       id: "lift_200kg",
       title: liftBadgeTitle("lift_200kg", unit),
       hint: liftBadgeHint("lift_200kg", unit),
       icon: "heavy",
+      category: "lifting",
     },
-    { id: "workouts_10", title: "10 workouts", hint: "Ten sessions in the book", icon: "star" },
-    { id: "workouts_25", title: "25 workouts", hint: "Twenty-five sessions logged", icon: "star" },
-    { id: "workouts_50", title: "50 workouts", hint: "Fifty sessions logged", icon: "barbell" },
-    { id: "workouts_100", title: "100 workouts", hint: "One hundred sessions logged", icon: "heavy" },
-    { id: "streak_100", title: "100-day streak", hint: "One hundred scheduled days in a row", icon: "flame" },
+    { id: "workouts_10", title: "10 workouts", hint: "Ten sessions in the book", icon: "star", category: "grind" },
+    { id: "workouts_25", title: "25 workouts", hint: "Twenty-five sessions logged", icon: "star", category: "grind" },
+    { id: "workouts_50", title: "50 workouts", hint: "Fifty sessions logged", icon: "barbell", category: "grind" },
+    { id: "workouts_100", title: "100 workouts", hint: "One hundred sessions logged", icon: "heavy", category: "grind" },
+    { id: "streak_100", title: "100-day streak", hint: "One hundred scheduled days in a row", icon: "flame", category: "grind" },
   ];
 }
 
 export const BADGE_CATALOG = badgeCatalog("lb");
-
-export const FEATURED_BADGE_IDS: BadgeId[] = [
-  "first_session",
-  "streak_7",
-  "bike_50",
-  "lift_100kg",
-  "pads_250",
-  "streak_30",
-  "hold_5min",
-  "lift_200kg",
-];
 
 export type BadgeSetLike = {
   exerciseName: string;
@@ -167,10 +223,37 @@ export type BadgeSetLike = {
   performedAt: Date;
 };
 
-function isPadRound(name: string, logMode?: string | null) {
-  const mode = resolveLogMode({ logMode, name });
-  if (mode !== "timed_round") return false;
-  return /\b(pad|pads|bag|mitt|mitts)\b/i.test(name);
+function isTimedRound(name: string, logMode?: string | null) {
+  return resolveLogMode({ logMode, name }) === "timed_round";
+}
+
+function named(name: string, pattern: RegExp) {
+  return pattern.test(name);
+}
+
+/** Pad / mitt rounds only — not bag, sparring, or grappling. */
+export function isPadRound(name: string, logMode?: string | null) {
+  if (!isTimedRound(name, logMode)) return false;
+  if (named(name, /\b(sparring|grappling|rolling)\b/i)) return false;
+  if (named(name, /\b(bag)\b/i) && !named(name, /\b(pad|pads|mitt|mitts)\b/i)) return false;
+  return named(name, /\b(pad|pads|mitt|mitts)\b/i);
+}
+
+/** Heavy bag rounds only. */
+export function isBagRound(name: string, logMode?: string | null) {
+  if (!isTimedRound(name, logMode)) return false;
+  if (named(name, /\b(sparring|grappling|rolling|pad|pads|mitt|mitts)\b/i)) return false;
+  return named(name, /\bbag\b/i);
+}
+
+export function isSparringRound(name: string, logMode?: string | null) {
+  if (!isTimedRound(name, logMode)) return false;
+  return named(name, /\bsparring\b/i);
+}
+
+export function isGrapplingRound(name: string, logMode?: string | null) {
+  if (!isTimedRound(name, logMode)) return false;
+  return named(name, /\b(grappling|rolling)\b/i);
 }
 
 export function countBikeRounds(sets: BadgeSetLike[]) {
@@ -182,6 +265,24 @@ export function countBikeRounds(sets: BadgeSetLike[]) {
 export function countPadRounds(sets: BadgeSetLike[]) {
   return sets.filter(
     (set) => set.completed !== false && isPadRound(set.exerciseName, set.logMode),
+  ).length;
+}
+
+export function countBagRounds(sets: BadgeSetLike[]) {
+  return sets.filter(
+    (set) => set.completed !== false && isBagRound(set.exerciseName, set.logMode),
+  ).length;
+}
+
+export function countSparringRounds(sets: BadgeSetLike[]) {
+  return sets.filter(
+    (set) => set.completed !== false && isSparringRound(set.exerciseName, set.logMode),
+  ).length;
+}
+
+export function countGrapplingRounds(sets: BadgeSetLike[]) {
+  return sets.filter(
+    (set) => set.completed !== false && isGrapplingRound(set.exerciseName, set.logMode),
   ).length;
 }
 
@@ -229,6 +330,9 @@ export function evaluateBadges(input: {
 }): EarnedBadge[] {
   const bike = countBikeRounds(input.sets);
   const pads = countPadRounds(input.sets);
+  const bag = countBagRounds(input.sets);
+  const sparring = countSparringRounds(input.sets);
+  const grappling = countGrapplingRounds(input.sets);
   const unit = input.displayUnit ?? "lb";
   const lift = heaviestInUnit(input.sets, unit);
   const hold = longestHoldSeconds(input.sets);
@@ -244,6 +348,9 @@ export function evaluateBadges(input: {
     bike_50: { current: Math.min(bike, 50), target: 50 },
     lift_100kg: { current: Math.min(lift, lift100), target: lift100 },
     pads_250: { current: Math.min(pads, 250), target: 250 },
+    bag_250: { current: Math.min(bag, 250), target: 250 },
+    sparring_50: { current: Math.min(sparring, 50), target: 50 },
+    grappling_50: { current: Math.min(grappling, 50), target: 50 },
     streak_30: { current: Math.min(input.longestStreak, 30), target: 30 },
     hold_5min: { current: Math.min(hold, 5 * 60), target: 5 * 60 },
     lift_200kg: { current: Math.min(lift, lift200), target: lift200 },
@@ -260,6 +367,9 @@ export function evaluateBadges(input: {
     bike_50: { ok: bike >= 50, at: earnedAt(bike >= 50) },
     lift_100kg: { ok: lift >= lift100, at: earnedAt(lift >= lift100) },
     pads_250: { ok: pads >= 250, at: earnedAt(pads >= 250) },
+    bag_250: { ok: bag >= 250, at: earnedAt(bag >= 250) },
+    sparring_50: { ok: sparring >= 50, at: earnedAt(sparring >= 50) },
+    grappling_50: { ok: grappling >= 50, at: earnedAt(grappling >= 50) },
     streak_30: { ok: input.longestStreak >= 30, at: earnedAt(input.longestStreak >= 30) },
     hold_5min: { ok: hold >= 5 * 60, at: earnedAt(hold >= 5 * 60) },
     lift_200kg: { ok: lift >= lift200, at: earnedAt(lift >= lift200) },
@@ -287,9 +397,17 @@ export function evaluateBadges(input: {
 }
 
 export function featuredBadges(badges: EarnedBadge[]) {
-  return FEATURED_BADGE_IDS.map((id) => badges.find((row) => row.id === id)).filter(
-    (row): row is EarnedBadge => Boolean(row),
-  );
+  return badges;
+}
+
+export function badgesGroupedByCategory(badges: EarnedBadge[]) {
+  return BADGE_CATEGORIES.map((category) => ({
+    category,
+    label: BADGE_CATEGORY_LABEL[category],
+    badges: BADGES_BY_CATEGORY[category]
+      .map((id) => badges.find((row) => row.id === id))
+      .filter((row): row is EarnedBadge => Boolean(row)),
+  }));
 }
 
 export function earnedCount(badges: EarnedBadge[]) {

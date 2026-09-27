@@ -5,12 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { loadUnlockBadgesAction, markBadgeUnlocksSeenAction } from "@/app/actions/badges";
 import { BadgeMark } from "@/components/progress/BadgeMark";
 import { BadgeSparks } from "@/components/progress/BadgeSparks";
-import { BadgeUnlockOutline } from "@/components/progress/BadgeUnlockOutline";
-import { badgeShareStats, parseUnlockQuery, unlockLine } from "@/lib/badge-unlocks";
-import { plateWebp } from "@/lib/badge-plates";
+import { badgeShareStats, parseUnlockQuery } from "@/lib/badge-unlocks";
+import { BADGE_CATEGORY_LABEL, type BadgeCategoryId, type EarnedBadge } from "@/lib/badges";
+import { playCategorySfx, soundFxEnabled } from "@/lib/badge-sfx";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
-import type { EarnedBadge } from "@/lib/badges";
 import type { UnlockBadgePayload } from "@/app/actions/badges";
+import type { LoadUnit } from "@/lib/units";
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return true;
@@ -63,12 +63,15 @@ export function BadgeUnlockOverlay() {
     if (!preview) {
       void markBadgeUnlocksSeenAction([current.id]);
     }
-    if (reduce || typeof navigator === "undefined" || typeof navigator.vibrate !== "function") {
-      return;
-    }
+    const category = current.category as BadgeCategoryId;
     const buzz = window.setTimeout(() => {
-      navigator.vibrate([18, 32, 22]);
-    }, 700);
+      if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+        navigator.vibrate([40, 30, 18, 40, 12]);
+      }
+      if (soundFxEnabled()) {
+        void playCategorySfx(category);
+      }
+    }, reduce ? 80 : 700);
     return () => {
       window.clearTimeout(buzz);
     };
@@ -114,7 +117,8 @@ export function BadgeUnlockOverlay() {
 
   if (!current) return null;
   const badge = toBadge(current);
-  const specMask = plateWebp(badge.tier, 512);
+  const unit = (current.unit ?? "lb") as LoadUnit;
+  const categoryLabel = BADGE_CATEGORY_LABEL[current.category];
 
   return (
     <div
@@ -123,45 +127,44 @@ export function BadgeUnlockOverlay() {
       aria-modal="true"
       aria-labelledby="badge-unlock-title"
       data-badge-unlock="1"
-      data-badge-style="belt"
+      data-badge-style="category"
       data-badge-id={current.id}
+      data-badge-category={current.category}
     >
       <div className="badge-unlock-glow" aria-hidden />
-      {reduce ? null : (
-        <>
-          <div className="badge-unlock-smoke badge-unlock-smoke-a" aria-hidden />
-          <div className="badge-unlock-smoke badge-unlock-smoke-b" aria-hidden />
-        </>
-      )}
+      {reduce ? null : <div className="badge-unlock-rays" aria-hidden />}
       <div className="relative w-full max-w-sm text-center text-white">
         <div
-          className={`badge-unlock-stage relative mx-auto flex h-[300px] w-[300px] items-center justify-center ${
+          className={`badge-unlock-stage relative mx-auto flex h-[320px] w-[320px] items-center justify-center ${
             reduce ? "" : "badge-unlock-shake"
           }`}
         >
-          <div className="badge-unlock-shadow" aria-hidden />
           <BadgeSparks key={current.id} active={!reduce} delayMs={900} />
           <div className={reduce ? "badge-unlock-fade" : "badge-unlock-fly"}>
             <div className="relative">
-              <BadgeMark badge={badge} motion={false} large shine={false} />
-              {reduce ? null : (
-                <span
-                  className="badge-unlock-spec"
-                  style={{
-                    WebkitMaskImage: `url(${specMask})`,
-                    maskImage: `url(${specMask})`,
-                  }}
-                  aria-hidden
+              <BadgeMark badge={badge} unit={unit} hero motion={false} />
+              <svg className="badge-unlock-ring" viewBox="0 0 100 100" aria-hidden>
+                <circle
+                  className={reduce ? "badge-unlock-ring-fade" : "badge-unlock-ring-stroke"}
+                  cx="50"
+                  cy="50"
+                  r="46"
+                  pathLength={1}
                 />
-              )}
-              <BadgeUnlockOutline fade={reduce} />
+                {reduce ? null : <circle className="badge-unlock-ring-tip" r="2.4" />}
+              </svg>
             </div>
           </div>
         </div>
         <div className={reduce ? "" : "badge-unlock-copy"}>
-          <h2 id="badge-unlock-title" className="font-display mt-4 text-3xl uppercase tracking-wide text-white">
-            {unlockLine(current.title)}
+          <p className="font-display text-[11px] uppercase tracking-[0.18em] text-accent">
+            {categoryLabel}
+          </p>
+          <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/70">Badge unlocked</p>
+          <h2 id="badge-unlock-title" className="font-display mt-2 text-4xl uppercase tracking-wide text-white">
+            {current.title}
           </h2>
+          <p className="mt-2 text-sm text-white/55">{current.hint}</p>
           <div className="mt-6 flex flex-col gap-2">
             <button
               type="button"

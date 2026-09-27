@@ -5,8 +5,7 @@ import path from "node:path";
 import puppeteer, { type Page } from "puppeteer";
 
 const ART = "/opt/cursor/artifacts";
-const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3114";
-const UNLOCK = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
+const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3118";
 
 async function delay(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,10 +29,16 @@ async function recordMp4(page: Page, dest: string, ms = 4000) {
   }
   const elapsedSec = Math.max((Date.now() - start) / 1000, 0.1);
   const captureFps = Math.max(i / elapsedSec, 1);
+  const silent = dest.replace(/\.mp4$/, ".silent.mp4");
   execSync(
-    `ffmpeg -y -framerate ${captureFps.toFixed(3)} -i ${dir}/%04d.jpg -vf tpad=stop_mode=clone:stop_duration=4 -c:v libx264 -pix_fmt yuv420p -r 30 -crf 18 -movflags +faststart -t 4 "${dest}"`,
+    `ffmpeg -y -framerate ${captureFps.toFixed(3)} -i ${dir}/%04d.jpg -vf tpad=stop_mode=clone:stop_duration=4 -c:v libx264 -pix_fmt yuv420p -r 30 -crf 18 -movflags +faststart -t 4 "${silent}"`,
     { stdio: "inherit" },
   );
+  execSync(
+    `ffmpeg -y -i "${silent}" -i /workspace/public/sfx/lifting.mp3 -filter_complex "[1:a]adelay=700|700,apad[a]" -map 0:v -map "[a]" -c:v copy -c:a aac -shortest -t 4 "${dest}"`,
+    { stdio: "inherit" },
+  );
+  fs.rmSync(silent, { force: true });
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
@@ -47,9 +52,11 @@ async function login(page: Page) {
   ]);
 }
 
-/** Overlay mount is t=0. Avoid networkidle — that waits until the cine-in is already done. */
-async function openUnlock(page: Page) {
-  await page.goto(`${UNLOCK}&t=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+async function openUnlock(page: Page, id: string) {
+  await page.goto(`${BASE}/progress?unlock=${id}&unlockPreview=1&t=${Date.now()}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000,
+  });
   await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
 }
 
@@ -71,32 +78,33 @@ async function main() {
 
   await page.goto(`${BASE}/progress`, { waitUntil: "networkidle0", timeout: 60_000 });
   await page.waitForSelector("#badges", { timeout: 15_000 });
-  await page.screenshot({ path: path.join(ART, "cine_grid.png"), type: "png" });
-  console.log("wrote cine_grid.png");
+  await page.$eval("#badges", (el) => el.scrollIntoView({ block: "start" }));
+  await delay(200);
+  await page.screenshot({ path: path.join(ART, "cat_progress_v3.png"), type: "png" });
+  console.log("wrote cat_progress_v3.png");
 
-  const badges = await page.$("#badges");
-  if (!badges) throw new Error("#badges missing");
-  await badges.screenshot({ path: path.join(ART, "cine_closeup.png"), type: "png" });
-  console.log("wrote cine_closeup.png");
-
-  await openUnlock(page);
-  await delay(350);
-  await page.screenshot({ path: path.join(ART, "cine_f1_zoom.png"), type: "png" });
-  console.log("wrote cine_f1_zoom.png");
-
-  await openUnlock(page);
-  await delay(800);
-  await page.screenshot({ path: path.join(ART, "cine_f2_settle.png"), type: "png" });
-  console.log("wrote cine_f2_settle.png");
-
-  await openUnlock(page);
+  await openUnlock(page, "lift_200kg");
   await delay(1180);
-  await page.screenshot({ path: path.join(ART, "cine_f3_sparks.png"), type: "png" });
-  console.log("wrote cine_f3_sparks.png");
+  await page.screenshot({ path: path.join(ART, "cat_unlock_lift_v3.png"), type: "png" });
+  console.log("wrote cat_unlock_lift_v3.png");
 
-  await openUnlock(page);
-  await recordMp4(page, path.join(ART, "cine_unlock.mp4"), 4000);
-  console.log("wrote cine_unlock.mp4");
+  await openUnlock(page, "pads_250");
+  await delay(1180);
+  await page.screenshot({ path: path.join(ART, "cat_unlock_martial_v3.png"), type: "png" });
+  console.log("wrote cat_unlock_martial_v3.png");
+
+  await openUnlock(page, "lift_200kg");
+  await recordMp4(page, path.join(ART, "cat_unlock_v3.mp4"), 4000);
+  console.log("wrote cat_unlock_v3.mp4");
+
+  await page.goto(`${BASE}/timer`, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll("button")];
+    buttons.find((btn) => btn.textContent?.trim() === "Grappling")?.click();
+  });
+  await delay(250);
+  await page.screenshot({ path: path.join(ART, "cat_logging_v3.png"), type: "png" });
+  console.log("wrote cat_logging_v3.png");
 
   await browser.close();
 }
