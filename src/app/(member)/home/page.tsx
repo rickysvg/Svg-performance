@@ -51,7 +51,7 @@ export default async function HomePage({
   const openHelp = helpRequests.filter((row) => row.status === "open");
 
   return (
-    <main className="space-y-8">
+    <main className="space-y-8 pb-8">
       <section className="-mx-4 -mt-6 bg-accent px-4 pb-8 pt-7 text-black">
         <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
         <h1 className="mt-1 text-4xl">

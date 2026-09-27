@@ -66,25 +66,22 @@ export function TodayGuide({ guide }: { guide: Guide }) {
   const { today } = guide;
   const planned = today.plannedSessions ?? [];
   const workoutSessions = planned.filter((session) => session.href);
-  const restOnly = planned.length > 0 && workoutSessions.length === 0;
   const next = today.nextSession;
 
   return (
     <section className="space-y-4">
       <SectionHeading title="Today’s plan" href="/training" className="pr-16" />
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
-      {restOnly ? (
+      {workoutSessions.length === 0 ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
           <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
-            {today.planWeekday || "Training"} · {today.planSummary || "Rest"}
+            {today.planWeekday || "Training"} · Rest
           </p>
-          <h3 className="mt-3 text-2xl leading-tight">
-            {planned[0]?.title ?? "Rest day"}
-          </h3>
+          <h3 className="mt-3 text-2xl leading-tight">REST DAY</h3>
           <p className="mt-2 text-sm text-white/70">
-            {next
-              ? `Next up ${today.nextSessionWeekday}: ${next.title}`
-              : (planned[0]?.subtitle ?? today.suggestionCopy)}
+            {today.nextSessionWeekday
+              ? `Recover today. Next session: ${today.nextSessionWeekday}.`
+              : "Recover today."}
           </p>
           <SessionCta
             dayId={next?.dayId}
@@ -125,21 +122,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
             );
           })}
         </div>
-      ) : (
-        <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
-          <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
-            Training
-          </p>
-          <h3 className="mt-3 text-2xl leading-tight">No DEMO day loaded</h3>
-          <p className="mt-2 text-sm text-white/70">{today.suggestionCopy}</p>
-          <Link
-            href="/training"
-            className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          >
-            Open Train
-          </Link>
-        </div>
-      )}
+      ) : null}
     </section>
   );
 }

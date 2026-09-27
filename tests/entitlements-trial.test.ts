@@ -160,4 +160,18 @@ describe("member free tier and Performance trial", () => {
     expect(state.trialUsed).toBe(false);
     expect(await getEffectivePlanId(user.id)).toBe("member_access");
   });
+
+  it("enforces free-tier locks when Stripe env is off", async () => {
+    turnStripeOff();
+    const user = await makeUser("no-stripe-free@example.com");
+    expect(await getEffectivePlanId(user.id)).toBe("member_access");
+    expect(await canUseFeature(user.id, "nutrition")).toBe(false);
+    expect(await canUseFeature(user.id, "ai")).toBe(false);
+    expect((await canUseMemberTools(user.id)).allowed).toBe(false);
+
+    await startTrialForUser(user.id);
+    expect(await getEffectivePlanId(user.id)).toBe("performance");
+    expect(await canUseFeature(user.id, "nutrition")).toBe(true);
+    expect((await canUseMemberTools(user.id)).allowed).toBe(true);
+  });
 });

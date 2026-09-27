@@ -18,10 +18,7 @@ export type { CheckoutSkuId as PlanId } from "@/lib/plans";
 
 export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId) {
   if (!isStripeConfigured()) {
-    throw new AppError(
-      "BILLING",
-      "Stripe TEST keys are not configured. Checkout is shown as a proposal only.",
-    );
+    throw new AppError("BILLING", "Paid plans coming soon.");
   }
   const sku = CHECKOUT_SKUS[plan];
   if (sku.requiresGymVerify) {

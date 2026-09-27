@@ -40,8 +40,8 @@ export function MemberFrame({
       <div
         className={
           immersive
-            ? "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-28 pt-3"
-            : "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 pb-28"
+            ? "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-36 pt-3"
+            : "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 pb-36"
         }
       >
         {children}

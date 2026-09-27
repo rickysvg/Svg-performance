@@ -36,12 +36,15 @@ export async function requireOnboardedUser(): Promise<PublicUser> {
   if (!status.completed) {
     redirect("/onboarding");
   }
+  if (!status.planChoiceAt) {
+    redirect("/onboarding/plan");
+  }
   return user;
 }
 
 export async function postAuthPath(userId: string) {
   const status = await getOnboardingStatus(userId);
-  return memberEntryPath(status.completedAt);
+  return memberEntryPath(status.completedAt, status.planChoiceAt);
 }
 
 export async function setSessionCookie(token: string, expiresAt: Date) {

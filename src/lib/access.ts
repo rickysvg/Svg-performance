@@ -29,19 +29,16 @@ export async function hasWebhookGrantedAccess(userId: string) {
 }
 
 /**
- * Training (M1) stays open for every signed-in member.
- * Nutrition / SVG Coach require Performance+ (nutrition feature)
- * only when Stripe TEST keys are actually configured.
+ * Training stays open for every signed-in member.
+ * Nutrition / SVG Coach require Performance+ (nutrition feature),
+ * an active no-card trial, or an admin/staff plan override.
+ * Missing Stripe keys do not unlock those tools.
  * Learn stays reachable on Member Access as beginner-only.
- * An active Performance trial counts as subscribed until trialEndsAt.
  */
 export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
-  reason: "preview" | "subscribed" | "paywall";
+  reason: "subscribed" | "paywall";
 }> {
-  if (!isStripeConfigured()) {
-    return { allowed: true, reason: "preview" };
-  }
   const subscription = await getLatestSubscription(userId);
   if (
     subscription?.status === "active" &&

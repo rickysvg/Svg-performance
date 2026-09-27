@@ -1,18 +1,46 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { registerAction, type ActionState } from "@/app/actions/auth";
 import { StatusBanner } from "@/components/StatusBanner";
+
+const SLOW_MS = 6_000;
+const TIMEOUT_MS = 25_000;
 
 export function RegisterForm() {
   const [state, action, pending] = useActionState(
     registerAction,
     {} as ActionState,
   );
+  const [slow, setSlow] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!pending) {
+      setSlow(false);
+      setTimedOut(false);
+      return;
+    }
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_MS);
+    const timeoutTimer = window.setTimeout(() => setTimedOut(true), TIMEOUT_MS);
+    return () => {
+      window.clearTimeout(slowTimer);
+      window.clearTimeout(timeoutTimer);
+    };
+  }, [pending]);
+
+  const buttonLabel = pending
+    ? slow
+      ? "Still working, first sign-up can take a few seconds…"
+      : "Creating account…"
+    : "Create account";
 
   return (
     <form action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} />
+      {timedOut ? (
+        <StatusBanner error="This is taking too long. Refresh the page and try again." />
+      ) : null}
       <label className="block">
         <span className="text-sm font-medium">Display name</span>
         <input
@@ -84,9 +112,10 @@ export function RegisterForm() {
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
+        aria-busy={pending}
+        className="touch-target w-full rounded-full bg-accent px-4 text-black disabled:opacity-60"
       >
-        {pending ? "Creating account…" : "Create account"}
+        {buttonLabel}
       </button>
     </form>
   );

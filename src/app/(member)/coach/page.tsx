@@ -34,7 +34,7 @@ function TopicChip({
       href={href}
       className={`inline-flex min-h-11 items-center rounded-full border px-3 text-sm ${
         active
-          ? "border-black bg-accent font-semibold text-black"
+          ? "border-black bg-accent text-black"
           : "border-line text-muted hover:border-foreground hover:text-foreground"
       }`}
     >
@@ -119,6 +119,7 @@ export default async function CoachPage({
               </TopicChip>
             ))}
           </div>
+          <p className="text-sm text-muted">Pick your art to start chatting.</p>
         </section>
       ) : null}
 

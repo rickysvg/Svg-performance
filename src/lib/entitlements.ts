@@ -1,4 +1,4 @@
-import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
+import { getLatestSubscription } from "@/lib/access";
 import {
   type CatalogPlanId,
   type FeatureId,
@@ -9,14 +9,12 @@ import {
 import { isTrialActive } from "@/lib/trial";
 import { prisma } from "@/lib/prisma";
 
+/** Missing Stripe keys never grant paid access. Free, trial, and admin rows still apply. */
 export function previewEntitlementsOpen() {
-  return !isStripeConfigured();
+  return false;
 }
 
 export async function getEffectivePlanId(userId: string, now = new Date()): Promise<CatalogPlanId> {
-  if (previewEntitlementsOpen()) {
-    return "platinum";
-  }
   const subscription = await getLatestSubscription(userId);
   if (
     subscription?.status === "active" &&
@@ -47,9 +45,6 @@ export async function getMemberEntitlements(userId: string, now = new Date()) {
 }
 
 export async function canUseFeature(userId: string, feature: FeatureId, now = new Date()) {
-  if (previewEntitlementsOpen()) {
-    return true;
-  }
   const planId = await getEffectivePlanId(userId, now);
   return planHasFeature(planId, feature);
 }

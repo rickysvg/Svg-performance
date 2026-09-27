@@ -9,6 +9,7 @@ import { creditsForCurrentPlan, markCreditUsed } from "@/lib/credits";
 import { isPlanAtCap, joinWaitlist } from "@/lib/waitlist";
 import { createBookingRequestForUser } from "@/lib/bookings";
 import { AI_DISCLAIMER, PLAN_CAPS, PLAN_CATALOG } from "@/lib/plans";
+import { startTrialForUser } from "@/lib/trial";
 
 function turnStripeOn() {
   process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
@@ -37,12 +38,38 @@ describe("M5 entitlements, caps, and booking credits", () => {
     await prisma.$disconnect();
   });
 
-  it("keeps tools open when Stripe TEST keys are missing", async () => {
+  it("enforces the free plan when Stripe keys are missing", async () => {
     const user = await makeUser("preview@example.com");
-    expect(await getEffectivePlanId(user.id)).toBe("platinum");
+    expect(await getEffectivePlanId(user.id)).toBe("member_access");
+    expect(await canUseFeature(user.id, "training")).toBe(true);
+    expect(await canUseFeature(user.id, "learn_beginner")).toBe(true);
+    expect(await canUseFeature(user.id, "nutrition")).toBe(false);
+    expect(await canUseFeature(user.id, "ai")).toBe(false);
+    expect((await canUseMemberTools(user.id)).allowed).toBe(false);
+    expect((await canUseMemberTools(user.id)).reason).toBe("paywall");
+    await expect(assertCanCheckoutPlan(user.id, "standalone")).rejects.toMatchObject({
+      code: "BILLING",
+      message: "Paid plans coming soon.",
+    });
+
+    const admin = await makeUser("admin-no-stripe@example.com", false, "admin");
+    await assignPlanForPilot({
+      adminUserId: admin.id,
+      targetUserId: user.id,
+      plan: "performance",
+    });
+    expect(await getEffectivePlanId(user.id)).toBe("performance");
+    expect((await canUseMemberTools(user.id)).allowed).toBe(true);
+  });
+
+  it("still grants an active no-card trial when Stripe keys are missing", async () => {
+    const user = await makeUser("trial-no-stripe@example.com", true);
+    await startTrialForUser(user.id);
+    expect(await getEffectivePlanId(user.id)).toBe("performance");
     expect(await canUseFeature(user.id, "nutrition")).toBe(true);
     expect(await canUseFeature(user.id, "ai")).toBe(true);
-    expect((await canUseMemberTools(user.id)).reason).toBe("preview");
+    expect((await canUseMemberTools(user.id)).allowed).toBe(true);
+    expect((await canUseMemberTools(user.id)).reason).toBe("subscribed");
   });
 
   it("treats Member Access as beginner Learn only when Stripe is on", async () => {

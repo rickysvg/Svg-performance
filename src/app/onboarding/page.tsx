@@ -8,7 +8,7 @@ export default async function OnboardingPage() {
   const user = await requireUser();
   const status = await getOnboardingStatus(user.id);
   if (status.completed) {
-    redirect("/home");
+    redirect(status.planChoiceAt ? "/home" : "/onboarding/plan");
   }
   if (!status.profile) {
     redirect("/login");

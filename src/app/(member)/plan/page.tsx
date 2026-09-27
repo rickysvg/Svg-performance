@@ -23,9 +23,7 @@ export default async function PlanPage() {
   return (
     <main className="space-y-6">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wide text-accent">
-          {entitlements.preview ? "Preview entitlements (Stripe off)" : "Current plan"}
-        </p>
+        <p className="text-xs font-bold uppercase tracking-wide text-accent">Current plan</p>
         <h1 className="text-2xl">{plan.label}</h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
         {trial.trialActive ? (
@@ -39,11 +37,9 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
-          {entitlements.preview
-            ? "Stripe TEST keys are not configured, so tools stay open and credits follow the highest preview catalog. Nobody is marked paid."
-            : trial.trialActive
-              ? "Performance trial is active. When it ends you return to the free plan automatically."
-              : subscription
+          {trial.trialActive
+            ? "Performance trial is active. When it ends you return to the free plan automatically."
+            : subscription
               ? `${subscription.plan} / ${subscription.status}${
                   subscription.source === "admin" ? " · admin override" : " · webhook"
                 }`
@@ -51,7 +47,7 @@ export default async function PlanPage() {
         </p>
         {!configured ? (
           <p className="mt-3 text-sm text-muted">
-            Checkout stays off until TEST keys exist.{" "}
+            Paid plans coming soon.{" "}
             <Link href="/pricing" className="text-accent underline">
               Open pricing
             </Link>

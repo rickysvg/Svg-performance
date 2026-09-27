@@ -28,4 +28,12 @@ describe("Anton display font", () => {
     expect(css).toContain("-webkit-font-smoothing: antialiased");
     expect(css).toMatch(/body\s*\{\s*font-family:\s*var\(--font-geist-sans\)/);
   });
+
+  it("leaves PlanSessionCard lime CTAs at regular weight", () => {
+    const card = fs.readFileSync(
+      path.join(process.cwd(), "src/components/training/PlanSessionCard.tsx"),
+      "utf8",
+    );
+    expect(card).not.toMatch(/rounded-full[^"]*font-semibold/);
+  });
 });

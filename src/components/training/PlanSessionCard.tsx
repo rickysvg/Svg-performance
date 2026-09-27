@@ -126,7 +126,7 @@ export function PlanSessionCard({
           ) : href ? (
             <Link
               href={href}
-              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm font-semibold ${
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
                 highlight ? "bg-accent text-black" : "border border-line"
               }`}
             >
@@ -136,7 +136,7 @@ export function PlanSessionCard({
           {session.href && (draftId || session.dayId) ? (
             <Link
               href={session.href}
-              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm font-semibold ${
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
                 highlight ? "border border-white/30 text-white" : "border border-line"
               }`}
             >
