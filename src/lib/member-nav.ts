@@ -37,7 +37,7 @@ export function isWorkoutDonePath(pathname: string) {
 }
 
 export function isImmersiveTrainingPath(pathname: string) {
-  if (isWorkoutDonePath(pathname)) return false;
+  if (isWorkoutDonePath(pathname)) return true;
   if (pathname.startsWith("/training/log/")) return true;
   if (
     pathname === "/training" ||

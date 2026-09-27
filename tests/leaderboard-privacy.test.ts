@@ -101,15 +101,16 @@ describe("leaderboard privacy and badges", () => {
       firstWorkoutAt: new Date("2026-09-22T12:00:00Z"),
     });
     expect(badges.find((row) => row.id === "first_session")?.earned).toBe(true);
-    expect(badges.find((row) => row.id === "lift_100kg")?.earned).toBe(true);
+    expect(badges.find((row) => row.id === "lift_l5")?.earned).toBe(true);
+    expect(badges.find((row) => row.id === "lift_l3")?.earned).toBe(true);
     expect(badges.find((row) => row.id === "streak_7")?.earned).toBe(false);
   });
 
   it("labels lift and pad badges in the athlete unit without a minus sign", () => {
-    expect(liftBadgeTitle("lift_100kg", "lb")).toBe("225 lb lift");
-    expect(liftBadgeTitle("lift_200kg", "lb")).toBe("405 lb lift");
-    expect(liftBadgeTitle("lift_100kg", "kg")).toBe("100 kg lift");
-    expect(liftBadgeTitle("lift_200kg", "kg")).toBe("200 kg lift");
+    expect(liftBadgeTitle("lift_l3", "lb")).toBe("225 lb lift");
+    expect(liftBadgeTitle("lift_l5", "lb")).toBe("405 lb lift");
+    expect(liftBadgeTitle("lift_l3", "kg")).toBe("100 kg lift");
+    expect(liftBadgeTitle("lift_l5", "kg")).toBe("180 kg lift");
     const lb = evaluateBadges({
       workoutCount: 1,
       currentStreak: 1,
@@ -125,9 +126,9 @@ describe("leaderboard privacy and badges", () => {
         },
       ],
     });
-    expect(lb.find((row) => row.id === "lift_100kg")?.title).toBe("225 lb lift");
-    expect(lb.find((row) => row.id === "lift_200kg")?.title).toBe("405 lb lift");
-    expect(lb.find((row) => row.id === "lift_200kg")?.earned).toBe(true);
+    expect(lb.find((row) => row.id === "lift_l3")?.title).toBe("225 lb lift");
+    expect(lb.find((row) => row.id === "lift_l5")?.title).toBe("405 lb lift");
+    expect(lb.find((row) => row.id === "lift_l5")?.earned).toBe(true);
     expect(lb.find((row) => row.id === "pads_250")?.title).toBe("250 pad rounds");
     expect(lb.find((row) => row.id === "pads_250")?.title).not.toMatch(/-/);
   });

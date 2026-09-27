@@ -139,7 +139,7 @@ export async function saveWorkoutAction(
         : "";
       const unlocked = await detectUnseenBadgeUnlocksForSession(user.id, workoutId, units);
       const unlockQuery = unlocked.length
-        ? `&unlock=${encodeURIComponent(unlockQueryForBadges(unlocked))}`
+        ? `&unlock=${encodeURIComponent(unlockQueryForBadges(unlocked))}&pendingUnlock=${encodeURIComponent(unlockQueryForBadges(unlocked))}`
         : "";
       redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}${prQuery}${unlockQuery}`;
     } else {

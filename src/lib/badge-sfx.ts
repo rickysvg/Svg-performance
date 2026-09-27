@@ -47,6 +47,59 @@ export function primeUnlockAudio() {
   }
 }
 
+/** Short original finish sting — impact + sparkle. Respects the sound toggle. */
+export function playFinishSfx() {
+  if (!soundFxEnabled()) return;
+  const context = ctx();
+  if (!context) return;
+  if (context.state === "suspended") {
+    void context.resume();
+  }
+  const now = context.currentTime;
+  const master = context.createGain();
+  master.gain.setValueAtTime(0.0001, now);
+  master.gain.exponentialRampToValueAtTime(0.7, now + 0.012);
+  master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+  master.connect(context.destination);
+
+  const thump = context.createOscillator();
+  thump.type = "triangle";
+  thump.frequency.setValueAtTime(180, now);
+  thump.frequency.exponentialRampToValueAtTime(72, now + 0.16);
+  const thumpGain = context.createGain();
+  thumpGain.gain.setValueAtTime(0.55, now);
+  thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+  thump.connect(thumpGain);
+  thumpGain.connect(master);
+  thump.start(now);
+  thump.stop(now + 0.22);
+
+  const snap = context.createOscillator();
+  snap.type = "square";
+  snap.frequency.setValueAtTime(740, now);
+  snap.frequency.exponentialRampToValueAtTime(220, now + 0.09);
+  const snapGain = context.createGain();
+  snapGain.gain.setValueAtTime(0.18, now);
+  snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+  snap.connect(snapGain);
+  snapGain.connect(master);
+  snap.start(now);
+  snap.stop(now + 0.11);
+
+  const sparkle = context.createOscillator();
+  sparkle.type = "sine";
+  sparkle.frequency.setValueAtTime(1480, now + 0.04);
+  sparkle.frequency.exponentialRampToValueAtTime(920, now + 0.32);
+  const sparkleGain = context.createGain();
+  sparkleGain.gain.setValueAtTime(0.0001, now + 0.04);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.22, now + 0.07);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+  sparkle.connect(sparkleGain);
+  sparkleGain.connect(master);
+  sparkle.start(now + 0.04);
+  sparkle.stop(now + 0.38);
+}
+
 async function loadBuffer(src: string) {
   const context = ctx();
   if (!context) return null;

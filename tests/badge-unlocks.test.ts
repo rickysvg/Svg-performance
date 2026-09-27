@@ -33,7 +33,7 @@ describe("badge unlock queue and seen store", () => {
 
   it("parses unlock ids and writes the unseen line", () => {
     expect(parseUnlockQuery("streak_7,bike_50,nope")).toEqual(["streak_7", "bike_50"]);
-    expect(serializeUnlockQuery(["streak_7", "lift_100kg"])).toBe("streak_7,lift_100kg");
+    expect(serializeUnlockQuery(["streak_7", "lift_100kg"])).toBe("streak_7,lift_l3");
     expect(unlockLine("7-day streak")).toBe("Unlocked: 7-day streak");
     expect(parseSeenBadgeUnlocks('["streak_7"]')).toEqual(["streak_7"]);
   });
@@ -115,22 +115,29 @@ describe("badge unlock queue and seen store", () => {
     expect(overlay).toContain("navigator.vibrate");
     expect(overlay).toContain("prefers-reduced-motion");
     expect(overlay).toContain("playCategorySfx");
-    expect(overlay).toContain("delayMs={900}");
+    expect(overlay).toContain("delayMs={700}");
     expect(overlay).toContain("badge-unlock-fly");
-    expect(overlay).toContain("badge-unlock-ring");
     expect(overlay).toContain("Badge unlocked");
-    expect(sparks).toContain("#CBF805");
-    expect(sparks).toContain("prefers-reduced-motion");
-    expect(sparks).toContain("delayMs = 900");
-    expect(sparks).toContain("lighter");
+    expect(overlay).toContain("unlockMoreLine");
+    expect(overlay).not.toContain("badge-unlock-rays");
+    expect(overlay).not.toContain("badge-unlock-ring");
+    expect(sparks).toContain("CelebrationFx");
+    expect(sparks).toContain("delayMs = 700");
+    expect(read("src/components/progress/SpriteFx.tsx")).toContain("ember_drift");
+    expect(read("src/components/progress/SpriteFx.tsx")).toContain("ring_comet");
+    expect(read("src/lib/badge-sfx.ts")).toContain("playFinishSfx");
+    expect(read("src/lib/workout-complete.ts")).toContain("YOU PUT IN THE WORK.");
+    expect(read("src/components/training/WorkoutWinScreen.tsx")).toContain("playFinishSfx");
+    expect(read("src/components/training/WorkoutWinScreen.tsx")).toContain("workout_complete_hero.webp");
+    expect(read("src/app/(member)/training/log/[sessionId]/done/page.tsx")).toContain("WorkoutWinScreen");
     expect(grid).not.toContain("BadgeSparks");
     expect(css).toContain("badge-cine-in");
     expect(css).toContain("perspective");
     expect(css).toContain("rotateX");
     expect(css).toContain("badge-unlock-backdrop");
     expect(css).toContain("isolation: isolate");
-    expect(css).toContain("badge-unlock-ring");
-    expect(css).toContain("badge-unlock-rays");
+    expect(css).toContain("mix-blend-mode: screen");
+    expect(css).not.toContain("badge-unlock-rays");
     expect(css).toContain("prefers-reduced-motion");
     expect(css).not.toContain("badge-unlock-slam");
     expect(overlay).toContain("badge-unlock-glow");
