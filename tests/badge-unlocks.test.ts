@@ -13,6 +13,7 @@ import {
   unseenEarnedBadges,
 } from "@/lib/badge-unlocks";
 import { evaluateBadges } from "@/lib/badges";
+import { PLATE_OUTLINE_PATH, PLATE_OUTLINE_POINTS } from "@/lib/plate-outline";
 import { detectUnseenBadgeUnlocksForSession } from "@/lib/progress-companion";
 import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
 import { getDemoProgram } from "@/lib/programs";
@@ -29,6 +30,14 @@ describe("badge unlock queue and seen store", () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
+  });
+
+  it("samples the plate silhouette for the neon outline and sparks", () => {
+    expect(PLATE_OUTLINE_PATH.startsWith("M")).toBe(true);
+    expect(PLATE_OUTLINE_POINTS).toHaveLength(64);
+    expect(
+      PLATE_OUTLINE_POINTS.every(([x, y]) => x >= 0 && x <= 1 && y >= 0 && y <= 1),
+    ).toBe(true);
   });
 
   it("parses unlock ids and writes the unseen line", () => {
@@ -106,29 +115,46 @@ describe("badge unlock queue and seen store", () => {
   it("keeps sparks on the unlock overlay only and respects reduced motion", () => {
     const overlay = read("src/components/progress/BadgeUnlockOverlay.tsx");
     const sparks = read("src/components/progress/BadgeSparks.tsx");
+    const outline = read("src/components/progress/BadgeUnlockOutline.tsx");
+    const plateOutline = read("src/lib/plate-outline.ts");
     const grid = read("src/components/progress/BadgesGrid.tsx");
     const css = read("src/app/globals.css");
     expect(overlay).toContain("BadgeSparks");
+    expect(overlay).toContain("BadgeUnlockOutline");
     expect(overlay).toContain("Keep going");
     expect(overlay).toContain("Share");
     expect(overlay).toContain("shareOrDownloadCard");
     expect(overlay).toContain("navigator.vibrate");
     expect(overlay).toContain("prefers-reduced-motion");
+    expect(overlay).toContain("unlockLine");
+    expect(overlay).toContain("delayMs={900}");
+    expect(overlay).toContain("badge-unlock-fly");
+    expect(overlay).toContain("badge-unlock-spec");
+    expect(overlay).not.toContain("badge-unlock-glint");
+    expect(overlay).not.toContain("badge-unlock-ring");
+    expect(overlay).not.toContain("badge-unlock-shine-wrap");
     expect(sparks).toContain("#CBF805");
     expect(sparks).toContain("prefers-reduced-motion");
+    expect(sparks).toContain("delayMs = 900");
+    expect(sparks).toContain("PLATE_OUTLINE_POINTS");
+    expect(sparks).toContain("lighter");
+    expect(sparks).not.toContain("plateRim");
+    expect(outline).toContain("PLATE_OUTLINE_PATH");
+    expect(outline).toContain("pathLength");
+    expect(plateOutline).toContain("octagon");
     expect(grid).not.toContain("BadgeSparks");
-    expect(css).toContain("badge-unlock-slam");
+    expect(css).toContain("badge-cine-in");
+    expect(css).toContain("perspective");
+    expect(css).toContain("rotateX");
     expect(css).toContain("badge-unlock-backdrop");
-    expect(css).toContain("badge-unlock-ring");
     expect(css).toContain("badge-unlock-smoke");
     expect(css).toContain("badge-plate-shine");
+    expect(css).toContain("badge-outline-draw");
     expect(css).toContain("prefers-reduced-motion");
+    expect(css).not.toContain("badge-unlock-slam");
+    expect(css).not.toContain("badge-unlock-ring");
     expect(overlay).toContain("badge-unlock-glow");
-    expect(overlay).toContain("badge-unlock-glint");
-    expect(overlay).not.toContain("badge-unlock-shine-wrap");
     expect(read("src/components/progress/BadgePlate.tsx")).toContain("maskImage");
-    expect(sparks).toContain("lighter");
-    expect(sparks).toContain("plateRim");
     expect(read("prisma/schema.prisma")).toContain("seenBadgeUnlocksJson");
   });
 });

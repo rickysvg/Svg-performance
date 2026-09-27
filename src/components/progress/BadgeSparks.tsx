@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { PLATE_OUTLINE_POINTS } from "@/lib/plate-outline";
 
 type Spark = {
   x: number;
@@ -18,13 +19,6 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function plateRim(cx: number, cy: number, rx: number, ry: number, angle: number) {
-  return {
-    x: cx + Math.cos(angle) * rx,
-    y: cy + Math.sin(angle) * ry,
-  };
-}
-
 function sparkColor(life: number) {
   if (life > 0.72) return { stroke: "#ffffff", fill: "#fff6d0" };
   if (life > 0.42) return { stroke: "#ffd36a", fill: "#ffe38a" };
@@ -33,9 +27,11 @@ function sparkColor(life: number) {
 
 export function BadgeSparks({
   active,
-  durationMs = 2600,
+  delayMs = 900,
+  durationMs = 2100,
 }: {
   active: boolean;
+  delayMs?: number;
   durationMs?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -63,22 +59,28 @@ export function BadgeSparks({
     const spawn = (count: number) => {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
+      const plateW = w * (240 / 360);
+      const plateH = plateW * (464 / 512);
+      const left = (w - plateW) / 2;
+      const top = (h - plateH) / 2;
       const cx = w / 2;
-      const cy = h * 0.46;
-      const rx = Math.min(w, h) * 0.36;
-      const ry = Math.min(w, h) * 0.28;
+      const cy = h / 2;
       for (let i = 0; i < count; i += 1) {
-        const angle = Math.random() * Math.PI * 2;
-        const origin = plateRim(cx, cy, rx, ry, angle);
-        const speed = 1.4 + Math.random() * 3.6;
+        const [nx, ny] = PLATE_OUTLINE_POINTS[Math.floor(Math.random() * PLATE_OUTLINE_POINTS.length)]!;
+        const x = left + nx * plateW;
+        const y = top + ny * plateH;
+        const ox = x - cx;
+        const oy = y - cy;
+        const n = Math.hypot(ox, oy) || 1;
+        const speed = 1.3 + Math.random() * 3.2;
         sparks.push({
-          x: origin.x,
-          y: origin.y,
-          vx: Math.cos(angle) * speed * (0.7 + Math.random() * 0.5),
-          vy: Math.sin(angle) * speed * 0.7 - 0.4 - Math.random() * 1.6,
+          x,
+          y,
+          vx: (ox / n) * speed,
+          vy: (oy / n) * speed * 0.75 - 0.3 - Math.random() * 1.4,
           life: 1,
-          max: 380 + Math.random() * 420,
-          size: 0.9 + Math.random() * 1.5,
+          max: 360 + Math.random() * 380,
+          size: 0.85 + Math.random() * 1.35,
           bounce: 0,
         });
       }
@@ -86,17 +88,18 @@ export function BadgeSparks({
 
     const tick = (now: number) => {
       if (!running) return;
-      const dt = Math.min(32, now - last);
+      const dt = Math.min(22, now - last);
       last = now;
       const elapsed = now - started;
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       ctx.clearRect(0, 0, w, h);
       ctx.globalCompositeOperation = "lighter";
-      if (elapsed < durationMs) {
-        spawn(elapsed < 220 ? 16 : elapsed < 900 ? 5 : 2);
+      const after = elapsed - delayMs;
+      if (after >= 0 && after < durationMs) {
+        spawn(after < 180 ? 10 : after < 700 ? 4 : 1);
       }
-      const floor = h * 0.92;
+      const floor = h * 0.93;
       for (let i = sparks.length - 1; i >= 0; i -= 1) {
         const spark = sparks[i]!;
         spark.vy += 0.16 * (dt / 16);
@@ -105,8 +108,8 @@ export function BadgeSparks({
         spark.y += spark.vy * (dt / 16);
         if (spark.y > floor && spark.vy > 0 && spark.bounce < 2) {
           spark.y = floor;
-          spark.vy *= -0.28 - Math.random() * 0.18;
-          spark.vx += (Math.random() - 0.5) * 1.2;
+          spark.vy *= -0.26 - Math.random() * 0.16;
+          spark.vx += (Math.random() - 0.5) * 1.1;
           spark.bounce += 1;
         }
         spark.life -= dt / spark.max;
@@ -122,15 +125,15 @@ export function BadgeSparks({
         ctx.lineCap = "round";
         ctx.beginPath();
         ctx.moveTo(spark.x, spark.y);
-        ctx.lineTo(spark.x - spark.vx * 3.4, spark.y - spark.vy * 3.4);
+        ctx.lineTo(spark.x - spark.vx * 3.2, spark.y - spark.vy * 3.2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(spark.x, spark.y, spark.size * 0.55, 0, Math.PI * 2);
+        ctx.arc(spark.x, spark.y, spark.size * 0.5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
-      if (elapsed < durationMs + 700 || sparks.length > 0) {
+      if (elapsed < delayMs + durationMs + 600 || sparks.length > 0) {
         raf = requestAnimationFrame(tick);
       }
     };
@@ -140,7 +143,7 @@ export function BadgeSparks({
       running = false;
       cancelAnimationFrame(raf);
     };
-  }, [active, durationMs]);
+  }, [active, delayMs, durationMs]);
 
   if (!active) return null;
   return (

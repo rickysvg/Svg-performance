@@ -46,6 +46,12 @@ async function login(page: Page) {
   ]);
 }
 
+async function openUnlock(page: Page) {
+  const unlock = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
+  await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
+}
+
 async function main() {
   fs.mkdirSync(ART, { recursive: true });
   const browser = await puppeteer.launch({
@@ -59,29 +65,55 @@ async function main() {
     defaultViewport: { width: 390, height: 844, deviceScaleFactor: 1 },
   });
   const page = await browser.newPage();
+  await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
   await login(page);
 
   await page.goto(`${BASE}/progress`, { waitUntil: "networkidle0", timeout: 60_000 });
   await page.waitForSelector("#badges", { timeout: 15_000 });
-  await page.screenshot({ path: path.join(ART, "real_belt_grid.png"), type: "png" });
-  console.log("wrote real_belt_grid.png");
+  await page.screenshot({ path: path.join(ART, "cine_grid.png"), type: "png" });
+  console.log("wrote cine_grid.png");
 
   await page.$eval("#badges", (el) => el.scrollIntoView({ block: "start" }));
   await delay(200);
-  await page.screenshot({ path: path.join(ART, "real_belt_closeup.png"), type: "png" });
-  console.log("wrote real_belt_closeup.png");
+  const badgesBox = await page.$eval("#badges", (el) => {
+    const rect = el.getBoundingClientRect();
+    return {
+      x: Math.max(0, rect.x),
+      y: Math.max(0, rect.y),
+      width: Math.min(390, rect.width),
+      height: Math.min(420, rect.height),
+    };
+  });
+  await page.screenshot({
+    path: path.join(ART, "cine_closeup.png"),
+    type: "png",
+    clip: {
+      x: badgesBox.x,
+      y: badgesBox.y,
+      width: badgesBox.width,
+      height: Math.min(badgesBox.height, 360),
+    },
+  });
+  console.log("wrote cine_closeup.png");
 
-  const unlock = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
-  await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
-  await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-  await delay(280);
-  await page.screenshot({ path: path.join(ART, "real_belt_unlock.png"), type: "png" });
-  console.log("wrote real_belt_unlock.png");
+  await openUnlock(page);
+  await delay(350);
+  await page.screenshot({ path: path.join(ART, "cine_f1_zoom.png"), type: "png" });
+  console.log("wrote cine_f1_zoom.png");
 
-  await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
-  await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-  await recordMp4(page, path.join(ART, "real_belt_unlock.mp4"), 4000);
-  console.log("wrote real_belt_unlock.mp4");
+  await openUnlock(page);
+  await delay(800);
+  await page.screenshot({ path: path.join(ART, "cine_f2_settle.png"), type: "png" });
+  console.log("wrote cine_f2_settle.png");
+
+  await openUnlock(page);
+  await delay(1150);
+  await page.screenshot({ path: path.join(ART, "cine_f3_sparks.png"), type: "png" });
+  console.log("wrote cine_f3_sparks.png");
+
+  await openUnlock(page);
+  await recordMp4(page, path.join(ART, "cine_unlock.mp4"), 4000);
+  console.log("wrote cine_unlock.mp4");
 
   await browser.close();
 }

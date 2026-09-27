@@ -5,7 +5,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { loadUnlockBadgesAction, markBadgeUnlocksSeenAction } from "@/app/actions/badges";
 import { BadgeMark } from "@/components/progress/BadgeMark";
 import { BadgeSparks } from "@/components/progress/BadgeSparks";
+import { BadgeUnlockOutline } from "@/components/progress/BadgeUnlockOutline";
 import { badgeShareStats, parseUnlockQuery, unlockLine } from "@/lib/badge-unlocks";
+import { plateWebp } from "@/lib/badge-plates";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { EarnedBadge } from "@/lib/badges";
 import type { UnlockBadgePayload } from "@/app/actions/badges";
@@ -61,9 +63,15 @@ export function BadgeUnlockOverlay() {
     if (!preview) {
       void markBadgeUnlocksSeenAction([current.id]);
     }
-    if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate([18, 32, 22]);
+    if (reduce || typeof navigator === "undefined" || typeof navigator.vibrate !== "function") {
+      return;
     }
+    const buzz = window.setTimeout(() => {
+      navigator.vibrate([18, 32, 22]);
+    }, 700);
+    return () => {
+      window.clearTimeout(buzz);
+    };
   }, [current, preview, reduce]);
 
   function clearUnlockParams() {
@@ -106,6 +114,7 @@ export function BadgeUnlockOverlay() {
 
   if (!current) return null;
   const badge = toBadge(current);
+  const specMask = plateWebp(badge.tier, 512);
 
   return (
     <div
@@ -125,40 +134,53 @@ export function BadgeUnlockOverlay() {
         </>
       )}
       <div className="relative w-full max-w-sm text-center text-white">
-        <div className="badge-unlock-stage relative mx-auto flex h-[300px] w-[300px] items-center justify-center">
-          <BadgeSparks key={current.id} active={!reduce} />
-          {reduce ? null : (
-            <svg className="badge-unlock-ring" viewBox="0 0 100 100" aria-hidden>
-              <circle className="badge-unlock-ring-stroke" cx="50" cy="50" r="46" />
-            </svg>
-          )}
-          <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
-            <BadgeMark badge={badge} motion={false} large shine={!reduce} />
-            {reduce ? null : <span className="badge-unlock-glint" aria-hidden />}
+        <div
+          className={`badge-unlock-stage relative mx-auto flex h-[300px] w-[300px] items-center justify-center ${
+            reduce ? "" : "badge-unlock-shake"
+          }`}
+        >
+          <div className="badge-unlock-shadow" aria-hidden />
+          <BadgeSparks key={current.id} active={!reduce} delayMs={900} />
+          <div className={reduce ? "badge-unlock-fade" : "badge-unlock-fly"}>
+            <div className="relative">
+              <BadgeMark badge={badge} motion={false} large shine={false} />
+              {reduce ? null : (
+                <span
+                  className="badge-unlock-spec"
+                  style={{
+                    WebkitMaskImage: `url(${specMask})`,
+                    maskImage: `url(${specMask})`,
+                  }}
+                  aria-hidden
+                />
+              )}
+              <BadgeUnlockOutline fade={reduce} />
+            </div>
           </div>
         </div>
-        <h2 id="badge-unlock-title" className="font-display mt-4 text-3xl uppercase tracking-wide text-white">
-          {current.title}
-        </h2>
-        <p className="mt-2 text-sm text-white/80">{unlockLine(current.title)}</p>
-        <div className="mt-6 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => void onShare()}
-            disabled={sharing}
-            className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
-          >
-            {sharing ? "Preparing…" : "Share"}
-          </button>
-          <button
-            type="button"
-            onClick={keepGoing}
-            className="touch-target w-full rounded-full border border-white/40 text-white"
-          >
-            Keep going
-          </button>
+        <div className={reduce ? "" : "badge-unlock-copy"}>
+          <h2 id="badge-unlock-title" className="font-display mt-4 text-3xl uppercase tracking-wide text-white">
+            {unlockLine(current.title)}
+          </h2>
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => void onShare()}
+              disabled={sharing}
+              className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
+            >
+              {sharing ? "Preparing…" : "Share"}
+            </button>
+            <button
+              type="button"
+              onClick={keepGoing}
+              className="touch-target w-full rounded-full border border-white/40 text-white"
+            >
+              Keep going
+            </button>
+          </div>
+          {tip ? <p className="mt-3 text-sm text-white/70">{tip}</p> : null}
         </div>
-        {tip ? <p className="mt-3 text-sm text-white/70">{tip}</p> : null}
       </div>
     </div>
   );
