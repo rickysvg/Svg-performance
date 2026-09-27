@@ -5,7 +5,6 @@ import { AppError } from "@/lib/errors";
 import {
   FORM_CHECK_MAX_BYTES,
   FORM_CHECK_MAX_SECONDS,
-  FORM_CHECK_TYPES,
   type FormCheckMime,
 } from "@/lib/form-check-shared";
 
