@@ -27,8 +27,10 @@ async function recordMp4(page: Page, dest: string, ms = 4000) {
     const used = Date.now() - frameStart;
     if (used < interval) await delay(interval - used);
   }
+  const elapsedSec = Math.max((Date.now() - start) / 1000, 0.1);
+  const captureFps = Math.max(i / elapsedSec, 1);
   execSync(
-    `ffmpeg -y -framerate 30 -i ${dir}/%04d.jpg -c:v libx264 -pix_fmt yuv420p -r 30 -crf 23 -movflags +faststart -t 4 "${dest}"`,
+    `ffmpeg -y -framerate ${captureFps.toFixed(3)} -i ${dir}/%04d.jpg -vf tpad=stop_mode=clone:stop_duration=4 -c:v libx264 -pix_fmt yuv420p -r 30 -crf 23 -movflags +faststart -t 4 "${dest}"`,
     { stdio: "inherit" },
   );
   fs.rmSync(dir, { recursive: true, force: true });
@@ -65,7 +67,7 @@ async function main() {
     const url = `${BASE}/progress?unlock=streak_7&unlockPreview=1&badgeStyle=${style.id}`;
     await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
     await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-    await delay(380);
+    await delay(240);
     await page.screenshot({ path: path.join(ART, style.shot), type: "png" });
     console.log("wrote", style.shot);
 

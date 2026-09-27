@@ -337,9 +337,9 @@ body:has(.app-splash.is-visible) {
 }
 
 .badge-unlock-backdrop {
-  background: rgba(6, 6, 6, 0.91);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(3, 3, 3, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .badge-unlock-glow {

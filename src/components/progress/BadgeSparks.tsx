@@ -81,16 +81,16 @@ export function BadgeSparks({
       for (let i = 0; i < count; i += 1) {
         const angle = Math.random() * Math.PI * 2;
         const origin = rimPoint(style, cx, cy, radius, angle);
-        const speed = 0.7 + Math.random() * 2.4;
-        const hot = Math.random() > 0.78;
+        const speed = 1.1 + Math.random() * 2.8;
+        const hot = Math.random() > 0.72;
         sparks.push({
           x: origin.x,
           y: origin.y,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed * 0.85 + 0.15,
+          vy: Math.sin(angle) * speed * 0.85 + 0.2,
           life: 1,
-          max: 260 + Math.random() * 280,
-          size: hot ? 1.6 + Math.random() : 1.1 + Math.random() * 1.3,
+          max: 320 + Math.random() * 300,
+          size: hot ? 2.2 + Math.random() * 1.4 : 1.5 + Math.random() * 1.6,
           streak: Math.random() > 0.35,
           hot,
         });
@@ -104,7 +104,7 @@ export function BadgeSparks({
       const h = canvas.clientHeight;
       ctx.clearRect(0, 0, w, h);
       if (elapsed < durationMs) {
-        spawn(elapsed < 280 ? 7 : elapsed < 900 ? 3 : 1);
+        spawn(elapsed < 280 ? 11 : elapsed < 900 ? 4 : 1);
       }
       for (let i = sparks.length - 1; i >= 0; i -= 1) {
         const spark = sparks[i]!;
