@@ -50,9 +50,6 @@ export function canDismissSplash(input: {
   userSkipped?: boolean;
 }) {
   if (input.userSkipped) return true;
-  if (input.reducedMotion) {
-    return input.appReady;
-  }
   return input.videoFinished && input.appReady;
 }
 

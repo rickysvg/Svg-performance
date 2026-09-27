@@ -11,7 +11,7 @@ export default function MemberNotFound() {
         href="/home"
         className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
       >
-        Back to Home
+        Home
       </Link>
     </main>
   );

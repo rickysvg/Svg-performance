@@ -23,7 +23,13 @@ export function CheckoutButton({
   if (disabledReason) {
     return (
       <div className="space-y-1">
-        <p className="text-sm text-muted">{disabledReason}</p>
+        <button
+          type="button"
+          disabled
+          className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {disabledReason}
+        </button>
         {financingHint ? <p className="text-xs text-muted">{financingHint}</p> : null}
       </div>
     );

@@ -66,7 +66,7 @@ export default async function PricingPage() {
 
   function checkoutDisabled(requiresGymVerify: boolean) {
     if (!user) return "Log in first.";
-    if (!configured) return "Stripe TEST is not configured.";
+    if (!configured) return "Paid plans coming soon";
     if (requiresGymVerify && !profile?.gymMembershipVerified) {
       return "Admin has not verified this gym membership yet.";
     }
@@ -178,8 +178,8 @@ export default async function PricingPage() {
         ) : null}
         {!configured ? (
           <p className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
-            Stripe TEST keys are not in this environment. Checkout buttons stay
-            off on purpose so we do not fake paid access or an Affirm/Klarna buy.
+            Paid plans coming soon. The free plan and the no-card trial still
+            work. Checkout will open when paid billing is ready.
           </p>
         ) : null}
 

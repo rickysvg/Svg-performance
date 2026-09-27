@@ -57,6 +57,9 @@ export async function skipDeepOnboardingAction() {
   if (!status.completed) {
     redirect("/onboarding");
   }
+  if (!status.planChoiceAt) {
+    redirect("/onboarding/plan");
+  }
   redirect("/home");
 }
 

@@ -10,6 +10,9 @@ export default async function DeepOnboardingPage() {
   if (!status.completed) {
     redirect("/onboarding");
   }
+  if (!status.planChoiceAt) {
+    redirect("/onboarding/plan");
+  }
   if (!status.profile) {
     redirect("/login");
   }

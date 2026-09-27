@@ -65,12 +65,20 @@ export function hasCompletedOnboarding(profile: {
   return Boolean(profile?.onboardingCompletedAt);
 }
 
-export function memberEntryPath(onboardingCompletedAt: Date | null) {
-  return onboardingCompletedAt ? "/home" : "/onboarding";
+export function memberEntryPath(
+  onboardingCompletedAt: Date | null,
+  planChoiceAt: Date | null = null,
+) {
+  if (!onboardingCompletedAt) return "/onboarding";
+  if (!planChoiceAt) return "/onboarding/plan";
+  return "/home";
 }
 
-export function shouldBlockMemberRoute(onboardingCompletedAt: Date | null) {
-  return !onboardingCompletedAt;
+export function shouldBlockMemberRoute(
+  onboardingCompletedAt: Date | null,
+  planChoiceAt: Date | null = null,
+) {
+  return !onboardingCompletedAt || !planChoiceAt;
 }
 
 export function hasCompletedDeepOnboarding(profile: {

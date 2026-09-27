@@ -107,6 +107,9 @@ describe("app-open splash video", () => {
     ).toBe(true);
     expect(
       canDismissSplash({ videoFinished: false, appReady: true, reducedMotion: true }),
+    ).toBe(false);
+    expect(
+      canDismissSplash({ videoFinished: true, appReady: true, reducedMotion: true }),
     ).toBe(true);
     expect(shouldShowSplashOverlay({ stored: "1", pathname: "/" })).toBe(false);
     expect(shouldShowSplashOverlay({ stored: null, pathname: "/login" })).toBe(false);

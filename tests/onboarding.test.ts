@@ -85,8 +85,20 @@ describe("onboarding gate and persistence", () => {
 
     const after = await getOnboardingStatus(user.id);
     expect(after.completed).toBe(true);
-    expect(shouldBlockMemberRoute(after.completedAt)).toBe(false);
-    expect(memberEntryPath(after.completedAt)).toBe("/home");
+    expect(after.planChoiceAt).toBeNull();
+    expect(shouldBlockMemberRoute(after.completedAt, after.planChoiceAt)).toBe(true);
+    expect(memberEntryPath(after.completedAt, after.planChoiceAt)).toBe("/onboarding/plan");
+  });
+
+  it("sends finished intake with no plan choice to the plan picker", async () => {
+    const user = await makeUser("need-plan@example.com");
+    await completeOnboardingForUser(user.id, { ...requiredIntake, displayName: "NeedPlan" });
+    const after = await getOnboardingStatus(user.id);
+    expect(after.completed).toBe(true);
+    expect(after.planChoiceAt).toBeNull();
+    expect(shouldBlockMemberRoute(after.completedAt, after.planChoiceAt)).toBe(true);
+    expect(memberEntryPath(after.completedAt, after.planChoiceAt)).toBe("/onboarding/plan");
+    expect(memberEntryPath(after.completedAt, new Date())).toBe("/home");
   });
 
   it("lets Profile edit the same intake fields later", async () => {
@@ -184,8 +196,12 @@ describe("onboarding gate and persistence", () => {
     const afterRequired = await getOnboardingStatus(user.id);
     expect(afterRequired.completed).toBe(true);
     expect(afterRequired.deepCompleted).toBe(false);
-    expect(shouldBlockMemberRoute(afterRequired.completedAt)).toBe(false);
-    expect(memberEntryPath(afterRequired.completedAt)).toBe("/home");
+    expect(shouldBlockMemberRoute(afterRequired.completedAt, afterRequired.planChoiceAt)).toBe(
+      true,
+    );
+    expect(memberEntryPath(afterRequired.completedAt, afterRequired.planChoiceAt)).toBe(
+      "/onboarding/plan",
+    );
     expect(needsDeepOnboardingPrompt(afterRequired.profile)).toBe(true);
 
     const today = await getHomeToday(user.id);
