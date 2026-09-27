@@ -52,6 +52,16 @@ describe("hosted preview database selection", () => {
     expect(neonDirectUrl("file:./dev.db")).toBe("file:./dev.db");
   });
 
+  it("keeps local puppeteer capture scripts out of the Next typecheck tree", () => {
+    const tsconfig = JSON.parse(fs.readFileSync("tsconfig.json", "utf8")) as {
+      exclude?: string[];
+    };
+    expect(tsconfig.exclude?.some((rule) => rule.includes("scripts/capture-"))).toBe(true);
+    expect(fs.existsSync("scripts/capture-badge-unlock.ts")).toBe(true);
+    expect(fs.existsSync("scripts/capture-companion-screens.ts")).toBe(true);
+    expect(fs.readFileSync("package.json", "utf8")).not.toMatch(/"puppeteer"/);
+  });
+
   it("ships idempotent additive SQL for the #46 Profile columns", () => {
     const sql = fs.readFileSync("prisma/hosted-additive.sql", "utf8");
     const prepare = fs.readFileSync("scripts/prisma-prepare.mjs", "utf8");
