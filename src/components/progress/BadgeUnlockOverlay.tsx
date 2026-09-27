@@ -8,7 +8,7 @@ import { BadgeSparks } from "@/components/progress/BadgeSparks";
 import { preloadFxSheets } from "@/components/progress/SpriteFx";
 import { badgeShareStats, capUnlockQueue, parseUnlockQuery, unlockMoreLine } from "@/lib/badge-unlocks";
 import { BADGE_CATEGORY_LABEL, type EarnedBadge } from "@/lib/badges";
-import { playUnlockSfx, soundFxEnabled } from "@/lib/badge-sfx";
+import { playUnlockSfx, soundFxEnabled, unlockSfxStartDelayMs } from "@/lib/badge-sfx";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { UnlockBadgePayload } from "@/app/actions/badges";
 import type { LoadUnit } from "@/lib/units";
@@ -87,12 +87,15 @@ export function BadgeUnlockOverlay() {
       if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
         navigator.vibrate([40, 30, 18, 40, 12]);
       }
+    }, reduce ? 80 : 700);
+    const sting = window.setTimeout(() => {
       if (soundFxEnabled()) {
         void playUnlockSfx();
       }
-    }, reduce ? 80 : 700);
+    }, unlockSfxStartDelayMs(reduce));
     return () => {
       window.clearTimeout(buzz);
+      window.clearTimeout(sting);
     };
   }, [current, reduce]);
 

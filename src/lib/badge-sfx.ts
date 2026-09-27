@@ -3,19 +3,38 @@ import { SFX_BY_CATEGORY } from "@/lib/badge-art";
 
 export const SOUND_FX_STORAGE_KEY = "svg_sound_fx";
 
+/** Sparks / badge-settle beat. Studio stings put their boom on this offset. */
+export const UNLOCK_HIT_MS = 700;
+
 /**
  * Named unlock / win pairs. Swap ACTIVE_UNLOCK_SFX to preview another option.
- * metal | cinematic | fightnight
+ * Existing: metal | cinematic | fightnight
+ * Studio logo stings: studio1_boom | studio2_brass | studio3_metal_braam
  */
 export const UNLOCK_SFX = {
-  metal: { unlock: "/sfx/unlock_metal.mp3", win: "/sfx/win_metal.mp3" },
-  cinematic: { unlock: "/sfx/unlock_cinematic.mp3", win: "/sfx/win_cinematic.mp3" },
-  fightnight: { unlock: "/sfx/unlock_fightnight.mp3", win: "/sfx/win_fightnight.mp3" },
+  metal: { unlock: "/sfx/unlock_metal.mp3", win: "/sfx/win_metal.mp3", hitOffsetMs: 0 },
+  cinematic: { unlock: "/sfx/unlock_cinematic.mp3", win: "/sfx/win_cinematic.mp3", hitOffsetMs: 360 },
+  fightnight: { unlock: "/sfx/unlock_fightnight.mp3", win: "/sfx/win_fightnight.mp3", hitOffsetMs: 0 },
+  studio1_boom: {
+    unlock: "/sfx/unlock_studio1_boom.mp3",
+    win: "/sfx/win_studio1_boom.mp3",
+    hitOffsetMs: UNLOCK_HIT_MS,
+  },
+  studio2_brass: {
+    unlock: "/sfx/unlock_studio2_brass.mp3",
+    win: "/sfx/win_studio2_brass.mp3",
+    hitOffsetMs: UNLOCK_HIT_MS,
+  },
+  studio3_metal_braam: {
+    unlock: "/sfx/unlock_studio3_metal_braam.mp3",
+    win: "/sfx/win_studio3_metal_braam.mp3",
+    hitOffsetMs: UNLOCK_HIT_MS,
+  },
 } as const;
 
 export type UnlockSfxName = keyof typeof UNLOCK_SFX;
 
-/** Ricky picked option 1 — metal. */
+/** Last pick was metal. Studio logo options are ready to swap in by name. */
 export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "metal";
 
 let audioCtx: AudioContext | null = null;
@@ -42,7 +61,14 @@ export function setSoundFxEnabled(on: boolean) {
 }
 
 function activePair(name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
-  return UNLOCK_SFX[name] ?? UNLOCK_SFX.cinematic;
+  return UNLOCK_SFX[name] ?? UNLOCK_SFX.metal;
+}
+
+/** Start early enough that the named option's hit lands on the spark burst. */
+export function unlockSfxStartDelayMs(reduce: boolean, name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
+  if (reduce) return 80;
+  const hit = activePair(name).hitOffsetMs;
+  return Math.max(0, UNLOCK_HIT_MS - hit);
 }
 
 /** Call from the SAVE tap so the browser allows later playback. */
@@ -64,6 +90,10 @@ export function primeUnlockAudio() {
   const pair = activePair();
   void loadBuffer(pair.unlock);
   void loadBuffer(pair.win);
+  for (const row of Object.values(UNLOCK_SFX)) {
+    void loadBuffer(row.unlock);
+    void loadBuffer(row.win);
+  }
   for (const src of Object.values(SFX_BY_CATEGORY)) {
     void loadBuffer(src);
   }

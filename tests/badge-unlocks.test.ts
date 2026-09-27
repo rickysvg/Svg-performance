@@ -136,9 +136,18 @@ describe("badge unlock queue and seen store", () => {
     expect(read("src/lib/badge-sfx.ts")).toContain('ACTIVE_UNLOCK_SFX: UnlockSfxName = "metal"');
     expect(read("src/lib/badge-sfx.ts")).toContain("metal:");
     expect(read("src/lib/badge-sfx.ts")).toContain("fightnight:");
+    expect(read("src/lib/badge-sfx.ts")).toContain("studio1_boom:");
+    expect(read("src/lib/badge-sfx.ts")).toContain("studio2_brass:");
+    expect(read("src/lib/badge-sfx.ts")).toContain("studio3_metal_braam:");
+    expect(read("src/lib/badge-sfx.ts")).toContain("unlockSfxStartDelayMs");
+    expect(overlay).toContain("unlockSfxStartDelayMs");
     expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_cinematic.mp3"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_metal.mp3"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_fightnight.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_studio1_boom.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_studio2_brass.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_studio3_metal_braam.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/win_studio1_boom.mp3"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/sfx/win_cinematic.mp3"))).toBe(true);
     expect(read("src/lib/workout-complete.ts")).toContain("YOU PUT IN THE WORK.");
     expect(read("src/components/training/WorkoutWinScreen.tsx")).toContain("playFinishSfx");
