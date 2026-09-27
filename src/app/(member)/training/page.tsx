@@ -11,6 +11,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
 import { TrainWeekBoard } from "@/components/training/TrainWeekBoard";
 import { plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -173,12 +174,7 @@ export default async function TrainingPage() {
           const zone = bikeZoneForDayNumber(session.dayNumber);
           return (
           <div key={`${session.slot}-${session.dayId ?? session.label}`} className="space-y-2">
-            {zone ? (
-              <p className="rounded-2xl bg-black px-4 py-3 text-sm text-white">
-                <span className="font-display uppercase tracking-wide text-highlighter">{zone.label}</span>
-                <span className="mt-1 block text-white/80">{zone.guide}</span>
-              </p>
-            ) : null}
+            {zone ? <BikeZoneNote zone={zone} /> : null}
           <PlanSessionCard
             session={session}
             compact

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IgDrillCard } from "@/components/mobility/IgDrillCard";
 import { IG_DRILL_DISCLAIMER, IG_DRILL_GROUPS, igDrillsInGroup } from "@/lib/ig-drills";
 
 export default function MobilityDrillsPage() {
@@ -23,24 +24,7 @@ export default function MobilityDrillsPage() {
           </div>
           <ul className="space-y-3">
             {igDrillsInGroup(group.id).map((drill) => (
-              <li key={drill.id} className="rounded-[1.5rem] border border-line bg-card px-4 py-4">
-                <p className="font-display text-xs uppercase tracking-wide text-accent">{drill.place}</p>
-                <h3 className="mt-1 text-xl">{drill.title}</h3>
-                <p className="mt-1 text-sm font-semibold">{drill.prescription}</p>
-                <p className="mt-2 text-sm">{drill.cues}</p>
-                <p className="mt-3 text-xs text-muted">
-                  Idea seen in a post by {drill.credit.handle}.{" "}
-                  <a
-                    href={drill.credit.url}
-                    className="text-accent underline"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Their post
-                  </a>
-                  .
-                </p>
-              </li>
+              <IgDrillCard key={drill.id} drill={drill} />
             ))}
           </ul>
         </section>

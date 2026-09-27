@@ -363,7 +363,26 @@ export const BIKE_ZONE_CREDIT = {
   idea: "aerobic base, threshold, and short power",
 } as const;
 
-const ENERGY_COPY: Record<BikeEnergyZone, { label: string; guide: string }> = {
+/** Optional stand-in for a Sprint bike day. Not a replacement for the written bike plan. */
+export const SPRINT_NO_BIKE = {
+  text: "No bike? Optional: battle ropes, or a curved treadmill, for 4–8 seconds as hard as you can, then rest 40–60 seconds. Stop when the next effort slows down.",
+  handle: "@neromma",
+  posts: [
+    {
+      url: "https://www.instagram.com/neromma/reel/DdWZxV5MLsP/",
+      idea: "battle ropes",
+    },
+    {
+      url: "https://www.instagram.com/neromma/reel/DdeXQ-SsFLj/",
+      idea: "curved treadmill",
+    },
+  ],
+} as const;
+
+const ENERGY_COPY: Record<
+  BikeEnergyZone,
+  { label: string; guide: string; alternative?: typeof SPRINT_NO_BIKE }
+> = {
   "aerobic-base": {
     label: "Aerobic Base",
     guide:
@@ -378,6 +397,7 @@ const ENERGY_COPY: Record<BikeEnergyZone, { label: string; guide: string }> = {
     label: "Sprint",
     guide:
       "Very short max efforts. Rest long enough that the next one is still fast. Stop when the speed drops.",
+    alternative: SPRINT_NO_BIKE,
   },
 };
 

@@ -22,6 +22,7 @@ import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 
@@ -125,12 +126,7 @@ export default async function TrainingDayPage({
           <p className="font-display text-xs uppercase tracking-wide text-accent">First</p>
           <p className="font-semibold">Dynamic warm-up · 3–4 min</p>
         </Link>
-        {zone ? (
-          <p className="rounded-2xl bg-black px-4 py-3 text-sm text-white">
-            <span className="font-display uppercase tracking-wide text-highlighter">{zone.label}</span>
-            <span className="mt-1 block text-white/80">{zone.guide}</span>
-          </p>
-        ) : null}
+        {zone ? <BikeZoneNote zone={zone} /> : null}
         {plyo.length > 0 ? (
           <div className="rounded-2xl border border-line px-4 py-3 text-sm">
             <p className="font-display text-xs uppercase tracking-wide text-accent">

@@ -48,6 +48,32 @@ export const IG_DRILL_GROUPS: { id: IgDrillGroup; title: string; blurb: string }
 
 export const IG_DRILLS: IgDrill[] = [
   {
+    id: "knee-drop-lunge",
+    title: "Knee-drop lunge",
+    group: "hips",
+    place: "Kicker’s Hips",
+    prescription: "2 sets × 5 each side",
+    cues: "From a lunge, lower the back knee toward the floor and turn the front hip open. Move only as far as you can come back out of. Keep the front knee tracking over the toes. This is kick range, not a deep stretch you force.",
+    credit: {
+      handle: "@neromma",
+      url: "https://www.instagram.com/neromma/reel/C9kSWyyIs1_/",
+      idea: "a knee-drop lunge that opens the hip for kicks",
+    },
+  },
+  {
+    id: "shin-box",
+    title: "Hand-assisted shin box",
+    group: "hips",
+    place: "Kicker’s Hips",
+    prescription: "2 sets × 6 each side",
+    cues: "Sit with both shins on the floor and a hand down for balance. Rotate the hips so the knees swing from one side to the other. A small lift is enough. Stop if the knee pinches.",
+    credit: {
+      handle: "@neromma",
+      url: "https://www.instagram.com/neromma/reel/C7mIi9ZI-f6/",
+      idea: "a seated shin-box turn for the hips",
+    },
+  },
+  {
     id: "seated-hip-open",
     title: "Seated hip openers",
     group: "hips",

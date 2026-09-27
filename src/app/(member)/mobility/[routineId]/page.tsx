@@ -5,6 +5,8 @@ import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { getMobilityRoutine, routineIsPro } from "@/lib/mobility";
 import { CreditList } from "@/components/mobility/CreditList";
+import { IgDrillCard } from "@/components/mobility/IgDrillCard";
+import { IG_DRILLS } from "@/lib/ig-drills";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 
 export default async function MobilityRoutinePage({
@@ -63,6 +65,19 @@ export default async function MobilityRoutinePage({
               Log holds and reps
             </Link>
           </div>
+          {routine.id === "kickers-hips" ? (
+            <section className="space-y-3">
+              <h2 className="text-lg">Hip work for the kicks</h2>
+              <ul className="space-y-3">
+                {IG_DRILLS.filter((drill) => drill.place === "Kicker’s Hips").map((drill) => (
+                  <IgDrillCard key={drill.id} drill={drill} />
+                ))}
+              </ul>
+              <Link href="/mobility/drills" className="text-sm font-semibold text-accent">
+                All drill ideas
+              </Link>
+            </section>
+          ) : null}
           <ol className="space-y-3">
             {routine.blocks.map((block) => (
               <li key={block.key} className="rounded-2xl border border-line bg-card px-4 py-3">
