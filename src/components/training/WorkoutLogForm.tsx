@@ -177,6 +177,7 @@ export function WorkoutLogForm({
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const discardDraft = useRef(false);
+  const draftReady = useRef(false);
 
   const grouped = useMemo(() => {
     const map = new Map<string, WorkoutSet[]>();
@@ -197,18 +198,25 @@ export function WorkoutLogForm({
   const restRunning = isRestActive(restTimer, nowMs);
 
   useEffect(() => {
+    let restored: WorkoutSet[] | null = null;
     try {
       const raw = window.localStorage.getItem(draftStorageKey(session.id));
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as WorkoutSet[];
-      if (Array.isArray(parsed) && parsed.length > 0) setSets(parsed);
+      if (raw) {
+        const parsed = JSON.parse(raw) as WorkoutSet[];
+        if (Array.isArray(parsed) && parsed.length > 0) restored = parsed;
+      }
     } catch {
       /* ignore a broken draft */
     }
+    // Apply after this effect so the save effect cannot overwrite the stored draft first.
+    queueMicrotask(() => {
+      if (restored) setSets(restored);
+      draftReady.current = true;
+    });
   }, [session.id]);
 
   useEffect(() => {
-    if (discardDraft.current) return;
+    if (!draftReady.current || discardDraft.current) return;
     try {
       window.localStorage.setItem(draftStorageKey(session.id), JSON.stringify(sets));
     } catch {
