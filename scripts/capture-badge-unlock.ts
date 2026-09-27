@@ -6,6 +6,7 @@ import puppeteer, { type Page } from "puppeteer";
 
 const ART = "/opt/cursor/artifacts";
 const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3114";
+const UNLOCK = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
 
 async function delay(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -46,9 +47,9 @@ async function login(page: Page) {
   ]);
 }
 
+/** Overlay mount is t=0. Avoid networkidle — that waits until the cine-in is already done. */
 async function openUnlock(page: Page) {
-  const unlock = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
-  await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.goto(`${UNLOCK}&t=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
 }
 
@@ -73,27 +74,9 @@ async function main() {
   await page.screenshot({ path: path.join(ART, "cine_grid.png"), type: "png" });
   console.log("wrote cine_grid.png");
 
-  await page.$eval("#badges", (el) => el.scrollIntoView({ block: "start" }));
-  await delay(200);
-  const badgesBox = await page.$eval("#badges", (el) => {
-    const rect = el.getBoundingClientRect();
-    return {
-      x: Math.max(0, rect.x),
-      y: Math.max(0, rect.y),
-      width: Math.min(390, rect.width),
-      height: Math.min(420, rect.height),
-    };
-  });
-  await page.screenshot({
-    path: path.join(ART, "cine_closeup.png"),
-    type: "png",
-    clip: {
-      x: badgesBox.x,
-      y: badgesBox.y,
-      width: badgesBox.width,
-      height: Math.min(badgesBox.height, 360),
-    },
-  });
+  const badges = await page.$("#badges");
+  if (!badges) throw new Error("#badges missing");
+  await badges.screenshot({ path: path.join(ART, "cine_closeup.png"), type: "png" });
   console.log("wrote cine_closeup.png");
 
   await openUnlock(page);
@@ -107,7 +90,7 @@ async function main() {
   console.log("wrote cine_f2_settle.png");
 
   await openUnlock(page);
-  await delay(1150);
+  await delay(1180);
   await page.screenshot({ path: path.join(ART, "cine_f3_sparks.png"), type: "png" });
   console.log("wrote cine_f3_sparks.png");
 

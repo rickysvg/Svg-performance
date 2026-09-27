@@ -97,7 +97,7 @@ export function BadgeSparks({
       ctx.globalCompositeOperation = "lighter";
       const after = elapsed - delayMs;
       if (after >= 0 && after < durationMs) {
-        spawn(after < 180 ? 10 : after < 700 ? 4 : 1);
+        spawn(after < 220 ? 14 : after < 800 ? 5 : 2);
       }
       const floor = h * 0.93;
       for (let i = sparks.length - 1; i >= 0; i -= 1) {
