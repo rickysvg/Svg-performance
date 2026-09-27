@@ -71,6 +71,13 @@ export function QuickAddFab({
             Log workout
           </Link>
           <Link
+            href="/timer"
+            className="block border-b border-line px-4 py-3 text-sm hover:bg-accent/10"
+            onClick={() => setOpen(false)}
+          >
+            Round timer
+          </Link>
+          <Link
             href="/nutrition"
             className="block border-b border-line px-4 py-3 text-sm hover:bg-accent/10"
             onClick={() => setOpen(false)}

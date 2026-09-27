@@ -71,6 +71,19 @@ export default async function TrainingPage() {
 
       <WeekStrip days={strip} />
 
+      <Link
+        href="/timer"
+        className="block rounded-[2rem] bg-black px-5 py-5 text-white"
+      >
+        <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">
+          Free tool
+        </p>
+        <h2 className="mt-2 text-2xl text-white">Round timer</h2>
+        <p className="mt-1 text-sm text-white/70">
+          Bag, pads, or sparring. 3 × 3 min, 5 × 5 min, or set your own rounds.
+        </p>
+      </Link>
+
       <p className="text-sm">
         <Link href="/training/calendar" className="font-semibold text-accent underline-offset-4 hover:underline">
           Calendar

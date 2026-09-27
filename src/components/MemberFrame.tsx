@@ -6,18 +6,7 @@ import { PrimaryNav } from "@/components/PrimaryNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
 import { shouldHideQuickAdd } from "@/lib/quick-add";
 import { TimeZoneSync } from "@/components/TimeZoneSync";
-
-function isImmersiveTrainingPath(pathname: string) {
-  if (pathname.startsWith("/training/log/")) return true;
-  if (
-    pathname === "/training" ||
-    pathname.startsWith("/training/calendar") ||
-    pathname.startsWith("/training/history")
-  ) {
-    return false;
-  }
-  return /^\/training\/[^/]+$/.test(pathname);
-}
+import { isImmersiveTrainingPath, shouldHidePrimaryNav } from "@/lib/member-nav";
 
 export function MemberFrame({
   email,
@@ -32,11 +21,12 @@ export function MemberFrame({
 }) {
   const pathname = usePathname();
   const immersive = isImmersiveTrainingPath(pathname);
+  const hidePrimaryNav = shouldHidePrimaryNav(pathname);
 
   return (
     <div className="flex min-h-full flex-col">
       <TimeZoneSync savedTimeZone={timeZone} />
-      <PrimaryNav />
+      {hidePrimaryNav ? null : <PrimaryNav />}
       <div
         className={
           immersive

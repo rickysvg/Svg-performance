@@ -97,9 +97,10 @@ export async function saveWorkoutAction(
     revalidatePath("/progress");
     revalidatePath("/heart");
     revalidatePath(`/training/log/${workoutId}`);
+    revalidatePath(`/training/log/${workoutId}/done`);
     if (intent === "complete") {
       const celebrate = alreadyActive ? "workout" : "streak";
-      redirectPath = `/training/log/${workoutId}?celebrate=${celebrate}&rate=1`;
+      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}`;
     } else {
       return { success: "Draft saved. You can finish it later." };
     }

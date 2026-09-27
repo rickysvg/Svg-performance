@@ -35,10 +35,10 @@ export default async function HistoryPage() {
       ) : (
         <ul className="space-y-3">
           {sessions.map((session) => (
-            <li key={session.id}>
+            <li key={session.id} className="flex items-stretch gap-2">
               <Link
                 href={`/training/log/${session.id}`}
-                className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"
+                className="block min-w-0 flex-1 rounded-2xl border border-line bg-card p-4 hover:border-accent"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold">{session.title}</p>
@@ -54,6 +54,14 @@ export default async function HistoryPage() {
                       : ""}
                 </p>
               </Link>
+              {session.status === "complete" ? (
+                <Link
+                  href={`/training/log/${session.id}/done`}
+                  className="touch-target inline-flex min-w-[4.5rem] items-center justify-center rounded-2xl border border-line px-3 text-sm"
+                >
+                  Share
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>

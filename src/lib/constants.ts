@@ -97,6 +97,7 @@ export const DEMO_NUTRITION_TARGETS = {
 export const MEMBER_ROUTES = [
   "/home",
   "/training",
+  "/timer",
   "/progress",
   "/profile",
   "/shop",

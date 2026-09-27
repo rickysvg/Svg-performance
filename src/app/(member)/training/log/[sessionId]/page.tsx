@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
@@ -36,6 +37,14 @@ export default async function WorkoutLogPage({
 
   return (
     <main className="space-y-6">
+      {session.status === "complete" ? (
+        <Link
+          href={`/training/log/${session.id}/done`}
+          className="touch-target flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
+        >
+          Share workout card
+        </Link>
+      ) : null}
       {promptRating ? (
         <DifficultyRatingForm
           workoutId={session.id}

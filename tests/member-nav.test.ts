@@ -5,8 +5,11 @@ import {
   BOTTOM_DOCK_LEFT,
   BOTTOM_DOCK_RIGHT,
   isAccountNavActive,
+  isImmersiveTrainingPath,
   isPrimaryNavActive,
+  isWorkoutDonePath,
   PRIMARY_NAV_LINKS,
+  shouldHidePrimaryNav,
 } from "@/lib/member-nav";
 
 describe("member chrome swap", () => {
@@ -61,5 +64,15 @@ describe("member chrome swap", () => {
     expect(header).toContain("centerAction");
     expect(profile).toContain("logoutAction");
     expect(profile).toMatch(/Log out/);
+  });
+
+  it("keeps the dock on the timer and workout-done screens", () => {
+    expect(isWorkoutDonePath("/training/log/abc/done")).toBe(true);
+    expect(isImmersiveTrainingPath("/training/log/abc")).toBe(true);
+    expect(isImmersiveTrainingPath("/training/log/abc/done")).toBe(false);
+    expect(isImmersiveTrainingPath("/timer")).toBe(false);
+    expect(shouldHidePrimaryNav("/timer")).toBe(true);
+    expect(shouldHidePrimaryNav("/training/log/abc/done")).toBe(true);
+    expect(shouldHidePrimaryNav("/training")).toBe(false);
   });
 });

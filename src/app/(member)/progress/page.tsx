@@ -53,6 +53,7 @@ export default async function ProgressPage() {
   const units = profile?.preferredUnits ?? "lb";
   const records = await getPersonalRecordsForUser(user.id, units);
   const summary = buildProgressSummary(sessions, units);
+  const lastComplete = sessions.find((session) => session.status === "complete");
   const weight = latestMetrics.get("weight");
   const sleep = latestMetrics.get("sleepHours");
   const typedHr = latestMetrics.get("restingHr");
@@ -236,6 +237,14 @@ export default async function ProgressPage() {
               <p className="mt-1 text-sm font-semibold">
                 {summary.lastSessionTitle}
               </p>
+              {lastComplete ? (
+                <Link
+                  href={`/training/log/${lastComplete.id}/done`}
+                  className="touch-target mt-3 inline-flex items-center text-sm text-accent underline-offset-4 hover:underline"
+                >
+                  Share card
+                </Link>
+              ) : null}
             </article>
           </section>
 

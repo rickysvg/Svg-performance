@@ -9,6 +9,8 @@ describe("quick-add floating button", () => {
     expect(shouldHideQuickAdd("/coach?topic=mental")).toBe(true);
     expect(shouldHideQuickAdd("/training/cmug54xj00001jsgs1t9bjl0p")).toBe(true);
     expect(shouldHideQuickAdd("/training/log/abc123")).toBe(true);
+    expect(shouldHideQuickAdd("/training/log/abc123/done")).toBe(false);
+    expect(shouldHideQuickAdd("/timer")).toBe(false);
     expect(shouldHideQuickAdd("/training")).toBe(false);
     expect(shouldHideQuickAdd("/home")).toBe(false);
     expect(shouldHideQuickAdd("/nutrition")).toBe(false);
@@ -34,6 +36,8 @@ describe("quick-add floating button", () => {
       "utf8",
     );
     expect(fab).toContain("data-quick-add-fab");
+    expect(fab).toContain('href="/timer"');
+    expect(fab).toContain("Round timer");
     expect(fab).toContain("h-10 w-10");
     expect(fab).toContain("data-plus-glyph");
     expect(fab).toContain("items-center justify-center");
