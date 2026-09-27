@@ -70,32 +70,11 @@ export default async function ProgressPage() {
 
   return (
     <main className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl uppercase tracking-wide">Progress</h1>
-          <p className="mt-1 text-sm text-muted">
-            Body numbers you type, Apple Health / watch workout imports, or Polar when
-            it is connected. Apple Watch is not connected on the web.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-accent">
-            {badgeCounts.earned}/{badgeCounts.total} earned
-          </p>
-          <Link
-            href="/heart"
-            className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
-          >
-            Heart rate
-          </Link>
-          <Link
-            href="/profile"
-            className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
-            aria-label="Progress settings (profile)"
-          >
-            Settings
-          </Link>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-3xl uppercase tracking-wide">Progress</h1>
+        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-accent">
+          {badgeCounts.earned}/{badgeCounts.total} earned
+        </p>
       </div>
 
       <nav className="flex gap-2" aria-label="Progress sections">
@@ -114,6 +93,30 @@ export default async function ProgressPage() {
         <span className="touch-target rounded-full bg-black px-3 text-sm text-accent">Badges</span>
       </nav>
 
+      <BadgesGrid
+        badges={companion.badges}
+        earned={badgeCounts.earned}
+        total={badgeCounts.total}
+        unit={units}
+        showHeading={false}
+      />
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/heart"
+          className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
+        >
+          Heart rate
+        </Link>
+        <Link
+          href="/profile"
+          className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
+          aria-label="Progress settings (profile)"
+        >
+          Settings
+        </Link>
+      </div>
+
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <h2 className="text-lg">Streaks</h2>
@@ -123,13 +126,6 @@ export default async function ProgressPage() {
         </div>
         <StreakHero streak={companion.streak} />
       </section>
-
-      <BadgesGrid
-        badges={companion.badges}
-        earned={badgeCounts.earned}
-        total={badgeCounts.total}
-        unit={units}
-      />
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">

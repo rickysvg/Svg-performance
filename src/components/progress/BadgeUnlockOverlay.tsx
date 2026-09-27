@@ -122,7 +122,7 @@ export function BadgeUnlockOverlay() {
 
   return (
     <div
-      className="badge-unlock-backdrop fixed inset-0 z-50 flex items-center justify-center px-5"
+      className="badge-unlock-backdrop fixed inset-0 z-[90] flex items-center justify-center overflow-hidden px-5"
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-unlock-title"
@@ -157,7 +157,7 @@ export function BadgeUnlockOverlay() {
           </div>
         </div>
         <div className={reduce ? "" : "badge-unlock-copy"}>
-          <p className="font-display text-[11px] uppercase tracking-[0.18em] text-accent">
+          <p className="font-display inline-flex rounded-full bg-accent px-3 py-1 text-[11px] uppercase tracking-wide text-black">
             {categoryLabel}
           </p>
           <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/70">Badge unlocked</p>

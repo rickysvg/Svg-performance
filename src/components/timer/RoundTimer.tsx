@@ -240,6 +240,22 @@ export function RoundTimer() {
         ))}
       </div>
 
+      <form action={startRoundLogAction} data-round-log>
+        <input type="hidden" name="mode" value={prefs.mode} />
+        <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
+        <input
+          type="hidden"
+          name="workSeconds"
+          value={configForPreset(prefs.preset, customDraft).workSeconds}
+        />
+        <button
+          type="submit"
+          className="touch-target w-full rounded-full bg-accent text-black"
+        >
+          Log {configForPreset(prefs.preset, customDraft).rounds} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
+        </button>
+      </form>
+
       <div className="grid grid-cols-3 gap-2">
         {(
           [
@@ -375,21 +391,6 @@ export function RoundTimer() {
         </button>
       </div>
 
-      <form action={startRoundLogAction} className="pt-2" data-round-log>
-        <input type="hidden" name="mode" value={prefs.mode} />
-        <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
-        <input
-          type="hidden"
-          name="workSeconds"
-          value={configForPreset(prefs.preset, customDraft).workSeconds}
-        />
-        <button
-          type="submit"
-          className="touch-target w-full rounded-full bg-accent text-black"
-        >
-          Log {configForPreset(prefs.preset, customDraft).rounds} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
-        </button>
-      </form>
     </div>
   );
 }

@@ -128,6 +128,7 @@ describe("badge unlock queue and seen store", () => {
     expect(css).toContain("perspective");
     expect(css).toContain("rotateX");
     expect(css).toContain("badge-unlock-backdrop");
+    expect(css).toContain("isolation: isolate");
     expect(css).toContain("badge-unlock-ring");
     expect(css).toContain("badge-unlock-rays");
     expect(css).toContain("prefers-reduced-motion");

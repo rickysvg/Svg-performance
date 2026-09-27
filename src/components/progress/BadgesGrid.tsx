@@ -8,21 +8,25 @@ export function BadgesGrid({
   earned,
   total,
   unit = "lb",
+  showHeading = true,
 }: {
   badges: EarnedBadge[];
   earned: number;
   total: number;
   unit?: LoadUnit;
+  showHeading?: boolean;
 }) {
   const groups = badgesGroupedByCategory(badges);
   return (
     <section id="badges" className="space-y-6" data-badge-grid="category">
-      <div className="flex items-end justify-between gap-3">
-        <h2 className="font-display text-2xl uppercase tracking-wide">Badges</h2>
-        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-accent">
-          {earned}/{total} earned
-        </p>
-      </div>
+      {showHeading ? (
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="font-display text-2xl uppercase tracking-wide">Badges</h2>
+          <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-accent">
+            {earned}/{total} earned
+          </p>
+        </div>
+      ) : null}
       {groups.map((group) => (
         <div key={group.category} className="space-y-3">
           <h3 className="font-display flex items-center gap-2 text-lg uppercase tracking-wide">

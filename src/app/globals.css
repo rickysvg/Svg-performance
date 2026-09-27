@@ -391,7 +391,7 @@ body:has(.app-splash.is-visible) {
 
 .badge-unlock-backdrop {
   background: #000;
-  background: rgba(0, 0, 0, 0.94);
+  isolation: isolate;
 }
 
 .badge-unlock-glow {

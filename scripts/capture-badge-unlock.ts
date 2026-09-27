@@ -78,7 +78,6 @@ async function main() {
 
   await page.goto(`${BASE}/progress`, { waitUntil: "networkidle0", timeout: 60_000 });
   await page.waitForSelector("#badges", { timeout: 15_000 });
-  await page.$eval("#badges", (el) => el.scrollIntoView({ block: "start" }));
   await delay(200);
   await page.screenshot({ path: path.join(ART, "cat_progress_v3.png"), type: "png" });
   console.log("wrote cat_progress_v3.png");
