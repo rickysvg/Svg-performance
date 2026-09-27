@@ -15,7 +15,11 @@ import { HomeMerchPromo } from "@/components/home/HomeMerchPromo";
 import { SectionHeading } from "@/components/home/SectionHeading";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
+import { planHasFeature } from "@/lib/plans";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
+import { getActiveCampSnapshot } from "@/lib/fight-camp";
+import { FORM_CHECK_MONTHLY_LIMIT, formCheckUsage, unseenFormCheckCount } from "@/lib/form-check";
+import { ProTools } from "@/components/home/ProTools";
 
 export default async function HomePage({
   searchParams,
@@ -29,7 +33,8 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, helpRequests, quoteCard, guide, trial, showThirdWorkout] =
+  const proTools = planHasFeature(planId, "fight_camp");
+  const [today, reminderResult, helpRequests, quoteCard, guide, trial, showThirdWorkout, camp, formUsage, unseenFormChecks] =
     await Promise.all([
     homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
     homeLoad(
@@ -46,6 +51,9 @@ export default async function HomePage({
     homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
     getTrialState(user.id),
     shouldShowThirdWorkoutCard(user.id, planId),
+    proTools ? getActiveCampSnapshot(user.id, new Date(), tz) : Promise.resolve(null),
+    proTools ? formCheckUsage(user.id, new Date(), tz) : Promise.resolve(null),
+    proTools ? unseenFormCheckCount(user.id) : Promise.resolve(0),
   ]);
   const greetingName = today.firstName || "athlete";
   const openHelp = helpRequests.filter((row) => row.status === "open");
@@ -78,6 +86,14 @@ export default async function HomePage({
           </p>
         ) : null}
       </section>
+
+      <ProTools
+        camp={camp}
+        formChecksLeft={formUsage?.remaining ?? FORM_CHECK_MONTHLY_LIMIT}
+        formCheckLimit={FORM_CHECK_MONTHLY_LIMIT}
+        unseenFormChecks={unseenFormChecks}
+        locked={!proTools}
+      />
 
       {reminderResult.due.length > 0 ? (
         <section className="space-y-2 rounded-2xl border border-line bg-card px-4 py-4">

@@ -56,6 +56,9 @@ export default async function AdminPage() {
         <Link href="/admin/lessons" className="text-accent underline">
           Lessons
         </Link>
+        <Link href="/admin/form-checks" className="text-accent underline">
+          Form checks
+        </Link>
         <Link href="/staff/reports" className="text-accent underline">
           Trends
         </Link>

@@ -30,9 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": [
-    "node_modules",
-    "scripts/capture-badge-unlock.ts",
-    "scripts/capture-companion-screens.ts"
-  ]
+  "exclude": ["node_modules", "scripts/capture-*.ts"]
 }

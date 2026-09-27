@@ -5,6 +5,7 @@ import { AppError, AuthError } from "@/lib/errors";
 import { getStripe } from "@/lib/stripe";
 import { progressPhotoRoot } from "@/lib/progress-photos";
 import { trainingClipRoot } from "@/lib/clips";
+import { deleteFormCheckMediaForUser } from "@/lib/form-check-storage";
 import type { PublicUser } from "@/lib/auth";
 import { isDeleteConfirmation } from "@/lib/account-confirm";
 
@@ -89,6 +90,8 @@ export async function exportAccountData(userId: string) {
     challengeEnrollments,
     groceryLists,
     metricEvents,
+    fightCamp,
+    formChecks,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.workoutSession.findMany({
@@ -172,6 +175,22 @@ export async function exportAccountData(userId: string) {
     }),
     prisma.groceryList.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     prisma.metricEvent.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
+    prisma.fightCamp.findUnique({ where: { userId } }),
+    prisma.formCheck.findMany({
+      where: { userId },
+      orderBy: { submittedAt: "desc" },
+      select: {
+        id: true,
+        movement: true,
+        note: true,
+        status: true,
+        durationSeconds: true,
+        feedback: true,
+        submittedAt: true,
+        reviewedAt: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
   return jsonSafe({
@@ -245,6 +264,11 @@ export async function exportAccountData(userId: string) {
     challengeEnrollments,
     groceryLists,
     metricEvents,
+    fightCamp,
+    formChecks: formChecks.map((row) => ({
+      ...row,
+      reviewerLabel: row.status === "reviewed" && row.feedback ? "SVG Coach" : null,
+    })),
   });
 }
 
@@ -311,6 +335,7 @@ export async function deleteAccountForUser(user: PublicUser | null, confirmation
   }
 
   await cancelStripeSubscriptions(signedIn.id);
+  await deleteFormCheckMediaForUser(signedIn.id);
 
   await prisma.$transaction(async (tx) => {
     await tx.journalFeedback.deleteMany({ where: { authorUserId: signedIn.id } });

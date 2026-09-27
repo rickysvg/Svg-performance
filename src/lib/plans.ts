@@ -49,6 +49,8 @@ export type FeatureId =
   | "conditioning"
   | "coaching"
   | "daily_quote"
+  | "fight_camp"
+  | "form_check"
   | "progress_history";
 
 export type PlanCredits = Partial<Record<CreditKind, number>>;
@@ -105,6 +107,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "Meal ideas and progress charts",
       "SVG Coach (AI coach)",
       "Daily motivational quote",
+      "Fight camp countdown",
+      "Two form checks a month, reviewed by a real coach",
     ],
     rank: 1,
     features: [
@@ -116,6 +120,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "nutrition",
       "ai",
       "daily_quote",
+      "fight_camp",
+      "form_check",
       "progress_history",
     ],
     credits: {},
@@ -147,6 +153,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "daily_quote",
+      "fight_camp",
+      "form_check",
       "progress_history",
     ],
     credits: {},
@@ -178,6 +186,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "fight_camp",
+      "form_check",
       "progress_history",
     ],
     credits: { coaching_call_30: 1, video_review: 2 },
@@ -210,6 +220,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "fight_camp",
+      "form_check",
       "progress_history",
     ],
     credits: { checkin_30: 2, video_review: 2 },
@@ -241,6 +253,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "fight_camp",
+      "form_check",
       "progress_history",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 4, strategy_45: 1 },
@@ -273,6 +287,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "fight_camp",
+      "form_check",
       "progress_history",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 8, strategy_45: 2 },
