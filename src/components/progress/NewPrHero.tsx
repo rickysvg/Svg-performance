@@ -14,11 +14,11 @@ export function NewPrHero({
   if (!headline) return null;
   return (
     <section className="overflow-hidden rounded-2xl bg-black px-4 py-6 text-center text-white">
-      <p className="font-display text-xs uppercase tracking-wide text-accent">New PR</p>
-      <p className="font-display mt-2 text-5xl uppercase leading-none tracking-wide text-accent">
+      <p className="font-display text-xs uppercase tracking-[0.08em] text-[#CBF805]">New PR</p>
+      <p className="font-display mt-2 text-5xl uppercase leading-none tracking-wide text-[#CBF805]">
         {headline}
       </p>
-      {detail ? <p className="mt-3 text-sm text-white/70">{detail}</p> : null}
+      {detail ? <p className="mt-3 text-sm text-white/80">{detail}</p> : null}
     </section>
   );
 }

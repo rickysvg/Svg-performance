@@ -13,14 +13,25 @@ export function StreakHero({ streak }: { streak: TrainingStreak }) {
             {streak.weekDots.map((dot) => (
               <li key={dot.key} className="flex flex-col items-center gap-1">
                 <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-[11px] ${
+                    className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-[11px] leading-none ${
                     dot.completed
-                      ? "border-black bg-black text-accent"
+                      ? "border-black bg-black text-[#CBF805]"
                       : "border-black/50 bg-transparent text-black"
                   }`}
                   aria-label={`${dot.weekday}${dot.completed ? " complete" : dot.scheduled ? " scheduled" : " rest"}`}
                 >
-                  {dot.completed ? "✓" : ""}
+                  {dot.completed ? (
+                    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden>
+                      <path
+                        d="M2 6.2 4.6 9 10 3"
+                        fill="none"
+                        stroke="#CBF805"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : null}
                 </span>
                 <span className="font-display text-[10px] uppercase tracking-wide">{dot.label}</span>
               </li>
