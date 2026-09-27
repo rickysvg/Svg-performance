@@ -20,6 +20,8 @@ import {
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
+import { ProPill } from "@/components/pro/ProPill";
 
 export default async function TrainingPage() {
   const user = await requireUser();
@@ -37,7 +39,9 @@ export default async function TrainingPage() {
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const todayPlan = planForDate(prefs, now, tz);
+  const camp = await getActiveCampSnapshot(user.id, now, tz);
+  const todayPlan =
+    camp && camp.phase !== "complete" ? shapeDayPlan(planForDate(prefs, now, tz), camp.phase) : planForDate(prefs, now, tz);
   const planned = resolvePlanSessions(
     todayPlan,
     scaleDemoCatalog(catalog, {
@@ -62,12 +66,38 @@ export default async function TrainingPage() {
         <div>
           <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
-            Core week plan (DEMO) — one shared weekday skeleton. Not Elite
-            coaching or a custom fight camp.
+            {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
+              ? `Fight camp is on. Today follows the ${camp.phaseLabel.toLowerCase()}.`
+              : "Core week plan (DEMO) — one shared weekday skeleton. Not Elite coaching or a custom fight camp."}
           </p>
         </div>
         <DemoBadge />
       </div>
+
+      {camp ? (
+        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
+          <span className="flex items-center gap-2">
+            <span className="font-display text-xs uppercase tracking-[0.12em] text-accent">Today&apos;s camp focus</span>
+            <ProPill />
+          </span>
+          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
+            {camp.weekNumber
+              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
+              : camp.phaseLabel}
+          </span>
+          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
+        </Link>
+      ) : (
+        <Link href="/fight-camp" className="block rounded-[1.5rem] border border-line bg-white px-4 py-4">
+          <span className="flex items-center gap-2">
+            <span className="font-display text-lg uppercase tracking-wide">Fight camp</span>
+            <ProPill />
+          </span>
+          <span className="mt-1 block text-sm text-muted">
+            Week-by-week camp from your fight date.
+          </span>
+        </Link>
+      )}
 
       <WeekStrip days={strip} />
 

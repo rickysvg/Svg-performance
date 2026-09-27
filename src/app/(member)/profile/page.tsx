@@ -7,6 +7,7 @@ import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { YourDataSection } from "@/components/profile/YourDataSection";
 import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
 import { isAdmin, isStaff } from "@/lib/roles";
+import { isFormCheckReviewer } from "@/lib/form-check-access";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
 import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
@@ -69,6 +70,16 @@ export default async function ProfilePage() {
         <h2 className="text-lg">More</h2>
         <ul className="space-y-2 text-sm">
           <li>
+            <Link href="/fight-camp" className="text-accent underline-offset-4 hover:underline">
+              Fight camp
+            </Link>
+          </li>
+          <li>
+            <Link href="/form-check" className="text-accent underline-offset-4 hover:underline">
+              Form check
+            </Link>
+          </li>
+          <li>
             <Link href="/progress" className="text-accent underline-offset-4 hover:underline">
               Progress
             </Link>
@@ -112,6 +123,13 @@ export default async function ProfilePage() {
             <li>
               <Link href="/staff/reports" className="text-accent underline-offset-4 hover:underline">
                 Coach / admin reports
+              </Link>
+            </li>
+          ) : null}
+          {isFormCheckReviewer(user) ? (
+            <li>
+              <Link href="/admin/form-checks" className="text-accent underline-offset-4 hover:underline">
+                Form check queue
               </Link>
             </li>
           ) : null}
