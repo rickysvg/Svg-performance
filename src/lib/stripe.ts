@@ -35,18 +35,21 @@ export async function createBnplCheckoutSession(
     cancelUrl: string;
   },
 ) {
-  const price = process.env[CHECKOUT_SKUS[input.plan].envPrice];
+  const sku = CHECKOUT_SKUS[input.plan];
+  const price = process.env[sku.envPrice];
   if (!price) {
-    throw new Error(`${CHECKOUT_SKUS[input.plan].envPrice} is not set.`);
+    throw new Error(`${sku.envPrice} is not set.`);
   }
   const base: Stripe.Checkout.SessionCreateParams = {
-    mode: "subscription",
+    mode: sku.checkoutMode,
     client_reference_id: input.userId,
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
     line_items: [{ price, quantity: 1 }],
     metadata: { userId: input.userId, plan: input.plan },
-    subscription_data: { metadata: { userId: input.userId, plan: input.plan } },
+    ...(sku.checkoutMode === "subscription"
+      ? { subscription_data: { metadata: { userId: input.userId, plan: input.plan } } }
+      : {}),
   };
   const methods = checkoutPaymentMethodTypes(SKU_AMOUNT_CENTS[input.plan]);
   try {

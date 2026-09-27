@@ -219,6 +219,7 @@ describe("M5 entitlements, caps, and booking credits", () => {
     expect(AI_DISCLAIMER).toMatch(/AI coach trained on/i);
     expect(AI_DISCLAIMER).not.toMatch(/not Ricky/i);
     expect(PLAN_CATALOG.performance.includes).toContain("SVG Coach (AI coach)");
-    expect(PLAN_CATALOG.vip.includes.join(" ")).toMatch(/billing month/i);
+    expect(PLAN_CATALOG.vip.includes.join(" ")).toMatch(/1 month of Fighter Development/i);
+    expect(PLAN_CATALOG.platinum.includes.join(" ")).toMatch(/1 month of Elite Online/i);
   });
 });

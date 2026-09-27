@@ -34,7 +34,7 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - `claimsGymMembership` is a self-report checkbox.
 - `gymMembershipVerified` defaults to `false` and **cannot** be set from the profile form or register action.
 - Only `role=admin` can flip verification (`setGymMembershipVerified`).
-- Draft catalog lives on `/pricing` as three sections (App Plans, Online Coaching, VIP Experiences) with gym vs nonmember columns and PROPOSAL / TEST labels. $19 / $29 remain the SVG Performance gym / nonmember pair.
+- Draft catalog lives on `/pricing` as three sections (App Plans, Online Coaching, VIP Experiences) with a Monthly / Prepay toggle. Academy member price is the perk line (`Academy member price $19/mo (normally $29)`). Buy buttons stay **Coming soon**. $19 / $29 remain the SVG Performance monthly gym / nonmember pair.
 - Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
 - Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
 - Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `invoice.paid` is treated as renewal. `currentPeriodEnd` in the past is treated as expired.
@@ -152,8 +152,10 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 
 ## Milestone 5
 
-- **Authoritative prices** are the draft table in `PRICING_MODEL` / owner brief. We did not invent discounts or weight-cut SKUs.
-- **One active monthly plan.** Higher replaces lower. Paid plans are additional to gym dues (copy on Pricing / Plan).
+- **Authoritative prices** (Ricky-approved, academy-member / regular, USD) live in `src/lib/pricing.ts` plus `CHECKOUT_SKUS` in `src/lib/plans.ts`. Member Access is free (auto for verified academy members; free preview for others). Performance monthly $19 / $29; annual prepaid $149 / $229 (about 35% off). Fighter Conditioning monthly $49 / $59; 3-month prepaid $125 / $149 branded **12-Week Fight Camp**; annual $389 / $469. Fighter Development monthly $149 / $179; 3-month $399 / $479 (recommended program length); 6-month $759 / $909. Elite Online monthly $299 / $349; 3-month $799 / $939 (recommended); 6-month $1,519 / $1,779. VIP is one-time $699 and includes 1 month of Fighter Development. Platinum VIP is one-time $1,199 and includes 1 month of Elite Online. In-person El Paso intensives are unchanged. No weight-cut SKUs.
+- **Founding member deal** is annual **app** plans only (Performance $119 / $179, Conditioning $309 / $369, about 20% off), locked while subscribed. Copy: “Founding member price, first 90 days or first 250 members.” Window, cap, start, and `enabled` live in one `FOUNDING_DEAL` constant so the deal can be turned off. No founding discount on coaching. New prepaid / founding SKUs exist as inactive Stripe TEST stubs (`checkoutEnabled: false`).
+- **Coaching terms:** “No contracts. Prepay for a program and save. Cancel anytime: we charge months used at the monthly rate and refund the rest.” Plus “First-month money-back guarantee” instead of a free trial. App plans keep the no-card trials (14 days members / 7 days others).
+- **One active plan.** Higher replaces lower. Paid plans are additional to gym dues (copy on Pricing / Plan). Payments are not live — every buy button is Coming soon.
 - **Entitlements** are code + `Subscription.plan` (catalog ids). Feature flags: training, progress, shop, learn_beginner, learn_full, nutrition, ai, conditioning, coaching.
 - **Credits** (`CoachingCredit`) reset conceptually per UTC month. Admin marks used after the session. Members cannot self-spend.
 - **Caps:** Elite 6, VIP 2, Platinum 1. Self-serve checkout joins waitlist when full. Admin assign/override ignores the cap so the pilot can still move seats.
