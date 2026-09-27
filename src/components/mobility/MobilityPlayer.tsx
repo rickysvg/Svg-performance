@@ -26,14 +26,16 @@ export function MobilityPlayer({
   useEffect(() => {
     if (!running) return;
     const id = window.setInterval(() => {
-      setLeft((value) => (value <= 1 ? 0 : value - 1));
+      setLeft((value) => {
+        if (value <= 1) {
+          setRunning(false);
+          return 0;
+        }
+        return value - 1;
+      });
     }, 1000);
     return () => window.clearInterval(id);
   }, [running, index]);
-
-  useEffect(() => {
-    if (left === 0) setRunning(false);
-  }, [left]);
 
   function go(next: number) {
     const target = steps[next];

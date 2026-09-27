@@ -253,7 +253,8 @@ export const MOBILITY_ROUTINES: MobilityRoutine[] = [
     credits: [
       { coach: "Jean-Claude Van Damme", url: VAN_DAMME, idea: "a short wall hang for the back line" },
       { coach: "GMB Fitness", url: GMB_KICK, idea: "foot-on-support hamstring work" },
-      { coach: "Tom Merrick", url: MERRICK_FRONT, idea: "front-split and middle-split building blocks" },
+      { coach: "Tom Merrick", url: MERRICK_FRONT, idea: "front-split building blocks" },
+      { coach: "Tom Merrick", url: MERRICK_MIDDLE, idea: "middle-split follow-along" },
       { coach: "Andreo Spina (FRC)", url: FRC_SITE, idea: "end-range push and pull" },
     ],
     blocks: [

@@ -74,7 +74,6 @@ export default async function MobilityCheckInPage({
           . Keep the easy side honest. Do not force the tight side.
         </p>
       ) : null}
-      <CheckInForm unit={unit} />
       {pro ? (
         <section className="space-y-3">
           <h2 className="text-lg">Trend</h2>
@@ -120,6 +119,7 @@ export default async function MobilityCheckInPage({
           next="/mobility/check-in"
         />
       )}
+      <CheckInForm unit={unit} />
     </main>
   );
 }

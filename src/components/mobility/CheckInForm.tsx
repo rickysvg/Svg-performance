@@ -40,7 +40,9 @@ export function CheckInForm({ unit }: { unit: string }) {
   return (
     <form action={action} className="space-y-4">
       <StatusBanner error={state.error} />
-      <p className="text-sm text-muted">About 5 minutes. Boxes start empty. Length is in {unit}.</p>
+      <p className="text-sm text-muted">
+        About 5 minutes. Boxes start empty. Measure in {unit === "in" ? "inches" : "centimeters"}.
+      </p>
       <Num name="sitReachValue" label={`Sit-and-reach past the toes (${unit})`} />
       <label className="block text-sm font-medium">
         Or a reach level
