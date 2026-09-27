@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { persistDetectedTimeZone, updateProfileForUser } from "@/lib/profile";
+import {
+  persistDetectedTimeZone,
+  setLeaderboardOptInForUser,
+  updateProfileForUser,
+} from "@/lib/profile";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 
@@ -80,5 +84,26 @@ export async function persistDetectedTimeZoneAction(timeZone: string) {
     return changed;
   } catch {
     return false;
+  }
+}
+
+export async function setLeaderboardOptInAction(
+  _prev: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const optIn = formData.get("leaderboardOptIn") === "on";
+    await setLeaderboardOptInForUser(user.id, optIn);
+    revalidatePath("/profile");
+    revalidatePath("/progress");
+    revalidatePath("/progress/streaks");
+    return {
+      success: optIn
+        ? "You are on the monthly workout board. Display name only — never your email."
+        : "You are off the monthly workout board.",
+    };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
   }
 }

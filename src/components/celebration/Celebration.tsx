@@ -32,6 +32,10 @@ export const CELEBRATION_COPY: Record<string, { title: string; body: string }> =
     title: "Milestone done",
     body: "That’s a DEMO path step in the book. Keep the next one honest.",
   },
+  pr: {
+    title: "New PR",
+    body: "A new personal best just landed. Check Records on Progress.",
+  },
 };
 
 function prefersReducedMotion() {

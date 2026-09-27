@@ -24,6 +24,27 @@ describe("QA-approved access and surface fixes", () => {
     expect(pricing).not.toMatch(/Stripe TEST keys are not in this environment/);
     expect(checkout).toContain("disabled");
     expect(billing).toContain("Paid plans coming soon.");
+    const history = read("src/components/upgrade/UpgradePreview.tsx");
+    const chart = read("src/components/progress/ExerciseChart.tsx");
+    expect(history).toContain("Paid plans coming soon");
+    expect(history).toContain("Longer history is a paid feature");
+    expect(chart).toContain('kind="history"');
+  });
+
+  it("keeps streak and record copy worldwide and never uses bout", () => {
+    const files = [
+      "src/lib/streaks.ts",
+      "src/lib/leaderboard.ts",
+      "src/app/(member)/progress/streaks/page.tsx",
+      "src/app/(member)/progress/records/page.tsx",
+      "src/components/progress/StreakHero.tsx",
+      "src/components/progress/ChallengeCard.tsx",
+    ];
+    for (const file of files) {
+      const text = read(file).toLowerCase();
+      expect(text).not.toContain("bout");
+      expect(text).not.toContain("el paso");
+    }
   });
 
   it("gates member entry on planChoiceAt", () => {
@@ -58,6 +79,68 @@ describe("QA-approved access and surface fixes", () => {
     const progress = read("src/app/(member)/progress/page.tsx");
     expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Heart rate/);
     expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Settings/);
+  });
+
+  it("does not seed fake leaderboard people into production", () => {
+    const production = read("prisma/seed.ts");
+    expect(production).not.toMatch(/Maya J\.|Dani K\.|leaderboardOptIn/);
+    const demo = read("scripts/seed-companion-demo.ts");
+    expect(demo).toContain("Local screenshot athlete only");
+    expect(demo).toContain("LOCAL_FAKE_BOARD");
+    expect(demo).not.toMatch(/displayName: other\.name/);
+    expect(demo).toMatch(/preferredUnits: "lb"/);
+  });
+
+  it("keeps lime or white text on inverted black companion blocks", () => {
+    const challenge = read("src/components/progress/ChallengeCard.tsx");
+    const podium = read("src/components/progress/LeaderboardPodium.tsx");
+    const records = read("src/components/progress/RecordsList.tsx");
+    const pr = read("src/components/progress/NewPrHero.tsx");
+    const progress = read("src/app/(member)/progress/page.tsx");
+    const grid = read("src/components/progress/BadgesGrid.tsx");
+    expect(challenge).toContain("text-highlighter");
+    expect(challenge).toContain("text-white");
+    expect(challenge).not.toMatch(/bg-black[\s\S]*text-accent/);
+    expect(podium).toContain("bg-black text-highlighter");
+    expect(podium).toContain("No one else has opted in this month");
+    expect(records).toContain("bg-black px-2 py-0.5 text-[10px] text-highlighter");
+    expect(pr).toContain("bg-black");
+    expect(pr).toContain("text-[#CBF805]");
+    expect(progress).toContain("bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter");
+    expect(progress).toContain("bg-black px-3 text-sm text-highlighter");
+    expect(grid).toContain("bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter");
+    expect(read("src/app/globals.css")).toContain(".bg-black.text-accent");
+  });
+
+  it("does not put remapped text-accent on black chips or pills", () => {
+    const root = path.join(process.cwd(), "src");
+    const hits: string[] = [];
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".tsx")) continue;
+        const text = fs.readFileSync(full, "utf8");
+        const classes = text.match(/className=\{?`[^`]+`\}?|className="[^"]+"/g) ?? [];
+        for (const cls of classes) {
+          if (cls.includes("bg-black") && cls.includes("text-accent")) {
+            hits.push(`${path.relative(process.cwd(), full)}: ${cls.slice(0, 120)}`);
+          }
+        }
+      }
+    }
+    walk(root);
+    expect(hits).toEqual([]);
+  });
+
+  it("ships category badge art grouped on Progress", () => {
+    expect(read("src/components/progress/BadgeArt.tsx")).toContain("badgeArtSrc");
+    expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeArt");
+    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("grid-cols-2");
+    expect(read("src/components/progress/BadgesGrid.tsx")).toContain("font-display");
   });
 
   it("shows register progress after 6s and a timeout retry", () => {

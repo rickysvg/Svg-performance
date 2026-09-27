@@ -37,7 +37,7 @@ function LessonBody({
       <div className="relative">
         <LearnThumb url={video.url} pending={video.pending} title={lesson.title} compact />
         {locked ? (
-          <span className="absolute right-2 top-2 rounded-full bg-black px-2.5 py-1 text-[11px] font-semibold text-accent">
+          <span className="absolute right-2 top-2 rounded-full bg-black px-2.5 py-1 text-[11px] font-semibold text-highlighter">
             Locked
           </span>
         ) : null}
