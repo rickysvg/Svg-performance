@@ -17,7 +17,7 @@ describe("badge styles and progress", () => {
   it("uses photoreal belt plates as the only badge mark", () => {
     expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgePlate");
     expect(read("src/components/progress/BadgePlate.tsx")).toContain("plate-");
-    expect(read("src/lib/badge-plates.ts")).toContain("plate-steel");
+    expect(read("src/lib/badge-plates.ts")).toContain("plate-${tier}");
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-bronze-512.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-steel-256.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-gold-512.png"))).toBe(true);
