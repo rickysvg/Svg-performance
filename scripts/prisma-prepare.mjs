@@ -135,11 +135,15 @@ if (postgres) {
     run("npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate", {
       DATABASE_URL: pushUrl,
     });
+    run("npx tsx scripts/invalidate-password-reset-tokens.ts", {
+      DATABASE_URL: pushUrl,
+    });
   }
 } else {
   console.log("Prisma: SQLite (laptop).");
   run("npx prisma generate --schema=prisma/schema.prisma");
   if (deploy) {
     run("npx prisma migrate deploy --schema=prisma/schema.prisma");
+    run("npx tsx scripts/invalidate-password-reset-tokens.ts");
   }
 }

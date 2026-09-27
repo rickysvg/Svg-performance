@@ -71,15 +71,26 @@ model Session {
 }
 
 model PasswordResetToken {
-  id        String    @id @default(cuid())
-  tokenHash String    @unique
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  // 1 = links issued before the production leak fix. Those rows are deleted.
+  // New links are stored as generation 2 with a different hash.
+  generation Int       @default(1)
 
   @@index([userId])
+}
+
+model PasswordResetAttempt {
+  id        String   @id @default(cuid())
+  keyHash   String
+  createdAt DateTime @default(now())
+
+  @@index([keyHash, createdAt])
 }
 
 model Profile {

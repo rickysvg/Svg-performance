@@ -3,6 +3,14 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { AuthError, AppError } from "@/lib/errors";
 import { SESSION_DAYS } from "@/lib/constants";
+import { isSmtpConfigured, sendMail } from "@/lib/mail";
+import {
+  PASSWORD_RESET_GENERATION,
+  PASSWORD_RESET_NEUTRAL_MESSAGE,
+} from "@/lib/password-reset-policy";
+import { assertPasswordResetRateLimit } from "@/lib/password-reset-rate";
+
+export { PASSWORD_RESET_GENERATION, PASSWORD_RESET_NEUTRAL_MESSAGE };
 
 const BCRYPT_ROUNDS = 12;
 const RESET_HOURS = 1;
@@ -37,6 +45,68 @@ export async function verifyPassword(
 export function hashToken(rawToken: string): string {
   const secret = requireAuthSecret();
   return createHash("sha256").update(`${secret}:${rawToken}`).digest("hex");
+}
+
+/** Separate from session hashes so links issued before the fix cannot be replayed. */
+export function hashResetToken(rawToken: string): string {
+  const secret = requireAuthSecret();
+  return createHash("sha256")
+    .update(`${secret}:password-reset:gen${PASSWORD_RESET_GENERATION}:${rawToken}`)
+    .digest("hex");
+}
+
+let legacyResetSweep: Promise<number> | null = null;
+
+/** Delete reset links stored before the generation-2 fix. Safe to run on every deploy. */
+export function sweepLegacyPasswordResetTokens(force = false): Promise<number> {
+  if (force) {
+    legacyResetSweep = null;
+  }
+  if (!legacyResetSweep) {
+    legacyResetSweep = prisma.passwordResetToken
+      .deleteMany({ where: { generation: { lt: PASSWORD_RESET_GENERATION } } })
+      .then((result) => result.count)
+      .catch((error: unknown) => {
+        legacyResetSweep = null;
+        throw error;
+      });
+  }
+  return legacyResetSweep;
+}
+
+function publicAppUrl(): string | null {
+  const raw = process.env.APP_URL?.trim() ?? "";
+  if (!raw) {
+    return null;
+  }
+  try {
+    const url = new URL(raw);
+    if (process.env.NODE_ENV === "production") {
+      if (url.protocol !== "https:") {
+        return null;
+      }
+      const host = url.hostname.toLowerCase();
+      if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+        return null;
+      }
+    }
+    return raw.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function canEmailPasswordReset(): boolean {
+  return isSmtpConfigured() && publicAppUrl() !== null && Boolean(process.env.AUTH_SECRET && process.env.AUTH_SECRET.length >= 16);
+}
+
+function devResetPreviewEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    !isSmtpConfigured() &&
+    publicAppUrl() !== null &&
+    Boolean(process.env.AUTH_SECRET && process.env.AUTH_SECRET.length >= 16)
+  );
 }
 
 export function newRawToken(): string {
@@ -215,32 +285,64 @@ export async function requestPasswordReset(email: string): Promise<{
   resetUrl: string | null;
   emailed: boolean;
 }> {
-  const user = await prisma.user.findUnique({
-    where: { email: normalizeEmail(email) },
-  });
-  if (!user) {
-    return { resetUrl: null, emailed: false };
+  const normalized = normalizeEmail(email);
+  await assertPasswordResetRateLimit("email", normalized || "blank");
+  await sweepLegacyPasswordResetTokens().catch(() => 0);
+
+  const neutral = { resetUrl: null, emailed: false };
+  const user = normalized
+    ? await prisma.user.findUnique({ where: { email: normalized } })
+    : null;
+  const devPreview = devResetPreviewEnabled();
+  const canEmail = canEmailPasswordReset();
+  if (!user || (!canEmail && !devPreview)) {
+    return neutral;
   }
 
   const rawToken = newRawToken();
   const expiresAt = new Date(Date.now() + RESET_HOURS * 60 * 60 * 1000);
+  const tokenHash = hashResetToken(rawToken);
   await prisma.passwordResetToken.create({
     data: {
-      tokenHash: hashToken(rawToken),
+      tokenHash,
       userId: user.id,
       expiresAt,
+      generation: PASSWORD_RESET_GENERATION,
     },
   });
 
-  const appUrl = process.env.APP_URL || "http://localhost:3000";
-  const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
-
-  if (process.env.SMTP_HOST) {
-    // SMTP is a later wiring step. Preview shows the link instead.
-    return { resetUrl: null, emailed: true };
+  const appUrl = publicAppUrl();
+  const resetUrl = appUrl ? `${appUrl}/reset-password?token=${rawToken}` : null;
+  if (!resetUrl) {
+    await prisma.passwordResetToken.deleteMany({ where: { tokenHash } });
+    return neutral;
   }
 
-  return { resetUrl, emailed: false };
+  if (canEmail) {
+    const mailed = await sendMail({
+      to: user.email,
+      subject: "Reset your SVG Performance password",
+      text: [
+        "We received a request to reset your SVG Performance password.",
+        "",
+        `Reset link (expires in 1 hour): ${resetUrl}`,
+        "",
+        "If you didn't ask for this, you can ignore this email.",
+      ].join("\n"),
+    });
+    if (!mailed.sent) {
+      await prisma.passwordResetToken.deleteMany({ where: { tokenHash } });
+    }
+    // Never return the link once email is the delivery path.
+    return { resetUrl: null, emailed: mailed.sent };
+  }
+
+  if (devPreview) {
+    return { resetUrl, emailed: false };
+  }
+
+  await prisma.passwordResetToken.deleteMany({ where: { tokenHash } });
+  return neutral;
 }
 
 export async function resetPasswordWithToken(
@@ -250,11 +352,13 @@ export async function resetPasswordWithToken(
   if (nextPassword.length < 8) {
     throw new AppError("PASSWORD", "Password must be at least 8 characters.");
   }
+  await sweepLegacyPasswordResetTokens().catch(() => 0);
   const record = await prisma.passwordResetToken.findUnique({
-    where: { tokenHash: hashToken(rawToken) },
+    where: { tokenHash: hashResetToken(rawToken) },
   });
   if (
     !record ||
+    record.generation !== PASSWORD_RESET_GENERATION ||
     record.usedAt ||
     record.expiresAt.getTime() < Date.now()
   ) {

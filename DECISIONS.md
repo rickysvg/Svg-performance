@@ -11,9 +11,9 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 ## Auth choices
 
-- Password recovery is included. There is **no SMTP** in this preview by default, so “Forgot password” shows a one-time **PREVIEW ONLY** reset link on the page.
-- If `SMTP_HOST` is set, reminder emails can send. Password reset still uses the preview-link path unless a later change wires it to the same mailer.
-- Passwords are hashed with bcrypt (12 rounds). Reset tokens are hashed with `sha256(AUTH_SECRET + token)`.
+- Password recovery never shows the reset link in production. If `SMTP_HOST` and a public `https` `APP_URL` are set, the link is emailed only. If mail is not configured in production, self-serve reset is off and every address gets the same message. Local development (`NODE_ENV` other than `production`) can still show a one-time link. Tokens issued before generation 2 are deleted on deploy and cannot be used. Requests are rate-limited per email and per IP.
+- If `SMTP_HOST` is set, reminder emails can send.
+- Passwords are hashed with bcrypt (12 rounds). Session tokens are hashed with `sha256(AUTH_SECRET + token)`. Reset tokens use `sha256(AUTH_SECRET:password-reset:gen2:token)` so older preview links stop working.
 - Adult confirmation is required at signup. The app is an adult pilot.
 
 ## Home resilience
