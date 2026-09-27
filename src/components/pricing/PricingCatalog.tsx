@@ -137,7 +137,7 @@ function ViewToggle({
     <div
       role="tablist"
       aria-label="Billing term"
-      className="grid grid-cols-2 rounded-full border border-black bg-white p-1"
+      className="sticky top-14 z-10 grid grid-cols-2 rounded-full border border-black bg-white p-1"
     >
       {(["monthly", "prepay"] as const).map((id) => {
         const selected = view === id;
@@ -185,7 +185,7 @@ export function PricingCatalog({
     <div data-pricing-view={view} className="space-y-10">
       <ViewToggle view={view} onChange={setView} />
 
-      <section data-pricing-section="app" className="space-y-4">
+      <section data-pricing-section="app" className="scroll-mt-28 space-y-4">
         <h2 className="text-2xl text-black">App Plans</h2>
         <p className="text-sm text-muted">
           Self-guided tools. Member Access is free for verified academy members and a free
@@ -226,7 +226,7 @@ export function PricingCatalog({
         </div>
       </section>
 
-      <section data-pricing-section="coaching" className="space-y-4">
+      <section data-pricing-section="coaching" className="scroll-mt-28 space-y-4">
         <h2 className="text-2xl text-black">Online Coaching</h2>
         <p className="text-sm text-muted">
           Fixed quantities per billing month — not “weekly forever.” Elite is capped at about
@@ -253,7 +253,7 @@ export function PricingCatalog({
         </div>
       </section>
 
-      <section data-pricing-section="vip" className="space-y-4">
+      <section data-pricing-section="vip" className="scroll-mt-28 space-y-4">
         <h2 className="text-2xl text-black">VIP Experiences</h2>
         <p className="text-sm text-muted">
           One-time. Same price for academy members and everyone else. In-person intensives
