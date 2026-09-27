@@ -1,4 +1,4 @@
-export const TIMER_MODES = ["bag", "pads", "sparring"] as const;
+export const TIMER_MODES = ["bag", "pads", "sparring", "grappling"] as const;
 export type TimerMode = (typeof TIMER_MODES)[number];
 
 export const TIMER_PRESETS = ["3x3", "5x5", "custom"] as const;

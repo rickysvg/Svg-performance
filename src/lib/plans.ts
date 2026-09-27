@@ -50,7 +50,8 @@ export type FeatureId =
   | "coaching"
   | "daily_quote"
   | "fight_camp"
-  | "form_check";
+  | "form_check"
+  | "progress_history";
 
 export type PlanCredits = Partial<Record<CreditKind, number>>;
 
@@ -121,6 +122,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "daily_quote",
       "fight_camp",
       "form_check",
+      "progress_history",
     ],
     credits: {},
     cap: null,
@@ -153,6 +155,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "daily_quote",
       "fight_camp",
       "form_check",
+      "progress_history",
     ],
     credits: {},
     cap: null,
@@ -185,6 +188,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "daily_quote",
       "fight_camp",
       "form_check",
+      "progress_history",
     ],
     credits: { coaching_call_30: 1, video_review: 2 },
     cap: null,
@@ -218,6 +222,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "daily_quote",
       "fight_camp",
       "form_check",
+      "progress_history",
     ],
     credits: { checkin_30: 2, video_review: 2 },
     cap: 6,
@@ -250,6 +255,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "daily_quote",
       "fight_camp",
       "form_check",
+      "progress_history",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 4, strategy_45: 1 },
     cap: 2,
@@ -283,6 +289,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "daily_quote",
       "fight_camp",
       "form_check",
+      "progress_history",
     ],
     credits: { checkin_30: 2, video_review: 2, private_60: 8, strategy_45: 2 },
     cap: 1,

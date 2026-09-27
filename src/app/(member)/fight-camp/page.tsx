@@ -107,14 +107,14 @@ export default async function FightCampPage({
 
       <section className="rounded-[1.75rem] bg-black px-5 py-6 text-white">
         {camp.phase === "complete" ? (
-          <p className="font-display text-4xl uppercase leading-none tracking-wide text-accent">
+          <p className="font-display text-4xl uppercase leading-none tracking-wide text-highlighter">
             Fight day has passed
           </p>
         ) : camp.daysToFight === 0 ? (
-          <p className="font-display text-5xl uppercase leading-none tracking-wide text-accent">Fight day</p>
+          <p className="font-display text-5xl uppercase leading-none tracking-wide text-highlighter">Fight day</p>
         ) : (
           <>
-            <p className="font-display text-7xl leading-none text-accent">{camp.daysToFight}</p>
+            <p className="font-display text-7xl leading-none text-highlighter">{camp.daysToFight}</p>
             <p className="mt-1 font-display text-2xl uppercase tracking-wide">
               {camp.daysToFight === 1 ? "Day to fight" : "Days to fight"}
             </p>

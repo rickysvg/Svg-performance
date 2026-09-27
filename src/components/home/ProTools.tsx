@@ -89,10 +89,10 @@ function CampFocusCard({ camp }: { camp: CampSnapshot }) {
   return (
     <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
       <span className="flex items-center gap-2">
-        <span className="font-display text-xs uppercase tracking-[0.12em] text-accent">Fight camp</span>
+        <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Fight camp</span>
         <ProPill />
       </span>
-      <span className="mt-2 block font-display text-4xl uppercase leading-none tracking-wide text-accent">
+      <span className="mt-2 block font-display text-4xl uppercase leading-none tracking-wide text-highlighter">
         {headline}
       </span>
       <span className="mt-2 block text-sm text-white/80">{meta}</span>

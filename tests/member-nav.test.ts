@@ -67,6 +67,12 @@ describe("member chrome swap", () => {
     expect(profile).toMatch(/Log out/);
   });
 
+  it("hides the Home/Train/Fuel/Learn/Coach top row on phone widths", () => {
+    const nav = fs.readFileSync(path.join(process.cwd(), "src/components/PrimaryNav.tsx"), "utf8");
+    expect(nav).toContain("hidden");
+    expect(nav).toContain("md:block");
+  });
+
   it("keeps the dock on the timer and workout-done screens", () => {
     expect(isWorkoutDonePath("/training/log/abc/done")).toBe(true);
     expect(isImmersiveTrainingPath("/training/log/abc")).toBe(true);

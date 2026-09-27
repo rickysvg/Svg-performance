@@ -77,7 +77,7 @@ export default async function TrainingPage() {
       {camp ? (
         <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
           <span className="flex items-center gap-2">
-            <span className="font-display text-xs uppercase tracking-[0.12em] text-accent">Today&apos;s camp focus</span>
+            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Today&apos;s camp focus</span>
             <ProPill />
           </span>
           <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
