@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { AuthError, AppError } from "@/lib/errors";
 import { SESSION_DAYS } from "@/lib/constants";
-import { isSmtpConfigured, sendMail } from "@/lib/mail";
+import { isSmtpConfigured, passwordResetHtml, sendMail } from "@/lib/mail";
 import {
   PASSWORD_RESET_GENERATION,
   PASSWORD_RESET_NEUTRAL_MESSAGE,
@@ -329,6 +329,7 @@ export async function requestPasswordReset(email: string): Promise<{
         "",
         "If you didn't ask for this, you can ignore this email.",
       ].join("\n"),
+      html: passwordResetHtml(resetUrl),
     });
     if (!mailed.sent) {
       await prisma.passwordResetToken.deleteMany({ where: { tokenHash } });

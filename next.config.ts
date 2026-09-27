@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.youtube.com", pathname: "/vi/**" },
     ],
   },
-  serverExternalPackages: ["@prisma/client"],
+  serverExternalPackages: ["@prisma/client", "nodemailer"],
   experimental: {
     serverActions: {
       bodySizeLimit: "32mb",

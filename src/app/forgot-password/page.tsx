@@ -2,6 +2,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { PASSWORD_RESET_NEUTRAL_MESSAGE } from "@/lib/password-reset-policy";
 
+export const runtime = "nodejs";
+
 export default function ForgotPasswordPage() {
   return (
     <div className="min-h-full">
