@@ -21,6 +21,9 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
     throw new AppError("BILLING", "Paid plans coming soon.");
   }
   const sku = CHECKOUT_SKUS[plan];
+  if (!sku.checkoutEnabled) {
+    throw new AppError("BILLING", "Paid plans coming soon.");
+  }
   if (sku.requiresGymVerify) {
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {

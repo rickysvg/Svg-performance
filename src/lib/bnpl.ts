@@ -1,4 +1,4 @@
-import type { CheckoutSkuId } from "@/lib/plans";
+import { CHECKOUT_SKUS, type CheckoutSkuId } from "@/lib/plans";
 
 /** Stripe TEST only. Live Affirm/Klarna keys are not used in this preview. */
 
@@ -22,20 +22,9 @@ export const BNPL_COPY = {
     "TEST checkout can offer Affirm, Klarna, or similar pay-over-time when the amount, currency, and Stripe Dashboard payment methods allow. Still TEST — no live charges. Approval is theirs, not SVG’s.",
 } as const;
 
-export const SKU_AMOUNT_CENTS: Record<CheckoutSkuId, number> = {
-  gym: 1900,
-  standalone: 2900,
-  performance_gym: 1900,
-  performance_non: 2900,
-  conditioning_gym: 4900,
-  conditioning_non: 5900,
-  development_gym: 14900,
-  development_non: 17900,
-  elite_gym: 29900,
-  elite_non: 34900,
-  vip: 69900,
-  platinum: 119900,
-};
+export const SKU_AMOUNT_CENTS = Object.fromEntries(
+  Object.entries(CHECKOUT_SKUS).map(([id, sku]) => [id, sku.amountCents]),
+) as Record<CheckoutSkuId, number>;
 
 export type CheckoutPaymentMethod = "card" | "klarna" | "affirm" | "afterpay_clearpay";
 

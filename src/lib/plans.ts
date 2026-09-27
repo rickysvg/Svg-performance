@@ -238,13 +238,12 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     id: "vip",
     section: "vip",
     label: "SVG VIP",
-    gymPriceLabel: "$699/mo",
-    nonmemberPriceLabel: "$699/mo",
-    summary: "Elite Online plus in-person/online privates and one strategy call.",
+    gymPriceLabel: "$699",
+    nonmemberPriceLabel: "$699",
+    summary: "One-time El Paso intensive. Includes 1 month of Fighter Development.",
     includes: [
-      "Everything in Elite Online Coaching",
-      "Four 60-min private lessons per billing month (not “weekly”)",
-      "One 45-min mindset or entrepreneur strategy call per billing month",
+      "1 month of Fighter Development",
+      "In-person El Paso intensive with Ricky",
       "Lessons in El Paso with Ricky, or live online when appropriate",
     ],
     rank: 5,
@@ -272,13 +271,12 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     id: "platinum",
     section: "vip",
     label: "Platinum VIP",
-    gymPriceLabel: "$1,199/mo",
-    nonmemberPriceLabel: "$1,199/mo",
-    summary: "Highest monthly seat. Includes intensive eligibility.",
+    gymPriceLabel: "$1,199",
+    nonmemberPriceLabel: "$1,199",
+    summary: "One-time El Paso intensive. Includes 1 month of Elite Online.",
     includes: [
-      "Everything in Elite Online Coaching",
-      "Eight 60-min privates per billing month (not “weekly”)",
-      "Two 45-min strategy calls per billing month (either topic)",
+      "1 month of Elite Online Coaching",
+      "In-person El Paso intensive with Ricky",
       "Priority booking",
       "Platinum intensive eligibility (add-on, quoted separately)",
     ],
@@ -316,12 +314,30 @@ export type CheckoutSkuId =
   | "standalone"
   | "performance_gym"
   | "performance_non"
+  | "performance_annual_gym"
+  | "performance_annual_non"
+  | "performance_founding_gym"
+  | "performance_founding_non"
   | "conditioning_gym"
   | "conditioning_non"
+  | "conditioning_camp_gym"
+  | "conditioning_camp_non"
+  | "conditioning_annual_gym"
+  | "conditioning_annual_non"
+  | "conditioning_founding_gym"
+  | "conditioning_founding_non"
   | "development_gym"
   | "development_non"
+  | "development_3mo_gym"
+  | "development_3mo_non"
+  | "development_6mo_gym"
+  | "development_6mo_non"
   | "elite_gym"
   | "elite_non"
+  | "elite_3mo_gym"
+  | "elite_3mo_non"
+  | "elite_6mo_gym"
+  | "elite_6mo_non"
   | "vip"
   | "platinum";
 
@@ -331,7 +347,10 @@ export type CheckoutSku = {
   audience: "gym" | "nonmember" | "both";
   envPrice: string;
   amountLabel: string;
+  amountCents: number;
   requiresGymVerify: boolean;
+  checkoutEnabled: boolean;
+  checkoutMode: "subscription" | "payment";
 };
 
 export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
@@ -341,7 +360,10 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "gym",
     envPrice: "STRIPE_PRICE_GYM",
     amountLabel: "$19/mo",
+    amountCents: 1900,
     requiresGymVerify: true,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
   },
   standalone: {
     id: "standalone",
@@ -349,7 +371,10 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "nonmember",
     envPrice: "STRIPE_PRICE_STANDALONE",
     amountLabel: "$29/mo",
+    amountCents: 2900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
   },
   performance_gym: {
     id: "performance_gym",
@@ -357,7 +382,10 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "gym",
     envPrice: "STRIPE_PRICE_GYM",
     amountLabel: "$19/mo",
+    amountCents: 1900,
     requiresGymVerify: true,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
   },
   performance_non: {
     id: "performance_non",
@@ -365,7 +393,54 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "nonmember",
     envPrice: "STRIPE_PRICE_STANDALONE",
     amountLabel: "$29/mo",
+    amountCents: 2900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
+  },
+  performance_annual_gym: {
+    id: "performance_annual_gym",
+    catalogId: "performance",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_ANNUAL_GYM",
+    amountLabel: "$149",
+    amountCents: 14900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  performance_annual_non: {
+    id: "performance_annual_non",
+    catalogId: "performance",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_ANNUAL_NON",
+    amountLabel: "$229",
+    amountCents: 22900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  performance_founding_gym: {
+    id: "performance_founding_gym",
+    catalogId: "performance",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING_GYM",
+    amountLabel: "$119",
+    amountCents: 11900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  performance_founding_non: {
+    id: "performance_founding_non",
+    catalogId: "performance",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING_NON",
+    amountLabel: "$179",
+    amountCents: 17900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
   },
   conditioning_gym: {
     id: "conditioning_gym",
@@ -373,7 +448,10 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "gym",
     envPrice: "STRIPE_PRICE_CONDITIONING_GYM",
     amountLabel: "$49/mo",
+    amountCents: 4900,
     requiresGymVerify: true,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
   },
   conditioning_non: {
     id: "conditioning_non",
@@ -381,7 +459,76 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "nonmember",
     envPrice: "STRIPE_PRICE_CONDITIONING_NON",
     amountLabel: "$59/mo",
+    amountCents: 5900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
+  },
+  conditioning_camp_gym: {
+    id: "conditioning_camp_gym",
+    catalogId: "fighter_conditioning",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_CONDITIONING_CAMP_GYM",
+    amountLabel: "$125",
+    amountCents: 12500,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  conditioning_camp_non: {
+    id: "conditioning_camp_non",
+    catalogId: "fighter_conditioning",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_CONDITIONING_CAMP_NON",
+    amountLabel: "$149",
+    amountCents: 14900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  conditioning_annual_gym: {
+    id: "conditioning_annual_gym",
+    catalogId: "fighter_conditioning",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_CONDITIONING_ANNUAL_GYM",
+    amountLabel: "$389",
+    amountCents: 38900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  conditioning_annual_non: {
+    id: "conditioning_annual_non",
+    catalogId: "fighter_conditioning",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_CONDITIONING_ANNUAL_NON",
+    amountLabel: "$469",
+    amountCents: 46900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  conditioning_founding_gym: {
+    id: "conditioning_founding_gym",
+    catalogId: "fighter_conditioning",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_CONDITIONING_FOUNDING_GYM",
+    amountLabel: "$309",
+    amountCents: 30900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  conditioning_founding_non: {
+    id: "conditioning_founding_non",
+    catalogId: "fighter_conditioning",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_CONDITIONING_FOUNDING_NON",
+    amountLabel: "$369",
+    amountCents: 36900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
   },
   development_gym: {
     id: "development_gym",
@@ -389,7 +536,10 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "gym",
     envPrice: "STRIPE_PRICE_DEVELOPMENT_GYM",
     amountLabel: "$149/mo",
+    amountCents: 14900,
     requiresGymVerify: true,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
   },
   development_non: {
     id: "development_non",
@@ -397,7 +547,54 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "nonmember",
     envPrice: "STRIPE_PRICE_DEVELOPMENT_NON",
     amountLabel: "$179/mo",
+    amountCents: 17900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
+  },
+  development_3mo_gym: {
+    id: "development_3mo_gym",
+    catalogId: "fighter_development",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_DEVELOPMENT_3MO_GYM",
+    amountLabel: "$399",
+    amountCents: 39900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  development_3mo_non: {
+    id: "development_3mo_non",
+    catalogId: "fighter_development",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_DEVELOPMENT_3MO_NON",
+    amountLabel: "$479",
+    amountCents: 47900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  development_6mo_gym: {
+    id: "development_6mo_gym",
+    catalogId: "fighter_development",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_DEVELOPMENT_6MO_GYM",
+    amountLabel: "$759",
+    amountCents: 75900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  development_6mo_non: {
+    id: "development_6mo_non",
+    catalogId: "fighter_development",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_DEVELOPMENT_6MO_NON",
+    amountLabel: "$909",
+    amountCents: 90900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
   },
   elite_gym: {
     id: "elite_gym",
@@ -405,7 +602,10 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "gym",
     envPrice: "STRIPE_PRICE_ELITE_GYM",
     amountLabel: "$299/mo",
+    amountCents: 29900,
     requiresGymVerify: true,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
   },
   elite_non: {
     id: "elite_non",
@@ -413,23 +613,76 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     audience: "nonmember",
     envPrice: "STRIPE_PRICE_ELITE_NON",
     amountLabel: "$349/mo",
+    amountCents: 34900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "subscription",
+  },
+  elite_3mo_gym: {
+    id: "elite_3mo_gym",
+    catalogId: "elite",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_ELITE_3MO_GYM",
+    amountLabel: "$799",
+    amountCents: 79900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  elite_3mo_non: {
+    id: "elite_3mo_non",
+    catalogId: "elite",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_ELITE_3MO_NON",
+    amountLabel: "$939",
+    amountCents: 93900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  elite_6mo_gym: {
+    id: "elite_6mo_gym",
+    catalogId: "elite",
+    audience: "gym",
+    envPrice: "STRIPE_PRICE_ELITE_6MO_GYM",
+    amountLabel: "$1,519",
+    amountCents: 151900,
+    requiresGymVerify: true,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
+  },
+  elite_6mo_non: {
+    id: "elite_6mo_non",
+    catalogId: "elite",
+    audience: "nonmember",
+    envPrice: "STRIPE_PRICE_ELITE_6MO_NON",
+    amountLabel: "$1,779",
+    amountCents: 177900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "payment",
   },
   vip: {
     id: "vip",
     catalogId: "vip",
     audience: "both",
     envPrice: "STRIPE_PRICE_VIP",
-    amountLabel: "$699/mo",
+    amountLabel: "$699",
+    amountCents: 69900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "payment",
   },
   platinum: {
     id: "platinum",
     catalogId: "platinum",
     audience: "both",
     envPrice: "STRIPE_PRICE_PLATINUM",
-    amountLabel: "$1,199/mo",
+    amountLabel: "$1,199",
+    amountCents: 119900,
     requiresGymVerify: false,
+    checkoutEnabled: true,
+    checkoutMode: "payment",
   },
 };
 
@@ -462,12 +715,12 @@ export function isPlanId(value: string): value is CheckoutSkuId {
 }
 
 export function normalizePlanId(plan: string): CatalogPlanId {
-  if (plan === "gym" || plan === "standalone" || plan === "performance_gym" || plan === "performance_non") {
+  if (plan === "gym" || plan === "standalone" || plan.startsWith("performance_")) {
     return "performance";
   }
-  if (plan === "conditioning_gym" || plan === "conditioning_non") return "fighter_conditioning";
-  if (plan === "development_gym" || plan === "development_non") return "fighter_development";
-  if (plan === "elite_gym" || plan === "elite_non") return "elite";
+  if (plan.startsWith("conditioning_")) return "fighter_conditioning";
+  if (plan.startsWith("development_")) return "fighter_development";
+  if (plan.startsWith("elite_")) return "elite";
   if (isCatalogPlanId(plan)) return plan;
   return "member_access";
 }
@@ -539,9 +792,13 @@ export function isBookingKind(value: string): value is BookingKind {
   return (BOOKING_KINDS as readonly string[]).includes(value);
 }
 
-/** Display SKUs only — gym/standalone stay as webhook aliases for $19 / $29. */
+/** Active monthly / one-time display SKUs — gym/standalone stay webhook aliases. New prepaid SKUs stay inactive. */
 export function publicSkusForPlan(catalogId: CatalogPlanId) {
   return (Object.values(CHECKOUT_SKUS) as CheckoutSku[]).filter(
-    (sku) => sku.catalogId === catalogId && sku.id !== "gym" && sku.id !== "standalone",
+    (row) =>
+      row.catalogId === catalogId &&
+      row.checkoutEnabled &&
+      row.id !== "gym" &&
+      row.id !== "standalone",
   );
 }

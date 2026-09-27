@@ -123,7 +123,7 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
     });
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].mode).toBe("subscription");
+    expect(calls[0].mode).toBe("payment");
     expect(calls[0].payment_method_types).toEqual([
       "card",
       "klarna",
