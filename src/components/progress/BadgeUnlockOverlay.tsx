@@ -7,8 +7,8 @@ import { BadgeMark } from "@/components/progress/BadgeMark";
 import { BadgeSparks } from "@/components/progress/BadgeSparks";
 import { preloadFxSheets } from "@/components/progress/SpriteFx";
 import { badgeShareStats, capUnlockQueue, parseUnlockQuery, unlockMoreLine } from "@/lib/badge-unlocks";
-import { BADGE_CATEGORY_LABEL, type BadgeCategoryId, type EarnedBadge } from "@/lib/badges";
-import { playCategorySfx, soundFxEnabled } from "@/lib/badge-sfx";
+import { BADGE_CATEGORY_LABEL, type EarnedBadge } from "@/lib/badges";
+import { playUnlockSfx, soundFxEnabled } from "@/lib/badge-sfx";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { UnlockBadgePayload } from "@/app/actions/badges";
 import type { LoadUnit } from "@/lib/units";
@@ -83,13 +83,12 @@ export function BadgeUnlockOverlay() {
 
   useEffect(() => {
     if (!current) return;
-    const category = current.category as BadgeCategoryId;
     const buzz = window.setTimeout(() => {
       if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
         navigator.vibrate([40, 30, 18, 40, 12]);
       }
       if (soundFxEnabled()) {
-        void playCategorySfx(category);
+        void playUnlockSfx();
       }
     }, reduce ? 80 : 700);
     return () => {

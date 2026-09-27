@@ -3,6 +3,21 @@ import { SFX_BY_CATEGORY } from "@/lib/badge-art";
 
 export const SOUND_FX_STORAGE_KEY = "svg_sound_fx";
 
+/**
+ * Named unlock / win pairs. Swap ACTIVE_UNLOCK_SFX to preview another option.
+ * metal | cinematic | fightnight
+ */
+export const UNLOCK_SFX = {
+  metal: { unlock: "/sfx/unlock_metal.mp3", win: "/sfx/win_metal.mp3" },
+  cinematic: { unlock: "/sfx/unlock_cinematic.mp3", win: "/sfx/win_cinematic.mp3" },
+  fightnight: { unlock: "/sfx/unlock_fightnight.mp3", win: "/sfx/win_fightnight.mp3" },
+} as const;
+
+export type UnlockSfxName = keyof typeof UNLOCK_SFX;
+
+/** Ricky picks. Default is option 2 — cinematic. */
+export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "cinematic";
+
 let audioCtx: AudioContext | null = null;
 const buffers = new Map<string, AudioBuffer>();
 
@@ -26,6 +41,10 @@ export function setSoundFxEnabled(on: boolean) {
   window.localStorage.setItem(SOUND_FX_STORAGE_KEY, on ? "on" : "off");
 }
 
+function activePair(name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
+  return UNLOCK_SFX[name] ?? UNLOCK_SFX.cinematic;
+}
+
 /** Call from the SAVE tap so the browser allows later playback. */
 export function primeUnlockAudio() {
   const context = ctx();
@@ -42,62 +61,40 @@ export function primeUnlockAudio() {
   } catch {
     /* ignore */
   }
+  const pair = activePair();
+  void loadBuffer(pair.unlock);
+  void loadBuffer(pair.win);
   for (const src of Object.values(SFX_BY_CATEGORY)) {
     void loadBuffer(src);
   }
 }
 
-/** Short original finish sting — impact + sparkle. Respects the sound toggle. */
-export function playFinishSfx() {
+async function playBuffer(src: string, gainValue = 0.95) {
   if (!soundFxEnabled()) return;
   const context = ctx();
   if (!context) return;
   if (context.state === "suspended") {
-    void context.resume();
+    await context.resume();
   }
-  const now = context.currentTime;
-  const master = context.createGain();
-  master.gain.setValueAtTime(0.0001, now);
-  master.gain.exponentialRampToValueAtTime(0.7, now + 0.012);
-  master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-  master.connect(context.destination);
+  const buffer = await loadBuffer(src);
+  if (!buffer) return;
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  gain.gain.value = gainValue;
+  source.buffer = buffer;
+  source.connect(gain);
+  gain.connect(context.destination);
+  source.start(0);
+}
 
-  const thump = context.createOscillator();
-  thump.type = "triangle";
-  thump.frequency.setValueAtTime(180, now);
-  thump.frequency.exponentialRampToValueAtTime(72, now + 0.16);
-  const thumpGain = context.createGain();
-  thumpGain.gain.setValueAtTime(0.55, now);
-  thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-  thump.connect(thumpGain);
-  thumpGain.connect(master);
-  thump.start(now);
-  thump.stop(now + 0.22);
+/** Full badge-unlock sting for the active named option. */
+export function playUnlockSfx(name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
+  return playBuffer(activePair(name).unlock);
+}
 
-  const snap = context.createOscillator();
-  snap.type = "square";
-  snap.frequency.setValueAtTime(740, now);
-  snap.frequency.exponentialRampToValueAtTime(220, now + 0.09);
-  const snapGain = context.createGain();
-  snapGain.gain.setValueAtTime(0.18, now);
-  snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
-  snap.connect(snapGain);
-  snapGain.connect(master);
-  snap.start(now);
-  snap.stop(now + 0.11);
-
-  const sparkle = context.createOscillator();
-  sparkle.type = "sine";
-  sparkle.frequency.setValueAtTime(1480, now + 0.04);
-  sparkle.frequency.exponentialRampToValueAtTime(920, now + 0.32);
-  const sparkleGain = context.createGain();
-  sparkleGain.gain.setValueAtTime(0.0001, now + 0.04);
-  sparkleGain.gain.exponentialRampToValueAtTime(0.22, now + 0.07);
-  sparkleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
-  sparkle.connect(sparkleGain);
-  sparkleGain.connect(master);
-  sparkle.start(now + 0.04);
-  sparkle.stop(now + 0.38);
+/** Short per-workout win sting — same named option, under 1s. */
+export function playFinishSfx(name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
+  return playBuffer(activePair(name).win);
 }
 
 async function loadBuffer(src: string) {
@@ -105,27 +102,19 @@ async function loadBuffer(src: string) {
   if (!context) return null;
   const cached = buffers.get(src);
   if (cached) return cached;
-  const res = await fetch(src);
-  const raw = await res.arrayBuffer();
-  const decoded = await context.decodeAudioData(raw.slice(0));
-  buffers.set(src, decoded);
-  return decoded;
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return null;
+    const raw = await res.arrayBuffer();
+    const decoded = await context.decodeAudioData(raw.slice(0));
+    buffers.set(src, decoded);
+    return decoded;
+  } catch {
+    return null;
+  }
 }
 
-export async function playCategorySfx(category: BadgeCategoryId) {
-  if (!soundFxEnabled()) return;
-  const context = ctx();
-  if (!context) return;
-  if (context.state === "suspended") {
-    await context.resume();
-  }
-  const buffer = await loadBuffer(SFX_BY_CATEGORY[category]);
-  if (!buffer) return;
-  const source = context.createBufferSource();
-  const gain = context.createGain();
-  gain.gain.value = 0.85;
-  source.buffer = buffer;
-  source.connect(gain);
-  gain.connect(context.destination);
-  source.start(0);
+/** Badge unlock uses the named option, not the older per-category files. */
+export async function playCategorySfx(_category: BadgeCategoryId) {
+  return playUnlockSfx();
 }

@@ -114,7 +114,7 @@ describe("badge unlock queue and seen store", () => {
     expect(overlay).toContain("shareOrDownloadCard");
     expect(overlay).toContain("navigator.vibrate");
     expect(overlay).toContain("prefers-reduced-motion");
-    expect(overlay).toContain("playCategorySfx");
+    expect(overlay).toContain("playUnlockSfx");
     expect(overlay).toContain("delayMs={700}");
     expect(overlay).toContain("badge-unlock-fly");
     expect(overlay).toContain("Badge unlocked");
@@ -132,6 +132,14 @@ describe("badge unlock queue and seen store", () => {
     expect(read("src/app/(member)/progress/page.tsx")).toContain("progress-tab");
     expect(read("src/app/(member)/progress/page.tsx")).toContain("h-11");
     expect(read("src/lib/badge-sfx.ts")).toContain("playFinishSfx");
+    expect(read("src/lib/badge-sfx.ts")).toContain("playUnlockSfx");
+    expect(read("src/lib/badge-sfx.ts")).toContain('ACTIVE_UNLOCK_SFX: UnlockSfxName = "cinematic"');
+    expect(read("src/lib/badge-sfx.ts")).toContain("metal:");
+    expect(read("src/lib/badge-sfx.ts")).toContain("fightnight:");
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_cinematic.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_metal.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/unlock_fightnight.mp3"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/sfx/win_cinematic.mp3"))).toBe(true);
     expect(read("src/lib/workout-complete.ts")).toContain("YOU PUT IN THE WORK.");
     expect(read("src/components/training/WorkoutWinScreen.tsx")).toContain("playFinishSfx");
     expect(read("src/components/training/WorkoutWinScreen.tsx")).toContain("workout_complete_hero.webp");
