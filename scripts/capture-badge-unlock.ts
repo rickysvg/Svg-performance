@@ -30,7 +30,7 @@ async function recordMp4(page: Page, dest: string, ms = 4000) {
   const elapsedSec = Math.max((Date.now() - start) / 1000, 0.1);
   const captureFps = Math.max(i / elapsedSec, 1);
   execSync(
-    `ffmpeg -y -framerate ${captureFps.toFixed(3)} -i ${dir}/%04d.jpg -vf tpad=stop_mode=clone:stop_duration=4 -c:v libx264 -pix_fmt yuv420p -r 30 -crf 23 -movflags +faststart -t 4 "${dest}"`,
+    `ffmpeg -y -framerate ${captureFps.toFixed(3)} -i ${dir}/%04d.jpg -vf tpad=stop_mode=clone:stop_duration=4 -c:v libx264 -pix_fmt yuv420p -r 30 -crf 18 -movflags +faststart -t 4 "${dest}"`,
     { stdio: "inherit" },
   );
   fs.rmSync(dir, { recursive: true, force: true });

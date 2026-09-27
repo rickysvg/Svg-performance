@@ -29,10 +29,11 @@ function rimPoint(style: BadgeStyleId, cx: number, cy: number, radius: number, a
   }
   if (style === "hex") {
     const step = Math.PI / 3;
-    const sector = Math.floor((((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / step);
+    const shifted = ((angle + Math.PI / 2) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const sector = Math.floor(shifted / step) % 6;
+    const t = shifted / step - sector;
     const a0 = -Math.PI / 2 + sector * step;
     const a1 = a0 + step;
-    const t = ((((angle + Math.PI / 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / step - sector;
     const x0 = cx + Math.cos(a0) * radius;
     const y0 = cy + Math.sin(a0) * radius;
     const x1 = cx + Math.cos(a1) * radius;
@@ -121,7 +122,7 @@ export function BadgeSparks({
         ctx.strokeStyle = spark.hot ? "#ffffff" : "#E8FF4A";
         ctx.fillStyle = spark.hot ? "#ffffff" : "#CBF805";
         ctx.shadowColor = spark.hot ? "#ffffff" : "#CBF805";
-        ctx.shadowBlur = spark.hot ? 6 : 4;
+        ctx.shadowBlur = spark.hot ? 3 : 2;
         ctx.lineWidth = spark.size;
         ctx.lineCap = "round";
         if (spark.streak) {

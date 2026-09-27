@@ -121,9 +121,9 @@ export function BadgeUnlockOverlay() {
     >
       <div className="badge-unlock-glow" aria-hidden />
       <div className="relative w-full max-w-sm text-center text-white">
-        <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
-          <div className="relative mx-auto flex h-[200px] w-[200px] items-center justify-center">
-            <BadgeSparks key={current.id} active={!reduce} style={style} />
+        <div className="relative mx-auto flex h-[200px] w-[200px] items-center justify-center">
+          <BadgeSparks key={current.id} active={!reduce} style={style} />
+          <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
             <BadgeMark badge={badge} style={style} motion={false} large shine={!reduce} />
           </div>
         </div>
