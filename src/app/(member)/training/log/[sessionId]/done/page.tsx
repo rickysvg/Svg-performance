@@ -3,16 +3,28 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
 import { WorkoutDoneCard } from "@/components/share/WorkoutDoneCard";
+import { getProfileForUser } from "@/lib/profile";
+import { detectNewPrsForSession } from "@/lib/progress-companion";
+import { NewPrHero } from "@/components/progress/NewPrHero";
 
 export default async function WorkoutDonePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ pr?: string; prDetail?: string }>;
 }) {
   const user = await requireUser();
   const { sessionId } = await params;
+  const query = await searchParams;
   const view = await getShareCardView(user.id, sessionId);
   if (!view) notFound();
+  const profile = await getProfileForUser(user.id);
+  const prs = await detectNewPrsForSession(
+    user.id,
+    sessionId,
+    profile?.preferredUnits ?? "lb",
+  );
 
   return (
     <main className="space-y-4">
@@ -28,9 +40,13 @@ export default async function WorkoutDonePage({
         <span className="w-8" aria-hidden />
       </div>
 
-      <p className="rounded-full bg-accent px-4 py-2 text-center text-sm text-black">
-        Session saved · nice work
-      </p>
+      {prs[0] || query.pr ? (
+        <NewPrHero pr={prs[0]} fallbackHeadline={query.pr} fallbackDetail={query.prDetail} />
+      ) : (
+        <p className="rounded-full bg-accent px-4 py-2 text-center text-sm text-black">
+          Session saved · nice work
+        </p>
+      )}
 
       {view.stats.length === 0 ? (
         <p className="text-sm text-muted">
@@ -48,6 +64,14 @@ export default async function WorkoutDonePage({
         <Link href="/training/history" className="text-accent underline">
           History
         </Link>
+        {prs[0] ? (
+          <>
+            {" · "}
+            <Link href={`/progress/records?session=${sessionId}`} className="text-accent underline">
+              Open record
+            </Link>
+          </>
+        ) : null}
       </p>
     </main>
   );

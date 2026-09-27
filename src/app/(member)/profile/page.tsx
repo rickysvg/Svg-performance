@@ -11,6 +11,10 @@ import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/r
 import { EmptyState } from "@/components/EmptyState";
 import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
 import { getTrialState } from "@/lib/trial";
+import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
+import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
+import { featuredBadges } from "@/lib/badges";
+import { BadgesGrid } from "@/components/progress/BadgesGrid";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -19,6 +23,11 @@ export default async function ProfilePage() {
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
   ]);
+  const companion = profile
+    ? await getCompanionProgress(user.id, profile.preferredUnits)
+    : null;
+  const featured = companion ? featuredBadges(companion.badges) : [];
+  const badgeCounts = summarizeBadges(featured);
 
   if (!profile) {
     return (
@@ -42,6 +51,10 @@ export default async function ProfilePage() {
         ) : null}
       </div>
 
+      {companion ? (
+        <BadgesGrid badges={featured} earned={badgeCounts.earned} total={badgeCounts.total} />
+      ) : null}
+      <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
       <ProfileForm profile={profile} />
       <ReminderPrefsForm
         prefs={prefs}

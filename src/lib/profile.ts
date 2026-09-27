@@ -31,6 +31,7 @@ export type ProfileRecord = {
   sessionsPerWeek: number | null;
   preferredUnits: LoadUnit;
   timeZone: string;
+  leaderboardOptIn: boolean;
   foodPreferences: string;
   allergies: string;
   trainingLimitations: string;
@@ -81,6 +82,7 @@ export function toProfileRecord(row: {
   sessionsPerWeek: number | null;
   preferredUnits: string;
   timeZone?: string;
+  leaderboardOptIn?: boolean;
   foodPreferences: string;
   allergies: string;
   trainingLimitations: string;
@@ -119,6 +121,7 @@ export function toProfileRecord(row: {
     sessionsPerWeek: row.sessionsPerWeek,
     preferredUnits: isLoadUnit(row.preferredUnits) ? row.preferredUnits : "lb",
     timeZone: row.timeZone ?? "",
+    leaderboardOptIn: Boolean(row.leaderboardOptIn),
     foodPreferences: row.foodPreferences,
     allergies: row.allergies,
     trainingLimitations: row.trainingLimitations,
@@ -428,6 +431,18 @@ export async function updateProfileForUser(
     },
   });
 
+  return toProfileRecord(row);
+}
+
+export async function setLeaderboardOptInForUser(userId: string, optIn: boolean) {
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing) {
+    throw new NotFoundError("Profile not found.");
+  }
+  const row = await prisma.profile.update({
+    where: { userId },
+    data: { leaderboardOptIn: Boolean(optIn) },
+  });
   return toProfileRecord(row);
 }
 

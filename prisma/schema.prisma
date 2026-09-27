@@ -94,6 +94,7 @@ model Profile {
   sessionsPerWeek        Int?
   preferredUnits         String    @default("lb")
   timeZone               String    @default("")
+  leaderboardOptIn       Boolean  @default(false)
   foodPreferences        String    @default("")
   allergies              String    @default("")
   trainingLimitations        String    @default("")

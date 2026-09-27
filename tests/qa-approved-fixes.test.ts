@@ -24,6 +24,27 @@ describe("QA-approved access and surface fixes", () => {
     expect(pricing).not.toMatch(/Stripe TEST keys are not in this environment/);
     expect(checkout).toContain("disabled");
     expect(billing).toContain("Paid plans coming soon.");
+    const history = read("src/components/upgrade/UpgradePreview.tsx");
+    const chart = read("src/components/progress/ExerciseChart.tsx");
+    expect(history).toContain("Paid plans coming soon");
+    expect(history).toContain("Longer history is a paid feature");
+    expect(chart).toContain('kind="history"');
+  });
+
+  it("keeps streak and record copy worldwide and never uses bout", () => {
+    const files = [
+      "src/lib/streaks.ts",
+      "src/lib/leaderboard.ts",
+      "src/app/(member)/progress/streaks/page.tsx",
+      "src/app/(member)/progress/records/page.tsx",
+      "src/components/progress/StreakHero.tsx",
+      "src/components/progress/ChallengeCard.tsx",
+    ];
+    for (const file of files) {
+      const text = read(file).toLowerCase();
+      expect(text).not.toContain("bout");
+      expect(text).not.toContain("el paso");
+    }
   });
 
   it("gates member entry on planChoiceAt", () => {

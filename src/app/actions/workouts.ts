@@ -16,8 +16,9 @@ import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { createWorkoutHrForUser } from "@/lib/heart";
+import { detectNewPrsForSession } from "@/lib/progress-companion";
 
-export type WorkoutActionState = { error?: string; success?: string };
+export type WorkoutActionState = { error?: string; success?: string; newPr?: string };
 
 export async function startSessionAction(formData: FormData) {
   const user = await requireUserOrThrow();
@@ -79,6 +80,10 @@ export async function saveWorkoutAction(
       status: intent === "draft" ? "draft" : "complete",
       sets: parseSets(formData),
     });
+    const profile = await getProfileForUser(user.id);
+    const units: LoadUnit = profile?.preferredUnits ?? "lb";
+    const newPrs =
+      intent === "complete" ? await detectNewPrsForSession(user.id, workoutId, units) : [];
     const avgRaw = String(formData.get("hrAvgBpm") ?? "").trim();
     const maxRaw = String(formData.get("hrMaxBpm") ?? "").trim();
     if (intent === "complete" && avgRaw && maxRaw) {
@@ -95,12 +100,17 @@ export async function saveWorkoutAction(
     revalidatePath("/training");
     revalidatePath("/training/history");
     revalidatePath("/progress");
+    revalidatePath("/progress/records");
+    revalidatePath("/progress/streaks");
     revalidatePath("/heart");
     revalidatePath(`/training/log/${workoutId}`);
     revalidatePath(`/training/log/${workoutId}/done`);
     if (intent === "complete") {
-      const celebrate = alreadyActive ? "workout" : "streak";
-      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}`;
+      const celebrate = newPrs[0] ? "pr" : alreadyActive ? "workout" : "streak";
+      const prQuery = newPrs[0]
+        ? `&pr=${encodeURIComponent(newPrs[0].headline)}&prDetail=${encodeURIComponent(newPrs[0].detail)}`
+        : "";
+      redirectPath = `/training/log/${workoutId}/done?celebrate=${celebrate}${prQuery}`;
     } else {
       return { success: "Draft saved. You can finish it later." };
     }

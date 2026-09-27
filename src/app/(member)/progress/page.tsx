@@ -17,6 +17,11 @@ import { getProgressHeartTiles } from "@/lib/heart";
 import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
+import { featuredBadges } from "@/lib/badges";
+import { StreakHero } from "@/components/progress/StreakHero";
+import { BadgesGrid } from "@/components/progress/BadgesGrid";
+import { RecordsList } from "@/components/progress/RecordsList";
 
 function MetricTile({
   title,
@@ -52,6 +57,9 @@ export default async function ProgressPage() {
     ]);
   const units = profile?.preferredUnits ?? "lb";
   const records = await getPersonalRecordsForUser(user.id, units);
+  const companion = await getCompanionProgress(user.id, units);
+  const featured = featuredBadges(companion.badges);
+  const badgeCounts = summarizeBadges(featured);
   const summary = buildProgressSummary(sessions, units);
   const lastComplete = sessions.find((session) => session.status === "complete");
   const weight = latestMetrics.get("weight");
@@ -88,6 +96,28 @@ export default async function ProgressPage() {
           </Link>
         </div>
       </div>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="text-lg">Streaks</h2>
+          <Link href="/progress/streaks" className="text-sm text-accent underline">
+            Badges and board
+          </Link>
+        </div>
+        <StreakHero streak={companion.streak} />
+      </section>
+
+      <BadgesGrid badges={featured} earned={badgeCounts.earned} total={badgeCounts.total} />
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="text-lg">Personal records</h2>
+          <Link href="/progress/records" className="text-sm text-accent underline">
+            Charts
+          </Link>
+        </div>
+        <RecordsList records={companion.records.slice(0, 4)} />
+      </section>
 
       <section className="grid grid-cols-2 gap-3">
         <MetricTile

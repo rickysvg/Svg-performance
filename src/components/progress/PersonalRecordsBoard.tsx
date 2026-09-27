@@ -7,7 +7,15 @@ export function PersonalRecordsBoard({ records }: { records: PersonalRecords }) 
       <div>
         <h2>Personal records</h2>
         <p className="mt-1 text-sm text-muted">
-          Recalculated from workouts and activity you already logged. Not a live leaderboard.
+          Recalculated from workouts you already logged. Open{" "}
+          <Link href="/progress/records" className="text-accent underline">
+            Records
+          </Link>{" "}
+          for charts, or{" "}
+          <Link href="/progress/streaks" className="text-accent underline">
+            Streaks
+          </Link>{" "}
+          for the monthly board.
         </p>
       </div>
       {records.empty ? (
