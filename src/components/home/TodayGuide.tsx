@@ -71,6 +71,12 @@ export function TodayGuide({ guide }: { guide: Guide }) {
   return (
     <section className="space-y-4">
       <SectionHeading title="Today’s plan" href="/training" className="pr-16" />
+      <p className="text-sm">
+        <Link href="/timer" className="font-semibold text-accent underline-offset-4 hover:underline">
+          Round timer
+        </Link>
+        <span className="text-muted"> — bag, pads, or sparring rounds</span>
+      </p>
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
       {workoutSessions.length === 0 ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">

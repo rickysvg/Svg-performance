@@ -31,3 +31,24 @@ export function isAccountNavActive(pathname: string, href: string) {
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+export function isWorkoutDonePath(pathname: string) {
+  return /^\/training\/log\/[^/]+\/done\/?$/.test(pathname);
+}
+
+export function isImmersiveTrainingPath(pathname: string) {
+  if (isWorkoutDonePath(pathname)) return false;
+  if (pathname.startsWith("/training/log/")) return true;
+  if (
+    pathname === "/training" ||
+    pathname.startsWith("/training/calendar") ||
+    pathname.startsWith("/training/history")
+  ) {
+    return false;
+  }
+  return /^\/training\/[^/]+$/.test(pathname);
+}
+
+export function shouldHidePrimaryNav(pathname: string) {
+  return pathname === "/timer" || isWorkoutDonePath(pathname);
+}
