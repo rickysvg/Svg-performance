@@ -98,7 +98,7 @@ describe("badge unlock queue and seen store", () => {
     });
     const again = await detectUnseenBadgeUnlocksForSession(user.id, session.id, "lb");
     expect(again.map((row) => row.id)).not.toContain("first_session");
-    expect(readSeenBadgeUnlocksForUser(user.id)).resolves.toEqual(
+    await expect(readSeenBadgeUnlocksForUser(user.id)).resolves.toEqual(
       expect.arrayContaining(first.map((row) => row.id)),
     );
   });
