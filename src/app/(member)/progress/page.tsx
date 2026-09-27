@@ -72,7 +72,7 @@ export default async function ProgressPage() {
     <main className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-3xl uppercase tracking-wide">Progress</h1>
-        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-accent">
+        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter">
           {badgeCounts.earned}/{badgeCounts.total} earned
         </p>
       </div>
@@ -90,7 +90,7 @@ export default async function ProgressPage() {
         >
           Streaks
         </Link>
-        <span className="touch-target rounded-full bg-black px-3 text-sm text-accent">Badges</span>
+        <span className="touch-target rounded-full bg-black px-3 text-sm text-highlighter">Badges</span>
       </nav>
 
       <BadgesGrid

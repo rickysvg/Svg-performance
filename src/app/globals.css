@@ -97,6 +97,11 @@ textarea:focus-visible {
     color: var(--accent);
   }
 
+  /* text-accent is dark ink on white. On black chips it must stay lime. */
+  .bg-black.text-accent {
+    color: var(--accent);
+  }
+
   .font-display {
     font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
     font-weight: 400;
@@ -387,6 +392,15 @@ body:has(.app-splash.is-visible) {
 
 .badge-unlock-copy {
   animation: badge-unlock-fade 420ms ease-out 1100ms both;
+}
+
+.badge-unlock-title {
+  color: #fff;
+}
+
+.badge-unlock-share {
+  background: #cbf805;
+  color: #000;
 }
 
 .badge-unlock-backdrop {

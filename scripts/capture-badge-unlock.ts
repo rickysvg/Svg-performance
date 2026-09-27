@@ -81,6 +81,8 @@ async function main() {
   await delay(200);
   await page.screenshot({ path: path.join(ART, "cat_progress_v3.png"), type: "png" });
   console.log("wrote cat_progress_v3.png");
+  await page.screenshot({ path: path.join(ART, "cat_progress_v4.png"), type: "png" });
+  console.log("wrote cat_progress_v4.png");
 
   await openUnlock(page, "lift_200kg");
   await delay(1180);
@@ -91,6 +93,11 @@ async function main() {
   await delay(1180);
   await page.screenshot({ path: path.join(ART, "cat_unlock_martial_v3.png"), type: "png" });
   console.log("wrote cat_unlock_martial_v3.png");
+
+  await openUnlock(page, "lift_200kg");
+  await delay(2000);
+  await page.screenshot({ path: path.join(ART, "cat_unlock_final_v4.png"), type: "png" });
+  console.log("wrote cat_unlock_final_v4.png");
 
   await openUnlock(page, "lift_200kg");
   await recordMp4(page, path.join(ART, "cat_unlock_v3.mp4"), 4000);

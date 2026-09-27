@@ -134,6 +134,10 @@ describe("badge unlock queue and seen store", () => {
     expect(css).toContain("prefers-reduced-motion");
     expect(css).not.toContain("badge-unlock-slam");
     expect(overlay).toContain("badge-unlock-glow");
+    expect(overlay).toContain("badge-unlock-title");
+    expect(overlay).toContain("badge-unlock-share");
+    expect(css).toContain("badge-unlock-share");
+    expect(css).toContain("#cbf805");
     expect(read("src/components/profile/SoundEffectsToggle.tsx")).toContain("Sound effects on");
     expect(read("src/components/training/WorkoutLogForm.tsx")).toContain("primeUnlockAudio");
     expect(read("prisma/schema.prisma")).toContain("seenBadgeUnlocksJson");

@@ -161,7 +161,7 @@ export function BadgeUnlockOverlay() {
             {categoryLabel}
           </p>
           <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/70">Badge unlocked</p>
-          <h2 id="badge-unlock-title" className="font-display mt-2 text-4xl uppercase tracking-wide text-white">
+          <h2 id="badge-unlock-title" className="badge-unlock-title font-display mt-2 text-4xl uppercase tracking-wide">
             {current.title}
           </h2>
           <p className="mt-2 text-sm text-white/55">{current.hint}</p>
@@ -170,7 +170,7 @@ export function BadgeUnlockOverlay() {
               type="button"
               onClick={() => void onShare()}
               disabled={sharing}
-              className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
+              className="badge-unlock-share touch-target w-full rounded-full disabled:opacity-60"
             >
               {sharing ? "Preparing…" : "Share"}
             </button>

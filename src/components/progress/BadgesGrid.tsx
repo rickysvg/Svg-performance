@@ -22,7 +22,7 @@ export function BadgesGrid({
       {showHeading ? (
         <div className="flex items-end justify-between gap-3">
           <h2 className="font-display text-2xl uppercase tracking-wide">Badges</h2>
-          <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-accent">
+          <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter">
             {earned}/{total} earned
           </p>
         </div>

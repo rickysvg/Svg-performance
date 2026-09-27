@@ -96,6 +96,8 @@ describe("QA-approved access and surface fixes", () => {
     const podium = read("src/components/progress/LeaderboardPodium.tsx");
     const records = read("src/components/progress/RecordsList.tsx");
     const pr = read("src/components/progress/NewPrHero.tsx");
+    const progress = read("src/app/(member)/progress/page.tsx");
+    const grid = read("src/components/progress/BadgesGrid.tsx");
     expect(challenge).toContain("text-highlighter");
     expect(challenge).toContain("text-white");
     expect(challenge).not.toMatch(/bg-black[\s\S]*text-accent/);
@@ -104,6 +106,34 @@ describe("QA-approved access and surface fixes", () => {
     expect(records).toContain("bg-black px-2 py-0.5 text-[10px] text-highlighter");
     expect(pr).toContain("bg-black");
     expect(pr).toContain("text-[#CBF805]");
+    expect(progress).toContain("bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter");
+    expect(progress).toContain("bg-black px-3 text-sm text-highlighter");
+    expect(grid).toContain("bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter");
+    expect(read("src/app/globals.css")).toContain(".bg-black.text-accent");
+  });
+
+  it("does not put remapped text-accent on black chips or pills", () => {
+    const root = path.join(process.cwd(), "src");
+    const hits: string[] = [];
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".tsx")) continue;
+        const text = fs.readFileSync(full, "utf8");
+        const classes = text.match(/className=\{?`[^`]+`\}?|className="[^"]+"/g) ?? [];
+        for (const cls of classes) {
+          if (cls.includes("bg-black") && cls.includes("text-accent")) {
+            hits.push(`${path.relative(process.cwd(), full)}: ${cls.slice(0, 120)}`);
+          }
+        }
+      }
+    }
+    walk(root);
+    expect(hits).toEqual([]);
   });
 
   it("ships category badge art grouped on Progress", () => {

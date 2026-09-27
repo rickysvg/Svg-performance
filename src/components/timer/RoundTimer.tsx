@@ -382,7 +382,7 @@ export function RoundTimer() {
         >
           <span
             className={`flex h-20 w-20 items-center justify-center rounded-full text-sm uppercase tracking-wide ${
-              primaryLabel === "Pause" ? "bg-black text-accent" : "bg-accent text-black"
+              primaryLabel === "Pause" ? "bg-black text-highlighter" : "bg-accent text-black"
             }`}
           >
             {primaryLabel === "Pause" ? "❚❚" : "▶"}
