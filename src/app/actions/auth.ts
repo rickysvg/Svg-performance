@@ -1,16 +1,19 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import {
   authenticate,
   changePassword,
   createSessionRecord,
   destroySession,
+  PASSWORD_RESET_NEUTRAL_MESSAGE,
   registerAccount,
   requestPasswordReset,
   resetPasswordWithToken,
 } from "@/lib/auth";
 import { publicErrorMessage } from "@/lib/errors";
+import { assertPasswordResetRateLimit } from "@/lib/password-reset-rate";
 import {
   clearSessionCookie,
   postAuthPath,
@@ -73,23 +76,36 @@ export async function logoutAction() {
   redirect("/");
 }
 
+async function resetClientAddress(): Promise<string> {
+  try {
+    const incoming = await headers();
+    const forwarded = incoming.get("x-forwarded-for");
+    if (forwarded) {
+      return forwarded.split(",")[0]?.trim() || "unknown";
+    }
+    return incoming.get("x-real-ip")?.trim() || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 export async function forgotPasswordAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   try {
+    await assertPasswordResetRateLimit("ip", await resetClientAddress());
     const result = await requestPasswordReset(String(formData.get("email") ?? ""));
-    if (result.resetUrl) {
+    // The link is returned only from local development. Production builds
+    // never include it, and this branch is dead when NODE_ENV is production.
+    if (process.env.NODE_ENV !== "production" && result.resetUrl) {
       return {
         success:
-          "Preview mode: email sending is not wired. Use this one-time reset link.",
+          "Development only: email is not configured, so this one-time link is shown here. It is never shown in production.",
         resetUrl: result.resetUrl,
       };
     }
-    return {
-      success:
-        "If that email is on file, a reset link was created. Check email if SMTP is configured.",
-    };
+    return { success: PASSWORD_RESET_NEUTRAL_MESSAGE };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

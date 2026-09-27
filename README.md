@@ -75,7 +75,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `DATABASE_URL` | Laptop: `file:./dev.db`. Hosted: a `postgresql://…` string from Neon or Vercel Postgres. Never a SQLite file on Vercel. |
 | `AUTH_SECRET` | Long random string used to hash session and reset tokens |
 | `APP_URL` | Public address (`http://localhost:3000` locally) |
-| `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `SMTP_FROM` | Optional mail. Empty = password reset shows a PREVIEW link; reminders stay **in-app on Home only** |
+| `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `SMTP_FROM` | Optional mail. Empty in production turns off self-serve password reset (same message for every email, no link on screen). Local development can still show a one-time link. Reminders stay **in-app on Home only** until SMTP is set |
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional. Seed promotes this existing account to admin |
 | `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = SVG Coach stays offline/DEMO |
 | `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |

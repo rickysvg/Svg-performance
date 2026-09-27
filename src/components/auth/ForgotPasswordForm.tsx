@@ -13,11 +13,11 @@ export function ForgotPasswordForm() {
   return (
     <form action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} success={state.success} />
-      {state.resetUrl ? (
-        <p className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
-          <span className="font-semibold text-accent">PREVIEW ONLY — </span>
-          <a href={state.resetUrl} className="break-all underline">
-            {state.resetUrl}
+      {process.env.NODE_ENV !== "production" && state.resetUrl ? (
+        <p className="rounded-xl border border-line bg-card p-4 text-sm">
+          <span className="font-semibold">Development only. </span>
+          <a href={state.resetUrl} className="underline">
+            Open reset link
           </a>
         </p>
       ) : null}

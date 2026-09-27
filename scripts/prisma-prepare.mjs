@@ -113,11 +113,13 @@ if (postgres) {
   if (deploy) {
     console.log("Prisma: db push (empty Neon/Vercel Postgres is OK; no data-loss flag).");
     run("npx prisma db push --schema=prisma/schema.postgres.prisma");
+    run("npx tsx scripts/invalidate-password-reset-tokens.ts");
   }
 } else {
   console.log("Prisma: SQLite (laptop).");
   run("npx prisma generate --schema=prisma/schema.prisma");
   if (deploy) {
     run("npx prisma migrate deploy --schema=prisma/schema.prisma");
+    run("npx tsx scripts/invalidate-password-reset-tokens.ts");
   }
 }
