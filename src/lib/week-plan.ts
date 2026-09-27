@@ -2,6 +2,7 @@ import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
 import { FRIDAY_GPP_DAY_NUMBER } from "@/lib/daru-exercises";
 import { WEEKDAYS } from "@/lib/constants";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
+import { isDeloadWeekIndex, isTestingWeekIndex } from "@/lib/training-cycle";
 import { APP_TIMEZONE, addZonedDays, weekdayInZone } from "@/lib/timezone";
 
 export { APP_TIMEZONE } from "@/lib/timezone";
@@ -27,6 +28,8 @@ export type DayPlan = {
   summary: string;
   sessions: PlanSessionSlot[];
   skipReason?: string;
+  deload: boolean;
+  testingWeek: boolean;
 };
 
 export type PlannerPrefs = {
@@ -263,6 +266,8 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
       summary: summaryForSessions(sessions, weekday, active),
       sessions: active ? sessions : [{ kind: "rest", label: "Rest / skip" }],
       skipReason: active ? undefined : skipReason,
+      deload: isDeloadWeekIndex(weekIndex),
+      testingWeek: isTestingWeekIndex(weekIndex),
     };
   }
   return plan;
@@ -313,6 +318,8 @@ export function weekStrip(
     active: plan[weekday].active,
     summary: plan[weekday].summary,
     sessionCount: plan[weekday].active ? plan[weekday].sessions.length : 0,
+    deload: plan[weekday].deload,
+    testingWeek: plan[weekday].testingWeek,
   }));
 }
 

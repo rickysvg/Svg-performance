@@ -187,6 +187,7 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["Sled hamstring drag"]).toBe("timed");
     expect(modes["Banded kettlebell swing"]).toBe("timed");
     expect(modes["Neck extension hold"]).toBe("timed");
+    expect(modes["Neck isometric matrix"]).toBe("timed");
     expect(modes["Banded DB front-rack march"]).toBe("timed");
     const counts = Object.values(modes).reduce(
       (acc, mode) => {
@@ -199,7 +200,7 @@ describe("scaled DEMO days in the database", () => {
       load_reps: 13,
       load_timed: 2,
       reps_only: 4,
-      timed: 8,
+      timed: 9,
       timed_round: 6,
     });
     expect(

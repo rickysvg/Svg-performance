@@ -20,8 +20,11 @@ export type BikeScale = {
   loadText: string;
 };
 
+export type BikeEnergyZone = "aerobic-base" | "threshold" | "sprint";
+
 export type BikeSession = {
   id: string;
+  energyZone: BikeEnergyZone;
   /** Program-exercise name. Must match DEMO_FORM_VIDEOS. */
   name: string;
   title: string;
@@ -65,6 +68,7 @@ function intervalScale(
 export const BIKE_SESSIONS: BikeSession[] = [
   {
     id: "intervals-15-15",
+    energyZone: "sprint",
     name: "Assault bike intervals",
     title: "Day 4 — Assault bike",
     focus: "Assault bike intervals — 15s sprint / 15s rest",
@@ -87,6 +91,7 @@ export const BIKE_SESSIONS: BikeSession[] = [
   },
   {
     id: "daru-alactic",
+    energyZone: "sprint",
     name: "Daru alactic power bike",
     title: "Day 5 — Daru Alactic Power",
     focus: "Alactic power — 10s all-out / 50s easy",
@@ -109,6 +114,7 @@ export const BIKE_SESSIONS: BikeSession[] = [
   },
   {
     id: "jamieson-tempo",
+    energyZone: "threshold",
     name: "Jamieson tempo bike",
     title: "Day 6 — Jamieson Tempo Bike",
     focus: "Tempo — 12–15s at ~70–75% / 60s rest",
@@ -131,6 +137,7 @@ export const BIKE_SESSIONS: BikeSession[] = [
   },
   {
     id: "daru-75-endurance",
+    energyZone: "threshold",
     name: "Daru 75% endurance bike",
     title: "Day 7 — Daru 75% Endurance",
     focus: "Submax watt repeats on a 15–40 min clock",
@@ -153,6 +160,7 @@ export const BIKE_SESSIONS: BikeSession[] = [
   },
   {
     id: "jamieson-cardiac",
+    energyZone: "aerobic-base",
     name: "Jamieson cardiac output bike",
     title: "Day 8 — Jamieson Cardiac Output",
     focus: "Cardiac output — 20–40 min steady at HR 130–150",
@@ -175,6 +183,7 @@ export const BIKE_SESSIONS: BikeSession[] = [
   },
   {
     id: "edwards-10-20",
+    energyZone: "sprint",
     name: "Leon Edwards 10/20 bike finisher",
     title: "Day 9 — Leon Edwards 10/20",
     focus: "Finisher — 10s sprint / 20s rest × 3–5",
@@ -346,4 +355,56 @@ export function bikeIntervalChrome(session: BikeSession = DEFAULT_BIKE_SESSION) 
 
 export function isLongBikeClock(session: BikeSession) {
   return session.restSeconds <= 0 && session.roundsPerSet === 1;
+}
+
+export const BIKE_ZONE_CREDIT = {
+  coach: "Joel Jamieson",
+  url: "https://8weeksout.com/2012/09/27/metabolic-conditioning-mma/",
+  idea: "aerobic base, threshold, and short power",
+} as const;
+
+/** Optional stand-in for a Sprint bike day. Not a replacement for the written bike plan. */
+export const SPRINT_NO_BIKE = {
+  text: "No bike? Optional: battle ropes, or a curved treadmill, for 4–8 seconds as hard as you can, then rest 40–60 seconds. Stop when the next effort slows down.",
+  handle: "@neromma",
+  posts: [
+    {
+      url: "https://www.instagram.com/neromma/reel/DdWZxV5MLsP/",
+      idea: "battle ropes",
+    },
+    {
+      url: "https://www.instagram.com/neromma/reel/DdeXQ-SsFLj/",
+      idea: "curved treadmill",
+    },
+  ],
+} as const;
+
+const ENERGY_COPY: Record<
+  BikeEnergyZone,
+  { label: string; guide: string; alternative?: typeof SPRINT_NO_BIKE }
+> = {
+  "aerobic-base": {
+    label: "Aerobic Base",
+    guide:
+      "Easy spin you can talk through. If you track heart rate, stay near 130–150. This is the engine that lasts past the first minute.",
+  },
+  threshold: {
+    label: "Threshold",
+    guide:
+      "Hard but controlled. A short sentence is fine. A conversation is not. Stay off an all-out sprint.",
+  },
+  sprint: {
+    label: "Sprint",
+    guide:
+      "Very short max efforts. Rest long enough that the next one is still fast. Stop when the speed drops.",
+    alternative: SPRINT_NO_BIKE,
+  },
+};
+
+export function bikeEnergyCopy(zone: BikeEnergyZone) {
+  return ENERGY_COPY[zone];
+}
+
+export function bikeEnergyForSession(session: Pick<BikeSession, "energyZone">) {
+  return bikeEnergyCopy(session.energyZone);
 }

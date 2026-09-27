@@ -17,6 +17,10 @@ const BLURBS: Record<string, { title: string; body: string }> = {
     title: "Progress charts are in Performance",
     body: "Workout logging stays on the free plan. Charts, food tracking, and SVG Coach open with Performance.",
   },
+  mobility: {
+    title: "The full mobility plan is in Performance",
+    body: "Two routines and the daily warm-up stay free. The other routines, the 6-week progression, and check-in history open on Performance. Paid plans coming soon.",
+  },
   fight_camp: {
     title: "Fight camp is in Performance",
     body: "Build a week-by-week camp from your fight date: base, build, peak / sharpen, and a fight-week taper. Paid plans coming soon. Start a short free trial — no card — or look at pricing.",

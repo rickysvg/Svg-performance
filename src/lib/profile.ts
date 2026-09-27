@@ -53,6 +53,7 @@ export type ProfileRecord = {
   competitionStatus: string;
   nextFightDate: Date | null;
   coachingTone: string;
+  trainingEmphasis: string;
   obstacles: string[];
 };
 
@@ -104,6 +105,7 @@ export function toProfileRecord(row: {
   competitionStatus: string;
   nextFightDate: Date | null;
   coachingTone: string;
+  trainingEmphasis?: string;
   obstaclesJson: string;
 }): ProfileRecord {
   return {
@@ -138,6 +140,10 @@ export function toProfileRecord(row: {
     competitionStatus: row.competitionStatus,
     nextFightDate: row.nextFightDate,
     coachingTone: row.coachingTone,
+    trainingEmphasis:
+      row.trainingEmphasis === "striker" || row.trainingEmphasis === "grappler"
+        ? row.trainingEmphasis
+        : "balanced",
     obstacles: parseJsonArray(row.obstaclesJson),
     calorieTarget: row.calorieTarget,
     proteinTargetG: row.proteinTargetG,
@@ -228,6 +234,7 @@ export async function updateProfileForUser(
     nextFightDate?: Date | null;
     coachingTone?: string;
     obstacles?: string[];
+    trainingEmphasis?: string;
     calorieTarget?: number;
     proteinTargetG?: number;
     carbsTargetG?: number;
@@ -405,6 +412,14 @@ export async function updateProfileForUser(
           : COACHING_TONE_OPTIONS.some((item) => item.value === input.coachingTone)
             ? input.coachingTone
             : existing.coachingTone,
+      trainingEmphasis:
+        input.trainingEmphasis === undefined
+          ? existing.trainingEmphasis
+          : input.trainingEmphasis === "striker" || input.trainingEmphasis === "grappler"
+            ? input.trainingEmphasis
+            : input.trainingEmphasis === "balanced"
+              ? "balanced"
+              : existing.trainingEmphasis,
       obstaclesJson:
         input.obstacles === undefined
           ? existing.obstaclesJson

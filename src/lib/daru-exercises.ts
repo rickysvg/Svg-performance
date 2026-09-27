@@ -147,6 +147,33 @@ export const DARU_EXERCISES: DaruExercise[] = [
     },
   },
   {
+    name: "Neck isometric matrix",
+    logMode: "timed",
+    svgScaling: true,
+    notes:
+      "UFC Performance Institute neck-matrix idea, static phase only — not an SVG program and not an endorsement. Hand or band. Flexion, extension, left, and right. Ramp a gentle push for about 5 seconds. Never a max squeeze on day one. No bridges. Skip after a hard spar, head trauma, or a neck injury. Neck training is not proven to prevent concussion. Log seconds.",
+    scale: {
+      beginner: {
+        sets: 2,
+        reps: "5 sec × 4 directions",
+        restSeconds: 45,
+        loadText: "Gentle ramp — no max effort",
+      },
+      intermediate: {
+        sets: 2,
+        reps: "5 sec × 4 directions",
+        restSeconds: 45,
+        loadText: "Firm, still submax",
+      },
+      advanced: {
+        sets: 3,
+        reps: "5 sec × 4 directions",
+        restSeconds: 30,
+        loadText: "Controlled — still not a max squeeze",
+      },
+    },
+  },
+  {
     name: "Bent-over DB shrug",
     logMode: "load_reps",
     svgScaling: false,
@@ -192,6 +219,7 @@ export const FRIDAY_GPP_NAMES = [
   "Sled hamstring drag",
   "Farmer's carry",
   "Banded kettlebell swing",
+  "Neck isometric matrix",
 ] as const;
 
 export const MON_WED_DARU_NAMES = [

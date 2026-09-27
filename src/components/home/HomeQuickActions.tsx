@@ -11,6 +11,13 @@ const PHOTO_ACTIONS = [
     alt: "Athlete punching a heavy bag",
   },
   {
+    href: "/mobility",
+    label: "Mobility",
+    hint: "Hips and holds",
+    src: "/tiles/mobility.webp",
+    alt: "Athlete stretching the hips on a dark gym floor",
+  },
+  {
     href: "/coach",
     label: "Coach",
     hint: "Ask SVG Coach",
@@ -44,6 +51,13 @@ const PHOTO_ACTIONS = [
     hint: "This week",
     src: "/tiles/calendar.webp",
     alt: "Athlete checking off training days on a whiteboard",
+  },
+  {
+    href: "/timer",
+    label: "Timer",
+    hint: "Rounds",
+    src: "/tiles/timer.webp",
+    alt: "Athlete beside an assault bike in a dark gym",
   },
 ] as const;
 

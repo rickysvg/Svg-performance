@@ -49,6 +49,7 @@ export type FeatureId =
   | "conditioning"
   | "coaching"
   | "daily_quote"
+  | "mobility_pro"
   | "fight_camp"
   | "form_check"
   | "progress_history";
@@ -107,6 +108,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "Meal ideas and progress charts",
       "SVG Coach (AI coach)",
       "Daily motivational quote",
+      "Full mobility progression and check-in history",
       "Fight camp countdown",
       "Two form checks a month, reviewed by a real coach",
     ],
@@ -120,6 +122,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "nutrition",
       "ai",
       "daily_quote",
+      "mobility_pro",
       "fight_camp",
       "form_check",
       "progress_history",
@@ -153,6 +156,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "ai",
       "conditioning",
       "daily_quote",
+      "mobility_pro",
       "fight_camp",
       "form_check",
       "progress_history",
@@ -186,6 +190,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
       "fight_camp",
       "form_check",
       "progress_history",
@@ -220,6 +225,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
       "fight_camp",
       "form_check",
       "progress_history",
@@ -253,6 +259,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
       "fight_camp",
       "form_check",
       "progress_history",
@@ -287,6 +294,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "conditioning",
       "coaching",
       "daily_quote",
+      "mobility_pro",
       "fight_camp",
       "form_check",
       "progress_history",

@@ -1,4 +1,4 @@
--- Additive hosted columns from PR #46. Safe on existing Profile rows.
+-- Additive hosted columns. Safe on existing Profile rows.
 -- No DROP / no type changes. Idempotent. No-ops on an empty Neon (no Profile table yet).
 DO $$
 BEGIN
@@ -24,6 +24,16 @@ BEGIN
       AND column_name = 'seenBadgeUnlocksJson'
   ) THEN
     ALTER TABLE "Profile" ADD COLUMN "seenBadgeUnlocksJson" TEXT NOT NULL DEFAULT '[]';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'trainingEmphasis'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "trainingEmphasis" TEXT NOT NULL DEFAULT 'balanced';
   END IF;
 END $$;
 

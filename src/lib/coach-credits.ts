@@ -45,6 +45,11 @@ const BY_NAME: Record<string, CoachCredit> = {
   "Neck extension hold": { line: DARU, url: YT.daruNeck, svgScaling: true },
   "Banded DB front-rack march": { line: DARU, url: YT.daruNeck, svgScaling: false },
   "Bent-over DB shrug": { line: DARU, url: YT.daruNeck, svgScaling: false },
+  "Neck isometric matrix": {
+    line: "Credit: UFC Performance Institute (Gavin Pratt) — neck-matrix idea",
+    url: "https://valdperformance.com/news/neck-coupling-strength-in-mma-testing-what-matters",
+    svgScaling: true,
+  },
 };
 
 export const COACH_CREDIT_DISCLAIMER =

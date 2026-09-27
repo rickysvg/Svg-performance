@@ -26,14 +26,11 @@ function storedSplashFlag() {
   }
 }
 
-function initialPhase(pathname: string): "play" | "gone" {
-  if (typeof window === "undefined") return "play";
-  return shouldShowSplashOverlay({ stored: storedSplashFlag(), pathname }) ? "play" : "gone";
-}
-
 export function AppSplash() {
   const pathname = usePathname();
-  const [phase, setPhase] = useState<"play" | "exit" | "gone">(() => initialPhase(pathname));
+  // First render must match the server. The splash script hides this with
+  // html[data-splash="done"] before paint when the splash was already seen.
+  const [phase, setPhase] = useState<"play" | "exit" | "gone">("play");
   const [mountVideo, setMountVideo] = useState(false);
   const [useStill, setUseStill] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);

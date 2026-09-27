@@ -75,6 +75,7 @@ const STRENGTH_NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Farmer's carry": ["dumbbell"],
   "Banded kettlebell swing": ["kettlebell", "band"],
   "Neck extension hold": ["bodyweight"],
+  "Neck isometric matrix": ["bodyweight", "band"],
   "Banded DB front-rack march": ["dumbbell", "band"],
   "Bent-over DB shrug": ["dumbbell"],
   "Side plank": ["bodyweight"],

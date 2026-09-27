@@ -140,6 +140,8 @@ describe("fight camp week math", () => {
       weekday: "Monday",
       active: true,
       optionalDay: false,
+      deload: false,
+      testingWeek: false,
       summary: "Bag and strength",
       sessions: [
         { kind: "skill", label: "Bag / striking" },

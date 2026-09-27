@@ -5,11 +5,13 @@ import { describe, expect, it } from "vitest";
 
 const TILES = [
   "train.webp",
+  "mobility.webp",
   "coach.webp",
   "learn.webp",
   "progress.webp",
   "fuel.webp",
   "calendar.webp",
+  "timer.webp",
 ] as const;
 
 const APPROVED_HASHES = {
@@ -18,7 +20,7 @@ const APPROVED_HASHES = {
 } as const;
 
 describe("Home photo tiles", () => {
-  it("ships ~800px WebP academy photos for the six Home tiles", () => {
+  it("ships ~800px WebP academy photos for the eight Home tiles", () => {
     for (const name of TILES) {
       const file = path.join(process.cwd(), "public/tiles", name);
       expect(fs.existsSync(file), file).toBe(true);
@@ -43,7 +45,7 @@ describe("Home photo tiles", () => {
     }
   });
 
-  it("renders Fuel and Calendar as the same photo cards in a 2x3 grid", () => {
+  it("renders photo cards in a 2x4 grid with Mobility beside Train", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/HomeQuickActions.tsx"),
       "utf8",
@@ -57,6 +59,8 @@ describe("Home photo tiles", () => {
     expect(source).not.toContain("TEXT_ACTIONS");
     expect(source).not.toContain("min-h-[5.5rem]");
     expect(source).not.toContain("label.slice(0, 1)");
+    expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/mobility"'));
+    expect(source.indexOf('href: "/mobility"')).toBeLessThan(source.indexOf('href: "/coach"'));
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/coach"'));
     expect(source.indexOf('href: "/coach"')).toBeLessThan(source.indexOf('href: "/learn"'));
     expect(source.indexOf('href: "/learn"')).toBeLessThan(source.indexOf('href: "/progress"'));
@@ -64,7 +68,11 @@ describe("Home photo tiles", () => {
     expect(source.indexOf('href: "/nutrition"')).toBeLessThan(
       source.indexOf('href: "/training/calendar"'),
     );
+    expect(source.indexOf('href: "/training/calendar"')).toBeLessThan(source.indexOf('href: "/timer"'));
     expect(source).toContain("/tiles/train.webp");
+    expect(source).toContain("/tiles/mobility.webp");
+    expect(source).toContain("/tiles/timer.webp");
+    expect(source).toContain("Athlete stretching the hips on a dark gym floor");
     expect(source).toContain("/tiles/coach.webp");
     expect(source).toContain("/tiles/learn.webp");
     expect(source).toContain("/tiles/progress.webp");

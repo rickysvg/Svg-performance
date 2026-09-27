@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
@@ -21,6 +21,10 @@ import { lookupFormVideo } from "@/lib/form-videos";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
+import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { BikeZoneNote } from "@/components/training/BikeZoneNote";
+import { bikeZoneForDayNumber } from "@/lib/train-extras";
+import { plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 
 export default async function TrainingDayPage({
   params,
@@ -50,6 +54,11 @@ export default async function TrainingDayPage({
   const minutes = estimateSessionMinutes(day.exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = draft ? "Continue" : "Start Now";
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const deload = isDeloadWeek(new Date(), tz);
+  const zone = bikeZoneForDayNumber(day.dayNumber);
+  const liftDay = day.dayNumber === 2 || day.dayNumber === 3;
+  const plyo = liftDay ? plyoBlockFor(profile?.trainingEmphasis) : [];
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),
     programDayId: day.id,
@@ -110,14 +119,38 @@ export default async function TrainingDayPage({
           exerciseCount={day.exercises.length}
         />
 
+        {deload ? (
+          <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
+        ) : null}
+        <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line px-4 py-3">
+          <p className="font-display text-xs uppercase tracking-wide text-accent">First</p>
+          <p className="font-semibold">Dynamic warm-up · 3–4 min</p>
+        </Link>
+        {zone ? <BikeZoneNote zone={zone} /> : null}
+        {plyo.length > 0 ? (
+          <div className="rounded-2xl border border-line px-4 py-3 text-sm">
+            <p className="font-display text-xs uppercase tracking-wide text-accent">
+              Plyo / power · {PLYO_MINUTES}
+            </p>
+            <ul className="mt-2 space-y-1">
+              {plyo.map((drill) => (
+                <li key={drill.name}>
+                  {drill.name} · {drill.prescription}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <EquipmentRow chips={equipment} />
       </section>
 
       <ol className="flex-1 border-t border-line pb-32">
         {day.exercises.map((exercise) => {
           const form = lookupFormVideo(exercise.name, day.exercises);
+          const prescribedSets = deload ? deloadSetCount(exercise.sets) : exercise.sets;
           const planned = plannedSetLine({
-            sets: exercise.sets,
+            sets: prescribedSets,
             reps: exercise.reps,
             restSeconds: exercise.restSeconds,
             logMode: exercise.logMode,
