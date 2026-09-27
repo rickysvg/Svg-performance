@@ -118,14 +118,26 @@ export function BadgeUnlockOverlay() {
       data-badge-id={current.id}
     >
       <div className="badge-unlock-glow" aria-hidden />
+      {reduce ? null : (
+        <>
+          <div className="badge-unlock-smoke badge-unlock-smoke-a" aria-hidden />
+          <div className="badge-unlock-smoke badge-unlock-smoke-b" aria-hidden />
+        </>
+      )}
       <div className="relative w-full max-w-sm text-center text-white">
-        <div className="relative mx-auto flex h-[200px] w-[200px] items-center justify-center">
+        <div className="badge-unlock-stage relative mx-auto flex h-[300px] w-[300px] items-center justify-center">
           <BadgeSparks key={current.id} active={!reduce} />
+          {reduce ? null : (
+            <svg className="badge-unlock-ring" viewBox="0 0 100 100" aria-hidden>
+              <circle className="badge-unlock-ring-stroke" cx="50" cy="50" r="46" />
+            </svg>
+          )}
           <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
             <BadgeMark badge={badge} motion={false} large shine={!reduce} />
+            {reduce ? null : <span className="badge-unlock-glint" aria-hidden />}
           </div>
         </div>
-        <h2 id="badge-unlock-title" className="font-display mt-8 text-3xl uppercase tracking-wide text-white">
+        <h2 id="badge-unlock-title" className="font-display mt-4 text-3xl uppercase tracking-wide text-white">
           {current.title}
         </h2>
         <p className="mt-2 text-sm text-white/80">{unlockLine(current.title)}</p>

@@ -63,20 +63,25 @@ async function main() {
 
   await page.goto(`${BASE}/progress`, { waitUntil: "networkidle0", timeout: 60_000 });
   await page.waitForSelector("#badges", { timeout: 15_000 });
-  await page.screenshot({ path: path.join(ART, "final_belt_progress.png"), type: "png" });
-  console.log("wrote final_belt_progress.png");
+  await page.screenshot({ path: path.join(ART, "real_belt_grid.png"), type: "png" });
+  console.log("wrote real_belt_grid.png");
+
+  await page.$eval("#badges", (el) => el.scrollIntoView({ block: "start" }));
+  await delay(200);
+  await page.screenshot({ path: path.join(ART, "real_belt_closeup.png"), type: "png" });
+  console.log("wrote real_belt_closeup.png");
 
   const unlock = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
   await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
   await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-  await delay(240);
-  await page.screenshot({ path: path.join(ART, "final_belt_unlock.png"), type: "png" });
-  console.log("wrote final_belt_unlock.png");
+  await delay(280);
+  await page.screenshot({ path: path.join(ART, "real_belt_unlock.png"), type: "png" });
+  console.log("wrote real_belt_unlock.png");
 
   await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
   await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-  await recordMp4(page, path.join(ART, "final_belt_unlock.mp4"), 4000);
-  console.log("wrote final_belt_unlock.mp4");
+  await recordMp4(page, path.join(ART, "real_belt_unlock.mp4"), 4000);
+  console.log("wrote real_belt_unlock.mp4");
 
   await browser.close();
 }

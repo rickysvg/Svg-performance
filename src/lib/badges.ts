@@ -27,7 +27,7 @@ export type BadgeDef = {
   icon: "star" | "flame" | "bike" | "barbell" | "pads" | "lock" | "hold" | "heavy";
 };
 
-export const BADGE_TIERS = ["bronze", "silver", "gold", "lime"] as const;
+export const BADGE_TIERS = ["bronze", "steel", "gold"] as const;
 export type BadgeTier = (typeof BADGE_TIERS)[number];
 
 export type EarnedBadge = BadgeDef & {
@@ -59,17 +59,16 @@ export function badgeMark(id: BadgeId, unit: LoadUnit = "lb") {
 
 export function badgeTier(id: BadgeId): BadgeTier {
   if (id === "first_session" || id === "workouts_10") return "bronze";
-  if (id === "streak_7" || id === "bike_50" || id === "workouts_25") return "silver";
   if (
+    id === "streak_7" ||
+    id === "bike_50" ||
     id === "lift_100kg" ||
     id === "pads_250" ||
-    id === "streak_30" ||
-    id === "hold_5min" ||
-    id === "workouts_50"
+    id === "workouts_25"
   ) {
-    return "gold";
+    return "steel";
   }
-  return "lime";
+  return "gold";
 }
 
 export function badgeRibbon(id: BadgeId) {

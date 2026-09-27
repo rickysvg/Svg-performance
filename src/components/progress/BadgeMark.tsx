@@ -1,8 +1,7 @@
 "use client";
 
-import { useId } from "react";
 import type { EarnedBadge } from "@/lib/badges";
-import { BadgeBelt } from "@/components/progress/BadgeBelt";
+import { BadgePlate } from "@/components/progress/BadgePlate";
 
 export function BadgeMark({
   badge,
@@ -15,15 +14,13 @@ export function BadgeMark({
   large?: boolean;
   shine?: boolean;
 }) {
-  const uid = useId().replace(/:/g, "");
-  const size = large ? 200 : 72;
   return (
     <div
       className={`badge-mark relative mx-auto flex items-center justify-center overflow-visible ${
-        large ? "h-[200px] w-[200px]" : "h-20 w-20"
+        large ? "w-[240px]" : "h-20 w-20"
       } ${badge.earned && motion ? "badge-earned" : ""} ${badge.earned ? "" : "badge-locked"}`}
     >
-      <BadgeBelt badge={badge} uid={uid} shine={shine} size={size} />
+      <BadgePlate badge={badge} large={large} shine={shine} />
     </div>
   );
 }

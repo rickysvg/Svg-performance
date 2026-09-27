@@ -14,22 +14,18 @@ function read(rel: string) {
 }
 
 describe("badge styles and progress", () => {
-  it("uses the belt plate as the only badge mark", () => {
-    expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeBelt");
-    expect(read("src/components/progress/BadgeMark.tsx")).not.toContain("BadgeMedal");
-    expect(read("src/components/progress/BadgeMark.tsx")).not.toContain("BadgeHex");
-    expect(read("src/components/progress/badge-visuals.ts")).toContain("M14,40 L20,20");
-    expect(read("src/components/progress/BadgeBelt.tsx")).toContain("BELT_PLATE");
+  it("uses photoreal belt plates as the only badge mark", () => {
+    expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgePlate");
+    expect(read("src/components/progress/BadgePlate.tsx")).toContain("plate-");
+    expect(read("src/lib/badge-plates.ts")).toContain("plate-steel");
+    expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-bronze-512.webp"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-steel-256.webp"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "public/badges/plate-gold-512.png"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgeBelt.tsx"))).toBe(false);
+    expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgeSvgShine.tsx"))).toBe(
+      false,
+    );
     expect(fs.existsSync(path.join(process.cwd(), "src/lib/badge-style.ts"))).toBe(false);
-    expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgeMedal.tsx"))).toBe(
-      false,
-    );
-    expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgeHex.tsx"))).toBe(
-      false,
-    );
-    expect(
-      fs.existsSync(path.join(process.cwd(), "src/app/(member)/progress/badge-preview/page.tsx")),
-    ).toBe(false);
   });
 
   it("uses big milestone marks in the athlete unit", () => {
@@ -43,7 +39,11 @@ describe("badge styles and progress", () => {
     expect(badgeMark("bike_50")).toBe("50");
     expect(badgeMark("pads_250")).toBe("250");
     expect(badgeMark("hold_5min")).toBe("5:00");
-    expect(badgeTier("lift_200kg")).toBe("lime");
+    expect(badgeTier("first_session")).toBe("bronze");
+    expect(badgeTier("streak_7")).toBe("steel");
+    expect(badgeTier("streak_30")).toBe("gold");
+    expect(badgeTier("streak_100")).toBe("gold");
+    expect(badgeTier("lift_200kg")).toBe("gold");
     expect(badgeRibbon("pads_250")).toBe("Pads");
   });
 
