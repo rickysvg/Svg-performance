@@ -19,6 +19,7 @@ const PROTECTED = [
   "/journal",
   "/report",
   "/heart",
+  "/timer",
 ];
 
 const PUBLIC_FILE = /\.(webp|png|jpe?g|gif|svg|ico|mp4|webm|woff2?)$/i;
@@ -34,12 +35,14 @@ export function proxy(request: NextRequest) {
   if (!isProtected) {
     return NextResponse.next();
   }
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-svg-path", pathname);
   if (!request.cookies.get(SESSION_COOKIE)?.value) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
@@ -60,6 +63,7 @@ export const config = {
     "/journal/:path*",
     "/report/:path*",
     "/heart/:path*",
+    "/timer/:path*",
     "/home",
     "/training",
     "/progress",
@@ -76,5 +80,6 @@ export const config = {
     "/journal",
     "/report",
     "/heart",
+    "/timer",
   ],
 };

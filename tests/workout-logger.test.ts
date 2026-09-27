@@ -58,7 +58,7 @@ describe("workout logger media and previous loads", () => {
         logMode: "load_timed",
         name: "Farmer carry",
       }),
-    ).toBe("3 × 30–40s @ lbs, 90s rest");
+    ).toBe("3 × 30–40s, 90s rest");
     expect(
       plannedSetLine({
         sets: 8,
@@ -198,7 +198,7 @@ describe("workout logger media and previous loads", () => {
     expect(stranger["Goblet squat"]?.[1]?.loadValue).not.toBe(40);
   });
 
-  it("starts a new session with empty set values (null reps, load, duration)", async () => {
+  it("starts a new session without storing empty planned rows", async () => {
     const user = await makeUser("empty-sets@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -207,15 +207,10 @@ describe("workout logger media and previous loads", () => {
       programDayId: day.id,
       preferredUnits: "lb",
     });
-    expect(draft.sets.length).toBeGreaterThan(0);
-    expect(draft.sets.some((set) => set.exerciseName === "Goblet squat")).toBe(true);
-    expect(draft.sets.some((set) => set.exerciseName === "Front plank")).toBe(true);
-    for (const set of draft.sets) {
-      expect(set.reps, set.exerciseName).toBeNull();
-      expect(set.loadValue, set.exerciseName).toBeNull();
-      expect(set.durationSeconds, set.exerciseName).toBeNull();
-      expect(set.completed, set.exerciseName).toBe(false);
-    }
+    expect(draft.sets).toHaveLength(0);
+    expect(draft.title.startsWith("DEMO")).toBe(false);
+    expect(day.exercises.some((exercise) => exercise.name === "Goblet squat")).toBe(true);
+    expect(day.exercises.some((exercise) => exercise.name === "Front plank")).toBe(true);
   });
 
   it("does not save an empty lift as completed or as zero", async () => {
@@ -247,10 +242,7 @@ describe("workout logger media and previous loads", () => {
         },
       ],
     });
-    expect(saved.sets[0]?.reps).toBeNull();
-    expect(saved.sets[0]?.loadValue).toBeNull();
-    expect(saved.sets[0]?.durationSeconds).toBeNull();
-    expect(saved.sets[0]?.completed).toBe(false);
+    expect(saved.sets).toHaveLength(0);
   });
 
   it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {
@@ -262,14 +254,11 @@ describe("workout logger media and previous loads", () => {
       programDayId: day.id,
       preferredUnits: "lb",
     });
-    const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
-    const band = draft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
-    expect(carry.length).toBeGreaterThan(0);
-    expect(carry[0]?.logMode).toBe("load_timed");
-    expect(carry[0]?.durationSeconds).toBeNull();
-    expect(carry[0]?.loadValue).toBeNull();
-    expect(carry[0]?.reps).toBeNull();
-    expect(band[0]?.logMode).toBe("reps_only");
+    const carry = day.exercises.find((exercise) => exercise.name === "Farmer carry");
+    const band = day.exercises.find((exercise) => exercise.name === "Band pull-apart or face pull");
+    expect(carry?.logMode).toBe("load_timed");
+    expect(band?.logMode).toBe("reps_only");
+    expect(draft.sets).toHaveLength(0);
 
     const saved = await updateWorkoutSessionForUser({
       userId: user.id,

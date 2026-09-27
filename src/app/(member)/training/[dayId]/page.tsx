@@ -20,7 +20,7 @@ import {
 import { lookupFormVideo } from "@/lib/form-videos";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
-import { CoachCredit } from "@/components/training/CoachCredit";
+import { CoachCredit, ProgramCredit } from "@/components/training/CoachCredit";
 
 export default async function TrainingDayPage({
   params,
@@ -49,6 +49,10 @@ export default async function TrainingDayPage({
   const equipment = equipmentForExercises(day.exercises.map((exercise) => exercise.name));
   const minutes = estimateSessionMinutes(day.exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
   const startLabel = draft ? "Continue" : "Start Now";
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),
@@ -79,13 +83,13 @@ export default async function TrainingDayPage({
             <h1 className="text-2xl leading-tight">{day.title}</h1>
             <p className="mt-1 text-sm text-muted">{day.focus}</p>
             <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
-              {scaleCopy(
-                scaleBandFromPrefs({
-                  experienceLevel: profile?.experienceLevel,
-                  competitionStatus: profile?.competitionStatus,
-                }),
-              )}
+              {scaleCopy(band)}
             </p>
+            {band !== "beginner" ? (
+              <p className="mt-2 text-sm text-muted">
+                Sets and rest are stepped up from the beginner plan for your level. The exercises stay the same.
+              </p>
+            ) : null}
           </div>
           {draft ? (
             <Link
@@ -111,6 +115,7 @@ export default async function TrainingDayPage({
         />
 
         <EquipmentRow chips={equipment} />
+        <ProgramCredit names={day.exercises.map((exercise) => exercise.name)} />
       </section>
 
       <ol className="flex-1 border-t border-line pb-32">

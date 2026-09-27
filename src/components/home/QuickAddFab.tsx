@@ -105,7 +105,7 @@ export function QuickAddFab({
         aria-expanded={open}
         aria-label={open ? "Close quick add" : "Quick add"}
         onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent p-0 text-black"
+        className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent p-0 text-black"
       >
         {open ? <CloseGlyph /> : <PlusGlyph />}
       </button>

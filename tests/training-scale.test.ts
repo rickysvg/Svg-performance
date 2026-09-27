@@ -228,15 +228,20 @@ describe("scaled DEMO days in the database", () => {
       preferredUnits: "lb",
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
     });
-    const beginnerPlank = beginner.sets.filter((set) => set.exerciseName === "Front plank");
-    const advancedPlank = advanced.sets.filter((set) => set.exerciseName === "Front plank");
-    expect(beginnerPlank).toHaveLength(3);
-    expect(advancedPlank).toHaveLength(4);
-    expect(beginnerPlank[0]?.logMode).toBe("timed");
-    expect(advancedPlank[0]?.logMode).toBe("timed");
-    expect(advancedPlank[0]?.durationSeconds).toBeNull();
-    expect(advancedPlank[0]?.reps).toBeNull();
-    expect(advancedPlank[0]?.loadValue).toBeNull();
+    expect(beginner.sets).toHaveLength(0);
+    expect(advanced.sets).toHaveLength(0);
+    const beginnerDay = scaleProgramDay(
+      { ...day, exercises: day.exercises },
+      { band: "beginner", programSlug: "demo-strength-base" },
+    );
+    const advancedDay = scaleProgramDay(
+      { ...day, exercises: day.exercises },
+      { band: "advanced", programSlug: "demo-strength-base" },
+    );
+    expect(beginnerDay.exercises.find((row) => row.name === "Front plank")?.sets).toBe(3);
+    expect(advancedDay.exercises.find((row) => row.name === "Front plank")?.sets).toBe(4);
+    expect(beginnerDay.exercises.find((row) => row.name === "Front plank")?.logMode).toBe("timed");
+    expect(advancedDay.exercises.find((row) => row.name === "Front plank")?.logMode).toBe("timed");
 
     const scaled = scaleProgramDay(
       { ...day, exercises: day.exercises },

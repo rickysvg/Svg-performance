@@ -165,7 +165,8 @@ describe("coaching experience", () => {
     expect(report.wrap.workoutsLogged).toBe(1);
     expect(report.strengthNote).toMatch(/Goblet squat/i);
     expect(report.copy).toMatch(/Automated SVG summary/);
-    expect(report.copy).toMatch(/Not a message from Ricky/);
+    expect(report.copy).toMatch(/AI coach trained on striking, grappling, strength and conditioning, and fight mindset/);
+    expect(report.copy).not.toMatch(/not Ricky/i);
     expect(JSON.stringify(report.wrap)).not.toMatch(/Secret burrito/i);
     expect(report.coachComment).toBe("");
   });

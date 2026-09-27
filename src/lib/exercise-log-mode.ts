@@ -156,7 +156,7 @@ export function plannedSetLine(input: {
     return `${countLabel(input.sets, "round")} × ${input.reps}${rest}`;
   }
   if (mode === "load_timed") {
-    return `${input.sets} × ${carryDurationLabel(input.reps)} @ lbs${rest}`;
+    return `${input.sets} × ${carryDurationLabel(input.reps)}${rest}`;
   }
   if (mode === "timed") {
     if (input.sets === 1 && input.restSeconds <= 0 && isSingleClockBlock(input.reps)) {

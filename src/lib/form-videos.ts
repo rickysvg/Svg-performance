@@ -186,16 +186,16 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     title: "Neck extension / GHR reverse-plank",
   },
   "Banded DB front-rack march": {
-    url: "https://www.youtube.com/watch?v=n8h-FheN2p4",
-    pending: false,
+    url: "",
+    pending: true,
     channel: "Phil Daru / Daru Strong",
-    title: "Banded front-rack march",
+    title: "No separate form video yet",
   },
   "Bent-over DB shrug": {
-    url: "https://www.youtube.com/watch?v=n8h-FheN2p4",
-    pending: false,
+    url: "",
+    pending: true,
     channel: "Phil Daru / Daru Strong",
-    title: "Bent-over DB shrug",
+    title: "No separate form video yet",
   },
   "Jump rope or easy bike intervals": {
     url: "https://www.youtube.com/watch?v=FJmRQ5iTXKE",
@@ -403,6 +403,10 @@ export function lookupFormVideo(
   name: string,
   exercises?: Array<{ name: string; formVideoUrl: string; formVideoPending: boolean }>,
 ): FormVideoLookup {
+  const catalog = formVideoFieldsFor(name);
+  if (catalog.formVideoPending) {
+    return { url: "", pending: true };
+  }
   const fromDay = exercises?.find((row) => row.name === name);
   if (
     fromDay?.formVideoUrl &&
@@ -411,6 +415,5 @@ export function lookupFormVideo(
   ) {
     return { url: fromDay.formVideoUrl, pending: false };
   }
-  const seeded = formVideoFieldsFor(name);
-  return { url: seeded.formVideoUrl, pending: seeded.formVideoPending };
+  return { url: catalog.formVideoUrl, pending: catalog.formVideoPending };
 }

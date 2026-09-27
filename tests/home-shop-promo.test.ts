@@ -52,7 +52,7 @@ describe("Home shop promo", () => {
     );
     expect(source).toContain('from "next/image"');
     expect(source).toContain("<Image");
-    expect(source).toContain('sizes="(max-width: 390px) 32vw, (max-width: 640px) 30vw, 180px"');
+    expect(source).toContain('sizes="480px"');
     expect(source).toContain("product.shortName");
     expect(source).toContain("Tap to shop on svgandco.com");
     expect(HOME_SHOP_PRODUCTS.map((row) => row.shortName)).toEqual([

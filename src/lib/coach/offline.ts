@@ -20,6 +20,24 @@ function missedCount(text: string) {
   return "";
 }
 
+export const COACH_IDENTITY =
+  "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset.";
+
+export const OFFLINE_NOTICE =
+  "SVG Coach is offline right now. This is a saved reply, not a live answer.";
+
+export function isCoachIdentityAsk(text: string) {
+  return /\b(are you|r u|you'?re)\s+ricky\b|\bwho are you\b|\bwhat are you\b|\bricky maynez\b/i.test(
+    text,
+  );
+}
+
+export function withOfflineNotice(text: string) {
+  const body = text.trim();
+  if (!body || body.startsWith("Stop.") || body.startsWith(OFFLINE_NOTICE)) return body;
+  return `${OFFLINE_NOTICE} ${body}`;
+}
+
 export function matchCoachIntent(text: string) {
   const body = text.toLowerCase();
   if (/missed|skip(ped)?|fell off|inconsistent/.test(body)) return "missed";
@@ -140,6 +158,9 @@ export function offlineReply(
 ) {
   const scoped = parseScopedNote(message);
   const question = scoped.question || message;
+  if (!scoped.exercise && isCoachIdentityAsk(question)) {
+    return `${COACH_IDENTITY} Ask about training and I will help with the next session.`;
+  }
   if (scoped.exercise) {
     return cueForExercise(scoped.exercise);
   }

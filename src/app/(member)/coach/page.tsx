@@ -135,6 +135,7 @@ export default async function CoachPage({
           </div>
 
           <CoachLiveThread
+            key={thread.id}
             topic={topic!}
             art={art}
             lane={lane}

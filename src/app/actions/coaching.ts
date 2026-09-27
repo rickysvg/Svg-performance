@@ -33,7 +33,7 @@ export async function saveWeeklyCommentAction(
       body: String(formData.get("body") ?? ""),
     });
     refreshCoaching(String(formData.get("memberUserId") ?? ""));
-    return { success: "Comment saved. Empty until you write it — we do not invent Ricky’s voice." };
+    return { success: "Comment saved. It stays empty until you write it." };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

@@ -12,6 +12,28 @@ import {
 } from "@/lib/timezone";
 
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
+
+export function mealTypeLabel(value: string) {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/** Breakfast before 10, lunch before 15, dinner before 21, otherwise a snack. */
+export function defaultMealType(date: Date, timeZone: string) {
+  const hour = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    hourCycle: "h23",
+  })
+    .formatToParts(date)
+    .find((part) => part.type === "hour")?.value;
+  const value = Number(hour);
+  const clock = Number.isFinite(value) ? value : date.getUTCHours();
+  if (clock < 10) return "breakfast";
+  if (clock < 15) return "lunch";
+  if (clock < 21) return "dinner";
+  return "snack";
+}
 export type MealType = (typeof MEAL_TYPES)[number];
 
 export const NUTRITION_SOURCE = "manual_estimate";

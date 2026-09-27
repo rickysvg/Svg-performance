@@ -7,6 +7,7 @@ import { progressPhotoRoot } from "@/lib/progress-photos";
 import { trainingClipRoot } from "@/lib/clips";
 import type { PublicUser } from "@/lib/auth";
 import { isDeleteConfirmation } from "@/lib/account-confirm";
+import { profileReminderOffset } from "@/lib/reminders";
 
 export { accountExportFilename, isDeleteConfirmation } from "@/lib/account-confirm";
 
@@ -174,6 +175,7 @@ export async function exportAccountData(userId: string) {
     prisma.metricEvent.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
   ]);
 
+  const reminderOffset = await profileReminderOffset(userId);
   return jsonSafe({
     exportedAt: new Date().toISOString(),
     account: user,
@@ -199,7 +201,9 @@ export async function exportAccountData(userId: string) {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     })),
-    reminderPrefs,
+    reminderPrefs: reminderPrefs
+      ? { ...reminderPrefs, timezoneOffsetMinutes: reminderOffset }
+      : null,
     coachAssignments: [
       ...coachAsMember.map((row) => ({ side: "member" as const, createdAt: row.createdAt })),
       ...coachAsCoach.map((row) => ({ side: "coach" as const, createdAt: row.createdAt })),

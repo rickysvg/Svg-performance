@@ -142,7 +142,7 @@ describe("SVG Coach streaming", () => {
     controller.abort();
     const cut = await pending;
     expect(cut.cutoff).toBe(true);
-    expect(cut.content).toContain("[Stopped");
+    expect(cut.content).toContain(STREAM_STOPPED_MARKER.trim());
     const after = await prisma.exerciseNote.findFirst({
       where: { userId: user.id, exerciseName: "Front plank" },
     });

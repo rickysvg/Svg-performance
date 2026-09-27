@@ -44,7 +44,7 @@ export function MemberFrame({
           currentPath={pathname}
           centerAction={
             shouldHideQuickAdd(pathname) ? (
-              <span className="h-10 w-10" aria-hidden />
+              <span className="h-11 w-11" aria-hidden />
             ) : (
               <QuickAddFab variant="inline" />
             )

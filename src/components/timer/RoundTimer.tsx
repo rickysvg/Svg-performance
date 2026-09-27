@@ -29,12 +29,33 @@ const MODE_LABEL: Record<TimerMode, string> = {
   grappling: "Grappling",
 };
 
-function playTone(frequency: number, duration = 0.16, type: OscillatorType = "sine") {
-  const AudioCtx =
+function audioConstructor() {
+  return (
     window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtx) return;
-  const ctx = new AudioCtx();
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  );
+}
+
+let sharedAudio: AudioContext | null = null;
+
+function sharedAudioContext() {
+  if (sharedAudio) return sharedAudio;
+  const AudioCtx = audioConstructor();
+  if (!AudioCtx) return null;
+  sharedAudio = new AudioCtx();
+  return sharedAudio;
+}
+
+export function unlockTimerAudio() {
+  const ctx = sharedAudioContext();
+  if (ctx && ctx.state === "suspended") void ctx.resume();
+  return ctx;
+}
+
+function playTone(frequency: number, duration = 0.16, type: OscillatorType = "sine") {
+  const ctx = sharedAudioContext();
+  if (!ctx) return;
+  if (ctx.state === "suspended") void ctx.resume();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
@@ -42,11 +63,9 @@ function playTone(frequency: number, duration = 0.16, type: OscillatorType = "si
   gain.gain.value = 0.05;
   osc.connect(gain);
   gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + duration);
-  osc.onended = () => {
-    void ctx.close();
-  };
+  const startAt = ctx.currentTime;
+  osc.start(startAt);
+  osc.stop(startAt + duration);
 }
 
 function playBell() {
@@ -77,6 +96,7 @@ export function RoundTimer() {
   const [pauseAccumulatedMs, setPauseAccumulatedMs] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [customDraft, setCustomDraft] = useState(DEFAULT_CUSTOM);
+  const [canVibrate, setCanVibrate] = useState(false);
   const prev = useRef<{ remaining: number; phase: TimerPhase }>({ remaining: 0, phase: "idle" });
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
 
@@ -86,6 +106,7 @@ export function RoundTimer() {
       const custom = parseStoredCustom(window.localStorage.getItem(TIMER_CUSTOM_STORAGE_KEY));
       setPrefs({ ...stored, custom });
       setCustomDraft(custom);
+      setCanVibrate(typeof navigator.vibrate === "function");
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
@@ -176,6 +197,7 @@ export function RoundTimer() {
   }, [prefs.bell, prefs.vibrate, prefs.warningBeep, resolved.phase, resolved.remainingSeconds, startedAtMs]);
 
   const startOrPause = useCallback(() => {
+    unlockTimerAudio();
     const stamp = Date.now();
     if (startedAtMs == null || resolved.phase === "done") {
       setStartedAtMs(stamp);
@@ -282,7 +304,7 @@ export function RoundTimer() {
       </div>
 
       {prefs.preset === "custom" ? (
-        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-card p-3">
+        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-card p-3 sm:grid-cols-3">
           <Stepper
             label="Rounds"
             value={customDraft.rounds}
@@ -290,19 +312,17 @@ export function RoundTimer() {
             min={1}
             max={20}
           />
-          <Stepper
-            label="Work min"
-            value={Math.round(customDraft.workSeconds / 60)}
-            onChange={(minutes) => persistCustom({ ...customDraft, workSeconds: minutes * 60 })}
-            min={1}
-            max={15}
+          <ClockField
+            label="Round"
+            totalSeconds={customDraft.workSeconds}
+            onChange={(workSeconds) => persistCustom({ ...customDraft, workSeconds })}
+            minSeconds={5}
           />
-          <Stepper
-            label="Rest min"
-            value={Math.round(customDraft.restSeconds / 60)}
-            onChange={(minutes) => persistCustom({ ...customDraft, restSeconds: minutes * 60 })}
-            min={1}
-            max={10}
+          <ClockField
+            label="Rest"
+            totalSeconds={customDraft.restSeconds}
+            onChange={(restSeconds) => persistCustom({ ...customDraft, restSeconds })}
+            minSeconds={0}
           />
         </div>
       ) : null}
@@ -357,14 +377,16 @@ export function RoundTimer() {
           on={prefs.bell}
           onClick={() => setPrefs((current) => ({ ...current, bell: !current.bell }))}
         />
-        <Toggle
-          label="Vibrate"
-          on={prefs.vibrate}
-          onClick={() => setPrefs((current) => ({ ...current, vibrate: !current.vibrate }))}
-        />
+        {canVibrate ? (
+          <Toggle
+            label="Vibrate"
+            on={prefs.vibrate}
+            onClick={() => setPrefs((current) => ({ ...current, vibrate: !current.vibrate }))}
+          />
+        ) : null}
       </div>
 
-      <div className="flex items-center justify-center gap-8">
+      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-10 flex items-center justify-center gap-8 rounded-3xl bg-background/95 py-3">
         <button
           type="button"
           onClick={reset}
@@ -416,6 +438,47 @@ function Toggle({
       {on ? "✓ " : ""}
       {label}
     </button>
+  );
+}
+
+function ClockField({
+  label,
+  totalSeconds,
+  onChange,
+  minSeconds,
+}: {
+  label: string;
+  totalSeconds: number;
+  onChange: (totalSeconds: number) => void;
+  minSeconds: number;
+}) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  function commit(nextMinutes: number, nextSeconds: number) {
+    const total = Math.min(30 * 60, Math.max(minSeconds, nextMinutes * 60 + nextSeconds));
+    onChange(total);
+  }
+  return (
+    <div className="col-span-1 text-center text-xs uppercase tracking-wide text-muted">
+      {label}
+      <span className="mt-2 flex items-center justify-center gap-1 text-foreground">
+        <Stepper
+          label="min"
+          value={minutes}
+          onChange={(value) => commit(value, seconds)}
+          min={0}
+          max={30}
+        />
+        <span className="pb-1 text-lg">:</span>
+        <Stepper
+          label="sec"
+          value={seconds}
+          onChange={(value) => commit(minutes, value)}
+          min={0}
+          max={59}
+        />
+      </span>
+    </div>
   );
 }
 

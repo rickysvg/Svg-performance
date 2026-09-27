@@ -32,9 +32,9 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted">Optional · step 2 of 2</p>
+        <p className="text-xs uppercase tracking-wide text-muted">Optional details · step 2 of 2</p>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">
-          <div className="h-full w-1/2 rounded-full bg-accent/70" />
+          <div className="h-full w-full rounded-full bg-accent" />
         </div>
         <p className="mt-2 text-xs text-muted">
           Skip any or all of this. Skipping still finishes onboarding and opens Home.

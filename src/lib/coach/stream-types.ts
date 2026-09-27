@@ -1,5 +1,4 @@
-export const STREAM_STOPPED_MARKER =
-  "\n\n[Stopped — this reply was cut off.]";
+export const STREAM_STOPPED_MARKER = "\n\nStopped";
 
 export const STREAM_FAIL_COPY =
   "SVG Coach could not finish that reply. Check your connection and try again.";

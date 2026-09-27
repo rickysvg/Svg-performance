@@ -5,8 +5,8 @@ import { shouldHideQuickAdd } from "@/lib/quick-add";
 
 describe("quick-add floating button", () => {
   it("hides on Coach and active exercise screens", () => {
-    expect(shouldHideQuickAdd("/coach")).toBe(true);
-    expect(shouldHideQuickAdd("/coach?topic=mental")).toBe(true);
+    expect(shouldHideQuickAdd("/coach")).toBe(false);
+    expect(shouldHideQuickAdd("/coach?topic=mental")).toBe(false);
     expect(shouldHideQuickAdd("/training/cmug54xj00001jsgs1t9bjl0p")).toBe(true);
     expect(shouldHideQuickAdd("/training/log/abc123")).toBe(true);
     expect(shouldHideQuickAdd("/training/log/abc123/done")).toBe(false);
@@ -38,7 +38,7 @@ describe("quick-add floating button", () => {
     expect(fab).toContain("data-quick-add-fab");
     expect(fab).toContain('href="/timer"');
     expect(fab).toContain("Round timer");
-    expect(fab).toContain("h-10 w-10");
+    expect(fab).toContain("h-11 w-11");
     expect(fab).toContain("data-plus-glyph");
     expect(fab).toContain("items-center justify-center");
     expect(fab).not.toMatch(/>\s*\+\s*</);

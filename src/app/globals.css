@@ -174,8 +174,10 @@ body:has(.app-splash.is-visible) {
   border: 0;
   outline: none;
   box-shadow: none;
-  /* Overscan hides encoder edges so the square never reads as a card. */
-  transform: scale(1.08);
+  /* Overscan plus a soft mask so the glow edge feathers instead of clipping hard. */
+  transform: scale(1.04);
+  -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 58%, transparent 100%);
 }
 
 .app-splash-still {

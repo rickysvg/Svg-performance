@@ -208,6 +208,49 @@ export async function resolveRequestTimeZone(saved?: string | null) {
   return resolveSavedOrCookieTimeZone(saved, await readTimeZoneCookie());
 }
 
+export function formatDateTime(date: Date, timeZone: string) {
+  const zone = isValidTimeZone(timeZone) ? timeZone : "UTC";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+/** `datetime-local` value for a real instant in the athlete's zone. */
+export function datetimeLocalValue(date: Date, timeZone: string) {
+  const parts = zonedParts(date, timeZone);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
+}
+
+/** Parse a `datetime-local` wall time in `timeZone` into a UTC instant. */
+export function parseZonedDateTime(value: string, timeZone: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+  const zone = isValidTimeZone(timeZone) ? timeZone : "UTC";
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0);
+  let instant = utcGuess - zoneOffsetMs(new Date(utcGuess), zone);
+  instant = utcGuess - zoneOffsetMs(new Date(instant), zone);
+  return new Date(instant);
+}
+
+/** Minutes to add to local wall time to reach UTC. Denver MDT is 360. */
+export function offsetMinutesForZone(date: Date, timeZone: string) {
+  const zone = isValidTimeZone(timeZone) ? timeZone : "UTC";
+  return Math.round(-zoneOffsetMs(date, zone) / 60000);
+}
+
 export function athleteLocalDayLine(now: Date, timeZone: string) {
   const today = getUserToday(now, timeZone);
   return `Athlete local day: ${today.weekday} ${today.dayKey} (${today.timeZone}).`;

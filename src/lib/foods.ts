@@ -16,7 +16,7 @@ export type DemoFood = {
 export const DEMO_FOODS: DemoFood[] = [
   {
     id: "demo-chicken-breast",
-    name: "DEMO — Chicken breast, cooked",
+    name: "Chicken breast, cooked",
     servingLabel: "4 oz",
     calories: 180,
     proteinG: 35,
@@ -26,7 +26,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-ground-turkey",
-    name: "DEMO — Ground turkey, cooked",
+    name: "Ground turkey, cooked",
     servingLabel: "4 oz",
     calories: 190,
     proteinG: 28,
@@ -36,7 +36,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-salmon",
-    name: "DEMO — Salmon, cooked",
+    name: "Salmon, cooked",
     servingLabel: "4 oz",
     calories: 230,
     proteinG: 25,
@@ -46,7 +46,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-eggs",
-    name: "DEMO — Eggs, scrambled",
+    name: "Eggs, scrambled",
     servingLabel: "2 eggs",
     calories: 180,
     proteinG: 12,
@@ -56,7 +56,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-greek-yogurt",
-    name: "DEMO — Plain Greek yogurt",
+    name: "Plain Greek yogurt",
     servingLabel: "1 cup",
     calories: 130,
     proteinG: 20,
@@ -66,7 +66,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-protein-shake",
-    name: "DEMO — Whey protein shake",
+    name: "Whey protein shake",
     servingLabel: "1 scoop in water",
     calories: 120,
     proteinG: 24,
@@ -76,7 +76,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-white-rice",
-    name: "DEMO — White rice, cooked",
+    name: "White rice, cooked",
     servingLabel: "1 cup",
     calories: 200,
     proteinG: 4,
@@ -86,7 +86,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-brown-rice",
-    name: "DEMO — Brown rice, cooked",
+    name: "Brown rice, cooked",
     servingLabel: "1 cup",
     calories: 215,
     proteinG: 5,
@@ -96,7 +96,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-oatmeal",
-    name: "DEMO — Oatmeal, cooked",
+    name: "Oatmeal, cooked",
     servingLabel: "1 cup",
     calories: 160,
     proteinG: 6,
@@ -106,7 +106,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-sweet-potato",
-    name: "DEMO — Sweet potato, baked",
+    name: "Sweet potato, baked",
     servingLabel: "1 medium",
     calories: 110,
     proteinG: 2,
@@ -116,7 +116,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-black-beans",
-    name: "DEMO — Black beans, cooked",
+    name: "Black beans, cooked",
     servingLabel: "1/2 cup",
     calories: 110,
     proteinG: 7,
@@ -126,7 +126,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-banana",
-    name: "DEMO — Banana",
+    name: "Banana",
     servingLabel: "1 medium",
     calories: 105,
     proteinG: 1,
@@ -136,7 +136,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-apple",
-    name: "DEMO — Apple",
+    name: "Apple",
     servingLabel: "1 medium",
     calories: 95,
     proteinG: 0,
@@ -146,7 +146,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-avocado",
-    name: "DEMO — Avocado",
+    name: "Avocado",
     servingLabel: "1/2 fruit",
     calories: 120,
     proteinG: 1,
@@ -156,7 +156,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-peanut-butter",
-    name: "DEMO — Peanut butter",
+    name: "Peanut butter",
     servingLabel: "1 tbsp",
     calories: 95,
     proteinG: 4,
@@ -166,7 +166,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-broccoli",
-    name: "DEMO — Broccoli, cooked",
+    name: "Broccoli, cooked",
     servingLabel: "1 cup",
     calories: 55,
     proteinG: 4,
@@ -176,7 +176,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-mixed-salad",
-    name: "DEMO — Mixed green salad, no dressing",
+    name: "Mixed green salad, no dressing",
     servingLabel: "2 cups",
     calories: 20,
     proteinG: 2,
@@ -186,7 +186,7 @@ export const DEMO_FOODS: DemoFood[] = [
   },
   {
     id: "demo-tortilla",
-    name: "DEMO — Whole wheat tortilla",
+    name: "Whole wheat tortilla",
     servingLabel: "1 medium",
     calories: 130,
     proteinG: 4,

@@ -37,7 +37,7 @@ describe("food search and saved meals", () => {
     expect(rice.some((row) => row.kind === "demo" && row.name.includes("rice"))).toBe(
       true,
     );
-    expect(DEMO_FOODS.every((food) => food.name.startsWith("DEMO"))).toBe(true);
+    expect(DEMO_FOODS.every((food) => !food.name.startsWith("DEMO"))).toBe(true);
     expect(getDemoFoodById("demo-chicken-breast")?.calories).toBe(180);
   });
 

@@ -5,12 +5,13 @@ import { useActionState } from "react";
 import { loginAction, type ActionState } from "@/app/actions/auth";
 import { StatusBanner } from "@/components/StatusBanner";
 
-export function LoginForm({ notice }: { notice?: string }) {
+export function LoginForm({ notice, nextPath }: { notice?: string; nextPath?: string }) {
   const [state, action, pending] = useActionState(loginAction, {} as ActionState);
 
   return (
     <form action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} success={notice} />
+      {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
       <label className="block">
         <span className="text-sm font-medium">Email</span>
         <input

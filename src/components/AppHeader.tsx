@@ -79,13 +79,13 @@ function DockLink({
     <Link
       href={href}
       data-dock-link={label}
-      className={`font-display flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 uppercase leading-none tracking-[0.06em] ${
+      className={`font-display flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 uppercase leading-none tracking-[0.06em] ${
         active ? "bg-accent text-black" : "text-muted hover:text-foreground"
       }`}
       aria-current={active ? "page" : undefined}
     >
       {Icon ? <Icon /> : null}
-      <span className="text-[9px]">{label}</span>
+      <span className="text-[11px]">{label}</span>
     </Link>
   );
 }
@@ -134,16 +134,16 @@ export function AppHeader({
             ) : null}
           </div>
         ) : null}
-        <div className="mx-auto flex max-w-3xl items-center gap-1 px-2 py-1.5">
+        <div className="mx-auto grid max-w-3xl grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-end gap-1 px-2 py-1.5">
           <Link
             href={homeHref ?? "/home"}
-            className="flex shrink-0 items-center justify-center px-1"
+            className="flex h-11 w-11 items-center justify-center"
           >
             <Logo variant="mark" size="sm" />
           </Link>
           <nav
             aria-label="Account"
-            className="grid min-w-0 flex-1 grid-cols-5 items-end"
+            className="grid min-w-0 grid-cols-5 items-end"
           >
             {BOTTOM_DOCK_LEFT.map((link) => (
               <DockLink
@@ -163,6 +163,7 @@ export function AppHeader({
               />
             ))}
           </nav>
+          <span className="h-11 w-11" aria-hidden />
         </div>
       </header>
     );

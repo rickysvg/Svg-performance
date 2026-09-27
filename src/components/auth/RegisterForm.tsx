@@ -70,6 +70,7 @@ export function RegisterForm() {
           minLength={8}
           className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
         />
+        <span className="mt-1 block text-xs text-muted">At least 8 characters.</span>
       </label>
       <label className="block">
         <span className="text-sm font-medium">Confirm password</span>

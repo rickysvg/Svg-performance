@@ -238,32 +238,31 @@ export async function startWorkoutFromDay(input: {
     },
     { band, programSlug: rawDay.program.slug },
   );
-  const sets = day.exercises.flatMap((exercise) => {
-    const mode = resolveLogMode(exercise);
-    return Array.from({ length: exercise.sets }, (_, index) => ({
-      exerciseName: exercise.name,
-      setNumber: index + 1,
-      sortOrder: (exercise.sortOrder ?? 0) * 10 + index,
-      reps: null,
-      loadValue: null,
-      loadUnit: input.preferredUnits,
-      logMode: mode,
-      durationSeconds: null,
-      completed: false,
-    }));
-  });
-
   return prisma.workoutSession.create({
     data: {
       userId: input.userId,
       programDayId: day.id,
-      title: day.program.isDemo ? `DEMO — ${day.title}` : day.title,
+      title: day.title.replace(/^DEMO\s+[—-]\s+/i, ""),
       performedAt: new Date(),
       status: "draft",
-      sets: { create: sets },
     },
     include: { sets: true },
   });
+}
+
+export function loggedSetCount(
+  sets: Array<{
+    reps?: number | null;
+    loadValue?: number | null;
+    durationSeconds?: number | null;
+    completed?: boolean;
+    logMode?: string | null;
+    exerciseName?: string | null;
+  }>,
+) {
+  return sets.filter(
+    (set) => set.reps != null || set.loadValue != null || set.durationSeconds != null,
+  ).length;
 }
 
 function setHasAthleteLog(set: WorkoutSetInput, mode: LogMode) {
@@ -325,7 +324,16 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  validateSets(input.sets);
+  const kept = input.sets.filter((set) => {
+    const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
+    if (isBikeIntervalName(set.exerciseName)) {
+      return set.durationSeconds != null || set.reps != null || set.loadValue != null;
+    }
+    return setHasAthleteLog(set, mode);
+  });
+  if (kept.length > 0 || input.status === "complete") {
+    validateSets(kept);
+  }
 
   const title = input.title.trim().slice(0, 120) || "Workout";
   const notes = input.notes.trim().slice(0, 1000);
@@ -349,7 +357,7 @@ export async function updateWorkoutSessionForUser(input: {
             ? existing.difficultyRating
             : parseDifficultyRating(input.difficultyRating) ?? "",
         sets: {
-          create: input.sets.map((set, index) => {
+          create: kept.map((set, index) => {
             const mode = resolveLogMode({
               logMode: set.logMode,
               name: set.exerciseName,

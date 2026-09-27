@@ -168,7 +168,7 @@ export function coreSkeletonSessions(
   if (weekday === "Wednesday") {
     const sessions: PlanSessionSlot[] = [];
     if (striking) {
-      sessions.push(skillSlot(bagDayNumber(art, "power"), "Bag / pads power"));
+      sessions.push(skillSlot(bagDayNumber(art, "technique"), "Bag / pads technique"));
     }
     sessions.push(strengthSlot(3, "Strength — pull / posterior"));
     return sessions;
@@ -246,8 +246,7 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
 
   for (const weekday of WEEKDAYS) {
     const optionalDay = weekday === "Saturday";
-    const alwaysOnBike = weekday === "Tuesday" || weekday === "Thursday";
-    const active = weekday === "Sunday" ? false : alwaysOnBike || activeDays.has(weekday);
+    const active = weekday === "Sunday" ? false : activeDays.has(weekday);
     const sessions = coreSkeletonSessions(weekday, focus, weekIndex);
     let skipReason: string | undefined;
     if (!active && weekday !== "Sunday") {

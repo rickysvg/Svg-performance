@@ -202,7 +202,7 @@ export function sessionKindLabel(input: { title: string; focus: string }) {
     return "Skill";
   }
   if (
-    /condition|interval|cardio|gas tank|assault bike|air bike|gpp|alactic|cardiac|tempo bike|endurance bike|bike finisher/.test(
+    /condition|interval|cardio|gas tank|assault bike|air bike|gpp|alactic|cardiac|tempo bike|endurance bike|bike finisher|finisher|10\/20|edwards/.test(
       text,
     )
   ) {

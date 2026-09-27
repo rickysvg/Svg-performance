@@ -25,7 +25,7 @@ export function automatedReportCopy(input: {
   if (input.workoutsLogged === 0) {
     return "Automated SVG summary: a quiet seven days. That is okay. Counts stay at zero until you log something. This is not a report card.";
   }
-  return "Automated SVG summary. Built from workouts, loads, and ratings you logged. Not a message from Ricky.";
+  return "Automated SVG summary. Built from workouts, loads, and ratings you logged. Written by an AI coach trained on striking, grappling, strength and conditioning, and fight mindset.";
 }
 
 export async function getWeeklyProgressReport(userId: string, now = new Date()) {

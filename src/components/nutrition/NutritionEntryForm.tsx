@@ -7,7 +7,7 @@ import {
 } from "@/app/actions/nutrition";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
-import { MEAL_TYPES } from "@/lib/nutrition";
+import { MEAL_TYPES, mealTypeLabel } from "@/lib/nutrition";
 import { searchFoodOptions, type SearchableMeal } from "@/lib/foods";
 
 type Saved = {
@@ -39,8 +39,10 @@ function toDateInput(value?: Date | string) {
 export function NutritionEntryForm({
   savedMeals,
   entry,
+  defaultMeal = "lunch",
 }: {
   savedMeals: Saved[];
+  defaultMeal?: string;
   entry?: {
     id: string;
     name: string;
@@ -114,7 +116,7 @@ export function NutritionEntryForm({
       {!entry ? (
         <div>
           <label className="block text-sm">
-            Search saved meals or DEMO foods
+            Search saved meals or common foods
             <input
               type="search"
               value={query}
@@ -169,12 +171,12 @@ export function NutritionEntryForm({
         Meal
         <select
           name="mealType"
-          defaultValue={entry?.mealType ?? "lunch"}
+          defaultValue={entry?.mealType ?? defaultMeal}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           {MEAL_TYPES.map((type) => (
             <option key={type} value={type}>
-              {type}
+              {mealTypeLabel(type)}
             </option>
           ))}
         </select>

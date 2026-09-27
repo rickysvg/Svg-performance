@@ -109,7 +109,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                 name="equipment"
                 value={item}
                 defaultChecked={profile.equipment.includes(item)}
-                className="h-5 w-5 accent-accent"
+                className="h-6 w-6 accent-accent"
               />
               {item}
             </label>
@@ -127,7 +127,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                 name="weeklyAvailability"
                 value={day}
                 defaultChecked={profile.weeklyAvailability.includes(day)}
-                className="h-5 w-5 accent-accent"
+                className="h-6 w-6 accent-accent"
               />
               {day}
             </label>
@@ -169,7 +169,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                 name="preferredUnits"
                 value={unit}
                 defaultChecked={profile.preferredUnits === unit}
-                className="h-5 w-5 accent-accent"
+                className="h-6 w-6 accent-accent"
               />
               {unit}
             </label>
@@ -276,7 +276,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                   name="sessionLengthMin"
                   value={item.value}
                   defaultChecked={profile.sessionLengthMin === item.value}
-                  className="h-5 w-5 accent-accent"
+                  className="h-6 w-6 accent-accent"
                 />
                 {item.label}
               </label>
@@ -293,7 +293,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                   name="trainingLocation"
                   value={item.value}
                   defaultChecked={profile.trainingLocation === item.value}
-                  className="h-5 w-5 accent-accent"
+                  className="h-6 w-6 accent-accent"
                 />
                 {item.label}
               </label>
@@ -310,7 +310,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                   name="competitionStatus"
                   value={item.value}
                   defaultChecked={profile.competitionStatus === item.value}
-                  className="h-5 w-5 accent-accent"
+                  className="h-6 w-6 accent-accent"
                 />
                 {item.label}
               </label>
@@ -340,7 +340,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                   name="coachingTone"
                   value={item.value}
                   defaultChecked={profile.coachingTone === item.value}
-                  className="h-5 w-5 accent-accent"
+                  className="h-6 w-6 accent-accent"
                 />
                 {item.label}
               </label>
@@ -357,7 +357,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
                   name="obstacles"
                   value={item.value}
                   defaultChecked={profile.obstacles.includes(item.value)}
-                  className="h-5 w-5 accent-accent"
+                  className="h-6 w-6 accent-accent"
                 />
                 {item.label}
               </label>

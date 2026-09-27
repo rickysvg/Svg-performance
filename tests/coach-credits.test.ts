@@ -31,10 +31,15 @@ describe("coach credits", () => {
       expect(ALLOWED_IDS.some((id) => credit!.url.includes(id))).toBe(true);
     }
 
+    const noDedicatedFilm = new Set(["Banded DB front-rack march", "Bent-over DB shrug"]);
     for (const exercise of DARU_EXERCISES) {
       const credit = creditForExercise(exercise.name);
       expect(credit, exercise.name).toBeTruthy();
       expect(credit?.line).toMatch(/Phil Daru \/ Daru Strong/);
+      if (noDedicatedFilm.has(exercise.name)) {
+        expect(credit?.url).toBe("");
+        continue;
+      }
       expect(isYoutubeFormUrl(credit!.url)).toBe(true);
       expect(ALLOWED_IDS.some((id) => credit!.url.includes(id))).toBe(true);
     }

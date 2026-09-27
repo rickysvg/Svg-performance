@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { AppSplash } from "@/components/AppSplash";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 export default async function MarketingPage({
   searchParams,
@@ -12,6 +13,9 @@ export default async function MarketingPage({
   const user = await getCurrentUser();
   const query = await searchParams;
   const deleted = query.deleted === "1";
+  if (user && !deleted) {
+    redirect("/home");
+  }
 
   return (
     <div className="min-h-full">
@@ -100,8 +104,8 @@ export default async function MarketingPage({
               separately.
             </li>
             <li>
-              Draft prices (App Plans, Online Coaching, VIP) are a proposal / Stripe TEST
-              only. There is no live checkout. Paid plans are additional to gym dues.
+              Draft prices (App Plans, Online Coaching, VIP) are a proposal.
+              There is no live checkout yet. Paid plans are additional to gym dues.
             </li>
             <li>SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Weight-cut services are not sold here.</li>
           </ul>

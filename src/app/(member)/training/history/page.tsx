@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
-import { DemoBadge } from "@/components/DemoBadge";
+import { loggedSetCount, listWorkoutSessionsForUser } from "@/lib/workouts";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { formatDateTime } from "@/lib/timezone";
+import { countLabel } from "@/lib/exercise-log-mode";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 
 export default async function HistoryPage() {
   const user = await requireUser();
-  const sessions = await listWorkoutSessionsForUser(user.id);
+  const profile = await getProfileForUser(user.id);
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const sessions = (await listWorkoutSessionsForUser(user.id)).filter(
+    (session) => session.status === "complete" || loggedSetCount(session.sets) > 0,
+  );
 
   return (
     <main className="space-y-6">
@@ -24,9 +30,9 @@ export default async function HistoryPage() {
       {sessions.length === 0 ? (
         <EmptyState
           title="No sessions yet"
-          action={
+            action={
             <Link href="/training" className="text-accent underline">
-              Start a DEMO session
+              Start a session
             </Link>
           }
         >
@@ -41,12 +47,11 @@ export default async function HistoryPage() {
                 className="block min-w-0 flex-1 rounded-2xl border border-line bg-card p-4 hover:border-accent"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold">{session.title}</p>
-                  {session.title.startsWith("DEMO") ? <DemoBadge /> : null}
+                  <p className="font-semibold">{session.title.replace(/^DEMO\s+[—-]\s+/i, "")}</p>
                 </div>
                 <p className="mt-1 text-sm text-muted">
-                  {new Date(session.performedAt).toLocaleString()} · {session.status} ·{" "}
-                  {session.sets.length} sets
+                  {formatDateTime(new Date(session.performedAt), timeZone)} · {session.status} ·{" "}
+                  {countLabel(loggedSetCount(session.sets), "set")}
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
                     : session.status === "complete"

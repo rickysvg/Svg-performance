@@ -48,7 +48,7 @@ export function emptyTodayGuide(selectedDay = new Date(), timeZone?: string) {
     lesson: null,
     checkIn: {
       title: "No check-in on the calendar",
-      body: "This app does not invent Ricky’s schedule. Request a time on Book when you want a human call.",
+      body: "Request a time on Book when you want a call with Ricky.",
       href: "/book",
       kind: "empty" as const,
     },
@@ -89,7 +89,7 @@ export async function getTodayGuide(
 
   let checkIn = {
     title: "No check-in on the calendar",
-    body: "This app does not invent Ricky’s schedule. Request a time on Book when you want a human call.",
+    body: "Request a time on Book when you want a call with Ricky.",
     href: "/book",
     kind: "empty" as "empty" | "credits" | "request" | "help" | "platinum",
   };

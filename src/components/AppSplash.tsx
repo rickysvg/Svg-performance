@@ -52,6 +52,12 @@ export function AppSplash() {
       return;
     }
 
+    try {
+      sessionStorage.setItem(SPLASH_STORAGE_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     reducedRef.current = reduced;
     const { holdMs, exitMs } = splashTimings(reduced);

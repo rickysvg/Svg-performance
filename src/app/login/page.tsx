@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { safeNextPath } from "@/lib/session";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string; changed?: string }>;
+  searchParams: Promise<{ reset?: string; changed?: string; next?: string }>;
 }) {
   const query = await searchParams;
+  const nextPath = safeNextPath(query.next) ?? undefined;
   const notice = query.reset
     ? "Password updated. Log in with the new password."
     : query.changed
@@ -22,7 +24,7 @@ export default async function LoginPage({
         <p className="mt-2 text-sm text-muted">
           Welcome back. Your workouts stay on this account.
         </p>
-        <LoginForm notice={notice} />
+        <LoginForm notice={notice} nextPath={nextPath} />
         <p className="mt-6 text-sm text-muted">
           New here?{" "}
           <Link href="/register" className="text-accent underline-offset-4 hover:underline">

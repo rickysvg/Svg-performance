@@ -40,7 +40,7 @@ export function ReminderPrefsForm({
       <p className="text-xs text-muted">
         {smtpConfigured
           ? "SMTP is configured, so a matching email can go out with the in-app note."
-          : "SMTP is not configured. Reminders stay in-app on Home only."}
+          : "Email reminders are not turned on yet. Reminders stay on Home only."}
       </p>
       <StatusBanner error={state.error} success={state.success} />
       <input type="hidden" name="timezoneOffsetMinutes" value={offset} />

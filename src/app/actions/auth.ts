@@ -16,6 +16,7 @@ import {
   postAuthPath,
   readSessionToken,
   requireUserOrThrow,
+  safeNextPath,
   setSessionCookie,
 } from "@/lib/session";
 
@@ -60,7 +61,9 @@ export async function loginAction(
     );
     const session = await createSessionRecord(user.id);
     await setSessionCookie(session.token, session.expiresAt);
-    nextPath = await postAuthPath(user.id);
+    const onboard = await postAuthPath(user.id);
+    const requested = safeNextPath(String(formData.get("next") ?? ""));
+    nextPath = onboard === "/home" && requested ? requested : onboard;
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

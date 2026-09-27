@@ -36,15 +36,17 @@ export function clampRounds(value: number) {
   return Math.min(20, Math.max(1, Math.round(value)));
 }
 
-export function clampDurationSeconds(value: number) {
-  return Math.min(60 * 30, Math.max(5, Math.round(value)));
+export function clampDurationSeconds(value: number, min = 5) {
+  return Math.min(60 * 30, Math.max(min, Math.round(value)));
 }
 
 export function sanitizeTimerConfig(input: Partial<TimerConfig> | null | undefined): TimerConfig {
+  const work = Number(input?.workSeconds);
+  const rest = Number(input?.restSeconds);
   return {
     rounds: clampRounds(Number(input?.rounds) || DEFAULT_CUSTOM.rounds),
-    workSeconds: clampDurationSeconds(Number(input?.workSeconds) || DEFAULT_CUSTOM.workSeconds),
-    restSeconds: clampDurationSeconds(Number(input?.restSeconds) || DEFAULT_CUSTOM.restSeconds),
+    workSeconds: clampDurationSeconds(Number.isFinite(work) ? work : DEFAULT_CUSTOM.workSeconds, 5),
+    restSeconds: clampDurationSeconds(Number.isFinite(rest) ? rest : DEFAULT_CUSTOM.restSeconds, 0),
   };
 }
 

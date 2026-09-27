@@ -88,7 +88,7 @@ export default async function BookPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Request a mindset or strategy extra</h2>
         <p className="mt-1 text-sm text-muted">
-          List a few preferred times. We do not invent Ricky&apos;s calendar.
+          List a few times that work for you.
           {vipOrPlatinum
             ? " If you still have an included strategy credit, this request will flag it."
             : null}
@@ -102,9 +102,9 @@ export default async function BookPage() {
         <h2>Platinum intensives</h2>
         <p className="mt-2 text-sm text-muted">
           El Paso: {BOOKING_OFFERS.intensive_elpaso.priceLabel}. Travel:{" "}
-          {BOOKING_OFFERS.intensive_travel.priceLabel}. Request stub only — no
+          {BOOKING_OFFERS.intensive_travel.priceLabel}. This is a request only — no
           deposit. Higher-ticket intensives are a main Affirm/Klarna use case
-          once Stripe TEST checkout exists for them; this Book form does not
+          once paid checkout is available; this Book form does not
           fake a loan or a successful buy.
         </p>
         <ul className="mt-3 list-disc pl-5 text-sm text-muted">

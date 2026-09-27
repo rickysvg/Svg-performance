@@ -50,7 +50,7 @@ describe("Home photo tiles", () => {
     );
     expect(source).toContain('from "next/image"');
     expect(source).toContain("<Image");
-    expect(source).toContain('sizes="(max-width: 390px) 50vw, (max-width: 640px) 45vw, 320px"');
+    expect(source).toContain('sizes="640px"');
     expect(source).toContain("min-w-0");
     expect(source).toContain("aspect-[4/3]");
     expect(source).not.toContain("min-h-[9.5rem]");

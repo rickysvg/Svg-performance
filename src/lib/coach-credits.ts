@@ -43,8 +43,8 @@ const BY_NAME: Record<string, CoachCredit> = {
   "Farmer's carry": { line: DARU, url: YT.daruConjugate, svgScaling: true },
   "Banded kettlebell swing": { line: DARU, url: YT.daruKbSwing, svgScaling: true },
   "Neck extension hold": { line: DARU, url: YT.daruNeck, svgScaling: true },
-  "Banded DB front-rack march": { line: DARU, url: YT.daruNeck, svgScaling: false },
-  "Bent-over DB shrug": { line: DARU, url: YT.daruNeck, svgScaling: false },
+  "Banded DB front-rack march": { line: DARU, url: "", svgScaling: false },
+  "Bent-over DB shrug": { line: DARU, url: "", svgScaling: false },
 };
 
 export const COACH_CREDIT_DISCLAIMER =

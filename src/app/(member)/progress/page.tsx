@@ -159,7 +159,7 @@ export default async function ProgressPage() {
         <MetricTile
           title="Sleep"
           value={sleep ? `${sleep.value} ${sleep.unit}` : "—"}
-          hint={sleep ? "Last night, typed by you" : "Manual, or Coming soon — no fake device sync"}
+          hint={sleep ? "Last night, typed by you" : "Type it yourself. Device sync is coming later."}
         />
         <MetricTile
           title="Caloric Intake"
@@ -178,12 +178,12 @@ export default async function ProgressPage() {
         <MetricTile
           title="Lean Body Mass"
           value={lean ? `${lean.value} ${lean.unit}` : "—"}
-          hint={lean ? "Manual estimate" : "Manual, or Coming soon — no fake device sync"}
+          hint={lean ? "Manual estimate" : "Type it yourself. Device sync is coming later."}
         />
         <MetricTile
           title="Body Fat"
           value={fat ? `${fat.value}%` : "—"}
-          hint={fat ? "Manual estimate" : "Manual, or Coming soon — no fake device sync"}
+          hint={fat ? "Manual estimate" : "Type it yourself. Device sync is coming later."}
         />
       </section>
 

@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@/lib/constants";
 import { getUserBySessionToken, type PublicUser } from "@/lib/auth";
@@ -14,10 +14,29 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
   return getUserBySessionToken(await readSessionToken());
 }
 
+export function safeNextPath(value: string | null | undefined) {
+  if (!value) return null;
+  const path = value.trim();
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\") || path.includes("://")) {
+    return null;
+  }
+  if (path.startsWith("/login") || path.startsWith("/register") || path.startsWith("/forgot-password")) {
+    return null;
+  }
+  return path;
+}
+
 export async function requireUser(): Promise<PublicUser> {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    let next = "";
+    try {
+      const path = safeNextPath((await headers()).get("x-svg-path"));
+      if (path) next = `?next=${encodeURIComponent(path)}`;
+    } catch {
+      next = "";
+    }
+    redirect(`/login${next}`);
   }
   return user;
 }

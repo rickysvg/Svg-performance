@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser, profileIsComplete, timeZoneForUser } from "@/lib/profile";
+import { displayGoalLine, getProfileForUser, profileIsComplete, timeZoneForUser } from "@/lib/profile";
 import { emptyHomeToday, getHomeToday, homeLoad, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { listHelpRequestsForMember } from "@/lib/help";
@@ -59,7 +59,7 @@ export default async function HomePage({
         </h1>
         <p className="mt-2 text-sm">
           SVG Performance
-          {profile?.goals ? ` · ${profile.goals}` : ""}
+          {profile?.goals ? ` · ${displayGoalLine(profile.goals)}` : ""}
         </p>
         {!profile || !profileIsComplete(profile) ? (
           <p className="mt-4 text-sm">

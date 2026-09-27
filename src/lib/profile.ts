@@ -16,6 +16,23 @@ import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isValidTimeZone, resolveRequestTimeZone } from "@/lib/timezone";
 import { mergeSeenBadgeUnlocks, parseSeenBadgeUnlocks } from "@/lib/badge-unlocks";
 
+export function displayGoalLine(goals: string | null | undefined) {
+  const text = (goals ?? "").trim();
+  if (!text) return "";
+  const parts = text.split(/\s+[—–-]\s+/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2 && parts.every((part) => part.toLowerCase() === parts[0].toLowerCase())) {
+    return parts[0];
+  }
+  return text;
+}
+
+function composeGoalLine(goalLabel: string, goalNote: string, existing: string) {
+  const note = goalNote.trim();
+  if (!note || note.toLowerCase() === goalLabel.toLowerCase()) return goalLabel || existing;
+  if (goalLabel && note.toLowerCase().startsWith(goalLabel.toLowerCase())) return displayGoalLine(note);
+  return displayGoalLine(goalLabel ? `${goalLabel} — ${note}` : note);
+}
+
 export type ProfileRecord = {
   userId: string;
   displayName: string;
@@ -268,10 +285,8 @@ export async function updateProfileForUser(
   const goalNote = (input.goalNote ?? "").trim().slice(0, 400);
   const goalLabel = GOAL_OPTIONS.find((goal) => goal.value === goalKey)?.label ?? "";
   const goals = input.goals?.trim()
-    ? input.goals.trim().slice(0, 500)
-    : goalNote
-      ? `${goalLabel || "Goal"} — ${goalNote}`
-      : goalLabel || existing.goals;
+    ? displayGoalLine(input.goals.trim().slice(0, 500))
+    : composeGoalLine(goalLabel, goalNote, existing.goals);
   const primaryFocus = FOCUS_OPTIONS.some((item) => item.value === input.primaryFocus)
     ? (input.primaryFocus as string)
     : existing.primaryFocus;

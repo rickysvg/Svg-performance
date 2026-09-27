@@ -60,18 +60,16 @@ export function CoachLiveThread({
       { id: userId, role: "user", content: message },
     ]);
     const result = await start({ kind: "chat", message, topic, art });
-    const reply = result.content || partial;
-    if (reply) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: `local-assistant-${Date.now()}`,
-          role: "assistant",
-          content: reply,
-          offline: result.offline || offline,
-        },
-      ]);
-    }
+    if (result.failed || !result.content.trim()) return;
+    setMessages((current) => [
+      ...current,
+      {
+        id: `local-assistant-${Date.now()}`,
+        role: "assistant",
+        content: result.content,
+        offline: result.offline,
+      },
+    ]);
   }
 
   return (
@@ -92,6 +90,7 @@ export function CoachLiveThread({
             <p className="text-xs uppercase text-muted">
               {message.role === "user" ? "You" : COACH_PUBLIC_NAME}
               {message.refused ? " · safety refusal" : ""}
+              {message.offline ? " · Offline" : ""}
             </p>
             <p className="mt-2 whitespace-pre-wrap">{message.content}</p>
           </article>
@@ -105,6 +104,7 @@ export function CoachLiveThread({
         >
           <p className="text-xs uppercase text-muted">
             {COACH_PUBLIC_NAME}
+            {offline ? " · Offline" : ""}
             {streaming && !partial ? " · typing" : ""}
           </p>
           {streaming && !partial ? (

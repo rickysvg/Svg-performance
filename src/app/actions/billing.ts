@@ -26,7 +26,7 @@ export async function startCheckoutAction(
     if (!stripe) {
       throw new AppError(
         "BILLING",
-        "Stripe TEST is not configured. No card or Affirm/Klarna charge will be created.",
+        "Paid checkout is not turned on yet. No card or Affirm/Klarna charge will be created.",
       );
     }
     const appUrl = process.env.APP_URL || "http://localhost:3000";

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
-import { saveReminderPrefs } from "@/lib/reminders";
+import { profileReminderOffset, saveReminderPrefs } from "@/lib/reminders";
 import { publicErrorMessage } from "@/lib/errors";
 
 export type ReminderActionState = { error?: string; success?: string };
@@ -19,7 +19,7 @@ export async function saveReminderPrefsAction(
       quoteEnabled: formData.get("quoteEnabled") === "on",
       bookingEnabled: formData.get("bookingEnabled") === "on",
       preferredHour: Number(formData.get("preferredHour") ?? 18),
-      timezoneOffsetMinutes: Number(formData.get("timezoneOffsetMinutes") ?? 0),
+      timezoneOffsetMinutes: await profileReminderOffset(user.id),
     });
     revalidatePath("/profile");
     revalidatePath("/home");

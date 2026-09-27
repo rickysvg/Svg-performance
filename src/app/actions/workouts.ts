@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { parseZonedDateTime } from "@/lib/timezone";
 import {
   deleteWorkoutSessionForUser,
   rateWorkoutSessionForUser,
@@ -90,9 +91,12 @@ export async function saveWorkoutAction(
   let redirectPath = "";
   try {
     const user = await requireUserOrThrow();
+    const profile = await getProfileForUser(user.id);
+    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
     const workoutId = String(formData.get("workoutId") ?? "");
     const intent = String(formData.get("intent") ?? "complete");
-    const performedAt = new Date(String(formData.get("performedAt") ?? ""));
+    const performedRaw = String(formData.get("performedAt") ?? "");
+    const performedAt = parseZonedDateTime(performedRaw, timeZone) ?? new Date(performedRaw);
     const alreadyActive =
       intent === "complete" ? await hasActivityOnLocalDay(user.id, performedAt) : true;
     await updateWorkoutSessionForUser({
@@ -104,7 +108,6 @@ export async function saveWorkoutAction(
       status: intent === "draft" ? "draft" : "complete",
       sets: parseSets(formData),
     });
-    const profile = await getProfileForUser(user.id);
     const units: LoadUnit = profile?.preferredUnits ?? "lb";
     const newPrs =
       intent === "complete" ? await detectNewPrsForSession(user.id, workoutId, units) : [];

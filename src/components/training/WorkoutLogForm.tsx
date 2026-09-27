@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteWorkoutAction,
   saveWorkoutAction,
@@ -9,7 +9,6 @@ import {
 } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { StatusBanner } from "@/components/StatusBanner";
-import { DemoBadge } from "@/components/DemoBadge";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
@@ -125,24 +124,59 @@ function SessionTimer() {
   );
 }
 
+function plannedSets(session: Session): WorkoutSet[] {
+  if (session.sets.length > 0) return session.sets;
+  const rows: WorkoutSet[] = [];
+  for (const exercise of session.programDay?.exercises ?? []) {
+    const mode = resolveLogMode({
+      logMode: exercise.logMode,
+      name: exercise.name,
+      reps: exercise.reps,
+    });
+    for (let index = 0; index < exercise.sets; index += 1) {
+      rows.push(newClientSet(session.id, exercise.name, index + 1, "lb", mode));
+    }
+  }
+  return rows;
+}
+
+function draftStorageKey(sessionId: string) {
+  return `svg-log-draft:${sessionId}`;
+}
+
+function previousHasNumbers(previous: PreviousSetLookup, name: string) {
+  const rows = previous[name];
+  if (!rows) return false;
+  return Object.values(rows).some(
+    (row) => row.reps != null || row.loadValue != null || row.durationSeconds != null,
+  );
+}
+
+function setWasTyped(set: WorkoutSet) {
+  return set.reps != null || set.loadValue != null || set.durationSeconds != null;
+}
+
 export function WorkoutLogForm({
   session,
   previousLoads = {},
   notes = {},
+  startedAt,
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
   notes?: Record<string, ExerciseNoteView>;
+  startedAt?: string;
 }) {
   const [state, action, pending] = useActionState(
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(() => session.sets);
+  const [sets, setSets] = useState(() => plannedSets(session));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const discardDraft = useRef(false);
 
   const grouped = useMemo(() => {
     const map = new Map<string, WorkoutSet[]>();
@@ -161,6 +195,26 @@ export function WorkoutLogForm({
     : "/training";
   const restRemaining = remainingRestSeconds(restTimer, nowMs);
   const restRunning = isRestActive(restTimer, nowMs);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(draftStorageKey(session.id));
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as WorkoutSet[];
+      if (Array.isArray(parsed) && parsed.length > 0) setSets(parsed);
+    } catch {
+      /* ignore a broken draft */
+    }
+  }, [session.id]);
+
+  useEffect(() => {
+    if (discardDraft.current) return;
+    try {
+      window.localStorage.setItem(draftStorageKey(session.id), JSON.stringify(sets));
+    } catch {
+      /* private mode */
+    }
+  }, [session.id, sets]);
 
   useEffect(() => {
     if (!restTimer) return;
@@ -216,6 +270,22 @@ export function WorkoutLogForm({
           <div className="flex items-center gap-2 px-4 py-2">
             <Link
               href={cancelHref}
+              onClick={(event) => {
+                if (!sets.some(setWasTyped)) {
+                  discardDraft.current = true;
+                  window.localStorage.removeItem(draftStorageKey(session.id));
+                  return;
+                }
+                const leave = window.confirm(
+                  "Discard the numbers you typed? They stay on this device until you discard them.",
+                );
+                if (!leave) {
+                  event.preventDefault();
+                  return;
+                }
+                discardDraft.current = true;
+                window.localStorage.removeItem(draftStorageKey(session.id));
+              }}
               className="touch-target inline-flex items-center text-sm font-medium text-muted"
             >
               Cancel
@@ -239,22 +309,19 @@ export function WorkoutLogForm({
         </header>
 
         <div className="space-y-2 pt-2">
-          {session.title.startsWith("DEMO") ? (
-            <div className="flex justify-end">
-              <DemoBadge />
-            </div>
-          ) : null}
           <label className="block">
             <span className="sr-only">Workout title</span>
             <textarea
               name="title"
               data-workout-title
-              defaultValue={session.title}
+              defaultValue={session.title.replace(/^DEMO\s+[—-]\s+/i, "")}
               rows={2}
               className="font-display min-h-[3.4rem] w-full min-w-0 resize-none bg-transparent text-2xl leading-tight tracking-wide break-words whitespace-normal outline-none"
             />
           </label>
-          {session.programDay?.title ? (
+          {session.programDay?.title &&
+          session.programDay.title.replace(/^DEMO\s+[—-]\s+/i, "") !==
+            session.title.replace(/^DEMO\s+[—-]\s+/i, "") ? (
             <p className="text-sm text-muted">{session.programDay.title}</p>
           ) : null}
         </div>
@@ -270,7 +337,7 @@ export function WorkoutLogForm({
               <input
                 name="performedAt"
                 type="datetime-local"
-                defaultValue={toDateInput(session.performedAt)}
+                defaultValue={startedAt || toDateInput(session.performedAt)}
                 className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
               />
             </label>
@@ -383,7 +450,7 @@ export function WorkoutLogForm({
                     />
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                    {previousLoads[name] ? (
+                    {previousHasNumbers(previousLoads, name) ? (
                       <button
                         type="button"
                         data-same-as-last={name}

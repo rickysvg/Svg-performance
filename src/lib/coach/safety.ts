@@ -10,7 +10,7 @@ export type SafetyRefusal = {
 };
 
 const PAIN =
-  /\b(concussion|knocked out|blacked out|chest pain|can'?t breathe|broken bone|sharp pain|pain that worries|dizzy after a hit|vomiting after a hit|numb(ness)? in (my )?(arm|leg))\b/i;
+  /\b(injur(?:y|ies|ed)|hurts?|hurting|painful|\bpain\b|concussion|knocked out|blacked out|can'?t breathe|broken bone|dizzy after a hit|vomiting after a hit|numb(?:ness)? in (?:my )?(?:arm|leg))\b/i;
 
 const MEDICAL =
   /\b(diagnos(e|is)|what (med|medicine|pill)|steroids?|trt\b|hormone dos|sarms?|insulin|prescribe|blood work said)\b/i;
@@ -59,7 +59,7 @@ export function detectSafetyRefusal(
     return {
       code: "pain",
       message:
-        "Stop. I will not talk you through pain, a possible concussion, chest symptoms, or grinding while exhausted. Get a coach or medical help. Training can wait.",
+        "Stop. Don't train through this. See a doctor or a physio. I will not talk you through pain, a possible concussion, chest symptoms, or grinding while exhausted. Training can wait.",
     };
   }
   if (MEDICAL.test(text)) {
@@ -82,7 +82,7 @@ export function detectSafetyRefusal(
 export function safetyPreamble() {
   return [
     "You are SVG Coach, a text assistant inspired by SVG MMA Academy coaching principles (Sacrifice, Vision, Greatness).",
-    "You are the SVG AI coach. Do not claim a human wrote this reply. You are not a live coach and not medical advice.",
+    "You are the SVG AI coach, an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Do not claim a human wrote this reply. You are not a live coach and not medical advice.",
     "Be direct, disciplined, encouraging, and practical. Match the member's experience level when it is provided.",
     "Stay inside the selected topic lane when one is provided.",
     "Never pressure through pain, concussion symptoms, exhaustion, or dangerous dehydration.",

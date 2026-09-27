@@ -20,9 +20,16 @@ import {
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { WEEKDAYS } from "@/lib/constants";
+import type { PlanWeekday } from "@/lib/week-plan";
 
-export default async function TrainingPage() {
+export default async function TrainingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ weekday?: string }>;
+}) {
   const user = await requireUser();
+  const query = await searchParams;
   const now = new Date();
   const [catalog, drafts, sessionCount, conditioning, profile] = await Promise.all([
     findDemoTrainingCatalog(),
@@ -38,15 +45,16 @@ export default async function TrainingPage() {
   };
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const todayPlan = planForDate(prefs, now, tz);
-  const planned = resolvePlanSessions(
-    todayPlan,
-    scaleDemoCatalog(catalog, {
-      experienceLevel: profile?.experienceLevel,
-      competitionStatus: profile?.competitionStatus,
-    }),
-  );
-  const strip = weekStrip(prefs, now, tz);
+  const requested = WEEKDAYS.find((day) => day === query.weekday) as PlanWeekday | undefined;
+  const shownWeekday = requested ?? todayPlan.weekday;
   const week = buildCoreWeekPlan(prefs, bikeWeekIndex(now, tz));
+  const shownPlan = week[shownWeekday];
+  const scaledCatalog = scaleDemoCatalog(catalog, {
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
+  const planned = resolvePlanSessions(shownPlan, scaledCatalog);
+  const strip = weekStrip(prefs, now, tz);
   const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now, tz);
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
@@ -69,7 +77,7 @@ export default async function TrainingPage() {
         <DemoBadge />
       </div>
 
-      <WeekStrip days={strip} />
+      <WeekStrip days={strip} selected={shownWeekday} />
 
       <Link
         href="/timer"
@@ -94,17 +102,17 @@ export default async function TrainingPage() {
       <section className="space-y-3">
         <div>
           <p className="font-display text-xs uppercase tracking-wide text-accent">
-            Today’s plan · {todayPlan.weekday}
+            {shownWeekday === todayPlan.weekday ? "Today’s plan" : "Selected day"} · {shownWeekday}
           </p>
           <h2 className="mt-1 text-lg">
-            {todayPlan.active
-              ? todayPlan.summary
-              : nextDay
+            {shownPlan.active
+              ? shownPlan.summary
+              : shownWeekday === todayPlan.weekday && nextDay
                 ? `Rest today · next up ${nextDay}`
                 : "Rest day"}
           </h2>
-          {todayPlan.skipReason && !todayPlan.active ? (
-            <p className="mt-1 text-sm text-muted">{todayPlan.skipReason}</p>
+          {shownPlan.skipReason && !shownPlan.active ? (
+            <p className="mt-1 text-sm text-muted">{shownPlan.skipReason}</p>
           ) : null}
           {equipmentNote ? <p className="mt-1 text-sm text-muted">{equipmentNote}</p> : null}
         </div>
@@ -117,6 +125,25 @@ export default async function TrainingPage() {
             draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
           />
         ))}
+        {!shownPlan.active ? (
+          <div className="rounded-2xl border border-line bg-card p-5">
+            <h3 className="text-lg">Log extra work</h3>
+            <p className="mt-1 text-sm text-muted">
+              Rest days can still take a workout. Pick a session and start it.
+            </p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {[...(scaledCatalog.strength?.days ?? []), ...(scaledCatalog.skill?.days ?? [])].map(
+                (day) => (
+                  <li key={day.id}>
+                    <Link href={`/training/${day.id}`} className="font-medium text-accent underline-offset-4 hover:underline">
+                      {day.title}
+                    </Link>
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-2xl border border-line bg-card p-5">

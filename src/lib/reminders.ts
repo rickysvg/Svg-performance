@@ -6,6 +6,7 @@ import { startOfLocalDay, endOfLocalDay } from "@/lib/nutrition";
 import { canUseFeature } from "@/lib/entitlements";
 import { quoteForLocalDate } from "@/lib/quotes";
 import { timeZoneForUser } from "@/lib/profile";
+import { isValidTimeZone, offsetMinutesForZone } from "@/lib/timezone";
 
 export const DEFAULT_REMINDER_HOUR = 18;
 
@@ -64,11 +65,28 @@ export function validateReminderPrefs(input: ReminderPrefsInput): ReminderPrefsI
   };
 }
 
+export async function profileReminderOffset(userId: string, now = new Date()) {
+  const timeZone = await timeZoneForUser(userId);
+  return offsetMinutesForZone(now, timeZone);
+}
+
+export async function syncStoredReminderOffset(userId: string, now = new Date()) {
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    select: { timeZone: true },
+  });
+  if (!isValidTimeZone(profile?.timeZone)) return;
+  const offset = offsetMinutesForZone(now, profile.timeZone);
+  await prisma.reminderPrefs.updateMany({
+    where: { userId, NOT: { timezoneOffsetMinutes: offset } },
+    data: { timezoneOffsetMinutes: offset },
+  });
+}
+
 export async function getOrCreateReminderPrefs(userId: string) {
+  const offset = await profileReminderOffset(userId);
   const existing = await prisma.reminderPrefs.findUnique({ where: { userId } });
-  if (existing) {
-    return existing;
-  }
+  if (existing) return existing;
   return prisma.reminderPrefs.create({
     data: {
       userId,
@@ -77,7 +95,7 @@ export async function getOrCreateReminderPrefs(userId: string) {
       quoteEnabled: true,
       bookingEnabled: true,
       preferredHour: DEFAULT_REMINDER_HOUR,
-      timezoneOffsetMinutes: 0,
+      timezoneOffsetMinutes: offset,
     },
   });
 }
@@ -121,6 +139,7 @@ export async function getDueReminders(
   userId: string,
   now = new Date(),
 ): Promise<DueReminder[]> {
+  await syncStoredReminderOffset(userId, now);
   const prefs = await getOrCreateReminderPrefs(userId);
   const tz = await timeZoneForUser(userId);
   const local = localParts(now, prefs.timezoneOffsetMinutes);

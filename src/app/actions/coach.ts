@@ -21,7 +21,7 @@ export async function sendCoachMessageAction(
     if (!access.allowed) {
       throw new AppError(
         "PAYWALL",
-        `${COACH_PUBLIC_NAME} is locked until Stripe TEST confirms payment.`,
+        `${COACH_PUBLIC_NAME} stays locked until a paid plan is active.`,
       );
     }
     const profile = await getProfileForUser(user.id);

@@ -6,6 +6,7 @@ import {
   EMPTY_COACH_FALLBACK,
   liveModelUnavailableReply,
   offlineReply,
+  withOfflineNotice,
 } from "@/lib/coach/offline";
 import { coachLaneLabel, coachTopicContext } from "@/lib/coach/topics";
 import { timeZoneForUser } from "@/lib/profile";
@@ -13,8 +14,16 @@ import { athleteLocalDayLine } from "@/lib/timezone";
 
 export { offlineReply } from "@/lib/coach/offline";
 
+export function openAiApiKey() {
+  return process.env.OPENAI_API_KEY?.trim() ?? "";
+}
+
+export function openAiModel() {
+  return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+}
+
 export function isOpenAiConfigured() {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return openAiApiKey().length > 0;
 }
 
 async function liveReply(input: {
@@ -25,15 +34,17 @@ async function liveReply(input: {
   topic?: string;
   art?: string;
 }) {
-  const key = process.env.OPENAI_API_KEY;
+  const key = openAiApiKey();
   if (!key) {
     return {
-      content: offlineReply(
-        input.message,
-        input.experienceLevel,
-        input.coachingTone,
-        input.topic,
-        input.art,
+      content: withOfflineNotice(
+        offlineReply(
+          input.message,
+          input.experienceLevel,
+          input.coachingTone,
+          input.topic,
+          input.art,
+        ),
       ),
       offline: true,
     };
@@ -54,7 +65,7 @@ async function liveReply(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: openAiModel(),
       temperature: 0.4,
       messages: [
         { role: "system", content: system },
@@ -64,12 +75,14 @@ async function liveReply(input: {
   });
   if (!response.ok) {
     return {
-      content: liveModelUnavailableReply(
-        input.message,
-        input.experienceLevel,
-        input.coachingTone,
-        input.topic,
-        input.art,
+      content: withOfflineNotice(
+        liveModelUnavailableReply(
+          input.message,
+          input.experienceLevel,
+          input.coachingTone,
+          input.topic,
+          input.art,
+        ),
       ),
       offline: true,
     };

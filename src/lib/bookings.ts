@@ -14,10 +14,10 @@ export const BOOKING_PREP: Record<BookingKind, string[]> = {
   entrepreneur: [
     "Bring one business or career question — no promised results.",
     "Separate gym training check-ins from this extra.",
-    "List preferred times. We do not invent Ricky’s calendar.",
+    "List a few times that work for you.",
   ],
   intensive_elpaso: [
-    "Read the Platinum package copy. This is a request stub, not a deposit.",
+    "Read the Platinum package copy. This request does not take a deposit.",
     "Travel to El Paso is on you unless quoted otherwise.",
     "Bring training history and one written goal. No invented itinerary until a coach writes next steps.",
   ],
@@ -49,7 +49,7 @@ export async function createBookingRequestForUser(
     if (planId !== "platinum") {
       throw new AppError(
         "BOOKING",
-        "Platinum intensives are a request stub for Platinum members. This is not a live deposit.",
+        "Platinum intensives are a request for Platinum members. This is not a deposit.",
       );
     }
   }

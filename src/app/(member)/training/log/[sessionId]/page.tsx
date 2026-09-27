@@ -9,6 +9,8 @@ import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
+import { timeZoneForUser } from "@/lib/profile";
+import { datetimeLocalValue } from "@/lib/timezone";
 
 export default async function WorkoutLogPage({
   params,
@@ -31,9 +33,8 @@ export default async function WorkoutLogPage({
     session.status === "complete" &&
     (query.rate === "1" || !session.difficultyRating);
   const hrLog = await getWorkoutHrForLoggedSession(session.id, user.id);
-  const performed = new Date(session.performedAt);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const startedInput = `${performed.getFullYear()}-${pad(performed.getMonth() + 1)}-${pad(performed.getDate())}T${pad(performed.getHours())}:${pad(performed.getMinutes())}`;
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const startedInput = datetimeLocalValue(new Date(session.performedAt), timeZone);
 
   return (
     <main className="space-y-6">
@@ -66,6 +67,7 @@ export default async function WorkoutLogPage({
         )
       ) : null}
       <WorkoutLogForm
+        startedAt={startedInput}
         session={
           session.programDay
             ? {

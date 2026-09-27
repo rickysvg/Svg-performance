@@ -102,7 +102,7 @@ describe("exercise log modes", () => {
         logMode: "load_timed",
         name: "Farmer carry",
       }),
-    ).toBe("3 × 30–40s @ lbs, 90s rest");
+    ).toBe("3 × 30–40s, 90s rest");
   });
 
   it("uses singular units for one set and labels a single timed clock as continuous", () => {

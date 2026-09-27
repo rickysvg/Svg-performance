@@ -9,13 +9,14 @@ import {
   coachLaneLabel,
   coachTopicContext,
 } from "@/lib/coach/topics";
-import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
+import { getOrCreateThread, isOpenAiConfigured, openAiApiKey, openAiModel } from "@/lib/coach/chat";
 import { timeZoneForUser } from "@/lib/profile";
 import { athleteLocalDayLine } from "@/lib/timezone";
 import {
   EMPTY_COACH_FALLBACK,
   liveModelUnavailableReply,
   offlineReply,
+  withOfflineNotice,
 } from "@/lib/coach/offline";
 import { coachLaneForExercise, upsertExerciseNoteForUser } from "@/lib/exercise-notes";
 import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
@@ -124,14 +125,16 @@ async function* streamOpenAiTokens(
   },
   signal?: AbortSignal,
 ) {
-  const key = process.env.OPENAI_API_KEY;
+  const key = openAiApiKey();
   if (!key) {
-    const fallback = offlineReply(
-      input.message,
-      input.experienceLevel,
-      input.coachingTone,
-      input.topic,
-      input.art,
+    const fallback = withOfflineNotice(
+      offlineReply(
+        input.message,
+        input.experienceLevel,
+        input.coachingTone,
+        input.topic,
+        input.art,
+      ),
     );
     yield* iterateTextChunks(fallback, { signal });
     return { offline: true };
@@ -153,7 +156,7 @@ async function* streamOpenAiTokens(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: openAiModel(),
       temperature: 0.4,
       stream: true,
       messages: [
@@ -170,12 +173,14 @@ async function* streamOpenAiTokens(
   });
 
   if (!response || !response.ok || !response.body) {
-    const fallback = liveModelUnavailableReply(
-      input.message,
-      input.experienceLevel,
-      input.coachingTone,
-      input.topic,
-      input.art,
+    const fallback = withOfflineNotice(
+      liveModelUnavailableReply(
+        input.message,
+        input.experienceLevel,
+        input.coachingTone,
+        input.topic,
+        input.art,
+      ),
     );
     yield* iterateTextChunks(fallback, { signal });
     return { offline: true };

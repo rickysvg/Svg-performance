@@ -67,7 +67,7 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>This billing month&apos;s credits</h2>
         <p className="mt-1 text-sm text-muted">
-          Counts are per UTC month, not “weekly.” An admin marks a credit used after the session.
+          Counts are per billing month, not “weekly.” An admin marks a credit used after the session.
         </p>
         {creditBundle.credits.length === 0 ? (
           <p className="mt-3 text-sm text-muted">

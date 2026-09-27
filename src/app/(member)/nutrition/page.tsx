@@ -3,12 +3,15 @@ import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
+  defaultMealType,
   getTodayNutritionSummary,
   listNutritionEntriesForUser,
   listSavedMealsForUser,
+  mealTypeLabel,
 } from "@/lib/nutrition";
+import { formatDateTime } from "@/lib/timezone";
 import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
 import { SavedMealForm } from "@/components/nutrition/SavedMealForm";
 import { EmptyState } from "@/components/EmptyState";
@@ -31,6 +34,7 @@ export default async function NutritionPage() {
     );
   }
 
+  const timeZone = await timeZoneForUser(user.id);
   const [profile, entries, saved, today] = await Promise.all([
     getProfileForUser(user.id),
     listNutritionEntriesForUser(user.id),
@@ -66,7 +70,7 @@ export default async function NutritionPage() {
         </p>
       </section>
 
-      <NutritionEntryForm savedMeals={saved} />
+      <NutritionEntryForm savedMeals={saved} defaultMeal={defaultMealType(new Date(), timeZone)} />
       <SavedMealForm />
       <p className="text-sm">
         <Link href="/nutrition/prep" className="text-accent underline">
@@ -78,7 +82,7 @@ export default async function NutritionPage() {
         <h2 className="text-lg">Your log</h2>
       {entries.length === 0 ? (
           <EmptyState title="No meals yet">
-            Search a DEMO food or type an estimate above. Numbers stay yours to correct.
+            Search a food or type an estimate above. Numbers stay yours to correct.
           </EmptyState>
         ) : (
           <ul className="space-y-3">
@@ -90,7 +94,7 @@ export default async function NutritionPage() {
                 >
                   <p className="font-semibold">{entry.name}</p>
                   <p className="text-sm text-muted">
-                    {entry.mealType} · {new Date(entry.eatenAt).toLocaleString()} ·{" "}
+                    {mealTypeLabel(entry.mealType)} · {formatDateTime(new Date(entry.eatenAt), timeZone)} ·{" "}
                     {Math.round(entry.calories)} kcal · source: {entry.source.replace("_", " ")}
                   </p>
                 </Link>

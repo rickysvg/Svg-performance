@@ -75,21 +75,18 @@ export function useCoachStream() {
           }
         }
       }
-      return { content: assembled, offline: liveOffline };
+      return { content: assembled, offline: liveOffline, failed: false };
     } catch (caught) {
       if (controller.signal.aborted) {
-        const kept = assembled.includes("[Stopped")
+        const kept = assembled.includes(STREAM_STOPPED_MARKER.trim())
           ? assembled
-          : assembled
-            ? `${assembled}${STREAM_STOPPED_MARKER}`
-            : assembled;
+          : `${assembled}${STREAM_STOPPED_MARKER}`;
         setPartial(kept);
-        return { content: kept, offline: liveOffline };
+        return { content: kept, offline: liveOffline, failed: false };
       }
-      const message =
-        caught instanceof Error ? caught.message : STREAM_FAIL_COPY;
-      setError(message);
-      return { content: "", offline: liveOffline };
+      setError(friendlyCoachError(caught));
+      setPartial("");
+      return { content: "", offline: liveOffline, failed: true };
     } finally {
       setStreaming(false);
       abortRef.current = null;
@@ -97,4 +94,15 @@ export function useCoachStream() {
   }
 
   return { streaming, partial, error, offline, start, stop, setError, setPartial };
+}
+
+function friendlyCoachError(caught: unknown) {
+  if (!(caught instanceof Error) || !caught.message.trim()) return STREAM_FAIL_COPY;
+  if (
+    caught.name === "TypeError" ||
+    /failed to fetch|networkerror|load failed|network request failed/i.test(caught.message)
+  ) {
+    return STREAM_FAIL_COPY;
+  }
+  return caught.message;
 }

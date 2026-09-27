@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
+import { MemberFrame } from "@/components/MemberFrame";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import { FinancingNote } from "@/components/billing/FinancingNote";
@@ -8,8 +9,9 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { getEffectivePlanId } from "@/lib/entitlements";
+import { getTrialState, trialLabel } from "@/lib/trial";
 import { listSeatStatus } from "@/lib/waitlist";
-import { BNPL_COPY, skuHighlightsFinancing } from "@/lib/bnpl";
+import { skuHighlightsFinancing } from "@/lib/bnpl";
 import {
   BOOKING_OFFERS,
   type CatalogPlan,
@@ -59,6 +61,7 @@ export default async function PricingPage() {
   const profile = user ? await getProfileForUser(user.id) : null;
   const subscription = user ? await getLatestSubscription(user.id) : null;
   const currentPlan = user ? await getEffectivePlanId(user.id) : null;
+  const trial = user ? await getTrialState(user.id) : null;
   const configured = isStripeConfigured();
   const seats = await listSeatStatus();
   const seatMap = new Map(seats.map((row) => [row.id, row]));
@@ -80,7 +83,7 @@ export default async function PricingPage() {
     return (
       <article key={plan.id} className="rounded-2xl border border-line bg-card p-6">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">
-          PROPOSAL / TEST
+          Plan
         </p>
         <h3 className="mt-2 text-xl">{plan.label}</h3>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
@@ -126,7 +129,7 @@ export default async function PricingPage() {
               <CheckoutButton
                 key={sku.id}
                 plan={sku.id}
-                label={`Start ${sku.amountLabel} TEST checkout${
+                label={`Start ${sku.amountLabel} checkout${
                   sku.audience === "gym"
                     ? " (gym)"
                     : sku.audience === "nonmember"
@@ -134,9 +137,7 @@ export default async function PricingPage() {
                       : ""
                 }`}
                 disabledReason={checkoutDisabled(sku.requiresGymVerify)}
-                financingHint={
-                  skuHighlightsFinancing(sku.id) ? BNPL_COPY.whenAvailable : undefined
-                }
+                financingHint={undefined}
               />
             ))
           )}
@@ -145,12 +146,16 @@ export default async function PricingPage() {
     );
   }
 
-  return (
-    <div className="min-h-full">
-      <AppHeader email={user?.email} />
-      <main className="mx-auto max-w-3xl px-4 py-10">
+  const planName = trial?.trialActive
+    ? trialLabel(trial.trialDaysLeft)
+    : currentPlan
+      ? PLAN_CATALOG[currentPlan].label
+      : null;
+
+  const body = (
+      <main className="mx-auto w-full max-w-3xl">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">
-          Proposal / Stripe TEST only — not live billing
+          Plans
         </p>
         <h1 className="mt-2 text-3xl">SVG Performance pricing</h1>
         <p className="mt-3 text-muted">
@@ -159,17 +164,19 @@ export default async function PricingPage() {
           Paid app plans are{" "}
           <strong className="text-foreground">additional to gym dues</strong> if
           you train at a gym. One monthly subscription at a time — a higher plan
-          replaces the lower one. Cards and BNPL loan details never touch this
-          app. Access is granted only after a verified webhook.
+          replaces the lower one. Card and pay-over-time details never touch this
+          app. A paid plan turns on after checkout is confirmed.
         </p>
         <AiDisclaimer className="mt-3" />
         <FinancingNote configured={configured} className="mt-4" />
-        {currentPlan ? (
+        {planName ? (
           <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
-            Current catalog plan: <strong>{PLAN_CATALOG[currentPlan].label}</strong>
+            Current plan: <strong>{planName}</strong>
             {subscription
-              ? ` · recorded ${subscription.plan} / ${subscription.status}`
-              : " · no webhook row yet"}
+              ? ` · ${subscription.plan} / ${subscription.status}`
+              : trial?.trialActive
+                ? ""
+                : " · no paid plan on file yet"}
             .{" "}
             <Link href="/plan" className="text-accent underline">
               See credits
@@ -213,7 +220,7 @@ export default async function PricingPage() {
 
           <article className="rounded-2xl border border-accent/40 bg-card p-6">
             <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">
-              PROPOSAL — request stub
+              Request
             </p>
             <h3 className="mt-2 text-xl">Platinum intensives</h3>
             <p className="mt-2 text-sm text-muted">
@@ -240,14 +247,14 @@ export default async function PricingPage() {
         </section>
 
         <section className="mt-10 rounded-2xl border border-line bg-card p-6">
-          <h2 className="text-lg">Pricing FAQ / terms (placeholders)</h2>
+          <h2 className="text-lg">Pricing questions</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
             <li>Gym dues and SVG &amp; CO merch are separate from these app plans.</li>
             <li>Four privates means four in that billing month — not “every week.”</li>
             <li>Cancel or reschedule by sending a Book request. If Ricky cancels, we restore or extend that credit.</li>
             <li>Elite / VIP: human reply within 2 business days. Platinum: next business day. SVG Coach is not that inbox.</li>
             <li>Weight-cut services are not sold here.</li>
-            <li>No launch discounts in this preview. TEST checkout never uses live keys.</li>
+            <li>No launch discounts in this preview.</li>
             <li>
               Affirm / Klarna approval is theirs, not SVG’s. We do not store loan
               details. Not everyone qualifies. US shoppers and Stripe amount
@@ -267,6 +274,20 @@ export default async function PricingPage() {
           ) : null}
         </div>
       </main>
+  );
+
+  if (user) {
+    return (
+      <MemberFrame email={user.email} role={user.role} timeZone={profile?.timeZone}>
+        {body}
+      </MemberFrame>
+    );
+  }
+
+  return (
+    <div className="min-h-full">
+      <AppHeader />
+      <div className="mx-auto max-w-3xl px-4 py-10">{body}</div>
     </div>
   );
 }

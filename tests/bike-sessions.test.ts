@@ -182,14 +182,14 @@ describe("assault bike catalog", () => {
     expect(scaledAlactic.restSeconds).toBe(0);
   });
 
-  it("puts Bike on Tuesday and Thursday even when availability is Mon/Wed/Fri", () => {
+  it("keeps Bike on the Tuesday and Thursday skeleton but only when those days are chosen", () => {
     const week = buildCoreWeekPlan(MMA_MON_WED_FRI);
     expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Tuesday.summary).toBe("Bike");
-    expect(week.Tuesday.active).toBe(true);
+    expect(week.Tuesday.summary).toBe("Off");
+    expect(week.Tuesday.active).toBe(false);
     expect(week.Wednesday.summary).toBe("Bag+Lift");
-    expect(week.Thursday.summary).toBe("Bike");
-    expect(week.Thursday.active).toBe(true);
+    expect(week.Thursday.summary).toBe("Off");
+    expect(week.Thursday.active).toBe(false);
     expect(week.Friday.summary).toBe("GPP");
     expect(week.Saturday.summary).toBe("Off");
     expect(week.Sunday.summary).toBe("Off");
@@ -209,22 +209,20 @@ describe("assault bike catalog", () => {
     });
 
     const tue = planForDate(MMA_MON_WED_FRI, tuesday);
-    expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bike");
-    expect(tue.sessions[0]?.dayNumber).toBe(5);
+    expect(tue.active).toBe(false);
+    expect(tue.summary).toBe("Off");
     const thu = planForDate(MMA_MON_WED_FRI, thursday);
-    expect(thu.active).toBe(true);
-    expect(thu.summary).toBe("Bike");
-    expect(thu.sessions[0]?.dayNumber).toBe(6);
+    expect(thu.active).toBe(false);
+    expect(thu.summary).toBe("Off");
     const mon = planForDate(MMA_MON_WED_FRI, monday);
     expect(mon.summary).toBe("Bag+Lift");
 
     const strip = weekStrip(MMA_MON_WED_FRI, monday);
     expect(strip.map((day) => day.summary)).toEqual([
       "Bag+Lift",
-      "Bike",
+      "Off",
       "Bag+Lift",
-      "Bike",
+      "Off",
       "GPP",
       "Off",
       "Off",
@@ -272,13 +270,25 @@ describe("assault bike seeded days", () => {
       preferredUnits: "lb",
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
     });
-    expect(beginner.sets.filter((set) => set.exerciseName === exercise!.name)).toHaveLength(3);
-    expect(intermediate.sets.filter((set) => set.exerciseName === exercise!.name)).toHaveLength(4);
-    expect(advanced.sets.filter((set) => set.exerciseName === exercise!.name)).toHaveLength(5);
-    expect(beginner.sets[0]?.logMode).toBe("timed_round");
-    expect(beginner.sets[0]?.durationSeconds).toBeNull();
-    expect(beginner.sets[0]?.reps).toBeNull();
-    expect(beginner.sets[0]?.loadValue).toBeNull();
+    expect(beginner.sets).toHaveLength(0);
+    expect(intermediate.sets).toHaveLength(0);
+    expect(advanced.sets).toHaveLength(0);
+    expect(exercise?.logMode).toBe("timed_round");
+    const beginnerDay = scaleProgramDay(
+      { ...day!, exercises: day!.exercises },
+      { band: "beginner", programSlug: "demo-strength-base" },
+    );
+    const intermediateDay = scaleProgramDay(
+      { ...day!, exercises: day!.exercises },
+      { band: "intermediate", programSlug: "demo-strength-base" },
+    );
+    const advancedDay = scaleProgramDay(
+      { ...day!, exercises: day!.exercises },
+      { band: "advanced", programSlug: "demo-strength-base" },
+    );
+    expect(beginnerDay.exercises[0]?.sets).toBe(3);
+    expect(intermediateDay.exercises[0]?.sets).toBe(4);
+    expect(advancedDay.exercises[0]?.sets).toBe(5);
 
     const scaled = scaleProgramDay(
       { ...day!, exercises: day!.exercises },
@@ -287,9 +297,17 @@ describe("assault bike seeded days", () => {
     expect(scaled.exercises[0]?.sets).toBe(5);
     expect(scaled.exercises[0]?.restSeconds).toBe(60);
 
-    const resolved = resolvePlanSessions(planForDate(MMA_MON_WED_FRI, thursday), {
-      strength: program,
-    });
+    const resolved = resolvePlanSessions(
+      planForDate(
+        {
+          ...MMA_MON_WED_FRI,
+          weeklyAvailability: ["Monday", "Wednesday", "Thursday", "Friday"],
+          sessionsPerWeek: 4,
+        },
+        thursday,
+      ),
+      { strength: program },
+    );
     expect(resolved[0]?.dayNumber).toBe(6);
     expect(resolved[0]?.href).toBe(
       `/training/${program.days.find((row) => row.dayNumber === 6)!.id}`,

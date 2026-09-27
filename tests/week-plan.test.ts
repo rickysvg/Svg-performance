@@ -87,7 +87,7 @@ describe("Core weekday planner", () => {
     });
   });
 
-  it("keeps Saturday compressed off and still always-on Bike Tue/Thu", () => {
+  it("keeps Saturday compressed off and respects chosen training days", () => {
     const tue = planForDate(
       {
         primaryFocus: "mma",
@@ -96,9 +96,9 @@ describe("Core weekday planner", () => {
       },
       tuesday,
     );
-    expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bike");
-    expect(tue.skipReason).toBeUndefined();
+    expect(tue.active).toBe(false);
+    expect(tue.summary).toBe("Off");
+    expect(tue.skipReason).toMatch(/training days/i);
 
     const days = resolveTrainingDays({
       weeklyAvailability: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],

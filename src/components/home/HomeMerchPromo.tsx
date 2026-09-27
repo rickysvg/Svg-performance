@@ -30,7 +30,7 @@ export function HomeMerchPromo() {
                   src={product.src}
                   alt={product.alt}
                   fill
-                  sizes="(max-width: 390px) 32vw, (max-width: 640px) 30vw, 180px"
+                  sizes="480px"
                   className="object-cover object-center"
                 />
                 <span
