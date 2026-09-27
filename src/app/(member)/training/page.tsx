@@ -10,6 +10,11 @@ import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { BikeZoneNote } from "@/components/training/BikeZoneNote";
+import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
+import { TrainWeekBoard } from "@/components/training/TrainWeekBoard";
+import { plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
 import {
   buildCoreWeekPlan,
   nextActiveWeekday,
@@ -52,6 +57,12 @@ export default async function TrainingPage() {
   const strip = weekStrip(prefs, now, tz);
   const week = buildCoreWeekPlan(prefs, bikeWeekIndex(now, tz));
   const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now, tz);
+  const weekIndex = bikeWeekIndex(now, tz);
+  const deload = isDeloadWeek(now, tz);
+  const testing = isTestingWeek(now, tz);
+  const emphasis = profile?.trainingEmphasis ?? "balanced";
+  const showPlyo = todayPlan.weekday === "Monday" || todayPlan.weekday === "Wednesday";
+  const plyo = showPlyo && todayPlan.active ? plyoBlockFor(emphasis) : [];
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
   const draftsByDay = new Map(
@@ -101,6 +112,26 @@ export default async function TrainingPage() {
 
       <WeekStrip days={strip} />
 
+      <TrainWeekBoard week={week} weekIndex={weekIndex} emphasis={emphasis} />
+
+      {deload ? (
+        <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
+      ) : null}
+      {testing ? (
+        <Link href="/training/testing" className="block rounded-[1.5rem] bg-black px-5 py-4 text-white">
+          <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">This week</p>
+          <h2 className="mt-1 text-2xl text-white">Testing Week</h2>
+          <p className="mt-1 text-sm text-white/70">Broad jump, strength estimate, bike sprint, 5-minute bike.</p>
+        </Link>
+      ) : (
+        <p className="text-sm">
+          <Link href="/training/testing" className="font-semibold text-accent">
+            Testing Week
+          </Link>
+          <span className="text-muted"> — every 8 weeks. Results stay on your account.</span>
+        </p>
+      )}
+
       <Link
         href="/timer"
         className="block rounded-[2rem] bg-black px-5 py-5 text-white"
@@ -138,16 +169,69 @@ export default async function TrainingPage() {
           ) : null}
           {equipmentNote ? <p className="mt-1 text-sm text-muted">{equipmentNote}</p> : null}
         </div>
-        {planned.map((session) => (
+        {todayPlan.active ? (
+          <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line bg-card px-4 py-4">
+            <p className="font-display text-xs uppercase tracking-wide text-accent">Before you start</p>
+            <h3 className="mt-1 text-lg">Dynamic warm-up · 3–4 min</h3>
+            <p className="mt-1 text-sm text-muted">Joint circles and leg swings. Save long holds for the cooldown.</p>
+          </Link>
+        ) : null}
+        {plyo.length > 0 ? (
+          <section className="rounded-2xl border border-line bg-card px-4 py-4">
+            <p className="font-display text-xs uppercase tracking-wide text-accent">
+              Before the lifts · {PLYO_MINUTES}
+            </p>
+            <h3 className="mt-1 text-lg">Plyo / power</h3>
+            <p className="mt-1 text-sm text-muted">{emphasisAccessoryLine(emphasis)}</p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {plyo.map((drill) => (
+                <li key={drill.name}>
+                  <span className="font-semibold">{drill.name}</span> · {drill.prescription}
+                  <span className="block text-muted">{drill.cues}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted">
+              Landing idea from{" "}
+              <a href={PLYO_CREDITS[0].url} className="underline" target="_blank" rel="noreferrer">
+                {PLYO_CREDITS[0].coach}
+              </a>
+              . Not their program.
+            </p>
+          </section>
+        ) : null}
+        {planned.map((session) => {
+          const zone = bikeZoneForDayNumber(session.dayNumber);
+          return (
+          <div key={`${session.slot}-${session.dayId ?? session.label}`} className="space-y-2">
+            {zone ? <BikeZoneNote zone={zone} /> : null}
           <PlanSessionCard
-            key={`${session.slot}-${session.dayId ?? session.label}`}
             session={session}
             compact
             highlight={session.slot === "A" && planned.length > 1}
             draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
           />
-        ))}
+          </div>
+          );
+        })}
       </section>
+
+      <p className="text-sm">
+        <Link href="/training/travel" className="font-semibold text-accent">
+          No gym / travel day
+        </Link>
+        <span className="text-muted"> — kettlebell or a bodyweight circuit.</span>
+      </p>
+      <p className="text-sm">
+        <Link href="/mobility" className="font-semibold text-accent">
+          Mobility
+        </Link>
+        <span className="text-muted"> — hips, splits, neck, and the cooldown. </span>
+        <Link href="/mobility/drills" className="font-semibold text-accent">
+          Hip and kick drill ideas
+        </Link>
+        <span className="text-muted"> sit with the plyo add-ons.</span>
+      </p>
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Fighter Conditioning</h2>

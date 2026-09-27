@@ -51,6 +51,10 @@ model User {
   groceryLists             GroceryList[]
   weeklyFocusAuthored      WeeklyFocusVideo[]     @relation("FocusAuthor")
   exerciseNotes            ExerciseNote[]
+  mobilitySessions         MobilitySession[]
+  mobilityCheckIns         MobilityCheckIn[]
+  readinessCheckIns        ReadinessCheckIn[]
+  testingResults           TestingResult[]
   fightCamp                FightCamp?
   formChecks               FormCheck[]
 }
@@ -114,6 +118,8 @@ model Profile {
   competitionStatus          String    @default("")
   nextFightDate              DateTime?
   coachingTone               String    @default("")
+  /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
+  trainingEmphasis           String    @default("balanced")
   obstaclesJson              String    @default("[]")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
@@ -712,6 +718,109 @@ model WeeklyFocusVideo {
   updatedAt    DateTime @updatedAt
 
   @@index([weekStart, status])
+}
+
+model MobilitySession {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routineId       String
+  performedAt     DateTime
+  durationSeconds Int           @default(0)
+  painFlag        Boolean       @default(false)
+  effort          Int?
+  notes           String        @default("")
+  status          String        @default("complete")
+  createdAt       DateTime      @default(now())
+  sets            MobilitySet[]
+
+  @@index([userId, performedAt])
+  @@index([userId, routineId])
+}
+
+model MobilitySet {
+  id          String          @id @default(cuid())
+  sessionId   String
+  session     MobilitySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseKey String
+  side        String          @default("")
+  setNumber   Int             @default(1)
+  holdSeconds Int?
+  reps        Int?
+  sets        Int?
+  depthValue  Float?
+  depthUnit   String          @default("")
+  heightMark  String          @default("")
+  painFlag    Boolean         @default(false)
+
+  @@index([sessionId])
+}
+
+model MobilityCheckIn {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performedAt     DateTime
+  sitReachValue   Float?
+  sitReachUnit    String   @default("")
+  sitReachLevel   String   @default("")
+  frontSplitLeft  Float?
+  frontSplitRight Float?
+  sideSplit       Float?
+  lengthUnit      String   @default("cm")
+  hipLeft         Int?
+  hipRight        Int?
+  ankleLeft       Float?
+  ankleRight      Float?
+  kickFrontLeft   String   @default("")
+  kickFrontRight  String   @default("")
+  kickSideLeft    String   @default("")
+  kickSideRight   String   @default("")
+  shoulderGap     Float?
+  painFlag        Boolean  @default(false)
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+
+  @@index([userId, performedAt])
+}
+
+model ReadinessCheckIn {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey    String
+  sleep     Int
+  soreness  Int
+  energy    Int
+  restingHr Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayKey])
+}
+
+model TestingResult {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performedAt      DateTime
+  weekIndex        Int
+  broadJumpValue   Float?
+  broadJumpUnit    String   @default("")
+  strengthExercise String   @default("")
+  strengthLoad     Float?
+  strengthReps     Int?
+  strengthUnit     String   @default("lb")
+  strengthEstimate Float?
+  bikeSprintValue  Float?
+  bikeSprintUnit   String   @default("")
+  bikeFiveMinValue Float?
+  bikeFiveMinUnit  String   @default("")
+  restingHr        Int?
+  notes            String   @default("")
+  createdAt        DateTime @default(now())
+
+  @@index([userId, performedAt])
 }
 
 model FightCamp {

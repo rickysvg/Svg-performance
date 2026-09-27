@@ -67,8 +67,10 @@ describe("hosted preview database selection", () => {
     const prepare = fs.readFileSync("scripts/prisma-prepare.mjs", "utf8");
     expect(sql).toContain("leaderboardOptIn");
     expect(sql).toContain("seenBadgeUnlocksJson");
+    expect(sql).toContain("trainingEmphasis");
     expect(sql).toContain("DEFAULT false");
     expect(sql).toContain("DEFAULT '[]'");
+    expect(sql).toContain("DEFAULT 'balanced'");
     expect(sql).toMatch(/IF NOT EXISTS|to_regclass/);
     expect(sql.toUpperCase()).not.toMatch(/\bDROP\s+(TABLE|COLUMN|CONSTRAINT)\b/);
     expect(prepare).toContain("hosted-additive.sql");

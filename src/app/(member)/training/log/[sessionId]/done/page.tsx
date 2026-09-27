@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
 import { WorkoutDoneCard } from "@/components/share/WorkoutDoneCard";
+import { CooldownPrompt } from "@/components/training/CooldownPrompt";
 import { getProfileForUser } from "@/lib/profile";
 import { detectNewPrsForSession } from "@/lib/progress-companion";
 import { NewPrHero } from "@/components/progress/NewPrHero";
@@ -55,6 +56,8 @@ export default async function WorkoutDonePage({
       ) : (
         <WorkoutDoneCard title={view.session.title} stats={view.stats} />
       )}
+
+      <CooldownPrompt />
 
       <p className="text-center text-sm">
         <Link href={`/training/log/${sessionId}?rate=1`} className="text-accent underline">

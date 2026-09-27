@@ -10,7 +10,7 @@ export function UpgradePreviewSheet({
   next = "/home",
   children,
 }: {
-  kind: "tutorial" | "fuel" | "coach" | "charts";
+  kind: "tutorial" | "fuel" | "coach" | "charts" | "mobility";
   canStartTrial: boolean;
   trialDays: number;
   next?: string;

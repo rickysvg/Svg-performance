@@ -56,6 +56,7 @@ export async function saveProfileAction(
           ? new Date(Number(fightMatch[1]), Number(fightMatch[2]) - 1, Number(fightMatch[3]))
           : new Date(fightRaw),
       coachingTone: String(formData.get("coachingTone") ?? ""),
+      trainingEmphasis: String(formData.get("trainingEmphasis") ?? ""),
       obstacles: formData.getAll("obstacles").map(String),
       calorieTarget: optionalNumber("calorieTarget"),
       proteinTargetG: optionalNumber("proteinTargetG"),

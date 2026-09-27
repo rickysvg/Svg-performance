@@ -179,6 +179,12 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     channel: "Phil Daru / Daru Strong",
     title: "Combat kettlebell swings",
   },
+  "Neck isometric matrix": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
   "Neck extension hold": {
     url: "https://www.youtube.com/watch?v=n8h-FheN2p4",
     pending: false,

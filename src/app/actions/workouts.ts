@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { isDeloadWeek } from "@/lib/training-cycle";
 import {
   deleteWorkoutSessionForUser,
   rateWorkoutSessionForUser,
@@ -48,6 +49,7 @@ export async function startSessionAction(formData: FormData) {
   const user = await requireUserOrThrow();
   const profile = await getProfileForUser(user.id);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const session = await startWorkoutFromDay({
     userId: user.id,
     programDayId: String(formData.get("programDayId") ?? ""),
@@ -56,6 +58,7 @@ export async function startSessionAction(formData: FormData) {
       experienceLevel: profile?.experienceLevel,
       competitionStatus: profile?.competitionStatus,
     },
+    deload: isDeloadWeek(new Date(), timeZone),
   });
   redirect(`/training/log/${session.id}`);
 }

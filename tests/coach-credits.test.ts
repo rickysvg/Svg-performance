@@ -34,6 +34,13 @@ describe("coach credits", () => {
     for (const exercise of DARU_EXERCISES) {
       const credit = creditForExercise(exercise.name);
       expect(credit, exercise.name).toBeTruthy();
+      if (exercise.name === "Neck isometric matrix") {
+        expect(credit?.line).toMatch(/UFC Performance Institute/);
+        expect(credit?.url).toBe(
+          "https://valdperformance.com/news/neck-coupling-strength-in-mma-testing-what-matters",
+        );
+        continue;
+      }
       expect(credit?.line).toMatch(/Phil Daru \/ Daru Strong/);
       expect(isYoutubeFormUrl(credit!.url)).toBe(true);
       expect(ALLOWED_IDS.some((id) => credit!.url.includes(id))).toBe(true);

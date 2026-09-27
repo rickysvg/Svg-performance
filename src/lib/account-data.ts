@@ -90,6 +90,10 @@ export async function exportAccountData(userId: string) {
     challengeEnrollments,
     groceryLists,
     metricEvents,
+    mobilitySessions,
+    mobilityCheckIns,
+    readinessCheckIns,
+    testingResults,
     fightCamp,
     formChecks,
   ] = await Promise.all([
@@ -175,6 +179,14 @@ export async function exportAccountData(userId: string) {
     }),
     prisma.groceryList.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     prisma.metricEvent.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
+    prisma.mobilitySession.findMany({
+      where: { userId },
+      include: { sets: true },
+      orderBy: { performedAt: "desc" },
+    }),
+    prisma.mobilityCheckIn.findMany({ where: { userId }, orderBy: { performedAt: "desc" } }),
+    prisma.readinessCheckIn.findMany({ where: { userId }, orderBy: { dayKey: "desc" } }),
+    prisma.testingResult.findMany({ where: { userId }, orderBy: { performedAt: "desc" } }),
     prisma.fightCamp.findUnique({ where: { userId } }),
     prisma.formCheck.findMany({
       where: { userId },
@@ -264,6 +276,10 @@ export async function exportAccountData(userId: string) {
     challengeEnrollments,
     groceryLists,
     metricEvents,
+    mobilitySessions,
+    mobilityCheckIns,
+    readinessCheckIns,
+    testingResults,
     fightCamp,
     formChecks: formChecks.map((row) => ({
       ...row,
