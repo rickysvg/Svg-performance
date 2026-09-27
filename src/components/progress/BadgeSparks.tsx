@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { BadgeStyleId } from "@/lib/badge-style";
 
 type Spark = {
   x: number;
@@ -20,36 +19,18 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function rimPoint(style: BadgeStyleId, cx: number, cy: number, radius: number, angle: number) {
-  if (style === "belt") {
-    return {
-      x: cx + Math.cos(angle) * radius * 1.12,
-      y: cy + Math.sin(angle) * radius * 0.7,
-    };
-  }
-  if (style === "hex") {
-    const step = Math.PI / 3;
-    const shifted = ((angle + Math.PI / 2) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-    const sector = Math.floor(shifted / step) % 6;
-    const t = shifted / step - sector;
-    const a0 = -Math.PI / 2 + sector * step;
-    const a1 = a0 + step;
-    const x0 = cx + Math.cos(a0) * radius;
-    const y0 = cy + Math.sin(a0) * radius;
-    const x1 = cx + Math.cos(a1) * radius;
-    const y1 = cy + Math.sin(a1) * radius;
-    return { x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t };
-  }
-  return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+function beltRim(cx: number, cy: number, radius: number, angle: number) {
+  return {
+    x: cx + Math.cos(angle) * radius * 1.12,
+    y: cy + Math.sin(angle) * radius * 0.7,
+  };
 }
 
 export function BadgeSparks({
   active,
-  style = "medal",
   durationMs = 2400,
 }: {
   active: boolean;
-  style?: BadgeStyleId;
   durationMs?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -77,11 +58,11 @@ export function BadgeSparks({
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       const cx = w / 2;
-      const cy = style === "hex" ? h * 0.42 : h / 2;
-      const radius = style === "belt" ? Math.min(w, h) * 0.34 : Math.min(w, h) * 0.36;
+      const cy = h / 2;
+      const radius = Math.min(w, h) * 0.34;
       for (let i = 0; i < count; i += 1) {
         const angle = Math.random() * Math.PI * 2;
-        const origin = rimPoint(style, cx, cy, radius, angle);
+        const origin = beltRim(cx, cy, radius, angle);
         const speed = 1.1 + Math.random() * 2.8;
         const hot = Math.random() > 0.72;
         sparks.push({
@@ -148,7 +129,7 @@ export function BadgeSparks({
       running = false;
       cancelAnimationFrame(raf);
     };
-  }, [active, durationMs, style]);
+  }, [active, durationMs]);
 
   if (!active) return null;
   return (

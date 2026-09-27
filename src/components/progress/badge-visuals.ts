@@ -1,5 +1,4 @@
 import type { BadgeTier, EarnedBadge } from "@/lib/badges";
-import type { BadgeStyleId } from "@/lib/badge-style";
 
 export type BadgeVisualProps = {
   badge: EarnedBadge;
@@ -10,9 +9,6 @@ export type BadgeVisualProps = {
 
 export const BELT_PLATE =
   "M14,40 L20,20 L30,13 L50,13 L60,20 L66,40 L60,60 L50,67 L30,67 L20,60 Z";
-export const HEX_POINTS = "32,7 56,19 56,45 32,57 8,45 8,19";
-export const HEX_RIBBON =
-  "M10,66 h44 a4,4 0 0 1 4,4 v5 a4,4 0 0 1 -4,4 h-44 a4,4 0 0 1 -4,-4 v-5 a4,4 0 0 1 4,-4 z";
 
 export const TIER_METAL: Record<
   BadgeTier,
@@ -50,12 +46,4 @@ export function markFontSize(mark: string) {
   if (mark.length === 3) return 17;
   if (mark.length === 2) return 22;
   return 26;
-}
-
-export const COMPARE_BADGE_IDS = ["lift_100kg", "streak_7", "bike_50", "streak_30"] as const;
-
-export function styleCaption(style: BadgeStyleId) {
-  if (style === "medal") return "A Medal";
-  if (style === "belt") return "B Belt";
-  return "C Hex";
 }

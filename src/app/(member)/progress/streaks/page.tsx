@@ -8,17 +8,15 @@ import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { ChallengeCard } from "@/components/progress/ChallengeCard";
 import { LeaderboardPodium } from "@/components/progress/LeaderboardPodium";
 import { featuredBadges } from "@/lib/badges";
-import { resolveBadgeStyle } from "@/lib/badge-style";
 
 export default async function StreaksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string; badgeStyle?: string }>;
+  searchParams: Promise<{ scope?: string }>;
 }) {
   const user = await requireUser();
   const query = await searchParams;
   const scope = query.scope === "academy" ? "academy" : "all";
-  const badgeStyle = resolveBadgeStyle(query.badgeStyle);
   const profile = await getProfileForUser(user.id);
   const units = profile?.preferredUnits ?? "lb";
   const companion = await getCompanionProgress(user.id, units);
@@ -48,7 +46,7 @@ export default async function StreaksPage({
       </div>
 
       <StreakHero streak={companion.streak} />
-      <BadgesGrid badges={featured} earned={counts.earned} total={counts.total} style={badgeStyle} />
+      <BadgesGrid badges={featured} earned={counts.earned} total={counts.total} />
       <ChallengeCard challenge={challenge} />
       <LeaderboardPodium
         entries={board.entries}

@@ -124,10 +124,9 @@ describe("badge unlock queue and seen store", () => {
     expect(overlay).toContain("badge-unlock-glow");
     expect(overlay).not.toContain("badge-unlock-shine-wrap");
     expect(read("src/components/progress/BadgeSvgShine.tsx")).toContain("clipPath");
-    expect(read("src/components/progress/BadgeMedal.tsx")).toContain("BadgeSvgShine");
     expect(read("src/components/progress/BadgeBelt.tsx")).toContain("BELT_PLATE");
-    expect(read("src/components/progress/BadgeHex.tsx")).toContain("HEX_POINTS");
-    expect(sparks).toContain("rimPoint");
+    expect(read("src/components/progress/BadgeBelt.tsx")).toContain("BadgeSvgShine");
+    expect(sparks).toContain("beltRim");
     expect(read("prisma/schema.prisma")).toContain("seenBadgeUnlocksJson");
   });
 });

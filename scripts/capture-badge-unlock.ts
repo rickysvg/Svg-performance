@@ -36,6 +36,16 @@ async function recordMp4(page: Page, dest: string, ms = 4000) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+async function login(page: Page) {
+  await page.goto(`${BASE}/login`, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.type('input[name="email"]', "streaks@example.com");
+  await page.type('input[name="password"]', "password12");
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle0", timeout: 60_000 }),
+    page.click('button[type="submit"]'),
+  ]);
+}
+
 async function main() {
   fs.mkdirSync(ART, { recursive: true });
   const browser = await puppeteer.launch({
@@ -49,33 +59,24 @@ async function main() {
     defaultViewport: { width: 390, height: 844, deviceScaleFactor: 1 },
   });
   const page = await browser.newPage();
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle0", timeout: 60_000 });
-  await page.type('input[name="email"]', "streaks@example.com");
-  await page.type('input[name="password"]', "password12");
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle0", timeout: 60_000 }),
-    page.click('button[type="submit"]'),
-  ]);
+  await login(page);
 
-  const styles = [
-    { id: "medal", shot: "unlock2_a_medal.png", video: "unlock2_a_medal.mp4" },
-    { id: "belt", shot: "unlock2_b_belt.png", video: "unlock2_b_belt.mp4" },
-    { id: "hex", shot: "unlock2_c_hex.png", video: "unlock2_c_hex.mp4" },
-  ] as const;
+  await page.goto(`${BASE}/progress`, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.waitForSelector("#badges", { timeout: 15_000 });
+  await page.screenshot({ path: path.join(ART, "final_belt_progress.png"), type: "png" });
+  console.log("wrote final_belt_progress.png");
 
-  for (const style of styles) {
-    const url = `${BASE}/progress?unlock=streak_7&unlockPreview=1&badgeStyle=${style.id}`;
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-    await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-    await delay(240);
-    await page.screenshot({ path: path.join(ART, style.shot), type: "png" });
-    console.log("wrote", style.shot);
+  const unlock = `${BASE}/progress?unlock=streak_7&unlockPreview=1`;
+  await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
+  await delay(240);
+  await page.screenshot({ path: path.join(ART, "final_belt_unlock.png"), type: "png" });
+  console.log("wrote final_belt_unlock.png");
 
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-    await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
-    await recordMp4(page, path.join(ART, style.video), 4000);
-    console.log("wrote", style.video);
-  }
+  await page.goto(unlock, { waitUntil: "networkidle0", timeout: 60_000 });
+  await page.waitForSelector("[data-badge-unlock='1']", { timeout: 15_000 });
+  await recordMp4(page, path.join(ART, "final_belt_unlock.mp4"), 4000);
+  console.log("wrote final_belt_unlock.mp4");
 
   await browser.close();
 }

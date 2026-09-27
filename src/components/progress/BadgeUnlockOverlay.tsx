@@ -6,7 +6,6 @@ import { loadUnlockBadgesAction, markBadgeUnlocksSeenAction } from "@/app/action
 import { BadgeMark } from "@/components/progress/BadgeMark";
 import { BadgeSparks } from "@/components/progress/BadgeSparks";
 import { badgeShareStats, parseUnlockQuery, unlockLine } from "@/lib/badge-unlocks";
-import { resolveBadgeStyle } from "@/lib/badge-style";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { EarnedBadge } from "@/lib/badges";
 import type { UnlockBadgePayload } from "@/app/actions/badges";
@@ -35,7 +34,6 @@ export function BadgeUnlockOverlay() {
   const ids = useMemo(() => parseUnlockQuery(unlockParam), [unlockParam]);
   const queueKey = ids.join(",");
   const preview = params.get("unlockPreview") === "1";
-  const style = resolveBadgeStyle(params.get("badgeStyle"));
   const [queue, setQueue] = useState<UnlockBadgePayload[]>([]);
   const [loadedKey, setLoadedKey] = useState("");
   const [index, setIndex] = useState(0);
@@ -116,15 +114,15 @@ export function BadgeUnlockOverlay() {
       aria-modal="true"
       aria-labelledby="badge-unlock-title"
       data-badge-unlock="1"
-      data-badge-style={style}
+      data-badge-style="belt"
       data-badge-id={current.id}
     >
       <div className="badge-unlock-glow" aria-hidden />
       <div className="relative w-full max-w-sm text-center text-white">
         <div className="relative mx-auto flex h-[200px] w-[200px] items-center justify-center">
-          <BadgeSparks key={current.id} active={!reduce} style={style} />
+          <BadgeSparks key={current.id} active={!reduce} />
           <div className={reduce ? "badge-unlock-fade" : "badge-unlock-slam"}>
-            <BadgeMark badge={badge} style={style} motion={false} large shine={!reduce} />
+            <BadgeMark badge={badge} motion={false} large shine={!reduce} />
           </div>
         </div>
         <h2 id="badge-unlock-title" className="font-display mt-8 text-3xl uppercase tracking-wide text-white">

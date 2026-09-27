@@ -8,22 +8,28 @@ import {
   badgeTier,
   evaluateBadges,
 } from "@/lib/badges";
-import { BADGE_STYLE, BADGE_STYLES, resolveBadgeStyle } from "@/lib/badge-style";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
 }
 
 describe("badge styles and progress", () => {
-  it("keeps one swappable style constant with all three options", () => {
-    expect(BADGE_STYLES).toEqual(["medal", "belt", "hex"]);
-    expect(BADGE_STYLES).toContain(BADGE_STYLE);
-    expect(resolveBadgeStyle("belt")).toBe("belt");
-    expect(resolveBadgeStyle("nope")).toBe(BADGE_STYLE);
-    expect(read("src/lib/badge-style.ts")).toContain("Ricky picks one");
-    expect(read("src/components/progress/BadgeMedal.tsx")).toContain("linearGradient");
+  it("uses the belt plate as the only badge mark", () => {
+    expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeBelt");
+    expect(read("src/components/progress/BadgeMark.tsx")).not.toContain("BadgeMedal");
+    expect(read("src/components/progress/BadgeMark.tsx")).not.toContain("BadgeHex");
     expect(read("src/components/progress/badge-visuals.ts")).toContain("M14,40 L20,20");
-    expect(read("src/components/progress/badge-visuals.ts")).toContain("32,7 56,19");
+    expect(read("src/components/progress/BadgeBelt.tsx")).toContain("BELT_PLATE");
+    expect(fs.existsSync(path.join(process.cwd(), "src/lib/badge-style.ts"))).toBe(false);
+    expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgeMedal.tsx"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgeHex.tsx"))).toBe(
+      false,
+    );
+    expect(
+      fs.existsSync(path.join(process.cwd(), "src/app/(member)/progress/badge-preview/page.tsx")),
+    ).toBe(false);
   });
 
   it("uses big milestone marks in the athlete unit", () => {
