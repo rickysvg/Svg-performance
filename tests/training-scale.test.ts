@@ -5,6 +5,7 @@ import { getDemoProgram, findSkillProgram } from "@/lib/programs";
 import { startWorkoutFromDay } from "@/lib/workouts";
 import {
   SKILL_REST_SECONDS,
+  SKILL_ROUND_COUNTS,
   SKILL_ROUND_SECONDS,
   scaleBandFromPrefs,
   scaleCopy,
@@ -25,6 +26,8 @@ describe("training scale bands", () => {
       "advanced",
     );
     expect(scaleCopy("advanced")).toMatch(/advanced \/ competition/i);
+    expect(scaleCopy("advanced", 1)).toMatch(/60 min bag/i);
+    expect(scaleCopy("advanced", 2)).not.toMatch(/60 min bag/i);
     expect(scaleCopy("beginner")).toMatch(/beginner pacing/i);
   });
 
@@ -48,12 +51,16 @@ describe("training scale bands", () => {
     expect(round.sets).toBe(7);
   });
 
-  it("gives advanced / pro 3 min bag rounds and longer optional day-6 clocks", () => {
+  it("gives advanced / pro 3 min bag rounds, 60-min Mon/Wed/Fri, and longer optional day-6 clocks", () => {
     expect(SKILL_ROUND_SECONDS.advanced[1]).toBe(180);
     expect(SKILL_ROUND_SECONDS.advanced[2]).toBe(180);
     expect(SKILL_ROUND_SECONDS.advanced[6]).toBe(300);
     expect(SKILL_REST_SECONDS.advanced[1]).toBe(45);
     expect(SKILL_REST_SECONDS.advanced[6]).toBe(45);
+    expect(SKILL_ROUND_COUNTS.advanced[1]).toBe(14);
+    expect(SKILL_ROUND_COUNTS.advanced[2]).toBe(10);
+    expect(SKILL_ROUND_COUNTS.advanced[3]).toBe(14);
+    expect(SKILL_ROUND_COUNTS.advanced[5]).toBe(14);
     const power = scaleExercise(
       {
         name: "Bag rounds — boxing combos",
@@ -67,7 +74,19 @@ describe("training scale bands", () => {
     );
     expect(power.reps).toBe("3:00");
     expect(power.restSeconds).toBe(45);
-    expect(power.sets).toBe(10);
+    expect(power.sets).toBe(14);
+    const tue = scaleExercise(
+      {
+        name: "Bag rounds — kicks & teeps",
+        sets: 8,
+        reps: "3:00",
+        loadText: "Technical",
+        restSeconds: 60,
+        logMode: "timed_round",
+      },
+      { band: "advanced", programSlug: "demo-combat-skills", dayNumber: 2 },
+    );
+    expect(tue.sets).toBe(10);
     const optional = scaleExercise(
       {
         name: "Bag rounds — power & speed",

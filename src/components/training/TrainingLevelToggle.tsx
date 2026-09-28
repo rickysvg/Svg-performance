@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ScaleBand } from "@/lib/training-scale";
-import { bagMinutesForBand, bagRoundLabel } from "@/lib/bag-sessions";
+import { bagMinutesHintForBand, bagRoundLabel } from "@/lib/bag-sessions";
 
 const LEVELS: { id: ScaleBand; label: string }[] = [
   { id: "beginner", label: "Beginner" },
@@ -34,6 +34,7 @@ export function TrainingLevelToggle({
           {fromProfile
             ? "From your profile — tap to preview another level"
             : "No level on your profile yet — default Intermediate"}
+          {band === "advanced" ? " · Advanced: Mon/Wed/Fri ~60 min, other days ~45." : ""}
         </p>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -52,7 +53,7 @@ export function TrainingLevelToggle({
             >
               {level.label}
               <span className="mt-0.5 block text-[10px] font-medium opacity-80">
-                ~{bagMinutesForBand(level.id)} min bag
+                ~{bagMinutesHintForBand(level.id)} min bag
               </span>
             </Link>
           );

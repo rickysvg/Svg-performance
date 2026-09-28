@@ -1,7 +1,10 @@
 import {
   BAG_REST_SECONDS,
   BAG_ROUND_COUNTS,
+  BAG_ROUND_COUNTS_ADVANCED_LONG,
   BAG_ROUND_SECONDS,
+  bagRoundCountFor,
+  isAdvancedLongBagDay,
 } from "@/lib/bag-sessions";
 import {
   bikeIntervalReps,
@@ -40,8 +43,8 @@ export type ScaleableExercise = {
 
 /**
  * Skill-day round length (seconds) by DEMO Combat Skills dayNumber.
- * Bag days 1–5 use level-scaled bag minutes (beginner ~30, intermediate ~35–40, advanced ~45).
- * Day 6 (optional Saturday / open skill) keeps longer grappling-style clocks.
+ * Bag days 1–5 use level-scaled bag minutes (beginner ~30, intermediate ~35–40,
+ * advanced ~45 on Tue/Thu and ~60 on Mon/Wed/Fri). Day 6 keeps longer open clocks.
  */
 export const SKILL_ROUND_SECONDS: Record<ScaleBand, Record<number, number>> = {
   beginner: {
@@ -116,11 +119,11 @@ export const SKILL_ROUND_COUNTS: Record<ScaleBand, Record<number, number>> = {
     6: 3,
   },
   advanced: {
-    1: BAG_ROUND_COUNTS.advanced,
+    1: BAG_ROUND_COUNTS_ADVANCED_LONG,
     2: BAG_ROUND_COUNTS.advanced,
-    3: BAG_ROUND_COUNTS.advanced,
+    3: BAG_ROUND_COUNTS_ADVANCED_LONG,
     4: BAG_ROUND_COUNTS.advanced,
-    5: BAG_ROUND_COUNTS.advanced,
+    5: BAG_ROUND_COUNTS_ADVANCED_LONG,
     6: 4,
   },
 };
@@ -223,7 +226,10 @@ export function scaleBandFromPrefs(prefs?: ScalePrefs | null): ScaleBand {
   return "intermediate";
 }
 
-export function scaleCopy(band: ScaleBand) {
+export function scaleCopy(band: ScaleBand, dayNumber?: number) {
+  if (band === "advanced" && dayNumber != null && isAdvancedLongBagDay(dayNumber)) {
+    return "Scaled for advanced / competition · ~60 min bag";
+  }
   if (band === "advanced") return "Scaled for advanced / competition";
   if (band === "intermediate") return "Scaled for intermediate";
   return "DEMO Core — beginner pacing";
@@ -257,9 +263,7 @@ export function scaleExercise(
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
     if (mode === "timed_round") {
       const seconds = skillRoundSeconds(band, dayNumber);
-      const rounds =
-        SKILL_ROUND_COUNTS[band][dayNumber] ??
-        (band === "beginner" ? 7 : band === "advanced" ? 10 : 8);
+      const rounds = bagRoundCountFor(band, dayNumber);
       const isBagBlock = /\bbag rounds?\b/i.test(exercise.name);
       return {
         ...exercise,
@@ -452,7 +456,12 @@ export function scaleProgramDay<T extends { dayNumber: number; focus: string; ex
     programSlug: input.programSlug,
     dayNumber: day.dayNumber,
   });
-  const note = scaleCopy(input.band);
+  const note = scaleCopy(
+    input.band,
+    input.programSlug === DEMO_SKILL_PROGRAM_SLUG || input.programSlug === "skill"
+      ? day.dayNumber
+      : undefined,
+  );
   const focus = day.focus.includes("Scaled") || day.focus.includes("DEMO Core")
     ? day.focus
     : `${day.focus} · ${note}`;

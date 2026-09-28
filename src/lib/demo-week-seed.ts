@@ -282,7 +282,7 @@ export function demoBagSkillDays() {
             sortOrder: 3,
             name: "Bag rounds — boxing combos",
             notes:
-              "Round focus rotates: R1–2 jab-cross, R3–4 1-2-3, R5–6 body jab then 1-2, R7–8 freestyle boxing. Hands home after every combo.",
+              "Round focus rotates: R1–2 jab-cross, R3–4 1-2-3, R5–6 body jab then 1-2, R7–8 hooks/uppercuts, R9–10 defense then counter, R11–12 power combinations, R13–14 freestyle boxing. Hands home after every combo. Advanced Mon/Wed/Fri run the full ~60 min block.",
           }),
           {
             sortOrder: 4,
@@ -372,7 +372,7 @@ export function demoBagSkillDays() {
             sortOrder: 3,
             name: "Bag rounds — body shots",
             notes:
-              "Round focus rotates: R1–2 jab to body, R3–4 1-2 to the ribs, R5–6 liver hook entries, R7–8 head-body-head. Do not fold at the waist.",
+              "Round focus rotates: R1–2 jab to body, R3–4 1-2 to the ribs, R5–6 liver hook entries, R7–8 head-body-head, R9–10 left-right body hooks, R11–12 level-change then 1-2 upstairs, R13–14 freestyle body boxing. Do not fold at the waist. Advanced Mon/Wed/Fri run the full ~60 min block.",
           }),
           {
             sortOrder: 4,
@@ -462,7 +462,7 @@ export function demoBagSkillDays() {
             sortOrder: 3,
             name: "Bag rounds — defense & counters",
             notes:
-              "Round focus rotates: R1–2 high guard + catch, R3–4 slip then 1-2, R5–6 roll under then body shot, R7–8 freestyle defense-to-counter. Never chase — reset the feet.",
+              "Round focus rotates: R1–2 high guard + catch, R3–4 slip then 1-2, R5–6 roll under then body shot, R7–8 parry then cross, R9–10 cover then 1-2-3, R11–12 pivot off the center line, R13–14 freestyle defense-to-counter. Never chase — reset the feet. Advanced Mon/Wed/Fri run the full ~60 min block.",
           }),
           {
             sortOrder: 4,
