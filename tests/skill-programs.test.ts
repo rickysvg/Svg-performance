@@ -8,12 +8,12 @@ import { getHomeToday } from "@/lib/home";
 import { makeUser, resetDatabase } from "./helpers";
 
 const skillDays = [
-  { id: "s1", dayNumber: 1, title: "Heavy bag — hands to low kicks" },
-  { id: "s2", dayNumber: 2, title: "Clinch knees on the bag" },
-  { id: "s3", dayNumber: 3, title: "Jab-cross-hook bag rounds" },
-  { id: "s4", dayNumber: 4, title: "Ground-and-pound drill" },
-  { id: "s5", dayNumber: 5, title: "Shot + sprawl" },
-  { id: "s6", dayNumber: 6, title: "Closed guard positional drill" },
+  { id: "s1", dayNumber: 1, title: "Bag — boxing combos" },
+  { id: "s2", dayNumber: 2, title: "Bag — kicks & teeps" },
+  { id: "s3", dayNumber: 3, title: "Bag — body shots" },
+  { id: "s4", dayNumber: 4, title: "Bag — clinch knees & elbows" },
+  { id: "s5", dayNumber: 5, title: "Bag — defense & counters" },
+  { id: "s6", dayNumber: 6, title: "Bag — power & speed (optional)" },
 ];
 
 describe("DEMO combat skill chooser", () => {
@@ -21,17 +21,17 @@ describe("DEMO combat skill chooser", () => {
     expect(filterSkillDaysForFocus(skillDays, "mma").map((day) => day.dayNumber)).toEqual([
       1, 2, 3, 4, 5, 6,
     ]);
-    expect(filterSkillDaysForFocus(skillDays, "muay-thai").map((day) => day.title)).toEqual([
-      "Heavy bag — hands to low kicks",
-      "Clinch knees on the bag",
+    expect(filterSkillDaysForFocus(skillDays, "muay-thai").map((day) => day.dayNumber)).toEqual([
+      1, 2, 3, 4, 5, 6,
     ]);
-    expect(filterSkillDaysForFocus(skillDays, "boxing").map((day) => day.dayNumber)).toEqual([3]);
+    expect(filterSkillDaysForFocus(skillDays, "boxing").map((day) => day.dayNumber)).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
     expect(filterSkillDaysForFocus(skillDays, "wrestling").map((day) => day.dayNumber)).toEqual([
-      4, 5,
+      1, 2, 3, 4, 5, 6,
     ]);
-    expect(filterSkillDaysForFocus(skillDays, "jiu-jitsu").map((day) => day.dayNumber)).toEqual([6]);
-    expect(filterSkillDaysForFocus(skillDays, "cagework").map((day) => day.dayNumber)).toEqual([
-      4, 5,
+    expect(filterSkillDaysForFocus(skillDays, "jiu-jitsu").map((day) => day.dayNumber)).toEqual([
+      1, 2, 3, 4, 5, 6,
     ]);
     expect(filterSkillDaysForFocus(skillDays, "general-fitness")).toEqual([]);
   });
@@ -43,12 +43,12 @@ describe("DEMO combat skill chooser", () => {
     expect(EQUIPMENT_OPTIONS).toContain("Thai pads / focus mitts");
   });
 
-  it("describes skill + strength without claiming a custom camp", () => {
+  it("describes bag + strength without claiming a custom camp", () => {
     expect(demoSuggestionCopy({ primaryFocus: "mma", goalKey: "stronger-for-class" })).toMatch(
-      /DEMO Core week plan \(skill \+ strength\)/,
+      /DEMO Core week plan \(bag \+ strength\)/,
     );
     expect(demoSuggestionCopy({ primaryFocus: "general-fitness" })).toMatch(
-      /DEMO Core week plan \(strength\)/,
+      /DEMO Core week plan \(bag \+ strength\)/,
     );
     expect(demoSuggestionCopy({ primaryFocus: "muay-thai" })).toMatch(/Not a custom Elite/);
   });
@@ -63,22 +63,25 @@ describe("seeded DEMO combat skills", () => {
     await prisma.$disconnect();
   });
 
-  it("seeds six labeled skill days and suggests bag work for Muay Thai on Home", async () => {
+  it("seeds six bag theme days and suggests Mon boxing bag for Muay Thai on Home", async () => {
     const skill = await findSkillProgram();
     const strength = await getDemoProgram();
     expect(skill?.isDemo).toBe(true);
     expect(skill?.title).toMatch(/DEMO/);
     expect(skill?.days.map((day) => day.title)).toEqual([
-      "Heavy bag — hands to low kicks",
-      "Clinch knees on the bag",
-      "Jab-cross-hook bag rounds",
-      "Ground-and-pound drill",
-      "Shot + sprawl",
-      "Closed guard positional drill",
+      "Bag — boxing combos",
+      "Bag — kicks & teeps",
+      "Bag — body shots",
+      "Bag — clinch knees & elbows",
+      "Bag — defense & counters",
+      "Bag — power & speed (optional)",
     ]);
-    expect(strength.days).toHaveLength(10);
+    expect(strength.days.map((day) => day.dayNumber).sort((a, b) => a - b)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+    ]);
     expect(strength.days.find((day) => day.dayNumber === 4)?.title).toMatch(/assault bike/i);
     expect(strength.days.find((day) => day.dayNumber === 10)?.title).toMatch(/GPP/i);
+    expect(strength.days.find((day) => day.dayNumber === 11)?.title).toMatch(/Posterior/i);
 
     const user = await makeUser("muay@example.com");
     await completeOnboardingForUser(user.id, {
@@ -97,7 +100,7 @@ describe("seeded DEMO combat skills", () => {
     });
     const today = await getHomeToday(user.id, new Date(2026, 8, 21, 10, 0, 0));
     expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
-    expect(today.suggestedDay?.title).toMatch(/Heavy bag — hands to low kicks/i);
+    expect(today.suggestedDay?.title).toMatch(/Bag — boxing combos/i);
     expect(today.suggestionCopy).toMatch(/Muay Thai/);
     expect(today.suggestionCopy).not.toMatch(/custom fight camp|Ricky wrote/i);
   });

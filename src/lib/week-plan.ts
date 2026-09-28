@@ -1,9 +1,16 @@
+import { BAG_FOCUS, type BagWeekday } from "@/lib/bag-sessions";
 import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
-import { FRIDAY_GPP_DAY_NUMBER } from "@/lib/daru-exercises";
+import { FRIDAY_GPP_DAY_NUMBER, THU_STRENGTH_DAY_NUMBER } from "@/lib/daru-exercises";
 import { WEEKDAYS } from "@/lib/constants";
+import { formatDayParam } from "@/lib/home";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { isDeloadWeekIndex, isTestingWeekIndex } from "@/lib/training-cycle";
-import { APP_TIMEZONE, addZonedDays, weekdayInZone } from "@/lib/timezone";
+import {
+  APP_TIMEZONE,
+  addZonedDays,
+  mondayOfZoned,
+  weekdayInZone,
+} from "@/lib/timezone";
 
 export { APP_TIMEZONE } from "@/lib/timezone";
 
@@ -47,7 +54,7 @@ export type CatalogDayLike = {
 };
 
 export type ResolvedPlanSession = {
-  slot: "A" | "B";
+  slot: "A" | "B" | "C";
   kind: PlanSessionKind;
   label: string;
   title: string;
@@ -95,13 +102,6 @@ export function isGeneralFitnessFocus(focus?: string | null) {
   return !focus || focus === "general-fitness";
 }
 
-function bagDayNumber(focus: string, slot: "power" | "technique") {
-  if (focus === "boxing") return 3;
-  if (slot === "technique" && (focus === "muay-thai" || focus === "mma")) return 2;
-  if (focus === "muay-thai" || focus === "mma") return 1;
-  return 3;
-}
-
 function bikeSlot(weekday: "Tuesday" | "Thursday", weekIndex = 0): PlanSessionSlot {
   const session = pickBikeSessionForPlan(weekday, weekIndex);
   return {
@@ -112,16 +112,14 @@ function bikeSlot(weekday: "Tuesday" | "Thursday", weekIndex = 0): PlanSessionSl
   };
 }
 
-function saturdaySkillSlot(focus: string): PlanSessionSlot | null {
-  if (isGeneralFitnessFocus(focus)) return null;
-  const dayNumber =
-    focus === "boxing" ? 3 : focus === "muay-thai" ? 2 : focus === "jiu-jitsu" ? 6 : 5;
+function bagSlot(weekday: BagWeekday): PlanSessionSlot {
+  const bag = BAG_FOCUS[weekday];
   return {
     kind: "skill",
-    label: "Open skill / sparring prep",
+    label: bag.label,
     programSlug: DEMO_SKILL_PROGRAM_SLUG,
-    dayNumber,
-    optional: true,
+    dayNumber: bag.dayNumber,
+    optional: weekday === "Saturday",
   };
 }
 
@@ -134,63 +132,64 @@ function strengthSlot(dayNumber: number, label: string, kind: PlanSessionKind = 
   };
 }
 
-function skillSlot(dayNumber: number, label: string): PlanSessionSlot {
-  return {
-    kind: "skill",
-    label,
-    programSlug: DEMO_SKILL_PROGRAM_SLUG,
-    dayNumber,
-  };
-}
-
 /**
  * Core skeleton before availability / session-count compression.
- * Elite / fight-camp overrides are out of scope — do not add them here.
+ *
+ * Every Mon–Fri training day includes a bag session with a distinct focus.
+ * Lifts rotate so consecutive days do not hammer the same muscle group
+ * (Jamieson / Daru-style public S&C practice). Tue/Thu keep the assault-bike
+ * rotation. Elite / fight-camp overrides are out of scope.
  */
 export function coreSkeletonSessions(
   weekday: PlanWeekday,
-  focus?: string | null,
+  _focus?: string | null,
   weekIndex = 0,
 ): PlanSessionSlot[] {
-  const art = focus ?? "";
-  const striking = isStrikingFocus(art);
-
   if (weekday === "Monday") {
-    const sessions: PlanSessionSlot[] = [];
-    if (striking) {
-      sessions.push(skillSlot(bagDayNumber(art, "power"), "Bag / striking"));
-    }
-    sessions.push(strengthSlot(2, "Strength — push / upper"));
-    return sessions;
+    return [
+      bagSlot("Monday"),
+      strengthSlot(1, "Strength — lower (squat / hinge)"),
+    ];
   }
 
   if (weekday === "Tuesday") {
-    return [bikeSlot("Tuesday", weekIndex)];
+    return [
+      bagSlot("Tuesday"),
+      strengthSlot(2, "Strength — upper pull + core"),
+      bikeSlot("Tuesday", weekIndex),
+    ];
   }
 
   if (weekday === "Wednesday") {
-    const sessions: PlanSessionSlot[] = [];
-    if (striking) {
-      sessions.push(skillSlot(bagDayNumber(art, "power"), "Bag / pads power"));
-    }
-    sessions.push(strengthSlot(3, "Strength — pull / posterior"));
-    return sessions;
+    return [
+      bagSlot("Wednesday"),
+      strengthSlot(3, "Strength — upper push + rotational"),
+    ];
   }
 
   if (weekday === "Thursday") {
-    return [bikeSlot("Thursday", weekIndex)];
+    return [
+      bagSlot("Thursday"),
+      strengthSlot(THU_STRENGTH_DAY_NUMBER, "Strength — posterior / unilateral"),
+      bikeSlot("Thursday", weekIndex),
+    ];
   }
 
   if (weekday === "Friday") {
     return [
-      strengthSlot(FRIDAY_GPP_DAY_NUMBER, "Conditioning", "conditioning"),
-      strengthSlot(1, "Strength — legs / athletic"),
+      bagSlot("Friday"),
+      strengthSlot(FRIDAY_GPP_DAY_NUMBER, "Conditioning — full-body GPP", "conditioning"),
     ];
   }
 
   if (weekday === "Saturday") {
-    const open = saturdaySkillSlot(art);
-    return open ? [open] : [{ kind: "rest", label: "Optional — skip", optional: true }];
+    return [
+      {
+        kind: "mobility",
+        label: "Optional — light mobility / active recovery",
+        optional: true,
+      },
+    ];
   }
 
   return [{ kind: "mobility", label: "Rest or mobility" }];
@@ -199,14 +198,21 @@ export function coreSkeletonSessions(
 function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, active: boolean) {
   if (!active) return "Off";
   if (weekday === "Sunday") return "Rest";
+  if (weekday === "Saturday") return "Recover";
   const kinds = sessions.map((session) => session.kind);
-  const hasSkill = kinds.includes("skill");
-  const hasLift = kinds.includes("strength") || kinds.includes("conditioning");
-  if (hasSkill && hasLift) return "Bag+Lift";
-  if (hasSkill && sessions[0]?.optional) return "Optional";
-  if (hasSkill) return "Skill";
-  if (kinds.includes("conditioning") && kinds.includes("strength")) return "GPP";
-  if (kinds.includes("conditioning")) return "Bike";
+  const hasBag = kinds.includes("skill");
+  const hasLift = kinds.includes("strength");
+  const hasBike = sessions.some((session) => /bike/i.test(session.label));
+  const hasGpp = sessions.some(
+    (session) => session.kind === "conditioning" && session.dayNumber === FRIDAY_GPP_DAY_NUMBER,
+  );
+  if (hasBag && hasLift && hasBike) return "Bag+Lift+Bike";
+  if (hasBag && hasBike) return "Bag+Bike";
+  if (hasBag && hasGpp) return "Bag+GPP";
+  if (hasBag && hasLift) return "Bag+Lift";
+  if (hasBag) return "Bag";
+  if (hasGpp) return "GPP";
+  if (hasBike) return "Bike";
   if (hasLift) return "Lift";
   if (kinds.includes("mobility")) return "Recover";
   return "Rest";
@@ -308,19 +314,28 @@ export function weekStrip(
   prefs: PlannerPrefs,
   now = new Date(),
   timeZone = APP_TIMEZONE,
+  selected?: Date,
 ) {
   const today = weekdayInAppZone(now, timeZone);
+  const selectedWeekday = selected ? weekdayInAppZone(selected, timeZone) : today;
+  const monday = mondayOfZoned(now, timeZone);
   const plan = buildCoreWeekPlan(prefs, bikeWeekIndex(now, timeZone));
-  return WEEKDAYS.map((weekday) => ({
-    weekday,
-    short: weekday.slice(0, 3),
-    isToday: weekday === today,
-    active: plan[weekday].active,
-    summary: plan[weekday].summary,
-    sessionCount: plan[weekday].active ? plan[weekday].sessions.length : 0,
-    deload: plan[weekday].deload,
-    testingWeek: plan[weekday].testingWeek,
-  }));
+  return WEEKDAYS.map((weekday, index) => {
+    const date = addZonedDays(monday, index, timeZone);
+    return {
+      weekday,
+      short: weekday.slice(0, 3),
+      date,
+      dayParam: formatDayParam(date, timeZone),
+      isToday: weekday === today,
+      isSelected: weekday === selectedWeekday,
+      active: plan[weekday].active,
+      summary: plan[weekday].summary,
+      sessionCount: plan[weekday].active ? plan[weekday].sessions.length : 0,
+      deload: plan[weekday].deload,
+      testingWeek: plan[weekday].testingWeek,
+    };
+  });
 }
 
 export function resolvePlanSessions(
@@ -355,9 +370,9 @@ export function resolvePlanSessions(
       session.dayNumber != null
         ? pool.find((row) => row.dayNumber === session.dayNumber) ?? null
         : null;
-    const slot = resolved.length === 0 ? "A" : "B";
+    const slotLetter = (["A", "B", "C"] as const)[Math.min(resolved.length, 2)];
     resolved.push({
-      slot,
+      slot: slotLetter,
       kind: session.kind,
       label: session.label,
       title: day?.title ?? session.label,
@@ -376,7 +391,7 @@ export function resolvePlanSessions(
 export function corePlanCopy(prefs: { goalKey?: string; primaryFocus?: string }) {
   const focus = prefs.primaryFocus;
   if (focus && focus !== "general-fitness") {
-    return "Core week plan (DEMO) from your intake — skill + strength on set weekdays. Not Elite or fight-camp coaching.";
+    return "Core week plan (DEMO) from your intake — bag + strength on set weekdays. Not Elite or fight-camp coaching.";
   }
-  return "Core week plan (DEMO) — strength and conditioning on set weekdays. Not Elite or fight-camp coaching.";
+  return "Core week plan (DEMO) — bag, strength, and conditioning on set weekdays. Not Elite or fight-camp coaching.";
 }

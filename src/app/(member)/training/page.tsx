@@ -22,14 +22,28 @@ import {
   resolvePlanSessions,
   weekStrip,
 } from "@/lib/week-plan";
-import { scaleDemoCatalog } from "@/lib/training-scale";
+import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
+import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
+import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 
-export default async function TrainingPage() {
+function parseLevelParam(value: string | undefined): ScaleBand | null {
+  if (value === "beginner" || value === "intermediate" || value === "advanced") {
+    return value;
+  }
+  return null;
+}
+
+export default async function TrainingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ day?: string; level?: string }>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
   const now = new Date();
   const [catalog, drafts, sessionCount, conditioning, profile] = await Promise.all([
     findDemoTrainingCatalog(),
@@ -44,27 +58,39 @@ export default async function TrainingPage() {
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const camp = await getActiveCampSnapshot(user.id, now, tz);
-  const todayPlan =
-    camp && camp.phase !== "complete" ? shapeDayPlan(planForDate(prefs, now, tz), camp.phase) : planForDate(prefs, now, tz);
+  const selected = parseDayParam(params.day, now, tz);
+  const levelOverride = parseLevelParam(params.level);
+  const profileBand = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
+  const band = levelOverride ?? profileBand;
+  const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
+  const camp = await getActiveCampSnapshot(user.id, selected, tz);
+  const dayPlan =
+    camp && camp.phase !== "complete"
+      ? shapeDayPlan(planForDate(prefs, selected, tz), camp.phase)
+      : planForDate(prefs, selected, tz);
   const planned = resolvePlanSessions(
-    todayPlan,
+    dayPlan,
     scaleDemoCatalog(catalog, {
-      experienceLevel: profile?.experienceLevel,
-      competitionStatus: profile?.competitionStatus,
+      experienceLevel: band,
+      competitionStatus: levelOverride ? null : profile?.competitionStatus,
     }),
   );
-  const strip = weekStrip(prefs, now, tz);
-  const week = buildCoreWeekPlan(prefs, bikeWeekIndex(now, tz));
-  const nextDay = todayPlan.active ? null : nextActiveWeekday(prefs, now, tz);
-  const weekIndex = bikeWeekIndex(now, tz);
-  const deload = isDeloadWeek(now, tz);
-  const testing = isTestingWeek(now, tz);
+  const strip = weekStrip(prefs, now, tz, selected);
+  const week = buildCoreWeekPlan(prefs, bikeWeekIndex(selected, tz));
+  const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz);
+  const weekIndex = bikeWeekIndex(selected, tz);
+  const deload = isDeloadWeek(selected, tz);
+  const testing = isTestingWeek(selected, tz);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
-  const showPlyo = todayPlan.weekday === "Monday" || todayPlan.weekday === "Wednesday";
-  const plyo = showPlyo && todayPlan.active ? plyoBlockFor(emphasis) : [];
+  const showPlyo = dayPlan.weekday === "Monday" || dayPlan.weekday === "Wednesday";
+  const plyo = showPlyo && dayPlan.active ? plyoBlockFor(emphasis) : [];
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
+  const isToday = sameLocalDay(selected, now, tz);
+  const dayParam = formatDayParam(selected, tz);
   const draftsByDay = new Map(
     drafts
       .filter((session) => session.programDayId)
@@ -78,8 +104,8 @@ export default async function TrainingPage() {
           <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
             {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
-              ? `Fight camp is on. Today follows the ${camp.phaseLabel.toLowerCase()}.`
-              : "Core week plan (DEMO) — one shared weekday skeleton. Not Elite coaching or a custom fight camp."}
+              ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
+              : "Core week plan (DEMO) — tap a day chip to open that day’s bag, lift, and bike. Not Elite coaching or a custom fight camp."}
           </p>
         </div>
         <DemoBadge />
@@ -110,7 +136,14 @@ export default async function TrainingPage() {
         </Link>
       )}
 
-      <WeekStrip days={strip} />
+      <WeekStrip days={strip} basePath="/training" />
+
+      <TrainingLevelToggle
+        band={band}
+        dayParam={dayParam}
+        fromProfile={fromProfile}
+        basePath="/training"
+      />
 
       <TrainWeekBoard week={week} weekIndex={weekIndex} emphasis={emphasis} />
 
@@ -152,26 +185,26 @@ export default async function TrainingPage() {
         <span className="text-muted"> — this week’s Core days in a list</span>
       </p>
 
-      <section className="space-y-3">
+      <section className="space-y-3" data-selected-day-plan>
         <div>
           <p className="font-display text-xs uppercase tracking-wide text-accent">
-            Today’s plan · {todayPlan.weekday}
+            {isToday ? "Today’s plan" : "Selected day"} · {dayPlan.weekday}
           </p>
           <h2 className="mt-1 text-lg">
-            {todayPlan.active
-              ? todayPlan.summary
+            {dayPlan.active
+              ? dayPlan.summary
               : nextDay
-                ? `Rest today · next up ${nextDay}`
+                ? `Rest · next up ${nextDay}`
                 : "Rest day"}
           </h2>
-          {todayPlan.skipReason && !todayPlan.active ? (
-            <p className="mt-1 text-sm text-muted">{todayPlan.skipReason}</p>
+          {dayPlan.skipReason && !dayPlan.active ? (
+            <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
           {equipmentNote ? <p className="mt-1 text-sm text-muted">{equipmentNote}</p> : null}
         </div>
-        {todayPlan.active ? (
+        {dayPlan.active ? (
           <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line bg-card px-4 py-4">
-            <p className="font-display text-xs uppercase tracking-wide text-accent">Before you start</p>
+            <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
             <h3 className="mt-1 text-lg">Dynamic warm-up · 3–4 min</h3>
             <p className="mt-1 text-sm text-muted">Joint circles and leg swings. Save long holds for the cooldown.</p>
           </Link>
@@ -214,6 +247,13 @@ export default async function TrainingPage() {
           </div>
           );
         })}
+        {dayPlan.active ? (
+          <Link href="/mobility" className="block rounded-2xl border border-line bg-card px-4 py-4">
+            <p className="font-display text-xs uppercase tracking-wide text-accent">Cooldown-off</p>
+            <h3 className="mt-1 text-lg">Mobility / cooldown</h3>
+            <p className="mt-1 text-sm text-muted">Hips, splits, neck, and the long holds after you train.</p>
+          </Link>
+        ) : null}
       </section>
 
       <p className="text-sm">

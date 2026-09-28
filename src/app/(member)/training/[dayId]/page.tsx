@@ -57,7 +57,7 @@ export default async function TrainingDayPage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const deload = isDeloadWeek(new Date(), tz);
   const zone = bikeZoneForDayNumber(day.dayNumber);
-  const liftDay = day.dayNumber === 2 || day.dayNumber === 3;
+  const liftDay = day.dayNumber === 1 || day.dayNumber === 3 || day.dayNumber === 11;
   const plyo = liftDay ? plyoBlockFor(profile?.trainingEmphasis) : [];
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),

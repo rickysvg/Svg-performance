@@ -14,7 +14,7 @@ export type TrainDayExtra = {
   deload: boolean;
 };
 
-const LIFT_DAYS = new Set<PlanWeekday>(["Monday", "Wednesday"]);
+const LIFT_DAYS = new Set<PlanWeekday>(["Monday", "Wednesday", "Thursday"]);
 
 export function trainDayExtra(input: {
   weekday: PlanWeekday;
