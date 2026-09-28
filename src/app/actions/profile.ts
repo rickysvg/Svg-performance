@@ -42,6 +42,7 @@ export async function saveProfileAction(
       preferredUnits: String(formData.get("preferredUnits") ?? "lb"),
       timeZone: String(formData.get("timeZone") ?? ""),
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
+      phone: String(formData.get("phone") ?? ""),
       foodPreferences: String(formData.get("foodPreferences") ?? ""),
       allergies: String(formData.get("allergies") ?? ""),
       trainingLimitations: String(formData.get("trainingLimitations") ?? ""),

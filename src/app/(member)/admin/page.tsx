@@ -16,7 +16,11 @@ export default async function AdminPage() {
         <h1 className="text-2xl">Pilot toolkit</h1>
         <p className="mt-1 text-sm text-muted">
           Counts only — no private payloads. Gym verify still does not grant a price by
-          itself. This is not live billing.
+          itself.{" "}
+          <Link href="/admin/gymdesk" className="text-accent underline">
+            Gymdesk roster
+          </Link>
+          .
         </p>
       </div>
 
@@ -56,6 +60,9 @@ export default async function AdminPage() {
         <Link href="/admin/lessons" className="text-accent underline">
           Lessons
         </Link>
+        <Link href="/admin/gymdesk" className="text-accent underline">
+          Gymdesk
+        </Link>
         <Link href="/admin/form-checks" className="text-accent underline">
           Form checks
         </Link>
@@ -79,6 +86,8 @@ export default async function AdminPage() {
             <AdminVerifyForm
               userId={user.id}
               verified={Boolean(user.profile?.gymMembershipVerified)}
+              override={user.profile?.gymMembershipOverride ?? "none"}
+              note={user.profile?.gymMembershipOverrideNote ?? ""}
             />
             <AdminAssignPlanForm
               userId={user.id}

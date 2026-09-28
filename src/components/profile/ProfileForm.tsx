@@ -41,6 +41,21 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       </label>
 
       <label className="block">
+        <span className="text-sm font-medium">Phone (optional)</span>
+        <input
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          defaultValue={profile.phoneE164}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          Used only to suggest a match to academy records, together with your last name and
+          first initial. US numbers are assumed if you skip the country code.
+        </span>
+      </label>
+
+      <label className="block">
         <span className="text-sm font-medium">Main goal</span>
         <select
           name="goalKey"
@@ -458,10 +473,8 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       </label>
 
       <div className="rounded-xl border border-line p-3 text-sm text-muted">
-        Adult confirmed: {profile.isAdultConfirmed ? "yes" : "no"}. Gym
-        membership verified by admin:{" "}
-        {profile.gymMembershipVerified ? "yes" : "no (default)"}. You cannot
-        flip the verified flag yourself.
+        Adult confirmed: {profile.isAdultConfirmed ? "yes" : "no"}. You cannot flip the
+        verified-member flag yourself.
       </div>
 
       <button

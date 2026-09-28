@@ -61,6 +61,19 @@ export function RegisterForm() {
         />
       </label>
       <label className="block">
+        <span className="text-sm font-medium">Phone (optional)</span>
+        <input
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          Helps match academy records with your last name and first initial. Not automatic —
+          a coach reviews suggested phone matches.
+        </span>
+      </label>
+      <label className="block">
         <span className="text-sm font-medium">Password</span>
         <input
           name="password"
@@ -104,8 +117,8 @@ export function RegisterForm() {
           <strong className="text-foreground">
             This does not grant member pricing or extra access.
           </strong>{" "}
-          You do not have to train at SVG to use this preview. A coach or admin
-          must verify gym membership separately.
+          You do not have to train at SVG to use this preview. Confirm your email after
+          sign-up so we can match academy records, or a coach can verify you.
         </span>
       </label>
       <button

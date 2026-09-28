@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { normalizeEmail } from "@/lib/auth";
+import { recomputeMembership } from "@/lib/gymdesk/recompute";
 
 export async function listUsersForAdmin() {
   return prisma.user.findMany({
@@ -17,10 +18,29 @@ export async function setGymMembershipVerified(input: {
   adminUserId: string;
   targetUserId: string;
   verified: boolean;
+  note?: string;
+}) {
+  return setGymMembershipOverride({
+    adminUserId: input.adminUserId,
+    targetUserId: input.targetUserId,
+    override: input.verified ? "force_on" : "force_off",
+    note: input.note ?? "admin verify",
+  });
+}
+
+export async function setGymMembershipOverride(input: {
+  adminUserId: string;
+  targetUserId: string;
+  override: "none" | "force_on" | "force_off";
+  note: string;
 }) {
   const admin = await prisma.user.findUnique({ where: { id: input.adminUserId } });
   if (!admin || admin.role !== "admin") {
     throw new ForbiddenError("Only an admin can verify gym membership.");
+  }
+  const note = input.note.trim();
+  if (note.length < 3) {
+    throw new AppError("ADMIN", "Add a short note for this override.");
   }
   const target = await prisma.profile.findUnique({
     where: { userId: input.targetUserId },
@@ -28,10 +48,16 @@ export async function setGymMembershipVerified(input: {
   if (!target) {
     throw new NotFoundError("That member profile was not found.");
   }
-  return prisma.profile.update({
+  await prisma.profile.update({
     where: { userId: input.targetUserId },
-    data: { gymMembershipVerified: input.verified },
+    data: {
+      gymMembershipOverride: input.override,
+      gymMembershipOverrideNote: note.slice(0, 400),
+      gymMembershipOverrideBy: admin.id,
+      gymMembershipSource: "admin",
+    },
   });
+  return recomputeMembership(input.targetUserId);
 }
 
 export async function promoteUserToAdmin(email: string) {

@@ -7,16 +7,19 @@ import { QuickAddFab } from "@/components/home/QuickAddFab";
 import { shouldHideQuickAdd } from "@/lib/quick-add";
 import { TimeZoneSync } from "@/components/TimeZoneSync";
 import { isImmersiveTrainingPath, shouldHidePrimaryNav } from "@/lib/member-nav";
+import { GraceBanner } from "@/components/gymdesk/GraceBanner";
 
 export function MemberFrame({
   email,
   role,
   timeZone,
+  graceEndsOn,
   children,
 }: {
   email: string;
   role?: string;
   timeZone?: string | null;
+  graceEndsOn?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -34,6 +37,7 @@ export function MemberFrame({
             : "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 pb-36"
         }
       >
+        {graceEndsOn ? <GraceBanner endsOn={graceEndsOn} /> : null}
         {children}
       </div>
       {immersive ? null : (

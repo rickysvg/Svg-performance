@@ -28,7 +28,7 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {
       throw new ForbiddenError(
-        "Gym-member prices are only available after an admin verifies your SVG membership. Checking the box yourself is not enough.",
+        "Gym-member prices are only available after we verify your SVG MMA Academy membership. Checking the box yourself is not enough.",
       );
     }
   }
@@ -142,7 +142,17 @@ export async function applyStripeEvent(event: {
     throw new AppError("BILLING", "Webhook event is missing the member id.");
   }
 
-  if (requiresGymVerify(planRaw)) {
+  const existingSub = await prisma.subscription.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+  });
+  const isFirstInvoicePaid = event.type === "invoice.paid" && !existingSub;
+  const isGymActivation =
+    event.type === "checkout.session.completed" ||
+    event.type === "customer.subscription.created" ||
+    isFirstInvoicePaid;
+
+  if (requiresGymVerify(planRaw) && isGymActivation) {
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {
       throw new ForbiddenError(

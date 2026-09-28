@@ -223,4 +223,50 @@ describe("stripe webhook path", () => {
     });
     expect(await hasWebhookGrantedAccess(klarnaUser.id)).toBe(false);
   });
+
+  it("applies gym-SKU cancellations and failures even if the member has lapsed", async () => {
+    const user = await makeUser("lapsed-gym@example.com", true);
+    await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        plan: "gym",
+        status: "active",
+        stripeSubscriptionId: "sub_gym_lapsed",
+        source: "webhook",
+      },
+    });
+    expect(await prisma.profile.findUnique({ where: { userId: user.id } })).toMatchObject({
+      gymMembershipVerified: false,
+    });
+
+    await applyStripeEvent({
+      id: "evt_gym_lapsed_fail",
+      type: "invoice.payment_failed",
+      data: {
+        object: {
+          metadata: { userId: user.id, plan: "gym" },
+          subscription: "sub_gym_lapsed",
+        },
+      },
+    });
+    expect(
+      await prisma.subscription.findFirst({ where: { stripeSubscriptionId: "sub_gym_lapsed" } }),
+    ).toMatchObject({ status: "past_due" });
+
+    await applyStripeEvent({
+      id: "evt_gym_lapsed_cancel",
+      type: "customer.subscription.deleted",
+      data: {
+        object: {
+          id: "sub_gym_lapsed",
+          metadata: { userId: user.id, plan: "gym" },
+          status: "canceled",
+        },
+      },
+    });
+    expect(
+      await prisma.subscription.findFirst({ where: { stripeSubscriptionId: "sub_gym_lapsed" } }),
+    ).toMatchObject({ status: "canceled" });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
+  });
 });
