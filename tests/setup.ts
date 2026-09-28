@@ -1,15 +1,22 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { beforeEach } from "vitest";
 
 process.env.DATABASE_URL = "file:./test.db";
 process.env.AUTH_SECRET = "test-auth-secret-at-least-16";
 process.env.APP_URL = "http://localhost:3000";
-// Local .env may have Gymdesk secrets for the preview app. Keep them off
-// unless a Gymdesk test turns them on, so trial/verify tests stay isolated.
-delete process.env.GYMDESK_WEBHOOK_SECRET;
-delete process.env.GYMDESK_MATCH_PEPPER;
-delete process.env.GYMDESK_SYNC_ENABLED;
+
+function isolateGymdeskEnv() {
+  // Local .env may have Gymdesk secrets for the preview app. Keep them off
+  // unless a Gymdesk test turns them on, so trial/verify tests stay isolated.
+  delete process.env.GYMDESK_WEBHOOK_SECRET;
+  delete process.env.GYMDESK_MATCH_PEPPER;
+  delete process.env.GYMDESK_SYNC_ENABLED;
+}
+
+isolateGymdeskEnv();
+beforeEach(isolateGymdeskEnv);
 
 const dbPath = path.resolve(process.cwd(), "prisma/test.db");
 // Prisma SQLite URLs are relative to the prisma/ folder, so file:./test.db
