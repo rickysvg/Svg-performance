@@ -64,48 +64,96 @@ export type GymdeskCsvRow = {
 };
 
 function stripBom(text: string) {
-  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  if (text.charCodeAt(0) === 0xfeff) return text.slice(1);
+  if (text.startsWith("\uFEFF")) return text.slice(1);
+  return text;
 }
 
-function parseCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let current = "";
+/**
+ * RFC 4180 CSV records. Quoted fields may contain commas, "" escapes, and CR/LF.
+ * Blank records (empty lines outside quotes) are skipped.
+ */
+export function parseCsvRecords(text: string): string[][] {
+  const input = stripBom(text);
+  const records: string[][] = [];
+  let row: string[] = [];
+  let field = "";
   let inQuotes = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
+  let sawContent = false;
+
+  const pushField = () => {
+    row.push(field);
+    field = "";
+  };
+
+  const pushRow = () => {
+    if (!sawContent && row.every((cell) => cell.length === 0)) {
+      row = [];
+      return;
+    }
+    // Trailing CR from CRLF was already consumed with the LF path; lone CR ends a record.
+    records.push(row);
+    row = [];
+    sawContent = false;
+  };
+
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i]!;
     if (inQuotes) {
       if (ch === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
+        if (input[i + 1] === '"') {
+          field += '"';
           i += 1;
+          sawContent = true;
         } else {
           inQuotes = false;
         }
       } else {
-        current += ch;
+        field += ch;
+        sawContent = true;
       }
-    } else if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ",") {
-      out.push(current);
-      current = "";
-    } else {
-      current += ch;
+      continue;
     }
+
+    if (ch === '"') {
+      inQuotes = true;
+      sawContent = true;
+      continue;
+    }
+    if (ch === ",") {
+      pushField();
+      sawContent = true;
+      continue;
+    }
+    if (ch === "\n") {
+      pushField();
+      pushRow();
+      continue;
+    }
+    if (ch === "\r") {
+      pushField();
+      if (input[i + 1] === "\n") i += 1;
+      pushRow();
+      continue;
+    }
+    field += ch;
+    if (ch !== " " && ch !== "\t") sawContent = true;
   }
-  out.push(current);
-  return out;
+
+  if (inQuotes || field.length > 0 || row.length > 0 || sawContent) {
+    pushField();
+    pushRow();
+  }
+
+  return records;
 }
 
 export function parseGymdeskCsv(text: string): { rows: GymdeskCsvRow[]; errors: string[] } {
-  const lines = stripBom(text)
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.length > 0);
-  if (lines.length === 0) {
+  const records = parseCsvRecords(text);
+  if (records.length === 0) {
     return { rows: [], errors: ["CSV is empty."] };
   }
-  const headerCells = parseCsvLine(lines[0]!).map((cell) => cell.trim());
+  const headerCells = (records[0] ?? []).map((cell) => cell.trim());
   const index = new Map(headerCells.map((name, i) => [name, i]));
   if (!index.has("Member ID")) {
     return { rows: [], errors: ["CSV is missing the Member ID column."] };
@@ -117,8 +165,8 @@ export function parseGymdeskCsv(text: string): { rows: GymdeskCsvRow[]; errors: 
 
   const rows: GymdeskCsvRow[] = [];
   const errors: string[] = [];
-  for (let n = 1; n < lines.length; n += 1) {
-    const cells = parseCsvLine(lines[n]!);
+  for (let n = 1; n < records.length; n += 1) {
+    const cells = records[n]!;
     const gymdeskId = col(cells, "Member ID");
     if (!gymdeskId) {
       errors.push(`Row ${n + 1} has no Member ID.`);
