@@ -11,7 +11,8 @@ export default function RegisterPage() {
         <p className="mt-2 text-sm text-muted">
           Adults (18+) only. Open to combat athletes, people getting in shape,
           and SVG MMA Academy members. Checking “I train at SVG” does not
-          unlock member pricing — an admin verifies that separately.
+          unlock member pricing — confirm your email so we can match academy
+          records, or a coach verifies you.
         </p>
         <RegisterForm />
         <p className="mt-6 text-sm text-muted">

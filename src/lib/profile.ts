@@ -15,6 +15,9 @@ import {
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isValidTimeZone, resolveRequestTimeZone } from "@/lib/timezone";
 import { mergeSeenBadgeUnlocks, parseSeenBadgeUnlocks } from "@/lib/badge-unlocks";
+import { toE164 } from "@/lib/gymdesk/crypto";
+import { matchUserToGymdesk } from "@/lib/gymdesk/match";
+import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
 export type ProfileRecord = {
   userId: string;
@@ -22,6 +25,14 @@ export type ProfileRecord = {
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
   gymMembershipVerified: boolean;
+  phoneE164: string;
+  emailVerifiedAt: Date | null;
+  gymdeskMemberId: string;
+  gymMembershipSource: string;
+  gymdeskStatus: string;
+  gymdeskCheckedAt: Date | null;
+  gymMembershipGraceUntil: Date | null;
+  gymMembershipOverride: string;
   goals: string;
   goalKey: string;
   experienceLevel: string;
@@ -74,6 +85,14 @@ export function toProfileRecord(row: {
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
   gymMembershipVerified: boolean;
+  phoneE164?: string;
+  emailVerifiedAt?: Date | null;
+  gymdeskMemberId?: string;
+  gymMembershipSource?: string;
+  gymdeskStatus?: string;
+  gymdeskCheckedAt?: Date | null;
+  gymMembershipGraceUntil?: Date | null;
+  gymMembershipOverride?: string;
   goals: string;
   goalKey: string;
   experienceLevel: string;
@@ -114,6 +133,14 @@ export function toProfileRecord(row: {
     isAdultConfirmed: row.isAdultConfirmed,
     claimsGymMembership: row.claimsGymMembership,
     gymMembershipVerified: row.gymMembershipVerified,
+    phoneE164: row.phoneE164 ?? "",
+    emailVerifiedAt: row.emailVerifiedAt ?? null,
+    gymdeskMemberId: row.gymdeskMemberId ?? "",
+    gymMembershipSource: row.gymMembershipSource ?? "",
+    gymdeskStatus: row.gymdeskStatus ?? "",
+    gymdeskCheckedAt: row.gymdeskCheckedAt ?? null,
+    gymMembershipGraceUntil: row.gymMembershipGraceUntil ?? null,
+    gymMembershipOverride: row.gymMembershipOverride ?? "none",
     goals: row.goals,
     goalKey: row.goalKey,
     experienceLevel: row.experienceLevel,
@@ -223,6 +250,7 @@ export async function updateProfileForUser(
     preferredUnits: string;
     timeZone?: string;
     claimsGymMembership: boolean;
+    phone?: string;
     foodPreferences: string;
     allergies: string;
     trainingLimitations?: string;
@@ -383,6 +411,18 @@ export async function updateProfileForUser(
               ? input.timeZone
               : existing.timeZone,
       claimsGymMembership: Boolean(input.claimsGymMembership),
+      phoneE164:
+        input.phone === undefined
+          ? existing.phoneE164
+          : input.phone.trim() === ""
+            ? ""
+            : (() => {
+                const parsed = toE164(input.phone);
+                if (!parsed) {
+                  throw new AppError("PHONE", "Enter a valid phone number.");
+                }
+                return parsed;
+              })(),
       foodPreferences: input.foodPreferences.trim().slice(0, 400),
       allergies: input.allergies.trim().slice(0, 400),
       trainingLimitations:
@@ -446,6 +486,12 @@ export async function updateProfileForUser(
       // Never allow a member to self-verify gym membership.
     },
   });
+
+  if (isGymdeskSyncEnabled() && input.phone !== undefined) {
+    await matchUserToGymdesk(userId).catch(() => undefined);
+    const refreshed = await prisma.profile.findUnique({ where: { userId } });
+    if (refreshed) return toProfileRecord(refreshed);
+  }
 
   return toProfileRecord(row);
 }

@@ -1,4 +1,10 @@
 {
   "framework": "nextjs",
-  "buildCommand": "node scripts/prisma-prepare.mjs --deploy && next build"
+  "buildCommand": "node scripts/prisma-prepare.mjs --deploy && next build",
+  "crons": [
+    {
+      "path": "/api/cron/gymdesk",
+      "schedule": "0 12 * * *"
+    }
+  ]
 }

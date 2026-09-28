@@ -61,6 +61,10 @@ model User {
   testingResults           TestingResult[]
   fightCamp                FightCamp?
   formChecks               FormCheck[]
+  gymdeskMembers           GymdeskMember[]
+  gymMembershipEvents      GymMembershipEvent[]
+  emailVerificationCodes   EmailVerificationCode[]
+  gymdeskMatchQueue        GymdeskMatchQueue[]
 }
 
 model Session {
@@ -105,6 +109,16 @@ model Profile {
   isAdultConfirmed       Boolean  @default(false)
   claimsGymMembership    Boolean  @default(false)
   gymMembershipVerified  Boolean  @default(false)
+  phoneE164              String    @default("")
+  emailVerifiedAt        DateTime?
+  gymdeskMemberId        String    @default("")
+  gymMembershipSource    String    @default("")
+  gymdeskStatus          String    @default("")
+  gymdeskCheckedAt       DateTime?
+  gymMembershipGraceUntil DateTime?
+  gymMembershipOverride  String    @default("none")
+  gymMembershipOverrideNote String @default("")
+  gymMembershipOverrideBy   String @default("")
   goals                  String    @default("")
   goalKey                String    @default("")
   experienceLevel        String    @default("beginner")
@@ -879,4 +893,94 @@ model FormCheck {
 
   @@index([userId, submittedAt])
   @@index([status, submittedAt])
+}
+
+/** Hashed Gymdesk roster. Never stores plaintext email/phone for people without app accounts. */
+model GymdeskMember {
+  id              String    @id @default(cuid())
+  gymdeskId       String    @unique
+  emailHash       String    @default("")
+  email2Hash      String    @default("")
+  phoneHash       String    @default("")
+  phone2Hash      String    @default("")
+  nameKey         String    @default("")
+  displayLabel    String    @default("")
+  membershipLabel String    @default("")
+  /** active | frozen | canceled | visitor | pending */
+  status          String    @default("pending")
+  statusChangedAt DateTime?
+  frozenSince     DateTime?
+  lastSeenAt      DateTime  @default(now())
+  /** webhook | csv */
+  source          String    @default("webhook")
+  linkedUserId    String?
+  linkedUser      User?     @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([emailHash])
+  @@index([email2Hash])
+  @@index([phoneHash])
+  @@index([phone2Hash])
+  @@index([nameKey])
+  @@index([status])
+  @@index([linkedUserId])
+}
+
+model GymMembershipEvent {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  from   String   @default("")
+  to     String   @default("")
+  reason String   @default("")
+  source String   @default("")
+  at     DateTime @default(now())
+
+  @@index([userId, at])
+}
+
+model EmailVerificationCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model GymdeskMatchQueue {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gymdeskMemberId String    @default("")
+  /** suggested | conflict */
+  kind            String
+  reason          String    @default("")
+  /** open | approved | dismissed */
+  status          String    @default("open")
+  createdAt       DateTime  @default(now())
+  resolvedAt      DateTime?
+  resolvedBy      String    @default("")
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model GymdeskSyncMeta {
+  id    String   @id @default(cuid())
+  key   String   @unique
+  value String   @default("")
+  at    DateTime @default(now())
+}
+
+model GymdeskRateLimit {
+  id        String   @id @default(cuid())
+  keyHash   String
+  createdAt DateTime @default(now())
+
+  @@index([keyHash, createdAt])
 }

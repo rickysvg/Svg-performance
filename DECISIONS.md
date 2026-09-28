@@ -32,8 +32,12 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 ## Gym membership vs payment
 
 - `claimsGymMembership` is a self-report checkbox.
-- `gymMembershipVerified` defaults to `false` and **cannot** be set from the profile form or register action.
-- Only `role=admin` can flip verification (`setGymMembershipVerified`).
+- `gymMembershipVerified` defaults to `false` and **cannot** be set from the profile form or register action. It is the single computed flag all existing surfaces read (trial length, gym-price checkout, pricing page, leaderboard).
+- **Gymdesk (read-only).** Gymdesk has no public API. Marketing Automation “Send Webhook” posts to `/api/gymdesk/webhook/[event]?t=SECRET` (signup, membership-start, frozen, canceled, expired). Admin copy-paste URLs use `APP_URL`, then `https://${VERCEL_PROJECT_PRODUCTION_URL}`, then `https://svg-performance.vercel.app`. Localhost is never used in production. Admins can also upload the Gymdesk member-list CSV on `/admin/gymdesk`. The app never writes to Gymdesk. Roster rows store HMAC-SHA256 hashes (pepper `GYMDESK_MATCH_PEPPER`) of email/phone/name-key — not plaintext contact data for people without app accounts. DOB, address, and notes from the CSV are discarded.
+- Email match only after a 6-digit code via the same `SMTP_*` / `sendMail` path as password reset (~15 min). Exactly one **active** roster row auto-verifies. Phone (E.164, default US) + last name + first initial is a suggested match for admin one-click — not automatic. Name alone never matches. Conflicts go to the admin queue.
+- Canceled/expired: 7-day grace (`GYMDESK_GRACE_DAYS`) with an in-app banner, then unverified. Frozen stays verified for 30 days from `frozenSince` (`GYMDESK_FROZEN_GRACE_DAYS`). Admin override (Force member / Force non-member / Auto + required note) always wins and is audited. `recomputeMembership` is the only writer besides that override.
+- Kill switch: `GYMDESK_SYNC_ENABLED` (default on if webhook secret + pepper are set). Missing secrets: app still builds; feature is off with an admin notice. Daily Vercel Cron `/api/cron/gymdesk` uses `CRON_SECRET`.
+- Only `role=admin` can force verification (`setGymMembershipOverride`). The old checkbox on `/admin` is this override form.
 - Draft catalog lives on `/pricing` as three sections (App Plans, Online Coaching, VIP Experiences) with a Monthly / Prepay toggle. Academy member price is the perk line (`Academy member price $19/mo (normally $29)`). Buy buttons stay **Coming soon**. $19 / $29 remain the SVG Performance monthly gym / nonmember pair.
 - Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
 - Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
@@ -127,7 +131,7 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 
 - `/training/calendar` is a vertical **Today / Tomorrow / weekday** list (Fight Science Collective *layout only*). Palette stays SVG black / white / lime. We did not copy their logo, red, or four-icon nav. Existing Home / Train / Fuel / Learn / Coach bar and + FAB stay.
 - Cards come from DEMO program days laid onto the member’s weekly availability (default Mon / Wed / Fri). Empty days are a heading + divider. Sunday can show the weekly SVG report; an enrolled monthly challenge can sit on Saturday.
-- Workout cards open `/training/[dayId]` (day overview → Start Now). Copy says this is a DEMO week, not a live coach calendar, Watch sync, or Gymdesk.
+- Workout cards open `/training/[dayId]` (day overview → Start Now). Copy says this is a DEMO week, not a live coach calendar or Watch sync. Gymdesk is used only for academy member verification (webhooks + CSV), never as a class calendar.
 
 ## Shop
 
@@ -221,4 +225,4 @@ Current pending DEMO Learn lesson: cagework fence-exit (`demo-cage-exit`). The u
 
 ## Out of scope
 
-- Fight-camp weight cuts, Gymdesk, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups, faking Apple Watch connected on web, faking a successful Affirm/Klarna purchase.
+- Fight-camp weight cuts, voice, native apps, live Stripe production, a real paid video library, paid-course scraping, photo food AI, claiming YouTube form or Learn videos as SVG IP, cloning Fight Science Collective brand/assets or Groups, faking Apple Watch connected on web, faking a successful Affirm/Klarna purchase. Gymdesk write-back / a public Gymdesk API are out of scope (we only ingest webhooks + CSV).

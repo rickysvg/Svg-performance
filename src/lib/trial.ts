@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
 import { type CatalogPlanId, type CatalogPlan, planAtLeast } from "@/lib/plans";
+import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
+import { matchUserToGymdesk } from "@/lib/gymdesk/match";
+import { recomputeMembership } from "@/lib/gymdesk/recompute";
 
 export const MEMBER_TRIAL_DAYS = 14;
 export const NONMEMBER_TRIAL_DAYS = 7;
@@ -73,6 +76,10 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
 }
 
 export async function startTrialForUser(userId: string, now = new Date()) {
+  if (isGymdeskSyncEnabled()) {
+    await matchUserToGymdesk(userId, now);
+    await recomputeMembership(userId, now);
+  }
   const state = await getTrialState(userId, now);
   if (state.trialUsed) {
     throw new AppError("TRIAL", "This account already used its free trial.");

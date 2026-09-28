@@ -9,6 +9,9 @@ import {
   PASSWORD_RESET_NEUTRAL_MESSAGE,
 } from "@/lib/password-reset-policy";
 import { assertPasswordResetRateLimit } from "@/lib/password-reset-rate";
+import { isGymdeskSyncEnabled, LOGIN_RECHECK_MS } from "@/lib/gymdesk/config";
+import { matchUserToGymdesk } from "@/lib/gymdesk/match";
+import { toE164 } from "@/lib/gymdesk/crypto";
 
 export { PASSWORD_RESET_GENERATION, PASSWORD_RESET_NEUTRAL_MESSAGE };
 
@@ -146,6 +149,7 @@ export async function registerAccount(input: {
   displayName: string;
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
+  phone?: string;
 }): Promise<PublicUser> {
   if (!input.isAdultConfirmed) {
     throw new AppError(
@@ -166,6 +170,10 @@ export async function registerAccount(input: {
   }
 
   const displayName = input.displayName.trim().slice(0, 80);
+  const phoneRaw = input.phone?.trim() ?? "";
+  if (phoneRaw && !toE164(phoneRaw)) {
+    throw new AppError("PHONE", "Enter a valid phone number.");
+  }
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw new AppError("EMAIL", "An account with that email already exists.");
@@ -182,6 +190,7 @@ export async function registerAccount(input: {
           isAdultConfirmed: true,
           claimsGymMembership: Boolean(input.claimsGymMembership),
           gymMembershipVerified: false,
+          phoneE164: phoneRaw ? toE164(phoneRaw) : "",
         },
       },
     },
@@ -210,6 +219,16 @@ export async function authenticate(
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
     throw new AuthError("Email or password is incorrect.");
+  }
+  if (isGymdeskSyncEnabled()) {
+    const profile = await prisma.profile.findUnique({
+      where: { userId: user.id },
+      select: { gymdeskCheckedAt: true },
+    });
+    const checked = profile?.gymdeskCheckedAt?.getTime() ?? 0;
+    if (Date.now() - checked > LOGIN_RECHECK_MS) {
+      await matchUserToGymdesk(user.id).catch(() => undefined);
+    }
   }
   return toPublicUser(user);
 }

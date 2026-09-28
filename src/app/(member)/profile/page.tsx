@@ -14,13 +14,19 @@ import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
 import { getTrialState } from "@/lib/trial";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
 import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
+import { prisma } from "@/lib/prisma";
+import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [profile, prefs, trial] = await Promise.all([
+  const [profile, prefs, trial, verifiedEvent] = await Promise.all([
     getProfileForUser(user.id),
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
+    prisma.gymMembershipEvent.findFirst({
+      where: { userId: user.id, to: "verified" },
+      orderBy: { at: "desc" },
+    }),
   ]);
   if (!profile) {
     return (
@@ -46,6 +52,50 @@ export default async function ProfilePage() {
 
       <SoundEffectsToggle />
       <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
+
+      <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-lg">Academy membership</h2>
+        {profile.gymMembershipVerified ? (
+          <p className="text-sm">
+            {profile.gymMembershipSource === "admin"
+              ? `Verified by an SVG admin on ${
+                  (verifiedEvent?.at ?? profile.gymdeskCheckedAt)?.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  }) ?? "this account"
+                }.`
+              : `Verified via SVG MMA Academy records on ${
+                  (verifiedEvent?.at ?? profile.gymdeskCheckedAt)?.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  }) ?? "this account"
+                }.`}
+          </p>
+        ) : (
+          <p className="text-sm text-muted">
+            Not verified for member pricing yet.
+          </p>
+        )}
+        {isGymdeskSyncEnabled() && !profile.emailVerifiedAt ? (
+          <p className="text-sm">
+            <Link href="/verify-email" className="text-accent underline-offset-4 hover:underline">
+              Confirm your email
+            </Link>{" "}
+            to match academy records.
+          </p>
+        ) : null}
+        {profile.emailVerifiedAt ? (
+          <p className="text-sm text-muted">Email confirmed.</p>
+        ) : null}
+        <p className="text-xs text-muted">
+          Phone is optional and used only to suggest a match against SVG MMA Academy records.
+          We store hashed emails and phones from the academy roster — not a copy of that list —
+          and we never send data to Gymdesk.
+        </p>
+      </section>
+
       <ProfileForm profile={profile} />
       <ReminderPrefsForm
         prefs={prefs}
@@ -137,11 +187,18 @@ export default async function ProfilePage() {
             </li>
           ) : null}
           {isAdmin(user) ? (
-            <li>
-              <Link href="/admin" className="text-accent underline-offset-4 hover:underline">
-                Admin
-              </Link>
-            </li>
+            <>
+              <li>
+                <Link href="/admin" className="text-accent underline-offset-4 hover:underline">
+                  Admin
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin/gymdesk" className="text-accent underline-offset-4 hover:underline">
+                  Gymdesk roster
+                </Link>
+              </li>
+            </>
           ) : null}
         </ul>
       </section>

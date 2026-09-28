@@ -96,6 +96,7 @@ export async function exportAccountData(userId: string) {
     testingResults,
     fightCamp,
     formChecks,
+    gymMembershipEvents,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.workoutSession.findMany({
@@ -203,6 +204,11 @@ export async function exportAccountData(userId: string) {
         createdAt: true,
       },
     }),
+    prisma.gymMembershipEvent.findMany({
+      where: { userId },
+      orderBy: { at: "desc" },
+      take: 50,
+    }),
   ]);
 
   return jsonSafe({
@@ -213,8 +219,23 @@ export async function exportAccountData(userId: string) {
       ? {
           claimsGymMembership: profile.claimsGymMembership,
           gymMembershipVerified: profile.gymMembershipVerified,
+          phoneE164: profile.phoneE164,
+          emailVerifiedAt: profile.emailVerifiedAt,
+          gymdeskMemberId: profile.gymdeskMemberId,
+          gymMembershipSource: profile.gymMembershipSource,
+          gymdeskStatus: profile.gymdeskStatus,
+          gymdeskCheckedAt: profile.gymdeskCheckedAt,
+          gymMembershipGraceUntil: profile.gymMembershipGraceUntil,
+          gymMembershipOverride: profile.gymMembershipOverride,
         }
       : null,
+    gymMembershipEvents: gymMembershipEvents.map((row) => ({
+      from: row.from,
+      to: row.to,
+      reason: row.reason,
+      source: row.source,
+      at: row.at,
+    })),
     workoutSessions,
     exerciseNotes,
     nutritionEntries,
