@@ -353,6 +353,66 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     channel: "Chess Club Jiu-Jitsu",
     title: "BJJ Beginners Tutorial - Side Control Escape to Closed Guard",
   },
+  "Dead bug": {
+    url: "https://www.youtube.com/watch?v=4XLEnwUr1d8",
+    pending: false,
+    channel: "Athlean-X",
+    title: "How to Do a Dead Bug (PERFECT FORM)",
+  },
+  "Single-leg RDL": {
+    url: "https://www.youtube.com/watch?v=_oyxCn2iSjU",
+    pending: false,
+    channel: "Jeff Nippard",
+    title: "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Perfect Technique",
+  },
+  "Shadowbox warm-up": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
+  "Easy shadow cool-down": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
+  "Bag rounds — boxing combos": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
+  "Bag rounds — kicks & teeps": {
+    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
+    pending: false,
+    channel: "Kingdom Martial Arts Academy",
+    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
+  },
+  "Bag rounds — body shots": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
+  "Bag rounds — clinch knees": {
+    url: "https://www.youtube.com/watch?v=_hEKmkZQttU",
+    pending: false,
+    channel: "SVG catalog",
+    title: "Clinch posture reference",
+  },
+  "Bag rounds — defense & counters": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
+  "Bag rounds — power & speed": {
+    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
+    pending: false,
+    channel: "Tony Jeffries",
+    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
+  },
 };
 
 export function formVideoFieldsFor(name: string): {
