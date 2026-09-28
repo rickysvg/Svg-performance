@@ -13,6 +13,7 @@ import {
 } from "@/lib/clips";
 import { assignMemberToCoach } from "@/lib/reports";
 import { assignPlanForPilot } from "@/lib/billing";
+import { mondayOf } from "@/lib/home";
 import {
   countActiveDaysInRange,
   createOrUpdateChallenge,
@@ -214,11 +215,11 @@ describe("pilot launch pack", () => {
     turnStripeOn();
     const admin = await makeUser("focus-admin@example.com", false, "admin");
     const member = await makeUser("focus-member@example.com");
-    const nextMonday = new Date();
+    const weekStart = mondayOf(new Date()).toISOString();
     await upsertFocusVideo({
       adminUserId: admin.id,
       title: "Hidden draft",
-      weekStart: nextMonday.toISOString().slice(0, 10),
+      weekStart,
       videoUrl: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
       scriptNotes: "",
       status: "draft",
@@ -236,7 +237,7 @@ describe("pilot launch pack", () => {
     await upsertFocusVideo({
       adminUserId: admin.id,
       title: "Published focus",
-      weekStart: nextMonday.toISOString().slice(0, 10),
+      weekStart,
       videoUrl: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
       scriptNotes: "DEMO",
       status: "published",
