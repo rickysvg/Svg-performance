@@ -60,47 +60,48 @@ describe("gymdesk UI copy", () => {
 });
 
 describe("gymdesk webhook origin", () => {
+  const env = process.env as Record<string, string | undefined>;
   const snapshot = {
-    NODE_ENV: process.env.NODE_ENV,
-    APP_URL: process.env.APP_URL,
-    VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    NODE_ENV: env.NODE_ENV,
+    APP_URL: env.APP_URL,
+    VERCEL_PROJECT_PRODUCTION_URL: env.VERCEL_PROJECT_PRODUCTION_URL,
   };
 
   afterEach(() => {
-    process.env.NODE_ENV = snapshot.NODE_ENV;
-    process.env.APP_URL = snapshot.APP_URL;
+    env.NODE_ENV = snapshot.NODE_ENV;
+    env.APP_URL = snapshot.APP_URL;
     if (snapshot.VERCEL_PROJECT_PRODUCTION_URL === undefined) {
-      delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+      delete env.VERCEL_PROJECT_PRODUCTION_URL;
     } else {
-      process.env.VERCEL_PROJECT_PRODUCTION_URL = snapshot.VERCEL_PROJECT_PRODUCTION_URL;
+      env.VERCEL_PROJECT_PRODUCTION_URL = snapshot.VERCEL_PROJECT_PRODUCTION_URL;
     }
   });
 
   it("uses APP_URL when it is a public https origin", () => {
-    process.env.NODE_ENV = "production";
-    process.env.APP_URL = "https://custom.svg-performance.app";
-    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    env.NODE_ENV = "production";
+    env.APP_URL = "https://custom.svg-performance.app";
+    delete env.VERCEL_PROJECT_PRODUCTION_URL;
     expect(gymdeskPublicOrigin()).toBe("https://custom.svg-performance.app");
   });
 
   it("falls back to VERCEL_PROJECT_PRODUCTION_URL when APP_URL is unset", () => {
-    process.env.NODE_ENV = "production";
-    delete process.env.APP_URL;
-    process.env.VERCEL_PROJECT_PRODUCTION_URL = "svg-from-vercel.vercel.app";
+    env.NODE_ENV = "production";
+    delete env.APP_URL;
+    env.VERCEL_PROJECT_PRODUCTION_URL = "svg-from-vercel.vercel.app";
     expect(gymdeskPublicOrigin()).toBe("https://svg-from-vercel.vercel.app");
   });
 
   it("falls back to svg-performance.vercel.app and never uses localhost in production", () => {
-    process.env.NODE_ENV = "production";
-    process.env.APP_URL = "http://localhost:3000";
-    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    env.NODE_ENV = "production";
+    env.APP_URL = "http://localhost:3000";
+    delete env.VERCEL_PROJECT_PRODUCTION_URL;
     expect(gymdeskPublicOrigin()).toBe("https://svg-performance.vercel.app");
     expect(gymdeskPublicOrigin()).not.toContain("localhost");
   });
 
   it("allows localhost APP_URL outside production", () => {
-    process.env.NODE_ENV = "test";
-    process.env.APP_URL = "http://localhost:3000";
+    env.NODE_ENV = "test";
+    env.APP_URL = "http://localhost:3000";
     expect(gymdeskPublicOrigin()).toBe("http://localhost:3000");
   });
 });
