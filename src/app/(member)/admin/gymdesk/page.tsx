@@ -41,7 +41,7 @@ export default async function AdminGymdeskPage() {
     listGymdeskAdminSnapshot(),
     listUsersForAdmin(),
   ]);
-  const origin = gymdeskPublicOrigin() || "https://your-app.example";
+  const origin = gymdeskPublicOrigin();
   const urls = gymdeskWebhookUrls(origin);
   const missing = gymdeskMissingSecrets();
   const enabled = isGymdeskSyncEnabled();

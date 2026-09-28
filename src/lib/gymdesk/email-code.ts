@@ -20,6 +20,10 @@ export function emailCodeHtml(code: string) {
 </html>`;
 }
 
+/**
+ * Send a 6-digit ownership code through the same SMTP_* / sendMail path as
+ * password-reset. No extra mail env vars.
+ */
 export async function sendEmailVerificationCode(input: {
   userId: string;
   email: string;

@@ -21,8 +21,7 @@ export default async function VerifyEmailPage() {
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-muted">
           Member pricing uses academy records. We email a 6-digit code so you prove you own
-          this address, then we match it. SVG Coach is an AI coach and is not part of this
-          check.
+          this address, then we match it.
         </p>
         {!isSmtpConfigured() ? (
           <p className="mt-4 rounded-2xl border border-line bg-card px-4 py-3 text-sm">

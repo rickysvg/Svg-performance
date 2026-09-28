@@ -78,14 +78,55 @@ export function gymdeskStaleDays() {
 export const EMAIL_CODE_TTL_MS = 15 * 60 * 1000;
 export const LOGIN_RECHECK_MS = 24 * 60 * 60 * 1000;
 
-export function gymdeskPublicOrigin() {
-  const raw = process.env.APP_URL?.trim() ?? "";
-  if (!raw) return "";
+const GYMDESK_ORIGIN_FALLBACK = "https://svg-performance.vercel.app";
+
+function parseOrigin(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
   try {
-    return new URL(raw).origin;
+    const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    return new URL(withProtocol).origin;
   } catch {
     return "";
   }
+}
+
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
+  } catch {
+    return true;
+  }
+}
+
+function isAcceptableOrigin(origin: string): boolean {
+  if (!origin) return false;
+  if (process.env.NODE_ENV === "production") {
+    if (isLocalhostOrigin(origin)) return false;
+    if (!origin.startsWith("https://")) return false;
+  }
+  return true;
+}
+
+/**
+ * Origin pasted into Gymdesk webhook URLs.
+ * APP_URL → https://${VERCEL_PROJECT_PRODUCTION_URL} → https://svg-performance.vercel.app.
+ * Localhost / http are never used in production.
+ */
+export function gymdeskPublicOrigin() {
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ?? "";
+  const candidates = [
+    parseOrigin(process.env.APP_URL ?? ""),
+    parseOrigin(vercelHost),
+    GYMDESK_ORIGIN_FALLBACK,
+  ];
+  for (const origin of candidates) {
+    if (isAcceptableOrigin(origin)) return origin;
+  }
+  return GYMDESK_ORIGIN_FALLBACK;
 }
 
 export function gymdeskWebhookUrl(event: GymdeskEvent, origin: string) {
