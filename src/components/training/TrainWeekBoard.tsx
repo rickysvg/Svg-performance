@@ -21,7 +21,7 @@ export function TrainWeekBoard({
       <div>
         <h2 className="text-lg">This week</h2>
         <p className="mt-1 text-sm text-muted">
-          Warm-up opens every training day. Mon/Wed get a plyo block. Bike tags: Aerobic Base, Threshold, Sprint.
+          Warm-up opens every training day. Mon/Wed/Thu get a plyo block when lifts are on. Bike tags: Aerobic Base, Threshold, Sprint.
         </p>
       </div>
       {deload ? (

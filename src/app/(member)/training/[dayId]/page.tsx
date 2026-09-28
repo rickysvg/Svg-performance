@@ -6,6 +6,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
+import { DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
@@ -57,7 +58,7 @@ export default async function TrainingDayPage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const deload = isDeloadWeek(new Date(), tz);
   const zone = bikeZoneForDayNumber(day.dayNumber);
-  const liftDay = day.dayNumber === 2 || day.dayNumber === 3;
+  const liftDay = day.dayNumber === 1 || day.dayNumber === 3 || day.dayNumber === 11;
   const plyo = liftDay ? plyoBlockFor(profile?.trainingEmphasis) : [];
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),
@@ -93,6 +94,7 @@ export default async function TrainingDayPage({
                   experienceLevel: profile?.experienceLevel,
                   competitionStatus: profile?.competitionStatus,
                 }),
+                day.program.slug === DEMO_SKILL_PROGRAM_SLUG ? day.dayNumber : undefined,
               )}
             </p>
           </div>

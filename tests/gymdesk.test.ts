@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { GYMDESK_CSV_HEADERS, parseGymdeskCsv } from "@/lib/gymdesk/csv";
+import { GYMDESK_CSV_HEADERS, parseCsvRecords, parseGymdeskCsv } from "@/lib/gymdesk/csv";
 import { applyGymdeskCsv, previewGymdeskCsv } from "@/lib/gymdesk/csv-apply";
 import { handleGymdeskWebhook } from "@/lib/gymdesk/webhook";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
@@ -54,7 +54,9 @@ async function seedRoster(input: {
 
 function csvLine(values: string[]) {
   return values
-    .map((value) => (value.includes(",") || value.includes('"') ? `"${value.replace(/"/g, '""')}"` : value))
+    .map((value) =>
+      /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value,
+    )
     .join(",");
 }
 
@@ -447,6 +449,45 @@ describe("gymdesk member verify", () => {
     expect(JSON.stringify(parsed.rows[0])).not.toContain("1990-01-01");
     expect(JSON.stringify(parsed.rows[0])).not.toContain("123 Fake St");
     expect(JSON.stringify(parsed.rows[0])).not.toContain("very private");
+  });
+
+  it("keeps quoted multiline Notes/Address as one record (RFC 4180)", () => {
+    const notes = 'Line one\nSaid "hello" on line two\r\nand a third';
+    const address = "100 Main St\nSuite 2B";
+    const csv = sampleCsv([
+      {
+        "Member ID": "gd-multi-1",
+        "First Name": "Ana",
+        "Last Name": "Rivera",
+        Email: "ana.rivera.test@example.test",
+        Address: address,
+        Notes: notes,
+        Status: "Active",
+      },
+      {
+        "Member ID": "gd-multi-2",
+        "First Name": "Ben",
+        "Last Name": "Cho",
+        Email: "ben.cho.test@example.test",
+        Status: "Frozen",
+      },
+    ]);
+    // Naive split would invent extra rows from the Notes/Address newlines.
+    expect(csv.split(/\r?\n/).length).toBeGreaterThan(3);
+    const records = parseCsvRecords(csv);
+    expect(records).toHaveLength(3); // header + 2 members
+    const notesIdx = GYMDESK_CSV_HEADERS.indexOf("Notes");
+    const addressIdx = GYMDESK_CSV_HEADERS.indexOf("Address");
+    expect(records[1]![notesIdx]).toBe(notes);
+    expect(records[1]![addressIdx]).toBe(address);
+    expect(records[1]![notesIdx]).toContain('Said "hello"');
+
+    const parsed = parseGymdeskCsv(`\uFEFF${csv}`);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.rows).toHaveLength(2);
+    expect(parsed.rows.map((row) => row.gymdeskId)).toEqual(["gd-multi-1", "gd-multi-2"]);
+    expect(parsed.rows.map((row) => row.mapped.status)).toEqual(["active", "frozen"]);
+    expect(parsed.rows.every((row) => row.mapped.status !== "unknown")).toBe(true);
   });
 
   it("puts missing mirror-active CSV rows into the grace flow", async () => {

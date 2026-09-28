@@ -256,14 +256,20 @@ describe("workout logger media and previous loads", () => {
   it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {
     const user = await makeUser("carry-logger@example.com");
     const program = await getDemoProgram();
-    const day = program.days.find((row) => row.dayNumber === 2)!;
+    const day = program.days.find((row) => row.dayNumber === 11)!;
+    const pullDay = program.days.find((row) => row.dayNumber === 2)!;
     const draft = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day.id,
       preferredUnits: "lb",
     });
+    const pullDraft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: pullDay.id,
+      preferredUnits: "lb",
+    });
     const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
-    const band = draft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
+    const band = pullDraft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
     expect(carry.length).toBeGreaterThan(0);
     expect(carry[0]?.logMode).toBe("load_timed");
     expect(carry[0]?.durationSeconds).toBeNull();

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { completeOnboardingForUser } from "@/lib/onboarding";
 import { getHomeToday } from "@/lib/home";
 import { findDemoTrainingCatalog } from "@/lib/programs";
+import { BAG_FOCUS } from "@/lib/bag-sessions";
+import { THU_STRENGTH_DAY_NUMBER } from "@/lib/daru-exercises";
 import {
   buildCoreWeekPlan,
   coreSkeletonSessions,
@@ -10,12 +12,14 @@ import {
   resolvePlanSessions,
   resolveTrainingDays,
   weekdayInAppZone,
+  weekStrip,
 } from "@/lib/week-plan";
 import { makeUser, resetDatabase } from "./helpers";
 
 const monday = new Date(2026, 8, 21, 10, 0, 0);
 const thursday = new Date(2026, 8, 24, 10, 0, 0);
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
+const wednesday = new Date(2026, 8, 23, 10, 0, 0);
 
 describe("Core weekday planner", () => {
   it("uses local civil weekdays", () => {
@@ -37,51 +41,49 @@ describe("Core weekday planner", () => {
     ).toBe("Saturday");
   });
 
-  it("gives striking Monday bag + strength", () => {
-    const sessions = coreSkeletonSessions("Monday", "mma");
-    expect(sessions).toHaveLength(2);
-    expect(sessions[0]).toMatchObject({
+  it("gives every Mon–Fri training day a distinct bag + rotating lift", () => {
+    const mon = coreSkeletonSessions("Monday", "mma");
+    expect(mon[0]).toMatchObject({
       kind: "skill",
       programSlug: "demo-combat-skills",
-      dayNumber: 1,
+      dayNumber: BAG_FOCUS.Monday.dayNumber,
     });
-    expect(sessions[1]).toMatchObject({
+    expect(mon[1]).toMatchObject({
       kind: "strength",
       programSlug: "demo-strength-base",
-      dayNumber: 2,
+      dayNumber: 1,
     });
 
-    const boxing = coreSkeletonSessions("Monday", "boxing");
-    expect(boxing[0]).toMatchObject({ kind: "skill", dayNumber: 3 });
-    expect(boxing[1]).toMatchObject({ kind: "strength", dayNumber: 2 });
+    const wed = coreSkeletonSessions("Wednesday", "mma");
+    expect(wed[0]?.dayNumber).toBe(BAG_FOCUS.Wednesday.dayNumber);
+    expect(wed[0]?.dayNumber).not.toBe(mon[0]?.dayNumber);
+    expect(wed[1]).toMatchObject({ kind: "strength", dayNumber: 3 });
+
+    const boxingMon = coreSkeletonSessions("Monday", "boxing");
+    expect(boxingMon[0]?.dayNumber).toBe(BAG_FOCUS.Monday.dayNumber);
   });
 
-  it("keeps general-fitness Monday on strength only — no bag", () => {
+  it("puts bag on general-fitness training days too", () => {
     const sessions = coreSkeletonSessions("Monday", "general-fitness");
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0]?.kind).toBe("strength");
-    expect(sessions[0]?.programSlug).toBe("demo-strength-base");
-    expect(sessions.some((session) => session.kind === "skill")).toBe(false);
+    expect(sessions.some((session) => session.kind === "skill")).toBe(true);
+    expect(sessions.some((session) => session.kind === "strength")).toBe(true);
   });
 
-  it("puts Assault Bike on Tuesday and Thursday for every focus", () => {
-    expect(coreSkeletonSessions("Tuesday", "mma")[0]).toMatchObject({
-      kind: "conditioning",
-      dayNumber: 4,
-    });
-    expect(coreSkeletonSessions("Thursday", "wrestling")[0]).toMatchObject({
-      kind: "conditioning",
-      dayNumber: 7,
-    });
-    expect(coreSkeletonSessions("Thursday", "jiu-jitsu")[0]).toMatchObject({
-      kind: "conditioning",
-      dayNumber: 7,
-    });
-    expect(coreSkeletonSessions("Thursday", "general-fitness")[0]).toMatchObject({
-      kind: "conditioning",
-      dayNumber: 7,
-    });
-    expect(coreSkeletonSessions("Friday", "mma")[0]).toMatchObject({
+  it("stacks bag + pull + bike on Tuesday and bag + posterior + bike on Thursday", () => {
+    const tue = coreSkeletonSessions("Tuesday", "mma");
+    expect(tue).toHaveLength(3);
+    expect(tue[0]?.kind).toBe("skill");
+    expect(tue[1]).toMatchObject({ kind: "strength", dayNumber: 2 });
+    expect(tue[2]).toMatchObject({ kind: "conditioning", dayNumber: 4 });
+
+    const thu = coreSkeletonSessions("Thursday", "wrestling");
+    expect(thu).toHaveLength(3);
+    expect(thu[0]?.dayNumber).toBe(BAG_FOCUS.Thursday.dayNumber);
+    expect(thu[1]).toMatchObject({ kind: "strength", dayNumber: THU_STRENGTH_DAY_NUMBER });
+    expect(thu[2]).toMatchObject({ kind: "conditioning", dayNumber: 7 });
+
+    expect(coreSkeletonSessions("Friday", "mma")[0]?.dayNumber).toBe(BAG_FOCUS.Friday.dayNumber);
+    expect(coreSkeletonSessions("Friday", "mma")[1]).toMatchObject({
       kind: "conditioning",
       dayNumber: 10,
     });
@@ -97,7 +99,7 @@ describe("Core weekday planner", () => {
       tuesday,
     );
     expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bike");
+    expect(tue.summary).toBe("Bag+Lift+Bike");
     expect(tue.skipReason).toBeUndefined();
 
     const days = resolveTrainingDays({
@@ -108,7 +110,7 @@ describe("Core weekday planner", () => {
     expect(days.has("Saturday")).toBe(false);
   });
 
-  it("builds a dual-day Monday plan for MMA", () => {
+  it("builds a dual-day Monday plan for MMA with clickable week-strip dates", () => {
     const week = buildCoreWeekPlan({
       primaryFocus: "mma",
       weeklyAvailability: ["Monday", "Wednesday", "Friday"],
@@ -116,7 +118,19 @@ describe("Core weekday planner", () => {
     expect(week.Monday.active).toBe(true);
     expect(week.Monday.summary).toBe("Bag+Lift");
     expect(week.Monday.sessions).toHaveLength(2);
+    expect(week.Wednesday.summary).toBe("Bag+Lift");
+    expect(week.Wednesday.sessions[0]?.dayNumber).not.toBe(week.Monday.sessions[0]?.dayNumber);
     expect(week.Sunday.active).toBe(false);
+
+    const strip = weekStrip(
+      { primaryFocus: "mma", weeklyAvailability: ["Monday", "Wednesday", "Friday"] },
+      monday,
+      undefined,
+      wednesday,
+    );
+    expect(strip.find((day) => day.weekday === "Wednesday")?.isSelected).toBe(true);
+    expect(strip.find((day) => day.weekday === "Monday")?.isToday).toBe(true);
+    expect(strip.every((day) => Boolean(day.dayParam))).toBe(true);
   });
 });
 
@@ -148,9 +162,9 @@ describe("Core planner on Home", () => {
     const catalog = await findDemoTrainingCatalog();
     const today = await getHomeToday(user.id, monday);
     expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
-    expect(today.plannedSessions[0]?.title).toMatch(/Heavy bag — hands to low kicks/i);
-    expect(today.plannedSessions[1]?.title).toMatch(/Upper body/i);
-    expect(today.suggestedDay?.title).toMatch(/Heavy bag/i);
+    expect(today.plannedSessions[0]?.title).toMatch(/Bag — boxing combos/i);
+    expect(today.plannedSessions[1]?.title).toMatch(/Lower body/i);
+    expect(today.suggestedDay?.title).toMatch(/boxing combos/i);
     expect(today.planSummary).toBe("Bag+Lift");
     expect(today.weekStrip).toHaveLength(7);
 
@@ -160,5 +174,12 @@ describe("Core planner on Home", () => {
     );
     expect(resolved[0]?.dayId).toBeTruthy();
     expect(resolved[1]?.dayId).toBeTruthy();
+
+    const wedResolved = resolvePlanSessions(
+      planForDate({ primaryFocus: "mma", weeklyAvailability: ["Wednesday"] }, wednesday),
+      catalog,
+    );
+    expect(wedResolved[0]?.title).toMatch(/body shots/i);
+    expect(wedResolved[0]?.dayId).not.toBe(resolved[0]?.dayId);
   });
 });

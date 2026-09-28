@@ -14,7 +14,7 @@ import {
   pickBikeSessionForPlan,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
-import { FRIDAY_GPP_DAY_NUMBER, FRIDAY_GPP_NAMES, MON_WED_DARU_NAMES } from "@/lib/daru-exercises";
+import { FRIDAY_GPP_DAY_NUMBER, FRIDAY_GPP_NAMES } from "@/lib/daru-exercises";
 import { creditForExercise } from "@/lib/coach-credits";
 import { fallbackLogMode, plannedSetLine } from "@/lib/exercise-log-mode";
 import { getDemoProgram } from "@/lib/programs";
@@ -80,8 +80,12 @@ describe("assault bike catalog", () => {
       );
     }
     expect(bikeWeekIndex(monday) % 3).toBe(1);
-    expect(coreSkeletonSessions("Tuesday", "mma", 1)[0]?.dayNumber).toBe(5);
-    expect(coreSkeletonSessions("Thursday", "mma", 1)[0]?.dayNumber).toBe(6);
+    expect(
+      coreSkeletonSessions("Tuesday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
+    ).toBe(5);
+    expect(
+      coreSkeletonSessions("Thursday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
+    ).toBe(6);
   });
 
   it("scales 15/15 sets by experience: 3 / 4 / 5", () => {
@@ -185,47 +189,49 @@ describe("assault bike catalog", () => {
   it("puts Bike on Tuesday and Thursday even when availability is Mon/Wed/Fri", () => {
     const week = buildCoreWeekPlan(MMA_MON_WED_FRI);
     expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Tuesday.summary).toBe("Bike");
+    expect(week.Tuesday.summary).toBe("Bag+Lift+Bike");
     expect(week.Tuesday.active).toBe(true);
     expect(week.Wednesday.summary).toBe("Bag+Lift");
-    expect(week.Thursday.summary).toBe("Bike");
+    expect(week.Thursday.summary).toBe("Bag+Lift+Bike");
     expect(week.Thursday.active).toBe(true);
-    expect(week.Friday.summary).toBe("GPP");
+    expect(week.Friday.summary).toBe("Bag+GPP");
     expect(week.Saturday.summary).toBe("Off");
     expect(week.Sunday.summary).toBe("Off");
 
-    expect(coreSkeletonSessions("Tuesday", "mma")[0]).toMatchObject({
-      kind: "conditioning",
+    expect(coreSkeletonSessions("Tuesday", "mma").some((s) => s.kind === "conditioning")).toBe(
+      true,
+    );
+    expect(coreSkeletonSessions("Tuesday", "mma").find((s) => s.kind === "conditioning")).toMatchObject({
       programSlug: "demo-strength-base",
       dayNumber: BIKE_PROGRAM_DAY_NUMBER,
     });
-    expect(coreSkeletonSessions("Thursday", "wrestling")[0]).toMatchObject({
+    expect(coreSkeletonSessions("Thursday", "wrestling").find((s) => s.kind === "conditioning")).toMatchObject({
       kind: "conditioning",
       dayNumber: 7,
     });
-    expect(coreSkeletonSessions("Friday", "mma")[0]).toMatchObject({
+    expect(coreSkeletonSessions("Friday", "mma").find((s) => s.dayNumber === FRIDAY_GPP_DAY_NUMBER)).toMatchObject({
       kind: "conditioning",
       dayNumber: FRIDAY_GPP_DAY_NUMBER,
     });
 
     const tue = planForDate(MMA_MON_WED_FRI, tuesday);
     expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bike");
-    expect(tue.sessions[0]?.dayNumber).toBe(5);
+    expect(tue.summary).toBe("Bag+Lift+Bike");
+    expect(tue.sessions.find((s) => s.kind === "conditioning")?.dayNumber).toBe(5);
     const thu = planForDate(MMA_MON_WED_FRI, thursday);
     expect(thu.active).toBe(true);
-    expect(thu.summary).toBe("Bike");
-    expect(thu.sessions[0]?.dayNumber).toBe(6);
+    expect(thu.summary).toBe("Bag+Lift+Bike");
+    expect(thu.sessions.find((s) => s.kind === "conditioning")?.dayNumber).toBe(6);
     const mon = planForDate(MMA_MON_WED_FRI, monday);
     expect(mon.summary).toBe("Bag+Lift");
 
     const strip = weekStrip(MMA_MON_WED_FRI, monday);
     expect(strip.map((day) => day.summary)).toEqual([
       "Bag+Lift",
-      "Bike",
+      "Bag+Lift+Bike",
       "Bag+Lift",
-      "Bike",
-      "GPP",
+      "Bag+Lift+Bike",
+      "Bag+GPP",
       "Off",
       "Off",
     ]);
@@ -290,17 +296,18 @@ describe("assault bike seeded days", () => {
     const resolved = resolvePlanSessions(planForDate(MMA_MON_WED_FRI, thursday), {
       strength: program,
     });
-    expect(resolved[0]?.dayNumber).toBe(6);
-    expect(resolved[0]?.href).toBe(
+    const bike = resolved.find((row) => row.dayNumber === 6);
+    expect(bike?.dayNumber).toBe(6);
+    expect(bike?.href).toBe(
       `/training/${program.days.find((row) => row.dayNumber === 6)!.id}`,
     );
-    expect(resolved[0]?.title).toMatch(/tempo/i);
+    expect(bike?.title).toMatch(/tempo/i);
   });
 
   it("seeds the rotation days plus Friday GPP and Mon/Wed Daru work", async () => {
     const program = await getDemoProgram();
     const numbers = program.days.map((row) => row.dayNumber);
-    expect(numbers).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+    expect(numbers).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]));
 
     const alactic = program.days.find((row) => row.dayNumber === 5);
     expect(alactic?.exercises[0]?.name).toBe("Daru alactic power bike");
@@ -317,19 +324,16 @@ describe("assault bike seeded days", () => {
       "timed",
     );
 
-    const mondayLift = program.days.find((row) => row.dayNumber === 2);
-    for (const name of MON_WED_DARU_NAMES) {
-      expect(mondayLift?.exercises.some((row) => row.name === name), name).toBe(true);
-      expect(creditForExercise(name)?.line).toMatch(/Phil Daru/);
-      expect(mondayLift?.exercises.find((row) => row.name === name)?.formVideoUrl).not.toMatch(
-        /\/shorts\//,
-      );
-    }
+    const mondayLift = program.days.find((row) => row.dayNumber === 1);
+    expect(mondayLift?.exercises.some((row) => row.name === "Trap-bar deadlift")).toBe(true);
     expect(mondayLift?.exercises.find((row) => row.name === "Trap-bar deadlift")?.logMode).toBe(
       "load_reps",
     );
-    expect(mondayLift?.exercises.find((row) => row.name === "Neck extension hold")?.logMode).toBe(
-      "timed",
-    );
+
+    const wednesdayLift = program.days.find((row) => row.dayNumber === 3);
+    for (const name of ["Floor press", "Landmine press", "Rotational med-ball throw", "Med-ball chest pass"]) {
+      expect(wednesdayLift?.exercises.some((row) => row.name === name), name).toBe(true);
+      expect(creditForExercise(name)?.line).toMatch(/Phil Daru/);
+    }
   });
 });

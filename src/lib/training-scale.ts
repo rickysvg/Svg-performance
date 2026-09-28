@@ -1,4 +1,12 @@
 import {
+  BAG_REST_SECONDS,
+  BAG_ROUND_COUNTS,
+  BAG_ROUND_COUNTS_ADVANCED_LONG,
+  BAG_ROUND_SECONDS,
+  bagRoundCountFor,
+  isAdvancedLongBagDay,
+} from "@/lib/bag-sessions";
+import {
   bikeIntervalReps,
   bikeSessionForLogger,
   bikeSessionForName,
@@ -35,20 +43,89 @@ export type ScaleableExercise = {
 
 /**
  * Skill-day round length (seconds) by DEMO Combat Skills dayNumber.
- * Power bag / GNP days stay shorter; clinch, wrestling, and BJJ run longer.
- * Beginner ~2–2.5 min. Intermediate ~2.5–3 min. Advanced / pro ~3–5 min.
+ * Bag days 1–5 use level-scaled bag minutes (beginner ~30, intermediate ~35–40,
+ * advanced ~45 on Tue/Thu and ~60 on Mon/Wed/Fri). Day 6 keeps longer open clocks.
  */
 export const SKILL_ROUND_SECONDS: Record<ScaleBand, Record<number, number>> = {
-  beginner: { 1: 120, 2: 150, 3: 120, 4: 120, 5: 150, 6: 150 },
-  intermediate: { 1: 150, 2: 180, 3: 150, 4: 150, 5: 180, 6: 180 },
-  advanced: { 1: 180, 2: 240, 3: 180, 4: 180, 5: 240, 6: 300 },
+  beginner: {
+    1: BAG_ROUND_SECONDS.beginner,
+    2: BAG_ROUND_SECONDS.beginner,
+    3: BAG_ROUND_SECONDS.beginner,
+    4: BAG_ROUND_SECONDS.beginner,
+    5: BAG_ROUND_SECONDS.beginner,
+    6: 150,
+  },
+  intermediate: {
+    1: BAG_ROUND_SECONDS.intermediate,
+    2: BAG_ROUND_SECONDS.intermediate,
+    3: BAG_ROUND_SECONDS.intermediate,
+    4: BAG_ROUND_SECONDS.intermediate,
+    5: BAG_ROUND_SECONDS.intermediate,
+    6: 180,
+  },
+  advanced: {
+    1: BAG_ROUND_SECONDS.advanced,
+    2: BAG_ROUND_SECONDS.advanced,
+    3: BAG_ROUND_SECONDS.advanced,
+    4: BAG_ROUND_SECONDS.advanced,
+    5: BAG_ROUND_SECONDS.advanced,
+    6: 300,
+  },
 };
 
-/** Rest between skill rounds. Advanced power days (1, 3, 4) use 30s. */
+/** Rest between skill rounds. */
 export const SKILL_REST_SECONDS: Record<ScaleBand, Record<number, number>> = {
-  beginner: { 1: 90, 2: 90, 3: 90, 4: 90, 5: 90, 6: 90 },
-  intermediate: { 1: 60, 2: 60, 3: 60, 4: 60, 5: 60, 6: 60 },
-  advanced: { 1: 30, 2: 45, 3: 30, 4: 30, 5: 45, 6: 45 },
+  beginner: {
+    1: BAG_REST_SECONDS.beginner,
+    2: BAG_REST_SECONDS.beginner,
+    3: BAG_REST_SECONDS.beginner,
+    4: BAG_REST_SECONDS.beginner,
+    5: BAG_REST_SECONDS.beginner,
+    6: 90,
+  },
+  intermediate: {
+    1: BAG_REST_SECONDS.intermediate,
+    2: BAG_REST_SECONDS.intermediate,
+    3: BAG_REST_SECONDS.intermediate,
+    4: BAG_REST_SECONDS.intermediate,
+    5: BAG_REST_SECONDS.intermediate,
+    6: 60,
+  },
+  advanced: {
+    1: BAG_REST_SECONDS.advanced,
+    2: BAG_REST_SECONDS.advanced,
+    3: BAG_REST_SECONDS.advanced,
+    4: BAG_REST_SECONDS.advanced,
+    5: BAG_REST_SECONDS.advanced,
+    6: 45,
+  },
+};
+
+export const SKILL_ROUND_COUNTS: Record<ScaleBand, Record<number, number>> = {
+  beginner: {
+    1: BAG_ROUND_COUNTS.beginner,
+    2: BAG_ROUND_COUNTS.beginner,
+    3: BAG_ROUND_COUNTS.beginner,
+    4: BAG_ROUND_COUNTS.beginner,
+    5: BAG_ROUND_COUNTS.beginner,
+    6: 3,
+  },
+  intermediate: {
+    1: BAG_ROUND_COUNTS.intermediate,
+    2: BAG_ROUND_COUNTS.intermediate,
+    3: BAG_ROUND_COUNTS.intermediate,
+    4: BAG_ROUND_COUNTS.intermediate,
+    5: BAG_ROUND_COUNTS.intermediate,
+    6: 3,
+  },
+  advanced: {
+    1: BAG_ROUND_COUNTS_ADVANCED_LONG,
+    2: BAG_ROUND_COUNTS.advanced,
+    3: BAG_ROUND_COUNTS_ADVANCED_LONG,
+    4: BAG_ROUND_COUNTS.advanced,
+    5: BAG_ROUND_COUNTS_ADVANCED_LONG,
+    6: 4,
+  },
 };
 
 const STRENGTH_REST: Record<ScaleBand, number> = {
@@ -144,11 +221,15 @@ export function scaleBandFromPrefs(prefs?: ScalePrefs | null): ScaleBand {
   const competition = prefs?.competitionStatus ?? "";
   if (experience === "advanced" || competition === "pro") return "advanced";
   if (competition === "amateur" && experience !== "beginner") return "advanced";
-  if (experience === "intermediate") return "intermediate";
-  return "beginner";
+  if (experience === "beginner") return "beginner";
+  // Unset profile level defaults to intermediate (clear toggle still available on Train).
+  return "intermediate";
 }
 
-export function scaleCopy(band: ScaleBand) {
+export function scaleCopy(band: ScaleBand, dayNumber?: number) {
+  if (band === "advanced" && dayNumber != null && isAdvancedLongBagDay(dayNumber)) {
+    return "Scaled for advanced / competition · ~60 min bag";
+  }
   if (band === "advanced") return "Scaled for advanced / competition";
   if (band === "intermediate") return "Scaled for intermediate";
   return "DEMO Core — beginner pacing";
@@ -182,13 +263,20 @@ export function scaleExercise(
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
     if (mode === "timed_round") {
       const seconds = skillRoundSeconds(band, dayNumber);
+      const rounds = bagRoundCountFor(band, dayNumber);
+      const isBagBlock = /\bbag rounds?\b/i.test(exercise.name);
       return {
         ...exercise,
         logMode: mode,
-        sets: Math.max(exercise.sets, band === "beginner" ? 3 : 3),
+        sets: isBagBlock
+          ? rounds
+          : Math.max(exercise.sets, band === "beginner" ? 3 : band === "advanced" ? 4 : 3),
         reps: formatClock(seconds),
         restSeconds: skillRestSeconds(band, dayNumber),
-        loadText: band === "beginner" ? exercise.loadText : `${exercise.loadText} · fight pace`,
+        loadText:
+          band === "beginner"
+            ? exercise.loadText
+            : `${exercise.loadText} · fight pace`,
       };
     }
     if (mode === "timed" && isHoldOrIntervalName(exercise.name)) {
@@ -368,7 +456,12 @@ export function scaleProgramDay<T extends { dayNumber: number; focus: string; ex
     programSlug: input.programSlug,
     dayNumber: day.dayNumber,
   });
-  const note = scaleCopy(input.band);
+  const note = scaleCopy(
+    input.band,
+    input.programSlug === DEMO_SKILL_PROGRAM_SLUG || input.programSlug === "skill"
+      ? day.dayNumber
+      : undefined,
+  );
   const focus = day.focus.includes("Scaled") || day.focus.includes("DEMO Core")
     ? day.focus
     : `${day.focus} · ${note}`;

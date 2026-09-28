@@ -2,6 +2,8 @@ import type { ScaleBand } from "@/lib/bike-sessions";
 import type { LogMode } from "@/lib/exercise-log-mode";
 
 export const FRIDAY_GPP_DAY_NUMBER = 10;
+/** Thursday posterior / unilateral strength day (bike uses 4–9). */
+export const THU_STRENGTH_DAY_NUMBER = 11;
 
 export type DaruScale = {
   sets: number;
@@ -197,13 +199,13 @@ export function scaleDaruExercise(name: string, band: ScaleBand): DaruScale | nu
   return BY_NAME[name]?.scale[band] ?? null;
 }
 
-export const MON_WED_LIFT_NAMES = [
-  "Trap-bar deadlift",
+/** Monday lower-day hinge credit (Daru Strong). */
+export const MON_DARU_NAMES = ["Trap-bar deadlift"] as const;
+
+/** Wednesday upper-push + rotational power credits (Daru Strong). */
+export const WED_DARU_NAMES = [
   "Floor press",
   "Landmine press",
-] as const;
-
-export const MON_WED_POWER_NAMES = [
   "Rotational med-ball throw",
   "Med-ball chest pass",
 ] as const;
@@ -222,6 +224,20 @@ export const FRIDAY_GPP_NAMES = [
   "Neck isometric matrix",
 ] as const;
 
+/** @deprecated Prefer MON_DARU_NAMES / WED_DARU_NAMES — kept for older tests. */
+export const MON_WED_LIFT_NAMES = [
+  "Trap-bar deadlift",
+  "Floor press",
+  "Landmine press",
+] as const;
+
+/** @deprecated Prefer WED_DARU_NAMES — kept for older tests. */
+export const MON_WED_POWER_NAMES = [
+  "Rotational med-ball throw",
+  "Med-ball chest pass",
+] as const;
+
+/** @deprecated Prefer day-specific lists — kept for older tests. */
 export const MON_WED_DARU_NAMES = [
   ...MON_WED_POWER_NAMES,
   ...MON_WED_LIFT_NAMES,
