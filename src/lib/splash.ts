@@ -22,9 +22,14 @@ export function shouldSkipSplash(stored: string | null) {
   return stored === "1";
 }
 
-/** Marketing `/` only. Login and member routes never play the clip. */
+/** UI routes only. Skip API handlers and admin CSV/download endpoints. */
 export function isSplashPath(pathname: string | null | undefined) {
-  return pathname === "/";
+  if (!pathname) return false;
+  if (pathname === "/api" || pathname.startsWith("/api/")) return false;
+  if (pathname.startsWith("/admin/") && /\/(csv|download)(\/|$)/i.test(pathname)) {
+    return false;
+  }
+  return true;
 }
 
 export function shouldShowSplashOverlay(input: {
@@ -34,7 +39,7 @@ export function shouldShowSplashOverlay(input: {
   return isSplashPath(input.pathname) && !shouldSkipSplash(input.stored);
 }
 
-/** Never mount <video> after the session flag, on inner pages, or for reduced motion. */
+/** Never mount <video> after the session flag, on excluded routes, or for reduced motion. */
 export function shouldMountSplashVideo(input: {
   stored: string | null;
   pathname: string | null | undefined;

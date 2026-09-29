@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, Geist } from "next/font/google";
+import { AppSplash } from "@/components/AppSplash";
 import "./globals.css";
 
 const anton = Anton({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             __html: `try{if(sessionStorage.getItem("svg_splash_seen")==="1")document.documentElement.dataset.splash="done"}catch(e){}`,
           }}
         />
+        <AppSplash />
         {children}
       </body>
     </html>

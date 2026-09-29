@@ -27,9 +27,9 @@ function storedSplashFlag() {
 }
 
 export function AppSplash() {
-  const pathname = usePathname();
   // First render must match the server. The splash script hides this with
   // html[data-splash="done"] before paint when the splash was already seen.
+  const pathname = usePathname();
   const [phase, setPhase] = useState<"play" | "exit" | "gone">("play");
   const [mountVideo, setMountVideo] = useState(false);
   const [useStill, setUseStill] = useState(false);
@@ -41,11 +41,18 @@ export function AppSplash() {
   const exiting = useRef(false);
   const reducedRef = useRef(false);
   const exitMsRef = useRef(280);
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
 
   useEffect(() => {
+    // Boot once per mount (root layout). Client navigations must not restart it.
+    const path =
+      pathRef.current ||
+      (typeof window !== "undefined" ? window.location.pathname : "/");
     const stored = storedSplashFlag();
-    if (!shouldShowSplashOverlay({ stored, pathname })) {
+    if (!shouldShowSplashOverlay({ stored, pathname: path })) {
       document.documentElement.dataset.splash = "done";
+      setPhase("gone");
       return;
     }
 
@@ -94,7 +101,9 @@ export function AppSplash() {
     }
 
     const boot = window.setTimeout(() => {
-      setMountVideo(shouldMountSplashVideo({ stored, pathname, reducedMotion: reduced }));
+      setMountVideo(
+        shouldMountSplashVideo({ stored, pathname: path, reducedMotion: reduced }),
+      );
     }, 0);
 
     const hold = reduced
@@ -126,7 +135,8 @@ export function AppSplash() {
       window.removeEventListener("svg-splash-skip", onSkip);
       window.removeEventListener("svg-splash-video-done", onVideoDone);
     };
-  }, [pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- session-open only; ignore later client navigations
+  }, []);
 
   useEffect(() => {
     if (!mountVideo || useStill) return;
