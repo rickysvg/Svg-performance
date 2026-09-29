@@ -83,18 +83,18 @@ describe("badge ladders", () => {
     expect(liftLadderThreshold("lift_l1", "lb")).toBe(135);
     expect(liftLadderThreshold("lift_l3", "kg")).toBe(100);
     expect(liftBadgeTitle("lift_l3", "lb")).toBe("225 lb lift");
-    expect(liftBadgeTitle("lift_l5", "kg")).toBe("180 kg lift");
+    expect(liftBadgeTitle("lift_l5", "kg")).toBe("405 lb lift");
 
-    const kg = evaluateBadges({
+    const fromKgSet = evaluateBadges({
       workoutCount: 1,
       currentStreak: 1,
       longestStreak: 1,
-      displayUnit: "kg",
+      displayUnit: "lb",
       sets: [liftSet(100, "kg")],
     });
-    expect(kg.find((row) => row.id === "lift_l3")?.earned).toBe(true);
-    expect(kg.find((row) => row.id === "lift_l3")?.title).toBe("100 kg lift");
-    expect(kg.find((row) => row.id === "lift_l4")?.earned).toBe(false);
+    expect(fromKgSet.find((row) => row.id === "lift_l3")?.earned).toBe(true);
+    expect(fromKgSet.find((row) => row.id === "lift_l3")?.title).toBe("225 lb lift");
+    expect(fromKgSet.find((row) => row.id === "lift_l4")?.earned).toBe(false);
 
     const converted = evaluateBadges({
       workoutCount: 1,

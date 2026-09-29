@@ -228,7 +228,7 @@ describe("ownership isolation", () => {
 });
 
 describe("units", () => {
-  it("converts pounds and kilos both ways", () => {
+  it("converts legacy kilos into pounds for display", () => {
     expect(Math.round(convertLoad(220, "lb", "kg"))).toBe(100);
     expect(Math.round(convertLoad(100, "kg", "lb"))).toBe(220);
   });

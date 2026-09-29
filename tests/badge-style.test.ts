@@ -15,25 +15,25 @@ function read(rel: string) {
 }
 
 describe("badge styles and progress", () => {
-  it("uses ladder badge art with lb/kg lift stems", () => {
+  it("uses ladder badge art with lb lift stems", () => {
     expect(read("src/components/progress/BadgeMark.tsx")).toContain("BadgeArt");
     expect(read("src/components/progress/BadgeArt.tsx")).toContain("badgeArtSrc");
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/streak_7.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/bag_250_locked.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "public/badges/lift_l3_lb_hero.webp"))).toBe(true);
-    expect(fs.existsSync(path.join(process.cwd(), "public/badges/lift_l3_kg.webp"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "src/components/progress/BadgePlate.tsx"))).toBe(
       false,
     );
     expect(badgeArtSrc("lift_l3", "lb", "progress")).toBe("/badges/lift_l3_lb.webp");
-    expect(badgeArtSrc("lift_l5", "kg", "hero")).toBe("/badges/lift_l5_kg_hero.webp");
+    // kg preference is coerced to lb art in the UI
+    expect(badgeArtSrc("lift_l5", "kg", "hero")).toBe("/badges/lift_l5_lb_hero.webp");
   });
 
-  it("uses big milestone marks in the athlete unit", () => {
+  it("uses big milestone marks in pounds", () => {
     expect(badgeMark("lift_l3", "lb")).toBe("225");
     expect(badgeMark("lift_l5", "lb")).toBe("405");
-    expect(badgeMark("lift_l3", "kg")).toBe("100");
-    expect(badgeMark("lift_l5", "kg")).toBe("180");
+    expect(badgeMark("lift_l3", "kg")).toBe("225");
+    expect(badgeMark("lift_l5", "kg")).toBe("405");
     expect(badgeMark("streak_7")).toBe("7");
     expect(badgeMark("streak_30")).toBe("30");
     expect(badgeMark("streak_100")).toBe("100");

@@ -24,9 +24,9 @@ export default async function TestingWeekPage({
   const profile = await getProfileForUser(user.id);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const results = await listTestingResults(user.id);
-  const units: LoadUnit = profile?.preferredUnits === "kg" ? "kg" : "lb";
+  const units: LoadUnit = "lb";
   const lengthUnit = lengthUnitForLoad(units);
-  const distanceUnit = units === "kg" ? "km" : "mi";
+  const distanceUnit = "mi";
   const testing = isTestingWeek(new Date(), timeZone);
   const latest = results[0];
   const previous = results[1];

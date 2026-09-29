@@ -63,7 +63,7 @@ describe("shareable workout card stats", () => {
     expect(stats[3]?.value).toBe("4 days");
   });
 
-  it("honors kg when that is the saved unit", () => {
+  it("converts stored kg sets into lbs for the share card", () => {
     const lift = session({
       title: "Upper body",
       sets: [
@@ -77,9 +77,10 @@ describe("shareable workout card stats", () => {
         },
       ],
     });
-    const stats = selectShareStats({ session: lift, displayUnit: "kg", streakDays: 0 });
-    expect(stats.find((row) => row.key === "volume")?.value).toBe("500");
-    expect(stats.find((row) => row.key === "volume")?.unit).toBe("kg");
+    const stats = selectShareStats({ session: lift, displayUnit: "lb", streakDays: 0 });
+    expect(stats.find((row) => row.key === "volume")?.value).toBe("1,102");
+    expect(stats.find((row) => row.key === "volume")?.unit).toBe("lbs");
+    expect(stats.find((row) => row.key === "volume")?.unit).not.toBe("kg");
     expect(stats.find((row) => row.key === "streak")).toBeUndefined();
   });
 

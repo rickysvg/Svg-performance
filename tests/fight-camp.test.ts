@@ -10,17 +10,33 @@ import {
   buildCampSnapshot,
   campTemplateText,
   cancelFightCampForUser,
+  cleanWeightClass,
   daysBetweenKeys,
   getActiveCampSnapshot,
   saveFightCampForUser,
   selectTemplateWeeks,
   shapeDayPlan,
 } from "@/lib/fight-camp";
+import { normalizeWeightClassLabel } from "@/lib/units";
 
 const ZONE = "America/Denver";
 const NOW = new Date("2026-09-27T18:00:00.000Z");
 
 describe("fight camp week math", () => {
+  it("normalizes kg weight-class copy to whole pounds", () => {
+    expect(normalizeWeightClassLabel("77 kg class")).toBe("170 lb class");
+    expect(cleanWeightClass("77kg")).toBe("170 lb");
+    expect(
+      buildCampSnapshot({
+        fightDateKey: "2026-10-15",
+        templateWeeks: 6,
+        todayKey: "2026-09-27",
+        weightClass: "77 kg class",
+        discipline: "mma",
+      }).weightClass,
+    ).toBe("170 lb class");
+  });
+
   it("picks 12, 8, and 6 week camps from weeks left", () => {
     expect(selectTemplateWeeks(0)).toBe(6);
     expect(selectTemplateWeeks(18)).toBe(6);
@@ -190,7 +206,7 @@ describe("fight camp access", () => {
     expect(await canUseFeature(trial.id, "fight_camp", NOW)).toBe(true);
     await saveFightCampForUser(
       trial.id,
-      { fightDate: "2026-12-27", weightClass: "77 kg class", discipline: "mma" },
+      { fightDate: "2026-12-27", weightClass: "170 lb class", discipline: "mma" },
       NOW,
       ZONE,
     );

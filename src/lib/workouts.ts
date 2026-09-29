@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError, NotFoundError, AppError } from "@/lib/errors";
-import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
@@ -308,9 +308,23 @@ function validateSets(sets: WorkoutSetInput[]) {
       throw new AppError("WORKOUT", "Unknown logging mode.");
     }
     if (!isLoadUnit(set.loadUnit)) {
-      throw new AppError("WORKOUT", "Load unit must be lb or kg.");
+      throw new AppError("WORKOUT", "Load unit must be lb.");
     }
   }
+}
+
+function setsAsLb(sets: WorkoutSetInput[]): WorkoutSetInput[] {
+  return sets.map((set) => {
+    if (set.loadUnit !== "kg") {
+      return { ...set, loadUnit: APP_LOAD_UNIT };
+    }
+    return {
+      ...set,
+      loadUnit: APP_LOAD_UNIT,
+      loadValue:
+        set.loadValue == null ? null : roundLoadForInput(convertLoad(set.loadValue, "kg", "lb")),
+    };
+  });
 }
 
 export async function updateWorkoutSessionForUser(input: {
@@ -329,7 +343,8 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  validateSets(input.sets);
+  const sets = setsAsLb(input.sets);
+  validateSets(sets);
 
   const title = input.title.trim().slice(0, 120) || "Workout";
   const notes = input.notes.trim().slice(0, 1000);
@@ -353,7 +368,7 @@ export async function updateWorkoutSessionForUser(input: {
             ? existing.difficultyRating
             : parseDifficultyRating(input.difficultyRating) ?? "",
         sets: {
-          create: input.sets.map((set, index) => {
+          create: sets.map((set, index) => {
             const mode = resolveLogMode({
               logMode: set.logMode,
               name: set.exerciseName,

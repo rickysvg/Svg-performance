@@ -27,8 +27,6 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
     saveDeepOnboardingAction,
     {} as OnboardingActionState,
   );
-  const units = profile.preferredUnits || "lb";
-
   return (
     <div className="space-y-6">
       <div>
@@ -46,29 +44,29 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
           <h2>Body weight</h2>
           <p className="text-xs text-muted">
-            Stored in {units} from your required answers. Display only — we will not invent a
-            meal plan or medical target from these numbers.
+            Stored in lb. Display only — we will not invent a meal plan or medical target from
+            these numbers.
           </p>
           <label className="block">
-            <span className="text-sm font-medium">Current body weight ({units})</span>
+            <span className="text-sm font-medium">Current body weight (lb)</span>
             <input
               name="currentWeight"
               type="number"
               step="0.1"
-              min={units === "kg" ? 20 : 50}
-              max={units === "kg" ? 250 : 500}
+              min={50}
+              max={500}
               defaultValue={profile.currentWeight ?? ""}
               className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium">Goal weight ({units}, optional)</span>
+            <span className="text-sm font-medium">Goal weight (lb, optional)</span>
             <input
               name="goalWeight"
               type="number"
               step="0.1"
-              min={units === "kg" ? 20 : 50}
-              max={units === "kg" ? 250 : 500}
+              min={50}
+              max={500}
               defaultValue={profile.goalWeight ?? ""}
               className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
             />

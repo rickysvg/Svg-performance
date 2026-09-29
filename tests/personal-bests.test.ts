@@ -12,7 +12,7 @@ function lift(
   load: number,
   reps: number,
   at: string,
-  unit: "lb" | "kg" = "kg",
+  unit: "lb" | "kg" = "lb",
 ): DatedSetLike {
   return {
     exerciseName: name,
@@ -58,11 +58,11 @@ describe("personal record detection", () => {
   });
 
   it("detects a heavier load as a heaviest PR", () => {
-    const prior = [lift("Trap bar deadlift", 172.5, 3, "2026-09-01T12:00:00Z")];
-    const next = [lift("Trap bar deadlift", 180, 3, "2026-09-22T12:00:00Z")];
-    const prs = detectNewPrs(prior, next, "kg");
-    expect(prs.some((row) => row.kind === "heaviest" && row.value === 180)).toBe(true);
-    expect(prs.find((row) => row.kind === "heaviest")?.headline).toMatch(/180/);
+    const prior = [lift("Trap bar deadlift", 380, 3, "2026-09-01T12:00:00Z")];
+    const next = [lift("Trap bar deadlift", 400, 3, "2026-09-22T12:00:00Z")];
+    const prs = detectNewPrs(prior, next, "lb");
+    expect(prs.some((row) => row.kind === "heaviest" && row.value === 400)).toBe(true);
+    expect(prs.find((row) => row.kind === "heaviest")?.headline).toMatch(/400/);
   });
 
   it("detects more reps at the same weight", () => {
@@ -73,18 +73,18 @@ describe("personal record detection", () => {
   });
 
   it("detects a higher estimated 1RM", () => {
-    const prior = [lift("Bench press", 80, 3, "2026-09-01T12:00:00Z")];
-    const next = [lift("Bench press", 70, 10, "2026-09-22T12:00:00Z")];
-    const prs = detectNewPrs(prior, next, "kg");
+    const prior = [lift("Bench press", 175, 3, "2026-09-01T12:00:00Z")];
+    const next = [lift("Bench press", 155, 10, "2026-09-22T12:00:00Z")];
+    const prs = detectNewPrs(prior, next, "lb");
     const e1 = prs.find((row) => row.kind === "e1rm");
     expect(e1).toBeTruthy();
-    expect(e1!.value).toBeGreaterThan(epley1rm(80, 3));
+    expect(e1!.value).toBeGreaterThan(epley1rm(175, 3));
   });
 
   it("detects a longer timed hold", () => {
     const prior = [hold("Front plank hold", 90, "2026-09-01T12:00:00Z")];
     const next = [hold("Front plank hold", 160, "2026-09-22T12:00:00Z")];
-    const prs = detectNewPrs(prior, next, "kg");
+    const prs = detectNewPrs(prior, next, "lb");
     expect(prs.some((row) => row.kind === "longest" && row.value === 160)).toBe(true);
     expect(prs.find((row) => row.kind === "longest")?.headline).toBe("2:40");
   });
@@ -130,10 +130,10 @@ describe("personal record detection", () => {
   });
 
   it("does not flag a repeat or a lighter set", () => {
-    const prior = [lift("Trap bar deadlift", 180, 3, "2026-09-01T12:00:00Z")];
-    const same = [lift("Trap bar deadlift", 180, 3, "2026-09-22T12:00:00Z")];
-    const lighter = [lift("Trap bar deadlift", 170, 3, "2026-09-22T12:00:00Z")];
-    expect(detectNewPrs(prior, same, "kg").filter((row) => row.kind === "heaviest")).toEqual([]);
-    expect(detectNewPrs(prior, lighter, "kg").filter((row) => row.kind === "heaviest")).toEqual([]);
+    const prior = [lift("Trap bar deadlift", 400, 3, "2026-09-01T12:00:00Z")];
+    const same = [lift("Trap bar deadlift", 400, 3, "2026-09-22T12:00:00Z")];
+    const lighter = [lift("Trap bar deadlift", 375, 3, "2026-09-22T12:00:00Z")];
+    expect(detectNewPrs(prior, same, "lb").filter((row) => row.kind === "heaviest")).toEqual([]);
+    expect(detectNewPrs(prior, lighter, "lb").filter((row) => row.kind === "heaviest")).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getOwnWorkoutSessionOrNull } from "@/lib/workouts";
-import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import { APP_LOAD_UNIT, type LoadUnit } from "@/lib/units";
 import { selectShareStats, workoutStreakDays } from "@/lib/share-card";
 
 export async function getShareCardView(userId: string, sessionId: string) {
@@ -10,9 +10,7 @@ export async function getShareCardView(userId: string, sessionId: string) {
     return null;
   }
   const profile = await getProfileForUser(userId);
-  const displayUnit: LoadUnit = isLoadUnit(profile?.preferredUnits ?? "")
-    ? (profile?.preferredUnits as LoadUnit)
-    : "lb";
+  const displayUnit: LoadUnit = APP_LOAD_UNIT;
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const dates = await prisma.workoutSession.findMany({
     where: { userId, status: "complete" },

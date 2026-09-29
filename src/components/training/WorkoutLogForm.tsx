@@ -44,6 +44,7 @@ import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
+import { convertLoad, roundLoadForInput } from "@/lib/units";
 
 type Session = WorkoutSession & {
   sets: WorkoutSet[];
@@ -67,6 +68,20 @@ function toDateInput(value: Date | string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function setsInLb(sets: WorkoutSet[]): WorkoutSet[] {
+  return sets.map((set) => {
+    if (set.loadUnit !== "kg") {
+      return { ...set, loadUnit: "lb" };
+    }
+    return {
+      ...set,
+      loadUnit: "lb",
+      loadValue:
+        set.loadValue == null ? null : roundLoadForInput(convertLoad(set.loadValue, "kg", "lb")),
+    };
+  });
+}
+
 function newClientSet(
   sessionId: string,
   exerciseName: string,
@@ -83,7 +98,7 @@ function newClientSet(
     sortOrder: 0,
     reps: null,
     loadValue: null,
-    loadUnit,
+    loadUnit: loadUnit === "kg" ? "lb" : loadUnit || "lb",
     logMode,
     durationSeconds,
     completed: false,
@@ -138,7 +153,7 @@ export function WorkoutLogForm({
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(() => session.sets);
+  const [sets, setSets] = useState(() => setsInLb(session.sets));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
@@ -154,8 +169,8 @@ export function WorkoutLogForm({
     return [...map.entries()];
   }, [sets]);
 
-  const defaultUnit = sets[0]?.loadUnit === "kg" ? "kg" : "lb";
-  const loadHeader = defaultUnit === "kg" ? "Kg" : "Lbs";
+  const defaultUnit = "lb";
+  const loadHeader = "Lbs";
   const cancelHref = session.programDayId
     ? `/training/${session.programDayId}`
     : "/training";

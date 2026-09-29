@@ -5,6 +5,7 @@ import {
   parseDurationSeconds,
   resolveLogMode,
 } from "@/lib/exercise-log-mode";
+import { convertLoad, isLoadUnit, roundLoadForInput } from "@/lib/units";
 
 export type EquipmentId =
   | "barbell"
@@ -221,10 +222,10 @@ export function restBannerSeconds(seconds: number) {
 }
 
 function previousLoadText(loadValue: number, loadUnit: string) {
-  const rounded = Math.round(loadValue * 10) / 10;
-  const amount = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-  const unit = loadUnit === "kg" ? "kg" : "lbs";
-  return `${amount} ${unit}`;
+  const from = isLoadUnit(loadUnit) ? loadUnit : "lb";
+  const inLb = roundLoadForInput(convertLoad(loadValue, from, "lb"));
+  const amount = Number.isInteger(inLb) ? String(inLb) : inLb.toFixed(1);
+  return `${amount} lbs`;
 }
 
 export function previousSetLabel(input: {

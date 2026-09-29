@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { kgToWholeLb } from "@/lib/units";
 
 export const BODY_METRIC_KINDS = [
   "weight",
@@ -15,10 +16,10 @@ export const PHOTO_SLOTS = ["front", "side", "back"] as const;
 export type PhotoSlot = (typeof PHOTO_SLOTS)[number];
 
 const KIND_UNITS: Record<BodyMetricKind, readonly string[]> = {
-  weight: ["lb", "kg"],
+  weight: ["lb"],
   sleepHours: ["hours"],
   restingHr: ["bpm"],
-  leanMass: ["lb", "kg"],
+  leanMass: ["lb"],
   bodyFat: ["percent"],
 };
 
@@ -116,6 +117,14 @@ export async function listBodyMetricsForUser(userId: string, kind?: BodyMetricKi
   });
 }
 
+/** Convert legacy kg weight / lean-mass rows to whole lbs for display. */
+export function displayBodyMetric<T extends { kind: string; value: number; unit: string }>(row: T): T {
+  if ((row.kind === "weight" || row.kind === "leanMass") && row.unit === "kg") {
+    return { ...row, value: kgToWholeLb(row.value), unit: "lb" };
+  }
+  return row;
+}
+
 export async function getLatestBodyMetricsForUser(userId: string) {
   const rows = await prisma.bodyMetric.findMany({
     where: { userId },
@@ -124,7 +133,7 @@ export async function getLatestBodyMetricsForUser(userId: string) {
   const latest = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
     if (!latest.has(row.kind)) {
-      latest.set(row.kind, row);
+      latest.set(row.kind, displayBodyMetric(row));
     }
   }
   return latest;

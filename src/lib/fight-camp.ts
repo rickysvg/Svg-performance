@@ -8,6 +8,7 @@ import {
   isFightDiscipline,
   type FightDiscipline,
 } from "@/lib/fight-disciplines";
+import { normalizeWeightClassLabel } from "@/lib/units";
 
 export {
   FIGHT_DISCIPLINES,
@@ -131,7 +132,7 @@ export function parseFightDateKey(value: string): string {
 }
 
 export function cleanWeightClass(value: string): string {
-  const trimmed = value.trim().replace(/\s+/g, " ").slice(0, 40);
+  const trimmed = normalizeWeightClassLabel(value.trim().replace(/\s+/g, " ")).slice(0, 40);
   if (/kcal|calorie/i.test(trimmed)) {
     throw new AppError("CAMP", "Enter a weight class, not a calorie target.");
   }
@@ -314,7 +315,7 @@ export function buildCampSnapshot(input: {
     phaseLabel: PHASE_LABEL[phase],
     discipline: input.discipline,
     disciplineLabel: input.discipline ? disciplineLabel(input.discipline) : "",
-    weightClass: input.weightClass,
+    weightClass: normalizeWeightClassLabel(input.weightClass),
     fightDateLabel: formatFightDate(fightDateKey),
     todayFocus: todayFocusFor({
       phase,

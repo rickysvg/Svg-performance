@@ -26,7 +26,7 @@ const requiredIntake = {
   equipment: ["Dumbbells"],
   weeklyAvailability: ["Monday", "Wednesday"],
   sessionsPerWeek: 3,
-  preferredUnits: "kg",
+  preferredUnits: "lb",
   trainingLimitations: "Old knee — no jumping",
   foodPreferences: "I eat meat",
   allergies: "peanuts",
@@ -61,7 +61,7 @@ describe("onboarding gate and persistence", () => {
         equipment: ["Dumbbells"],
         weeklyAvailability: ["Monday", "Wednesday"],
         sessionsPerWeek: 3,
-        preferredUnits: "kg",
+        preferredUnits: "lb",
         trainingLimitations: "Old knee — no jumping",
         foodPreferences: "I eat meat",
         allergies: "peanuts",
@@ -79,7 +79,7 @@ describe("onboarding gate and persistence", () => {
     expect(saved.equipment).toContain("Dumbbells");
     expect(saved.weeklyAvailability).toEqual(["Monday", "Wednesday"]);
     expect(saved.sessionsPerWeek).toBe(3);
-    expect(saved.preferredUnits).toBe("kg");
+    expect(saved.preferredUnits).toBe("lb");
     expect(saved.trainingLimitations).toContain("knee");
     expect(saved.allergies).toBe("peanuts");
 
@@ -128,7 +128,7 @@ describe("onboarding gate and persistence", () => {
       weeklyAvailability: ["Tuesday", "Thursday"],
       hoursPerWeek: 5,
       sessionsPerWeek: 4,
-      preferredUnits: "kg",
+      preferredUnits: "lb",
       claimsGymMembership: false,
       foodPreferences: "high protein",
       allergies: "shellfish",
@@ -136,6 +136,7 @@ describe("onboarding gate and persistence", () => {
     });
 
     expect(updated.displayName).toBe("Edited");
+    expect(updated.preferredUnits).toBe("lb");
     expect(updated.goalKey).toBe("build-muscle");
     expect(updated.primaryFocus).toBe("wrestling");
     expect(updated.experienceLevel).toBe("intermediate");
@@ -229,8 +230,8 @@ describe("onboarding gate and persistence", () => {
 
     const fightDate = new Date(2026, 10, 8);
     const saved = await saveDeepOnboardingForUser(user.id, {
-      currentWeight: 82.4,
-      goalWeight: 79,
+      currentWeight: 182,
+      goalWeight: 174,
       sessionLengthMin: 45,
       trainingLocation: "gym",
       competitionStatus: "amateur",
@@ -240,8 +241,8 @@ describe("onboarding gate and persistence", () => {
     });
 
     expect(saved.onboardingDeepCompletedAt).toBeTruthy();
-    expect(saved.currentWeight).toBe(82.4);
-    expect(saved.goalWeight).toBe(79);
+    expect(saved.currentWeight).toBe(182);
+    expect(saved.goalWeight).toBe(174);
     expect(saved.sessionLengthMin).toBe(45);
     expect(saved.trainingLocation).toBe("gym");
     expect(saved.competitionStatus).toBe("amateur");
@@ -269,7 +270,7 @@ describe("onboarding gate and persistence", () => {
       equipment: ["Dumbbells"],
       weeklyAvailability: ["Monday", "Wednesday"],
       hoursPerWeek: null,
-      preferredUnits: "kg",
+      preferredUnits: "lb",
       claimsGymMembership: false,
       foodPreferences: "I eat meat",
       allergies: "peanuts",
@@ -286,7 +287,7 @@ describe("onboarding gate and persistence", () => {
     expect(edited.nextFightDate).toBeNull();
     expect(edited.coachingTone).toBe("encouraging");
     expect(edited.obstacles).toEqual(["recovery"]);
-    expect(edited.currentWeight).toBe(82.4);
+    expect(edited.currentWeight).toBe(182);
     expect(edited.onboardingDeepCompletedAt).toBeTruthy();
   });
 

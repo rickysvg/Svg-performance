@@ -57,7 +57,7 @@ export function FightCampForm({
           name="weightClass"
           defaultValue={weightClass}
           maxLength={40}
-          placeholder="77 kg class"
+          placeholder="170 lb class"
           className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
         />
       </label>
