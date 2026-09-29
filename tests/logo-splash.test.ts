@@ -112,15 +112,26 @@ describe("app-open splash video", () => {
       canDismissSplash({ videoFinished: true, appReady: true, reducedMotion: true }),
     ).toBe(true);
     expect(shouldShowSplashOverlay({ stored: "1", pathname: "/" })).toBe(false);
-    expect(shouldShowSplashOverlay({ stored: null, pathname: "/login" })).toBe(false);
-    expect(shouldShowSplashOverlay({ stored: null, pathname: "/home" })).toBe(false);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/login" })).toBe(true);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/home" })).toBe(true);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/training" })).toBe(true);
     expect(shouldShowSplashOverlay({ stored: null, pathname: "/" })).toBe(true);
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/api/account/export" })).toBe(
+      false,
+    );
+    expect(shouldShowSplashOverlay({ stored: null, pathname: "/api/cron/gymdesk" })).toBe(false);
+    expect(
+      shouldShowSplashOverlay({ stored: null, pathname: "/admin/gymdesk/csv" }),
+    ).toBe(false);
     expect(
       shouldMountSplashVideo({ stored: "1", pathname: "/", reducedMotion: false }),
     ).toBe(false);
     expect(
       shouldMountSplashVideo({ stored: null, pathname: "/login", reducedMotion: false }),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      shouldMountSplashVideo({ stored: null, pathname: "/home", reducedMotion: false }),
+    ).toBe(true);
     expect(
       shouldMountSplashVideo({ stored: null, pathname: "/", reducedMotion: true }),
     ).toBe(false);
@@ -242,9 +253,10 @@ describe("app-open splash video", () => {
     expect(splash).toMatch(/is-still-fallback/);
     expect(splash).not.toMatch(/playSplashWithSound/);
     expect(splash).not.toMatch(/Tap for sound/);
-    expect(read("src/app/layout.tsx")).not.toMatch(/AppSplash/);
-    expect(read("src/app/layout.tsx")).not.toMatch(/svg-performance-splash/);
-    expect(read("src/app/page.tsx")).toMatch(/AppSplash/);
+    expect(read("src/app/layout.tsx")).toMatch(/AppSplash/);
+    expect(read("src/app/layout.tsx")).toMatch(/svg_splash_seen/);
+    expect(read("src/app/page.tsx")).not.toMatch(/AppSplash/);
+    expect(read("src/components/AppSplash.tsx")).toMatch(/session-open only/);
     const css = read("src/app/globals.css");
     expect(css).toMatch(/\.app-splash-video/);
     expect(css).toMatch(/background:\s*#000/);

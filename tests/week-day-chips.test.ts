@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { BAG_FOCUS, BAG_ROUND_COUNTS_ADVANCED_LONG, bagMinutesForBand, bagRoundCountFor, isAdvancedLongBagDay } from "@/lib/bag-sessions";
 import { coreSkeletonSessions } from "@/lib/week-plan";
+import { weekChipLabelLines } from "@/components/training/WeekStrip";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
@@ -14,11 +15,22 @@ describe("Train / Calendar day chips", () => {
     expect(strip).toContain("dayParam");
     expect(strip).toContain("href=");
     expect(strip).toContain("data-week-chip");
+    expect(strip).toContain("weekChipLabelLines");
+    expect(strip).toContain("h-[4.75rem]");
+    expect(strip).toContain("min-w-0");
     expect(read("src/app/(member)/training/page.tsx")).toContain("parseDayParam");
     expect(read("src/app/(member)/training/page.tsx")).toContain("data-selected-day-plan");
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("parseDayParam");
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("WeekStrip");
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("data-selected-day-plan");
+  });
+
+  it("stacks long chip labels onto two centered lines without changing summaries", () => {
+    expect(weekChipLabelLines("Bag+Lift+Bike")).toEqual(["Bag+Lift", "+Bike"]);
+    expect(weekChipLabelLines("Bag+Lift")).toEqual(["Bag", "+Lift"]);
+    expect(weekChipLabelLines("Bag+GPP")).toEqual(["Bag", "+GPP"]);
+    expect(weekChipLabelLines("Off")).toEqual(["Off"]);
+    expect(weekChipLabelLines("Rest")).toEqual(["Rest"]);
   });
 
   it("keeps Mon and Wed bag day numbers distinct", () => {
