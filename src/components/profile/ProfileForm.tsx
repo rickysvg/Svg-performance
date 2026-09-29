@@ -198,21 +198,9 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       </label>
 
       <fieldset>
-        <legend className="text-sm font-medium">Preferred units</legend>
-        <div className="mt-2 flex gap-4">
-          {(["lb", "kg"] as const).map((unit) => (
-            <label key={unit} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="preferredUnits"
-                value={unit}
-                defaultChecked={profile.preferredUnits === unit}
-                className="h-5 w-5 accent-accent"
-              />
-              {unit}
-            </label>
-          ))}
-        </div>
+        <legend className="text-sm font-medium">Weight units</legend>
+        <input type="hidden" name="preferredUnits" value="lb" />
+        <p className="mt-2 text-sm text-muted">Pounds (lb). Loads and body weight use lbs.</p>
       </fieldset>
 
       <label className="block" data-timezone-field>
@@ -275,30 +263,30 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       <fieldset className="rounded-xl border border-line p-3">
         <legend className="text-sm font-medium">Deeper profile (optional)</legend>
         <p className="mt-1 text-xs text-muted">
-          Same answers as the optional onboarding screen. Weight is display-only in{" "}
-          {profile.preferredUnits} — not a medical plan.
+          Same answers as the optional onboarding screen. Weight is display-only in lb — not a
+          medical plan.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block text-sm">
-            Current weight ({profile.preferredUnits})
+            Current weight (lb)
             <input
               name="currentWeight"
               type="number"
               step="0.1"
-              min={profile.preferredUnits === "kg" ? 20 : 50}
-              max={profile.preferredUnits === "kg" ? 250 : 500}
+              min={50}
+              max={500}
               defaultValue={profile.currentWeight ?? ""}
               className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
             />
           </label>
           <label className="block text-sm">
-            Goal weight ({profile.preferredUnits})
+            Goal weight (lb)
             <input
               name="goalWeight"
               type="number"
               step="0.1"
-              min={profile.preferredUnits === "kg" ? 20 : 50}
-              max={profile.preferredUnits === "kg" ? 250 : 500}
+              min={50}
+              max={500}
               defaultValue={profile.goalWeight ?? ""}
               className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
             />

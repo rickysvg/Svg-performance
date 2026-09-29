@@ -146,21 +146,9 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
           />
         </label>
         <fieldset>
-          <legend className="text-sm font-medium">Preferred units</legend>
-          <div className="mt-2 flex gap-4">
-            {(["lb", "kg"] as const).map((unit) => (
-              <label key={unit} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="preferredUnits"
-                  value={unit}
-                  defaultChecked={(profile.preferredUnits || "lb") === unit}
-                  className="h-5 w-5 accent-accent"
-                />
-                {unit}
-              </label>
-            ))}
-          </div>
+          <legend className="text-sm font-medium">Weight units</legend>
+          <input type="hidden" name="preferredUnits" value="lb" />
+          <p className="mt-2 text-sm text-muted">Pounds (lb). Loads and body weight use lbs.</p>
         </fieldset>
       </section>
 

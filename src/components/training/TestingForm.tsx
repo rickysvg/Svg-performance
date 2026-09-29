@@ -19,7 +19,7 @@ export function TestingForm({
   return (
     <form action={action} className="space-y-4">
       <StatusBanner error={state.error} />
-      <p className="text-sm text-muted">Boxes start empty. Units follow your profile ({loadUnit}).</p>
+      <p className="text-sm text-muted">Boxes start empty. Loads are in lb.</p>
       <label className="block text-sm font-medium">
         Broad jump ({lengthUnit})
         <input name="broadJumpValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />

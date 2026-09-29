@@ -1,6 +1,6 @@
 import type { LoadUnit } from "@/lib/units";
 
-/** Length follows the athlete: pounds users see inches, kilogram users see centimeters. */
+/** Length follows load units: pounds → inches. (App is lbs-only; cm kept for legacy rows.) */
 export function lengthUnitForLoad(unit: LoadUnit): "in" | "cm" {
   return unit === "kg" ? "cm" : "in";
 }

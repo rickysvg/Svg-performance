@@ -70,28 +70,28 @@ describe("12-week free chart cutoff", () => {
         {
           exerciseName: "Trap bar deadlift",
           reps: 3,
-          loadValue: 150,
-          loadUnit: "kg",
+          loadValue: 330,
+          loadUnit: "lb",
           completed: true,
           performedAt: old,
         },
         {
           exerciseName: "Trap bar deadlift",
           reps: 3,
-          loadValue: 180,
-          loadUnit: "kg",
+          loadValue: 400,
+          loadUnit: "lb",
           completed: true,
           performedAt: recent,
         },
       ],
       "Trap bar deadlift",
-      "kg",
+      "lb",
       tz,
     );
     const free = filterChartPoints(series, null, now, false, tz);
     const paid = filterChartPoints(series, null, now, true, tz);
     expect(free.visible).toHaveLength(1);
-    expect(free.visible[0]?.value).toBe(180);
+    expect(free.visible[0]?.value).toBe(400);
     expect(paid.visible).toHaveLength(2);
   });
 });

@@ -77,6 +77,7 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+/** Unit the best value is stored in (for formatLoad → lbs display). */
 function weightUnit(best: PersonalBest, displayUnit: LoadUnit): LoadUnit {
   if (best.unit === "kg" || best.unit === "lb") return best.unit;
   return displayUnit;
@@ -246,11 +247,11 @@ function kindLabel(kind: PrKind) {
   return "Longest hold";
 }
 
-function valueUnit(best: PersonalBest, displayUnit: LoadUnit) {
+function valueUnit(best: PersonalBest, _displayUnit: LoadUnit) {
   if (best.kind === "longest") return "sec";
   if (best.kind === "reps_at_weight") return "reps";
   if (best.kind === "most_rounds") return "rounds";
-  return displayUnit;
+  return "lb";
 }
 
 export function detectNewPrs(

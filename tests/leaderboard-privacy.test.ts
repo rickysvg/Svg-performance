@@ -15,7 +15,7 @@ async function logWorkout(userId: string, performedAt: Date) {
   const session = await startWorkoutFromDay({
     userId,
     programDayId: program.days[0]!.id,
-    preferredUnits: "kg",
+    preferredUnits: "lb",
   });
   return updateWorkoutSessionForUser({
     userId,
@@ -29,8 +29,8 @@ async function logWorkout(userId: string, performedAt: Date) {
         exerciseName: "Trap bar deadlift",
         setNumber: 1,
         reps: 3,
-        loadValue: 180,
-        loadUnit: "kg",
+        loadValue: 405,
+        loadUnit: "lb",
         completed: true,
       },
     ],
@@ -84,16 +84,17 @@ describe("leaderboard privacy and badges", () => {
     expect(optedInPublicName({ leaderboardOptIn: true, displayName: "Maya J." })).toBe("Maya J.");
   });
 
-  it("earns first-session and 100 kg lift badges from logged sets", () => {
+  it("earns first-session and 405 lb lift badges from logged sets", () => {
     const badges = evaluateBadges({
       workoutCount: 1,
       currentStreak: 1,
       longestStreak: 1,
+      displayUnit: "lb",
       sets: [
         {
           exerciseName: "Trap bar deadlift",
-          loadValue: 180,
-          loadUnit: "kg",
+          loadValue: 405,
+          loadUnit: "lb",
           completed: true,
           performedAt: new Date("2026-09-22T12:00:00Z"),
         },
@@ -106,11 +107,11 @@ describe("leaderboard privacy and badges", () => {
     expect(badges.find((row) => row.id === "streak_7")?.earned).toBe(false);
   });
 
-  it("labels lift and pad badges in the athlete unit without a minus sign", () => {
+  it("labels lift and pad badges in pounds without a minus sign", () => {
     expect(liftBadgeTitle("lift_l3", "lb")).toBe("225 lb lift");
     expect(liftBadgeTitle("lift_l5", "lb")).toBe("405 lb lift");
-    expect(liftBadgeTitle("lift_l3", "kg")).toBe("100 kg lift");
-    expect(liftBadgeTitle("lift_l5", "kg")).toBe("180 kg lift");
+    expect(liftBadgeTitle("lift_l3", "kg")).toBe("225 lb lift");
+    expect(liftBadgeTitle("lift_l5", "kg")).toBe("405 lb lift");
     const lb = evaluateBadges({
       workoutCount: 1,
       currentStreak: 1,

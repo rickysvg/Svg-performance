@@ -58,11 +58,10 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
           Unit
           <select
             name="unit"
-            defaultValue={preferredUnits}
+            defaultValue="lb"
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           >
-            <option value={preferredUnits}>{preferredUnits} (weight / lean mass)</option>
-            {preferredUnits === "lb" ? <option value="kg">kg</option> : <option value="lb">lb</option>}
+            <option value="lb">lb (weight / lean mass)</option>
             <option value="hours">hours (sleep)</option>
             <option value="bpm">bpm (heart rate)</option>
             <option value="percent">percent (body fat)</option>

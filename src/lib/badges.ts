@@ -133,11 +133,14 @@ export function liftLadderThreshold(id: LiftLadderId, unit: LoadUnit) {
 }
 
 export function liftBadgeTitle(id: LiftLadderId, unit: LoadUnit) {
-  return `${liftLadderThreshold(id, unit)} ${unit} lift`;
+  const display = unit === "kg" ? "lb" : unit;
+  const threshold = liftLadderThreshold(id, display);
+  return `${threshold} ${display} lift`;
 }
 
 export function liftBadgeHint(id: LiftLadderId, unit: LoadUnit) {
-  return `Any loaded set at ${liftLadderThreshold(id, unit)} ${unit}`;
+  const display = unit === "kg" ? "lb" : unit;
+  return `Any loaded set at ${liftLadderThreshold(id, display)} ${display}`;
 }
 
 export type BadgeDef = {
@@ -185,7 +188,7 @@ export function badgeCategory(id: BadgeId): BadgeCategoryId {
 }
 
 export function badgeMark(id: BadgeId, unit: LoadUnit = "lb") {
-  if (isLiftLadderId(id)) return String(liftLadderThreshold(id, unit));
+  if (isLiftLadderId(id)) return String(liftLadderThreshold(id, unit === "kg" ? "lb" : unit));
   if (id === "first_session") return "1";
   if (id.startsWith("hold_")) {
     const minutes = Number(id.replace("hold_", "").replace("min", ""));

@@ -12,7 +12,7 @@ import {
   TRAINING_LOCATION_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
-import { isLoadUnit } from "@/lib/units";
+import { APP_LOAD_UNIT, isLoadUnit } from "@/lib/units";
 import { LESSON_LEVELS, LESSON_TOPICS } from "@/lib/lessons";
 import {
   toProfileRecord,
@@ -144,8 +144,9 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingInput
   if (weeklyAvailability.length === 0) {
     throw new AppError("ONBOARDING", "Pick at least one day you can train.");
   }
-  if (!isLoadUnit(input.preferredUnits)) {
-    throw new AppError("ONBOARDING", "Units must be lb or kg.");
+  // Accept legacy "kg" posts; always persist pounds.
+  if (input.preferredUnits && !isLoadUnit(input.preferredUnits)) {
+    throw new AppError("ONBOARDING", "Units must be lb.");
   }
   const goalNote = input.goalNote.trim().slice(0, 400);
   return {
@@ -157,7 +158,7 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingInput
     equipment,
     weeklyAvailability,
     sessionsPerWeek: parseSessionsPerWeek(input.sessionsPerWeek),
-    preferredUnits: input.preferredUnits,
+    preferredUnits: APP_LOAD_UNIT,
     trainingLimitations: input.trainingLimitations.trim().slice(0, 500),
     foodPreferences: input.foodPreferences.trim().slice(0, 400),
     allergies: input.allergies.trim().slice(0, 400),
@@ -254,14 +255,14 @@ export type DeepOnboardingInput = {
   obstacles: string[];
 };
 
-function parseOptionalWeight(value: number | null, units: string, label: string) {
+function parseOptionalWeight(value: number | null, _units: string, label: string) {
   if (value == null || Number.isNaN(value)) {
     return null;
   }
-  const min = units === "kg" ? 20 : 50;
-  const max = units === "kg" ? 250 : 500;
+  const min = 50;
+  const max = 500;
   if (!Number.isFinite(value) || value < min || value > max) {
-    throw new AppError("ONBOARDING", `${label} should be between ${min} and ${max} ${units}.`);
+    throw new AppError("ONBOARDING", `${label} should be between ${min} and ${max} lb.`);
   }
   return Math.round(value * 10) / 10;
 }

@@ -16,7 +16,7 @@ import {
   type MobilitySetInput,
   type TestingInput,
 } from "@/lib/mobility-store";
-import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import type { LoadUnit } from "@/lib/units";
 import { lengthUnitForLoad } from "@/lib/length-units";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 
@@ -150,7 +150,7 @@ export async function saveTestingAction(
   try {
     const user = await requireUserOrThrow();
     const profile = await getProfileForUser(user.id);
-    const units: LoadUnit = isLoadUnit(profile?.preferredUnits ?? "") ? profile!.preferredUnits : "lb";
+    const units: LoadUnit = "lb";
     const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
     const length = lengthUnitFor(units);
     const input: TestingInput = {
@@ -163,7 +163,7 @@ export async function saveTestingAction(
       bikeSprintValue: blankNumber(formData, "bikeSprintValue"),
       bikeSprintUnit: String(formData.get("bikeSprintUnit") ?? "rpm"),
       bikeFiveMinValue: blankNumber(formData, "bikeFiveMinValue"),
-      bikeFiveMinUnit: units === "kg" ? "km" : "mi",
+      bikeFiveMinUnit: "mi",
       restingHr: blankNumber(formData, "restingHr"),
       notes: String(formData.get("notes") ?? ""),
     };

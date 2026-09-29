@@ -12,7 +12,7 @@ import {
   TRAINING_LOCATION_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
-import { isLoadUnit, type LoadUnit } from "@/lib/units";
+import { APP_LOAD_UNIT, bodyWeightInLb, isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isValidTimeZone, resolveRequestTimeZone } from "@/lib/timezone";
 import { mergeSeenBadgeUnlocks, parseSeenBadgeUnlocks } from "@/lib/badge-unlocks";
 import { toE164 } from "@/lib/gymdesk/crypto";
@@ -149,7 +149,8 @@ export function toProfileRecord(row: {
     weeklyAvailability: parseJsonArray(row.weeklyAvailabilityJson),
     hoursPerWeek: row.hoursPerWeek,
     sessionsPerWeek: row.sessionsPerWeek,
-    preferredUnits: isLoadUnit(row.preferredUnits) ? row.preferredUnits : "lb",
+    // App is lbs-only in the UI; convert legacy kg body weights for display.
+    preferredUnits: APP_LOAD_UNIT,
     timeZone: row.timeZone ?? "",
     leaderboardOptIn: Boolean(row.leaderboardOptIn),
     foodPreferences: row.foodPreferences,
@@ -160,8 +161,8 @@ export function toProfileRecord(row: {
     trialEndsAt: row.trialEndsAt ?? null,
     planChoiceAt: row.planChoiceAt ?? null,
     thirdWorkoutCardDismissedAt: row.thirdWorkoutCardDismissedAt ?? null,
-    currentWeight: row.currentWeight,
-    goalWeight: row.goalWeight,
+    currentWeight: bodyWeightInLb(row.currentWeight, row.preferredUnits),
+    goalWeight: bodyWeightInLb(row.goalWeight, row.preferredUnits),
     sessionLengthMin: row.sessionLengthMin,
     trainingLocation: row.trainingLocation,
     competitionStatus: row.competitionStatus,
@@ -273,9 +274,11 @@ export async function updateProfileForUser(
   if (!["beginner", "intermediate", "advanced"].includes(input.experienceLevel)) {
     throw new AppError("PROFILE", "Pick a valid experience level.");
   }
-  if (!isLoadUnit(input.preferredUnits)) {
-    throw new AppError("PROFILE", "Units must be lb or kg.");
+  // Accept legacy "kg" posts but always persist pounds going forward.
+  if (!isLoadUnit(input.preferredUnits) && input.preferredUnits !== "") {
+    throw new AppError("PROFILE", "Units must be lb.");
   }
+  const preferredUnits: LoadUnit = APP_LOAD_UNIT;
 
   const equipment = input.equipment.filter((item) =>
     (EQUIPMENT_OPTIONS as readonly string[]).includes(item),
@@ -337,16 +340,26 @@ export async function updateProfileForUser(
     if (value == null || Number.isNaN(value)) {
       return null;
     }
-    const min = input.preferredUnits === "kg" ? 20 : 50;
-    const max = input.preferredUnits === "kg" ? 250 : 500;
+    const min = 50;
+    const max = 500;
     if (!Number.isFinite(value) || value < min || value > max) {
-      throw new AppError("PROFILE", `${label} should be between ${min} and ${max} ${input.preferredUnits}.`);
+      throw new AppError("PROFILE", `${label} should be between ${min} and ${max} lb.`);
     }
     return Math.round(value * 10) / 10;
   }
 
-  const currentWeight = parseOptionalWeight(input.currentWeight, existing.currentWeight, "Current body weight");
-  const goalWeight = parseOptionalWeight(input.goalWeight, existing.goalWeight, "Goal weight");
+  // Migrate legacy kg profile weights to lbs when omitted or when reading fallbacks.
+  const storedWasKg = existing.preferredUnits === "kg";
+  const currentWeight = parseOptionalWeight(
+    input.currentWeight,
+    storedWasKg ? bodyWeightInLb(existing.currentWeight, "kg") : existing.currentWeight,
+    "Current body weight",
+  );
+  const goalWeight = parseOptionalWeight(
+    input.goalWeight,
+    storedWasKg ? bodyWeightInLb(existing.goalWeight, "kg") : existing.goalWeight,
+    "Goal weight",
+  );
   const competitionStatus =
     input.competitionStatus === undefined
       ? existing.competitionStatus
@@ -401,7 +414,7 @@ export async function updateProfileForUser(
       weeklyAvailabilityJson: JSON.stringify(weeklyAvailability),
       hoursPerWeek,
       sessionsPerWeek,
-      preferredUnits: input.preferredUnits,
+      preferredUnits,
       timeZone:
         input.timeZone === undefined
           ? existing.timeZone

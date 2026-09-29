@@ -93,8 +93,8 @@ export function sessionDurationSeconds(session: ShareSessionLike) {
   return logged > 0 ? logged : 0;
 }
 
-export function shareVolumeUnit(unit: LoadUnit) {
-  return unit === "kg" ? "kg" : "lbs";
+export function shareVolumeUnit(_unit: LoadUnit) {
+  return "lbs";
 }
 
 export function formatShareVolume(volume: number) {
