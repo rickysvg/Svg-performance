@@ -14,7 +14,7 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { TrainWeekBoard } from "@/components/training/TrainWeekBoard";
+import { TrainWeekToggle } from "@/components/training/TrainWeekBoard";
 import { plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
 import {
   buildCoreWeekPlan,
@@ -99,15 +99,26 @@ export default async function TrainingPage({
       .map((session) => [session.programDayId as string, session.id]),
   );
 
+  const moreLinks = [
+    { href: "/training/calendar", label: "Calendar" },
+    { href: "/training/history", label: `Workout history (${sessionCount})` },
+    { href: "/timer", label: "Round timer" },
+    ...(testing ? [] : [{ href: "/training/testing", label: "Testing week" }]),
+    { href: "/training/travel", label: "No gym / travel day" },
+    { href: "/mobility", label: "Mobility" },
+    { href: "/mobility/drills", label: "Hip and kick drills" },
+    ...(camp ? [] : [{ href: "/fight-camp", label: "Fight camp" }]),
+  ];
+
   return (
-    <main className="space-y-6">
+    <main className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
             {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
-              : "Core week plan (DEMO) — tap a day chip to open that day’s bag, lift, and bike. Not Elite coaching or a custom fight camp."}
+              : "Today’s session. Not a custom fight camp."}
           </p>
           <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
             {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
@@ -116,43 +127,9 @@ export default async function TrainingPage({
         <DemoBadge />
       </div>
 
-      <RirExplainer />
-
-      {camp ? (
-        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
-          <span className="flex items-center gap-2">
-            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Today&apos;s camp focus</span>
-            <ProPill />
-          </span>
-          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
-            {camp.weekNumber
-              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
-              : camp.phaseLabel}
-          </span>
-          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
-        </Link>
-      ) : (
-        <Link href="/fight-camp" className="block rounded-[1.5rem] border border-line bg-white px-4 py-4">
-          <span className="flex items-center gap-2">
-            <span className="font-display text-lg uppercase tracking-wide">Fight camp</span>
-            <ProPill />
-          </span>
-          <span className="mt-1 block text-sm text-muted">
-            Week-by-week camp from your fight date.
-          </span>
-        </Link>
-      )}
-
       <WeekStrip days={strip} basePath="/training" />
 
-      <TrainingLevelToggle
-        band={band}
-        dayParam={dayParam}
-        fromProfile={fromProfile}
-        basePath="/training"
-      />
-
-      <TrainWeekBoard week={week} weekIndex={weekIndex} emphasis={emphasis} />
+      <TrainWeekToggle week={week} weekIndex={weekIndex} emphasis={emphasis} />
 
       {deload ? (
         <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
@@ -163,34 +140,7 @@ export default async function TrainingPage({
           <h2 className="mt-1 text-2xl text-white">Testing Week</h2>
           <p className="mt-1 text-sm text-white/70">Broad jump, strength estimate, bike sprint, 5-minute bike.</p>
         </Link>
-      ) : (
-        <p className="text-sm">
-          <Link href="/training/testing" className="font-semibold text-accent">
-            Testing Week
-          </Link>
-          <span className="text-muted"> — every 8 weeks. Results stay on your account.</span>
-        </p>
-      )}
-
-      <Link
-        href="/timer"
-        className="block rounded-[2rem] bg-black px-5 py-5 text-white"
-      >
-        <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">
-          Free tool
-        </p>
-        <h2 className="mt-2 text-2xl text-white">Round timer</h2>
-        <p className="mt-1 text-sm text-white/70">
-          Bag, pads, or sparring. 3 × 3 min, 5 × 5 min, or set your own rounds.
-        </p>
-      </Link>
-
-      <p className="text-sm">
-        <Link href="/training/calendar" className="font-semibold text-accent underline-offset-4 hover:underline">
-          Calendar
-        </Link>
-        <span className="text-muted"> — this week’s Core days in a list</span>
-      </p>
+      ) : null}
 
       <section className="space-y-3" data-selected-day-plan>
         <div>
@@ -209,6 +159,22 @@ export default async function TrainingPage({
           ) : null}
           {equipmentNote ? <p className="mt-1 text-sm text-muted">{equipmentNote}</p> : null}
         </div>
+
+        {camp ? (
+          <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
+            <span className="flex items-center gap-2">
+              <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Today&apos;s camp focus</span>
+              <ProPill />
+            </span>
+            <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
+              {camp.weekNumber
+                ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
+                : camp.phaseLabel}
+            </span>
+            <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
+          </Link>
+        ) : null}
+
         {dayPlan.active ? (
           <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line bg-card px-4 py-4">
             <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
@@ -261,27 +227,34 @@ export default async function TrainingPage({
             <p className="mt-1 text-sm text-muted">Hips, splits, neck, and the long holds after you train.</p>
           </Link>
         ) : null}
+
+        <TrainingLevelToggle
+          band={band}
+          dayParam={dayParam}
+          fromProfile={fromProfile}
+          basePath="/training"
+        />
+
+        <RirExplainer />
       </section>
 
-      <p className="text-sm">
-        <Link href="/training/travel" className="font-semibold text-accent">
-          No gym / travel day
-        </Link>
-        <span className="text-muted"> — kettlebell or a bodyweight circuit.</span>
-      </p>
-      <p className="text-sm">
-        <Link href="/mobility" className="font-semibold text-accent">
-          Mobility
-        </Link>
-        <span className="text-muted"> — hips, splits, neck, and the cooldown. </span>
-        <Link href="/mobility/drills" className="font-semibold text-accent">
-          Hip and kick drill ideas
-        </Link>
-        <span className="text-muted"> sit with the plyo add-ons.</span>
-      </p>
+      <nav aria-label="More training" className="overflow-hidden rounded-2xl border border-line bg-card">
+        <ul className="divide-y divide-line">
+          {moreLinks.map((item) => (
+            <li key={item.href}>
+              <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
+                <span className="font-medium">{item.label}</span>
+                <span className="text-muted" aria-hidden>
+                  ›
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <h2>Fighter Conditioning</h2>
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">Fighter conditioning</summary>
         {conditioning ? (
           <p className="mt-2 text-sm text-muted">
             Shared combat S&amp;C / mobility blocks publish here when ready. This Core
@@ -295,33 +268,7 @@ export default async function TrainingPage({
             </Link>
           </p>
         )}
-      </section>
-
-      <details className="rounded-2xl border border-line bg-card p-5">
-        <summary className="cursor-pointer font-semibold">This Core week</summary>
-        <ul className="mt-3 space-y-2 text-sm">
-          {Object.values(week).map((day) => (
-            <li key={day.weekday} className="flex justify-between gap-3 border-b border-line/60 py-2 last:border-0">
-              <span className="font-medium">{day.weekday}</span>
-              <span className="text-right text-muted">
-                {day.active
-                  ? day.sessions.map((session) => session.label).join(" + ")
-                  : day.summary}
-              </span>
-            </li>
-          ))}
-        </ul>
       </details>
-
-      <p className="text-sm">
-        <Link href="/training/calendar" className="text-accent underline-offset-4 hover:underline">
-          Calendar
-        </Link>
-        {" · "}
-        <Link href="/training/history" className="text-accent underline-offset-4 hover:underline">
-          Workout history ({sessionCount})
-        </Link>
-      </p>
     </main>
   );
 }
