@@ -3,7 +3,7 @@
  * YouTube references from reputable coaches — not SVG-produced film.
  */
 
-import { isYoutubeFormUrl } from "@/lib/form-videos";
+import { isYoutubeWatchUrl } from "@/lib/form-videos";
 
 export type LearnCatalogEntry = {
   slug: string;
@@ -530,7 +530,7 @@ export function learnCatalogIssues() {
       if (entry.url) issues.push(`${entry.slug} pending but has a url`);
       continue;
     }
-    if (!isYoutubeFormUrl(entry.url)) issues.push(`${entry.slug} needs a watch URL, not Shorts`);
+    if (!isYoutubeWatchUrl(entry.url)) issues.push(`${entry.slug} needs a watch URL, not Shorts`);
     if (!entry.channel.trim()) issues.push(`${entry.slug} missing channel`);
     if (!entry.youtubeTitle.trim()) issues.push(`${entry.slug} missing youtubeTitle`);
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { COACH_CREDIT_DISCLAIMER, creditForExercise, creditedExerciseNames } from "@/lib/coach-credits";
 import { BIKE_SESSIONS } from "@/lib/bike-sessions";
 import { DARU_EXERCISES } from "@/lib/daru-exercises";
-import { isYoutubeFormUrl } from "@/lib/form-videos";
+import { isYoutubeWatchUrl } from "@/lib/form-videos";
 
 const ALLOWED_IDS = [
   "LhvPU8vhyq0",
@@ -26,7 +26,7 @@ describe("coach credits", () => {
       const credit = creditForExercise(session.name);
       expect(credit, session.name).toBeTruthy();
       expect(credit?.svgScaling).toBe(true);
-      expect(isYoutubeFormUrl(credit!.url)).toBe(true);
+      expect(isYoutubeWatchUrl(credit!.url)).toBe(true);
       expect(credit!.url).not.toMatch(/\/shorts\//);
       expect(ALLOWED_IDS.some((id) => credit!.url.includes(id))).toBe(true);
     }
@@ -42,7 +42,7 @@ describe("coach credits", () => {
         continue;
       }
       expect(credit?.line).toMatch(/Phil Daru \/ Daru Strong/);
-      expect(isYoutubeFormUrl(credit!.url)).toBe(true);
+      expect(isYoutubeWatchUrl(credit!.url)).toBe(true);
       expect(ALLOWED_IDS.some((id) => credit!.url.includes(id))).toBe(true);
     }
 

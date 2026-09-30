@@ -381,7 +381,7 @@ There is **no** production URL in this document on purpose.
 - One DEMO strength program. DEMO lessons only. Not a personalized coach plan.
 - Food numbers are estimates (typed or from a tiny DEMO list). No barcode database, no photo AI.
 - Progress photos are stored on the server disk in this preview (not S3). Only the owner can view them. No public CDN.
-- Form videos and Learn technique videos are public YouTube references, not SVG coaching films. Two DEMO strength moves and one DEMO cage-exit lesson are pending coach review.
+- Form videos and Learn technique videos are public YouTube references, not SVG coaching films. Train form refs are short demos (or a longer video that opens at a start time). A few DEMO moves and one DEMO cage-exit lesson are pending coach review.
 - SVG Coach knowledge is a fillable pack in `content/coach-savage/` (folder name kept). Interview questions are not loaded into the model.
 - Password reset email and live model replies need extra keys.
 - Stripe is TEST structure only until keys + webhook forwarding are added. No live mode. Affirm/Klarna need Dashboard TEST payment methods; still not live money.

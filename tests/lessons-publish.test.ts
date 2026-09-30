@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { isYoutubeFormUrl } from "@/lib/form-videos";
+import { isYoutubeWatchUrl } from "@/lib/form-videos";
 import {
   DEMO_LESSON_VIDEOS,
   parseLessonKeyDetails,
@@ -107,7 +107,7 @@ describe("Learn level and martial-art filters", () => {
       expect(lesson.summary.trim().length).toBeGreaterThan(20);
       expect(lesson.technicalDescription.trim().length).toBeGreaterThan(40);
       const video = resolveLessonVideo(lesson);
-      expect(video.pending || isYoutubeFormUrl(video.url)).toBe(true);
+      expect(video.pending || isYoutubeWatchUrl(video.url)).toBe(true);
       if (video.pending) {
         expect(lesson.videoPending || !lesson.youtubeUrl).toBe(true);
       } else {

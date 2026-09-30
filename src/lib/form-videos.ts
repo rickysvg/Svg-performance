@@ -1,6 +1,10 @@
 /**
  * Curated YouTube form-reference catalog for the DEMO strength + skill programs.
  * These are external education links, not SVG-produced coaching videos.
+ *
+ * Train form refs follow the gym-floor rule: a Shorts URL, a verified clip at or
+ * under FORM_VIDEO_SHORT_MAX_SECONDS, or a longer watch URL with a start time (`t=`).
+ * `seconds` is the public length checked for that clip.
  */
 
 export type FormVideoSeed = {
@@ -8,711 +12,515 @@ export type FormVideoSeed = {
   pending: boolean;
   channel: string;
   title: string;
+  /** Public length in seconds for a verified short form demo. */
+  seconds?: number;
 };
 
+export const FORM_VIDEO_SHORT_MAX_SECONDS = 90;
+
+type Clip = {
+  url: string;
+  seconds: number;
+  channel: string;
+  title: string;
+};
+
+function ready(clip: Clip): FormVideoSeed {
+  return {
+    url: clip.url,
+    pending: false,
+    channel: clip.channel,
+    title: clip.title,
+    seconds: clip.seconds,
+  };
+}
+
+const PENDING: FormVideoSeed = {
+  url: "",
+  pending: true,
+  channel: "",
+  title: "",
+};
+
+const goblet = ready({
+  url: "https://www.youtube.com/watch?v=nfX7IFK9UNI",
+  seconds: 29,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Goblet Squat | Proper Form & Technique | NASM",
+});
+const rdl = ready({
+  url: "https://www.youtube.com/watch?v=xgusDooVfKU",
+  seconds: 20,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Romanian Deadlift (Barbell) | Proper Form & Technique | NASM",
+});
+const dbRdl = ready({
+  url: "https://www.youtube.com/watch?v=aa57T45iFSE",
+  seconds: 31,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Dumbbell Romanian Deadlift | Proper Form & Technique | NASM",
+});
+const singleLegRdl = ready({
+  url: "https://www.youtube.com/watch?v=6pEL3KxnlEo",
+  seconds: 22,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Single-Leg Romanian Deadlift",
+});
+const lunge = ready({
+  url: "https://www.youtube.com/watch?v=71VE3ssaJuQ",
+  seconds: 44,
+  channel: "ATHLEAN-X",
+  title: "How To ACTUALLY Do Lunges (Feat. The “Rock”)",
+});
+const walkingLunge = ready({
+  url: "https://www.youtube.com/watch?v=mAgbXQdd4LM",
+  seconds: 15,
+  channel: "PureGym",
+  title: "How To Do Walking Lunges",
+});
+const squatJump = ready({
+  url: "https://www.youtube.com/watch?v=tZSYZdtbONc",
+  seconds: 19,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Squat Jump | Proper Form & Technique | NASM",
+});
+const plank = ready({
+  url: "https://www.youtube.com/watch?v=mwlp75MS6Rg",
+  seconds: 15,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Plank | Proper Form & Technique | NASM",
+});
+const pushUp = ready({
+  url: "https://www.youtube.com/watch?v=WDIpL0pjun0",
+  seconds: 14,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Push-Up | Proper Form & Technique | NASM",
+});
+const oneArmRow = ready({
+  url: "https://www.youtube.com/watch?v=ZRSGpBUVcNw",
+  seconds: 11,
+  channel: "PureGym",
+  title: "How To Do Single Arm Dumbbell Rows",
+});
+const chestRow = ready({
+  url: "https://www.youtube.com/watch?v=0UBRfiO4zDs",
+  seconds: 17,
+  channel: "Renaissance Periodization",
+  title: "Chest Supported Row",
+});
+const halfKneelRow = ready({
+  url: "https://www.youtube.com/watch?v=Lk4H4rHS2b0",
+  seconds: 63,
+  channel: "Cody Taggart Exercise Demonstrations",
+  title: "How to perform: Half kneeling DB row",
+});
+const overheadPress = ready({
+  url: "https://www.youtube.com/watch?v=MMjBnEBnZKM",
+  seconds: 12,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Dumbbell Overhead Press",
+});
+const singleArmPress = ready({
+  url: "https://www.youtube.com/watch?v=uqOlmjcHoEs",
+  seconds: 38,
+  channel: "Nordic Performance Training",
+  title: "Dumbbell Shoulder Press – Single Arm",
+});
+const facePull = ready({
+  url: "https://www.youtube.com/watch?v=eTCBSFlCJ_s",
+  seconds: 26,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Face Pull | Proper Form & Technique | NASM",
+});
+const farmer = ready({
+  url: "https://www.youtube.com/watch?v=Kh0871u60z0",
+  seconds: 37,
+  channel: "Barbell Logic",
+  title: "Farmer Carry: Gym Shorts (How To)",
+});
+const suitcase = ready({
+  url: "https://www.youtube.com/watch?v=3RKKnZhhelE",
+  seconds: 19,
+  channel: "Champion Physical Therapy and Performance",
+  title: "How to Perform A Suitcase Carry",
+});
+const swing = ready({
+  url: "https://www.youtube.com/watch?v=1cVT3ee9mgU",
+  seconds: 27,
+  channel: "StrongFirst",
+  title: "Kettlebell Swing",
+});
+const pullUp = ready({
+  url: "https://www.youtube.com/watch?v=9yVGh3XbJ34",
+  seconds: 21,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Pull-Up | Proper Form & Technique | NASM",
+});
+const lateralBound = ready({
+  url: "https://www.youtube.com/watch?v=soqQy4dzEts",
+  seconds: 9,
+  channel: "Third Space London",
+  title: "How To Lateral Bound",
+});
+const airBike = ready({
+  url: "https://www.youtube.com/watch?v=MJdqtIIyz-A",
+  seconds: 78,
+  channel: "Assault Fitness",
+  title: "Assault Fitness Tuesday Tips: AirBike Form Corrections",
+});
+const trapBar = ready({
+  url: "https://www.youtube.com/watch?v=FYx76NSijfU",
+  seconds: 17,
+  channel: "OPEX Fitness",
+  title: "Trap Bar Deadlift",
+});
+const floorPress = ready({
+  url: "https://www.youtube.com/watch?v=T0Y3OBF1bNI",
+  seconds: 12,
+  channel: "PureGym",
+  title: "How To Do A Dumbbell Floor Press",
+});
+const landminePress = ready({
+  url: "https://www.youtube.com/watch?v=FgON_5YZ0NI",
+  seconds: 39,
+  channel: "Phil Daru",
+  title: "Landmine Exercise for Combat Sports",
+});
+const rotationalThrow = ready({
+  url: "https://www.youtube.com/watch?v=ivF-vzxhL3s",
+  seconds: 83,
+  channel: "TrainFTW",
+  title: "Rotational Medicine Ball Throw",
+});
+const chestPass = ready({
+  url: "https://www.youtube.com/watch?v=Jo2on0-YBPM",
+  seconds: 35,
+  channel: "Jon Hodgkinson Golf Fitness",
+  title: "How to Do a Med Ball Chest Pass",
+});
+const sledPush = ready({
+  url: "https://www.youtube.com/watch?v=3KWK7SIdPz4",
+  seconds: 59,
+  channel: "Joe DeFranco",
+  title: "Heavy Sled Push Technique: 60-SECOND TUTORIAL! [Hip Positioning]",
+});
+const sledDrag = ready({
+  url: "https://www.youtube.com/watch?v=k7JsvdG9sSo",
+  seconds: 22,
+  channel: "Testosterone Nation",
+  title: "Backward Sled Drag",
+});
+const bandedSwing = ready({
+  url: "https://www.youtube.com/watch?v=UqpiMY9GktA",
+  seconds: 76,
+  channel: "Boxing Science",
+  title: "Improve Power with Banded Kettlebell Swings",
+});
+const neckExtension = ready({
+  url: "https://www.youtube.com/watch?v=ZvR3OFs4HN8",
+  seconds: 30,
+  channel: "fightperformanceindustries",
+  title: "Neck extension. Neck training for combat sports",
+});
+const frontRackMarch = ready({
+  url: "https://www.youtube.com/watch?v=30SX7mLEEo0",
+  seconds: 28,
+  channel: "Perform For Sport",
+  title: "DB or KB Front Rack March",
+});
+const shrug = ready({
+  url: "https://www.youtube.com/watch?v=5z7ZtboxbBY",
+  seconds: 10,
+  channel: "Renaissance Periodization",
+  title: "Dumbbell Bent Shrug",
+});
+const jumpRope = ready({
+  url: "https://www.youtube.com/watch?v=0CF1hdvTM2U",
+  seconds: 73,
+  channel: "Jodi Travaglia",
+  title: "Jump rope tutorial - proper form, double bounce, single bounce",
+});
+const sidePlank = ready({
+  url: "https://www.youtube.com/watch?v=44ND4bOB-T0",
+  seconds: 17,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Side Plank | Proper Form & Technique | NASM",
+});
+const deadBug = ready({
+  url: "https://www.youtube.com/watch?v=bxn9FBrt4-A",
+  seconds: 30,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Dead Bug | Proper Form & Technique | NASM",
+});
+const jab = ready({
+  url: "https://www.youtube.com/watch?v=1wCQLFhipbE",
+  seconds: 58,
+  channel: "Tribute Boxing & Fitness",
+  title: "Boxing Tips 101 | HOW TO: JAB",
+});
+const oneTwo = ready({
+  url: "https://www.youtube.com/watch?v=lFc-J3GspSs",
+  seconds: 36,
+  channel: "Grogan's Academy of Martial Arts",
+  title: "Jab, Cross, Hook, Uppercut",
+});
+const hook = ready({
+  url: "https://www.youtube.com/watch?v=MJmHnyBjC6s",
+  seconds: 58,
+  channel: "Tony Jeffries",
+  title: "How to throw the right hook in Boxing",
+});
+const slip = ready({
+  url: "https://www.youtube.com/watch?v=GpnfB_7OHhM",
+  seconds: 26,
+  channel: "KoYu Boxing",
+  title: "Perfect Jab / Slip / Hook boxing combo. Boxing Tutorial",
+});
+const parry = ready({
+  url: "https://www.youtube.com/watch?v=M8xFzAdwwZE",
+  seconds: 45,
+  channel: "Ring Kinetix",
+  title: "How to Parry the Cross",
+});
+const lowKick = ready({
+  url: "https://www.youtube.com/watch?v=S2I5O92wXpI",
+  seconds: 59,
+  channel: "AKA Thailand",
+  title: "Muay Thai Basics: Body Kick (Right) - AKA Techniques",
+});
+const teep = ready({
+  url: "https://www.youtube.com/watch?v=Gw_Gf9jRvTM",
+  seconds: 59,
+  channel: "AKA Thailand",
+  title: "Muay Thai Basics: Push Kick - AKA Techniques",
+});
+const clinchKnee = ready({
+  url: "https://www.youtube.com/watch?v=z6argMW5Dtw",
+  seconds: 60,
+  channel: "AKA Thailand",
+  title: "Muay Thai Basics: Clinch and Knee - AKA Techniques",
+});
+const elbow = ready({
+  url: "https://www.youtube.com/watch?v=fdsiCeQjHUo",
+  seconds: 58,
+  channel: "AKA Thailand",
+  title: "Muay Thai Basics: Elbows - AKA Techniques",
+});
+const doubleLeg = ready({
+  url: "https://www.youtube.com/watch?v=vFvl1tdr8l4",
+  seconds: 47,
+  channel: "Cary Kolat",
+  title: "Double Leg Head Drive - Cary Kolat Wrestling Moves",
+});
+const sprawl = ready({
+  url: "https://www.youtube.com/watch?v=QMVavyxjlNU",
+  seconds: 67,
+  channel: "Cary Kolat",
+  title: "Best Sprawl Position To Stop Leg Attack - Cary Kolat Wrestling Moves",
+});
+const shrimp = ready({
+  url: "https://www.youtube.com/watch?v=Wwhuorkm4oA",
+  seconds: 65,
+  channel: "Bellingham BJJ",
+  title: "Solo Drills: Shrimp / Hip Escape",
+});
+const sideControl = ready({
+  url: "https://www.youtube.com/watch?v=_JPZaIcr90c",
+  seconds: 69,
+  channel: "Matt Arroyo Jiu Jitsu",
+  title: "How to get out of SIDE CONTROL (against a bigger stronger opponent!)",
+});
+const burpee = ready({
+  url: "https://www.youtube.com/watch?v=auBLPXO8Fww",
+  seconds: 52,
+  channel: "CrossFit",
+  title: "The Burpee",
+});
+const woodchop = ready({
+  url: "https://www.youtube.com/watch?v=ZDt4MCvjMAA",
+  seconds: 50,
+  channel: "Goodlife Health Clubs",
+  title: "HOW TO: Cable Wood Chop",
+});
+const pallof = ready({
+  url: "https://www.youtube.com/watch?v=y1fOBVtANdM",
+  seconds: 39,
+  channel: "TurnFit - Vancouver Personal Trainers",
+  title: "How to do a Standing Banded Pallof Press",
+});
+const highPull = ready({
+  url: "https://www.youtube.com/watch?v=2oq8CDNM8ww",
+  seconds: 51,
+  channel: "LivingFit",
+  title: "How to Do Dumbbell High Pulls | Movement Breakdown",
+});
+const straightArm = ready({
+  url: "https://www.youtube.com/watch?v=6-lDyiVOWqE",
+  seconds: 48,
+  channel: "Testosterone Nation",
+  title: "Straight-Arm Pulldown",
+});
+const pullover = ready({
+  url: "https://www.youtube.com/watch?v=WtwvM9l-W74",
+  seconds: 44,
+  channel: "Nicholas Coleman",
+  title: "Dumbbell PullOver - Learn how to exercise with a NASM CPT",
+});
+const plyoPushUp = ready({
+  url: "https://www.youtube.com/watch?v=MM0np2nu_m0",
+  seconds: 57,
+  channel: "Cain & Jones Training",
+  title: "Plyometric Pushup - Beginner",
+});
+const landmineRotation = ready({
+  url: "https://www.youtube.com/watch?v=MswsBPLGhE8",
+  seconds: 26,
+  channel: "O.B. Training & Sports Performance",
+  title: "Landmine Rotation",
+});
+const stepUp = ready({
+  url: "https://www.youtube.com/watch?v=cHftRks6yXQ",
+  seconds: 26,
+  channel: "Kapono Performance, LLC",
+  title: "Dumbbell Box Step Ups with Forward Lean",
+});
+const broadJump = ready({
+  url: "https://www.youtube.com/watch?v=uhz-ia-2UcM",
+  seconds: 8,
+  channel: "PureGym",
+  title: "How To Do Broad Jumps",
+});
+const hipThrust = ready({
+  url: "https://www.youtube.com/watch?v=OnD0suBzPQg",
+  seconds: 15,
+  channel: "Kristin Simone",
+  title: "Dumbbell hip thrust",
+});
+const lateralLunge = ready({
+  url: "https://www.youtube.com/watch?v=2z9q1zmwcSk",
+  seconds: 48,
+  channel: "Fitness With Tross",
+  title: "The Lateral Lunge | Movement Demo",
+});
+
 export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
-  "Goblet squat": {
-    url: "https://www.youtube.com/watch?v=nfX7IFK9UNI",
-    pending: false,
-    channel: "National Academy of Sports Medicine (NASM)",
-    title: "How to do a Goblet Squat | Proper Form & Technique",
-  },
-  "Romanian deadlift": {
-    url: "https://www.youtube.com/watch?v=_oyxCn2iSjU",
-    pending: false,
-    channel: "Jeff Nippard",
-    title: "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Perfect Technique",
-  },
-  "Reverse lunge": {
-    url: "https://www.youtube.com/watch?v=71VE3ssaJuQ",
-    pending: false,
-    channel: "ATHLEAN-X",
-    title: "How To ACTUALLY Do Lunges (Feat. The “Rock”)",
-  },
-  "Squat jump or box step-up": {
-    url: "https://www.youtube.com/watch?v=tZSYZdtbONc",
-    pending: false,
-    channel: "National Academy of Sports Medicine (NASM)",
-    title: "How to do a Squat Jump | Proper Form & Technique",
-  },
-  "Front plank": {
-    url: "https://www.youtube.com/watch?v=kL_NJAkCQBg",
-    pending: false,
-    channel: "Calisthenicmovement",
-    title: "Mastering the Plank - In Just 2 Minutes",
-  },
-  "Push-up or dumbbell bench press": {
-    url: "https://www.youtube.com/watch?v=IODxDxX7oi4",
-    pending: false,
-    channel: "Calisthenicmovement",
-    title: "The Perfect Push Up | Do it right!",
-  },
-  "One-arm row": {
-    url: "https://www.youtube.com/watch?v=djKXLt7kv7Q",
-    pending: false,
-    channel: "Jeff Nippard",
-    title: "How To Do Dumbbell Rows: Build a Thicker Back",
-  },
-  "Overhead press": {
-    url: "https://www.youtube.com/watch?v=CnBmiBqp-AI",
-    pending: false,
-    channel: "Art of Manliness / Mark Rippetoe (Starting Strength)",
-    title: "How to Overhead Press With Mark Rippetoe",
-  },
-  "Band pull-apart or face pull": {
-    url: "https://www.youtube.com/watch?v=eIq5CB9JfKE",
-    pending: false,
-    channel: "ATHLEAN-X",
-    title: "Stop Doing Face Pulls Like This! (SAVE A FRIEND)",
-  },
-  "Farmer carry": {
-    url: "https://www.youtube.com/watch?v=lt17MdlsIq8",
-    pending: false,
-    channel: "BJ Gaddour",
-    title: "HOW TO: Farmers Walk or Carry",
-  },
-  "Kettlebell swing or hip hinge": {
-    url: "https://www.youtube.com/watch?v=m-S9H2XVvYg",
-    pending: false,
-    channel: "Mark Wildman",
-    title: "Kettlebell 2 - 2hand swing",
-  },
-  "Chin-up, band-assist, or lat pulldown": {
-    url: "https://www.youtube.com/watch?v=eGo4IYlbE5g",
-    pending: false,
-    channel: "Calisthenicmovement",
-    title: "The Perfect Pull Up - Do it right!",
-  },
-  "Lateral bound or side step-over": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Assault bike intervals": {
-    url: "https://www.youtube.com/watch?v=G8a1IAVLdjA",
-    pending: false,
-    channel: "WOD Foundations",
-    title: "Air Bike / Assault Bike — How To Use It",
-  },
-  "Daru alactic power bike": {
-    url: "https://www.youtube.com/watch?v=LhvPU8vhyq0",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Daru Strong endurance bike — posture and pacing",
-  },
-  "Jamieson tempo bike": {
-    url: "https://www.youtube.com/watch?v=LhvPU8vhyq0",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Air bike posture and controlled submax pacing",
-  },
-  "Daru 75% endurance bike": {
-    url: "https://www.youtube.com/watch?v=LhvPU8vhyq0",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Daru Strong 75% watt endurance session",
-  },
-  "Jamieson cardiac output bike": {
-    url: "https://www.youtube.com/watch?v=LhvPU8vhyq0",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Air bike posture for steady aerobic work",
-  },
-  "Leon Edwards 10/20 bike finisher": {
-    url: "https://www.youtube.com/watch?v=7Jf_JutBJlo",
-    pending: false,
-    channel: "Leon Edwards / Men's Health",
-    title: "Leon Edwards workout film — bike finisher",
-  },
-  "Trap-bar deadlift": {
-    url: "https://www.youtube.com/watch?v=la0tQgLlHV0",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Trap-bar deadlift coaching",
-  },
-  "Floor press": {
-    url: "https://www.youtube.com/watch?v=FXaZo1ZObaM",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Hybrid S&C — floor press context",
-  },
-  "Landmine press": {
-    url: "https://www.youtube.com/watch?v=FgON_5YZ0NI",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Landmine press",
-  },
-  "Rotational med-ball throw": {
-    url: "https://www.youtube.com/watch?v=yxHlOKDwq4k",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Daru Strong conjugate — rotational power context",
-  },
-  "Med-ball chest pass": {
-    url: "https://www.youtube.com/watch?v=4vLRsqNL4xc",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Med-ball chest pass",
-  },
-  "Sled push": {
-    url: "https://www.youtube.com/watch?v=yxHlOKDwq4k",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Daru Strong conjugate — sled GPP",
-  },
-  "Sled hamstring drag": {
-    url: "https://www.youtube.com/watch?v=76vrRRCA3w8",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Sled hamstring drag",
-  },
-  "Farmer's carry": {
-    url: "https://www.youtube.com/watch?v=yxHlOKDwq4k",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Daru Strong conjugate — farmer carry",
-  },
-  "Banded kettlebell swing": {
-    url: "https://www.youtube.com/watch?v=eNDyywpFl1k",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Combat kettlebell swings",
-  },
-  "Neck isometric matrix": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Neck extension hold": {
-    url: "https://www.youtube.com/watch?v=n8h-FheN2p4",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Neck extension / GHR reverse-plank",
-  },
-  "Banded DB front-rack march": {
-    url: "https://www.youtube.com/watch?v=n8h-FheN2p4",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Banded front-rack march",
-  },
-  "Bent-over DB shrug": {
-    url: "https://www.youtube.com/watch?v=n8h-FheN2p4",
-    pending: false,
-    channel: "Phil Daru / Daru Strong",
-    title: "Bent-over DB shrug",
-  },
-  "Jump rope or easy bike intervals": {
-    url: "https://www.youtube.com/watch?v=FJmRQ5iTXKE",
-    pending: false,
-    channel: "Jump Rope Dudes",
-    title: "How To Jump Rope - 6 Basic Steps",
-  },
-  "Side plank": {
-    url: "https://www.youtube.com/watch?v=7Zat7RFY52Y",
-    pending: false,
-    channel: "MuscleWiki",
-    title: "Simplified: Side Plank - Improve Form",
-  },
-  "Jab–cross (1–2)": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Low kick (roundhouse)": {
-    url: "https://www.youtube.com/watch?v=J9dK0uIEXIM",
-    pending: false,
-    channel: "Paul Banasiak @MuayThaiTechnician",
-    title: "Muay Thai Kick LIKE A PRO! step-by-step guide",
-  },
-  "Hands to low-kick combo": {
-    url: "https://www.youtube.com/watch?v=J9dK0uIEXIM",
-    pending: false,
-    channel: "Paul Banasiak @MuayThaiTechnician",
-    title: "Muay Thai Kick LIKE A PRO! step-by-step guide",
-  },
-  "Teep (push kick)": {
-    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
-    pending: false,
-    channel: "Kingdom Martial Arts Academy",
-    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
-  },
-  "Double-collar clinch posture": {
-    url: "https://www.youtube.com/watch?v=_hEKmkZQttU",
-    pending: false,
-    channel: "Muay Thai Clinch Technique",
-    title: "How To Turn Your Opponent To Land A Knee",
-  },
-  "Straight knee (clinch)": {
-    url: "https://www.youtube.com/watch?v=xsymld6rm24",
-    pending: false,
-    channel: "Master A / Warrior Collective",
-    title: "Muay Thai How to Develop Devastating Knees Tutorial",
-  },
-  "Alternate knee rhythm": {
-    url: "https://www.youtube.com/watch?v=xsymld6rm24",
-    pending: false,
-    channel: "Master A / Warrior Collective",
-    title: "Muay Thai How to Develop Devastating Knees Tutorial",
-  },
-  "Exit the clinch / frame": {
-    url: "https://www.youtube.com/watch?v=_hEKmkZQttU",
-    pending: false,
-    channel: "Muay Thai Clinch Technique",
-    title: "How To Turn Your Opponent To Land A Knee",
-  },
-  "Boxing jab": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Lead hook": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "1-2-3 bag rounds": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "Mount / high-posture hold": {
-    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
-    pending: false,
-    channel: "Coach Firas Zahabi",
-    title: "MMA Ground and Pound Tutorial",
-  },
-  "Short punch from mount": {
-    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
-    pending: false,
-    channel: "Coach Firas Zahabi",
-    title: "MMA Ground and Pound Tutorial",
-  },
-  "Hip drive + post": {
-    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
-    pending: false,
-    channel: "Coach Firas Zahabi",
-    title: "MMA Ground and Pound Tutorial",
-  },
-  "Ground-and-pound burst": {
-    url: "https://www.youtube.com/watch?v=Y4uFk8kS7Lw",
-    pending: false,
-    channel: "Coach Firas Zahabi",
-    title: "MMA Ground and Pound Tutorial",
-  },
-  "Level change (penetration step)": {
-    url: "https://www.youtube.com/watch?v=KhEdji8BuQ0",
-    pending: false,
-    channel: "TeachMeGrappling Coach Brian",
-    title: "How to PROPERLY Finish the DOUBLE LEG! (Drill)",
-  },
-  "Double-leg entry": {
-    url: "https://www.youtube.com/watch?v=KhEdji8BuQ0",
-    pending: false,
-    channel: "TeachMeGrappling Coach Brian",
-    title: "How to PROPERLY Finish the DOUBLE LEG! (Drill)",
-  },
-  "Sprawl": {
-    url: "https://www.youtube.com/watch?v=NmqVOswRpW4",
-    pending: false,
-    channel: "Chess Club Jiu-Jitsu",
-    title: "BJJ Beginners Tutorial - How to Sprawl",
-  },
-  "Shot–sprawl reset": {
-    url: "https://www.youtube.com/watch?v=J0kcsLXX1Ms",
-    pending: false,
-    channel: "Ben Askren / BJJ Fanatics",
-    title: "Wrestling Moves - Sprawl by Ben Askren",
-  },
-  "Closed guard posture break": {
-    url: "https://www.youtube.com/watch?v=KKxD5kdOkk0",
-    pending: false,
-    channel: "Stephan Kesting",
-    title: "BJJ Closed Guard Principles",
-  },
-  "Hip escape (shrimp)": {
-    url: "https://www.youtube.com/watch?v=TQ4gJ7E6Xis",
-    pending: false,
-    channel: "Stephan Kesting",
-    title: "10 Ways to Shrimp and Improve Hip Mobility on the Ground",
-  },
-  "Closed guard hip tilt": {
-    url: "https://www.youtube.com/watch?v=KKxD5kdOkk0",
-    pending: false,
-    channel: "Stephan Kesting",
-    title: "BJJ Closed Guard Principles",
-  },
-  "Frame and recover": {
-    url: "https://www.youtube.com/watch?v=GLqJOhLn_PQ",
-    pending: false,
-    channel: "Chess Club Jiu-Jitsu",
-    title: "BJJ Beginners Tutorial - Side Control Escape to Closed Guard",
-  },
-  "Dead bug": {
-    url: "https://www.youtube.com/watch?v=4XLEnwUr1d8",
-    pending: false,
-    channel: "Athlean-X",
-    title: "How to Do a Dead Bug (PERFECT FORM)",
-  },
-  "Single-leg RDL": {
-    url: "https://www.youtube.com/watch?v=_oyxCn2iSjU",
-    pending: false,
-    channel: "Jeff Nippard",
-    title: "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Perfect Technique",
-  },
-  "Shadowbox warm-up": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Easy shadow cool-down": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — boxing combos": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — kicks & teeps": {
-    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
-    pending: false,
-    channel: "Kingdom Martial Arts Academy",
-    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
-  },
-  "Bag rounds — body shots": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — clinch knees": {
-    url: "https://www.youtube.com/watch?v=_hEKmkZQttU",
-    pending: false,
-    channel: "SVG catalog",
-    title: "Clinch posture reference",
-  },
-  "Bag rounds — defense & counters": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — power & speed": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Shadowbox round 1 — empty hands": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Shadowbox round 2 — hand weights": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Jab — step and snap": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Slip then jab–cross": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Level change into the jab": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Switch-step teep": {
-    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
-    pending: false,
-    channel: "Kingdom Martial Arts Academy",
-    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
-  },
-  "Body hook": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "Punch into the clinch knee": {
-    url: "https://www.youtube.com/watch?v=xsymld6rm24",
-    pending: false,
-    channel: "Master A / Warrior Collective",
-    title: "Muay Thai How to Develop Devastating Knees Tutorial",
-  },
-  "Roll under then body hook": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "Body jab trap": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Check and answer kick": {
-    url: "https://www.youtube.com/watch?v=J9dK0uIEXIM",
-    pending: false,
-    channel: "Paul Banasiak @MuayThaiTechnician",
-    title: "Muay Thai Kick LIKE A PRO! step-by-step guide",
-  },
-  "Boxing step-off combo": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Elbow then knee": {
-    url: "https://www.youtube.com/watch?v=xsymld6rm24",
-    pending: false,
-    channel: "Master A / Warrior Collective",
-    title: "Muay Thai How to Develop Devastating Knees Tutorial",
-  },
-  "Parry and cross": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — intelligent jab": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Bag rounds — teeps and low kicks": {
-    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
-    pending: false,
-    channel: "Kingdom Martial Arts Academy",
-    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
-  },
-  "Bag rounds — hooks and pivot": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "Bag rounds — defense counters": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — speed and power": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — level changes": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Bag rounds — switch entries": {
-    url: "https://www.youtube.com/watch?v=2nTKWDvZptk",
-    pending: false,
-    channel: "Kingdom Martial Arts Academy",
-    title: "Learn the Muay Thai Teep in 11 minutes! Step-by-Step Tutorial for ALL Levels!",
-  },
-  "Bag rounds — body hooks": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "Bag rounds — boxing to knees": {
-    url: "https://www.youtube.com/watch?v=xsymld6rm24",
-    pending: false,
-    channel: "Master A / Warrior Collective",
-    title: "Muay Thai How to Develop Devastating Knees Tutorial",
-  },
-  "Bag rounds — level counters": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — pivot power": {
-    url: "https://www.youtube.com/watch?v=UFVDcNDnpoU",
-    pending: false,
-    channel: "Tony Jeffries / Sanabul",
-    title: "Boxing Basics with Tony Jeffries: How to throw a hook punch",
-  },
-  "Bag rounds — body jab traps": {
-    url: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-    pending: false,
-    channel: "eBoxing Academy",
-    title: "Beginner Boxing Tutorial: 6 Ways to Throw the Jab",
-  },
-  "Bag rounds — kick counters": {
-    url: "https://www.youtube.com/watch?v=J9dK0uIEXIM",
-    pending: false,
-    channel: "Paul Banasiak @MuayThaiTechnician",
-    title: "Muay Thai Kick LIKE A PRO! step-by-step guide",
-  },
-  "Bag rounds — combo flow": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — elbow and knee": {
-    url: "https://www.youtube.com/watch?v=xsymld6rm24",
-    pending: false,
-    channel: "Master A / Warrior Collective",
-    title: "Muay Thai How to Develop Devastating Knees Tutorial",
-  },
-  "Bag rounds — counter then exit": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Bag rounds — theme review": {
-    url: "https://www.youtube.com/watch?v=vyTaKpylOcU",
-    pending: false,
-    channel: "Tony Jeffries",
-    title: "How to Throw a 1 - 2 / Jab - Cross in Boxing",
-  },
-  "Pause goblet squat": {
-    url: "https://www.youtube.com/watch?v=nfX7IFK9UNI",
-    pending: false,
-    channel: "National Academy of Sports Medicine (NASM)",
-    title: "How to do a Goblet Squat | Proper Form & Technique",
-  },
-  "Walking lunge": {
-    url: "https://www.youtube.com/watch?v=71VE3ssaJuQ",
-    pending: false,
-    channel: "ATHLEAN-X",
-    title: "How To ACTUALLY Do Lunges (Feat. The “Rock”)",
-  },
-  "Chest-supported dumbbell row": {
-    url: "https://www.youtube.com/watch?v=djKXLt7kv7Q",
-    pending: false,
-    channel: "Jeff Nippard",
-    title: "How To Do Dumbbell Rows: Build a Thicker Back",
-  },
-  "Single-arm overhead press": {
-    url: "https://www.youtube.com/watch?v=CnBmiBqp-AI",
-    pending: false,
-    channel: "Art of Manliness / Mark Rippetoe (Starting Strength)",
-    title: "How to Overhead Press With Mark Rippetoe",
-  },
-  "Dumbbell Romanian deadlift": {
-    url: "https://www.youtube.com/watch?v=_oyxCn2iSjU",
-    pending: false,
-    channel: "Jeff Nippard",
-    title: "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Perfect Technique",
-  },
-  "Suitcase carry": {
-    url: "https://www.youtube.com/watch?v=lt17MdlsIq8",
-    pending: false,
-    channel: "BJ Gaddour",
-    title: "HOW TO: Farmers Walk or Carry",
-  },
-  "Half-kneeling one-arm row": {
-    url: "https://www.youtube.com/watch?v=djKXLt7kv7Q",
-    pending: false,
-    channel: "Jeff Nippard",
-    title: "How To Do Dumbbell Rows: Build a Thicker Back",
-  },
-  Burpees: {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Cable or band woodchop": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Cable or band Pallof press": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Dumbbell high pull": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Straight-arm pulldown": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Dumbbell pullover": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Plyo push-up": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Landmine rotation": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Dumbbell step-up": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Broad jump": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Dumbbell hip thrust": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
-  "Dumbbell lateral lunge": {
-    url: "",
-    pending: true,
-    channel: "",
-    title: "",
-  },
+  "Goblet squat": goblet,
+  "Romanian deadlift": rdl,
+  "Reverse lunge": lunge,
+  "Squat jump or box step-up": squatJump,
+  "Front plank": plank,
+  "Push-up or dumbbell bench press": pushUp,
+  "One-arm row": oneArmRow,
+  "Overhead press": overheadPress,
+  "Band pull-apart or face pull": facePull,
+  "Farmer carry": farmer,
+  "Kettlebell swing or hip hinge": swing,
+  "Chin-up, band-assist, or lat pulldown": pullUp,
+  "Lateral bound or side step-over": lateralBound,
+  "Assault bike intervals": airBike,
+  "Daru alactic power bike": airBike,
+  "Jamieson tempo bike": airBike,
+  "Daru 75% endurance bike": airBike,
+  "Jamieson cardiac output bike": airBike,
+  "Leon Edwards 10/20 bike finisher": airBike,
+  "Trap-bar deadlift": trapBar,
+  "Floor press": floorPress,
+  "Landmine press": landminePress,
+  "Rotational med-ball throw": rotationalThrow,
+  "Med-ball chest pass": chestPass,
+  "Sled push": sledPush,
+  "Sled hamstring drag": sledDrag,
+  "Farmer's carry": farmer,
+  "Banded kettlebell swing": bandedSwing,
+  "Neck isometric matrix": PENDING,
+  "Neck extension hold": neckExtension,
+  "Banded DB front-rack march": frontRackMarch,
+  "Bent-over DB shrug": shrug,
+  "Jump rope or easy bike intervals": jumpRope,
+  "Side plank": sidePlank,
+  "Jab–cross (1–2)": oneTwo,
+  "Low kick (roundhouse)": lowKick,
+  "Hands to low-kick combo": lowKick,
+  "Teep (push kick)": teep,
+  "Double-collar clinch posture": clinchKnee,
+  "Straight knee (clinch)": clinchKnee,
+  "Alternate knee rhythm": clinchKnee,
+  "Exit the clinch / frame": PENDING,
+  "Boxing jab": jab,
+  "Lead hook": hook,
+  "1-2-3 bag rounds": oneTwo,
+  "Mount / high-posture hold": PENDING,
+  "Short punch from mount": PENDING,
+  "Hip drive + post": PENDING,
+  "Ground-and-pound burst": PENDING,
+  "Level change (penetration step)": doubleLeg,
+  "Double-leg entry": doubleLeg,
+  Sprawl: sprawl,
+  "Shot–sprawl reset": sprawl,
+  "Closed guard posture break": PENDING,
+  "Hip escape (shrimp)": shrimp,
+  "Closed guard hip tilt": PENDING,
+  "Frame and recover": sideControl,
+  "Dead bug": deadBug,
+  "Single-leg RDL": singleLegRdl,
+  "Shadowbox warm-up": jab,
+  "Easy shadow cool-down": jab,
+  "Bag rounds — boxing combos": oneTwo,
+  "Bag rounds — kicks & teeps": teep,
+  "Bag rounds — body shots": hook,
+  "Bag rounds — clinch knees": clinchKnee,
+  "Bag rounds — defense & counters": parry,
+  "Bag rounds — power & speed": jab,
+  "Shadowbox round 1 — empty hands": jab,
+  "Shadowbox round 2 — hand weights": jab,
+  "Jab — step and snap": jab,
+  "Slip then jab–cross": slip,
+  "Level change into the jab": jab,
+  "Switch-step teep": teep,
+  "Body hook": hook,
+  "Punch into the clinch knee": clinchKnee,
+  "Roll under then body hook": hook,
+  "Body jab trap": jab,
+  "Check and answer kick": lowKick,
+  "Boxing step-off combo": oneTwo,
+  "Elbow then knee": elbow,
+  "Parry and cross": parry,
+  "Bag rounds — intelligent jab": jab,
+  "Bag rounds — teeps and low kicks": teep,
+  "Bag rounds — hooks and pivot": hook,
+  "Bag rounds — defense counters": parry,
+  "Bag rounds — speed and power": jab,
+  "Bag rounds — level changes": doubleLeg,
+  "Bag rounds — switch entries": teep,
+  "Bag rounds — body hooks": hook,
+  "Bag rounds — boxing to knees": clinchKnee,
+  "Bag rounds — level counters": parry,
+  "Bag rounds — pivot power": hook,
+  "Bag rounds — body jab traps": jab,
+  "Bag rounds — kick counters": lowKick,
+  "Bag rounds — combo flow": oneTwo,
+  "Bag rounds — elbow and knee": elbow,
+  "Bag rounds — counter then exit": parry,
+  "Bag rounds — theme review": jab,
+  "Pause goblet squat": goblet,
+  "Walking lunge": walkingLunge,
+  "Chest-supported dumbbell row": chestRow,
+  "Single-arm overhead press": singleArmPress,
+  "Dumbbell Romanian deadlift": dbRdl,
+  "Suitcase carry": suitcase,
+  "Half-kneeling one-arm row": halfKneelRow,
+  Burpees: burpee,
+  "Cable or band woodchop": woodchop,
+  "Cable or band Pallof press": pallof,
+  "Dumbbell high pull": highPull,
+  "Straight-arm pulldown": straightArm,
+  "Dumbbell pullover": pullover,
+  "Plyo push-up": plyoPushUp,
+  "Landmine rotation": landmineRotation,
+  "Dumbbell step-up": stepUp,
+  "Broad jump": broadJump,
+  "Dumbbell hip thrust": hipThrust,
+  "Dumbbell lateral lunge": lateralLunge,
 };
 
 export function formVideoFieldsFor(name: string): {
@@ -726,28 +534,82 @@ export function formVideoFieldsFor(name: string): {
   return { formVideoUrl: entry.url, formVideoPending: false };
 }
 
-export function isYoutubeFormUrl(url: string): boolean {
-  return Boolean(youtubeVideoId(url));
-}
+const YOUTUBE_HOSTS = new Set(["youtube.com", "m.youtube.com", "youtu.be"]);
 
-export function youtubeVideoId(url: string): string | null {
+function parsedYoutubeUrl(url: string): URL | null {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
-    if (host !== "youtube.com" && host !== "m.youtube.com" && host !== "youtu.be") {
-      return null;
-    }
-    if (parsed.pathname.includes("/shorts/")) {
-      return null;
-    }
-    if (host === "youtu.be") {
-      const id = parsed.pathname.replace(/^\//, "").split("/")[0] ?? "";
-      return id.length > 0 ? id : null;
-    }
-    return parsed.searchParams.get("v");
+    if (!YOUTUBE_HOSTS.has(host)) return null;
+    return parsed;
   } catch {
     return null;
   }
+}
+
+export function isYoutubeShortsUrl(url: string): boolean {
+  const parsed = parsedYoutubeUrl(url);
+  if (!parsed) return false;
+  return /\/shorts\/[^/?#]+/.test(parsed.pathname);
+}
+
+/** Learn / study links: a regular watch or youtu.be URL. Shorts stay off this path. */
+export function isYoutubeWatchUrl(url: string): boolean {
+  if (isYoutubeShortsUrl(url)) return false;
+  return Boolean(youtubeVideoId(url));
+}
+
+/**
+ * Train form link: Shorts, a verified sub-90s demo, or a watch URL with `t=`.
+ * A long watch URL with no start time is not gym-floor usable.
+ */
+export function isYoutubeFormUrl(url: string): boolean {
+  const id = youtubeVideoId(url);
+  if (!id) return false;
+  if (isYoutubeShortsUrl(url)) return true;
+  if (youtubeStartSeconds(url) !== null) return true;
+  const seconds = verifiedShortFormSeconds(id);
+  return seconds !== null && seconds <= FORM_VIDEO_SHORT_MAX_SECONDS;
+}
+
+export function youtubeVideoId(url: string): string | null {
+  const parsed = parsedYoutubeUrl(url);
+  if (!parsed) return null;
+  const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+  const shorts = parsed.pathname.match(/\/shorts\/([^/?#]+)/);
+  if (shorts?.[1]) return shorts[1];
+  if (host === "youtu.be") {
+    const id = parsed.pathname.replace(/^\//, "").split("/")[0] ?? "";
+    return id.length > 0 ? id : null;
+  }
+  return parsed.searchParams.get("v");
+}
+
+/** Start offset in seconds from `t=` (`90`, `90s`, `1m30s`). Missing `t` is null. */
+export function youtubeStartSeconds(url: string): number | null {
+  const parsed = parsedYoutubeUrl(url);
+  if (!parsed) return null;
+  const raw = parsed.searchParams.get("t");
+  if (!raw) return null;
+  return parseYoutubeTimestamp(raw);
+}
+
+function parseYoutubeTimestamp(raw: string): number | null {
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/i.exec(raw);
+  if (!match || (!match[1] && !match[2] && !match[3])) return null;
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function verifiedShortFormSeconds(id: string): number | null {
+  for (const entry of Object.values(DEMO_FORM_VIDEOS)) {
+    if (entry.pending || entry.seconds == null) continue;
+    if (youtubeVideoId(entry.url) === id) return entry.seconds;
+  }
+  return null;
 }
 
 export function youtubeThumbSrcs(url: string): string[] {
