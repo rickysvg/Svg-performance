@@ -107,6 +107,7 @@ export default async function TrainingCalendarPage({
         <div>
           <p className="font-display text-xs uppercase tracking-wide text-accent">
             {isToday ? "Today" : "Selected"} · {dayPlan.weekday}
+            {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
           </p>
           <h2 className="mt-1 text-lg">
             {dayPlan.active ? dayPlan.summary : dayPlan.summary}

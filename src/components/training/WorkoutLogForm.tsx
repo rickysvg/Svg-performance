@@ -15,6 +15,7 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
 import { CoachCredit } from "@/components/training/CoachCredit";
+import { BagFocusList } from "@/components/training/BagFocusList";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
@@ -56,6 +57,7 @@ type Session = WorkoutSession & {
       reps: string;
       restSeconds: number;
       logMode?: string;
+      notes?: string;
       formVideoUrl: string;
       formVideoPending: boolean;
     }[];
@@ -380,6 +382,7 @@ export function WorkoutLogForm({
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+                  <BagFocusList notes={planned?.notes} />
                   {bikeSession ? (
                     <BikeSetTimer
                       key={`${name}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}`}

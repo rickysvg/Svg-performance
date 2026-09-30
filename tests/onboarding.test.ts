@@ -13,6 +13,10 @@ import {
   suggestDemoProgramDay,
 } from "@/lib/onboarding";
 import { getHomeToday } from "@/lib/home";
+import { bagFocusFor } from "@/lib/bag-sessions";
+import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { mesoBlockForWeekIndex } from "@/lib/mesocycle";
+import { APP_TIMEZONE } from "@/lib/timezone";
 import { DEMO_NUTRITION_TARGETS } from "@/lib/constants";
 import { sendCoachMessage } from "@/lib/coach/chat";
 import { makeUser, resetDatabase } from "./helpers";
@@ -181,8 +185,11 @@ describe("onboarding gate and persistence", () => {
       foodPreferences: "",
       allergies: "",
     });
-    const today = await getHomeToday(user.id, new Date(2026, 8, 21, 10, 0, 0));
-    expect(today.suggestedDay?.title).toMatch(/Bag — boxing combos/i);
+    const when = new Date(2026, 8, 21, 10, 0, 0);
+    const today = await getHomeToday(user.id, when);
+    expect(today.suggestedDay?.title).toBe(
+      bagFocusFor("Monday", mesoBlockForWeekIndex(bikeWeekIndex(when, APP_TIMEZONE))).label,
+    );
     expect(today.plannedSessions.map((session) => session.kind)).toEqual(["skill", "strength"]);
     expect(today.suggestionCopy).toMatch(/DEMO Core week plan \(bag \+ strength\)/i);
     expect(today.suggestionCopy).toMatch(/Not a custom Elite/i);

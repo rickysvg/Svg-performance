@@ -3,6 +3,7 @@ import {
   BAG_ROUND_COUNTS,
   BAG_ROUND_COUNTS_ADVANCED_LONG,
   BAG_ROUND_SECONDS,
+  OPTIONAL_BAG_DAY_NUMBERS,
   bagRoundCountFor,
   isAdvancedLongBagDay,
 } from "@/lib/bag-sessions";
@@ -19,6 +20,8 @@ import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
   formatClock,
   isDurationMode,
+  isEmptyShadowRound,
+  isWeightedShadowName,
   parseDurationSeconds,
   resolveLogMode,
   type LogMode,
@@ -136,19 +139,21 @@ const STRENGTH_REST: Record<ScaleBand, number> = {
 
 const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Goblet squat": {
-    sets: 4,
-    reps: "8–10",
-    loadText: "Heavy — last 2 reps grind but stay clean",
+    sets: 5,
+    reps: "5–6",
+    loadText: "Heavy — last rep slows but stays clean",
+    restSeconds: 45,
   },
   "Romanian deadlift": {
-    sets: 4,
-    reps: "8",
+    sets: 5,
+    reps: "5",
     loadText: "Heavy hinge — flat back",
+    restSeconds: 45,
   },
   "Reverse lunge": {
-    sets: 4,
-    reps: "10 / leg",
-    loadText: "Loaded if you have bells",
+    sets: 5,
+    reps: "6 / leg",
+    loadText: "Heavy dumbbells — knee tracks over the toes",
   },
   "Squat jump or box step-up": {
     sets: 4,
@@ -240,11 +245,17 @@ export function isHardStrengthBand(band: ScaleBand) {
 }
 
 function skillRoundSeconds(band: ScaleBand, dayNumber: number) {
-  return SKILL_ROUND_SECONDS[band][dayNumber] ?? SKILL_ROUND_SECONDS[band][1];
+  const listed = SKILL_ROUND_SECONDS[band][dayNumber];
+  if (listed != null) return listed;
+  if (OPTIONAL_BAG_DAY_NUMBERS.has(dayNumber)) return SKILL_ROUND_SECONDS[band][6];
+  return BAG_ROUND_SECONDS[band];
 }
 
 function skillRestSeconds(band: ScaleBand, dayNumber: number) {
-  return SKILL_REST_SECONDS[band][dayNumber] ?? SKILL_REST_SECONDS[band][1];
+  const listed = SKILL_REST_SECONDS[band][dayNumber];
+  if (listed != null) return listed;
+  if (OPTIONAL_BAG_DAY_NUMBERS.has(dayNumber)) return SKILL_REST_SECONDS[band][6];
+  return BAG_REST_SECONDS[band];
 }
 
 export function scaleExercise(
@@ -256,11 +267,37 @@ export function scaleExercise(
   const dayNumber = input.dayNumber ?? 1;
   const band = input.band;
 
+  if (isWeightedShadowName(exercise.name)) {
+    return {
+      ...exercise,
+      logMode: "load_timed",
+      sets: 1,
+      reps: band === "beginner" ? "2:00" : "3:00",
+      restSeconds: band === "advanced" ? 30 : 45,
+      loadText:
+        band === "beginner"
+          ? "1 lb hand weights — fists if you have none"
+          : band === "advanced"
+            ? "2–3 lb hand weights"
+            : "1–2 lb hand weights",
+    };
+  }
+
   if (isBikeIntervalName(exercise.name)) {
     return scaleBikeInterval(exercise, band);
   }
 
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
+    if (isEmptyShadowRound(exercise.name)) {
+      return {
+        ...exercise,
+        logMode: "timed",
+        sets: 1,
+        reps: band === "beginner" ? "2:00" : "3:00",
+        restSeconds: 30,
+        loadText: "Empty hands — technical pace",
+      };
+    }
     if (mode === "timed_round") {
       const seconds = skillRoundSeconds(band, dayNumber);
       const rounds = bagRoundCountFor(band, dayNumber);
@@ -413,6 +450,17 @@ function scaleStrengthExercise(
   if (mode === "load_timed") {
     return scaleLoadedCarry(exercise, band, mode, rest);
   }
+  if (band === "intermediate" && mode === "load_reps") {
+    return {
+      ...exercise,
+      logMode: mode,
+      sets: Math.min(5, exercise.sets + 1),
+      restSeconds: rest,
+      loadText: /slow|heavy|grind/i.test(exercise.loadText)
+        ? exercise.loadText
+        : `${exercise.loadText} · last reps should slow`,
+    };
+  }
   if (band !== "advanced") {
     const hold = mode === "timed" ? { loadText: "Hold — no weight" } : {};
     return { ...exercise, logMode: mode, restSeconds: rest, ...hold };
@@ -437,6 +485,7 @@ function restForBand(seedRest: number, band: ScaleBand) {
 
 function harderLoadText(text: string) {
   if (/hold/i.test(text)) return "Hold — no weight";
+  if (/heavy/i.test(text)) return text;
   return text.replace(/moderate/i, "Heavy").replace(/light/i, "Challenging");
 }
 

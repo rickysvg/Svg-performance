@@ -181,6 +181,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     timeZone,
     planWeekday: weekdayInAppZone(selected, timeZone),
     planSummary: "",
+    mesoLabel: "",
     suggestionCopy:
       "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
@@ -287,6 +288,7 @@ export async function getHomeToday(
     weekStrip: weekStrip(prefs, selected, tz),
     planWeekday: todayPlan.weekday,
     planSummary: todayPlan.active ? todayPlan.summary : "Rest / skip",
+    mesoLabel: todayPlan.mesoLabel,
     suggestionCopy: hasCatalog
       ? demoSuggestionCopy({
           goalKey: profile?.goalKey,

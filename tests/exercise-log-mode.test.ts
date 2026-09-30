@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fallbackLogMode,
+  hidesLoad,
   parseDurationSeconds,
   plannedSetLine,
   resolveLogMode,
@@ -47,6 +48,14 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Mountain climbers")).toBe("timed");
     expect(fallbackLogMode("Burpees")).toBe("timed");
     expect(fallbackLogMode("Unknown mobility flow")).toBe("timed");
+    expect(fallbackLogMode("Shadowbox round 1 — empty hands")).toBe("timed");
+    expect(fallbackLogMode("Shadowbox warm-up")).toBe("timed");
+    expect(fallbackLogMode("Shadowbox round 2 — hand weights")).toBe("load_timed");
+    expect(fallbackLogMode("shadowbox with weights")).toBe("load_timed");
+    expect(fallbackLogMode("weighted shadow")).toBe("load_timed");
+    expect(fallbackLogMode("Weighted shadowboxing")).toBe("load_timed");
+    expect(hidesLoad(fallbackLogMode("Shadowbox round 2 — hand weights"))).toBe(false);
+    expect(hidesLoad(fallbackLogMode("Shadowbox round 1 — empty hands"))).toBe(true);
   });
 
   it("parses clocks and written seconds", () => {

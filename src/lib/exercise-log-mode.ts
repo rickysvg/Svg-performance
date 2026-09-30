@@ -6,6 +6,8 @@ export type LogMode = (typeof LOG_MODES)[number];
 
 const HOLD_NAME =
   /\b(plank|wall sit|hollow hold|dead hang|l-sit|lsit|static hold|isometric|burst|hold)\b/i;
+const SHADOW_NAME = /\bshadow(?:\s*-?\s*box(?:ing)?)?\b|\bshadowbox(?:ing)?\b/i;
+const WEIGHTED_SHADOW_LOAD = /\b(weighted|weights?|hand[\s-]*weights?)\b/i;
 const CARDIO_TIMED_NAME =
   /\b(jump rope|easy bike|interval|burpee|mountain climber|jumping jack|shadowbox|shadow box|high knee|butt kick|mobility|stretch|yoga|jumping|sled|front-rack march|front rack march|banded kettlebell swing)\b/i;
 const ROUND_NAME =
@@ -26,12 +28,26 @@ export function isHoldName(name: string) {
   return HOLD_NAME.test(name);
 }
 
+export function isShadowName(name: string) {
+  return SHADOW_NAME.test(name);
+}
+
+/** "weighted shadow", "shadowbox with weights", "shadowbox round 2 — hand weights". */
+export function isWeightedShadowName(name: string) {
+  return isShadowName(name) && WEIGHTED_SHADOW_LOAD.test(name);
+}
+
+export function isEmptyShadowRound(name: string) {
+  return isShadowName(name) && !isWeightedShadowName(name) && !/\bcool/i.test(name);
+}
+
 /**
  * Ricky’s rule: only weighted lifts get reps + lbs.
  * Everything else is timed, a skill round, or reps with no load column.
  */
 export function fallbackLogMode(name: string, reps = ""): LogMode {
   if (isBikeIntervalName(name)) return "timed_round";
+  if (isWeightedShadowName(name)) return "load_timed";
   if (LOADED_CARRY_NAME.test(name)) return "load_timed";
   if (/\bbanded kettlebell swing\b/i.test(name)) return "timed";
   if (isHoldName(name)) return "timed";
@@ -113,6 +129,9 @@ export function modeHint(mode: LogMode, name?: string) {
     return "Log the round time. Rest between rounds is the pill above — not pounds.";
   }
   if (mode === "load_timed") {
+    if (name && isWeightedShadowName(name)) {
+      return "Log the round in seconds and the hand-weight lbs. Empty-hand shadow stays timed.";
+    }
     return "Log seconds and lbs. Loaded carry / hold — no reps.";
   }
   if (mode === "timed") {

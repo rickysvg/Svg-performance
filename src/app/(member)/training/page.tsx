@@ -10,6 +10,7 @@ import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
@@ -106,6 +107,9 @@ export default async function TrainingPage({
             {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
               : "Core week plan (DEMO) — tap a day chip to open that day’s bag, lift, and bike. Not Elite coaching or a custom fight camp."}
+          </p>
+          <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
+            {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
           </p>
         </div>
         <DemoBadge />

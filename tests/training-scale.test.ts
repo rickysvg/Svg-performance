@@ -116,8 +116,15 @@ describe("training scale bands", () => {
     expect(beginner.sets).toBe(3);
     expect(beginner.reps).toBe("8");
     expect(beginner.restSeconds).toBeGreaterThanOrEqual(75);
-    expect(advanced.sets).toBe(4);
-    expect(advanced.reps).toBe("8–10");
+    const intermediate = scaleExercise(base, {
+      band: "intermediate",
+      programSlug: "demo-strength-base",
+    });
+    expect(intermediate.sets).toBe(4);
+    expect(intermediate.loadText).toMatch(/last reps should slow/i);
+    expect(intermediate.restSeconds).toBeLessThan(beginner.restSeconds);
+    expect(advanced.sets).toBe(5);
+    expect(advanced.reps).toBe("5–6");
     expect(advanced.loadText).toMatch(/heavy/i);
     expect(advanced.restSeconds).toBe(45);
 
@@ -215,11 +222,18 @@ describe("scaled DEMO days in the database", () => {
     expect(counts.load_reps).toBeGreaterThan(8);
     expect(counts.timed_round).toBeGreaterThanOrEqual(6);
     expect(counts.timed).toBeGreaterThan(3);
+    const skillRows = skill?.days.flatMap((day) => day.exercises) ?? [];
     expect(
-      skill?.days.flatMap((day) => day.exercises).every((row) =>
-        row.logMode === "timed_round" || row.logMode === "timed",
+      skillRows.every(
+        (row) =>
+          row.logMode === "timed_round" ||
+          row.logMode === "timed" ||
+          (row.logMode === "load_timed" && /hand weights/i.test(row.name)),
       ),
     ).toBe(true);
+    expect(skillRows.some((row) => row.logMode === "load_timed" && /hand weights/i.test(row.name))).toBe(
+      true,
+    );
     expect(skill?.days.flatMap((day) => day.exercises).some((row) => row.logMode === "load_reps")).toBe(
       false,
     );
@@ -256,6 +270,6 @@ describe("scaled DEMO days in the database", () => {
       { band: "advanced", programSlug: "demo-strength-base" },
     );
     expect(scaled.focus).toMatch(/advanced \/ competition/i);
-    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(4);
+    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(5);
   });
 });
