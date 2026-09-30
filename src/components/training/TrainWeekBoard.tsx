@@ -5,7 +5,7 @@ import type { DayPlan } from "@/lib/week-plan";
 import { trainDayExtra } from "@/lib/train-extras";
 import { DELOAD_LABEL } from "@/lib/training-cycle";
 
-export function TrainWeekBoard({
+export function TrainWeekToggle({
   week,
   weekIndex,
   emphasis,
@@ -14,13 +14,41 @@ export function TrainWeekBoard({
   weekIndex: number;
   emphasis?: string | null;
 }) {
+  return (
+    <details data-train-week className="group rounded-2xl border border-line bg-card">
+      <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <span className="font-display text-base uppercase tracking-wide">This week</span>
+        <span className="rounded-full bg-accent px-3 py-1 text-xs text-black">
+          <span className="group-open:hidden">Show</span>
+          <span className="hidden group-open:inline">Hide</span>
+        </span>
+      </summary>
+      <div className="border-t border-line px-4 py-4">
+        <TrainWeekBoard week={week} weekIndex={weekIndex} emphasis={emphasis} embedded />
+      </div>
+    </details>
+  );
+}
+
+export function TrainWeekBoard({
+  week,
+  weekIndex,
+  emphasis,
+  embedded = false,
+}: {
+  week: Record<string, DayPlan>;
+  weekIndex: number;
+  emphasis?: string | null;
+  /** Rendered inside the closed week toggle, so the heading is not repeated. */
+  embedded?: boolean;
+}) {
   const deload = WEEKDAYS.some((day) => week[day]?.deload);
   const testing = WEEKDAYS.some((day) => week[day]?.testingWeek);
   return (
-    <section className="space-y-3" data-train-week>
+    <section className="space-y-3" data-train-week-board={embedded ? undefined : true}>
       <div>
-        <h2 className="text-lg">This week</h2>
-        <p className="mt-1 text-sm text-muted">
+        {embedded ? null : <h2 className="text-lg">This week</h2>}
+        <p className={`${embedded ? "" : "mt-1 "}text-sm text-muted`}>
           Warm-up opens every training day. Mon/Wed/Thu get a plyo block when lifts are on. Bike tags: Aerobic Base, Threshold, Sprint.
         </p>
       </div>
@@ -45,10 +73,10 @@ export function TrainWeekBoard({
             deload: day.deload,
           });
           return (
-            <li key={weekday} className="rounded-2xl border border-line bg-card px-4 py-3">
+            <li key={weekday} className="rounded-2xl border border-line bg-white px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
                 <p className="font-display text-sm uppercase tracking-wide">{weekday.slice(0, 3)}</p>
-                <p className="text-sm text-muted">{day.active ? day.summary : day.summary}</p>
+                <p className="text-sm text-muted">{day.summary}</p>
               </div>
               {extra.warmup ? (
                 <p className="mt-1 text-sm">Dynamic warm-up · 3–4 min</p>
