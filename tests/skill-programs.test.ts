@@ -5,6 +5,10 @@ import { completeOnboardingForUser, demoSuggestionCopy } from "@/lib/onboarding"
 import { findSkillProgram, getDemoProgram } from "@/lib/programs";
 import { filterSkillDaysForFocus, skillEquipmentNote } from "@/lib/skill-programs";
 import { getHomeToday } from "@/lib/home";
+import { bagFocusFor, type BagWeekday } from "@/lib/bag-sessions";
+import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { MESO_BLOCKS, mesoBlockForWeekIndex } from "@/lib/mesocycle";
+import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 
 const skillDays = [
@@ -68,16 +72,19 @@ describe("seeded DEMO combat skills", () => {
     const strength = await getDemoProgram();
     expect(skill?.isDemo).toBe(true);
     expect(skill?.title).toMatch(/DEMO/);
-    expect(skill?.days.map((day) => day.title)).toEqual([
-      "Bag — boxing combos",
-      "Bag — kicks & teeps",
-      "Bag — body shots",
-      "Bag — clinch knees & elbows",
-      "Bag — defense & counters",
-      "Bag — power & speed (optional)",
-    ]);
+    const bagWeekdays: BagWeekday[] = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    expect(skill?.days.map((day) => day.title)).toEqual(
+      MESO_BLOCKS.flatMap((block) => bagWeekdays.map((weekday) => bagFocusFor(weekday, block).label)),
+    );
     expect(strength.days.map((day) => day.dayNumber).sort((a, b) => a - b)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
     ]);
     expect(strength.days.find((day) => day.dayNumber === 4)?.title).toMatch(/assault bike/i);
     expect(strength.days.find((day) => day.dayNumber === 10)?.title).toMatch(/GPP/i);
@@ -98,9 +105,12 @@ describe("seeded DEMO combat skills", () => {
       foodPreferences: "",
       allergies: "",
     });
-    const today = await getHomeToday(user.id, new Date(2026, 8, 21, 10, 0, 0));
+    const when = new Date(2026, 8, 21, 10, 0, 0);
+    const today = await getHomeToday(user.id, when);
     expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
-    expect(today.suggestedDay?.title).toMatch(/Bag — boxing combos/i);
+    expect(today.suggestedDay?.title).toBe(
+      bagFocusFor("Monday", mesoBlockForWeekIndex(bikeWeekIndex(when, APP_TIMEZONE))).label,
+    );
     expect(today.suggestionCopy).toMatch(/Muay Thai/);
     expect(today.suggestionCopy).not.toMatch(/custom fight camp|Ricky wrote/i);
   });

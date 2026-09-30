@@ -10,6 +10,7 @@ import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
@@ -25,6 +26,7 @@ import {
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
+import { RirExplainer } from "@/components/training/RirExplainer";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
@@ -107,9 +109,14 @@ export default async function TrainingPage({
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
               : "Core week plan (DEMO) — tap a day chip to open that day’s bag, lift, and bike. Not Elite coaching or a custom fight camp."}
           </p>
+          <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
+            {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
+          </p>
         </div>
         <DemoBadge />
       </div>
+
+      <RirExplainer />
 
       {camp ? (
         <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">

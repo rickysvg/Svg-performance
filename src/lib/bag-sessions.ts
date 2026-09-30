@@ -1,8 +1,23 @@
 import type { ScaleBand } from "@/lib/bike-sessions";
+import {
+  BAG_THEMES,
+  type BagWeekdayName,
+} from "@/lib/bag-themes";
+import type { MesoBlock } from "@/lib/mesocycle";
+
+export {
+  BAG_THEME_CREDIT,
+  BAG_THEMES,
+  SHADOW_COOL_NAME,
+  SHADOW_EMPTY_NAME,
+  SHADOW_WEIGHTED_NAME,
+  formatBagRoundNotes,
+} from "@/lib/bag-themes";
 
 /**
  * Bag day numbers in demo-combat-skills.
- * Each weekday gets a distinct focus so Mon ≠ Wed.
+ * Block A is days 1–6, Block B 7–12, Block C 13–18.
+ * Each weekday inside a block has its own theme so Mon ≠ Wed.
  */
 export const BAG_DAY = {
   monday: 1,
@@ -13,53 +28,72 @@ export const BAG_DAY = {
   saturdayOptional: 6,
 } as const;
 
-export type BagWeekday =
-  | "Monday"
-  | "Tuesday"
-  | "Wednesday"
-  | "Thursday"
-  | "Friday"
-  | "Saturday";
+export type BagWeekday = BagWeekdayName;
 
+const WEEKDAY_OFFSET: Record<BagWeekday, number> = {
+  Monday: 0,
+  Tuesday: 1,
+  Wednesday: 2,
+  Thursday: 3,
+  Friday: 4,
+  Saturday: 5,
+};
+
+const BLOCK_BASE: Record<MesoBlock, number> = { A: 1, B: 7, C: 13 };
+
+export function bagDayNumber(weekday: BagWeekday, block: MesoBlock = "A") {
+  return BLOCK_BASE[block] + WEEKDAY_OFFSET[weekday];
+}
+
+export function bagFocusFor(weekday: BagWeekday, block: MesoBlock = "A") {
+  const theme = BAG_THEMES[block][weekday];
+  return {
+    ...theme,
+    block,
+    dayNumber: bagDayNumber(weekday, block),
+  };
+}
+
+/** Block A labels. Week index 0. Later blocks use `bagFocusFor`. */
 export const BAG_FOCUS: Record<
   BagWeekday,
   { dayNumber: number; label: string; theme: string; minutesHint: string }
 > = {
   Monday: {
-    dayNumber: BAG_DAY.monday,
-    label: "Bag — boxing combos",
-    theme: "Boxing combinations",
-    minutesHint: "Hands-first bag rounds",
+    dayNumber: bagDayNumber("Monday", "A"),
+    label: BAG_THEMES.A.Monday.label,
+    theme: BAG_THEMES.A.Monday.theme,
+    minutesHint: BAG_THEMES.A.Monday.minutesHint,
   },
   Tuesday: {
-    dayNumber: BAG_DAY.tuesday,
-    label: "Bag — kicks & teeps",
-    theme: "Kicks and teeps",
-    minutesHint: "Leg-dominant bag rounds",
+    dayNumber: bagDayNumber("Tuesday", "A"),
+    label: BAG_THEMES.A.Tuesday.label,
+    theme: BAG_THEMES.A.Tuesday.theme,
+    minutesHint: BAG_THEMES.A.Tuesday.minutesHint,
   },
   Wednesday: {
-    dayNumber: BAG_DAY.wednesday,
-    label: "Bag — body shots",
-    theme: "Body shots and liver lines",
-    minutesHint: "Body-shot bag rounds",
+    dayNumber: bagDayNumber("Wednesday", "A"),
+    label: BAG_THEMES.A.Wednesday.label,
+    theme: BAG_THEMES.A.Wednesday.theme,
+    minutesHint: BAG_THEMES.A.Wednesday.minutesHint,
   },
   Thursday: {
-    dayNumber: BAG_DAY.thursday,
-    label: "Bag — clinch knees",
-    theme: "Clinch knees and elbows",
-    minutesHint: "Clinch / short-range bag rounds",
+    dayNumber: bagDayNumber("Thursday", "A"),
+    label: BAG_THEMES.A.Thursday.label,
+    theme: BAG_THEMES.A.Thursday.theme,
+    minutesHint: BAG_THEMES.A.Thursday.minutesHint,
   },
   Friday: {
-    dayNumber: BAG_DAY.friday,
-    label: "Bag — defense & counters",
-    theme: "Defense and counters",
-    minutesHint: "Slip, cover, and fire back",
+    dayNumber: bagDayNumber("Friday", "A"),
+    label: BAG_THEMES.A.Friday.label,
+    theme: BAG_THEMES.A.Friday.theme,
+    minutesHint: BAG_THEMES.A.Friday.minutesHint,
   },
   Saturday: {
-    dayNumber: BAG_DAY.saturdayOptional,
-    label: "Bag — power & speed (optional)",
-    theme: "Power and speed",
-    minutesHint: "Optional short power bag",
+    dayNumber: bagDayNumber("Saturday", "A"),
+    label: BAG_THEMES.A.Saturday.label,
+    theme: BAG_THEMES.A.Saturday.theme,
+    minutesHint: BAG_THEMES.A.Saturday.minutesHint,
   },
 };
 
@@ -89,8 +123,17 @@ export const BAG_ROUND_COUNTS: Record<ScaleBand, number> = {
 /** Advanced long bag days (Mon / Wed / Fri) — ~60 min of rounds. */
 export const BAG_ROUND_COUNTS_ADVANCED_LONG = 14;
 
-/** Combat-skills day numbers that get the advanced 60-min bag. */
-export const ADVANCED_LONG_BAG_DAY_NUMBERS = new Set([1, 3, 5]);
+/** Combat-skills day numbers that get the advanced 60-min bag (Mon/Wed/Fri, every block). */
+export const ADVANCED_LONG_BAG_DAY_NUMBERS = new Set<number>(
+  (["A", "B", "C"] as const).flatMap((block) =>
+    (["Monday", "Wednesday", "Friday"] as const).map((weekday) => bagDayNumber(weekday, block)),
+  ),
+);
+
+/** Optional Saturday bag days. */
+export const OPTIONAL_BAG_DAY_NUMBERS = new Set<number>(
+  (["A", "B", "C"] as const).map((block) => bagDayNumber("Saturday", block)),
+);
 
 const BAG_WARM_COOL_SECONDS: Record<ScaleBand, number> = {
   beginner: 390, // ~6.5 min shadow + cool

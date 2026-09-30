@@ -6,7 +6,8 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
-import { DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
+import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
+import { isPlyoStrengthDay } from "@/lib/mesocycle";
 import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
@@ -22,6 +23,9 @@ import { lookupFormVideo } from "@/lib/form-videos";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
+import { BagFocusList } from "@/components/training/BagFocusList";
+import { RirHint } from "@/components/training/RirHint";
+import { hasRirCue } from "@/lib/rir";
 import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
@@ -58,7 +62,7 @@ export default async function TrainingDayPage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const deload = isDeloadWeek(new Date(), tz);
   const zone = bikeZoneForDayNumber(day.dayNumber);
-  const liftDay = day.dayNumber === 1 || day.dayNumber === 3 || day.dayNumber === 11;
+  const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
   const plyo = liftDay ? plyoBlockFor(profile?.trainingEmphasis) : [];
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),
@@ -88,6 +92,11 @@ export default async function TrainingDayPage({
           <div className="min-w-0">
             <h1 className="text-2xl leading-tight">{day.title}</h1>
             <p className="mt-1 text-sm text-muted">{day.focus}</p>
+            {day.exercises.some((exercise) => hasRirCue(exercise.loadText)) ? (
+              <div className="mt-3">
+                <RirHint />
+              </div>
+            ) : null}
             <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
               {scaleCopy(
                 scaleBandFromPrefs({
@@ -157,6 +166,7 @@ export default async function TrainingDayPage({
             restSeconds: exercise.restSeconds,
             logMode: exercise.logMode,
             name: exercise.name,
+            loadText: exercise.loadText,
           });
           return (
             <li
@@ -172,6 +182,7 @@ export default async function TrainingDayPage({
                 <h2 className=" leading-snug">{exercise.name}</h2>
                 <CoachCredit name={exercise.name} />
                 <p className="mt-1 text-sm text-muted">{planned}</p>
+                <BagFocusList notes={exercise.notes} />
                 <WatchFormInline url={form.url} pending={form.pending} />
                 <ExerciseNotepad
                   exerciseName={exercise.name}

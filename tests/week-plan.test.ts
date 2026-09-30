@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { completeOnboardingForUser } from "@/lib/onboarding";
 import { getHomeToday } from "@/lib/home";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { BAG_FOCUS } from "@/lib/bag-sessions";
+import { BAG_FOCUS, bagFocusFor } from "@/lib/bag-sessions";
+import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
+import { APP_TIMEZONE } from "@/lib/timezone";
 import { THU_STRENGTH_DAY_NUMBER } from "@/lib/daru-exercises";
 import {
   buildCoreWeekPlan,
@@ -162,9 +165,11 @@ describe("Core planner on Home", () => {
     const catalog = await findDemoTrainingCatalog();
     const today = await getHomeToday(user.id, monday);
     expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
-    expect(today.plannedSessions[0]?.title).toMatch(/Bag — boxing combos/i);
+    const block = mesoBlockForWeekIndex(bikeWeekIndex(monday, APP_TIMEZONE));
+    expect(today.mesoLabel).toBe(mesoBlockLabel(block));
+    expect(today.plannedSessions[0]?.title).toBe(bagFocusFor("Monday", block).label);
     expect(today.plannedSessions[1]?.title).toMatch(/Lower body/i);
-    expect(today.suggestedDay?.title).toMatch(/boxing combos/i);
+    expect(today.suggestedDay?.title).toBe(bagFocusFor("Monday", block).label);
     expect(today.planSummary).toBe("Bag+Lift");
     expect(today.weekStrip).toHaveLength(7);
 
@@ -179,7 +184,9 @@ describe("Core planner on Home", () => {
       planForDate({ primaryFocus: "mma", weeklyAvailability: ["Wednesday"] }, wednesday),
       catalog,
     );
-    expect(wedResolved[0]?.title).toMatch(/body shots/i);
+    const wedBlock = mesoBlockForWeekIndex(bikeWeekIndex(wednesday, APP_TIMEZONE));
+    expect(wedResolved[0]?.title).toBe(bagFocusFor("Wednesday", wedBlock).label);
+    expect(wedResolved[0]?.title).not.toBe(bagFocusFor("Monday", wedBlock).label);
     expect(wedResolved[0]?.dayId).not.toBe(resolved[0]?.dayId);
   });
 });

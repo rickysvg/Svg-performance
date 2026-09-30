@@ -15,6 +15,9 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
 import { CoachCredit } from "@/components/training/CoachCredit";
+import { BagFocusList } from "@/components/training/BagFocusList";
+import { RirHint } from "@/components/training/RirHint";
+import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
@@ -56,6 +59,8 @@ type Session = WorkoutSession & {
       reps: string;
       restSeconds: number;
       logMode?: string;
+      notes?: string;
+      loadText?: string;
       formVideoUrl: string;
       formVideoPending: boolean;
     }[];
@@ -272,6 +277,7 @@ export function WorkoutLogForm({
           {session.programDay?.title ? (
             <p className="text-sm text-muted">{session.programDay.title}</p>
           ) : null}
+          {session.programDay?.exercises.some((row) => hasRirCue(row.loadText)) ? <RirHint /> : null}
         </div>
 
         <StatusBanner error={state.error} success={state.success} />
@@ -376,10 +382,12 @@ export function WorkoutLogForm({
                           restSeconds: planned.restSeconds,
                           logMode: mode,
                           name,
+                          loadText: planned.loadText,
                         })
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+                  <BagFocusList notes={planned?.notes} />
                   {bikeSession ? (
                     <BikeSetTimer
                       key={`${name}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}`}
@@ -425,6 +433,7 @@ export function WorkoutLogForm({
                             restSeconds: planned.restSeconds,
                             logMode: mode,
                             name,
+                            loadText: planned.loadText,
                           })
                         : ""
                     }

@@ -159,6 +159,8 @@ describe("fight camp week math", () => {
       deload: false,
       testingWeek: false,
       summary: "Bag and strength",
+      mesoBlock: "A",
+      mesoLabel: "Block A · Jab IQ and range",
       sessions: [
         { kind: "skill", label: "Bag / striking" },
         { kind: "strength", label: "Strength — push / upper" },

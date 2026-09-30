@@ -147,6 +147,7 @@ export function equipmentForExercise(name: string): EquipmentId[] {
   if (/\bsled\b/.test(lower)) found.push("sled");
   if (/\bbag\b/.test(lower)) found.push("bag");
   if (/\bpad\b|\bmitt\b/.test(lower)) found.push("pads");
+  if (/\bhand weights?\b|\bweighted shadow\b|\bgoblet\b|\blunge\b/.test(lower)) found.push("dumbbell");
   if (found.length === 0) found.push("bodyweight");
   return found;
 }

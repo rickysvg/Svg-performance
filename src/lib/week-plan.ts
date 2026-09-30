@@ -1,6 +1,12 @@
-import { BAG_FOCUS, type BagWeekday } from "@/lib/bag-sessions";
+import { bagFocusFor, type BagWeekday } from "@/lib/bag-sessions";
 import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
-import { FRIDAY_GPP_DAY_NUMBER, THU_STRENGTH_DAY_NUMBER } from "@/lib/daru-exercises";
+import {
+  isGppStrengthDay,
+  mesoBlockForWeekIndex,
+  mesoBlockLabel,
+  strengthDaysForWeek,
+  type MesoBlock,
+} from "@/lib/mesocycle";
 import { WEEKDAYS } from "@/lib/constants";
 import { formatDayParam } from "@/lib/home";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
@@ -37,6 +43,8 @@ export type DayPlan = {
   skipReason?: string;
   deload: boolean;
   testingWeek: boolean;
+  mesoBlock: MesoBlock;
+  mesoLabel: string;
 };
 
 export type PlannerPrefs = {
@@ -112,8 +120,8 @@ function bikeSlot(weekday: "Tuesday" | "Thursday", weekIndex = 0): PlanSessionSl
   };
 }
 
-function bagSlot(weekday: BagWeekday): PlanSessionSlot {
-  const bag = BAG_FOCUS[weekday];
+function bagSlot(weekday: BagWeekday, weekIndex = 0): PlanSessionSlot {
+  const bag = bagFocusFor(weekday, mesoBlockForWeekIndex(weekIndex));
   return {
     kind: "skill",
     label: bag.label,
@@ -145,40 +153,42 @@ export function coreSkeletonSessions(
   _focus?: string | null,
   weekIndex = 0,
 ): PlanSessionSlot[] {
+  const lifts = strengthDaysForWeek(weekIndex);
+
   if (weekday === "Monday") {
     return [
-      bagSlot("Monday"),
-      strengthSlot(1, "Strength — lower (squat / hinge)"),
+      bagSlot("Monday", weekIndex),
+      strengthSlot(lifts.monday, "Strength — lower (squat / hinge)"),
     ];
   }
 
   if (weekday === "Tuesday") {
     return [
-      bagSlot("Tuesday"),
-      strengthSlot(2, "Strength — upper pull + core"),
+      bagSlot("Tuesday", weekIndex),
+      strengthSlot(lifts.tuesday, "Strength — upper pull + core"),
       bikeSlot("Tuesday", weekIndex),
     ];
   }
 
   if (weekday === "Wednesday") {
     return [
-      bagSlot("Wednesday"),
-      strengthSlot(3, "Strength — upper push + rotational"),
+      bagSlot("Wednesday", weekIndex),
+      strengthSlot(lifts.wednesday, "Strength — upper push + rotational"),
     ];
   }
 
   if (weekday === "Thursday") {
     return [
-      bagSlot("Thursday"),
-      strengthSlot(THU_STRENGTH_DAY_NUMBER, "Strength — posterior / unilateral"),
+      bagSlot("Thursday", weekIndex),
+      strengthSlot(lifts.thursday, "Strength — posterior / unilateral"),
       bikeSlot("Thursday", weekIndex),
     ];
   }
 
   if (weekday === "Friday") {
     return [
-      bagSlot("Friday"),
-      strengthSlot(FRIDAY_GPP_DAY_NUMBER, "Conditioning — full-body GPP", "conditioning"),
+      bagSlot("Friday", weekIndex),
+      strengthSlot(lifts.friday, "Conditioning — full-body GPP", "conditioning"),
     ];
   }
 
@@ -204,7 +214,7 @@ function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, a
   const hasLift = kinds.includes("strength");
   const hasBike = sessions.some((session) => /bike/i.test(session.label));
   const hasGpp = sessions.some(
-    (session) => session.kind === "conditioning" && session.dayNumber === FRIDAY_GPP_DAY_NUMBER,
+    (session) => session.kind === "conditioning" && isGppStrengthDay(session.dayNumber ?? -1),
   );
   if (hasBag && hasLift && hasBike) return "Bag+Lift+Bike";
   if (hasBag && hasBike) return "Bag+Bike";
@@ -251,6 +261,8 @@ export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
 export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<PlanWeekday, DayPlan> {
   const activeDays = resolveTrainingDays(prefs);
   const focus = prefs.primaryFocus ?? "";
+  const mesoBlock = mesoBlockForWeekIndex(weekIndex);
+  const mesoLabel = mesoBlockLabel(mesoBlock);
   const plan = {} as Record<PlanWeekday, DayPlan>;
 
   for (const weekday of WEEKDAYS) {
@@ -274,6 +286,8 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
       skipReason: active ? undefined : skipReason,
       deload: isDeloadWeekIndex(weekIndex),
       testingWeek: isTestingWeekIndex(weekIndex),
+      mesoBlock,
+      mesoLabel,
     };
   }
   return plan;

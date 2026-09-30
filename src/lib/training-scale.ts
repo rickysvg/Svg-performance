@@ -3,6 +3,7 @@ import {
   BAG_ROUND_COUNTS,
   BAG_ROUND_COUNTS_ADVANCED_LONG,
   BAG_ROUND_SECONDS,
+  OPTIONAL_BAG_DAY_NUMBERS,
   bagRoundCountFor,
   isAdvancedLongBagDay,
 } from "@/lib/bag-sessions";
@@ -19,10 +20,13 @@ import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
   formatClock,
   isDurationMode,
+  isEmptyShadowRound,
+  isWeightedShadowName,
   parseDurationSeconds,
   resolveLogMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
+import { mergeLoadText } from "@/lib/rir";
 
 export type ScaleBand = "beginner" | "intermediate" | "advanced";
 
@@ -136,24 +140,26 @@ const STRENGTH_REST: Record<ScaleBand, number> = {
 
 const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Goblet squat": {
-    sets: 4,
-    reps: "8–10",
-    loadText: "Heavy — last 2 reps grind but stay clean",
+    sets: 5,
+    reps: "5–6",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy — last rep slows but stays clean",
+    restSeconds: 45,
   },
   "Romanian deadlift": {
-    sets: 4,
-    reps: "8",
-    loadText: "Heavy hinge — flat back",
+    sets: 5,
+    reps: "5",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy hinge — flat back",
+    restSeconds: 45,
   },
   "Reverse lunge": {
-    sets: 4,
-    reps: "10 / leg",
-    loadText: "Loaded if you have bells",
+    sets: 5,
+    reps: "6 / leg",
+    loadText: "2-4 RIR · Heavy dumbbells — knee tracks over the toes",
   },
   "Squat jump or box step-up": {
     sets: 4,
     reps: "6",
-    loadText: "Crisp landings",
+    loadText: "3-5 RIR · Crisp landings",
   },
   "Front plank": {
     sets: 4,
@@ -164,43 +170,43 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Push-up or dumbbell bench press": {
     sets: 4,
     reps: "8–10",
-    loadText: "Heavy or hard variation",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
   },
   "One-arm row": {
     sets: 4,
     reps: "8 / side",
-    loadText: "Heavy dumbbell or band",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbell or band",
   },
   "Overhead press": {
     sets: 4,
     reps: "6–8",
-    loadText: "Heavy, lockout clean",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy, lockout clean",
   },
   "Band pull-apart or face pull": {
     sets: 4,
     reps: "15",
-    loadText: "Strong band, full squeeze",
+    loadText: "2-4 RIR · Strong band, full squeeze",
   },
   "Farmer carry": {
     sets: 4,
     reps: "40–50 sec",
-    loadText: "Heavy — walk tall",
+    loadText: "2-3 RIR · Heavy — walk tall",
     restSeconds: 45,
   },
   "Kettlebell swing or hip hinge": {
     sets: 5,
     reps: "12",
-    loadText: "Hard, crisp snaps",
+    loadText: "3-5 RIR · Hard, crisp snaps",
   },
   "Chin-up, band-assist, or lat pulldown": {
     sets: 4,
     reps: "6–10",
-    loadText: "Add load if 8+ are easy",
+    loadText: "1-3 RIR · Add load if 8+ are easy",
   },
   "Lateral bound or side step-over": {
     sets: 4,
     reps: "6 / side",
-    loadText: "Cover more ground",
+    loadText: "3-5 RIR · Cover more ground",
   },
   "Jump rope or easy bike intervals": {
     sets: 10,
@@ -240,11 +246,17 @@ export function isHardStrengthBand(band: ScaleBand) {
 }
 
 function skillRoundSeconds(band: ScaleBand, dayNumber: number) {
-  return SKILL_ROUND_SECONDS[band][dayNumber] ?? SKILL_ROUND_SECONDS[band][1];
+  const listed = SKILL_ROUND_SECONDS[band][dayNumber];
+  if (listed != null) return listed;
+  if (OPTIONAL_BAG_DAY_NUMBERS.has(dayNumber)) return SKILL_ROUND_SECONDS[band][6];
+  return BAG_ROUND_SECONDS[band];
 }
 
 function skillRestSeconds(band: ScaleBand, dayNumber: number) {
-  return SKILL_REST_SECONDS[band][dayNumber] ?? SKILL_REST_SECONDS[band][1];
+  const listed = SKILL_REST_SECONDS[band][dayNumber];
+  if (listed != null) return listed;
+  if (OPTIONAL_BAG_DAY_NUMBERS.has(dayNumber)) return SKILL_REST_SECONDS[band][6];
+  return BAG_REST_SECONDS[band];
 }
 
 export function scaleExercise(
@@ -256,11 +268,37 @@ export function scaleExercise(
   const dayNumber = input.dayNumber ?? 1;
   const band = input.band;
 
+  if (isWeightedShadowName(exercise.name)) {
+    return {
+      ...exercise,
+      logMode: "load_timed",
+      sets: 1,
+      reps: band === "beginner" ? "2:00" : "3:00",
+      restSeconds: band === "advanced" ? 30 : 45,
+      loadText:
+        band === "beginner"
+          ? "1 lb hand weights — fists if you have none"
+          : band === "advanced"
+            ? "2–3 lb hand weights"
+            : "1–2 lb hand weights",
+    };
+  }
+
   if (isBikeIntervalName(exercise.name)) {
     return scaleBikeInterval(exercise, band);
   }
 
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
+    if (isEmptyShadowRound(exercise.name)) {
+      return {
+        ...exercise,
+        logMode: "timed",
+        sets: 1,
+        reps: band === "beginner" ? "2:00" : "3:00",
+        restSeconds: 30,
+        loadText: "Empty hands — technical pace",
+      };
+    }
     if (mode === "timed_round") {
       const seconds = skillRoundSeconds(band, dayNumber);
       const rounds = bagRoundCountFor(band, dayNumber);
@@ -371,7 +409,7 @@ function scaleLoadedCarry(
       logMode: mode,
       sets: Math.max(exercise.sets, 4),
       reps: "40–50 sec",
-      loadText: "Heavy — walk tall",
+      loadText: mergeLoadText(exercise.loadText, "Heavy — walk tall"),
       restSeconds: 45,
     };
   }
@@ -413,6 +451,17 @@ function scaleStrengthExercise(
   if (mode === "load_timed") {
     return scaleLoadedCarry(exercise, band, mode, rest);
   }
+  if (band === "intermediate" && mode === "load_reps") {
+    return {
+      ...exercise,
+      logMode: mode,
+      sets: Math.min(5, exercise.sets + 1),
+      restSeconds: rest,
+      loadText: /slow|heavy|grind|\bRIR\b/i.test(exercise.loadText)
+        ? exercise.loadText
+        : `${exercise.loadText} · last reps should slow`,
+    };
+  }
   if (band !== "advanced") {
     const hold = mode === "timed" ? { loadText: "Hold — no weight" } : {};
     return { ...exercise, logMode: mode, restSeconds: rest, ...hold };
@@ -424,7 +473,7 @@ function scaleStrengthExercise(
     restSeconds: override?.restSeconds ?? rest,
     sets: override?.sets ?? Math.min(exercise.sets + 1, 5),
     reps: override?.reps ?? exercise.reps,
-    loadText: override?.loadText ?? harderLoadText(exercise.loadText),
+    loadText: mergeLoadText(exercise.loadText, override?.loadText ?? harderLoadText(exercise.loadText)),
   };
 }
 
@@ -437,6 +486,7 @@ function restForBand(seedRest: number, band: ScaleBand) {
 
 function harderLoadText(text: string) {
   if (/hold/i.test(text)) return "Hold — no weight";
+  if (/heavy/i.test(text)) return text;
   return text.replace(/moderate/i, "Heavy").replace(/light/i, "Challenging");
 }
 

@@ -2,18 +2,15 @@ import { suggestDemoProgramDay } from "@/lib/onboarding";
 
 /**
  * Maps DEMO Combat Skills day numbers to intake primaryFocus values.
- * Days 1–5 are bag themes used every training week for all combat focuses.
- * Day 6 is the optional Saturday power bag.
+ * Days 1–18 are the three bag blocks (A 1–6, B 7–12, C 13–18).
+ * Every combat focus can train every bag day. Saturday stays optional on the planner.
  * ProgramDay.focus stays human-readable copy — do not treat it as a machine tag.
  */
-export const SKILL_DAY_ARTS: Record<number, readonly string[]> = {
-  1: ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"],
-  2: ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"],
-  3: ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"],
-  4: ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"],
-  5: ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"],
-  6: ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"],
-};
+const COMBAT_FOCUSES = ["mma", "muay-thai", "boxing", "wrestling", "jiu-jitsu", "cagework"] as const;
+
+export const SKILL_DAY_ARTS: Record<number, readonly string[]> = Object.fromEntries(
+  Array.from({ length: 18 }, (_, index) => [index + 1, COMBAT_FOCUSES]),
+);
 
 export function usesMartialArtsDays(primaryFocus?: string | null) {
   return Boolean(primaryFocus && primaryFocus !== "general-fitness");

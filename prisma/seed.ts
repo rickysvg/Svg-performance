@@ -8,7 +8,7 @@ import {
 import { demoBagSkillDays, demoStrengthDays } from "../src/lib/demo-week-seed";
 import { formVideoFieldsFor } from "../src/lib/form-videos";
 import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
-import { fallbackLogMode } from "../src/lib/exercise-log-mode";
+import { fallbackLogMode, isWeightedShadowName } from "../src/lib/exercise-log-mode";
 
 function bikeProgramDay(session: (typeof BIKE_SESSIONS)[number]) {
   const scaled = scaleBikeSession(session, "beginner");
@@ -68,7 +68,7 @@ async function main() {
     slug: DEMO_SKILL_SLUG,
     title: "DEMO — Combat Skills",
     description:
-      "Bag rounds with a distinct Mon–Fri focus (boxing, kicks, body shots, clinch, defense). Scaled ~30 / 35–40 / 45 min by athlete level. External YouTube form references — not SVG-produced film, and not a custom fight camp Ricky wrote live.",
+      "Three-week bag blocks (A jab IQ, B level changes, C traps and exits) with a distinct Mon–Fri focus. Every bag day starts with an empty-hand shadow round and a hand-weight shadow round (log lbs). Themed focus rounds, scaled ~30 / 35–40 / 45 min by athlete level. External YouTube form references — not SVG-produced film, and not a custom fight camp Ricky wrote live.",
     isDemo: true,
     days: {
       create: demoBagSkillDays(),
@@ -151,7 +151,11 @@ async function tagSeededExerciseModes() {
     for (const day of program.days) {
       for (const exercise of day.exercises) {
         let logMode = fallbackLogMode(exercise.name, exercise.reps);
-        if (program.slug === DEMO_SKILL_SLUG && (logMode === "load_reps" || logMode === "load_timed")) {
+        if (
+          program.slug === DEMO_SKILL_SLUG &&
+          (logMode === "load_reps" || logMode === "load_timed") &&
+          !isWeightedShadowName(exercise.name)
+        ) {
           logMode = "timed_round";
         }
         const data: {

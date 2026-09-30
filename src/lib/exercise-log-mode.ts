@@ -1,4 +1,5 @@
 import { bikeIntervalReps, bikeSessionForName, isBikeIntervalName } from "@/lib/bike-sessions";
+import { percentFromLoadText, rirFromLoadText } from "@/lib/rir";
 
 export const LOG_MODES = ["load_reps", "load_timed", "reps_only", "timed", "timed_round"] as const;
 
@@ -6,12 +7,14 @@ export type LogMode = (typeof LOG_MODES)[number];
 
 const HOLD_NAME =
   /\b(plank|wall sit|hollow hold|dead hang|l-sit|lsit|static hold|isometric|burst|hold)\b/i;
+const SHADOW_NAME = /\bshadow(?:\s*-?\s*box(?:ing)?)?\b|\bshadowbox(?:ing)?\b/i;
+const WEIGHTED_SHADOW_LOAD = /\b(weighted|weights?|hand[\s-]*weights?)\b/i;
 const CARDIO_TIMED_NAME =
   /\b(jump rope|easy bike|interval|burpee|mountain climber|jumping jack|shadowbox|shadow box|high knee|butt kick|mobility|stretch|yoga|jumping|sled|front-rack march|front rack march|banded kettlebell swing)\b/i;
 const ROUND_NAME =
   /\b(bag|pads|sparring|grappling|rolling|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
 const BODYWEIGHT_COUNT_NAME =
-  /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|pike|band pull-apart|face pull|\bdip\b)\b/i;
+  /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|broad jump|pike|band pull-apart|face pull|\bdip\b)\b/i;
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
 const WEIGHTED_LIFT_NAME =
@@ -26,12 +29,26 @@ export function isHoldName(name: string) {
   return HOLD_NAME.test(name);
 }
 
+export function isShadowName(name: string) {
+  return SHADOW_NAME.test(name);
+}
+
+/** "weighted shadow", "shadowbox with weights", "shadowbox round 2 — hand weights". */
+export function isWeightedShadowName(name: string) {
+  return isShadowName(name) && WEIGHTED_SHADOW_LOAD.test(name);
+}
+
+export function isEmptyShadowRound(name: string) {
+  return isShadowName(name) && !isWeightedShadowName(name) && !/\bcool/i.test(name);
+}
+
 /**
  * Ricky’s rule: only weighted lifts get reps + lbs.
  * Everything else is timed, a skill round, or reps with no load column.
  */
 export function fallbackLogMode(name: string, reps = ""): LogMode {
   if (isBikeIntervalName(name)) return "timed_round";
+  if (isWeightedShadowName(name)) return "load_timed";
   if (LOADED_CARRY_NAME.test(name)) return "load_timed";
   if (/\bbanded kettlebell swing\b/i.test(name)) return "timed";
   if (isHoldName(name)) return "timed";
@@ -113,6 +130,9 @@ export function modeHint(mode: LogMode, name?: string) {
     return "Log the round time. Rest between rounds is the pill above — not pounds.";
   }
   if (mode === "load_timed") {
+    if (name && isWeightedShadowName(name)) {
+      return "Log the round in seconds and the hand-weight lbs. Empty-hand shadow stays timed.";
+    }
     return "Log seconds and lbs. Loaded carry / hold — no reps.";
   }
   if (mode === "timed") {
@@ -144,6 +164,7 @@ export function plannedSetLine(input: {
   restSeconds: number;
   logMode?: string | null;
   name?: string;
+  loadText?: string | null;
 }) {
   const mode = resolveLogMode(input);
   if (isBikeIntervalName(input.name ?? "")) {
@@ -152,20 +173,29 @@ export function plannedSetLine(input: {
     return `${countLabel(input.sets, "round")} · ${reps}${between}`;
   }
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
+  const rir = rirFromLoadText(input.loadText);
+  const percent = percentFromLoadText(input.loadText);
+  const effort = rir ? ` @ ${rir}${percent ? ` (${percent})` : ""}` : "";
+  const restOut = rir
+    ? input.restSeconds > 0
+      ? `, ${input.restSeconds}s rest between sets`
+      : ""
+    : rest;
   if (mode === "timed_round") {
     return `${countLabel(input.sets, "round")} × ${input.reps}${rest}`;
   }
   if (mode === "load_timed") {
+    if (rir) return `${input.sets} × ${carryDurationLabel(input.reps)}${effort}${restOut}`;
     return `${input.sets} × ${carryDurationLabel(input.reps)} @ lbs${rest}`;
   }
   if (mode === "timed") {
-    if (input.sets === 1 && input.restSeconds <= 0 && isSingleClockBlock(input.reps)) {
+    if (!rir && input.sets === 1 && input.restSeconds <= 0 && isSingleClockBlock(input.reps)) {
       return `${input.reps.trim()} continuous`;
     }
     const unit = isHoldName(input.name ?? "")
       ? countLabel(input.sets, "hold")
       : countLabel(input.sets, "set");
-    return `${unit} × ${input.reps}${rest}`;
+    return `${unit} × ${input.reps}${effort}${restOut}`;
   }
-  return `${countLabel(input.sets, "set")} × ${input.reps}${rest}`;
+  return `${countLabel(input.sets, "set")} × ${input.reps}${effort}${restOut}`;
 }
