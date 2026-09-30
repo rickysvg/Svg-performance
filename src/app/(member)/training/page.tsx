@@ -26,6 +26,7 @@ import {
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
+import { RirExplainer } from "@/components/training/RirExplainer";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
@@ -114,6 +115,8 @@ export default async function TrainingPage({
         </div>
         <DemoBadge />
       </div>
+
+      <RirExplainer />
 
       {camp ? (
         <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">

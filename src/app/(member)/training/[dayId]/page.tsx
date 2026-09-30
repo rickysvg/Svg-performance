@@ -24,6 +24,8 @@ import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { BagFocusList } from "@/components/training/BagFocusList";
+import { RirHint } from "@/components/training/RirHint";
+import { hasRirCue } from "@/lib/rir";
 import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
@@ -90,6 +92,11 @@ export default async function TrainingDayPage({
           <div className="min-w-0">
             <h1 className="text-2xl leading-tight">{day.title}</h1>
             <p className="mt-1 text-sm text-muted">{day.focus}</p>
+            {day.exercises.some((exercise) => hasRirCue(exercise.loadText)) ? (
+              <div className="mt-3">
+                <RirHint />
+              </div>
+            ) : null}
             <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
               {scaleCopy(
                 scaleBandFromPrefs({
@@ -159,6 +166,7 @@ export default async function TrainingDayPage({
             restSeconds: exercise.restSeconds,
             logMode: exercise.logMode,
             name: exercise.name,
+            loadText: exercise.loadText,
           });
           return (
             <li

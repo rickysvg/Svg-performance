@@ -26,6 +26,7 @@ import {
   resolveLogMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
+import { mergeLoadText } from "@/lib/rir";
 
 export type ScaleBand = "beginner" | "intermediate" | "advanced";
 
@@ -141,24 +142,24 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Goblet squat": {
     sets: 5,
     reps: "5–6",
-    loadText: "Heavy — last rep slows but stays clean",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy — last rep slows but stays clean",
     restSeconds: 45,
   },
   "Romanian deadlift": {
     sets: 5,
     reps: "5",
-    loadText: "Heavy hinge — flat back",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy hinge — flat back",
     restSeconds: 45,
   },
   "Reverse lunge": {
     sets: 5,
     reps: "6 / leg",
-    loadText: "Heavy dumbbells — knee tracks over the toes",
+    loadText: "2-4 RIR · Heavy dumbbells — knee tracks over the toes",
   },
   "Squat jump or box step-up": {
     sets: 4,
     reps: "6",
-    loadText: "Crisp landings",
+    loadText: "3-5 RIR · Crisp landings",
   },
   "Front plank": {
     sets: 4,
@@ -169,43 +170,43 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Push-up or dumbbell bench press": {
     sets: 4,
     reps: "8–10",
-    loadText: "Heavy or hard variation",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
   },
   "One-arm row": {
     sets: 4,
     reps: "8 / side",
-    loadText: "Heavy dumbbell or band",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbell or band",
   },
   "Overhead press": {
     sets: 4,
     reps: "6–8",
-    loadText: "Heavy, lockout clean",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy, lockout clean",
   },
   "Band pull-apart or face pull": {
     sets: 4,
     reps: "15",
-    loadText: "Strong band, full squeeze",
+    loadText: "2-4 RIR · Strong band, full squeeze",
   },
   "Farmer carry": {
     sets: 4,
     reps: "40–50 sec",
-    loadText: "Heavy — walk tall",
+    loadText: "2-3 RIR · Heavy — walk tall",
     restSeconds: 45,
   },
   "Kettlebell swing or hip hinge": {
     sets: 5,
     reps: "12",
-    loadText: "Hard, crisp snaps",
+    loadText: "3-5 RIR · Hard, crisp snaps",
   },
   "Chin-up, band-assist, or lat pulldown": {
     sets: 4,
     reps: "6–10",
-    loadText: "Add load if 8+ are easy",
+    loadText: "1-3 RIR · Add load if 8+ are easy",
   },
   "Lateral bound or side step-over": {
     sets: 4,
     reps: "6 / side",
-    loadText: "Cover more ground",
+    loadText: "3-5 RIR · Cover more ground",
   },
   "Jump rope or easy bike intervals": {
     sets: 10,
@@ -408,7 +409,7 @@ function scaleLoadedCarry(
       logMode: mode,
       sets: Math.max(exercise.sets, 4),
       reps: "40–50 sec",
-      loadText: "Heavy — walk tall",
+      loadText: mergeLoadText(exercise.loadText, "Heavy — walk tall"),
       restSeconds: 45,
     };
   }
@@ -456,7 +457,7 @@ function scaleStrengthExercise(
       logMode: mode,
       sets: Math.min(5, exercise.sets + 1),
       restSeconds: rest,
-      loadText: /slow|heavy|grind/i.test(exercise.loadText)
+      loadText: /slow|heavy|grind|\bRIR\b/i.test(exercise.loadText)
         ? exercise.loadText
         : `${exercise.loadText} · last reps should slow`,
     };
@@ -472,7 +473,7 @@ function scaleStrengthExercise(
     restSeconds: override?.restSeconds ?? rest,
     sets: override?.sets ?? Math.min(exercise.sets + 1, 5),
     reps: override?.reps ?? exercise.reps,
-    loadText: override?.loadText ?? harderLoadText(exercise.loadText),
+    loadText: mergeLoadText(exercise.loadText, override?.loadText ?? harderLoadText(exercise.loadText)),
   };
 }
 

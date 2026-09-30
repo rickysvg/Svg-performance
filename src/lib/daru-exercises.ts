@@ -30,9 +30,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: `${SVG_STRENGTH_NOTE} Simple hinge tester. Log reps and lbs.`,
     scale: {
-      beginner: { sets: 3, reps: "5–8", restSeconds: 90, loadText: "Moderate — honest last reps" },
-      intermediate: { sets: 4, reps: "3–6", restSeconds: 90, loadText: "Heavy hinge — flat back" },
-      advanced: { sets: 5, reps: "3", restSeconds: 75, loadText: "Heavy triples — high intent" },
+      beginner: { sets: 3, reps: "5–8", restSeconds: 90, loadText: "0-2 RIR · ~75% of a 5-rep max · honest last reps" },
+      intermediate: { sets: 4, reps: "3–6", restSeconds: 90, loadText: "0-2 RIR · ~80% of a 5-rep max · flat back" },
+      advanced: { sets: 5, reps: "3", restSeconds: 75, loadText: "0-2 RIR · ~85% of a 5-rep max · high intent" },
     },
   },
   {
@@ -41,9 +41,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: `${SVG_STRENGTH_NOTE} Limited-ROM horizontal press. Log reps and lbs.`,
     scale: {
-      beginner: { sets: 3, reps: "5–8", restSeconds: 90, loadText: "Moderate — upper arms to floor" },
-      intermediate: { sets: 4, reps: "3–6", restSeconds: 90, loadText: "Heavy, paused on the floor" },
-      advanced: { sets: 5, reps: "3", restSeconds: 75, loadText: "Heavy triples" },
+      beginner: { sets: 3, reps: "5–8", restSeconds: 90, loadText: "1-3 RIR · upper arms to the floor" },
+      intermediate: { sets: 4, reps: "3–6", restSeconds: 90, loadText: "1-3 RIR · paused on the floor" },
+      advanced: { sets: 5, reps: "3", restSeconds: 75, loadText: "1-3 RIR · heavy triples" },
     },
   },
   {
@@ -52,9 +52,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: `${SVG_STRENGTH_NOTE} Elbow-in, anti-extension press. Log reps and lbs.`,
     scale: {
-      beginner: { sets: 3, reps: "6–8 / side", restSeconds: 75, loadText: "Moderate — brace hard" },
-      intermediate: { sets: 3, reps: "6–10 / side", restSeconds: 75, loadText: "Challenging, clean lockout" },
-      advanced: { sets: 4, reps: "5–6 / side", restSeconds: 60, loadText: "Heavy, no back bend" },
+      beginner: { sets: 3, reps: "6–8 / side", restSeconds: 75, loadText: "2-4 RIR · brace hard" },
+      intermediate: { sets: 3, reps: "6–10 / side", restSeconds: 75, loadText: "2-4 RIR · clean lockout" },
+      advanced: { sets: 4, reps: "5–6 / side", restSeconds: 60, loadText: "2-4 RIR · no back bend" },
     },
   },
   {
@@ -63,9 +63,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: `${SVG_STRENGTH_NOTE} Transverse power into a wall. Log throws and ball lbs.`,
     scale: {
-      beginner: { sets: 3, reps: "6 / side", restSeconds: 75, loadText: "Light–moderate ball" },
-      intermediate: { sets: 3, reps: "8 / side", restSeconds: 60, loadText: "Crisp hip turn" },
-      advanced: { sets: 4, reps: "6 / side", restSeconds: 45, loadText: "Heavy ball, full intent" },
+      beginner: { sets: 3, reps: "6 / side", restSeconds: 75, loadText: "3-5 RIR · light ball, fast turn" },
+      intermediate: { sets: 3, reps: "8 / side", restSeconds: 60, loadText: "3-5 RIR · crisp hip turn" },
+      advanced: { sets: 4, reps: "6 / side", restSeconds: 45, loadText: "3-5 RIR · heavier ball, full intent" },
     },
   },
   {
@@ -74,9 +74,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: "Phil Daru / Daru Strong — filmed as 10 throws. Not an SVG program, no endorsement. Weekly sets are SVG scaling. Log throws and ball lbs.",
     scale: {
-      beginner: { sets: 3, reps: "8", restSeconds: 75, loadText: "Light–moderate ball" },
-      intermediate: { sets: 3, reps: "10", restSeconds: 60, loadText: "Crisp SSC — no pause" },
-      advanced: { sets: 4, reps: "10", restSeconds: 45, loadText: "Hard throws, catch or rebound" },
+      beginner: { sets: 3, reps: "8", restSeconds: 75, loadText: "3-5 RIR · light ball, fast pass" },
+      intermediate: { sets: 3, reps: "10", restSeconds: 60, loadText: "3-5 RIR · crisp, no pause" },
+      advanced: { sets: 4, reps: "10", restSeconds: 45, loadText: "3-5 RIR · hard throws, still fast" },
     },
   },
   {
@@ -108,9 +108,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: `${SVG_STRENGTH_NOTE} Walk tall. Log seconds and lbs — no reps.`,
     scale: {
-      beginner: { sets: 3, reps: "30–40 sec", restSeconds: 90, loadText: "Heavy for you, walk tall" },
-      intermediate: { sets: 3, reps: "35–45 sec", restSeconds: 75, loadText: "Heavy for you, walk tall" },
-      advanced: { sets: 4, reps: "40–50 sec", restSeconds: 45, loadText: "Heavy — walk tall" },
+      beginner: { sets: 3, reps: "30–40 sec", restSeconds: 90, loadText: "2-3 RIR · heavy for you, walk tall" },
+      intermediate: { sets: 3, reps: "35–45 sec", restSeconds: 75, loadText: "2-3 RIR · heavy for you, walk tall" },
+      advanced: { sets: 4, reps: "40–50 sec", restSeconds: 45, loadText: "2-3 RIR · heavy, walk tall" },
     },
   },
   {
@@ -119,9 +119,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     svgScaling: true,
     notes: `${SVG_STRENGTH_NOTE} Posterior power with a band. Friday conditioning is timed — no reps or lbs.`,
     scale: {
-      beginner: { sets: 4, reps: "30 sec", restSeconds: 60, loadText: "Crisp snaps — timed" },
-      intermediate: { sets: 5, reps: "35 sec", restSeconds: 45, loadText: "Hard, repeatable" },
-      advanced: { sets: 6, reps: "40 sec", restSeconds: 30, loadText: "Overspeed eccentric, stay crisp" },
+      beginner: { sets: 4, reps: "30 sec", restSeconds: 60, loadText: "3-5 RIR · crisp snaps" },
+      intermediate: { sets: 5, reps: "35 sec", restSeconds: 45, loadText: "3-5 RIR · hard, still fast" },
+      advanced: { sets: 6, reps: "40 sec", restSeconds: 30, loadText: "3-5 RIR · overspeed, stay crisp" },
     },
   },
   {
@@ -182,9 +182,9 @@ export const DARU_EXERCISES: DaruExercise[] = [
     notes:
       "Phil Daru / Daru Strong — 3–4 × 8–12 up-and-back shrugs (not an SVG program, no endorsement). Log reps and lbs.",
     scale: {
-      beginner: { sets: 3, reps: "8–12", restSeconds: 60, loadText: "Moderate — up and back" },
-      intermediate: { sets: 3, reps: "10", restSeconds: 60, loadText: "Squeeze traps, no yank" },
-      advanced: { sets: 4, reps: "8–12", restSeconds: 45, loadText: "Heavy, control the eccentric" },
+      beginner: { sets: 3, reps: "8–12", restSeconds: 60, loadText: "2-4 RIR · up and back" },
+      intermediate: { sets: 3, reps: "10", restSeconds: 60, loadText: "2-4 RIR · squeeze, no yank" },
+      advanced: { sets: 4, reps: "8–12", restSeconds: 45, loadText: "2-4 RIR · control the lower" },
     },
   },
 ];

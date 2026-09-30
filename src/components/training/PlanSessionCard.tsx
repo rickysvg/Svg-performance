@@ -94,6 +94,7 @@ export function PlanSessionCard({
                         restSeconds: exercise.restSeconds,
                         logMode: exercise.logMode,
                         name: exercise.name,
+                        loadText: exercise.loadText,
                       })}
                     </span>
                   </span>

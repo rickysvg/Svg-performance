@@ -317,7 +317,9 @@ describe("assault bike seeded days", () => {
 
     const friday = program.days.find((row) => row.dayNumber === FRIDAY_GPP_DAY_NUMBER);
     expect(friday?.title).toMatch(/GPP/i);
-    expect(friday?.exercises.map((row) => row.name)).toEqual([...FRIDAY_GPP_NAMES]);
+    const fridayNames = friday?.exercises.map((row) => row.name) ?? [];
+    expect(fridayNames.slice(0, FRIDAY_GPP_NAMES.length)).toEqual([...FRIDAY_GPP_NAMES]);
+    expect(fridayNames.length).toBeGreaterThan(FRIDAY_GPP_NAMES.length);
     expect(friday?.exercises.find((row) => row.name === "Farmer's carry")?.logMode).toBe("load_timed");
     expect(friday?.exercises.find((row) => row.name === "Sled push")?.logMode).toBe("timed");
     expect(friday?.exercises.find((row) => row.name === "Banded kettlebell swing")?.logMode).toBe(

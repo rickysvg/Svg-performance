@@ -647,6 +647,72 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
     channel: "",
     title: "",
   },
+  "Cable or band woodchop": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Cable or band Pallof press": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Dumbbell high pull": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Straight-arm pulldown": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Dumbbell pullover": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Plyo push-up": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Landmine rotation": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Dumbbell step-up": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Broad jump": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Dumbbell hip thrust": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
+  "Dumbbell lateral lunge": {
+    url: "",
+    pending: true,
+    channel: "",
+    title: "",
+  },
 };
 
 export function formVideoFieldsFor(name: string): {
