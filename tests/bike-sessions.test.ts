@@ -256,7 +256,7 @@ describe("assault bike seeded days", () => {
     expect(exercise?.logMode).toBe("timed_round");
     expect(exercise?.reps).toBe("15s work / 15s rest × 8");
     expect(exercise?.restSeconds).toBe(60);
-    expect(exercise?.formVideoUrl).toMatch(/youtube\.com\/watch\?v=G8a1IAVLdjA/);
+    expect(exercise?.formVideoUrl).toMatch(/youtube\.com\/watch\?v=MJdqtIIyz-A/);
     expect(exercise?.notes).toMatch(/3–5 min easy spin/i);
 
     const user = await makeUser("bike-scale@example.com");
@@ -312,7 +312,7 @@ describe("assault bike seeded days", () => {
     const alactic = program.days.find((row) => row.dayNumber === 5);
     expect(alactic?.exercises[0]?.name).toBe("Daru alactic power bike");
     expect(alactic?.exercises[0]?.logMode).toBe("timed_round");
-    expect(alactic?.exercises[0]?.formVideoUrl).toMatch(/LhvPU8vhyq0/);
+    expect(alactic?.exercises[0]?.formVideoUrl).toMatch(/MJdqtIIyz-A/);
     expect(alactic?.exercises[0]?.reps).toBe("10s work / 50s rest × 3");
 
     const friday = program.days.find((row) => row.dayNumber === FRIDAY_GPP_DAY_NUMBER);

@@ -3,7 +3,7 @@
  * These are external education links, not SVG-produced coaching videos.
  */
 
-import { isYoutubeFormUrl } from "@/lib/form-videos";
+import { isYoutubeWatchUrl } from "@/lib/form-videos";
 import { LEARN_CATALOG, type LearnCatalogEntry } from "@/lib/learn-catalog";
 
 export type LessonVideoSeed = {
@@ -40,7 +40,7 @@ export function resolveLessonVideo(lesson: {
   youtubeUrl: string;
   videoPending: boolean;
 }): { url: string; pending: boolean } {
-  if (lesson.videoPending || !lesson.youtubeUrl || !isYoutubeFormUrl(lesson.youtubeUrl)) {
+  if (lesson.videoPending || !lesson.youtubeUrl || !isYoutubeWatchUrl(lesson.youtubeUrl)) {
     return { url: "", pending: true };
   }
   return { url: lesson.youtubeUrl, pending: false };

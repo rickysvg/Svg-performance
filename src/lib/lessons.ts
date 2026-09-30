@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { isYoutubeFormUrl } from "@/lib/form-videos";
+import { isYoutubeWatchUrl } from "@/lib/form-videos";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 
 export const LESSON_LEVELS = ["beginner", "intermediate", "advanced"] as const;
@@ -73,7 +73,7 @@ export function validateLessonInput(input: LessonInput): LessonInput {
   }
   const videoPending = Boolean(input.videoPending);
   const youtubeUrl = input.youtubeUrl.trim();
-  if (!videoPending && youtubeUrl && !isYoutubeFormUrl(youtubeUrl)) {
+  if (!videoPending && youtubeUrl && !isYoutubeWatchUrl(youtubeUrl)) {
     throw new AppError(
       "LESSON",
       "Use a regular YouTube watch link (not Shorts) or mark the video as pending.",

@@ -77,17 +77,21 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 
 Every DEMO exercise stores `formVideoUrl` (YouTube) **or** `formVideoPending=true` with an empty URL. UI copy is **Watch form** plus “Form reference (YouTube) — not an SVG-produced video.” Pending shows “Video pending coach review.”
 
-How we pick a link:
+Train / workout form refs are for the gym floor. Nobody watches a 5-minute video between sets. Best of both:
 
-1. Prefer well-known strength / coaching education channels (NASM, Jeff Nippard, ATHLEAN-X, Starting Strength / Rippetoe, Mark Wildman, Calisthenic Movement, MuscleWiki, Jump Rope Dudes, BJ Gaddour).
-2. Prefer long-form technique videos with strong views / like engagement over entertainment fails and over random shorts.
-3. Prefer official “how to / proper form” titles. We do not embed paid course media or Fight Science content.
-4. If we cannot verify a high-quality video for that movement, we leave the URL empty and set pending. We do **not** guess a weak short.
+1. Prefer a short clip that shows the movement in the first few seconds. That is a YouTube Shorts URL, or a regular watch link whose public length is about 90 seconds or under and is itself a form demo.
+2. Otherwise keep a trusted longer technique video **only** when the stored URL includes a start timestamp (`t=` as `?t=` or `&t=`, including `youtu.be/…?t=`) so playback opens on the form demo, not the intro talk.
+3. If neither is available, leave the URL empty and set pending. Do **not** keep a long untimed video.
+4. Prefer well-known coaching channels (NASM, StrongFirst, ATHLEAN-X, Assault Fitness, AKA Thailand, Cary Kolat, Tony Jeffries, Onnit, Renaissance Periodization, Barbell Logic, PureGym how-tos, and similar). Official “how to / proper form” titles. Shorts are allowed for Train form refs when the clip is a solid form demo. We do not embed paid course media or Fight Science content, and we do not guess a weak short.
 5. Links open on YouTube. They are not claimed as SVG IP.
 
-Current pending DEMO moves: lateral bound / side step-over (no catalog-quality long-form we would stand behind yet). Squat jump / box step-up uses NASM’s squat-jump technique video.
+`seconds` on a catalog row is the public length we checked. `isYoutubeFormUrl` accepts Shorts, a watch / youtu.be URL with `t=`, or a watch URL whose id is one of those verified sub-90s clips. Learn lessons stay on `isYoutubeWatchUrl`: a regular watch link, Shorts still rejected, no start-time requirement. Study-at-home Learn links are unchanged.
 
-List thumbs prefer the YouTube form still (`i.ytimg.com/vi/<id>/hqdefault.jpg`, then mq / img.youtube.com) with a lime play mark. They open the same Watch-form URL. Pending / invalid URLs keep the local silhouette. Copy stays “Form reference (YouTube) — not an SVG-produced video.”
+Current pending DEMO moves (no verified short demo and no verified start time on the old long film): neck isometric matrix, exit the clinch / frame, the mount / ground-and-pound cluster, closed-guard posture break, and closed-guard hip tilt.
+
+After this lands, **reseed Neon** (`npm run db:seed`). Seed writes `formVideoUrl` through `formVideoFieldsFor`.
+
+List thumbs prefer the YouTube form still (`i.ytimg.com/vi/<id>/hqdefault.jpg`, then mq / img.youtube.com) with a lime play mark. They open the same Watch-form URL. Shorts ids use that same still. Pending / invalid URLs keep the local silhouette. Copy stays “Form reference (YouTube) — not an SVG-produced video.”
 
 ## Learn technique video selection rules
 
