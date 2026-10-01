@@ -26,12 +26,22 @@ describe("Train / Calendar day chips", () => {
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("data-selected-day-plan");
   });
 
-  it("turns summaries into compact activity marks and keeps rest words", () => {
-    expect(weekChipActivities("Bag+Lift+Bike").map((item) => item.mark)).toEqual(["B", "L", "K"]);
+  it("turns summaries into activity icons and keeps rest words", () => {
+    expect(weekChipActivities("Bag+Lift+Bike").map((item) => item.id)).toEqual(["Bag", "Lift", "Bike"]);
     expect(weekChipActivities("Bag+Lift").map((item) => item.label)).toEqual(["Bag", "Lift"]);
-    expect(weekChipActivities("Bag+GPP").map((item) => item.mark)).toEqual(["B", "G"]);
-    expect(weekChipActivities("Off")).toEqual([{ id: "Off", label: "Off", mark: "O" }]);
-    expect(weekChipActivities("Rest")).toEqual([{ id: "Rest", label: "Rest", mark: "R" }]);
+    expect(weekChipActivities("Bag+GPP").map((item) => item.label)).toEqual(["Bag", "GPP"]);
+    expect(weekChipActivities("Off")).toEqual([{ id: "Off", label: "Off" }]);
+    expect(weekChipActivities("Rest")).toEqual([{ id: "Rest", label: "Rest" }]);
+    expect(weekChipActivities("Recover")).toEqual([{ id: "Recover", label: "Recover" }]);
+
+    const strip = read("src/components/training/WeekStrip.tsx");
+    expect(strip).toContain("<svg");
+    expect(strip).toContain("data-week-activity");
+    expect(strip).toContain("title={activity.label}");
+    expect(strip).toContain('className="sr-only">{activity.label}');
+    expect(strip).toContain("WORD_LABELS");
+    expect(strip).not.toContain("ACTIVITY_MARK");
+    expect(strip).not.toContain("activity.mark");
   });
 
   it("keeps Mon and Wed bag day numbers distinct", () => {
