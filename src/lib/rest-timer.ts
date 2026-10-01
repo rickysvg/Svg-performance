@@ -40,6 +40,15 @@ export function formatRestPill(seconds: number): string {
   return `${Math.max(0, Math.round(seconds))}s`;
 }
 
+export function addRestSeconds(timer: RestTimerState, seconds: number): RestTimerState {
+  const extra = Math.round(seconds);
+  return {
+    ...timer,
+    durationSeconds: Math.max(0, timer.durationSeconds + extra),
+    endsAtMs: timer.endsAtMs + extra * 1000,
+  };
+}
+
 export function signalRestComplete() {
   try {
     navigator.vibrate?.(160);

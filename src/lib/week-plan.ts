@@ -16,6 +16,7 @@ import {
   addZonedDays,
   mondayOfZoned,
   weekdayInZone,
+  zonedParts,
 } from "@/lib/timezone";
 
 export { APP_TIMEZONE } from "@/lib/timezone";
@@ -341,6 +342,7 @@ export function weekStrip(
       short: weekday.slice(0, 3),
       date,
       dayParam: formatDayParam(date, timeZone),
+      dateLabel: String(zonedParts(date, timeZone).day),
       isToday: weekday === today,
       isSelected: weekday === selectedWeekday,
       active: plan[weekday].active,

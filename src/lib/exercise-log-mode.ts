@@ -150,6 +150,23 @@ function carryDurationLabel(reps: string) {
   return raw.replace(/\s*seconds?\b/i, "s").replace(/\s*sec\b/i, "s").replace(/\s+/g, " ").trim();
 }
 
+/** "1–3 lb hand weights" → "1–3". Empty when the prescription has no logged or written weight. */
+export function prescribedLbLabel(loadText?: string | null): string | null {
+  const match = loadText?.match(/(\d+(?:\s*[–—-]\s*\d+)?(?:\.\d+)?)\s*lb\b/i);
+  if (!match) return null;
+  return match[1].replace(/\s+/g, "");
+}
+
+export type LoggerRowLayout = "bag" | "weighted_shadow" | "bike" | "standard";
+
+/** Gym-floor rows: bag is Round / time / Done, weighted shadow is Seconds / lbs / Done. */
+export function loggerRowLayout(mode: LogMode, name = ""): LoggerRowLayout {
+  if (isBikeIntervalName(name)) return "bike";
+  if (mode === "load_timed" && isWeightedShadowName(name)) return "weighted_shadow";
+  if (mode === "timed_round") return "bag";
+  return "standard";
+}
+
 export function countLabel(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -186,7 +203,9 @@ export function plannedSetLine(input: {
   }
   if (mode === "load_timed") {
     if (rir) return `${input.sets} × ${carryDurationLabel(input.reps)}${effort}${restOut}`;
-    return `${input.sets} × ${carryDurationLabel(input.reps)} @ lbs${rest}`;
+    const pounds = prescribedLbLabel(input.loadText);
+    const load = pounds ? ` @ ${pounds} lb` : "";
+    return `${input.sets} × ${carryDurationLabel(input.reps)}${load}${rest}`;
   }
   if (mode === "timed") {
     if (!rir && input.sets === 1 && input.restSeconds <= 0 && isSingleClockBlock(input.reps)) {
