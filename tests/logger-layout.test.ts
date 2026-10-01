@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Logger layout", () => {
-  it("keeps the workout title below the sticky rest bar and spaces Same as last from Watch form", () => {
+  it("keeps the workout title below the sticky rest bar and uses the thumbnail as Watch", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"),
       "utf8",
@@ -13,7 +13,14 @@ describe("Logger layout", () => {
     expect(source).toContain("overflow-hidden");
     expect(source).toContain("flex flex-wrap items-center gap-x-3");
     expect(source).toContain("Same as last");
-    expect(source).toContain("WatchFormInline");
+    expect(source).not.toContain("WatchFormInline");
+    expect(source).toContain("ExerciseThumb");
+    expect(source).toContain("data-logger-progress");
+    expect(source).toContain("data-rest-countdown");
+    expect(source).toContain("data-rest-skip");
+    expect(source).toContain("data-rest-plus");
+    expect(source).toContain("data-set-field");
+    expect(source).toContain("data-session-overflow");
     expect(source).toContain("data-workout-title");
     expect(source).toContain("textarea");
     expect(source).toContain("break-words");

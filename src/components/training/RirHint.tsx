@@ -1,10 +1,11 @@
 import { RIR_PLAIN } from "@/lib/rir";
 
-/** One line next to a lift prescription so the RIR number has a meaning. */
+/** Compact help beside the first RIR lift. Closed until the athlete asks. */
 export function RirHint() {
   return (
-    <p data-rir-hint className="text-sm leading-snug text-muted">
-      {RIR_PLAIN}
-    </p>
+    <details data-rir-hint className="mt-1">
+      <summary className="cursor-pointer text-xs font-semibold text-accent">How heavy?</summary>
+      <p className="mt-1 text-sm leading-snug text-muted">{RIR_PLAIN}</p>
+    </details>
   );
 }

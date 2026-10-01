@@ -58,7 +58,7 @@ describe("workout logger media and previous loads", () => {
         logMode: "load_timed",
         name: "Farmer carry",
       }),
-    ).toBe("3 × 30–40s @ lbs, 90s rest");
+    ).toBe("3 × 30–40s, 90s rest");
     expect(
       plannedSetLine({
         sets: 8,

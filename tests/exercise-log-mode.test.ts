@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   fallbackLogMode,
   hidesLoad,
+  loggerRowLayout,
   parseDurationSeconds,
   plannedSetLine,
+  prescribedLbLabel,
   resolveLogMode,
 } from "@/lib/exercise-log-mode";
 import { previousSetLabel } from "@/lib/exercise-media";
@@ -111,7 +113,7 @@ describe("exercise log modes", () => {
         logMode: "load_timed",
         name: "Farmer carry",
       }),
-    ).toBe("3 × 30–40s @ lbs, 90s rest");
+    ).toBe("3 × 30–40s, 90s rest");
   });
 
   it("uses singular units for one set and labels a single timed clock as continuous", () => {
@@ -234,5 +236,34 @@ describe("exercise log modes", () => {
         durationSeconds: 40,
       }),
     ).toBe("0:40 × 70 lbs");
+  });
+
+  it("shows a written hand-weight and omits a blank @ lbs", () => {
+    expect(prescribedLbLabel("1–3 lb hand weights")).toBe("1–3");
+    expect(prescribedLbLabel("Empty hands — technical pace")).toBeNull();
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "3:00",
+        restSeconds: 45,
+        logMode: "load_timed",
+        name: "Shadowbox round 2 — hand weights",
+        loadText: "1–3 lb hand weights",
+      }),
+    ).toBe("1 × 3:00 @ 1–3 lb, 45s rest");
+    expect(
+      plannedSetLine({
+        sets: 1,
+        reps: "3:00",
+        restSeconds: 45,
+        logMode: "load_timed",
+        name: "Shadowbox round 2 — hand weights",
+      }),
+    ).toBe("1 × 3:00, 45s rest");
+    expect(loggerRowLayout("timed_round", "Jab–cross (1–2)")).toBe("bag");
+    expect(loggerRowLayout("load_timed", "Shadowbox round 2 — hand weights")).toBe(
+      "weighted_shadow",
+    );
+    expect(loggerRowLayout("load_timed", "Farmer carry")).toBe("standard");
   });
 });

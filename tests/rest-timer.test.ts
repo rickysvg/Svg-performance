@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addRestSeconds,
   formatRestClock,
   formatRestPill,
   isRestActive,
@@ -28,6 +29,15 @@ describe("between-set rest timer", () => {
     expect(remainingRestSeconds(timer, now + 90_000)).toBe(0);
     expect(isRestActive(timer, now + 90_000)).toBe(false);
     expect(isRestActive(null, now)).toBe(false);
+  });
+
+  it("adds 15 seconds without restarting the clock", () => {
+    const now = 3_000_000;
+    const timer = startRestTimer("Jab", 45, now);
+    const longer = addRestSeconds(timer, 15);
+    expect(longer.exerciseName).toBe("Jab");
+    expect(remainingRestSeconds(longer, now + 20_000)).toBe(40);
+    expect(longer.endsAtMs).toBe(timer.endsAtMs + 15_000);
   });
 
   it("replaces the active rest when another exercise starts", () => {

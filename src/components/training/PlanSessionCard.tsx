@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { startSessionAction } from "@/app/actions/workouts";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
-import { WatchFormInline } from "@/components/training/WatchForm";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
@@ -99,14 +98,16 @@ export function PlanSessionCard({
                     </span>
                   </span>
                 </span>
-                <WatchFormInline url={form.url} pending={form.pending} />
               </li>
             );
           })}
         </ul>
       ) : null}
       {cta ? (
-        <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div
+          data-session-actions
+          className="above-dock mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+        >
           {draftId ? (
             <Link
               href={`/training/log/${draftId}`}

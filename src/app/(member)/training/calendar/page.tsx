@@ -96,12 +96,14 @@ export default async function TrainingCalendarPage({
 
       <WeekStrip days={strip} basePath="/training/calendar" />
 
-      <TrainingLevelToggle
-        band={band}
-        dayParam={dayParam}
-        fromProfile={fromProfile}
-        basePath="/training/calendar"
-      />
+      {fromProfile ? null : (
+        <TrainingLevelToggle
+          band={band}
+          dayParam={dayParam}
+          fromProfile={fromProfile}
+          basePath="/training/calendar"
+        />
+      )}
 
       <section className="space-y-3" data-selected-day-plan>
         <div>

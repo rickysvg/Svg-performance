@@ -8,10 +8,10 @@ import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { isPlyoStrengthDay } from "@/lib/mesocycle";
-import { WatchFormInline } from "@/components/training/WatchForm";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { DaySessionMeta } from "@/components/training/DaySessionMeta";
+import { SessionDetails } from "@/components/training/SessionDetails";
 import { startSessionAction } from "@/app/actions/workouts";
 import {
   equipmentForExercises,
@@ -68,6 +68,7 @@ export default async function TrainingDayPage({
     exerciseNames: day.exercises.map((exercise) => exercise.name),
     programDayId: day.id,
   });
+  const firstRir = day.exercises.find((exercise) => hasRirCue(exercise.loadText))?.id;
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
@@ -87,41 +88,20 @@ export default async function TrainingDayPage({
         </span>
       </header>
 
-      <section className="space-y-6 px-4 pb-8 pt-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl leading-tight">{day.title}</h1>
-            <p className="mt-1 text-sm text-muted">{day.focus}</p>
-            {day.exercises.some((exercise) => hasRirCue(exercise.loadText)) ? (
-              <div className="mt-3">
-                <RirHint />
-              </div>
-            ) : null}
-            <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
-              {scaleCopy(
-                scaleBandFromPrefs({
-                  experienceLevel: profile?.experienceLevel,
-                  competitionStatus: profile?.competitionStatus,
-                }),
-                day.program.slug === DEMO_SKILL_PROGRAM_SLUG ? day.dayNumber : undefined,
-              )}
-            </p>
-          </div>
-          {draft ? (
-            <Link
-              href={`/training/log/${draft.id}`}
-              className="shrink-0 pt-1 text-sm font-semibold text-accent"
-            >
-              Continue
-            </Link>
-          ) : (
-            <form action={startSessionAction} className="shrink-0 pt-1">
-              <input type="hidden" name="programDayId" value={day.id} />
-              <button type="submit" className="text-sm font-semibold text-accent">
-                Start Now
-              </button>
-            </form>
-          )}
+      <section className="space-y-4 px-4 pb-4 pt-3" data-session-phase="first">
+        <p className="font-display text-xs uppercase tracking-wide text-accent">First</p>
+        <div>
+          <h1 className="text-2xl leading-tight">{day.title}</h1>
+          <p className="mt-1 text-sm text-muted">{day.focus}</p>
+          <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
+            {scaleCopy(
+              scaleBandFromPrefs({
+                experienceLevel: profile?.experienceLevel,
+                competitionStatus: profile?.competitionStatus,
+              }),
+              day.program.slug === DEMO_SKILL_PROGRAM_SLUG ? day.dayNumber : undefined,
+            )}
+          </p>
         </div>
 
         <DaySessionMeta
@@ -133,70 +113,106 @@ export default async function TrainingDayPage({
         {deload ? (
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
-        <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line px-4 py-3">
-          <p className="font-display text-xs uppercase tracking-wide text-accent">First</p>
-          <p className="font-semibold">Dynamic warm-up · 3–4 min</p>
-        </Link>
-        {zone ? <BikeZoneNote zone={zone} /> : null}
-        {plyo.length > 0 ? (
-          <div className="rounded-2xl border border-line px-4 py-3 text-sm">
-            <p className="font-display text-xs uppercase tracking-wide text-accent">
-              Plyo / power · {PLYO_MINUTES}
-            </p>
-            <ul className="mt-2 space-y-1">
-              {plyo.map((drill) => (
-                <li key={drill.name}>
-                  {drill.name} · {drill.prescription}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
 
-        <EquipmentRow chips={equipment} />
+        {draft ? (
+          <Link
+            href={`/training/log/${draft.id}`}
+            className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
+          >
+            Continue
+          </Link>
+        ) : (
+          <form action={startSessionAction}>
+            <input type="hidden" name="programDayId" value={day.id} />
+            <button
+              type="submit"
+              className="touch-target w-full rounded-full bg-accent text-base text-black"
+            >
+              {startLabel}
+            </button>
+          </form>
+        )}
+
+        <SessionDetails>
+          <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line px-4 py-3">
+            <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
+            <p className="font-semibold">Dynamic warm-up · 3–4 min</p>
+          </Link>
+          {zone ? <BikeZoneNote zone={zone} /> : null}
+          {plyo.length > 0 ? (
+            <div className="rounded-2xl border border-line px-4 py-3 text-sm">
+              <p className="font-display text-xs uppercase tracking-wide text-accent">
+                Plyo / power · {PLYO_MINUTES}
+              </p>
+              <ul className="mt-2 space-y-1">
+                {plyo.map((drill) => (
+                  <li key={drill.name}>
+                    {drill.name} · {drill.prescription}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <EquipmentRow chips={equipment} />
+        </SessionDetails>
       </section>
 
-      <ol className="flex-1 border-t border-line pb-32">
-        {day.exercises.map((exercise) => {
-          const form = lookupFormVideo(exercise.name, day.exercises);
-          const prescribedSets = deload ? deloadSetCount(exercise.sets) : exercise.sets;
-          const planned = plannedSetLine({
-            sets: prescribedSets,
-            reps: exercise.reps,
-            restSeconds: exercise.restSeconds,
-            logMode: exercise.logMode,
-            name: exercise.name,
-            loadText: exercise.loadText,
-          });
-          return (
-            <li
-              key={exercise.id}
-              className="flex items-start gap-3.5 border-b border-line px-4 py-4"
-            >
-              <ExerciseThumb
-                name={exercise.name}
-                formVideoUrl={form.url}
-                formVideoPending={form.pending}
-              />
-              <div className="min-w-0 flex-1">
-                <h2 className=" leading-snug">{exercise.name}</h2>
-                <CoachCredit name={exercise.name} />
-                <p className="mt-1 text-sm text-muted">{planned}</p>
-                <BagFocusList notes={exercise.notes} />
-                <WatchFormInline url={form.url} pending={form.pending} />
-                <ExerciseNotepad
-                  exerciseName={exercise.name}
-                  programDayId={day.id}
-                  workoutId={draft?.id ?? ""}
-                  logMode={exercise.logMode}
-                  plannedLine={planned}
-                  note={notes[exercise.name]}
+      <section data-session-phase="next" className="flex-1">
+        <p className="px-4 pb-2 font-display text-xs uppercase tracking-wide text-accent">Next</p>
+        <ol className="border-t border-line pb-32">
+          {day.exercises.map((exercise, index) => {
+            const form = lookupFormVideo(exercise.name, day.exercises);
+            const prescribedSets = deload ? deloadSetCount(exercise.sets) : exercise.sets;
+            const planned = plannedSetLine({
+              sets: prescribedSets,
+              reps: exercise.reps,
+              restSeconds: exercise.restSeconds,
+              logMode: exercise.logMode,
+              name: exercise.name,
+              loadText: exercise.loadText,
+            });
+            return (
+              <li
+                key={exercise.id}
+                {...(index === 0 ? { "data-first-controls": "" } : {})}
+                className="flex items-start gap-3.5 border-b border-line px-4 py-4"
+              >
+                <ExerciseThumb
+                  name={exercise.name}
+                  formVideoUrl={form.url}
+                  formVideoPending={form.pending}
                 />
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+                <div className="min-w-0 flex-1">
+                  <h2 className="leading-snug">{exercise.name}</h2>
+                  <CoachCredit name={exercise.name} />
+                  <p className="mt-1 text-sm text-muted">{planned}</p>
+                  {exercise.id === firstRir ? <RirHint /> : null}
+                  <BagFocusList notes={exercise.notes} />
+                  {form.pending || !form.url ? (
+                    <p className="mt-2 text-xs text-muted">Video pending coach review</p>
+                  ) : null}
+                  <ExerciseNotepad
+                    exerciseName={exercise.name}
+                    programDayId={day.id}
+                    workoutId={draft?.id ?? ""}
+                    logMode={exercise.logMode}
+                    plannedLine={planned}
+                    note={notes[exercise.name]}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <section data-session-phase="finish" className="px-4 pb-4">
+        <p className="font-display text-xs uppercase tracking-wide text-accent">Finish</p>
+        <Link href="/mobility" className="mt-2 block rounded-2xl border border-line px-4 py-3">
+          <p className="font-semibold">Mobility / cooldown</p>
+          <p className="mt-1 text-sm text-muted">Hips, splits, neck, and the long holds after you train.</p>
+        </Link>
+      </section>
 
       {draft ? (
         <div

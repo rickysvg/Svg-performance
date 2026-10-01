@@ -84,6 +84,20 @@ textarea:focus-visible {
   min-width: 44px;
 }
 
+/* Keep bag Start and the first session controls above the fixed bottom dock. */
+.above-dock {
+  scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+
+[data-bag-session] {
+  scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom));
+  margin-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+}
+
+[data-first-controls] {
+  scroll-margin-bottom: calc(8rem + env(safe-area-inset-bottom));
+}
+
 .progress-tab {
   box-sizing: border-box;
   height: 2.75rem;

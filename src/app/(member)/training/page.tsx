@@ -14,10 +14,8 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { TrainWeekToggle } from "@/components/training/TrainWeekBoard";
 import { plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
 import {
-  buildCoreWeekPlan,
   nextActiveWeekday,
   planForDate,
   resolvePlanSessions,
@@ -26,8 +24,12 @@ import {
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
-import { RirExplainer } from "@/components/training/RirExplainer";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { NextSessionCta } from "@/components/training/NextSessionCta";
+import { SessionDetails } from "@/components/training/SessionDetails";
+import { EquipmentRow } from "@/components/training/EquipmentRow";
+import { equipmentForExercises } from "@/lib/exercise-media";
+import { nextTrainAction } from "@/lib/train-next";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -81,7 +83,6 @@ export default async function TrainingPage({
     }),
   );
   const strip = weekStrip(prefs, now, tz, selected);
-  const week = buildCoreWeekPlan(prefs, bikeWeekIndex(selected, tz));
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz);
   const weekIndex = bikeWeekIndex(selected, tz);
   const deload = isDeloadWeek(selected, tz);
@@ -91,6 +92,19 @@ export default async function TrainingPage({
   const plyo = showPlyo && dayPlan.active ? plyoBlockFor(emphasis) : [];
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
+  const gear = equipmentForExercises(
+    planned.flatMap((session) =>
+      ((session.day?.exercises ?? []) as { name?: string }[]).map((exercise) => exercise.name ?? ""),
+    ),
+  );
+  const zones = [
+    ...new Map(
+      planned.flatMap((session) => {
+        const zone = bikeZoneForDayNumber(session.dayNumber);
+        return zone ? [[zone.label, zone] as const] : [];
+      }),
+    ).values(),
+  ];
   const isToday = sameLocalDay(selected, now, tz);
   const dayParam = formatDayParam(selected, tz);
   const draftsByDay = new Map(
@@ -98,6 +112,12 @@ export default async function TrainingPage({
       .filter((session) => session.programDayId)
       .map((session) => [session.programDayId as string, session.id]),
   );
+  const nextAction = dayPlan.active
+    ? nextTrainAction(planned, (dayId) => draftsByDay.get(dayId))
+    : null;
+  const bagIndex = planned.findIndex((session) => session.kind === "skill");
+  const showDetails =
+    dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
 
   const moreLinks = [
     { href: "/training/calendar", label: "Calendar" },
@@ -111,7 +131,7 @@ export default async function TrainingPage({
   ];
 
   return (
-    <main className="space-y-4">
+    <main className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl">Training</h1>
@@ -129,21 +149,8 @@ export default async function TrainingPage({
 
       <WeekStrip days={strip} basePath="/training" />
 
-      <TrainWeekToggle week={week} weekIndex={weekIndex} emphasis={emphasis} />
-
-      {deload ? (
-        <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
-      ) : null}
-      {testing ? (
-        <Link href="/training/testing" className="block rounded-[1.5rem] bg-black px-5 py-4 text-white">
-          <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">This week</p>
-          <h2 className="mt-1 text-2xl text-white">Testing Week</h2>
-          <p className="mt-1 text-sm text-white/70">Broad jump, strength estimate, bike sprint, 5-minute bike.</p>
-        </Link>
-      ) : null}
-
       <section className="space-y-3" data-selected-day-plan>
-        <div>
+        <div data-session-phase="first">
           <p className="font-display text-xs uppercase tracking-wide text-accent">
             {isToday ? "Today’s plan" : "Selected day"} · {dayPlan.weekday}
           </p>
@@ -157,86 +164,112 @@ export default async function TrainingPage({
           {dayPlan.skipReason && !dayPlan.active ? (
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
-          {equipmentNote ? <p className="mt-1 text-sm text-muted">{equipmentNote}</p> : null}
         </div>
 
-        {camp ? (
-          <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
-            <span className="flex items-center gap-2">
-              <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Today&apos;s camp focus</span>
-              <ProPill />
-            </span>
-            <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
-              {camp.weekNumber
-                ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
-                : camp.phaseLabel}
-            </span>
-            <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
-          </Link>
+        {nextAction ? <NextSessionCta action={nextAction} /> : null}
+        {deload ? (
+          <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
+      </section>
 
-        {dayPlan.active ? (
-          <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line bg-card px-4 py-4">
-            <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
-            <h3 className="mt-1 text-lg">Dynamic warm-up · 3–4 min</h3>
-            <p className="mt-1 text-sm text-muted">Joint circles and leg swings. Save long holds for the cooldown.</p>
-          </Link>
-        ) : null}
-        {plyo.length > 0 ? (
-          <section className="rounded-2xl border border-line bg-card px-4 py-4">
-            <p className="font-display text-xs uppercase tracking-wide text-accent">
-              Before the lifts · {PLYO_MINUTES}
-            </p>
-            <h3 className="mt-1 text-lg">Plyo / power</h3>
-            <p className="mt-1 text-sm text-muted">{emphasisAccessoryLine(emphasis)}</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              {plyo.map((drill) => (
-                <li key={drill.name}>
-                  <span className="font-semibold">{drill.name}</span> · {drill.prescription}
-                  <span className="block text-muted">{drill.cues}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-xs text-muted">
-              Landing idea from{" "}
-              <a href={PLYO_CREDITS[0].url} className="underline" target="_blank" rel="noreferrer">
-                {PLYO_CREDITS[0].coach}
-              </a>
-              . Not their program.
-            </p>
-          </section>
-        ) : null}
-        {planned.map((session) => {
-          const zone = bikeZoneForDayNumber(session.dayNumber);
-          return (
-          <div key={`${session.slot}-${session.dayId ?? session.label}`} className="space-y-2">
-            {zone ? <BikeZoneNote zone={zone} /> : null}
-          <PlanSessionCard
-            session={session}
-            compact
-            highlight={session.slot === "A" && planned.length > 1}
-            draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
-          />
+      <section className="space-y-3" data-session-phase="next">
+        {planned.map((session, index) => (
+          <div
+            key={`${session.slot}-${session.dayId ?? session.label}`}
+            {...(index === bagIndex ? { "data-bag-session": "" } : {})}
+          >
+            <PlanSessionCard
+              session={session}
+              compact
+              highlight={session.slot === "A" && planned.length > 1}
+              draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
+            />
           </div>
-          );
-        })}
-        {dayPlan.active ? (
-          <Link href="/mobility" className="block rounded-2xl border border-line bg-card px-4 py-4">
-            <p className="font-display text-xs uppercase tracking-wide text-accent">Cooldown-off</p>
-            <h3 className="mt-1 text-lg">Mobility / cooldown</h3>
+        ))}
+      </section>
+
+      {showDetails || dayPlan.active ? (
+        <SessionDetails>
+          {dayPlan.active ? (
+            <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line bg-background px-4 py-3">
+              <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
+              <p className="mt-1 font-semibold">Dynamic warm-up · 3–4 min</p>
+              <p className="mt-1 text-sm text-muted">Joint circles and leg swings. Save long holds for the cooldown.</p>
+            </Link>
+          ) : null}
+          {zones.map((zone) => (
+            <BikeZoneNote key={zone.label} zone={zone} />
+          ))}
+          {plyo.length > 0 ? (
+            <div className="rounded-2xl border border-line bg-background px-4 py-3">
+              <p className="font-display text-xs uppercase tracking-wide text-accent">
+                Before the lifts · {PLYO_MINUTES}
+              </p>
+              <h3 className="mt-1 text-lg">Plyo / power</h3>
+              <p className="mt-1 text-sm text-muted">{emphasisAccessoryLine(emphasis)}</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {plyo.map((drill) => (
+                  <li key={drill.name}>
+                    <span className="font-semibold">{drill.name}</span> · {drill.prescription}
+                    <span className="block text-muted">{drill.cues}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-muted">
+                Landing idea from{" "}
+                <a href={PLYO_CREDITS[0].url} className="underline" target="_blank" rel="noreferrer">
+                  {PLYO_CREDITS[0].coach}
+                </a>
+                . Not their program.
+              </p>
+            </div>
+          ) : null}
+          {equipmentNote ? <p className="text-sm text-muted">{equipmentNote}</p> : null}
+          <EquipmentRow chips={gear} />
+        </SessionDetails>
+      ) : null}
+
+      {dayPlan.active ? (
+        <section data-session-phase="finish">
+          <p className="font-display text-xs uppercase tracking-wide text-accent">Finish</p>
+          <Link href="/mobility" className="mt-2 block rounded-2xl border border-line bg-card px-4 py-4">
+            <h3 className="text-lg">Mobility / cooldown</h3>
             <p className="mt-1 text-sm text-muted">Hips, splits, neck, and the long holds after you train.</p>
           </Link>
-        ) : null}
+        </section>
+      ) : null}
 
+      {camp ? (
+        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
+          <span className="flex items-center gap-2">
+            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Camp focus</span>
+            <ProPill />
+          </span>
+          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
+            {camp.weekNumber
+              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
+              : camp.phaseLabel}
+          </span>
+          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
+        </Link>
+      ) : null}
+
+      {testing ? (
+        <Link href="/training/testing" className="block rounded-[1.5rem] bg-black px-5 py-4 text-white">
+          <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Testing</p>
+          <h2 className="mt-1 text-2xl text-white">Testing Week</h2>
+          <p className="mt-1 text-sm text-white/70">Broad jump, strength estimate, bike sprint, 5-minute bike.</p>
+        </Link>
+      ) : null}
+
+      {fromProfile ? null : (
         <TrainingLevelToggle
           band={band}
           dayParam={dayParam}
           fromProfile={fromProfile}
           basePath="/training"
         />
-
-        <RirExplainer />
-      </section>
+      )}
 
       <nav aria-label="More training" className="overflow-hidden rounded-2xl border border-line bg-card">
         <ul className="divide-y divide-line">

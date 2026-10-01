@@ -8,36 +8,59 @@ function read(rel: string) {
 
 describe("Train default is one day", () => {
   const page = read("src/app/(member)/training/page.tsx");
-  const board = read("src/components/training/TrainWeekBoard.tsx");
-  const rir = read("src/components/training/RirExplainer.tsx");
+  const day = read("src/app/(member)/training/[dayId]/page.tsx");
+  const hint = read("src/components/training/RirHint.tsx");
 
-  it("keeps day chips and shows the selected day as the body", () => {
+  it("puts the next-session action under the day chips and drops the week board", () => {
     expect(page).toContain("parseDayParam");
     expect(page).toContain("<WeekStrip");
     expect(page).toContain("data-selected-day-plan");
     expect(page).toContain("mesoBlockLabel");
-    const day = page.indexOf("data-selected-day-plan");
-    const toggle = page.indexOf("<TrainWeekToggle");
-    expect(toggle).toBeGreaterThan(-1);
-    expect(day).toBeGreaterThan(toggle);
-    expect(page.indexOf('aria-label="More training"')).toBeGreaterThan(day);
+    expect(page).toContain("<NextSessionCta");
+    expect(page).toContain("<SessionDetails");
+    expect(read("src/components/training/SessionDetails.tsx")).toContain("data-session-details");
+    expect(page).toContain('data-session-phase="first"');
+    expect(page).toContain('data-session-phase="next"');
+    expect(page).toContain('data-session-phase="finish"');
+    expect(page).toContain("data-bag-session");
+    const chips = page.indexOf("<WeekStrip");
+    const selected = page.indexOf("data-selected-day-plan");
+    const next = page.indexOf("<NextSessionCta");
+    const details = page.indexOf("<SessionDetails");
+    expect(selected).toBeGreaterThan(chips);
+    expect(next).toBeGreaterThan(selected);
+    expect(details).toBeGreaterThan(next);
+    expect(page).not.toContain("TrainWeekToggle");
+    expect(page).not.toContain("This week");
+    expect(page).not.toContain("RirExplainer");
+    expect(page.indexOf('aria-label="More training"')).toBeGreaterThan(selected);
     expect(page).toContain("Round timer");
     expect(page).not.toContain("Free tool");
+    expect(page).toContain("fromProfile ? null");
   });
 
-  it("hides the weekday cards behind a closed This week control", () => {
-    expect(page).not.toContain("<TrainWeekBoard");
-    expect(page).not.toContain("This Core week");
-    expect(board).toContain("data-train-week");
-    expect(board).toContain("This week");
-    expect(board).toContain("<details");
-    expect(board).not.toContain("<details open");
-    expect(board).toContain("TrainWeekToggle");
+  it("structures the day page as First, Next, Finish with collapsed session details", () => {
+    expect(day).toContain('data-session-phase="first"');
+    expect(day).toContain('data-session-phase="next"');
+    expect(day).toContain('data-session-phase="finish"');
+    expect(day).toContain("<SessionDetails");
+    expect(day).toContain("data-start-bar");
+    expect(day).toContain("sticky bottom-0");
+    expect(day).toContain("data-first-controls");
+    expect(day).not.toContain("WatchFormInline");
+    const first = day.indexOf('data-session-phase="first"');
+    const next = day.indexOf('data-session-phase="next"');
+    const finish = day.indexOf('data-session-phase="finish"');
+    expect(first).toBeLessThan(next);
+    expect(next).toBeLessThan(finish);
   });
 
-  it("starts the RIR note collapsed", () => {
-    expect(rir).toContain("data-rir-explainer");
-    expect(rir).not.toContain("<details open");
+  it("uses compact How heavy help beside a lift instead of a big RIR card", () => {
+    expect(hint).toContain("data-rir-hint");
+    expect(hint).toContain("How heavy?");
+    expect(hint).not.toContain("<details open");
+    expect(day).toContain("<RirHint />");
+    expect(page).not.toContain("<RirExplainer");
   });
 
   it("leaves Calendar as its own page", () => {
@@ -45,6 +68,7 @@ describe("Train default is one day", () => {
     expect(calendar).toContain("WeekStrip");
     expect(calendar).toContain("data-selected-day-plan");
     expect(calendar).toContain("CalendarList");
+    expect(calendar).toContain("fromProfile ? null");
     expect(page).toContain('href: "/training/calendar"');
   });
 });

@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { BAG_FOCUS, BAG_ROUND_COUNTS_ADVANCED_LONG, bagMinutesForBand, bagRoundCountFor, isAdvancedLongBagDay } from "@/lib/bag-sessions";
 import { coreSkeletonSessions } from "@/lib/week-plan";
-import { weekChipLabelLines } from "@/components/training/WeekStrip";
+import { weekChipActivities } from "@/components/training/WeekStrip";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
@@ -15,8 +15,9 @@ describe("Train / Calendar day chips", () => {
     expect(strip).toContain("dayParam");
     expect(strip).toContain("href=");
     expect(strip).toContain("data-week-chip");
-    expect(strip).toContain("weekChipLabelLines");
-    expect(strip).toContain("h-[4.75rem]");
+    expect(strip).toContain("weekChipActivities");
+    expect(strip).toContain("data-week-chip-date");
+    expect(strip).toContain("h-[5.5rem]");
     expect(strip).toContain("min-w-0");
     expect(read("src/app/(member)/training/page.tsx")).toContain("parseDayParam");
     expect(read("src/app/(member)/training/page.tsx")).toContain("data-selected-day-plan");
@@ -25,12 +26,12 @@ describe("Train / Calendar day chips", () => {
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("data-selected-day-plan");
   });
 
-  it("stacks long chip labels onto two centered lines without changing summaries", () => {
-    expect(weekChipLabelLines("Bag+Lift+Bike")).toEqual(["Bag+Lift", "+Bike"]);
-    expect(weekChipLabelLines("Bag+Lift")).toEqual(["Bag", "+Lift"]);
-    expect(weekChipLabelLines("Bag+GPP")).toEqual(["Bag", "+GPP"]);
-    expect(weekChipLabelLines("Off")).toEqual(["Off"]);
-    expect(weekChipLabelLines("Rest")).toEqual(["Rest"]);
+  it("turns summaries into compact activity marks and keeps rest words", () => {
+    expect(weekChipActivities("Bag+Lift+Bike").map((item) => item.mark)).toEqual(["B", "L", "K"]);
+    expect(weekChipActivities("Bag+Lift").map((item) => item.label)).toEqual(["Bag", "Lift"]);
+    expect(weekChipActivities("Bag+GPP").map((item) => item.mark)).toEqual(["B", "G"]);
+    expect(weekChipActivities("Off")).toEqual([{ id: "Off", label: "Off", mark: "O" }]);
+    expect(weekChipActivities("Rest")).toEqual([{ id: "Rest", label: "Rest", mark: "R" }]);
   });
 
   it("keeps Mon and Wed bag day numbers distinct", () => {
