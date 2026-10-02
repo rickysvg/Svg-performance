@@ -9,7 +9,8 @@ export type WeekChipActivity = {
 };
 
 const WORD_LABELS = new Set(["Off", "Rest", "Recover"]);
-const ICON_ACTIVITIES = new Set(["Bag", "Lift", "Bike", "GPP"]);
+const LEGEND = ["Bag", "Lift", "Bike", "GPP"] as const;
+const ICON_ACTIVITIES = new Set<string>(LEGEND);
 
 /** Split a plan summary into chip activities. Rendering is icons, not letters. */
 export function weekChipActivities(summary: string): WeekChipActivity[] {
@@ -123,6 +124,33 @@ function ActivityMarks({
   );
 }
 
+function WeekLegend() {
+  return (
+    <ul
+      data-week-legend
+      aria-label="Activity key"
+      className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
+    >
+      {LEGEND.map((id) => (
+        <li
+          key={id}
+          className="inline-flex items-center gap-1 text-[11px] font-medium leading-none text-foreground"
+        >
+          <span
+            aria-hidden
+            className={`inline-flex h-4 w-4 shrink-0 items-center justify-center ${
+              id === "Bag" ? "rounded-full bg-accent text-black" : "text-foreground"
+            }`}
+          >
+            <ActivityIcon id={id} />
+          </span>
+          {id}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function WeekStrip({
   days,
   basePath = "/training",
@@ -131,7 +159,8 @@ export function WeekStrip({
   basePath?: string;
 }) {
   return (
-    <ol data-week-strip className="grid grid-cols-7 gap-1">
+    <div>
+      <ol data-week-strip className="grid grid-cols-7 gap-1">
       {days.map((day) => {
         const href = `${basePath}?day=${day.dayParam}`;
         const selected = day.isSelected;
@@ -189,6 +218,8 @@ export function WeekStrip({
           </li>
         );
       })}
-    </ol>
+      </ol>
+      <WeekLegend />
+    </div>
   );
 }

@@ -40,6 +40,11 @@ describe("Train / Calendar day chips", () => {
     expect(strip).toContain("title={activity.label}");
     expect(strip).toContain('className="sr-only">{activity.label}');
     expect(strip).toContain("WORD_LABELS");
+    expect(strip).toContain("data-week-legend");
+    expect(strip).toContain("Activity key");
+    for (const label of ["Bag", "Lift", "Bike", "GPP"]) {
+      expect(strip).toContain(label);
+    }
     expect(strip).not.toContain("ACTIVITY_MARK");
     expect(strip).not.toContain("activity.mark");
   });
