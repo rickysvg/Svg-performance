@@ -101,9 +101,14 @@ describe("reminder preferences", () => {
       timezoneOffsetMinutes: 0,
     });
     process.env.SMTP_HOST = "smtp.test.local";
-    const sent: string[] = [];
+    const sent: { to: string; subject: string; text: string; html?: string }[] = [];
     setMailSenderForTests(async (input) => {
-      sent.push(input.to);
+      sent.push({
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      });
       return { sent: true, reason: "sent" };
     });
     const on = await processDueRemindersForUser(
@@ -113,7 +118,21 @@ describe("reminder preferences", () => {
     );
     expect(on.smtpConfigured).toBe(true);
     expect(on.emailed).toBe(true);
-    expect(sent).toEqual([user2.email]);
+    expect(sent.map((row) => row.to)).toEqual([user2.email]);
+    expect(sent[0]?.subject).toBe("Your session is waiting");
+    expect(sent[0]?.html).toContain(
+      "https://svg-performance.vercel.app/svg-performance-badge-mark.png",
+    );
+    expect(sent[0]?.text).toContain("CONQUER THE DAY");
+    expect(sent[0]?.text).toContain(
+      "Reminder: log a session if you trained today. Easy to skip if you already did.",
+    );
+    expect(sent[0]?.text).toContain("Turn these off any time under Profile → Reminders.");
+    expect(sent[0]?.text).not.toMatch(/gentle/i);
+    expect(sent[0]?.html).toContain("#CBF805");
+    expect(sent[0]?.html).toContain("background-color:#000000");
+    expect(sent[0]?.html).toContain(">Open Train<");
+    expect(sent[0]?.html).toContain("http://localhost:3000/training");
   });
 
   it("does not remind a workout after the member already logged one today", async () => {
