@@ -12,6 +12,23 @@ const WORD_LABELS = new Set(["Off", "Rest", "Recover"]);
 const LEGEND = ["Bag", "Lift", "Bike", "GPP"] as const;
 const ICON_ACTIVITIES = new Set<string>(LEGEND);
 
+/** Spoken and legend names. Plan summaries stay Bag+GPP. */
+const ACTIVITY_NAME: Record<string, string> = {
+  GPP: "GPP · conditioning",
+};
+
+export function activityChipName(id: string) {
+  return ACTIVITY_NAME[id] ?? id;
+}
+
+function spokenSummary(summary: string) {
+  return summary
+    .split("+")
+    .filter((part) => part.length > 0)
+    .map((part) => activityChipName(part))
+    .join("+");
+}
+
 /** Split a plan summary into chip activities. Rendering is icons, not letters. */
 export function weekChipActivities(summary: string): WeekChipActivity[] {
   const trimmed = summary.trim();
@@ -21,7 +38,7 @@ export function weekChipActivities(summary: string): WeekChipActivity[] {
     .filter((part) => part.length > 0)
     .map((part) => ({
       id: part,
-      label: part,
+      label: activityChipName(part),
     }));
 }
 
@@ -129,12 +146,12 @@ function WeekLegend() {
     <ul
       data-week-legend
       aria-label="Activity key"
-      className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
+      className="mt-2 flex flex-nowrap items-center justify-center gap-x-2.5 gap-y-1"
     >
       {LEGEND.map((id) => (
         <li
           key={id}
-          className="inline-flex items-center gap-1 text-[11px] font-medium leading-none text-foreground"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium leading-none text-foreground"
         >
           <span
             aria-hidden
@@ -144,7 +161,7 @@ function WeekLegend() {
           >
             <ActivityIcon id={id} />
           </span>
-          {id}
+          {activityChipName(id)}
         </li>
       ))}
     </ul>
@@ -175,7 +192,7 @@ export function WeekStrip({
               href={href}
               data-week-chip={day.short}
               aria-current={selected ? "date" : undefined}
-              aria-label={`${day.weekday} ${day.dateLabel}, ${day.summary}`}
+              aria-label={`${day.weekday} ${day.dateLabel}, ${spokenSummary(day.summary)}`}
               className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center transition-colors ${
                 selected
                   ? "bg-black text-white"

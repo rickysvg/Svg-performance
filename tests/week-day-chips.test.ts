@@ -29,7 +29,10 @@ describe("Train / Calendar day chips", () => {
   it("turns summaries into activity icons and keeps rest words", () => {
     expect(weekChipActivities("Bag+Lift+Bike").map((item) => item.id)).toEqual(["Bag", "Lift", "Bike"]);
     expect(weekChipActivities("Bag+Lift").map((item) => item.label)).toEqual(["Bag", "Lift"]);
-    expect(weekChipActivities("Bag+GPP").map((item) => item.label)).toEqual(["Bag", "GPP"]);
+    expect(weekChipActivities("Bag+GPP").map((item) => item.label)).toEqual([
+      "Bag",
+      "GPP · conditioning",
+    ]);
     expect(weekChipActivities("Off")).toEqual([{ id: "Off", label: "Off" }]);
     expect(weekChipActivities("Rest")).toEqual([{ id: "Rest", label: "Rest" }]);
     expect(weekChipActivities("Recover")).toEqual([{ id: "Recover", label: "Recover" }]);
@@ -42,6 +45,7 @@ describe("Train / Calendar day chips", () => {
     expect(strip).toContain("WORD_LABELS");
     expect(strip).toContain("data-week-legend");
     expect(strip).toContain("Activity key");
+    expect(strip).toContain("GPP · conditioning");
     for (const label of ["Bag", "Lift", "Bike", "GPP"]) {
       expect(strip).toContain(label);
     }
