@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { exerciseThumbSrc } from "@/lib/exercise-media";
 import { findSkillProgram, getDemoProgram } from "@/lib/programs";
 import {
   DEMO_FORM_VIDEOS,
@@ -7,6 +10,8 @@ import {
   isYoutubeFormUrl,
   isYoutubeWatchUrl,
   lookupFormVideo,
+  showFormVideoPending,
+  skipsFormVideo,
   youtubeStartSeconds,
   youtubeThumbSrcs,
   youtubeVideoId,
@@ -32,6 +37,21 @@ describe("DEMO form videos", () => {
       expect(catalog, `missing catalog row for ${exercise.name}`).toBeTruthy();
       const hasUrl = Boolean(exercise.formVideoUrl);
       const pending = exercise.formVideoPending;
+      if (catalog.omit || skipsFormVideo(exercise.name)) {
+        expect(exercise.formVideoUrl, exercise.name).toBe("");
+        expect(exercise.formVideoPending, exercise.name).toBe(false);
+        const looked = lookupFormVideo(exercise.name, [
+          {
+            name: exercise.name,
+            formVideoUrl: exercise.formVideoUrl,
+            formVideoPending: exercise.formVideoPending,
+          },
+        ]);
+        expect(looked.omit, exercise.name).toBe(true);
+        expect(looked.url, exercise.name).toBe("");
+        expect(showFormVideoPending(looked), exercise.name).toBe(false);
+        continue;
+      }
       expect(hasUrl || pending).toBe(true);
       if (pending) {
         expect(exercise.formVideoUrl).toBe("");
@@ -44,6 +64,12 @@ describe("DEMO form videos", () => {
 
   it("keeps every catalog form link short, a Short, or timestamped", () => {
     for (const [name, entry] of Object.entries(DEMO_FORM_VIDEOS)) {
+      if (entry.omit) {
+        expect(entry.pending, name).toBe(false);
+        expect(entry.url, name).toBe("");
+        expect(skipsFormVideo(name), name).toBe(true);
+        continue;
+      }
       if (entry.pending) {
         expect(entry.url, name).toBe("");
         continue;
@@ -107,6 +133,34 @@ describe("DEMO form videos", () => {
 
     const neck = lookupFormVideo("Neck isometric matrix");
     expect(neck.pending).toBe(true);
+    expect(neck.omit).toBe(false);
     expect(neck.url).toBe("");
+    expect(showFormVideoPending(neck)).toBe(true);
+
+    const staleShadow = lookupFormVideo("Shadowbox round 1 — empty hands", [
+      {
+        name: "Shadowbox round 1 — empty hands",
+        formVideoUrl: "https://www.youtube.com/watch?v=1wCQLFhipbE",
+        formVideoPending: false,
+      },
+    ]);
+    expect(staleShadow.omit).toBe(true);
+    expect(staleShadow.url).toBe("");
+    expect(staleShadow.pending).toBe(false);
+    expect(showFormVideoPending(staleShadow)).toBe(false);
+    expect(lookupFormVideo("Shadowbox round 2 — hand weights").omit).toBe(true);
+    expect(lookupFormVideo("Easy shadow cool-down").omit).toBe(true);
+    expect(skipsFormVideo("Pivot-and-open shadow kicks")).toBe(false);
+    expect(skipsFormVideo("Jab–cross (1–2)")).toBe(false);
+
+    for (const name of [
+      "Shadowbox round 1 — empty hands",
+      "Shadowbox round 2 — hand weights",
+      "Easy shadow cool-down",
+      "Shadowbox warm-up",
+    ]) {
+      const relative = exerciseThumbSrc(name).replace(/^\//, "");
+      expect(fs.existsSync(path.join(process.cwd(), "public", relative)), name).toBe(true);
+    }
   });
 });

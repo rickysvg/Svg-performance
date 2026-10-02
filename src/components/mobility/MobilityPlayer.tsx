@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { PlayStep } from "@/lib/mobility";
+import { MobilityFigure } from "@/components/mobility/MobilityFigure";
 
 function clock(total: number) {
   const safe = Math.max(0, total);
@@ -58,6 +59,12 @@ export function MobilityPlayer({
         {step.sideLabel ? ` · ${step.sideLabel}` : ""}
         {step.repeatLabel ? ` · ${step.repeatLabel}` : ""}
       </p>
+      <MobilityFigure
+        blockKey={step.blockKey}
+        title={step.name}
+        variant="hero"
+        mirror={step.side === "right"}
+      />
       <h2 className="text-3xl text-white">{step.name}</h2>
       <p className="text-sm text-white/75">{step.prescription}</p>
       {step.advanced ? (

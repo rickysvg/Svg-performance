@@ -37,8 +37,16 @@ describe("logger prefill and Done → rest", () => {
     expect(form).not.toContain("targetInputPlaceholder");
     expect(form).not.toContain("placeholder:text-muted");
     expect(form).not.toMatch(/name=\{`sets\.\$\{index\}\.reps`\}[\s\S]{0,400}placeholder=/);
-    expect(form).not.toMatch(/name=\{`sets\.\$\{index\}\.durationSeconds`\}[\s\S]{0,400}placeholder=/);
-    expect(form).not.toMatch(/name=\{`sets\.\$\{index\}\.loadValue`\}[\s\S]{0,400}placeholder=/);
+    // Seconds / lbs boxes stay empty. A unit hint ("sec") or the prescribed lb
+    // hint is not a copied previous set.
+    expect(form).not.toMatch(
+      /name=\{`sets\.\$\{index\}\.durationSeconds`\}[\s\S]{0,500}placeholder=\{[^}]*previous/,
+    );
+    expect(form).not.toMatch(
+      /name=\{`sets\.\$\{index\}\.loadValue`\}[\s\S]{0,500}placeholder=\{[^}]*previous/,
+    );
+    expect(form).toMatch(/placeholder=\{layout === "weighted_shadow" \? "sec" : undefined\}/);
+    expect(form).toMatch(/placeholder=\{pounds \?\? "lbs"\}/);
   });
 
   it("copies previous onto an exercise for Same as last", () => {

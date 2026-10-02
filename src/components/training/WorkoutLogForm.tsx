@@ -18,7 +18,7 @@ import { BagFocusList } from "@/components/training/BagFocusList";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
-import { lookupFormVideo } from "@/lib/form-videos";
+import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
   countLabel,
@@ -530,7 +530,7 @@ export function WorkoutLogForm({
                         Same as last
                       </button>
                     ) : null}
-                    {form.pending || !form.url ? (
+                    {showFormVideoPending(form) ? (
                       <p className="text-xs text-muted">Video pending coach review</p>
                     ) : null}
                   </div>

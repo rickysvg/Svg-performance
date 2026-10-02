@@ -5,6 +5,7 @@ import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { getMobilityRoutine, routineIsPro } from "@/lib/mobility";
 import { CreditList } from "@/components/mobility/CreditList";
+import { MobilityFigure } from "@/components/mobility/MobilityFigure";
 import { IgDrillCard } from "@/components/mobility/IgDrillCard";
 import { IG_DRILLS } from "@/lib/ig-drills";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
@@ -80,13 +81,16 @@ export default async function MobilityRoutinePage({
           ) : null}
           <ol className="space-y-3">
             {routine.blocks.map((block) => (
-              <li key={block.key} className="rounded-2xl border border-line bg-card px-4 py-3">
-                <p className="font-semibold">
-                  {block.name}
-                  {block.advanced ? " · advanced" : ""}
-                </p>
-                <p className="text-sm text-muted">{block.prescription}</p>
-                <p className="mt-1 text-sm">{block.cues}</p>
+              <li key={block.key} className="flex items-start gap-3 rounded-2xl border border-line bg-card px-4 py-3">
+                <MobilityFigure blockKey={block.key} title={block.name} />
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    {block.name}
+                    {block.advanced ? " · advanced" : ""}
+                  </p>
+                  <p className="text-sm text-muted">{block.prescription}</p>
+                  <p className="mt-1 text-sm">{block.cues}</p>
+                </div>
               </li>
             ))}
           </ol>

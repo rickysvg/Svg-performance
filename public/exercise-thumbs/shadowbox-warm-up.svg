@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-hidden="true">
+  <title>Shadowbox warm-up</title>
+  <rect width="256" height="256" rx="28" fill="#10141b"/>
+  <rect x="10" y="10" width="8" height="236" rx="4" fill="#CBF805"/>
+  <circle cx="128" cy="58" r="16" fill="#f5f5f5"/>
+  <path d="M114 76 L144 78 L148 152 L110 150 Z" fill="#f5f5f5"/>
+  <path d="M120 94 L92 78 M140 94 L166 80" stroke="#f5f5f5" stroke-width="10" stroke-linecap="round"/>
+  <path d="M116 152 L98 216 M144 152 L170 212" stroke="#f5f5f5" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="94" cy="222" r="7" fill="#CBF805"/>
+  <circle cx="174" cy="218" r="7" fill="#CBF805"/>
+</svg>

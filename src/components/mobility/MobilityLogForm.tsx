@@ -4,6 +4,7 @@ import { useActionState, useRef } from "react";
 import { saveMobilityLogAction, type MobilityActionState } from "@/app/actions/mobility";
 import { StatusBanner } from "@/components/StatusBanner";
 import { KICK_MARKS, type MobilityLogRow } from "@/lib/mobility";
+import { MobilityFigure } from "@/components/mobility/MobilityFigure";
 
 export type PreviousCell = {
   holdSeconds: number | null;
@@ -53,11 +54,20 @@ function LogRow({
 
   return (
     <fieldset className="space-y-3 rounded-2xl border border-line bg-card p-4">
-      <legend className="px-1 text-base font-semibold">
-        {row.name}
-        {row.sideLabel ? ` · ${row.sideLabel}` : ""}
-      </legend>
-      <p className="text-xs text-muted">{row.prescription}</p>
+      <div className="flex items-start gap-3">
+        <MobilityFigure
+          blockKey={row.exerciseKey}
+          title={row.name}
+          mirror={row.side === "right"}
+        />
+        <div className="min-w-0">
+          <p className="px-1 text-base font-semibold">
+            {row.name}
+            {row.sideLabel ? ` · ${row.sideLabel}` : ""}
+          </p>
+          <p className="text-xs text-muted">{row.prescription}</p>
+        </div>
+      </div>
       <p className="text-sm">
         <span className="font-medium">Previous</span>{" "}
         <span className="text-muted">{previousText(previous, unit)}</span>

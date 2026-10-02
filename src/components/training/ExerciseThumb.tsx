@@ -5,6 +5,7 @@ import { exerciseThumbSrc, fallbackThumbSrc } from "@/lib/exercise-media";
 import {
   isYoutubeFormUrl,
   lookupFormVideo,
+  skipsFormVideo,
   youtubeThumbSrcs,
 } from "@/lib/form-videos";
 
@@ -33,10 +34,15 @@ export function ExerciseThumb({
   formVideoUrl?: string;
   formVideoPending?: boolean;
 }) {
+  const skipVideo = skipsFormVideo(name);
   const lookedUp = lookupFormVideo(name);
-  const url = formVideoUrl !== undefined ? formVideoUrl : lookedUp.url;
-  const pending = formVideoPending !== undefined ? formVideoPending : lookedUp.pending;
-  const watchable = !pending && Boolean(url) && isYoutubeFormUrl(url);
+  const url = skipVideo ? "" : formVideoUrl !== undefined ? formVideoUrl : lookedUp.url;
+  const pending = skipVideo
+    ? false
+    : formVideoPending !== undefined
+      ? formVideoPending
+      : lookedUp.pending;
+  const watchable = !skipVideo && !pending && Boolean(url) && isYoutubeFormUrl(url);
   const videoStills = useMemo(() => (watchable ? youtubeThumbSrcs(url) : []), [url, watchable]);
   const sources = useMemo(
     () => [...videoStills, exerciseThumbSrc(name), fallbackThumbSrc()],
