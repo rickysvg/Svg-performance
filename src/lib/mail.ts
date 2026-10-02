@@ -57,6 +57,14 @@ const REMINDER_DISPLAY_FONT =
   "Impact,'Arial Black',Helvetica,Arial,sans-serif";
 const REMINDER_BODY_FONT = "Arial,Helvetica,sans-serif";
 
+/**
+ * Official circular badge. PNG, not WebP: Outlook and other clients drop WebP
+ * and would show a broken image. Absolute production URL — email clients
+ * cannot load a relative path.
+ */
+export const REMINDER_LOGO_URL =
+  "https://svg-performance.vercel.app/svg-performance-badge.png";
+
 export type ReminderEmailItem = {
   label: string;
   message: string;
@@ -64,7 +72,6 @@ export type ReminderEmailItem = {
 
 export type ReminderEmailCard = {
   eyebrow: string;
-  brand: string;
   headline: string;
   intro: string;
   items: ReminderEmailItem[];
@@ -123,13 +130,17 @@ export function reminderEmailHtml(card: ReminderEmailCard) {
             <td height="8" bgcolor="#CBF805" style="height:8px;background-color:#CBF805;font-size:8px;line-height:8px;mso-line-height-rule:exactly;">&#8203;</td>
           </tr>
           <tr>
-            <td style="padding:28px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:13px;line-height:1.2;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:#CBF805;">${escapeHtml(card.eyebrow)}</td>
+            <td align="center" style="padding:22px 24px 0;">
+              <a href="${href}" style="text-decoration:none;">
+                <img src="${REMINDER_LOGO_URL}" width="160" height="160" alt="SVG Performance" style="display:block;border:0;outline:none;text-decoration:none;width:160px;height:160px;" />
+              </a>
+            </td>
           </tr>
           <tr>
-            <td style="padding:8px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:12px;line-height:1.2;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;color:#ffffff;">${escapeHtml(card.brand)}</td>
+            <td align="center" style="padding:16px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:13px;line-height:1.2;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:#CBF805;">${escapeHtml(card.eyebrow)}</td>
           </tr>
           <tr>
-            <td style="padding:12px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:32px;line-height:1;letter-spacing:0.01em;text-transform:uppercase;font-weight:700;color:#ffffff;">${escapeHtml(card.headline)}</td>
+            <td align="center" style="padding:12px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:32px;line-height:1.05;letter-spacing:0.01em;text-transform:uppercase;font-weight:700;color:#ffffff;">${escapeHtml(card.headline)}</td>
           </tr>
           <tr>
             <td style="padding:16px 24px 0;font-family:${REMINDER_BODY_FONT};font-size:15px;line-height:1.5;color:#f2f2f2;">${escapeHtml(card.intro)}</td>

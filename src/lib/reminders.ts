@@ -239,9 +239,9 @@ function singleKind(kinds: ReminderKind[]): ReminderKind | null {
 function reminderSubject(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Own the session";
+      return "Log the session";
     case "food":
-      return "Fuel the work";
+      return "Fuel the day";
     case "quote":
       return "Today's line";
     case "booking":
@@ -254,13 +254,13 @@ function reminderSubject(kinds: ReminderKind[]) {
 function reminderHeadline(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Own the session";
+      return "Show up for it";
     case "food":
-      return "Fuel the work";
+      return "Fuel the day";
     case "quote":
-      return "Carry this line";
+      return "Read it. Then work.";
     case "booking":
-      return "Book with Ricky";
+      return "Your request is open";
     default:
       return "Today's callouts";
   }
@@ -269,30 +269,30 @@ function reminderHeadline(kinds: ReminderKind[]) {
 function reminderIntro(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return `${REMINDER_HONESTY} Own the session. Log it if you already trained. If you have not, the day is still yours to take.`;
+      return `${REMINDER_HONESTY} You chose this session. Show up for it, then log the work in the app.`;
     case "food":
-      return `${REMINDER_HONESTY} Fuel is part of owning the day. Log an estimate and get back to the work.`;
+      return `${REMINDER_HONESTY} Fuel is part of the day you committed to. Log it in the app.`;
     case "quote":
-      return `${REMINDER_HONESTY} Read the line. Then go do the work.`;
+      return `${REMINDER_HONESTY} Take the line, then open the app and do the work you said you would.`;
     case "booking":
-      return `${REMINDER_HONESTY} Your Book with Ricky request is still open. Preferred times are on file. That is not a confirmed slot.`;
+      return `${REMINDER_HONESTY} You asked to book with Ricky. That request is still open. Preferred times are on file. This is not a confirmed slot.`;
     default:
-      return `${REMINDER_HONESTY} Conquer the day. Everything still open is below.`;
+      return `${REMINDER_HONESTY} Show up for the session you chose, log the work, and fuel the day. What is still open is below.`;
   }
 }
 
 function reminderPreheader(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Automated SVG Performance reminder. Own the session.";
+      return "Automated SVG Performance reminder. Show up and log the session.";
     case "food":
-      return "Automated SVG Performance reminder. Fuel the work.";
+      return "Automated SVG Performance reminder. Fuel the day you committed to.";
     case "quote":
-      return "Automated SVG Performance reminder. Today's line is in.";
+      return "Automated SVG Performance reminder. Read the line, then do the work.";
     case "booking":
-      return "Automated SVG Performance reminder. Your Book with Ricky request is open.";
+      return "Automated SVG Performance reminder. Your Book with Ricky request is still open.";
     default:
-      return "Automated SVG Performance reminder. Today's callouts are open.";
+      return "Automated SVG Performance reminder. Show up, log it, fuel the day.";
   }
 }
 
@@ -337,7 +337,6 @@ export function buildReminderEmail(due: DueReminder[], origin = performanceAppOr
   ].join("\n");
   const html = reminderEmailHtml({
     eyebrow: "Conquer the day",
-    brand: "SVG Performance",
     headline,
     intro,
     items: due.map((item) => ({
