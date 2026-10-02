@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-hidden="true">
+  <title>Shadowbox with hand weights</title>
+  <rect width="256" height="256" rx="28" fill="#10141b"/>
+  <rect x="10" y="10" width="8" height="236" rx="4" fill="#CBF805"/>
+  <circle cx="132" cy="58" r="16" fill="#f5f5f5"/>
+  <path d="M118 76 L148 78 L150 150 L112 148 Z" fill="#f5f5f5"/>
+  <path d="M124 92 L96 78 M140 92 L168 80" stroke="#f5f5f5" stroke-width="10" stroke-linecap="round"/>
+  <rect x="74" y="70" width="22" height="16" rx="4" fill="#CBF805"/>
+  <rect x="162" y="72" width="22" height="16" rx="4" fill="#CBF805"/>
+  <path d="M118 150 L96 214 M146 150 L176 208" stroke="#f5f5f5" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="92" cy="220" r="7" fill="#CBF805"/>
+  <circle cx="180" cy="214" r="7" fill="#CBF805"/>
+</svg>

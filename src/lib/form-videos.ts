@@ -10,6 +10,11 @@
 export type FormVideoSeed = {
   url: string;
   pending: boolean;
+  /**
+   * Basic movement. No technique video, and no "pending" placeholder.
+   * Shadow rounds use this — shadowboxing is footwork and hands, not a form clip.
+   */
+  omit?: boolean;
   channel: string;
   title: string;
   /** Public length in seconds for a verified short form demo. */
@@ -41,6 +46,23 @@ const PENDING: FormVideoSeed = {
   channel: "",
   title: "",
 };
+
+/** Intentionally no form video. The logger must not show a still or a pending line. */
+const NO_FORM_VIDEO: FormVideoSeed = {
+  url: "",
+  pending: false,
+  omit: true,
+  channel: "",
+  title: "",
+};
+
+/**
+ * Shadowboxing rounds are basic. "Shadow kicks" and other mobility names do not match.
+ * "Easy shadow cool-down" is included.
+ */
+export function skipsFormVideo(name: string) {
+  return /\bshadow(?:\s*-?\s*)?box(?:ing)?\b/i.test(name) || /\beasy shadow\b/i.test(name);
+}
 
 const goblet = ready({
   url: "https://www.youtube.com/watch?v=nfX7IFK9UNI",
@@ -463,16 +485,16 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Frame and recover": sideControl,
   "Dead bug": deadBug,
   "Single-leg RDL": singleLegRdl,
-  "Shadowbox warm-up": jab,
-  "Easy shadow cool-down": jab,
+  "Shadowbox warm-up": NO_FORM_VIDEO,
+  "Easy shadow cool-down": NO_FORM_VIDEO,
   "Bag rounds — boxing combos": oneTwo,
   "Bag rounds — kicks & teeps": teep,
   "Bag rounds — body shots": hook,
   "Bag rounds — clinch knees": clinchKnee,
   "Bag rounds — defense & counters": parry,
   "Bag rounds — power & speed": jab,
-  "Shadowbox round 1 — empty hands": jab,
-  "Shadowbox round 2 — hand weights": jab,
+  "Shadowbox round 1 — empty hands": NO_FORM_VIDEO,
+  "Shadowbox round 2 — hand weights": NO_FORM_VIDEO,
   "Jab — step and snap": jab,
   "Slip then jab–cross": slip,
   "Level change into the jab": jab,
@@ -527,7 +549,13 @@ export function formVideoFieldsFor(name: string): {
   formVideoUrl: string;
   formVideoPending: boolean;
 } {
+  if (skipsFormVideo(name)) {
+    return { formVideoUrl: "", formVideoPending: false };
+  }
   const entry = DEMO_FORM_VIDEOS[name];
+  if (entry?.omit) {
+    return { formVideoUrl: "", formVideoPending: false };
+  }
   if (!entry || entry.pending) {
     return { formVideoUrl: "", formVideoPending: true };
   }
@@ -625,20 +653,34 @@ export function youtubeThumbSrcs(url: string): string[] {
 export type FormVideoLookup = {
   url: string;
   pending: boolean;
+  /** No technique video and no pending placeholder. Shadow rounds set this. */
+  omit: boolean;
 };
+
+export function showFormVideoPending(form: FormVideoLookup) {
+  if (form.omit) return false;
+  return form.pending || !form.url;
+}
 
 export function lookupFormVideo(
   name: string,
   exercises?: Array<{ name: string; formVideoUrl: string; formVideoPending: boolean }>,
 ): FormVideoLookup {
+  if (skipsFormVideo(name)) {
+    return { url: "", pending: false, omit: true };
+  }
   const fromDay = exercises?.find((row) => row.name === name);
   if (
     fromDay?.formVideoUrl &&
     !fromDay.formVideoPending &&
     isYoutubeFormUrl(fromDay.formVideoUrl)
   ) {
-    return { url: fromDay.formVideoUrl, pending: false };
+    return { url: fromDay.formVideoUrl, pending: false, omit: false };
   }
   const seeded = formVideoFieldsFor(name);
-  return { url: seeded.formVideoUrl, pending: seeded.formVideoPending };
+  const entry = DEMO_FORM_VIDEOS[name];
+  if (entry?.omit) {
+    return { url: "", pending: false, omit: true };
+  }
+  return { url: seeded.formVideoUrl, pending: seeded.formVideoPending, omit: false };
 }

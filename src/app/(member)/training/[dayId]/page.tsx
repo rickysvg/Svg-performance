@@ -19,7 +19,7 @@ import {
   plannedSetLine,
   sessionKindLabel,
 } from "@/lib/exercise-media";
-import { lookupFormVideo } from "@/lib/form-videos";
+import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
@@ -188,7 +188,7 @@ export default async function TrainingDayPage({
                   <p className="mt-1 text-sm text-muted">{planned}</p>
                   {exercise.id === firstRir ? <RirHint /> : null}
                   <BagFocusList notes={exercise.notes} />
-                  {form.pending || !form.url ? (
+                  {showFormVideoPending(form) ? (
                     <p className="mt-2 text-xs text-muted">Video pending coach review</p>
                   ) : null}
                   <ExerciseNotepad
