@@ -29,12 +29,15 @@ const BOOKING: DueReminder = {
 };
 
 describe("reminder email", () => {
-  const env = { NODE_ENV: process.env.NODE_ENV, APP_URL: process.env.APP_URL };
+  // Next's ProcessEnv marks NODE_ENV readonly. Mutate through a string map,
+  // the same way the other env-dependent tests stay valid under `next build`.
+  const env = process.env as Record<string, string | undefined>;
+  const snapshot = { NODE_ENV: env.NODE_ENV, APP_URL: env.APP_URL };
 
   afterEach(() => {
-    process.env.NODE_ENV = env.NODE_ENV;
-    if (env.APP_URL === undefined) delete process.env.APP_URL;
-    else process.env.APP_URL = env.APP_URL;
+    env.NODE_ENV = snapshot.NODE_ENV;
+    if (snapshot.APP_URL === undefined) delete env.APP_URL;
+    else env.APP_URL = snapshot.APP_URL;
   });
 
   it("tailors a single workout reminder and deep-links to Train", () => {
@@ -127,12 +130,12 @@ describe("reminder email", () => {
   });
 
   it("falls back to the public app when APP_URL is missing or not safe in production", () => {
-    process.env.NODE_ENV = "production";
-    process.env.APP_URL = "http://localhost:3000";
+    env.NODE_ENV = "production";
+    env.APP_URL = "http://localhost:3000";
     expect(performanceAppOrigin()).toBe(PERFORMANCE_APP_ORIGIN);
-    delete process.env.APP_URL;
+    delete env.APP_URL;
     expect(performanceAppOrigin()).toBe(PERFORMANCE_APP_ORIGIN);
-    process.env.APP_URL = "https://preview.example.com/app";
+    env.APP_URL = "https://preview.example.com/app";
     expect(performanceAppOrigin()).toBe("https://preview.example.com");
     const mail = buildReminderEmail([WORKOUT]);
     expect(mail.html).toContain("https://preview.example.com/training");
