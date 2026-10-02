@@ -5,9 +5,10 @@ export const SPLASH_WEBM_SRC = "/svg-performance-splash.webm";
 export const SPLASH_VIDEO_SRC = SPLASH_MP4_SRC;
 export const SPLASH_STILL_SRC = "/svg-performance-splash-still.webp";
 /**
- * Second half of Ricky’s original logo soundtrack. The master is 8.15s;
- * playback starts at the midpoint (4.075s) and keeps through the ring-close
- * whoosh, sped about 1.06× so that hit lands on this 92-frame cut.
+ * Spark from the second half of Ricky’s original logo soundtrack.
+ * The neon star is brightest at about 1.08s. The master hit (7.93s of the 8.15s
+ * file) is trimmed from 6.88s — still past the midpoint, first half unused —
+ * and kept at original speed so the peak lands at about 1.07s on that flash.
  * Same audio is muxed into the MP4 and WebM. Not the badge-unlock sting.
  */
 export const SPLASH_AUDIO_SRC = "/svg-performance-splash.m4a";
