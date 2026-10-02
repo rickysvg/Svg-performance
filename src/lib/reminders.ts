@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
-import { isSmtpConfigured, sendMail } from "@/lib/mail";
+import { isSmtpConfigured, reminderEmailHtml, sendMail } from "@/lib/mail";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { startOfLocalDay, endOfLocalDay } from "@/lib/nutrition";
 import { canUseFeature } from "@/lib/entitlements";
@@ -201,6 +201,158 @@ export async function markRemindersShown(
   await recordMetric(METRIC_NAMES.reminderShown, userId);
 }
 
+export const PERFORMANCE_APP_ORIGIN = "https://svg-performance.vercel.app";
+
+const REMINDER_FOOTER = "Turn these off any time under Profile → Reminders.";
+const REMINDER_HONESTY =
+  "Automated reminder from SVG Performance. A coach is not texting you.";
+
+const REMINDER_KIND_LABEL: Record<ReminderKind, string> = {
+  workout: "Workout",
+  food: "Fuel",
+  quote: "Quote",
+  booking: "Book",
+};
+
+/** Public app origin for reminder links. Localhost is kept outside production. */
+export function performanceAppOrigin() {
+  const raw = process.env.APP_URL?.trim() ?? "";
+  if (!raw) return PERFORMANCE_APP_ORIGIN;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const local = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (process.env.NODE_ENV === "production" && (local || url.protocol !== "https:")) {
+      return PERFORMANCE_APP_ORIGIN;
+    }
+    return url.origin;
+  } catch {
+    return PERFORMANCE_APP_ORIGIN;
+  }
+}
+
+function singleKind(kinds: ReminderKind[]): ReminderKind | null {
+  if (kinds.length !== 1) return null;
+  return kinds[0] ?? null;
+}
+
+function reminderSubject(kinds: ReminderKind[]) {
+  switch (singleKind(kinds)) {
+    case "workout":
+      return "Own the session";
+    case "food":
+      return "Fuel the work";
+    case "quote":
+      return "Today's line";
+    case "booking":
+      return "Book with Ricky";
+    default:
+      return "Today's callouts";
+  }
+}
+
+function reminderHeadline(kinds: ReminderKind[]) {
+  switch (singleKind(kinds)) {
+    case "workout":
+      return "Own the session";
+    case "food":
+      return "Fuel the work";
+    case "quote":
+      return "Carry this line";
+    case "booking":
+      return "Book with Ricky";
+    default:
+      return "Today's callouts";
+  }
+}
+
+function reminderIntro(kinds: ReminderKind[]) {
+  switch (singleKind(kinds)) {
+    case "workout":
+      return `${REMINDER_HONESTY} Own the session. Log it if you already trained. If you have not, the day is still yours to take.`;
+    case "food":
+      return `${REMINDER_HONESTY} Fuel is part of owning the day. Log an estimate and get back to the work.`;
+    case "quote":
+      return `${REMINDER_HONESTY} Read the line. Then go do the work.`;
+    case "booking":
+      return `${REMINDER_HONESTY} Your Book with Ricky request is still open. Preferred times are on file. That is not a confirmed slot.`;
+    default:
+      return `${REMINDER_HONESTY} Conquer the day. Everything still open is below.`;
+  }
+}
+
+function reminderPreheader(kinds: ReminderKind[]) {
+  switch (singleKind(kinds)) {
+    case "workout":
+      return "Automated SVG Performance reminder. Own the session.";
+    case "food":
+      return "Automated SVG Performance reminder. Fuel the work.";
+    case "quote":
+      return "Automated SVG Performance reminder. Today's line is in.";
+    case "booking":
+      return "Automated SVG Performance reminder. Your Book with Ricky request is open.";
+    default:
+      return "Automated SVG Performance reminder. Today's callouts are open.";
+  }
+}
+
+function reminderCta(kinds: ReminderKind[]) {
+  switch (singleKind(kinds)) {
+    case "workout":
+      return { label: "Open Train", path: "/training" };
+    case "food":
+      return { label: "Open Fuel", path: "/nutrition" };
+    case "booking":
+      return { label: "Open Book", path: "/book" };
+    default:
+      return { label: "Open Home", path: "/home" };
+  }
+}
+
+export function buildReminderEmail(due: DueReminder[], origin = performanceAppOrigin()) {
+  const kinds = due.map((item) => item.kind);
+  const subject = reminderSubject(kinds);
+  const headline = reminderHeadline(kinds);
+  const intro = reminderIntro(kinds);
+  const cta = reminderCta(kinds);
+  const base = origin.replace(/\/$/, "");
+  const href = `${base}${cta.path}`;
+  const text = [
+    "CONQUER THE DAY",
+    "SVG PERFORMANCE",
+    headline.toUpperCase(),
+    "",
+    intro,
+    "",
+    ...due.flatMap((item) => [
+      REMINDER_KIND_LABEL[item.kind].toUpperCase(),
+      item.message,
+      "",
+    ]),
+    `${cta.label}:`,
+    href,
+    "",
+    REMINDER_FOOTER,
+    `${base}/profile`,
+  ].join("\n");
+  const html = reminderEmailHtml({
+    eyebrow: "Conquer the day",
+    brand: "SVG Performance",
+    headline,
+    intro,
+    items: due.map((item) => ({
+      label: REMINDER_KIND_LABEL[item.kind],
+      message: item.message,
+    })),
+    ctaLabel: cta.label,
+    ctaHref: href,
+    profileHref: `${base}/profile`,
+    footer: REMINDER_FOOTER,
+    preheader: reminderPreheader(kinds),
+  });
+  return { subject, text, html };
+}
+
 /**
  * Show due reminders on Home. Email only if SMTP is configured.
  * Marks the local day as reminded so we do not spam.
@@ -217,15 +369,12 @@ export async function processDueRemindersForUser(
 
   let emailed = false;
   if (isSmtpReminderDeliveryEnabled()) {
+    const mail = buildReminderEmail(due);
     const result = await sendMail({
       to: email,
-      subject: "SVG Performance reminder",
-      text: [
-        "A gentle reminder from SVG Performance (not a coach texting you):",
-        ...due.map((item) => `- ${item.message}`),
-        "",
-        "Turn these off any time under Profile → Reminders.",
-      ].join("\n"),
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
     });
     emailed = result.sent;
   }

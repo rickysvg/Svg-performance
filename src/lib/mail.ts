@@ -53,6 +53,113 @@ export function passwordResetHtml(resetUrl: string) {
 </html>`;
 }
 
+const REMINDER_DISPLAY_FONT =
+  "Impact,'Arial Black',Helvetica,Arial,sans-serif";
+const REMINDER_BODY_FONT = "Arial,Helvetica,sans-serif";
+
+export type ReminderEmailItem = {
+  label: string;
+  message: string;
+};
+
+export type ReminderEmailCard = {
+  eyebrow: string;
+  brand: string;
+  headline: string;
+  intro: string;
+  items: ReminderEmailItem[];
+  ctaLabel: string;
+  ctaHref: string;
+  profileHref: string;
+  footer: string;
+  preheader: string;
+};
+
+function reminderItemRows(items: ReminderEmailItem[]) {
+  return items
+    .map((item, index) => {
+      const gap = index === 0 ? "0" : "10px";
+      return `<tr>
+            <td style="padding:${gap} 24px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="#111111" style="background-color:#111111;border-left:4px solid #CBF805;padding:12px 14px;">
+                    <p style="margin:0 0 4px;font-family:${REMINDER_DISPLAY_FONT};font-size:12px;line-height:1.2;letter-spacing:0.14em;text-transform:uppercase;color:#CBF805;">${escapeHtml(item.label)}</p>
+                    <p style="margin:0;font-family:${REMINDER_BODY_FONT};font-size:15px;line-height:1.45;color:#ffffff;">${escapeHtml(item.message)}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
+    })
+    .join("");
+}
+
+/**
+ * Branded HTML for SVG Performance reminder emails.
+ * Black card, neon lime CTA. Email-safe fonts only (no web fonts).
+ */
+export function reminderEmailHtml(card: ReminderEmailCard) {
+  const href = escapeHtml(card.ctaHref);
+  const profileHref = escapeHtml(card.profileHref);
+  const footer = escapeHtml(card.footer).replace(
+    "Profile → Reminders",
+    `<a href="${profileHref}" style="color:#CBF805;text-decoration:underline;">Profile → Reminders</a>`,
+  );
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(card.headline)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0a;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#0a0a0a;opacity:0;">${escapeHtml(card.preheader)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0a0a0a" style="background-color:#0a0a0a;">
+    <tr>
+      <td align="center" style="padding:28px 12px;">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="width:100%;max-width:520px;background-color:#000000;border:1px solid #2a2a2a;">
+          <tr>
+            <td height="8" bgcolor="#CBF805" style="height:8px;background-color:#CBF805;font-size:8px;line-height:8px;mso-line-height-rule:exactly;">&#8203;</td>
+          </tr>
+          <tr>
+            <td style="padding:28px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:13px;line-height:1.2;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:#CBF805;">${escapeHtml(card.eyebrow)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:12px;line-height:1.2;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;color:#ffffff;">${escapeHtml(card.brand)}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 24px 0;font-family:${REMINDER_DISPLAY_FONT};font-size:32px;line-height:1;letter-spacing:0.01em;text-transform:uppercase;font-weight:700;color:#ffffff;">${escapeHtml(card.headline)}</td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px 0;font-family:${REMINDER_BODY_FONT};font-size:15px;line-height:1.5;color:#f2f2f2;">${escapeHtml(card.intro)}</td>
+          </tr>
+          ${reminderItemRows(card.items)}
+          <tr>
+            <td style="padding:24px 24px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#CBF805" style="background-color:#CBF805;border-radius:999px;">
+                    <a href="${href}" style="display:inline-block;padding:14px 22px;font-family:${REMINDER_DISPLAY_FONT};font-size:16px;line-height:1;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;color:#111111;text-decoration:none;">${escapeHtml(card.ctaLabel)}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 24px 0;font-family:${REMINDER_BODY_FONT};font-size:13px;line-height:1.5;color:#d0d0d0;">If the button does not open, use this link:<br /><a href="${href}" style="color:#CBF805;word-break:break-all;">${href}</a></td>
+          </tr>
+          <tr>
+            <td style="padding:18px 24px 28px;font-family:${REMINDER_BODY_FONT};font-size:13px;line-height:1.5;color:#bdbdbd;">${footer}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 function logSmtpFailure(error: unknown, secret: string) {
   let message = error instanceof Error ? error.message : "unknown error";
   if (secret && message.includes(secret)) {
