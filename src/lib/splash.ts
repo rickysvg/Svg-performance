@@ -4,6 +4,12 @@ export const SPLASH_WEBM_SRC = "/svg-performance-splash.webm";
 /** MP4 fallback path — Safari / iOS cannot play the AV1 WebM. */
 export const SPLASH_VIDEO_SRC = SPLASH_MP4_SRC;
 export const SPLASH_STILL_SRC = "/svg-performance-splash-still.webp";
+/**
+ * Original logo soundtrack (engine / whoosh through ring-close) from Ricky’s
+ * first splash master, time-fit to this 92-frame cut. Same audio is muxed
+ * into the MP4 and WebM. Not the badge-unlock sting.
+ */
+export const SPLASH_AUDIO_SRC = "/svg-performance-splash.m4a";
 export const SPLASH_WEBM_TYPE = "video/webm; codecs=av01.0.08M.08";
 export const SPLASH_MP4_TYPE = "video/mp4";
 /** Same 92-frame ring-close as the live clip, kept inside the 3–4s cap. */
@@ -125,9 +131,43 @@ export function prepareSplashVideo(video: {
   video.setAttribute?.("webkit-playsinline", "");
 }
 
+export type SplashSoundtrack = {
+  currentTime: number;
+  volume: number;
+  play: () => Promise<void>;
+  pause?: () => void;
+};
+
+/**
+ * Play the original intro soundtrack in sync with the clip.
+ * The <video> stays muted so mobile autoplay cannot freeze the streak.
+ * If the browser blocks audio autoplay, the animation still runs.
+ */
+export async function playOriginalSplashSound(
+  video: { currentTime?: number },
+  audio: SplashSoundtrack,
+) {
+  audio.volume = 1;
+  const at = video.currentTime ?? 0;
+  if (Number.isFinite(at) && at > 0.05) {
+    try {
+      audio.currentTime = at;
+    } catch {
+      /* metadata not in yet — start with the opening frame */
+    }
+  }
+  try {
+    await audio.play();
+    return "sound" as const;
+  } catch {
+    audio.pause?.();
+    return "muted" as const;
+  }
+}
+
 /**
  * Motion first: start muted so mobile browsers actually play.
- * Sound is optional and never blocks the streak animation.
+ * The original logo soundtrack is started separately and never blocks the streak.
  * If the file is still not playable after the grace window, return stalled
  * so the still can take over on the original ~3.8s schedule.
  */

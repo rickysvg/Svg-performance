@@ -11,9 +11,11 @@ import {
   SPLASH_VIDEO_SRC,
   SPLASH_WEBM_SRC,
   SPLASH_WEBM_TYPE,
+  SPLASH_AUDIO_SRC,
   applySplashVideoSources,
   canDismissSplash,
   pickSplashVideoSource,
+  playOriginalSplashSound,
   prepareSplashVideo,
   shouldFallbackSplashStill,
   shouldMountSplashVideo,
@@ -70,6 +72,7 @@ describe("app-open splash video", () => {
     expect(SPLASH_MP4_SRC).toBe("/svg-performance-splash.mp4");
     expect(SPLASH_WEBM_SRC).toBe("/svg-performance-splash.webm");
     expect(SPLASH_STILL_SRC).toBe("/svg-performance-splash-still.webp");
+    expect(SPLASH_AUDIO_SRC).toBe("/svg-performance-splash.m4a");
     expect(SPLASH_WEBM_TYPE).toMatch(/av01/);
     expect(SPLASH_VIDEO_MS).toBeGreaterThanOrEqual(3_000);
     expect(SPLASH_VIDEO_MS).toBeLessThanOrEqual(4_200);
@@ -80,6 +83,14 @@ describe("app-open splash video", () => {
     expect(fileSize("public/svg-performance-splash.webm")).toBeLessThan(1_800_000);
     expect(fileSize("public/svg-performance-splash-still.webp")).toBeGreaterThan(8_000);
     expect(fileSize("public/svg-performance-splash-still.webp")).toBeLessThan(200_000);
+    expect(fileSize("public/svg-performance-splash.m4a")).toBeGreaterThan(20_000);
+    expect(fileSize("public/svg-performance-splash.m4a")).toBeLessThan(200_000);
+    const mp4 = fs.readFileSync(path.join(root, "public/svg-performance-splash.mp4"));
+    const webm = fs.readFileSync(path.join(root, "public/svg-performance-splash.webm"));
+    const m4a = fs.readFileSync(path.join(root, "public/svg-performance-splash.m4a"));
+    expect(mp4.includes(Buffer.from("mp4a"))).toBe(true);
+    expect(webm.includes(Buffer.from("OpusHead"))).toBe(true);
+    expect(m4a.includes(Buffer.from("mp4a"))).toBe(true);
   });
 
   it("holds for the ring-close clip, and shortens for reduced motion", () => {
@@ -169,6 +180,39 @@ describe("app-open splash video", () => {
     expect(video.playCount).toBe(1);
   });
 
+  it("plays the original logo soundtrack with the intro and keeps going if audio is blocked", async () => {
+    const played: string[] = [];
+    const video = { currentTime: 0.2 };
+    const audio = {
+      currentTime: 0,
+      volume: 0,
+      play() {
+        played.push("play");
+        return Promise.resolve();
+      },
+      pause() {
+        played.push("pause");
+      },
+    };
+    await expect(playOriginalSplashSound(video, audio)).resolves.toBe("sound");
+    expect(audio.volume).toBe(1);
+    expect(audio.currentTime).toBe(0.2);
+    expect(played).toEqual(["play"]);
+
+    const blocked = {
+      currentTime: 0,
+      volume: 1,
+      play() {
+        return Promise.reject(new Error("NotAllowedError"));
+      },
+      pause() {
+        played.push("blocked-pause");
+      },
+    };
+    await expect(playOriginalSplashSound({ currentTime: 0 }, blocked)).resolves.toBe("muted");
+    expect(played).toContain("blocked-pause");
+  });
+
   it("retries play after loadeddata when the first call is early", async () => {
     const listeners = new Map<string, () => void>();
     let attempts = 0;
@@ -243,6 +287,9 @@ describe("app-open splash video", () => {
     expect(splash).toMatch(/<video/);
     expect(splash).toMatch(/startSplashPlayback/);
     expect(splash).toMatch(/\bmuted\b/);
+    expect(splash).toMatch(/playOriginalSplashSound/);
+    expect(splash).toMatch(/SPLASH_AUDIO_SRC/);
+    expect(splash).toMatch(/stopSoundtrack/);
     expect(splash).toMatch(/autoPlay/);
     expect(splash).toMatch(/app-splash-skip/);
     expect(splash).toMatch(/Skip/);
