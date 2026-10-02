@@ -71,13 +71,14 @@ function ActivityIcon({ id }: { id: string }) {
           {...common}
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.55}
+          strokeWidth={1.9}
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <circle cx="4.1" cy="11.4" r="2.65" />
-          <circle cx="11.9" cy="11.4" r="2.65" />
-          <path d="M4.1 11.4 8.1 4.7h3.2M8.1 4.7 6.6 8.5" />
+          <circle cx="3.55" cy="11.55" r="2.5" />
+          <circle cx="12.45" cy="11.55" r="2.5" />
+          {/* One path. Both ends land on a wheel so the saddle, bars, and frame stay attached at chip size. */}
+          <path d="M5.15 9.6 6.3 5.35 5.05 3.6h2.5L6.3 5.35h3.45l1.15-1.75h2.2L10.9 5.35 10.9 9.6" />
         </svg>
       );
     case "GPP":
