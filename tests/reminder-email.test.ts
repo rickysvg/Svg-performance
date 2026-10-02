@@ -42,8 +42,9 @@ describe("reminder email", () => {
     expect(mail.subject).toBe("Your session is waiting");
     expect(mail.text).toContain("CONQUER THE DAY");
     expect(mail.text).toContain("SESSION IS WAITING");
-    expect(mail.text).toContain("You chose this session.");
-    expect(mail.text).toContain("That is how you win the day.");
+    expect(mail.text).toContain("The session you picked is ready when you are.");
+    expect(mail.text).toContain("A quick look keeps the day moving.");
+    expect(mail.text).not.toContain("It has not been logged");
     expect(mail.text).toContain("Automated reminder from SVG Performance.");
     expect(mail.text).toContain("A coach is not texting you.");
     expect(mail.text).toContain(WORKOUT.message);
@@ -77,13 +78,16 @@ describe("reminder email", () => {
     const food = buildReminderEmail([FOOD], ORIGIN);
     expect(food.subject).toBe("Fuel is waiting");
     expect(food.text).toContain("FUEL IS WAITING");
+    expect(food.text).toContain("Close enough is fine.");
     expect(food.text).toContain("Open Fuel.");
+    expect(food.text).not.toContain("still empty");
     expect(food.html).toContain(">Open Fuel<");
     expect(food.html).toContain(`${ORIGIN}/nutrition`);
 
     const quote = buildReminderEmail([QUOTE], ORIGIN);
     expect(quote.subject).toBe("Today's line is in");
     expect(quote.text).toContain("THE LINE IS IN");
+    expect(quote.text).toContain("at your pace");
     expect(quote.text).toContain("Open Home.");
     expect(quote.html).toContain(">Open Home<");
     expect(quote.html).toContain(`${ORIGIN}/home`);
@@ -91,8 +95,8 @@ describe("reminder email", () => {
 
     const booking = buildReminderEmail([BOOKING], ORIGIN);
     expect(booking.subject).toBe("Book with Ricky");
-    expect(booking.text).toContain("REQUEST IS WAITING");
-    expect(booking.text).toContain("Open Book.");
+    expect(booking.text).toContain("YOUR REQUEST IS HERE");
+    expect(booking.text).toContain("if you want to check it");
     expect(booking.html).toContain(">Open Book<");
     expect(booking.html).toContain(`${ORIGIN}/book`);
     expect(booking.text).toContain("not a confirmed slot");
@@ -100,9 +104,10 @@ describe("reminder email", () => {
 
   it("uses one today's callouts block when more than one kind is due", () => {
     const mail = buildReminderEmail([WORKOUT, FOOD, QUOTE], ORIGIN);
-    expect(mail.subject).toBe("The day is waiting");
-    expect(mail.text).toContain("THE DAY IS WAITING");
-    expect(mail.text).toContain("Clear it and take the day.");
+    expect(mail.subject).toBe("A few things are waiting");
+    expect(mail.text).toContain("A FEW THINGS ARE WAITING");
+    expect(mail.text).toContain("easy to handle when you open the app");
+    expect(mail.text).not.toContain("Clear it");
     expect(mail.text).toContain("WORKOUT");
     expect(mail.text).toContain("FUEL");
     expect(mail.text).toContain("QUOTE");
@@ -142,7 +147,7 @@ describe("reminder email", () => {
       items: [{ label: "Workout", message: "Log it." }],
       ctaLabel: "Open Train",
       ctaHref: `${ORIGIN}/training`,
-      pull: "Open Train. The session is waiting, and the streak moves when you log it. That is how you win the day.",
+      pull: "Open Train. Your session and your streak are waiting there. A quick look keeps the day moving.",
       profileHref: `${ORIGIN}/profile`,
       footer: "Turn these off any time under Profile → Reminders.",
       preheader: "Automated SVG Performance reminder. Own the session.",

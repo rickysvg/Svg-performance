@@ -247,7 +247,7 @@ function reminderSubject(kinds: ReminderKind[]) {
     case "booking":
       return "Book with Ricky";
     default:
-      return "The day is waiting";
+      return "A few things are waiting";
   }
 }
 
@@ -260,54 +260,54 @@ function reminderHeadline(kinds: ReminderKind[]) {
     case "quote":
       return "The line is in";
     case "booking":
-      return "Request is waiting";
+      return "Your request is here";
     default:
-      return "The day is waiting";
+      return "A few things are waiting";
   }
 }
 
 function reminderIntro(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return `${REMINDER_HONESTY} You chose this session. It has not been logged.`;
+      return `${REMINDER_HONESTY} The session you picked is ready when you are. Log it after you train.`;
     case "food":
-      return `${REMINDER_HONESTY} Fuel for today is still empty in the app.`;
+      return `${REMINDER_HONESTY} When you have a minute, add a food estimate. Close enough is fine.`;
     case "quote":
-      return `${REMINDER_HONESTY} Today's line is up. The work you do next is what makes it count.`;
+      return `${REMINDER_HONESTY} Today's line is here when you want it. Read it, then get after the work at your pace.`;
     case "booking":
-      return `${REMINDER_HONESTY} You asked to book with Ricky. Preferred times are on file. This is not a confirmed slot.`;
+      return `${REMINDER_HONESTY} You have an open Book with Ricky request. Preferred times are on file. This is not a confirmed slot.`;
     default:
-      return `${REMINDER_HONESTY} More than one commitment is still open.`;
+      return `${REMINDER_HONESTY} A few things are still open for today. They are easy to handle when you open the app.`;
   }
 }
 
 function reminderPull(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Open Train. The session is waiting, and the streak moves when you log it. That is how you win the day.";
+      return "Open Train. Your session and your streak are waiting there. A quick look keeps the day moving.";
     case "food":
-      return "Open Fuel. Log what you ate. The day stays on track when it is in the app.";
+      return "Open Fuel. An estimate is plenty, and it keeps today in one place.";
     case "quote":
-      return "Open Home. The line is in. Progress on the day starts there.";
+      return "Open Home. The line is there, and so is the rest of your day.";
     case "booking":
-      return "Open Book. The request is waiting. See it and keep it moving.";
+      return "Open Book when you have a second. The request is waiting there if you want to check it.";
     default:
-      return "Open Home. What is still open is in the app. Clear it and take the day.";
+      return "Open Home. Your session, fuel, and the rest of the day are waiting in one place.";
   }
 }
 
 function reminderPreheader(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Automated SVG Performance reminder. Your session is waiting in Train.";
+      return "Automated SVG Performance reminder. Your session is waiting in Train when you are ready.";
     case "food":
-      return "Automated SVG Performance reminder. Fuel is waiting in the app.";
+      return "Automated SVG Performance reminder. Fuel is waiting whenever you have a minute.";
     case "quote":
-      return "Automated SVG Performance reminder. Today's line is in. Open Home.";
+      return "Automated SVG Performance reminder. Today's line is in. Open Home when you want it.";
     case "booking":
-      return "Automated SVG Performance reminder. Your Book with Ricky request is waiting.";
+      return "Automated SVG Performance reminder. Your Book with Ricky request is there when you want to look.";
     default:
-      return "Automated SVG Performance reminder. The day is waiting in the app.";
+      return "Automated SVG Performance reminder. A few things are waiting in the app.";
   }
 }
 
