@@ -39,10 +39,11 @@ describe("reminder email", () => {
 
   it("tailors a single workout reminder and deep-links to Train", () => {
     const mail = buildReminderEmail([WORKOUT], ORIGIN);
-    expect(mail.subject).toBe("Log the session");
+    expect(mail.subject).toBe("Your session is waiting");
     expect(mail.text).toContain("CONQUER THE DAY");
-    expect(mail.text).toContain("SHOW UP FOR IT");
+    expect(mail.text).toContain("SESSION IS WAITING");
     expect(mail.text).toContain("You chose this session.");
+    expect(mail.text).toContain("That is how you win the day.");
     expect(mail.text).toContain("Automated reminder from SVG Performance.");
     expect(mail.text).toContain("A coach is not texting you.");
     expect(mail.text).toContain(WORKOUT.message);
@@ -52,11 +53,15 @@ describe("reminder email", () => {
     expect(mail.text).toContain(`${ORIGIN}/profile`);
     expect(mail.text).not.toMatch(/gentle/i);
     expect(mail.html).toContain("Conquer the day");
-    expect(mail.html).toContain("Show up for it");
+    expect(mail.html).toContain("Session is waiting");
     expect(mail.html).toContain(`src="${REMINDER_LOGO_URL}"`);
+    expect(REMINDER_LOGO_URL).toBe(
+      "https://svg-performance.vercel.app/svg-performance-badge-mark.png",
+    );
     expect(mail.html).toContain('alt="SVG Performance"');
     expect(mail.html).not.toMatch(/src="\/svg-performance/);
-    expect(fs.statSync("public/svg-performance-badge.png").size).toBeGreaterThan(20_000);
+    expect(mail.html).not.toContain(".webp");
+    expect(fs.statSync("public/svg-performance-badge-mark.png").size).toBeGreaterThan(20_000);
     expect(mail.html).toContain("#CBF805");
     expect(mail.html).toContain("background-color:#000000");
     expect(mail.html).toContain("Impact,'Arial Black',Helvetica,Arial,sans-serif");
@@ -70,23 +75,24 @@ describe("reminder email", () => {
 
   it("deep-links fuel, quote, and booking reminders", () => {
     const food = buildReminderEmail([FOOD], ORIGIN);
-    expect(food.subject).toBe("Fuel the day");
-    expect(food.text).toContain("FUEL THE DAY");
-    expect(food.text).toContain("day you committed to");
+    expect(food.subject).toBe("Fuel is waiting");
+    expect(food.text).toContain("FUEL IS WAITING");
+    expect(food.text).toContain("Open Fuel.");
     expect(food.html).toContain(">Open Fuel<");
     expect(food.html).toContain(`${ORIGIN}/nutrition`);
 
     const quote = buildReminderEmail([QUOTE], ORIGIN);
-    expect(quote.subject).toBe("Today's line");
-    expect(quote.text).toContain("READ IT. THEN WORK.");
-    expect(quote.text).toContain("open the app");
+    expect(quote.subject).toBe("Today's line is in");
+    expect(quote.text).toContain("THE LINE IS IN");
+    expect(quote.text).toContain("Open Home.");
     expect(quote.html).toContain(">Open Home<");
     expect(quote.html).toContain(`${ORIGIN}/home`);
     expect(quote.text).toContain(QUOTE.message);
 
     const booking = buildReminderEmail([BOOKING], ORIGIN);
     expect(booking.subject).toBe("Book with Ricky");
-    expect(booking.text).toContain("YOUR REQUEST IS OPEN");
+    expect(booking.text).toContain("REQUEST IS WAITING");
+    expect(booking.text).toContain("Open Book.");
     expect(booking.html).toContain(">Open Book<");
     expect(booking.html).toContain(`${ORIGIN}/book`);
     expect(booking.text).toContain("not a confirmed slot");
@@ -94,11 +100,9 @@ describe("reminder email", () => {
 
   it("uses one today's callouts block when more than one kind is due", () => {
     const mail = buildReminderEmail([WORKOUT, FOOD, QUOTE], ORIGIN);
-    expect(mail.subject).toBe("Today's callouts");
-    expect(mail.text).toContain("TODAY'S CALLOUTS");
-    expect(mail.text).toContain(
-      "Show up for the session you chose, log the work, and fuel the day.",
-    );
+    expect(mail.subject).toBe("The day is waiting");
+    expect(mail.text).toContain("THE DAY IS WAITING");
+    expect(mail.text).toContain("Clear it and take the day.");
     expect(mail.text).toContain("WORKOUT");
     expect(mail.text).toContain("FUEL");
     expect(mail.text).toContain("QUOTE");
@@ -133,11 +137,12 @@ describe("reminder email", () => {
   it("keeps the lime CTA and black card when the template is called directly", () => {
     const html = reminderEmailHtml({
       eyebrow: "Conquer the day",
-      headline: "Show up for it",
+      headline: "Session is waiting",
       intro: "Automated reminder from SVG Performance. A coach is not texting you.",
       items: [{ label: "Workout", message: "Log it." }],
       ctaLabel: "Open Train",
       ctaHref: `${ORIGIN}/training`,
+      pull: "Open Train. The session is waiting, and the streak moves when you log it. That is how you win the day.",
       profileHref: `${ORIGIN}/profile`,
       footer: "Turn these off any time under Profile → Reminders.",
       preheader: "Automated SVG Performance reminder. Own the session.",

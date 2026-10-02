@@ -239,60 +239,75 @@ function singleKind(kinds: ReminderKind[]): ReminderKind | null {
 function reminderSubject(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Log the session";
+      return "Your session is waiting";
     case "food":
-      return "Fuel the day";
+      return "Fuel is waiting";
     case "quote":
-      return "Today's line";
+      return "Today's line is in";
     case "booking":
       return "Book with Ricky";
     default:
-      return "Today's callouts";
+      return "The day is waiting";
   }
 }
 
 function reminderHeadline(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Show up for it";
+      return "Session is waiting";
     case "food":
-      return "Fuel the day";
+      return "Fuel is waiting";
     case "quote":
-      return "Read it. Then work.";
+      return "The line is in";
     case "booking":
-      return "Your request is open";
+      return "Request is waiting";
     default:
-      return "Today's callouts";
+      return "The day is waiting";
   }
 }
 
 function reminderIntro(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return `${REMINDER_HONESTY} You chose this session. Show up for it, then log the work in the app.`;
+      return `${REMINDER_HONESTY} You chose this session. It has not been logged.`;
     case "food":
-      return `${REMINDER_HONESTY} Fuel is part of the day you committed to. Log it in the app.`;
+      return `${REMINDER_HONESTY} Fuel for today is still empty in the app.`;
     case "quote":
-      return `${REMINDER_HONESTY} Take the line, then open the app and do the work you said you would.`;
+      return `${REMINDER_HONESTY} Today's line is up. The work you do next is what makes it count.`;
     case "booking":
-      return `${REMINDER_HONESTY} You asked to book with Ricky. That request is still open. Preferred times are on file. This is not a confirmed slot.`;
+      return `${REMINDER_HONESTY} You asked to book with Ricky. Preferred times are on file. This is not a confirmed slot.`;
     default:
-      return `${REMINDER_HONESTY} Show up for the session you chose, log the work, and fuel the day. What is still open is below.`;
+      return `${REMINDER_HONESTY} More than one commitment is still open.`;
+  }
+}
+
+function reminderPull(kinds: ReminderKind[]) {
+  switch (singleKind(kinds)) {
+    case "workout":
+      return "Open Train. The session is waiting, and the streak moves when you log it. That is how you win the day.";
+    case "food":
+      return "Open Fuel. Log what you ate. The day stays on track when it is in the app.";
+    case "quote":
+      return "Open Home. The line is in. Progress on the day starts there.";
+    case "booking":
+      return "Open Book. The request is waiting. See it and keep it moving.";
+    default:
+      return "Open Home. What is still open is in the app. Clear it and take the day.";
   }
 }
 
 function reminderPreheader(kinds: ReminderKind[]) {
   switch (singleKind(kinds)) {
     case "workout":
-      return "Automated SVG Performance reminder. Show up and log the session.";
+      return "Automated SVG Performance reminder. Your session is waiting in Train.";
     case "food":
-      return "Automated SVG Performance reminder. Fuel the day you committed to.";
+      return "Automated SVG Performance reminder. Fuel is waiting in the app.";
     case "quote":
-      return "Automated SVG Performance reminder. Read the line, then do the work.";
+      return "Automated SVG Performance reminder. Today's line is in. Open Home.";
     case "booking":
-      return "Automated SVG Performance reminder. Your Book with Ricky request is still open.";
+      return "Automated SVG Performance reminder. Your Book with Ricky request is waiting.";
     default:
-      return "Automated SVG Performance reminder. Show up, log it, fuel the day.";
+      return "Automated SVG Performance reminder. The day is waiting in the app.";
   }
 }
 
@@ -314,6 +329,7 @@ export function buildReminderEmail(due: DueReminder[], origin = performanceAppOr
   const subject = reminderSubject(kinds);
   const headline = reminderHeadline(kinds);
   const intro = reminderIntro(kinds);
+  const pull = reminderPull(kinds);
   const cta = reminderCta(kinds);
   const base = origin.replace(/\/$/, "");
   const href = `${base}${cta.path}`;
@@ -332,6 +348,8 @@ export function buildReminderEmail(due: DueReminder[], origin = performanceAppOr
     `${cta.label}:`,
     href,
     "",
+    pull,
+    "",
     REMINDER_FOOTER,
     `${base}/profile`,
   ].join("\n");
@@ -345,6 +363,7 @@ export function buildReminderEmail(due: DueReminder[], origin = performanceAppOr
     })),
     ctaLabel: cta.label,
     ctaHref: href,
+    pull,
     profileHref: `${base}/profile`,
     footer: REMINDER_FOOTER,
     preheader: reminderPreheader(kinds),

@@ -58,12 +58,12 @@ const REMINDER_DISPLAY_FONT =
 const REMINDER_BODY_FONT = "Arial,Helvetica,sans-serif";
 
 /**
- * Official circular badge. PNG, not WebP: Outlook and other clients drop WebP
- * and would show a broken image. Absolute production URL — email clients
+ * Official circular badge. PNG mark, not WebP: Outlook and other clients drop
+ * WebP and would show a broken image. Absolute production URL — email clients
  * cannot load a relative path.
  */
 export const REMINDER_LOGO_URL =
-  "https://svg-performance.vercel.app/svg-performance-badge.png";
+  "https://svg-performance.vercel.app/svg-performance-badge-mark.png";
 
 export type ReminderEmailItem = {
   label: string;
@@ -77,6 +77,7 @@ export type ReminderEmailCard = {
   items: ReminderEmailItem[];
   ctaLabel: string;
   ctaHref: string;
+  pull: string;
   profileHref: string;
   footer: string;
   preheader: string;
@@ -156,6 +157,9 @@ export function reminderEmailHtml(card: ReminderEmailCard) {
                 </tr>
               </table>
             </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:14px 24px 0;font-family:${REMINDER_BODY_FONT};font-size:15px;line-height:1.45;font-weight:700;color:#ffffff;">${escapeHtml(card.pull)}</td>
           </tr>
           <tr>
             <td style="padding:14px 24px 0;font-family:${REMINDER_BODY_FONT};font-size:13px;line-height:1.5;color:#d0d0d0;">If the button does not open, use this link:<br /><a href="${href}" style="color:#CBF805;word-break:break-all;">${href}</a></td>
