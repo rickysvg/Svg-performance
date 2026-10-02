@@ -63,12 +63,25 @@ describe("Train default is one day", () => {
     expect(page).not.toContain("<RirExplainer");
   });
 
-  it("leaves Calendar as its own page", () => {
+  it("leaves Calendar as its own page and collapses warm-up under session details", () => {
     const calendar = read("src/app/(member)/training/calendar/page.tsx");
     expect(calendar).toContain("WeekStrip");
     expect(calendar).toContain("data-selected-day-plan");
     expect(calendar).toContain("CalendarList");
     expect(calendar).toContain("fromProfile ? null");
     expect(page).toContain('href: "/training/calendar"');
+    expect(calendar).toContain("<SessionDetails");
+    const sessions = calendar.indexOf("<PlanSessionCard");
+    const details = calendar.indexOf("<SessionDetails");
+    const warmup = calendar.indexOf("/mobility/daily-warmup/play");
+    expect(sessions).toBeGreaterThan(-1);
+    expect(details).toBeGreaterThan(sessions);
+    expect(warmup).toBeGreaterThan(details);
+  });
+
+  it("drops the unused week board component", () => {
+    expect(fs.existsSync(path.join(process.cwd(), "src/components/training/TrainWeekBoard.tsx"))).toBe(
+      false,
+    );
   });
 });
