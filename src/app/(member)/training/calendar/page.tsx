@@ -4,6 +4,7 @@ import { CalendarList } from "@/components/training/CalendarList";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { SessionDetails } from "@/components/training/SessionDetails";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { requireUser } from "@/lib/session";
 import { getCalendarSchedule } from "@/lib/calendar";
@@ -118,18 +119,6 @@ export default async function TrainingCalendarPage({
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
         </div>
-        {dayPlan.active ? (
-          <Link
-            href="/mobility/daily-warmup/play"
-            className="block rounded-2xl border border-line bg-card px-4 py-4"
-          >
-            <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
-            <h3 className="mt-1 text-lg">Dynamic warm-up · 3–4 min</h3>
-            <p className="mt-1 text-sm text-muted">
-              Joint circles and leg swings before bag or lifts.
-            </p>
-          </Link>
-        ) : null}
         {planned.map((session) => {
           const zone = bikeZoneForDayNumber(session.dayNumber);
           return (
@@ -144,6 +133,20 @@ export default async function TrainingCalendarPage({
             </div>
           );
         })}
+        {dayPlan.active ? (
+          <SessionDetails>
+            <Link
+              href="/mobility/daily-warmup/play"
+              className="block rounded-2xl border border-line bg-background px-4 py-3"
+            >
+              <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
+              <p className="mt-1 font-semibold">Dynamic warm-up · 3–4 min</p>
+              <p className="mt-1 text-sm text-muted">
+                Joint circles and leg swings before bag or lifts.
+              </p>
+            </Link>
+          </SessionDetails>
+        ) : null}
         {dayPlan.active ? (
           <Link href="/mobility" className="block rounded-2xl border border-line bg-card px-4 py-4">
             <p className="font-display text-xs uppercase tracking-wide text-accent">Cool-down</p>
