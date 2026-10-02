@@ -70,6 +70,14 @@ export default async function TrainingCalendarPage({
   const strip = weekStrip(prefs, now, tz, selected);
   const dayParam = formatDayParam(selected, tz);
   const isToday = sameLocalDay(selected, now, tz);
+  const zones = [
+    ...new Map(
+      planned.flatMap((session) => {
+        const zone = bikeZoneForDayNumber(session.dayNumber);
+        return zone ? [[zone.label, zone] as const] : [];
+      }),
+    ).values(),
+  ];
   const draftsByDay = new Map(
     drafts
       .filter((session) => session.programDayId)
@@ -119,20 +127,15 @@ export default async function TrainingCalendarPage({
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
         </div>
-        {planned.map((session) => {
-          const zone = bikeZoneForDayNumber(session.dayNumber);
-          return (
-            <div key={`${session.slot}-${session.dayId ?? session.label}`} className="space-y-2">
-              {zone ? <BikeZoneNote zone={zone} /> : null}
-              <PlanSessionCard
-                session={session}
-                compact
-                highlight={session.slot === "A" && planned.length > 1}
-                draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
-              />
-            </div>
-          );
-        })}
+        {planned.map((session) => (
+          <PlanSessionCard
+            key={`${session.slot}-${session.dayId ?? session.label}`}
+            session={session}
+            compact
+            highlight={session.slot === "A" && planned.length > 1}
+            draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
+          />
+        ))}
         {dayPlan.active ? (
           <SessionDetails>
             <Link
@@ -145,6 +148,9 @@ export default async function TrainingCalendarPage({
                 Joint circles and leg swings before bag or lifts.
               </p>
             </Link>
+            {zones.map((zone) => (
+              <BikeZoneNote key={zone.label} zone={zone} />
+            ))}
           </SessionDetails>
         ) : null}
         {dayPlan.active ? (
