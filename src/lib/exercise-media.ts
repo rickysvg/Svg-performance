@@ -229,27 +229,39 @@ function previousLoadText(loadValue: number, loadUnit: string) {
   return `${amount} lbs`;
 }
 
+function withStoredRir(label: string, rir?: string | null) {
+  const effort = rir?.trim();
+  if (!effort) return label;
+  if (label === "—") return effort;
+  return `${label} · ${effort}`;
+}
+
 export function previousSetLabel(input: {
   reps: number | null;
   loadValue: number | null;
   loadUnit: string;
   logMode?: string | null;
   durationSeconds?: number | null;
+  rir?: string | null;
 } | null) {
   if (!input) return "—";
   const clock =
     input.durationSeconds != null && input.durationSeconds > 0
       ? formatClock(input.durationSeconds)
       : null;
+  let label = "—";
   if (clock && input.loadValue != null) {
-    return `${clock} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
+    label = `${clock} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
+  } else if (clock) {
+    label = clock;
+  } else if (input.reps != null && input.loadValue != null) {
+    label = `${input.reps} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
+  } else if (input.reps != null) {
+    label = `${input.reps} reps`;
+  } else if (input.loadValue != null) {
+    label = previousLoadText(input.loadValue, input.loadUnit);
+  } else if (input.logMode === "timed_round") {
+    label = "Done";
   }
-  if (clock) return clock;
-  if (input.reps != null && input.loadValue != null) {
-    return `${input.reps} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
-  }
-  if (input.reps != null) return `${input.reps} reps`;
-  if (input.loadValue != null) return previousLoadText(input.loadValue, input.loadUnit);
-  if (input.logMode === "timed_round") return "Done";
-  return "—";
+  return withStoredRir(label, input.rir);
 }

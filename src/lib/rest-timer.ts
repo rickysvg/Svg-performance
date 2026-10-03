@@ -49,31 +49,64 @@ export function addRestSeconds(timer: RestTimerState, seconds: number): RestTime
   };
 }
 
-export function signalRestComplete() {
-  try {
-    navigator.vibrate?.(160);
-  } catch {
-    /* web vibration is optional */
+/**
+ * End-of-rest alarm. Square tones at a gym-floor level, plus a pulse pattern
+ * long enough to feel in a pocket. Louder than a UI click so it cuts through
+ * music from a phone speaker.
+ */
+export const REST_ALARM = {
+  gain: 0.32,
+  vibrate: [220, 90, 220, 90, 380],
+  tones: [
+    { frequency: 523.25, seconds: 0.16, at: 0 },
+    { frequency: 659.25, seconds: 0.16, at: 0.18 },
+    { frequency: 783.99, seconds: 0.18, at: 0.36 },
+    { frequency: 1046.5, seconds: 0.36, at: 0.56 },
+  ],
+} as const;
+
+let restAudio: AudioContext | null = null;
+
+/** Call from the set-complete tap so the later alarm is allowed to play. */
+export function primeRestAudio() {
+  if (typeof window === "undefined") return;
+  const Ctor =
+    window.AudioContext ||
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return;
+  if (!restAudio) restAudio = new Ctor();
+  if (restAudio.state === "suspended") {
+    void restAudio.resume();
   }
+}
+
+export function signalRestComplete() {
+  if (typeof navigator !== "undefined") {
+    try {
+      navigator.vibrate?.(REST_ALARM.vibrate);
+    } catch {
+      /* web vibration is optional */
+    }
+  }
+  if (typeof window === "undefined") return;
   try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    gain.gain.value = 0.04;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.12);
-    osc.onended = () => {
-      void ctx.close();
-    };
+    primeRestAudio();
+    const context = restAudio;
+    if (!context) return;
+    const now = context.currentTime;
+    for (const tone of REST_ALARM.tones) {
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      osc.type = "square";
+      osc.frequency.value = tone.frequency;
+      gain.gain.setValueAtTime(REST_ALARM.gain, now + tone.at);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + tone.at + tone.seconds);
+      osc.connect(gain);
+      gain.connect(context.destination);
+      osc.start(now + tone.at);
+      osc.stop(now + tone.at + tone.seconds + 0.02);
+    }
   } catch {
-    /* beep is optional on web */
+    /* alarm is best-effort on web */
   }
 }

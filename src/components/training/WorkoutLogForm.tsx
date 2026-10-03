@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   deleteWorkoutAction,
   saveWorkoutAction,
   type WorkoutActionState,
 } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
+import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
@@ -34,18 +35,28 @@ import {
 import {
   addRestSeconds,
   formatRestClock,
-  formatRestPill,
   isRestActive,
+  primeRestAudio,
   remainingRestSeconds,
   signalRestComplete,
-  startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { loggerCursor, nextIncompleteSetId } from "@/lib/logger-progress";
 import {
+  applyPreviousToSet,
   copyPreviousOntoExercise,
   restTimerAfterSetDone,
 } from "@/lib/logger-prefill";
+import {
+  activeRest,
+  clearLoggerDraft,
+  createLoggerHydrationStore,
+  extraDraftSets,
+  mergeDraftOntoSets,
+  writeLoggerDraft,
+  type DraftSetSnapshot,
+} from "@/lib/logger-draft";
+import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
@@ -111,7 +122,44 @@ function newClientSet(
     durationSeconds,
     completed: false,
     notes: "",
+    prescriptionKey: prescriptionSlotKey({ exerciseName }),
+    rir: "",
   };
+}
+
+function toDraftSet(set: WorkoutSet): DraftSetSnapshot {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: set.loadUnit,
+    logMode: set.logMode,
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  };
+}
+
+function previousChipClass(hasPrevious: boolean) {
+  return hasPrevious
+    ? "flex min-h-11 w-full items-center whitespace-normal rounded-lg bg-accent px-2 py-1 text-left text-sm font-semibold leading-tight text-black"
+    : "flex min-h-11 w-full items-center whitespace-normal rounded-lg px-1 py-1 text-left text-sm leading-tight text-muted";
+}
+
+function serverRest(session: { restExerciseName: string; restEndsAt: Date | null }, now = Date.now()): RestTimerState | null {
+  if (!session.restEndsAt || !session.restExerciseName) return null;
+  const endsAtMs = new Date(session.restEndsAt).getTime();
+  return activeRest(
+    {
+      exerciseName: session.restExerciseName,
+      endsAtMs,
+      durationSeconds: Math.max(1, Math.ceil((endsAtMs - now) / 1000)),
+    },
+    now,
+  );
 }
 
 function SessionTimer() {
@@ -144,7 +192,46 @@ export function WorkoutLogForm({
   const [moreOpen, setMoreOpen] = useState(false);
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [appliedPhase, setAppliedPhase] = useState<"server" | "client">("server");
   const formRef = useRef<HTMLFormElement>(null);
+  const syncChain = useRef(Promise.resolve());
+  const scrolled = useRef(false);
+  const alarmedEndsAt = useRef<number | null>(null);
+  const [hydrationStore] = useState(() => createLoggerHydrationStore(session.id));
+  const hydration = useSyncExternalStore(
+    hydrationStore.subscribe,
+    hydrationStore.getSnapshot,
+    hydrationStore.getServerSnapshot,
+  );
+
+  if (hydration.phase === "client" && appliedPhase !== "client") {
+    setAppliedPhase("client");
+    if (session.status !== "complete") {
+      const base = setsInLb(session.sets);
+      const draft = hydration.draft;
+      const merged = mergeDraftOntoSets(base, draft);
+      const extras = extraDraftSets(base, draft).map((set) => ({
+        ...newClientSet(
+          session.id,
+          set.exerciseName,
+          set.setNumber,
+          set.loadUnit,
+          resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
+          set.durationSeconds,
+        ),
+        reps: set.reps,
+        loadValue: set.loadValue,
+        completed: set.completed,
+        notes: set.notes,
+        prescriptionKey: set.prescriptionKey,
+        rir: set.rir,
+      }));
+      setSets([...merged, ...extras]);
+      setRestTimer(
+        draft ? activeRest(draft.rest, hydration.nowMs) : serverRest(session, hydration.nowMs),
+      );
+    }
+  }
 
   const grouped = useMemo(() => {
     const map = new Map<string, WorkoutSet[]>();
@@ -176,9 +263,6 @@ export function WorkoutLogForm({
     reps: currentPlanned?.reps,
   });
   const progressUnit = currentMode === "timed_round" ? "Round" : "Set";
-  const currentRest =
-    currentPlanned?.restSeconds ??
-    (currentMode === "timed_round" ? 90 : currentMode === "timed" ? 45 : 60);
   const firstRirName = session.programDay?.exercises.find((row) => hasRirCue(row.loadText))?.name;
 
   const defaultUnit = "lb";
@@ -189,6 +273,97 @@ export function WorkoutLogForm({
   const restRemaining = remainingRestSeconds(restTimer, nowMs);
   const restRunning = isRestActive(restTimer, nowMs);
 
+  function remember(nextSets: WorkoutSet[], nextRest: RestTimerState | null) {
+    if (session.status === "complete") return;
+    writeLoggerDraft({
+      version: 1,
+      sessionId: session.id,
+      savedAt: Date.now(),
+      sets: nextSets.map(toDraftSet),
+      rest: nextRest,
+    });
+  }
+
+  function syncDraft(nextSets: WorkoutSet[], nextRest: RestTimerState | null) {
+    if (session.status === "complete") return;
+    const form = formRef.current;
+    const title =
+      form?.querySelector<HTMLTextAreaElement>("[data-workout-title]")?.value || session.title;
+    const performedAt =
+      form?.querySelector<HTMLInputElement>('[name="performedAt"]')?.value ||
+      toDateInput(session.performedAt);
+    const notesField = form?.querySelector<HTMLTextAreaElement>('[name="notes"]');
+    const notes = notesField ? notesField.value : session.notes;
+    const payload = {
+      workoutId: session.id,
+      title,
+      performedAt,
+      notes,
+      rest: nextRest
+        ? { exerciseName: nextRest.exerciseName, endsAtMs: nextRest.endsAtMs }
+        : null,
+      sets: nextSets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.reps,
+        loadValue: set.loadValue,
+        loadUnit: set.loadUnit === "kg" ? "lb" : (set.loadUnit as "lb"),
+        logMode: resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
+        durationSeconds: set.durationSeconds,
+        completed: set.completed,
+        notes: set.notes,
+        prescriptionKey: set.prescriptionKey,
+        rir: set.rir,
+      })),
+    };
+    syncChain.current = syncChain.current
+      .then(() => syncWorkoutDraftAction(payload))
+      .then(() => undefined)
+      .catch(() => undefined);
+  }
+
+  useEffect(() => {
+    void fetch("/api/session/touch", { method: "POST" }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (appliedPhase !== "client") return;
+    if (session.status === "complete") {
+      clearLoggerDraft(session.id);
+      return;
+    }
+    if (!scrolled.current) {
+      scrolled.current = true;
+      const resting =
+        restTimer && remainingRestSeconds(restTimer) > 0 ? restTimer.exerciseName : "";
+      const restingBlock = resting
+        ? formRef.current?.querySelector<HTMLElement>(
+            `[data-exercise-block="${typeof CSS !== "undefined" && CSS.escape ? CSS.escape(resting) : resting}"]`,
+          )
+        : null;
+      if (restingBlock) {
+        restingBlock.scrollIntoView({ block: "center" });
+      } else {
+        const focus = sets.find((set) => !set.completed);
+        if (focus) {
+          const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(focus.id) : focus.id;
+          formRef.current
+            ?.querySelector<HTMLElement>(`[data-set-row="${escaped}"]`)
+            ?.scrollIntoView({ block: "center" });
+        }
+      }
+    }
+    const handle = window.setTimeout(() => {
+      remember(sets, restTimer);
+      if (sets.some((set) => set.completed) || restTimer) {
+        syncDraft(sets, restTimer);
+      }
+    }, 400);
+    return () => window.clearTimeout(handle);
+    // remember/syncDraft close over the latest form fields on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedPhase, sets, restTimer, session.status, session.id]);
+
   useEffect(() => {
     if (!moreOpen) return;
     document.querySelector("[data-session-overflow]")?.scrollIntoView({ block: "nearest" });
@@ -196,13 +371,15 @@ export function WorkoutLogForm({
 
   useEffect(() => {
     if (!restTimer) return;
+    const endsAtMs = restTimer.endsAtMs;
     const tick = window.setInterval(() => {
       const now = Date.now();
       setNowMs(now);
-      if (remainingRestSeconds(restTimer, now) <= 0) {
-        setRestTimer(null);
-        signalRestComplete();
-      }
+      if (endsAtMs - now > 0) return;
+      setRestTimer(null);
+      if (alarmedEndsAt.current === endsAtMs) return;
+      alarmedEndsAt.current = endsAtMs;
+      signalRestComplete();
     }, 250);
     return () => window.clearInterval(tick);
   }, [restTimer]);
@@ -225,7 +402,12 @@ export function WorkoutLogForm({
       });
       return [
         ...current,
-        newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
+        {
+          ...newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
+          prescriptionKey:
+            group[0]?.prescriptionKey || prescriptionSlotKey({ exerciseName, reps: planned?.reps }),
+          rir: group[0]?.rir ?? "",
+        },
       ];
     });
   }
@@ -236,23 +418,44 @@ export function WorkoutLogForm({
     restSeconds: number,
     completed: boolean,
   ) {
-    updateSet(setId, { completed });
-    const nextRest = restTimerAfterSetDone({
-      completed,
-      exerciseName,
-      restSeconds,
-    });
-    if (nextRest) setRestTimer(nextRest);
+    const nextSets = sets.map((set) => (set.id === setId ? { ...set, completed } : set));
+    setSets(nextSets);
+    let nextRest = restTimer;
+    if (completed) {
+      primeRestAudio();
+      primeUnlockAudio();
+      const started = restTimerAfterSetDone({
+        completed,
+        exerciseName,
+        restSeconds,
+      });
+      if (started) {
+        nextRest = started;
+        setRestTimer(started);
+      }
+    }
+    remember(nextSets, nextRest);
+    if (completed) syncDraft(nextSets, nextRest);
     if (!completed) return;
-    const nextId = nextIncompleteSetId(
-      sets.map((set) => (set.id === setId ? { ...set, completed: true } : set)),
-      setId,
-    );
+    const nextId = nextIncompleteSetId(nextSets, setId);
     if (!nextId) return;
     const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(nextId) : nextId;
     requestAnimationFrame(() => {
       formRef.current?.querySelector<HTMLElement>(`[data-set-field="${escaped}"]`)?.focus();
     });
+  }
+
+  function commitRest(next: RestTimerState | null) {
+    if (next && remainingRestSeconds(next) <= 0) {
+      setRestTimer(null);
+      signalRestComplete();
+      remember(sets, null);
+      syncDraft(sets, null);
+      return;
+    }
+    setRestTimer(next);
+    remember(sets, next);
+    syncDraft(sets, next);
   }
 
   function insertExercise() {
@@ -306,49 +509,6 @@ export function WorkoutLogForm({
               </button>
             </div>
           </div>
-          {restRunning ? (
-            <div data-rest-countdown className="bg-black px-4 py-4 text-white">
-              <p className="font-display text-xs uppercase tracking-wide text-highlighter">
-                Rest · {restTimer?.exerciseName}
-              </p>
-              <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-                <p className="font-display text-6xl leading-none text-[#CBF805] tabular-nums">
-                  {formatRestClock(restRemaining)}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    data-rest-skip
-                    onClick={() => setRestTimer(null)}
-                    className="touch-target rounded-full border border-white/40 px-4 text-sm text-white"
-                  >
-                    Skip
-                  </button>
-                  <button
-                    type="button"
-                    data-rest-plus
-                    onClick={() =>
-                      setRestTimer((timer) => (timer ? addRestSeconds(timer, 15) : timer))
-                    }
-                    className="touch-target rounded-full bg-accent px-4 text-sm text-black"
-                  >
-                    +15s
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : currentRest > 0 && cursor.exerciseName ? (
-            <div className="px-4 pb-3">
-              <button
-                type="button"
-                data-rest-start={cursor.exerciseName}
-                onClick={() => setRestTimer(startRestTimer(cursor.exerciseName, currentRest))}
-                className="touch-target w-full rounded-full border border-line font-display text-sm uppercase"
-              >
-                Start rest {formatRestPill(currentRest)}
-              </button>
-            </div>
-          ) : null}
         </header>
 
         <div className="space-y-2 pt-2">
@@ -562,6 +722,48 @@ export function WorkoutLogForm({
                 </p>
               ) : null}
 
+              {restRunning && restTimer?.exerciseName === name ? (
+                <div
+                  data-rest-countdown
+                  className="sticky top-[calc(env(safe-area-inset-top)+7.5rem)] z-20 mt-3 flex items-center justify-between gap-2 rounded-xl bg-black px-3 py-2 text-white"
+                >
+                  <div className="min-w-0">
+                    <p className="font-display text-[10px] uppercase tracking-wide text-highlighter">
+                      Rest
+                    </p>
+                    <p className="font-display text-xl leading-none tabular-nums text-[#CBF805]">
+                      {formatRestClock(restRemaining)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      type="button"
+                      data-rest-minus
+                      onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, -15) : null)}
+                      className="touch-target rounded-full border border-white/40 px-3 text-sm"
+                    >
+                      −15s
+                    </button>
+                    <button
+                      type="button"
+                      data-rest-skip
+                      onClick={() => commitRest(null)}
+                      className="touch-target rounded-full border border-white/40 px-3 text-sm"
+                    >
+                      Skip
+                    </button>
+                    <button
+                      type="button"
+                      data-rest-plus
+                      onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, 15) : null)}
+                      className="touch-target rounded-full bg-accent px-3 text-sm text-black"
+                    >
+                      +15s
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
                 {layout === "bag" ? (
                   <>
@@ -589,10 +791,25 @@ export function WorkoutLogForm({
                   const index = sets.findIndex((item) => item.id === set.id);
                   const previous = previousLoads[name]?.[set.setNumber] ?? null;
                   const primaryField = layout !== "bike";
+                  const previousLabel = previousSetLabel(previous);
                   return (
-                    <div key={set.id} className="space-y-1">
+                    <div key={set.id} data-set-row={set.id} className="space-y-1">
                       {layout === "weighted_shadow" && group.length > 1 ? (
                         <p className="text-xs text-muted">Set {indexInGroup + 1}</p>
+                      ) : null}
+                      {layout === "bag" || layout === "weighted_shadow" ? (
+                        <button
+                          type="button"
+                          data-use-previous={set.id}
+                          disabled={!previous}
+                          onClick={() =>
+                            setSets((current) => applyPreviousToSet(current, set.id, previous))
+                          }
+                          className={previousChipClass(Boolean(previous))}
+                          aria-label={previous ? `Use previous ${previousLabel}` : "No previous set"}
+                        >
+                          {previousLabel}
+                        </button>
                       ) : null}
                       <div className={`grid ${columns} items-center gap-2`}>
                       <input
@@ -607,12 +824,29 @@ export function WorkoutLogForm({
                       />
                       <input type="hidden" name={`sets.${index}.loadUnit`} value={set.loadUnit} />
                       <input type="hidden" name={`sets.${index}.logMode`} value={mode} />
+                      <input
+                        type="hidden"
+                        name={`sets.${index}.prescriptionKey`}
+                        value={set.prescriptionKey}
+                      />
+                      <input type="hidden" name={`sets.${index}.rir`} value={set.rir} />
                       {layout === "bag" ? (
                         <p className="text-sm font-medium">Round {indexInGroup + 1}</p>
                       ) : layout === "weighted_shadow" ? null : (
                         <>
                           <p className="text-sm font-medium">{indexInGroup + 1}</p>
-                          <p className="truncate text-sm text-muted">{previousSetLabel(previous)}</p>
+                          <button
+                            type="button"
+                            data-use-previous={set.id}
+                            disabled={!previous}
+                            onClick={() =>
+                              setSets((current) => applyPreviousToSet(current, set.id, previous))
+                            }
+                            className={previousChipClass(Boolean(previous))}
+                            aria-label={previous ? `Use previous ${previousLabel}` : "No previous set"}
+                          >
+                            {previousLabel}
+                          </button>
                         </>
                       )}
                       {bike ? (
