@@ -391,6 +391,8 @@ describe("start today", () => {
     expect(form).toContain("data-use-previous");
     expect(form).toContain("grid-cols-[1.75rem_minmax(7.5rem,1fr)_3.5rem_3.5rem_1.75rem]");
     expect(form).toContain("whitespace-nowrap");
+    expect(form).toContain("data-prescribed-rest");
+    expect(form).toContain("restBannerSeconds");
     expect(form).toContain("data-rest-countdown");
     expect(form).toContain("data-rest-skip");
     expect(form).toContain("data-rest-plus");

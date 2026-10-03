@@ -218,8 +218,14 @@ export function exerciseCountLabel(count: number) {
   return `${count} Exercise${count === 1 ? "" : "s"}`;
 }
 
+/** Prescribed rest for the logger row. Whole minutes stay in minutes; 90s stays "90s". */
 export function restBannerSeconds(seconds: number) {
-  return `${seconds}s`;
+  const total = Math.round(seconds);
+  if (total >= 60 && total % 60 === 0) {
+    const minutes = total / 60;
+    return `${minutes} min`;
+  }
+  return `${total}s`;
 }
 
 function previousLoadText(loadValue: number, loadUnit: string) {

@@ -20,7 +20,7 @@ import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
-import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
+import { plannedSetLine, previousSetLabel, restBannerSeconds } from "@/lib/exercise-media";
 import {
   countLabel,
   hidesLoad,
@@ -721,8 +721,16 @@ export function WorkoutLogForm({
               </div>
 
               {restSeconds > 0 ? (
-                <p className="mt-3 text-sm text-muted">
-                  {bike || mode === "timed_round" ? "Rest between rounds" : "Rest between each set"}
+                <p
+                  className="mt-3 flex items-center justify-between gap-3 text-sm text-muted"
+                  data-prescribed-rest={restSeconds}
+                >
+                  <span>
+                    {bike || mode === "timed_round" ? "Rest between rounds" : "Rest between each set"}
+                  </span>
+                  <span className="shrink-0 rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold tabular-nums text-foreground">
+                    {restBannerSeconds(restSeconds)}
+                  </span>
                 </p>
               ) : null}
 

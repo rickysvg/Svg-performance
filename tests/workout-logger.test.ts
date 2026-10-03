@@ -17,6 +17,7 @@ import {
   exerciseThumbSrc,
   plannedSetLine,
   previousSetLabel,
+  restBannerSeconds,
   estimateSessionMinutes,
   exerciseCountLabel,
   sessionKindLabel,
@@ -68,6 +69,10 @@ describe("workout logger media and previous loads", () => {
         name: "Jump rope or easy bike intervals",
       }),
     ).toBe("8 sets × 20 sec on / 40 sec easy");
+    expect(restBannerSeconds(45)).toBe("45s");
+    expect(restBannerSeconds(90)).toBe("90s");
+    expect(restBannerSeconds(60)).toBe("1 min");
+    expect(restBannerSeconds(120)).toBe("2 min");
     expect(previousSetLabel(null)).toBe("—");
     expect(previousSetLabel({ reps: 16, loadValue: 80, loadUnit: "lb" })).toBe("16 × 80 lbs");
     expect(previousSetLabel({ reps: 8, loadValue: 195, loadUnit: "lb" })).toBe("8 × 195 lbs");
