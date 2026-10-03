@@ -69,6 +69,9 @@ export default async function AdminPage() {
         <Link href="/staff/reports" className="text-accent underline">
           Trends
         </Link>
+        <Link href="/staff/reports#session-feel" className="text-accent underline">
+          Session feel
+        </Link>
       </nav>
 
       <ul className="space-y-3">

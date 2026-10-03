@@ -1,8 +1,8 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { isSqliteFileUrl, usesPostgresUrl } from "@/lib/db-provider";
-import { neonDirectUrl } from "../scripts/postgres-url.mjs";
+import { isSqliteFileUrl, resolveHostedPostgresUrl, usesPostgresUrl } from "@/lib/db-provider";
+import { hostedPreparePlan, neonDirectUrl } from "../scripts/postgres-url.mjs";
 
 describe("hosted preview database selection", () => {
   it("treats postgres URLs as hosted and sqlite files as laptop", () => {
@@ -40,6 +40,35 @@ describe("hosted preview database selection", () => {
     });
   });
 
+  it("uses a Vercel Postgres URL when Preview did not set DATABASE_URL", () => {
+    const env = {
+      DATABASE_URL: "file:./dev.db",
+      POSTGRES_URL: "postgresql://u:p@ep-preview-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require",
+    };
+    expect(resolveHostedPostgresUrl(env)?.name).toBe("POSTGRES_URL");
+    expect(
+      hostedPreparePlan({ onVercel: true, vercelEnv: "preview", env }),
+    ).toMatchObject({ action: "postgres", name: "POSTGRES_URL" });
+    expect(
+      hostedPreparePlan({
+        onVercel: true,
+        vercelEnv: "preview",
+        env: { DATABASE_URL: "" },
+      }).action,
+    ).toBe("preview-without-database");
+    expect(
+      hostedPreparePlan({
+        onVercel: true,
+        vercelEnv: "production",
+        env: { DATABASE_URL: "file:./dev.db" },
+      }).action,
+    ).toBe("fail");
+    expect(
+      hostedPreparePlan({ onVercel: false, vercelEnv: "", env: { DATABASE_URL: "file:./dev.db" } })
+        .action,
+    ).toBe("sqlite");
+  });
+
   it("rewrites Neon pooler hosts to the direct host for schema DDL", () => {
     expect(
       neonDirectUrl(
@@ -65,6 +94,7 @@ describe("hosted preview database selection", () => {
   it("ships idempotent additive SQL for the #46 Profile columns", () => {
     const sql = fs.readFileSync("prisma/hosted-additive.sql", "utf8");
     const prepare = fs.readFileSync("scripts/prisma-prepare.mjs", "utf8");
+    const postgresUrl = fs.readFileSync("scripts/postgres-url.mjs", "utf8");
     expect(sql).toContain("leaderboardOptIn");
     expect(sql).toContain("seenBadgeUnlocksJson");
     expect(sql).toContain("trainingEmphasis");
@@ -74,7 +104,8 @@ describe("hosted preview database selection", () => {
     expect(sql).toMatch(/IF NOT EXISTS|to_regclass/);
     expect(sql.toUpperCase()).not.toMatch(/\bDROP\s+(TABLE|COLUMN|CONSTRAINT)\b/);
     expect(prepare).toContain("hosted-additive.sql");
-    expect(prepare).toContain("neonDirectUrl");
+    expect(prepare).toContain("hostedDdlUrl");
+    expect(postgresUrl).toContain("neonDirectUrl");
     expect(prepare).not.toContain("--accept-data-loss");
   });
 });

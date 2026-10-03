@@ -2,9 +2,11 @@ import Link from "next/link";
 import { requireStaff, isAdmin } from "@/lib/roles";
 import {
   listMemberTrendsForStaff,
+  listDifficultyFeedbackForStaff,
   listAssignableUsers,
   listCoachAssignments,
 } from "@/lib/reports";
+import { SessionFeelReport } from "@/components/staff/SessionFeelReport";
 import { EmptyState } from "@/components/EmptyState";
 import { AssignCoachForm } from "@/components/staff/AssignCoachForm";
 
@@ -15,8 +17,9 @@ function formatActive(value: string | null) {
 
 export default async function StaffReportsPage() {
   const staff = await requireStaff();
-  const [trends, users, assignments] = await Promise.all([
+  const [trends, feedback, users, assignments] = await Promise.all([
     listMemberTrendsForStaff({ staffUserId: staff.id, staffRole: staff.role }),
+    listDifficultyFeedbackForStaff({ staffUserId: staff.id, staffRole: staff.role }),
     isAdmin(staff) ? listAssignableUsers() : Promise.resolve([]),
     isAdmin(staff) ? listCoachAssignments() : Promise.resolve([]),
   ]);
@@ -37,6 +40,10 @@ export default async function StaffReportsPage() {
           {" · "}
           <Link href="/staff/coaching" className="text-accent underline">
             Coach notes
+          </Link>
+          {" · "}
+          <Link href="#session-feel" className="text-accent underline">
+            Session feel
           </Link>
           {isAdmin(staff) ? (
             <>
@@ -74,6 +81,8 @@ export default async function StaffReportsPage() {
           ) : null}
         </section>
       ) : null}
+
+      <SessionFeelReport feedback={feedback} />
 
       {trends.length === 0 ? (
         <EmptyState title="No members to report on yet">

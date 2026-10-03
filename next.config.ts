@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { ensureDatabaseUrl } from "./src/lib/db-provider";
+
+ensureDatabaseUrl();
 
 const nextConfig: NextConfig = {
   images: {
