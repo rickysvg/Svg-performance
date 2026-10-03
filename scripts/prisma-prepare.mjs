@@ -4,12 +4,12 @@
  * Laptop: file:./dev.db → SQLite (prisma/schema.prisma + migrate deploy).
  * Hosted: postgresql://… → Postgres (prisma/schema.postgres.prisma + db push).
  *
- * Never put secrets in this file. It only reads DATABASE_URL from the environment.
+ * Never put secrets in this file. It only reads connection URLs from the environment.
  */
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { neonDirectUrl } from "./postgres-url.mjs";
+import { hostedDdlUrl, hostedPreparePlan } from "./postgres-url.mjs";
 
 const root = process.cwd();
 const sqliteSchema = path.join(root, "prisma", "schema.prisma");
@@ -34,14 +34,6 @@ function loadDotEnv() {
     }
     process.env[key] = value;
   }
-}
-
-function usesPostgresUrl(url = process.env.DATABASE_URL ?? "") {
-  return /^(postgres|postgresql):\/\//i.test(url.trim());
-}
-
-function isSqliteFileUrl(url = process.env.DATABASE_URL ?? "") {
-  return url.trim().toLowerCase().startsWith("file:");
 }
 
 export function writePostgresSchema() {
@@ -88,6 +80,8 @@ Do this:
 3. In Vercel → Settings → Environment Variables, set:
    AUTH_SECRET  — long random string
    DATABASE_URL — the postgres string (not file:./dev.db)
+                  Preview may use POSTGRES_URL, POSTGRES_PRISMA_URL,
+                  POSTGRES_URL_NON_POOLING, or DATABASE_URL_UNPOOLED instead.
    APP_URL      — your real Vercel URL after the first deploy
 4. Redeploy.
 
@@ -101,9 +95,12 @@ loadDotEnv();
 const writeOnly = process.argv.includes("--write-postgres-schema-only");
 const deployFlag = process.argv.includes("--deploy");
 const onVercel = process.env.VERCEL === "1";
-const url = process.env.DATABASE_URL ?? "";
-const postgres = usesPostgresUrl(url);
 const deploy = deployFlag || onVercel;
+const plan = hostedPreparePlan({
+  onVercel,
+  vercelEnv: process.env.VERCEL_ENV ?? "",
+  env: process.env,
+});
 
 writePostgresSchema();
 
@@ -112,22 +109,35 @@ if (writeOnly) {
   process.exit(0);
 }
 
-if (onVercel && !postgres) {
+if (plan.action === "fail") {
   console.error(hostedNeedsPostgresMessage());
   process.exit(1);
 }
 
-if (onVercel && isSqliteFileUrl(url)) {
-  console.error(hostedNeedsPostgresMessage());
-  process.exit(1);
+if (plan.action === "preview-without-database") {
+  console.warn(
+    [
+      "Preview build has no Postgres URL.",
+      "Checked DATABASE_URL, POSTGRES_URL_NON_POOLING, DATABASE_URL_UNPOOLED, DIRECT_URL, POSTGRES_PRISMA_URL, POSTGRES_URL.",
+      "Generating the Prisma client and skipping db push so this preview can finish.",
+      "The preview app cannot read workouts until one of those is set for the Preview environment.",
+      "Production still stops when the URL is missing.",
+    ].join("\n"),
+  );
+  run("npx prisma generate --schema=prisma/schema.postgres.prisma", {
+    DATABASE_URL: "postgresql://preview:preview@127.0.0.1:5432/preview",
+  });
+  process.exit(0);
 }
 
-if (postgres) {
-  console.log("Prisma: PostgreSQL (hosted / DATABASE_URL).");
-  run("npx prisma generate --schema=prisma/schema.postgres.prisma");
+if (plan.action === "postgres") {
+  console.log(`Prisma: PostgreSQL (hosted / ${plan.name}).`);
+  run("npx prisma generate --schema=prisma/schema.postgres.prisma", {
+    DATABASE_URL: plan.url,
+  });
   if (deploy) {
-    const pushUrl = process.env.DIRECT_URL?.trim() || neonDirectUrl(url) || url;
-    if (pushUrl !== url) {
+    const pushUrl = hostedDdlUrl(process.env, plan.url);
+    if (pushUrl !== plan.url) {
       console.log("Prisma: db push / additive SQL use the direct (non-pooler) URL.");
     }
     applyHostedAdditiveSql(pushUrl);

@@ -325,7 +325,7 @@ Copy the printed line. That is `AUTH_SECRET`. Not a Stripe key.
 6. Click **Deploy**. Wait until Vercel says the build succeeded.
 7. Open the URL Vercel shows you on your phone. That is your preview. Write it down yourself. This document still does not claim one.
 
-The build runs `node scripts/prisma-prepare.mjs --deploy`, which generates the Postgres Prisma client and runs `prisma db push` (creates tables). It will **fail on purpose** if `DATABASE_URL` is missing or still a SQLite `file:` URL.
+The build runs `node scripts/prisma-prepare.mjs --deploy`, which generates the Postgres Prisma client and runs `prisma db push` (creates tables). It uses `DATABASE_URL` when that is a `postgresql://` string, otherwise `POSTGRES_URL_NON_POOLING`, `DATABASE_URL_UNPOOLED`, `DIRECT_URL`, `POSTGRES_PRISMA_URL`, or `POSTGRES_URL`. Production **fails on purpose** if none of those is a postgres URL. A Preview deploy with none of them still generates the client and skips `db push` so the check can finish; that preview cannot read data until a Preview URL is set.
 
 ### D. Put the real URL into APP_URL
 

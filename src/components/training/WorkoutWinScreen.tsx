@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
+import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
 import { workoutCompleteHeadline, type WorkoutCompleteTile } from "@/lib/workout-complete";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { ShareStat } from "@/lib/share-card";
@@ -23,6 +24,8 @@ export function WorkoutWinScreen({
   shareStats,
   badgeTitle,
   unit,
+  workoutId,
+  difficultyRating,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -31,6 +34,8 @@ export function WorkoutWinScreen({
   shareStats: ShareStat[];
   badgeTitle?: string | null;
   unit: LoadUnit;
+  workoutId: string;
+  difficultyRating: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -125,6 +130,7 @@ export function WorkoutWinScreen({
         <h1 id="workout-win-title" className="font-display mt-3 text-[34px] uppercase leading-none tracking-wide">
           {workoutCompleteHeadline()}
         </h1>
+        <SessionFeelPicker workoutId={workoutId} current={difficultyRating} />
         <dl className="mt-6 grid w-full grid-cols-2 gap-2">
           {tiles.map((tile) => (
             <div key={tile.key} className="rounded-2xl bg-black px-3 py-4" data-win-stat={tile.key}>

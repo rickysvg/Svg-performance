@@ -1,9 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import {
+  classifyCompletedWorkout,
+  difficultyBuckets,
+  difficultyLabel,
+  difficultyScore,
+  emptyDifficultyFeedback,
+  isDifficultyRating,
   recentDifficultyAverage,
+  sortWorkoutTypeBuckets,
   tooEasyCoachNote,
   tooEasyStreak,
+  WORKOUT_TYPE_LABELS,
+  type DifficultyFeedbackView,
 } from "@/lib/difficulty";
 
 export type MemberTrend = {
@@ -161,6 +170,91 @@ export async function listMemberTrendsForStaff(input: {
       tooEasyNote: tooEasyCoachNote(easyStreak),
     };
   });
+}
+
+const RECENT_FEEL_TAKE = 80;
+const FEEL_LIST_TAKE = 30;
+
+/**
+ * Recent finished workouts and how hard they felt.
+ * Food diaries stay out. Coaches see assigned members; admins see everyone.
+ */
+export async function listDifficultyFeedbackForStaff(input: {
+  staffUserId: string;
+  staffRole: string;
+}): Promise<DifficultyFeedbackView> {
+  assertStaff(input.staffRole);
+  const memberIds = await memberIdsVisibleToStaff(input.staffUserId, input.staffRole);
+  if (memberIds.length === 0) {
+    return emptyDifficultyFeedback();
+  }
+
+  const rows = await prisma.workoutSession.findMany({
+    where: { userId: { in: memberIds }, status: "complete" },
+    orderBy: { performedAt: "desc" },
+    take: RECENT_FEEL_TAKE,
+    include: {
+      user: { select: { email: true, profile: { select: { displayName: true } } } },
+      programDay: { select: { id: true, title: true, focus: true } },
+      sets: { select: { exerciseName: true } },
+    },
+  });
+
+  const rated = rows.filter((row) => isDifficultyRating(row.difficultyRating));
+  const sessions = rows.slice(0, FEEL_LIST_TAKE).map((row) => {
+    const type = classifyCompletedWorkout({
+      title: row.title,
+      programDayTitle: row.programDay?.title,
+      programDayFocus: row.programDay?.focus,
+      exerciseNames: row.sets.map((set) => set.exerciseName),
+    });
+    return {
+      sessionId: row.id,
+      userId: row.userId,
+      displayName: row.user.profile?.displayName || row.user.email,
+      title: row.title,
+      programDayTitle: row.programDay?.title ?? "",
+      workoutType: WORKOUT_TYPE_LABELS[type],
+      performedAt: row.performedAt.toISOString(),
+      difficultyRating: row.difficultyRating,
+      difficultyLabel: difficultyLabel(row.difficultyRating) || "Not rated",
+      score: difficultyScore(row.difficultyRating),
+    };
+  });
+
+  const byProgramDay = difficultyBuckets(
+    rated.flatMap((row) =>
+      row.programDay
+        ? [{ key: row.programDay.id, label: row.programDay.title, rating: row.difficultyRating }]
+        : [],
+    ),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+
+  const byWorkoutType = sortWorkoutTypeBuckets(
+    difficultyBuckets(
+      rated.map((row) => {
+        const type = classifyCompletedWorkout({
+          title: row.title,
+          programDayTitle: row.programDay?.title,
+          programDayFocus: row.programDay?.focus,
+          exerciseNames: row.sets.map((set) => set.exerciseName),
+        });
+        return {
+          key: type,
+          label: WORKOUT_TYPE_LABELS[type],
+          rating: row.difficultyRating,
+        };
+      }),
+    ),
+  );
+
+  return {
+    sessions,
+    byProgramDay,
+    byWorkoutType,
+    ratedCount: rated.length,
+    unratedCount: rows.length - rated.length,
+  };
 }
 
 export async function assertCanViewMemberTrend(input: {

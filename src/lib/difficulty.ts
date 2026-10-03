@@ -87,3 +87,136 @@ export function memberDifficultyCopy(average: ReturnType<typeof recentDifficulty
   }
   return `Recent feel: ${average.label} (average ${average.average} of 5 across ${average.count} rated session${average.count === 1 ? "" : "s"}). Used later for progression hints — we do not auto-add load.`;
 }
+
+export const WORKOUT_TYPE_LABELS = {
+  bag: "Bag",
+  lift: "Lift",
+  bike: "Bike",
+  gpp: "GPP",
+  other: "Other",
+} as const;
+
+export type WorkoutTypeKey = keyof typeof WORKOUT_TYPE_LABELS;
+
+const WORKOUT_TYPE_ORDER: WorkoutTypeKey[] = ["bag", "lift", "bike", "gpp", "other"];
+
+export function classifyCompletedWorkout(input: {
+  title: string;
+  programDayTitle?: string | null;
+  programDayFocus?: string | null;
+  exerciseNames?: string[];
+}): WorkoutTypeKey {
+  const head = [input.title, input.programDayTitle, input.programDayFocus]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const moves = (input.exerciseNames ?? []).join(" ").toLowerCase();
+  if (/\b(heavy bag|bag rounds|pad rounds|sparring rounds|grappling rounds)\b/.test(head) || /\bbag\b/.test(head)) {
+    return "bag";
+  }
+  if (/\bgpp\b/.test(head)) return "gpp";
+  if (/\bbike\b/.test(head) || /\bbike\b/.test(moves)) return "bike";
+  if (/\bbag\b/.test(moves)) return "bag";
+  if (head.trim() || moves.trim()) return "lift";
+  return "other";
+}
+
+export type DifficultyDistributionRow = {
+  value: DifficultyRating;
+  label: string;
+  score: number;
+  count: number;
+};
+
+export type DifficultyBucket = {
+  key: string;
+  label: string;
+  count: number;
+  average: number | null;
+  distribution: DifficultyDistributionRow[];
+};
+
+export type DifficultySessionRow = {
+  sessionId: string;
+  userId: string;
+  displayName: string;
+  title: string;
+  programDayTitle: string;
+  workoutType: string;
+  performedAt: string;
+  difficultyRating: string;
+  difficultyLabel: string;
+  score: number | null;
+};
+
+export type DifficultyFeedbackView = {
+  sessions: DifficultySessionRow[];
+  byProgramDay: DifficultyBucket[];
+  byWorkoutType: DifficultyBucket[];
+  ratedCount: number;
+  unratedCount: number;
+};
+
+export function emptyDifficultyFeedback(): DifficultyFeedbackView {
+  return {
+    sessions: [],
+    byProgramDay: [],
+    byWorkoutType: [],
+    ratedCount: 0,
+    unratedCount: 0,
+  };
+}
+
+export function summarizeDifficulty(ratings: string[]) {
+  const valid = ratings.filter(isDifficultyRating);
+  const distribution: DifficultyDistributionRow[] = DIFFICULTY_RATINGS.map((item) => ({
+    value: item.value,
+    label: item.label,
+    score: item.score,
+    count: valid.filter((rating) => rating === item.value).length,
+  }));
+  if (valid.length === 0) {
+    return { count: 0, average: null as number | null, distribution };
+  }
+  const total = valid.reduce((sum, rating) => sum + (difficultyScore(rating) ?? 0), 0);
+  return {
+    count: valid.length,
+    average: Math.round((total / valid.length) * 10) / 10,
+    distribution,
+  };
+}
+
+export function distributionSummary(distribution: { label: string; count: number }[]) {
+  return distribution.map((row) => `${row.label} ${row.count}`).join(" · ");
+}
+
+export function difficultyBuckets(rows: { key: string; label: string; rating: string }[]) {
+  const map = new Map<string, { label: string; ratings: string[] }>();
+  for (const row of rows) {
+    if (!isDifficultyRating(row.rating)) continue;
+    const existing = map.get(row.key);
+    if (existing) {
+      existing.ratings.push(row.rating);
+    } else {
+      map.set(row.key, { label: row.label, ratings: [row.rating] });
+    }
+  }
+  return [...map.entries()].map(([key, bucket]) => {
+    const summary = summarizeDifficulty(bucket.ratings);
+    return {
+      key,
+      label: bucket.label,
+      count: summary.count,
+      average: summary.average,
+      distribution: summary.distribution,
+    } satisfies DifficultyBucket;
+  });
+}
+
+export function sortWorkoutTypeBuckets(buckets: DifficultyBucket[]) {
+  return [...buckets].sort(
+    (a, b) =>
+      WORKOUT_TYPE_ORDER.indexOf(a.key as WorkoutTypeKey) -
+      WORKOUT_TYPE_ORDER.indexOf(b.key as WorkoutTypeKey),
+  );
+}
