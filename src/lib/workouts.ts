@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError, NotFoundError, AppError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
+import { prescriptionSlotKey } from "@/lib/prescription-slot";
+import { rirFromLoadText } from "@/lib/rir";
+import { endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
@@ -30,6 +33,8 @@ export type WorkoutSetInput = {
   durationSeconds?: number | null;
   completed: boolean;
   notes?: string;
+  prescriptionKey?: string;
+  rir?: string;
 };
 
 function assertOwnSession<T extends { userId: string }>(
@@ -100,9 +105,36 @@ export type PreviousSetLookup = Record<
       loadUnit: string;
       logMode?: string;
       durationSeconds?: number | null;
+      rir?: string;
+      prescriptionKey?: string;
     }
   >
 >;
+
+export type PreviousSlotQuery = {
+  exerciseName: string;
+  prescriptionKey: string;
+};
+
+function toPreviousSet(set: {
+  reps: number | null;
+  loadValue: number | null;
+  loadUnit: string;
+  logMode: string;
+  durationSeconds: number | null;
+  rir: string;
+  prescriptionKey: string;
+}) {
+  return {
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: set.loadUnit,
+    logMode: set.logMode,
+    durationSeconds: set.durationSeconds,
+    rir: set.rir ?? "",
+    prescriptionKey: set.prescriptionKey ?? "",
+  };
+}
 
 /**
  * Last completed session per exercise name for this member only.
@@ -144,16 +176,108 @@ export async function getPreviousLoadsForUser(
     result[name] = {};
     for (const set of session.sets) {
       if (set.exerciseName !== name) continue;
-      result[name][set.setNumber] = {
-        reps: set.reps,
-        loadValue: set.loadValue,
-        loadUnit: set.loadUnit,
-        logMode: set.logMode,
-        durationSeconds: set.durationSeconds,
-      };
+      result[name][set.setNumber] = toPreviousSet(set);
     }
   }
   return result;
+}
+
+/**
+ * Last completed set for each prescription slot. A keyed 8–12 session is not
+ * reused as the previous load for a 5×5 slot. Unkeyed history is only a
+ * fallback when this slot has never been logged with a key.
+ */
+export async function getPreviousLoadsForSlots(
+  userId: string,
+  slots: PreviousSlotQuery[],
+  excludeWorkoutId?: string,
+): Promise<PreviousSetLookup> {
+  const unique = new Map<string, PreviousSlotQuery>();
+  for (const slot of slots) {
+    const exerciseName = slot.exerciseName.trim();
+    const prescriptionKey = slot.prescriptionKey.trim();
+    if (!exerciseName) continue;
+    const id = prescriptionKey || `name:${exerciseName}`;
+    if (!unique.has(id)) unique.set(id, { exerciseName, prescriptionKey });
+  }
+  const list = [...unique.values()];
+  if (list.length === 0) return {};
+
+  const names = [...new Set(list.map((slot) => slot.exerciseName))];
+  const keys = list.map((slot) => slot.prescriptionKey).filter(Boolean);
+  const sessions = await prisma.workoutSession.findMany({
+    where: {
+      userId,
+      status: "complete",
+      ...(excludeWorkoutId ? { id: { not: excludeWorkoutId } } : {}),
+      sets: {
+        some: {
+          OR: [
+            ...(keys.length ? [{ prescriptionKey: { in: keys } }] : []),
+            { exerciseName: { in: names }, prescriptionKey: "" },
+          ],
+        },
+      },
+    },
+    orderBy: { performedAt: "desc" },
+    include: {
+      sets: {
+        where: {
+          OR: [
+            ...(keys.length ? [{ prescriptionKey: { in: keys } }] : []),
+            { exerciseName: { in: names }, prescriptionKey: "" },
+          ],
+        },
+        orderBy: [{ setNumber: "asc" }, { sortOrder: "asc" }],
+      },
+    },
+    take: 40,
+  });
+
+  const result: PreviousSetLookup = {};
+  for (const slot of list) {
+    const exact = slot.prescriptionKey
+      ? sessions.find((row) => row.sets.some((set) => set.prescriptionKey === slot.prescriptionKey))
+      : undefined;
+    const legacy = sessions.find((row) =>
+      row.sets.some((set) => set.exerciseName === slot.exerciseName && set.prescriptionKey === ""),
+    );
+    const chosen = exact ?? legacy;
+    if (!chosen) continue;
+    const keyed = Boolean(exact);
+    if (!result[slot.exerciseName]) result[slot.exerciseName] = {};
+    for (const set of chosen.sets) {
+      const matches = keyed
+        ? set.prescriptionKey === slot.prescriptionKey
+        : set.exerciseName === slot.exerciseName && !set.prescriptionKey;
+      if (!matches) continue;
+      result[slot.exerciseName][set.setNumber] = toPreviousSet(set);
+    }
+  }
+  return result;
+}
+
+export async function completedProgramDayIdsOnDay(
+  userId: string,
+  dayIds: string[],
+  day: Date,
+  timeZone: string,
+) {
+  const ids = [...new Set(dayIds.filter(Boolean))];
+  if (ids.length === 0) return [] as string[];
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId,
+      status: "complete",
+      programDayId: { in: ids },
+      performedAt: {
+        gte: startOfZonedDay(day, timeZone),
+        lt: endOfZonedDay(day, timeZone),
+      },
+    },
+    select: { programDayId: true },
+  });
+  return [...new Set(rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)))];
 }
 
 const WORKOUT_DETAIL_INCLUDE = {
@@ -253,6 +377,13 @@ export async function startWorkoutFromDay(input: {
       logMode: mode,
       durationSeconds: null,
       completed: false,
+      prescriptionKey: prescriptionSlotKey({
+        exerciseName: exercise.name,
+        reps: exercise.reps,
+        programSlug: rawDay.program.slug,
+        dayNumber: rawDay.dayNumber,
+      }),
+      rir: rirFromLoadText(exercise.loadText) ?? "",
     }));
   });
 
@@ -336,6 +467,8 @@ export async function updateWorkoutSessionForUser(input: {
   status: "draft" | "complete";
   sets: WorkoutSetInput[];
   difficultyRating?: string | null;
+  /** undefined leaves a running rest alone. null clears it. */
+  rest?: { exerciseName: string; endsAtMs: number } | null;
 }) {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -367,6 +500,15 @@ export async function updateWorkoutSessionForUser(input: {
           input.difficultyRating === undefined
             ? existing.difficultyRating
             : parseDifficultyRating(input.difficultyRating) ?? "",
+        ...(input.rest !== undefined
+          ? {
+              restExerciseName: input.rest?.exerciseName.trim().slice(0, 80) ?? "",
+              restEndsAt:
+                input.rest && Number.isFinite(input.rest.endsAtMs)
+                  ? new Date(input.rest.endsAtMs)
+                  : null,
+            }
+          : {}),
         sets: {
           create: sets.map((set, index) => {
             const mode = resolveLogMode({
@@ -385,6 +527,8 @@ export async function updateWorkoutSessionForUser(input: {
               durationSeconds: timed ? set.durationSeconds ?? null : null,
               completed: set.completed && setHasAthleteLog(set, mode),
               notes: (set.notes ?? "").slice(0, 200),
+              prescriptionKey: (set.prescriptionKey ?? "").trim().slice(0, 160),
+              rir: (set.rir ?? "").trim().slice(0, 40),
             };
           }),
         },

@@ -218,3 +218,36 @@ export function plannedSetLine(input: {
   }
   return `${countLabel(input.sets, "set")} × ${input.reps}${effort}${restOut}`;
 }
+
+/**
+ * Logger card subtitle: sets and the prescribed work only.
+ * RIR stays on the set and in the How heavy explainer. It is not printed here.
+ */
+export function loggerCardLine(input: {
+  sets: number;
+  reps: string;
+  restSeconds?: number;
+  logMode?: string | null;
+  name?: string;
+}) {
+  const mode = resolveLogMode(input);
+  const name = input.name ?? "";
+  if (isBikeIntervalName(name)) {
+    const reps = input.reps || bikeIntervalReps();
+    return `${countLabel(input.sets, "round")} · ${reps}`;
+  }
+  if (mode === "timed_round") {
+    return `${countLabel(input.sets, "round")} × ${input.reps}`;
+  }
+  if (mode === "load_timed") {
+    return `${input.sets} × ${carryDurationLabel(input.reps)}`;
+  }
+  if (mode === "timed") {
+    if (input.sets === 1 && (input.restSeconds ?? 0) <= 0 && isSingleClockBlock(input.reps)) {
+      return `${input.reps.trim()} continuous`;
+    }
+    const unit = isHoldName(name) ? countLabel(input.sets, "hold") : countLabel(input.sets, "set");
+    return `${unit} × ${input.reps}`;
+  }
+  return `${countLabel(input.sets, "set")} × ${input.reps}`;
+}

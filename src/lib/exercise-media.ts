@@ -235,6 +235,8 @@ export function previousSetLabel(input: {
   loadUnit: string;
   logMode?: string | null;
   durationSeconds?: number | null;
+  /** Kept on the set for history. The Previous column does not print it. */
+  rir?: string | null;
 } | null) {
   if (!input) return "—";
   const clock =

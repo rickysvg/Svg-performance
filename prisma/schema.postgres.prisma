@@ -208,6 +208,10 @@ model WorkoutSession {
   notes        String      @default("")
   status       String      @default("complete")
   difficultyRating String  @default("")
+  /** Exercise whose between-set rest is running. Empty when rest is idle. */
+  restExerciseName String   @default("")
+  /** Absolute end time so a reload can resume the countdown. */
+  restEndsAt       DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   sets         WorkoutSet[]
@@ -231,6 +235,10 @@ model WorkoutSet {
   durationSeconds  Int?
   completed        Boolean        @default(true)
   notes            String         @default("")
+  /** Program day + exercise + rep scheme. A 5×5 day does not share history with 8–12. */
+  prescriptionKey  String         @default("")
+  /** Stored effort cue from the prescription, when the set had one. */
+  rir              String         @default("")
 
   @@index([workoutSessionId])
 }

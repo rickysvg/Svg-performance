@@ -183,6 +183,8 @@ describe("workout logger media and previous loads", () => {
       loadUnit: "lb",
       logMode: "load_reps",
       durationSeconds: null,
+      rir: "",
+      prescriptionKey: "",
     });
     expect(previous["Goblet squat"]?.[2]).toEqual({
       reps: 8,
@@ -190,6 +192,8 @@ describe("workout logger media and previous loads", () => {
       loadUnit: "lb",
       logMode: "load_reps",
       durationSeconds: null,
+      rir: "",
+      prescriptionKey: "",
     });
     expect(previous["Front plank"]).toBeUndefined();
 

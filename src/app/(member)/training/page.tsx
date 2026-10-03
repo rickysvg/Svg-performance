@@ -3,6 +3,7 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
+  completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   listDraftSessionsForUser,
 } from "@/lib/workouts";
@@ -28,8 +29,10 @@ import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { NextSessionCta } from "@/components/training/NextSessionCta";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
-import { equipmentForExercises } from "@/lib/exercise-media";
+import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
 import { nextTrainAction } from "@/lib/train-next";
+import { todayStartAction } from "@/lib/today-start";
+import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -115,6 +118,37 @@ export default async function TrainingPage({
   const nextAction = dayPlan.active
     ? nextTrainAction(planned, (dayId) => draftsByDay.get(dayId))
     : null;
+  const todayBase = planForDate(prefs, now, tz);
+  const todayShaped =
+    camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
+  const todaySessions = resolvePlanSessions(
+    todayShaped,
+    scaleDemoCatalog(catalog, {
+      experienceLevel: profileBand,
+      competitionStatus: profile?.competitionStatus,
+    }),
+  );
+  const doneToday = new Set(
+    await completedProgramDayIdsOnDay(
+      user.id,
+      todaySessions.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+      now,
+      tz,
+    ),
+  );
+  const todayAction = todayStartAction(
+    todaySessions.map((session) => ({
+      kind: session.kind,
+      label: session.label,
+      title: session.title,
+      subtitle: session.subtitle,
+      dayId: session.dayId,
+      href: session.href,
+      minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
+      completed: session.dayId ? doneToday.has(session.dayId) : false,
+    })),
+    (dayId) => draftsByDay.get(dayId),
+  );
   const bagIndex = planned.findIndex((session) => session.kind === "skill");
   const showDetails =
     dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
@@ -147,6 +181,8 @@ export default async function TrainingPage({
         <DemoBadge />
       </div>
 
+      {todayAction ? <StartTodayButton action={todayAction} /> : null}
+
       <WeekStrip days={strip} basePath="/training" />
 
       <section className="space-y-3" data-selected-day-plan>
@@ -166,7 +202,7 @@ export default async function TrainingPage({
           ) : null}
         </div>
 
-        {nextAction ? <NextSessionCta action={nextAction} /> : null}
+        {nextAction && !isToday ? <NextSessionCta action={nextAction} /> : null}
         {deload ? (
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}

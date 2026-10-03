@@ -4,11 +4,19 @@ import {
   formatRestClock,
   formatRestPill,
   isRestActive,
+  REST_ALARM,
   remainingRestSeconds,
   startRestTimer,
 } from "@/lib/rest-timer";
 
 describe("between-set rest timer", () => {
+  it("uses an alarm loud enough to cut through gym music", () => {
+    expect(REST_ALARM.gain).toBeGreaterThanOrEqual(0.25);
+    expect(REST_ALARM.tones.length).toBeGreaterThanOrEqual(3);
+    expect(REST_ALARM.vibrate.length).toBeGreaterThanOrEqual(3);
+    expect(REST_ALARM.vibrate.some((pulse, index) => index % 2 === 1 && pulse > 0)).toBe(true);
+  });
+
   it("formats the pill and the header clock", () => {
     expect(formatRestPill(90)).toBe("90s");
     expect(formatRestPill(60)).toBe("60s");
@@ -38,6 +46,14 @@ describe("between-set rest timer", () => {
     expect(longer.exerciseName).toBe("Jab");
     expect(remainingRestSeconds(longer, now + 20_000)).toBe(40);
     expect(longer.endsAtMs).toBe(timer.endsAtMs + 15_000);
+  });
+
+  it("subtracts 15 seconds from the same end time", () => {
+    const now = 4_000_000;
+    const timer = startRestTimer("Jab", 45, now);
+    const shorter = addRestSeconds(timer, -15);
+    expect(shorter.endsAtMs).toBe(timer.endsAtMs - 15_000);
+    expect(remainingRestSeconds(shorter, now + 10_000)).toBe(20);
   });
 
   it("replaces the active rest when another exercise starts", () => {
