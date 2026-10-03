@@ -17,6 +17,11 @@ export function startRestTimer(
   };
 }
 
+/** Wall clock for a rest display. Kept out of the component so render stays pure. */
+export function readRestNow() {
+  return Date.now();
+}
+
 export function remainingRestSeconds(
   timer: RestTimerState | null,
   nowMs = Date.now(),

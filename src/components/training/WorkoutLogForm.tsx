@@ -37,6 +37,7 @@ import {
   formatRestClock,
   isRestActive,
   primeRestAudio,
+  readRestNow,
   remainingRestSeconds,
   signalRestComplete,
   type RestTimerState,
@@ -431,6 +432,7 @@ export function WorkoutLogForm({
       });
       if (started) {
         nextRest = started;
+        setNowMs(readRestNow());
         setRestTimer(started);
       }
     }
@@ -446,6 +448,7 @@ export function WorkoutLogForm({
   }
 
   function commitRest(next: RestTimerState | null) {
+    setNowMs(readRestNow());
     if (next && remainingRestSeconds(next) <= 0) {
       setRestTimer(null);
       signalRestComplete();
