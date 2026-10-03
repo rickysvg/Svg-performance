@@ -654,6 +654,7 @@ export function WorkoutLogForm({
                           restSeconds: planned.restSeconds,
                           logMode: mode,
                           name,
+                          loadText: planned.loadText,
                         })
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
