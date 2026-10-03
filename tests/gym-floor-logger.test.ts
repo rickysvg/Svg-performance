@@ -54,7 +54,7 @@ describe("prescription slot history", () => {
     ).toBe(hypertrophy);
   });
 
-  it("does not reuse the other scheme as previous load, and shows stored RIR", async () => {
+  it("does not reuse the other scheme as previous load, and keeps RIR off the previous label", async () => {
     const user = await makeUser("slots@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -157,7 +157,7 @@ describe("prescription slot history", () => {
         loadUnit: "lb",
         rir: "0-2 RIR",
       }),
-    ).toBe("5 × 95 lbs · 0-2 RIR");
+    ).toBe("5 × 95 lbs");
   });
 
   it("copies one previous set and leaves the other rows alone", () => {
@@ -385,7 +385,11 @@ describe("start today", () => {
     const form = read("src/components/training/WorkoutLogForm.tsx");
     expect(page.indexOf("<StartTodayButton")).toBeGreaterThan(-1);
     expect(page.indexOf("<StartTodayButton")).toBeLessThan(page.indexOf("<WeekStrip"));
+    expect(form).toContain("data-logger-prescription");
+    expect(form).toContain("loggerCardLine");
+    expect(form).toContain("<RirHint />");
     expect(form).toContain("data-use-previous");
+    expect(form).toContain("grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]");
     expect(form).toContain("data-rest-countdown");
     expect(form).toContain("data-rest-skip");
     expect(form).toContain("data-rest-plus");

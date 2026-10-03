@@ -25,6 +25,7 @@ import {
   countLabel,
   hidesLoad,
   isDurationMode,
+  loggerCardLine,
   loggerRowLayout,
   modeColumnLabel,
   modeHint,
@@ -645,15 +646,14 @@ export function WorkoutLogForm({
                   ) : null}
                   <h2>{name}</h2>
                   <CoachCredit name={name} />
-                  <p className="mt-0.5 text-sm text-muted">
+                  <p className="mt-0.5 text-sm text-muted" data-logger-prescription>
                     {planned
-                      ? plannedSetLine({
+                      ? loggerCardLine({
                           sets: planned.sets,
                           reps: planned.reps,
                           restSeconds: planned.restSeconds,
                           logMode: mode,
                           name,
-                          loadText: planned.loadText,
                         })
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
