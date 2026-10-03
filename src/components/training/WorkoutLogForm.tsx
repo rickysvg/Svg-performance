@@ -147,8 +147,8 @@ function toDraftSet(set: WorkoutSet): DraftSetSnapshot {
 
 function previousChipClass(hasPrevious: boolean) {
   return hasPrevious
-    ? "flex min-h-11 w-full items-center whitespace-normal rounded-lg bg-accent px-2 py-1 text-left text-sm font-semibold leading-tight text-black"
-    : "flex min-h-11 w-full items-center whitespace-normal rounded-lg px-1 py-1 text-left text-sm leading-tight text-muted";
+    ? "flex h-11 w-full items-center whitespace-nowrap rounded-lg bg-accent px-2 text-left text-sm font-semibold leading-none text-black"
+    : "flex h-11 w-full items-center whitespace-nowrap rounded-lg px-1 text-left text-sm leading-none text-muted";
 }
 
 function serverRest(session: { restExerciseName: string; restEndsAt: Date | null }, now = Date.now()): RestTimerState | null {
@@ -618,7 +618,7 @@ export function WorkoutLogForm({
                   ? "grid-cols-[2rem_1fr_2rem]"
                   : hidesLoad(mode)
                     ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
-                    : "grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]";
+                    : "grid-cols-[1.75rem_minmax(7.5rem,1fr)_3.5rem_3.5rem_1.75rem]";
           const hint = modeHint(mode, name);
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);

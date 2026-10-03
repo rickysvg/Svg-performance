@@ -389,7 +389,8 @@ describe("start today", () => {
     expect(form).toContain("loggerCardLine");
     expect(form).toContain("<RirHint />");
     expect(form).toContain("data-use-previous");
-    expect(form).toContain("grid-cols-[2rem_1fr_4.5rem_4.5rem_2rem]");
+    expect(form).toContain("grid-cols-[1.75rem_minmax(7.5rem,1fr)_3.5rem_3.5rem_1.75rem]");
+    expect(form).toContain("whitespace-nowrap");
     expect(form).toContain("data-rest-countdown");
     expect(form).toContain("data-rest-skip");
     expect(form).toContain("data-rest-plus");
