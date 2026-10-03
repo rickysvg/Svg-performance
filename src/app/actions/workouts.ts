@@ -25,7 +25,12 @@ import {
   unlockQueryForBadges,
 } from "@/lib/progress-companion";
 
-export type WorkoutActionState = { error?: string; success?: string; newPr?: string };
+export type WorkoutActionState = {
+  error?: string;
+  success?: string;
+  newPr?: string;
+  savedRating?: string;
+};
 
 export async function startRoundLogAction(formData: FormData) {
   const user = await requireUserOrThrow();
@@ -166,11 +171,37 @@ export async function rateWorkoutAction(
     revalidatePath("/home");
     revalidatePath("/training/history");
     revalidatePath("/progress");
+    revalidatePath("/staff/reports");
     revalidatePath(`/training/log/${workoutId}`);
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
   redirect(`/training/log/${String(formData.get("workoutId") ?? "")}`);
+}
+
+/** One tap on the finish screen. Stays on that screen so Done can still skip. */
+export async function rateFinishedWorkoutAction(
+  _prev: WorkoutActionState,
+  formData: FormData,
+): Promise<WorkoutActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const workoutId = String(formData.get("workoutId") ?? "");
+    const rated = await rateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId,
+      difficultyRating: String(formData.get("difficultyRating") ?? ""),
+    });
+    revalidatePath("/home");
+    revalidatePath("/training/history");
+    revalidatePath("/progress");
+    revalidatePath("/staff/reports");
+    revalidatePath(`/training/log/${workoutId}`);
+    revalidatePath(`/training/log/${workoutId}/done`);
+    return { success: "Saved.", savedRating: rated.difficultyRating };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
 }
 
 export async function deleteWorkoutAction(formData: FormData) {

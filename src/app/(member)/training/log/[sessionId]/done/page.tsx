@@ -59,6 +59,8 @@ export default async function WorkoutDonePage({
         shareStats={workoutCompleteShareStats(tiles)}
         badgeTitle={firstBadge?.title ?? null}
         unit={unit}
+        workoutId={sessionId}
+        difficultyRating={view.session.difficultyRating}
       />
     </main>
   );
