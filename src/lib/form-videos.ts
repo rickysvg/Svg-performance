@@ -118,6 +118,12 @@ const pushUp = ready({
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Push-Up | Proper Form & Technique | NASM",
 });
+const dbBench = ready({
+  url: "https://www.youtube.com/watch?v=qFTnmyC-nf4",
+  seconds: 23,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Single-Arm Dumbbell Chest Press | Proper Form & Technique | NASM",
+});
 const oneArmRow = ready({
   url: "https://www.youtube.com/watch?v=ZRSGpBUVcNw",
   seconds: 11,
@@ -432,6 +438,17 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Squat jump or box step-up": squatJump,
   "Front plank": plank,
   "Push-up or dumbbell bench press": pushUp,
+  "Dumbbell bench press": dbBench,
+  "Push-up": pushUp,
+  "Pause push-up": pushUp,
+  "Close-grip push-up": pushUp,
+  "Feet-elevated push-up": pushUp,
+  "Incline push-up": pushUp,
+  "Push-up to side plank": pushUp,
+  "Squat jump": squatJump,
+  "Lateral lunge": lateralLunge,
+  "Lateral bound": lateralBound,
+  "Side plank with reach": sidePlank,
   "One-arm row": oneArmRow,
   "Overhead press": overheadPress,
   "Band pull-apart or face pull": facePull,

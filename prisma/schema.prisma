@@ -145,6 +145,8 @@ model Profile {
   coachingTone               String    @default("")
   /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
   trainingEmphasis           String    @default("balanced")
+  /** gym (default) | none — none swaps lift and bike days for a floor session. */
+  weightAccess               String    @default("gym")
   obstaclesJson              String    @default("[]")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)

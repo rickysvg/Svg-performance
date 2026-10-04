@@ -98,6 +98,8 @@ describe("hosted preview database selection", () => {
     expect(sql).toContain("leaderboardOptIn");
     expect(sql).toContain("seenBadgeUnlocksJson");
     expect(sql).toContain("trainingEmphasis");
+    expect(sql).toContain("weightAccess");
+    expect(sql).toContain("DEFAULT 'gym'");
     expect(sql).toContain("DEFAULT false");
     expect(sql).toContain("DEFAULT '[]'");
     expect(sql).toContain("DEFAULT 'balanced'");

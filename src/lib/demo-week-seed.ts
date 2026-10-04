@@ -290,12 +290,12 @@ export function demoStrengthDays() {
         daruProgramExercise("Med-ball chest pass", 2),
         liftExercise({
           sortOrder: 3,
-          name: "Push-up or dumbbell bench press",
+          name: "Dumbbell bench press",
           sets: 4,
           reps: "6",
           loadText: effort("0-2", "Last rep is slow and clean.", "~80% of a 5-rep max"),
           restSeconds: 120,
-          notes: "Main press. Chest or floor. Do not bounce the weight off the chest.",
+          notes: "Main press. Dumbbells on a bench. Do not bounce the bells off the chest.",
         }),
         liftExercise({
           sortOrder: 4,
@@ -592,7 +592,7 @@ export function demoStrengthDays() {
         daruProgramExercise("Med-ball chest pass", 2),
         liftExercise({
           sortOrder: 3,
-          name: "Push-up or dumbbell bench press",
+          name: "Dumbbell bench press",
           sets: 5,
           reps: "5",
           loadText: effort("0-2", "Last rep is slow and clean.", "~85% of a 5-rep max"),
@@ -886,7 +886,7 @@ export function demoStrengthDays() {
         daruProgramExercise("Med-ball chest pass", 2),
         liftExercise({
           sortOrder: 3,
-          name: "Push-up or dumbbell bench press",
+          name: "Dumbbell bench press",
           sets: 4,
           reps: "6",
           loadText: effort("0-2", "One-second pause on the chest.", "~80% of a 5-rep max"),
