@@ -26,6 +26,8 @@ import {
   resolveLogMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
+import { prescribeGymExercise } from "@/lib/gym-exercise";
+import { formVideoFieldsFor } from "@/lib/form-videos";
 import { mergeLoadText } from "@/lib/rir";
 
 export type ScaleBand = "beginner" | "intermediate" | "advanced";
@@ -156,7 +158,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     reps: "6 / leg",
     loadText: "2-4 RIR · Heavy dumbbells — knee tracks over the toes",
   },
-  "Squat jump or box step-up": {
+  "Squat jump": {
     sets: 4,
     reps: "6",
     loadText: "3-5 RIR · Crisp landings",
@@ -167,25 +169,25 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     loadText: "Hold — no weight",
     restSeconds: 30,
   },
-  "Push-up or dumbbell bench press": {
+  "Dumbbell bench press": {
     sets: 4,
     reps: "8–10",
-    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbells",
   },
   "One-arm row": {
     sets: 4,
     reps: "8 / side",
-    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbell or band",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbell",
   },
   "Overhead press": {
     sets: 4,
     reps: "6–8",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy, lockout clean",
   },
-  "Band pull-apart or face pull": {
+  "Face pull": {
     sets: 4,
     reps: "15",
-    loadText: "2-4 RIR · Strong band, full squeeze",
+    loadText: "2-4 RIR · Full squeeze to the face",
   },
   "Farmer carry": {
     sets: 4,
@@ -193,22 +195,22 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     loadText: "2-3 RIR · Heavy — walk tall",
     restSeconds: 45,
   },
-  "Kettlebell swing or hip hinge": {
+  "Kettlebell swing": {
     sets: 5,
     reps: "12",
     loadText: "3-5 RIR · Hard, crisp snaps",
   },
-  "Chin-up, band-assist, or lat pulldown": {
+  "Lat pulldown": {
     sets: 4,
     reps: "6–10",
-    loadText: "1-3 RIR · Add load if 8+ are easy",
+    loadText: "1-3 RIR · Pull to the chest, control the return",
   },
-  "Lateral bound or side step-over": {
+  "Lateral bound": {
     sets: 4,
     reps: "6 / side",
     loadText: "3-5 RIR · Cover more ground",
   },
-  "Jump rope or easy bike intervals": {
+  "Jump rope intervals": {
     sets: 10,
     reps: "25 sec on / 35 sec easy",
     loadText: "Hard but repeatable",
@@ -260,6 +262,23 @@ function skillRestSeconds(band: ScaleBand, dayNumber: number) {
 }
 
 export function scaleExercise(
+  exercise: ScaleableExercise,
+  input: { band: ScaleBand; programSlug?: string; dayNumber?: number },
+): ScaleableExercise {
+  const gym = prescribeGymExercise(exercise, input.band);
+  const named: ScaleableExercise = {
+    ...exercise,
+    name: gym.name,
+    notes: gym.notes ?? exercise.notes,
+    loadText: gym.loadText ?? exercise.loadText,
+    logMode: gym.logMode,
+  };
+  const scaled = scaleNamedExercise(named, input);
+  if (!gym.renamed) return scaled;
+  return { ...scaled, ...formVideoFieldsFor(gym.name) };
+}
+
+function scaleNamedExercise(
   exercise: ScaleableExercise,
   input: { band: ScaleBand; programSlug?: string; dayNumber?: number },
 ): ScaleableExercise {

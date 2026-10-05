@@ -35,13 +35,16 @@ export function isTestingWeek(date: Date, timeZone = APP_TIMEZONE) {
   return isTestingWeekIndex(bikeWeekIndex(date, timeZone));
 }
 
-/** About 40% less volume. Same exercises. Minimum one set. */
+/**
+ * About 40% less volume. Same exercises. Minimum one set.
+ * The logger does not call this. Printed prescriptions keep their set rows.
+ */
 export function deloadSetCount(sets: number) {
   const safe = Number.isFinite(sets) ? Math.max(0, Math.round(sets)) : 0;
   if (safe <= 1) return Math.max(1, safe);
   return Math.max(1, Math.round(safe * 0.6));
 }
 
-export const DELOAD_LABEL = "Deload week — fewer sets, same exercises.";
+export const DELOAD_LABEL = "Deload week — same exercises. Log every prescribed set.";
 export const TESTING_LABEL =
   "Testing Week — broad jump, a strength estimate, bike sprint, 5-minute bike, and the mobility check-in. Results are saved and compared.";

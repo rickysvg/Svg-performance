@@ -13,6 +13,23 @@ import { previousSetLabel } from "@/lib/exercise-media";
 describe("exercise log modes", () => {
   it("uses the stored field first, then name heuristics", () => {
     expect(resolveLogMode({ logMode: "timed", name: "Goblet squat" })).toBe("timed");
+    expect(
+      resolveLogMode({
+        logMode: "reps_only",
+        name: "Band pull-apart or face pull",
+        reps: "15",
+      }),
+    ).toBe("load_reps");
+    expect(
+      hidesLoad(
+        resolveLogMode({
+          logMode: "reps_only",
+          name: "Band pull-apart or face pull",
+        }),
+      ),
+    ).toBe(false);
+    expect(hidesLoad(fallbackLogMode("Dead bug", "8 / side"))).toBe(true);
+    expect(hidesLoad(fallbackLogMode("Chin-up, band-assist, or lat pulldown"))).toBe(false);
     expect(fallbackLogMode("Front plank")).toBe("timed");
     expect(fallbackLogMode("Side plank")).toBe("timed");
     expect(fallbackLogMode("Wall sit")).toBe("timed");
@@ -31,10 +48,26 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Rack carry")).toBe("load_timed");
     expect(fallbackLogMode("Weighted hold")).toBe("load_timed");
     expect(fallbackLogMode("Kettlebell swing or hip hinge")).toBe("load_reps");
+    expect(fallbackLogMode("Kettlebell swing")).toBe("load_reps");
+    expect(fallbackLogMode("Face pull")).toBe("load_reps");
+    expect(fallbackLogMode("Lat pulldown")).toBe("load_reps");
+    expect(fallbackLogMode("Dumbbell bench press")).toBe("load_reps");
+    expect(fallbackLogMode("Explosive dumbbell press")).toBe("load_reps");
+    expect(fallbackLogMode("Cable woodchop")).toBe("load_reps");
+    expect(fallbackLogMode("Cable Pallof press")).toBe("load_reps");
+    expect(fallbackLogMode("Chin-up")).toBe("reps_only");
+    expect(fallbackLogMode("Push-up")).toBe("reps_only");
+    expect(fallbackLogMode("Squat jump")).toBe("reps_only");
+    expect(fallbackLogMode("Lateral bound")).toBe("reps_only");
+    expect(fallbackLogMode("Jump rope intervals")).toBe("timed");
     expect(fallbackLogMode("Reverse lunge")).toBe("load_reps");
     expect(fallbackLogMode("Push-up or dumbbell bench press")).toBe("load_reps");
-    expect(fallbackLogMode("Chin-up, band-assist, or lat pulldown")).toBe("reps_only");
-    expect(fallbackLogMode("Band pull-apart or face pull")).toBe("reps_only");
+    expect(fallbackLogMode("Chin-up, band-assist, or lat pulldown")).toBe("load_reps");
+    expect(fallbackLogMode("Band pull-apart or face pull")).toBe("load_reps");
+    expect(fallbackLogMode("Straight-arm pulldown")).toBe("load_reps");
+    expect(fallbackLogMode("Cable or band Pallof press")).toBe("load_reps");
+    expect(fallbackLogMode("Dead bug", "8 / side")).toBe("timed");
+    expect(fallbackLogMode("Plyo push-up")).toBe("reps_only");
     expect(fallbackLogMode("Squat jump or box step-up")).toBe("reps_only");
     expect(fallbackLogMode("Lateral bound or side step-over")).toBe("reps_only");
     expect(fallbackLogMode("Jump rope or easy bike intervals")).toBe("timed");

@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
+import { demoStrengthDays } from "@/lib/demo-week-seed";
 import { getDemoProgram, findSkillProgram } from "@/lib/programs";
 import { startWorkoutFromDay } from "@/lib/workouts";
 import {
@@ -159,6 +160,98 @@ describe("training scale bands", () => {
     expect(advancedCarry.reps).toBe("40–50 sec");
     expect(advancedCarry.loadText).toMatch(/heavy/i);
   });
+
+  it("collapses OR menus into one gym exercise", () => {
+    const legacyFace = {
+      name: "Band pull-apart or face pull",
+      sets: 3,
+      reps: "15",
+      loadText: "2-4 RIR · Strong band, full squeeze",
+      restSeconds: 45,
+      logMode: "reps_only" as const,
+      notes: "Rear shoulder health for class. Pause at the squeeze.",
+    };
+    const face = scaleExercise(legacyFace, { band: "advanced", programSlug: "demo-strength-base" });
+    expect(face.name).toBe("Face pull");
+    expect(face.logMode).toBe("load_reps");
+    expect(face.sets).toBe(4);
+    expect(face.reps).toBe("15");
+    expect(`${face.notes} ${face.loadText}`).not.toMatch(/\bor\b|strong band/i);
+
+    const legacyPull = {
+      name: "Chin-up, band-assist, or lat pulldown",
+      sets: 4,
+      reps: "5–8",
+      loadText: "1-3 RIR · Full hang, control the lower.",
+      restSeconds: 90,
+      logMode: "reps_only" as const,
+      notes: "No bar? Slow inverted row or a heavy pulldown. Stop when the chin stops clearing.",
+    };
+    const pulldown = scaleExercise(legacyPull, {
+      band: "intermediate",
+      programSlug: "demo-strength-base",
+    });
+    expect(pulldown.name).toBe("Lat pulldown");
+    expect(pulldown.logMode).toBe("load_reps");
+    expect(pulldown.notes).toMatch(/chest/i);
+    expect(pulldown.notes).not.toMatch(/\bor\b/i);
+    const chin = scaleExercise(legacyPull, { band: "beginner", programSlug: "demo-strength-base" });
+    expect(chin.name).toBe("Chin-up");
+    expect(chin.logMode).toBe("reps_only");
+    expect(chin.notes).toMatch(/full hang/i);
+    expect(chin.notes).not.toMatch(/\bor\b/i);
+
+    const bench = scaleExercise(
+      {
+        name: "Push-up or dumbbell bench press",
+        sets: 4,
+        reps: "6",
+        loadText: "0-2 RIR · Last rep is slow and clean.",
+        restSeconds: 120,
+        logMode: "load_reps",
+        notes: "Main press. Chest or floor. Do not bounce the weight off the chest.",
+      },
+      { band: "beginner", programSlug: "demo-strength-base" },
+    );
+    expect(bench.name).toBe("Push-up");
+    expect(bench.logMode).toBe("reps_only");
+    expect(bench.notes).not.toMatch(/\bor\b/i);
+
+    const plyo = scaleExercise(
+      {
+        name: "Plyo push-up",
+        sets: 4,
+        reps: "5",
+        loadText: "3-5 RIR · Hands leave the floor. Land soft.",
+        restSeconds: 45,
+        logMode: "reps_only",
+        notes: "Explosive push. Elevate the hands if a full plyo is too much. Speed over slop.",
+      },
+      { band: "advanced", programSlug: "demo-strength-base" },
+    );
+    expect(plyo.name).toBe("Explosive dumbbell press");
+    expect(plyo.logMode).toBe("load_reps");
+    expect(plyo.notes).not.toMatch(/elevate the hands/i);
+
+    for (const band of ["beginner", "intermediate", "advanced"] as const) {
+      for (const day of demoStrengthDays()) {
+        for (const exercise of day.exercises.create) {
+          const scaled = scaleExercise(
+            {
+              name: exercise.name,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              loadText: exercise.loadText,
+              restSeconds: exercise.restSeconds,
+              notes: exercise.notes,
+            },
+            { band, programSlug: "demo-strength-base" },
+          );
+          expect(scaled.name, `${band} ${exercise.name}`).not.toMatch(/\bor\b/i);
+        }
+      }
+    }
+  });
 });
 
 describe("scaled DEMO days in the database", () => {
@@ -191,13 +284,14 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["Goblet squat"]).toBe("load_reps");
     expect(modes["Romanian deadlift"]).toBe("load_reps");
     expect(modes["Reverse lunge"]).toBe("load_reps");
-    expect(modes["Push-up or dumbbell bench press"]).toBe("load_reps");
+    expect(modes["Dumbbell bench press"]).toBe("load_reps");
     expect(modes["One-arm row"]).toBe("load_reps");
     expect(modes["Overhead press"]).toBe("load_reps");
     expect(modes["Farmer carry"]).toBe("load_timed");
-    expect(modes["Kettlebell swing or hip hinge"]).toBe("load_reps");
-    expect(modes["Band pull-apart or face pull"]).toBe("reps_only");
-    expect(modes["Chin-up, band-assist, or lat pulldown"]).toBe("reps_only");
+    expect(modes["Kettlebell swing"]).toBe("load_reps");
+    expect(modes["Face pull"]).toBe("load_reps");
+    expect(modes["Lat pulldown"]).toBe("load_reps");
+    expect(modes["Dead bug"]).toBe("timed");
     expect(modes["Front plank"]).toBe("timed");
     expect(modes["Side plank"]).toBe("timed");
     expect(modes["Assault bike intervals"]).toBe("timed_round");

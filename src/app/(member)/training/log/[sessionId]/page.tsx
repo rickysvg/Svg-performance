@@ -8,6 +8,7 @@ import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
+import { applyGymExerciseName, gymHistoryNames, rekeyGymRecord } from "@/lib/gym-exercise";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 
 export default async function WorkoutLogPage({
@@ -27,6 +28,26 @@ export default async function WorkoutLogPage({
     notFound();
   }
 
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
+  const loggedSession = {
+    ...session,
+    sets: session.sets.map((set) => applyGymExerciseName(set, band)),
+    programDay: session.programDay
+      ? scaleProgramDay(session.programDay, {
+          band,
+          programSlug: session.programDay.program.slug,
+        })
+      : session.programDay,
+  };
+  const historyNames = gymHistoryNames([
+    ...session.sets.map((set) => set.exerciseName),
+    ...loggedSession.sets.map((set) => set.exerciseName),
+    ...(session.programDay?.exercises.map((exercise) => exercise.name) ?? []),
+    ...(loggedSession.programDay?.exercises.map((exercise) => exercise.name) ?? []),
+  ]);
   const promptRating =
     session.status === "complete" &&
     (query.rate === "1" || !session.difficultyRating);
@@ -66,32 +87,18 @@ export default async function WorkoutLogPage({
         )
       ) : null}
       <WorkoutLogForm
-        session={
-          session.programDay
-            ? {
-                ...session,
-                programDay: scaleProgramDay(session.programDay, {
-                  band: scaleBandFromPrefs({
-                    experienceLevel: profile?.experienceLevel,
-                    competitionStatus: profile?.competitionStatus,
-                  }),
-                  programSlug: session.programDay.program.slug,
-                }),
-              }
-            : session
-        }
-        previousLoads={await getPreviousLoadsForUser(
-          user.id,
-          session.sets.map((set) => set.exerciseName),
-          session.id,
+        session={loggedSession}
+        previousLoads={rekeyGymRecord(
+          await getPreviousLoadsForUser(user.id, historyNames, session.id),
+          band,
         )}
-        notes={await listExerciseNotesForUser(user.id, {
-          exerciseNames: [
-            ...session.sets.map((set) => set.exerciseName),
-            ...(session.programDay?.exercises.map((exercise) => exercise.name) ?? []),
-          ],
-          programDayId: session.programDayId,
-        })}
+        notes={rekeyGymRecord(
+          await listExerciseNotesForUser(user.id, {
+            exerciseNames: historyNames,
+            programDayId: session.programDayId,
+          }),
+          band,
+        )}
       />
     </main>
   );
