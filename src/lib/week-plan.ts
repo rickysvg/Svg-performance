@@ -18,6 +18,13 @@ import {
   weekdayInZone,
   zonedParts,
 } from "@/lib/timezone";
+import {
+  sourceWeekday,
+  weekStartKey,
+  type WeekPlanSwap,
+} from "@/lib/week-plan-swaps";
+
+export type { WeekPlanSwap } from "@/lib/week-plan-swaps";
 
 export { APP_TIMEZONE } from "@/lib/timezone";
 
@@ -46,6 +53,8 @@ export type DayPlan = {
   testingWeek: boolean;
   mesoBlock: MesoBlock;
   mesoLabel: string;
+  /** Skeleton weekday whose sessions are showing, when the member moved this day. */
+  movedFrom?: PlanWeekday;
 };
 
 export type PlannerPrefs = {
@@ -294,24 +303,36 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
   return plan;
 }
 
+function planOnCalendarDay(skeleton: DayPlan, calendarWeekday: PlanWeekday, source: PlanWeekday): DayPlan {
+  if (source === calendarWeekday) return skeleton;
+  return {
+    ...skeleton,
+    weekday: calendarWeekday,
+    movedFrom: source,
+  };
+}
+
 export function planForDate(
   prefs: PlannerPrefs,
   date: Date,
   timeZone = APP_TIMEZONE,
+  swaps: WeekPlanSwap[] = [],
 ): DayPlan {
-  const weekday = weekdayInAppZone(date, timeZone);
-  return buildCoreWeekPlan(prefs, bikeWeekIndex(date, timeZone))[weekday];
+  const calendarWeekday = weekdayInAppZone(date, timeZone);
+  const source = sourceWeekday(swaps, weekStartKey(date, timeZone), calendarWeekday);
+  const skeleton = buildCoreWeekPlan(prefs, bikeWeekIndex(date, timeZone))[source];
+  return planOnCalendarDay(skeleton, calendarWeekday, source);
 }
 
 export function nextActiveDate(
   prefs: PlannerPrefs,
   from: Date,
   timeZone = APP_TIMEZONE,
+  swaps: WeekPlanSwap[] = [],
 ): Date | null {
-  const plan = buildCoreWeekPlan(prefs);
   for (let offset = 1; offset <= 7; offset += 1) {
     const cursor = addZonedDays(from, offset, timeZone);
-    if (plan[weekdayInAppZone(cursor, timeZone)].active) return cursor;
+    if (planForDate(prefs, cursor, timeZone, swaps).active) return cursor;
   }
   return null;
 }
@@ -320,8 +341,9 @@ export function nextActiveWeekday(
   prefs: PlannerPrefs,
   from: Date,
   timeZone = APP_TIMEZONE,
+  swaps: WeekPlanSwap[] = [],
 ): PlanWeekday | null {
-  const next = nextActiveDate(prefs, from, timeZone);
+  const next = nextActiveDate(prefs, from, timeZone, swaps);
   return next ? weekdayInAppZone(next, timeZone) : null;
 }
 
@@ -330,13 +352,17 @@ export function weekStrip(
   now = new Date(),
   timeZone = APP_TIMEZONE,
   selected?: Date,
+  swaps: WeekPlanSwap[] = [],
 ) {
   const today = weekdayInAppZone(now, timeZone);
   const selectedWeekday = selected ? weekdayInAppZone(selected, timeZone) : today;
   const monday = mondayOfZoned(now, timeZone);
-  const plan = buildCoreWeekPlan(prefs, bikeWeekIndex(now, timeZone));
+  const weekStart = weekStartKey(now, timeZone);
+  const built = buildCoreWeekPlan(prefs, bikeWeekIndex(now, timeZone));
   return WEEKDAYS.map((weekday, index) => {
     const date = addZonedDays(monday, index, timeZone);
+    const source = sourceWeekday(swaps, weekStart, weekday);
+    const plan = planOnCalendarDay(built[source], weekday, source);
     return {
       weekday,
       short: weekday.slice(0, 3),
@@ -345,11 +371,12 @@ export function weekStrip(
       dateLabel: String(zonedParts(date, timeZone).day),
       isToday: weekday === today,
       isSelected: weekday === selectedWeekday,
-      active: plan[weekday].active,
-      summary: plan[weekday].summary,
-      sessionCount: plan[weekday].active ? plan[weekday].sessions.length : 0,
-      deload: plan[weekday].deload,
-      testingWeek: plan[weekday].testingWeek,
+      active: plan.active,
+      summary: plan.summary,
+      sessionCount: plan.active ? plan.sessions.length : 0,
+      deload: plan.deload,
+      testingWeek: plan.testingWeek,
+      movedFrom: plan.movedFrom,
     };
   });
 }

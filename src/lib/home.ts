@@ -41,6 +41,7 @@ import {
   type ResolvedPlanSession,
 } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
+import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -220,7 +221,7 @@ export async function getHomeToday(
     (await timeZoneForUser(userId, profileForZone?.timeZone ?? null));
   const selected = startOfLocalDay(selectedDay, tz);
   const now = new Date();
-  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile] =
+  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile, swaps] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
@@ -230,6 +231,7 @@ export async function getHomeToday(
       listLessonProgressForUser(userId),
       getWeeklyActivity(userId, now, tz),
       profileForZone ? Promise.resolve(profileForZone) : getProfileForUser(userId),
+      getWeekPlanSwapsForUser(userId),
     ]);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
@@ -243,10 +245,10 @@ export async function getHomeToday(
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
-  const todayPlan = planForDate(prefs, selected, tz);
+  const todayPlan = planForDate(prefs, selected, tz, swaps);
   const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
-  const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected, tz);
-  const nextPlan = nextDate ? planForDate(prefs, nextDate, tz) : null;
+  const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected, tz, swaps);
+  const nextPlan = nextDate ? planForDate(prefs, nextDate, tz, swaps) : null;
   const nextSessions = nextPlan ? resolvePlanSessions(nextPlan, { strength, skill }) : [];
   const nextSession: ResolvedPlanSession | null =
     nextSessions.find((session) => session.day) ?? nextSessions[0] ?? null;
@@ -285,7 +287,7 @@ export async function getHomeToday(
     plannedSessions,
     nextSession: nextSession as ResolvedPlanSession | null,
     nextSessionWeekday: nextPlan?.weekday ?? "",
-    weekStrip: weekStrip(prefs, selected, tz),
+    weekStrip: weekStrip(prefs, selected, tz, undefined, swaps),
     planWeekday: todayPlan.weekday,
     planSummary: todayPlan.active ? todayPlan.summary : "Rest / skip",
     mesoLabel: todayPlan.mesoLabel,

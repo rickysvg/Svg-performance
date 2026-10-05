@@ -1,4 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  resetCalendarWeekAction,
+  swapCalendarDaysAction,
+} from "@/app/actions/week-plan";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number];
@@ -169,13 +177,97 @@ function WeekLegend() {
   );
 }
 
+const HOLD_MS = 450;
+
 export function WeekStrip({
   days,
   basePath = "/training",
+  rearrange = false,
 }: {
   days: Item[];
   basePath?: string;
+  /** Calendar only. Hold a day, then tap another day to swap this week. */
+  rearrange?: boolean;
 }) {
+  const router = useRouter();
+  const [source, setSource] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ignoreClick = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+    };
+  }, []);
+
+  function disarmHold() {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  }
+
+  function armHold(weekday: string) {
+    if (!rearrange || pending) return;
+    // A new press should not keep a swallowed click from the previous hold.
+    ignoreClick.current = false;
+    disarmHold();
+    holdTimer.current = setTimeout(() => {
+      holdTimer.current = null;
+      ignoreClick.current = true;
+      setSource(weekday);
+      setError(null);
+    }, HOLD_MS);
+  }
+
+  function commitSwap(from: string, to: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await swapCalendarDaysAction(from, to);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSource(null);
+      router.refresh();
+    });
+  }
+
+  function resetWeek() {
+    setError(null);
+    startTransition(async () => {
+      const result = await resetCalendarWeekAction();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSource(null);
+      router.refresh();
+    });
+  }
+
+  function onChipClick(event: { preventDefault: () => void }, weekday: string) {
+    if (!rearrange) return;
+    if (ignoreClick.current) {
+      event.preventDefault();
+      ignoreClick.current = false;
+      return;
+    }
+    if (!source) return;
+    event.preventDefault();
+    if (pending) return;
+    if (source === weekday) {
+      setSource(null);
+      return;
+    }
+    commitSwap(source, weekday);
+  }
+
+  const moving = days.find((day) => day.weekday === source);
+  const moved = days.filter((day) => day.movedFrom);
+
   return (
     <div>
       <ol data-week-strip className="grid grid-cols-7 gap-1">
@@ -187,14 +279,42 @@ export function WeekStrip({
           activities.length === 1 && WORD_LABELS.has(activities[0]!.id)
             ? activities[0]!.label
             : null;
+        const held = source === day.weekday;
+        const movedLabel = day.movedFrom
+          ? `, showing ${day.movedFrom}’s workout`
+          : "";
+        const label = source
+          ? held
+            ? `${day.weekday}, selected to move. Tap another day to swap.`
+            : `Swap ${source} with ${day.weekday}`
+          : `${day.weekday} ${day.dateLabel}, ${spokenSummary(day.summary)}${movedLabel}`;
         return (
           <li key={day.weekday} className="min-w-0">
             <Link
               href={href}
               data-week-chip={day.short}
+              data-moved-from={day.movedFrom || undefined}
+              data-move-source={held ? "true" : undefined}
               aria-current={selected ? "date" : undefined}
-              aria-label={`${day.weekday} ${day.dateLabel}, ${spokenSummary(day.summary)}`}
+              aria-pressed={rearrange ? held : undefined}
+              aria-label={label}
+              onPointerDown={() => armHold(day.weekday)}
+              onPointerUp={disarmHold}
+              onPointerCancel={disarmHold}
+              style={rearrange ? { WebkitTouchCallout: "none" } : undefined}
+              onContextMenu={(event) => {
+                if (!rearrange || pending) return;
+                event.preventDefault();
+                ignoreClick.current = true;
+                setSource(day.weekday);
+                setError(null);
+              }}
+              onClick={(event) => onChipClick(event, day.weekday)}
               className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center transition-colors ${
+                rearrange ? "touch-manipulation select-none" : ""
+              } ${
+                held || day.movedFrom ? "ring-2 ring-inset ring-accent" : ""
+              } ${
                 selected
                   ? "bg-black text-white"
                   : "border border-line bg-card text-foreground hover:border-black/40"
@@ -238,6 +358,64 @@ export function WeekStrip({
       })}
       </ol>
       <WeekLegend />
+      {rearrange && source ? (
+        <div
+          data-move-sheet
+          role="status"
+          className="mt-3 rounded-2xl bg-black px-4 py-4 text-white"
+        >
+          <p className="font-display text-xs uppercase tracking-wide text-highlighter">
+            Move {moving?.short ?? source}
+          </p>
+          <p className="mt-1 text-sm text-white/80">
+            Tap another day to swap workouts. {source}’s work lands on that day, and that
+            day’s work lands here. This week only.
+          </p>
+          {error ? <p className="mt-2 text-sm text-highlighter">{error}</p> : null}
+          <button
+            type="button"
+            onClick={() => setSource(null)}
+            disabled={pending}
+            className="mt-3 inline-flex min-h-11 items-center rounded-full border border-white/40 px-4 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {pending ? "Saving…" : "Cancel"}
+          </button>
+        </div>
+      ) : null}
+      {rearrange && !source && moved.length > 0 ? (
+        <div data-week-moved className="mt-3 rounded-2xl bg-black px-4 py-4 text-white">
+          <p className="font-display text-xs uppercase tracking-wide text-highlighter">
+            This week
+          </p>
+          <ul className="mt-2 space-y-1 text-sm text-white/80">
+            {moved.map((day) => (
+              <li key={day.weekday}>
+                {day.weekday} is {day.movedFrom}’s workout.
+              </li>
+            ))}
+          </ul>
+          {error ? <p className="mt-2 text-sm text-highlighter">{error}</p> : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={resetWeek}
+              disabled={pending}
+              className="inline-flex min-h-11 items-center rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+            >
+              {pending ? "Saving…" : "Back to the default week"}
+            </button>
+          </div>
+          <p className="mt-2 text-sm text-white/70">Hold a day to swap again.</p>
+        </div>
+      ) : null}
+      {rearrange && !source && moved.length === 0 ? (
+        <p data-move-hint className="mt-3 text-sm text-muted">
+          Hold a day to swap it with another day. Next week returns to the default plan.
+        </p>
+      ) : null}
+      {rearrange && !source && moved.length === 0 && error ? (
+        <p className="mt-2 text-sm text-muted">{error}</p>
+      ) : null}
     </div>
   );
 }

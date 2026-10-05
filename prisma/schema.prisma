@@ -146,6 +146,8 @@ model Profile {
   /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
   trainingEmphasis           String    @default("balanced")
   obstaclesJson              String    @default("[]")
+  /** Voluntary swaps for one week. The default weekday plan is unchanged. */
+  weekPlanSwapsJson          String    @default("[]")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
   carbsTargetG           Int      @default(220)

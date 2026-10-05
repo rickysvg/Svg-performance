@@ -5,6 +5,7 @@ import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
+import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { timeZoneForUser } from "@/lib/profile";
 import {
@@ -185,10 +186,11 @@ export function buildCalendarDays(input: {
 }
 
 export async function getCalendarSchedule(userId: string, now = new Date()) {
-  const [catalog, profile, sessions] = await Promise.all([
+  const [catalog, profile, sessions, swaps] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
     listWorkoutSessionsForUser(userId),
+    getWeekPlanSwapsForUser(userId),
   ]);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const challenge = await getChallengeProgressForUser(userId, tz);
@@ -215,7 +217,7 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
   }));
 
   for (const day of days) {
-    const plan = planForDate(prefs, day.date, tz);
+    const plan = planForDate(prefs, day.date, tz, swaps);
     const resolved = resolvePlanSessions(plan, { strength, skill });
     const done = completedOnDay.has(formatDayParam(day.date, tz));
     for (const session of resolved) {
@@ -225,7 +227,9 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
         title: session.title,
         subtitle: done
           ? "Logged this day. Open to review or run a session again."
-          : `${session.label} — Core week plan (DEMO).`,
+          : plan.movedFrom
+            ? `${session.label} — ${plan.movedFrom}’s workout, this week.`
+            : `${session.label} — Core week plan (DEMO).`,
         href: session.href,
         status: done ? "complete" : "scheduled",
         programDayId: session.dayId,

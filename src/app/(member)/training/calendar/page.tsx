@@ -23,6 +23,7 @@ import {
 } from "@/lib/training-scale";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { listDraftSessionsForUser } from "@/lib/workouts";
+import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -39,11 +40,12 @@ export default async function TrainingCalendarPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [schedule, profile, catalog, drafts] = await Promise.all([
+  const [schedule, profile, catalog, drafts, swaps] = await Promise.all([
     getCalendarSchedule(user.id),
     getProfileForUser(user.id),
     findDemoTrainingCatalog(),
     listDraftSessionsForUser(user.id),
+    getWeekPlanSwapsForUser(user.id),
   ]);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, now, tz);
@@ -59,7 +61,7 @@ export default async function TrainingCalendarPage({
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
-  const dayPlan = planForDate(prefs, selected, tz);
+  const dayPlan = planForDate(prefs, selected, tz, swaps);
   const planned = resolvePlanSessions(
     dayPlan,
     scaleDemoCatalog(catalog, {
@@ -67,7 +69,7 @@ export default async function TrainingCalendarPage({
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
     }),
   );
-  const strip = weekStrip(prefs, now, tz, selected);
+  const strip = weekStrip(prefs, now, tz, selected, swaps);
   const dayParam = formatDayParam(selected, tz);
   const isToday = sameLocalDay(selected, now, tz);
   const zones = [
@@ -94,7 +96,8 @@ export default async function TrainingCalendarPage({
           <div>
             <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              Tap a day chip to open that day’s full Core plan
+              Tap a day chip to open that day’s full Core plan. Hold a day, then tap
+              another, to swap workouts this week
               {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live
               coach calendar, Watch sync, or Gymdesk.
             </p>
@@ -103,7 +106,7 @@ export default async function TrainingCalendarPage({
         </div>
       </div>
 
-      <WeekStrip days={strip} basePath="/training/calendar" />
+      <WeekStrip days={strip} basePath="/training/calendar" rearrange />
 
       {fromProfile ? null : (
         <TrainingLevelToggle
@@ -118,11 +121,17 @@ export default async function TrainingCalendarPage({
         <div>
           <p className="font-display text-xs uppercase tracking-wide text-accent">
             {isToday ? "Today" : "Selected"} · {dayPlan.weekday}
+            {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
             {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
           </p>
           <h2 className="mt-1 text-lg">
             {dayPlan.active ? dayPlan.summary : dayPlan.summary}
           </h2>
+          {dayPlan.movedFrom ? (
+            <p className="mt-1 text-sm text-muted" data-moved-workout>
+              {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
+            </p>
+          ) : null}
           {dayPlan.skipReason && !dayPlan.active ? (
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}

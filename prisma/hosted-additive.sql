@@ -245,6 +245,16 @@ BEGIN
     CREATE UNIQUE INDEX "GymdeskSyncMeta_key_key" ON "GymdeskSyncMeta"("key");
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'weekPlanSwapsJson'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "weekPlanSwapsJson" TEXT NOT NULL DEFAULT '[]';
+  END IF;
+
   IF to_regclass('public."GymdeskRateLimit"') IS NULL THEN
     CREATE TABLE "GymdeskRateLimit" (
       "id" TEXT NOT NULL,

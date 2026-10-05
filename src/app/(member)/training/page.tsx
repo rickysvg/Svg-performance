@@ -33,6 +33,7 @@ import { nextTrainAction } from "@/lib/train-next";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
+import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -49,12 +50,13 @@ export default async function TrainingPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [catalog, drafts, sessionCount, conditioning, profile] = await Promise.all([
+  const [catalog, drafts, sessionCount, conditioning, profile, swaps] = await Promise.all([
     findDemoTrainingCatalog(),
     listDraftSessionsForUser(user.id),
     countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
+    getWeekPlanSwapsForUser(user.id),
   ]);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
@@ -71,10 +73,9 @@ export default async function TrainingPage({
   const band = levelOverride ?? profileBand;
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
   const camp = await getActiveCampSnapshot(user.id, selected, tz);
+  const corePlan = planForDate(prefs, selected, tz, swaps);
   const dayPlan =
-    camp && camp.phase !== "complete"
-      ? shapeDayPlan(planForDate(prefs, selected, tz), camp.phase)
-      : planForDate(prefs, selected, tz);
+    camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
   const planned = resolvePlanSessions(
     dayPlan,
     scaleDemoCatalog(catalog, {
@@ -82,8 +83,8 @@ export default async function TrainingPage({
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
     }),
   );
-  const strip = weekStrip(prefs, now, tz, selected);
-  const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz);
+  const strip = weekStrip(prefs, now, tz, selected, swaps);
+  const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
   const weekIndex = bikeWeekIndex(selected, tz);
   const deload = isDeloadWeek(selected, tz);
   const testing = isTestingWeek(selected, tz);
@@ -153,6 +154,7 @@ export default async function TrainingPage({
         <div data-session-phase="first">
           <p className="font-display text-xs uppercase tracking-wide text-accent">
             {isToday ? "Today’s plan" : "Selected day"} · {dayPlan.weekday}
+            {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
           </p>
           <h2 className="mt-1 text-lg">
             {dayPlan.active
@@ -161,6 +163,11 @@ export default async function TrainingPage({
                 ? `Rest · next up ${nextDay}`
                 : "Rest day"}
           </h2>
+          {dayPlan.movedFrom ? (
+            <p className="mt-1 text-sm text-muted" data-moved-workout>
+              {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
+            </p>
+          ) : null}
           {dayPlan.skipReason && !dayPlan.active ? (
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
