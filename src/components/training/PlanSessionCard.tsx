@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { startSessionAction } from "@/app/actions/workouts";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
+import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
+import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
@@ -43,6 +45,12 @@ export function PlanSessionCard({
   const count = exercises.length;
   const href = draftId ? `/training/log/${draftId}` : session.href;
   const cta = draftId ? "Resume" : session.dayId ? "Start" : session.href ? "Open session" : null;
+  const bookend = mobilityBookendsForSession({
+    kind: session.kind,
+    title: session.title,
+    subtitle: session.subtitle,
+    label: session.label,
+  });
 
   return (
     <article
@@ -147,6 +155,7 @@ export function PlanSessionCard({
           ) : null}
         </div>
       ) : null}
+      {bookend ? <TrainDayMobility bookend={bookend} inverted={Boolean(highlight)} /> : null}
     </article>
   );
 }
