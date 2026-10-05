@@ -458,10 +458,10 @@ body:has(.app-splash.is-visible) {
   );
 }
 
-/* screen keeps black sprite mats invisible. plus-lighter is supported on iOS but
-   composites canvas sparks as a blank layer, so the win burst never shows. */
+/* Canvas sparks already have a transparent mat. plus-lighter and screen both
+   composite that canvas as a blank layer on phones, so the burst never shows. */
 .fx-sprite {
-  mix-blend-mode: screen;
+  mix-blend-mode: normal;
 }
 
 .fx-sprite-center {
@@ -473,9 +473,10 @@ body:has(.app-splash.is-visible) {
 
 .fx-feather,
 .fx-feather-layer {
-  /* Wide enough that the burst clears the crest. A tight 38% mask sat inside the logo. */
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 72%, transparent 96%);
-  mask-image: radial-gradient(circle at 50% 50%, #000 72%, transparent 96%);
+  /* Edge fade is done on the canvas. A CSS mask promotes the bitmap to a layer
+     that stays blank, so the burst never reaches the screen. */
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .workout-win-backdrop {
