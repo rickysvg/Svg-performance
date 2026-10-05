@@ -26,7 +26,7 @@ import { CoachCredit } from "@/components/training/CoachCredit";
 import { BagFocusList } from "@/components/training/BagFocusList";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
-import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -162,9 +162,8 @@ export default async function TrainingDayPage({
         <ol className="border-t border-line pb-32">
           {day.exercises.map((exercise, index) => {
             const form = lookupFormVideo(exercise.name, day.exercises);
-            const prescribedSets = deload ? deloadSetCount(exercise.sets) : exercise.sets;
             const planned = plannedSetLine({
-              sets: prescribedSets,
+              sets: exercise.sets,
               reps: exercise.reps,
               restSeconds: exercise.restSeconds,
               logMode: exercise.logMode,

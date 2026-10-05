@@ -42,6 +42,7 @@ import {
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { loggerCursor, nextIncompleteSetId } from "@/lib/logger-progress";
+import { withPrescribedSetRows } from "@/lib/logger-sets";
 import {
   copyPreviousOntoExercise,
   restTimerAfterSetDone,
@@ -97,9 +98,10 @@ function newClientSet(
   loadUnit: string,
   logMode: LogMode = "timed",
   durationSeconds: number | null = null,
+  id = `local-${crypto.randomUUID()}`,
 ): WorkoutSet {
   return {
-    id: `local-${crypto.randomUUID()}`,
+    id,
     workoutSessionId: sessionId,
     exerciseName,
     setNumber,
@@ -112,6 +114,32 @@ function newClientSet(
     completed: false,
     notes: "",
   };
+}
+
+function prescribedRowId(sessionId: string, exerciseName: string, setNumber: number) {
+  return `prescribed-${sessionId}-${exerciseName}-${setNumber}`;
+}
+
+function setsForLogger(session: Session): WorkoutSet[] {
+  const base = setsInLb(session.sets);
+  const prescriptions = session.programDay?.exercises ?? [];
+  return withPrescribedSetRows(base, prescriptions, (exerciseName, setNumber) => {
+    const planned = prescriptions.find((row) => row.name === exerciseName);
+    const mode = resolveLogMode({
+      logMode: planned?.logMode,
+      name: exerciseName,
+      reps: planned?.reps,
+    });
+    return newClientSet(
+      session.id,
+      exerciseName,
+      setNumber,
+      "lb",
+      mode,
+      null,
+      prescribedRowId(session.id, exerciseName, setNumber),
+    );
+  });
 }
 
 function SessionTimer() {
@@ -138,7 +166,7 @@ export function WorkoutLogForm({
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(() => setsInLb(session.sets));
+  const [sets, setSets] = useState(() => setsForLogger(session));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
