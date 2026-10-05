@@ -65,7 +65,7 @@ describe("workout logger media and previous loads", () => {
         reps: "20 sec on / 40 sec easy",
         restSeconds: 0,
         logMode: "timed",
-        name: "Jump rope or easy bike intervals",
+        name: "Jump rope intervals",
       }),
     ).toBe("8 sets × 20 sec on / 40 sec easy");
     expect(previousSetLabel(null)).toBe("—");
@@ -269,7 +269,7 @@ describe("workout logger media and previous loads", () => {
       preferredUnits: "lb",
     });
     const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
-    const band = pullDraft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
+    const band = pullDraft.sets.filter((set) => set.exerciseName === "Face pull");
     expect(carry.length).toBeGreaterThan(0);
     expect(carry[0]?.logMode).toBe("load_timed");
     expect(carry[0]?.durationSeconds).toBeNull();
@@ -315,7 +315,7 @@ describe("workout logger media and previous loads", () => {
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
       deload: true,
     });
-    const band = draft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
+    const band = draft.sets.filter((set) => set.exerciseName === "Face pull");
     const bug = draft.sets.filter((set) => set.exerciseName === "Dead bug");
     expect(band).toHaveLength(4);
     expect(bug).toHaveLength(4);

@@ -48,6 +48,18 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Rack carry")).toBe("load_timed");
     expect(fallbackLogMode("Weighted hold")).toBe("load_timed");
     expect(fallbackLogMode("Kettlebell swing or hip hinge")).toBe("load_reps");
+    expect(fallbackLogMode("Kettlebell swing")).toBe("load_reps");
+    expect(fallbackLogMode("Face pull")).toBe("load_reps");
+    expect(fallbackLogMode("Lat pulldown")).toBe("load_reps");
+    expect(fallbackLogMode("Dumbbell bench press")).toBe("load_reps");
+    expect(fallbackLogMode("Explosive dumbbell press")).toBe("load_reps");
+    expect(fallbackLogMode("Cable woodchop")).toBe("load_reps");
+    expect(fallbackLogMode("Cable Pallof press")).toBe("load_reps");
+    expect(fallbackLogMode("Chin-up")).toBe("reps_only");
+    expect(fallbackLogMode("Push-up")).toBe("reps_only");
+    expect(fallbackLogMode("Squat jump")).toBe("reps_only");
+    expect(fallbackLogMode("Lateral bound")).toBe("reps_only");
+    expect(fallbackLogMode("Jump rope intervals")).toBe("timed");
     expect(fallbackLogMode("Reverse lunge")).toBe("load_reps");
     expect(fallbackLogMode("Push-up or dumbbell bench press")).toBe("load_reps");
     expect(fallbackLogMode("Chin-up, band-assist, or lat pulldown")).toBe("load_reps");
