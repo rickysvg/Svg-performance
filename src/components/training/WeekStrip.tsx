@@ -298,9 +298,13 @@ export function WeekStrip({
               aria-current={selected ? "date" : undefined}
               aria-pressed={rearrange ? held : undefined}
               aria-label={label}
-              onPointerDown={() => armHold(day.weekday)}
+              draggable={false}
+              onDragStart={(event) => event.preventDefault()}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                armHold(day.weekday);
+              }}
               onPointerUp={disarmHold}
-              onPointerCancel={disarmHold}
               style={rearrange ? { WebkitTouchCallout: "none" } : undefined}
               onContextMenu={(event) => {
                 if (!rearrange || pending) return;
