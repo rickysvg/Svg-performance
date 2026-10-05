@@ -119,9 +119,9 @@ export function WorkoutWinScreen({
           {reduce ? null : (
             <div
               data-win-sparks
-              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[min(520px,120vw)] w-[min(520px,120vw)] -translate-x-1/2 -translate-y-1/2"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[min(720px,170vw)] w-[min(720px,170vw)] -translate-x-1/2 -translate-y-1/2 overflow-visible"
             >
-              <CelebrationFx active delayMs={700} size={520} />
+              <CelebrationFx active delayMs={700} size={680} />
             </div>
           )}
           <div className={`relative z-20 ${reduce ? "badge-unlock-fade" : "badge-unlock-fly"}`}>

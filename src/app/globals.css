@@ -473,8 +473,9 @@ body:has(.app-splash.is-visible) {
 
 .fx-feather,
 .fx-feather-layer {
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 38%, transparent 70%);
-  mask-image: radial-gradient(circle at 50% 50%, #000 38%, transparent 70%);
+  /* Wide enough that the burst clears the crest. A tight 38% mask sat inside the logo. */
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 72%, transparent 96%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 72%, transparent 96%);
 }
 
 .workout-win-backdrop {

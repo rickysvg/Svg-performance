@@ -43,7 +43,7 @@ function prefersReducedMotion() {
 }
 
 function featherEdges(ctx: CanvasRenderingContext2D, css: number) {
-  const fade = ctx.createRadialGradient(css / 2, css / 2, css * 0.28, css / 2, css / 2, css * 0.5);
+  const fade = ctx.createRadialGradient(css / 2, css / 2, css * 0.46, css / 2, css / 2, css * 0.78);
   fade.addColorStop(0, "rgba(0,0,0,1)");
   fade.addColorStop(0.62, "rgba(0,0,0,0.85)");
   fade.addColorStop(1, "rgba(0,0,0,0)");
@@ -303,7 +303,7 @@ export function CelebrationFx({
 }) {
   if (!active) return null;
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden fx-feather-layer" data-fx-layer="1" aria-hidden>
+    <div className="pointer-events-none absolute inset-0 overflow-visible fx-feather-layer" data-fx-layer="1" aria-hidden>
       <SpriteFx name="star_flash" active delayMs={delayMs} size={Math.round(size * 0.62)} className="fx-sprite-center" />
       <SpriteFx name="ember_burst" active delayMs={delayMs} size={size} className="fx-sprite-center" />
       <EmberMotes active delayMs={delayMs} />
