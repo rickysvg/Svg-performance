@@ -458,14 +458,10 @@ body:has(.app-splash.is-visible) {
   );
 }
 
+/* screen keeps black sprite mats invisible. plus-lighter is supported on iOS but
+   composites canvas sparks as a blank layer, so the win burst never shows. */
 .fx-sprite {
-  mix-blend-mode: plus-lighter;
-}
-
-@supports not (mix-blend-mode: plus-lighter) {
-  .fx-sprite {
-    mix-blend-mode: screen;
-  }
+  mix-blend-mode: screen;
 }
 
 .fx-sprite-center {

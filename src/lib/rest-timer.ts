@@ -1,8 +1,15 @@
+import { soundFxEnabled } from "@/lib/badge-sfx";
+import { playEndCue, playWarningCue, vibratePattern } from "@/lib/media-output";
+
 export type RestTimerState = {
   exerciseName: string;
   durationSeconds: number;
   endsAtMs: number;
 };
+
+export function clockNow() {
+  return Date.now();
+}
 
 export function startRestTimer(
   exerciseName: string,
@@ -49,31 +56,28 @@ export function addRestSeconds(timer: RestTimerState, seconds: number): RestTime
   };
 }
 
+export type RestCue = "warning" | "complete";
+
+/**
+ * One warning as the clock enters 3, then 2, then 1. Zero is the end cue.
+ * A jump that skips the last seconds still ends once, and does not stack beeps.
+ */
+export function restCueForTick(previous: number | null, next: number): RestCue | null {
+  if (previous != null && previous <= 0 && next <= 0) return null;
+  if (next <= 0 && (previous == null || previous > 0)) return "complete";
+  if (next >= 1 && next <= 3 && (previous == null || previous > next)) return "warning";
+  return null;
+}
+
+export function signalRestWarning() {
+  if (typeof window === "undefined") return;
+  if (!soundFxEnabled()) return;
+  playWarningCue();
+}
+
 export function signalRestComplete() {
-  try {
-    navigator.vibrate?.(160);
-  } catch {
-    /* web vibration is optional */
-  }
-  try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    gain.gain.value = 0.04;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.12);
-    osc.onended = () => {
-      void ctx.close();
-    };
-  } catch {
-    /* beep is optional on web */
-  }
+  if (typeof window === "undefined") return;
+  vibratePattern([180, 70, 220, 70, 180]);
+  if (!soundFxEnabled()) return;
+  playEndCue();
 }

@@ -8,6 +8,7 @@ import {
   type WorkoutActionState,
 } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
+import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
@@ -18,6 +19,7 @@ import { BagFocusList } from "@/components/training/BagFocusList";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
+import { releaseSetWakeLock, requestSetWakeLock } from "@/lib/bike-interval-signals";
 import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel } from "@/lib/exercise-media";
 import {
@@ -33,11 +35,14 @@ import {
 } from "@/lib/exercise-log-mode";
 import {
   addRestSeconds,
+  clockNow,
   formatRestClock,
   formatRestPill,
   isRestActive,
   remainingRestSeconds,
+  restCueForTick,
   signalRestComplete,
+  signalRestWarning,
   startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
@@ -143,8 +148,11 @@ export function WorkoutLogForm({
   const [insertName, setInsertName] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
+  const [restGo, setRestGo] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const formRef = useRef<HTMLFormElement>(null);
+  const routeRelease = useRef<(() => void) | null>(null);
+  const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
 
   const grouped = useMemo(() => {
     const map = new Map<string, WorkoutSet[]>();
@@ -194,17 +202,74 @@ export function WorkoutLogForm({
     document.querySelector("[data-session-overflow]")?.scrollIntoView({ block: "nearest" });
   }, [moreOpen]);
 
+  function engageRestRoute() {
+    primeMediaOutput();
+    routeRelease.current?.();
+    routeRelease.current = holdMediaRoute();
+    void requestSetWakeLock().then((lock) => {
+      if (wakeLock.current && wakeLock.current !== lock) releaseSetWakeLock(wakeLock.current);
+      wakeLock.current = lock;
+    });
+  }
+
+  function disengageRestRoute() {
+    const release = routeRelease.current;
+    routeRelease.current = null;
+    release?.();
+    releaseSetWakeLock(wakeLock.current);
+    wakeLock.current = null;
+  }
+
+  useEffect(() => {
+    const node = formRef.current;
+    if (!node) return;
+    const onPointer = () => primeMediaOutput();
+    node.addEventListener("pointerdown", onPointer);
+    return () => node.removeEventListener("pointerdown", onPointer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      routeRelease.current?.();
+      routeRelease.current = null;
+      releaseSetWakeLock(wakeLock.current);
+      wakeLock.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     if (!restTimer) return;
-    const tick = window.setInterval(() => {
+    let prev = remainingRestSeconds(restTimer, clockNow());
+    if (restCueForTick(null, prev) === "warning") signalRestWarning();
+    let ended = false;
+    const finish = (cue: ReturnType<typeof restCueForTick>) => {
+      if (ended) return;
+      if (cue === "warning") signalRestWarning();
+      if (cue !== "complete") return;
+      ended = true;
+      signalRestComplete();
+      setRestGo(true);
+      setRestTimer(null);
+      disengageRestRoute();
+      window.setTimeout(() => setRestGo(false), 900);
+    };
+    const sample = () => {
       const now = Date.now();
+      const next = remainingRestSeconds(restTimer, now);
+      const cue = restCueForTick(prev, next);
+      prev = next;
       setNowMs(now);
-      if (remainingRestSeconds(restTimer, now) <= 0) {
-        setRestTimer(null);
-        signalRestComplete();
-      }
-    }, 250);
-    return () => window.clearInterval(tick);
+      finish(cue);
+    };
+    const tick = window.setInterval(sample, 200);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sample();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [restTimer]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
@@ -242,7 +307,12 @@ export function WorkoutLogForm({
       exerciseName,
       restSeconds,
     });
-    if (nextRest) setRestTimer(nextRest);
+    if (nextRest) {
+      setRestGo(false);
+      setNowMs(clockNow());
+      engageRestRoute();
+      setRestTimer(nextRest);
+    }
     if (!completed) return;
     const nextId = nextIncompleteSetId(
       sets.map((set) => (set.id === setId ? { ...set, completed: true } : set)),
@@ -307,19 +377,35 @@ export function WorkoutLogForm({
             </div>
           </div>
           {restRunning ? (
-            <div data-rest-countdown className="bg-black px-4 py-4 text-white">
+            <div
+              data-rest-countdown
+              data-rest-warning={restRemaining <= 3 ? "1" : undefined}
+              className="bg-black px-4 py-4 text-white"
+            >
               <p className="font-display text-xs uppercase tracking-wide text-highlighter">
                 Rest · {restTimer?.exerciseName}
               </p>
+              {restRemaining <= 3 ? (
+                <p data-rest-get-ready className="font-display mt-1 text-sm uppercase tracking-[0.14em] text-[#CBF805]">
+                  Get ready
+                </p>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-                <p className="font-display text-6xl leading-none text-[#CBF805] tabular-nums">
+                <p
+                  className={`font-display text-6xl leading-none text-[#CBF805] tabular-nums ${
+                    restRemaining <= 3 ? "motion-safe:animate-pulse" : ""
+                  }`}
+                >
                   {formatRestClock(restRemaining)}
                 </p>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     data-rest-skip
-                    onClick={() => setRestTimer(null)}
+                    onClick={() => {
+                      disengageRestRoute();
+                      setRestTimer(null);
+                    }}
                     className="touch-target rounded-full border border-white/40 px-4 text-sm text-white"
                   >
                     Skip
@@ -327,9 +413,10 @@ export function WorkoutLogForm({
                   <button
                     type="button"
                     data-rest-plus
-                    onClick={() =>
+                    onClick={() => {
+                      primeMediaOutput();
                       setRestTimer((timer) => (timer ? addRestSeconds(timer, 15) : timer))
-                    }
+                    }}
                     className="touch-target rounded-full bg-accent px-4 text-sm text-black"
                   >
                     +15s
@@ -337,12 +424,22 @@ export function WorkoutLogForm({
                 </div>
               </div>
             </div>
+          ) : restGo ? (
+            <div data-rest-complete className="bg-black px-4 py-4 text-white">
+              <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Rest over</p>
+              <p className="font-display mt-2 text-6xl leading-none text-[#CBF805]">Go</p>
+            </div>
           ) : currentRest > 0 && cursor.exerciseName ? (
             <div className="px-4 pb-3">
               <button
                 type="button"
                 data-rest-start={cursor.exerciseName}
-                onClick={() => setRestTimer(startRestTimer(cursor.exerciseName, currentRest))}
+                onClick={() => {
+                  setRestGo(false);
+                  setNowMs(clockNow());
+                  engageRestRoute();
+                  setRestTimer(startRestTimer(cursor.exerciseName, currentRest));
+                }}
                 className="touch-target w-full rounded-full border border-line font-display text-sm uppercase"
               >
                 Start rest {formatRestPill(currentRest)}
@@ -513,7 +610,12 @@ export function WorkoutLogForm({
                           exerciseName: name,
                           restBetweenSetsSeconds: restSeconds,
                         });
-                        if (effects.rest) setRestTimer(effects.rest);
+                        if (effects.rest) {
+                          setRestGo(false);
+                          setNowMs(clockNow());
+                          engageRestRoute();
+                          setRestTimer(effects.rest);
+                        }
                       }}
                     />
                   ) : null}

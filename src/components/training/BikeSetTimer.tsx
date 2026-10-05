@@ -21,6 +21,7 @@ import {
   requestSetWakeLock,
   signalBikeIntervalCue,
 } from "@/lib/bike-interval-signals";
+import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { formatRestClock } from "@/lib/rest-timer";
 
 function BikeIntervalStrip({
@@ -110,6 +111,7 @@ export function BikeSetTimer({
   };
   const [clock, setClock] = useState<BikeIntervalSnapshot>(() => idleBikeInterval(spec));
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
+  const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
   const running = clock.phase === "work" || clock.phase === "rest";
   const longClock = isLongBikeClock(session);
@@ -128,6 +130,8 @@ export function BikeSetTimer({
           completeRef.current();
           releaseSetWakeLock(wakeLock.current);
           wakeLock.current = null;
+          routeRelease.current?.();
+          routeRelease.current = null;
           return idleBikeInterval(current.spec);
         }
         return snapshot;
@@ -140,6 +144,8 @@ export function BikeSetTimer({
     return () => {
       releaseSetWakeLock(wakeLock.current);
       wakeLock.current = null;
+      routeRelease.current?.();
+      routeRelease.current = null;
     };
   }, []);
 
@@ -150,6 +156,9 @@ export function BikeSetTimer({
 
   function handleStart() {
     if (!canStart || running) return;
+    primeMediaOutput();
+    routeRelease.current?.();
+    routeRelease.current = holdMediaRoute();
     signalBikeIntervalCue("phase");
     setClock(startBikeInterval(spec));
     void holdAwake();
@@ -170,6 +179,8 @@ export function BikeSetTimer({
     setClock((current) => stopBikeInterval(current));
     releaseSetWakeLock(wakeLock.current);
     wakeLock.current = null;
+    routeRelease.current?.();
+    routeRelease.current = null;
   }
 
   const workPhase = clock.phase === "work";

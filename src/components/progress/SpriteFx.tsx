@@ -74,7 +74,7 @@ export function SpriteFx({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !active || prefersReducedMotion()) return;
-    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
     let raf = 0;
     let running = true;
@@ -181,7 +181,7 @@ export function EmberMotes({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !active || prefersReducedMotion()) return;
-    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
     const motes: Ember[] = [];
     let raf = 0;
