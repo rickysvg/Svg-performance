@@ -21,6 +21,7 @@ import {
   shouldPlayPhaseBell,
   shouldPlayWarningBeep,
 } from "@/lib/round-timer";
+import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
 
 const MODE_LABEL: Record<TimerMode, string> = {
   bag: "Bag",
@@ -29,33 +30,13 @@ const MODE_LABEL: Record<TimerMode, string> = {
   grappling: "Grappling",
 };
 
-function playTone(frequency: number, duration = 0.16, type: OscillatorType = "sine") {
-  const AudioCtx =
-    window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtx) return;
-  const ctx = new AudioCtx();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.value = frequency;
-  gain.gain.value = 0.05;
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + duration);
-  osc.onended = () => {
-    void ctx.close();
-  };
-}
-
 function playBell() {
-  playTone(660, 0.12, "triangle");
-  window.setTimeout(() => playTone(880, 0.16, "triangle"), 90);
+  playSynthCue(660, 0.12, 0.7);
+  window.setTimeout(() => playSynthCue(880, 0.16, 0.74), 90);
 }
 
 function playWarning() {
-  playTone(980, 0.1, "square");
+  playSynthCue(980, 0.14, 0.7);
 }
 
 async function requestWakeLock() {
@@ -79,6 +60,7 @@ export function RoundTimer() {
   const [customDraft, setCustomDraft] = useState(DEFAULT_CUSTOM);
   const prev = useRef<{ remaining: number; phase: TimerPhase }>({ remaining: 0, phase: "idle" });
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
+  const routeRelease = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -141,6 +123,19 @@ export function RoundTimer() {
   }, [running]);
 
   useEffect(() => {
+    if (resolved.phase !== "done") return;
+    routeRelease.current?.();
+    routeRelease.current = null;
+  }, [resolved.phase]);
+
+  useEffect(() => {
+    return () => {
+      routeRelease.current?.();
+      routeRelease.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!running) {
       void wakeLock.current?.release();
       wakeLock.current = null;
@@ -176,6 +171,8 @@ export function RoundTimer() {
   }, [prefs.bell, prefs.vibrate, prefs.warningBeep, resolved.phase, resolved.remainingSeconds, startedAtMs]);
 
   const startOrPause = useCallback(() => {
+    primeMediaOutput();
+    if (!routeRelease.current) routeRelease.current = holdMediaRoute();
     const stamp = Date.now();
     if (startedAtMs == null || resolved.phase === "done") {
       setStartedAtMs(stamp);
@@ -195,6 +192,8 @@ export function RoundTimer() {
   }, [pausedAtMs, resolved.phase, startedAtMs]);
 
   function reset() {
+    routeRelease.current?.();
+    routeRelease.current = null;
     setStartedAtMs(null);
     setPausedAtMs(null);
     setPauseAccumulatedMs(0);

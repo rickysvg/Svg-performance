@@ -159,8 +159,9 @@ describe("badge unlock queue and seen store", () => {
     expect(css).toContain("rotateX");
     expect(css).toContain("badge-unlock-backdrop");
     expect(css).toContain("isolation: isolate");
-    expect(css).toContain("plus-lighter");
-    expect(css).toContain("mix-blend-mode: screen");
+    expect(css).toContain("mix-blend-mode: normal");
+    expect(css).not.toContain("mix-blend-mode: plus-lighter");
+    expect(css).not.toContain("mix-blend-mode: screen");
     expect(css).not.toContain("badge-unlock-rays");
     expect(css).toContain("prefers-reduced-motion");
     expect(css).not.toContain("badge-unlock-slam");
