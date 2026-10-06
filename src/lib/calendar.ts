@@ -5,11 +5,13 @@ import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
+import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { timeZoneForUser } from "@/lib/profile";
 import {
   APP_TIMEZONE,
   addZonedDays,
+  mondayOfZoned,
   weekdayInZone,
   zonedParts,
 } from "@/lib/timezone";
@@ -99,6 +101,12 @@ export function listCalendarDates(
   return Array.from({ length: count }, (_, index) => addZonedDays(start, index, timeZone));
 }
 
+/** Monday through Sunday of the week that contains `anchor`. */
+export function listWeekDates(anchor: Date, timeZone = APP_TIMEZONE) {
+  const monday = mondayOfZoned(anchor, timeZone);
+  return Array.from({ length: 7 }, (_, index) => addZonedDays(monday, index, timeZone));
+}
+
 export function resolveTrainingWeekdays(availability: string[]) {
   const allowed = new Set<string>(JS_WEEKDAYS);
   const picked = availability.filter((day) => allowed.has(day));
@@ -184,11 +192,17 @@ export function buildCalendarDays(input: {
   return days;
 }
 
-export async function getCalendarSchedule(userId: string, now = new Date()) {
-  const [catalog, profile, sessions] = await Promise.all([
+export async function getCalendarSchedule(
+  userId: string,
+  now = new Date(),
+  /** When set, the list is that Monday–Sunday, including days already past. */
+  weekAnchor?: Date,
+) {
+  const [catalog, profile, sessions, swaps] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
     listWorkoutSessionsForUser(userId),
+    getWeekPlanSwapsForUser(userId),
   ]);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const challenge = await getChallengeProgressForUser(userId, tz);
@@ -206,7 +220,8 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
   };
-  const dates = listCalendarDates(now, 8, tz);
+  const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
+  const todayKey = formatDayParam(now, tz);
   const days: CalendarDay[] = dates.map((date) => ({
     date,
     heading: formatCalendarHeading(date, now, tz),
@@ -215,17 +230,26 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
   }));
 
   for (const day of days) {
-    const plan = planForDate(prefs, day.date, tz);
+    const plan = planForDate(prefs, day.date, tz, swaps);
     const resolved = resolvePlanSessions(plan, { strength, skill });
-    const done = completedOnDay.has(formatDayParam(day.date, tz));
+    const dayKey = formatDayParam(day.date, tz);
+    const done = completedOnDay.has(dayKey);
+    const past = dayKey < todayKey;
     for (const session of resolved) {
       if (!session.href || !session.dayId) continue;
+      const missed = past && plan.active && !done;
       day.activities.push({
         kind: "workout",
         title: session.title,
         subtitle: done
           ? "Logged this day. Open to review or run a session again."
-          : `${session.label} — Core week plan (DEMO).`,
+          : missed
+            ? plan.movedFrom
+              ? `Missed. ${plan.movedFrom}’s workout. Hold this day to move it.`
+              : `Missed. ${session.title}. Hold this day to move it.`
+            : plan.movedFrom
+              ? `${session.label} — ${plan.movedFrom}’s workout, this week.`
+              : `${session.label} — Core week plan (DEMO).`,
         href: session.href,
         status: done ? "complete" : "scheduled",
         programDayId: session.dayId,
