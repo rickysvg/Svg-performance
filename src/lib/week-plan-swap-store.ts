@@ -1,12 +1,14 @@
 import { AppError, NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { timeZoneForUser } from "@/lib/profile";
+import { zonedCivilToUtc } from "@/lib/timezone";
 import {
   clearWeekSwap,
   isPlanWeekday,
   parseWeekPlanSwaps,
   pruneWeekPlanSwaps,
   swapWeekdays,
+  weekStartInRange,
   weekStartKey,
   type PlanWeekday,
   type WeekPlanSwap,
@@ -34,11 +36,26 @@ async function writeWeekPlanSwaps(userId: string, swaps: WeekPlanSwap[]) {
   });
 }
 
+function assertEditableWeek(weekStart: string, now: Date, timeZone: string) {
+  if (!WEEK_START.test(weekStart)) {
+    throw new AppError("PLAN", "That week is not valid.");
+  }
+  const [year, month, day] = weekStart.split("-").map(Number);
+  const date = zonedCivilToUtc(year, month, day, timeZone);
+  if (weekStartKey(date, timeZone) !== weekStart) {
+    throw new AppError("PLAN", "That week is not valid.");
+  }
+  if (!weekStartInRange(weekStart, weekStartKey(now, timeZone))) {
+    throw new AppError("PLAN", "That week is outside the calendar you can edit.");
+  }
+}
+
 export async function swapWeekPlanForUser(
   userId: string,
   weekStart: string,
   a: PlanWeekday,
   b: PlanWeekday,
+  pruneAnchor = weekStart,
 ) {
   if (!WEEK_START.test(weekStart)) {
     throw new AppError("PLAN", "That week is not valid.");
@@ -47,9 +64,24 @@ export async function swapWeekPlanForUser(
     throw new AppError("PLAN", "Pick two different days.");
   }
   const existing = await getWeekPlanSwapsForUser(userId);
-  const next = pruneWeekPlanSwaps(swapWeekdays(existing, weekStart, a, b), weekStart);
+  const next = pruneWeekPlanSwaps(swapWeekdays(existing, weekStart, a, b), pruneAnchor);
   await writeWeekPlanSwaps(userId, next);
   return next;
+}
+
+export async function swapWeekOnDateForUser(
+  userId: string,
+  fromDay: string,
+  toDay: string,
+  weekStart: string,
+  now = new Date(),
+) {
+  if (!isPlanWeekday(fromDay) || !isPlanWeekday(toDay)) {
+    throw new AppError("PLAN", "Pick two days in this week.");
+  }
+  const timeZone = await timeZoneForUser(userId);
+  assertEditableWeek(weekStart, now, timeZone);
+  return swapWeekPlanForUser(userId, weekStart, fromDay, toDay, weekStartKey(now, timeZone));
 }
 
 export async function swapCurrentWeekForUser(
@@ -58,19 +90,27 @@ export async function swapCurrentWeekForUser(
   toDay: string,
   now = new Date(),
 ) {
-  if (!isPlanWeekday(fromDay) || !isPlanWeekday(toDay)) {
-    throw new AppError("PLAN", "Pick two days in this week.");
-  }
   const timeZone = await timeZoneForUser(userId);
-  const weekStart = weekStartKey(now, timeZone);
-  return swapWeekPlanForUser(userId, weekStart, fromDay, toDay);
+  return swapWeekOnDateForUser(userId, fromDay, toDay, weekStartKey(now, timeZone), now);
+}
+
+export async function clearWeekPlanForUser(
+  userId: string,
+  weekStart: string,
+  now = new Date(),
+) {
+  const timeZone = await timeZoneForUser(userId);
+  assertEditableWeek(weekStart, now, timeZone);
+  const existing = await getWeekPlanSwapsForUser(userId);
+  const next = pruneWeekPlanSwaps(
+    clearWeekSwap(existing, weekStart),
+    weekStartKey(now, timeZone),
+  );
+  await writeWeekPlanSwaps(userId, next);
+  return next;
 }
 
 export async function clearCurrentWeekPlanForUser(userId: string, now = new Date()) {
   const timeZone = await timeZoneForUser(userId);
-  const weekStart = weekStartKey(now, timeZone);
-  const existing = await getWeekPlanSwapsForUser(userId);
-  const next = pruneWeekPlanSwaps(clearWeekSwap(existing, weekStart), weekStart);
-  await writeWeekPlanSwaps(userId, next);
-  return next;
+  return clearWeekPlanForUser(userId, weekStartKey(now, timeZone), now);
 }

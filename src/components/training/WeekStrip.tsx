@@ -183,11 +183,17 @@ export function WeekStrip({
   days,
   basePath = "/training",
   rearrange = false,
+  weekStart,
+  completedDays = [],
 }: {
   days: Item[];
   basePath?: string;
-  /** Calendar only. Hold a day, then tap another day to swap this week. */
+  /** Calendar only. Hold a day, then tap another day to swap that week. */
   rearrange?: boolean;
+  /** Monday YYYY-MM-DD of the week on screen. Past weeks included. */
+  weekStart?: string;
+  /** Day params (YYYY-MM-DD) that already have a logged workout. */
+  completedDays?: string[];
 }) {
   const router = useRouter();
   const [source, setSource] = useState<string | null>(null);
@@ -225,7 +231,7 @@ export function WeekStrip({
   function commitSwap(from: string, to: string) {
     setError(null);
     startTransition(async () => {
-      const result = await swapCalendarDaysAction(from, to);
+      const result = await swapCalendarDaysAction(from, to, weekStart);
       if (result.error) {
         setError(result.error);
         return;
@@ -238,7 +244,7 @@ export function WeekStrip({
   function resetWeek() {
     setError(null);
     startTransition(async () => {
-      const result = await resetCalendarWeekAction();
+      const result = await resetCalendarWeekAction(weekStart);
       if (result.error) {
         setError(result.error);
         return;
@@ -280,14 +286,17 @@ export function WeekStrip({
             ? activities[0]!.label
             : null;
         const held = source === day.weekday;
+        const logged = completedDays.includes(day.dayParam);
+        const missed = day.isPast && day.active && !logged;
         const movedLabel = day.movedFrom
           ? `, showing ${day.movedFrom}’s workout`
           : "";
+        const historyLabel = logged ? ", logged" : missed ? ", missed" : "";
         const label = source
           ? held
             ? `${day.weekday}, selected to move. Tap another day to swap.`
             : `Swap ${source} with ${day.weekday}`
-          : `${day.weekday} ${day.dateLabel}, ${spokenSummary(day.summary)}${movedLabel}`;
+          : `${day.weekday} ${day.dateLabel}, ${spokenSummary(day.summary)}${movedLabel}${historyLabel}`;
         return (
           <li key={day.weekday} className="min-w-0">
             <Link
@@ -295,6 +304,8 @@ export function WeekStrip({
               data-week-chip={day.short}
               data-moved-from={day.movedFrom || undefined}
               data-move-source={held ? "true" : undefined}
+              data-week-past={day.isPast ? "true" : undefined}
+              data-week-missed={missed ? "true" : undefined}
               aria-current={selected ? "date" : undefined}
               aria-pressed={rearrange ? held : undefined}
               aria-label={label}
@@ -351,8 +362,23 @@ export function WeekStrip({
               ) : (
                 <ActivityMarks activities={activities} selected={selected} />
               )}
-              {day.isToday && !selected ? (
+              {logged ? (
+                <span
+                  data-week-complete
+                  className="mt-1 inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full bg-accent text-black"
+                  aria-hidden
+                >
+                  <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path d="M2.2 6.2 4.8 8.6 9.8 3.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              ) : day.isToday && !selected ? (
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+              ) : missed ? (
+                <span
+                  className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full border border-foreground/40"
+                  aria-hidden
+                />
               ) : (
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0" />
               )}
@@ -373,7 +399,10 @@ export function WeekStrip({
           </p>
           <p className="mt-1 text-sm text-white/80">
             Tap another day to swap workouts. {source}’s work lands on that day, and that
-            day’s work lands here. This week only.
+            day’s work lands here.
+            {moving?.isPast
+              ? " Pick a later day to make this missed session up."
+              : " This week only."}
           </p>
           {error ? <p className="mt-2 text-sm text-highlighter">{error}</p> : null}
           <button
@@ -414,7 +443,7 @@ export function WeekStrip({
       ) : null}
       {rearrange && !source && moved.length === 0 ? (
         <p data-move-hint className="mt-3 text-sm text-muted">
-          Hold a day to swap it with another day. Next week returns to the default plan.
+          Hold a day — including a missed day — to swap it with another day.
         </p>
       ) : null}
       {rearrange && !source && moved.length === 0 && error ? (

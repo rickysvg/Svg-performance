@@ -81,9 +81,34 @@ export function clearWeekSwap(swaps: WeekPlanSwap[], weekStart: string) {
   return swaps.filter((row) => row.weekStart !== weekStart);
 }
 
-/** Drop weeks that have already ended. The default plan returns on its own. */
-export function pruneWeekPlanSwaps(swaps: WeekPlanSwap[], currentWeekStart: string) {
-  return swaps.filter((row) => row.weekStart >= currentWeekStart);
+/** How far back Calendar can show and edit a moved week. */
+export const WEEK_PLAN_HISTORY_WEEKS = 16;
+/** One week ahead of the current Monday. */
+export const WEEK_PLAN_FUTURE_WEEKS = 1;
+
+/** Shift a YYYY-MM-DD civil date by whole days. */
+export function shiftDayKey(key: string, days: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return key;
+  const shifted = new Date(
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days),
+  );
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Drop weeks older than the history window. Newer weeks stay so editing the past does not erase today. */
+export function pruneWeekPlanSwaps(swaps: WeekPlanSwap[], anchorWeekStart: string) {
+  const cutoff = shiftDayKey(anchorWeekStart, -7 * WEEK_PLAN_HISTORY_WEEKS);
+  return swaps.filter((row) => row.weekStart >= cutoff);
+}
+
+export function weekStartInRange(weekStart: string, currentWeekStart: string) {
+  const oldest = shiftDayKey(currentWeekStart, -7 * WEEK_PLAN_HISTORY_WEEKS);
+  const newest = shiftDayKey(currentWeekStart, 7 * WEEK_PLAN_FUTURE_WEEKS);
+  return weekStart >= oldest && weekStart <= newest;
 }
 
 export function weekStartKey(date: Date, timeZone: string) {

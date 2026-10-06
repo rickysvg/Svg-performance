@@ -353,24 +353,31 @@ export function weekStrip(
   timeZone = APP_TIMEZONE,
   selected?: Date,
   swaps: WeekPlanSwap[] = [],
+  /** When set, the strip is that date’s Monday–Sunday, not the week of `now`. */
+  weekAnchor?: Date,
 ) {
   const today = weekdayInAppZone(now, timeZone);
+  const todayKey = formatDayParam(now, timeZone);
   const selectedWeekday = selected ? weekdayInAppZone(selected, timeZone) : today;
-  const monday = mondayOfZoned(now, timeZone);
-  const weekStart = weekStartKey(now, timeZone);
-  const built = buildCoreWeekPlan(prefs, bikeWeekIndex(now, timeZone));
+  const selectedKey = selected ? formatDayParam(selected, timeZone) : todayKey;
+  const anchor = weekAnchor ?? now;
+  const monday = mondayOfZoned(anchor, timeZone);
+  const weekStart = weekStartKey(anchor, timeZone);
+  const built = buildCoreWeekPlan(prefs, bikeWeekIndex(anchor, timeZone));
   return WEEKDAYS.map((weekday, index) => {
     const date = addZonedDays(monday, index, timeZone);
     const source = sourceWeekday(swaps, weekStart, weekday);
     const plan = planOnCalendarDay(built[source], weekday, source);
+    const dayParam = formatDayParam(date, timeZone);
     return {
       weekday,
       short: weekday.slice(0, 3),
       date,
-      dayParam: formatDayParam(date, timeZone),
+      dayParam,
       dateLabel: String(zonedParts(date, timeZone).day),
-      isToday: weekday === today,
-      isSelected: weekday === selectedWeekday,
+      isToday: dayParam === todayKey,
+      isSelected: weekAnchor ? dayParam === selectedKey : weekday === selectedWeekday,
+      isPast: dayParam < todayKey,
       active: plan.active,
       summary: plan.summary,
       sessionCount: plan.active ? plan.sessions.length : 0,

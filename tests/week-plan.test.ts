@@ -164,7 +164,8 @@ describe("Core weekday planner", () => {
       },
     ]);
     expect(swapWeekdays(once, start, "Monday", "Wednesday")).toEqual([]);
-    expect(pruneWeekPlanSwaps(once, "2026-09-28")).toEqual([]);
+    expect(pruneWeekPlanSwaps(once, "2026-09-28")).toEqual(once);
+    expect(pruneWeekPlanSwaps(once, "2027-02-01")).toEqual([]);
 
     const plainMonday = planForDate(prefs, monday, APP_TIMEZONE);
     const plainWednesday = planForDate(prefs, wednesday, APP_TIMEZONE);
@@ -194,6 +195,13 @@ describe("Core weekday planner", () => {
     expect(strip.find((day) => day.weekday === "Monday")?.movedFrom).toBe("Wednesday");
     expect(strip.find((day) => day.weekday === "Wednesday")?.movedFrom).toBe("Monday");
     expect(strip.find((day) => day.weekday === "Friday")?.movedFrom).toBeUndefined();
+
+    const laterMonday = new Date(2026, 8, 28, 10, 0, 0);
+    const pastStrip = weekStrip(prefs, laterMonday, APP_TIMEZONE, monday, [], monday);
+    expect(pastStrip.find((day) => day.weekday === "Monday")?.isSelected).toBe(true);
+    expect(pastStrip.find((day) => day.weekday === "Monday")?.isToday).toBe(false);
+    expect(pastStrip.find((day) => day.weekday === "Monday")?.isPast).toBe(true);
+    expect(pastStrip.find((day) => day.weekday === "Wednesday")?.isSelected).toBe(false);
 
     const ontoSunday = swapWeekdays([], start, "Monday", "Sunday");
     expect(planForDate(prefs, monday, APP_TIMEZONE, ontoSunday).active).toBe(false);

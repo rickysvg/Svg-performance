@@ -5,7 +5,9 @@ import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import {
   clearCurrentWeekPlanForUser,
+  clearWeekPlanForUser,
   swapCurrentWeekForUser,
+  swapWeekOnDateForUser,
 } from "@/lib/week-plan-swap-store";
 
 export type WeekPlanActionState = { error?: string };
@@ -19,10 +21,15 @@ function refreshPlan() {
 export async function swapCalendarDaysAction(
   fromDay: string,
   toDay: string,
+  weekStart?: string,
 ): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    await swapCurrentWeekForUser(user.id, fromDay, toDay);
+    if (weekStart) {
+      await swapWeekOnDateForUser(user.id, fromDay, toDay, weekStart);
+    } else {
+      await swapCurrentWeekForUser(user.id, fromDay, toDay);
+    }
     refreshPlan();
     return {};
   } catch (error) {
@@ -30,10 +37,16 @@ export async function swapCalendarDaysAction(
   }
 }
 
-export async function resetCalendarWeekAction(): Promise<WeekPlanActionState> {
+export async function resetCalendarWeekAction(
+  weekStart?: string,
+): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    await clearCurrentWeekPlanForUser(user.id);
+    if (weekStart) {
+      await clearWeekPlanForUser(user.id, weekStart);
+    } else {
+      await clearCurrentWeekPlanForUser(user.id);
+    }
     refreshPlan();
     return {};
   } catch (error) {

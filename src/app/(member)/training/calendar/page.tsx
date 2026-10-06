@@ -24,6 +24,8 @@ import {
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
+import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -40,15 +42,15 @@ export default async function TrainingCalendarPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [schedule, profile, catalog, drafts, swaps] = await Promise.all([
-    getCalendarSchedule(user.id),
-    getProfileForUser(user.id),
+  const profile = await getProfileForUser(user.id);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const selected = parseDayParam(params.day, now, tz);
+  const [schedule, catalog, drafts, swaps] = await Promise.all([
+    getCalendarSchedule(user.id, now, selected),
     findDemoTrainingCatalog(),
     listDraftSessionsForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
   ]);
-  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const selected = parseDayParam(params.day, now, tz);
   const levelOverride = parseLevelParam(params.level);
   const profileBand = scaleBandFromPrefs({
     experienceLevel: profile?.experienceLevel,
@@ -69,9 +71,32 @@ export default async function TrainingCalendarPage({
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
     }),
   );
-  const strip = weekStrip(prefs, now, tz, selected, swaps);
+  const strip = weekStrip(prefs, now, tz, selected, swaps, selected);
   const dayParam = formatDayParam(selected, tz);
   const isToday = sameLocalDay(selected, now, tz);
+  const viewedMonday = mondayOfZoned(selected, tz);
+  const viewedWeek = weekStartKey(selected, tz);
+  const currentWeek = weekStartKey(now, tz);
+  const canEditWeek = weekStartInRange(viewedWeek, currentWeek);
+  const previousMonday = addZonedDays(viewedMonday, -7, tz);
+  const nextMonday = addZonedDays(viewedMonday, 7, tz);
+  const canPrev = weekStartInRange(weekStartKey(previousMonday, tz), currentWeek);
+  const canNext = weekStartInRange(weekStartKey(nextMonday, tz), currentWeek);
+  const completedDays = schedule.days
+    .filter((day) =>
+      day.activities.some((item) => item.kind === "workout" && item.status === "complete"),
+    )
+    .map((day) => formatDayParam(day.date, tz));
+  const selectedLogged = completedDays.includes(dayParam);
+  const selectedPast = dayParam < formatDayParam(now, tz);
+  const selectedMissed = selectedPast && dayPlan.active && !selectedLogged;
+  const weekTitle =
+    viewedWeek === currentWeek
+      ? "This week"
+      : `Week of ${viewedMonday.toLocaleDateString("en-US", { month: "short", timeZone: tz })} ${zonedParts(viewedMonday, tz).day}`;
+  const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
+  const weekHref = (date: Date) =>
+    `/training/calendar?day=${formatDayParam(date, tz)}${levelQuery}`;
   const zones = [
     ...new Map(
       planned.flatMap((session) => {
@@ -96,8 +121,8 @@ export default async function TrainingCalendarPage({
           <div>
             <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              Tap a day chip to open that day’s full Core plan. Hold a day, then tap
-              another, to swap workouts this week
+              Previous shows days you already had, including logged workouts. Hold a day,
+              then tap another, to move a missed workout onto a later day
               {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live
               coach calendar, Watch sync, or Gymdesk.
             </p>
@@ -106,7 +131,43 @@ export default async function TrainingCalendarPage({
         </div>
       </div>
 
-      <WeekStrip days={strip} basePath="/training/calendar" rearrange />
+      <div className="space-y-3">
+      <nav aria-label="Week" data-week-nav className="flex items-center justify-between gap-2">
+        {canPrev ? (
+          <Link
+            href={weekHref(previousMonday)}
+            data-week-prev
+            className="inline-flex min-h-11 items-center rounded-full border border-line bg-card px-3 text-sm font-semibold"
+          >
+            Previous
+          </Link>
+        ) : (
+          <span className="inline-flex min-h-11 items-center px-3 text-sm text-muted">Previous</span>
+        )}
+        <p className="text-center text-sm font-semibold" data-week-label>
+          {weekTitle}
+        </p>
+        {canNext ? (
+          <Link
+            href={weekHref(nextMonday)}
+            data-week-next
+            className="inline-flex min-h-11 items-center rounded-full border border-line bg-card px-3 text-sm font-semibold"
+          >
+            Next
+          </Link>
+        ) : (
+          <span className="inline-flex min-h-11 items-center px-3 text-sm text-muted">Next</span>
+        )}
+      </nav>
+
+      <WeekStrip
+        days={strip}
+        basePath="/training/calendar"
+        rearrange={canEditWeek}
+        weekStart={viewedWeek}
+        completedDays={completedDays}
+      />
+      </div>
 
       {fromProfile ? null : (
         <TrainingLevelToggle
@@ -117,10 +178,15 @@ export default async function TrainingCalendarPage({
         />
       )}
 
-      <section className="space-y-3" data-selected-day-plan>
+      <section
+        className="space-y-3"
+        data-selected-day-plan
+        data-day-history={selectedLogged ? "logged" : selectedMissed ? "missed" : undefined}
+      >
         <div>
           <p className="font-display text-xs uppercase tracking-wide text-accent">
-            {isToday ? "Today" : "Selected"} · {dayPlan.weekday}
+            {isToday ? "Today" : selectedPast ? "Past" : "Selected"} · {dayPlan.weekday}
+            {selectedLogged ? " · Logged" : selectedMissed ? " · Missed" : ""}
             {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
             {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
           </p>
@@ -178,7 +244,7 @@ export default async function TrainingCalendarPage({
         </p>
       ) : null}
 
-      <h2 className="text-lg">Upcoming list</h2>
+      <h2 className="text-lg">{weekTitle}</h2>
       <CalendarList days={schedule.days} />
     </main>
   );
