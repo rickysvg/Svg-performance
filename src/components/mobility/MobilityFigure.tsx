@@ -61,7 +61,7 @@ function Prop({ prop }: { prop: FigureProp }) {
   return <Arrow x1={prop.x1} y1={prop.y1} x2={prop.x2} y2={prop.y2} />;
 }
 
-function FigureSvg({ spec, title }: { spec: FigureSpec; title: string }) {
+export function FigureSvg({ spec, title }: { spec: FigureSpec; title: string }) {
   const accent = new Set(spec.accent ?? []);
   const limb = (id: "armL" | "armR" | "legL" | "legR", a: XY, b: XY, c: XY) => (
     <polyline
@@ -114,6 +114,50 @@ function FigureSvg({ spec, title }: { spec: FigureSpec; title: string }) {
   );
 }
 
+export function MobilityFigureFrame({
+  spec,
+  title,
+  variant = "thumb",
+  mirror = false,
+  badge = "Position demo",
+  blockKey,
+  motionSeconds,
+}: {
+  spec: FigureSpec;
+  title: string;
+  variant?: "thumb" | "hero";
+  mirror?: boolean;
+  badge?: string;
+  blockKey?: string;
+  motionSeconds?: number;
+}) {
+  const hero = variant === "hero";
+  return (
+    <figure
+      data-mobility-figure={blockKey}
+      data-mobility-caption={spec.caption}
+      data-motion-seconds={motionSeconds ?? undefined}
+      className={
+        hero
+          ? "w-full overflow-hidden rounded-2xl bg-black"
+          : "h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-black"
+      }
+    >
+      <div className={hero ? "aspect-[4/3] w-full" : "h-full"} style={mirror ? { transform: "scaleX(-1)" } : undefined}>
+        <FigureSvg spec={spec} title={title} />
+      </div>
+      {hero ? (
+        <figcaption className="px-3 pb-3 text-sm leading-snug text-white/80">
+          {spec.caption}
+          <span className="mt-1 block text-[11px] uppercase tracking-[0.12em] text-highlighter">
+            {badge}
+          </span>
+        </figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
 export function MobilityFigure({
   blockKey,
   drillId,
@@ -129,28 +173,13 @@ export function MobilityFigure({
 }) {
   const spec = blockKey ? figureForBlock(blockKey) : drillId ? figureForDrill(drillId) : null;
   if (!spec) return null;
-  const hero = variant === "hero";
   return (
-    <figure
-      data-mobility-figure={blockKey ?? drillId}
-      data-mobility-caption={spec.caption}
-      className={
-        hero
-          ? "w-full overflow-hidden rounded-2xl bg-black"
-          : "h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-black"
-      }
-    >
-      <div className={hero ? "aspect-[4/3] w-full" : "h-full"} style={mirror ? { transform: "scaleX(-1)" } : undefined}>
-        <FigureSvg spec={spec} title={title} />
-      </div>
-      {hero ? (
-        <figcaption className="px-3 pb-3 text-sm leading-snug text-white/80">
-          {spec.caption}
-          <span className="mt-1 block text-[11px] uppercase tracking-[0.12em] text-highlighter">
-            Position demo
-          </span>
-        </figcaption>
-      ) : null}
-    </figure>
+    <MobilityFigureFrame
+      spec={spec}
+      title={title}
+      variant={variant}
+      mirror={mirror}
+      blockKey={blockKey ?? drillId}
+    />
   );
 }
