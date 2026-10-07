@@ -218,3 +218,39 @@ export function plannedSetLine(input: {
   }
   return `${countLabel(input.sets, "set")} × ${input.reps}${effort}${restOut}`;
 }
+
+/**
+ * Logger card subtitle: sets, prescribed work, then the RIR cue.
+ * Percent and rest stay off this line. Previous, Reps, and Lbs do not print RIR.
+ */
+export function loggerCardLine(input: {
+  sets: number;
+  reps: string;
+  restSeconds?: number;
+  logMode?: string | null;
+  name?: string;
+  loadText?: string | null;
+}) {
+  const mode = resolveLogMode(input);
+  const name = input.name ?? "";
+  const rir = rirFromLoadText(input.loadText);
+  const effort = rir ? ` @ ${rir}` : "";
+  if (isBikeIntervalName(name)) {
+    const reps = input.reps || bikeIntervalReps();
+    return `${countLabel(input.sets, "round")} · ${reps}${effort}`;
+  }
+  if (mode === "timed_round") {
+    return `${countLabel(input.sets, "round")} × ${input.reps}${effort}`;
+  }
+  if (mode === "load_timed") {
+    return `${input.sets} × ${carryDurationLabel(input.reps)}${effort}`;
+  }
+  if (mode === "timed") {
+    if (!rir && input.sets === 1 && (input.restSeconds ?? 0) <= 0 && isSingleClockBlock(input.reps)) {
+      return `${input.reps.trim()} continuous`;
+    }
+    const unit = isHoldName(name) ? countLabel(input.sets, "hold") : countLabel(input.sets, "set");
+    return `${unit} × ${input.reps}${effort}`;
+  }
+  return `${countLabel(input.sets, "set")} × ${input.reps}${effort}`;
+}

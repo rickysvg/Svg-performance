@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUserOrThrow } from "@/lib/session";
+import { extendActiveSession, requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { isDeloadWeek } from "@/lib/training-cycle";
 import {
@@ -86,6 +86,8 @@ function parseSets(formData: FormData): WorkoutSetInput[] {
       logMode: isLogMode(modeRaw) ? modeRaw : undefined,
       durationSeconds: durationRaw === "" ? null : Number(durationRaw),
       completed: formData.get(`sets.${i}.completed`) === "on",
+      prescriptionKey: String(formData.get(`sets.${i}.prescriptionKey`) ?? ""),
+      rir: String(formData.get(`sets.${i}.rir`) ?? ""),
     });
   }
   return sets;
@@ -111,6 +113,7 @@ export async function saveWorkoutAction(
       notes: String(formData.get("notes") ?? ""),
       status: intent === "draft" ? "draft" : "complete",
       sets: parseSets(formData),
+      rest: intent === "complete" ? null : undefined,
     });
     const profile = await getProfileForUser(user.id);
     const units: LoadUnit = profile?.preferredUnits ?? "lb";
@@ -154,6 +157,36 @@ export async function saveWorkoutAction(
     return { error: publicErrorMessage(error) };
   }
   redirect(redirectPath);
+}
+
+export async function syncWorkoutDraftAction(input: {
+  workoutId: string;
+  title: string;
+  performedAt: string;
+  notes: string;
+  sets: WorkoutSetInput[];
+  rest: { exerciseName: string; endsAtMs: number } | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const user = await requireUserOrThrow();
+    await extendActiveSession();
+    const performedAt = new Date(input.performedAt);
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: input.workoutId,
+      title: input.title || "Workout",
+      performedAt: Number.isNaN(performedAt.getTime()) ? new Date() : performedAt,
+      notes: input.notes ?? "",
+      status: "draft",
+      sets: input.sets,
+      rest: input.rest,
+    });
+    revalidatePath("/training");
+    revalidatePath("/home");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: publicErrorMessage(error) };
+  }
 }
 
 export async function rateWorkoutAction(

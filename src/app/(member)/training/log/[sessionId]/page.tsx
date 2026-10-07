@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { getOwnWorkoutSessionOrNull, getPreviousLoadsForUser } from "@/lib/workouts";
+import { getOwnWorkoutSessionOrNull, getPreviousLoadsForSlots } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -80,9 +80,12 @@ export default async function WorkoutLogPage({
               }
             : session
         }
-        previousLoads={await getPreviousLoadsForUser(
+        previousLoads={await getPreviousLoadsForSlots(
           user.id,
-          session.sets.map((set) => set.exerciseName),
+          session.sets.map((set) => ({
+            exerciseName: set.exerciseName,
+            prescriptionKey: set.prescriptionKey,
+          })),
           session.id,
         )}
         notes={await listExerciseNotesForUser(user.id, {
