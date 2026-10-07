@@ -76,6 +76,7 @@ export default async function WorkoutLogPage({
                     competitionStatus: profile?.competitionStatus,
                   }),
                   programSlug: session.programDay.program.slug,
+                  weightAccess: profile?.weightAccess,
                 }),
               }
             : session

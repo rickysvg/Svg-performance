@@ -16,6 +16,7 @@ import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { BagFocusList } from "@/components/training/BagFocusList";
+import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
@@ -660,6 +661,9 @@ export function WorkoutLogForm({
                   </p>
                   {name === firstRirName ? <RirHint /> : null}
                   {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+                  {planned?.notes && !bagFocusLines(planned.notes) ? (
+                    <p className="mt-1 text-sm text-muted">{planned.notes}</p>
+                  ) : null}
                   <BagFocusList
                     notes={planned?.notes}
                     activeRound={current && layout === "bag" ? cursor.setIndex : undefined}

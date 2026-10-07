@@ -15,7 +15,9 @@ import {
   isBikeIntervalName,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
+import { floorSessionForDay } from "@/lib/bodyweight-plan";
 import { daruExerciseForName } from "@/lib/daru-exercises";
+import { formVideoFieldsFor } from "@/lib/form-videos";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
   formatClock,
@@ -26,13 +28,15 @@ import {
   resolveLogMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
-import { mergeLoadText } from "@/lib/rir";
+import { effortLoadText, mergeLoadText } from "@/lib/rir";
+import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
 
 export type ScaleBand = "beginner" | "intermediate" | "advanced";
 
 export type ScalePrefs = {
   experienceLevel?: string | null;
   competitionStatus?: string | null;
+  weightAccess?: string | null;
 };
 
 export type ScaleableExercise = {
@@ -43,6 +47,8 @@ export type ScaleableExercise = {
   restSeconds: number;
   logMode?: string;
   notes?: string;
+  formVideoUrl?: string;
+  formVideoPending?: boolean;
 };
 
 /**
@@ -172,6 +178,11 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     reps: "8–10",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
   },
+  "Dumbbell bench press": {
+    sets: 4,
+    reps: "8–10",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
+  },
   "One-arm row": {
     sets: 4,
     reps: "8 / side",
@@ -261,12 +272,31 @@ function skillRestSeconds(band: ScaleBand, dayNumber: number) {
 
 export function scaleExercise(
   exercise: ScaleableExercise,
-  input: { band: ScaleBand; programSlug?: string; dayNumber?: number },
+  input: {
+    band: ScaleBand;
+    programSlug?: string;
+    dayNumber?: number;
+    weightAccess?: WeightAccess;
+  },
 ): ScaleableExercise {
   const mode = resolveLogMode(exercise);
   const slug = input.programSlug ?? "";
   const dayNumber = input.dayNumber ?? 1;
   const band = input.band;
+
+  if (isWeightedShadowName(exercise.name) && input.weightAccess === "none") {
+    return {
+      ...exercise,
+      name: "Shadowbox round 2 — fists, no weights",
+      logMode: "timed",
+      sets: 1,
+      reps: band === "beginner" ? "2:00" : "3:00",
+      restSeconds: band === "advanced" ? 30 : 45,
+      loadText: "Empty hands — no hand weights",
+      formVideoUrl: "",
+      formVideoPending: false,
+    };
+  }
 
   if (isWeightedShadowName(exercise.name)) {
     return {
@@ -430,7 +460,67 @@ function scaleLoadedCarry(
   };
 }
 
+const BENCH_OR_PUSHUP = /^(?:push-up or )?dumbbell bench press$/i;
+
+function withForm(name: string, exercise: ScaleableExercise): ScaleableExercise {
+  const video = formVideoFieldsFor(name);
+  return {
+    ...exercise,
+    name,
+    formVideoUrl: video.formVideoUrl,
+    formVideoPending: video.formVideoPending,
+  };
+}
+
+/** The stored name is the gym press. Beginners keep a push-up. Everyone else logs the bench. */
+function prescribeGymPush(exercise: ScaleableExercise, band: ScaleBand): ScaleableExercise {
+  if (BENCH_OR_PUSHUP.test(exercise.name)) {
+    if (band === "beginner") {
+      return withForm("Push-up", {
+        ...exercise,
+        logMode: "reps_only",
+        sets: Math.min(exercise.sets, 4),
+        reps: "8–12",
+        loadText: effortLoadText("2-4", "Straight body. Knees if the last reps fall apart."),
+        restSeconds: Math.max(exercise.restSeconds, 60),
+        notes:
+          "Main press on a beginner day. Chest to the floor, or to a stair or couch if the floor is too hard.",
+      });
+    }
+    const notes = (exercise.notes ?? "")
+      .replace(/Chest or floor\.\s*/gi, "")
+      .replace(/Do not bounce the weight off the chest\.?/gi, "Do not bounce the bells off the chest.")
+      .trim();
+    return withForm("Dumbbell bench press", {
+      ...exercise,
+      logMode: "load_reps",
+      notes: /dumbbell/i.test(notes)
+        ? notes
+        : notes
+          ? `Dumbbells on a bench. ${notes}`
+          : "Dumbbells on a bench. Last rep slow and clean.",
+    });
+  }
+  if (/^plyo push-up$/i.test(exercise.name) && band !== "beginner") {
+    return withForm("Explosive dumbbell press", {
+      ...exercise,
+      logMode: "load_reps",
+      loadText: effortLoadText("3-5", "Light bells. Speed off the chest, not a grind."),
+      notes: "Power primer before the heavy bench. Leave speed in the tank.",
+    });
+  }
+  return exercise;
+}
+
 function scaleStrengthExercise(
+  exercise: ScaleableExercise,
+  band: ScaleBand,
+  mode: LogMode,
+): ScaleableExercise {
+  return prescribeGymPush(scaleStrengthLoad(exercise, band, mode), band);
+}
+
+function scaleStrengthLoad(
   exercise: ScaleableExercise,
   band: ScaleBand,
   mode: LogMode,
@@ -492,19 +582,64 @@ function harderLoadText(text: string) {
 
 export function scaleExercises<T extends ScaleableExercise>(
   exercises: T[],
-  input: { band: ScaleBand; programSlug?: string; dayNumber?: number },
+  input: {
+    band: ScaleBand;
+    programSlug?: string;
+    dayNumber?: number;
+    weightAccess?: WeightAccess;
+  },
 ): T[] {
   return exercises.map((exercise) => ({ ...exercise, ...scaleExercise(exercise, input) }));
 }
 
-export function scaleProgramDay<T extends { dayNumber: number; focus: string; exercises: ScaleableExercise[] }>(
+function stampFloorExercises<T extends ScaleableExercise>(
+  originals: T[],
+  menu: ScaleableExercise[],
+): T[] {
+  return menu.map((exercise, index) => {
+    const base = originals[index] ?? originals[0];
+    const video = formVideoFieldsFor(exercise.name);
+    const id =
+      base && typeof (base as unknown as { id?: unknown }).id === "string"
+        ? `${(base as unknown as { id: string }).id}-floor-${index}`
+        : undefined;
+    return {
+      ...(base ?? ({} as T)),
+      ...exercise,
+      ...(id ? { id } : {}),
+      sortOrder: index + 1,
+      formVideoUrl: video.formVideoUrl,
+      formVideoPending: video.formVideoPending,
+    } as T;
+  });
+}
+
+export function scaleProgramDay<
+  T extends { dayNumber: number; focus: string; title?: string; exercises: ScaleableExercise[] },
+>(
   day: T,
-  input: { band: ScaleBand; programSlug?: string },
+  input: { band: ScaleBand; programSlug?: string; weightAccess?: string | null },
 ): T {
+  const weightAccess = normalizeWeightAccess(input.weightAccess);
+  const floor =
+    weightAccess === "none"
+      ? floorSessionForDay(day.dayNumber, input.programSlug, input.band)
+      : null;
+  if (floor) {
+    const note = scaleCopy(input.band);
+    const focus = floor.focus.includes(note) ? floor.focus : `${floor.focus} · ${note}`;
+    return {
+      ...day,
+      title: floor.title,
+      focus,
+      exercises: stampFloorExercises(day.exercises, floor.exercises),
+    };
+  }
   const exercises = scaleExercises(day.exercises, {
     band: input.band,
     programSlug: input.programSlug,
     dayNumber: day.dayNumber,
+    weightAccess,
   });
   const note = scaleCopy(
     input.band,
@@ -525,13 +660,14 @@ export function scaleDemoCatalog<
   },
 >(catalog: T, prefs?: ScalePrefs | null): T {
   const band = scaleBandFromPrefs(prefs);
+  const weightAccess = normalizeWeightAccess(prefs?.weightAccess);
   return {
     ...catalog,
     strength: catalog.strength
       ? {
           ...catalog.strength,
           days: catalog.strength.days.map((day) =>
-            scaleProgramDay(day, { band, programSlug: DEMO_PROGRAM_SLUG }),
+            scaleProgramDay(day, { band, programSlug: DEMO_PROGRAM_SLUG, weightAccess }),
           ),
         }
       : catalog.strength,
@@ -539,7 +675,7 @@ export function scaleDemoCatalog<
       ? {
           ...catalog.skill,
           days: catalog.skill.days.map((day) =>
-            scaleProgramDay(day, { band, programSlug: DEMO_SKILL_PROGRAM_SLUG }),
+            scaleProgramDay(day, { band, programSlug: DEMO_SKILL_PROGRAM_SLUG, weightAccess }),
           ),
         }
       : catalog.skill,

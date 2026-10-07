@@ -15,7 +15,9 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { floorPlyoBlock, plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { normalizeWeightAccess } from "@/lib/weight-access";
+import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import {
   nextActiveWeekday,
   planForDate,
@@ -78,11 +80,13 @@ export default async function TrainingPage({
     camp && camp.phase !== "complete"
       ? shapeDayPlan(planForDate(prefs, selected, tz), camp.phase)
       : planForDate(prefs, selected, tz);
+  const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const planned = resolvePlanSessions(
     dayPlan,
     scaleDemoCatalog(catalog, {
       experienceLevel: band,
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
+      weightAccess,
     }),
   );
   const strip = weekStrip(prefs, now, tz, selected);
@@ -92,7 +96,12 @@ export default async function TrainingPage({
   const testing = isTestingWeek(selected, tz);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const showPlyo = dayPlan.weekday === "Monday" || dayPlan.weekday === "Wednesday";
-  const plyo = showPlyo && dayPlan.active ? plyoBlockFor(emphasis) : [];
+  const plyo =
+    showPlyo && dayPlan.active
+      ? weightAccess === "none"
+        ? floorPlyoBlock()
+        : plyoBlockFor(emphasis)
+      : [];
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
   const gear = equipmentForExercises(
@@ -185,6 +194,8 @@ export default async function TrainingPage({
 
       <WeekStrip days={strip} basePath="/training" />
 
+      <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
+
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">
           <p className="font-display text-xs uppercase tracking-wide text-accent">
@@ -233,9 +244,9 @@ export default async function TrainingPage({
               <p className="mt-1 text-sm text-muted">Joint circles and leg swings. Save long holds for the cooldown.</p>
             </Link>
           ) : null}
-          {zones.map((zone) => (
-            <BikeZoneNote key={zone.label} zone={zone} />
-          ))}
+          {weightAccess === "gym"
+            ? zones.map((zone) => <BikeZoneNote key={zone.label} zone={zone} />)
+            : null}
           {plyo.length > 0 ? (
             <div className="rounded-2xl border border-line bg-background px-4 py-3">
               <p className="font-display text-xs uppercase tracking-wide text-accent">

@@ -62,6 +62,7 @@ export async function startSessionAction(formData: FormData) {
     scale: {
       experienceLevel: profile?.experienceLevel,
       competitionStatus: profile?.competitionStatus,
+      weightAccess: profile?.weightAccess,
     },
     deload: isDeloadWeek(new Date(), timeZone),
   });

@@ -35,6 +35,16 @@ BEGIN
   ) THEN
     ALTER TABLE "Profile" ADD COLUMN "trainingEmphasis" TEXT NOT NULL DEFAULT 'balanced';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'weightAccess'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "weightAccess" TEXT NOT NULL DEFAULT 'gym';
+  END IF;
 END $$;
 
 -- Password-reset leak fix. Additive only: new column defaulting to 1, new

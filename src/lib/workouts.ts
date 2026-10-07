@@ -362,7 +362,7 @@ export async function startWorkoutFromDay(input: {
         logMode: exercise.logMode,
       })),
     },
-    { band, programSlug: rawDay.program.slug },
+    { band, programSlug: rawDay.program.slug, weightAccess: input.scale?.weightAccess },
   );
   const sets = day.exercises.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);

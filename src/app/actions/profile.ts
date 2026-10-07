@@ -1,13 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   persistDetectedTimeZone,
   setLeaderboardOptInForUser,
+  setWeightAccessForUser,
   updateProfileForUser,
 } from "@/lib/profile";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
+import { safeTrainingNext } from "@/lib/weight-access";
 
 export type ProfileActionState = { error?: string; success?: string };
 
@@ -72,6 +75,15 @@ export async function saveProfileAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+}
+
+export async function setWeightAccessAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const next = safeTrainingNext(String(formData.get("next") ?? "/training"));
+  await setWeightAccessForUser(user.id, String(formData.get("weightAccess") ?? "gym"));
+  revalidatePath("/training");
+  revalidatePath("/home");
+  redirect(next);
 }
 
 export async function persistDetectedTimeZoneAction(timeZone: string) {

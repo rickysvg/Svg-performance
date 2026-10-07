@@ -195,6 +195,7 @@ export async function getCalendarSchedule(userId: string, now = new Date()) {
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
+    weightAccess: profile?.weightAccess,
   });
   const completedOnDay = new Set(
     sessions
