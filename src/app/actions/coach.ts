@@ -6,6 +6,7 @@ import { getProfileForUser } from "@/lib/profile";
 import { canUseMemberTools } from "@/lib/access";
 import { AppError } from "@/lib/errors";
 import { sendCoachMessage } from "@/lib/coach/chat";
+import { resolveCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { publicErrorMessage } from "@/lib/errors";
 
@@ -25,12 +26,16 @@ export async function sendCoachMessageAction(
       );
     }
     const profile = await getProfileForUser(user.id);
+    const coach = resolveCoach(profile?.aiCoachId);
+    const style = resolveCoachingStyle(profile?.coachingStyle);
     const mentioned = String(formData.get("mentionedUserId") ?? "").trim();
     await sendCoachMessage({
       userId: user.id,
       message: String(formData.get("message") ?? ""),
       experienceLevel: profile?.experienceLevel,
       coachingTone: profile?.coachingTone,
+      coachingStyle: style.id,
+      coachName: coach.name,
       mentionedUserId: mentioned || undefined,
       topic: String(formData.get("topic") ?? ""),
       art: String(formData.get("art") ?? ""),

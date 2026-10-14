@@ -115,6 +115,8 @@ export async function askExerciseNoteForUser(input: {
   plannedLine?: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
 }) {
   const note = await upsertExerciseNoteForUser(input);
   if (!note.body) {
@@ -148,6 +150,8 @@ export async function askExerciseNoteForUser(input: {
     message,
     experienceLevel: input.experienceLevel,
     coachingTone: input.coachingTone,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
     topic: lane.topic,
     art: lane.art,
   });

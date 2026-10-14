@@ -168,6 +168,18 @@ html[data-splash="done"] .app-splash {
   pointer-events: none !important;
 }
 
+/* The intro covers the app. Keep the coach button out until the splash is done. */
+html:not([data-splash="done"]) [data-coach-fab] {
+  display: none !important;
+}
+
+/* On a phone, the logger Save row sits clear of the left coach button. */
+@media (max-width: 767px) {
+  [data-logger-save] {
+    padding-left: 4.25rem;
+  }
+}
+
 body:has(.app-splash.is-visible) {
   overflow: hidden;
 }

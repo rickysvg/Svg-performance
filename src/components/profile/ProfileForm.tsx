@@ -358,6 +358,9 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
         </label>
         <fieldset className="mt-3">
           <legend className="text-sm font-medium">Preferred coaching tone</legend>
+          <p className="mt-1 text-xs text-muted">
+            Extra note. The coach and style above set the main SVG Coach voice.
+          </p>
           <div className="mt-2 grid gap-2">
             {COACHING_TONE_OPTIONS.map((item) => (
               <label key={item.value} className="flex items-center gap-3 text-sm">

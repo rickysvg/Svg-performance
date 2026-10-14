@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Profile" ADD COLUMN "aiCoachId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Profile" ADD COLUMN "coachingStyle" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Profile" ADD COLUMN "coachChoiceAt" DATETIME;

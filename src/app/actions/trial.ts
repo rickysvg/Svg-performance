@@ -32,7 +32,7 @@ export async function startTrialAction(formData: FormData) {
 }
 
 export async function continueFreePlanAction(formData: FormData) {
-  const next = safeNext(String(formData.get("next") ?? "/onboarding/deeper"));
+  const next = safeNext(String(formData.get("next") ?? "/onboarding/coach"));
   const user = await requireUserOrThrow();
   await continueWithFreePlan(user.id);
   revalidatePath("/");

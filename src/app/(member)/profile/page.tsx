@@ -3,6 +3,7 @@ import { logoutAction } from "@/app/actions/auth";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { CoachChoiceForm } from "@/components/coach/CoachChoiceForm";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { YourDataSection } from "@/components/profile/YourDataSection";
 import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
@@ -49,6 +50,15 @@ export default async function ProfilePage() {
           </div>
         ) : null}
       </div>
+
+      <section id="coach" className="scroll-mt-24 space-y-3 rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-lg">SVG Coach</h2>
+        <p className="text-sm text-muted">
+          The face in the corner and in chat. Style changes the tone. Safety rules stay
+          the same.
+        </p>
+        <CoachChoiceForm profile={profile} mode="profile" />
+      </section>
 
       <SoundEffectsToggle />
       <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
