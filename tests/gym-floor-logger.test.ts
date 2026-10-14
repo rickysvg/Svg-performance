@@ -400,7 +400,13 @@ describe("start today", () => {
     expect(form).toContain("writeLoggerDraft");
     expect(form).toContain("syncWorkoutDraftAction");
     expect(form).not.toContain("text-6xl");
-    expect(form).not.toContain("Start rest");
+    expect(form).toContain("data-start-rest");
+    expect(form).toContain("Start rest");
+    expect(form).toContain("data-logger-chrome");
+    expect(form).toContain("env(safe-area-inset-top)");
+    const saveAt = form.indexOf("data-logger-save");
+    expect(saveAt).toBeGreaterThan(form.lastIndexOf("data-exercise-block"));
+    expect(form.slice(saveAt, saveAt + 280)).not.toContain("sticky");
     expect(form).toContain("/api/session/touch");
     const logPage = read("src/app/(member)/training/log/[sessionId]/page.tsx");
     expect(logPage).not.toContain("extendActiveSession");

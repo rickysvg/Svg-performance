@@ -6,6 +6,7 @@ import {
   scaleBikeSession,
 } from "../src/lib/bike-sessions";
 import { demoBagSkillDays, demoStrengthDays } from "../src/lib/demo-week-seed";
+import { formatStoredTags, tagsForExercise } from "../src/lib/exercise-tags";
 import { formVideoFieldsFor } from "../src/lib/form-videos";
 import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
 import { fallbackLogMode, isWeightedShadowName } from "../src/lib/exercise-log-mode";
@@ -26,6 +27,7 @@ function bikeProgramDay(session: (typeof BIKE_SESSIONS)[number]) {
           loadText: scaled.loadText,
           restSeconds: scaled.restBetweenSetsSeconds,
           notes: scaled.notes,
+          tags: formatStoredTags(tagsForExercise(scaled.name)),
           ...formVideoFieldsFor(scaled.name),
         },
       ],
@@ -163,7 +165,8 @@ async function tagSeededExerciseModes() {
           reps?: string;
           restSeconds?: number;
           loadText?: string;
-        } = { logMode };
+          tags: string;
+        } = { logMode, tags: formatStoredTags(tagsForExercise(exercise.name)) };
         if (logMode === "timed") {
           if (/\b(plank|hold|wall sit|hollow|dead hang)\b/i.test(exercise.name)) {
             data.loadText = "Hold — no weight";

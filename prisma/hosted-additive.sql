@@ -277,3 +277,21 @@ BEGIN
   END IF;
 END $$;
 
+-- Exercise tags for the workout-complete recap. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."ProgramExercise"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'ProgramExercise'
+      AND column_name = 'tags'
+  ) THEN
+    ALTER TABLE "ProgramExercise" ADD COLUMN "tags" TEXT NOT NULL DEFAULT '';
+  END IF;
+END $$;
+
