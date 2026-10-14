@@ -1,6 +1,7 @@
 import { loadKnowledgeBase } from "@/lib/coach/knowledge";
 import { offlineReply } from "@/lib/coach/offline";
 import type { CoachRoute } from "@/lib/coach/router";
+import { coachingStyleVoice } from "@/lib/coaches";
 import { styleInstructions, STYLE_LIMITS } from "@/lib/coach/styles";
 import { safetyPreamble } from "@/lib/coach/safety";
 import type { FallbackReason } from "@/lib/coach/stream-types";
@@ -81,6 +82,8 @@ export function buildCoachSystemPrompt(input: {
   route: CoachRoute;
   ownSummary: string;
   planContext?: string;
+  coachingStyle?: string;
+  coachName?: string;
 }) {
   const wantsPlan =
     input.route.primary === "programming" || input.route.secondary.includes("programming");
@@ -93,6 +96,7 @@ export function buildCoachSystemPrompt(input: {
     safetyPreamble(),
     coachTopicContext(input.topic, input.art),
     styleInstructions(input.route, { topic: input.topic, art: input.art }),
+    coachingStyleVoice(input.coachingStyle, input.coachName),
     "Approved DEMO knowledge:",
     loadKnowledgeBase(),
     "Member context (current user only):",

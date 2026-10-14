@@ -7,6 +7,8 @@ import { getTrialState } from "@/lib/trial";
 import { getOrCreateThread } from "@/lib/coach/chat";
 import { CoachLiveThread } from "@/components/coach/CoachLiveThread";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
+import { getProfileForUser } from "@/lib/profile";
+import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import {
   COACH_ARTS,
   COACH_ART_LABELS,
@@ -67,6 +69,9 @@ export default async function CoachPage({
     );
   }
   const query = await searchParams;
+  const profile = await getProfileForUser(user.id);
+  const coach = resolveAiCoach(profile?.aiCoachId);
+  const style = resolveCoachingStyle(profile?.coachingStyle);
   const topic = resolveCoachTopic(query.topic);
   const art = topic === "martial_art" ? resolveCoachArt(query.art) : undefined;
   const ready = Boolean(topic && (topic !== "martial_art" || art));
@@ -77,13 +82,23 @@ export default async function CoachPage({
 
   return (
     <main className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-muted">
-          Sacrifice · Vision · Greatness
-        </p>
-        <h1 className="text-2xl">{COACH_PUBLIC_NAME}</h1>
-        <AiDisclaimer className="mt-2 text-sm text-muted" />
+      <div className="flex items-center gap-3" data-coach-header>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={coach.image}
+          alt=""
+          width={512}
+          height={512}
+          className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-accent"
+        />
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-muted">{COACH_PUBLIC_NAME}</p>
+          <h1 className="text-2xl">{coach.name}</h1>
+          <p className="text-sm text-muted">{coach.vibe}</p>
+          <p className="text-xs text-muted">{style.label} style</p>
+        </div>
       </div>
+      <AiDisclaimer className="text-sm text-muted" />
 
       {!topic ? (
         <section className="space-y-4">
@@ -139,6 +154,8 @@ export default async function CoachPage({
             art={art}
             lane={lane}
             viewerRole={user.role}
+            coachName={coach.name}
+            coachThumb={coach.thumb}
             initialMessages={thread.messages}
           />
         </>

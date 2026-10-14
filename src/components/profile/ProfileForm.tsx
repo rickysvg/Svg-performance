@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveProfileAction, type ProfileActionState } from "@/app/actions/profile";
+import { CoachPicker } from "@/components/coach/CoachPicker";
 import { StatusBanner } from "@/components/StatusBanner";
 import { EMPHASIS_CREDIT, EMPHASIS_OPTIONS, emphasisLabel } from "@/lib/training-emphasis";
 import {
@@ -29,6 +30,18 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
     <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
       <h2 className="text-lg">Training profile</h2>
       <StatusBanner error={state.error} success={state.success} />
+
+      <section className="space-y-3 rounded-xl border border-line p-3">
+        <h3 className="text-sm font-medium">Your SVG Coach</h3>
+        <p className="text-xs text-muted">
+          The face and style used in SVG Coach. Saving this profile keeps the choice.
+        </p>
+        <CoachPicker
+          coachId={profile.aiCoachId}
+          coachingStyle={profile.coachingStyle}
+          idPrefix="profile-coach"
+        />
+      </section>
 
       <label className="block">
         <span className="text-sm font-medium">Display name</span>
