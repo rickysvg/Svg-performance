@@ -30,11 +30,19 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
   return (
     <Link
       href={activity.href}
+      data-status={activity.status}
       className="flex items-center gap-3 rounded-2xl border border-line bg-card px-4 py-3.5 shadow-sm hover:border-accent/50"
     >
       <StatusCircle kind={activity.kind} status={activity.status} />
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold leading-snug">{activity.title}</span>
+        <span className="flex items-center gap-2">
+          <span className="block font-semibold leading-snug">{activity.title}</span>
+          {activity.status === "complete" ? (
+            <span className="font-display shrink-0 text-[11px] uppercase tracking-wide text-accent">
+              Done
+            </span>
+          ) : null}
+        </span>
         <span className="mt-0.5 block text-sm text-muted">{activity.subtitle}</span>
       </span>
       <span className="text-lg text-muted" aria-hidden>
@@ -48,7 +56,7 @@ export function CalendarList({ days }: { days: CalendarDay[] }) {
   return (
     <ol className="space-y-6">
       {days.map((day) => (
-        <li key={day.heading} className="space-y-3">
+        <li key={day.heading} data-calendar-day={day.heading} className="space-y-3">
           <h2 className="flex items-center gap-2 text-sm text-foreground">
             {day.isToday ? (
               <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden />

@@ -7,9 +7,11 @@ import {
   buildCalendarDays,
   formatCalendarHeading,
   getCalendarSchedule,
+  listWeekDates,
   ordinalDay,
   resolveTrainingWeekdays,
 } from "@/lib/calendar";
+import { addZonedDays } from "@/lib/timezone";
 
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
 
@@ -19,13 +21,30 @@ describe("calendar schedule list", () => {
     expect(ordinalDay(23)).toBe("23rd");
     expect(ordinalDay(1)).toBe("1st");
     expect(ordinalDay(11)).toBe("11th");
-    expect(formatCalendarHeading(tuesday, tuesday)).toBe("Today, September 22nd");
+    expect(formatCalendarHeading(tuesday, tuesday)).toBe("Today · Tuesday, September 22nd");
     expect(formatCalendarHeading(new Date(2026, 8, 23, 10, 0, 0), tuesday)).toBe(
-      "Tomorrow, September 23rd",
+      "Tomorrow · Wednesday, September 23rd",
     );
     expect(formatCalendarHeading(new Date(2026, 8, 24, 10, 0, 0), tuesday)).toBe(
       "Thursday, September 24th",
     );
+  });
+
+  it("names today and tomorrow in the member timezone", () => {
+    // Thursday 00:30 in Sydney is still Wednesday afternoon in Denver.
+    const instant = new Date("2026-10-15T00:30:00+11:00");
+    expect(formatCalendarHeading(instant, instant, "Australia/Sydney")).toBe(
+      "Today · Thursday, October 15th",
+    );
+    expect(formatCalendarHeading(instant, instant, "America/Denver")).toBe(
+      "Today · Wednesday, October 14th",
+    );
+    expect(
+      formatCalendarHeading(addZonedDays(instant, 1, "Australia/Sydney"), instant, "Australia/Sydney"),
+    ).toBe("Tomorrow · Friday, October 16th");
+    expect(
+      formatCalendarHeading(addZonedDays(instant, 2, "Australia/Sydney"), instant, "Australia/Sydney"),
+    ).toBe("Saturday, October 17th");
   });
 
   it("defaults training days to Mon/Wed/Fri and keeps member availability when set", () => {
@@ -48,12 +67,12 @@ describe("calendar schedule list", () => {
       challenge: { title: "DEMO — Show up this month", complete: false },
     });
 
-    expect(days[0]?.heading).toBe("Today, September 22nd");
+    expect(days[0]?.heading).toBe("Today · Tuesday, September 22nd");
     expect(days[0]?.isToday).toBe(true);
     expect(days[0]?.activities.filter((row) => row.kind === "workout")).toEqual([]);
 
     const tomorrow = days[1];
-    expect(tomorrow?.heading).toBe("Tomorrow, September 23rd");
+    expect(tomorrow?.heading).toBe("Tomorrow · Wednesday, September 23rd");
     expect(tomorrow?.activities[0]).toMatchObject({
       kind: "workout",
       title: "Day 1 — Lower body + power",
@@ -155,5 +174,63 @@ describe("calendar schedule loader", () => {
     expect(wed?.activities.some((row) => row.kind === "workout" && row.status === "complete")).toBe(
       true,
     );
+  });
+
+  it("lists the whole week, including a logged past day and a missed day", async () => {
+    const user = await makeUser("calendar-history@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const monday = new Date(2026, 8, 21, 10, 0, 0);
+    const wednesday = new Date(2026, 8, 23, 10, 0, 0);
+    expect(listWeekDates(wednesday)).toHaveLength(7);
+
+    const program = await getDemoProgram();
+    const firstDay = program.days[0];
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: firstDay.id,
+      preferredUnits: "lb",
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: monday,
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+
+    const schedule = await getCalendarSchedule(user.id, wednesday, monday);
+    expect(schedule.days).toHaveLength(7);
+    expect(schedule.days[0]?.heading.startsWith("Monday")).toBe(true);
+    expect(schedule.days[0]?.isToday).toBe(false);
+    const mondayWorkouts =
+      schedule.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(mondayWorkouts.length).toBeGreaterThan(0);
+    expect(mondayWorkouts.every((row) => row.status === "complete")).toBe(true);
+    expect(mondayWorkouts[0]?.subtitle).toContain("Logged this day");
+
+    const tuesdayRow = schedule.days[1];
+    const tuesdayWorkouts = tuesdayRow?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(tuesdayWorkouts.length).toBeGreaterThan(0);
+    expect(tuesdayWorkouts.every((row) => row.status === "scheduled")).toBe(true);
+    expect(tuesdayWorkouts[0]?.subtitle).toContain("Missed");
+    expect(tuesdayWorkouts[0]?.title.length).toBeGreaterThan(0);
   });
 });

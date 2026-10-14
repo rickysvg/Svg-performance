@@ -23,7 +23,11 @@ describe("Train / Calendar day chips", () => {
     expect(read("src/app/(member)/training/page.tsx")).toContain("data-selected-day-plan");
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("parseDayParam");
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("WeekStrip");
+    expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("rearrange");
     expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("data-selected-day-plan");
+    expect(strip).toContain("data-move-sheet");
+    expect(strip).toContain("onContextMenu");
+    expect(read("src/app/(member)/training/page.tsx")).not.toContain("rearrange");
   });
 
   it("turns summaries into activity icons and keeps rest words", () => {
