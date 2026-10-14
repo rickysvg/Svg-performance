@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/stripe";
 import { progressPhotoRoot } from "@/lib/progress-photos";
 import { trainingClipRoot } from "@/lib/clips";
 import { deleteFormCheckMediaForUser } from "@/lib/form-check-storage";
+import { deleteFeedbackMediaForUser } from "@/lib/feedback-storage";
 import type { PublicUser } from "@/lib/auth";
 import { isDeleteConfirmation } from "@/lib/account-confirm";
 
@@ -373,6 +374,7 @@ export async function deleteAccountForUser(user: PublicUser | null, confirmation
 
   await cancelStripeSubscriptions(signedIn.id);
   await deleteFormCheckMediaForUser(signedIn.id);
+  await deleteFeedbackMediaForUser(signedIn.id);
 
   await prisma.$transaction(async (tx) => {
     await tx.journalFeedback.deleteMany({ where: { authorUserId: signedIn.id } });
