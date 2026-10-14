@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE } from "@/lib/constants";
-import { getUserBySessionToken, type PublicUser } from "@/lib/auth";
+import { SESSION_COOKIE, SESSION_DAYS } from "@/lib/constants";
+import { getUserBySessionToken, hashToken, type PublicUser } from "@/lib/auth";
 import { AuthError } from "@/lib/errors";
 import { getOnboardingStatus, memberEntryPath } from "@/lib/onboarding";
+import { prisma } from "@/lib/prisma";
 
 export async function readSessionToken() {
   const jar = await cookies();
@@ -45,6 +46,30 @@ export async function requireOnboardedUser(): Promise<PublicUser> {
 export async function postAuthPath(userId: string) {
   const status = await getOnboardingStatus(userId);
   return memberEntryPath(status.completedAt, status.planChoiceAt);
+}
+
+/**
+ * Slide a still-valid login forward. An expired row is left alone so a dead
+ * session is not revived without a password. Called while a workout is open
+ * so the member is not sent to login between sets.
+ */
+export async function extendSessionExpiry(rawToken: string | null | undefined): Promise<Date | null> {
+  if (!rawToken) return null;
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  const updated = await prisma.session.updateMany({
+    where: { token: hashToken(rawToken), expiresAt: { gt: new Date() } },
+    data: { expiresAt },
+  });
+  if (updated.count === 0) return null;
+  return expiresAt;
+}
+
+export async function extendActiveSession() {
+  const token = await readSessionToken();
+  const expiresAt = await extendSessionExpiry(token);
+  if (token && expiresAt) {
+    await setSessionCookie(token, expiresAt);
+  }
 }
 
 export async function setSessionCookie(token: string, expiresAt: Date) {

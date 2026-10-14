@@ -209,12 +209,19 @@ export async function getCalendarSchedule(
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
+    weightAccess: profile?.weightAccess,
   });
-  const completedOnDay = new Set(
-    sessions
-      .filter((session) => session.status === "complete")
-      .map((session) => formatDayParam(session.performedAt, tz)),
-  );
+  const completedOnDay = new Set<string>();
+  const loggedTitles = new Map<string, string[]>();
+  for (const session of sessions) {
+    if (session.status !== "complete") continue;
+    const key = formatDayParam(session.performedAt, tz);
+    completedOnDay.add(key);
+    const titles = loggedTitles.get(key) ?? [];
+    const title = session.title.trim();
+    if (title && !titles.includes(title)) titles.push(title);
+    loggedTitles.set(key, titles);
+  }
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -235,6 +242,7 @@ export async function getCalendarSchedule(
     const dayKey = formatDayParam(day.date, tz);
     const done = completedOnDay.has(dayKey);
     const past = dayKey < todayKey;
+    const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
     for (const session of resolved) {
       if (!session.href || !session.dayId) continue;
       const missed = past && plan.active && !done;
@@ -242,7 +250,9 @@ export async function getCalendarSchedule(
         kind: "workout",
         title: session.title,
         subtitle: done
-          ? "Logged this day. Open to review or run a session again."
+          ? loggedSummary
+            ? `Logged this day. ${loggedSummary}`
+            : "Logged this day. Open to review or run a session again."
           : missed
             ? plan.movedFrom
               ? `Missed. ${plan.movedFrom}’s workout. Hold this day to move it.`

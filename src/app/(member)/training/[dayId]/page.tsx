@@ -24,12 +24,15 @@ import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { BagFocusList } from "@/components/training/BagFocusList";
+import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
-import { plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { normalizeWeightAccess } from "@/lib/weight-access";
+import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 
 export default async function TrainingDayPage({
   params,
@@ -42,12 +45,14 @@ export default async function TrainingDayPage({
   let day;
   try {
     const raw = await getProgramDayById(dayId);
+    const weightAccess = normalizeWeightAccess(profile?.weightAccess);
     day = scaleProgramDay(raw, {
       band: scaleBandFromPrefs({
         experienceLevel: profile?.experienceLevel,
         competitionStatus: profile?.competitionStatus,
       }),
       programSlug: raw.program.slug,
+      weightAccess,
     });
   } catch {
     notFound();
@@ -63,7 +68,12 @@ export default async function TrainingDayPage({
   const deload = isDeloadWeek(new Date(), tz);
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
-  const plyo = liftDay ? plyoBlockFor(profile?.trainingEmphasis) : [];
+  const weightAccess = normalizeWeightAccess(profile?.weightAccess);
+  const plyo = liftDay
+    ? weightAccess === "none"
+      ? floorPlyoBlock()
+      : plyoBlockFor(profile?.trainingEmphasis)
+    : [];
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),
     programDayId: day.id,
@@ -93,6 +103,9 @@ export default async function TrainingDayPage({
         <div>
           <h1 className="text-2xl leading-tight">{day.title}</h1>
           <p className="mt-1 text-sm text-muted">{day.focus}</p>
+          <div className="mt-3">
+            <WeightAccessToggle access={weightAccess} nextPath={`/training/${day.id}`} />
+          </div>
           <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
             {scaleCopy(
               scaleBandFromPrefs({
@@ -138,7 +151,7 @@ export default async function TrainingDayPage({
             <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
             <p className="font-semibold">Dynamic warm-up · 3–4 min</p>
           </Link>
-          {zone ? <BikeZoneNote zone={zone} /> : null}
+          {zone && weightAccess === "gym" ? <BikeZoneNote zone={zone} /> : null}
           {plyo.length > 0 ? (
             <div className="rounded-2xl border border-line px-4 py-3 text-sm">
               <p className="font-display text-xs uppercase tracking-wide text-accent">
@@ -186,6 +199,9 @@ export default async function TrainingDayPage({
                   <h2 className="leading-snug">{exercise.name}</h2>
                   <CoachCredit name={exercise.name} />
                   <p className="mt-1 text-sm text-muted">{planned}</p>
+                  {exercise.notes && !bagFocusLines(exercise.notes) ? (
+                    <p className="mt-1 text-sm text-muted">{exercise.notes}</p>
+                  ) : null}
                   {exercise.id === firstRir ? <RirHint /> : null}
                   <BagFocusList notes={exercise.notes} />
                   {showFormVideoPending(form) ? (

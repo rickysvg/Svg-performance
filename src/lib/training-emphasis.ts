@@ -37,6 +37,24 @@ const LANDING: PlyoDrill = {
   cues: "Stick each landing quietly. Knees track over the toes. Earn the jumps by landing well first.",
 };
 
+/** Floor plyos when the member has no gym and no weights. No med ball, band, or loaded carry. */
+export function floorPlyoBlock(): PlyoDrill[] {
+  return [
+    LANDING,
+    pogoPlyoDrill(),
+    {
+      name: "Broad jumps",
+      prescription: "3 sets × 3",
+      cues: "Jump out, stick the landing, rest fully.",
+    },
+    {
+      name: "Jump squats",
+      prescription: "3 sets × 4",
+      cues: "Small jump, quiet feet. Open floor only.",
+    },
+  ];
+}
+
 export function plyoBlockFor(emphasis: TrainingEmphasis | string | null | undefined): PlyoDrill[] {
   const mode = isTrainingEmphasis(emphasis) ? emphasis : "balanced";
   if (mode === "striker") {

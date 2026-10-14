@@ -69,6 +69,7 @@ export default async function TrainingCalendarPage({
     scaleDemoCatalog(catalog, {
       experienceLevel: band,
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
+      weightAccess: profile?.weightAccess,
     }),
   );
   const strip = weekStrip(prefs, now, tz, selected, swaps, selected);
@@ -89,6 +90,9 @@ export default async function TrainingCalendarPage({
     .map((day) => formatDayParam(day.date, tz));
   const selectedLogged = completedDays.includes(dayParam);
   const selectedPast = dayParam < formatDayParam(now, tz);
+  const selectedSummary = schedule.days
+    .find((day) => formatDayParam(day.date, tz) === dayParam)
+    ?.activities.find((item) => item.kind === "workout" && item.status === "complete")?.subtitle;
   const selectedMissed = selectedPast && dayPlan.active && !selectedLogged;
   const weekTitle =
     viewedWeek === currentWeek
@@ -196,6 +200,11 @@ export default async function TrainingCalendarPage({
           {dayPlan.movedFrom ? (
             <p className="mt-1 text-sm text-muted" data-moved-workout>
               {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
+            </p>
+          ) : null}
+          {selectedSummary ? (
+            <p className="mt-1 text-sm text-muted" data-completed-summary>
+              {selectedSummary}
             </p>
           ) : null}
           {dayPlan.skipReason && !dayPlan.active ? (

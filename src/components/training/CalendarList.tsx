@@ -35,7 +35,14 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
     >
       <StatusCircle kind={activity.kind} status={activity.status} />
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold leading-snug">{activity.title}</span>
+        <span className="flex items-center gap-2">
+          <span className="block font-semibold leading-snug">{activity.title}</span>
+          {activity.status === "complete" ? (
+            <span className="font-display shrink-0 text-[11px] uppercase tracking-wide text-accent">
+              Done
+            </span>
+          ) : null}
+        </span>
         <span className="mt-0.5 block text-sm text-muted">{activity.subtitle}</span>
       </span>
       <span className="text-lg text-muted" aria-hidden>

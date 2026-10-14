@@ -18,6 +18,7 @@ import { mergeSeenBadgeUnlocks, parseSeenBadgeUnlocks } from "@/lib/badge-unlock
 import { toE164 } from "@/lib/gymdesk/crypto";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
+import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
 
 export type ProfileRecord = {
   userId: string;
@@ -65,6 +66,7 @@ export type ProfileRecord = {
   nextFightDate: Date | null;
   coachingTone: string;
   trainingEmphasis: string;
+  weightAccess: WeightAccess;
   obstacles: string[];
 };
 
@@ -125,6 +127,7 @@ export function toProfileRecord(row: {
   nextFightDate: Date | null;
   coachingTone: string;
   trainingEmphasis?: string;
+  weightAccess?: string;
   obstaclesJson: string;
 }): ProfileRecord {
   return {
@@ -172,6 +175,7 @@ export function toProfileRecord(row: {
       row.trainingEmphasis === "striker" || row.trainingEmphasis === "grappler"
         ? row.trainingEmphasis
         : "balanced",
+    weightAccess: normalizeWeightAccess(row.weightAccess),
     obstacles: parseJsonArray(row.obstaclesJson),
     calorieTarget: row.calorieTarget,
     proteinTargetG: row.proteinTargetG,
@@ -528,6 +532,18 @@ export async function writeSeenBadgeUnlocksForUser(userId: string, ids: string[]
     data: { seenBadgeUnlocksJson: JSON.stringify(merged) },
   });
   return merged;
+}
+
+export async function setWeightAccessForUser(userId: string, weightAccess: string) {
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing) {
+    throw new NotFoundError("Profile not found.");
+  }
+  const row = await prisma.profile.update({
+    where: { userId },
+    data: { weightAccess: normalizeWeightAccess(weightAccess) },
+  });
+  return toProfileRecord(row);
 }
 
 export async function setLeaderboardOptInForUser(userId: string, optIn: boolean) {
