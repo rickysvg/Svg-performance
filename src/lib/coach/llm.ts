@@ -1,3 +1,4 @@
+import { coachingStyleVoice, resolveCoachingStyle } from "@/lib/coaches";
 import { loadKnowledgeBase } from "@/lib/coach/knowledge";
 import { offlineReply } from "@/lib/coach/offline";
 import type { CoachRoute } from "@/lib/coach/router";
@@ -54,6 +55,8 @@ export function buildOwnSummary(input: {
   userId: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
   topic?: string;
   art?: string;
   notepad?: boolean;
@@ -61,6 +64,10 @@ export function buildOwnSummary(input: {
 }) {
   return [
     `Experience: ${input.experienceLevel || "unknown"}.`,
+    input.coachName ? `Chosen SVG Coach voice: ${input.coachName}.` : "",
+    input.coachingStyle
+      ? `Coaching style: ${resolveCoachingStyle(input.coachingStyle).label}.`
+      : "",
     input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
     coachLaneLabel(input.topic, input.art)
       ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
@@ -81,6 +88,8 @@ export function buildCoachSystemPrompt(input: {
   route: CoachRoute;
   ownSummary: string;
   planContext?: string;
+  coachingStyle?: string;
+  coachName?: string;
 }) {
   const wantsPlan =
     input.route.primary === "programming" || input.route.secondary.includes("programming");
@@ -93,6 +102,10 @@ export function buildCoachSystemPrompt(input: {
     safetyPreamble(),
     coachTopicContext(input.topic, input.art),
     styleInstructions(input.route, { topic: input.topic, art: input.art }),
+    coachingStyleVoice({
+      coachName: input.coachName,
+      coachingStyle: input.coachingStyle,
+    }),
     "Approved DEMO knowledge:",
     loadKnowledgeBase(),
     "Member context (current user only):",

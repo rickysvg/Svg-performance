@@ -65,6 +65,9 @@ export type ProfileRecord = {
   competitionStatus: string;
   nextFightDate: Date | null;
   coachingTone: string;
+  aiCoachId: string;
+  coachingStyle: string;
+  coachChoiceAt: Date | null;
   trainingEmphasis: string;
   weightAccess: WeightAccess;
   obstacles: string[];
@@ -126,6 +129,9 @@ export function toProfileRecord(row: {
   competitionStatus: string;
   nextFightDate: Date | null;
   coachingTone: string;
+  aiCoachId?: string;
+  coachingStyle?: string;
+  coachChoiceAt?: Date | null;
   trainingEmphasis?: string;
   weightAccess?: string;
   obstaclesJson: string;
@@ -171,6 +177,9 @@ export function toProfileRecord(row: {
     competitionStatus: row.competitionStatus,
     nextFightDate: row.nextFightDate,
     coachingTone: row.coachingTone,
+    aiCoachId: row.aiCoachId ?? "",
+    coachingStyle: row.coachingStyle ?? "",
+    coachChoiceAt: row.coachChoiceAt ?? null,
     trainingEmphasis:
       row.trainingEmphasis === "striker" || row.trainingEmphasis === "grappler"
         ? row.trainingEmphasis

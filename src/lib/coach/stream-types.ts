@@ -18,6 +18,8 @@ export type CoachStreamRequest = {
   plannedLine?: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
 };
 
 export type FallbackReason =

@@ -29,7 +29,7 @@ export function PlanChoiceForm({
       </div>
 
       <form action={startTrialAction} className="space-y-3">
-        <input type="hidden" name="next" value="/onboarding/deeper" />
+        <input type="hidden" name="next" value="/onboarding/coach" />
         <button
           type="submit"
           className="touch-target w-full rounded-full bg-accent text-black"
@@ -39,7 +39,7 @@ export function PlanChoiceForm({
       </form>
 
       <form action={continueFreePlanAction}>
-        <input type="hidden" name="next" value="/onboarding/deeper" />
+        <input type="hidden" name="next" value="/onboarding/coach" />
         <button
           type="submit"
           className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"

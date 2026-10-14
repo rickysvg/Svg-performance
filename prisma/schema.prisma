@@ -143,6 +143,12 @@ model Profile {
   competitionStatus          String    @default("")
   nextFightDate              DateTime?
   coachingTone               String    @default("")
+  /** Portrait id for SVG Coach. Empty uses the default coach. */
+  aiCoachId                  String    @default("")
+  /** tough | supportive | technical | hype. Empty uses the default style. */
+  coachingStyle              String    @default("")
+  /** Set when the member picks a coach or dismisses the one-time prompt. */
+  coachChoiceAt              DateTime?
   /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
   trainingEmphasis           String    @default("balanced")
   /** gym (default) | none — none swaps lift and bike days for a floor session. */

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { PrimaryNav } from "@/components/PrimaryNav";
+import { CoachFab } from "@/components/coach/CoachFab";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
 import { shouldHideQuickAdd } from "@/lib/quick-add";
 import { TimeZoneSync } from "@/components/TimeZoneSync";
@@ -14,17 +15,29 @@ export function MemberFrame({
   role,
   timeZone,
   graceEndsOn,
+  coachName,
+  coachThumb,
+  prompt,
   children,
 }: {
   email: string;
   role?: string;
   timeZone?: string | null;
   graceEndsOn?: string | null;
+  coachName?: string;
+  coachThumb?: string;
+  prompt?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const immersive = isImmersiveTrainingPath(pathname);
   const hidePrimaryNav = shouldHidePrimaryNav(pathname);
+  const hidePrompt =
+    pathname === "/profile" ||
+    pathname.startsWith("/profile/") ||
+    pathname === "/coach" ||
+    pathname.startsWith("/coach/");
+  const staffDock = role === "admin" || role === "coach";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -38,8 +51,12 @@ export function MemberFrame({
         }
       >
         {graceEndsOn ? <GraceBanner endsOn={graceEndsOn} /> : null}
+        {prompt && !hidePrompt ? <div className="mb-4">{prompt}</div> : null}
         {children}
       </div>
+      {coachName && coachThumb ? (
+        <CoachFab name={coachName} thumbSrc={coachThumb} staffDock={staffDock} />
+      ) : null}
       {immersive ? null : (
         <AppHeader
           email={email}

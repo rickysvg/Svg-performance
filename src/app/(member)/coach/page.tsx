@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
+import { getProfileForUser } from "@/lib/profile";
+import { resolveCoach, resolveCoachingStyle } from "@/lib/coaches";
+import { CoachIdentity } from "@/components/coach/CoachIdentity";
 import { canUseMemberTools } from "@/lib/access";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
@@ -10,7 +13,6 @@ import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import {
   COACH_ARTS,
   COACH_ART_LABELS,
-  COACH_PUBLIC_NAME,
   COACH_TOPICS,
   COACH_TOPIC_BLURBS,
   COACH_TOPIC_LABELS,
@@ -49,14 +51,15 @@ export default async function CoachPage({
   searchParams: Promise<{ topic?: string; art?: string }>;
 }) {
   const user = await requireUser();
+  const profile = await getProfileForUser(user.id);
+  const coach = resolveCoach(profile?.aiCoachId);
+  const coachingStyle = resolveCoachingStyle(profile?.coachingStyle);
   const access = await canUseMemberTools(user.id);
   if (!access.allowed) {
     const trial = await getTrialState(user.id);
     return (
       <main className="space-y-6">
-        <h1 className="font-display text-2xl uppercase tracking-wide">
-          {COACH_PUBLIC_NAME}
-        </h1>
+        <CoachIdentity coach={coach} styleLabel={coachingStyle.label} />
         <UpgradePreview
           kind="coach"
           canStartTrial={trial.canStartTrial}
@@ -77,12 +80,9 @@ export default async function CoachPage({
 
   return (
     <main className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-muted">
-          Sacrifice · Vision · Greatness
-        </p>
-        <h1 className="text-2xl">{COACH_PUBLIC_NAME}</h1>
-        <AiDisclaimer className="mt-2 text-sm text-muted" />
+      <div className="space-y-3">
+        <CoachIdentity coach={coach} styleLabel={coachingStyle.label} />
+        <AiDisclaimer className="text-sm text-muted" />
       </div>
 
       {!topic ? (
@@ -139,6 +139,8 @@ export default async function CoachPage({
             art={art}
             lane={lane}
             viewerRole={user.role}
+            coachName={coach.name}
+            coachThumb={coach.thumbSrc}
             initialMessages={thread.messages}
           />
         </>

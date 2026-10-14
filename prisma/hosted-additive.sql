@@ -277,6 +277,45 @@ BEGIN
   END IF;
 END $$;
 
+-- SVG Coach portrait and style. Empty strings mean the app default.
+-- coachChoiceAt stays null until the member picks or dismisses the prompt.
+DO $$
+BEGIN
+  IF to_regclass('public."Profile"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'aiCoachId'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "aiCoachId" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'coachingStyle'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "coachingStyle" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'coachChoiceAt'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "coachChoiceAt" TIMESTAMP(3);
+  END IF;
+END $$;
+
 -- Exercise tags for the workout-complete recap. Additive, idempotent.
 DO $$
 BEGIN

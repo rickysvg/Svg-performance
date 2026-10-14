@@ -87,6 +87,8 @@ async function drainCoachTokens(
     message: string;
     experienceLevel: string;
     coachingTone?: string;
+    coachingStyle?: string;
+    coachName?: string;
     topic?: string;
     art?: string;
     notepad?: boolean;
@@ -113,12 +115,16 @@ async function drainCoachTokens(
       userId: input.userId,
       experienceLevel: input.experienceLevel,
       coachingTone: input.coachingTone,
+      coachingStyle: input.coachingStyle,
+      coachName: input.coachName,
       topic: input.topic,
       art: input.art,
       notepad: input.notepad,
       localDay: input.localDay,
     }),
     planContext,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
   });
   const generator = streamCoachCompletion({
     system,
@@ -270,6 +276,8 @@ export async function runCoachChatStream(input: {
         message,
         experienceLevel: input.body.experienceLevel || "beginner",
         coachingTone: input.body.coachingTone,
+        coachingStyle: input.body.coachingStyle,
+        coachName: input.body.coachName,
         topic,
         art,
         userId: user.id,
@@ -426,6 +434,8 @@ export async function runCoachNoteStream(input: {
         message,
         experienceLevel: input.body.experienceLevel || "beginner",
         coachingTone: input.body.coachingTone,
+        coachingStyle: input.body.coachingStyle,
+        coachName: input.body.coachName,
         topic: lane.topic,
         art: lane.art,
         notepad: true,

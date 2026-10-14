@@ -23,6 +23,8 @@ async function replyWithCoach(input: {
   message: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
   topic?: string;
   art?: string;
   notepad?: boolean;
@@ -42,6 +44,8 @@ async function replyWithCoach(input: {
     userId: input.userId,
     experienceLevel: input.experienceLevel,
     coachingTone: input.coachingTone,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
     topic: input.topic,
     art: input.art,
     notepad: input.notepad,
@@ -53,6 +57,8 @@ async function replyWithCoach(input: {
     route,
     ownSummary,
     planContext,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
   });
   const reply = await collectCoachCompletion({
     system,
@@ -111,6 +117,8 @@ export async function sendCoachMessage(input: {
   message: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
   mentionedUserId?: string;
   topic?: string;
   art?: string;
@@ -155,6 +163,8 @@ export async function sendCoachMessage(input: {
     message,
     experienceLevel: input.experienceLevel || "beginner",
     coachingTone: input.coachingTone,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
     topic,
     art,
     history,
@@ -182,6 +192,8 @@ export async function answerScopedCoachQuestion(input: {
   message: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
   topic?: string;
   art?: string;
 }) {
@@ -203,6 +215,8 @@ export async function answerScopedCoachQuestion(input: {
     message,
     experienceLevel: input.experienceLevel || "beginner",
     coachingTone: input.coachingTone,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
     topic: input.topic,
     art: input.topic === "martial_art" ? input.art : "",
     notepad: true,

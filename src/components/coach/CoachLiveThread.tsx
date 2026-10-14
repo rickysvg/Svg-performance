@@ -28,6 +28,8 @@ export function CoachBubble({
   offline,
   fallbackReason,
   viewerRole,
+  coachName = COACH_PUBLIC_NAME,
+  coachThumb,
 }: {
   speaker: "user" | "assistant";
   content: string;
@@ -35,20 +37,34 @@ export function CoachBubble({
   offline?: boolean;
   fallbackReason?: FallbackReason;
   viewerRole?: UserRole;
+  coachName?: string;
+  coachThumb?: string;
 }) {
   const quick = speaker === "assistant" && Boolean(offline);
   const showReason = quick && viewerRole === "admin" && Boolean(fallbackReason);
+  const label = speaker === "user" ? "You" : coachName;
   return (
     <article
       className={`rounded-2xl border p-4 text-sm ${
         speaker === "user" ? "border-line bg-background" : "border-line bg-card"
       }`}
     >
-      <p className="text-xs uppercase text-muted">
-        {speaker === "user" ? "You" : COACH_PUBLIC_NAME}
-        {refused ? " · safety refusal" : ""}
-        {quick ? " · quick answer" : ""}
-        {showReason ? ` · ${fallbackReason}` : ""}
+      <p className="flex items-center gap-2 text-xs uppercase text-muted">
+        {speaker === "assistant" && coachThumb ? (
+          <img
+            src={coachThumb}
+            alt=""
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-full object-cover ring-1 ring-accent"
+          />
+        ) : null}
+        <span>
+          {label}
+          {refused ? " · safety refusal" : ""}
+          {quick ? " · quick answer" : ""}
+          {showReason ? ` · ${fallbackReason}` : ""}
+        </span>
       </p>
       <p className="mt-2 whitespace-pre-wrap">{content}</p>
       {quick ? (
@@ -65,12 +81,16 @@ export function CoachLiveThread({
   art,
   lane,
   viewerRole = "member",
+  coachName = COACH_PUBLIC_NAME,
+  coachThumb,
   initialMessages,
 }: {
   topic: string;
   art?: string;
   lane: string;
   viewerRole?: UserRole;
+  coachName?: string;
+  coachThumb?: string;
   initialMessages: Array<{
     id: string;
     role: string;
@@ -139,6 +159,8 @@ export function CoachLiveThread({
             offline={message.offline}
             fallbackReason={message.fallbackReason}
             viewerRole={viewerRole}
+            coachName={coachName}
+            coachThumb={coachThumb}
           />
         ))
       )}
@@ -148,11 +170,22 @@ export function CoachLiveThread({
           data-coach-stream
           className="rounded-2xl border border-line bg-card p-4 text-sm"
         >
-          <p className="text-xs uppercase text-muted">
-            {COACH_PUBLIC_NAME}
-            {offline ? " · quick answer" : ""}
-            {offline && viewerRole === "admin" && fallbackReason ? ` · ${fallbackReason}` : ""}
-            {streaming && !partial ? " · typing" : ""}
+          <p className="flex items-center gap-2 text-xs uppercase text-muted">
+            {coachThumb ? (
+              <img
+                src={coachThumb}
+                alt=""
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded-full object-cover ring-1 ring-accent"
+              />
+            ) : null}
+            <span>
+              {coachName}
+              {offline ? " · quick answer" : ""}
+              {offline && viewerRole === "admin" && fallbackReason ? ` · ${fallbackReason}` : ""}
+              {streaming && !partial ? " · typing" : ""}
+            </span>
           </p>
           {streaming && !partial ? (
             <p data-coach-typing className="mt-3 font-display text-sm uppercase tracking-wide text-accent">
