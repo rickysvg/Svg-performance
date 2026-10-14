@@ -14,7 +14,10 @@ const CARDIO_TIMED_NAME =
 const ROUND_NAME =
   /\b(bag|pads|sparring|grappling|rolling|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
 const BODYWEIGHT_COUNT_NAME =
-  /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|broad jump|pike|band pull-apart|face pull|\bdip\b)\b/i;
+  /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|broad jump|pike|\bdip\b)\b/i;
+/** Bands, cables, dumbbells, and the pulls/presses that use them. Pounds stay on. */
+const LOADED_GEAR_NAME =
+  /\b(bands?|banded|cables?|dumbbells?|barbells?|kettlebells?|pulldowns?|pull-?aparts?|face pulls?|machines?|landmines?|trap-?bars?|med-?balls?|medicine balls?)\b/i;
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
 const WEIGHTED_LIFT_NAME =
@@ -43,8 +46,9 @@ export function isEmptyShadowRound(name: string) {
 }
 
 /**
- * Ricky’s rule: only weighted lifts get reps + lbs.
- * Everything else is timed, a skill round, or reps with no load column.
+ * Pounds on lifts and loaded accessories (bands, cables, dumbbells, pulls, presses).
+ * A written “bodyweight” or “no lbs” line does not remove that column.
+ * True timed braces and unloaded jumps stay without a fake weight.
  */
 export function fallbackLogMode(name: string, reps = ""): LogMode {
   if (isBikeIntervalName(name)) return "timed_round";
@@ -54,6 +58,7 @@ export function fallbackLogMode(name: string, reps = ""): LogMode {
   if (isHoldName(name)) return "timed";
   if (CARDIO_TIMED_NAME.test(name)) return "timed";
   if (ROUND_NAME.test(name)) return "timed_round";
+  if (LOADED_GEAR_NAME.test(name)) return "load_reps";
   if (BODYWEIGHT_COUNT_NAME.test(name) && !LOADED_OPTION_NAME.test(name)) {
     return "reps_only";
   }
@@ -62,14 +67,21 @@ export function fallbackLogMode(name: string, reps = ""): LogMode {
   return "timed";
 }
 
-/** Stored field wins; name / reps heuristics cover old seed rows. */
+/**
+ * Stored mode wins, except a stale `reps_only` on loaded gear.
+ * Old seeds marked band pull-aparts and pulldowns as bodyweight. The name puts pounds back.
+ */
 export function resolveLogMode(input: {
   logMode?: string | null;
   name?: string;
   reps?: string;
 }): LogMode {
-  if (isLogMode(input.logMode)) return input.logMode;
-  return fallbackLogMode(input.name ?? "", input.reps ?? "");
+  const inferred = fallbackLogMode(input.name ?? "", input.reps ?? "");
+  if (!isLogMode(input.logMode)) return inferred;
+  if (input.logMode === "reps_only" && (inferred === "load_reps" || inferred === "load_timed")) {
+    return inferred;
+  }
+  return input.logMode;
 }
 
 export function isDurationMode(mode: LogMode) {
