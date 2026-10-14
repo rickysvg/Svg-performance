@@ -141,6 +141,19 @@ function intentWindow(intent: Intent) {
   return { start: 0, end: null };
 }
 
+/** True when the iframe URL already starts and stops on this window. */
+function iframeHasWindow(iframe: HTMLIFrameElement, start: number, end: number | null) {
+  try {
+    const url = new URL(iframe.src);
+    const startParam = Number(url.searchParams.get("start") ?? "0");
+    const endParam = url.searchParams.get("end");
+    const parsedEnd = endParam == null || endParam === "" ? null : Number(endParam);
+    return startParam === start && parsedEnd === end;
+  } catch {
+    return false;
+  }
+}
+
 export function SeminarPlayback({
   model,
   initialClipId,
@@ -320,19 +333,28 @@ export function SeminarPlayer() {
               readyRef.current = true;
               window.clearTimeout(timeout);
               const next = intentRef.current;
+              const frame = iframeRef.current;
+              // The iframe src already carries start/end. Calling loadVideoById
+              // again on that first frame reloads the player and YouTube answers
+              // with error 150. Later clip changes still use loadVideoById.
               if (next.kind === "clip") {
-                const opts: { videoId: string; startSeconds: number; endSeconds?: number } = {
-                  videoId: model.videoId,
-                  startSeconds: next.clip.startSeconds,
-                };
-                if (next.clip.endSeconds != null) opts.endSeconds = next.clip.endSeconds;
-                event.target.loadVideoById(opts);
+                const covered =
+                  frame != null &&
+                  iframeHasWindow(frame, next.clip.startSeconds, next.clip.endSeconds);
+                if (!covered) {
+                  const opts: { videoId: string; startSeconds: number; endSeconds?: number } = {
+                    videoId: model.videoId,
+                    startSeconds: next.clip.startSeconds,
+                  };
+                  if (next.clip.endSeconds != null) opts.endSeconds = next.clip.endSeconds;
+                  event.target.loadVideoById(opts);
+                  return;
+                }
               } else if (next.kind === "time") {
-                event.target.seekTo(next.seconds, true);
-                event.target.playVideo();
-              } else {
-                event.target.playVideo();
+                const covered = frame != null && iframeHasWindow(frame, next.seconds, null);
+                if (!covered) event.target.seekTo(next.seconds, true);
               }
+              event.target.playVideo();
             },
             onStateChange: (event) => {
               if (event.data === 1) playedRef.current = true;
