@@ -80,16 +80,15 @@ export function formatCalendarHeading(
 ) {
   const parts = zonedParts(date, timeZone);
   const month = date.toLocaleDateString("en-US", { month: "long", timeZone });
-  const day = ordinalDay(parts.day);
+  const dated = `${parts.weekday}, ${month} ${ordinalDay(parts.day)}`;
   if (sameLocalDay(date, now, timeZone)) {
-    return `Today, ${month} ${day}`;
+    return `Today · ${dated}`;
   }
   const tomorrow = addZonedDays(startOfLocalDay(now, timeZone), 1, timeZone);
   if (sameLocalDay(date, tomorrow, timeZone)) {
-    return `Tomorrow, ${month} ${day}`;
+    return `Tomorrow · ${dated}`;
   }
-  const weekday = date.toLocaleDateString("en-US", { weekday: "long", timeZone });
-  return `${weekday}, ${month} ${day}`;
+  return dated;
 }
 
 export function listCalendarDates(

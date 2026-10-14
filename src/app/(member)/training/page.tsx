@@ -37,6 +37,7 @@ import { todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
+import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 
@@ -200,8 +201,8 @@ export default async function TrainingPage({
 
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">
-          <p className="font-display text-xs uppercase tracking-wide text-accent">
-            {isToday ? "Today’s plan" : "Selected day"} · {dayPlan.weekday}
+          <p className="font-display text-xs uppercase tracking-wide text-accent" data-day-heading>
+            {formatCalendarHeading(selected, now, tz)}
             {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
           </p>
           <h2 className="mt-1 text-lg">

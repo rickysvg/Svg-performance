@@ -7,10 +7,10 @@ import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { requireUser } from "@/lib/session";
-import { getCalendarSchedule } from "@/lib/calendar";
+import { formatCalendarHeading, getCalendarSchedule } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
+import { formatDayParam, parseDayParam } from "@/lib/home";
 import {
   planForDate,
   resolvePlanSessions,
@@ -74,7 +74,6 @@ export default async function TrainingCalendarPage({
   );
   const strip = weekStrip(prefs, now, tz, selected, swaps, selected);
   const dayParam = formatDayParam(selected, tz);
-  const isToday = sameLocalDay(selected, now, tz);
   const viewedMonday = mondayOfZoned(selected, tz);
   const viewedWeek = weekStartKey(selected, tz);
   const currentWeek = weekStartKey(now, tz);
@@ -189,7 +188,7 @@ export default async function TrainingCalendarPage({
       >
         <div>
           <p className="font-display text-xs uppercase tracking-wide text-accent">
-            {isToday ? "Today" : selectedPast ? "Past" : "Selected"} · {dayPlan.weekday}
+            {formatCalendarHeading(selected, now, tz)}
             {selectedLogged ? " · Logged" : selectedMissed ? " · Missed" : ""}
             {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
             {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}

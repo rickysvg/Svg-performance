@@ -11,6 +11,7 @@ import {
   ordinalDay,
   resolveTrainingWeekdays,
 } from "@/lib/calendar";
+import { addZonedDays } from "@/lib/timezone";
 
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
 
@@ -20,13 +21,30 @@ describe("calendar schedule list", () => {
     expect(ordinalDay(23)).toBe("23rd");
     expect(ordinalDay(1)).toBe("1st");
     expect(ordinalDay(11)).toBe("11th");
-    expect(formatCalendarHeading(tuesday, tuesday)).toBe("Today, September 22nd");
+    expect(formatCalendarHeading(tuesday, tuesday)).toBe("Today · Tuesday, September 22nd");
     expect(formatCalendarHeading(new Date(2026, 8, 23, 10, 0, 0), tuesday)).toBe(
-      "Tomorrow, September 23rd",
+      "Tomorrow · Wednesday, September 23rd",
     );
     expect(formatCalendarHeading(new Date(2026, 8, 24, 10, 0, 0), tuesday)).toBe(
       "Thursday, September 24th",
     );
+  });
+
+  it("names today and tomorrow in the member timezone", () => {
+    // Thursday 00:30 in Sydney is still Wednesday afternoon in Denver.
+    const instant = new Date("2026-10-15T00:30:00+11:00");
+    expect(formatCalendarHeading(instant, instant, "Australia/Sydney")).toBe(
+      "Today · Thursday, October 15th",
+    );
+    expect(formatCalendarHeading(instant, instant, "America/Denver")).toBe(
+      "Today · Wednesday, October 14th",
+    );
+    expect(
+      formatCalendarHeading(addZonedDays(instant, 1, "Australia/Sydney"), instant, "Australia/Sydney"),
+    ).toBe("Tomorrow · Friday, October 16th");
+    expect(
+      formatCalendarHeading(addZonedDays(instant, 2, "Australia/Sydney"), instant, "Australia/Sydney"),
+    ).toBe("Saturday, October 17th");
   });
 
   it("defaults training days to Mon/Wed/Fri and keeps member availability when set", () => {
@@ -49,12 +67,12 @@ describe("calendar schedule list", () => {
       challenge: { title: "DEMO — Show up this month", complete: false },
     });
 
-    expect(days[0]?.heading).toBe("Today, September 22nd");
+    expect(days[0]?.heading).toBe("Today · Tuesday, September 22nd");
     expect(days[0]?.isToday).toBe(true);
     expect(days[0]?.activities.filter((row) => row.kind === "workout")).toEqual([]);
 
     const tomorrow = days[1];
-    expect(tomorrow?.heading).toBe("Tomorrow, September 23rd");
+    expect(tomorrow?.heading).toBe("Tomorrow · Wednesday, September 23rd");
     expect(tomorrow?.activities[0]).toMatchObject({
       kind: "workout",
       title: "Day 1 — Lower body + power",
