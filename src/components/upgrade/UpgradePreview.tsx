@@ -5,6 +5,10 @@ const BLURBS: Record<string, { title: string; body: string }> = {
     title: "This lesson is in Performance",
     body: "You can see the title and thumbnail on the free plan. The video and write-up open with a short Performance trial or an upgrade. No card needed for the trial.",
   },
+  seminar: {
+    title: "This seminar is in Performance",
+    body: "Beginner seminars are free. Intermediate and advanced seminars, and their technique clips, open with a short Performance trial or an upgrade. No card needed for the trial.",
+  },
   fuel: {
     title: "Food tracking is in Performance",
     body: "Log meals and macros on Performance. Start a short free trial — no card — or upgrade anytime from Profile.",
