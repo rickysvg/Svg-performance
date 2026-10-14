@@ -143,8 +143,8 @@ model Profile {
   competitionStatus          String    @default("")
   nextFightDate              DateTime?
   coachingTone               String    @default("")
-  /** Fictional SVG Coach portrait. Empty uses the default coach. */
-  aiCoachId                  String    @default("")
+  /** Fictional SVG Coach portrait. Empty or unknown uses Skye. */
+  aiCoachId                  String    @default("skye")
   /** tough | supportive | technical | hype. Empty uses the default style. */
   coachingStyle              String    @default("")
   /** Set when the member picks a coach or dismisses the one-time prompt. */

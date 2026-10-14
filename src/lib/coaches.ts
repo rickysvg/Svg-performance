@@ -2,11 +2,11 @@ import { isImmersiveTrainingPath } from "@/lib/member-nav";
 
 export const AI_COACHES = [
   {
-    id: "lena",
-    name: "Lena",
+    id: "skye",
+    name: "Skye",
     vibe: "Bright and direct. She keeps the pace honest.",
-    image: "/coaches/lena.webp",
-    thumb: "/coaches/lena-thumb.webp",
+    image: "/coaches/skye.webp",
+    thumb: "/coaches/skye-thumb.webp",
   },
   {
     id: "maya",
@@ -34,7 +34,7 @@ export const AI_COACHES = [
 export type AiCoachId = (typeof AI_COACHES)[number]["id"];
 export type AiCoach = (typeof AI_COACHES)[number];
 
-export const DEFAULT_AI_COACH_ID: AiCoachId = "lena";
+export const DEFAULT_AI_COACH_ID: AiCoachId = "skye";
 
 export const COACHING_STYLES = [
   {

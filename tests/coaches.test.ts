@@ -45,7 +45,7 @@ const intake = {
 
 describe("AI coach avatars", () => {
   it("ships four square webp portraits and thumbs", () => {
-    expect(AI_COACHES.map((coach) => coach.name)).toEqual(["Lena", "Maya", "Mateo", "Cole"]);
+    expect(AI_COACHES.map((coach) => coach.name)).toEqual(["Skye", "Maya", "Mateo", "Cole"]);
     for (const coach of AI_COACHES) {
       expect(coach.vibe.length).toBeGreaterThan(12);
       for (const file of [coach.image, coach.thumb]) {
@@ -62,9 +62,11 @@ describe("AI coach avatars", () => {
     ]);
   });
 
-  it("defaults an empty choice to Lena and supportive", () => {
+  it("defaults an empty choice to Skye and supportive", () => {
     expect(resolveAiCoach("").id).toBe(DEFAULT_AI_COACH_ID);
-    expect(resolveAiCoach("nope").name).toBe("Lena");
+    expect(resolveAiCoach("").name).toBe("Skye");
+    expect(resolveAiCoach("lena").id).toBe("skye");
+    expect(resolveAiCoach("nope").name).toBe("Skye");
     expect(resolveCoachingStyle("").value).toBe(DEFAULT_COACHING_STYLE);
     expect(resolveCoachingStyle(null).label).toBe("Supportive");
     expect(needsCoachChoicePrompt(null)).toBe(false);
@@ -104,7 +106,7 @@ describe("AI coach avatars", () => {
     expect(prompt).toMatch(/Never shame/);
     expect(coachingStyleVoice("hype", "Cole")).toMatch(/high-energy/);
     expect(coachingStyleVoice("hype", "Cole")).toMatch(/No emojis/);
-    expect(coachingStyleVoice(undefined, undefined)).toMatch(/Lena/);
+    expect(coachingStyleVoice(undefined, undefined)).toMatch(/Skye/);
     expect(coachingStyleVoice(undefined, undefined)).toMatch(/Supportive/);
   });
 
@@ -161,7 +163,7 @@ describe("coach choice persistence", () => {
 
   it("requires a real coach when the intake includes the choice", () => {
     expect(() =>
-      validateOnboardingInput({ ...intake, aiCoachId: "lena", coachingStyle: "nope" }),
+      validateOnboardingInput({ ...intake, aiCoachId: "skye", coachingStyle: "nope" }),
     ).toThrow(AppError);
   });
 
@@ -182,18 +184,18 @@ describe("coach choice persistence", () => {
   it("keeps defaults for an existing member until they choose or dismiss", async () => {
     const user = await makeUser("legacy@example.com");
     const saved = await completeOnboardingForUser(user.id, intake);
-    expect(saved.aiCoachId).toBe("");
+    expect(saved.aiCoachId).toBe("skye");
     expect(saved.coachingStyle).toBe("");
     expect(saved.coachChoiceAt).toBeNull();
     expect(needsCoachChoicePrompt(saved)).toBe(true);
-    expect(resolveAiCoach(saved.aiCoachId).name).toBe("Lena");
+    expect(resolveAiCoach(saved.aiCoachId).name).toBe("Skye");
     expect(resolveCoachingStyle(saved.coachingStyle).value).toBe("supportive");
 
     const dismissed = await dismissCoachChoiceForUser(user.id);
     expect(dismissed.coachChoiceAt).toBeTruthy();
-    expect(dismissed.aiCoachId).toBe("");
+    expect(dismissed.aiCoachId).toBe("skye");
     expect(needsCoachChoicePrompt(dismissed)).toBe(false);
-    expect(resolveAiCoach(dismissed.aiCoachId).id).toBe("lena");
+    expect(resolveAiCoach(dismissed.aiCoachId).id).toBe("skye");
 
     const chosen = await saveCoachChoiceForUser(user.id, {
       aiCoachId: "maya",

@@ -309,7 +309,7 @@ BEGIN
       AND table_name = 'Profile'
       AND column_name = 'aiCoachId'
   ) THEN
-    ALTER TABLE "Profile" ADD COLUMN "aiCoachId" TEXT NOT NULL DEFAULT '';
+    ALTER TABLE "Profile" ADD COLUMN "aiCoachId" TEXT NOT NULL DEFAULT 'skye';
   END IF;
 
   IF NOT EXISTS (
@@ -331,6 +331,10 @@ BEGIN
   ) THEN
     ALTER TABLE "Profile" ADD COLUMN "coachChoiceAt" TIMESTAMP(3);
   END IF;
+
+  -- Default coach is Skye, including rows created before this rename.
+  ALTER TABLE "Profile" ALTER COLUMN "aiCoachId" SET DEFAULT 'skye';
+  UPDATE "Profile" SET "aiCoachId" = 'skye' WHERE "aiCoachId" IN ('lena', '');
 END $$;
 
 
