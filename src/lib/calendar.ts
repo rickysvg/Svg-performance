@@ -38,6 +38,10 @@ export type CalendarActivity = {
   href: string;
   status: CalendarActivityStatus;
   programDayId?: string;
+  /** Set on workouts that can be moved within the week. */
+  sessionKey?: string;
+  /** Calendar weekday this card is sitting on. */
+  weekday?: string;
 };
 
 export type CalendarDay = {
@@ -242,9 +246,14 @@ export async function getCalendarSchedule(
     const done = completedOnDay.has(dayKey);
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
+    const calendarWeekday = weekdayName(day.date, tz);
     for (const session of resolved) {
       if (!session.href || !session.dayId) continue;
       const missed = past && plan.active && !done;
+      const origin =
+        session.sourceWeekday && session.sourceWeekday !== calendarWeekday
+          ? session.sourceWeekday
+          : plan.movedFrom;
       day.activities.push({
         kind: "workout",
         title: session.title,
@@ -253,15 +262,15 @@ export async function getCalendarSchedule(
             ? `Logged this day. ${loggedSummary}`
             : "Logged this day. Open to review or run a session again."
           : missed
-            ? plan.movedFrom
-              ? `Missed. ${plan.movedFrom}’s workout. Hold this day to move it.`
-              : `Missed. ${session.title}. Hold this day to move it.`
-            : plan.movedFrom
-              ? `${session.label} — ${plan.movedFrom}’s workout, this week.`
+            ? "Missed. Tap Move to do it another day."
+            : origin
+              ? `${session.label} — ${origin}’s workout, this week.`
               : `${session.label} — Core week plan (DEMO).`,
         href: session.href,
         status: done ? "complete" : "scheduled",
         programDayId: session.dayId,
+        sessionKey: session.sessionKey,
+        weekday: calendarWeekday,
       });
     }
   }

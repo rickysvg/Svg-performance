@@ -19,7 +19,7 @@ import {
   zonedParts,
 } from "@/lib/timezone";
 import {
-  sourceWeekday,
+  calendarDayForSource,
   weekStartKey,
   type WeekPlanSwap,
 } from "@/lib/week-plan-swaps";
@@ -40,6 +40,10 @@ export type PlanSessionSlot = {
   optional?: boolean;
   programSlug?: typeof DEMO_PROGRAM_SLUG | typeof DEMO_SKILL_PROGRAM_SLUG;
   dayNumber?: number;
+  /** Skeleton weekday this workout was written for. */
+  sourceWeekday?: PlanWeekday;
+  /** Stable id for moving this workout within one week. */
+  sessionKey?: string;
 };
 
 export type DayPlan = {
@@ -83,6 +87,8 @@ export type ResolvedPlanSession = {
   dayId?: string;
   href?: string;
   day?: CatalogDayLike | null;
+  sessionKey?: string;
+  sourceWeekday?: PlanWeekday;
 };
 
 const JS_WEEKDAYS = [
@@ -303,12 +309,98 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
   return plan;
 }
 
+/** Identity for one skeleton workout. Same key every week; stored per weekStart. */
+export function planSessionKey(source: PlanWeekday, slot: PlanSessionSlot, index: number) {
+  if (slot.programSlug && slot.dayNumber != null) {
+    return `${source}:${slot.programSlug}:${slot.dayNumber}`;
+  }
+  return `${source}:${slot.kind}:${index}`;
+}
+
+function stampSessions(sessions: PlanSessionSlot[], source: PlanWeekday): PlanSessionSlot[] {
+  return sessions.map((slot, index) => ({
+    ...slot,
+    sourceWeekday: slot.sourceWeekday ?? source,
+    sessionKey: slot.sessionKey ?? planSessionKey(source, slot, index),
+  }));
+}
+
 function planOnCalendarDay(skeleton: DayPlan, calendarWeekday: PlanWeekday, source: PlanWeekday): DayPlan {
-  if (source === calendarWeekday) return skeleton;
-  return {
+  const stamped = {
     ...skeleton,
     weekday: calendarWeekday,
-    movedFrom: source,
+    sessions: stampSessions(skeleton.sessions, source),
+  };
+  if (source === calendarWeekday) return stamped;
+  return { ...stamped, movedFrom: source };
+}
+
+function placedTrainingSessions(
+  built: Record<PlanWeekday, DayPlan>,
+  sourceByDay: Partial<Record<PlanWeekday, PlanWeekday>>,
+  sessionDays: Partial<Record<string, PlanWeekday>>,
+  calendarDay: PlanWeekday,
+) {
+  const placed: PlanSessionSlot[] = [];
+  for (const source of WEEKDAYS) {
+    built[source].sessions.forEach((slot, index) => {
+      if (slot.kind === "rest") return;
+      const key = planSessionKey(source, slot, index);
+      const target = sessionDays[key] ?? calendarDayForSource(sourceByDay, source);
+      if (target !== calendarDay) return;
+      placed.push({ ...slot, sourceWeekday: source, sessionKey: key });
+    });
+  }
+  return placed;
+}
+
+function arrangeCalendarDay(
+  built: Record<PlanWeekday, DayPlan>,
+  calendarWeekday: PlanWeekday,
+  weekStart: string,
+  swaps: WeekPlanSwap[],
+): DayPlan {
+  const row = swaps.find((item) => item.weekStart === weekStart);
+  const sessionDays = row?.sessionDays;
+  const sourceByDay = row?.sourceByDay ?? {};
+  const hasMoves = Boolean(sessionDays && Object.keys(sessionDays).length > 0);
+  if (!hasMoves) {
+    const source = sourceByDay[calendarWeekday] ?? calendarWeekday;
+    return planOnCalendarDay(built[source], calendarWeekday, source);
+  }
+  const training = placedTrainingSessions(built, sourceByDay, sessionDays ?? {}, calendarWeekday);
+  const template = built[calendarWeekday];
+  const templateTraining = template.sessions.filter((slot) => slot.kind !== "rest");
+  if (training.length === 0) {
+    if (templateTraining.length === 0) {
+      return planOnCalendarDay(template, calendarWeekday, calendarWeekday);
+    }
+    return planOnCalendarDay(
+      {
+        ...template,
+        active: false,
+        summary: "Off",
+        sessions: [{ kind: "rest", label: "Rest / skip" }],
+        skipReason: "Workouts from this day are on another day this week.",
+        movedFrom: undefined,
+      },
+      calendarWeekday,
+      calendarWeekday,
+    );
+  }
+  const sources = new Set(
+    training.map((slot) => slot.sourceWeekday).filter((day): day is PlanWeekday => Boolean(day)),
+  );
+  const only = sources.size === 1 ? [...sources][0] : undefined;
+  return {
+    ...template,
+    weekday: calendarWeekday,
+    active: true,
+    optionalDay: training.every((slot) => slot.optional),
+    summary: summaryForSessions(training, calendarWeekday, true),
+    sessions: training,
+    skipReason: undefined,
+    movedFrom: only && only !== calendarWeekday ? only : undefined,
   };
 }
 
@@ -319,9 +411,8 @@ export function planForDate(
   swaps: WeekPlanSwap[] = [],
 ): DayPlan {
   const calendarWeekday = weekdayInAppZone(date, timeZone);
-  const source = sourceWeekday(swaps, weekStartKey(date, timeZone), calendarWeekday);
-  const skeleton = buildCoreWeekPlan(prefs, bikeWeekIndex(date, timeZone))[source];
-  return planOnCalendarDay(skeleton, calendarWeekday, source);
+  const built = buildCoreWeekPlan(prefs, bikeWeekIndex(date, timeZone));
+  return arrangeCalendarDay(built, calendarWeekday, weekStartKey(date, timeZone), swaps);
 }
 
 export function nextActiveDate(
@@ -366,8 +457,7 @@ export function weekStrip(
   const built = buildCoreWeekPlan(prefs, bikeWeekIndex(anchor, timeZone));
   return WEEKDAYS.map((weekday, index) => {
     const date = addZonedDays(monday, index, timeZone);
-    const source = sourceWeekday(swaps, weekStart, weekday);
-    const plan = planOnCalendarDay(built[source], weekday, source);
+    const plan = arrangeCalendarDay(built, weekday, weekStart, swaps);
     const dayParam = formatDayParam(date, timeZone);
     return {
       weekday,
@@ -433,9 +523,45 @@ export function resolvePlanSessions(
       dayId: day?.id,
       href: day?.id ? `/training/${day.id}` : undefined,
       day,
+      sessionKey: session.sessionKey,
+      sourceWeekday: session.sourceWeekday,
     });
   }
   return resolved;
+}
+
+export type MoveDayChoice = {
+  weekday: PlanWeekday;
+  label: string;
+  detail: string;
+  isToday: boolean;
+  isPast: boolean;
+};
+
+/** Days in the viewed week, with the workouts already sitting on each one. */
+export function moveDayChoices(
+  prefs: PlannerPrefs,
+  now: Date,
+  timeZone: string,
+  weekAnchor: Date,
+  swaps: WeekPlanSwap[],
+  titles?: Partial<Record<PlanWeekday, string[]>>,
+): MoveDayChoice[] {
+  return weekStrip(prefs, now, timeZone, undefined, swaps, weekAnchor).map((day) => {
+    const named = (titles?.[day.weekday] ?? []).map((title) => title.trim()).filter(Boolean);
+    const plan = planForDate(prefs, day.date, timeZone, swaps);
+    const fallback = plan.sessions
+      .filter((session) => session.kind !== "rest")
+      .map((session) => session.label);
+    const lines = named.length > 0 ? named : fallback;
+    return {
+      weekday: day.weekday,
+      label: day.isToday ? `Today · ${day.weekday}` : `${day.weekday} ${day.dateLabel}`,
+      detail: lines.length > 0 ? lines.join(" · ") : "Open",
+      isToday: day.isToday,
+      isPast: day.isPast,
+    };
+  });
 }
 
 export function corePlanCopy(prefs: { goalKey?: string; primaryFocus?: string }) {
