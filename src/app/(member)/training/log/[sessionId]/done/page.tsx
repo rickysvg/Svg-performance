@@ -11,6 +11,7 @@ import {
   workoutCompleteTiles,
 } from "@/lib/workout-complete";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
+import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
 import { prisma } from "@/lib/prisma";
 
 export default async function WorkoutDonePage({
@@ -61,6 +62,12 @@ export default async function WorkoutDonePage({
         unit={unit}
         workoutId={sessionId}
         difficultyRating={view.session.difficultyRating}
+        summary={buildSessionSummary({
+          title: view.session.title,
+          programDayTitle: view.session.programDay?.title,
+          programDayFocus: view.session.programDay?.focus,
+          exercises: summaryExercises(view.session),
+        })}
       />
     </main>
   );

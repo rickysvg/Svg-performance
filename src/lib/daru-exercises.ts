@@ -1,4 +1,5 @@
 import type { ScaleBand } from "@/lib/bike-sessions";
+import { formatStoredTags, tagsForExercise } from "@/lib/exercise-tags";
 import type { LogMode } from "@/lib/exercise-log-mode";
 
 export const FRIDAY_GPP_DAY_NUMBER = 10;
@@ -258,5 +259,6 @@ export function daruSeedRow(name: string, sortOrder: number) {
     loadText: beginner.loadText,
     restSeconds: beginner.restSeconds,
     notes: exercise.notes,
+    tags: formatStoredTags(tagsForExercise(exercise.name)),
   };
 }

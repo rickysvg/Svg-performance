@@ -193,6 +193,8 @@ model ProgramExercise {
   formVideoPending Boolean @default(false)
   /** load_reps | load_timed | reps_only | timed | timed_round */
   logMode          String  @default("load_reps")
+  /** Comma-separated training tags, e.g. rotational power, explosive hips. */
+  tags             String  @default("")
 }
 
 model WorkoutSession {
