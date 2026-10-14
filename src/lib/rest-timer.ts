@@ -102,7 +102,7 @@ export function signalRestWarning() {
 
 export function signalRestComplete() {
   if (typeof window === "undefined") return;
-  vibratePattern(REST_ALARM.vibrate);
+  vibratePattern([...REST_ALARM.vibrate]);
   if (!soundFxEnabled()) return;
   playEndCue();
 }
