@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
@@ -181,6 +182,13 @@ export function WorkoutWinScreen({
           {sharing ? "Preparing…" : "Share session"}
         </button>
         {tip ? <p className="mt-3 text-sm text-white/70">{tip}</p> : null}
+        <Link
+          href={`/feedback?from=${encodeURIComponent(pathname)}&workout=${encodeURIComponent(workoutId)}`}
+          className="mt-4 text-xs text-white/55 underline-offset-4 hover:underline"
+          data-win-feedback="1"
+        >
+          Send feedback
+        </Link>
       </div>
     </div>
   );

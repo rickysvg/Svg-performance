@@ -8,6 +8,7 @@ import { YourDataSection } from "@/components/profile/YourDataSection";
 import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
 import { isAdmin, isStaff } from "@/lib/roles";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
+import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
 import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
@@ -102,6 +103,14 @@ export default async function ProfilePage() {
         smtpConfigured={isSmtpReminderDeliveryEnabled()}
       />
       <ChangePasswordForm />
+      <Link
+        href="/feedback?from=/profile"
+        data-send-feedback
+        className="block rounded-2xl border border-line bg-card p-5"
+      >
+        <h2 className="text-lg">Send feedback</h2>
+        <p className="mt-1 text-sm text-muted">Bug, idea, or how a workout felt.</p>
+      </Link>
       <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
         <h2 className="text-lg">Account</h2>
         <p className="text-sm text-muted">
@@ -183,6 +192,13 @@ export default async function ProfilePage() {
             <li>
               <Link href="/admin/form-checks" className="text-accent underline-offset-4 hover:underline">
                 Form check queue
+              </Link>
+            </li>
+          ) : null}
+          {isFeedbackAdmin(user) ? (
+            <li>
+              <Link href="/admin/feedback" className="text-accent underline-offset-4 hover:underline">
+                Feedback inbox
               </Link>
             </li>
           ) : null}

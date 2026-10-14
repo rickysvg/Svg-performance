@@ -61,6 +61,7 @@ model User {
   testingResults           TestingResult[]
   fightCamp                FightCamp?
   formChecks               FormCheck[]
+  memberFeedback           MemberFeedback[]
   gymdeskMembers           GymdeskMember[]
   gymMembershipEvents      GymMembershipEvent[]
   emailVerificationCodes   EmailVerificationCode[]
@@ -913,6 +914,36 @@ model FormCheck {
 
   @@index([userId, submittedAt])
   @@index([status, submittedAt])
+}
+
+/** In-app notes so the owner can adjust the app after launch. Screenshots stay private. */
+model MemberFeedback {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Email at send time. */
+  userEmail   String
+  /** bug | idea | workout | other */
+  type        String
+  message     String
+  route       String   @default("")
+  workoutId   String   @default("")
+  appVersion  String   @default("")
+  userAgent   String   @default("")
+  /** new | reviewed | done */
+  status      String   @default("new")
+  /** local filename or private blob URL. Never sent to the browser as a public URL. */
+  storageKey  String   @default("")
+  /** local | blob | empty when there is no screenshot */
+  storageKind String   @default("")
+  mimeType    String   @default("")
+  byteSize    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([type, createdAt])
 }
 
 /** Hashed Gymdesk roster. Never stores plaintext email/phone for people without app accounts. */
