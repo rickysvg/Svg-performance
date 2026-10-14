@@ -3,18 +3,6 @@
 import { useMemo, useState } from "react";
 import { isYoutubeWatchUrl, youtubeThumbSrcs } from "@/lib/form-videos";
 
-function PlayMark() {
-  return (
-    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/65">
-        <svg viewBox="0 0 12 12" className="ml-0.5 h-3.5 w-3.5 text-accent" aria-hidden>
-          <path d="M3 2.2v7.6L10 6z" fill="currentColor" />
-        </svg>
-      </span>
-    </span>
-  );
-}
-
 export function LearnThumb({
   url,
   pending,
@@ -58,7 +46,6 @@ export function LearnThumb({
           {pending ? "Video pending coach review" : title}
         </span>
       )}
-      {src ? <PlayMark /> : null}
     </span>
   );
 }

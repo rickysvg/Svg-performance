@@ -15,7 +15,7 @@ import { toggleBookmarkAction, toggleCompleteAction } from "@/app/actions/lesson
 import { canUseFeature } from "@/lib/entitlements";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
-import { WatchForm } from "@/components/training/WatchForm";
+import { LearnVideoLink } from "@/components/learn/LearnVideoLink";
 
 export default async function LessonPage({
   params,
@@ -107,16 +107,8 @@ export default async function LessonPage({
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xs uppercase tracking-wide text-muted">YouTube reference</h2>
-        <p className="text-sm text-muted">
-          External technique video. Not an SVG-produced film and not a paid course library.
-        </p>
-        <WatchForm
-          url={video.url}
-          pending={video.pending}
-          actionLabel="Watch on YouTube"
-          caption="YouTube reference — not an SVG-produced video"
-        />
+        <h2 className="text-xs uppercase tracking-wide text-muted">Watch</h2>
+        <LearnVideoLink url={video.url} pending={video.pending} />
       </section>
 
       {keyDetails.length > 0 ? (
