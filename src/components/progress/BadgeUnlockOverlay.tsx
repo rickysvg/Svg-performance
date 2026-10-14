@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { loadUnlockBadgesAction, markBadgeUnlocksSeenAction } from "@/app/actions/badges";
+import { loadSessionSummaryAction } from "@/app/actions/session-summary";
 import { BadgeMark } from "@/components/progress/BadgeMark";
+import { SessionRecap } from "@/components/training/SessionRecap";
 import { BadgeSparks } from "@/components/progress/BadgeSparks";
 import { preloadFxSheets } from "@/components/progress/SpriteFx";
 import { badgeShareStats, capUnlockQueue, parseUnlockQuery, unlockMoreLine } from "@/lib/badge-unlocks";
@@ -11,6 +13,7 @@ import { BADGE_CATEGORY_LABEL, type EarnedBadge } from "@/lib/badges";
 import { playUnlockSfx, soundFxEnabled, unlockSfxStartDelayMs } from "@/lib/badge-sfx";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { UnlockBadgePayload } from "@/app/actions/badges";
+import type { SessionSummary } from "@/lib/session-summary";
 import type { LoadUnit } from "@/lib/units";
 
 function prefersReducedMotion() {
@@ -38,6 +41,7 @@ export function BadgeUnlockOverlay() {
   const queueKey = ids.join(",");
   const preview = params.get("unlockPreview") === "1";
   const onDonePath = /\/training\/log\/[^/]+\/done/.test(pathname);
+  const sessionId = pathname.match(/\/training\/log\/([^/]+)\/done/)?.[1] ?? "";
   const [winDone, setWinDone] = useState(false);
   const released = !onDonePath || winDone;
   const [queue, setQueue] = useState<UnlockBadgePayload[]>([]);
@@ -46,6 +50,7 @@ export function BadgeUnlockOverlay() {
   const [summary, setSummary] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [tip, setTip] = useState("");
+  const [recap, setRecap] = useState<SessionSummary | null>(null);
   const reduce = prefersReducedMotion();
   const capped = capUnlockQueue(queue);
   const current =
@@ -60,6 +65,17 @@ export function BadgeUnlockOverlay() {
   useEffect(() => {
     void preloadFxSheets();
   }, []);
+
+  useEffect(() => {
+    if (!sessionId || !released) return;
+    let alive = true;
+    void loadSessionSummaryAction(sessionId).then((row) => {
+      if (alive) setRecap(row);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [released, sessionId]);
 
   useEffect(() => {
     if (!queueKey || !released) return;
@@ -135,6 +151,7 @@ export function BadgeUnlockOverlay() {
         style: "black",
         title: current.title,
         stats: badgeShareStats(current),
+        summary: recap,
       });
       const result = await shareOrDownloadCard(blob, `svg-performance-${current.id}.png`);
       if (result === "downloaded") {
@@ -180,7 +197,7 @@ export function BadgeUnlockOverlay() {
 
   return (
     <div
-      className="badge-unlock-backdrop fixed inset-0 z-[90] flex items-center justify-center overflow-hidden px-5"
+      className="badge-unlock-backdrop fixed inset-0 z-[90] overflow-y-auto px-5 py-8"
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-unlock-title"
@@ -190,7 +207,7 @@ export function BadgeUnlockOverlay() {
       data-badge-category={current.category}
     >
       <div className="badge-unlock-glow" aria-hidden />
-      <div className="relative w-full max-w-sm text-center text-white">
+      <div className="relative mx-auto flex min-h-full w-full max-w-sm flex-col items-center justify-center text-center text-white">
         <div
           className={`badge-unlock-stage relative mx-auto flex h-[320px] w-[320px] items-center justify-center ${
             reduce ? "" : "badge-unlock-shake"
@@ -212,7 +229,8 @@ export function BadgeUnlockOverlay() {
             {current.title}
           </h2>
           <p className="mt-2 text-sm text-white/55">{current.hint}</p>
-          <div className="mt-6 flex flex-col gap-2">
+          {recap ? <SessionRecap summary={recap} /> : null}
+          <div className="mt-6 flex w-full flex-col gap-2">
             <button
               type="button"
               onClick={() => void onShare()}
