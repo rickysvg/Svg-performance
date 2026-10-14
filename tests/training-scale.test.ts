@@ -124,7 +124,7 @@ describe("training scale bands", () => {
     expect(intermediate.sets).toBe(4);
     expect(intermediate.loadText).toMatch(/last reps should slow/i);
     expect(intermediate.restSeconds).toBeLessThan(beginner.restSeconds);
-    expect(advanced.sets).toBe(5);
+    expect(advanced.sets).toBe(4);
     expect(advanced.reps).toBe("5–6");
     expect(advanced.loadText).toMatch(/heavy/i);
     expect(advanced.restSeconds).toBe(45);
@@ -140,7 +140,7 @@ describe("training scale bands", () => {
       },
       { band: "advanced", programSlug: "demo-strength-base" },
     );
-    expect(plank.sets).toBe(4);
+    expect(plank.sets).toBe(3);
     expect(plank.reps).toMatch(/45–60/);
     expect(plank.restSeconds).toBe(30);
 
@@ -156,7 +156,7 @@ describe("training scale bands", () => {
     const advancedCarry = scaleExercise(carry, { band: "advanced", programSlug: "demo-strength-base" });
     expect(beginnerCarry.logMode).toBe("load_timed");
     expect(beginnerCarry.reps).toBe("30–40 sec");
-    expect(advancedCarry.sets).toBe(4);
+    expect(advancedCarry.sets).toBe(3);
     expect(advancedCarry.reps).toBe("40–50 sec");
     expect(advancedCarry.loadText).toMatch(/heavy/i);
   });
@@ -174,7 +174,7 @@ describe("training scale bands", () => {
     const face = scaleExercise(legacyFace, { band: "advanced", programSlug: "demo-strength-base" });
     expect(face.name).toBe("Face pull");
     expect(face.logMode).toBe("load_reps");
-    expect(face.sets).toBe(4);
+    expect(face.sets).toBe(3);
     expect(face.reps).toBe("15");
     expect(`${face.notes} ${face.loadText}`).not.toMatch(/\bor\b|strong band/i);
 
@@ -333,7 +333,7 @@ describe("scaled DEMO days in the database", () => {
     );
   });
 
-  it("starts more plank sets and shorter rest for an advanced member", async () => {
+  it("opens plank rows that match the prescription and shortens advanced rest", async () => {
     const user = await makeUser("adv-scale@example.com");
     const strength = await getDemoProgram();
     const day = strength.days[0];
@@ -352,7 +352,7 @@ describe("scaled DEMO days in the database", () => {
     const beginnerPlank = beginner.sets.filter((set) => set.exerciseName === "Front plank");
     const advancedPlank = advanced.sets.filter((set) => set.exerciseName === "Front plank");
     expect(beginnerPlank).toHaveLength(3);
-    expect(advancedPlank).toHaveLength(4);
+    expect(advancedPlank).toHaveLength(3);
     expect(beginnerPlank[0]?.logMode).toBe("timed");
     expect(advancedPlank[0]?.logMode).toBe("timed");
     expect(advancedPlank[0]?.durationSeconds).toBeNull();
@@ -364,6 +364,10 @@ describe("scaled DEMO days in the database", () => {
       { band: "advanced", programSlug: "demo-strength-base" },
     );
     expect(scaled.focus).toMatch(/advanced \/ competition/i);
-    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(5);
+    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(4);
+    for (const exercise of scaled.exercises) {
+      const rows = advanced.sets.filter((set) => set.exerciseName === exercise.name);
+      expect(rows, exercise.name).toHaveLength(exercise.sets);
+    }
   });
 });

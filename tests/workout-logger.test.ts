@@ -326,8 +326,8 @@ describe("workout logger media and previous loads", () => {
     });
     const band = draft.sets.filter((set) => set.exerciseName === "Face pull");
     const bug = draft.sets.filter((set) => set.exerciseName === "Dead bug");
-    expect(band).toHaveLength(4);
-    expect(bug).toHaveLength(4);
+    expect(band).toHaveLength(3);
+    expect(bug).toHaveLength(3);
     expect(band[0]?.logMode).toBe("load_reps");
     expect(bug[0]?.logMode).toBe("timed");
     expect(draft.notes).toMatch(/prescribed set/i);
