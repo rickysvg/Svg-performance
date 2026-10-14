@@ -136,7 +136,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Squat jump",
-          sets: 4,
+          sets: 3,
           reps: "5",
           loadText: effort("3-5", "Crisp landings. Leave speed in the tank."),
           restSeconds: 45,
@@ -207,7 +207,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Dumbbell high pull",
-          sets: 4,
+          sets: 3,
           reps: "5",
           loadText: effort("3-5", "Snap the elbows. Stay fast."),
           restSeconds: 60,
@@ -286,7 +286,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Plyo push-up",
-          sets: 4,
+          sets: 3,
           reps: "5",
           loadText: effort("3-5", "Hands leave the floor. Land soft."),
           restSeconds: 45,
@@ -333,7 +333,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Kettlebell swing",
-          sets: 5,
+          sets: 4,
           reps: "8",
           loadText: effort("3-5", "Snap the hips. Do not squat the bell."),
           restSeconds: 60,
@@ -369,7 +369,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 5,
           name: "Broad jump",
-          sets: 4,
+          sets: 3,
           reps: "4",
           loadText: effort("3-5", "Stick the landing."),
           restSeconds: 45,
@@ -438,7 +438,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Squat jump",
-          sets: 4,
+          sets: 3,
           reps: "5",
           loadText: effort("3-5", "Same jump, sharper landing than Block A."),
           restSeconds: 45,
@@ -509,7 +509,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Dumbbell high pull",
-          sets: 4,
+          sets: 3,
           reps: "4",
           loadText: effort("3-5", "Heavier bell than Block A, still fast."),
           restSeconds: 60,
@@ -588,7 +588,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Plyo push-up",
-          sets: 4,
+          sets: 3,
           reps: "4",
           loadText: effort("3-5", "Fewer reps, higher intent."),
           restSeconds: 45,
@@ -598,7 +598,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 3,
           name: "Dumbbell bench press",
-          sets: 5,
+          sets: 4,
           reps: "5",
           loadText: effort("0-2", "Last rep is slow and clean.", "~85% of a 5-rep max"),
           restSeconds: 120,
@@ -635,7 +635,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 1,
           name: "Kettlebell swing",
-          sets: 5,
+          sets: 4,
           reps: "8",
           loadText: effort("3-5", "Heavier bell. Still crisp."),
           restSeconds: 60,
@@ -671,7 +671,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 5,
           name: "Broad jump",
-          sets: 4,
+          sets: 3,
           reps: "3",
           loadText: effort("3-5", "Max distance you can stick."),
           restSeconds: 60,
@@ -715,7 +715,7 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: FRIDAY_GPP_NAMES.length + 1,
           name: "Burpees",
-          sets: 4,
+          sets: 3,
           reps: "30 sec",
           loadText: effort("3-5", "Hard and repeatable. No lbs."),
           restSeconds: 45,
@@ -847,9 +847,9 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 5,
           name: "Face pull",
-          sets: 4,
+          sets: 3,
           reps: "12",
-          loadText: effort("2-4", "Extra set versus Block A."),
+          loadText: effort("2-4", "Shoulder blades meet."),
           restSeconds: 45,
           notes: "Shoulder blades still meet.",
         }),
@@ -956,9 +956,9 @@ export function demoStrengthDays() {
         liftExercise({
           sortOrder: 4,
           name: "Suitcase carry",
-          sets: 4,
+          sets: 3,
           reps: "30 sec / side",
-          loadText: effort("2-3", "One more set than Block B."),
+          loadText: effort("2-3", "One side heavy. Stay tall."),
           restSeconds: 60,
           notes: "Do not lean. Log seconds and lbs.",
         }),

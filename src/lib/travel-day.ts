@@ -17,7 +17,7 @@ export const TRAVEL_KB: TravelBlock[] = [
   },
   {
     name: "Kettlebell swings",
-    prescription: "10 sets × 10",
+    prescription: "4 sets × 10",
     cues: "Crisp hip snap, full lockout, then shake out. Shadowbox easy between sets so you are not smoked for later training.",
   },
   {

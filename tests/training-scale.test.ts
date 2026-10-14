@@ -2,6 +2,10 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { demoStrengthDays } from "@/lib/demo-week-seed";
+import { DARU_EXERCISES } from "@/lib/daru-exercises";
+import { floorSessionForDay } from "@/lib/bodyweight-plan";
+import { isConditioningIntervalName, isMainLift } from "@/lib/lift-sets";
+import { STRENGTH_DAY_BY_BLOCK } from "@/lib/mesocycle";
 import { getDemoProgram, findSkillProgram } from "@/lib/programs";
 import { startWorkoutFromDay } from "@/lib/workouts";
 import {
@@ -124,7 +128,7 @@ describe("training scale bands", () => {
     expect(intermediate.sets).toBe(4);
     expect(intermediate.loadText).toMatch(/last reps should slow/i);
     expect(intermediate.restSeconds).toBeLessThan(beginner.restSeconds);
-    expect(advanced.sets).toBe(5);
+    expect(advanced.sets).toBe(4);
     expect(advanced.reps).toBe("5–6");
     expect(advanced.loadText).toMatch(/heavy/i);
     expect(advanced.restSeconds).toBe(45);
@@ -140,7 +144,7 @@ describe("training scale bands", () => {
       },
       { band: "advanced", programSlug: "demo-strength-base" },
     );
-    expect(plank.sets).toBe(4);
+    expect(plank.sets).toBe(3);
     expect(plank.reps).toMatch(/45–60/);
     expect(plank.restSeconds).toBe(30);
 
@@ -156,7 +160,7 @@ describe("training scale bands", () => {
     const advancedCarry = scaleExercise(carry, { band: "advanced", programSlug: "demo-strength-base" });
     expect(beginnerCarry.logMode).toBe("load_timed");
     expect(beginnerCarry.reps).toBe("30–40 sec");
-    expect(advancedCarry.sets).toBe(4);
+    expect(advancedCarry.sets).toBe(3);
     expect(advancedCarry.reps).toBe("40–50 sec");
     expect(advancedCarry.loadText).toMatch(/heavy/i);
   });
@@ -174,7 +178,7 @@ describe("training scale bands", () => {
     const face = scaleExercise(legacyFace, { band: "advanced", programSlug: "demo-strength-base" });
     expect(face.name).toBe("Face pull");
     expect(face.logMode).toBe("load_reps");
-    expect(face.sets).toBe(4);
+    expect(face.sets).toBe(3);
     expect(face.reps).toBe("15");
     expect(`${face.notes} ${face.loadText}`).not.toMatch(/\bor\b|strong band/i);
 
@@ -333,7 +337,7 @@ describe("scaled DEMO days in the database", () => {
     );
   });
 
-  it("starts more plank sets and shorter rest for an advanced member", async () => {
+  it("keeps plank at three sets and shortens rest for an advanced member", async () => {
     const user = await makeUser("adv-scale@example.com");
     const strength = await getDemoProgram();
     const day = strength.days[0];
@@ -352,7 +356,7 @@ describe("scaled DEMO days in the database", () => {
     const beginnerPlank = beginner.sets.filter((set) => set.exerciseName === "Front plank");
     const advancedPlank = advanced.sets.filter((set) => set.exerciseName === "Front plank");
     expect(beginnerPlank).toHaveLength(3);
-    expect(advancedPlank).toHaveLength(4);
+    expect(advancedPlank).toHaveLength(3);
     expect(beginnerPlank[0]?.logMode).toBe("timed");
     expect(advancedPlank[0]?.logMode).toBe("timed");
     expect(advancedPlank[0]?.durationSeconds).toBeNull();
@@ -364,6 +368,124 @@ describe("scaled DEMO days in the database", () => {
       { band: "advanced", programSlug: "demo-strength-base" },
     );
     expect(scaled.focus).toMatch(/advanced \/ competition/i);
-    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(5);
+    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(4);
+    const gobletRows = advanced.sets.filter((set) => set.exerciseName === "Goblet squat");
+    expect(gobletRows).toHaveLength(4);
+  });
+
+  it("opens one logger row per prescribed set after the cap", async () => {
+    const user = await makeUser("set-cap-rows@example.com");
+    const strength = await getDemoProgram();
+    for (const dayNumber of [1, 10, 14, 21]) {
+      const day = strength.days.find((row) => row.dayNumber === dayNumber);
+      expect(day, `day ${dayNumber}`).toBeTruthy();
+      for (const band of ["beginner", "intermediate", "advanced"] as const) {
+        const draft = await startWorkoutFromDay({
+          userId: user.id,
+          programDayId: day!.id,
+          preferredUnits: "lb",
+          scale: { experienceLevel: band, competitionStatus: band === "advanced" ? "pro" : null },
+        });
+        const scaled = scaleProgramDay(
+          { ...day!, exercises: day!.exercises },
+          { band, programSlug: "demo-strength-base" },
+        );
+        for (const exercise of scaled.exercises) {
+          const rows = draft.sets.filter((set) => set.exerciseName === exercise.name);
+          expect(rows, `${band} day ${dayNumber} ${exercise.name}`).toHaveLength(exercise.sets);
+        }
+      }
+    }
+  });
+});
+
+describe("lift set caps", () => {
+  it("keeps mains at 4, accessories at 3, and leaves rounds and intervals alone", () => {
+    for (const band of ["beginner", "intermediate", "advanced"] as const) {
+      for (const day of demoStrengthDays()) {
+        const scaled = scaleProgramDay(
+          {
+            dayNumber: day.dayNumber,
+            focus: day.focus,
+            exercises: day.exercises.create,
+          },
+          { band, programSlug: "demo-strength-base" },
+        );
+        for (const exercise of scaled.exercises) {
+          if (isConditioningIntervalName(exercise.name)) {
+            expect(exercise.sets, exercise.name).toBeGreaterThan(0);
+            continue;
+          }
+          const cap = isMainLift(exercise) ? 4 : 3;
+          expect(exercise.sets, `${band} ${exercise.name}`).toBeLessThanOrEqual(cap);
+          expect(exercise.sets, exercise.name).toBeGreaterThan(0);
+        }
+      }
+      for (const days of Object.values(STRENGTH_DAY_BY_BLOCK)) {
+        for (const dayNumber of Object.values(days)) {
+          const floor = floorSessionForDay(dayNumber, "demo-strength-base", band);
+          expect(floor?.role).not.toBe("bike");
+          for (const exercise of floor?.exercises ?? []) {
+            const cap = isMainLift({
+              name: exercise.name,
+              sets: exercise.sets,
+              notes: exercise.notes,
+              loadText: exercise.loadText,
+            })
+              ? 4
+              : 3;
+            expect(exercise.sets, `${band} floor ${exercise.name}`).toBeLessThanOrEqual(cap);
+          }
+        }
+      }
+      const bike = floorSessionForDay(5, "demo-strength-base", band);
+      expect(bike?.role).toBe("bike");
+      expect(bike?.exercises.find((row) => row.name === "Broad jump")?.sets).toBeGreaterThanOrEqual(5);
+    }
+
+    const rope = scaleExercise(
+      {
+        name: "Jump rope intervals",
+        sets: 6,
+        reps: "30 sec on / 30 sec easy",
+        loadText: "Smooth — no lbs",
+        restSeconds: 0,
+      },
+      { band: "advanced", programSlug: "demo-strength-base" },
+    );
+    expect(rope.sets).toBe(10);
+    const sledScaled = scaleExercise(
+      {
+        name: "Sled push",
+        sets: 4,
+        reps: "20 sec",
+        loadText: "Timed — no lbs logged as reps",
+        restSeconds: 75,
+      },
+      { band: "advanced", programSlug: "demo-strength-base" },
+    );
+    expect(sledScaled.sets).toBe(6);
+    expect(sledScaled.loadText).toMatch(/Heavy sled/);
+    const neck = scaleExercise(
+      {
+        name: "Neck isometric matrix",
+        sets: 2,
+        reps: "5 sec × 4 directions",
+        loadText: "Gentle ramp — no max effort",
+        restSeconds: 45,
+      },
+      { band: "intermediate", programSlug: "demo-strength-base" },
+    );
+    expect(neck.sets).toBe(2);
+
+    const swings = DARU_EXERCISES.find((row) => row.name === "Banded kettlebell swing");
+    const sled = DARU_EXERCISES.find((row) => row.name === "Sled push");
+    expect(swings?.scale.advanced.sets).toBe(6);
+    expect(sled?.scale.intermediate.sets).toBe(5);
+    expect(sled?.scale.advanced.sets).toBe(6);
+    const trap = DARU_EXERCISES.find((row) => row.name === "Trap-bar deadlift");
+    expect(trap?.scale.advanced.sets).toBe(4);
+    expect(trap?.scale.advanced.loadText).toMatch(/0-2 RIR/);
+    expect(trap?.scale.advanced.reps).toBe("3");
   });
 });

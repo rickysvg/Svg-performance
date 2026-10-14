@@ -6,6 +6,7 @@
 
 import type { ScaleBand } from "@/lib/training-scale";
 import type { ScaleableExercise } from "@/lib/training-scale";
+import { clampLiftSets } from "@/lib/lift-sets";
 import { DEMO_PROGRAM_SLUG } from "@/lib/programs";
 import { DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
@@ -34,19 +35,31 @@ type Move = {
   restSeconds: number;
   logMode?: "reps_only" | "timed";
   notes: string;
+  /** Bike-day replacements keep their interval counts. Lift days use the set cap. */
+  role?: "conditioning";
 };
 
-function setsFor(band: ScaleBand, base: number) {
-  if (band === "beginner") return Math.max(2, base - 1);
-  if (band === "advanced") return base >= 5 ? base : base + 1;
-  return base;
+function setsFor(band: ScaleBand, input: Move) {
+  if (input.role === "conditioning") {
+    if (band === "beginner") return Math.max(2, input.sets - 1);
+    if (band === "advanced") return input.sets >= 5 ? input.sets : input.sets + 1;
+    return input.sets;
+  }
+  const clamped = clampLiftSets({
+    name: input.name,
+    sets: input.sets,
+    notes: input.notes,
+    loadText: input.cue,
+  });
+  if (band === "beginner") return Math.max(2, clamped - 1);
+  return clamped;
 }
 
 function move(band: ScaleBand, input: Move): ScaleableExercise {
   const timed = input.logMode === "timed" || /\bsec\b/i.test(input.reps);
   return {
     name: input.name,
-    sets: setsFor(band, input.sets),
+    sets: setsFor(band, input),
     reps: input.reps,
     tags: formatStoredTags(tagsForExercise(input.name)),
     loadText: input.rir ? effortLoadText(input.rir, input.cue) : input.cue,
@@ -90,7 +103,7 @@ function lower(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
     return [
       move(band, {
         name: "Squat jump",
-        sets: 4,
+        sets: 3,
         reps: band === "beginner" ? "4" : "5",
         rir: "3-5",
         cue: "Quiet landing. Leave a jump in the tank.",
@@ -223,7 +236,7 @@ function lower(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
   return [
     move(band, {
       name: "Squat jump",
-      sets: 4,
+      sets: 3,
       reps: "5",
       rir: "3-5",
       cue: "Crisp landing.",
@@ -678,7 +691,7 @@ function push(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
   return [
     move(band, {
       name: explosive.name,
-      sets: 4,
+      sets: 3,
       reps: explosive.reps,
       rir: "3-5",
       cue: explosive.cue,
@@ -750,7 +763,7 @@ function posterior(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
     return [
       move(band, {
         name: "Broad jump",
-        sets: 4,
+        sets: 3,
         reps: "3",
         rir: "3-5",
         cue: "Max distance you can stick.",
@@ -883,7 +896,7 @@ function posterior(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
   return [
     move(band, {
       name: "Broad jump",
-      sets: 4,
+      sets: 3,
       reps: "4",
       rir: "3-5",
       cue: "Stick the landing.",
@@ -951,7 +964,7 @@ function gpp(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
   const sharedStart: Move[] = [
     {
       name: "Squat jump",
-      sets: 4,
+      sets: 3,
       reps: "6",
       rir: "3-5",
       cue: "Repeatable. Quiet landing.",
@@ -982,7 +995,7 @@ function gpp(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
       }),
       move(band, {
         name: "Burpees",
-        sets: 4,
+        sets: 3,
         reps: "8",
         rir: "3-5",
         cue: "Hard and repeatable.",
@@ -1049,7 +1062,7 @@ function gpp(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
       }),
       move(band, {
         name: "Burpees",
-        sets: 4,
+        sets: 3,
         reps: "8",
         rir: "3-5",
         cue: "Same quality as Block B.",
@@ -1152,6 +1165,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
       focus: "No gym or weights · Short jumps with full rest. No bike.",
       exercises: [
         move(band, {
+          role: "conditioning",
           name: "Broad jump",
           sets: 6,
           reps: "3",
@@ -1161,6 +1175,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Quality dies, the set ends. Stick the landing.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Squat jump",
           sets: 6,
           reps: "3",
@@ -1170,6 +1185,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Quiet landing.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Burpees",
           sets: 5,
           reps: "4",
@@ -1187,6 +1203,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
       focus: "No gym or weights · Controlled repeats. Not all-out. No bike.",
       exercises: [
         move(band, {
+          role: "conditioning",
           name: "Air squat",
           sets: 8,
           reps: "10",
@@ -1196,6 +1213,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: easy,
         }),
         move(band, {
+          role: "conditioning",
           name: "Reverse lunge",
           sets: 6,
           reps: "6 / leg",
@@ -1205,6 +1223,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: easy,
         }),
         move(band, {
+          role: "conditioning",
           name: "Glute bridge",
           sets: 6,
           reps: "12",
@@ -1222,6 +1241,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
       focus: "No gym or weights · Longer easy sets. No bike.",
       exercises: [
         move(band, {
+          role: "conditioning",
           name: "Air squat",
           sets: 4,
           reps: "15",
@@ -1231,6 +1251,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: easy,
         }),
         move(band, {
+          role: "conditioning",
           name: "Walking lunge",
           sets: 3,
           reps: "10 / leg",
@@ -1240,6 +1261,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: easy,
         }),
         move(band, {
+          role: "conditioning",
           name: "Glute bridge",
           sets: 3,
           reps: "15",
@@ -1249,6 +1271,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: easy,
         }),
         move(band, {
+          role: "conditioning",
           name: "Bird dog",
           sets: 3,
           reps: "8 / side",
@@ -1258,6 +1281,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Hips square.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Front plank",
           sets: 3,
           reps: "30 sec",
@@ -1275,6 +1299,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
       focus: "No gym or weights · Easy pace. Nasal breathing if you can. No bike.",
       exercises: [
         move(band, {
+          role: "conditioning",
           name: "Air squat",
           sets: 4,
           reps: "12",
@@ -1284,6 +1309,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "You could keep going. That is the point.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Glute bridge",
           sets: 3,
           reps: "12",
@@ -1293,6 +1319,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Ribs down.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Dead bug",
           sets: 3,
           reps: "8 / side",
@@ -1302,6 +1329,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Low back down.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Side plank",
           sets: 2,
           reps: "20 sec / side",
@@ -1319,6 +1347,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
       focus: "No gym or weights · Hard, short sets. No bike and no interval timer.",
       exercises: [
         move(band, {
+          role: "conditioning",
           name: "Burpees",
           sets: 5,
           reps: "8",
@@ -1328,6 +1357,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Count reps.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Squat jump",
           sets: 5,
           reps: "6",
@@ -1337,6 +1367,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Stop if the landing gets loud.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Mountain climber",
           sets: 5,
           reps: "20 / side",
@@ -1346,6 +1377,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
           notes: "Count the reps.",
         }),
         move(band, {
+          role: "conditioning",
           name: "Lateral bound",
           sets: 4,
           reps: "4 / side",
@@ -1362,6 +1394,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
     focus: "No gym or weights · Short hard sets with rest you control. No bike.",
     exercises: [
       move(band, {
+        role: "conditioning",
         name: "Squat jump",
         sets: 8,
         reps: "5",
@@ -1371,6 +1404,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
         notes: "The sprint job, on the floor.",
       }),
       move(band, {
+        role: "conditioning",
         name: "Burpees",
         sets: 5,
         reps: "6",
@@ -1380,6 +1414,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
         notes: "Count reps.",
       }),
       move(band, {
+        role: "conditioning",
         name: "Mountain climber",
         sets: 5,
         reps: "20 / side",
@@ -1389,6 +1424,7 @@ function bike(dayNumber: number, band: ScaleBand): { title: string; focus: strin
         notes: "Count the reps.",
       }),
       move(band, {
+        role: "conditioning",
         name: "Lateral bound",
         sets: 4,
         reps: "4 / side",
