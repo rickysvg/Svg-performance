@@ -94,7 +94,7 @@ function flipSessionDays(
   if (!sessionDays) return undefined;
   const next: Partial<Record<string, PlanWeekday>> = {};
   for (const [key, day] of Object.entries(sessionDays)) {
-    if (!isPlanWeekday(day)) continue;
+    if (!day || !isPlanWeekday(day)) continue;
     next[key] = day === a ? b : day === b ? a : day;
   }
   return Object.keys(next).length > 0 ? next : undefined;
