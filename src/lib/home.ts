@@ -42,6 +42,7 @@ import {
 } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -74,6 +75,7 @@ export async function getWeeklyActivity(
       where: {
         userId,
         status: "complete",
+        sets: loggedSetSome,
         performedAt: { gte: weekStart },
       },
       select: { performedAt: true },
@@ -148,6 +150,7 @@ export async function hasActivityOnLocalDay(
       where: {
         userId,
         status: "complete",
+        sets: loggedSetSome,
         performedAt: { gte: start, lt: end },
       },
     }),
@@ -260,7 +263,9 @@ export async function getHomeToday(
     null;
   const loggedOnSelected = sessions.find(
     (session) =>
-      session.status === "complete" && sameLocalDay(session.performedAt, selected, tz),
+      session.status === "complete" &&
+      sessionHasLoggedWork(session.sets) &&
+      sameLocalDay(session.performedAt, selected, tz),
   );
 
   const completedLessonIds = new Set(

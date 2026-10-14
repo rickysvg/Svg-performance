@@ -21,6 +21,12 @@ import {
   type ScalePrefs,
 } from "@/lib/training-scale";
 import { DELOAD_LABEL } from "@/lib/training-cycle";
+import {
+  loggedSetSome,
+  prepareSetsForPersist,
+  sessionHasLoggedWork,
+  setHasLoggedWork,
+} from "@/lib/logged-work";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -274,6 +280,7 @@ export async function completedProgramDayIdsOnDay(
         gte: startOfZonedDay(day, timeZone),
         lt: endOfZonedDay(day, timeZone),
       },
+      sets: loggedSetSome,
     },
     select: { programDayId: true },
   });
@@ -478,7 +485,13 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  const sets = setsAsLb(input.sets);
+  const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
+  if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
+    throw new AppError(
+      "WORKOUT",
+      "Log at least one set, then tap Save. Nothing was marked finished.",
+    );
+  }
   validateSets(sets);
 
   const title = input.title.trim().slice(0, 120) || "Workout";
@@ -542,6 +555,34 @@ export async function updateWorkoutSessionForUser(input: {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }
   return updated;
+}
+
+/**
+ * A finished session with no reps, load, or time was never really saved.
+ * Put it back to draft so the local logger can still save into the same id.
+ */
+export async function reopenEmptyCompletion<
+  T extends { id: string; status: string; sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[] },
+>(session: T): Promise<T> {
+  if (session.status !== "complete" || sessionHasLoggedWork(session.sets)) return session;
+  await prisma.workoutSession.update({
+    where: { id: session.id },
+    data: { status: "draft" },
+  });
+  return { ...session, status: "draft" };
+}
+
+/** Delete a draft the member left without logging. Never deletes a set they typed. */
+export async function discardEmptyWorkoutDraft(userId: string, workoutId: string) {
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: workoutId },
+    include: { sets: true },
+  });
+  if (!session || session.userId !== userId) return { discarded: false };
+  if (sessionHasLoggedWork(session.sets)) return { discarded: false };
+  if (session.status !== "draft") return { discarded: false };
+  await prisma.workoutSession.delete({ where: { id: workoutId } });
+  return { discarded: true };
 }
 
 export async function deleteWorkoutSessionForUser(

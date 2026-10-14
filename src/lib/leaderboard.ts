@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { monthKeyFrom, monthRange } from "@/lib/challenges";
+import { loggedSetSome } from "@/lib/logged-work";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
 export const MONTHLY_WORKOUT_GOAL = 12;
@@ -68,6 +69,7 @@ export async function countWorkoutsInMonth(
     where: {
       userId,
       status: "complete",
+      sets: loggedSetSome,
       performedAt: { gte: start, lt: end },
     },
   });
@@ -158,6 +160,7 @@ export async function getWorkoutLeaderboard(input: {
     where: {
       userId: { in: visible.map((row) => row.userId) },
       status: "complete",
+      sets: loggedSetSome,
       performedAt: { gte: start, lt: end },
     },
     _count: { _all: true },

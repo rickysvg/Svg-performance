@@ -143,6 +143,15 @@ describe("member free tier and Performance trial", () => {
           title: `Session ${i + 1}`,
           status: "complete",
           performedAt: new Date(),
+          sets: {
+            create: {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 8,
+              loadValue: 40,
+              completed: true,
+            },
+          },
         },
       });
     }

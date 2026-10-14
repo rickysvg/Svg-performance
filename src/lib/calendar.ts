@@ -1,6 +1,7 @@
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { getProfileForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
@@ -217,7 +218,7 @@ export async function getCalendarSchedule(
   const completedOnDay = new Set<string>();
   const loggedTitles = new Map<string, string[]>();
   for (const session of sessions) {
-    if (session.status !== "complete") continue;
+    if (session.status !== "complete" || !sessionHasLoggedWork(session.sets)) continue;
     const key = formatDayParam(session.performedAt, tz);
     completedOnDay.add(key);
     const titles = loggedTitles.get(key) ?? [];

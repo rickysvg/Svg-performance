@@ -17,6 +17,7 @@ import {
 import { getProfileForUser, timeZoneForUser, type ProfileRecord } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
 import { type LoadUnit } from "@/lib/units";
+import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
 
@@ -25,6 +26,7 @@ export async function datedSetsForUser(userId: string, excludeSessionId?: string
     where: {
       userId,
       status: "complete",
+      sets: loggedSetSome,
       ...(excludeSessionId ? { id: { not: excludeSessionId } } : {}),
     },
     select: {
@@ -75,7 +77,9 @@ export async function getCompanionProgress(userId: string, displayUnit: LoadUnit
     listWorkoutSessionsForUser(userId),
     timeZoneForUser(userId),
   ]);
-  const complete = sessions.filter((row) => row.status === "complete");
+  const complete = sessions.filter(
+    (row) => row.status === "complete" && sessionHasLoggedWork(row.sets),
+  );
   const completedDates = complete.map((row) => row.performedAt);
   const prefs = plannerPrefsFromProfile(profile ?? {});
   const streak = buildTrainingStreak({
@@ -130,7 +134,10 @@ export async function evaluateBadgesForUser(
     timeZoneForUser(userId),
   ]);
   const complete = sessions.filter(
-    (row) => row.status === "complete" && row.id !== excludeSessionId,
+    (row) =>
+      row.status === "complete" &&
+      row.id !== excludeSessionId &&
+      sessionHasLoggedWork(row.sets),
   );
   const prefs = plannerPrefsFromProfile(profile ?? {});
   const streak = buildTrainingStreak({

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { loggedSetSome } from "@/lib/logged-work";
 import { AppError } from "@/lib/errors";
 import { isSmtpConfigured, reminderEmailHtml, sendMail } from "@/lib/mail";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
@@ -96,6 +97,7 @@ async function loggedWorkoutToday(userId: string, now: Date, timeZone: string) {
     where: {
       userId,
       status: "complete",
+      sets: loggedSetSome,
       performedAt: { gte: startOfLocalDay(now, timeZone), lt: endOfLocalDay(now, timeZone) },
     },
   });

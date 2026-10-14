@@ -1,3 +1,4 @@
+import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 
@@ -22,7 +23,9 @@ export function buildProgressSummary(
   sessions: SessionWithSets[],
   displayUnit: LoadUnit,
 ) {
-  const completed = sessions.filter((session) => session.status === "complete");
+  const completed = sessions.filter(
+    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
+  );
   const points: ProgressPoint[] = [...completed]
     .sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime())
     .map((session) => {

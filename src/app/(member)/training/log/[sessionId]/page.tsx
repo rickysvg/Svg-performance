@@ -6,6 +6,7 @@ import {
   getOwnWorkoutSessionOrNull,
   getPreviousLoadsForSlots,
   getPreviousLoadsForUser,
+  reopenEmptyCompletion,
 } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
@@ -27,10 +28,11 @@ export default async function WorkoutLogPage({
   const query = await searchParams;
   const profile = await getProfileForUser(user.id);
 
-  const session = await getOwnWorkoutSessionOrNull(sessionId, user.id);
-  if (!session) {
+  const loaded = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  if (!loaded) {
     notFound();
   }
+  const session = await reopenEmptyCompletion(loaded);
 
   const band = scaleBandFromPrefs({
     experienceLevel: profile?.experienceLevel,
