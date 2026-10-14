@@ -4,6 +4,7 @@ import {
   hidesLoad,
   loggerRowLayout,
   parseDurationSeconds,
+  loggerCardLine,
   plannedSetLine,
   prescribedLbLabel,
   resolveLogMode,
@@ -66,6 +67,56 @@ describe("exercise log modes", () => {
     expect(parseDurationSeconds("45")).toBe(45);
     expect(parseDurationSeconds("30–45 sec")).toBe(30);
     expect(parseDurationSeconds("2:00 rounds")).toBe(120);
+  });
+
+  it("prints sets, work, and RIR on a logger card without percent or rest", () => {
+    expect(
+      loggerCardLine({
+        sets: 4,
+        reps: "6",
+        restSeconds: 90,
+        logMode: "load_reps",
+        name: "Push-up or dumbbell bench press",
+        loadText: "0-2 RIR · ~80% of a 5-rep max · Last rep is slow and clean.",
+      }),
+    ).toBe("4 sets × 6 @ 0-2 RIR");
+    expect(
+      loggerCardLine({
+        sets: 4,
+        reps: "8",
+        restSeconds: 90,
+        logMode: "load_reps",
+        name: "Push-up or dumbbell bench press",
+      }),
+    ).toBe("4 sets × 8");
+    expect(
+      loggerCardLine({
+        sets: 3,
+        reps: "40 sec",
+        restSeconds: 90,
+        logMode: "load_timed",
+        name: "Farmer carry",
+        loadText: "2-3 RIR · Heavy enough that you could walk a little farther.",
+      }),
+    ).toBe("3 × 40s @ 2-3 RIR");
+    expect(
+      loggerCardLine({
+        sets: 3,
+        reps: "45–60 sec",
+        restSeconds: 30,
+        logMode: "timed",
+        name: "Front plank",
+      }),
+    ).toBe("3 holds × 45–60 sec");
+    expect(
+      loggerCardLine({
+        sets: 4,
+        reps: "8",
+        restSeconds: 90,
+        logMode: "load_reps",
+        loadText: "0-2 RIR · ~80% of a 5-rep max",
+      }),
+    ).not.toMatch(/rest|5-rep max/i);
   });
 
   it("writes hold / round planned lines instead of lbs × reps", () => {

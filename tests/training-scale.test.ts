@@ -191,7 +191,7 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["Goblet squat"]).toBe("load_reps");
     expect(modes["Romanian deadlift"]).toBe("load_reps");
     expect(modes["Reverse lunge"]).toBe("load_reps");
-    expect(modes["Push-up or dumbbell bench press"]).toBe("load_reps");
+    expect(modes["Dumbbell bench press"]).toBe("load_reps");
     expect(modes["One-arm row"]).toBe("load_reps");
     expect(modes["Overhead press"]).toBe("load_reps");
     expect(modes["Farmer carry"]).toBe("load_timed");
