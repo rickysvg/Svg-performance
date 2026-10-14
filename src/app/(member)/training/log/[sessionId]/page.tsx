@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getOwnWorkoutSessionOrNull, getPreviousLoadsForSlots } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
@@ -9,6 +9,14 @@ import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
+import { alignWorkoutWithSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
+import {
+  applySwapsToExercises,
+  retiredNamesFromSwaps,
+  swapSlotsFor,
+  trainingBlockKey,
+} from "@/lib/exercise-swap";
+import { normalizeWeightAccess } from "@/lib/weight-access";
 
 export default async function WorkoutLogPage({
   params,
@@ -22,10 +30,59 @@ export default async function WorkoutLogPage({
   const query = await searchParams;
   const profile = await getProfileForUser(user.id);
 
-  const session = await getOwnWorkoutSessionOrNull(sessionId, user.id);
-  if (!session) {
+  const loaded = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  if (!loaded) {
     notFound();
   }
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const scale = {
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+    weightAccess: profile?.weightAccess,
+  };
+  if (loaded.programDay && loaded.status !== "complete") {
+    await alignWorkoutWithSwaps(loaded, scale, tz);
+  }
+  const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? loaded;
+  const band = scaleBandFromPrefs(scale);
+  const scaledDay = session.programDay
+    ? scaleProgramDay(
+        {
+          ...session.programDay,
+          exercises: [...session.programDay.exercises].sort((a, b) => a.sortOrder - b.sortOrder),
+        },
+        {
+          band,
+          programSlug: session.programDay.program.slug,
+          weightAccess: profile?.weightAccess,
+        },
+      )
+    : null;
+  const swaps =
+    session.programDay && scaledDay
+      ? await listSwapsForDay({
+          userId: user.id,
+          programSlug: session.programDay.program.slug,
+          dayNumber: session.programDay.dayNumber,
+        })
+      : [];
+  const shownExercises = scaledDay
+    ? applySwapsToExercises(scaledDay.exercises, swaps, {
+        sessionId: session.id,
+        blockKey: trainingBlockKey(new Date(), tz),
+        includePending: false,
+      })
+    : [];
+  const swapSlots = scaledDay ? swapSlotsFor(scaledDay.exercises, shownExercises) : [];
+  const loggedSession = session.programDay && scaledDay
+    ? {
+        ...session,
+        programDay: {
+          ...scaledDay,
+          exercises: shownExercises,
+        },
+      }
+    : session;
 
   const promptRating =
     session.status === "complete" &&
@@ -66,21 +123,7 @@ export default async function WorkoutLogPage({
         )
       ) : null}
       <WorkoutLogForm
-        session={
-          session.programDay
-            ? {
-                ...session,
-                programDay: scaleProgramDay(session.programDay, {
-                  band: scaleBandFromPrefs({
-                    experienceLevel: profile?.experienceLevel,
-                    competitionStatus: profile?.competitionStatus,
-                  }),
-                  programSlug: session.programDay.program.slug,
-                  weightAccess: profile?.weightAccess,
-                }),
-              }
-            : session
-        }
+        session={loggedSession}
         previousLoads={await getPreviousLoadsForSlots(
           user.id,
           session.sets.map((set) => ({
@@ -92,10 +135,20 @@ export default async function WorkoutLogPage({
         notes={await listExerciseNotesForUser(user.id, {
           exerciseNames: [
             ...session.sets.map((set) => set.exerciseName),
-            ...(session.programDay?.exercises.map((exercise) => exercise.name) ?? []),
+            ...shownExercises.map((exercise) => exercise.name),
           ],
           programDayId: session.programDayId,
         })}
+        swap={{
+          programSlug: session.programDay?.program.slug ?? "",
+          dayNumber: session.programDay?.dayNumber ?? 0,
+          weightAccess: normalizeWeightAccess(profile?.weightAccess),
+          slots: swapSlots,
+          retiredNames: retiredNamesFromSwaps(
+            swaps,
+            shownExercises.map((exercise) => exercise.name),
+          ),
+        }}
       />
     </main>
   );

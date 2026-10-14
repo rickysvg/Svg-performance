@@ -3,7 +3,7 @@ import { ForbiddenError, NotFoundError, AppError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
-import { endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
+import { APP_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
@@ -21,6 +21,8 @@ import {
   type ScalePrefs,
 } from "@/lib/training-scale";
 import { deloadSetCount } from "@/lib/training-cycle";
+import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
+import { bindPendingSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -351,6 +353,7 @@ export async function startWorkoutFromDay(input: {
   preferredUnits: LoadUnit;
   scale?: ScalePrefs | null;
   deload?: boolean;
+  timeZone?: string;
 }) {
   const rawDay = await getProgramDayById(input.programDayId);
   const band = scaleBandFromPrefs(input.scale);
@@ -364,7 +367,20 @@ export async function startWorkoutFromDay(input: {
     },
     { band, programSlug: rawDay.program.slug, weightAccess: input.scale?.weightAccess },
   );
-  const sets = day.exercises.flatMap((exercise) => {
+  const blockKey = trainingBlockKey(new Date(), input.timeZone || APP_TIMEZONE);
+  const swaps = await listSwapsForDay({
+    userId: input.userId,
+    programSlug: rawDay.program.slug,
+    dayNumber: rawDay.dayNumber,
+  });
+  const swapped = applySwapsToExercises(day.exercises, swaps, {
+    blockKey,
+    includePending: true,
+  });
+  const pendingNames = day.exercises
+    .filter((exercise, index) => swapped[index]?.name !== exercise.name)
+    .map((exercise) => exercise.name);
+  const sets = swapped.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
     const prescribed = input.deload ? deloadSetCount(exercise.sets) : exercise.sets;
     return Array.from({ length: prescribed }, (_, index) => ({
@@ -387,7 +403,7 @@ export async function startWorkoutFromDay(input: {
     }));
   });
 
-  return prisma.workoutSession.create({
+  const created = await prisma.workoutSession.create({
     data: {
       userId: input.userId,
       programDayId: day.id,
@@ -399,6 +415,14 @@ export async function startWorkoutFromDay(input: {
     },
     include: { sets: true },
   });
+  await bindPendingSwaps({
+    userId: input.userId,
+    programSlug: rawDay.program.slug,
+    dayNumber: rawDay.dayNumber,
+    workoutSessionId: created.id,
+    originalNames: pendingNames,
+  });
+  return created;
 }
 
 function setHasAthleteLog(set: WorkoutSetInput, mode: LogMode) {

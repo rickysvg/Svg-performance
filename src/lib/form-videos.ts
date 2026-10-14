@@ -376,6 +376,12 @@ const pallof = ready({
   channel: "TurnFit - Vancouver Personal Trainers",
   title: "How to do a Standing Banded Pallof Press",
 });
+const bandPullApart = ready({
+  url: "https://www.youtube.com/watch?v=qi2y-eI_kuI",
+  seconds: 25,
+  channel: "Luke Selway | Strength Coaching Online",
+  title: "How to do a Band Pull Apart",
+});
 const highPull = ready({
   url: "https://www.youtube.com/watch?v=2oq8CDNM8ww",
   seconds: 51,
@@ -436,6 +442,16 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Romanian deadlift": rdl,
   "Reverse lunge": lunge,
   "Squat jump or box step-up": squatJump,
+  "Cable woodchop": woodchop,
+  "Cable Pallof press": pallof,
+  "Chin-up": pullUp,
+  "Face pull": facePull,
+  "Kettlebell swing": swing,
+  "Jump rope": jumpRope,
+  "Easy bike intervals": airBike,
+  "Box step-up": stepUp,
+  "Band Pallof press": pallof,
+  "Band pull-apart": bandPullApart,
   "Front plank": plank,
   "Push-up or dumbbell bench press": pushUp,
   "Dumbbell bench press": dbBench,

@@ -33,7 +33,7 @@ describe("workout logger media and previous loads", () => {
   });
 
   it("maps every DEMO exercise to a slug, equipment, and square thumb file", () => {
-    expect(DEMO_EXERCISE_NAMES).toHaveLength(34);
+    expect(DEMO_EXERCISE_NAMES).toHaveLength(43);
     for (const name of DEMO_EXERCISE_NAMES) {
       const slug = exerciseSlug(name);
       expect(slug.length).toBeGreaterThan(2);
@@ -278,7 +278,7 @@ describe("workout logger media and previous loads", () => {
       preferredUnits: "lb",
     });
     const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
-    const band = pullDraft.sets.filter((set) => set.exerciseName === "Band pull-apart or face pull");
+    const band = pullDraft.sets.filter((set) => set.exerciseName === "Face pull");
     expect(carry.length).toBeGreaterThan(0);
     expect(carry[0]?.logMode).toBe("load_timed");
     expect(carry[0]?.durationSeconds).toBeNull();

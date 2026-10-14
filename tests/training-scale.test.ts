@@ -195,9 +195,9 @@ describe("scaled DEMO days in the database", () => {
     expect(modes["One-arm row"]).toBe("load_reps");
     expect(modes["Overhead press"]).toBe("load_reps");
     expect(modes["Farmer carry"]).toBe("load_timed");
-    expect(modes["Kettlebell swing or hip hinge"]).toBe("load_reps");
-    expect(modes["Band pull-apart or face pull"]).toBe("reps_only");
-    expect(modes["Chin-up, band-assist, or lat pulldown"]).toBe("reps_only");
+    expect(modes["Kettlebell swing"]).toBe("load_reps");
+    expect(modes["Face pull"]).toBe("reps_only");
+    expect(modes["Chin-up"]).toBe("reps_only");
     expect(modes["Front plank"]).toBe("timed");
     expect(modes["Side plank"]).toBe("timed");
     expect(modes["Assault bike intervals"]).toBe("timed_round");

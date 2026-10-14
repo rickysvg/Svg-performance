@@ -63,8 +63,11 @@ import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
+import { ExerciseSwapButton } from "@/components/training/ExerciseSwapButton";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
+import type { SwapSlot } from "@/lib/exercise-swap";
 import { convertLoad, roundLoadForInput } from "@/lib/units";
+import type { WorkoutSetInput } from "@/lib/workouts";
 
 type Session = WorkoutSession & {
   sets: WorkoutSet[];
@@ -130,6 +133,60 @@ function newClientSet(
   };
 }
 
+function toSetInput(set: WorkoutSet): WorkoutSetInput {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: "lb",
+    logMode: resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  };
+}
+
+function swapSource(
+  name: string,
+  group: WorkoutSet[],
+  planned:
+    | {
+        sets: number;
+        reps: string;
+        restSeconds: number;
+        loadText?: string;
+        notes?: string;
+        logMode?: string;
+      }
+    | undefined,
+  restSeconds: number,
+  mode: LogMode,
+  slots: SwapSlot[] | undefined,
+) {
+  const slot = slots?.find((row) => row.currentName === name);
+  if (slot) {
+    return {
+      sets: slot.sets,
+      reps: slot.reps,
+      loadText: slot.loadText,
+      restSeconds: slot.restSeconds,
+      logMode: slot.logMode,
+      notes: slot.notes,
+    };
+  }
+  return {
+    sets: planned?.sets ?? Math.max(1, group.length),
+    reps: planned?.reps ?? "",
+    loadText: planned?.loadText ?? "",
+    restSeconds: planned?.restSeconds ?? restSeconds,
+    logMode: planned?.logMode ?? mode,
+    notes: planned?.notes ?? "",
+  };
+}
+
 function toDraftSet(set: WorkoutSet): DraftSetSnapshot {
   return {
     exerciseName: set.exerciseName,
@@ -180,10 +237,18 @@ export function WorkoutLogForm({
   session,
   previousLoads = {},
   notes = {},
+  swap,
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
   notes?: Record<string, ExerciseNoteView>;
+  swap?: {
+    programSlug: string;
+    dayNumber: number;
+    weightAccess: "gym" | "none";
+    slots: SwapSlot[];
+    retiredNames: string[];
+  };
 }) {
   const [state, action, pending] = useActionState(
     saveWorkoutAction,
@@ -213,7 +278,10 @@ export function WorkoutLogForm({
       const base = setsInLb(session.sets);
       const draft = hydration.draft;
       const merged = mergeDraftOntoSets(base, draft);
-      const extras = extraDraftSets(base, draft).map((set) => ({
+      const retired = new Set(swap?.retiredNames ?? []);
+      const extras = extraDraftSets(base, draft)
+        .filter((set) => !retired.has(set.exerciseName))
+        .map((set) => ({
         ...newClientSet(
           session.id,
           set.exerciseName,
@@ -686,6 +754,30 @@ export function WorkoutLogForm({
                     />
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    {session.status !== "complete" ? (
+                      <ExerciseSwapButton
+                        programSlug={swap?.programSlug ?? ""}
+                        dayNumber={swap?.dayNumber ?? 0}
+                        programDayId={session.programDayId ?? undefined}
+                        originalName={
+                          swap?.slots.find((slot) => slot.currentName === name)?.programmedName ?? name
+                        }
+                        currentName={name}
+                        source={swapSource(name, group, planned, restSeconds, mode, swap?.slots)}
+                        weightAccess={swap?.weightAccess ?? "gym"}
+                        workoutSessionId={session.id}
+                        getCurrentSets={() => sets.map(toSetInput)}
+                        onSwapped={(next) => {
+                          const lb = setsInLb(next);
+                          const names = new Set(lb.map((set) => set.exerciseName));
+                          const nextRest =
+                            restTimer && names.has(restTimer.exerciseName) ? restTimer : null;
+                          setSets(lb);
+                          setRestTimer(nextRest);
+                          remember(lb, nextRest);
+                        }}
+                      />
+                    ) : null}
                     {previousLoads[name] ? (
                       <button
                         type="button"

@@ -130,7 +130,7 @@ export function demoStrengthDays() {
       exercises: [
         liftExercise({
           sortOrder: 1,
-          name: "Squat jump or box step-up",
+          name: "Squat jump",
           sets: 4,
           reps: "5",
           loadText: effort("3-5", "Crisp landings. Leave speed in the tank."),
@@ -167,7 +167,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 6,
-          name: "Cable or band woodchop",
+          name: "Cable woodchop",
           sets: 3,
           reps: "8 / side",
           loadText: effort("2-4", "Hips turn, spine stays quiet."),
@@ -176,7 +176,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 7,
-          name: "Cable or band Pallof press",
+          name: "Cable Pallof press",
           sets: 3,
           reps: "10 / side",
           loadText: effort("2-4", "Resist the twist."),
@@ -219,12 +219,12 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 3,
-          name: "Chin-up, band-assist, or lat pulldown",
+          name: "Chin-up",
           sets: 4,
           reps: "5–8",
           loadText: effort("1-3", "Full hang, control the lower."),
           restSeconds: 90,
-          notes: "No bar? Slow inverted row or a heavy pulldown. Stop when the chin stops clearing.",
+          notes: "Full hang if you have a bar. Swap for a band-assisted chin-up, lat pulldown, or inverted row when you need one. Stop when the chin stops clearing.",
         }),
         liftExercise({
           sortOrder: 4,
@@ -237,7 +237,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 5,
-          name: "Band pull-apart or face pull",
+          name: "Face pull",
           sets: 3,
           reps: "15",
           loadText: effort("2-4", "Shoulder blades meet."),
@@ -327,7 +327,7 @@ export function demoStrengthDays() {
       exercises: [
         liftExercise({
           sortOrder: 1,
-          name: "Kettlebell swing or hip hinge",
+          name: "Kettlebell swing",
           sets: 5,
           reps: "8",
           loadText: effort("3-5", "Snap the hips. Do not squat the bell."),
@@ -407,7 +407,7 @@ export function demoStrengthDays() {
         ...FRIDAY_GPP_NAMES.map((name, index) => daruProgramExercise(name, index + 1)),
         liftExercise({
           sortOrder: FRIDAY_GPP_NAMES.length + 1,
-          name: "Lateral bound or side step-over",
+          name: "Lateral bound",
           sets: 3,
           reps: "6 / side",
           loadText: effort("3-5", "Cover ground. Stick the landing."),
@@ -416,7 +416,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: FRIDAY_GPP_NAMES.length + 2,
-          name: "Cable or band Pallof press",
+          name: "Cable Pallof press",
           sets: 3,
           reps: "8 / side",
           loadText: effort("2-4", "Resist the twist."),
@@ -432,7 +432,7 @@ export function demoStrengthDays() {
       exercises: [
         liftExercise({
           sortOrder: 1,
-          name: "Squat jump or box step-up",
+          name: "Squat jump",
           sets: 4,
           reps: "5",
           loadText: effort("3-5", "Same jump, sharper landing than Block A."),
@@ -469,7 +469,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 6,
-          name: "Cable or band woodchop",
+          name: "Cable woodchop",
           sets: 3,
           reps: "6 / side",
           loadText: effort("2-4", "Slower than Block A. Own the turn."),
@@ -478,7 +478,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 7,
-          name: "Lateral bound or side step-over",
+          name: "Lateral bound",
           sets: 3,
           reps: "5 / side",
           loadText: effort("3-5", "Stick each landing."),
@@ -521,7 +521,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 3,
-          name: "Chin-up, band-assist, or lat pulldown",
+          name: "Chin-up",
           sets: 4,
           reps: "4–6",
           loadText: effort("0-2", "Fewer reps, more load than Block A."),
@@ -539,7 +539,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 5,
-          name: "Band pull-apart or face pull",
+          name: "Face pull",
           sets: 3,
           reps: "15",
           loadText: effort("2-4", "One-second squeeze."),
@@ -629,7 +629,7 @@ export function demoStrengthDays() {
       exercises: [
         liftExercise({
           sortOrder: 1,
-          name: "Kettlebell swing or hip hinge",
+          name: "Kettlebell swing",
           sets: 5,
           reps: "8",
           loadText: effort("3-5", "Heavier bell. Still crisp."),
@@ -718,7 +718,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: FRIDAY_GPP_NAMES.length + 2,
-          name: "Cable or band Pallof press",
+          name: "Cable Pallof press",
           sets: 3,
           reps: "8 / side",
           loadText: effort("2-4", "Resist the twist."),
@@ -734,7 +734,7 @@ export function demoStrengthDays() {
       exercises: [
         liftExercise({
           sortOrder: 1,
-          name: "Squat jump or box step-up",
+          name: "Squat jump",
           sets: 3,
           reps: "5",
           loadText: effort("3-5", "Shorter primer. Save the legs for the lunge."),
@@ -771,7 +771,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 6,
-          name: "Cable or band Pallof press",
+          name: "Cable Pallof press",
           sets: 3,
           reps: "8 / side",
           loadText: effort("2-4", "Longer hold at the finish than Block A."),
@@ -823,7 +823,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 3,
-          name: "Chin-up, band-assist, or lat pulldown",
+          name: "Chin-up",
           sets: 4,
           reps: "6–8",
           loadText: effort("1-3", "Strict range, not a heavier triple."),
@@ -841,7 +841,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: 5,
-          name: "Band pull-apart or face pull",
+          name: "Face pull",
           sets: 4,
           reps: "12",
           loadText: effort("2-4", "Extra set versus Block A."),
@@ -923,7 +923,7 @@ export function demoStrengthDays() {
       exercises: [
         liftExercise({
           sortOrder: 1,
-          name: "Kettlebell swing or hip hinge",
+          name: "Kettlebell swing",
           sets: 4,
           reps: "12",
           loadText: effort("3-5", "More reps than Block B. Hips still snap."),
@@ -1003,7 +1003,7 @@ export function demoStrengthDays() {
         ...FRIDAY_GPP_NAMES.map((name, index) => daruProgramExercise(name, index + 1)),
         liftExercise({
           sortOrder: FRIDAY_GPP_NAMES.length + 1,
-          name: "Jump rope or easy bike intervals",
+          name: "Jump rope",
           sets: 6,
           reps: "30 sec on / 30 sec easy",
           loadText: "Smooth — no lbs",
@@ -1012,7 +1012,7 @@ export function demoStrengthDays() {
         }),
         liftExercise({
           sortOrder: FRIDAY_GPP_NAMES.length + 2,
-          name: "Cable or band Pallof press",
+          name: "Cable Pallof press",
           sets: 3,
           reps: "8 / side",
           loadText: effort("2-4", "Resist the twist."),

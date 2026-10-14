@@ -17,6 +17,7 @@ import {
 } from "@/lib/bike-sessions";
 import { floorSessionForDay } from "@/lib/bodyweight-plan";
 import { daruExerciseForName } from "@/lib/daru-exercises";
+import { canonicalExerciseName } from "@/lib/exercise-library";
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
@@ -162,6 +163,11 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     reps: "6 / leg",
     loadText: "2-4 RIR · Heavy dumbbells — knee tracks over the toes",
   },
+  "Squat jump": {
+    sets: 4,
+    reps: "6",
+    loadText: "3-5 RIR · Crisp landings",
+  },
   "Squat jump or box step-up": {
     sets: 4,
     reps: "6",
@@ -193,6 +199,11 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     reps: "6–8",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy, lockout clean",
   },
+  "Face pull": {
+    sets: 4,
+    reps: "15",
+    loadText: "2-4 RIR · Strong squeeze",
+  },
   "Band pull-apart or face pull": {
     sets: 4,
     reps: "15",
@@ -204,20 +215,41 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     loadText: "2-3 RIR · Heavy — walk tall",
     restSeconds: 45,
   },
+  "Kettlebell swing": {
+    sets: 5,
+    reps: "12",
+    loadText: "3-5 RIR · Hard, crisp snaps",
+  },
   "Kettlebell swing or hip hinge": {
     sets: 5,
     reps: "12",
     loadText: "3-5 RIR · Hard, crisp snaps",
+  },
+  "Chin-up": {
+    sets: 4,
+    reps: "6–10",
+    loadText: "1-3 RIR · Add load if 8+ are easy",
   },
   "Chin-up, band-assist, or lat pulldown": {
     sets: 4,
     reps: "6–10",
     loadText: "1-3 RIR · Add load if 8+ are easy",
   },
+  "Lateral bound": {
+    sets: 4,
+    reps: "6 / side",
+    loadText: "3-5 RIR · Cover more ground",
+  },
   "Lateral bound or side step-over": {
     sets: 4,
     reps: "6 / side",
     loadText: "3-5 RIR · Cover more ground",
+  },
+  "Jump rope": {
+    sets: 10,
+    reps: "25 sec on / 35 sec easy",
+    loadText: "Hard but repeatable",
+    restSeconds: 0,
   },
   "Jump rope or easy bike intervals": {
     sets: 10,
@@ -279,6 +311,10 @@ export function scaleExercise(
     weightAccess?: WeightAccess;
   },
 ): ScaleableExercise {
+  const canonical = canonicalExerciseName(exercise.name);
+  if (canonical !== exercise.name) {
+    exercise = withForm(canonical, { ...exercise, name: canonical });
+  }
   const mode = resolveLogMode(exercise);
   const slug = input.programSlug ?? "";
   const dayNumber = input.dayNumber ?? 1;
