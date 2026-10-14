@@ -5,6 +5,8 @@ import { BadgeUnlockOverlay } from "@/components/progress/BadgeUnlockOverlay";
 import { requireOnboardedUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { formatGraceDate } from "@/lib/gymdesk/recompute";
+import { needsCoachChoicePrompt, resolveAiCoach } from "@/lib/coaches";
+import { CoachChoicePrompt } from "@/components/coach/CoachChoicePrompt";
 
 export default async function MemberLayout({
   children,
@@ -21,6 +23,7 @@ export default async function MemberLayout({
     Boolean(profile?.gymMembershipVerified) &&
     Boolean(graceUntil) &&
     graceUntil!.getTime() > nowMs;
+  const coach = resolveAiCoach(profile?.aiCoachId);
 
   return (
     <>
@@ -29,9 +32,12 @@ export default async function MemberLayout({
         role={user.role}
         timeZone={profile?.timeZone}
         graceEndsOn={showGrace && graceUntil ? formatGraceDate(graceUntil) : null}
+        coachName={coach.name}
+        coachThumb={coach.thumb}
       >
         {children}
       </MemberFrame>
+      {needsCoachChoicePrompt(profile) ? <CoachChoicePrompt /> : null}
       <Suspense fallback={null}>
         <Celebration />
       </Suspense>

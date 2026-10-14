@@ -44,6 +44,8 @@ export async function completeOnboardingAction(
       trainingLimitations: String(formData.get("trainingLimitations") ?? ""),
       foodPreferences: String(formData.get("foodPreferences") ?? ""),
       allergies: String(formData.get("allergies") ?? ""),
+      aiCoachId: String(formData.get("aiCoachId") ?? ""),
+      coachingStyle: String(formData.get("coachingStyle") ?? ""),
     });
   } catch (error) {
     return { error: publicErrorMessage(error) };

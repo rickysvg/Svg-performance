@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { completeOnboardingAction, type OnboardingActionState } from "@/app/actions/onboarding";
+import { CoachPicker } from "@/components/coach/CoachPicker";
 import { StatusBanner } from "@/components/StatusBanner";
 import {
   EQUIPMENT_OPTIONS,
@@ -17,20 +18,44 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
     completeOnboardingAction,
     {} as OnboardingActionState,
   );
+  const [step, setStep] = useState(1);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function goToCoach() {
+    const form = formRef.current;
+    if (!form) return;
+    const fields = form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "[data-intake-step='1'] input, [data-intake-step='1'] select, [data-intake-step='1'] textarea",
+    );
+    for (const field of fields) {
+      if (!field.checkValidity()) {
+        field.reportValidity();
+        return;
+      }
+    }
+    setStep(2);
+  }
 
   return (
-    <form action={action} className="space-y-6">
+    <form ref={formRef} action={action} className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted">Intake · 2 sections</p>
+        <p className="text-xs uppercase tracking-wide text-muted">
+          Intake · step {step} of 2
+        </p>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">
-          <div className="h-full w-full rounded-full bg-accent/70" />
+          <div
+            className={`h-full rounded-full bg-accent/70 ${step === 1 ? "w-1/2" : "w-full"}`}
+          />
         </div>
         <p className="mt-2 text-xs text-muted">
-          Required first. Next you choose the free plan or a short Performance trial.
+          {step === 1
+            ? "Required first. Next you pick your SVG Coach."
+            : "Pick a face and a style. You can change both later in Profile."}
         </p>
       </div>
       <StatusBanner error={state.error} />
 
+      <div data-intake-step="1" hidden={step !== 1} className="space-y-6">
       <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
         <h2>About you</h2>
         <label className="block">
@@ -190,14 +215,42 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
           </span>
         </label>
       </section>
+      </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
-      >
-        {pending ? "Saving…" : "Save and continue"}
-      </button>
+      <div data-intake-step="2" hidden={step !== 2} className="space-y-6">
+        <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
+          <h2>Your coach</h2>
+          <CoachPicker
+            coachId={profile.aiCoachId}
+            coachingStyle={profile.coachingStyle}
+            idPrefix="onboarding-coach"
+          />
+        </section>
+        <button
+          type="button"
+          onClick={() => setStep(1)}
+          className="touch-target w-full rounded-full border border-line font-semibold"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          disabled={pending}
+          className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
+        >
+          {pending ? "Saving…" : "Save and continue"}
+        </button>
+      </div>
+
+      {step === 1 ? (
+        <button
+          type="button"
+          onClick={goToCoach}
+          className="touch-target w-full rounded-full bg-accent text-black"
+        >
+          Next: pick your coach
+        </button>
+      ) : null}
     </form>
   );
 }

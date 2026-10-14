@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
+import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { publicErrorMessage } from "@/lib/errors";
 import { askExerciseNoteForUser, upsertExerciseNoteForUser } from "@/lib/exercise-notes";
 
@@ -64,6 +65,8 @@ export async function askExerciseNoteAction(
       plannedLine: String(formData.get("plannedLine") ?? ""),
       experienceLevel: profile?.experienceLevel,
       coachingTone: profile?.coachingTone,
+      coachingStyle: resolveCoachingStyle(profile?.coachingStyle).value,
+      coachName: resolveAiCoach(profile?.aiCoachId).name,
     });
     revalidateTrain(programDayId, workoutId);
     return {
