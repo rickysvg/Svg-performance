@@ -17,15 +17,36 @@ export async function getLatestSubscription(userId: string) {
   });
 }
 
-export async function hasWebhookGrantedAccess(userId: string) {
-  const subscription = await getLatestSubscription(userId);
-  if (subscription?.status !== "active") {
+export type AccessSubscription = {
+  status: string;
+  source?: string | null;
+  currentPeriodEnd?: Date | null;
+};
+
+/**
+ * Active rows grant access until currentPeriodEnd.
+ * Admin comps (source admin, no end date) stay open.
+ * incomplete, past_due, and canceled do not grant access.
+ */
+export function subscriptionGrantsAccess(
+  subscription: AccessSubscription | null | undefined,
+  now = new Date(),
+) {
+  if (!subscription || subscription.status !== "active") {
     return false;
   }
-  if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) {
+  if (subscription.source === "admin" && !subscription.currentPeriodEnd) {
+    return true;
+  }
+  if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < now) {
     return false;
   }
   return true;
+}
+
+export async function hasWebhookGrantedAccess(userId: string) {
+  const subscription = await getLatestSubscription(userId);
+  return subscriptionGrantsAccess(subscription);
 }
 
 /**
@@ -41,8 +62,8 @@ export async function canUseMemberTools(userId: string): Promise<{
 }> {
   const subscription = await getLatestSubscription(userId);
   if (
-    subscription?.status === "active" &&
-    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) &&
+    subscription &&
+    subscriptionGrantsAccess(subscription) &&
     planHasFeature(normalizePlanId(subscription.plan), "nutrition")
   ) {
     return { allowed: true, reason: "subscribed" };

@@ -4,10 +4,16 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { assertCanCheckoutPlan, isPlanId } from "@/lib/billing";
-import { createBnplCheckoutSession, getStripe } from "@/lib/stripe";
+import {
+  billingReturnUrls,
+  createBillingPortalSession,
+  createBnplCheckoutSession,
+  getStripe,
+} from "@/lib/stripe";
 import { AppError } from "@/lib/errors";
 import { publicErrorMessage } from "@/lib/errors";
 import { joinWaitlist } from "@/lib/waitlist";
+import { prisma } from "@/lib/prisma";
 
 export type BillingActionState = { error?: string; success?: string };
 
@@ -26,18 +32,60 @@ export async function startCheckoutAction(
     if (!stripe) {
       throw new AppError(
         "BILLING",
-        "Stripe TEST is not configured. No card or Affirm/Klarna charge will be created.",
+        "Stripe is not configured. No card or Affirm/Klarna charge will be created.",
       );
     }
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const existingCustomer = await prisma.subscription.findFirst({
+      where: { userId: user.id, stripeCustomerId: { not: "" } },
+      orderBy: { updatedAt: "desc" },
+      select: { stripeCustomerId: true },
+    });
+    const urls = billingReturnUrls();
     const session = await createBnplCheckoutSession(stripe, {
       userId: user.id,
       plan: planRaw,
-      successUrl: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${appUrl}/billing/cancel`,
+      successUrl: urls.successUrl,
+      cancelUrl: urls.cancelUrl,
+      customerId: existingCustomer?.stripeCustomerId || undefined,
     });
     if (!session.url) {
       throw new AppError("BILLING", "Stripe did not return a checkout URL.");
+    }
+    redirect(session.url);
+  } catch (error) {
+    if (error && typeof error === "object" && "digest" in error) {
+      throw error;
+    }
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function openBillingPortalAction(
+  _prev: BillingActionState,
+  _formData: FormData,
+): Promise<BillingActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const stripe = getStripe();
+    if (!stripe) {
+      throw new AppError("BILLING", "Stripe is not configured.");
+    }
+    const row = await prisma.subscription.findFirst({
+      where: { userId: user.id, stripeCustomerId: { not: "" } },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (!row?.stripeCustomerId) {
+      throw new AppError(
+        "BILLING",
+        "No Stripe customer is on file yet. Checkout first, then you can manage billing.",
+      );
+    }
+    const session = await createBillingPortalSession(stripe, {
+      customerId: row.stripeCustomerId,
+      returnUrl: billingReturnUrls().portalReturnUrl,
+    });
+    if (!session.url) {
+      throw new AppError("BILLING", "Stripe did not return a billing portal URL.");
     }
     redirect(session.url);
   } catch (error) {

@@ -41,10 +41,14 @@ Written for later agents and for Ricky. Short reasons, not a novel.
 - Draft catalog lives on `/pricing` as three sections (App Plans, Online Coaching, VIP Experiences) with a Monthly / Prepay toggle. Academy member price is the perk line (`Academy member price $19/mo (normally $29)`). Buy buttons stay **Coming soon**. $19 / $29 remain the SVG Performance monthly gym / nonmember pair.
 - Checkout is created server-side. Access becomes `subscription.status=active` only from `applyStripeEvent` after a signed webhook. The `/billing/success` page never grants access.
 - Duplicate Stripe event ids are stored in `StripeEventLog` and skipped.
-- Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `invoice.paid` is treated as renewal. `currentPeriodEnd` in the past is treated as expired.
-- If Stripe TEST keys are missing, checkout stays disabled and nobody is faked as paid (including Affirm/Klarna). Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
+- Failed payment → `past_due`. Cancel / unpaid / incomplete_expired → not granted. `incomplete` does not grant access. `invoice.paid` renews and stores `priceId` / `currentPeriodEnd`. `currentPeriodEnd` in the past is treated as expired. Admin comps (`source=admin`, null period end) stay open.
+- Invoice events often have no `userId` metadata. The handler resolves the member from the subscription id or customer id on the Subscription row, or by loading the subscription’s metadata. If nobody matches, the event is logged and ignored with HTTP 200 so Stripe does not retry forever.
+- An unverified member who pays a gym price is not a 400. The webhook logs it, records the public (non-gym) plan, and sets `source=gym_unverified` for admin review.
+- VIP and Platinum are one-time Checkout payments. App access lasts one month (`currentPeriodEnd = now + 1 month`), not forever.
+- Members with a Stripe customer id can open the Customer portal from `/account/billing` (Manage billing) to cancel or update a card. Success, cancel, and portal return URLs use `APP_URL`.
+- If Stripe keys are missing, checkout stays disabled and nobody is faked as paid (including Affirm/Klarna). Training (M1) still works. Nutrition / Learn / Coach stay open in this preview-without-keys mode.
 - If keys are present, Nutrition / SVG Coach require a webhook-confirmed **Performance+** plan. Learn stays open on Member Access as **beginner-only**. Training / progress / shop stay open.
-- Live `sk_live_` secrets are rejected.
+- `sk_test_` and `sk_live_` secret keys are both accepted. Admin shows a TEST or LIVE banner. Do not commit either key.
 
 ## Milestone 2
 

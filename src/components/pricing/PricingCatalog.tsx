@@ -1,7 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { WaitlistButton } from "@/components/billing/WaitlistButton";
+import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import {
   academyPerkLine,
   appOffersForView,
@@ -12,7 +14,13 @@ import {
   type OfferCard,
   type PricingView,
 } from "@/lib/pricing";
-import { PLAN_CATALOG, type CatalogPlan, type CatalogPlanId } from "@/lib/plans";
+import {
+  checkoutSkuForOffer,
+  PLAN_CATALOG,
+  type CatalogPlan,
+  type CatalogPlanId,
+  type CheckoutSkuId,
+} from "@/lib/plans";
 
 type SeatInfo = { id: string; seats: number; cap: number; atCap: boolean };
 
@@ -64,6 +72,7 @@ function PlanCard({
   verified,
   seat,
   userLoggedIn,
+  checkoutOpen,
   extra,
 }: {
   plan: CatalogPlan;
@@ -71,9 +80,16 @@ function PlanCard({
   verified: boolean;
   seat?: SeatInfo;
   userLoggedIn: boolean;
+  checkoutOpen: boolean;
   extra?: ReactNode;
 }) {
   const atCap = Boolean(seat?.atCap);
+  const checkoutSku = checkoutOpen
+    ? offers.reduce<CheckoutSkuId | null>(
+        (found, offer) => found ?? checkoutSkuForOffer(offer.id, verified),
+        null,
+      )
+    : null;
   return (
     <article
       data-plan-card={plan.id}
@@ -118,6 +134,15 @@ function PlanCard({
           ) : (
             <p className="text-sm text-muted">Log in to join the waitlist.</p>
           )
+        ) : checkoutSku && userLoggedIn ? (
+          <CheckoutButton plan={checkoutSku} label="Continue to checkout" />
+        ) : checkoutSku ? (
+          <Link
+            href="/login"
+            className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent text-black"
+          >
+            Log in to buy
+          </Link>
         ) : (
           <ComingSoonButton />
         )}
@@ -170,11 +195,13 @@ export function PricingCatalog({
   verified,
   foundingOpen,
   userLoggedIn,
+  checkoutOpen = false,
   seats,
 }: {
   verified: boolean;
   foundingOpen: boolean;
   userLoggedIn: boolean;
+  checkoutOpen?: boolean;
   seats: SeatInfo[];
 }) {
   const [view, setView] = useState<PricingView>("monthly");
@@ -215,7 +242,10 @@ export function PricingCatalog({
         <p className="text-sm text-muted">
           Self-guided tools. Member Access is free for verified academy members and a free
           preview for everyone else. Fuel and SVG Coach unlock at Performance. Verified
-          members get a 14-day no-card trial. Others get 7 days. Paid billing is not live.
+          members get a 14-day no-card trial. Others get 7 days.{" "}
+          {checkoutOpen
+            ? "Monthly checkout is open. Prepaid prices stay coming soon."
+            : "Paid billing is not live."}
         </p>
         <div className="grid gap-4">
           <PlanCard
@@ -223,6 +253,7 @@ export function PricingCatalog({
             offers={[]}
             verified={verified}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
             extra={
               <div className="mt-4">
                 <p className="font-display stat-display text-2xl text-black">
@@ -241,12 +272,14 @@ export function PricingCatalog({
             offers={appOffers.performance}
             verified={verified}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
           />
           <PlanCard
             plan={PLAN_CATALOG.fighter_conditioning}
             offers={appOffers.fighter_conditioning}
             verified={verified}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
           />
         </div>
       </section>
@@ -267,6 +300,7 @@ export function PricingCatalog({
             offers={coachingOffers.fighter_development}
             verified={verified}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
           />
           <PlanCard
             plan={PLAN_CATALOG.elite}
@@ -274,6 +308,7 @@ export function PricingCatalog({
             verified={verified}
             seat={seatFor("elite")}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
           />
         </div>
       </section>
@@ -298,6 +333,7 @@ export function PricingCatalog({
             verified={verified}
             seat={seatFor("vip")}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
           />
           <PlanCard
             plan={PLAN_CATALOG.platinum}
@@ -312,6 +348,7 @@ export function PricingCatalog({
             verified={verified}
             seat={seatFor("platinum")}
             userLoggedIn={userLoggedIn}
+            checkoutOpen={checkoutOpen}
           />
         </div>
       </section>

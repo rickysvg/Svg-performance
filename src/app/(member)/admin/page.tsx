@@ -5,6 +5,7 @@ import { getPilotDashboardCounts } from "@/lib/pilot";
 import { AdminVerifyForm } from "@/components/admin/AdminVerifyForm";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
 import { normalizePlanId, PLAN_CATALOG } from "@/lib/plans";
+import { StripeModeBanner } from "@/components/admin/StripeModeBanner";
 
 export default async function AdminPage() {
   await requireAdmin();
@@ -40,6 +41,8 @@ export default async function AdminPage() {
           </div>
         ))}
       </section>
+
+      <StripeModeBanner />
 
       <nav className="flex flex-wrap gap-x-3 gap-y-2 text-sm">
         <Link href="/admin/invites" className="text-accent underline">
@@ -83,7 +86,11 @@ export default async function AdminPage() {
               {user.profile?.claimsGymMembership ? "yes" : "no"} · Verified:{" "}
               {user.profile?.gymMembershipVerified ? "yes" : "no"} · Plan:{" "}
               {user.subscriptions[0]
-                ? `${PLAN_CATALOG[normalizePlanId(user.subscriptions[0].plan)].label} / ${user.subscriptions[0].status}`
+                ? `${PLAN_CATALOG[normalizePlanId(user.subscriptions[0].plan)].label} / ${user.subscriptions[0].status}${
+                    user.subscriptions[0].source === "gym_unverified"
+                      ? " · gym price needs review"
+                      : ""
+                  }`
                 : "none"}
             </p>
             <AdminVerifyForm
