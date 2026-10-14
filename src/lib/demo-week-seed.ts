@@ -21,6 +21,7 @@ import {
   mesoBlockLabel,
   type MesoBlock,
 } from "@/lib/mesocycle";
+import { formatStoredTags, tagsForExercise } from "@/lib/exercise-tags";
 import { effortLoadText } from "@/lib/rir";
 
 const BAG_OR_SHADOW =
@@ -53,6 +54,7 @@ function bagRoundBlock(input: { name: string; notes: string; sortOrder: number }
     loadText: "Round clock — fight pace you can repeat",
     restSeconds: 60,
     notes: `${input.notes} ${BAG_OR_SHADOW}`,
+    tags: formatStoredTags(tagsForExercise(input.name)),
     ...formVideoFieldsFor(input.name),
   };
 }
@@ -72,6 +74,7 @@ function liftExercise(input: {
 }) {
   return {
     ...input,
+    tags: formatStoredTags(tagsForExercise(input.name)),
     ...formVideoFieldsFor(input.name),
   };
 }
@@ -86,6 +89,7 @@ function shadowRounds(emptyNotes: string, weightedNotes: string) {
       loadText: "Empty hands — technical pace",
       restSeconds: 30,
       notes: emptyNotes,
+      tags: formatStoredTags(tagsForExercise(SHADOW_EMPTY_NAME)),
       ...formVideoFieldsFor(SHADOW_EMPTY_NAME),
     },
     {
@@ -96,6 +100,7 @@ function shadowRounds(emptyNotes: string, weightedNotes: string) {
       loadText: "1–3 lb hand weights",
       restSeconds: 45,
       notes: `${weightedNotes} Log seconds and lbs.`,
+      tags: formatStoredTags(tagsForExercise(SHADOW_WEIGHTED_NAME)),
       ...formVideoFieldsFor(SHADOW_WEIGHTED_NAME),
     },
   ];
@@ -1039,6 +1044,7 @@ function bagSkillDay(block: MesoBlock, weekday: BagWeekday) {
             loadText: technique.loadText,
             restSeconds: 45,
             notes: `${technique.notes} ${BAG_OR_SHADOW}`,
+            tags: formatStoredTags(tagsForExercise(technique.name)),
             ...formVideoFieldsFor(technique.name),
           },
         ]
@@ -1059,6 +1065,7 @@ function bagSkillDay(block: MesoBlock, weekday: BagWeekday) {
         weekday === "Saturday"
           ? "Walk it down. Optional Saturday — skip if you need the rest."
           : "Hands up, loose shoulders. Soft technical shadow — no power.",
+      tags: formatStoredTags(tagsForExercise(SHADOW_COOL_NAME)),
       ...formVideoFieldsFor(SHADOW_COOL_NAME),
     },
   ];

@@ -48,6 +48,8 @@ export type ScaleableExercise = {
   restSeconds: number;
   logMode?: string;
   notes?: string;
+  /** Comma-separated training tags from the plan, when the row has them. */
+  tags?: string;
   formVideoUrl?: string;
   formVideoPending?: boolean;
 };
