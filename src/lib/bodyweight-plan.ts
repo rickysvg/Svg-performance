@@ -13,6 +13,7 @@ import {
   mesoBlockLabel,
   type MesoBlock,
 } from "@/lib/mesocycle";
+import { formatStoredTags, tagsForExercise } from "@/lib/exercise-tags";
 import { effortLoadText } from "@/lib/rir";
 
 export type FloorRole = "lower" | "pull" | "push" | "posterior" | "gpp" | "bike";
@@ -47,6 +48,7 @@ function move(band: ScaleBand, input: Move): ScaleableExercise {
     name: input.name,
     sets: setsFor(band, input.sets),
     reps: input.reps,
+    tags: formatStoredTags(tagsForExercise(input.name)),
     loadText: input.rir ? effortLoadText(input.rir, input.cue) : input.cue,
     restSeconds: input.restSeconds,
     logMode: timed ? "timed" : "reps_only",
