@@ -16,6 +16,11 @@ describe("Logger layout", () => {
     expect(source).not.toContain("WatchFormInline");
     expect(source).toContain("ExerciseThumb");
     expect(source).toContain("data-logger-progress");
+    expect(source).toContain("data-logger-chrome");
+    expect(source).toContain("data-start-rest");
+    expect(source).toContain("env(safe-area-inset-top)");
+    expect(source).toContain("data-logger-save");
+    expect(source).not.toContain("sticky bottom-0");
     expect(source).toContain("data-rest-countdown");
     expect(source).toContain("data-rest-skip");
     expect(source).toContain("data-rest-plus");

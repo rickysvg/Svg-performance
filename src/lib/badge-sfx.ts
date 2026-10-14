@@ -1,5 +1,12 @@
 import type { BadgeCategoryId } from "@/lib/badges";
 import { SFX_BY_CATEGORY } from "@/lib/badge-art";
+import {
+  holdMediaRoute,
+  playMediaSrc,
+  primeMediaOutput,
+  sharedAudioContext,
+  unlockMediaSrc,
+} from "@/lib/media-output";
 
 export const SOUND_FX_STORAGE_KEY = "svg_sound_fx";
 
@@ -37,17 +44,12 @@ export type UnlockSfxName = keyof typeof UNLOCK_SFX;
 /** Ricky picked studio1_boom — drives unlock and the short win sting. */
 export const ACTIVE_UNLOCK_SFX: UnlockSfxName = "studio1_boom";
 
-let audioCtx: AudioContext | null = null;
 const buffers = new Map<string, AudioBuffer>();
+let finishRelease: (() => void) | null = null;
+let finishReleaseTimer = 0;
 
 function ctx() {
-  if (typeof window === "undefined") return null;
-  const Ctor =
-    window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return null;
-  if (!audioCtx) audioCtx = new Ctor();
-  return audioCtx;
+  return sharedAudioContext();
 }
 
 export function soundFxEnabled() {
@@ -71,23 +73,27 @@ export function unlockSfxStartDelayMs(reduce: boolean, name: UnlockSfxName = ACT
   return Math.max(0, UNLOCK_HIT_MS - hit);
 }
 
-/** Call from the SAVE tap so the browser allows later playback. */
-export function primeUnlockAudio() {
-  const context = ctx();
-  if (!context) return;
-  if (context.state === "suspended") {
-    void context.resume();
+/** Drop the finish-route hold after the sting has had time to play. */
+export function releaseFinishRoute() {
+  if (finishReleaseTimer) {
+    window.clearTimeout(finishReleaseTimer);
+    finishReleaseTimer = 0;
   }
-  try {
-    const buffer = context.createBuffer(1, 1, context.sampleRate);
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.connect(context.destination);
-    source.start(0);
-  } catch {
-    /* ignore */
+  const release = finishRelease;
+  finishRelease = null;
+  release?.();
+}
+
+/** Call from the SAVE tap so the browser allows later playback through headphones. */
+export function primeUnlockAudio() {
+  primeMediaOutput();
+  if (soundFxEnabled() && !finishRelease) {
+    finishRelease = holdMediaRoute();
+    finishReleaseTimer = window.setTimeout(releaseFinishRoute, 20000);
   }
   const pair = activePair();
+  unlockMediaSrc(pair.win);
+  unlockMediaSrc(pair.unlock);
   void loadBuffer(pair.unlock);
   void loadBuffer(pair.win);
   for (const row of Object.values(UNLOCK_SFX)) {
@@ -101,10 +107,21 @@ export function primeUnlockAudio() {
 
 async function playBuffer(src: string, gainValue = 0.95) {
   if (!soundFxEnabled()) return;
+  primeMediaOutput();
+  try {
+    await playMediaSrc(src, Math.min(1, gainValue));
+    return;
+  } catch {
+    /* File playback was blocked. Fall back to the already-running context. */
+  }
   const context = ctx();
   if (!context) return;
   if (context.state === "suspended") {
-    await context.resume();
+    try {
+      await context.resume();
+    } catch {
+      return;
+    }
   }
   const buffer = await loadBuffer(src);
   if (!buffer) return;
@@ -124,6 +141,10 @@ export function playUnlockSfx(name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
 
 /** Short per-workout win sting — same named option, under 1s. */
 export function playFinishSfx(name: UnlockSfxName = ACTIVE_UNLOCK_SFX) {
+  if (typeof window !== "undefined") {
+    if (finishReleaseTimer) window.clearTimeout(finishReleaseTimer);
+    finishReleaseTimer = window.setTimeout(() => releaseFinishRoute(), 2800);
+  }
   return playBuffer(activePair(name).win);
 }
 

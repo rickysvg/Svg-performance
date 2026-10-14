@@ -1,3 +1,6 @@
+import { soundFxEnabled } from "@/lib/badge-sfx";
+import { playEndCue, playWarningCue, primeMediaOutput, vibratePattern } from "@/lib/media-output";
+
 export type RestTimerState = {
   exerciseName: string;
   durationSeconds: number;
@@ -55,9 +58,8 @@ export function addRestSeconds(timer: RestTimerState, seconds: number): RestTime
 }
 
 /**
- * End-of-rest alarm. Square tones at a gym-floor level, plus a pulse pattern
- * long enough to feel in a pocket. Louder than a UI click so it cuts through
- * music from a phone speaker.
+ * Loudness spec for the end cue. Playback is a media-element clip so it follows
+ * Bluetooth headphones, not a fresh AudioContext on the handset speaker.
  */
 export const REST_ALARM = {
   gain: 0.32,
@@ -70,48 +72,37 @@ export const REST_ALARM = {
   ],
 } as const;
 
-let restAudio: AudioContext | null = null;
+export function clockNow() {
+  return Date.now();
+}
+
+export type RestCue = "warning" | "complete";
+
+/**
+ * One warning as the clock enters 3, then 2, then 1. Zero is the end cue.
+ * A jump that skips the last seconds still ends once, and does not stack beeps.
+ */
+export function restCueForTick(previous: number | null, next: number): RestCue | null {
+  if (previous != null && previous <= 0 && next <= 0) return null;
+  if (next <= 0 && (previous == null || previous > 0)) return "complete";
+  if (next >= 1 && next <= 3 && (previous == null || previous > next)) return "warning";
+  return null;
+}
 
 /** Call from the set-complete tap so the later alarm is allowed to play. */
 export function primeRestAudio() {
+  primeMediaOutput();
+}
+
+export function signalRestWarning() {
   if (typeof window === "undefined") return;
-  const Ctor =
-    window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return;
-  if (!restAudio) restAudio = new Ctor();
-  if (restAudio.state === "suspended") {
-    void restAudio.resume();
-  }
+  if (!soundFxEnabled()) return;
+  playWarningCue();
 }
 
 export function signalRestComplete() {
-  if (typeof navigator !== "undefined") {
-    try {
-      navigator.vibrate?.(REST_ALARM.vibrate);
-    } catch {
-      /* web vibration is optional */
-    }
-  }
   if (typeof window === "undefined") return;
-  try {
-    primeRestAudio();
-    const context = restAudio;
-    if (!context) return;
-    const now = context.currentTime;
-    for (const tone of REST_ALARM.tones) {
-      const osc = context.createOscillator();
-      const gain = context.createGain();
-      osc.type = "square";
-      osc.frequency.value = tone.frequency;
-      gain.gain.setValueAtTime(REST_ALARM.gain, now + tone.at);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + tone.at + tone.seconds);
-      osc.connect(gain);
-      gain.connect(context.destination);
-      osc.start(now + tone.at);
-      osc.stop(now + tone.at + tone.seconds + 0.02);
-    }
-  } catch {
-    /* alarm is best-effort on web */
-  }
+  vibratePattern([...REST_ALARM.vibrate]);
+  if (!soundFxEnabled()) return;
+  playEndCue();
 }
