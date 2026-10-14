@@ -77,9 +77,9 @@ export function coachTopicContext(topic?: string, art?: string) {
     const artLabel = isCoachArt(art) ? COACH_ART_LABELS[art] : "general striking / grappling";
     return [
       `Stay in the martial-art lane: ${artLabel}.`,
-      "Give one or two technical cues. Do not prescribe unsupervised sparring, live blasting, or a paid curriculum.",
+      "Teach the technique clearly. Follow the answer style for this question type. Do not prescribe unsupervised sparring, live blasting, or a paid curriculum.",
       "YouTube / Learn clips are external technique references — never claim they are SVG-produced film.",
-      "Send them to a coach on the floor for live eyes.",
+      "You may end with one line suggesting live reps with a coach. Never make that the whole answer.",
     ].join(" ");
   }
   if (topic === "conditioning") {

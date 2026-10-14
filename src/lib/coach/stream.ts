@@ -2,21 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { AppError, AuthError } from "@/lib/errors";
 import { canUseMemberTools } from "@/lib/access";
 import { detectSafetyRefusal } from "@/lib/coach/safety";
-import { safetyPreamble } from "@/lib/coach/safety";
-import { loadKnowledgeBase } from "@/lib/coach/knowledge";
-import {
-  COACH_PUBLIC_NAME,
-  coachLaneLabel,
-  coachTopicContext,
-} from "@/lib/coach/topics";
+import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import { timeZoneForUser } from "@/lib/profile";
 import { athleteLocalDayLine } from "@/lib/timezone";
+import { EMPTY_COACH_FALLBACK } from "@/lib/coach/offline";
+import { buildPlanContext } from "@/lib/coach/plan-context";
+import { classifyQuestion } from "@/lib/coach/router";
 import {
-  EMPTY_COACH_FALLBACK,
-  liveModelUnavailableReply,
-  offlineReply,
-} from "@/lib/coach/offline";
+  StreamAbortError,
+  buildCoachSystemPrompt,
+  buildOwnSummary,
+  coachMaxTokens,
+  coachThreadHistory,
+  streamCoachCompletion,
+} from "@/lib/coach/llm";
 import { coachLaneForExercise, upsertExerciseNoteForUser } from "@/lib/exercise-notes";
 import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
 import type { PublicUser } from "@/lib/auth";
@@ -25,6 +25,7 @@ import {
   STREAM_STOPPED_MARKER,
   type CoachStreamEvent,
   type CoachStreamRequest,
+  type FallbackReason,
 } from "@/lib/coach/stream-types";
 
 export {
@@ -35,12 +36,7 @@ export {
   type CoachStreamRequest,
 } from "@/lib/coach/stream-types";
 
-export class StreamAbortError extends Error {
-  constructor() {
-    super("aborted");
-    this.name = "StreamAbortError";
-  }
-}
+export { StreamAbortError } from "@/lib/coach/llm";
 
 function chunkDelayMs() {
   const raw = Number(process.env.COACH_STREAM_DELAY_MS ?? "12");
@@ -86,158 +82,74 @@ function encodeSse(event: CoachStreamEvent) {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
-function ownSummary(input: {
-  userId: string;
-  experienceLevel?: string;
-  coachingTone?: string;
-  topic?: string;
-  art?: string;
-  notepad?: boolean;
-  localDay?: string;
-}) {
-  return [
-    `Experience: ${input.experienceLevel || "unknown"}.`,
-    input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
-    coachLaneLabel(input.topic, input.art)
-      ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
-      : "",
-    input.localDay ?? "",
-    `Only this user id ${input.userId} may be discussed.`,
-    input.notepad
-      ? "This is a Train notepad question on one exercise. Stay practical."
-      : "",
-    "Do not invent a medical or calorie plan from any stored weight.",
-    "Do not invent SVG-produced videos.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
-async function* streamOpenAiTokens(
-  input: {
-    message: string;
-    experienceLevel: string;
-    coachingTone?: string;
-    ownSummary: string;
-    topic?: string;
-    art?: string;
-  },
-  signal?: AbortSignal,
-) {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
-    const fallback = offlineReply(
-      input.message,
-      input.experienceLevel,
-      input.coachingTone,
-      input.topic,
-      input.art,
-    );
-    yield* iterateTextChunks(fallback, { signal });
-    return { offline: true };
-  }
-
-  const system = [
-    safetyPreamble(),
-    coachTopicContext(input.topic, input.art),
-    "Approved DEMO knowledge:",
-    loadKnowledgeBase(),
-    "Member context (current user only):",
-    input.ownSummary,
-  ].join("\n\n");
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      temperature: 0.4,
-      stream: true,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: input.message },
-      ],
-    }),
-    signal,
-  }).catch((error: unknown) => {
-    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) {
-      throw new StreamAbortError();
-    }
-    return null;
-  });
-
-  if (!response || !response.ok || !response.body) {
-    const fallback = liveModelUnavailableReply(
-      input.message,
-      input.experienceLevel,
-      input.coachingTone,
-      input.topic,
-      input.art,
-    );
-    yield* iterateTextChunks(fallback, { signal });
-    return { offline: true };
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    if (signal?.aborted) {
-      await reader.cancel().catch(() => undefined);
-      throw new StreamAbortError();
-    }
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === "[DONE]") {
-        return { offline: false };
-      }
-      try {
-        const payload = JSON.parse(data) as {
-          choices?: { delta?: { content?: string } }[];
-        };
-        const delta = payload.choices?.[0]?.delta?.content;
-        if (delta) yield delta;
-      } catch {
-        // skip a broken SSE line
-      }
-    }
-  }
-  return { offline: false };
-}
-
 async function drainCoachTokens(
   input: {
     message: string;
     experienceLevel: string;
     coachingTone?: string;
-    ownSummary: string;
     topic?: string;
     art?: string;
+    notepad?: boolean;
+    userId: string;
+    history: { role: "user" | "assistant"; content: string }[];
+    localDay?: string;
   },
   signal: AbortSignal | undefined,
   onDelta: (text: string) => void,
 ) {
-  const generator = streamOpenAiTokens(input, signal);
+  const route = classifyQuestion(input.message, {
+    topic: input.topic,
+    art: input.art,
+    notepad: input.notepad,
+  });
+  const wantsPlan =
+    route.primary === "programming" || route.secondary.includes("programming");
+  const planContext = wantsPlan ? await buildPlanContext(input.userId, input.message) : "";
+  const system = buildCoachSystemPrompt({
+    topic: input.topic,
+    art: input.art,
+    route,
+    ownSummary: buildOwnSummary({
+      userId: input.userId,
+      experienceLevel: input.experienceLevel,
+      coachingTone: input.coachingTone,
+      topic: input.topic,
+      art: input.art,
+      notepad: input.notepad,
+      localDay: input.localDay,
+    }),
+    planContext,
+  });
+  const generator = streamCoachCompletion({
+    system,
+    history: input.history,
+    message: input.message,
+    signal,
+    maxTokens: coachMaxTokens(route),
+    userId: input.userId,
+    experienceLevel: input.experienceLevel,
+    coachingTone: input.coachingTone,
+    topic: input.topic,
+    art: input.art,
+  });
   let next = await generator.next();
-  let offline = !isOpenAiConfigured();
+  let live = "";
   while (!next.done) {
+    live += next.value;
     onDelta(next.value);
     next = await generator.next();
   }
-  if (next.value && typeof next.value === "object" && "offline" in next.value) {
-    offline = next.value.offline;
+  const result = next.value ?? { offline: !isOpenAiConfigured() };
+  if (result.offline) {
+    const text = result.fallbackText || live;
+    if (!live && text) {
+      for await (const chunk of iterateTextChunks(text, { signal })) {
+        onDelta(chunk);
+      }
+    }
+    return { offline: true, reason: result.reason, route };
   }
-  return { offline };
+  return { offline: false, reason: undefined, route };
 }
 
 function finalizeContent(received: string, cutoff: boolean) {
@@ -329,6 +241,7 @@ export async function runCoachChatStream(input: {
     };
   }
 
+  const history = coachThreadHistory(thread.messages);
   const draft = await prisma.chatMessage.create({
     data: {
       threadId: thread.id,
@@ -338,12 +251,14 @@ export async function runCoachChatStream(input: {
       offline: !isOpenAiConfigured(),
     },
   });
+  let fallbackReason: FallbackReason | undefined = draft.offline ? "no_key" : undefined;
   emit({
     type: "meta",
     threadId: thread.id,
     messageId: draft.id,
     offline: draft.offline,
     refused: false,
+    fallbackReason,
   });
 
   let received = "";
@@ -355,16 +270,11 @@ export async function runCoachChatStream(input: {
         message,
         experienceLevel: input.body.experienceLevel || "beginner",
         coachingTone: input.body.coachingTone,
-        ownSummary: ownSummary({
-          userId: user.id,
-          experienceLevel: input.body.experienceLevel,
-          coachingTone: input.body.coachingTone,
-          topic,
-          art,
-          localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(user.id)),
-        }),
         topic,
         art,
+        userId: user.id,
+        history,
+        localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(user.id)),
       },
       input.signal,
       (delta) => {
@@ -373,6 +283,7 @@ export async function runCoachChatStream(input: {
       },
     );
     offline = drained.offline;
+    fallbackReason = drained.reason;
   } catch (error) {
     if (error instanceof StreamAbortError || input.signal?.aborted) {
       cutoff = true;
@@ -405,6 +316,7 @@ export async function runCoachChatStream(input: {
     content: saved.content,
     offline: saved.offline,
     refused: false,
+    fallbackReason,
   });
   return {
     status: 200,
@@ -414,6 +326,7 @@ export async function runCoachChatStream(input: {
     offline: saved.offline,
     refused: false,
     cutoff,
+    fallbackReason,
   };
 }
 
@@ -495,11 +408,13 @@ export async function runCoachNoteStream(input: {
     };
   }
 
+  let fallbackReason: FallbackReason | undefined = isOpenAiConfigured() ? undefined : "no_key";
   emit({
     type: "meta",
     exerciseName: note.exerciseName,
     offline: !isOpenAiConfigured(),
     refused: false,
+    fallbackReason,
   });
 
   let received = "";
@@ -511,17 +426,12 @@ export async function runCoachNoteStream(input: {
         message,
         experienceLevel: input.body.experienceLevel || "beginner",
         coachingTone: input.body.coachingTone,
-        ownSummary: ownSummary({
-          userId: user.id,
-          experienceLevel: input.body.experienceLevel,
-          coachingTone: input.body.coachingTone,
-          topic: lane.topic,
-          art: lane.art,
-          notepad: true,
-          localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(user.id)),
-        }),
         topic: lane.topic,
         art: lane.art,
+        notepad: true,
+        userId: user.id,
+        history: [],
+        localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(user.id)),
       },
       input.signal,
       (delta) => {
@@ -530,6 +440,7 @@ export async function runCoachNoteStream(input: {
       },
     );
     offline = drained.offline;
+    fallbackReason = drained.reason;
   } catch (error) {
     if (error instanceof StreamAbortError || input.signal?.aborted) {
       cutoff = true;
@@ -565,8 +476,8 @@ export async function runCoachNoteStream(input: {
     },
     data: { aiReply: content, aiOffline: offline },
   });
-  emit({ type: "done", content, offline, refused: false });
-  return { status: 200, content, offline, refused: false, cutoff };
+  emit({ type: "done", content, offline, refused: false, fallbackReason });
+  return { status: 200, content, offline, refused: false, cutoff, fallbackReason };
 }
 
 export async function handleCoachStreamRequest(input: {

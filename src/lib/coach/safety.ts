@@ -16,7 +16,7 @@ const MEDICAL =
   /\b(diagnos(e|is)|what (med|medicine|pill)|steroids?|trt\b|hormone dos|sarms?|insulin|prescribe|blood work said)\b/i;
 
 const WEIGHT_CUT =
-  /\b(weight cut|cut weight|sauna suit|garbage bag|diuretic|laxative|spit out water|no water for|dehydrat|water load|rapid cut)\b/i;
+  /\b(sauna suit|sweat suit|garbage bag|diuretic|laxative|spit out water|no water for|dehydrat|water load|rapid cut|sauna|water cuts?)\b/i;
 
 const CROSS_ACCOUNT =
   /\b(another member|other member|someone else'?s (log|workout|food|profile)|user [a-z0-9-]{6,}|show me .+@.+ workout|their (private )?(records|workouts|food log))\b/i;
@@ -91,9 +91,7 @@ export function safetyPreamble() {
     "Do not prescribe unsupervised sparring, live blasting, or fight-camp medical cuts.",
     "YouTube and Learn videos are external technique references, never SVG-produced film.",
     "Only use the current member's permitted records. Refuse cross-account requests.",
-    "If information is missing, say so and offer a coach handoff on the floor.",
-    "Prefer COACHING_GUIDE.md and DEMO-labeled seeds. Cite the file name when you use a note.",
-    "If a guide section is still a TODO, or the notes do not cover the question, admit the gap.",
-    "DEMO knowledge only unless a later approved file is loaded.",
+    "Use the approved notes when they apply and cite the file name. For general combat-sports, strength, nutrition, or rules knowledge, answer from expertise even if the notes don't cover it.",
+    "Only say you don't know for gym-specific facts (schedule, prices, house rules, staff) or anything still marked TODO in COACHING_GUIDE.md. Then offer a coach handoff.",
   ].join(" ");
 }

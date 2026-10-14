@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { matchCoachIntent, offlineReply } from "@/lib/coach/offline";
+import { offlineReply } from "@/lib/coach/offline";
+import { classifyQuestion } from "@/lib/coach/router";
 
 const banned = /COACHING_GUIDE|DEMO-seeds|\.md\b|Topic:|demo mode|offline mode|API key|OPENAI/i;
 
@@ -11,7 +14,11 @@ describe("offline SVG Coach voice", () => {
       "",
       "mental",
     );
-    expect(matchCoachIntent("I skipped two classes. What should I do this week?")).toBe("missed");
+    const missed = classifyQuestion("I skipped two classes. What should I do this week?", {
+      topic: "mental",
+    });
+    expect(missed.primary).toBe("mindset");
+    expect(missed.signals).toContain("missed");
     expect(reply).toMatch(/Two missed classes doesn't erase your work/);
     expect(reply).toMatch(/punishment session/);
     expect(reply).toMatch(/next scheduled class/);
@@ -23,7 +30,7 @@ describe("offline SVG Coach voice", () => {
 
   it("answers a soreness question with recovery, not a miss or lift cue", () => {
     const question = "My legs are sore from yesterday. What should I do?";
-    expect(matchCoachIntent(question)).toBe("soreness");
+    expect(classifyQuestion(question, { topic: "conditioning" }).primary).toBe("programming");
     const reply = offlineReply(question, "beginner", "", "conditioning");
     expect(reply).toMatch(/Soreness after honest work is normal/);
     expect(reply).toMatch(/Sleep is part of the training/);
@@ -34,7 +41,7 @@ describe("offline SVG Coach voice", () => {
 
   it("answers a nerves question with mindset, not a miss or lift cue", () => {
     const question = "I get nerves the night before class.";
-    expect(matchCoachIntent(question)).toBe("nerves");
+    expect(classifyQuestion(question, { topic: "mental" }).primary).toBe("mindset");
     const reply = offlineReply(question, "beginner", "", "mental");
     expect(reply).toMatch(/Nerves mean you care/);
     expect(reply).toMatch(/Show up, do the work you planned/);
@@ -69,5 +76,101 @@ describe("offline SVG Coach voice", () => {
     expect(reply.match(/if you're new/gi) ?? []).toHaveLength(1);
     expect(reply).not.toMatch(banned);
     expect(reply).not.toMatch(/\bbouts?\b/i);
+  });
+});
+
+const GENERIC =
+  "Stay practical and do the next session you already have planned. If you need eyes on a movement, ask a coach on the floor. I will not guess gym-specific policy from here.";
+
+const OFFLINE_CASES: Array<{
+  message: string;
+  topic?: string;
+  art?: string;
+  marker: RegExp;
+}> = [
+  {
+    message: "How do I get off the cage when someone has double underhooks?",
+    topic: "martial_art",
+    art: "mma",
+    marker: /step|position|drill/i,
+  },
+  {
+    message: "Are 12-6 elbows legal now?",
+    topic: "martial_art",
+    art: "mma",
+    marker: /legal|illegal|foul/i,
+  },
+  {
+    message: "Is it legal to grab the fence to stop a takedown?",
+    topic: "martial_art",
+    art: "cagework",
+    marker: /commission|promotion/i,
+  },
+  {
+    message: "How heavy should my RDLs be this week at 2 RIR?",
+    topic: "conditioning",
+    marker: /RIR|lbs|sets?/i,
+  },
+  {
+    message: "What should I eat the night before a 7am session?",
+    topic: "conditioning",
+    marker: /protein|meal|hydrat/i,
+  },
+  {
+    message: "How far out should I start my weight cut?",
+    topic: "conditioning",
+    marker: /protein|meal|hydrat/i,
+  },
+  {
+    message: "I freeze up in sparring and stop throwing",
+    topic: "mental",
+    marker: /breath|routine|cue|plan/i,
+  },
+  {
+    message: "How do I build a game plan against a wrestler?",
+    topic: "martial_art",
+    art: "mma",
+    marker: /step|position|drill|breath|routine|cue|plan/i,
+  },
+  {
+    message: "My elbow hurts when I throw hooks",
+    topic: "martial_art",
+    art: "boxing",
+    marker: /stop|doctor|physio/i,
+  },
+];
+
+describe("offline answers by question type", () => {
+  it("never uses the canned generic line for a specific question", () => {
+    for (const row of OFFLINE_CASES) {
+      const reply = offlineReply(row.message, "beginner", "", row.topic, row.art);
+      expect(reply, row.message).not.toBe(GENERIC);
+      expect(reply, row.message).toMatch(row.marker);
+      expect(reply, row.message).not.toMatch(banned);
+    }
+    const rules = offlineReply(
+      "Is it legal to grab the fence to stop a takedown?",
+      "beginner",
+      "",
+      "martial_art",
+      "cagework",
+    );
+    expect(rules).toMatch(/legal|illegal|foul/i);
+    expect(rules).toMatch(/commission|promotion/i);
+  });
+
+  it("reserves the canned generic line for a general question with no lane", () => {
+    expect(offlineReply("hi", "beginner")).toBe(GENERIC);
+    expect(offlineReply("hi", "beginner", "", "martial_art", "mma")).not.toBe(GENERIC);
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/coach/offline.ts"),
+      "utf8",
+    );
+    const calls = source
+      .split("\n")
+      .filter((line) => /genericReply\(/.test(line) && !/function genericReply/.test(line));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatch(/general/);
+    expect(calls[0]).toMatch(/!topic/);
   });
 });
