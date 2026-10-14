@@ -107,6 +107,40 @@ function clipFromModel(model: SeminarPlaybackModel, clipId: string | null) {
   return model.clips.find((clip) => clip.id === clipId) ?? null;
 }
 
+/** YouTube error 153/150 when the embed request omits origin or a referrer. */
+function embedPlayerSrc(videoId: string, start: number, end: number | null) {
+  const origin = window.location.origin;
+  const params = new URLSearchParams({
+    enablejsapi: "1",
+    rel: "0",
+    playsinline: "1",
+    modestbranding: "1",
+    autoplay: "1",
+    origin,
+    widget_referrer: origin,
+  });
+  if (start > 0) params.set("start", String(start));
+  if (end != null) params.set("end", String(end));
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
+function withEmbedOrigin(src: string) {
+  const url = new URL(src);
+  if (typeof window !== "undefined") {
+    url.searchParams.set("origin", window.location.origin);
+    url.searchParams.set("widget_referrer", window.location.origin);
+  }
+  return url.toString();
+}
+
+function intentWindow(intent: Intent) {
+  if (intent.kind === "clip") {
+    return { start: intent.clip.startSeconds, end: intent.clip.endSeconds };
+  }
+  if (intent.kind === "time") return { start: intent.seconds, end: null };
+  return { start: 0, end: null };
+}
+
 export function SeminarPlayback({
   model,
   initialClipId,
@@ -203,13 +237,14 @@ function PlayDisc() {
 
 export function SeminarPlayer() {
   const { model, activeClipId, activeChapterStart, bindCommands } = useSeminarPlayback();
-  const shellRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const endBoundRef = useRef<number | null>(null);
   const intentRef = useRef<Intent>({ kind: "open" });
   const readyRef = useRef(false);
   const playedRef = useRef(false);
   const [mode, setMode] = useState<"facade" | "player" | "iframe" | "link">("facade");
+  const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [endedClip, setEndedClip] = useState<SeminarPlaybackClip | null>(null);
   const activeClip = clipFromModel(model, activeClipId);
 
@@ -219,6 +254,10 @@ export function SeminarPlayer() {
     playedRef.current = false;
     setEndedClip(null);
     setMode((current) => (current === "link" || current === "iframe" ? current : "player"));
+    if (!playerRef.current) {
+      const windowed = intentWindow(intentRef.current);
+      setFrameSrc(embedPlayerSrc(model.videoId, windowed.start, windowed.end));
+    }
     const player = playerRef.current;
     if (player && readyRef.current) {
       const opts: { videoId: string; startSeconds: number; endSeconds?: number } = {
@@ -235,6 +274,10 @@ export function SeminarPlayer() {
     playedRef.current = false;
     setEndedClip(null);
     setMode((current) => (current === "link" || current === "iframe" ? current : "player"));
+    if (!playerRef.current) {
+      const windowed = intentWindow(intentRef.current);
+      setFrameSrc(embedPlayerSrc(model.videoId, windowed.start, windowed.end));
+    }
     const player = playerRef.current;
     if (!player || !readyRef.current) {
       endBoundRef.current = null;
@@ -256,7 +299,7 @@ export function SeminarPlayer() {
   }, [bindCommands, queueChapter, queueClip]);
 
   useEffect(() => {
-    if (mode !== "player") return;
+    if (mode !== "player" || !frameSrc) return;
     let cancelled = false;
     const timeout = window.setTimeout(() => {
       if (!readyRef.current) setMode("iframe");
@@ -264,33 +307,13 @@ export function SeminarPlayer() {
 
     loadYouTubeApi()
       .then(() => {
-        if (cancelled || !shellRef.current || !window.YT?.Player || playerRef.current) return;
-        const mount = document.createElement("div");
-        mount.className = "h-full w-full";
-        shellRef.current.appendChild(mount);
+        const iframe = iframeRef.current;
+        if (cancelled || !iframe || !window.YT?.Player || playerRef.current) return;
         const intent = intentRef.current;
-        const start =
-          intent.kind === "clip"
-            ? intent.clip.startSeconds
-            : intent.kind === "time"
-              ? intent.seconds
-              : 0;
-        const playerVars: Record<string, string | number> = {
-          enablejsapi: 1,
-          rel: 0,
-          playsinline: 1,
-          modestbranding: 1,
-          origin: window.location.origin,
-          start,
-        };
-        if (intent.kind === "clip" && intent.clip.endSeconds != null) {
-          playerVars.end = intent.clip.endSeconds;
-          endBoundRef.current = intent.clip.endSeconds;
-        }
-        playerRef.current = new window.YT.Player(mount, {
-          host: "https://www.youtube-nocookie.com",
-          videoId: model.videoId,
-          playerVars,
+        if (intent.kind === "clip") endBoundRef.current = intent.clip.endSeconds;
+        // Bind to the existing nocookie iframe so origin, playsinline, and
+        // referrerpolicy stay on the element. Passing host/videoId rebuilds it.
+        playerRef.current = new window.YT.Player(iframe, {
           events: {
             onReady: (event) => {
               if (cancelled) return;
@@ -342,7 +365,7 @@ export function SeminarPlayer() {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [mode, model.videoId]);
+  }, [frameSrc, mode, model.videoId]);
 
   useEffect(() => {
     return () => {
@@ -362,6 +385,8 @@ export function SeminarPlayer() {
     if (intentRef.current.kind === "clip") {
       endBoundRef.current = intentRef.current.clip.endSeconds;
     }
+    const windowed = intentWindow(intentRef.current);
+    setFrameSrc((current) => current ?? embedPlayerSrc(model.videoId, windowed.start, windowed.end));
     setEndedClip(null);
     setMode("player");
   }
@@ -426,19 +451,24 @@ export function SeminarPlayer() {
       ) : null}
       {mode === "iframe" ? (
         <iframe
-          src={staticSrc}
+          src={withEmbedOrigin(staticSrc)}
           title={title}
           className="absolute inset-0 h-full w-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           referrerPolicy="strict-origin-when-cross-origin"
         />
-      ) : (
-        <div
-          ref={shellRef}
+      ) : frameSrc ? (
+        <iframe
+          ref={iframeRef}
+          src={frameSrc}
+          title={title}
           className={mode === "player" ? "absolute inset-0 h-full w-full" : "hidden"}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
         />
-      )}
+      ) : null}
       <noscript>
         <iframe src={staticSrc} title={title} className="h-full w-full" allowFullScreen />
       </noscript>
