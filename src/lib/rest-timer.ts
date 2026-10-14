@@ -1,15 +1,11 @@
 import { soundFxEnabled } from "@/lib/badge-sfx";
-import { playEndCue, playWarningCue, vibratePattern } from "@/lib/media-output";
+import { playEndCue, playWarningCue, primeMediaOutput, vibratePattern } from "@/lib/media-output";
 
 export type RestTimerState = {
   exerciseName: string;
   durationSeconds: number;
   endsAtMs: number;
 };
-
-export function clockNow() {
-  return Date.now();
-}
 
 export function startRestTimer(
   exerciseName: string,
@@ -22,6 +18,11 @@ export function startRestTimer(
     durationSeconds: duration,
     endsAtMs: nowMs + duration * 1000,
   };
+}
+
+/** Wall clock for a rest display. Kept out of the component so render stays pure. */
+export function readRestNow() {
+  return Date.now();
 }
 
 export function remainingRestSeconds(
@@ -56,6 +57,25 @@ export function addRestSeconds(timer: RestTimerState, seconds: number): RestTime
   };
 }
 
+/**
+ * Loudness spec for the end cue. Playback is a media-element clip so it follows
+ * Bluetooth headphones, not a fresh AudioContext on the handset speaker.
+ */
+export const REST_ALARM = {
+  gain: 0.32,
+  vibrate: [220, 90, 220, 90, 380],
+  tones: [
+    { frequency: 523.25, seconds: 0.16, at: 0 },
+    { frequency: 659.25, seconds: 0.16, at: 0.18 },
+    { frequency: 783.99, seconds: 0.18, at: 0.36 },
+    { frequency: 1046.5, seconds: 0.36, at: 0.56 },
+  ],
+} as const;
+
+export function clockNow() {
+  return Date.now();
+}
+
 export type RestCue = "warning" | "complete";
 
 /**
@@ -69,6 +89,11 @@ export function restCueForTick(previous: number | null, next: number): RestCue |
   return null;
 }
 
+/** Call from the set-complete tap so the later alarm is allowed to play. */
+export function primeRestAudio() {
+  primeMediaOutput();
+}
+
 export function signalRestWarning() {
   if (typeof window === "undefined") return;
   if (!soundFxEnabled()) return;
@@ -77,7 +102,7 @@ export function signalRestWarning() {
 
 export function signalRestComplete() {
   if (typeof window === "undefined") return;
-  vibratePattern([180, 70, 220, 70, 180]);
+  vibratePattern(REST_ALARM.vibrate);
   if (!soundFxEnabled()) return;
   playEndCue();
 }

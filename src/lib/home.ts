@@ -234,6 +234,7 @@ export async function getHomeToday(
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
+    weightAccess: profile?.weightAccess,
   });
   const hasCatalog = Boolean(strength || skill);
 
