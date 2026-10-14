@@ -27,7 +27,7 @@ import { BagFocusList } from "@/components/training/BagFocusList";
 import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
-import { deloadSetCount, isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -36,6 +36,8 @@ import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import { ExerciseSwapButton } from "@/components/training/ExerciseSwapButton";
 import { listSwapsForDay } from "@/lib/exercise-swap-store";
 import { applySwapsToExercises, swapSlotsFor, trainingBlockKey } from "@/lib/exercise-swap";
+import { mobilityBookendsForSession } from "@/lib/mobility-train";
+import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 
 export default async function TrainingDayPage({
   params,
@@ -93,6 +95,12 @@ export default async function TrainingDayPage({
     programDayId: day.id,
   });
   const firstRir = exercises.find((exercise) => hasRirCue(exercise.loadText))?.id;
+  const bookend = mobilityBookendsForSession({
+    kind,
+    title: day.title,
+    subtitle: day.focus,
+    label: day.title,
+  });
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
@@ -159,6 +167,7 @@ export default async function TrainingDayPage({
             </button>
           </form>
         )}
+        {bookend ? <TrainDayMobility bookend={bookend} /> : null}
 
         <SessionDetails>
           <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line px-4 py-3">
@@ -190,9 +199,8 @@ export default async function TrainingDayPage({
           {exercises.map((exercise, index) => {
             const slot = slots[index];
             const form = lookupFormVideo(exercise.name, exercises);
-            const prescribedSets = deload ? deloadSetCount(exercise.sets) : exercise.sets;
             const planned = plannedSetLine({
-              sets: prescribedSets,
+              sets: exercise.sets,
               reps: exercise.reps,
               restSeconds: exercise.restSeconds,
               logMode: exercise.logMode,

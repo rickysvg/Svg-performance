@@ -149,6 +149,8 @@ model Profile {
   /** gym (default) | none — none swaps lift and bike days for a floor session. */
   weightAccess               String    @default("gym")
   obstaclesJson              String    @default("[]")
+  /** Voluntary swaps for one week. The default weekday plan is unchanged. */
+  weekPlanSwapsJson          String    @default("[]")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
   carbsTargetG           Int      @default(220)
@@ -194,6 +196,8 @@ model ProgramExercise {
   formVideoPending Boolean @default(false)
   /** load_reps | load_timed | reps_only | timed | timed_round */
   logMode          String  @default("load_reps")
+  /** Comma-separated training tags, e.g. rotational power, explosive hips. */
+  tags             String  @default("")
 }
 
 model WorkoutSession {

@@ -9,10 +9,17 @@ import {
 const PHOTO_SRC = "/tiles/train.webp";
 const LOGO_SRC = "/svg-performance-badge.webp";
 
+export type ShareCardSummary = {
+  goal: string;
+  targets: string[];
+  payoff: string;
+};
+
 export type ShareCardDrawInput = {
   style: ShareCardStyle;
   title: string;
   stats: ShareStat[];
+  summary?: ShareCardSummary | null;
 };
 
 function fillRoundRect(
@@ -145,6 +152,21 @@ export async function renderShareCardBlob(input: ShareCardDrawInput): Promise<Bl
     drawStatValue(ctx, stat.value, stat.unit, x + cellW / 2, y + 145, display);
   });
 
+  if (input.summary) {
+    const rows = stats.length === 0 ? 0 : Math.ceil(stats.length / 2);
+    const summaryY = rows === 0 ? 820 : startY + rows * (cellH + gap) + 20;
+    drawShareSummary(ctx, input.summary, {
+      y: summaryY,
+      maxY: 1620,
+      width: canvas.width,
+      accent,
+      ink,
+      muted: isLime ? "rgba(0,0,0,0.72)" : "rgba(255,255,255,0.78)",
+      display,
+    });
+  }
+
+  ctx.textAlign = "center";
   ctx.fillStyle = ink;
   ctx.font = `400 34px ${display}`;
   ctx.fillText("SVG PERFORMANCE", canvas.width / 2, 1680);
@@ -160,6 +182,50 @@ export async function renderShareCardBlob(input: ShareCardDrawInput): Promise<Bl
     }, "image/png");
   });
   return blob;
+}
+
+function drawShareSummary(
+  ctx: CanvasRenderingContext2D,
+  summary: ShareCardSummary,
+  box: {
+    y: number;
+    maxY: number;
+    width: number;
+    accent: string;
+    ink: string;
+    muted: string;
+    display: string;
+  },
+) {
+  const maxWidth = box.width - 160;
+  const center = box.width / 2;
+  let y = box.y;
+  ctx.textAlign = "center";
+  ctx.letterSpacing = "0.14em";
+  ctx.fillStyle = box.accent;
+  ctx.font = `400 26px ${box.display}`;
+  if (y <= box.maxY) ctx.fillText("TODAY", center, y);
+  y += 42;
+  ctx.letterSpacing = "0";
+  ctx.fillStyle = box.ink;
+  ctx.font = "400 32px Geist, Arial, sans-serif";
+  y = drawWrapped(ctx, summary.goal, center, y, maxWidth, 40, box.maxY);
+  y += 18;
+  ctx.letterSpacing = "0.12em";
+  ctx.fillStyle = box.muted;
+  ctx.font = `400 24px ${box.display}`;
+  if (y <= box.maxY) ctx.fillText("TARGETED", center, y);
+  y += 40;
+  ctx.letterSpacing = "0";
+  ctx.fillStyle = box.accent;
+  ctx.font = "400 30px Geist, Arial, sans-serif";
+  y = drawWrapped(ctx, summary.targets.join("  ·  "), center, y, maxWidth, 38, box.maxY);
+  y += 16;
+  ctx.fillStyle = box.muted;
+  ctx.font = "400 28px Geist, Arial, sans-serif";
+  drawWrapped(ctx, summary.payoff, center, y, maxWidth, 36, box.maxY);
+  ctx.letterSpacing = "0.04em";
+  ctx.textAlign = "center";
 }
 
 function drawStatValue(
@@ -201,12 +267,25 @@ function wrapText(
   maxWidth: number,
   lineHeight: number,
 ) {
-  const words = text.split(" ");
+  drawWrapped(ctx, text, x, y, maxWidth, lineHeight, Number.POSITIVE_INFINITY);
+}
+
+function drawWrapped(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxY: number,
+) {
+  const words = text.split(/\s+/).filter(Boolean);
   let line = "";
   let cursor = y;
   for (const word of words) {
     const next = line ? `${line} ${word}` : word;
     if (ctx.measureText(next).width > maxWidth && line) {
+      if (cursor > maxY) return cursor;
       ctx.fillText(line, x, cursor);
       line = word;
       cursor += lineHeight;
@@ -214,7 +293,11 @@ function wrapText(
       line = next;
     }
   }
-  if (line) ctx.fillText(line, x, cursor);
+  if (line && cursor <= maxY) {
+    ctx.fillText(line, x, cursor);
+    cursor += lineHeight;
+  }
+  return cursor;
 }
 
 export async function downloadShareCard(blob: Blob, filename: string) {

@@ -33,7 +33,7 @@ describe("workout logger media and previous loads", () => {
   });
 
   it("maps every DEMO exercise to a slug, equipment, and square thumb file", () => {
-    expect(DEMO_EXERCISE_NAMES).toHaveLength(43);
+    expect(DEMO_EXERCISE_NAMES).toHaveLength(45);
     for (const name of DEMO_EXERCISE_NAMES) {
       const slug = exerciseSlug(name);
       expect(slug.length).toBeGreaterThan(2);
@@ -66,7 +66,7 @@ describe("workout logger media and previous loads", () => {
         reps: "20 sec on / 40 sec easy",
         restSeconds: 0,
         logMode: "timed",
-        name: "Jump rope or easy bike intervals",
+        name: "Jump rope intervals",
       }),
     ).toBe("8 sets × 20 sec on / 40 sec easy");
     expect(restBannerSeconds(45)).toBe("45s");
@@ -284,7 +284,8 @@ describe("workout logger media and previous loads", () => {
     expect(carry[0]?.durationSeconds).toBeNull();
     expect(carry[0]?.loadValue).toBeNull();
     expect(carry[0]?.reps).toBeNull();
-    expect(band[0]?.logMode).toBe("reps_only");
+    expect(band[0]?.logMode).toBe("load_reps");
+    expect(band.length).toBeGreaterThanOrEqual(3);
 
     const saved = await updateWorkoutSessionForUser({
       userId: user.id,
@@ -310,5 +311,25 @@ describe("workout logger media and previous loads", () => {
     expect(saved.sets[0]?.durationSeconds).toBe(40);
     expect(saved.sets[0]?.loadValue).toBe(70);
     expect(saved.sets[0]?.reps).toBeNull();
+  });
+
+  it("opens an advanced pull day with the printed set count even on a deload week", async () => {
+    const user = await makeUser("deload-rows@example.com");
+    const program = await getDemoProgram();
+    const pullDay = program.days.find((row) => row.dayNumber === 2)!;
+    const draft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: pullDay.id,
+      preferredUnits: "lb",
+      scale: { experienceLevel: "advanced", competitionStatus: "pro" },
+      deload: true,
+    });
+    const band = draft.sets.filter((set) => set.exerciseName === "Face pull");
+    const bug = draft.sets.filter((set) => set.exerciseName === "Dead bug");
+    expect(band).toHaveLength(4);
+    expect(bug).toHaveLength(4);
+    expect(band[0]?.logMode).toBe("load_reps");
+    expect(bug[0]?.logMode).toBe("timed");
+    expect(draft.notes).toMatch(/prescribed set/i);
   });
 });

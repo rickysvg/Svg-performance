@@ -1,18 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
+import { SessionRecap } from "@/components/training/SessionRecap";
+import type { SessionSummary } from "@/lib/session-summary";
 import { workoutCompleteHeadline, type WorkoutCompleteTile } from "@/lib/workout-complete";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { ShareStat } from "@/lib/share-card";
 import type { LoadUnit } from "@/lib/units";
 
-function prefersReducedMotion() {
-  if (typeof window === "undefined") return true;
+function subscribeReducedMotion(onChange: () => void) {
+  const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function reducedMotionNow() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
@@ -26,6 +33,7 @@ export function WorkoutWinScreen({
   unit,
   workoutId,
   difficultyRating,
+  summary,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -36,6 +44,7 @@ export function WorkoutWinScreen({
   unit: LoadUnit;
   workoutId: string;
   difficultyRating: string;
+  summary?: SessionSummary | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,7 +53,7 @@ export function WorkoutWinScreen({
   const [open, setOpen] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [tip, setTip] = useState("");
-  const reduce = prefersReducedMotion();
+  const reduce = useSyncExternalStore(subscribeReducedMotion, reducedMotionNow, () => false);
 
   useEffect(() => {
     void preloadFxSheets();
@@ -80,6 +89,7 @@ export function WorkoutWinScreen({
         style: "black",
         title: shareTitle,
         stats: shareStats,
+        summary,
       });
       const result = await shareOrDownloadCard(blob, "svg-performance-session.png");
       if (result === "downloaded") {
@@ -107,12 +117,19 @@ export function WorkoutWinScreen({
       <div className="workout-win-glow" aria-hidden />
       <div className="relative mx-auto flex min-h-full w-full max-w-sm flex-col items-center text-center text-white">
         <div
-          className={`relative mt-4 flex h-[280px] w-[280px] items-center justify-center ${
+          className={`relative mt-4 flex h-[280px] w-[280px] items-center justify-center overflow-visible ${
             reduce ? "" : "badge-unlock-shake"
           }`}
         >
-          {reduce ? null : <CelebrationFx active delayMs={700} size={900} />}
-          <div className={reduce ? "badge-unlock-fade" : "badge-unlock-fly"}>
+          {reduce ? null : (
+            <div
+              data-win-sparks
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[min(720px,170vw)] w-[min(720px,170vw)] -translate-x-1/2 -translate-y-1/2 overflow-visible"
+            >
+              <CelebrationFx active delayMs={700} size={680} />
+            </div>
+          )}
+          <div className={`relative z-20 ${reduce ? "badge-unlock-fade" : "badge-unlock-fly"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/workout_complete_hero.webp"
@@ -145,6 +162,7 @@ export function WorkoutWinScreen({
             <p className="font-display mt-1 text-xl uppercase tracking-wide text-[#cbf805]">{badgeTitle}</p>
           </div>
         ) : null}
+        {summary ? <SessionRecap summary={summary} /> : null}
         <button
           type="button"
           onClick={onDone}

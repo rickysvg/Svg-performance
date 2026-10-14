@@ -46,7 +46,6 @@ export function AppSplash() {
   const reducedRef = useRef(false);
   const exitMsRef = useRef(280);
   const pathRef = useRef(pathname);
-  pathRef.current = pathname;
 
   function soundtrack() {
     if (typeof Audio === "undefined") return null;

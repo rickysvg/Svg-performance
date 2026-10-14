@@ -255,6 +255,16 @@ BEGIN
     CREATE UNIQUE INDEX "GymdeskSyncMeta_key_key" ON "GymdeskSyncMeta"("key");
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'weekPlanSwapsJson'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "weekPlanSwapsJson" TEXT NOT NULL DEFAULT '[]';
+  END IF;
+
   IF to_regclass('public."GymdeskRateLimit"') IS NULL THEN
     CREATE TABLE "GymdeskRateLimit" (
       "id" TEXT NOT NULL,
@@ -264,6 +274,24 @@ BEGIN
     );
     CREATE INDEX "GymdeskRateLimit_keyHash_createdAt_idx"
       ON "GymdeskRateLimit"("keyHash", "createdAt");
+  END IF;
+END $$;
+
+-- Exercise tags for the workout-complete recap. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."ProgramExercise"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'ProgramExercise'
+      AND column_name = 'tags'
+  ) THEN
+    ALTER TABLE "ProgramExercise" ADD COLUMN "tags" TEXT NOT NULL DEFAULT '';
   END IF;
 END $$;
 

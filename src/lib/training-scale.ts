@@ -17,7 +17,6 @@ import {
 } from "@/lib/bike-sessions";
 import { floorSessionForDay } from "@/lib/bodyweight-plan";
 import { daruExerciseForName } from "@/lib/daru-exercises";
-import { canonicalExerciseName } from "@/lib/exercise-library";
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import {
@@ -29,6 +28,7 @@ import {
   resolveLogMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
+import { prescribeGymExercise } from "@/lib/gym-exercise";
 import { effortLoadText, mergeLoadText } from "@/lib/rir";
 import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
 
@@ -48,6 +48,8 @@ export type ScaleableExercise = {
   restSeconds: number;
   logMode?: string;
   notes?: string;
+  /** Comma-separated training tags from the plan, when the row has them. */
+  tags?: string;
   formVideoUrl?: string;
   formVideoPending?: boolean;
 };
@@ -168,31 +170,21 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     reps: "6",
     loadText: "3-5 RIR · Crisp landings",
   },
-  "Squat jump or box step-up": {
-    sets: 4,
-    reps: "6",
-    loadText: "3-5 RIR · Crisp landings",
-  },
   "Front plank": {
     sets: 4,
     reps: "45–60 sec",
     loadText: "Hold — no weight",
     restSeconds: 30,
   },
-  "Push-up or dumbbell bench press": {
-    sets: 4,
-    reps: "8–10",
-    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
-  },
   "Dumbbell bench press": {
     sets: 4,
     reps: "8–10",
-    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy or hard variation",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbells",
   },
   "One-arm row": {
     sets: 4,
     reps: "8 / side",
-    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbell or band",
+    loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbell",
   },
   "Overhead press": {
     sets: 4,
@@ -202,12 +194,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Face pull": {
     sets: 4,
     reps: "15",
-    loadText: "2-4 RIR · Strong squeeze",
-  },
-  "Band pull-apart or face pull": {
-    sets: 4,
-    reps: "15",
-    loadText: "2-4 RIR · Strong band, full squeeze",
+    loadText: "2-4 RIR · Full squeeze to the face",
   },
   "Farmer carry": {
     sets: 4,
@@ -220,38 +207,17 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     reps: "12",
     loadText: "3-5 RIR · Hard, crisp snaps",
   },
-  "Kettlebell swing or hip hinge": {
-    sets: 5,
-    reps: "12",
-    loadText: "3-5 RIR · Hard, crisp snaps",
-  },
-  "Chin-up": {
+  "Lat pulldown": {
     sets: 4,
     reps: "6–10",
-    loadText: "1-3 RIR · Add load if 8+ are easy",
-  },
-  "Chin-up, band-assist, or lat pulldown": {
-    sets: 4,
-    reps: "6–10",
-    loadText: "1-3 RIR · Add load if 8+ are easy",
+    loadText: "1-3 RIR · Pull to the chest, control the return",
   },
   "Lateral bound": {
     sets: 4,
     reps: "6 / side",
     loadText: "3-5 RIR · Cover more ground",
   },
-  "Lateral bound or side step-over": {
-    sets: 4,
-    reps: "6 / side",
-    loadText: "3-5 RIR · Cover more ground",
-  },
-  "Jump rope": {
-    sets: 10,
-    reps: "25 sec on / 35 sec easy",
-    loadText: "Hard but repeatable",
-    restSeconds: 0,
-  },
-  "Jump rope or easy bike intervals": {
+  "Jump rope intervals": {
     sets: 10,
     reps: "25 sec on / 35 sec easy",
     loadText: "Hard but repeatable",
@@ -311,10 +277,28 @@ export function scaleExercise(
     weightAccess?: WeightAccess;
   },
 ): ScaleableExercise {
-  const canonical = canonicalExerciseName(exercise.name);
-  if (canonical !== exercise.name) {
-    exercise = withForm(canonical, { ...exercise, name: canonical });
-  }
+  const gym = prescribeGymExercise(exercise, input.band);
+  const named: ScaleableExercise = {
+    ...exercise,
+    name: gym.name,
+    notes: gym.notes ?? exercise.notes,
+    loadText: gym.loadText ?? exercise.loadText,
+    logMode: gym.logMode,
+  };
+  const scaled = scaleNamedExercise(named, input);
+  if (!gym.renamed) return scaled;
+  return { ...scaled, ...formVideoFieldsFor(gym.name) };
+}
+
+function scaleNamedExercise(
+  exercise: ScaleableExercise,
+  input: {
+    band: ScaleBand;
+    programSlug?: string;
+    dayNumber?: number;
+    weightAccess?: WeightAccess;
+  },
+): ScaleableExercise {
   const mode = resolveLogMode(exercise);
   const slug = input.programSlug ?? "";
   const dayNumber = input.dayNumber ?? 1;
@@ -496,7 +480,7 @@ function scaleLoadedCarry(
   };
 }
 
-const BENCH_OR_PUSHUP = /^(?:push-up or )?dumbbell bench press$/i;
+const BENCH_OR_PUSHUP = /^(?:push-up(?: or dumbbell bench press)?|dumbbell bench press)$/i;
 
 function withForm(name: string, exercise: ScaleableExercise): ScaleableExercise {
   const video = formVideoFieldsFor(name);
@@ -520,7 +504,7 @@ function prescribeGymPush(exercise: ScaleableExercise, band: ScaleBand): Scaleab
         loadText: effortLoadText("2-4", "Straight body. Knees if the last reps fall apart."),
         restSeconds: Math.max(exercise.restSeconds, 60),
         notes:
-          "Main press on a beginner day. Chest to the floor, or to a stair or couch if the floor is too hard.",
+          "Main press on a beginner day. Chest to the floor. Use a stair, then a couch, if the floor is too hard.",
       });
     }
     const notes = (exercise.notes ?? "")

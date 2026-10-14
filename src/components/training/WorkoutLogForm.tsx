@@ -8,6 +8,7 @@ import {
   type WorkoutActionState,
 } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
+import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
@@ -20,6 +21,7 @@ import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
+import { releaseSetWakeLock, requestSetWakeLock } from "@/lib/bike-interval-signals";
 import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel, restBannerSeconds } from "@/lib/exercise-media";
 import {
@@ -36,15 +38,21 @@ import {
 } from "@/lib/exercise-log-mode";
 import {
   addRestSeconds,
+  clockNow,
   formatRestClock,
+  formatRestPill,
   isRestActive,
   primeRestAudio,
   readRestNow,
   remainingRestSeconds,
+  restCueForTick,
   signalRestComplete,
+  signalRestWarning,
+  startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { loggerCursor, nextIncompleteSetId } from "@/lib/logger-progress";
+import { withPrescribedSetRows } from "@/lib/logger-sets";
 import {
   applyPreviousToSet,
   copyPreviousOntoExercise,
@@ -114,9 +122,10 @@ function newClientSet(
   loadUnit: string,
   logMode: LogMode = "timed",
   durationSeconds: number | null = null,
+  id = `local-${crypto.randomUUID()}`,
 ): WorkoutSet {
   return {
-    id: `local-${crypto.randomUUID()}`,
+    id,
     workoutSessionId: sessionId,
     exerciseName,
     setNumber,
@@ -187,6 +196,32 @@ function swapSource(
   };
 }
 
+function prescribedRowId(sessionId: string, exerciseName: string, setNumber: number) {
+  return `prescribed-${sessionId}-${exerciseName}-${setNumber}`;
+}
+
+function setsForLogger(session: Session): WorkoutSet[] {
+  const base = setsInLb(session.sets);
+  const prescriptions = session.programDay?.exercises ?? [];
+  return withPrescribedSetRows(base, prescriptions, (exerciseName, setNumber) => {
+    const planned = prescriptions.find((row) => row.name === exerciseName);
+    const mode = resolveLogMode({
+      logMode: planned?.logMode,
+      name: exerciseName,
+      reps: planned?.reps,
+    });
+    return newClientSet(
+      session.id,
+      exerciseName,
+      setNumber,
+      "lb",
+      mode,
+      null,
+      prescribedRowId(session.id, exerciseName, setNumber),
+    );
+  });
+}
+
 function toDraftSet(set: WorkoutSet): DraftSetSnapshot {
   return {
     exerciseName: set.exerciseName,
@@ -254,17 +289,19 @@ export function WorkoutLogForm({
     saveWorkoutAction,
     {} as WorkoutActionState,
   );
-  const [sets, setSets] = useState(() => setsInLb(session.sets));
+  const [sets, setSets] = useState(() => setsForLogger(session));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [insertName, setInsertName] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
+  const [restGo, setRestGo] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [appliedPhase, setAppliedPhase] = useState<"server" | "client">("server");
   const formRef = useRef<HTMLFormElement>(null);
   const syncChain = useRef(Promise.resolve());
   const scrolled = useRef(false);
-  const alarmedEndsAt = useRef<number | null>(null);
+  const routeRelease = useRef<(() => void) | null>(null);
+  const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const [hydrationStore] = useState(() => createLoggerHydrationStore(session.id));
   const hydration = useSyncExternalStore(
     hydrationStore.subscribe,
@@ -334,6 +371,10 @@ export function WorkoutLogForm({
     reps: currentPlanned?.reps,
   });
   const progressUnit = currentMode === "timed_round" ? "Round" : "Set";
+  const currentRestSeconds = cursor.done
+    ? 0
+    : (currentPlanned?.restSeconds ??
+      (isBikeIntervalName(cursor.exerciseName) ? 60 : currentMode === "timed_round" ? 90 : 60));
   const firstRirName = session.programDay?.exercises.find((row) => hasRirCue(row.loadText))?.name;
 
   const defaultUnit = "lb";
@@ -440,19 +481,74 @@ export function WorkoutLogForm({
     document.querySelector("[data-session-overflow]")?.scrollIntoView({ block: "nearest" });
   }, [moreOpen]);
 
+  function engageRestRoute() {
+    primeMediaOutput();
+    routeRelease.current?.();
+    routeRelease.current = holdMediaRoute();
+    void requestSetWakeLock().then((lock) => {
+      if (wakeLock.current && wakeLock.current !== lock) releaseSetWakeLock(wakeLock.current);
+      wakeLock.current = lock;
+    });
+  }
+
+  function disengageRestRoute() {
+    const release = routeRelease.current;
+    routeRelease.current = null;
+    release?.();
+    releaseSetWakeLock(wakeLock.current);
+    wakeLock.current = null;
+  }
+
+  useEffect(() => {
+    const node = formRef.current;
+    if (!node) return;
+    const onPointer = () => primeMediaOutput();
+    node.addEventListener("pointerdown", onPointer);
+    return () => node.removeEventListener("pointerdown", onPointer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      routeRelease.current?.();
+      routeRelease.current = null;
+      releaseSetWakeLock(wakeLock.current);
+      wakeLock.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     if (!restTimer) return;
-    const endsAtMs = restTimer.endsAtMs;
-    const tick = window.setInterval(() => {
-      const now = Date.now();
-      setNowMs(now);
-      if (endsAtMs - now > 0) return;
-      setRestTimer(null);
-      if (alarmedEndsAt.current === endsAtMs) return;
-      alarmedEndsAt.current = endsAtMs;
+    let prev = remainingRestSeconds(restTimer, clockNow());
+    if (restCueForTick(null, prev) === "warning") signalRestWarning();
+    let ended = false;
+    const finish = (cue: ReturnType<typeof restCueForTick>) => {
+      if (ended) return;
+      if (cue === "warning") signalRestWarning();
+      if (cue !== "complete") return;
+      ended = true;
       signalRestComplete();
-    }, 250);
-    return () => window.clearInterval(tick);
+      setRestGo(true);
+      setRestTimer(null);
+      disengageRestRoute();
+      window.setTimeout(() => setRestGo(false), 900);
+    };
+    const sample = () => {
+      const now = Date.now();
+      const next = remainingRestSeconds(restTimer, now);
+      const cue = restCueForTick(prev, next);
+      prev = next;
+      setNowMs(now);
+      finish(cue);
+    };
+    const tick = window.setInterval(sample, 200);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sample();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [restTimer]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
@@ -502,7 +598,9 @@ export function WorkoutLogForm({
       });
       if (started) {
         nextRest = started;
-        setNowMs(readRestNow());
+        setRestGo(false);
+        setNowMs(clockNow());
+        engageRestRoute();
         setRestTimer(started);
       }
     }
@@ -517,11 +615,26 @@ export function WorkoutLogForm({
     });
   }
 
+  function beginRest() {
+    if (!cursor.exerciseName || currentRestSeconds <= 0 || restRunning) return;
+    primeRestAudio();
+    primeMediaOutput();
+    setRestGo(false);
+    engageRestRoute();
+    commitRest(startRestTimer(cursor.exerciseName, currentRestSeconds, readRestNow()));
+  }
+
   function commitRest(next: RestTimerState | null) {
     setNowMs(readRestNow());
-    if (next && remainingRestSeconds(next) <= 0) {
+    primeMediaOutput();
+    if (!next || remainingRestSeconds(next) <= 0) {
+      if (next) {
+        signalRestComplete();
+        setRestGo(true);
+        window.setTimeout(() => setRestGo(false), 900);
+      }
+      disengageRestRoute();
       setRestTimer(null);
-      signalRestComplete();
       remember(sets, null);
       syncDraft(sets, null);
       return;
@@ -545,7 +658,10 @@ export function WorkoutLogForm({
   return (
     <div>
       <form ref={formRef} action={action} className="space-y-5">
-        <header className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-10 -mx-4 overflow-hidden border-b border-line bg-background/95 backdrop-blur">
+        <header
+          data-logger-chrome
+          className="sticky top-0 z-30 -mx-4 overflow-hidden border-b border-line bg-background pt-[env(safe-area-inset-top)] backdrop-blur md:top-[calc(env(safe-area-inset-top)+3.5rem)] md:z-10 md:pt-0"
+        >
           <div className="flex items-center gap-2 px-4 py-2">
             <Link
               href={cancelHref}
@@ -582,6 +698,77 @@ export function WorkoutLogForm({
               </button>
             </div>
           </div>
+          {restGo ? (
+            <div data-rest-complete className="bg-black px-4 py-3 text-white">
+              <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Rest over</p>
+              <p className="font-display mt-1 text-2xl leading-none text-[#CBF805]">Go</p>
+            </div>
+          ) : null}
+          {restRunning ? (
+            <div
+              data-rest-countdown
+              data-rest-warning={restRemaining <= 3 ? "1" : undefined}
+              className="mx-4 mb-3 flex items-center justify-between gap-2 rounded-xl bg-black px-3 py-2 text-white"
+            >
+              <div className="min-w-0">
+                <p className="font-display text-[10px] uppercase tracking-wide text-highlighter">
+                  Rest
+                </p>
+                {restRemaining <= 3 ? (
+                  <p
+                    data-rest-get-ready
+                    className="font-display mt-1 text-[11px] uppercase tracking-[0.14em] text-[#CBF805]"
+                  >
+                    Get ready
+                  </p>
+                ) : null}
+                <p
+                  className={`font-display text-xl leading-none tabular-nums text-[#CBF805] ${
+                    restRemaining <= 3 ? "motion-safe:animate-pulse" : ""
+                  }`}
+                >
+                  {formatRestClock(restRemaining)}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  type="button"
+                  data-rest-minus
+                  onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, -15) : null)}
+                  className="touch-target rounded-full border border-white/40 px-3 text-sm"
+                >
+                  −15s
+                </button>
+                <button
+                  type="button"
+                  data-rest-skip
+                  onClick={() => commitRest(null)}
+                  className="touch-target rounded-full border border-white/40 px-3 text-sm"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  data-rest-plus
+                  onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, 15) : null)}
+                  className="touch-target rounded-full bg-accent px-3 text-sm text-black"
+                >
+                  +15s
+                </button>
+              </div>
+            </div>
+          ) : currentRestSeconds > 0 ? (
+            <div className="px-4 pb-3">
+              <button
+                type="button"
+                data-start-rest
+                onClick={beginRest}
+                className="touch-target w-full rounded-full border border-line bg-white font-display text-sm uppercase tracking-wide text-black"
+              >
+                Start rest {formatRestPill(currentRestSeconds)}
+              </button>
+            </div>
+          ) : null}
         </header>
 
         <div className="space-y-2 pt-2">
@@ -697,7 +884,7 @@ export function WorkoutLogForm({
               data-exercise-block={name}
               data-log-row={layout}
               data-current-exercise={current ? "true" : undefined}
-              className={`scroll-mt-36 rounded-2xl border p-4 ${
+              className={`scroll-mt-52 rounded-2xl border p-4 ${
                 current
                   ? "border-[#CBF805] bg-card shadow-[0_0_0_2px_#CBF805]"
                   : "border-line bg-card"
@@ -749,7 +936,12 @@ export function WorkoutLogForm({
                           exerciseName: name,
                           restBetweenSetsSeconds: restSeconds,
                         });
-                        if (effects.rest) setRestTimer(effects.rest);
+                        if (effects.rest) {
+                          setRestGo(false);
+                          setNowMs(clockNow());
+                          engageRestRoute();
+                          setRestTimer(effects.rest);
+                        }
                       }}
                     />
                   ) : null}
@@ -828,48 +1020,6 @@ export function WorkoutLogForm({
                     {restBannerSeconds(restSeconds)}
                   </span>
                 </p>
-              ) : null}
-
-              {restRunning && restTimer?.exerciseName === name ? (
-                <div
-                  data-rest-countdown
-                  className="sticky top-[calc(env(safe-area-inset-top)+7.5rem)] z-20 mt-3 flex items-center justify-between gap-2 rounded-xl bg-black px-3 py-2 text-white"
-                >
-                  <div className="min-w-0">
-                    <p className="font-display text-[10px] uppercase tracking-wide text-highlighter">
-                      Rest
-                    </p>
-                    <p className="font-display text-xl leading-none tabular-nums text-[#CBF805]">
-                      {formatRestClock(restRemaining)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    <button
-                      type="button"
-                      data-rest-minus
-                      onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, -15) : null)}
-                      className="touch-target rounded-full border border-white/40 px-3 text-sm"
-                    >
-                      −15s
-                    </button>
-                    <button
-                      type="button"
-                      data-rest-skip
-                      onClick={() => commitRest(null)}
-                      className="touch-target rounded-full border border-white/40 px-3 text-sm"
-                    >
-                      Skip
-                    </button>
-                    <button
-                      type="button"
-                      data-rest-plus
-                      onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, 15) : null)}
-                      className="touch-target rounded-full bg-accent px-3 text-sm text-black"
-                    >
-                      +15s
-                    </button>
-                  </div>
-                </div>
               ) : null}
 
               <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
@@ -980,7 +1130,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full scroll-mt-36 rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-11 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center"
                           />
                         </label>
                       ) : (
@@ -999,7 +1149,7 @@ export function WorkoutLogForm({
                                 reps: event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full scroll-mt-36 rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-11 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center"
                           />
                         </label>
                       )}
@@ -1057,8 +1207,10 @@ export function WorkoutLogForm({
           );
         })}
 
-        <div className="h-28" aria-hidden />
-        <div className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        <div
+          data-logger-save
+          className="space-y-2 border-t border-line pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
           <button
             type="submit"
             name="intent"

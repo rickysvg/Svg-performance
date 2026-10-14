@@ -20,7 +20,7 @@ import {
   scaleProgramDay,
   type ScalePrefs,
 } from "@/lib/training-scale";
-import { deloadSetCount } from "@/lib/training-cycle";
+import { DELOAD_LABEL } from "@/lib/training-cycle";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { bindPendingSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
 
@@ -382,7 +382,9 @@ export async function startWorkoutFromDay(input: {
     .map((exercise) => exercise.name);
   const sets = swapped.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
-    const prescribed = input.deload ? deloadSetCount(exercise.sets) : exercise.sets;
+    // Match the set count printed on the logger card. Deload week used to
+    // store ~60% of that count (4 → 2) while the card still said 4 sets.
+    const prescribed = Math.max(0, Math.round(exercise.sets));
     return Array.from({ length: prescribed }, (_, index) => ({
       exerciseName: exercise.name,
       setNumber: index + 1,
@@ -409,7 +411,7 @@ export async function startWorkoutFromDay(input: {
       programDayId: day.id,
       title: `${day.program.isDemo ? `DEMO — ${day.title}` : day.title}${input.deload ? " · Deload" : ""}`,
       performedAt: new Date(),
-      notes: input.deload ? "Deload week — fewer sets. Same exercises." : "",
+      notes: input.deload ? DELOAD_LABEL : "",
       status: "draft",
       sets: { create: sets },
     },
