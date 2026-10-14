@@ -295,7 +295,7 @@ export function demoStrengthDays() {
           reps: "6",
           loadText: effort("0-2", "Last rep is slow and clean.", "~80% of a 5-rep max"),
           restSeconds: 120,
-          notes: "Dumbbells on a bench. Do not bounce the bells off the chest.",
+          notes: "Main press. Dumbbells on a bench. Do not bounce the bells off the chest.",
         }),
         liftExercise({
           sortOrder: 4,

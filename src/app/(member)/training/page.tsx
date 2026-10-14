@@ -3,6 +3,7 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
+  completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   listDraftSessionsForUser,
 } from "@/lib/workouts";
@@ -14,7 +15,9 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { floorPlyoBlock, plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { normalizeWeightAccess } from "@/lib/weight-access";
+import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import {
   nextActiveWeekday,
   planForDate,
@@ -28,8 +31,10 @@ import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { NextSessionCta } from "@/components/training/NextSessionCta";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
-import { equipmentForExercises } from "@/lib/exercise-media";
+import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
 import { nextTrainAction } from "@/lib/train-next";
+import { todayStartAction } from "@/lib/today-start";
+import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -75,11 +80,13 @@ export default async function TrainingPage({
     camp && camp.phase !== "complete"
       ? shapeDayPlan(planForDate(prefs, selected, tz), camp.phase)
       : planForDate(prefs, selected, tz);
+  const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const planned = resolvePlanSessions(
     dayPlan,
     scaleDemoCatalog(catalog, {
       experienceLevel: band,
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
+      weightAccess,
     }),
   );
   const strip = weekStrip(prefs, now, tz, selected);
@@ -89,7 +96,12 @@ export default async function TrainingPage({
   const testing = isTestingWeek(selected, tz);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const showPlyo = dayPlan.weekday === "Monday" || dayPlan.weekday === "Wednesday";
-  const plyo = showPlyo && dayPlan.active ? plyoBlockFor(emphasis) : [];
+  const plyo =
+    showPlyo && dayPlan.active
+      ? weightAccess === "none"
+        ? floorPlyoBlock()
+        : plyoBlockFor(emphasis)
+      : [];
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
   const gear = equipmentForExercises(
@@ -115,6 +127,37 @@ export default async function TrainingPage({
   const nextAction = dayPlan.active
     ? nextTrainAction(planned, (dayId) => draftsByDay.get(dayId))
     : null;
+  const todayBase = planForDate(prefs, now, tz);
+  const todayShaped =
+    camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
+  const todaySessions = resolvePlanSessions(
+    todayShaped,
+    scaleDemoCatalog(catalog, {
+      experienceLevel: profileBand,
+      competitionStatus: profile?.competitionStatus,
+    }),
+  );
+  const doneToday = new Set(
+    await completedProgramDayIdsOnDay(
+      user.id,
+      todaySessions.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+      now,
+      tz,
+    ),
+  );
+  const todayAction = todayStartAction(
+    todaySessions.map((session) => ({
+      kind: session.kind,
+      label: session.label,
+      title: session.title,
+      subtitle: session.subtitle,
+      dayId: session.dayId,
+      href: session.href,
+      minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
+      completed: session.dayId ? doneToday.has(session.dayId) : false,
+    })),
+    (dayId) => draftsByDay.get(dayId),
+  );
   const bagIndex = planned.findIndex((session) => session.kind === "skill");
   const showDetails =
     dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
@@ -147,7 +190,11 @@ export default async function TrainingPage({
         <DemoBadge />
       </div>
 
+      {todayAction ? <StartTodayButton action={todayAction} /> : null}
+
       <WeekStrip days={strip} basePath="/training" />
+
+      <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
 
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">
@@ -166,7 +213,7 @@ export default async function TrainingPage({
           ) : null}
         </div>
 
-        {nextAction ? <NextSessionCta action={nextAction} /> : null}
+        {nextAction && !isToday ? <NextSessionCta action={nextAction} /> : null}
         {deload ? (
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
@@ -197,9 +244,9 @@ export default async function TrainingPage({
               <p className="mt-1 text-sm text-muted">Joint circles and leg swings. Save long holds for the cooldown.</p>
             </Link>
           ) : null}
-          {zones.map((zone) => (
-            <BikeZoneNote key={zone.label} zone={zone} />
-          ))}
+          {weightAccess === "gym"
+            ? zones.map((zone) => <BikeZoneNote key={zone.label} zone={zone} />)
+            : null}
           {plyo.length > 0 ? (
             <div className="rounded-2xl border border-line bg-background px-4 py-3">
               <p className="font-display text-xs uppercase tracking-wide text-accent">

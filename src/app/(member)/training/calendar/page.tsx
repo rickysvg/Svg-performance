@@ -65,6 +65,7 @@ export default async function TrainingCalendarPage({
     scaleDemoCatalog(catalog, {
       experienceLevel: band,
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
+      weightAccess: profile?.weightAccess,
     }),
   );
   const strip = weekStrip(prefs, now, tz, selected);

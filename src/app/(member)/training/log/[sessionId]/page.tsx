@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { getOwnWorkoutSessionOrNull, getPreviousLoadsForUser } from "@/lib/workouts";
+import {
+  getOwnWorkoutSessionOrNull,
+  getPreviousLoadsForSlots,
+  getPreviousLoadsForUser,
+} from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -39,6 +43,7 @@ export default async function WorkoutLogPage({
       ? scaleProgramDay(session.programDay, {
           band,
           programSlug: session.programDay.program.slug,
+          weightAccess: profile?.weightAccess,
         })
       : session.programDay,
   };
@@ -55,6 +60,26 @@ export default async function WorkoutLogPage({
   const performed = new Date(session.performedAt);
   const pad = (n: number) => String(n).padStart(2, "0");
   const startedInput = `${performed.getFullYear()}-${pad(performed.getMonth() + 1)}-${pad(performed.getDate())}T${pad(performed.getHours())}:${pad(performed.getMinutes())}`;
+  const [slotLoads, namedLoads, exerciseNotes] = await Promise.all([
+    getPreviousLoadsForSlots(
+      user.id,
+      [...session.sets, ...loggedSession.sets].map((set) => ({
+        exerciseName: set.exerciseName,
+        prescriptionKey: set.prescriptionKey,
+      })),
+      session.id,
+    ),
+    getPreviousLoadsForUser(user.id, historyNames, session.id),
+    listExerciseNotesForUser(user.id, {
+      exerciseNames: historyNames,
+      programDayId: session.programDayId,
+    }),
+  ]);
+  const previousLoads = {
+    ...rekeyGymRecord(namedLoads, band),
+    ...rekeyGymRecord(slotLoads, band),
+  };
+  const notes = rekeyGymRecord(exerciseNotes, band);
 
   return (
     <main className="space-y-6">
@@ -86,20 +111,7 @@ export default async function WorkoutLogPage({
           <HrWorkoutForm workoutSessionId={session.id} defaultStartedAt={startedInput} />
         )
       ) : null}
-      <WorkoutLogForm
-        session={loggedSession}
-        previousLoads={rekeyGymRecord(
-          await getPreviousLoadsForUser(user.id, historyNames, session.id),
-          band,
-        )}
-        notes={rekeyGymRecord(
-          await listExerciseNotesForUser(user.id, {
-            exerciseNames: historyNames,
-            programDayId: session.programDayId,
-          }),
-          band,
-        )}
-      />
+      <WorkoutLogForm session={loggedSession} previousLoads={previousLoads} notes={notes} />
     </main>
   );
 }

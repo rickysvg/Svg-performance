@@ -149,6 +149,8 @@ model Profile {
   coachingTone               String    @default("")
   /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
   trainingEmphasis           String    @default("balanced")
+  /** gym (default) | none — none swaps lift and bike days for a floor session. */
+  weightAccess               String    @default("gym")
   obstaclesJson              String    @default("[]")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
@@ -208,6 +210,10 @@ model WorkoutSession {
   notes        String      @default("")
   status       String      @default("complete")
   difficultyRating String  @default("")
+  /** Exercise whose between-set rest is running. Empty when rest is idle. */
+  restExerciseName String   @default("")
+  /** Absolute end time so a reload can resume the countdown. */
+  restEndsAt       DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   sets         WorkoutSet[]
@@ -231,6 +237,10 @@ model WorkoutSet {
   durationSeconds  Int?
   completed        Boolean        @default(true)
   notes            String         @default("")
+  /** Program day + exercise + rep scheme. A 5×5 day does not share history with 8–12. */
+  prescriptionKey  String         @default("")
+  /** Stored effort cue from the prescription, when the set had one. */
+  rir              String         @default("")
 
   @@index([workoutSessionId])
 }
