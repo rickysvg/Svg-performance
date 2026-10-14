@@ -19,15 +19,18 @@ import { floorPlyoBlock, plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import {
+  moveDayChoices,
   nextActiveWeekday,
   planForDate,
   resolvePlanSessions,
   weekStrip,
 } from "@/lib/week-plan";
+import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import { NextSessionCta } from "@/components/training/NextSessionCta";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
@@ -176,7 +179,15 @@ export default async function TrainingPage({
     ...(camp ? [] : [{ href: "/fight-camp", label: "Fight camp" }]),
   ];
 
+  const viewedWeek = weekStartKey(selected, tz);
+  const moveDays = moveDayChoices(prefs, now, tz, selected, swaps);
+
   return (
+    <WorkoutMoveProvider
+      editable={weekStartInRange(viewedWeek, weekStartKey(now, tz))}
+      weekStart={viewedWeek}
+      days={moveDays}
+    >
     <main className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -231,12 +242,13 @@ export default async function TrainingPage({
       <section className="space-y-3" data-session-phase="next">
         {planned.map((session, index) => (
           <div
-            key={`${session.slot}-${session.dayId ?? session.label}`}
+            key={`${session.sessionKey ?? session.slot}-${session.dayId ?? session.label}`}
             {...(index === bagIndex ? { "data-bag-session": "" } : {})}
           >
             <PlanSessionCard
               session={session}
               compact
+              calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && planned.length > 1}
               draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
             />
@@ -359,5 +371,6 @@ export default async function TrainingPage({
         )}
       </details>
     </main>
+    </WorkoutMoveProvider>
   );
 }

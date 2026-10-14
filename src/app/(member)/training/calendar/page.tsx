@@ -4,14 +4,16 @@ import { CalendarList } from "@/components/training/CalendarList";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { requireUser } from "@/lib/session";
-import { formatCalendarHeading, getCalendarSchedule } from "@/lib/calendar";
+import { formatCalendarHeading, getCalendarSchedule, weekdayName } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { formatDayParam, parseDayParam } from "@/lib/home";
 import {
+  moveDayChoices,
   planForDate,
   resolvePlanSessions,
   weekStrip,
@@ -25,7 +27,7 @@ import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
-import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
+import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -97,6 +99,17 @@ export default async function TrainingCalendarPage({
     viewedWeek === currentWeek
       ? "This week"
       : `Week of ${viewedMonday.toLocaleDateString("en-US", { month: "short", timeZone: tz })} ${zonedParts(viewedMonday, tz).day}`;
+  const titles: Partial<Record<(typeof strip)[number]["weekday"], string[]>> = {};
+  for (const day of schedule.days) {
+    const name = weekdayName(day.date, tz);
+    if (!isPlanWeekday(name)) continue;
+    titles[name] = day.activities.filter((item) => item.kind === "workout").map((item) => item.title);
+  }
+  const moveDays = moveDayChoices(prefs, now, tz, selected, swaps, titles);
+  const missedWorkouts = schedule.days.reduce(
+    (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
+    0,
+  );
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
   const weekHref = (date: Date) =>
     `/training/calendar?day=${formatDayParam(date, tz)}${levelQuery}`;
@@ -115,6 +128,11 @@ export default async function TrainingCalendarPage({
   );
 
   return (
+    <WorkoutMoveProvider
+      editable={canEditWeek}
+      weekStart={viewedWeek}
+      days={moveDays}
+    >
     <main className="space-y-6">
       <div>
         <Link href="/training" className="text-sm text-accent underline-offset-4 hover:underline">
@@ -124,8 +142,8 @@ export default async function TrainingCalendarPage({
           <div>
             <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              Previous shows days you already had, including logged workouts. Hold a day,
-              then tap another, to move a missed workout onto a later day
+              Tap Move on a workout to do it today or on another open day. Hold a day,
+              then tap another, to swap two days
               {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live
               coach calendar, Watch sync, or Gymdesk.
             </p>
@@ -212,9 +230,10 @@ export default async function TrainingCalendarPage({
         </div>
         {planned.map((session) => (
           <PlanSessionCard
-            key={`${session.slot}-${session.dayId ?? session.label}`}
+            key={`${session.slot}-${session.sessionKey ?? session.dayId ?? session.label}`}
             session={session}
             compact
+            calendarWeekday={dayPlan.weekday}
             highlight={session.slot === "A" && planned.length > 1}
             draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
           />
@@ -252,8 +271,20 @@ export default async function TrainingCalendarPage({
         </p>
       ) : null}
 
+      {missedWorkouts > 0 ? (
+        <aside data-missed-note className="rounded-2xl bg-black px-4 py-4 text-white">
+          <p className="font-display text-xs uppercase tracking-wide text-highlighter">
+            Missed a workout?
+          </p>
+          <p className="mt-1 text-sm text-white/80">
+            No problem. Workouts are interchangeable throughout your week. Move it to any open day.
+          </p>
+        </aside>
+      ) : null}
+
       <h2 className="text-lg">{weekTitle}</h2>
       <CalendarList days={schedule.days} />
     </main>
+    </WorkoutMoveProvider>
   );
 }

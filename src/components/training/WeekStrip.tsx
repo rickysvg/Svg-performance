@@ -7,6 +7,7 @@ import {
   resetCalendarWeekAction,
   swapCalendarDaysAction,
 } from "@/app/actions/week-plan";
+import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number];
@@ -196,6 +197,7 @@ export function WeekStrip({
   completedDays?: string[];
 }) {
   const router = useRouter();
+  const move = useWorkoutMove();
   const [source, setSource] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -230,6 +232,11 @@ export function WeekStrip({
 
   function commitSwap(from: string, to: string) {
     setError(null);
+    if (move && move.editable && weekStart) {
+      setSource(null);
+      move.swapDays(from, to);
+      return;
+    }
     startTransition(async () => {
       const result = await swapCalendarDaysAction(from, to, weekStart);
       if (result.error) {
@@ -316,7 +323,11 @@ export function WeekStrip({
                 armHold(day.weekday);
               }}
               onPointerUp={disarmHold}
-              style={rearrange ? { WebkitTouchCallout: "none" } : undefined}
+              style={
+                rearrange
+                  ? { WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }
+                  : undefined
+              }
               onContextMenu={(event) => {
                 if (!rearrange || pending) return;
                 event.preventDefault();
@@ -438,12 +449,12 @@ export function WeekStrip({
               {pending ? "Saving…" : "Back to the default week"}
             </button>
           </div>
-          <p className="mt-2 text-sm text-white/70">Hold a day to swap again.</p>
+          <p className="mt-2 text-sm text-white/70">Tap Move on a workout, or hold a day to swap again.</p>
         </div>
       ) : null}
       {rearrange && !source && moved.length === 0 ? (
         <p data-move-hint className="mt-3 text-sm text-muted">
-          Hold a day — including a missed day — to swap it with another day.
+          Tap Move on a workout to put it on another day. Hold a day to swap two days.
         </p>
       ) : null}
       {rearrange && !source && moved.length === 0 && error ? (
