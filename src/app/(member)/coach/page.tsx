@@ -138,6 +138,7 @@ export default async function CoachPage({
             topic={topic!}
             art={art}
             lane={lane}
+            viewerRole={user.role}
             initialMessages={thread.messages}
           />
         </>

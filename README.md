@@ -78,7 +78,8 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `SMTP_FROM` | Optional mail. Empty in production turns off self-serve password reset (same message for every email, no link on screen). Local development can still show a one-time link. Reminders stay **in-app on Home only** until SMTP is set |
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional. Seed promotes this existing account to admin |
 | `ADMIN_EMAILS` | Optional. Comma-separated emails that can open the form-check review queue, along with any account whose role is already admin |
-| `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = SVG Coach stays offline/DEMO |
+| `OPENAI_API_KEY` `OPENAI_MODEL` | Required for live SVG Coach. Empty means members get short built-in answers only. `OPENAI_MODEL` defaults to `gpt-4o-mini` |
+| `COACH_LLM_TIMEOUT_MS` | Optional. First-byte timeout for the live coach call, in milliseconds. Default `20000` |
 | `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
 | `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym monthly ($19) |

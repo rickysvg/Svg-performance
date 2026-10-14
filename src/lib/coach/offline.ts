@@ -1,15 +1,18 @@
 /**
  * Member-visible fallback when no live model is available.
- * One intent, 2–4 complete sentences. No files, keys, demo mode, or topic labels.
+ * One intent, 2–4 complete sentences, or a short technique answer from the bank.
+ * No files, keys, demo mode, or topic labels.
  */
+
+import { matchOfflineBank } from "@/lib/coach/offline-bank";
+import { classifyQuestion } from "@/lib/coach/router";
 
 function parseScopedNote(message: string) {
   const exercise = /Exercise:\s*(.+?)\.\s*Log mode:/i.exec(message)?.[1]?.trim();
-  const planned = /Planned work:\s*(.+?)\.\s*Member note/i.exec(message)?.[1]?.trim();
   const question = /Member note or question:\s*(.+?)(?:\s+Give one or two practical cues\.|$)/i
     .exec(message)?.[1]
     ?.trim();
-  return { exercise, planned, question };
+  return { exercise, question };
 }
 
 function missedCount(text: string) {
@@ -18,21 +21,6 @@ function missedCount(text: string) {
   if (/\btwo\s+(classes|class|sessions|session)/i.test(text)) return "two";
   if (/\bthree\s+(classes|class|sessions|session)/i.test(text)) return "three";
   return "";
-}
-
-export function matchCoachIntent(text: string) {
-  const body = text.toLowerCase();
-  if (/missed|skip(ped)?|fell off|inconsistent/.test(body)) return "missed";
-  if (/sore|soreness|recover|sleep|rest day|tired|wrecked|achy/.test(body)) return "soreness";
-  if (/cut weight|weight cut|sauna|diuretic|food|eat|meal|protein|calorie|hungry|nutrition/.test(body)) {
-    return "food";
-  }
-  if (/discourag|fail|setback|plateau|nerves|mindset|behind|anxious|scared/.test(body)) {
-    return "nerves";
-  }
-  if (/technique|jab|takedown|guard|stance|how do i|form|cue/.test(body)) return "form";
-  if (/bike|interval|engine|conditioning|rounds|bag work/.test(body)) return "conditioning";
-  return "generic";
 }
 
 function missedReply(text: string) {
@@ -49,6 +37,10 @@ function sorenessReply() {
 
 function foodReply() {
   return "Eat a real meal around training — protein and something you digest. Log a rough plate if you want the habit. I will not write a cut or a medical diet. If something hurts or you have allergies, you still check that yourself.";
+}
+
+function weightCutReply() {
+  return "Start a weight cut weeks out and lose the weight through meals, not in the last day. Keep protein in each meal, eat carbs around training, and hydrate on a normal schedule until the rules for your weigh-in say otherwise. Pick a class near walking weight. Red lines: no sauna, sweat suit, diuretic, laxative, or water cut. A coach or clinician should run any fight-week plan.";
 }
 
 function nervesReply() {
@@ -68,15 +60,62 @@ function formReply(art?: string) {
   if (art === "jiu-jitsu") {
     return "Frames first, then the hips. Make one clean move and reset. Don't muscle a bad position.";
   }
-  return "Pick one simple cue and repeat it. Then get live eyes on the floor. I will not invent a full curriculum in chat.";
+  if (art === "mma" || art === "cagework") {
+    return "Start from the position on the cage: frame in, elbow tight, then one step off the fence. Win an underhook, turn the head, and angle out. Drill the position with a partner before you add speed. A coach can watch the rep. Don't grab the fence.";
+  }
+  return "Start with the position, then one clean step, then a partner drill. Keep the frame or the hands where they belong. Get a coach to watch the rep before you add speed.";
 }
 
 function conditioningReply() {
   return "Keep the work honest and count rounds. The last round should look like the first. Don't sprint the rest, and don't add extra work after a miss.";
 }
 
+function programmingReply() {
+  return "Do the sets already written on your plan. Keep the load in lbs and stay on the prescribed reps at the written RIR. 0-2 RIR is near hard. If the plan or your last logged set is missing, don't invent numbers. Too easy: add a little load next time. Too hard or sore: keep the sets and drop the load. Fight week and deload weeks stay lighter. No punishment volume after a miss.";
+}
+
+function injuryReply() {
+  return "Stop or modify that movement. Pain that changes how you move, swelling, numbness, or anything in the head means stop and see a doctor or physio. You can train other limbs, or drill the technique without load. This is not a diagnosis or a rehab plan.";
+}
+
+function rulesReply(text: string) {
+  const lower = text.toLowerCase();
+  const parts = ["Legality depends on the rule set."];
+  if (/elbow/.test(lower)) {
+    parts.push(
+      "Under most pro Unified Rules, elbow strikes are legal except to the spine or the back of the head. A 12-6 elbow stopped being an ABC foul in 2024, but not every commission has adopted that. Most amateur rule sets ban elbow and forearm strikes completely.",
+    );
+  }
+  if (/fence|cage/.test(lower)) {
+    parts.push(
+      "Grabbing the fence with fingers or toes is a foul. A hand on the fence to frame or stand is not the same thing as a grab.",
+    );
+  }
+  if (!/elbow|fence|cage/.test(lower)) {
+    parts.push("A foul in one promotion can be illegal under another rule set.");
+  }
+  parts.push("Rules vary by commission and promotion, so check your commission/promotion.");
+  return parts.join(" ");
+}
+
 function genericReply() {
   return "Stay practical and do the next session you already have planned. If you need eyes on a movement, ask a coach on the floor. I will not guess gym-specific policy from here.";
+}
+
+function isMissed(text: string) {
+  return /\b(?:missed|skip(?:ped)?|fell off|inconsistent)\b/i.test(text);
+}
+
+function isSoreness(text: string) {
+  return /\bsore(?:ness)?\b|\brecover|\bsleep\b|\brest day\b|\btired\b|\bwrecked\b|\bachy\b/i.test(text);
+}
+
+function isConditioningWork(text: string) {
+  return /\bbike\b|\binterval|\bengine\b|\bconditioning\b|\brounds\b|\bbag work\b/i.test(text);
+}
+
+function isWeightCutQuestion(text: string) {
+  return /\bweight cuts?\b|\bcut weight\b|\bweigh-?ins?\b|\bmake weight\b|\bfight week\b/i.test(text);
 }
 
 function cueForExercise(name: string) {
@@ -121,21 +160,37 @@ function cueForExercise(name: string) {
   return `For ${name}, pick one clean cue and do the set. Control the load and finish the last rep like the first.`;
 }
 
-function answerForIntent(intent: ReturnType<typeof matchCoachIntent>, text: string, art?: string) {
-  if (intent === "missed") return missedReply(text);
-  if (intent === "soreness") return sorenessReply();
-  if (intent === "food") return foodReply();
-  if (intent === "nerves") return nervesReply();
-  if (intent === "form") return formReply(art);
-  if (intent === "conditioning") return conditioningReply();
-  return genericReply();
+function offlineAnswer(question: string, topic?: string, art?: string) {
+  const route = classifyQuestion(question, { topic, art });
+  if (route.primary === "injury") return injuryReply();
+  if (route.primary === "technique") {
+    return matchOfflineBank(question) ?? formReply(art);
+  }
+  if (route.primary === "rules") return rulesReply(question);
+  if (route.primary === "nutrition") {
+    return isWeightCutQuestion(question) ? weightCutReply() : foodReply();
+  }
+  if (route.primary === "mindset") {
+    return isMissed(question) ? missedReply(question) : nervesReply();
+  }
+  if (route.primary === "programming") {
+    if (isSoreness(question)) return sorenessReply();
+    if (isMissed(question)) return missedReply(question);
+    if (isConditioningWork(question)) return conditioningReply();
+    return programmingReply();
+  }
+  if (route.primary === "general" && !topic) return genericReply();
+  if (topic === "martial_art") return formReply(art);
+  if (topic === "mental") return isMissed(question) ? missedReply(question) : nervesReply();
+  if (topic === "conditioning") return programmingReply();
+  return formReply(art);
 }
 
 export function offlineReply(
   message: string,
   _experienceLevel: string,
-  _coachingTone = "",
-  _topic?: string,
+  _coachingTone?: string,
+  topic?: string,
   art?: string,
 ) {
   const scoped = parseScopedNote(message);
@@ -143,7 +198,7 @@ export function offlineReply(
   if (scoped.exercise) {
     return cueForExercise(scoped.exercise);
   }
-  return answerForIntent(matchCoachIntent(question), question, art);
+  return offlineAnswer(question, topic, art);
 }
 
 export function liveModelUnavailableReply(

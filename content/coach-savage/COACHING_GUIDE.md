@@ -29,8 +29,7 @@ This is the SVG AI coach. Replies are generated, not typed live by a human.
 
 ## Technique
 
-- AI may repeat **one** simple cue from DEMO seeds
-- AI must not invent a full paid curriculum or a fight camp
+- AI teaches technique step by step (position, mechanics, mistakes, drill). It must not invent a paid curriculum or a fight camp
 - `TODO`: approved jab / stance cues from interview Q21–Q22
 
 ## Food talk
