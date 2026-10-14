@@ -8,6 +8,7 @@ import {
   type WorkoutActionState,
 } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
+import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
 import { DemoBadge } from "@/components/DemoBadge";
@@ -20,6 +21,7 @@ import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
+import { releaseSetWakeLock, requestSetWakeLock } from "@/lib/bike-interval-signals";
 import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
 import { plannedSetLine, previousSetLabel, restBannerSeconds } from "@/lib/exercise-media";
 import {
@@ -36,13 +38,16 @@ import {
 } from "@/lib/exercise-log-mode";
 import {
   addRestSeconds,
+  clockNow,
   formatRestClock,
   formatRestPill,
   isRestActive,
   primeRestAudio,
   readRestNow,
   remainingRestSeconds,
+  restCueForTick,
   signalRestComplete,
+  signalRestWarning,
   startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
@@ -224,12 +229,14 @@ export function WorkoutLogForm({
   const [insertName, setInsertName] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
+  const [restGo, setRestGo] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [appliedPhase, setAppliedPhase] = useState<"server" | "client">("server");
   const formRef = useRef<HTMLFormElement>(null);
   const syncChain = useRef(Promise.resolve());
   const scrolled = useRef(false);
-  const alarmedEndsAt = useRef<number | null>(null);
+  const routeRelease = useRef<(() => void) | null>(null);
+  const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const [hydrationStore] = useState(() => createLoggerHydrationStore(session.id));
   const hydration = useSyncExternalStore(
     hydrationStore.subscribe,
@@ -406,19 +413,74 @@ export function WorkoutLogForm({
     document.querySelector("[data-session-overflow]")?.scrollIntoView({ block: "nearest" });
   }, [moreOpen]);
 
+  function engageRestRoute() {
+    primeMediaOutput();
+    routeRelease.current?.();
+    routeRelease.current = holdMediaRoute();
+    void requestSetWakeLock().then((lock) => {
+      if (wakeLock.current && wakeLock.current !== lock) releaseSetWakeLock(wakeLock.current);
+      wakeLock.current = lock;
+    });
+  }
+
+  function disengageRestRoute() {
+    const release = routeRelease.current;
+    routeRelease.current = null;
+    release?.();
+    releaseSetWakeLock(wakeLock.current);
+    wakeLock.current = null;
+  }
+
+  useEffect(() => {
+    const node = formRef.current;
+    if (!node) return;
+    const onPointer = () => primeMediaOutput();
+    node.addEventListener("pointerdown", onPointer);
+    return () => node.removeEventListener("pointerdown", onPointer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      routeRelease.current?.();
+      routeRelease.current = null;
+      releaseSetWakeLock(wakeLock.current);
+      wakeLock.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     if (!restTimer) return;
-    const endsAtMs = restTimer.endsAtMs;
-    const tick = window.setInterval(() => {
-      const now = Date.now();
-      setNowMs(now);
-      if (endsAtMs - now > 0) return;
-      setRestTimer(null);
-      if (alarmedEndsAt.current === endsAtMs) return;
-      alarmedEndsAt.current = endsAtMs;
+    let prev = remainingRestSeconds(restTimer, clockNow());
+    if (restCueForTick(null, prev) === "warning") signalRestWarning();
+    let ended = false;
+    const finish = (cue: ReturnType<typeof restCueForTick>) => {
+      if (ended) return;
+      if (cue === "warning") signalRestWarning();
+      if (cue !== "complete") return;
+      ended = true;
       signalRestComplete();
-    }, 250);
-    return () => window.clearInterval(tick);
+      setRestGo(true);
+      setRestTimer(null);
+      disengageRestRoute();
+      window.setTimeout(() => setRestGo(false), 900);
+    };
+    const sample = () => {
+      const now = Date.now();
+      const next = remainingRestSeconds(restTimer, now);
+      const cue = restCueForTick(prev, next);
+      prev = next;
+      setNowMs(now);
+      finish(cue);
+    };
+    const tick = window.setInterval(sample, 200);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sample();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [restTimer]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
@@ -468,7 +530,9 @@ export function WorkoutLogForm({
       });
       if (started) {
         nextRest = started;
-        setNowMs(readRestNow());
+        setRestGo(false);
+        setNowMs(clockNow());
+        engageRestRoute();
         setRestTimer(started);
       }
     }
@@ -486,14 +550,23 @@ export function WorkoutLogForm({
   function beginRest() {
     if (!cursor.exerciseName || currentRestSeconds <= 0 || restRunning) return;
     primeRestAudio();
+    primeMediaOutput();
+    setRestGo(false);
+    engageRestRoute();
     commitRest(startRestTimer(cursor.exerciseName, currentRestSeconds, readRestNow()));
   }
 
   function commitRest(next: RestTimerState | null) {
     setNowMs(readRestNow());
-    if (next && remainingRestSeconds(next) <= 0) {
+    primeMediaOutput();
+    if (!next || remainingRestSeconds(next) <= 0) {
+      if (next) {
+        signalRestComplete();
+        setRestGo(true);
+        window.setTimeout(() => setRestGo(false), 900);
+      }
+      disengageRestRoute();
       setRestTimer(null);
-      signalRestComplete();
       remember(sets, null);
       syncDraft(sets, null);
       return;
@@ -557,16 +630,35 @@ export function WorkoutLogForm({
               </button>
             </div>
           </div>
+          {restGo ? (
+            <div data-rest-complete className="bg-black px-4 py-3 text-white">
+              <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Rest over</p>
+              <p className="font-display mt-1 text-2xl leading-none text-[#CBF805]">Go</p>
+            </div>
+          ) : null}
           {restRunning ? (
             <div
               data-rest-countdown
+              data-rest-warning={restRemaining <= 3 ? "1" : undefined}
               className="mx-4 mb-3 flex items-center justify-between gap-2 rounded-xl bg-black px-3 py-2 text-white"
             >
               <div className="min-w-0">
                 <p className="font-display text-[10px] uppercase tracking-wide text-highlighter">
                   Rest
                 </p>
-                <p className="font-display text-xl leading-none tabular-nums text-[#CBF805]">
+                {restRemaining <= 3 ? (
+                  <p
+                    data-rest-get-ready
+                    className="font-display mt-1 text-[11px] uppercase tracking-[0.14em] text-[#CBF805]"
+                  >
+                    Get ready
+                  </p>
+                ) : null}
+                <p
+                  className={`font-display text-xl leading-none tabular-nums text-[#CBF805] ${
+                    restRemaining <= 3 ? "motion-safe:animate-pulse" : ""
+                  }`}
+                >
                   {formatRestClock(restRemaining)}
                 </p>
               </div>
@@ -776,7 +868,12 @@ export function WorkoutLogForm({
                           exerciseName: name,
                           restBetweenSetsSeconds: restSeconds,
                         });
-                        if (effects.rest) setRestTimer(effects.rest);
+                        if (effects.rest) {
+                          setRestGo(false);
+                          setNowMs(clockNow());
+                          engageRestRoute();
+                          setRestTimer(effects.rest);
+                        }
                       }}
                     />
                   ) : null}

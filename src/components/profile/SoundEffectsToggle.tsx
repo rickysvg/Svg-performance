@@ -20,7 +20,7 @@ export function SoundEffectsToggle() {
     <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
       <h2 className="text-lg">Sound effects</h2>
       <p className="text-sm text-muted">
-        Badge unlock stings play after you tap Save. Off by choice; default is on.
+        Finish stings, badge unlocks, and rest-timer cues. Off by choice; default is on.
       </p>
       <label className="flex items-start gap-3 rounded-xl border border-line bg-white p-3">
         <input
