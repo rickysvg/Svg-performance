@@ -33,6 +33,8 @@ import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
+import { mobilityBookendsForSession } from "@/lib/mobility-train";
+import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 
 export default async function TrainingDayPage({
   params,
@@ -79,6 +81,12 @@ export default async function TrainingDayPage({
     programDayId: day.id,
   });
   const firstRir = day.exercises.find((exercise) => hasRirCue(exercise.loadText))?.id;
+  const bookend = mobilityBookendsForSession({
+    kind,
+    title: day.title,
+    subtitle: day.focus,
+    label: day.title,
+  });
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
@@ -145,6 +153,7 @@ export default async function TrainingDayPage({
             </button>
           </form>
         )}
+        {bookend ? <TrainDayMobility bookend={bookend} /> : null}
 
         <SessionDetails>
           <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line px-4 py-3">

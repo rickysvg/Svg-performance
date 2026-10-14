@@ -6,7 +6,8 @@ import { getProfileForUser } from "@/lib/profile";
 import { timeZoneForUser } from "@/lib/profile";
 import { checkInGaps, listMobilityCheckIns } from "@/lib/mobility-store";
 import { lengthToCm, lengthUnitForLoad } from "@/lib/length-units";
-import { splitProgressCm } from "@/lib/mobility";
+import { splitProgressCm, getMobilityRoutine } from "@/lib/mobility";
+import { recommendFromCheckIn } from "@/lib/mobility-checkin";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { CheckInForm } from "@/components/mobility/CheckInForm";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
@@ -37,6 +38,14 @@ export default async function MobilityCheckInPage({
     );
   };
   const frontDelta = splitProgressCm(averageSplit(previous ?? undefined), averageSplit(latest));
+  const recommendations = latest
+    ? recommendFromCheckIn(latest)
+        .map((pick) => {
+          const routine = getMobilityRoutine(pick.id);
+          return routine ? { ...pick, title: routine.title } : null;
+        })
+        .filter((pick): pick is { id: string; reason: string; title: string } => pick != null)
+    : [];
   const maxSit = Math.max(
     1,
     ...rows.map((row) =>
@@ -73,6 +82,30 @@ export default async function MobilityCheckInPage({
             .join(", ")}
           . Keep the easy side honest. Do not force the tight side.
         </p>
+      ) : null}
+      {latest ? (
+        <section data-checkin-next className="space-y-3 rounded-[1.5rem] bg-black px-4 py-4 text-white">
+          <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">From this check-in</p>
+          <h2 className="text-2xl text-white">Next routines</h2>
+          {recommendations.length === 0 ? (
+            <p className="text-sm text-white/75">No gap to close from this check-in. Keep the routine you already use.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recommendations.map((pick) => (
+                <li key={pick.id}>
+                  <Link
+                    href={`/mobility/${pick.id}`}
+                    data-recommended-routine={pick.id}
+                    className="block rounded-2xl border border-white/20 px-3 py-3"
+                  >
+                    <span className="block text-base text-white">{pick.title}</span>
+                    <span className="mt-1 block text-sm text-white/70">{pick.reason}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       ) : null}
       {pro ? (
         <section className="space-y-3">
