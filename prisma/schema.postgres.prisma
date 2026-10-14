@@ -383,6 +383,7 @@ model Subscription {
 
   @@index([userId])
   @@index([stripeSubscriptionId])
+  @@index([stripeCustomerId])
 }
 
 model ReminderPrefs {

@@ -1,10 +1,13 @@
 import { BNPL_COPY, financingStatusCopy } from "@/lib/bnpl";
+import type { StripeKeyMode } from "@/lib/stripe";
 
 export function FinancingNote({
   configured,
+  mode = "test",
   className = "",
 }: {
   configured: boolean;
+  mode?: StripeKeyMode;
   className?: string;
 }) {
   return (
@@ -13,7 +16,7 @@ export function FinancingNote({
       data-testid="financing-note"
     >
       <p className="font-semibold text-foreground">{BNPL_COPY.whenAvailable}</p>
-      <p className="mt-2 text-muted">{financingStatusCopy(configured)}</p>
+      <p className="mt-2 text-muted">{financingStatusCopy(configured, mode)}</p>
     </aside>
   );
 }

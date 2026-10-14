@@ -1,6 +1,6 @@
 import { CHECKOUT_SKUS, type CheckoutSkuId } from "@/lib/plans";
 
-/** Stripe TEST only. Live Affirm/Klarna keys are not used in this preview. */
+/** Affirm / Klarna use the same Stripe secret as card checkout. */
 
 /** Stripe Affirm Checkout: USD, typically $50–$30,000. */
 export const AFFIRM_MIN_CENTS = 5000;
@@ -20,6 +20,8 @@ export const BNPL_COPY = {
     "Affirm / Klarna at checkout is coming soon. It turns on when Stripe TEST keys are set and Affirm and Klarna are enabled in the Stripe Dashboard (TEST). We do not fake a successful buy.",
   keysOn:
     "TEST checkout can offer Affirm, Klarna, or similar pay-over-time when the amount, currency, and Stripe Dashboard payment methods allow. Still TEST — no live charges. Approval is theirs, not SVG’s.",
+  liveOn:
+    "Checkout can offer Affirm, Klarna, or similar pay-over-time when the amount, currency, and Stripe Dashboard payment methods allow. This server is in Stripe live mode — charges are real. Approval is theirs, not SVG’s.",
 } as const;
 
 export const SKU_AMOUNT_CENTS = Object.fromEntries(
@@ -51,8 +53,13 @@ export function skuHighlightsFinancing(plan: CheckoutSkuId) {
   return SKU_AMOUNT_CENTS[plan] >= AFFIRM_MIN_CENTS;
 }
 
-export function financingStatusCopy(stripeConfigured: boolean) {
-  return stripeConfigured ? BNPL_COPY.keysOn : BNPL_COPY.comingSoon;
+export function financingStatusCopy(
+  stripeConfigured: boolean,
+  mode: "test" | "live" | "unconfigured" | "invalid" = "test",
+) {
+  if (!stripeConfigured) return BNPL_COPY.comingSoon;
+  if (mode === "live") return BNPL_COPY.liveOn;
+  return BNPL_COPY.keysOn;
 }
 
 export function isBnplStripeError(error: unknown) {

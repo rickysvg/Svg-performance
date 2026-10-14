@@ -8,6 +8,7 @@ import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
 import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
 import { getTrialState } from "@/lib/trial";
+import { stripeKeyMode } from "@/lib/stripe";
 
 export default async function PlanPage() {
   const user = await requireUser();
@@ -18,6 +19,7 @@ export default async function PlanPage() {
     getTrialState(user.id),
   ]);
   const configured = isStripeConfigured();
+  const stripeMode = stripeKeyMode();
   const plan = entitlements.plan;
 
   return (
@@ -53,16 +55,24 @@ export default async function PlanPage() {
             </Link>
           </p>
         ) : (
-          <Link
-            href="/pricing"
-            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
-          >
-            Upgrade on Pricing
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/pricing"
+              className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-black"
+            >
+              Upgrade on Pricing
+            </Link>
+            <Link
+              href="/account/billing"
+              className="touch-target inline-flex items-center rounded-full border border-line px-5"
+            >
+              Manage billing
+            </Link>
+          </div>
         )}
       </section>
 
-      <FinancingNote configured={configured} />
+      <FinancingNote configured={configured} mode={stripeMode} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>This billing month&apos;s credits</h2>

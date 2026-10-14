@@ -79,19 +79,19 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional. Seed promotes this existing account to admin |
 | `ADMIN_EMAILS` | Optional. Comma-separated emails that can open the form-check review queue, along with any account whose role is already admin |
 | `OPENAI_API_KEY` `OPENAI_MODEL` | Optional. Empty = SVG Coach stays offline/DEMO |
-| `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |
-| `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
-| `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym monthly ($19) |
-| `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for SVG Performance nonmember monthly ($29) |
+| `STRIPE_SECRET_KEY` | Required for paid checkout. `sk_test_...` or `sk_live_...`. Admin shows TEST or LIVE |
+| `STRIPE_WEBHOOK_SECRET` | Required for paid checkout. Verifies webhook signatures |
+| `STRIPE_PRICE_GYM` | Required for the enabled academy Performance plan. Monthly $19 |
+| `STRIPE_PRICE_STANDALONE` | Required for the enabled public Performance plan. Monthly $29 |
 | `STRIPE_PRICE_PERFORMANCE_ANNUAL_*` / `_FOUNDING_*` | Optional. Inactive prepaid / founding annual stubs |
-| `STRIPE_PRICE_CONDITIONING_GYM` / `_NON` | Optional. Fighter Conditioning monthly $49 / $59 |
+| `STRIPE_PRICE_CONDITIONING_GYM` / `_NON` | Required for enabled Fighter Conditioning monthly $49 / $59 |
 | `STRIPE_PRICE_CONDITIONING_CAMP_*` / `_ANNUAL_*` / `_FOUNDING_*` | Optional. Inactive 12-Week Fight Camp / annual / founding stubs |
-| `STRIPE_PRICE_DEVELOPMENT_GYM` / `_NON` | Optional. Fighter Development monthly $149 / $179 |
+| `STRIPE_PRICE_DEVELOPMENT_GYM` / `_NON` | Required for enabled Fighter Development monthly $149 / $179 |
 | `STRIPE_PRICE_DEVELOPMENT_3MO_*` / `_6MO_*` | Optional. Inactive prepaid coaching stubs |
-| `STRIPE_PRICE_ELITE_GYM` / `_NON` | Optional. Elite Online monthly $299 / $349 (cap ~6) |
+| `STRIPE_PRICE_ELITE_GYM` / `_NON` | Required for enabled Elite Online monthly $299 / $349 (cap ~6) |
 | `STRIPE_PRICE_ELITE_3MO_*` / `_6MO_*` | Optional. Inactive prepaid Elite stubs |
-| `STRIPE_PRICE_VIP` | Optional. SVG VIP one-time $699 (cap 2; includes 1 month Fighter Development) |
-| `STRIPE_PRICE_PLATINUM` | Optional. SVG Platinum VIP one-time $1,199 (cap 1; includes 1 month Elite Online) |
+| `STRIPE_PRICE_VIP` | Required for SVG VIP checkout. One-time $699 (cap 2; 1 month of app access, includes Fighter Development) |
+| `STRIPE_PRICE_PLATINUM` | Required for Platinum checkout. One-time $1,199 (cap 1; 1 month of app access, includes Elite Online) |
 | `PROGRESS_PHOTO_DIR` | Optional. Local folder for progress photos (default `uploads/progress-photos`). Never commit those files |
 | `TRAINING_CLIP_DIR` | Optional. Local folder for private training clips (default `uploads/training-clips`) |
 | `FOCUS_VIDEO_DIR` | Optional. Local folder for uploaded weekly focus clips (default `uploads/focus-videos`) |
@@ -123,9 +123,9 @@ The browser cannot fully pair an Apple Watch. Members import a file:
 
 Never put Polar secrets in git.
 
-Never put a live `sk_live_` key in this preview. Live keys are rejected.
+`sk_test_` and `sk_live_` secret keys are both accepted. Admin shows **Stripe mode: TEST** or **Stripe mode: LIVE**. Do not commit the key. Success, cancel, and billing-portal URLs use `APP_URL`.
 
-Affirm, Klarna, and similar pay-over-time methods use those same TEST keys. Stripe does not require extra Affirm/Klarna secrets for Checkout. Turn the methods on in the Stripe Dashboard (TEST).
+Affirm, Klarna, and similar pay-over-time methods use that same `STRIPE_SECRET_KEY`. Stripe does not require extra Affirm/Klarna secrets for Checkout. Turn the methods on in the Stripe Dashboard for the same mode as the key. Turn on the Customer portal so members can cancel or update a card from **Account → Billing**.
 
 If Stripe keys are missing: checkout buttons stay off and nobody is marked paid. Training still works. Pricing still shows the Affirm/Klarna message as **coming soon** — we do not fake a successful buy.
 
@@ -139,7 +139,7 @@ Do this only with **test** keys. Do not turn on live billing.
 
 1. Create a Stripe account and stay in **Test mode** (toggle in the Stripe dashboard).
 2. Copy the **secret key** that starts with `sk_test_` into `STRIPE_SECRET_KEY`.
-3. In Stripe, create monthly recurring TEST prices for the plans you want to try. At minimum put ids in `STRIPE_PRICE_GYM` ($19) and `STRIPE_PRICE_STANDALONE` ($29). Prepaid / founding / 3-month / 6-month env names exist as inactive stubs. Gym-member prices still need an admin verify. Buy buttons stay **Coming soon** until live billing is approved.
+3. In Stripe, create prices for the enabled plans and put the ids in the matching `STRIPE_PRICE_*` names. At minimum: `STRIPE_PRICE_GYM` ($19/mo) and `STRIPE_PRICE_STANDALONE` ($29/mo). Also set Conditioning, Development, Elite, VIP ($699 once), and Platinum ($1,199 once) when those buy buttons should work. Prepaid / founding stubs stay inactive. Gym-member prices still need an admin verify. `APP_URL` must be the public origin Checkout redirects back to.
 4. On your laptop, install the Stripe CLI, then forward webhooks:
 
    ```bash
@@ -321,7 +321,7 @@ Copy the printed line. That is `AUTH_SECRET`. Not a Stripe key.
    | `DATABASE_URL` | The `postgresql://…` string from Neon (not `file:./dev.db`) |
    | `APP_URL` | Leave a placeholder like `https://example.vercel.app` for the first deploy, then fix it in step D |
 
-5. Leave every `STRIPE_*` name **empty** unless you are ready for Stripe **TEST** (`sk_test_…` only). Never `sk_live_`.
+5. Leave every `STRIPE_*` name **empty** until you are ready to charge. Then set `STRIPE_SECRET_KEY` (`sk_test_…` or `sk_live_…`), `STRIPE_WEBHOOK_SECRET`, `APP_URL`, and every `STRIPE_PRICE_*` for the enabled plans. Admin shows TEST or LIVE. Webhook URL is `{APP_URL}/api/stripe/webhook` with events `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, and `invoice.payment_failed`.
 6. Click **Deploy**. Wait until Vercel says the build succeeded.
 7. Open the URL Vercel shows you on your phone. That is your preview. Write it down yourself. This document still does not claim one.
 

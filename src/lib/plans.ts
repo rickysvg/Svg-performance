@@ -710,6 +710,46 @@ export function isCheckoutSkuId(value: string): value is CheckoutSkuId {
   return Object.prototype.hasOwnProperty.call(CHECKOUT_SKUS, value);
 }
 
+/** Gym-priced SKU → the public (non-academy) SKU with the same catalog plan. */
+const NON_GYM_SKU: Partial<Record<CheckoutSkuId, CheckoutSkuId>> = {
+  gym: "standalone",
+  performance_gym: "performance_non",
+  performance_annual_gym: "performance_annual_non",
+  performance_founding_gym: "performance_founding_non",
+  conditioning_gym: "conditioning_non",
+  conditioning_camp_gym: "conditioning_camp_non",
+  conditioning_annual_gym: "conditioning_annual_non",
+  conditioning_founding_gym: "conditioning_founding_non",
+  development_gym: "development_non",
+  development_3mo_gym: "development_3mo_non",
+  development_6mo_gym: "development_6mo_non",
+  elite_gym: "elite_non",
+  elite_3mo_gym: "elite_3mo_non",
+  elite_6mo_gym: "elite_6mo_non",
+};
+
+export function nonGymCounterpart(plan: string): CheckoutSkuId | null {
+  if (!isCheckoutSkuId(plan)) return null;
+  return NON_GYM_SKU[plan] ?? null;
+}
+
+/** Pricing-card ids that can open Checkout when that SKU is enabled. */
+const OFFER_CHECKOUT_SKUS: Record<string, { gym: CheckoutSkuId; public: CheckoutSkuId }> = {
+  "performance-monthly": { gym: "performance_gym", public: "performance_non" },
+  "conditioning-monthly": { gym: "conditioning_gym", public: "conditioning_non" },
+  "development-monthly": { gym: "development_gym", public: "development_non" },
+  "elite-monthly": { gym: "elite_gym", public: "elite_non" },
+  "vip-once": { gym: "vip", public: "vip" },
+  "platinum-once": { gym: "platinum", public: "platinum" },
+};
+
+export function checkoutSkuForOffer(offerId: string, verified: boolean): CheckoutSkuId | null {
+  const row = OFFER_CHECKOUT_SKUS[offerId];
+  if (!row) return null;
+  const id = verified ? row.gym : row.public;
+  return CHECKOUT_SKUS[id].checkoutEnabled ? id : null;
+}
+
 export function isPlanId(value: string): value is CheckoutSkuId {
   return isCheckoutSkuId(value);
 }

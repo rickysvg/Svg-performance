@@ -1,4 +1,4 @@
-import { getLatestSubscription } from "@/lib/access";
+import { getLatestSubscription, subscriptionGrantsAccess } from "@/lib/access";
 import {
   type CatalogPlanId,
   type FeatureId,
@@ -16,10 +16,7 @@ export function previewEntitlementsOpen() {
 
 export async function getEffectivePlanId(userId: string, now = new Date()): Promise<CatalogPlanId> {
   const subscription = await getLatestSubscription(userId);
-  if (
-    subscription?.status === "active" &&
-    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < now)
-  ) {
+  if (subscription && subscriptionGrantsAccess(subscription, now)) {
     return normalizePlanId(subscription.plan);
   }
   const profile = await prisma.profile.findUnique({

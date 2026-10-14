@@ -12,7 +12,7 @@ import {
   skuOffersBnpl,
   SKU_AMOUNT_CENTS,
 } from "@/lib/bnpl";
-import { createBnplCheckoutSession, getStripe } from "@/lib/stripe";
+import { billingReturnUrls, createBillingPortalSession, createBnplCheckoutSession, getStripe, stripeKeyMode } from "@/lib/stripe";
 
 type CheckoutCreateParams = Stripe.Checkout.SessionCreateParams & {
   automatic_payment_methods?: { enabled?: boolean };
@@ -94,11 +94,13 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
     expect(isBnplStripeError(null)).toBe(false);
   });
 
-  it("returns no Stripe client without keys and rejects live secrets", () => {
+  it("returns no Stripe client without keys and accepts live secrets", () => {
     delete process.env.STRIPE_SECRET_KEY;
     expect(getStripe()).toBeNull();
-    process.env.STRIPE_SECRET_KEY = "sk_live_not_allowed";
-    expect(() => getStripe()).toThrow(/Live Stripe secret keys are not allowed/);
+    process.env.STRIPE_SECRET_KEY = "sk_live_example";
+    expect(getStripe()).toBeTruthy();
+    process.env.STRIPE_SECRET_KEY = "pk_live_publishable";
+    expect(() => getStripe()).toThrow(/sk_test_ or sk_live_/);
   });
 
   it("asks Checkout for Affirm/Klarna when the amount allows", async () => {
@@ -187,5 +189,49 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
         cancelUrl: "http://localhost:3000/billing/cancel",
       }),
     ).rejects.toThrow("STRIPE_PRICE_STANDALONE is not set");
+  });
+
+  it("builds success, cancel, and portal URLs from APP_URL", () => {
+    const previous = process.env.APP_URL;
+    process.env.APP_URL = "https://svg-performance.vercel.app/";
+    expect(billingReturnUrls()).toEqual({
+      successUrl:
+        "https://svg-performance.vercel.app/billing/success?session_id={CHECKOUT_SESSION_ID}",
+      cancelUrl: "https://svg-performance.vercel.app/billing/cancel",
+      portalReturnUrl: "https://svg-performance.vercel.app/account/billing",
+    });
+    process.env.STRIPE_SECRET_KEY = "sk_live_example";
+    expect(stripeKeyMode()).toBe("live");
+    process.env.STRIPE_SECRET_KEY = "sk_test_example";
+    expect(stripeKeyMode()).toBe("test");
+    delete process.env.STRIPE_SECRET_KEY;
+    expect(stripeKeyMode()).toBe("unconfigured");
+    if (previous === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = previous;
+  });
+
+  it("opens a billing portal session for the stored customer", async () => {
+    const calls: { customer?: string; return_url?: string }[] = [];
+    const stripe = {
+      billingPortal: {
+        sessions: {
+          create: async (params: { customer?: string; return_url?: string }) => {
+            calls.push(params);
+            return { url: "https://billing.stripe.com/session/test" };
+          },
+        },
+      },
+    } as unknown as Stripe;
+    const session = await createBillingPortalSession(stripe, {
+      customerId: "cus_member",
+      returnUrl: billingReturnUrls("https://svg-performance.vercel.app").portalReturnUrl,
+    });
+    expect(calls).toEqual([
+      {
+        customer: "cus_member",
+        return_url: "https://svg-performance.vercel.app/account/billing",
+      },
+    ]);
+    expect(session.url).toContain("billing.stripe.com");
   });
 });

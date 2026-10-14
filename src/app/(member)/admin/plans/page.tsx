@@ -10,6 +10,7 @@ import { AdminCreditForm } from "@/components/admin/AdminCreditForm";
 import { AdminRestoreCreditForm } from "@/components/admin/AdminRestoreCreditForm";
 import { AdminBookingStatusForm } from "@/components/admin/AdminBookingStatusForm";
 import { BookingNextStepsForm } from "@/components/staff/BookingNextStepsForm";
+import { StripeModeBanner } from "@/components/admin/StripeModeBanner";
 
 export default async function AdminPlansPage() {
   await requireAdmin();
@@ -25,9 +26,13 @@ export default async function AdminPlansPage() {
     <main className="space-y-8">
       <div>
         <h1 className="text-2xl">Plans &amp; credits</h1>
-        <p className="mt-1 text-sm text-muted">
+        <div className="mt-3">
+          <StripeModeBanner />
+        </div>
+        <p className="mt-3 text-sm text-muted">
           Pilot override: assign a catalog plan for 30 days, mark a credit used after a
-          real session, and review waitlist / booking requests. This is not live billing.
+          real session, and review waitlist / booking requests. A gym price without
+          academy verification is flagged for review.
         </p>
         <p className="mt-2 text-sm">
           <Link href="/admin" className="text-accent underline">
@@ -61,6 +66,9 @@ export default async function AdminPlansPage() {
               <p className="text-sm text-muted">
                 {PLAN_CATALOG[planId].label}
                 {sub ? ` · ${sub.status} · ${sub.source}` : " · no subscription row"}
+                {sub?.source === "gym_unverified"
+                  ? " · gym price needs review (recorded on the public plan)"
+                  : ""}
               </p>
               {monthCredits.length > 0 ? (
                 <ul className="mt-2 list-disc pl-5 text-sm text-muted">

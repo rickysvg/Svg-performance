@@ -4,10 +4,12 @@ import { getProfileForUser } from "@/lib/profile";
 import { isStripeConfigured } from "@/lib/access";
 import { ensureCreditsForPlan } from "@/lib/credits";
 import { isPlanAtCap } from "@/lib/waitlist";
+import { getStripe } from "@/lib/stripe";
 import {
   CHECKOUT_SKUS,
   type CheckoutSkuId,
   isCheckoutSkuId,
+  nonGymCounterpart,
   normalizePlanId,
   PLAN_CATALOG,
   PLANS,
@@ -52,6 +54,16 @@ export function priceIdForPlan(plan: CheckoutSkuId) {
   return value;
 }
 
+export function addOneMonth(from = new Date()) {
+  const end = new Date(from.getTime());
+  const day = end.getUTCDate();
+  end.setUTCDate(1);
+  end.setUTCMonth(end.getUTCMonth() + 1);
+  const lastDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+  end.setUTCDate(Math.min(day, lastDay));
+  return end;
+}
+
 export async function upsertSubscriptionFromWebhook(input: {
   userId: string;
   plan: string;
@@ -62,24 +74,20 @@ export async function upsertSubscriptionFromWebhook(input: {
   currentPeriodEnd?: Date | null;
   source?: string;
 }) {
-  const existing = input.stripeSubscriptionId
-    ? await prisma.subscription.findFirst({
-        where: { stripeSubscriptionId: input.stripeSubscriptionId },
-      })
-    : await prisma.subscription.findFirst({
-        where: { userId: input.userId },
-        orderBy: { updatedAt: "desc" },
-      });
+  const existing = await locateSubscription(input);
 
   const data = {
     userId: input.userId,
-    plan: input.plan,
+    plan: input.plan || existing?.plan || "member_access",
     status: input.status,
-    stripeCustomerId: input.stripeCustomerId ?? "",
-    stripeSubscriptionId: input.stripeSubscriptionId ?? "",
-    stripePriceId: input.stripePriceId ?? "",
-    currentPeriodEnd: input.currentPeriodEnd ?? null,
-    source: input.source ?? "webhook",
+    stripeCustomerId: input.stripeCustomerId || existing?.stripeCustomerId || "",
+    stripeSubscriptionId: input.stripeSubscriptionId || existing?.stripeSubscriptionId || "",
+    stripePriceId: input.stripePriceId || existing?.stripePriceId || "",
+    currentPeriodEnd:
+      input.currentPeriodEnd === undefined
+        ? (existing?.currentPeriodEnd ?? null)
+        : input.currentPeriodEnd,
+    source: nextSource(existing?.source, input.source),
   };
 
   if (existing) {
@@ -88,18 +96,153 @@ export async function upsertSubscriptionFromWebhook(input: {
   return prisma.subscription.create({ data });
 }
 
+function nextSource(existingSource: string | undefined, incoming: string | undefined) {
+  if (incoming === "admin" || incoming === "gym_unverified") return incoming;
+  if (existingSource === "admin" || existingSource === "gym_unverified") return existingSource;
+  return incoming || existingSource || "webhook";
+}
+
+async function locateSubscription(input: {
+  userId: string;
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
+}) {
+  if (input.stripeSubscriptionId) {
+    const bySub = await prisma.subscription.findFirst({
+      where: { stripeSubscriptionId: input.stripeSubscriptionId },
+    });
+    if (bySub) return bySub;
+  }
+  if (input.stripeCustomerId) {
+    const byCustomer = await prisma.subscription.findFirst({
+      where: { userId: input.userId, stripeCustomerId: input.stripeCustomerId },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (byCustomer) return byCustomer;
+  }
+  if (!input.stripeSubscriptionId) {
+    return prisma.subscription.findFirst({
+      where: { userId: input.userId },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+  return null;
+}
+
+type StripeId = string | { id?: string; metadata?: Record<string, string> | null; current_period_end?: number } | null;
+
 type StripeLikeObject = {
   id?: string;
-  metadata?: Record<string, string>;
-  client_reference_id?: string;
-  customer?: string;
-  subscription?: string;
+  object?: string;
+  metadata?: Record<string, string> | null;
+  client_reference_id?: string | null;
+  customer?: StripeId;
+  subscription?: StripeId;
   status?: string;
-  current_period_end?: number;
-  items?: { data?: { price?: { id?: string } }[] };
-  /** Ignored: card vs Affirm/Klarna does not change access. Loan details are never stored. */
+  mode?: string;
+  payment_status?: string;
+  /** Ignored: card vs Affirm/Klarna does not change access. */
   payment_method_types?: string[];
+  current_period_end?: number;
+  items?: {
+    data?: Array<{
+      price?: { id?: string } | string;
+      current_period_end?: number;
+    }>;
+  };
+  lines?: {
+    data?: Array<{
+      price?: { id?: string } | string;
+      period?: { end?: number };
+      subscription?: string | null;
+      pricing?: { price_details?: { price?: string } };
+    }>;
+  };
+  parent?: {
+    subscription_details?: {
+      subscription?: StripeId;
+      metadata?: Record<string, string> | null;
+    } | null;
+  } | null;
+  [key: string]: unknown;
 };
+
+export type RemoteSubscription = {
+  id: string;
+  customerId: string;
+  metadata: Record<string, string>;
+  status?: string;
+  priceId: string;
+  currentPeriodEnd: Date | null;
+};
+
+function idOf(value: StripeId | undefined) {
+  if (typeof value === "string") return value;
+  if (value && typeof value.id === "string") return value.id;
+  return "";
+}
+
+function metadataOf(value: StripeId | undefined) {
+  if (value && typeof value === "object" && value.metadata) return value.metadata;
+  return undefined;
+}
+
+function subscriptionIdFrom(type: string, object: StripeLikeObject) {
+  if (type.startsWith("customer.subscription.")) return object.id ?? "";
+  const direct = idOf(object.subscription);
+  if (direct) return direct;
+  const parent = idOf(object.parent?.subscription_details?.subscription);
+  if (parent) return parent;
+  const lineSub = object.lines?.data?.[0]?.subscription;
+  return typeof lineSub === "string" ? lineSub : "";
+}
+
+function customerIdFrom(object: StripeLikeObject) {
+  return idOf(object.customer);
+}
+
+function userIdFrom(object: StripeLikeObject) {
+  return (
+    object.metadata?.userId ||
+    object.client_reference_id ||
+    object.parent?.subscription_details?.metadata?.userId ||
+    metadataOf(object.subscription)?.userId ||
+    ""
+  );
+}
+
+function planFrom(object: StripeLikeObject) {
+  return (
+    object.metadata?.plan ||
+    object.parent?.subscription_details?.metadata?.plan ||
+    metadataOf(object.subscription)?.plan ||
+    ""
+  );
+}
+
+function priceIdFrom(object: StripeLikeObject) {
+  if (object.metadata?.priceId) return object.metadata.priceId;
+  const itemPrice = object.items?.data?.[0]?.price;
+  if (typeof itemPrice === "string" && itemPrice) return itemPrice;
+  if (itemPrice && typeof itemPrice === "object" && itemPrice.id) return itemPrice.id;
+  const line = object.lines?.data?.[0];
+  if (!line) return "";
+  if (typeof line.price === "string" && line.price) return line.price;
+  if (line.price && typeof line.price === "object" && line.price.id) return line.price.id;
+  return line.pricing?.price_details?.price ?? "";
+}
+
+function periodEndFrom(object: StripeLikeObject) {
+  const unix =
+    object.current_period_end ||
+    object.items?.data?.[0]?.current_period_end ||
+    object.lines?.data?.[0]?.period?.end ||
+    (object.subscription && typeof object.subscription === "object"
+      ? object.subscription.current_period_end
+      : undefined);
+  if (!unix) return null;
+  return new Date(unix * 1000);
+}
 
 function mapSubscriptionStatus(status: string | undefined) {
   if (status === "active" || status === "trialing") return "active";
@@ -107,6 +250,7 @@ function mapSubscriptionStatus(status: string | undefined) {
   if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
     return "canceled";
   }
+  if (status === "paused") return "paused";
   return "incomplete";
 }
 
@@ -116,11 +260,68 @@ function requiresGymVerify(planRaw: string) {
   return false;
 }
 
-export async function applyStripeEvent(event: {
-  id?: string;
-  type: string;
-  data: { object: StripeLikeObject };
-}) {
+function isOneMonthPurchase(planRaw: string, catalogPlan: string) {
+  return (
+    catalogPlan === "vip" ||
+    catalogPlan === "platinum" ||
+    planRaw === "vip" ||
+    planRaw === "platinum"
+  );
+}
+
+function secretCanCallStripe() {
+  const key = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+  return /^(sk|rk)_(test|live)_[A-Za-z0-9]{16,}/.test(key);
+}
+
+async function defaultLoadSubscription(id: string): Promise<RemoteSubscription | null> {
+  if (!secretCanCallStripe()) return null;
+  let stripe: ReturnType<typeof getStripe>;
+  try {
+    stripe = getStripe();
+  } catch {
+    return null;
+  }
+  if (!stripe) return null;
+  try {
+    const sub = await stripe.subscriptions.retrieve(id);
+    const item = sub.items?.data?.[0];
+    const price = item?.price;
+    const priceId = typeof price === "string" ? price : (price?.id ?? "");
+    const customer = sub.customer;
+    const customerId = typeof customer === "string" ? customer : (customer && "id" in customer ? customer.id : "");
+    const periodUnix = item?.current_period_end;
+    return {
+      id: sub.id,
+      customerId,
+      metadata: sub.metadata ?? {},
+      status: sub.status,
+      priceId,
+      currentPeriodEnd: periodUnix ? new Date(periodUnix * 1000) : null,
+    };
+  } catch {
+    console.warn("[stripe] could not load subscription", id);
+    return null;
+  }
+}
+
+async function rememberEvent(event: { id?: string; type: string }) {
+  if (!event.id) return;
+  await prisma.stripeEventLog.create({
+    data: { stripeEventId: event.id, eventType: event.type },
+  });
+}
+
+const INVOICE_EVENTS = new Set(["invoice.paid", "invoice.payment_failed"]);
+
+export async function applyStripeEvent(
+  event: {
+    id?: string;
+    type: string;
+    data: { object: StripeLikeObject };
+  },
+  options?: { loadSubscription?: (id: string) => Promise<RemoteSubscription | null> },
+) {
   if (event.id) {
     const existing = await prisma.stripeEventLog.findUnique({
       where: { stripeEventId: event.id },
@@ -131,111 +332,195 @@ export async function applyStripeEvent(event: {
   }
 
   const object = event.data.object;
-  const userId =
-    object.metadata?.userId || object.client_reference_id || "";
-  const planRaw = object.metadata?.plan || "standalone";
-  const catalogPlan = isCheckoutSkuId(planRaw)
-    ? CHECKOUT_SKUS[planRaw].catalogId
-    : normalizePlanId(planRaw);
+  const loadSubscription = options?.loadSubscription ?? defaultLoadSubscription;
+  let userId = userIdFrom(object);
+  let planRaw = planFrom(object);
+  let subscriptionId = subscriptionIdFrom(event.type, object);
+  let customerId = customerIdFrom(object);
+  let priceId = priceIdFrom(object);
+  let periodEnd = periodEndFrom(object);
+  let remoteStatus = object.status;
 
-  if (!userId) {
-    throw new AppError("BILLING", "Webhook event is missing the member id.");
+  let existingRow = subscriptionId
+    ? await prisma.subscription.findFirst({ where: { stripeSubscriptionId: subscriptionId } })
+    : null;
+  if (!existingRow && customerId) {
+    existingRow = await prisma.subscription.findFirst({
+      where: { stripeCustomerId: customerId },
+      orderBy: { updatedAt: "desc" },
+    });
   }
 
-  const existingSub = await prisma.subscription.findFirst({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-  });
-  const isFirstInvoicePaid = event.type === "invoice.paid" && !existingSub;
+  if (!userId && existingRow) userId = existingRow.userId;
+  if (!planRaw && existingRow) planRaw = existingRow.plan;
+  if (!priceId && existingRow?.stripePriceId) priceId = existingRow.stripePriceId;
+
+  const needsRemote =
+    Boolean(subscriptionId) &&
+    (!userId ||
+      !planRaw ||
+      !priceId ||
+      !periodEnd ||
+      (event.type.startsWith("customer.subscription.") && !object.status));
+  if (needsRemote && subscriptionId) {
+    try {
+      const remote = await loadSubscription(subscriptionId);
+      if (remote) {
+        userId = userId || remote.metadata.userId || "";
+        planRaw = planRaw || remote.metadata.plan || "";
+        customerId = customerId || remote.customerId;
+        priceId = priceId || remote.priceId;
+        periodEnd = periodEnd ?? remote.currentPeriodEnd;
+        remoteStatus = remoteStatus || remote.status;
+        if (!existingRow && customerId) {
+          existingRow = await prisma.subscription.findFirst({
+            where: { stripeCustomerId: customerId },
+            orderBy: { updatedAt: "desc" },
+          });
+          if (!userId && existingRow) userId = existingRow.userId;
+          if (!planRaw && existingRow) planRaw = existingRow.plan;
+        }
+      }
+    } catch {
+      console.warn("[stripe] subscription lookup failed", subscriptionId);
+    }
+  }
+
+  if (!userId && customerId) {
+    existingRow =
+      existingRow ??
+      (await prisma.subscription.findFirst({
+        where: { stripeCustomerId: customerId },
+        orderBy: { updatedAt: "desc" },
+      }));
+    if (existingRow) {
+      userId = existingRow.userId;
+      planRaw = planRaw || existingRow.plan;
+    }
+  }
+
+  if (!userId) {
+    console.warn(
+      `[stripe] ${event.type} ignored; no member for subscription ${subscriptionId || "none"} or customer ${customerId || "none"}`,
+    );
+    await rememberEvent(event);
+    return { skipped: true, reason: "unresolved_member" as const };
+  }
+
+  if (!planRaw) {
+    if (event.type.startsWith("checkout.")) {
+      planRaw = "standalone";
+    } else if (INVOICE_EVENTS.has(event.type) || event.type.startsWith("customer.subscription.")) {
+      console.warn(`[stripe] ${event.type} ignored; member ${userId} has no plan on the event`);
+      await rememberEvent(event);
+      return { skipped: true, reason: "unresolved_plan" as const };
+    } else {
+      planRaw = "standalone";
+    }
+  }
+
+  const isFirstInvoicePaid = event.type === "invoice.paid" && !existingRow;
   const isGymActivation =
     event.type === "checkout.session.completed" ||
     event.type === "customer.subscription.created" ||
     isFirstInvoicePaid;
 
+  let flagged = false;
+  let downgraded = false;
   if (requiresGymVerify(planRaw) && isGymActivation) {
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {
-      throw new ForbiddenError(
-        "Webhook refused gym-plan access because this member is not admin-verified.",
+      const counterpart = nonGymCounterpart(planRaw);
+      console.warn(
+        `[stripe] gym-plan webhook for unverified member ${userId}; ${planRaw} -> ${counterpart ?? "flagged"}; event ${event.id ?? "none"}`,
       );
+      flagged = true;
+      if (counterpart) {
+        planRaw = counterpart;
+        downgraded = true;
+      }
     }
   }
 
-  const periodEnd = object.current_period_end
-    ? new Date(object.current_period_end * 1000)
-    : null;
-
-  let result = null;
+  const catalogPlan = isCheckoutSkuId(planRaw)
+    ? CHECKOUT_SKUS[planRaw].catalogId
+    : normalizePlanId(planRaw);
+  const oneTime = isOneMonthPurchase(planRaw, catalogPlan);
+  const source = flagged ? "gym_unverified" : "webhook";
 
   if (event.type === "checkout.session.expired") {
-    result = await upsertSubscriptionFromWebhook({
+    const paidRow = await prisma.subscription.findFirst({
+      where: { userId, status: { in: ["active", "past_due"] } },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (paidRow) {
+      await rememberEvent(event);
+      return { skipped: true, reason: "expired_ignored" as const };
+    }
+    const result = await upsertSubscriptionFromWebhook({
       userId,
       plan: catalogPlan,
       status: "incomplete",
-      stripeSubscriptionId:
-        typeof object.subscription === "string" ? object.subscription : object.id,
-      currentPeriodEnd: periodEnd,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      currentPeriodEnd: periodEnd ?? undefined,
+      source,
     });
-  } else if (
-    event.type === "checkout.session.completed" ||
-    event.type === "invoice.paid" ||
-    event.type === "customer.subscription.created"
-  ) {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: catalogPlan,
-      status: "active",
-      stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
-      stripeSubscriptionId:
-        typeof object.subscription === "string"
-          ? object.subscription
-          : object.id,
-      stripePriceId: object.items?.data?.[0]?.price?.id,
-      currentPeriodEnd: periodEnd,
-    });
-    if (result.status === "active") {
-      await ensureCreditsForPlan(userId, catalogPlan);
+    await rememberEvent(event);
+    return result;
+  }
+
+  let status = "incomplete";
+  let periodToStore: Date | null | undefined = periodEnd ?? undefined;
+
+  if (event.type === "checkout.session.completed") {
+    const paid =
+      !object.payment_status ||
+      object.payment_status === "paid" ||
+      object.payment_status === "no_payment_required";
+    status = paid ? "active" : "incomplete";
+    if (paid && oneTime) periodToStore = addOneMonth();
+  } else if (event.type === "invoice.paid") {
+    status = "active";
+    if (oneTime && !subscriptionId) {
+      const stillOpen = existingRow?.currentPeriodEnd && existingRow.currentPeriodEnd > new Date();
+      periodToStore = stillOpen ? undefined : addOneMonth();
     }
   } else if (event.type === "invoice.payment_failed") {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: catalogPlan,
-      status: "past_due",
-      stripeSubscriptionId:
-        typeof object.subscription === "string" ? object.subscription : object.id,
-      currentPeriodEnd: periodEnd,
-    });
+    status = "past_due";
+  } else if (event.type === "customer.subscription.deleted") {
+    status = "canceled";
   } else if (
-    event.type === "customer.subscription.deleted" ||
-    (event.type === "customer.subscription.updated" &&
-      mapSubscriptionStatus(object.status) === "canceled")
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.created"
   ) {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: catalogPlan,
-      status: "canceled",
-      stripeSubscriptionId: object.id,
-      currentPeriodEnd: periodEnd,
-    });
-  } else if (event.type === "customer.subscription.updated") {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: catalogPlan,
-      status: mapSubscriptionStatus(object.status),
-      stripeSubscriptionId: object.id,
-      currentPeriodEnd: periodEnd,
-    });
-    if (result.status === "active") {
-      await ensureCreditsForPlan(userId, catalogPlan);
-    }
+    status = remoteStatus ? mapSubscriptionStatus(remoteStatus) : (existingRow?.status ?? "incomplete");
+  } else {
+    await rememberEvent(event);
+    return { skipped: true, reason: "ignored_event" as const };
   }
 
-  if (event.id) {
-    await prisma.stripeEventLog.create({
-      data: { stripeEventId: event.id, eventType: event.type },
-    });
+  if (flagged && !downgraded) {
+    status = "incomplete";
   }
 
+  const result = await upsertSubscriptionFromWebhook({
+    userId,
+    plan: catalogPlan,
+    status,
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    stripePriceId: priceId,
+    currentPeriodEnd: periodToStore,
+    source,
+  });
+
+  if (result.status === "active") {
+    await ensureCreditsForPlan(userId, catalogPlan);
+  }
+
+  await rememberEvent(event);
   return result;
 }
 

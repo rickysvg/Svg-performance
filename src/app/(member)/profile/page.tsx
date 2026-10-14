@@ -163,6 +163,11 @@ export default async function ProfilePage() {
             </Link>
           </li>
           <li>
+            <Link href="/account/billing" className="text-accent underline-offset-4 hover:underline">
+              Billing
+            </Link>
+          </li>
+          <li>
             <Link href="/book" className="text-accent underline-offset-4 hover:underline">
               Book with Ricky
             </Link>

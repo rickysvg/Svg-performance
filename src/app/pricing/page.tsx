@@ -10,6 +10,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { listSeatStatus } from "@/lib/waitlist";
 import { BOOKING_OFFERS, PLAN_CATALOG } from "@/lib/plans";
 import { isFoundingDealOpen } from "@/lib/pricing";
+import { stripeKeyMode } from "@/lib/stripe";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
@@ -17,6 +18,7 @@ export default async function PricingPage() {
   const subscription = user ? await getLatestSubscription(user.id) : null;
   const currentPlan = user ? await getEffectivePlanId(user.id) : null;
   const configured = isStripeConfigured();
+  const stripeMode = stripeKeyMode();
   const seats = await listSeatStatus();
   const verified = Boolean(profile?.gymMembershipVerified);
   const foundingOpen = isFoundingDealOpen();
@@ -26,7 +28,7 @@ export default async function PricingPage() {
       <AppHeader email={user?.email} />
       <main className="mx-auto max-w-3xl px-4 py-10">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
-          Proposal — not live billing
+          {configured ? "Checkout" : "Proposal — not live billing"}
         </p>
         <h1 className="mt-2 text-3xl text-black">SVG Performance pricing</h1>
         <p className="mt-3 text-muted">
@@ -37,7 +39,7 @@ export default async function PricingPage() {
           never touch this app. Access is granted only after a verified webhook.
         </p>
         <AiDisclaimer className="mt-3" />
-        <FinancingNote configured={configured} className="mt-4" />
+        <FinancingNote configured={configured} mode={stripeMode} className="mt-4" />
         {currentPlan ? (
           <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
             Current catalog plan: <strong>{PLAN_CATALOG[currentPlan].label}</strong>
@@ -57,8 +59,12 @@ export default async function PricingPage() {
           </p>
         ) : (
           <p className="mt-4 rounded-xl border border-black bg-accent/20 p-4 text-sm text-black">
-            Paid plans coming soon. TEST price stubs exist, but buy buttons stay off until
-            live billing is approved.
+            Checkout is open for the monthly plans and the VIP / Platinum one-time prices.
+            Access changes only after the webhook. Manage a card or cancellation on{" "}
+            <Link href="/account/billing" className="underline">
+              account billing
+            </Link>
+            .
           </p>
         )}
 
@@ -67,6 +73,7 @@ export default async function PricingPage() {
             verified={verified}
             foundingOpen={foundingOpen}
             userLoggedIn={Boolean(user)}
+            checkoutOpen={configured}
             seats={seats}
           />
         </div>
