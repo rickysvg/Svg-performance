@@ -6,6 +6,8 @@ import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
+import { SessionRecap } from "@/components/training/SessionRecap";
+import type { SessionSummary } from "@/lib/session-summary";
 import { workoutCompleteHeadline, type WorkoutCompleteTile } from "@/lib/workout-complete";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { ShareStat } from "@/lib/share-card";
@@ -31,6 +33,7 @@ export function WorkoutWinScreen({
   unit,
   workoutId,
   difficultyRating,
+  summary,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -41,6 +44,7 @@ export function WorkoutWinScreen({
   unit: LoadUnit;
   workoutId: string;
   difficultyRating: string;
+  summary?: SessionSummary | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -85,6 +89,7 @@ export function WorkoutWinScreen({
         style: "black",
         title: shareTitle,
         stats: shareStats,
+        summary,
       });
       const result = await shareOrDownloadCard(blob, "svg-performance-session.png");
       if (result === "downloaded") {
@@ -157,6 +162,7 @@ export function WorkoutWinScreen({
             <p className="font-display mt-1 text-xl uppercase tracking-wide text-[#cbf805]">{badgeTitle}</p>
           </div>
         ) : null}
+        {summary ? <SessionRecap summary={summary} /> : null}
         <button
           type="button"
           onClick={onDone}

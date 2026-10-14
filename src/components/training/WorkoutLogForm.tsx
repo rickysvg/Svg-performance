@@ -40,6 +40,7 @@ import {
   addRestSeconds,
   clockNow,
   formatRestClock,
+  formatRestPill,
   isRestActive,
   primeRestAudio,
   readRestNow,
@@ -47,6 +48,7 @@ import {
   restCueForTick,
   signalRestComplete,
   signalRestWarning,
+  startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { loggerCursor, nextIncompleteSetId } from "@/lib/logger-progress";
@@ -273,6 +275,10 @@ export function WorkoutLogForm({
     reps: currentPlanned?.reps,
   });
   const progressUnit = currentMode === "timed_round" ? "Round" : "Set";
+  const currentRestSeconds = cursor.done
+    ? 0
+    : (currentPlanned?.restSeconds ??
+      (isBikeIntervalName(cursor.exerciseName) ? 60 : currentMode === "timed_round" ? 90 : 60));
   const firstRirName = session.programDay?.exercises.find((row) => hasRirCue(row.loadText))?.name;
 
   const defaultUnit = "lb";
@@ -513,6 +519,15 @@ export function WorkoutLogForm({
     });
   }
 
+  function beginRest() {
+    if (!cursor.exerciseName || currentRestSeconds <= 0 || restRunning) return;
+    primeRestAudio();
+    primeMediaOutput();
+    setRestGo(false);
+    engageRestRoute();
+    commitRest(startRestTimer(cursor.exerciseName, currentRestSeconds, readRestNow()));
+  }
+
   function commitRest(next: RestTimerState | null) {
     setNowMs(readRestNow());
     primeMediaOutput();
@@ -547,7 +562,10 @@ export function WorkoutLogForm({
   return (
     <div>
       <form ref={formRef} action={action} className="space-y-5">
-        <header className="sticky top-[calc(env(safe-area-inset-top)+3.5rem)] z-10 -mx-4 overflow-hidden border-b border-line bg-background/95 backdrop-blur">
+        <header
+          data-logger-chrome
+          className="sticky top-0 z-30 -mx-4 overflow-hidden border-b border-line bg-background pt-[env(safe-area-inset-top)] backdrop-blur md:top-[calc(env(safe-area-inset-top)+3.5rem)] md:z-10 md:pt-0"
+        >
           <div className="flex items-center gap-2 px-4 py-2">
             <Link
               href={cancelHref}
@@ -585,9 +603,74 @@ export function WorkoutLogForm({
             </div>
           </div>
           {restGo ? (
-            <div data-rest-complete className="bg-black px-4 py-4 text-white">
+            <div data-rest-complete className="bg-black px-4 py-3 text-white">
               <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Rest over</p>
               <p className="font-display mt-1 text-2xl leading-none text-[#CBF805]">Go</p>
+            </div>
+          ) : null}
+          {restRunning ? (
+            <div
+              data-rest-countdown
+              data-rest-warning={restRemaining <= 3 ? "1" : undefined}
+              className="mx-4 mb-3 flex items-center justify-between gap-2 rounded-xl bg-black px-3 py-2 text-white"
+            >
+              <div className="min-w-0">
+                <p className="font-display text-[10px] uppercase tracking-wide text-highlighter">
+                  Rest
+                </p>
+                {restRemaining <= 3 ? (
+                  <p
+                    data-rest-get-ready
+                    className="font-display mt-1 text-[11px] uppercase tracking-[0.14em] text-[#CBF805]"
+                  >
+                    Get ready
+                  </p>
+                ) : null}
+                <p
+                  className={`font-display text-xl leading-none tabular-nums text-[#CBF805] ${
+                    restRemaining <= 3 ? "motion-safe:animate-pulse" : ""
+                  }`}
+                >
+                  {formatRestClock(restRemaining)}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  type="button"
+                  data-rest-minus
+                  onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, -15) : null)}
+                  className="touch-target rounded-full border border-white/40 px-3 text-sm"
+                >
+                  −15s
+                </button>
+                <button
+                  type="button"
+                  data-rest-skip
+                  onClick={() => commitRest(null)}
+                  className="touch-target rounded-full border border-white/40 px-3 text-sm"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  data-rest-plus
+                  onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, 15) : null)}
+                  className="touch-target rounded-full bg-accent px-3 text-sm text-black"
+                >
+                  +15s
+                </button>
+              </div>
+            </div>
+          ) : currentRestSeconds > 0 ? (
+            <div className="px-4 pb-3">
+              <button
+                type="button"
+                data-start-rest
+                onClick={beginRest}
+                className="touch-target w-full rounded-full border border-line bg-white font-display text-sm uppercase tracking-wide text-black"
+              >
+                Start rest {formatRestPill(currentRestSeconds)}
+              </button>
             </div>
           ) : null}
         </header>
@@ -705,7 +788,7 @@ export function WorkoutLogForm({
               data-exercise-block={name}
               data-log-row={layout}
               data-current-exercise={current ? "true" : undefined}
-              className={`scroll-mt-36 rounded-2xl border p-4 ${
+              className={`scroll-mt-52 rounded-2xl border p-4 ${
                 current
                   ? "border-[#CBF805] bg-card shadow-[0_0_0_2px_#CBF805]"
                   : "border-line bg-card"
@@ -819,61 +902,6 @@ export function WorkoutLogForm({
                 </p>
               ) : null}
 
-              {restRunning && restTimer?.exerciseName === name ? (
-                <div
-                  data-rest-countdown
-                  data-rest-warning={restRemaining <= 3 ? "1" : undefined}
-                  className="sticky top-[calc(env(safe-area-inset-top)+7.5rem)] z-20 mt-3 flex items-center justify-between gap-2 rounded-xl bg-black px-3 py-2 text-white"
-                >
-                  <div className="min-w-0">
-                    <p className="font-display text-[10px] uppercase tracking-wide text-highlighter">
-                      Rest
-                    </p>
-                    {restRemaining <= 3 ? (
-                      <p
-                        data-rest-get-ready
-                        className="font-display mt-1 text-[11px] uppercase tracking-[0.14em] text-[#CBF805]"
-                      >
-                        Get ready
-                      </p>
-                    ) : null}
-                    <p
-                      className={`font-display text-xl leading-none tabular-nums text-[#CBF805] ${
-                        restRemaining <= 3 ? "motion-safe:animate-pulse" : ""
-                      }`}
-                    >
-                      {formatRestClock(restRemaining)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    <button
-                      type="button"
-                      data-rest-minus
-                      onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, -15) : null)}
-                      className="touch-target rounded-full border border-white/40 px-3 text-sm"
-                    >
-                      −15s
-                    </button>
-                    <button
-                      type="button"
-                      data-rest-skip
-                      onClick={() => commitRest(null)}
-                      className="touch-target rounded-full border border-white/40 px-3 text-sm"
-                    >
-                      Skip
-                    </button>
-                    <button
-                      type="button"
-                      data-rest-plus
-                      onClick={() => commitRest(restTimer ? addRestSeconds(restTimer, 15) : null)}
-                      className="touch-target rounded-full bg-accent px-3 text-sm text-black"
-                    >
-                      +15s
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
                 {layout === "bag" ? (
                   <>
@@ -982,7 +1010,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full scroll-mt-36 rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-11 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center"
                           />
                         </label>
                       ) : (
@@ -1001,7 +1029,7 @@ export function WorkoutLogForm({
                                 reps: event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full scroll-mt-36 rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-11 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center"
                           />
                         </label>
                       )}
@@ -1059,8 +1087,10 @@ export function WorkoutLogForm({
           );
         })}
 
-        <div className="h-28" aria-hidden />
-        <div className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        <div
+          data-logger-save
+          className="space-y-2 border-t border-line pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
           <button
             type="submit"
             name="intent"
