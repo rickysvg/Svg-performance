@@ -33,7 +33,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "5–8", restSeconds: 90, loadText: "0-2 RIR · ~75% of a 5-rep max · honest last reps" },
       intermediate: { sets: 4, reps: "3–6", restSeconds: 90, loadText: "0-2 RIR · ~80% of a 5-rep max · flat back" },
-      advanced: { sets: 5, reps: "3", restSeconds: 75, loadText: "0-2 RIR · ~85% of a 5-rep max · high intent" },
+      advanced: { sets: 4, reps: "3", restSeconds: 75, loadText: "0-2 RIR · ~85% of a 5-rep max · high intent" },
     },
   },
   {
@@ -44,7 +44,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "5–8", restSeconds: 90, loadText: "1-3 RIR · upper arms to the floor" },
       intermediate: { sets: 4, reps: "3–6", restSeconds: 90, loadText: "1-3 RIR · paused on the floor" },
-      advanced: { sets: 5, reps: "3", restSeconds: 75, loadText: "1-3 RIR · heavy triples" },
+      advanced: { sets: 4, reps: "3", restSeconds: 75, loadText: "1-3 RIR · heavy triples" },
     },
   },
   {
@@ -55,7 +55,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "6–8 / side", restSeconds: 75, loadText: "2-4 RIR · brace hard" },
       intermediate: { sets: 3, reps: "6–10 / side", restSeconds: 75, loadText: "2-4 RIR · clean lockout" },
-      advanced: { sets: 4, reps: "5–6 / side", restSeconds: 60, loadText: "2-4 RIR · no back bend" },
+      advanced: { sets: 3, reps: "5–6 / side", restSeconds: 60, loadText: "2-4 RIR · no back bend" },
     },
   },
   {
@@ -66,7 +66,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "6 / side", restSeconds: 75, loadText: "3-5 RIR · light ball, fast turn" },
       intermediate: { sets: 3, reps: "8 / side", restSeconds: 60, loadText: "3-5 RIR · crisp hip turn" },
-      advanced: { sets: 4, reps: "6 / side", restSeconds: 45, loadText: "3-5 RIR · heavier ball, full intent" },
+      advanced: { sets: 3, reps: "6 / side", restSeconds: 45, loadText: "3-5 RIR · heavier ball, full intent" },
     },
   },
   {
@@ -77,7 +77,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "8", restSeconds: 75, loadText: "3-5 RIR · light ball, fast pass" },
       intermediate: { sets: 3, reps: "10", restSeconds: 60, loadText: "3-5 RIR · crisp, no pause" },
-      advanced: { sets: 4, reps: "10", restSeconds: 45, loadText: "3-5 RIR · hard throws, still fast" },
+      advanced: { sets: 3, reps: "10", restSeconds: 45, loadText: "3-5 RIR · hard throws, still fast" },
     },
   },
   {
@@ -111,7 +111,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "30–40 sec", restSeconds: 90, loadText: "2-3 RIR · heavy for you, walk tall" },
       intermediate: { sets: 3, reps: "35–45 sec", restSeconds: 75, loadText: "2-3 RIR · heavy for you, walk tall" },
-      advanced: { sets: 4, reps: "40–50 sec", restSeconds: 45, loadText: "2-3 RIR · heavy, walk tall" },
+      advanced: { sets: 3, reps: "40–50 sec", restSeconds: 45, loadText: "2-3 RIR · heavy, walk tall" },
     },
   },
   {
@@ -134,7 +134,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "20–30 sec", restSeconds: 60, loadText: "Hold — no weight" },
       intermediate: { sets: 3, reps: "30–45 sec", restSeconds: 45, loadText: "Hold — no weight" },
-      advanced: { sets: 4, reps: "45–60 sec", restSeconds: 30, loadText: "Hold — no weight" },
+      advanced: { sets: 3, reps: "45–60 sec", restSeconds: 30, loadText: "Hold — no weight" },
     },
   },
   {
@@ -146,7 +146,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "30 sec", restSeconds: 60, loadText: "Light DBs, band on head" },
       intermediate: { sets: 3, reps: "45 sec", restSeconds: 45, loadText: "Moderate DBs, stay tall" },
-      advanced: { sets: 4, reps: "60 sec", restSeconds: 30, loadText: "Heavier DBs, no lean" },
+      advanced: { sets: 3, reps: "60 sec", restSeconds: 30, loadText: "Heavier DBs, no lean" },
     },
   },
   {
@@ -185,7 +185,7 @@ export const DARU_EXERCISES: DaruExercise[] = [
     scale: {
       beginner: { sets: 3, reps: "8–12", restSeconds: 60, loadText: "2-4 RIR · up and back" },
       intermediate: { sets: 3, reps: "10", restSeconds: 60, loadText: "2-4 RIR · squeeze, no yank" },
-      advanced: { sets: 4, reps: "8–12", restSeconds: 45, loadText: "2-4 RIR · control the lower" },
+      advanced: { sets: 3, reps: "8–12", restSeconds: 45, loadText: "2-4 RIR · control the lower" },
     },
   },
 ];

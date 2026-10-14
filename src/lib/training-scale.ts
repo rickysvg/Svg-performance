@@ -30,6 +30,7 @@ import {
 } from "@/lib/exercise-log-mode";
 import { prescribeGymExercise } from "@/lib/gym-exercise";
 import { effortLoadText, mergeLoadText } from "@/lib/rir";
+import { capSetsForRole, exerciseSetRole, isConditioningIntervalName } from "@/lib/set-budget";
 import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
 
 export type ScaleBand = "beginner" | "intermediate" | "advanced";
@@ -149,29 +150,29 @@ const STRENGTH_REST: Record<ScaleBand, number> = {
 
 const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
   "Goblet squat": {
-    sets: 5,
+    sets: 4,
     reps: "5–6",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy — last rep slows but stays clean",
     restSeconds: 45,
   },
   "Romanian deadlift": {
-    sets: 5,
+    sets: 4,
     reps: "5",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy hinge — flat back",
     restSeconds: 45,
   },
   "Reverse lunge": {
-    sets: 5,
+    sets: 3,
     reps: "6 / leg",
     loadText: "2-4 RIR · Heavy dumbbells — knee tracks over the toes",
   },
   "Squat jump": {
-    sets: 4,
+    sets: 3,
     reps: "6",
     loadText: "3-5 RIR · Crisp landings",
   },
   "Front plank": {
-    sets: 4,
+    sets: 3,
     reps: "45–60 sec",
     loadText: "Hold — no weight",
     restSeconds: 30,
@@ -192,18 +193,18 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy, lockout clean",
   },
   "Face pull": {
-    sets: 4,
+    sets: 3,
     reps: "15",
     loadText: "2-4 RIR · Full squeeze to the face",
   },
   "Farmer carry": {
-    sets: 4,
+    sets: 3,
     reps: "40–50 sec",
     loadText: "2-3 RIR · Heavy — walk tall",
     restSeconds: 45,
   },
   "Kettlebell swing": {
-    sets: 5,
+    sets: 4,
     reps: "12",
     loadText: "3-5 RIR · Hard, crisp snaps",
   },
@@ -213,7 +214,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     loadText: "1-3 RIR · Pull to the chest, control the return",
   },
   "Lateral bound": {
-    sets: 4,
+    sets: 3,
     reps: "6 / side",
     loadText: "3-5 RIR · Cover more ground",
   },
@@ -224,7 +225,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     restSeconds: 0,
   },
   "Side plank": {
-    sets: 4,
+    sets: 3,
     reps: "30–45 sec / side",
     loadText: "Hold — no weight",
     restSeconds: 30,
@@ -414,7 +415,7 @@ function scaleHoldOrInterval(
       return {
         ...exercise,
         logMode: mode,
-        sets: 4,
+        sets: capSetsForRole("accessory", exercise.sets),
         reps: /side/i.test(exercise.reps) ? "30–45 sec / side" : "45–60 sec",
         loadText: "Hold — no weight",
         restSeconds: 30,
@@ -457,7 +458,6 @@ function scaleLoadedCarry(
     return {
       ...exercise,
       logMode: mode,
-      sets: Math.max(exercise.sets, 4),
       reps: "40–50 sec",
       loadText: mergeLoadText(exercise.loadText, "Heavy — walk tall"),
       restSeconds: 45,
@@ -540,27 +540,21 @@ function scaleStrengthExercise(
   return prescribeGymPush(scaleStrengthLoad(exercise, band, mode), band);
 }
 
-function scaleStrengthLoad(
+function withSetBudget(exercise: ScaleableExercise): ScaleableExercise {
+  if (isConditioningIntervalName(exercise.name, exercise.reps)) return exercise;
+  return {
+    ...exercise,
+    sets: capSetsForRole(exerciseSetRole(exercise), exercise.sets),
+  };
+}
+
+/** Bike, rope, sled, and other interval prescriptions keep their old set math. */
+function scaleConditioningStrength(
   exercise: ScaleableExercise,
   band: ScaleBand,
   mode: LogMode,
 ): ScaleableExercise {
-  const daru = daruExerciseForName(exercise.name);
-  if (daru) {
-    const scaled = daru.scale[band];
-    return {
-      ...exercise,
-      logMode: daru.logMode,
-      sets: scaled.sets,
-      reps: scaled.reps,
-      restSeconds: scaled.restSeconds,
-      loadText: scaled.loadText,
-    };
-  }
   const rest = restForBand(exercise.restSeconds, band);
-  if (mode === "load_timed") {
-    return scaleLoadedCarry(exercise, band, mode, rest);
-  }
   if (band === "intermediate" && mode === "load_reps") {
     return {
       ...exercise,
@@ -585,6 +579,59 @@ function scaleStrengthLoad(
     reps: override?.reps ?? exercise.reps,
     loadText: mergeLoadText(exercise.loadText, override?.loadText ?? harderLoadText(exercise.loadText)),
   };
+}
+
+function scaleStrengthLoad(
+  exercise: ScaleableExercise,
+  band: ScaleBand,
+  mode: LogMode,
+): ScaleableExercise {
+  const daru = daruExerciseForName(exercise.name);
+  if (daru) {
+    const scaled = daru.scale[band];
+    const next: ScaleableExercise = {
+      ...exercise,
+      logMode: daru.logMode,
+      sets: scaled.sets,
+      reps: scaled.reps,
+      restSeconds: scaled.restSeconds,
+      loadText: scaled.loadText,
+    };
+    if (isConditioningIntervalName(exercise.name, next.reps)) return next;
+    return withSetBudget(next);
+  }
+  if (isConditioningIntervalName(exercise.name, exercise.reps)) {
+    return scaleConditioningStrength(exercise, band, mode);
+  }
+  const rest = restForBand(exercise.restSeconds, band);
+  if (mode === "load_timed") {
+    return withSetBudget(scaleLoadedCarry(exercise, band, mode, rest));
+  }
+  const role = exerciseSetRole(exercise);
+  if (band === "intermediate" && mode === "load_reps") {
+    return withSetBudget({
+      ...exercise,
+      logMode: mode,
+      sets: role === "main" ? exercise.sets + 1 : exercise.sets,
+      restSeconds: rest,
+      loadText: /slow|heavy|grind|\bRIR\b/i.test(exercise.loadText)
+        ? exercise.loadText
+        : `${exercise.loadText} · last reps should slow`,
+    });
+  }
+  if (band !== "advanced") {
+    const hold = mode === "timed" ? { loadText: "Hold — no weight" } : {};
+    return withSetBudget({ ...exercise, logMode: mode, restSeconds: rest, ...hold });
+  }
+  const override = HARD_STRENGTH[exercise.name];
+  return withSetBudget({
+    ...exercise,
+    logMode: mode,
+    restSeconds: override?.restSeconds ?? rest,
+    sets: override?.sets ?? (role === "main" ? exercise.sets + 1 : exercise.sets),
+    reps: override?.reps ?? exercise.reps,
+    loadText: mergeLoadText(exercise.loadText, override?.loadText ?? harderLoadText(exercise.loadText)),
+  });
 }
 
 function restForBand(seedRest: number, band: ScaleBand) {
