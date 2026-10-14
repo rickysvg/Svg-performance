@@ -17,6 +17,7 @@ import { getProgressHeartTiles } from "@/lib/heart";
 import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
@@ -59,7 +60,9 @@ export default async function ProgressPage() {
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
   const summary = buildProgressSummary(sessions, units);
-  const lastComplete = sessions.find((session) => session.status === "complete");
+  const lastComplete = sessions.find(
+    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
+  );
   const weight = latestMetrics.get("weight");
   const sleep = latestMetrics.get("sleepHours");
   const typedHr = latestMetrics.get("restingHr");

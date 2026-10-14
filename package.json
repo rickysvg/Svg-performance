@@ -14,6 +14,7 @@
     "db:deploy": "node scripts/prisma-prepare.mjs --deploy",
     "test": "vitest run",
     "test:watch": "vitest",
+    "workouts:discard-empty": "tsx scripts/discard-empty-completed-workouts.ts",
     "admin:promote": "tsx scripts/promote-admin.ts",
     "staff:promote": "tsx scripts/promote-role.ts"
   },

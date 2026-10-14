@@ -206,6 +206,20 @@ function familyFor(name: string) {
   return FAMILY_BY_KEY.get(keyOf(name));
 }
 
+/** Same key for every alias of one movement, including older "X or Y" titles. */
+export function gymExerciseKey(name: string) {
+  const family = familyFor(name);
+  if (family) return keyOf(family.aliases[0]);
+  return keyOf(name);
+}
+
+/** "Cable or band woodchop" stores as "Cable woodchop". A single name is unchanged. */
+export function loggedExerciseName(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed || !/\bor\b/i.test(trimmed)) return trimmed;
+  return prescribeGymExercise({ name: trimmed }, "intermediate").name;
+}
+
 /**
  * One gym movement per card. Menus such as "A or B" collapse to the weighted
  * exercise. Beginners keep a bodyweight name only for push-ups and chin-ups.

@@ -12,6 +12,7 @@ import {
 } from "@/lib/workout-complete";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
 import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
+import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 
 export default async function WorkoutDonePage({
@@ -31,7 +32,7 @@ export default async function WorkoutDonePage({
   const [prs, completeIds, badges] = await Promise.all([
     detectNewPrsForSession(user.id, sessionId, unit),
     prisma.workoutSession.findMany({
-      where: { userId: user.id, status: "complete" },
+      where: { userId: user.id, status: "complete", sets: loggedSetSome },
       select: { id: true },
       orderBy: { performedAt: "asc" },
     }),

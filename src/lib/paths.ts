@@ -1,3 +1,4 @@
+import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { AppError, NotFoundError } from "@/lib/errors";
 import { findDemoProgram } from "@/lib/programs";
@@ -251,7 +252,7 @@ async function autoCompleteHints(userId: string, path: TrainingPath) {
   const [program, sessions, lessons, progress, journalCount, bookings] = await Promise.all([
     findDemoProgram(),
     prisma.workoutSession.findMany({
-      where: { userId, status: "complete" },
+      where: { userId, status: "complete", sets: loggedSetSome },
       select: { programDayId: true, difficultyRating: true },
     }),
     listPublishedLessons(),

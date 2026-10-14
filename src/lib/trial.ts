@@ -1,3 +1,4 @@
+import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
 import { type CatalogPlanId, type CatalogPlan, planAtLeast } from "@/lib/plans";
@@ -125,7 +126,7 @@ export async function dismissThirdWorkoutCard(userId: string, now = new Date()) 
 
 export async function countCompleteWorkoutsForUser(userId: string) {
   return prisma.workoutSession.count({
-    where: { userId, status: "complete" },
+    where: { userId, status: "complete", sets: loggedSetSome },
   });
 }
 

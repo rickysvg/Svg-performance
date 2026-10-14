@@ -208,7 +208,7 @@ model WorkoutSession {
   title        String
   performedAt  DateTime
   notes        String      @default("")
-  status       String      @default("complete")
+  status       String      @default("draft")
   difficultyRating String  @default("")
   /** Exercise whose between-set rest is running. Empty when rest is idle. */
   restExerciseName String   @default("")
