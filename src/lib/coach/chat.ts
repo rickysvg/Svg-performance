@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { detectSafetyRefusal } from "@/lib/coach/safety";
+import { detectSafetyRefusal, logCoachRefusal } from "@/lib/coach/safety";
+import { loadMemberContext } from "@/lib/coach/member-context";
 import { EMPTY_COACH_FALLBACK } from "@/lib/coach/offline";
 import { buildPlanContext } from "@/lib/coach/plan-context";
 import { classifyQuestion } from "@/lib/coach/router";
@@ -39,7 +40,10 @@ async function replyWithCoach(input: {
   const route = classifyQuestion(input.message, lane);
   const wantsPlan =
     route.primary === "programming" || route.secondary.includes("programming");
-  const planContext = wantsPlan ? await buildPlanContext(input.userId, input.message) : "";
+  const [planContext, memberProfile] = await Promise.all([
+    wantsPlan ? buildPlanContext(input.userId, input.message) : Promise.resolve(""),
+    loadMemberContext(input.userId, { topic: input.topic, art: input.art }),
+  ]);
   const ownSummary = buildOwnSummary({
     userId: input.userId,
     experienceLevel: input.experienceLevel,
@@ -57,6 +61,9 @@ async function replyWithCoach(input: {
     planContext,
     coachingStyle: input.coachingStyle,
     coachName: input.coachName,
+    message: input.message,
+    experienceLevel: input.experienceLevel,
+    memberProfile,
   });
   const reply = await collectCoachCompletion({
     system,
@@ -139,6 +146,7 @@ export async function sendCoachMessage(input: {
   });
 
   if (refusal) {
+    logCoachRefusal({ code: refusal.code, userId: input.userId, surface: "chat" });
     const saved = await prisma.chatMessage.create({
       data: {
         threadId: thread.id,
@@ -201,6 +209,7 @@ export async function answerScopedCoachQuestion(input: {
   }
   const refusal = detectSafetyRefusal(message, { currentUserId: input.userId });
   if (refusal) {
+    logCoachRefusal({ code: refusal.code, userId: input.userId, surface: "note" });
     return {
       content: refusal.message,
       offline: !isOpenAiConfigured(),
