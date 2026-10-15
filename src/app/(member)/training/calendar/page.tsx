@@ -3,29 +3,18 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { CalendarList } from "@/components/training/CalendarList";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
-import { PlanSessionCard } from "@/components/training/PlanSessionCard";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
-import { SessionDetails } from "@/components/training/SessionDetails";
-import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { requireUser } from "@/lib/session";
 import { formatCalendarHeading, getCalendarSchedule, weekdayName } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { findDemoTrainingCatalog } from "@/lib/programs";
 import { formatDayParam, parseDayParam } from "@/lib/home";
 import {
   moveDayChoices,
   planForDate,
-  resolvePlanSessions,
   weekStrip,
   type MoveListedSession,
 } from "@/lib/week-plan";
-import {
-  scaleBandFromPrefs,
-  scaleDemoCatalog,
-  type ScaleBand,
-} from "@/lib/training-scale";
-import { bikeZoneForDayNumber } from "@/lib/train-extras";
-import { listDraftSessionsForUser } from "@/lib/workouts";
+import { scaleBandFromPrefs, type ScaleBand } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
@@ -48,10 +37,8 @@ export default async function TrainingCalendarPage({
   const profile = await getProfileForUser(user.id);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, now, tz);
-  const [schedule, catalog, drafts, swaps] = await Promise.all([
+  const [schedule, swaps] = await Promise.all([
     getCalendarSchedule(user.id, now, selected),
-    findDemoTrainingCatalog(),
-    listDraftSessionsForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
   ]);
   const levelOverride = parseLevelParam(params.level);
@@ -72,14 +59,6 @@ export default async function TrainingCalendarPage({
     outsideTraining: profile?.outsideTraining,
   };
   const dayPlan = planForDate(prefs, selected, tz, swaps);
-  const planned = resolvePlanSessions(
-    dayPlan,
-    scaleDemoCatalog(catalog, {
-      experienceLevel: band,
-      competitionStatus: levelOverride ? null : profile?.competitionStatus,
-      weightAccess: profile?.weightAccess,
-    }),
-  );
   const strip = weekStrip(prefs, now, tz, selected, swaps, selected);
   const dayParam = formatDayParam(selected, tz);
   const viewedMonday = mondayOfZoned(selected, tz);
@@ -101,6 +80,10 @@ export default async function TrainingCalendarPage({
     .find((day) => formatDayParam(day.date, tz) === dayParam)
     ?.activities.find((item) => item.kind === "workout" && item.status === "complete")?.subtitle;
   const selectedMissed = selectedPast && dayPlan.active && !selectedLogged;
+  const missedWorkouts = schedule.days.reduce(
+    (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
+    0,
+  );
   const weekTitle =
     viewedWeek === currentWeek
       ? "This week"
@@ -119,26 +102,9 @@ export default async function TrainingCalendarPage({
       }));
   }
   const moveDays = moveDayChoices(prefs, now, tz, selected, swaps, titles);
-  const missedWorkouts = schedule.days.reduce(
-    (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
-    0,
-  );
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
   const weekHref = (date: Date) =>
     `/training/calendar?day=${formatDayParam(date, tz)}${levelQuery}`;
-  const zones = [
-    ...new Map(
-      planned.flatMap((session) => {
-        const zone = bikeZoneForDayNumber(session.dayNumber);
-        return zone ? [[zone.label, zone] as const] : [];
-      }),
-    ).values(),
-  ];
-  const draftsByDay = new Map(
-    drafts
-      .filter((session) => session.programDayId)
-      .map((session) => [session.programDayId as string, session.id]),
-  );
 
   return (
     <WorkoutMoveProvider
@@ -155,10 +121,7 @@ export default async function TrainingCalendarPage({
           <div>
             <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              Tap Move on a session to do it today, move it, or swap it with another
-              session. Hold a day, then tap another, to move the whole day
-              {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live
-              coach calendar, Watch sync, or Gymdesk.
+              Tap Move on a session to do it today, move it, or swap it.
             </p>
           </div>
           <DemoBadge />
@@ -212,68 +175,26 @@ export default async function TrainingCalendarPage({
         />
       )}
 
-      <section
-        className="space-y-3"
-        data-selected-day-plan
-        data-day-history={selectedLogged ? "logged" : selectedMissed ? "missed" : undefined}
-      >
-        <div>
-          <p className="font-display text-xs uppercase tracking-wide text-accent">
-            {formatCalendarHeading(selected, now, tz)}
-            {selectedLogged ? " · Logged" : selectedMissed ? " · Missed" : ""}
-            {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
-            {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
+      <section data-selected-day-plan className="space-y-2">
+        <p className="font-display text-xs uppercase tracking-wide text-accent">
+          {formatCalendarHeading(selected, now, tz)}
+          {selectedLogged ? " · Logged" : selectedMissed ? " · Missed" : ""}
+          {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
+          {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
+        </p>
+        <h2 className="text-lg">{dayPlan.summary}</h2>
+        {dayPlan.movedFrom ? (
+          <p className="text-sm text-muted" data-moved-workout>
+            {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
           </p>
-          <h2 className="mt-1 text-lg">
-            {dayPlan.active ? dayPlan.summary : dayPlan.summary}
-          </h2>
-          {dayPlan.movedFrom ? (
-            <p className="mt-1 text-sm text-muted" data-moved-workout>
-              {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
-            </p>
-          ) : null}
-          {selectedSummary ? (
-            <p className="mt-1 text-sm text-muted" data-completed-summary>
-              {selectedSummary}
-            </p>
-          ) : null}
-          {dayPlan.skipReason && !dayPlan.active ? (
-            <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
-          ) : null}
-        </div>
-        {planned.map((session) => (
-          <PlanSessionCard
-            key={`${session.slot}-${session.sessionKey ?? session.dayId ?? session.label}`}
-            session={session}
-            compact
-            calendarWeekday={dayPlan.weekday}
-            highlight={session.slot === "A" && planned.length > 1}
-            draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
-          />
-        ))}
-        {dayPlan.active ? (
-          <SessionDetails>
-            <Link
-              href="/mobility/daily-warmup/play"
-              className="block rounded-2xl border border-line bg-background px-4 py-3"
-            >
-              <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
-              <p className="mt-1 font-semibold">Dynamic warm-up · 3–4 min</p>
-              <p className="mt-1 text-sm text-muted">
-                Joint circles and leg swings before bag or lifts.
-              </p>
-            </Link>
-            {zones.map((zone) => (
-              <BikeZoneNote key={zone.label} zone={zone} />
-            ))}
-          </SessionDetails>
         ) : null}
-        {dayPlan.active ? (
-          <Link href="/mobility" className="block rounded-2xl border border-line bg-card px-4 py-4">
-            <p className="font-display text-xs uppercase tracking-wide text-accent">Cool-down</p>
-            <h3 className="mt-1 text-lg">Mobility / cooldown</h3>
-            <p className="mt-1 text-sm text-muted">Hips, splits, neck after you train.</p>
-          </Link>
+        {selectedSummary ? (
+          <p className="text-sm text-muted" data-completed-summary>
+            {selectedSummary}
+          </p>
+        ) : null}
+        {dayPlan.skipReason && !dayPlan.active ? (
+          <p className="text-sm text-muted">{dayPlan.skipReason}</p>
         ) : null}
       </section>
 
@@ -290,8 +211,7 @@ export default async function TrainingCalendarPage({
             Missed a workout?
           </p>
           <p className="mt-1 text-sm text-white/80">
-            No problem. Workouts are interchangeable throughout your week. Move one
-            session, or the whole day, onto a day that fits.
+            Move one session, or the whole day, onto a day that fits.
           </p>
         </aside>
       ) : null}

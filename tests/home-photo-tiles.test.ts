@@ -7,6 +7,7 @@ const TILES = [
   "train.webp",
   "mobility.webp",
   "coach.webp",
+  "form-check.webp",
   "learn.webp",
   "progress.webp",
   "fuel.webp",
@@ -20,7 +21,7 @@ const APPROVED_HASHES = {
 } as const;
 
 describe("Home photo tiles", () => {
-  it("ships ~800px WebP academy photos for the eight Home tiles", () => {
+  it("ships ~800px WebP academy photos for the Home tiles", () => {
     for (const name of TILES) {
       const file = path.join(process.cwd(), "public/tiles", name);
       expect(fs.existsSync(file), file).toBe(true);
@@ -62,6 +63,8 @@ describe("Home photo tiles", () => {
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/mobility"'));
     expect(source.indexOf('href: "/mobility"')).toBeLessThan(source.indexOf('href: "/coach"'));
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/coach"'));
+    expect(source.indexOf('href: "/coach"')).toBeLessThan(source.indexOf('href: "/form-check"'));
+    expect(source.indexOf('href: "/form-check"')).toBeLessThan(source.indexOf('href: "/learn"'));
     expect(source.indexOf('href: "/coach"')).toBeLessThan(source.indexOf('href: "/learn"'));
     expect(source.indexOf('href: "/learn"')).toBeLessThan(source.indexOf('href: "/progress"'));
     expect(source.indexOf('href: "/progress"')).toBeLessThan(source.indexOf('href: "/nutrition"'));
@@ -72,6 +75,9 @@ describe("Home photo tiles", () => {
     expect(source).toContain("/tiles/train.webp");
     expect(source).toContain("/tiles/mobility.webp");
     expect(source).toContain("/tiles/timer.webp");
+    expect(source).toContain("/tiles/form-check.webp");
+    expect(source).toContain("Send a clip");
+    expect(source).toContain("Athlete filming a form check in a dark gym");
     expect(source).toContain("Athlete stretching the hips on a dark gym floor");
     expect(source).toContain("/tiles/coach.webp");
     expect(source).toContain("/tiles/learn.webp");

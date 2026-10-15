@@ -118,7 +118,7 @@ export function WorkoutWinScreen({
       <div className="workout-win-glow" aria-hidden />
       <div className="relative mx-auto flex min-h-full w-full max-w-sm flex-col items-center text-center text-white">
         <div
-          className={`relative mt-4 flex h-[280px] w-[280px] items-center justify-center overflow-visible ${
+          className={`relative mt-2 flex h-28 w-28 items-center justify-center overflow-visible ${
             reduce ? "" : "badge-unlock-shake"
           }`}
         >
@@ -135,9 +135,9 @@ export function WorkoutWinScreen({
             <img
               src="/workout_complete_hero.webp"
               alt=""
-              width={240}
-              height={240}
-              className="workout-win-crest mx-auto"
+              width={112}
+              height={112}
+              className="workout-win-crest mx-auto h-24 w-24"
               draggable={false}
             />
           </div>
@@ -145,18 +145,26 @@ export function WorkoutWinScreen({
         <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
           {dateLine} · Session {sessionNumber}
         </p>
-        <h1 id="workout-win-title" className="font-display mt-3 text-[34px] uppercase leading-none tracking-wide">
+        <h1 id="workout-win-title" className="font-display mt-2 text-3xl uppercase leading-none tracking-wide">
           {workoutCompleteHeadline()}
         </h1>
         <SessionFeelPicker workoutId={workoutId} current={difficultyRating} />
-        <dl className="mt-6 grid w-full grid-cols-2 gap-2">
+        <p className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm">
           {tiles.map((tile) => (
-            <div key={tile.key} className="rounded-2xl bg-black px-3 py-4" data-win-stat={tile.key}>
-              <dt className="font-display text-[11px] uppercase tracking-[0.12em] text-white/55">{tile.label}</dt>
-              <dd className="stat-display mt-1 text-[34px] leading-none text-[#cbf805]">{tile.value}</dd>
-            </div>
+            <span key={tile.key} data-win-stat={tile.key}>
+              <span className="text-white/55">{tile.label}</span>{" "}
+              <span className="font-semibold text-[#cbf805]">{tile.value}</span>
+            </span>
           ))}
-        </dl>
+        </p>
+        <button
+          type="button"
+          onClick={onDone}
+          className="touch-target mt-5 w-full rounded-full bg-[#cbf805] text-black"
+          data-win-done="1"
+        >
+          DONE
+        </button>
         {badgeTitle ? (
           <div className="mt-4 w-full rounded-2xl border border-white/15 bg-black px-4 py-3" data-win-badge="1">
             <p className="text-[11px] uppercase tracking-[0.16em] text-white/55">Badge earned</p>
@@ -164,14 +172,6 @@ export function WorkoutWinScreen({
           </div>
         ) : null}
         {summary ? <SessionRecap summary={summary} /> : null}
-        <button
-          type="button"
-          onClick={onDone}
-          className="touch-target mt-6 w-full rounded-full bg-[#cbf805] text-black"
-          data-win-done="1"
-        >
-          DONE
-        </button>
         <button
           type="button"
           onClick={() => void onShare()}

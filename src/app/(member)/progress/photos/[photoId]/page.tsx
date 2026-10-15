@@ -25,8 +25,8 @@ export default async function ProgressPhotoPage({
 
   return (
     <main className="space-y-6">
-      <Link href="/progress" className="text-sm text-accent underline-offset-4 hover:underline">
-        Back to My Progress
+      <Link href="/progress/photos" className="text-sm text-accent underline-offset-4 hover:underline">
+        Back to progress photos
       </Link>
       <div>
         <h1 className="text-2xl">Progress photo</h1>
@@ -51,6 +51,7 @@ export default async function ProgressPhotoPage({
       />
       <form action={deleteProgressPhotoAction}>
         <input type="hidden" name="photoId" value={photo.id} />
+        <input type="hidden" name="next" value="/progress/photos" />
         <button type="submit" className="touch-target text-sm text-danger underline">
           Delete this photo
         </button>

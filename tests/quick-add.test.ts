@@ -42,9 +42,9 @@ describe("quick-add floating button", () => {
     expect(fab).toContain("data-plus-glyph");
     expect(fab).toContain("items-center justify-center");
     expect(fab).not.toMatch(/>\s*\+\s*</);
-    expect(frame).toContain('<QuickAddFab variant="inline" />');
+    expect(frame).not.toContain("QuickAddFab");
     expect(frame).toContain('placement="bottom"');
-    expect(frame).toContain("centerAction");
+    expect(frame).not.toContain("centerAction");
     expect(strip).not.toContain("pr-16");
     expect(day).toContain("data-start-bar");
     expect(day).toContain("sticky bottom-0");

@@ -63,23 +63,17 @@ describe("Train default is one day", () => {
     expect(page).not.toContain("<RirExplainer");
   });
 
-  it("lists Calendar sessions before collapsed Session details, with warm-up and bike zones inside", () => {
+  it("lists the week once and keeps chips, Move, and the day heading", () => {
     const calendar = read("src/app/(member)/training/calendar/page.tsx");
     expect(calendar).toContain("WeekStrip");
+    expect(calendar).toContain("rearrange");
     expect(calendar).toContain("data-selected-day-plan");
     expect(calendar).toContain("CalendarList");
     expect(calendar).toContain("fromProfile ? null");
     expect(page).toContain('href: "/training/calendar"');
-    expect(calendar).toContain("<SessionDetails");
-    const sessions = calendar.indexOf("<PlanSessionCard");
-    const details = calendar.indexOf("<SessionDetails");
-    const warmup = calendar.indexOf("/mobility/daily-warmup/play");
-    const zone = calendar.indexOf("<BikeZoneNote");
-    expect(sessions).toBeGreaterThan(-1);
-    expect(details).toBeGreaterThan(sessions);
-    expect(warmup).toBeGreaterThan(details);
-    expect(zone).toBeGreaterThan(warmup);
-    expect(calendar.indexOf("</SessionDetails>")).toBeGreaterThan(zone);
+    expect(calendar).not.toContain("<PlanSessionCard");
+    expect(calendar).not.toContain("<SessionDetails");
+    expect(calendar).not.toContain("<BikeZoneNote");
   });
 
   it("drops the unused week board component", () => {

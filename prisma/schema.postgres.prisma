@@ -597,16 +597,19 @@ model BookingRequest {
 }
 
 model ProgressPhoto {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  storedName String
-  mimeType   String
-  byteSize   Int
-  caption    String   @default("")
-  recordedAt DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Local filename, or the private blob URL. Never sent to the browser. */
+  storedName  String
+  /** local | blob */
+  storageKind String   @default("local")
+  mimeType    String
+  byteSize    Int
+  caption     String   @default("")
+  recordedAt  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([userId, recordedAt])
 }

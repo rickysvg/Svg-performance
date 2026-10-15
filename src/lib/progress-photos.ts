@@ -16,6 +16,33 @@ const EXT_BY_MIME: Record<ProgressPhotoMime, string> = {
 
 const PROGRESS_PHOTO_DIR = path.join(process.cwd(), "uploads", "progress-photos");
 
+export function progressPhotoStorageMode(): "blob" | "local" {
+  if (process.env.PROGRESS_PHOTO_DIR?.trim()) return "local";
+  return process.env.BLOB_READ_WRITE_TOKEN?.trim() ? "blob" : "local";
+}
+
+function blobToken() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  if (!token) {
+    throw new AppError(
+      "PROGRESS_PHOTO",
+      "Photo storage is not available. Set BLOB_READ_WRITE_TOKEN for Vercel Blob.",
+    );
+  }
+  return token;
+}
+
+async function loadBlob() {
+  try {
+    return await import("@vercel/blob");
+  } catch {
+    throw new AppError(
+      "PROGRESS_PHOTO",
+      "Photo storage is not available. Set BLOB_READ_WRITE_TOKEN for Vercel Blob.",
+    );
+  }
+}
+
 export function progressPhotoRoot() {
   const fromEnv = process.env.PROGRESS_PHOTO_DIR?.trim();
   if (fromEnv) return fromEnv;
@@ -126,18 +153,39 @@ export async function createProgressPhotoForUser(
     },
   });
   const storedName = `${row.id}.${ext}`;
-  const dir = userDir(userId);
-  await mkdir(dir, { recursive: true });
-  const filePath = path.join(/*turbopackIgnore: true*/ dir, storedName);
   try {
+    if (progressPhotoStorageMode() === "blob") {
+      const blob = await loadBlob();
+      const stored = await blob.put(
+        `progress-photos/${userId}/${storedName}`,
+        Buffer.from(input.bytes),
+        {
+          access: "private",
+          token: blobToken(),
+          contentType: mimeType,
+          addRandomSuffix: false,
+        },
+      );
+      return prisma.progressPhoto.update({
+        where: { id: row.id },
+        data: { storedName: stored.url, storageKind: "blob" },
+      });
+    }
+    const dir = userDir(userId);
+    await mkdir(dir, { recursive: true });
+    const filePath = path.join(/*turbopackIgnore: true*/ dir, storedName);
     await writeFile(/*turbopackIgnore: true*/ filePath, input.bytes);
     return prisma.progressPhoto.update({
       where: { id: row.id },
-      data: { storedName },
+      data: { storedName, storageKind: "local" },
     });
   } catch (error) {
     await prisma.progressPhoto.delete({ where: { id: row.id } }).catch(() => undefined);
-    throw error;
+    if (error instanceof AppError) throw error;
+    throw new AppError(
+      "PROGRESS_PHOTO",
+      "Photo storage is not available. Set BLOB_READ_WRITE_TOKEN for Vercel Blob and try again.",
+    );
   }
 }
 
@@ -159,23 +207,70 @@ export async function updateProgressPhotoForUser(
   });
 }
 
-export async function readProgressPhotoFileForUser(photoId: string, userId: string) {
-  const row = await getProgressPhotoForUser(photoId, userId);
-  const filePath = path.join(/*turbopackIgnore: true*/ userDir(row.userId), row.storedName);
+function localPhotoPath(userId: string, storedName: string) {
+  if (!/^[a-zA-Z0-9._-]+$/.test(storedName)) {
+    throw new NotFoundError("That photo file is missing from disk.");
+  }
+  return path.join(/*turbopackIgnore: true*/ userDir(userId), storedName);
+}
+
+async function readStoredPhoto(row: { userId: string; storageKind: string; storedName: string }) {
+  if (row.storageKind === "blob") {
+    const blob = await loadBlob();
+    const result = await blob.get(row.storedName, { access: "private", token: blobToken() });
+    if (!result?.stream || result.statusCode !== 200) {
+      throw new NotFoundError("That photo file is missing from disk.");
+    }
+    return new Uint8Array(await new Response(result.stream).arrayBuffer());
+  }
   try {
-    const bytes = await readFile(/*turbopackIgnore: true*/ filePath);
-    return { row, bytes };
-  } catch {
+    return await readFile(/*turbopackIgnore: true*/ localPhotoPath(row.userId, row.storedName));
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
     throw new NotFoundError("That photo file is missing from disk.");
   }
 }
 
+async function deleteStoredPhoto(row: { userId: string; storageKind: string; storedName: string }) {
+  if (row.storageKind === "blob") {
+    if (progressPhotoStorageMode() !== "blob" && !process.env.BLOB_READ_WRITE_TOKEN?.trim()) return;
+    try {
+      const blob = await loadBlob();
+      const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+      if (!token) return;
+      await blob.del(row.storedName, { token });
+    } catch {
+      // Account deletion still proceeds if Blob is unreachable.
+    }
+    return;
+  }
+  if (row.storedName === "pending") return;
+  try {
+    await unlink(/*turbopackIgnore: true*/ localPhotoPath(row.userId, row.storedName));
+  } catch {
+    // Missing files should not block delete.
+  }
+}
+
+export async function readProgressPhotoFileForUser(photoId: string, userId: string) {
+  const row = await getProgressPhotoForUser(photoId, userId);
+  const bytes = await readStoredPhoto(row);
+  return { row, bytes };
+}
+
 export async function deleteProgressPhotoForUser(photoId: string, userId: string) {
   const row = await getProgressPhotoForUser(photoId, userId);
-  const filePath = path.join(/*turbopackIgnore: true*/ userDir(row.userId), row.storedName);
   await prisma.progressPhoto.delete({ where: { id: row.id } });
-  await unlink(/*turbopackIgnore: true*/ filePath).catch(() => undefined);
+  await deleteStoredPhoto(row);
   return row;
+}
+
+export async function deleteProgressPhotoMediaForUser(userId: string) {
+  const rows = await prisma.progressPhoto.findMany({
+    where: { userId },
+    select: { userId: true, storageKind: true, storedName: true },
+  });
+  await Promise.all(rows.map((row) => deleteStoredPhoto(row)));
 }
 
 export function progressPhotoSrc(photoId: string) {

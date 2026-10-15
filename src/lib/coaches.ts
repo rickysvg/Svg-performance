@@ -132,9 +132,13 @@ export function coachingStyleVoice(style?: string | null, coachName?: string | n
   ].join(" ");
 }
 
-/** Hide the floating coach button on the coach screen itself. Splash CSS hides it during the intro. */
+/**
+ * Coach is a Home tile. A floating photo on every screen was a second door
+ * and covered the corner. Splash CSS still hides `[data-coach-fab]` during intro.
+ */
 export function shouldShowCoachFab(pathname: string) {
-  return !pathname.startsWith("/coach");
+  void pathname;
+  return false;
 }
 
 /** Day and logger screens have a bottom Start or Save bar and no account dock. */

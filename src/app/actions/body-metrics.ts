@@ -96,11 +96,12 @@ export async function uploadProgressPhotoAction(
       recordedAt: parseRecordedAt(String(formData.get("recordedAt") ?? "")),
     });
     revalidatePath("/progress");
+    revalidatePath("/progress/photos");
     revalidatePath("/home");
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/progress?celebrate=photo");
+  redirect("/progress/photos");
 }
 
 export async function updateProgressPhotoAction(
@@ -114,6 +115,7 @@ export async function updateProgressPhotoAction(
       recordedAt: parseRecordedAt(String(formData.get("recordedAt") ?? "")),
     });
     revalidatePath("/progress");
+    revalidatePath("/progress/photos");
     revalidatePath(`/progress/photos/${String(formData.get("photoId") ?? "")}`);
     return { success: "Caption and date updated." };
   } catch (error) {
@@ -125,5 +127,10 @@ export async function deleteProgressPhotoAction(formData: FormData) {
   const user = await requireUserOrThrow();
   await deleteProgressPhotoForUser(String(formData.get("photoId") ?? ""), user.id);
   revalidatePath("/progress");
+  revalidatePath("/progress/photos");
   revalidatePath("/home");
+  const next = String(formData.get("next") ?? "");
+  if (next === "/progress/photos" || next === "/progress") {
+    redirect(next);
+  }
 }

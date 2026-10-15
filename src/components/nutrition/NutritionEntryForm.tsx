@@ -107,10 +107,7 @@ export function NutritionEntryForm({
       {prefill?.savedMealId ? (
         <input type="hidden" name="savedMealId" value={prefill.savedMealId} />
       ) : null}
-      <p className="text-xs text-muted">
-        Source is always <strong>manual estimate</strong>. Built-in foods are a
-        small DEMO list, not a lab database. Correct any number before saving.
-      </p>
+      <p className="text-xs text-muted">Your estimate. Not medical advice.</p>
       {!entry ? (
         <div>
           <label className="block text-sm">
@@ -123,7 +120,7 @@ export function NutritionEntryForm({
               className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
             />
           </label>
-          {query.trim() || matches.length > 0 ? (
+          {query.trim() ? (
             <ul className="mt-2 max-h-56 overflow-auto rounded-xl border border-line">
               {matches.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-muted">No matches.</li>
@@ -166,6 +163,21 @@ export function NutritionEntryForm({
         />
       </label>
       <label className="block text-sm">
+        Calories (estimate)
+        <input
+          name="calories"
+          type="number"
+          min={0}
+          step="1"
+          required
+          defaultValue={prefill?.calories ?? entry?.calories ?? ""}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+      </label>
+      <details className="rounded-xl border border-line px-3 py-3">
+        <summary className="cursor-pointer text-sm font-semibold">More</summary>
+        <div className="mt-3 space-y-4">
+      <label className="block text-sm">
         Meal
         <select
           name="mealType"
@@ -200,19 +212,7 @@ export function NutritionEntryForm({
           />
         </label>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-sm">
-          Calories (estimate)
-          <input
-            name="calories"
-            type="number"
-            min={0}
-            step="1"
-            required
-            defaultValue={prefill?.calories ?? entry?.calories ?? ""}
-            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
-          />
-        </label>
+      <div className="grid grid-cols-3 gap-3">
         <label className="block text-sm">
           Protein g
           <input
@@ -265,6 +265,8 @@ export function NutritionEntryForm({
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
       </label>
+        </div>
+      </details>
       <button
         type="submit"
         disabled={pending}

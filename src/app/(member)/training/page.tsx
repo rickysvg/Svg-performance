@@ -15,7 +15,7 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import {
@@ -39,6 +39,8 @@ import { nextTrainAction } from "@/lib/train-next";
 import { todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
+import { FightCampOptIn } from "@/components/training/FightCampOptIn";
+import { dayKey } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -87,9 +89,10 @@ export default async function TrainingPage({
   const band = levelOverride ?? profileBand;
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
   const camp = await getActiveCampSnapshot(user.id, selected, tz);
+  const campOn = Boolean(camp && camp.weightClass.trim());
   const corePlan = planForDate(prefs, selected, tz, swaps);
   const dayPlan =
-    camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
+    campOn && camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const planned = resolvePlanSessions(
     dayPlan,
@@ -141,7 +144,7 @@ export default async function TrainingPage({
     : null;
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
-    camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
+    campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
   const todaySessions = resolvePlanSessions(
     todayShaped,
     scaleDemoCatalog(catalog, {
@@ -194,10 +197,7 @@ export default async function TrainingPage({
     { href: "/mobility", label: "Mobility" },
     ...(profile?.trainingFocus === "sc_only"
       ? []
-      : [
-          { href: "/mobility/drills", label: "Hip and kick drills" },
-          ...(camp ? [] : [{ href: "/fight-camp", label: "Fight camp" }]),
-        ]),
+      : [{ href: "/mobility/drills", label: "Hip and kick drills" }]),
   ];
 
   const viewedWeek = weekStartKey(selected, tz);
@@ -214,9 +214,9 @@ export default async function TrainingPage({
         <div>
           <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
-            {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
+            {campOn && camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
-              : "Today’s session. Not a custom fight camp."}
+              : "Today’s session."}
           </p>
           <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
             {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
@@ -224,6 +224,31 @@ export default async function TrainingPage({
         </div>
         <DemoBadge />
       </div>
+
+      <FightCampOptIn
+        enabled={campOn}
+        todayKey={dayKey(now, tz)}
+        fightDate={camp?.fightDateKey ?? ""}
+        weightClass={camp?.weightClass ?? ""}
+        summary={
+          campOn && camp ? `${camp.fightDateLabel} · ${camp.weightClass}` : ""
+        }
+      />
+
+      {campOn && camp ? (
+        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
+          <span className="flex items-center gap-2">
+            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Camp focus</span>
+            <ProPill />
+          </span>
+          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
+            {camp.weekNumber
+              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
+              : camp.phaseLabel}
+          </span>
+          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
+        </Link>
+      ) : null}
 
       {todayAction ? <StartTodayButton action={todayAction} /> : null}
 
@@ -305,13 +330,6 @@ export default async function TrainingPage({
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-xs text-muted">
-                Landing idea from{" "}
-                <a href={PLYO_CREDITS[0].url} className="underline" target="_blank" rel="noreferrer">
-                  {PLYO_CREDITS[0].coach}
-                </a>
-                . Not their program.
-              </p>
             </div>
           ) : null}
           {equipmentNote ? <p className="text-sm text-muted">{equipmentNote}</p> : null}
@@ -327,21 +345,6 @@ export default async function TrainingPage({
             <p className="mt-1 text-sm text-muted">Hips, splits, neck, and the long holds after you train.</p>
           </Link>
         </section>
-      ) : null}
-
-      {camp ? (
-        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
-          <span className="flex items-center gap-2">
-            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Camp focus</span>
-            <ProPill />
-          </span>
-          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
-            {camp.weekNumber
-              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
-              : camp.phaseLabel}
-          </span>
-          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
-        </Link>
       ) : null}
 
       {testing ? (
@@ -361,20 +364,23 @@ export default async function TrainingPage({
         />
       )}
 
-      <nav aria-label="More training" className="overflow-hidden rounded-2xl border border-line bg-card">
-        <ul className="divide-y divide-line">
-          {moreLinks.map((item) => (
-            <li key={item.href}>
-              <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
-                <span className="font-medium">{item.label}</span>
-                <span className="text-muted" aria-hidden>
-                  ›
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <details className="overflow-hidden rounded-2xl border border-line bg-card">
+        <summary className="cursor-pointer px-4 py-3 font-semibold">More training</summary>
+        <nav aria-label="More training">
+          <ul className="divide-y divide-line border-t border-line">
+            {moreLinks.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
+                  <span className="font-medium">{item.label}</span>
+                  <span className="text-muted" aria-hidden>
+                    ›
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </details>
 
       <details className="rounded-2xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer font-semibold">Fighter conditioning</summary>
