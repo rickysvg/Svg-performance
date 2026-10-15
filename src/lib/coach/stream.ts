@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, AuthError } from "@/lib/errors";
 import { canUseMemberTools } from "@/lib/access";
-import { detectSafetyRefusal } from "@/lib/coach/safety";
+import { detectSafetyRefusal, logCoachRefusal } from "@/lib/coach/safety";
+import { loadMemberContext } from "@/lib/coach/member-context";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import { timeZoneForUser } from "@/lib/profile";
@@ -106,7 +107,10 @@ async function drainCoachTokens(
   });
   const wantsPlan =
     route.primary === "programming" || route.secondary.includes("programming");
-  const planContext = wantsPlan ? await buildPlanContext(input.userId, input.message) : "";
+  const [planContext, memberProfile] = await Promise.all([
+    wantsPlan ? buildPlanContext(input.userId, input.message) : Promise.resolve(""),
+    loadMemberContext(input.userId, { topic: input.topic, art: input.art }),
+  ]);
   const system = buildCoachSystemPrompt({
     topic: input.topic,
     art: input.art,
@@ -123,6 +127,9 @@ async function drainCoachTokens(
     planContext,
     coachingStyle: input.coachingStyle,
     coachName: input.coachName,
+    message: input.message,
+    experienceLevel: input.experienceLevel,
+    memberProfile,
   });
   const generator = streamCoachCompletion({
     system,
@@ -207,6 +214,7 @@ export async function runCoachChatStream(input: {
   const emit = (event: CoachStreamEvent) => input.onEvent?.(event);
 
   if (refusal) {
+    logCoachRefusal({ code: refusal.code, userId: user.id, surface: "stream" });
     const saved = await prisma.chatMessage.create({
       data: {
         threadId: thread.id,
@@ -383,6 +391,7 @@ export async function runCoachNoteStream(input: {
   const emit = (event: CoachStreamEvent) => input.onEvent?.(event);
   const refusal = detectSafetyRefusal(message, { currentUserId: user.id });
   if (refusal) {
+    logCoachRefusal({ code: refusal.code, userId: user.id, surface: "note" });
     const saved = await prisma.exerciseNote.update({
       where: {
         userId_exerciseName_programDayId: {

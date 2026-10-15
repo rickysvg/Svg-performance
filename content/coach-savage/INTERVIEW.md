@@ -72,3 +72,16 @@ Target: 30–50 questions. This pack has **42**.
 ---
 
 Fill answers in `COACHING_GUIDE.md`. Approved short DEMO answers already live in `DEMO-seeds.md` and are labeled DEMO on purpose.
+
+## Open TODOs
+
+These lines in `COACHING_GUIDE.md` are still blank. The live coach will not invent them. Ricky's answers belong in that guide, in his words.
+
+- Identity: one-sentence house definition of "Savage" (interview Q3). Do not fill this with trash talk.
+- Showing up: the exact class-etiquette lines he wants quoted.
+- Beginners: equipment he wants called out as required versus optional.
+- Technique: the jab cue and the stance cue he actually uses on the floor (interview Q21–Q22).
+- Food talk: any house snack or hydration one-liner he wants, still non-medical and not a cut.
+- Handoff: who on staff watches the coach-help inbox during the pilot, and how fast a human reply should be expected. Not a 24/7 promise.
+
+Coaching philosophy questions already in this pack that those TODOs depend on: Q3, Q8, Q17, Q21, Q22, Q28, Q40.
