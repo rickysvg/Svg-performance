@@ -18,7 +18,21 @@ export type CoachStreamRequest = {
   plannedLine?: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
 };
+
+export type FallbackReason =
+  | "no_key"
+  | "http_401"
+  | "http_403"
+  | "http_404"
+  | "http_429"
+  | "http_4xx"
+  | "http_5xx"
+  | "network"
+  | "timeout"
+  | "empty";
 
 export type CoachStreamEvent =
   | {
@@ -28,7 +42,14 @@ export type CoachStreamEvent =
       exerciseName?: string;
       offline: boolean;
       refused: boolean;
+      fallbackReason?: FallbackReason;
     }
   | { type: "delta"; text: string }
-  | { type: "done"; content: string; offline: boolean; refused: boolean }
+  | {
+      type: "done";
+      content: string;
+      offline: boolean;
+      refused: boolean;
+      fallbackReason?: FallbackReason;
+    }
   | { type: "error"; message: string };

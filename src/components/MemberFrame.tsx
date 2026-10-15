@@ -4,7 +4,9 @@ import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { PrimaryNav } from "@/components/PrimaryNav";
 import { QuickAddFab } from "@/components/home/QuickAddFab";
+import { CoachFab } from "@/components/coach/CoachFab";
 import { shouldHideQuickAdd } from "@/lib/quick-add";
+import { coachFabClearsBottomBar, shouldShowCoachFab } from "@/lib/coaches";
 import { TimeZoneSync } from "@/components/TimeZoneSync";
 import { isImmersiveTrainingPath, shouldHidePrimaryNav } from "@/lib/member-nav";
 import { GraceBanner } from "@/components/gymdesk/GraceBanner";
@@ -14,12 +16,16 @@ export function MemberFrame({
   role,
   timeZone,
   graceEndsOn,
+  coachName,
+  coachThumb,
   children,
 }: {
   email: string;
   role?: string;
   timeZone?: string | null;
   graceEndsOn?: string | null;
+  coachName: string;
+  coachThumb: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -40,6 +46,13 @@ export function MemberFrame({
         {graceEndsOn ? <GraceBanner endsOn={graceEndsOn} /> : null}
         {children}
       </div>
+      {shouldShowCoachFab(pathname) ? (
+        <CoachFab
+          name={coachName}
+          thumb={coachThumb}
+          raised={coachFabClearsBottomBar(pathname)}
+        />
+      ) : null}
       {immersive ? null : (
         <AppHeader
           email={email}

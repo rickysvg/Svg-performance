@@ -102,7 +102,8 @@ export async function saveWorkoutAction(
   try {
     const user = await requireUserOrThrow();
     const workoutId = String(formData.get("workoutId") ?? "");
-    const intent = String(formData.get("intent") ?? "complete");
+    const intentRaw = String(formData.get("intent") ?? "");
+    const intent = intentRaw === "complete" ? "complete" : "draft";
     const performedAt = new Date(String(formData.get("performedAt") ?? ""));
     const alreadyActive =
       intent === "complete" ? await hasActivityOnLocalDay(user.id, performedAt) : true;

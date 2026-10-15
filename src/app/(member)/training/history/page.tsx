@@ -4,6 +4,7 @@ import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { DemoBadge } from "@/components/DemoBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
+import { sessionHasLoggedWork } from "@/lib/logged-work";
 
 export default async function HistoryPage() {
   const user = await requireUser();
@@ -34,7 +35,10 @@ export default async function HistoryPage() {
         </EmptyState>
       ) : (
         <ul className="space-y-3">
-          {sessions.map((session) => (
+          {sessions.map((session) => {
+            const finished = session.status === "complete" && sessionHasLoggedWork(session.sets);
+            const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
+            return (
             <li key={session.id} className="flex items-stretch gap-2">
               <Link
                 href={`/training/log/${session.id}`}
@@ -45,16 +49,16 @@ export default async function HistoryPage() {
                   {session.title.startsWith("DEMO") ? <DemoBadge /> : null}
                 </div>
                 <p className="mt-1 text-sm text-muted">
-                  {new Date(session.performedAt).toLocaleString()} · {session.status} ·{" "}
+                  {new Date(session.performedAt).toLocaleString()} · {label} ·{" "}
                   {session.sets.length} sets
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
-                    : session.status === "complete"
+                    : finished
                       ? " · rate how it felt"
                       : ""}
                 </p>
               </Link>
-              {session.status === "complete" ? (
+              {finished ? (
                 <Link
                   href={`/training/log/${session.id}/done`}
                   className="touch-target inline-flex min-w-[4.5rem] items-center justify-center rounded-2xl border border-line px-3 text-sm"
@@ -63,7 +67,8 @@ export default async function HistoryPage() {
                 </Link>
               ) : null}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </main>

@@ -2,11 +2,16 @@ import { AppError, NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { timeZoneForUser } from "@/lib/profile";
 import { zonedCivilToUtc } from "@/lib/timezone";
+import { WEEKDAYS } from "@/lib/constants";
+import { dayKey } from "@/lib/timezone";
 import {
   clearWeekSwap,
   isPlanWeekday,
+  isSessionKey,
+  moveSessionOnPlan,
   parseWeekPlanSwaps,
   pruneWeekPlanSwaps,
+  shiftDayKey,
   swapWeekdays,
   weekStartInRange,
   weekStartKey,
@@ -113,4 +118,42 @@ export async function clearWeekPlanForUser(
 export async function clearCurrentWeekPlanForUser(userId: string, now = new Date()) {
   const timeZone = await timeZoneForUser(userId);
   return clearWeekPlanForUser(userId, weekStartKey(now, timeZone), now);
+}
+
+/** Move one workout onto today or a later day in the same week. */
+export async function moveWorkoutForUser(
+  userId: string,
+  sessionKey: string,
+  toDay: string,
+  weekStart: string,
+  now = new Date(),
+) {
+  if (!isSessionKey(sessionKey)) {
+    throw new AppError("PLAN", "That workout cannot be moved.");
+  }
+  if (!isPlanWeekday(toDay)) {
+    throw new AppError("PLAN", "Pick a day this week.");
+  }
+  const timeZone = await timeZoneForUser(userId);
+  assertEditableWeek(weekStart, now, timeZone);
+  const index = WEEKDAYS.indexOf(toDay);
+  const destination = shiftDayKey(weekStart, index);
+  if (destination < dayKey(now, timeZone)) {
+    throw new AppError("PLAN", "Move it to today or a later day.");
+  }
+  const existing = await getWeekPlanSwapsForUser(userId);
+  const next = pruneWeekPlanSwaps(
+    moveSessionOnPlan(existing, weekStart, sessionKey, toDay),
+    weekStartKey(now, timeZone),
+  );
+  await writeWeekPlanSwaps(userId, next);
+  return next;
+}
+
+/** Replace the saved week with a previously stored snapshot. Used by Undo. */
+export async function restoreWeekPlanForUser(userId: string, raw: string, now = new Date()) {
+  const timeZone = await timeZoneForUser(userId);
+  const next = pruneWeekPlanSwaps(parseWeekPlanSwaps(raw), weekStartKey(now, timeZone));
+  await writeWeekPlanSwaps(userId, next);
+  return next;
 }

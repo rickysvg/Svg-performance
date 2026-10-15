@@ -52,7 +52,9 @@ import {
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { loggerCursor, nextIncompleteSetId } from "@/lib/logger-progress";
-import { withPrescribedSetRows } from "@/lib/logger-sets";
+import { restoreLoggerSets } from "@/lib/logger-sets";
+import { gymExerciseKey } from "@/lib/gym-exercise";
+import { setHasLoggedWork } from "@/lib/logged-work";
 import {
   applyPreviousToSet,
   copyPreviousOntoExercise,
@@ -62,16 +64,17 @@ import {
   activeRest,
   clearLoggerDraft,
   createLoggerHydrationStore,
-  extraDraftSets,
-  mergeDraftOntoSets,
+  readLoggerDraft,
   writeLoggerDraft,
   type DraftSetSnapshot,
+  type LoggerDraft,
 } from "@/lib/logger-draft";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
-import { ExerciseSwapButton } from "@/components/training/ExerciseSwapButton";
+import { ExerciseCardMenu } from "@/components/training/ExerciseCardMenu";
+import { RemoveToast } from "@/components/training/RemoveToast";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
 import type { SwapSlot } from "@/lib/exercise-swap";
 import { convertLoad, roundLoadForInput } from "@/lib/units";
@@ -200,26 +203,55 @@ function prescribedRowId(sessionId: string, exerciseName: string, setNumber: num
   return `prescribed-${sessionId}-${exerciseName}-${setNumber}`;
 }
 
-function setsForLogger(session: Session): WorkoutSet[] {
+function setsForLogger(session: Session, draft: LoggerDraft | null = null): WorkoutSet[] {
   const base = setsInLb(session.sets);
   const prescriptions = session.programDay?.exercises ?? [];
-  return withPrescribedSetRows(base, prescriptions, (exerciseName, setNumber) => {
-    const planned = prescriptions.find((row) => row.name === exerciseName);
-    const mode = resolveLogMode({
-      logMode: planned?.logMode,
-      name: exerciseName,
-      reps: planned?.reps,
-    });
-    return newClientSet(
-      session.id,
-      exerciseName,
-      setNumber,
-      "lb",
-      mode,
-      null,
-      prescribedRowId(session.id, exerciseName, setNumber),
-    );
-  });
+  return restoreLoggerSets(
+    base,
+    draft,
+    prescriptions.map((row) => ({ name: row.name, sets: row.sets })),
+    (exerciseName, setNumber) => {
+      const planned = prescriptions.find(
+        (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
+      );
+      const name = planned?.name ?? exerciseName;
+      const mode = resolveLogMode({
+        logMode: planned?.logMode,
+        name,
+        reps: planned?.reps,
+      });
+      return newClientSet(
+        session.id,
+        name,
+        setNumber,
+        "lb",
+        mode,
+        null,
+        prescribedRowId(session.id, name, setNumber),
+      );
+    },
+    gymExerciseKey,
+  );
+}
+
+const SAVE_FAILED =
+  "Could not save this workout. Your entries are still on this phone. Tap Retry.";
+
+function isNextRedirect(error: unknown) {
+  if (typeof error !== "object" || error === null || !("digest" in error)) return false;
+  return String((error as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT");
+}
+
+async function saveWorkoutWithNotice(
+  prev: WorkoutActionState,
+  formData: FormData,
+): Promise<WorkoutActionState> {
+  try {
+    return await saveWorkoutAction(prev, formData);
+  } catch (error) {
+    if (isNextRedirect(error)) throw error;
+    return { error: SAVE_FAILED };
+  }
 }
 
 function toDraftSet(set: WorkoutSet): DraftSetSnapshot {
@@ -283,10 +315,11 @@ export function WorkoutLogForm({
     weightAccess: "gym" | "none";
     slots: SwapSlot[];
     retiredNames: string[];
+    removedNames?: string[];
   };
 }) {
   const [state, action, pending] = useActionState(
-    saveWorkoutAction,
+    saveWorkoutWithNotice,
     {} as WorkoutActionState,
   );
   const [sets, setSets] = useState(() => setsForLogger(session));
@@ -298,6 +331,9 @@ export function WorkoutLogForm({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [appliedPhase, setAppliedPhase] = useState<"server" | "client">("server");
   const formRef = useRef<HTMLFormElement>(null);
+  const saveErrorRef = useRef<HTMLDivElement>(null);
+  const setsRef = useRef<WorkoutSet[]>([]);
+  const pendingRef = useRef(false);
   const syncChain = useRef(Promise.resolve());
   const scrolled = useRef(false);
   const routeRelease = useRef<(() => void) | null>(null);
@@ -312,29 +348,13 @@ export function WorkoutLogForm({
   if (hydration.phase === "client" && appliedPhase !== "client") {
     setAppliedPhase("client");
     if (session.status !== "complete") {
-      const base = setsInLb(session.sets);
       const draft = hydration.draft;
-      const merged = mergeDraftOntoSets(base, draft);
-      const retired = new Set(swap?.retiredNames ?? []);
-      const extras = extraDraftSets(base, draft)
-        .filter((set) => !retired.has(set.exerciseName))
-        .map((set) => ({
-        ...newClientSet(
-          session.id,
-          set.exerciseName,
-          set.setNumber,
-          set.loadUnit,
-          resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
-          set.durationSeconds,
-        ),
-        reps: set.reps,
-        loadValue: set.loadValue,
-        completed: set.completed,
-        notes: set.notes,
-        prescriptionKey: set.prescriptionKey,
-        rir: set.rir,
-      }));
-      setSets([...merged, ...extras]);
+      const hidden = new Set([...(swap?.retiredNames ?? []), ...(swap?.removedNames ?? [])]);
+      const visibleDraft =
+        draft && hidden.size > 0
+          ? { ...draft, sets: draft.sets.filter((set) => !hidden.has(set.exerciseName)) }
+          : draft;
+      setSets(setsForLogger(session, visibleDraft));
       setRestTimer(
         draft ? activeRest(draft.rest, hydration.nowMs) : serverRest(session, hydration.nowMs),
       );
@@ -435,8 +455,44 @@ export function WorkoutLogForm({
   }
 
   useEffect(() => {
+    setsRef.current = sets;
+  }, [sets]);
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
+
+  useEffect(() => {
     void fetch("/api/session/touch", { method: "POST" }).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!state.error) return;
+    saveErrorRef.current?.scrollIntoView({ block: "center" });
+  }, [state.error]);
+
+  function discardIfEmpty() {
+    if (pendingRef.current || session.status === "complete") return;
+    if (setsRef.current.some(setHasLoggedWork)) return;
+    const stored = readLoggerDraft(session.id);
+    if (stored?.sets.some(setHasLoggedWork)) return;
+    clearLoggerDraft(session.id);
+    const body = JSON.stringify({ workoutId: session.id });
+    void fetch("/api/workouts/discard-empty", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => undefined);
+  }
+
+  useEffect(() => {
+    const onHide = () => discardIfEmpty();
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+    // discardIfEmpty reads the latest refs. session id is the discard target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id, session.status]);
 
   useEffect(() => {
     if (appliedPhase !== "client") return;
@@ -657,6 +713,7 @@ export function WorkoutLogForm({
 
   return (
     <div>
+      <RemoveToast />
       <form ref={formRef} action={action} className="space-y-5">
         <header
           data-logger-chrome
@@ -665,6 +722,7 @@ export function WorkoutLogForm({
           <div className="flex items-center gap-2 px-4 py-2">
             <Link
               href={cancelHref}
+              onClick={() => discardIfEmpty()}
               className="touch-target inline-flex items-center text-sm font-medium text-muted"
             >
               Cancel
@@ -854,7 +912,10 @@ export function WorkoutLogForm({
 
         {grouped.map(([name, group]) => {
           const form = lookupFormVideo(name, session.programDay?.exercises);
-          const planned = session.programDay?.exercises.find((row) => row.name === name);
+          const planned = session.programDay?.exercises.find(
+            (row) => gymExerciseKey(row.name) === gymExerciseKey(name),
+          );
+          const title = planned?.name ?? name;
           const mode = resolveLogMode({
             logMode: group[0]?.logMode ?? planned?.logMode,
             name,
@@ -900,8 +961,8 @@ export function WorkoutLogForm({
                   {current ? (
                     <p className="font-display text-xs uppercase tracking-wide text-accent">Now</p>
                   ) : null}
-                  <h2>{name}</h2>
-                  <CoachCredit name={name} />
+                  <h2>{title}</h2>
+                  <CoachCredit name={title} />
                   <p className="mt-0.5 text-sm text-muted" data-logger-prescription>
                     {planned
                       ? loggerCardLine({
@@ -909,7 +970,7 @@ export function WorkoutLogForm({
                           reps: planned.reps,
                           restSeconds: planned.restSeconds,
                           logMode: mode,
-                          name,
+                          name: title,
                           loadText: planned.loadText,
                         })
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
@@ -931,7 +992,17 @@ export function WorkoutLogForm({
                       onSetComplete={() => {
                         const nextOpen = group.find((set) => !set.completed);
                         if (!nextOpen) return;
-                        updateSet(nextOpen.id, { completed: true });
+                        const loggedSeconds = Math.max(
+                          1,
+                          (bikeSession?.workSeconds ?? 1) * Math.max(1, bikeSession?.roundsPerSet ?? 1),
+                        );
+                        updateSet(nextOpen.id, {
+                          completed: true,
+                          durationSeconds:
+                            nextOpen.durationSeconds && nextOpen.durationSeconds > 0
+                              ? nextOpen.durationSeconds
+                              : loggedSeconds,
+                        });
                         const effects = bikeIntervalCompletionEffects({
                           exerciseName: name,
                           restBetweenSetsSeconds: restSeconds,
@@ -947,7 +1018,7 @@ export function WorkoutLogForm({
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                     {session.status !== "complete" ? (
-                      <ExerciseSwapButton
+                      <ExerciseCardMenu
                         programSlug={swap?.programSlug ?? ""}
                         dayNumber={swap?.dayNumber ?? 0}
                         programDayId={session.programDayId ?? undefined}
@@ -958,15 +1029,18 @@ export function WorkoutLogForm({
                         source={swapSource(name, group, planned, restSeconds, mode, swap?.slots)}
                         weightAccess={swap?.weightAccess ?? "gym"}
                         workoutSessionId={session.id}
-                        getCurrentSets={() => sets.map(toSetInput)}
-                        onSwapped={(next) => {
+                        canRemove={grouped.length > 1}
+                        getCurrentSets={() => setsRef.current.map(toSetInput)}
+                        onSetsReplaced={(next) => {
                           const lb = setsInLb(next);
                           const names = new Set(lb.map((set) => set.exerciseName));
                           const nextRest =
                             restTimer && names.has(restTimer.exerciseName) ? restTimer : null;
+                          setsRef.current = lb;
                           setSets(lb);
                           setRestTimer(nextRest);
                           remember(lb, nextRest);
+                          syncDraft(lb, nextRest);
                         }}
                       />
                     ) : null}
@@ -1108,7 +1182,23 @@ export function WorkoutLogForm({
                         </>
                       )}
                       {bike ? (
-                        <input type="hidden" name={`sets.${index}.durationSeconds`} value="" />
+                        <input
+                          type="hidden"
+                          name={`sets.${index}.durationSeconds`}
+                          value={
+                            set.completed
+                              ? String(
+                                  set.durationSeconds && set.durationSeconds > 0
+                                    ? set.durationSeconds
+                                    : Math.max(
+                                        1,
+                                        (bikeSession?.workSeconds ?? 1) *
+                                          Math.max(1, bikeSession?.roundsPerSet ?? 1),
+                                      ),
+                                )
+                              : ""
+                          }
+                        />
                       ) : timed ? (
                         <label className="block">
                           <span className="sr-only">
@@ -1211,10 +1301,31 @@ export function WorkoutLogForm({
           data-logger-save
           className="space-y-2 border-t border-line pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
         >
+          {state.error ? (
+            <div
+              ref={saveErrorRef}
+              role="alert"
+              data-save-error
+              className="rounded-xl border border-danger bg-card px-3 py-3 text-sm"
+            >
+              <p>{state.error}</p>
+              <button
+                type="button"
+                data-save-retry
+                onClick={() =>
+                  formRef.current?.querySelector<HTMLButtonElement>("[data-save-workout]")?.click()
+                }
+                className="mt-2 font-semibold underline-offset-4 hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
           <button
             type="submit"
             name="intent"
             value="complete"
+            data-save-workout
             disabled={pending}
             onClick={() => primeUnlockAudio()}
             className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

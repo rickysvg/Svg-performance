@@ -1,3 +1,4 @@
+import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { recentDifficultyAverage } from "@/lib/difficulty";
 import { timeZoneForUser } from "@/lib/profile";
@@ -54,6 +55,7 @@ export async function getWeeklyWrapped(
       where: {
         userId,
         status: "complete",
+        sets: loggedSetSome,
         performedAt: { gte: from, lt: endExclusive },
       },
       select: { performedAt: true, difficultyRating: true },

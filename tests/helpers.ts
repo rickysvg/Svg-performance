@@ -9,6 +9,7 @@ export async function resetDatabase() {
   await prisma.gymdeskSyncMeta.deleteMany();
   await prisma.gymdeskMember.deleteMany();
   await prisma.formCheck.deleteMany();
+  await prisma.memberFeedback.deleteMany();
   await prisma.fightCamp.deleteMany();
   await prisma.clipTimestampNote.deleteMany();
   await prisma.trainingClip.deleteMany();
@@ -50,6 +51,7 @@ export async function resetDatabase() {
   await prisma.testingResult.deleteMany();
   await prisma.workoutSet.deleteMany();
   await prisma.exerciseNote.deleteMany();
+  await prisma.exerciseRemoval.deleteMany();
   await prisma.exerciseSwap.deleteMany();
   await prisma.workoutSession.deleteMany();
   await prisma.passwordResetAttempt.deleteMany();

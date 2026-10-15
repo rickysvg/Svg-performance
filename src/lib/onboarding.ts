@@ -18,6 +18,7 @@ import {
   toProfileRecord,
   type ProfileRecord,
 } from "@/lib/profile";
+import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
 
 export type OnboardingInput = {
   displayName: string;
@@ -32,6 +33,8 @@ export type OnboardingInput = {
   trainingLimitations: string;
   foodPreferences: string;
   allergies: string;
+  aiCoachId?: string;
+  coachingStyle?: string;
 };
 
 export function goalLabel(goalKey: string) {
@@ -163,7 +166,24 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingInput
     foodPreferences: input.foodPreferences.trim().slice(0, 400),
     allergies: input.allergies.trim().slice(0, 400),
     goals: formatGoalDisplay(input.goalKey, goalNote),
+    ...coachChoiceFromIntake(input),
   };
+}
+
+function coachChoiceFromIntake(input: OnboardingInput): {
+  aiCoachId?: string;
+  coachingStyle?: string;
+} {
+  if (input.aiCoachId === undefined && input.coachingStyle === undefined) {
+    return {};
+  }
+  if (!isAiCoachId(input.aiCoachId)) {
+    throw new AppError("ONBOARDING", "Pick a coach.");
+  }
+  if (!isCoachingStyle(input.coachingStyle)) {
+    throw new AppError("ONBOARDING", "Pick a coaching style.");
+  }
+  return { aiCoachId: input.aiCoachId, coachingStyle: input.coachingStyle };
 }
 
 export async function completeOnboardingForUser(userId: string, input: OnboardingInput) {
@@ -188,6 +208,13 @@ export async function completeOnboardingForUser(userId: string, input: Onboardin
       foodPreferences: data.foodPreferences,
       allergies: data.allergies,
       onboardingCompletedAt: existing.onboardingCompletedAt ?? new Date(),
+      ...(data.aiCoachId && data.coachingStyle
+        ? {
+            aiCoachId: data.aiCoachId,
+            coachingStyle: data.coachingStyle,
+            coachChoiceAt: existing.coachChoiceAt ?? new Date(),
+          }
+        : {}),
     },
   });
   return toProfileRecord(row);

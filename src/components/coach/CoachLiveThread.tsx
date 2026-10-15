@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { StatusBanner } from "@/components/StatusBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { useCoachStream } from "@/components/coach/useCoachStream";
+import type { UserRole } from "@/lib/auth";
+import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
+
+export const QUICK_ANSWER_NOTE =
+  "Live coach is unavailable right now, so this is a short built-in answer. Try again in a bit.";
 
 type ChatBubble = {
   id: string;
@@ -12,18 +17,83 @@ type ChatBubble = {
   content: string;
   refused?: boolean;
   offline?: boolean;
+  fallbackReason?: FallbackReason;
   live?: boolean;
 };
+
+export function CoachBubble({
+  speaker,
+  content,
+  refused,
+  offline,
+  fallbackReason,
+  viewerRole,
+  coachName = COACH_PUBLIC_NAME,
+  coachThumb,
+}: {
+  speaker: "user" | "assistant";
+  content: string;
+  refused?: boolean;
+  offline?: boolean;
+  fallbackReason?: FallbackReason;
+  viewerRole?: UserRole;
+  coachName?: string;
+  coachThumb?: string;
+}) {
+  const quick = speaker === "assistant" && Boolean(offline);
+  const showReason = quick && viewerRole === "admin" && Boolean(fallbackReason);
+  const label = speaker === "user" ? "You" : coachName;
+  return (
+    <article
+      className={`rounded-2xl border p-4 text-sm ${
+        speaker === "user" ? "border-line bg-background" : "border-line bg-card"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {speaker === "assistant" && coachThumb ? (
+          <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={coachThumb}
+            alt=""
+            width={96}
+            height={96}
+            className="h-8 w-8 rounded-full object-cover ring-2 ring-accent"
+          />
+          </>
+        ) : null}
+        <p className="text-xs uppercase text-muted" data-coach-speaker={label}>
+          {label}
+          {refused ? " · safety refusal" : ""}
+          {quick ? " · quick answer" : ""}
+          {showReason ? ` · ${fallbackReason}` : ""}
+        </p>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap">{content}</p>
+      {quick ? (
+        <p className="mt-2 text-xs text-muted" data-coach-quick-note>
+          {QUICK_ANSWER_NOTE}
+        </p>
+      ) : null}
+    </article>
+  );
+}
 
 export function CoachLiveThread({
   topic,
   art,
   lane,
+  viewerRole = "member",
+  coachName = COACH_PUBLIC_NAME,
+  coachThumb,
   initialMessages,
 }: {
   topic: string;
   art?: string;
   lane: string;
+  viewerRole?: UserRole;
+  coachName?: string;
+  coachThumb?: string;
   initialMessages: Array<{
     id: string;
     role: string;
@@ -43,7 +113,7 @@ export function CoachLiveThread({
   );
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const { streaming, partial, error, offline, start, stop } = useCoachStream();
+  const { streaming, partial, error, offline, fallbackReason, start, stop } = useCoachStream();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -64,12 +134,13 @@ export function CoachLiveThread({
     if (reply) {
       setMessages((current) => [
         ...current,
-        {
-          id: `local-assistant-${Date.now()}`,
-          role: "assistant",
-          content: reply,
-          offline: result.offline || offline,
-        },
+          {
+            id: `local-assistant-${Date.now()}`,
+            role: "assistant",
+            content: reply,
+            offline: result.offline || offline,
+            fallbackReason: result.fallbackReason || fallbackReason,
+          },
       ]);
     }
   }
@@ -77,24 +148,23 @@ export function CoachLiveThread({
   return (
     <div className="space-y-3" data-coach-thread>
       {messages.length === 0 && !streaming && !partial ? (
-        <EmptyState title={`Ask about ${lane}`}>
+        <EmptyState title={`Ask ${coachName} about ${lane}`}>
           Stay in this lane. For live eyes, talk to a coach on the floor. Safety
           rails still refuse pain, medical, and weight-cut asks.
         </EmptyState>
       ) : (
         messages.map((message) => (
-          <article
+          <CoachBubble
             key={message.id}
-            className={`rounded-2xl border p-4 text-sm ${
-              message.role === "user" ? "border-line bg-background" : "border-line bg-card"
-            }`}
-          >
-            <p className="text-xs uppercase text-muted">
-              {message.role === "user" ? "You" : COACH_PUBLIC_NAME}
-              {message.refused ? " · safety refusal" : ""}
-            </p>
-            <p className="mt-2 whitespace-pre-wrap">{message.content}</p>
-          </article>
+            speaker={message.role}
+            content={message.content}
+            refused={message.refused}
+            offline={message.offline}
+            fallbackReason={message.fallbackReason}
+            viewerRole={viewerRole}
+            coachName={coachName}
+            coachThumb={coachThumb}
+          />
         ))
       )}
 
@@ -103,10 +173,26 @@ export function CoachLiveThread({
           data-coach-stream
           className="rounded-2xl border border-line bg-card p-4 text-sm"
         >
-          <p className="text-xs uppercase text-muted">
-            {COACH_PUBLIC_NAME}
+          <div className="flex items-center gap-2">
+            {coachThumb ? (
+              <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coachThumb}
+                alt=""
+                width={96}
+                height={96}
+                className="h-8 w-8 rounded-full object-cover ring-2 ring-accent"
+              />
+              </>
+            ) : null}
+            <p className="text-xs uppercase text-muted" data-coach-speaker={coachName}>
+            {coachName}
+            {offline ? " · quick answer" : ""}
+            {offline && viewerRole === "admin" && fallbackReason ? ` · ${fallbackReason}` : ""}
             {streaming && !partial ? " · typing" : ""}
-          </p>
+            </p>
+          </div>
           {streaming && !partial ? (
             <p data-coach-typing className="mt-3 font-display text-sm uppercase tracking-wide text-accent">
               Typing
@@ -119,6 +205,11 @@ export function CoachLiveThread({
           ) : (
             <p className="mt-2 whitespace-pre-wrap">{partial}</p>
           )}
+          {offline ? (
+            <p className="mt-2 text-xs text-muted" data-coach-quick-note>
+              {QUICK_ANSWER_NOTE}
+            </p>
+          ) : null}
         </article>
       ) : null}
       <div ref={bottomRef} />

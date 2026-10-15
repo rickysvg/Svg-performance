@@ -3,14 +3,31 @@ import { dayKey, mondayOfZoned } from "@/lib/timezone";
 
 export type PlanWeekday = (typeof WEEKDAYS)[number];
 
-/** One week’s voluntary remap. Calendar weekday shows that skeleton day’s sessions. */
+/**
+ * One week’s voluntary remap.
+ * `sourceByDay` swaps whole calendar days.
+ * `sessionDays` places one skeleton workout on a calendar weekday.
+ * A session key is `Weekday:program-slug:dayNumber` (or `Weekday:kind:index`).
+ */
 export type WeekPlanSwap = {
   /** Monday of the week, YYYY-MM-DD in the member’s zone. */
   weekStart: string;
   sourceByDay: Partial<Record<PlanWeekday, PlanWeekday>>;
+  sessionDays?: Partial<Record<string, PlanWeekday>>;
 };
 
 const WEEK_START = /^\d{4}-\d{2}-\d{2}$/;
+const SESSION_KEY =
+  /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):[a-z0-9-]+:[a-z0-9-]+$/i;
+
+export function isSessionKey(value: string) {
+  return SESSION_KEY.test(value);
+}
+
+export function sessionHomeWeekday(sessionKey: string): PlanWeekday | null {
+  const home = sessionKey.split(":")[0] ?? "";
+  return isPlanWeekday(home) ? home : null;
+}
 
 export function isPlanWeekday(value: string): value is PlanWeekday {
   return (WEEKDAYS as readonly string[]).includes(value);
@@ -31,18 +48,56 @@ export function parseWeekPlanSwaps(raw: string | null | undefined): WeekPlanSwap
     if (!row || typeof row !== "object") continue;
     const weekStart = (row as { weekStart?: unknown }).weekStart;
     const sourceByDay = (row as { sourceByDay?: unknown }).sourceByDay;
+    const sessionDays = (row as { sessionDays?: unknown }).sessionDays;
     if (typeof weekStart !== "string" || !WEEK_START.test(weekStart)) continue;
-    if (!sourceByDay || typeof sourceByDay !== "object" || Array.isArray(sourceByDay)) continue;
     const clean: Partial<Record<PlanWeekday, PlanWeekday>> = {};
-    for (const [key, value] of Object.entries(sourceByDay)) {
-      if (typeof value !== "string") continue;
-      if (!isPlanWeekday(key) || !isPlanWeekday(value) || key === value) continue;
-      clean[key] = value;
+    if (sourceByDay && typeof sourceByDay === "object" && !Array.isArray(sourceByDay)) {
+      for (const [key, value] of Object.entries(sourceByDay)) {
+        if (typeof value !== "string") continue;
+        if (!isPlanWeekday(key) || !isPlanWeekday(value) || key === value) continue;
+        clean[key] = value;
+      }
     }
-    if (Object.keys(clean).length === 0) continue;
-    swaps.push({ weekStart, sourceByDay: clean });
+    const cleanSessions: Partial<Record<string, PlanWeekday>> = {};
+    if (sessionDays && typeof sessionDays === "object" && !Array.isArray(sessionDays)) {
+      for (const [key, value] of Object.entries(sessionDays)) {
+        if (typeof value !== "string" || !isSessionKey(key) || !isPlanWeekday(value)) continue;
+        cleanSessions[key] = value;
+      }
+    }
+    if (Object.keys(clean).length === 0 && Object.keys(cleanSessions).length === 0) continue;
+    swaps.push({
+      weekStart,
+      sourceByDay: clean,
+      ...(Object.keys(cleanSessions).length > 0 ? { sessionDays: cleanSessions } : {}),
+    });
   }
   return swaps;
+}
+
+/** Calendar weekday that currently shows a skeleton weekday, before per-workout pins. */
+export function calendarDayForSource(
+  sourceByDay: Partial<Record<PlanWeekday, PlanWeekday>>,
+  source: PlanWeekday,
+): PlanWeekday {
+  for (const day of WEEKDAYS) {
+    if (sourceByDay[day] === source) return day;
+  }
+  return source;
+}
+
+function flipSessionDays(
+  sessionDays: Partial<Record<string, PlanWeekday>> | undefined,
+  a: PlanWeekday,
+  b: PlanWeekday,
+) {
+  if (!sessionDays) return undefined;
+  const next: Partial<Record<string, PlanWeekday>> = {};
+  for (const [key, day] of Object.entries(sessionDays)) {
+    if (!day || !isPlanWeekday(day)) continue;
+    next[key] = day === a ? b : day === b ? a : day;
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
 export function sourceWeekday(
@@ -63,9 +118,8 @@ export function swapWeekdays(
 ): WeekPlanSwap[] {
   if (a === b) return swaps;
   const rest = swaps.filter((row) => row.weekStart !== weekStart);
-  const current = {
-    ...(swaps.find((row) => row.weekStart === weekStart)?.sourceByDay ?? {}),
-  };
+  const row = swaps.find((item) => item.weekStart === weekStart);
+  const current = { ...(row?.sourceByDay ?? {}) };
   const sourceA = current[a] ?? a;
   const sourceB = current[b] ?? b;
   const next: Partial<Record<PlanWeekday, PlanWeekday>> = { ...current };
@@ -73,8 +127,48 @@ export function swapWeekdays(
   else next[a] = sourceB;
   if (sourceA === b) delete next[b];
   else next[b] = sourceA;
-  if (Object.keys(next).length === 0) return rest;
-  return [...rest, { weekStart, sourceByDay: next }];
+  const sessionDays = flipSessionDays(row?.sessionDays, a, b);
+  if (Object.keys(next).length === 0 && !sessionDays) return rest;
+  return [
+    ...rest,
+    {
+      weekStart,
+      sourceByDay: next,
+      ...(sessionDays ? { sessionDays } : {}),
+    },
+  ];
+}
+
+/** Put one skeleton workout on a calendar weekday. Sending it home clears the pin. */
+export function moveSessionOnPlan(
+  swaps: WeekPlanSwap[],
+  weekStart: string,
+  sessionKey: string,
+  toDay: PlanWeekday,
+): WeekPlanSwap[] {
+  if (!WEEK_START.test(weekStart) || !isSessionKey(sessionKey) || !isPlanWeekday(toDay)) {
+    return swaps;
+  }
+  const home = sessionHomeWeekday(sessionKey);
+  if (!home) return swaps;
+  const rest = swaps.filter((row) => row.weekStart !== weekStart);
+  const current = swaps.find((row) => row.weekStart === weekStart);
+  const sourceByDay = { ...(current?.sourceByDay ?? {}) };
+  const sessionDays = { ...(current?.sessionDays ?? {}) };
+  const base = calendarDayForSource(sourceByDay, home);
+  if ((sessionDays[sessionKey] ?? base) === toDay && toDay === base) return swaps;
+  if (toDay === base) delete sessionDays[sessionKey];
+  else sessionDays[sessionKey] = toDay;
+  const hasSessions = Object.keys(sessionDays).length > 0;
+  if (Object.keys(sourceByDay).length === 0 && !hasSessions) return rest;
+  return [
+    ...rest,
+    {
+      weekStart,
+      sourceByDay,
+      ...(hasSessions ? { sessionDays } : {}),
+    },
+  ];
 }
 
 export function clearWeekSwap(swaps: WeekPlanSwap[], weekStart: string) {

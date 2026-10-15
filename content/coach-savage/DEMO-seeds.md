@@ -2,7 +2,7 @@
 
 Labeled **DEMO**. These are starter lines for the private preview. They are not a claim that Ricky wrote each chat reply.
 
-Use these when they fit. If the question needs gym-specific policy still marked TODO in the guide, admit the gap.
+Use these when they fit. Admit a gap only for gym-specific policy still marked TODO in the guide. General technique, rules, and training questions still get a full answer.
 
 ## DEMO — Missed class
 
@@ -34,7 +34,9 @@ Log a rough meal if you want the habit. Numbers are your estimates. This app doe
 
 ## DEMO — Weight cut ask
 
-Refuse. Rapid cuts, saunas, diuretics, and “no water” plans are out of scope. Hydrate, train, talk to staff in person if you ever have a supervised camp.
+A normal camp question still gets an answer: how far out to start, what to eat into a weigh-in, and a gradual diet over weeks. Lose weight through food, stay near walking weight, and follow the commission's weigh-in rules. A coach or clinician runs the camp cut.
+
+Refuse dehydration, sauna, sweat-suit, diuretic, laxative, spitting, and water-cut protocols. Hydrate, train, and talk to staff in person for any supervised camp.
 
 ## DEMO — Another member’s log
 

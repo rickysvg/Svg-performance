@@ -334,3 +334,75 @@ BEGIN
   END IF;
 END $$;
 
+-- AI coach portrait and coaching style. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."Profile"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'aiCoachId'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "aiCoachId" TEXT NOT NULL DEFAULT 'skye';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'coachingStyle'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "coachingStyle" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'coachChoiceAt'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "coachChoiceAt" TIMESTAMP(3);
+  END IF;
+
+  -- Default coach is Skye, including rows created before this rename.
+  ALTER TABLE "Profile" ALTER COLUMN "aiCoachId" SET DEFAULT 'skye';
+  UPDATE "Profile" SET "aiCoachId" = 'skye' WHERE "aiCoachId" IN ('lena', '');
+END $$;
+
+-- Session exercise removals. Additive. No-ops until User exists.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."ExerciseRemoval"') IS NULL THEN
+    CREATE TABLE "ExerciseRemoval" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "programSlug" TEXT NOT NULL DEFAULT '',
+      "dayNumber" INTEGER NOT NULL DEFAULT 0,
+      "originalName" TEXT NOT NULL,
+      "exerciseName" TEXT NOT NULL,
+      "workoutSessionId" TEXT NOT NULL DEFAULT '',
+      "snapshotJson" TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "ExerciseRemoval_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "ExerciseRemoval_userId_programSlug_dayNumber_idx"
+      ON "ExerciseRemoval"("userId", "programSlug", "dayNumber");
+    CREATE INDEX "ExerciseRemoval_userId_workoutSessionId_idx"
+      ON "ExerciseRemoval"("userId", "workoutSessionId");
+    ALTER TABLE "ExerciseRemoval"
+      ADD CONSTRAINT "ExerciseRemoval_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+

@@ -2,6 +2,7 @@ import { getWeeklyWrapped, weeklyWrappedCopy, lastSevenLocalDays } from "@/lib/w
 import { getPersonalRecordsForUser } from "@/lib/records";
 import { getProfileForUser } from "@/lib/profile";
 import { getPathProgress } from "@/lib/paths";
+import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { mondayOf } from "@/lib/home";
 import { timeZoneForUser } from "@/lib/profile";
@@ -57,6 +58,7 @@ export async function getWeeklyProgressReport(userId: string, now = new Date()) 
     where: {
       userId,
       status: "complete",
+      sets: loggedSetSome,
       performedAt: { gte: from, lt: endExclusive },
     },
     select: { title: true, notes: true },

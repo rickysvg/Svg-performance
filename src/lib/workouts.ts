@@ -23,6 +23,14 @@ import {
 import { DELOAD_LABEL } from "@/lib/training-cycle";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { bindPendingSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
+import { omitRemovedSlots } from "@/lib/exercise-removal";
+import { bindPendingRemovals, listRemovalsForDay } from "@/lib/exercise-removal-store";
+import {
+  loggedSetSome,
+  prepareSetsForPersist,
+  sessionHasLoggedWork,
+  setHasLoggedWork,
+} from "@/lib/logged-work";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -276,6 +284,7 @@ export async function completedProgramDayIdsOnDay(
         gte: startOfZonedDay(day, timeZone),
         lt: endOfZonedDay(day, timeZone),
       },
+      sets: loggedSetSome,
     },
     select: { programDayId: true },
   });
@@ -380,7 +389,15 @@ export async function startWorkoutFromDay(input: {
   const pendingNames = day.exercises
     .filter((exercise, index) => swapped[index]?.name !== exercise.name)
     .map((exercise) => exercise.name);
-  const sets = swapped.flatMap((exercise) => {
+  const removals = await listRemovalsForDay({
+    userId: input.userId,
+    programSlug: rawDay.program.slug,
+    dayNumber: rawDay.dayNumber,
+  });
+  const visible = omitRemovedSlots(day.exercises, swapped, removals, {
+    includePending: true,
+  }).shown;
+  const sets = visible.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
     // Match the set count printed on the logger card. Deload week used to
     // store ~60% of that count (4 → 2) while the card still said 4 sets.
@@ -423,6 +440,12 @@ export async function startWorkoutFromDay(input: {
     dayNumber: rawDay.dayNumber,
     workoutSessionId: created.id,
     originalNames: pendingNames,
+  });
+  await bindPendingRemovals({
+    userId: input.userId,
+    programSlug: rawDay.program.slug,
+    dayNumber: rawDay.dayNumber,
+    workoutSessionId: created.id,
   });
   return created;
 }
@@ -502,7 +525,13 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  const sets = setsAsLb(input.sets);
+  const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
+  if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
+    throw new AppError(
+      "WORKOUT",
+      "Log at least one set, then tap Save. Nothing was marked finished.",
+    );
+  }
   validateSets(sets);
 
   const title = input.title.trim().slice(0, 120) || "Workout";
@@ -566,6 +595,34 @@ export async function updateWorkoutSessionForUser(input: {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }
   return updated;
+}
+
+/**
+ * A finished session with no reps, load, or time was never really saved.
+ * Put it back to draft so the local logger can still save into the same id.
+ */
+export async function reopenEmptyCompletion<
+  T extends { id: string; status: string; sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[] },
+>(session: T): Promise<T> {
+  if (session.status !== "complete" || sessionHasLoggedWork(session.sets)) return session;
+  await prisma.workoutSession.update({
+    where: { id: session.id },
+    data: { status: "draft" },
+  });
+  return { ...session, status: "draft" };
+}
+
+/** Delete a draft the member left without logging. Never deletes a set they typed. */
+export async function discardEmptyWorkoutDraft(userId: string, workoutId: string) {
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: workoutId },
+    include: { sets: true },
+  });
+  if (!session || session.userId !== userId) return { discarded: false };
+  if (sessionHasLoggedWork(session.sets)) return { discarded: false };
+  if (session.status !== "draft") return { discarded: false };
+  await prisma.workoutSession.delete({ where: { id: workoutId } });
+  return { discarded: true };
 }
 
 export async function deleteWorkoutSessionForUser(

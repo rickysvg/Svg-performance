@@ -1,88 +1,78 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { detectSafetyRefusal, safetyPreamble } from "@/lib/coach/safety";
-import { loadKnowledgeBase } from "@/lib/coach/knowledge";
+import { detectSafetyRefusal } from "@/lib/coach/safety";
+import { EMPTY_COACH_FALLBACK } from "@/lib/coach/offline";
+import { buildPlanContext } from "@/lib/coach/plan-context";
+import { classifyQuestion } from "@/lib/coach/router";
 import {
-  EMPTY_COACH_FALLBACK,
-  liveModelUnavailableReply,
-  offlineReply,
-} from "@/lib/coach/offline";
-import { coachLaneLabel, coachTopicContext } from "@/lib/coach/topics";
+  buildCoachSystemPrompt,
+  buildOwnSummary,
+  coachMaxTokens,
+  coachThreadHistory,
+  collectCoachCompletion,
+  isOpenAiConfigured,
+} from "@/lib/coach/llm";
 import { timeZoneForUser } from "@/lib/profile";
 import { athleteLocalDayLine } from "@/lib/timezone";
 
 export { offlineReply } from "@/lib/coach/offline";
+export { isOpenAiConfigured } from "@/lib/coach/llm";
 
-export function isOpenAiConfigured() {
-  return Boolean(process.env.OPENAI_API_KEY);
-}
-
-async function liveReply(input: {
+async function replyWithCoach(input: {
+  userId: string;
   message: string;
-  experienceLevel: string;
+  experienceLevel?: string;
   coachingTone?: string;
-  ownSummary: string;
+  coachingStyle?: string;
+  coachName?: string;
   topic?: string;
   art?: string;
+  notepad?: boolean;
+  history: { role: "user" | "assistant"; content: string }[];
+  localDay?: string;
 }) {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
-    return {
-      content: offlineReply(
-        input.message,
-        input.experienceLevel,
-        input.coachingTone,
-        input.topic,
-        input.art,
-      ),
-      offline: true,
-    };
-  }
-  const system = [
-    safetyPreamble(),
-    coachTopicContext(input.topic, input.art),
-    "Approved DEMO knowledge:",
-    loadKnowledgeBase(),
-    "Member context (current user only):",
-    input.ownSummary,
-  ].join("\n\n");
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: input.message },
-      ],
-    }),
-  });
-  if (!response.ok) {
-    return {
-      content: liveModelUnavailableReply(
-        input.message,
-        input.experienceLevel,
-        input.coachingTone,
-        input.topic,
-        input.art,
-      ),
-      offline: true,
-    };
-  }
-  const payload = (await response.json()) as {
-    choices?: { message?: { content?: string } }[];
+  const lane = {
+    topic: input.topic,
+    art: input.art,
+    notepad: input.notepad,
   };
-  const content = payload.choices?.[0]?.message?.content?.trim();
+  const route = classifyQuestion(input.message, lane);
+  const wantsPlan =
+    route.primary === "programming" || route.secondary.includes("programming");
+  const planContext = wantsPlan ? await buildPlanContext(input.userId, input.message) : "";
+  const ownSummary = buildOwnSummary({
+    userId: input.userId,
+    experienceLevel: input.experienceLevel,
+    coachingTone: input.coachingTone,
+    topic: input.topic,
+    art: input.art,
+    notepad: input.notepad,
+    localDay: input.localDay,
+  });
+  const system = buildCoachSystemPrompt({
+    topic: input.topic,
+    art: input.art,
+    route,
+    ownSummary,
+    planContext,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
+  });
+  const reply = await collectCoachCompletion({
+    system,
+    history: input.history,
+    message: input.message,
+    maxTokens: coachMaxTokens(route),
+    userId: input.userId,
+    experienceLevel: input.experienceLevel || "beginner",
+    coachingTone: input.coachingTone,
+    topic: input.topic,
+    art: input.art,
+  });
   return {
-    content:
-      content ||
-      EMPTY_COACH_FALLBACK,
-    offline: false,
+    content: reply.content || EMPTY_COACH_FALLBACK,
+    offline: reply.offline,
+    reason: reply.reason,
   };
 }
 
@@ -125,6 +115,8 @@ export async function sendCoachMessage(input: {
   message: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
   mentionedUserId?: string;
   topic?: string;
   art?: string;
@@ -133,10 +125,10 @@ export async function sendCoachMessage(input: {
   if (!message) {
     throw new Error("Type a message first.");
   }
-  const thread = await getOrCreateThread(input.userId, {
-    topic: input.topic,
-    art: input.topic === "martial_art" ? input.art : "",
-  });
+  const topic = input.topic;
+  const art = input.topic === "martial_art" ? input.art : "";
+  const thread = await getOrCreateThread(input.userId, { topic, art });
+  const history = coachThreadHistory(thread.messages);
   const refusal = detectSafetyRefusal(message, {
     currentUserId: input.userId,
     mentionedUserId: input.mentionedUserId,
@@ -164,25 +156,17 @@ export async function sendCoachMessage(input: {
     return { threadId: thread.id, assistant: saved, refused: true };
   }
 
-  const ownSummary = [
-    `Experience: ${input.experienceLevel || "unknown"}.`,
-    input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
-    coachLaneLabel(input.topic, input.art)
-      ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
-      : "",
-    athleteLocalDayLine(new Date(), await timeZoneForUser(input.userId)),
-    `Only this user id ${input.userId} may be discussed.`,
-    "Do not invent a medical or calorie plan from any stored weight.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const reply = await liveReply({
+  const reply = await replyWithCoach({
+    userId: input.userId,
     message,
     experienceLevel: input.experienceLevel || "beginner",
     coachingTone: input.coachingTone,
-    ownSummary,
-    topic: input.topic,
-    art: input.topic === "martial_art" ? input.art : "",
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
+    topic,
+    art,
+    history,
+    localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(input.userId)),
   });
   const saved = await prisma.chatMessage.create({
     data: {
@@ -206,6 +190,8 @@ export async function answerScopedCoachQuestion(input: {
   message: string;
   experienceLevel?: string;
   coachingTone?: string;
+  coachingStyle?: string;
+  coachName?: string;
   topic?: string;
   art?: string;
 }) {
@@ -222,26 +208,18 @@ export async function answerScopedCoachQuestion(input: {
       refusalCode: refusal.code,
     };
   }
-  const ownSummary = [
-    `Experience: ${input.experienceLevel || "unknown"}.`,
-    input.coachingTone ? `Preferred coaching tone: ${input.coachingTone}.` : "",
-    coachLaneLabel(input.topic, input.art)
-      ? `Selected topic: ${coachLaneLabel(input.topic, input.art)}.`
-      : "",
-    athleteLocalDayLine(new Date(), await timeZoneForUser(input.userId)),
-    `Only this user id ${input.userId} may be discussed.`,
-    "This is a Train notepad question on one exercise. Stay practical.",
-    "Do not invent SVG-produced videos or a medical plan.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const reply = await liveReply({
+  const reply = await replyWithCoach({
+    userId: input.userId,
     message,
     experienceLevel: input.experienceLevel || "beginner",
     coachingTone: input.coachingTone,
-    ownSummary,
+    coachingStyle: input.coachingStyle,
+    coachName: input.coachName,
     topic: input.topic,
     art: input.topic === "martial_art" ? input.art : "",
+    notepad: true,
+    history: [],
+    localDay: athleteLocalDayLine(new Date(), await timeZoneForUser(input.userId)),
   });
   return {
     content: reply.content,

@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  dismissCoachChoiceForUser,
   persistDetectedTimeZone,
+  saveCoachChoiceForUser,
   setLeaderboardOptInForUser,
   setWeightAccessForUser,
   updateProfileForUser,
@@ -60,6 +62,8 @@ export async function saveProfileAction(
           ? new Date(Number(fightMatch[1]), Number(fightMatch[2]) - 1, Number(fightMatch[3]))
           : new Date(fightRaw),
       coachingTone: String(formData.get("coachingTone") ?? ""),
+      aiCoachId: String(formData.get("aiCoachId") ?? ""),
+      coachingStyle: String(formData.get("coachingStyle") ?? ""),
       trainingEmphasis: String(formData.get("trainingEmphasis") ?? ""),
       obstacles: formData.getAll("obstacles").map(String),
       calorieTarget: optionalNumber("calorieTarget"),
@@ -71,10 +75,26 @@ export async function saveProfileAction(
     revalidatePath("/profile");
     revalidatePath("/training");
     revalidatePath("/progress");
+    revalidatePath("/coach");
     return { success: "Profile saved." };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+}
+
+export async function saveCoachChoiceAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  await saveCoachChoiceForUser(user.id, {
+    aiCoachId: String(formData.get("aiCoachId") ?? ""),
+    coachingStyle: String(formData.get("coachingStyle") ?? ""),
+  });
+  revalidatePath("/", "layout");
+}
+
+export async function dismissCoachChoiceAction() {
+  const user = await requireUserOrThrow();
+  await dismissCoachChoiceForUser(user.id);
+  revalidatePath("/", "layout");
 }
 
 export async function setWeightAccessAction(formData: FormData) {

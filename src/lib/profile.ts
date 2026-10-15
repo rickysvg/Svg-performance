@@ -19,6 +19,7 @@ import { toE164 } from "@/lib/gymdesk/crypto";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
+import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
 
 export type ProfileRecord = {
   userId: string;
@@ -65,6 +66,9 @@ export type ProfileRecord = {
   competitionStatus: string;
   nextFightDate: Date | null;
   coachingTone: string;
+  aiCoachId: string;
+  coachingStyle: string;
+  coachChoiceAt: Date | null;
   trainingEmphasis: string;
   weightAccess: WeightAccess;
   obstacles: string[];
@@ -126,6 +130,9 @@ export function toProfileRecord(row: {
   competitionStatus: string;
   nextFightDate: Date | null;
   coachingTone: string;
+  aiCoachId?: string;
+  coachingStyle?: string;
+  coachChoiceAt?: Date | null;
   trainingEmphasis?: string;
   weightAccess?: string;
   obstaclesJson: string;
@@ -171,6 +178,9 @@ export function toProfileRecord(row: {
     competitionStatus: row.competitionStatus,
     nextFightDate: row.nextFightDate,
     coachingTone: row.coachingTone,
+    aiCoachId: row.aiCoachId ?? "",
+    coachingStyle: row.coachingStyle ?? "",
+    coachChoiceAt: row.coachChoiceAt ?? null,
     trainingEmphasis:
       row.trainingEmphasis === "striker" || row.trainingEmphasis === "grappler"
         ? row.trainingEmphasis
@@ -266,6 +276,8 @@ export async function updateProfileForUser(
     competitionStatus?: string;
     nextFightDate?: Date | null;
     coachingTone?: string;
+    aiCoachId?: string;
+    coachingStyle?: string;
     obstacles?: string[];
     trainingEmphasis?: string;
     calorieTarget?: number;
@@ -469,6 +481,21 @@ export async function updateProfileForUser(
           : COACHING_TONE_OPTIONS.some((item) => item.value === input.coachingTone)
             ? input.coachingTone
             : existing.coachingTone,
+      aiCoachId:
+        input.aiCoachId !== undefined && isAiCoachId(input.aiCoachId)
+          ? input.aiCoachId
+          : existing.aiCoachId,
+      coachingStyle:
+        input.coachingStyle !== undefined && isCoachingStyle(input.coachingStyle)
+          ? input.coachingStyle
+          : existing.coachingStyle,
+      coachChoiceAt:
+        input.aiCoachId !== undefined &&
+        input.coachingStyle !== undefined &&
+        isAiCoachId(input.aiCoachId) &&
+        isCoachingStyle(input.coachingStyle)
+          ? (existing.coachChoiceAt ?? new Date())
+          : existing.coachChoiceAt,
       trainingEmphasis:
         input.trainingEmphasis === undefined
           ? existing.trainingEmphasis
@@ -542,6 +569,46 @@ export async function setWeightAccessForUser(userId: string, weightAccess: strin
   const row = await prisma.profile.update({
     where: { userId },
     data: { weightAccess: normalizeWeightAccess(weightAccess) },
+  });
+  return toProfileRecord(row);
+}
+
+export async function saveCoachChoiceForUser(
+  userId: string,
+  input: { aiCoachId: string; coachingStyle: string },
+) {
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing) {
+    throw new NotFoundError("Profile not found.");
+  }
+  if (!isAiCoachId(input.aiCoachId)) {
+    throw new AppError("PROFILE", "Pick a coach.");
+  }
+  if (!isCoachingStyle(input.coachingStyle)) {
+    throw new AppError("PROFILE", "Pick a coaching style.");
+  }
+  const row = await prisma.profile.update({
+    where: { userId },
+    data: {
+      aiCoachId: input.aiCoachId,
+      coachingStyle: input.coachingStyle,
+      coachChoiceAt: new Date(),
+    },
+  });
+  return toProfileRecord(row);
+}
+
+export async function dismissCoachChoiceForUser(userId: string) {
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing) {
+    throw new NotFoundError("Profile not found.");
+  }
+  if (existing.coachChoiceAt) {
+    return toProfileRecord(existing);
+  }
+  const row = await prisma.profile.update({
+    where: { userId },
+    data: { coachChoiceAt: new Date() },
   });
   return toProfileRecord(row);
 }

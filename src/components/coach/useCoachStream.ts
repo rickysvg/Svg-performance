@@ -6,6 +6,7 @@ import {
   STREAM_STOPPED_MARKER,
   type CoachStreamEvent,
   type CoachStreamRequest,
+  type FallbackReason,
 } from "@/lib/coach/stream-types";
 
 export function useCoachStream() {
@@ -13,6 +14,7 @@ export function useCoachStream() {
   const [partial, setPartial] = useState("");
   const [error, setError] = useState("");
   const [offline, setOffline] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState<FallbackReason | undefined>();
   const abortRef = useRef<AbortController | null>(null);
 
   function stop() {
@@ -27,8 +29,10 @@ export function useCoachStream() {
     setPartial("");
     setError("");
     setOffline(false);
+    setFallbackReason(undefined);
     let assembled = "";
     let liveOffline = false;
+    let liveReason: FallbackReason | undefined;
 
     try {
       const response = await fetch("/api/coach/stream", {
@@ -65,17 +69,21 @@ export function useCoachStream() {
           } else if (event.type === "done") {
             assembled = event.content;
             liveOffline = event.offline;
+            liveReason = event.fallbackReason;
             setPartial(event.content);
             setOffline(event.offline);
+            setFallbackReason(event.fallbackReason);
           } else if (event.type === "error") {
             setError(event.message);
           } else if (event.type === "meta") {
             liveOffline = event.offline;
+            liveReason = event.fallbackReason;
             setOffline(event.offline);
+            setFallbackReason(event.fallbackReason);
           }
         }
       }
-      return { content: assembled, offline: liveOffline };
+      return { content: assembled, offline: liveOffline, fallbackReason: liveReason };
     } catch (caught) {
       if (controller.signal.aborted) {
         const kept = assembled.includes("[Stopped")
@@ -84,17 +92,27 @@ export function useCoachStream() {
             ? `${assembled}${STREAM_STOPPED_MARKER}`
             : assembled;
         setPartial(kept);
-        return { content: kept, offline: liveOffline };
+        return { content: kept, offline: liveOffline, fallbackReason: liveReason };
       }
       const message =
         caught instanceof Error ? caught.message : STREAM_FAIL_COPY;
       setError(message);
-      return { content: "", offline: liveOffline };
+      return { content: "", offline: liveOffline, fallbackReason: liveReason };
     } finally {
       setStreaming(false);
       abortRef.current = null;
     }
   }
 
-  return { streaming, partial, error, offline, start, stop, setError, setPartial };
+  return {
+    streaming,
+    partial,
+    error,
+    offline,
+    fallbackReason,
+    start,
+    stop,
+    setError,
+    setPartial,
+  };
 }

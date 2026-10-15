@@ -6,6 +6,7 @@ import {
   getOwnWorkoutSessionOrNull,
   getPreviousLoadsForSlots,
   getPreviousLoadsForUser,
+  reopenEmptyCompletion,
 } from "@/lib/workouts";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
@@ -15,6 +16,12 @@ import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import { applyGymExerciseName, gymHistoryNames, rekeyGymRecord } from "@/lib/gym-exercise";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { alignWorkoutWithSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
+import { listRemovalsForDay, listRemovalsForSession } from "@/lib/exercise-removal-store";
+import {
+  activeRemovals,
+  hiddenNamesForRemovals,
+  omitRemovedSlots,
+} from "@/lib/exercise-removal";
 import {
   applySwapsToExercises,
   retiredNamesFromSwaps,
@@ -39,16 +46,17 @@ export default async function WorkoutLogPage({
   if (!loaded) {
     notFound();
   }
+  const opened = await reopenEmptyCompletion(loaded);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const scale = {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
   };
-  if (loaded.programDay && loaded.status !== "complete") {
-    await alignWorkoutWithSwaps(loaded, scale, tz);
+  if (opened.programDay && opened.status !== "complete") {
+    await alignWorkoutWithSwaps(opened, scale, tz);
   }
-  const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? loaded;
+  const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
   const band = scaleBandFromPrefs(scale);
   const scaledDay = session.programDay
     ? scaleProgramDay(
@@ -71,18 +79,35 @@ export default async function WorkoutLogPage({
           dayNumber: session.programDay.dayNumber,
         })
       : [];
-  const shownExercises = scaledDay
+  const swappedExercises = scaledDay
     ? applySwapsToExercises(scaledDay.exercises, swaps, {
         sessionId: session.id,
         blockKey: trainingBlockKey(new Date(), tz),
         includePending: false,
       })
     : [];
-  const swapSlots = scaledDay ? swapSlotsFor(scaledDay.exercises, shownExercises) : [];
-  const shownNames = new Set(shownExercises.map((exercise) => exercise.name));
-  const loggedSets = session.sets.map((set) =>
-    shownNames.has(set.exerciseName) ? set : applyGymExerciseName(set, band),
+  const removals = session.programDay
+    ? await listRemovalsForDay({
+        userId: user.id,
+        programSlug: session.programDay.program.slug,
+        dayNumber: session.programDay.dayNumber,
+      })
+    : await listRemovalsForSession(user.id, session.id);
+  const removalScope = { sessionId: session.id, includePending: false };
+  const omitted = scaledDay
+    ? omitRemovedSlots(scaledDay.exercises, swappedExercises, removals, removalScope)
+    : { programmed: [], shown: [] };
+  const shownExercises = omitted.shown;
+  const swapSlots = swapSlotsFor(omitted.programmed, omitted.shown);
+  const removedNames = hiddenNamesForRemovals(
+    activeRemovals(removals, removalScope),
+    shownExercises.map((exercise) => exercise.name),
   );
+  const removed = new Set(removedNames);
+  const shownNames = new Set(shownExercises.map((exercise) => exercise.name));
+  const loggedSets = session.sets
+    .filter((set) => !removed.has(set.exerciseName))
+    .map((set) => (shownNames.has(set.exerciseName) ? set : applyGymExerciseName(set, band)));
   const loggedSession = {
     ...session,
     sets: loggedSets,
@@ -171,6 +196,7 @@ export default async function WorkoutLogPage({
             swaps,
             shownExercises.map((exercise) => exercise.name),
           ),
+          removedNames,
         }}
       />
     </main>

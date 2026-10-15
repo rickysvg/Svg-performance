@@ -66,7 +66,7 @@ function LessonBody({
         </p>
       )}
       <p className="text-xs text-muted">
-        YouTube reference — not an SVG-produced video
+        Hosted on YouTube
         {video.pending ? " · pending coach review" : ""}
         {bookmarked ? " · bookmarked" : ""}
         {completed ? " · completed" : ""}

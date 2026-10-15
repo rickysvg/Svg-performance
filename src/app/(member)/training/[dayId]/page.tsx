@@ -33,9 +33,12 @@ import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
-import { ExerciseSwapButton } from "@/components/training/ExerciseSwapButton";
+import { ExerciseCardMenu } from "@/components/training/ExerciseCardMenu";
+import { RemoveToast } from "@/components/training/RemoveToast";
 import { listSwapsForDay } from "@/lib/exercise-swap-store";
+import { listRemovalsForDay } from "@/lib/exercise-removal-store";
 import { applySwapsToExercises, swapSlotsFor, trainingBlockKey } from "@/lib/exercise-swap";
+import { omitRemovedSlots } from "@/lib/exercise-removal";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 
@@ -71,12 +74,22 @@ export default async function TrainingDayPage({
     programSlug: day.program.slug,
     dayNumber: day.dayNumber,
   });
-  const exercises = applySwapsToExercises(day.exercises, swaps, {
+  const swapped = applySwapsToExercises(day.exercises, swaps, {
     sessionId: draft?.id,
     blockKey: trainingBlockKey(new Date(), tz),
     includePending: !draft,
   });
-  const slots = swapSlotsFor(day.exercises, exercises);
+  const removals = await listRemovalsForDay({
+    userId: user.id,
+    programSlug: day.program.slug,
+    dayNumber: day.dayNumber,
+  });
+  const omitted = omitRemovedSlots(day.exercises, swapped, removals, {
+    sessionId: draft?.id,
+    includePending: !draft,
+  });
+  const exercises = omitted.shown;
+  const slots = swapSlotsFor(omitted.programmed, omitted.shown);
   const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
   const minutes = estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
@@ -104,6 +117,7 @@ export default async function TrainingDayPage({
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
+      <RemoveToast />
       <header className="flex items-center gap-2 px-4 pb-2">
         <Link
           href="/training"
@@ -221,7 +235,7 @@ export default async function TrainingDayPage({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <h2 className="leading-snug">{exercise.name}</h2>
-                    <ExerciseSwapButton
+                    <ExerciseCardMenu
                       programSlug={day.program.slug}
                       dayNumber={day.dayNumber}
                       programDayId={day.id}
@@ -237,6 +251,7 @@ export default async function TrainingDayPage({
                       }}
                       weightAccess={weightAccess}
                       workoutSessionId={draft?.id}
+                      canRemove={exercises.length > 1}
                     />
                   </div>
                   <CoachCredit name={exercise.name} />

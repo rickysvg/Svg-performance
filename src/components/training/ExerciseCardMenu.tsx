@@ -1,18 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { swapExerciseAction } from "@/app/actions/exercise-swap";
+import {
+  removeExerciseAction,
+  undoExerciseRemovalAction,
+} from "@/app/actions/exercise-removal";
 import {
   CATEGORY_FILTERS,
   categoryLabel,
   filterExerciseLibrary,
   libraryExercise,
-  type ExerciseCategory,
 } from "@/lib/exercise-library";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
 import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
+import { showRemoveToast } from "@/components/training/RemoveToast";
 
 type Source = {
   sets: number;
@@ -23,7 +27,7 @@ type Source = {
   notes?: string;
 };
 
-export function ExerciseSwapButton({
+export function ExerciseCardMenu({
   programSlug,
   dayNumber,
   programDayId,
@@ -32,8 +36,9 @@ export function ExerciseSwapButton({
   source,
   weightAccess,
   workoutSessionId,
+  canRemove,
   getCurrentSets,
-  onSwapped,
+  onSetsReplaced,
 }: {
   programSlug: string;
   dayNumber: number;
@@ -43,10 +48,13 @@ export function ExerciseSwapButton({
   source: Source;
   weightAccess: "gym" | "none";
   workoutSessionId?: string;
+  canRemove: boolean;
   getCurrentSets?: () => WorkoutSetInput[];
-  onSwapped?: (sets: WorkoutSet[]) => void;
+  onSetsReplaced?: (sets: WorkoutSet[]) => void;
 }) {
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORY_FILTERS)[number]["id"]>("all");
@@ -67,11 +75,25 @@ export function ExerciseSwapButton({
   );
   const choice = picked ? libraryExercise(picked) : null;
 
-  function close() {
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointer(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointer);
+    return () => document.removeEventListener("pointerdown", onPointer);
+  }, [menuOpen]);
+
+  function closeSheet() {
     setOpen(false);
     setPicked(null);
     setError("");
     setQuery("");
+  }
+
+  function applySets(sets: WorkoutSet[] | null) {
+    if (sets && onSetsReplaced) onSetsReplaced(sets);
+    else router.refresh();
   }
 
   function confirm(scope: "session" | "block") {
@@ -94,30 +116,112 @@ export function ExerciseSwapButton({
         setError(result.error);
         return;
       }
-      if (result.sets) onSwapped?.(result.sets);
-      close();
-      router.refresh();
+      closeSheet();
+      applySets(result.sets);
+    });
+  }
+
+  function remove() {
+    if (!canRemove || pending) return;
+    setError("");
+    startTransition(async () => {
+      const result = await removeExerciseAction({
+        programSlug,
+        dayNumber,
+        programDayId,
+        originalName,
+        exerciseName: currentName,
+        workoutSessionId,
+        currentSets: getCurrentSets?.(),
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setMenuOpen(false);
+      applySets(result.sets);
+      const removalId = result.removalId;
+      showRemoveToast({
+        message: `Removed ${currentName}.`,
+        undo: async () => {
+          const restored = await undoExerciseRemovalAction({
+            removalId,
+            programDayId,
+            workoutSessionId,
+            currentSets: getCurrentSets?.(),
+          });
+          if (!restored.ok) {
+            showRemoveToast({ message: restored.error });
+            return;
+          }
+          applySets(restored.sets);
+        },
+      });
     });
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setEquipment(weightAccess);
-          setCategory("all");
-          setOpen(true);
-        }}
-        data-swap={currentName}
-        className="inline-flex min-h-8 items-center rounded-full border border-line px-2.5 text-xs font-semibold"
-      >
-        Swap
-      </button>
+      <div ref={menuRef} className="relative shrink-0">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label={`Options for ${currentName}`}
+          data-exercise-menu={currentName}
+          disabled={pending}
+          onClick={() => {
+            setError("");
+            setMenuOpen((value) => !value);
+          }}
+          className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-line px-2.5 text-xs font-semibold disabled:opacity-60"
+        >
+          ···
+        </button>
+        {menuOpen ? (
+          <div
+            role="menu"
+            aria-label={`Options for ${currentName}`}
+            data-exercise-menu-panel
+            className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-2xl border border-line bg-card shadow-lg"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              data-swap={currentName}
+              onClick={() => {
+                setEquipment(weightAccess);
+                setCategory("all");
+                setMenuOpen(false);
+                setOpen(true);
+              }}
+              className="flex min-h-11 w-full items-center px-3 text-left text-sm font-semibold"
+            >
+              Swap
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-remove-exercise={currentName}
+              disabled={!canRemove || pending}
+              onClick={remove}
+              className="flex min-h-11 w-full items-center border-t border-line px-3 text-left text-sm font-semibold disabled:text-muted"
+            >
+              Remove
+            </button>
+            {!canRemove ? (
+              <p className="border-t border-line px-3 py-2 text-xs text-muted">
+                Keep at least one exercise.
+              </p>
+            ) : null}
+            {error ? <p className="px-3 pb-2 text-xs text-red-600">{error}</p> : null}
+          </div>
+        ) : null}
+      </div>
       {open ? (
         <div className="fixed inset-0 z-40 flex flex-col bg-background text-foreground">
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
-            <button type="button" onClick={close} className="touch-target text-2xl leading-none" aria-label="Close">
+            <button type="button" onClick={closeSheet} className="touch-target text-2xl leading-none" aria-label="Close">
               ×
             </button>
             <div className="min-w-0 flex-1">

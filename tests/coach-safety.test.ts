@@ -41,6 +41,17 @@ describe("SVG Coach safety", () => {
     expect(result.assistant.refusalCode).toBe("weight_cut");
   });
 
+  it("answers a normal weight-cut timeline instead of refusing it", () => {
+    expect(detectSafetyRefusal("How far out should I start my weight cut?")).toBeNull();
+    expect(
+      detectSafetyRefusal("What should I eat the day before weigh-ins?"),
+    ).toBeNull();
+    expect(detectSafetyRefusal("Help me cut weight with a sauna suit")?.code).toBe(
+      "weight_cut",
+    );
+    expect(detectSafetyRefusal("How do I water cut 8 pounds?")?.code).toBe("weight_cut");
+  });
+
   it("refuses cross-account record requests", async () => {
     const userA = await makeUser("owner-chat@example.com");
     const userB = await makeUser("other-chat@example.com");

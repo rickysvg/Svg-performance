@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { loggedSetSome } from "@/lib/logged-work";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { timeZoneForUser } from "@/lib/profile";
 import {
@@ -99,7 +100,7 @@ export async function countActiveDaysInRange(
 ) {
   const [workouts, foods] = await Promise.all([
     prisma.workoutSession.findMany({
-      where: { userId, status: "complete", performedAt: { gte: start, lt: end } },
+      where: { userId, status: "complete", sets: loggedSetSome, performedAt: { gte: start, lt: end } },
       select: { performedAt: true },
     }),
     prisma.nutritionEntry.findMany({

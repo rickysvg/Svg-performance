@@ -1,3 +1,4 @@
+import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
@@ -131,7 +132,9 @@ export async function getPersonalRecordsForUser(
     }),
   ]);
   const activityDates = [
-    ...sessions.filter((row) => row.status === "complete").map((row) => row.performedAt),
+    ...sessions
+      .filter((row) => row.status === "complete" && sessionHasLoggedWork(row.sets))
+      .map((row) => row.performedAt),
     ...foods.map((row) => row.eatenAt),
   ];
   return buildPersonalRecords({ sessions, activityDates, displayUnit, now, timeZone: tz });

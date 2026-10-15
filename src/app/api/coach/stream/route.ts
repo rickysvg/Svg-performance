@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
+import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { AppError, AuthError } from "@/lib/errors";
 import {
   coachStreamResponse,
@@ -22,10 +23,14 @@ export async function POST(request: Request) {
   }
 
   const profile = await getProfileForUser(user.id);
+  const coach = resolveAiCoach(profile?.aiCoachId);
+  const style = resolveCoachingStyle(profile?.coachingStyle);
   const payload: CoachStreamRequest = {
     ...body,
     experienceLevel: body.experienceLevel || profile?.experienceLevel,
     coachingTone: body.coachingTone || profile?.coachingTone,
+    coachingStyle: style.value,
+    coachName: coach.name,
   };
 
   return coachStreamResponse(user, payload, request.signal);

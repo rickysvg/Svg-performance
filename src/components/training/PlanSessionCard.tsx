@@ -7,6 +7,7 @@ import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media
 import { plannedSetLine } from "@/lib/exercise-log-mode";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
+import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
   skill: "Skill",
@@ -33,11 +34,14 @@ export function PlanSessionCard({
   highlight,
   compact,
   draftId,
+  calendarWeekday,
 }: {
   session: ResolvedPlanSession;
   highlight?: boolean;
   compact?: boolean;
   draftId?: string;
+  /** Calendar day this card is showing on. Swap uses this, not the skeleton day. */
+  calendarWeekday?: string;
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
@@ -51,8 +55,10 @@ export function PlanSessionCard({
     subtitle: session.subtitle,
     label: session.label,
   });
+  const fromWeekday = calendarWeekday || session.sourceWeekday || "";
+  const canMove = Boolean(session.sessionKey && session.href && fromWeekday);
 
-  return (
+  const article = (
     <article
       className={`rounded-2xl p-5 ${
         highlight
@@ -111,6 +117,15 @@ export function PlanSessionCard({
           })}
         </ul>
       ) : null}
+      {canMove && session.sessionKey ? (
+        <div className="mt-4">
+          <WorkoutMoveButton
+            sessionKey={session.sessionKey}
+            fromWeekday={fromWeekday}
+            title={session.title}
+          />
+        </div>
+      ) : null}
       {cta ? (
         <div
           data-session-actions
@@ -157,5 +172,12 @@ export function PlanSessionCard({
       ) : null}
       {bookend ? <TrainDayMobility bookend={bookend} inverted={Boolean(highlight)} /> : null}
     </article>
+  );
+
+  if (!canMove || !session.sessionKey) return article;
+  return (
+    <HoldToMove sessionKey={session.sessionKey} fromWeekday={fromWeekday} title={session.title}>
+      {article}
+    </HoldToMove>
   );
 }
