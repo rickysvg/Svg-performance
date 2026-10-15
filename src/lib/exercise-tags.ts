@@ -6,6 +6,7 @@
 
 const EXACT: Record<string, readonly string[]> = {
   "Cable or band woodchop": ["rotational power"],
+  "Cable woodchop": ["rotational power"],
   "Landmine rotation": ["rotational power"],
   "Rotational med-ball throw": ["rotational power", "explosive hips"],
   "Cable or band Pallof press": ["anti-rotation", "trunk brace"],

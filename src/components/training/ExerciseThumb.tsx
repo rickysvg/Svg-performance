@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { MobilityFigure } from "@/components/mobility/MobilityFigure";
+import { figureKeyForExercise } from "@/lib/exercise-library";
 import { exerciseThumbSrc, fallbackThumbSrc } from "@/lib/exercise-media";
 import {
   isYoutubeFormUrl,
@@ -84,6 +86,20 @@ export function ExerciseThumb({
   );
 
   if (!watchable) {
+    const figureKey = figureKeyForExercise(name);
+    if (figureKey) {
+      const scale = size / 96;
+      return (
+        <span
+          className="relative block shrink-0 overflow-hidden rounded-lg bg-black"
+          style={{ width: size, height: size }}
+        >
+          <span className="block origin-top-left" style={{ width: 96, height: 96, transform: `scale(${scale})` }}>
+            <MobilityFigure blockKey={figureKey} title={name} />
+          </span>
+        </span>
+      );
+    }
     return frame;
   }
 

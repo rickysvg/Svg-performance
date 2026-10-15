@@ -110,13 +110,14 @@ describe("session summary", () => {
 
   it("tags the woodchop and the jab bag in the plan catalog", () => {
     expect(tagsForExercise("Cable or band woodchop")).toContain("rotational power");
+    expect(tagsForExercise("Cable woodchop")).toContain("rotational power");
     expect(tagsForExercise("Bag rounds — intelligent jab")).toContain("jab bag rounds");
     expect(tagsForExercise("Bag rounds — hooks and pivot")).toContain("hook bag rounds");
   });
 
   it("writes those tags onto seeded plan rows", async () => {
     const woodchop = await prisma.programExercise.findFirst({
-      where: { name: "Cable or band woodchop" },
+      where: { name: { in: ["Cable woodchop", "Cable or band woodchop"] } },
     });
     const jab = await prisma.programExercise.findFirst({
       where: { name: "Bag rounds — intelligent jab" },

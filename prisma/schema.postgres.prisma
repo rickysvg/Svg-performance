@@ -55,6 +55,8 @@ model User {
   groceryLists             GroceryList[]
   weeklyFocusAuthored      WeeklyFocusVideo[]     @relation("FocusAuthor")
   exerciseNotes            ExerciseNote[]
+  exerciseSwaps            ExerciseSwap[]
+  exerciseRemovals         ExerciseRemoval[]
   mobilitySessions         MobilitySession[]
   mobilityCheckIns         MobilityCheckIn[]
   readinessCheckIns        ReadinessCheckIn[]
@@ -270,6 +272,56 @@ model ExerciseNote {
 
   @@unique([userId, exerciseName, programDayId])
   @@index([userId, programDayId])
+}
+
+/** One member's replacement for a programmed slot. Session-only, or the rest of this block week. */
+model ExerciseSwap {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programSlug      String   @default("")
+  dayNumber        Int      @default(0)
+  /** Programmed exercise this slot started as. Stays put when they swap again. */
+  originalName     String
+  replacementName  String
+  /** session | block */
+  scope            String
+  workoutSessionId String   @default("")
+  /** Monday date plus block letter, for example 2026-10-12:A. */
+  blockKey         String   @default("")
+  sets             Int
+  reps             String
+  loadText         String
+  restSeconds      Int
+  logMode          String
+  notes            String   @default("")
+  /** JSON array of names this slot showed before the current replacement. */
+  retiredNamesJson String   @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, programSlug, dayNumber])
+  @@index([userId, workoutSessionId])
+}
+
+/** An exercise dropped from one session. Undo restores the snapshot. */
+model ExerciseRemoval {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programSlug      String   @default("")
+  dayNumber        Int      @default(0)
+  /** Programmed slot this card started as. */
+  originalName     String
+  /** Name on the card when it was removed. */
+  exerciseName     String
+  workoutSessionId String   @default("")
+  /** JSON { index, sets } so Undo can put the rows back. */
+  snapshotJson     String   @default("")
+  createdAt        DateTime @default(now())
+
+  @@index([userId, programSlug, dayNumber])
+  @@index([userId, workoutSessionId])
 }
 
 model NutritionEntry {

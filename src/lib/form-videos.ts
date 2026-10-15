@@ -82,11 +82,16 @@ const dbRdl = ready({
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Dumbbell Romanian Deadlift | Proper Form & Technique | NASM",
 });
+/**
+ * Squat University's single-leg RDL tutorial. `t=366` is the creator's "Example"
+ * chapter (6:06): the side-view demo after the hinge, soft-knee, level-pelvis,
+ * and free-leg cues. Public length is 9:17.
+ */
 const singleLegRdl = ready({
-  url: "https://www.youtube.com/watch?v=6pEL3KxnlEo",
-  seconds: 22,
-  channel: "National Academy of Sports Medicine (NASM)",
-  title: "How to do a Single-Leg Romanian Deadlift",
+  url: "https://www.youtube.com/watch?v=Zfr6wizR8rs&t=366",
+  seconds: 557,
+  channel: "Squat University",
+  title: "The BEST Single-Leg RDL Tutorial (Romanian Deadlift)",
 });
 const lunge = ready({
   url: "https://www.youtube.com/watch?v=71VE3ssaJuQ",
@@ -376,6 +381,12 @@ const pallof = ready({
   channel: "TurnFit - Vancouver Personal Trainers",
   title: "How to do a Standing Banded Pallof Press",
 });
+const bandPullApart = ready({
+  url: "https://www.youtube.com/watch?v=qi2y-eI_kuI",
+  seconds: 25,
+  channel: "Luke Selway | Strength Coaching Online",
+  title: "How to do a Band Pull Apart",
+});
 const highPull = ready({
   url: "https://www.youtube.com/watch?v=2oq8CDNM8ww",
   seconds: 51,
@@ -430,6 +441,90 @@ const lateralLunge = ready({
   channel: "Fitness With Tross",
   title: "The Lateral Lunge | Movement Demo",
 });
+const hipHinge = ready({
+  url: "https://www.youtube.com/watch?v=2W_gXhut5S8",
+  seconds: 58,
+  channel: "Hinge Health",
+  title: "How to Do a Hip Hinge: A Guide from Physical Therapists",
+});
+const airSquat = ready({
+  url: "https://www.youtube.com/watch?v=C_VtOYc6j5c",
+  seconds: 42,
+  channel: "CrossFit",
+  title: "The Air Squat: CrossFit Foundational Movement",
+});
+const pauseAirSquat = ready({
+  url: "https://www.youtube.com/watch?v=fcH-nbutvyE",
+  seconds: 17,
+  channel: "GPS Human Performance",
+  title: "Paused Air Squat | GPS Human Performance",
+});
+const splitSquat = ready({
+  url: "https://www.youtube.com/watch?v=vvZHaPGOIWU",
+  seconds: 65,
+  channel: "Purple Patch Fitness",
+  title: "Body Weight Split Squat",
+});
+const gluteBridge = ready({
+  url: "https://www.youtube.com/watch?v=Z3cY3d3BBo4",
+  seconds: 42,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Floor Bridge",
+});
+const singleLegBridge = ready({
+  url: "https://www.youtube.com/watch?v=lHXShY-FivU",
+  seconds: 35,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Single-Leg Floor Bridge",
+});
+const pikePushUp = ready({
+  url: "https://www.youtube.com/watch?v=XckEEwa1BPI",
+  seconds: 17,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Pike Push-Up",
+});
+const bandChin = ready({
+  url: "https://www.youtube.com/watch?v=hZxc9vXI4bk",
+  seconds: 20,
+  channel: "Girls Gone Strong | Women's Health & Fitness",
+  title: "Band-Assisted Chin-Up",
+});
+const latPulldown = ready({
+  url: "https://www.youtube.com/watch?v=l07nQ5V9v3U",
+  seconds: 53,
+  channel: "LA Fitness",
+  title: "Proper Lat Pull Down Technique",
+});
+const invertedRow = ready({
+  url: "https://www.youtube.com/watch?v=KOaCM1HMwU0",
+  seconds: 13,
+  channel: "Renaissance Periodization",
+  title: "Inverted Row",
+});
+const bandWoodchop = ready({
+  url: "https://www.youtube.com/watch?v=Yp2DmHk3KnY",
+  seconds: 36,
+  channel: "YuryFit",
+  title: "How to do a Wood Chopper with resistance bands | YuryFit",
+});
+const sideStepOver = ready({
+  url: "https://www.youtube.com/watch?v=5R5cN1sOQWQ",
+  seconds: 24,
+  channel: "Christopher Johnson",
+  title: "Hurdle Sidestep | Chris Johnson PT",
+});
+const birdDog = ready({
+  url: "https://www.youtube.com/watch?v=ZdAHe9_HeEw",
+  seconds: 26,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to do a Bird Dog | Proper Form & Technique | NASM",
+});
+const hollowHold = ready({
+  url: "https://www.youtube.com/watch?v=4xRpGgttca8",
+  seconds: 13,
+  channel: "Marcus Filly",
+  title: "Hollow Hold",
+});
 
 export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Goblet squat": goblet,
@@ -437,11 +532,16 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Reverse lunge": lunge,
   "Squat jump or box step-up": squatJump,
   "Squat jump": squatJump,
+  "Jump rope": jumpRope,
+  "Easy bike intervals": airBike,
+  "Box step-up": stepUp,
+  "Band Pallof press": pallof,
+  "Band pull-apart": bandPullApart,
   "Front plank": plank,
   "Push-up or dumbbell bench press": pushUp,
   "Push-up": pushUp,
   "Dumbbell bench press": dbBench,
-  "Explosive dumbbell press": dbBench,
+  "Explosive dumbbell press": PENDING,
   "Pause push-up": pushUp,
   "Close-grip push-up": pushUp,
   "Feet-elevated push-up": pushUp,
@@ -458,7 +558,8 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Kettlebell swing": swing,
   "Chin-up, band-assist, or lat pulldown": pullUp,
   "Chin-up": pullUp,
-  "Lat pulldown": PENDING,
+  "Lat pulldown": latPulldown,
+  "Band-assisted chin-up": bandChin,
   "Lateral bound or side step-over": lateralBound,
   "Lateral bound": lateralBound,
   "Assault bike intervals": airBike,
@@ -568,6 +669,18 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Broad jump": broadJump,
   "Dumbbell hip thrust": hipThrust,
   "Dumbbell lateral lunge": lateralLunge,
+  "Hip hinge": hipHinge,
+  "Air squat": airSquat,
+  "Pause air squat": pauseAirSquat,
+  "Split squat": splitSquat,
+  "Glute bridge": gluteBridge,
+  "Single-leg glute bridge": singleLegBridge,
+  "Pike push-up": pikePushUp,
+  "Inverted row": invertedRow,
+  "Band woodchop": bandWoodchop,
+  "Side step-over": sideStepOver,
+  "Bird dog": birdDog,
+  "Hollow hold": hollowHold,
 };
 
 export function formVideoFieldsFor(name: string): {
