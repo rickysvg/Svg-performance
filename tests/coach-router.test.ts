@@ -70,9 +70,10 @@ describe("question router", () => {
     expect(classifyQuestion(message, rowLane).primary).toBe(primary);
   });
 
-  it("accepts fight IQ as mindset or technique", () => {
+  it("routes a game plan to fight IQ, not mindset", () => {
     const route = classifyQuestion("How do I build a game plan against a wrestler?", lane);
-    expect(["mindset", "technique"]).toContain(route.primary);
+    expect(route.primary).toBe("fight_iq");
+    expect(route.primary).not.toBe("mindset");
   });
 
   it("lets a rules question keep a technique note", () => {

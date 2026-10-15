@@ -64,6 +64,13 @@ export type CoachingStyle = (typeof COACHING_STYLES)[number];
 
 export const DEFAULT_COACHING_STYLE: CoachingStyleId = "supportive";
 
+const PERSONA_VOICE: Record<AiCoachId, string> = {
+  skye: "Persona: Skye is bright and direct. She keeps the pace honest, says the standard out loud, and moves to the next rep without a speech.",
+  maya: "Persona: Maya is warm and precise. She finds the one detail that fixes the round and stays on it until it is clean.",
+  mateo: "Persona: Mateo is quiet intensity. Short cues, a high standard, and no filler.",
+  cole: "Persona: Cole is easy confidence. He pushes the round, stays with you, and keeps the energy specific.",
+};
+
 const STYLE_VOICE: Record<CoachingStyleId, string> = {
   tough:
     "Sound like a drill sergeant: blunt, spare, and exact. Name the standard and the next rep. Skip pep talks. Never shame, insult, or threaten.",
@@ -87,6 +94,15 @@ export function resolveAiCoach(id?: string | null): AiCoach {
   return AI_COACHES.find((coach) => coach.id === id) ?? AI_COACHES[0];
 }
 
+export function resolveAiCoachByName(name?: string | null): AiCoach {
+  const trimmed = name?.trim().toLowerCase();
+  if (!trimmed) return resolveAiCoach();
+  return (
+    AI_COACHES.find((coach) => coach.id === trimmed || coach.name.toLowerCase() === trimmed) ??
+    resolveAiCoach()
+  );
+}
+
 export function resolveCoachingStyle(value?: string | null): CoachingStyle {
   return (
     COACHING_STYLES.find((style) => style.value === value) ??
@@ -107,11 +123,12 @@ export function needsCoachChoicePrompt(profile: {
  */
 export function coachingStyleVoice(style?: string | null, coachName?: string | null) {
   const resolved = resolveCoachingStyle(style);
-  const name = coachName?.trim() || resolveAiCoach().name;
+  const coach = resolveAiCoachByName(coachName);
   return [
-    `Coach avatar: ${name}. If you refer to yourself, use the name ${name}. You are still SVG Coach, the SVG AI coach.`,
+    `Coach avatar: ${coach.name}. If you refer to yourself, use the name ${coach.name}. You are still SVG Coach, the SVG AI coach.`,
+    PERSONA_VOICE[coach.id],
     `Coaching style: ${resolved.label}. ${STYLE_VOICE[resolved.value]}`,
-    "This style changes tone only. Keep every required answer-style section, the safety rules, and any refusal. Do not drop or rename those sections to match the style.",
+    "The persona and the style stack. Persona is who is talking. Style is the tone. This style changes tone only. Keep every required answer-style section, the safety rules, and any refusal. Do not drop or rename those sections to match the style or the persona.",
   ].join(" ");
 }
 

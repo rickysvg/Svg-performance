@@ -26,7 +26,9 @@ describe("SVG Coach topics", () => {
     expect(resolveCoachTopic("mental")).toBe("mental");
     expect(resolveCoachTopic("savage")).toBeUndefined();
     expect(resolveCoachArt("boxing")).toBe("boxing");
-    expect(resolveCoachArt("kickboxing")).toBeUndefined();
+    expect(resolveCoachArt("kickboxing")).toBe("kickboxing");
+    expect(resolveCoachArt("judo")).toBe("judo");
+    expect(resolveCoachArt("not-a-sport")).toBeUndefined();
     expect(coachLaneLabel("martial_art", "jiu-jitsu")).toBe("Martial art · Jiu-Jitsu");
     expect(coachLaneLabel("conditioning")).toBe("Conditioning");
     expect(buildCoachHref({ topic: "martial_art", art: "boxing" })).toBe(

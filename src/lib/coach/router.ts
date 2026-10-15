@@ -11,6 +11,7 @@ export const QUESTION_TYPES = [
   "programming",
   "nutrition",
   "mindset",
+  "fight_iq",
   "general",
 ] as const;
 
@@ -48,6 +49,9 @@ const CUES: Cue[] = [
   { type: "injury", name: "numb", pattern: /\bnumb(?:ness)?\b/i, points: 2 },
   { type: "injury", name: "tingling", pattern: /\btingl\w*/i, points: 2 },
   { type: "injury", name: "concussion", pattern: /\bconcuss\w*/i, points: 2 },
+  { type: "injury", name: "headache", pattern: /\bheadaches?\b/i, points: 2 },
+  { type: "injury", name: "dizzy", pattern: /\bdizzy\b/i, points: 2 },
+  { type: "injury", name: "head hit", pattern: /\b(?:hit in the head|from a hit)\b/i, points: 2 },
   { type: "injury", name: "rolled my ankle", pattern: /\brolled my ankle\b/i, points: 2 },
   { type: "injury", name: "torn", pattern: /\btorn\b/i, points: 2 },
   { type: "injury", name: "rehab", pattern: /\brehab\b/i, points: 2 },
@@ -69,6 +73,11 @@ const CUES: Cue[] = [
   { type: "rules", name: "amateur", pattern: /\bamateur\b/i, points: 2 },
   { type: "rules", name: "pro rules", pattern: /\bpro rules\b/i, points: 2 },
   { type: "rules", name: "12-6", pattern: /\b12[- ]?(?:to[- ])?6\b/i, points: 2 },
+  { type: "rules", name: "IBJJF", pattern: /\bIBJJF\b/i, points: 3 },
+  { type: "rules", name: "IJF", pattern: /\bIJF\b/i, points: 3 },
+  { type: "rules", name: "WKF", pattern: /\bWKF\b/i, points: 3 },
+  { type: "rules", name: "IFMA", pattern: /\bIFMA\b/i, points: 3 },
+  { type: "rules", name: "WT", pattern: /\bWorld Taekwondo\b|\bWT rules\b/i, points: 3 },
   { type: "rules", name: "grounded opponent", pattern: /\bgrounded opponent\b/i, points: 2 },
   {
     type: "rules",
@@ -159,6 +168,14 @@ const CUES: Cue[] = [
   { type: "programming", name: "warm-up", pattern: /\bwarm-?ups?\b/i, points: 2 },
   { type: "programming", name: "recovery", pattern: /\brecovery\b/i, points: 2 },
   { type: "programming", name: "sore", pattern: /\bsore(?:ness)?\b/i, points: 1 },
+  { type: "programming", name: "force-velocity", pattern: /\bforce[- ]velocity\b/i, points: 3 },
+  { type: "programming", name: "energy systems", pattern: /\benergy systems?\b/i, points: 3 },
+  { type: "programming", name: "taper", pattern: /\btapers?\b/i, points: 3 },
+  { type: "programming", name: "fight camp", pattern: /\bfight camp\b/i, points: 2 },
+  { type: "programming", name: "off-season", pattern: /\boff-season\b/i, points: 3 },
+  { type: "programming", name: "in-season", pattern: /\bin-season\b/i, points: 3 },
+  { type: "programming", name: "periodization", pattern: /\bperiodiz\w*/i, points: 3 },
+  { type: "programming", name: "beginner week", pattern: /\bbeginners?\b/i, points: 2 },
 
   { type: "nutrition", name: "eat", pattern: /\beat(?:ing)?\b/i, points: 2 },
   { type: "nutrition", name: "food", pattern: /\bfoods?\b/i, points: 2 },
@@ -176,6 +193,9 @@ const CUES: Cue[] = [
   { type: "nutrition", name: "weigh-in", pattern: /\bweigh-?ins?\b/i, points: 2 },
   { type: "nutrition", name: "make weight", pattern: /\bmake weight\b/i, points: 2 },
   { type: "nutrition", name: "weight cut", pattern: /\bweight cuts?\b|\bcut weight\b/i, points: 2 },
+  { type: "nutrition", name: "water cut", pattern: /\bwater cuts?\b/i, points: 3 },
+  { type: "nutrition", name: "sauna", pattern: /\bsauna\b/i, points: 3 },
+  { type: "nutrition", name: "rehydrate", pattern: /\brehydrat\w*/i, points: 2 },
   {
     type: "nutrition",
     name: "what to eat",
@@ -191,11 +211,17 @@ const CUES: Cue[] = [
   { type: "mindset", name: "motivation", pattern: /\bmotivation\b/i, points: 2 },
   { type: "mindset", name: "discipline", pattern: /\bdiscipline\b/i, points: 2 },
   { type: "mindset", name: "mindset", pattern: /\bmindset\b/i, points: 2 },
-  { type: "mindset", name: "fight iq", pattern: /\bfight iq\b/i, points: 2 },
-  { type: "mindset", name: "game plan", pattern: /\bgame ?plans?\b/i, points: 2 },
-  { type: "mindset", name: "strategy", pattern: /\bstrateg(?:y|ies)\b/i, points: 2 },
-  { type: "mindset", name: "study film", pattern: /\bstudy film\b/i, points: 2 },
   { type: "mindset", name: "visualize", pattern: /\bvisuali\w*/i, points: 2 },
+  { type: "mindset", name: "imagery", pattern: /\bimagery\b/i, points: 2 },
+  { type: "mindset", name: "arousal", pattern: /\barousal\b/i, points: 2 },
+  { type: "mindset", name: "self-talk", pattern: /\bself-talk\b/i, points: 2 },
+  { type: "mindset", name: "freeze", pattern: /\bfreeze(?:s| up)?\b/i, points: 2 },
+  { type: "fight_iq", name: "fight iq", pattern: /\bfight iq\b/i, points: 3 },
+  { type: "fight_iq", name: "game plan", pattern: /\bgame ?plans?\b/i, points: 3 },
+  { type: "fight_iq", name: "strategy", pattern: /\bstrateg(?:y|ies)\b/i, points: 2 },
+  { type: "fight_iq", name: "study film", pattern: /\bstudy film\b|\bfilm study\b/i, points: 2 },
+  { type: "fight_iq", name: "read", pattern: /\bread(?:ing)?\b/i, points: 2 },
+  { type: "fight_iq", name: "counter", pattern: /\bcounter(?:s|ing)?\b/i, points: 2 },
   { type: "mindset", name: "focus", pattern: /\bfocus\b/i, points: 2 },
   { type: "mindset", name: "pressure", pattern: /\bpressure\b/i, points: 2 },
   { type: "mindset", name: "losing streak", pattern: /\blost\b|\blosing streak\b/i, points: 2 },
@@ -269,6 +295,7 @@ function emptyScores(): Record<QuestionType, number> {
     programming: 0,
     nutrition: 0,
     mindset: 0,
+    fight_iq: 0,
     general: 0,
   };
 }
@@ -280,9 +307,9 @@ function lanePrior(lane: CoachLane): QuestionType[] {
   if (lane.notepad) {
     return ["programming", "nutrition", "injury", "technique"];
   }
-  if (lane.topic === "martial_art") return ["technique", "rules", "mindset"];
+  if (lane.topic === "martial_art") return ["technique", "rules", "fight_iq", "mindset"];
   if (lane.topic === "conditioning") return ["programming", "nutrition", "injury"];
-  if (lane.topic === "mental") return ["mindset", "nutrition"];
+  if (lane.topic === "mental") return ["mindset", "fight_iq", "nutrition"];
   if (lane.topic === "nutrition") return ["nutrition", "programming"];
   return [];
 }
@@ -312,8 +339,34 @@ function isHowPhrasing(text: string) {
 function isLegalityLed(text: string) {
   return (
     /\b(?:is it legal|is it illegal|is it allowed|am i allowed|is it ok to)\b/i.test(text) ||
-    /\bare\b[^.?\n]{0,48}\blegal\b/i.test(text)
+    /\bare\b[^.?\n]{0,64}\b(?:legal|illegal|allowed|banned)\b/i.test(text)
   );
+}
+
+const GENERIC_TECHNIQUE = new Set(["how do i", "how to", "technique"]);
+
+function stripGenericTechnique(scores: Record<QuestionType, number>, signals: string[]) {
+  const techniqueNames = new Set(
+    CUES.filter((cue) => cue.type === "technique").map((cue) => cue.name),
+  );
+  const present = signals.filter((name) => techniqueNames.has(name));
+  if (present.length === 0) return;
+  if (!present.every((name) => GENERIC_TECHNIQUE.has(name))) return;
+  const otherExpert = QUESTION_TYPES.some(
+    (type) => type !== "technique" && type !== "general" && scores[type] >= 2,
+  );
+  if (otherExpert) scores.technique = 0;
+}
+
+function prefersFightIq(text: string, scores: Record<QuestionType, number>) {
+  if (scores.fight_iq < 2) return false;
+  if (!/\b(read(?:ing)?|counters?|game ?plans?|fight iq|strateg(?:y|ies)|film study|study film)\b/i.test(text)) {
+    return false;
+  }
+  if (/\bhow (?:do i|to) (?:throw|finish|hit|land|check|shoot|escape|pass|sweep|frame|sprawl)\b/i.test(text)) {
+    return false;
+  }
+  return true;
 }
 
 function secondaryFor(
@@ -342,6 +395,8 @@ export function classifyQuestion(message: string, lane: CoachLane = {}): CoachRo
     signals.push(hit.name);
   }
 
+  stripGenericTechnique(scores, signals);
+
   if (scores.injury >= 3) {
     return { primary: "injury", secondary: secondaryFor(scores, "injury"), signals };
   }
@@ -356,9 +411,24 @@ export function classifyQuestion(message: string, lane: CoachLane = {}): CoachRo
         signals,
       };
     }
+    if (prefersFightIq(text, scores)) {
+      return {
+        primary: "fight_iq",
+        secondary: secondaryFor(scores, "fight_iq", ["technique"]),
+        signals,
+      };
+    }
     return {
       primary: "technique",
       secondary: secondaryFor(scores, "technique", ["rules"]),
+      signals,
+    };
+  }
+
+  if (prefersFightIq(text, scores)) {
+    return {
+      primary: "fight_iq",
+      secondary: secondaryFor(scores, "fight_iq"),
       signals,
     };
   }

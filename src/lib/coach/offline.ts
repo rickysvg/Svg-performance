@@ -4,7 +4,7 @@
  * No files, keys, demo mode, or topic labels.
  */
 
-import { matchOfflineBank } from "@/lib/coach/offline-bank";
+import { domainOfflineFallback, matchOfflineBank } from "@/lib/coach/offline-bank";
 import { classifyQuestion } from "@/lib/coach/router";
 
 function parseScopedNote(message: string) {
@@ -35,16 +35,22 @@ function sorenessReply() {
   return "Soreness after honest work is normal. Walk, drink water, and keep the next session a little smaller if you need it. Sleep is part of the training. If pain changes how you move, stop and see a coach or a doctor.";
 }
 
-function foodReply() {
-  return "Eat a real meal around training — protein and something you digest. Log a rough plate if you want the habit. I will not write a cut or a medical diet. If something hurts or you have allergies, you still check that yourself.";
+function foodReply(question: string) {
+  if (/\bsauna\b/i.test(question) && /\brecover/i.test(question)) {
+    return "A short sauna can be fine for recovery if you feel well and you replace the fluid. Get out if you feel dizzy. It is not a way to make weight. I will not write a sweat-off protocol.";
+  }
+  if (/\bwater cuts?\b/i.test(question) && /\b(why|dangerous|risk)/i.test(question)) {
+    return "Water cuts drop blood volume. Heart rate climbs, you overheat faster, and skill and thinking get worse. That is why they are dangerous. I will not explain how to do one. Lose weight gradually from food instead, about 1% of body weight per week or slower.";
+  }
+  return domainOfflineFallback("nutrition");
 }
 
 function weightCutReply() {
-  return "Start a weight cut weeks out and lose the weight through meals, not in the last day. Keep protein in each meal, eat carbs around training, and hydrate on a normal schedule until the rules for your weigh-in say otherwise. Pick a class near walking weight. Red lines: no sauna, sweat suit, diuretic, laxative, or water cut. A coach or clinician should run any fight-week plan.";
+  return "Start a weight cut weeks out and lose about 1% of body weight per week or slower through meals, not in the last day. Keep protein in each meal, eat carbs around training, and hydrate on a normal schedule until the rules for your weigh-in say otherwise. Pick a class near walking weight. Red lines: no sauna suit, sweat suit, diuretic, laxative, or water-cut protocol. After weigh-ins, drink, take in some salt and familiar carbs, and get help if you feel faint. A coach or clinician should run any fight-week plan.";
 }
 
 function nervesReply() {
-  return "Nerves mean you care. Don't write a story about it overnight. Show up, do the work you planned, and leave. I will not pile shame on you.";
+  return domainOfflineFallback("mindset");
 }
 
 function formReply(art?: string) {
@@ -58,7 +64,25 @@ function formReply(art?: string) {
     return "Level change, stay in your stance, and finish on your feet. Don't dive on a bad shot. Get a coach to watch one live go.";
   }
   if (art === "jiu-jitsu") {
-    return "Frames first, then the hips. Make one clean move and reset. Don't muscle a bad position.";
+    return "Frames first, then the hips. Make one clean move and reset. Don't muscle a bad position. An armbar needs the angle, the knees tight, and the hips in. Tap early.";
+  }
+  if (art === "kickboxing") {
+    return "Stay in a kickboxing stance, turn the hip, and meet the target with the shin. Bring the leg home. Most kickboxing rules ban elbows and keep the clinch short. Have a coach watch one round.";
+  }
+  if (art === "judo") {
+    return "Break balance first, then commit the hips into the throw. For osoto, reap the leg you have already moved them onto. Do not just kick. Under IJF rules, do not grab the leg with your hand in standing. Practice the fall.";
+  }
+  if (art === "karate") {
+    return "Keep the front knee stacked, turn the back hip, and send a short reverse punch. Recover the stance and the hand. WKF face contact depends on the category, so keep the touch controlled until a coach says otherwise.";
+  }
+  if (art === "taekwondo") {
+    return "Chamber the kick, turn the hip, and put the foot back down on a live base. Head kicks score in World Taekwondo. Punches to the head do not. Retract before you admire the kick.";
+  }
+  if (art === "sambo") {
+    return "Grip the jacket, get the hips in, and finish the throw. Do not stall on the cloth. Sport sambo has no chokes and no strikes. Combat sambo is a different rule set. Practice the fall.";
+  }
+  if (art === "catch-wrestling") {
+    return "From the front headlock, keep the head and arm tight, step to the side, and turn them to a pin. Control the body. Do not crank the neck. A tap ends the rep.";
   }
   if (art === "mma" || art === "cagework") {
     return "Start from the position on the cage: frame in, elbow tight, then one step off the fence. Win an underhook, turn the head, and angle out. Drill the position with a partner before you add speed. A coach can watch the rep. Don't grab the fence.";
@@ -70,12 +94,16 @@ function conditioningReply() {
   return "Keep the work honest and count rounds. The last round should look like the first. Don't sprint the rest, and don't add extra work after a miss.";
 }
 
-function programmingReply() {
-  return "Do the sets already written on your plan. Keep the load in lbs and stay on the prescribed reps at the written RIR. 0-2 RIR is near hard. If the plan or your last logged set is missing, don't invent numbers. Too easy: add a little load next time. Too hard or sore: keep the sets and drop the load. Fight week and deload weeks stay lighter. No punishment volume after a miss.";
+function programmingReply(text: string) {
+  return matchOfflineBank(text, "programming") ?? domainOfflineFallback("programming");
 }
 
 function injuryReply() {
-  return "Stop or modify that movement. Pain that changes how you move, swelling, numbness, or anything in the head means stop and see a doctor or physio. You can train other limbs, or drill the technique without load. This is not a diagnosis or a rehab plan.";
+  return domainOfflineFallback("injury");
+}
+
+function fightIqReply() {
+  return domainOfflineFallback("fight_iq");
 }
 
 function rulesReply(text: string) {
@@ -92,7 +120,7 @@ function rulesReply(text: string) {
     );
   }
   if (!/elbow|fence|cage/.test(lower)) {
-    parts.push("A foul in one promotion can be illegal under another rule set.");
+    return domainOfflineFallback("rules");
   }
   parts.push("Rules vary by commission and promotion, so check your commission/promotion.");
   return parts.join(" ");
@@ -168,22 +196,23 @@ function offlineAnswer(question: string, topic?: string, art?: string) {
   }
   if (route.primary === "rules") return rulesReply(question);
   if (route.primary === "nutrition") {
-    return isWeightCutQuestion(question) ? weightCutReply() : foodReply();
+    return isWeightCutQuestion(question) ? weightCutReply() : foodReply(question);
   }
   if (route.primary === "mindset") {
     return isMissed(question) ? missedReply(question) : nervesReply();
   }
+  if (route.primary === "fight_iq") return fightIqReply();
   if (route.primary === "programming") {
     if (isSoreness(question)) return sorenessReply();
     if (isMissed(question)) return missedReply(question);
     if (isConditioningWork(question)) return conditioningReply();
-    return programmingReply();
+    return programmingReply(question);
   }
   if (route.primary === "general" && !topic) return genericReply();
   if (topic === "martial_art") return formReply(art);
   if (topic === "mental") return isMissed(question) ? missedReply(question) : nervesReply();
-  if (topic === "conditioning") return programmingReply();
-  if (topic === "nutrition") return foodReply();
+  if (topic === "conditioning") return programmingReply(question);
+  if (topic === "nutrition") return foodReply(question);
   return formReply(art);
 }
 
