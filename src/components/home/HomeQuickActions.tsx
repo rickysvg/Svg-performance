@@ -25,6 +25,13 @@ const PHOTO_ACTIONS = [
     alt: "Coach holding mitts in a dark gym",
   },
   {
+    href: "/form-check",
+    label: "Form check",
+    hint: "Send a clip",
+    src: "/tiles/form-check.webp",
+    alt: "Athlete filming a form check in a dark gym",
+  },
+  {
     href: "/learn",
     label: "Learn",
     hint: "Technique",

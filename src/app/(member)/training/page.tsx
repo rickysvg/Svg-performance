@@ -39,6 +39,8 @@ import { nextTrainAction } from "@/lib/train-next";
 import { todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
+import { FightCampOptIn } from "@/components/training/FightCampOptIn";
+import { dayKey } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -82,9 +84,10 @@ export default async function TrainingPage({
   const band = levelOverride ?? profileBand;
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
   const camp = await getActiveCampSnapshot(user.id, selected, tz);
+  const campOn = Boolean(camp && camp.weightClass.trim());
   const corePlan = planForDate(prefs, selected, tz, swaps);
   const dayPlan =
-    camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
+    campOn && camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const planned = resolvePlanSessions(
     dayPlan,
@@ -134,7 +137,7 @@ export default async function TrainingPage({
     : null;
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
-    camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
+    campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
   const todaySessions = resolvePlanSessions(
     todayShaped,
     scaleDemoCatalog(catalog, {
@@ -176,7 +179,6 @@ export default async function TrainingPage({
     { href: "/training/travel", label: "No gym / travel day" },
     { href: "/mobility", label: "Mobility" },
     { href: "/mobility/drills", label: "Hip and kick drills" },
-    ...(camp ? [] : [{ href: "/fight-camp", label: "Fight camp" }]),
   ];
 
   const viewedWeek = weekStartKey(selected, tz);
@@ -193,7 +195,7 @@ export default async function TrainingPage({
         <div>
           <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
-            {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
+            {campOn && camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
               : "Today’s session."}
           </p>
@@ -203,6 +205,31 @@ export default async function TrainingPage({
         </div>
         <DemoBadge />
       </div>
+
+      <FightCampOptIn
+        enabled={campOn}
+        todayKey={dayKey(now, tz)}
+        fightDate={camp?.fightDateKey ?? ""}
+        weightClass={camp?.weightClass ?? ""}
+        summary={
+          campOn && camp ? `${camp.fightDateLabel} · ${camp.weightClass}` : ""
+        }
+      />
+
+      {campOn && camp ? (
+        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
+          <span className="flex items-center gap-2">
+            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Camp focus</span>
+            <ProPill />
+          </span>
+          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
+            {camp.weekNumber
+              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
+              : camp.phaseLabel}
+          </span>
+          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
+        </Link>
+      ) : null}
 
       {todayAction ? <StartTodayButton action={todayAction} /> : null}
 
@@ -298,21 +325,6 @@ export default async function TrainingPage({
             <p className="mt-1 text-sm text-muted">Hips, splits, neck, and the long holds after you train.</p>
           </Link>
         </section>
-      ) : null}
-
-      {camp ? (
-        <Link href="/fight-camp" className="block rounded-[1.75rem] bg-black px-5 py-5 text-white">
-          <span className="flex items-center gap-2">
-            <span className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Camp focus</span>
-            <ProPill />
-          </span>
-          <span className="mt-2 block font-display text-2xl uppercase tracking-wide text-white">
-            {camp.weekNumber
-              ? `Week ${camp.weekNumber} of ${camp.templateWeeks} · ${camp.phaseLabel}`
-              : camp.phaseLabel}
-          </span>
-          <span className="mt-2 block text-sm text-white/80">{camp.todayFocus}</span>
-        </Link>
       ) : null}
 
       {testing ? (

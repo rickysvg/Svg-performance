@@ -337,4 +337,22 @@ BEGIN
   UPDATE "Profile" SET "aiCoachId" = 'skye' WHERE "aiCoachId" IN ('lena', '');
 END $$;
 
+-- Progress photos can live in private Vercel Blob. Existing rows stay local files.
+DO $$
+BEGIN
+  IF to_regclass('public."ProgressPhoto"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'ProgressPhoto'
+      AND column_name = 'storageKind'
+  ) THEN
+    ALTER TABLE "ProgressPhoto" ADD COLUMN "storageKind" TEXT NOT NULL DEFAULT 'local';
+  END IF;
+END $$;
+
 

@@ -47,6 +47,7 @@ describe("progress photo ownership and type checks", () => {
     const owned = await getProgressPhotoForUser(photo.id, userA.id);
     expect(owned.caption).toBe("week 1");
     expect(owned.mimeType).toBe("image/png");
+    expect(owned.storageKind).toBe("local");
     const file = await readProgressPhotoFileForUser(photo.id, userA.id);
     expect(file.bytes.byteLength).toBe(PNG_1X1.byteLength);
 

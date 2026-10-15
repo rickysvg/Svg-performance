@@ -15,6 +15,10 @@ function refreshCamp() {
   revalidatePath("/training");
 }
 
+function nextAfterCamp(formData: FormData) {
+  return String(formData.get("next") ?? "") === "/training" ? "/training" : "/fight-camp";
+}
+
 export async function saveFightCampAction(
   _prev: CampActionState,
   formData: FormData,
@@ -23,11 +27,16 @@ export async function saveFightCampAction(
     const user = await requireUserOrThrow();
     const profile = await getProfileForUser(user.id);
     const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+    const next = nextAfterCamp(formData);
+    const weightClass = String(formData.get("weightClass") ?? "");
+    if (next === "/training" && !weightClass.trim()) {
+      return { error: "Enter a weight class." };
+    }
     await saveFightCampForUser(
       user.id,
       {
         fightDate: String(formData.get("fightDate") ?? ""),
-        weightClass: String(formData.get("weightClass") ?? ""),
+        weightClass,
         discipline: String(formData.get("discipline") ?? ""),
       },
       new Date(),
@@ -37,7 +46,7 @@ export async function saveFightCampAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/fight-camp");
+  redirect(nextAfterCamp(formData));
 }
 
 export async function cancelFightCampAction(
@@ -45,7 +54,7 @@ export async function cancelFightCampAction(
   formData: FormData,
 ): Promise<CampActionState> {
   void prev;
-  void formData;
+  const next = nextAfterCamp(formData);
   try {
     const user = await requireUserOrThrow();
     await cancelFightCampForUser(user.id);
@@ -53,5 +62,5 @@ export async function cancelFightCampAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/fight-camp");
+  redirect(next);
 }

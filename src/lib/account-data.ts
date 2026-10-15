@@ -3,7 +3,7 @@ import path from "node:path";
 import { prisma } from "@/lib/prisma";
 import { AppError, AuthError } from "@/lib/errors";
 import { getStripe } from "@/lib/stripe";
-import { progressPhotoRoot } from "@/lib/progress-photos";
+import { deleteProgressPhotoMediaForUser, progressPhotoRoot } from "@/lib/progress-photos";
 import { trainingClipRoot } from "@/lib/clips";
 import { deleteFormCheckMediaForUser } from "@/lib/form-check-storage";
 import { deleteFeedbackMediaForUser } from "@/lib/feedback-storage";
@@ -373,6 +373,7 @@ export async function deleteAccountForUser(user: PublicUser | null, confirmation
   }
 
   await cancelStripeSubscriptions(signedIn.id);
+  await deleteProgressPhotoMediaForUser(signedIn.id);
   await deleteFormCheckMediaForUser(signedIn.id);
   await deleteFeedbackMediaForUser(signedIn.id);
 

@@ -6,10 +6,9 @@ import { buildProgressSummary } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
-import { PhotoUploadForm } from "@/components/progress/PhotoUploadForm";
-import { deleteBodyMetricAction, deleteProgressPhotoAction } from "@/app/actions/body-metrics";
+import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
-import { listProgressPhotosForUser, progressPhotoSrc } from "@/lib/progress-photos";
+import { listProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
 import { getPersonalRecordsForUser } from "@/lib/records";
 import { PersonalRecordsBoard } from "@/components/progress/PersonalRecordsBoard";
@@ -131,6 +130,23 @@ export default async function ProgressPage() {
         </p>
       </section>
 
+      <Link
+        href="/progress/photos"
+        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4"
+      >
+        <span>
+          <span className="block font-semibold">Progress photos</span>
+          <span className="text-sm text-muted">
+            {photos.length === 0
+              ? "Upload a date-stamped photo"
+              : `${photos.length} saved · private to you`}
+          </span>
+        </span>
+        <span aria-hidden className="text-muted">
+          ›
+        </span>
+      </Link>
+
       <details className="rounded-2xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer font-semibold">Badges</summary>
         <div className="mt-3 space-y-4">
@@ -223,45 +239,6 @@ export default async function ProgressPage() {
           value={fat ? `${fat.value}%` : "—"}
           hint={fat ? "Manual estimate" : "Manual, or Coming soon — no fake device sync"}
         />
-      </section>
-
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <h2>Progress photos</h2>
-        <p className="mt-1 text-sm text-muted">
-          Private to you. Coaches and admins cannot see these in this preview. Photos are
-          not written into analytics events.
-        </p>
-        {photos.length === 0 ? (
-          <EmptyState title="No photos yet">
-            Upload a jpeg, png, or webp from your camera roll. 5 MB max. Only you can open it.
-          </EmptyState>
-        ) : (
-          <ul className="mt-4 grid grid-cols-2 gap-3">
-            {photos.map((photo) => (
-              <li key={photo.id} className="overflow-hidden rounded-xl border border-line">
-                <Link href={`/progress/photos/${photo.id}`} className="block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={progressPhotoSrc(photo.id)}
-                    alt={photo.caption || "Progress photo"}
-                    className="aspect-square w-full object-cover"
-                  />
-                  <span className="block px-2 py-2 text-xs text-muted">
-                    {photo.recordedAt.toLocaleDateString()}
-                    {photo.caption ? ` · ${photo.caption}` : ""}
-                  </span>
-                </Link>
-                <form action={deleteProgressPhotoAction} className="px-2 pb-2">
-                  <input type="hidden" name="photoId" value={photo.id} />
-                  <button type="submit" className="text-[11px] text-danger underline">
-                    Delete
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        )}
-        <PhotoUploadForm />
       </section>
 
       <BodyMetricForm preferredUnits={units} />
