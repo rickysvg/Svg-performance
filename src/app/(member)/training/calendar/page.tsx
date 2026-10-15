@@ -17,6 +17,7 @@ import {
   planForDate,
   resolvePlanSessions,
   weekStrip,
+  type MoveListedSession,
 } from "@/lib/week-plan";
 import {
   scaleBandFromPrefs,
@@ -104,11 +105,18 @@ export default async function TrainingCalendarPage({
     viewedWeek === currentWeek
       ? "This week"
       : `Week of ${viewedMonday.toLocaleDateString("en-US", { month: "short", timeZone: tz })} ${zonedParts(viewedMonday, tz).day}`;
-  const titles: Partial<Record<(typeof strip)[number]["weekday"], string[]>> = {};
+  const titles: Partial<Record<(typeof strip)[number]["weekday"], MoveListedSession[]>> = {};
   for (const day of schedule.days) {
     const name = weekdayName(day.date, tz);
     if (!isPlanWeekday(name)) continue;
-    titles[name] = day.activities.filter((item) => item.kind === "workout").map((item) => item.title);
+    titles[name] = day.activities
+      .filter((item) => item.kind === "workout")
+      .map((item) => ({
+        title: item.title,
+        sessionKey: item.sessionKey,
+        completed: item.status === "complete",
+        heavy: item.heavy,
+      }));
   }
   const moveDays = moveDayChoices(prefs, now, tz, selected, swaps, titles);
   const missedWorkouts = schedule.days.reduce(
@@ -147,8 +155,8 @@ export default async function TrainingCalendarPage({
           <div>
             <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              Tap Move on a workout to do it today or on another open day. Hold a day,
-              then tap another, to swap two days
+              Tap Move on a session to do it today, move it, or swap it with another
+              session. Hold a day, then tap another, to move the whole day
               {schedule.programTitle ? ` · ${schedule.programTitle}` : ""}. Not a live
               coach calendar, Watch sync, or Gymdesk.
             </p>
@@ -282,7 +290,8 @@ export default async function TrainingCalendarPage({
             Missed a workout?
           </p>
           <p className="mt-1 text-sm text-white/80">
-            No problem. Workouts are interchangeable throughout your week. Move it to any open day.
+            No problem. Workouts are interchangeable throughout your week. Move one
+            session, or the whole day, onto a day that fits.
           </p>
         </aside>
       ) : null}

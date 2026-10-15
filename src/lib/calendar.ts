@@ -46,6 +46,8 @@ export type CalendarActivity = {
   sessionKey?: string;
   /** Calendar weekday this card is sitting on. */
   weekday?: string;
+  /** Lift, hard bag, or hard conditioning. */
+  heavy?: boolean;
 };
 
 export type CalendarDay = {
@@ -205,6 +207,20 @@ export function buildCalendarDays(input: {
   return days;
 }
 
+/** Planned workouts this week, counted by session rather than by calendar day. */
+export function weekSessionTally(days: CalendarDay[]) {
+  let done = 0;
+  let total = 0;
+  for (const day of days) {
+    for (const activity of day.activities) {
+      if (activity.kind !== "workout") continue;
+      total += 1;
+      if (activity.status === "complete") done += 1;
+    }
+  }
+  return { done, total };
+}
+
 export async function getCalendarSchedule(
   userId: string,
   now = new Date(),
@@ -225,12 +241,16 @@ export async function getCalendarSchedule(
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
   });
-  const completedOnDay = new Set<string>();
+  const completedDayIds = new Map<string, Set<string>>();
   const loggedTitles = new Map<string, string[]>();
   for (const session of sessions) {
     if (session.status !== "complete" || !sessionHasLoggedWork(session.sets)) continue;
     const key = formatDayParam(session.performedAt, tz);
-    completedOnDay.add(key);
+    if (session.programDayId) {
+      const ids = completedDayIds.get(key) ?? new Set<string>();
+      ids.add(session.programDayId);
+      completedDayIds.set(key, ids);
+    }
     const titles = loggedTitles.get(key) ?? [];
     const title = session.title.trim();
     if (title && !titles.includes(title)) titles.push(title);
@@ -261,7 +281,7 @@ export async function getCalendarSchedule(
     const plan = planForDate(prefs, day.date, tz, swaps);
     const resolved = resolvePlanSessions(plan, { strength, skill });
     const dayKey = formatDayParam(day.date, tz);
-    const done = completedOnDay.has(dayKey);
+    const doneIds = completedDayIds.get(dayKey) ?? new Set<string>();
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
     const calendarWeekday = weekdayName(day.date, tz);
@@ -278,7 +298,10 @@ export async function getCalendarSchedule(
       if (session.kind === "rest") continue;
       const href = session.href ?? (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
-      const missed = past && plan.active && !done;
+      const sessionDone = session.dayId
+        ? doneIds.has(session.dayId)
+        : (loggedTitles.get(dayKey) ?? []).includes(session.title.trim());
+      const missed = past && !sessionDone;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
@@ -286,7 +309,7 @@ export async function getCalendarSchedule(
       day.activities.push({
         kind: "workout",
         title: session.title,
-        subtitle: done
+        subtitle: sessionDone
           ? loggedSummary
             ? `Logged this day. ${loggedSummary}`
             : "Logged this day. Open to review or run a session again."
@@ -296,10 +319,11 @@ export async function getCalendarSchedule(
               ? `${session.label} — ${origin}’s workout, this week.`
               : `${session.label} — Core week plan (DEMO).`,
         href,
-        status: done ? "complete" : "scheduled",
+        status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,
         sessionKey: session.sessionKey,
         weekday: calendarWeekday,
+        heavy: Boolean(session.heavy),
       });
     }
   }
