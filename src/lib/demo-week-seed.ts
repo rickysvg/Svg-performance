@@ -1052,7 +1052,7 @@ function bagSkillDay(block: MesoBlock, weekday: BagWeekday) {
     bagRoundBlock({
       sortOrder: technique ? 4 : 3,
       name: plan.bagName,
-      notes: formatBagRoundNotes(plan.rounds),
+      notes: formatBagRoundNotes(plan.rounds, plan.credit),
     }),
     {
       sortOrder: technique ? 5 : 4,

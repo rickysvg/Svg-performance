@@ -19,6 +19,13 @@ import { toE164 } from "@/lib/gymdesk/crypto";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
+import {
+  normalizeTrainingFocus,
+  parseOutsideTraining,
+  resolveLiftDays,
+  serializeOutsideTraining,
+  type OutsideDay,
+} from "@/lib/member-plan";
 import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
 
 export type ProfileRecord = {
@@ -71,6 +78,9 @@ export type ProfileRecord = {
   coachChoiceAt: Date | null;
   trainingEmphasis: string;
   weightAccess: WeightAccess;
+  trainingFocus: string;
+  liftDaysPerWeek: number | null;
+  outsideTraining: OutsideDay[];
   obstacles: string[];
 };
 
@@ -135,6 +145,9 @@ export function toProfileRecord(row: {
   coachChoiceAt?: Date | null;
   trainingEmphasis?: string;
   weightAccess?: string;
+  trainingFocus?: string;
+  liftDaysPerWeek?: number | null;
+  outsideTrainingJson?: string;
   obstaclesJson: string;
 }): ProfileRecord {
   return {
@@ -186,6 +199,10 @@ export function toProfileRecord(row: {
         ? row.trainingEmphasis
         : "balanced",
     weightAccess: normalizeWeightAccess(row.weightAccess),
+    trainingFocus: normalizeTrainingFocus(row.trainingFocus),
+    liftDaysPerWeek:
+      row.liftDaysPerWeek == null ? null : resolveLiftDays({ liftDaysPerWeek: row.liftDaysPerWeek }),
+    outsideTraining: parseOutsideTraining(row.outsideTrainingJson),
     obstacles: parseJsonArray(row.obstaclesJson),
     calorieTarget: row.calorieTarget,
     proteinTargetG: row.proteinTargetG,
@@ -280,6 +297,9 @@ export async function updateProfileForUser(
     coachingStyle?: string;
     obstacles?: string[];
     trainingEmphasis?: string;
+    trainingFocus?: string;
+    liftDaysPerWeek?: number | null;
+    outsideTraining?: OutsideDay[];
     calorieTarget?: number;
     proteinTargetG?: number;
     carbsTargetG?: number;
@@ -504,6 +524,20 @@ export async function updateProfileForUser(
             : input.trainingEmphasis === "balanced"
               ? "balanced"
               : existing.trainingEmphasis,
+      trainingFocus:
+        input.trainingFocus === undefined
+          ? existing.trainingFocus
+          : normalizeTrainingFocus(input.trainingFocus),
+      liftDaysPerWeek:
+        input.liftDaysPerWeek === undefined
+          ? existing.liftDaysPerWeek
+          : input.liftDaysPerWeek == null
+            ? null
+            : resolveLiftDays({ liftDaysPerWeek: input.liftDaysPerWeek }),
+      outsideTrainingJson:
+        input.outsideTraining === undefined
+          ? existing.outsideTrainingJson
+          : serializeOutsideTraining(input.outsideTraining),
       obstaclesJson:
         input.obstacles === undefined
           ? existing.obstaclesJson

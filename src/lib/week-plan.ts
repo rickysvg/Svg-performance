@@ -1,7 +1,6 @@
-import { bagFocusFor, type BagWeekday } from "@/lib/bag-sessions";
+import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessions";
 import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
 import {
-  isGppStrengthDay,
   mesoBlockForWeekIndex,
   mesoBlockLabel,
   strengthDaysForWeek,
@@ -9,6 +8,14 @@ import {
 } from "@/lib/mesocycle";
 import { WEEKDAYS } from "@/lib/constants";
 import { formatDayParam } from "@/lib/home";
+import { memberCopy } from "@/lib/member-copy";
+import {
+  assignWeek,
+  outsideDayLabel,
+  type DayRole,
+  type LiftKind,
+  type OutsideDay,
+} from "@/lib/member-plan";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { isDeloadWeekIndex, isTestingWeekIndex } from "@/lib/training-cycle";
 import {
@@ -44,6 +51,9 @@ export type PlanSessionSlot = {
   sourceWeekday?: PlanWeekday;
   /** Stable id for moving this workout within one week. */
   sessionKey?: string;
+  title?: string;
+  detail?: string;
+  href?: string;
 };
 
 export type DayPlan = {
@@ -59,12 +69,19 @@ export type DayPlan = {
   mesoLabel: string;
   /** Skeleton weekday whose sessions are showing, when the member moved this day. */
   movedFrom?: PlanWeekday;
+  outside?: { kind: "class" | "sparring"; time?: string; label: string } | null;
+  dayNote?: string;
 };
 
 export type PlannerPrefs = {
   primaryFocus?: string | null;
   weeklyAvailability?: string[];
   sessionsPerWeek?: number | null;
+  trainingFocus?: string | null;
+  liftDaysPerWeek?: number | null;
+  experienceLevel?: string | null;
+  email?: string | null;
+  outsideTraining?: OutsideDay[] | null;
 };
 
 export type CatalogDayLike = {
@@ -130,7 +147,9 @@ function bikeSlot(weekday: "Tuesday" | "Thursday", weekIndex = 0): PlanSessionSl
   const session = pickBikeSessionForPlan(weekday, weekIndex);
   return {
     kind: "conditioning",
-    label: "Assault Bike",
+    label: "Cardio — bike",
+    title: "Cardio — bike",
+    detail: "Bike, sprints, or the other conditioning on this menu.",
     programSlug: DEMO_PROGRAM_SLUG,
     dayNumber: session.programDayNumber,
   };
@@ -156,101 +175,166 @@ function strengthSlot(dayNumber: number, label: string, kind: PlanSessionKind = 
   };
 }
 
+function mobilitySlot(which: "primary" | "secondary"): PlanSessionSlot {
+  if (which === "primary") {
+    return {
+      kind: "mobility",
+      label: "Mobility — shoulders and hips",
+      title: "Mobility — shoulders and hips",
+      detail: "Easy range. No hard effort.",
+      href: "/mobility/upper-back",
+    };
+  }
+  return {
+    kind: "mobility",
+    label: "Mobility — easy hips",
+    title: "Mobility — easy hips",
+    detail: "Easy range. No hard effort.",
+    href: "/mobility/cooldown",
+  };
+}
+
+function easyCardioSlot(): PlanSessionSlot {
+  return {
+    kind: "conditioning",
+    label: "Easy cardio",
+    title: "Easy cardio",
+    detail: "Walk, easy bike, or easy jump rope. No sprints and no hard intervals.",
+    href: "/timer",
+  };
+}
+
+function moderateCardioSlot(): PlanSessionSlot {
+  return {
+    kind: "conditioning",
+    label: "Cardio — moderate",
+    title: "Cardio — moderate",
+    detail: "Steady work. No max-intensity intervals and no heavy legs.",
+    href: "/timer",
+  };
+}
+
+function repeatsSlot(weekIndex: number): PlanSessionSlot {
+  const lifts = strengthDaysForWeek(weekIndex);
+  return strengthSlot(lifts.friday, "Cardio — repeats", "conditioning");
+}
+
+function liftSlot(kind: LiftKind, weekIndex: number): PlanSessionSlot {
+  const lifts = strengthDaysForWeek(weekIndex);
+  if (kind === "lower") return strengthSlot(lifts.monday, "Strength — lower (squat / hinge)");
+  if (kind === "push") return strengthSlot(lifts.wednesday, "Strength — upper push");
+  if (kind === "pull") return strengthSlot(lifts.tuesday, "Strength — upper pull");
+  if (kind === "posterior") return strengthSlot(lifts.thursday, "Strength — posterior");
+  return {
+    ...strengthSlot(lifts.wednesday, "Strength — moderate upper"),
+    detail: "Leave reps in the tank. No heavy legs and no max efforts.",
+  };
+}
+
+function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number): PlanSessionSlot[] {
+  if (role.outside?.kind === "sparring") return [];
+  const sessions: PlanSessionSlot[] = [];
+  if (role.bag && weekday !== "Sunday") {
+    const bag = bagSlot(weekday as BagWeekday, weekIndex);
+    const minutes = bagMinutesForBand("intermediate");
+    sessions.push({
+      ...bag,
+      optional: false,
+      detail:
+        role.bag === "moderate"
+          ? `Moderate pace · est. ${minutes} min. Not a max-effort interval day.`
+          : `Est. ${minutes} min. Warm-up, themed rounds, then a short cooldown.`,
+    });
+  }
+  if (role.lift) sessions.push(liftSlot(role.lift, weekIndex));
+  if (role.cardio === "hard-bike" || role.cardio === "hard") {
+    const bikeDay = weekday === "Thursday" ? "Thursday" : "Tuesday";
+    sessions.push(bikeSlot(bikeDay, weekIndex));
+  } else if (role.cardio === "hard-repeats") {
+    sessions.push({
+      ...repeatsSlot(weekIndex),
+      label: "Cardio — repeats",
+      title: "Cardio — repeats",
+      detail: "Sprints, carries, and the other conditioning on this menu.",
+    });
+  } else if (role.cardio === "easy") {
+    sessions.push(easyCardioSlot());
+  } else if (role.cardio === "moderate") {
+    sessions.push(moderateCardioSlot());
+  }
+  if (role.mobility) sessions.push(mobilitySlot(role.mobility));
+  return sessions;
+}
+
+function summaryForRole(role: DayRole, active: boolean) {
+  if (role.outside?.kind === "sparring") return "Sparring";
+  if (!active) return "Off";
+  const parts: string[] = [];
+  if (role.bag) parts.push("Bag");
+  if (role.lift) parts.push("Lift");
+  if (role.cardio) parts.push("Cardio");
+  if (role.mobility) parts.push("Mobility");
+  return parts.join("+") || "Rest";
+}
+
+function listedAvailability(prefs: PlannerPrefs) {
+  return (prefs.weeklyAvailability ?? []).filter((day): day is PlanWeekday =>
+    (WEEKDAYS as readonly string[]).includes(day),
+  );
+}
+
+function weekRoles(prefs: PlannerPrefs) {
+  return assignWeek({
+    trainingFocus: prefs.trainingFocus,
+    liftDaysPerWeek: prefs.liftDaysPerWeek,
+    experienceLevel: prefs.experienceLevel,
+    email: prefs.email,
+    outsideTraining: prefs.outsideTraining,
+  });
+}
+
 /**
- * Core skeleton before availability / session-count compression.
- *
- * Every Mon–Fri training day includes a bag session with a distinct focus.
- * Lifts rotate so consecutive days do not hammer the same muscle group
- * (Jamieson / Daru-style public S&C practice). Tue/Thu keep the assault-bike
- * rotation. Elite / fight-camp overrides are out of scope.
+ * Sessions for one weekday on the current template.
+ * Lift days are capped. Sparring has no workout. Class days stay light.
  */
 export function coreSkeletonSessions(
   weekday: PlanWeekday,
-  _focus?: string | null,
+  focus?: string | null,
   weekIndex = 0,
+  prefs?: PlannerPrefs,
 ): PlanSessionSlot[] {
-  const lifts = strengthDaysForWeek(weekIndex);
-
-  if (weekday === "Monday") {
-    return [
-      bagSlot("Monday", weekIndex),
-      strengthSlot(lifts.monday, "Strength — lower (squat / hinge)"),
-    ];
-  }
-
-  if (weekday === "Tuesday") {
-    return [
-      bagSlot("Tuesday", weekIndex),
-      strengthSlot(lifts.tuesday, "Strength — upper pull + core"),
-      bikeSlot("Tuesday", weekIndex),
-    ];
-  }
-
-  if (weekday === "Wednesday") {
-    return [
-      bagSlot("Wednesday", weekIndex),
-      strengthSlot(lifts.wednesday, "Strength — upper push + rotational"),
-    ];
-  }
-
-  if (weekday === "Thursday") {
-    return [
-      bagSlot("Thursday", weekIndex),
-      strengthSlot(lifts.thursday, "Strength — posterior / unilateral"),
-      bikeSlot("Thursday", weekIndex),
-    ];
-  }
-
-  if (weekday === "Friday") {
-    return [
-      bagSlot("Friday", weekIndex),
-      strengthSlot(lifts.friday, "Conditioning — full-body GPP", "conditioning"),
-    ];
-  }
-
-  if (weekday === "Saturday") {
-    return [
-      {
-        kind: "mobility",
-        label: "Optional — light mobility / active recovery",
-        optional: true,
-      },
-    ];
-  }
-
-  return [{ kind: "mobility", label: "Rest or mobility" }];
+  const roles = weekRoles({
+    primaryFocus: focus,
+    trainingFocus: prefs?.trainingFocus,
+    liftDaysPerWeek: prefs?.liftDaysPerWeek,
+    experienceLevel: prefs?.experienceLevel ?? "intermediate",
+    email: prefs?.email,
+    outsideTraining: prefs?.outsideTraining,
+  });
+  return sessionsForRole(weekday, roles[weekday], weekIndex);
 }
 
 function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, active: boolean) {
   if (!active) return "Off";
-  if (weekday === "Sunday") return "Rest";
-  if (weekday === "Saturday") return "Recover";
-  const kinds = sessions.map((session) => session.kind);
-  const hasBag = kinds.includes("skill");
-  const hasLift = kinds.includes("strength");
-  const hasBike = sessions.some((session) => /bike/i.test(session.label));
-  const hasGpp = sessions.some(
-    (session) => session.kind === "conditioning" && isGppStrengthDay(session.dayNumber ?? -1),
-  );
-  if (hasBag && hasLift && hasBike) return "Bag+Lift+Bike";
-  if (hasBag && hasBike) return "Bag+Bike";
-  if (hasBag && hasGpp) return "Bag+GPP";
-  if (hasBag && hasLift) return "Bag+Lift";
-  if (hasBag) return "Bag";
-  if (hasGpp) return "GPP";
-  if (hasBike) return "Bike";
-  if (hasLift) return "Lift";
-  if (kinds.includes("mobility")) return "Recover";
+  const hasBag = sessions.some((session) => session.kind === "skill");
+  const hasLift = sessions.some((session) => session.kind === "strength");
+  const hasCardio = sessions.some((session) => session.kind === "conditioning");
+  const hasMobility = sessions.some((session) => session.kind === "mobility");
+  const parts: string[] = [];
+  if (hasBag) parts.push("Bag");
+  if (hasLift) parts.push("Lift");
+  if (hasCardio) parts.push("Cardio");
+  if (hasMobility) parts.push("Mobility");
+  if (parts.length > 0) return parts.join("+");
+  if (weekday === "Saturday" || weekday === "Sunday") return "Off";
   return "Rest";
 }
 
 export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
-  const listed = (prefs.weeklyAvailability ?? []).filter((day): day is PlanWeekday =>
-    (WEEKDAYS as readonly string[]).includes(day),
-  );
+  const listed = listedAvailability(prefs);
   const base: PlanWeekday[] =
     listed.length > 0 ? listed : [...CORE_DEFAULT_TRAINING_DAYS];
-  const active = new Set<PlanWeekday>(base.filter((day) => day !== "Sunday"));
+  const active = new Set<PlanWeekday>(base);
 
   const keepOrder: PlanWeekday[] = [
     "Monday",
@@ -259,6 +343,7 @@ export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
     "Thursday",
     "Tuesday",
     "Saturday",
+    "Sunday",
   ];
 
   if (prefs.sessionsPerWeek != null && prefs.sessionsPerWeek > 0) {
@@ -274,36 +359,56 @@ export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
   return active;
 }
 
+function dayIsActive(weekday: PlanWeekday, role: DayRole, prefs: PlannerPrefs) {
+  if (role.outside) return true;
+  if (role.mobility && !role.lift && !role.bag && !role.cardio) return true;
+  const listed = listedAvailability(prefs);
+  const openWeek = listed.length === 0 && !(prefs.sessionsPerWeek != null && prefs.sessionsPerWeek > 0);
+  if (openWeek) return true;
+  return resolveTrainingDays(prefs).has(weekday);
+}
+
+function outsideNote(role: DayRole) {
+  if (!role.outside) return undefined;
+  if (role.outside.kind === "sparring") {
+    return `${outsideDayLabel(role.outside)}. No app workout — log rounds after you spar.`;
+  }
+  return `${outsideDayLabel(role.outside)}. Light day only: mobility and easy cardio. Nothing to log.`;
+}
+
 export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<PlanWeekday, DayPlan> {
-  const activeDays = resolveTrainingDays(prefs);
-  const focus = prefs.primaryFocus ?? "";
+  const roles = weekRoles(prefs);
   const mesoBlock = mesoBlockForWeekIndex(weekIndex);
   const mesoLabel = mesoBlockLabel(mesoBlock);
   const plan = {} as Record<PlanWeekday, DayPlan>;
 
   for (const weekday of WEEKDAYS) {
-    const optionalDay = weekday === "Saturday";
-    const alwaysOnBike = weekday === "Tuesday" || weekday === "Thursday";
-    const active = weekday === "Sunday" ? false : alwaysOnBike || activeDays.has(weekday);
-    const sessions = coreSkeletonSessions(weekday, focus, weekIndex);
+    const role = roles[weekday];
+    const active = dayIsActive(weekday, role, prefs);
+    const sessions = sessionsForRole(weekday, role, weekIndex);
+    const outside = role.outside
+      ? { kind: role.outside.kind, time: role.outside.time, label: outsideDayLabel(role.outside) }
+      : null;
     let skipReason: string | undefined;
-    if (!active && weekday !== "Sunday") {
-      skipReason = "Not on your training days this week. Rest or do easy movement.";
-    }
-    if (weekday === "Sunday") {
-      skipReason = "Rest or light mobility. Core plan — not a fight camp.";
+    if (!active) {
+      skipReason =
+        weekday === "Sunday"
+          ? "Rest or light mobility. Core plan — not a fight camp."
+          : "Not on your training days this week. Rest or do easy movement.";
     }
     plan[weekday] = {
       weekday,
       active,
-      optionalDay,
-      summary: summaryForSessions(sessions, weekday, active),
-      sessions: active ? sessions : [{ kind: "rest", label: "Rest / skip" }],
+      optionalDay: false,
+      summary: active ? summaryForRole(role, true) : "Off",
+      sessions: active ? (sessions.length > 0 ? sessions : []) : [{ kind: "rest", label: "Rest / skip" }],
       skipReason: active ? undefined : skipReason,
       deload: isDeloadWeekIndex(weekIndex),
       testingWeek: isTestingWeekIndex(weekIndex),
       mesoBlock,
       mesoLabel,
+      outside,
+      dayNote: outsideNote(role),
     };
   }
   return plan;
@@ -515,13 +620,13 @@ export function resolvePlanSessions(
       slot: slotLetter,
       kind: session.kind,
       label: session.label,
-      title: day?.title ?? session.label,
-      subtitle: day?.focus ?? session.label,
+      title: session.title ?? (day?.title ? memberCopy(day.title) : session.label),
+      subtitle: session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label),
       optional: Boolean(session.optional),
       programSlug: session.programSlug,
       dayNumber: session.dayNumber,
       dayId: day?.id,
-      href: day?.id ? `/training/${day.id}` : undefined,
+      href: day?.id ? `/training/${day.id}` : session.href,
       day,
       sessionKey: session.sessionKey,
       sourceWeekday: session.sourceWeekday,

@@ -19,7 +19,7 @@ function walk(rel: string): string[] {
 
 describe("SVG Coach copy", () => {
   it("labels Coach as an AI coach trained on the real topic lanes", () => {
-    expect(COACH_TOPICS).toEqual(["martial_art", "conditioning", "mental"]);
+    expect(COACH_TOPICS).toEqual(["martial_art", "conditioning", "mental", "nutrition"]);
     expect(COACH_AI_BLURB).toBe(
       "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset.",
     );

@@ -92,7 +92,7 @@ export const WORKOUT_TYPE_LABELS = {
   bag: "Bag",
   lift: "Lift",
   bike: "Bike",
-  gpp: "GPP",
+  gpp: "Cardio",
   other: "Other",
 } as const;
 

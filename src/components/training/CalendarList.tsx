@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CalendarActivity, CalendarDay } from "@/lib/calendar";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
+import { SparringLogForm } from "@/components/training/SparringLogForm";
 
 function StatusCircle({
   kind,
@@ -82,6 +83,14 @@ export function CalendarList({ days }: { days: CalendarDay[] }) {
             ) : null}
             {day.heading}
           </h2>
+          {day.sparring ? (
+            <SparringLogForm
+              dateKey={day.sparring.dateKey}
+              weekday={day.sparring.weekday}
+              timeLabel={day.sparring.timeLabel}
+              saved={day.sparring.saved}
+            />
+          ) : null}
           {day.activities.length > 0 ? (
             <ul className="space-y-2">
               {day.activities.map((activity) => (

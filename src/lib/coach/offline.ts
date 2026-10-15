@@ -183,6 +183,7 @@ function offlineAnswer(question: string, topic?: string, art?: string) {
   if (topic === "martial_art") return formReply(art);
   if (topic === "mental") return isMissed(question) ? missedReply(question) : nervesReply();
   if (topic === "conditioning") return programmingReply();
+  if (topic === "nutrition") return foodReply();
   return formReply(art);
 }
 

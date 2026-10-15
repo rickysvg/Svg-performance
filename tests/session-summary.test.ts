@@ -116,7 +116,7 @@ describe("session summary", () => {
 
   it("writes those tags onto seeded plan rows", async () => {
     const woodchop = await prisma.programExercise.findFirst({
-      where: { name: "Cable or band woodchop" },
+      where: { name: "Cable woodchop" },
     });
     const jab = await prisma.programExercise.findFirst({
       where: { name: "Bag rounds — intelligent jab" },

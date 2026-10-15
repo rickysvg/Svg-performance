@@ -53,10 +53,9 @@ describe("3-week mesocycle", () => {
 
     const tue = coreSkeletonSessions("Tuesday", "mma", 1);
     const thu = coreSkeletonSessions("Thursday", "mma", 1);
-    expect(tue.map((session) => session.kind)).toEqual(["skill", "strength", "conditioning"]);
-    expect(thu[1]?.dayNumber).toBe(strengthDaysForWeek(1).thursday);
-    expect(thu[2]?.kind).toBe("conditioning");
-    expect(coreSkeletonSessions("Friday", "mma", 2)[1]?.dayNumber).toBe(strengthDaysForWeek(2).friday);
+    expect(tue.map((session) => session.kind)).toEqual(["mobility"]);
+    expect(thu[0]?.kind).toBe("conditioning");
+    expect(coreSkeletonSessions("Friday", "mma", 2)[1]?.dayNumber).toBe(strengthDaysForWeek(2).tuesday);
   });
 
   it("writes a distinct themed round list for every weekday and block", () => {
@@ -82,7 +81,7 @@ describe("3-week mesocycle", () => {
     const notes = formatBagRoundNotes(["Touch jab only.", "Double jab."]);
     expect(bagFocusLines(notes)).toEqual({
       rounds: ["R1 Touch jab only.", "R2 Double jab."],
-      credit: true,
+      credit: expect.stringMatching(/Inspired by/),
     });
     expect(bagFocusLines("Hold a dumbbell at your chest.")).toBeNull();
   });
@@ -112,7 +111,8 @@ describe("weighted shadow on seeded bag days", () => {
       expect(hidesLoad("load_timed")).toBe(false);
       const bag = day.exercises.find((row) => /bag rounds/i.test(row.name));
       expect(bag?.notes).toMatch(/R1 /);
-      expect(bag?.notes).toMatch(/Bazooka Joe/);
+      expect(bag?.notes).toMatch(/Inspired by/);
+      expect(bag?.notes).toMatch(/Not an affiliation/);
       expect(bag?.notes.toLowerCase()).not.toMatch(/\bbout\b/);
     }
 

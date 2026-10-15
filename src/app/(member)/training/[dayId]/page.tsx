@@ -30,7 +30,7 @@ import { hasRirCue } from "@/lib/rir";
 import { isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
-import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
@@ -44,15 +44,16 @@ export default async function TrainingDayPage({
   const user = await requireUser();
   const profile = await getProfileForUser(user.id);
   const { dayId } = await params;
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
   let day;
   try {
     const raw = await getProgramDayById(dayId);
     const weightAccess = normalizeWeightAccess(profile?.weightAccess);
     day = scaleProgramDay(raw, {
-      band: scaleBandFromPrefs({
-        experienceLevel: profile?.experienceLevel,
-        competitionStatus: profile?.competitionStatus,
-      }),
+      band,
       programSlug: raw.program.slug,
       weightAccess,
     });
@@ -72,9 +73,11 @@ export default async function TrainingDayPage({
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const plyo = liftDay
-    ? weightAccess === "none"
-      ? floorPlyoBlock()
-      : plyoBlockFor(profile?.trainingEmphasis)
+    ? band === "beginner"
+      ? beginnerPlyoBlock()
+      : weightAccess === "none"
+        ? floorPlyoBlock()
+        : plyoBlockFor(profile?.trainingEmphasis)
     : [];
   const notes = await listExerciseNotesForUser(user.id, {
     exerciseNames: day.exercises.map((exercise) => exercise.name),

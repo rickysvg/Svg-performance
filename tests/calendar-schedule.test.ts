@@ -133,7 +133,14 @@ describe("calendar schedule loader", () => {
       day.activities.filter((row) => row.kind === "workout"),
     );
     expect(workouts.length).toBeGreaterThan(0);
-    expect(workouts.every((row) => row.href.startsWith("/training/"))).toBe(true);
+    expect(
+      workouts.every(
+        (row) =>
+          row.href.startsWith("/training/") ||
+          row.href.startsWith("/mobility/") ||
+          row.href.startsWith("/timer"),
+      ),
+    ).toBe(true);
     expect(workouts.some((row) => /bag|clinch|ground-and-pound|sprawl/i.test(row.title))).toBe(
       true,
     );

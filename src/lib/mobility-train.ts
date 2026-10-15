@@ -54,14 +54,14 @@ export function mobilityBookendsForSession(input: {
   const kind = input.kind.toLowerCase();
   if (kind === "rest" || kind === "mobility") return null;
   const text = blobOf(input);
-  if (/\bgpp\b/.test(text)) {
-    return pair("daily-warmup", "Before GPP", "cooldown", "After GPP");
-  }
   if (kind === "skill" || kind === "bag" || /\bbag\b/.test(text)) {
     return bagPair(text);
   }
   if (/\bbike\b/.test(text) || text.includes("assault")) {
     return pair("daily-warmup", "Before the bike", "ankle-knee", "After the bike");
+  }
+  if (/\bgpp\b|\bcardio\b/.test(text)) {
+    return pair("daily-warmup", "Before cardio", "cooldown", "After cardio");
   }
   if (/lower|squat|hinge|posterior|unilateral|hamstring/.test(text)) {
     return pair("kickers-hips", "Before the lower lifts", "split-builder", "After the hinges");

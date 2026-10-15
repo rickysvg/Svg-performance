@@ -53,6 +53,7 @@ model User {
   exerciseNotes            ExerciseNote[]
   mobilitySessions         MobilitySession[]
   mobilityCheckIns         MobilityCheckIn[]
+  outsideSessionLogs       OutsideSessionLog[]
   readinessCheckIns        ReadinessCheckIn[]
   testingResults           TestingResult[]
   fightCamp                FightCamp?
@@ -154,6 +155,12 @@ model Profile {
   trainingEmphasis           String    @default("balanced")
   /** gym (default) | none — none swaps lift and bike days for a floor session. */
   weightAccess               String    @default("gym")
+  /** martial_arts_sc (default) | sc_only */
+  trainingFocus              String    @default("martial_arts_sc")
+  /** 2–4. Null uses a level default (Ricky’s account defaults to 3). */
+  liftDaysPerWeek            Int?
+  /** JSON: { weekday, kind: "class" | "sparring", time?: "HH:MM" }[] */
+  outsideTrainingJson        String    @default("[]")
   obstaclesJson              String    @default("[]")
   /** Voluntary swaps for one week. The default weekday plan is unchanged. */
   weekPlanSwapsJson          String    @default("[]")
@@ -163,6 +170,25 @@ model Profile {
   fatTargetG             Int      @default(70)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
+}
+
+/** Sparring log. Class/drilling days are not stored here. Saved only on Save. */
+model OutsideSessionLog {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Athlete-zone day, YYYY-MM-DD. */
+  dateKey         String
+  weekday         String   @default("")
+  rounds          Int
+  minutesPerRound Int
+  intensity       String   @default("")
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, dateKey])
+  @@index([userId, dateKey])
 }
 
 model Program {

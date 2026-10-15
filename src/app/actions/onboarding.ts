@@ -8,6 +8,7 @@ import {
 } from "@/lib/onboarding";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
+import { normalizeOutsideInput } from "@/lib/member-plan";
 
 export type OnboardingActionState = { error?: string };
 
@@ -46,6 +47,15 @@ export async function completeOnboardingAction(
       allergies: String(formData.get("allergies") ?? ""),
       aiCoachId: String(formData.get("aiCoachId") ?? ""),
       coachingStyle: String(formData.get("coachingStyle") ?? ""),
+      trainingFocus: String(formData.get("trainingFocus") ?? ""),
+      liftDaysPerWeek: optionalNumber(String(formData.get("liftDaysPerWeek") ?? "")),
+      outsideTraining: normalizeOutsideInput(
+        formData.getAll("outsideWeekday").map((weekday) => ({
+          weekday: String(weekday),
+          kind: String(formData.get(`outsideKind-${String(weekday)}`) ?? "class"),
+          time: String(formData.get(`outsideTime-${String(weekday)}`) ?? ""),
+        })),
+      ),
     });
   } catch (error) {
     return { error: publicErrorMessage(error) };

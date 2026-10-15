@@ -45,6 +45,58 @@ BEGIN
   ) THEN
     ALTER TABLE "Profile" ADD COLUMN "weightAccess" TEXT NOT NULL DEFAULT 'gym';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'trainingFocus'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "trainingFocus" TEXT NOT NULL DEFAULT 'martial_arts_sc';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'liftDaysPerWeek'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "liftDaysPerWeek" INTEGER;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'outsideTrainingJson'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "outsideTrainingJson" TEXT NOT NULL DEFAULT '[]';
+  END IF;
+END $$;
+
+-- Ricky: 3 lift days, Wednesday class/drilling at 6 PM, Saturday sparring at 11 AM.
+DO $$
+BEGIN
+  IF to_regclass('public."Profile"') IS NULL OR to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  UPDATE "Profile"
+  SET "liftDaysPerWeek" = 3
+  WHERE "liftDaysPerWeek" IS NULL
+    AND "userId" IN (
+      SELECT "id" FROM "User" WHERE lower("email") = 'rmaynez21@gmail.com'
+    );
+
+  UPDATE "Profile"
+  SET "outsideTrainingJson" = '[{"weekday":"Wednesday","kind":"class","time":"18:00"},{"weekday":"Saturday","kind":"sparring","time":"11:00"}]'
+  WHERE ("outsideTrainingJson" IS NULL OR "outsideTrainingJson" = '[]' OR "outsideTrainingJson" = '')
+    AND "userId" IN (
+      SELECT "id" FROM "User" WHERE lower("email") = 'rmaynez21@gmail.com'
+    );
 END $$;
 
 -- Password-reset leak fix. Additive only: new column defaulting to 1, new

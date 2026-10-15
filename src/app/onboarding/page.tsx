@@ -27,7 +27,7 @@ export default async function OnboardingPage() {
           is not a custom Elite coaching plan.
         </p>
         <div className="mt-6">
-          <OnboardingForm profile={status.profile} />
+          <OnboardingForm profile={status.profile} email={user.email} />
         </div>
       </main>
     </div>
