@@ -1,6 +1,6 @@
 # Simplify the phone screens
 
-Phase 1 is an audit only. No product code changes. Screenshots are a real signed-in member on a 390×844 phone.
+The phone UI follows this list. Home keeps the photo tiles, and adds the member’s current body weight on the same screen. Week chips, plan generation, exercise swap/remove, and the coach thread are unchanged.
 
 People open this app between sets and between classes. Each screen should have one main action, about five blocks on the first screen, and everything else one tap away. Headers should match. Badges, credit lines, and legal sentences should get out of the way. Tap targets should be large enough for sweaty hands.
 
@@ -24,9 +24,9 @@ Local app, DEMO programs seeded, Thursday 15 Oct 2026 (Block B — level changes
 
 ## Do these first
 
-**P0. Home opens on today’s session.** The first screen is a lime welcome, a deeper-profile link, Fight camp, Form check, then eight photo tiles. Today’s bag work is below a readiness form. Put **Start** on the bag session at the top. The other two sessions of the day collapse to “2 more today.” Fuel is one line (0 / 2,200 cal). The quote is one line.
+**P0. Home keeps the photo tiles and adds body weight.** Tiles stay. Fight camp, form check, the shop block, the deeper-profile prompt, and the locked quote upgrade are off this screen. Readiness sits behind a row. Today is one session and Start. Fuel is one calorie line. Body weight is a number you type and save.
 
-**P0. The phone bar is Home, Train, Fuel, Learn, Coach.** Those five links exist, and they are hidden on a phone. The bottom bar is the logo, Book, Shop, a plus, Progress, and Profile. The eight Home tiles are filling that hole. Put the five on the bottom. Book, Shop, the plus, and Profile move into the account screen.
+**P0. The bottom bar does not repeat the tiles.** Train, Fuel, Learn, Coach, and Progress are tiles. The phone bar is Book, Shop, and Profile. The plus menu is gone. The round timer stays a tile.
 
 **P0. Calendar is one week list.** The top half repeats Train: three session cards, mobility chips, and gear notes. Under that, the same days are listed again with Move. Keep the week chips and Move. Delete the second copy of the sessions and the paragraph about Watch sync and Gymdesk.
 
@@ -54,7 +54,7 @@ Local app, DEMO programs seeded, Thursday 15 Oct 2026 (Block B — level changes
 
 **P1. Home stops recruiting on the first screen.** The optional deeper-profile link and the locked daily-quote upgrade leave Home. The quote line can stay for people who already have it.
 
-**P1. Coach is one door.** Home has a Coach tile, an “Ask a coach” disclosure, and a floating coach photo on the lower left. Once Coach is a tab, the tile, the disclosure, and the floating photo go away. The coach screen itself is unchanged.
+**P1. Coach is one door.** The Coach photo tile stays. The “Ask a coach” block and the floating coach photo are gone. The coach screen itself is unchanged.
 
 ## Pictures
 
@@ -75,14 +75,21 @@ Before shots, 390×844, first screen of each page:
 | Onboarding | `docs/ux-declutter/screens/before/onboarding.png` |
 | Workout complete | `docs/ux-declutter/screens/before/workout-complete.png` |
 
-Simplified mockups (HTML in `docs/ux-declutter/prototypes/after.html`, shot at 390×844) and the side-by-side pairs for the five densest screens:
+After shots are the running app at 390×844, signed in as Alex, with the photo tiles still on Home. Side-by-side pairs are in `docs/ux-declutter/screens/compare/`. The HTML in `prototypes/after.html` was the earlier mockup and is not the built UI.
 
 | Screen | After | Side by side |
 | --- | --- | --- |
-| Home | `docs/ux-declutter/screens/after/home.png` | `docs/ux-declutter/screens/compare/home.png` |
-| Calendar | `docs/ux-declutter/screens/after/calendar.png` | `docs/ux-declutter/screens/compare/calendar.png` |
-| Progress | `docs/ux-declutter/screens/after/progress.png` | `docs/ux-declutter/screens/compare/progress.png` |
-| Learn | `docs/ux-declutter/screens/after/learn.png` | `docs/ux-declutter/screens/compare/learn.png` |
-| Logger | `docs/ux-declutter/screens/after/logger.png` | `docs/ux-declutter/screens/compare/logger.png` |
+| Home | `docs/ux-declutter/screens/after/home.png` | `docs/ux-declutter/screens/compare/home-before-after.png` |
+| Train | `docs/ux-declutter/screens/after/train.png` | `docs/ux-declutter/screens/compare/train-before-after.png` |
+| Train day | `docs/ux-declutter/screens/after/train-day.png` | `docs/ux-declutter/screens/compare/train-day-before-after.png` |
+| Logger | `docs/ux-declutter/screens/after/train-logger.png` | `docs/ux-declutter/screens/compare/train-logger-before-after.png` |
+| Calendar | `docs/ux-declutter/screens/after/calendar.png` | `docs/ux-declutter/screens/compare/calendar-before-after.png` |
+| Progress | `docs/ux-declutter/screens/after/progress.png` | `docs/ux-declutter/screens/compare/progress-before-after.png` |
+| Fuel | `docs/ux-declutter/screens/after/fuel.png` | `docs/ux-declutter/screens/compare/fuel-before-after.png` |
+| Learn | `docs/ux-declutter/screens/after/learn.png` | `docs/ux-declutter/screens/compare/learn-before-after.png` |
+| Coach | `docs/ux-declutter/screens/after/coach.png` | `docs/ux-declutter/screens/compare/coach-before-after.png` |
+| Profile | `docs/ux-declutter/screens/after/profile.png` | `docs/ux-declutter/screens/compare/profile-before-after.png` |
+| Onboarding | `docs/ux-declutter/screens/after/onboarding.png` | `docs/ux-declutter/screens/compare/onboarding-before-after.png` |
+| Workout complete | `docs/ux-declutter/screens/after/workout-complete.png` | `docs/ux-declutter/screens/compare/workout-complete-before-after.png` |
 
 The element-by-element list is in [audit.md](audit.md).

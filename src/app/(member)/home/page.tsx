@@ -1,28 +1,20 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser, profileIsComplete, timeZoneForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { emptyHomeToday, getHomeToday, homeLoad, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
-import { listHelpRequestsForMember } from "@/lib/help";
-import { HelpRequestForm } from "@/components/help/HelpRequestForm";
-import { NutritionRings } from "@/components/home/NutritionRings";
 import { DAILY_QUOTES, getDailyQuoteCard, teaserFromQuote } from "@/lib/quotes";
-import { DailyQuoteCard } from "@/components/quotes/DailyQuoteCard";
 import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
-import { TodayGuide } from "@/components/home/TodayGuide";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
+import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
+import { HomeToday } from "@/components/home/HomeToday";
 import { ReadinessCard } from "@/components/home/ReadinessCard";
 import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
-import { HomeMerchPromo } from "@/components/home/HomeMerchPromo";
-import { SectionHeading } from "@/components/home/SectionHeading";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
-import { planHasFeature } from "@/lib/plans";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
-import { getActiveCampSnapshot } from "@/lib/fight-camp";
-import { FORM_CHECK_MONTHLY_LIMIT, formCheckUsage, unseenFormCheckCount } from "@/lib/form-check";
-import { ProTools } from "@/components/home/ProTools";
+import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
 
 export default async function HomePage({
   searchParams,
@@ -36,28 +28,24 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const proTools = planHasFeature(planId, "fight_camp");
-  const [today, reminderResult, helpRequests, quoteCard, guide, trial, showThirdWorkout, camp, formUsage, unseenFormChecks] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics] =
     await Promise.all([
-    homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
-    homeLoad(
-      "reminders",
-      processDueRemindersForUser(user.id, user.email),
-      { due: [], emailed: false, smtpConfigured: false },
-    ),
-    homeLoad("help", listHelpRequestsForMember(user.id), []),
-    homeLoad("quote", getDailyQuoteCard(user.id, new Date(), tz), {
-      quote: fallbackQuote,
-      unlocked: false,
-      teaser: teaserFromQuote(fallbackQuote),
-    }),
-    homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
-    getTrialState(user.id),
-    shouldShowThirdWorkoutCard(user.id, planId),
-    proTools ? getActiveCampSnapshot(user.id, new Date(), tz) : Promise.resolve(null),
-    proTools ? formCheckUsage(user.id, new Date(), tz) : Promise.resolve(null),
-    proTools ? unseenFormCheckCount(user.id) : Promise.resolve(0),
-  ]);
+      homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
+      homeLoad(
+        "reminders",
+        processDueRemindersForUser(user.id, user.email),
+        { due: [], emailed: false, smtpConfigured: false },
+      ),
+      homeLoad("quote", getDailyQuoteCard(user.id, new Date(), tz), {
+        quote: fallbackQuote,
+        unlocked: false,
+        teaser: teaserFromQuote(fallbackQuote),
+      }),
+      homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
+      getTrialState(user.id),
+      shouldShowThirdWorkoutCard(user.id, planId),
+      homeLoad("weight", getLatestBodyMetricsForUser(user.id), new Map()),
+    ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
     "readiness",
@@ -65,43 +53,30 @@ export default async function HomePage({
     null,
   );
   const greetingName = today.firstName || "athlete";
-  const openHelp = helpRequests.filter((row) => row.status === "open");
+  const weight = latestMetrics.get("weight");
+  const units = profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb";
 
   return (
-    <main className="space-y-8 pb-8">
-      <section className="-mx-4 -mt-6 bg-accent px-4 pb-8 pt-7 text-black">
-        <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
-        <h1 className="mt-1 text-4xl">
-          Welcome {greetingName}
-        </h1>
-        <p className="mt-2 text-sm">
-          SVG Performance
-          {profile?.goals ? ` · ${profile.goals}` : ""}
-        </p>
-        {!profile || !profileIsComplete(profile) ? (
-          <p className="mt-4 text-sm">
-            Finish your profile so Home can show a real goal and units.{" "}
-            <Link href="/profile" className="font-semibold underline">
-              Open profile
-            </Link>
-          </p>
-        ) : null}
-        {today.needsDeepPrompt ? (
-          <p className="mt-3 text-sm">
-            Optional 2-minute deeper profile.{" "}
-            <Link href="/onboarding/deeper" className="font-semibold underline">
-              Add details
-            </Link>
-          </p>
-        ) : null}
+    <main className="space-y-6 pb-8">
+      <section>
+        <p className="font-display text-sm uppercase tracking-[0.06em] text-accent">Let&apos;s go</p>
+        <h1 className="mt-1 text-4xl">Welcome {greetingName}</h1>
+        {profile?.goals ? <p className="mt-2 text-sm text-muted">{profile.goals}</p> : null}
       </section>
 
-      <ProTools
-        camp={camp}
-        formChecksLeft={formUsage?.remaining ?? FORM_CHECK_MONTHLY_LIMIT}
-        formCheckLimit={FORM_CHECK_MONTHLY_LIMIT}
-        unseenFormChecks={unseenFormChecks}
-        locked={!proTools}
+      <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
+
+      <HomeQuickActions
+        locked={
+          planId === "member_access"
+            ? [
+                { href: "/coach", kind: "coach" as const },
+                { href: "/nutrition", kind: "fuel" as const },
+              ]
+            : []
+        }
+        canStartTrial={trial.canStartTrial}
+        trialDays={trial.trialLengthDays}
       />
 
       {reminderResult.due.length > 0 ? (
@@ -121,66 +96,41 @@ export default async function HomePage({
         <ThirdWorkoutCard canStartTrial={trial.canStartTrial} trialDays={trial.trialLengthDays} />
       ) : null}
 
-      <HomeQuickActions
-        locked={
-          planId === "member_access"
-            ? [
-                { href: "/coach", kind: "coach" as const },
-                { href: "/nutrition", kind: "fuel" as const },
-              ]
-            : []
-        }
-        canStartTrial={trial.canStartTrial}
-        trialDays={trial.trialLengthDays}
-      />
+      <HomeToday guide={guide} />
 
-      <ReadinessCard
-        dayKey={dayKey}
-        initial={
-          readiness
-            ? {
-                sleep: readiness.sleep,
-                soreness: readiness.soreness,
-                energy: readiness.energy,
-                restingHr: readiness.restingHr,
-              }
-            : null
-        }
-      />
+      <Link
+        href="/nutrition"
+        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4"
+      >
+        <span>
+          <span className="block text-xs uppercase tracking-wide text-muted">Fuel</span>
+          <span className="font-semibold">
+            {Math.round(today.foodToday.calories)} / {Math.round(today.targets.calories)} cal
+          </span>
+        </span>
+        <span className="font-semibold">Log food</span>
+      </Link>
 
-      <TodayGuide guide={guide} />
+      {quoteCard.unlocked ? (
+        <p className="text-sm text-muted">“{quoteCard.quote.text}”</p>
+      ) : null}
 
-      <DailyQuoteCard
-        quote={quoteCard.quote}
-        unlocked={quoteCard.unlocked}
-        teaser={quoteCard.teaser}
-      />
-
-      <section className="space-y-4">
-        <SectionHeading title="Nutrition today" href="/nutrition" action="Log food" className="pr-16" />
-        <div className="rounded-[2rem] border border-line bg-card px-5 py-6">
-          <NutritionRings
-            calories={today.foodToday.calories}
-            proteinG={today.foodToday.proteinG}
-            carbsG={today.foodToday.carbsG}
-            fatG={today.foodToday.fatG}
-            targets={today.targets}
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">Readiness</summary>
+        <div className="mt-3">
+          <ReadinessCard
+            dayKey={dayKey}
+            initial={
+              readiness
+                ? {
+                    sleep: readiness.sleep,
+                    soreness: readiness.soreness,
+                    energy: readiness.energy,
+                    restingHr: readiness.restingHr,
+                  }
+                : null
+            }
           />
-        </div>
-      </section>
-
-      <HomeMerchPromo />
-
-      <details className="rounded-2xl border border-line bg-card px-5 py-4 text-sm">
-        <summary className="cursor-pointer font-semibold">
-          Ask a coach
-          {openHelp.length > 0 ? ` · ${openHelp.length} open` : ""}
-        </summary>
-        <p className="mt-3 text-muted">
-          A request with a real status (open, seen, closed). Not a 24/7 chat.
-        </p>
-        <div className="mt-4">
-          <HelpRequestForm />
         </div>
       </details>
     </main>

@@ -80,32 +80,6 @@ export default async function ProgressPage() {
         </p>
       </div>
 
-      <nav className="flex items-center gap-2" aria-label="Progress sections">
-        <Link
-          href="/progress/records"
-          className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
-        >
-          Records
-        </Link>
-        <Link
-          href="/progress/streaks"
-          className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
-        >
-          Streaks
-        </Link>
-        <span className="progress-tab inline-flex h-11 items-center rounded-full bg-black px-3 text-sm text-highlighter">
-          Badges
-        </span>
-      </nav>
-
-      <BadgesGrid
-        badges={companion.badges}
-        earned={badgeCounts.earned}
-        total={badgeCounts.total}
-        unit={units}
-        showHeading={false}
-      />
-
       <div className="flex flex-wrap gap-2">
         <Link
           href="/heart"
@@ -124,13 +98,72 @@ export default async function ProgressPage() {
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
-          <h2 className="text-lg">Streaks</h2>
+          <h2 className="text-lg">Streak</h2>
           <Link href="/progress/streaks" className="text-sm text-accent underline">
-            Badges and board
+            Board
           </Link>
         </div>
         <StreakHero streak={companion.streak} />
       </section>
+
+      <section className="rounded-2xl border border-line bg-card p-4">
+        <p className="text-sm text-muted">Last session</p>
+        <p className="mt-1 text-lg font-semibold">
+          {summary.sessionCount === 0 ? "None yet" : summary.lastSessionTitle}
+        </p>
+        {lastComplete ? (
+          <Link
+            href={`/training/log/${lastComplete.id}/done`}
+            className="mt-2 inline-flex min-h-11 items-center text-sm text-accent underline"
+          >
+            Open
+          </Link>
+        ) : null}
+      </section>
+
+      <section className="rounded-2xl border border-line bg-card p-4">
+        <p className="text-sm text-muted">Body weight</p>
+        <p className="stat-display mt-2 text-4xl">
+          {weight ? `${weight.value} ${weight.unit}` : "—"}
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          {weight ? "Typed by you" : "Log a weigh-in below."}
+        </p>
+      </section>
+
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">Badges</summary>
+        <div className="mt-3 space-y-4">
+          <nav className="flex items-center gap-2" aria-label="Progress sections">
+            <Link
+              href="/progress/records"
+              className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
+            >
+              Records
+            </Link>
+            <Link
+              href="/progress/streaks"
+              className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
+            >
+              Streaks
+            </Link>
+            <span className="progress-tab inline-flex h-11 items-center rounded-full bg-black px-3 text-sm text-highlighter">
+              Badges
+            </span>
+          </nav>
+          <BadgesGrid
+            badges={companion.badges}
+            earned={badgeCounts.earned}
+            total={badgeCounts.total}
+            unit={units}
+            showHeading={false}
+          />
+        </div>
+      </details>
+
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">More</summary>
+        <div className="mt-4 space-y-6">
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
@@ -319,6 +352,8 @@ export default async function ProgressPage() {
 
         </>
       )}
+        </div>
+      </details>
     </main>
   );
 }

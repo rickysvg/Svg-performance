@@ -16,6 +16,7 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
 import { CoachCredit } from "@/components/training/CoachCredit";
+import { creditForExercise } from "@/lib/coach-credits";
 import { BagFocusList } from "@/components/training/BagFocusList";
 import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
@@ -708,7 +709,7 @@ export function WorkoutLogForm({
                   </p>
                 ) : null}
                 <p
-                  className={`font-display text-xl leading-none tabular-nums text-[#CBF805] ${
+                  className={`font-display text-5xl leading-none tabular-nums text-[#CBF805] ${
                     restRemaining <= 3 ? "motion-safe:animate-pulse" : ""
                   }`}
                 >
@@ -748,7 +749,7 @@ export function WorkoutLogForm({
                 type="button"
                 data-start-rest
                 onClick={beginRest}
-                className="touch-target w-full rounded-full border border-line bg-white font-display text-sm uppercase tracking-wide text-black"
+                className="touch-target min-h-14 w-full rounded-full bg-accent font-display text-base uppercase tracking-wide text-black"
               >
                 Start rest {formatRestPill(currentRestSeconds)}
               </button>
@@ -889,7 +890,6 @@ export function WorkoutLogForm({
                     <p className="font-display text-xs uppercase tracking-wide text-accent">Now</p>
                   ) : null}
                   <h2>{title}</h2>
-                  <CoachCredit name={title} />
                   <p className="mt-0.5 text-sm text-muted" data-logger-prescription>
                     {planned
                       ? loggerCardLine({
@@ -903,9 +903,17 @@ export function WorkoutLogForm({
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
                   {name === firstRirName ? <RirHint /> : null}
-                  {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
-                  {planned?.notes && !bagFocusLines(planned.notes) ? (
-                    <p className="mt-1 text-sm text-muted">{planned.notes}</p>
+                  {hint || (planned?.notes && !bagFocusLines(planned.notes)) || creditForExercise(title) ? (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm font-semibold">Coaching</summary>
+                      <div className="mt-2 space-y-1">
+                        <CoachCredit name={title} />
+                        {hint ? <p className="text-xs text-muted">{hint}</p> : null}
+                        {planned?.notes && !bagFocusLines(planned.notes) ? (
+                          <p className="text-sm text-muted">{planned.notes}</p>
+                        ) : null}
+                      </div>
+                    </details>
                   ) : null}
                   <BagFocusList
                     notes={planned?.notes}
@@ -1120,7 +1128,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-14 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center text-lg"
                           />
                         </label>
                       ) : (
@@ -1139,7 +1147,7 @@ export function WorkoutLogForm({
                                 reps: event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-14 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center text-lg"
                           />
                         </label>
                       )}
@@ -1163,7 +1171,7 @@ export function WorkoutLogForm({
                                   event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full rounded-lg border border-line bg-background px-2 text-center"
+                            className="h-14 w-full rounded-lg border border-line bg-background px-2 text-center text-lg"
                           />
                         </label>
                       )}

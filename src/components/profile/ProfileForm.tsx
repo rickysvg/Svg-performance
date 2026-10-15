@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { saveProfileAction, type ProfileActionState } from "@/app/actions/profile";
 import { CoachPicker } from "@/components/coach/CoachPicker";
 import { StatusBanner } from "@/components/StatusBanner";
-import { EMPHASIS_CREDIT, EMPHASIS_OPTIONS, emphasisLabel } from "@/lib/training-emphasis";
+import { EMPHASIS_OPTIONS, emphasisLabel } from "@/lib/training-emphasis";
 import {
   COMPETITION_STATUS_OPTIONS,
   COACHING_TONE_OPTIONS,
@@ -31,17 +31,19 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
       <h2 className="text-lg">Training profile</h2>
       <StatusBanner error={state.error} success={state.success} />
 
-      <section className="space-y-3 rounded-xl border border-line p-3">
-        <h3 className="text-sm font-medium">Your SVG Coach</h3>
-        <p className="text-xs text-muted">
-          The face and style used in SVG Coach. Saving this profile keeps the choice.
-        </p>
-        <CoachPicker
-          coachId={profile.aiCoachId}
-          coachingStyle={profile.coachingStyle}
-          idPrefix="profile-coach"
-        />
-      </section>
+      <details className="rounded-xl border border-line px-3 py-3">
+        <summary className="cursor-pointer text-sm font-medium">Coach</summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-muted">
+            The face and style used in SVG Coach. Saving this profile keeps the choice.
+          </p>
+          <CoachPicker
+            coachId={profile.aiCoachId}
+            coachingStyle={profile.coachingStyle}
+            idPrefix="profile-coach"
+          />
+        </div>
+      </details>
 
       <label className="block">
         <span className="text-sm font-medium">Display name</span>
@@ -142,11 +144,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           ))}
         </select>
         <span className="mt-1 block text-xs text-muted">
-          Tweaks the plyo and accessory block. Lifts stay on the same days. Inspired by{" "}
-          <a href={EMPHASIS_CREDIT.url} className="underline" target="_blank" rel="noreferrer">
-            {EMPHASIS_CREDIT.coach}
-          </a>
-          . Not their program.
+          Tweaks the plyo and accessory block. Lifts stay on the same days.
         </span>
       </label>
 
@@ -405,8 +403,10 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
         </fieldset>
       </fieldset>
 
-      <fieldset className="rounded-xl border border-line p-3">
-        <legend className="text-sm font-medium">Daily nutrition targets (estimates)</legend>
+      <details className="rounded-xl border border-line px-3 py-3">
+        <summary className="cursor-pointer text-sm font-medium">Nutrition targets</summary>
+      <fieldset className="mt-3">
+        <legend className="sr-only">Daily nutrition targets (estimates)</legend>
         <p className="mt-1 text-xs text-muted">
           Used on Home rings. These are your numbers or DEMO defaults — not a personalized
           meal plan from a coach.
@@ -458,6 +458,7 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           </label>
         </div>
       </fieldset>
+      </details>
 
       <label className="flex items-start gap-3 rounded-xl border border-line p-3">
         <input

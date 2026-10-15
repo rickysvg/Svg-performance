@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { saveReadinessAction, type MobilityActionState } from "@/app/actions/mobility";
 import { StatusBanner } from "@/components/StatusBanner";
-import { READINESS_CREDITS, readinessSuggestion } from "@/lib/readiness";
+import { readinessSuggestion } from "@/lib/readiness";
 
 export function ReadinessCard({
   dayKey,
@@ -66,18 +66,6 @@ export function ReadinessCard({
       >
         {pending ? "Saving…" : "Save readiness"}
       </button>
-      <p className="text-xs text-muted">
-        Inspired by{" "}
-        {READINESS_CREDITS.map((credit, index) => (
-          <span key={credit.url}>
-            {index > 0 ? " and " : ""}
-            <a href={credit.url} className="underline" target="_blank" rel="noreferrer">
-              {credit.coach}
-            </a>
-          </span>
-        ))}
-        . SVG’s check, not their tool.
-      </p>
     </form>
   );
 }

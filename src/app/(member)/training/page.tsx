@@ -15,7 +15,7 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { floorPlyoBlock, plyoBlockFor, PLYO_CREDITS, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import {
@@ -195,7 +195,7 @@ export default async function TrainingPage({
           <p className="mt-1 text-sm text-muted">
             {camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
-              : "Today’s session. Not a custom fight camp."}
+              : "Today’s session."}
           </p>
           <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
             {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
@@ -283,13 +283,6 @@ export default async function TrainingPage({
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-xs text-muted">
-                Landing idea from{" "}
-                <a href={PLYO_CREDITS[0].url} className="underline" target="_blank" rel="noreferrer">
-                  {PLYO_CREDITS[0].coach}
-                </a>
-                . Not their program.
-              </p>
             </div>
           ) : null}
           {equipmentNote ? <p className="text-sm text-muted">{equipmentNote}</p> : null}
@@ -339,20 +332,23 @@ export default async function TrainingPage({
         />
       )}
 
-      <nav aria-label="More training" className="overflow-hidden rounded-2xl border border-line bg-card">
-        <ul className="divide-y divide-line">
-          {moreLinks.map((item) => (
-            <li key={item.href}>
-              <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
-                <span className="font-medium">{item.label}</span>
-                <span className="text-muted" aria-hidden>
-                  ›
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <details className="overflow-hidden rounded-2xl border border-line bg-card">
+        <summary className="cursor-pointer px-4 py-3 font-semibold">More training</summary>
+        <nav aria-label="More training">
+          <ul className="divide-y divide-line border-t border-line">
+            {moreLinks.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
+                  <span className="font-medium">{item.label}</span>
+                  <span className="text-muted" aria-hidden>
+                    ›
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </details>
 
       <details className="rounded-2xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer font-semibold">Fighter conditioning</summary>

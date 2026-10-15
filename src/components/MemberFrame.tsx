@@ -3,9 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { PrimaryNav } from "@/components/PrimaryNav";
-import { QuickAddFab } from "@/components/home/QuickAddFab";
 import { CoachFab } from "@/components/coach/CoachFab";
-import { shouldHideQuickAdd } from "@/lib/quick-add";
 import { coachFabClearsBottomBar, shouldShowCoachFab } from "@/lib/coaches";
 import { TimeZoneSync } from "@/components/TimeZoneSync";
 import { isImmersiveTrainingPath, shouldHidePrimaryNav } from "@/lib/member-nav";
@@ -59,13 +57,6 @@ export function MemberFrame({
           role={role}
           placement="bottom"
           currentPath={pathname}
-          centerAction={
-            shouldHideQuickAdd(pathname) ? (
-              <span className="h-10 w-10" aria-hidden />
-            ) : (
-              <QuickAddFab variant="inline" />
-            )
-          }
         />
       )}
     </div>

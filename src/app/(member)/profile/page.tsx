@@ -38,7 +38,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main className="space-y-8">
+    <main className="space-y-3">
       <div>
         <h1 className="text-2xl">Profile</h1>
         <p className="mt-1 text-sm text-muted">
@@ -51,11 +51,31 @@ export default async function ProfilePage() {
         ) : null}
       </div>
 
-      <SoundEffectsToggle />
-      <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
+      <details className="rounded-2xl border border-line bg-card">
+        <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Training</summary>
+        <div className="space-y-6 px-4 pb-4">
+          <ProfileForm profile={profile} />
+          <SoundEffectsToggle />
+          <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
+        </div>
+      </details>
 
-      <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-lg">Academy membership</h2>
+      <details className="rounded-2xl border border-line bg-card">
+        <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Reminders</summary>
+        <div className="px-4 pb-4">
+          <ReminderPrefsForm
+            prefs={prefs}
+            smtpConfigured={isSmtpReminderDeliveryEnabled()}
+          />
+        </div>
+      </details>
+
+      <details className="rounded-2xl border border-line bg-card">
+        <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Account</summary>
+        <div className="space-y-6 px-4 pb-4">
+      <details className="rounded-2xl border border-line bg-background">
+        <summary className="cursor-pointer px-4 py-3 font-semibold">Academy</summary>
+        <div className="space-y-3 px-4 pb-4">
         {profile.gymMembershipVerified ? (
           <p className="text-sm">
             {profile.gymMembershipSource === "admin"
@@ -95,13 +115,9 @@ export default async function ProfilePage() {
           We store hashed emails and phones from the academy roster — not a copy of that list —
           and we never send data to Gymdesk.
         </p>
-      </section>
+        </div>
+      </details>
 
-      <ProfileForm profile={profile} />
-      <ReminderPrefsForm
-        prefs={prefs}
-        smtpConfigured={isSmtpReminderDeliveryEnabled()}
-      />
       <ChangePasswordForm />
       <Link
         href="/feedback?from=/profile"
@@ -218,6 +234,19 @@ export default async function ProfilePage() {
           ) : null}
         </ul>
       </section>
+        </div>
+      </details>
+
+      <details className="rounded-2xl border border-line bg-card">
+        <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Sources</summary>
+        <div className="space-y-2 px-4 pb-4 text-sm text-muted">
+          <p>Joel Jamieson — readiness and conditioning ideas.</p>
+          <p>Andy Galpin — sleep and recovery.</p>
+          <p>Lachlan James — striker and grappler emphasis.</p>
+          <p>Loren Landow — land well before plyo volume.</p>
+          <p>SVG writes its own sessions. These are public ideas, not their programs.</p>
+        </div>
+      </details>
     </main>
   );
 }

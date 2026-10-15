@@ -204,19 +204,22 @@ async function TechniqueLibrary({
           Search
         </button>
       </form>
-      <section className="space-y-3">
-        <p className="text-xs uppercase tracking-wide text-muted">Skill level</p>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <Chip href={href({ level: "all" })} active={selectedLevel === "all"}>
-            All levels
-          </Chip>
-          {LESSON_LEVELS.map((level) => (
-            <Chip key={level} href={href({ level })} active={selectedLevel === level}>
-              {lessonLevelLabel(level)}
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">Filters</summary>
+        <section className="mt-3 space-y-3">
+          <p className="text-xs uppercase tracking-wide text-muted">Skill level</p>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            <Chip href={href({ level: "all" })} active={selectedLevel === "all"}>
+              All levels
             </Chip>
-          ))}
-        </div>
-      </section>
+            {LESSON_LEVELS.map((level) => (
+              <Chip key={level} href={href({ level })} active={selectedLevel === level}>
+                {lessonLevelLabel(level)}
+              </Chip>
+            ))}
+          </div>
+        </section>
+      </details>
       <section className="space-y-3">
         <p className="text-xs uppercase tracking-wide text-muted">Martial art</p>
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -297,19 +300,6 @@ function SeminarLibrary({
 
   return (
     <>
-      {!fullLibrary ? (
-        <UpgradePreviewSheet
-          kind="seminar"
-          canStartTrial={canStartTrial}
-          trialDays={trialDays}
-          next="/learn"
-        >
-          <span className="block rounded-2xl border border-line bg-card p-4 text-sm">
-            Beginner seminars are free. Unlock every seminar and clip with Performance.
-          </span>
-        </UpgradePreviewSheet>
-      ) : null}
-
       <form action="/learn" className="flex flex-col gap-2 sm:flex-row sm:items-center">
         {category !== "all" ? <input type="hidden" name="cat" value={category} /> : null}
         {level !== "all" ? <input type="hidden" name="level" value={level} /> : null}
@@ -347,36 +337,51 @@ function SeminarLibrary({
         </div>
       </section>
 
-      <section className="space-y-3">
-        <p className="text-xs uppercase tracking-wide text-muted">Level</p>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <Chip href={href({ level: "all" })} active={level === "all"}>
-            All levels
-          </Chip>
-          {(["beginner", "intermediate", "advanced"] as const).map((item) => (
-            <Chip key={item} href={href({ level: item })} active={level === item}>
-              {seminarLevelLabel(item)}
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">Filters</summary>
+        <div className="mt-3 space-y-4">
+          {!fullLibrary ? (
+            <UpgradePreviewSheet
+              kind="seminar"
+              canStartTrial={canStartTrial}
+              trialDays={trialDays}
+              next="/learn"
+            >
+              <span className="block rounded-2xl border border-line bg-background p-4 text-sm">
+                Beginner seminars are free. Unlock every seminar and clip with Performance.
+              </span>
+            </UpgradePreviewSheet>
+          ) : null}
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted">Level</p>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+              <Chip href={href({ level: "all" })} active={level === "all"}>
+                All levels
+              </Chip>
+              {(["beginner", "intermediate", "advanced"] as const).map((item) => (
+                <Chip key={item} href={href({ level: item })} active={level === item}>
+                  {seminarLevelLabel(item)}
+                </Chip>
+              ))}
+            </div>
+          </section>
+          {category === "mma" ? (
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+              <Chip href={href({ cage: !cage })} active={cage}>
+                Cage / wall work
+              </Chip>
+            </div>
+          ) : null}
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="Library view">
+            <Chip href={href({ view: "seminars" })} active={view === "seminars"}>
+              Seminars
             </Chip>
-          ))}
+            <Chip href={href({ view: "clips" })} active={view === "clips"}>
+              Technique clips
+            </Chip>
+          </div>
         </div>
-      </section>
-
-      {category === "mma" ? (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <Chip href={href({ cage: !cage })} active={cage}>
-            Cage / wall work
-          </Chip>
-        </div>
-      ) : null}
-
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="Library view">
-        <Chip href={href({ view: "seminars" })} active={view === "seminars"}>
-          Seminars
-        </Chip>
-        <Chip href={href({ view: "clips" })} active={view === "clips"}>
-          Technique clips
-        </Chip>
-      </div>
+      </details>
 
       {showRail ? (
         <section className="space-y-3">

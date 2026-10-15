@@ -97,7 +97,6 @@ export function AppHeader({
   hideMemberLinks = false,
   placement = "top",
   currentPath,
-  centerAction,
 }: {
   email?: string;
   role?: string;
@@ -105,7 +104,6 @@ export function AppHeader({
   hideMemberLinks?: boolean;
   placement?: "top" | "bottom";
   currentPath?: string;
-  centerAction?: ReactNode;
 }) {
   const staff = role === "admin" || role === "coach";
   const docked = placement === "bottom";
@@ -143,7 +141,7 @@ export function AppHeader({
           </Link>
           <nav
             aria-label="Account"
-            className="grid min-w-0 flex-1 grid-cols-5 items-end"
+            className="grid min-w-0 flex-1 grid-cols-3 items-end"
           >
             {BOTTOM_DOCK_LEFT.map((link) => (
               <DockLink
@@ -153,7 +151,6 @@ export function AppHeader({
                 active={isAccountNavActive(path, link.href)}
               />
             ))}
-            <div className="flex items-center justify-center">{centerAction}</div>
             {BOTTOM_DOCK_RIGHT.map((link) => (
               <DockLink
                 key={link.href}

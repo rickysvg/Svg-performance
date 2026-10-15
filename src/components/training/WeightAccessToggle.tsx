@@ -11,9 +11,6 @@ export function WeightAccessToggle({
   return (
     <section data-weight-access className="rounded-2xl border border-line bg-card px-4 py-3">
       <p className="font-display text-xs uppercase tracking-wide text-accent">Where you can train</p>
-      <p className="mt-1 text-sm text-muted">
-        Gym and weights is the plan. Choose no gym or weights for a full floor session you can do that day.
-      </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {WEIGHT_ACCESS_OPTIONS.map((option) => {
           const active = option.value === access;

@@ -111,9 +111,6 @@ export default async function TrainingDayPage({
         <div>
           <h1 className="text-2xl leading-tight">{day.title}</h1>
           <p className="mt-1 text-sm text-muted">{day.focus}</p>
-          <div className="mt-3">
-            <WeightAccessToggle access={weightAccess} nextPath={`/training/${day.id}`} />
-          </div>
           <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
             {scaleCopy(
               scaleBandFromPrefs({
@@ -153,9 +150,10 @@ export default async function TrainingDayPage({
             </button>
           </form>
         )}
-        {bookend ? <TrainDayMobility bookend={bookend} /> : null}
 
         <SessionDetails>
+          <WeightAccessToggle access={weightAccess} nextPath={`/training/${day.id}`} />
+          {bookend ? <TrainDayMobility bookend={bookend} /> : null}
           <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line px-4 py-3">
             <p className="font-display text-xs uppercase tracking-wide text-accent">Warm-up</p>
             <p className="font-semibold">Dynamic warm-up · 3–4 min</p>

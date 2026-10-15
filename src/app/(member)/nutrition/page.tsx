@@ -42,12 +42,7 @@ export default async function NutritionPage() {
     <main className="space-y-6">
       <div>
         <h1 className="text-2xl">Nutrition</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manual entries only. Calories and macros are{" "}
-          <strong className="text-foreground">your estimates</strong>, labeled
-          as manual estimates. This is not medical advice. Verify ingredients
-          yourself if you have allergies.
-        </p>
+        <p className="mt-1 text-sm text-muted">Your estimates. Not medical advice.</p>
       </div>
 
       {(profile?.allergies || profile?.foodPreferences) && (
@@ -67,12 +62,17 @@ export default async function NutritionPage() {
       </section>
 
       <NutritionEntryForm savedMeals={saved} />
-      <SavedMealForm />
-      <p className="text-sm">
-        <Link href="/nutrition/prep" className="text-accent underline">
-          Meal-prep → portions, swaps, grocery list
-        </Link>
-      </p>
+      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+        <summary className="cursor-pointer font-semibold">More</summary>
+        <div className="mt-4 space-y-4">
+          <SavedMealForm />
+          <p className="text-sm">
+            <Link href="/nutrition/prep" className="text-accent underline">
+              Meal-prep → portions, swaps, grocery list
+            </Link>
+          </p>
+        </div>
+      </details>
 
       <section className="space-y-3">
         <h2 className="text-lg">Your log</h2>

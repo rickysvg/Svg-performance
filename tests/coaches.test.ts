@@ -125,10 +125,10 @@ describe("AI coach avatars", () => {
     expect(html).not.toContain(">SVG Coach<");
   });
 
-  it("keeps the floating button off the coach screen and above logger bars", () => {
-    expect(shouldShowCoachFab("/home")).toBe(true);
-    expect(shouldShowCoachFab("/training")).toBe(true);
-    expect(shouldShowCoachFab("/training/calendar")).toBe(true);
+  it("keeps the floating coach button off every screen", () => {
+    expect(shouldShowCoachFab("/home")).toBe(false);
+    expect(shouldShowCoachFab("/training")).toBe(false);
+    expect(shouldShowCoachFab("/training/calendar")).toBe(false);
     expect(shouldShowCoachFab("/coach")).toBe(false);
     expect(shouldShowCoachFab("/coach?topic=mental")).toBe(false);
     expect(coachFabClearsBottomBar("/training/log/abc")).toBe(true);

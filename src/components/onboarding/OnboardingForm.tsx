@@ -82,6 +82,28 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
             ))}
           </select>
         </label>
+        <fieldset>
+          <legend className="text-sm font-medium">Days you can train</legend>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {WEEKDAYS.map((day) => (
+              <label key={day} className="flex items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  name="weeklyAvailability"
+                  value={day}
+                  defaultChecked={profile.weeklyAvailability.includes(day)}
+                  className="h-5 w-5 accent-accent"
+                />
+                {day}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </section>
+
+      <details className="rounded-2xl border border-line bg-card p-4">
+        <summary className="cursor-pointer font-semibold">More about you</summary>
+        <div className="mt-4 space-y-4">
         <label className="block">
           <span className="text-sm font-medium">More about that goal (optional)</span>
           <textarea
@@ -121,12 +143,9 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
             ))}
           </select>
         </label>
-      </section>
-
-      <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-        <h2>Training setup</h2>
         <fieldset>
           <legend className="text-sm font-medium">Equipment you can use</legend>
+          <p className="mt-1 text-xs text-muted">Bodyweight is already selected so you can continue. Change it anytime.</p>
           <div className="mt-2 grid gap-2">
             {EQUIPMENT_OPTIONS.map((item) => (
               <label key={item} className="flex items-center gap-3 text-sm">
@@ -138,23 +157,6 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
                   className="h-5 w-5 accent-accent"
                 />
                 {item}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend className="text-sm font-medium">Days you can train</legend>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {WEEKDAYS.map((day) => (
-              <label key={day} className="flex items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  name="weeklyAvailability"
-                  value={day}
-                  defaultChecked={profile.weeklyAvailability.includes(day)}
-                  className="h-5 w-5 accent-accent"
-                />
-                {day}
               </label>
             ))}
           </div>
@@ -175,11 +177,6 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
           <input type="hidden" name="preferredUnits" value="lb" />
           <p className="mt-2 text-sm text-muted">Pounds (lb). Loads and body weight use lbs.</p>
         </fieldset>
-      </section>
-
-      <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-        <h2>Optional notes</h2>
-        <p className="text-xs text-muted">Skip any of these. You can add them later in Profile.</p>
         <label className="block">
           <span className="text-sm font-medium">Training limitations</span>
           <textarea
@@ -214,7 +211,8 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
             Always verify ingredients yourself. Food numbers in this app are estimates.
           </span>
         </label>
-      </section>
+        </div>
+      </details>
       </div>
 
       <div data-intake-step="2" hidden={step !== 2} className="space-y-6">

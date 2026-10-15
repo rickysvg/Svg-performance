@@ -37,10 +37,11 @@ export function SessionFeelPicker({
   return (
     <form action={action} className="mt-5 w-full text-left" data-session-feel="1">
       <input type="hidden" name="workoutId" value={workoutId} />
-      <fieldset className="grid gap-2">
+      <fieldset>
         <legend className="mb-2 w-full text-center text-[11px] uppercase tracking-[0.16em] text-white/55">
           How hard was that?
         </legend>
+        <div className="grid grid-cols-5 gap-2">
         {DIFFICULTY_RATINGS.map((item) => {
           const on = selected === item.value;
           return (
@@ -53,15 +54,16 @@ export function SessionFeelPicker({
               aria-pressed={on}
               data-difficulty={item.value}
               onClick={() => setPressed(item.value)}
-              className={`flex min-h-16 w-full items-center gap-4 rounded-2xl px-4 text-left text-lg disabled:opacity-60 ${
+              className={`flex min-h-14 w-full items-center justify-center rounded-2xl text-lg disabled:opacity-60 ${
                 on ? "bg-[#cbf805] text-black" : "bg-white/10 text-white"
               }`}
             >
-              <span className="font-display w-6 text-[28px] leading-none">{item.score}</span>
-              <span className="font-semibold">{item.label}</span>
+              <span className="font-display text-2xl leading-none">{item.score}</span>
+              <span className="sr-only">{item.label}</span>
             </button>
           );
         })}
+        </div>
       </fieldset>
       {state.error ? (
         <p className="mt-2 text-center text-sm text-white" role="alert">
