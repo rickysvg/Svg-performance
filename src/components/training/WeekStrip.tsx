@@ -474,12 +474,12 @@ export function WeekStrip({
               {pending ? "Saving…" : "Back to the default week"}
             </button>
           </div>
-          <p className="mt-2 text-sm text-white/70">Tap Move on a workout, or hold a day to swap again.</p>
+          <p className="mt-2 text-sm text-white/70">Tap Move on a session, or hold a day to swap the whole day again.</p>
         </div>
       ) : null}
       {rearrange && !source && moved.length === 0 ? (
         <p data-move-hint className="mt-3 text-sm text-muted">
-          Tap Move on a workout to put it on another day. Hold a day to swap two days.
+          Tap Move on a session to put it on another day. Hold a day to swap two whole days.
         </p>
       ) : null}
       {rearrange && !source && moved.length === 0 && error ? (

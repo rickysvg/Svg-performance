@@ -158,6 +158,16 @@ export default async function TrainingPage({
       tz,
     ),
   );
+  const doneOnView = isToday
+    ? doneToday
+    : new Set(
+        await completedProgramDayIdsOnDay(
+          user.id,
+          planned.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+          selected,
+          tz,
+        ),
+      );
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -262,6 +272,7 @@ export default async function TrainingPage({
               calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && planned.length > 1}
               draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
+              completed={session.dayId ? doneOnView.has(session.dayId) : false}
             />
           </div>
         ))}

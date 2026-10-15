@@ -51,6 +51,8 @@ export type PlanSessionSlot = {
   sourceWeekday?: PlanWeekday;
   /** Stable id for moving this workout within one week. */
   sessionKey?: string;
+  /** Lift, hard bag, or hard conditioning. Easy cardio and mobility are not heavy. */
+  heavy?: boolean;
   title?: string;
   detail?: string;
   href?: string;
@@ -106,6 +108,7 @@ export type ResolvedPlanSession = {
   day?: CatalogDayLike | null;
   sessionKey?: string;
   sourceWeekday?: PlanWeekday;
+  heavy?: boolean;
 };
 
 const JS_WEEKDAYS = [
@@ -240,29 +243,31 @@ function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number)
     sessions.push({
       ...bag,
       optional: false,
+      heavy: role.bag === "hard",
       detail:
         role.bag === "moderate"
           ? `Moderate pace · est. ${minutes} min. Not a max-effort interval day.`
           : `Est. ${minutes} min. Warm-up, themed rounds, then a short cooldown.`,
     });
   }
-  if (role.lift) sessions.push(liftSlot(role.lift, weekIndex));
+  if (role.lift) sessions.push({ ...liftSlot(role.lift, weekIndex), heavy: true });
   if (role.cardio === "hard-bike" || role.cardio === "hard") {
     const bikeDay = weekday === "Thursday" ? "Thursday" : "Tuesday";
-    sessions.push(bikeSlot(bikeDay, weekIndex));
+    sessions.push({ ...bikeSlot(bikeDay, weekIndex), heavy: true });
   } else if (role.cardio === "hard-repeats") {
     sessions.push({
       ...repeatsSlot(weekIndex),
+      heavy: true,
       label: "Cardio — repeats",
       title: "Cardio — repeats",
       detail: "Sprints, carries, and the other conditioning on this menu.",
     });
   } else if (role.cardio === "easy") {
-    sessions.push(easyCardioSlot());
+    sessions.push({ ...easyCardioSlot(), heavy: false });
   } else if (role.cardio === "moderate") {
-    sessions.push(moderateCardioSlot());
+    sessions.push({ ...moderateCardioSlot(), heavy: false });
   }
-  if (role.mobility) sessions.push(mobilitySlot(role.mobility));
+  if (role.mobility) sessions.push({ ...mobilitySlot(role.mobility), heavy: false });
   return sessions;
 }
 
@@ -630,10 +635,25 @@ export function resolvePlanSessions(
       day,
       sessionKey: session.sessionKey,
       sourceWeekday: session.sourceWeekday,
+      heavy: Boolean(session.heavy),
     });
   }
   return resolved;
 }
+
+export type MoveSessionChoice = {
+  sessionKey: string;
+  title: string;
+  heavy: boolean;
+  completed: boolean;
+};
+
+export type MoveListedSession = {
+  title: string;
+  sessionKey?: string;
+  completed?: boolean;
+  heavy?: boolean;
+};
 
 export type MoveDayChoice = {
   weekday: PlanWeekday;
@@ -641,7 +661,16 @@ export type MoveDayChoice = {
   detail: string;
   isToday: boolean;
   isPast: boolean;
+  outside: "class" | "sparring" | null;
+  /** The next calendar day is one of this member’s sparring days. */
+  beforeSparring: boolean;
+  sessions: MoveSessionChoice[];
 };
+
+function nextPlanWeekday(day: PlanWeekday): PlanWeekday {
+  const index = WEEKDAYS.indexOf(day);
+  return WEEKDAYS[(index + 1) % WEEKDAYS.length];
+}
 
 /** Days in the viewed week, with the workouts already sitting on each one. */
 export function moveDayChoices(
@@ -650,21 +679,50 @@ export function moveDayChoices(
   timeZone: string,
   weekAnchor: Date,
   swaps: WeekPlanSwap[],
-  titles?: Partial<Record<PlanWeekday, string[]>>,
+  titles?: Partial<Record<PlanWeekday, MoveListedSession[]>>,
 ): MoveDayChoice[] {
-  return weekStrip(prefs, now, timeZone, undefined, swaps, weekAnchor).map((day) => {
-    const named = (titles?.[day.weekday] ?? []).map((title) => title.trim()).filter(Boolean);
-    const plan = planForDate(prefs, day.date, timeZone, swaps);
-    const fallback = plan.sessions
-      .filter((session) => session.kind !== "rest")
-      .map((session) => session.label);
-    const lines = named.length > 0 ? named : fallback;
+  const strip = weekStrip(prefs, now, timeZone, undefined, swaps, weekAnchor);
+  const plans = strip.map((day) => planForDate(prefs, day.date, timeZone, swaps));
+  const sparring = new Set(
+    plans.filter((plan) => plan.outside?.kind === "sparring").map((plan) => plan.weekday),
+  );
+  return strip.map((day, index) => {
+    const plan = plans[index]!;
+    const named = titles?.[day.weekday] ?? [];
+    const fromPlan: MoveSessionChoice[] = plan.sessions
+      .filter((session) => session.kind !== "rest" && session.sessionKey)
+      .map((session) => ({
+        sessionKey: session.sessionKey!,
+        title: session.label,
+        heavy: Boolean(session.heavy),
+        completed: false,
+      }));
+    const listed = named.filter((session) => session.sessionKey && session.title.trim());
+    const sessions =
+      listed.length > 0
+        ? listed.map((session) => {
+            const planned = fromPlan.find((row) => row.sessionKey === session.sessionKey);
+            return {
+              sessionKey: session.sessionKey!,
+              title: session.title.trim(),
+              heavy: session.heavy ?? planned?.heavy ?? false,
+              completed: Boolean(session.completed),
+            };
+          })
+        : fromPlan;
+    const lines =
+      named.length > 0
+        ? named.map((session) => session.title.trim()).filter(Boolean)
+        : fromPlan.map((session) => session.title);
     return {
       weekday: day.weekday,
       label: day.isToday ? `Today · ${day.weekday}` : `${day.weekday} ${day.dateLabel}`,
-      detail: lines.length > 0 ? lines.join(" · ") : "Open",
+      detail: lines.length > 0 ? lines.join(" · ") : plan.outside?.kind === "sparring" ? "Sparring" : "Open",
       isToday: day.isToday,
       isPast: day.isPast,
+      outside: plan.outside?.kind ?? null,
+      beforeSparring: sparring.has(nextPlanWeekday(day.weekday)),
+      sessions,
     };
   });
 }

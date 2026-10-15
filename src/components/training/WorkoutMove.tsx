@@ -13,13 +13,21 @@ import {
   moveWorkoutAction,
   restoreWeekPlanAction,
   swapCalendarDaysAction,
+  swapWorkoutAction,
 } from "@/app/actions/week-plan";
-import type { MoveDayChoice } from "@/lib/week-plan";
+import type { MoveDayChoice, MoveSessionChoice } from "@/lib/week-plan";
+import { sessionMoveCaution } from "@/lib/week-plan-swaps";
 
 type OpenMove = {
   sessionKey: string;
   fromWeekday: string;
   title: string;
+  heavy: boolean;
+};
+
+type PendingCaution = {
+  message: string;
+  run: () => void;
 };
 
 type WorkoutMoveContextValue = {
@@ -52,6 +60,7 @@ export function WorkoutMoveProvider({
   const [target, setTarget] = useState<OpenMove | null>(null);
   const [mode, setMode] = useState<"move" | "swap">("move");
   const [error, setError] = useState<string | null>(null);
+  const [caution, setCaution] = useState<PendingCaution | null>(null);
   const [toast, setToast] = useState<{ message: string; undo: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -59,6 +68,7 @@ export function WorkoutMoveProvider({
     if (pending) return;
     setTarget(null);
     setError(null);
+    setCaution(null);
     setMode("move");
   }
 
@@ -66,6 +76,7 @@ export function WorkoutMoveProvider({
     setTarget(null);
     setMode("move");
     setError(null);
+    setCaution(null);
     if (undo) setToast({ message, undo });
     router.refresh();
   }
@@ -94,6 +105,55 @@ export function WorkoutMoveProvider({
     });
   }
 
+  function commitSessionSwap(otherKey: string, otherTitle: string) {
+    if (!target) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await swapWorkoutAction(target.sessionKey, otherKey, weekStart);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      finish(`Swapped with ${otherTitle}.`, result.undo);
+    });
+  }
+
+  function landingCaution(heavy: boolean, day: MoveDayChoice) {
+    return sessionMoveCaution({
+      heavy,
+      outside: day.outside,
+      beforeSparring: day.beforeSparring,
+      dayName: day.weekday,
+    });
+  }
+
+  function guarded(note: string | null, run: () => void) {
+    if (!note) {
+      setCaution(null);
+      run();
+      return;
+    }
+    setCaution({ message: note, run });
+  }
+
+  function requestMove(toDay: string, message: string) {
+    if (!target) return;
+    const day = days.find((item) => item.weekday === toDay);
+    guarded(day ? landingCaution(target.heavy, day) : null, () =>
+      commitMove(target.sessionKey, toDay, message),
+    );
+  }
+
+  function requestSessionSwap(session: MoveSessionChoice, day: MoveDayChoice) {
+    if (!target) return;
+    const home = days.find((item) => item.weekday === target.fromWeekday);
+    const outbound = landingCaution(target.heavy, day);
+    const inbound = home ? landingCaution(session.heavy, home) : null;
+    const note =
+      outbound && inbound && outbound !== inbound ? `${outbound} ${inbound}` : outbound ?? inbound;
+    guarded(note, () => commitSessionSwap(session.sessionKey, session.title));
+  }
+
   function undo() {
     if (!toast || pending) return;
     const payload = toast.undo;
@@ -110,6 +170,15 @@ export function WorkoutMoveProvider({
   }
 
   const today = days.find((day) => day.isToday);
+  const fromDay = target ? days.find((day) => day.weekday === target.fromWeekday) : undefined;
+  const swapLocked = Boolean(fromDay && fromDay.isPast && !fromDay.isToday);
+  const swapTargets = target
+    ? days.flatMap((day) =>
+        day.sessions
+          .filter((session) => session.sessionKey !== target.sessionKey && day.weekday !== target.fromWeekday)
+          .map((session) => ({ day, session })),
+      )
+    : [];
 
   return (
     <WorkoutMoveContext.Provider
@@ -118,6 +187,7 @@ export function WorkoutMoveProvider({
         open: (next) => {
           setMode("move");
           setError(null);
+          setCaution(null);
           setTarget(next);
         },
         swapDays: (fromDay, toDay) => commitSwap(fromDay, toDay),
@@ -137,81 +207,141 @@ export function WorkoutMoveProvider({
             aria-label={`Move ${target.title}`}
             className="relative max-h-[85vh] w-full overflow-y-auto rounded-t-3xl bg-card px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground"
           >
-            <p className="font-display text-xs uppercase tracking-wide text-accent">Move</p>
+            <p className="font-display text-xs uppercase tracking-wide text-accent">This session</p>
             <h2 className="mt-1 text-lg leading-tight">{target.title}</h2>
-            <p className="mt-1 text-sm text-muted">On {target.fromWeekday} this week.</p>
-            {today && target.fromWeekday !== today.weekday ? (
-              <button
-                type="button"
-                data-move-today
-                disabled={pending}
-                onClick={() => commitMove(target.sessionKey, today.weekday, "Moved to today.")}
-                className="mt-4 flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
-              >
-                Do today
-              </button>
-            ) : null}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
+            <p className="mt-1 text-sm text-muted">
+              On {target.fromWeekday}. The other sessions that day stay put. Workouts are
+              interchangeable through the week.
+            </p>
+            <div aria-label={`Move ${target.title}`} className="mt-4 space-y-2">
+              {today && target.fromWeekday !== today.weekday ? (
+                <button
+                  type="button"
+                  data-move-today
+                  disabled={pending}
+                  onClick={() => requestMove(today.weekday, "Moved to today.")}
+                  className="flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+                >
+                  Do today
+                </button>
+              ) : null}
+                <button
                 type="button"
                 data-move-to
                 aria-pressed={mode === "move"}
-                onClick={() => setMode("move")}
-                className={`min-h-11 rounded-full px-3 text-sm font-semibold ${
+                onClick={() => {
+                  setCaution(null);
+                  setMode("move");
+                }}
+                className={`min-h-11 w-full rounded-full px-3 text-sm font-semibold ${
                   mode === "move" ? "bg-black text-white" : "border border-line"
                 }`}
               >
-                Move to…
+                Move to another day
               </button>
-              <button
+                <button
                 type="button"
                 data-swap-with
                 aria-pressed={mode === "swap"}
-                onClick={() => setMode("swap")}
-                className={`min-h-11 rounded-full px-3 text-sm font-semibold ${
+                onClick={() => {
+                  setCaution(null);
+                  setMode("swap");
+                }}
+                className={`min-h-11 w-full rounded-full px-3 text-sm font-semibold ${
                   mode === "swap" ? "bg-black text-white" : "border border-line"
                 }`}
               >
-                Swap with…
+                Swap with a session
               </button>
             </div>
+            {caution ? (
+              <div data-move-caution className="mt-3 rounded-2xl bg-black px-4 py-3 text-white">
+                <p className="text-sm">{caution.message}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    data-move-anyway
+                    disabled={pending}
+                    onClick={() => {
+                      const run = caution.run;
+                      setCaution(null);
+                      run();
+                    }}
+                    className="inline-flex min-h-11 items-center rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+                  >
+                    Move anyway
+                  </button>
+                  <button
+                    type="button"
+                    data-move-dismiss
+                    disabled={pending}
+                    onClick={() => setCaution(null)}
+                    className="inline-flex min-h-11 items-center rounded-full border border-white/40 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    Not now
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {mode === "swap" && swapLocked ? (
+              <p className="mt-3 text-sm text-muted">
+                Swap needs two days from today on. Use Move to put this missed session on today
+                or a later day.
+              </p>
+            ) : null}
             <ul className="mt-3 space-y-2">
-              {days.map((day) => {
-                const current = day.weekday === target.fromWeekday;
-                const blocked = mode === "move" && day.isPast && !day.isToday;
-                const disabled = pending || current || blocked;
-                return (
-                  <li key={`${mode}-${day.weekday}`}>
-                    <button
-                      type="button"
-                      data-move-day={mode === "move" ? day.weekday : undefined}
-                      data-swap-day={mode === "swap" ? day.weekday : undefined}
-                      disabled={disabled}
-                      onClick={() => {
-                        if (mode === "swap") {
-                          commitSwap(target.fromWeekday, day.weekday);
-                          return;
-                        }
-                        commitMove(
-                          target.sessionKey,
-                          day.weekday,
-                          `Moved to ${day.weekday}.`,
-                        );
-                      }}
-                      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-line px-3 py-2 text-left disabled:opacity-45"
-                    >
-                      <span className="min-w-0">
-                        <span className="block font-semibold">{day.label}</span>
-                        <span className="block truncate text-sm text-muted">{day.detail}</span>
-                      </span>
-                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
-                        {current ? "Here" : blocked ? "Past" : mode === "swap" ? "Swap" : "Move"}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
+              {mode === "move"
+                ? days.map((day) => {
+                    const current = day.weekday === target.fromWeekday;
+                    const blocked = day.isPast && !day.isToday;
+                    const disabled = pending || current || blocked;
+                    return (
+                      <li key={day.weekday}>
+                        <button
+                          type="button"
+                          data-move-day={day.weekday}
+                          disabled={disabled}
+                          onClick={() => requestMove(day.weekday, `Moved to ${day.weekday}.`)}
+                          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-line px-3 py-2 text-left disabled:opacity-45"
+                        >
+                          <span className="min-w-0">
+                            <span className="block font-semibold">{day.label}</span>
+                            <span className="block truncate text-sm text-muted">{day.detail}</span>
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+                            {current ? "Here" : blocked ? "Past" : "Move"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })
+                : swapTargets.map(({ day, session }) => {
+                    const blocked = swapLocked || (day.isPast && !day.isToday) || session.completed;
+                    const label = session.completed ? "Done" : day.isPast && !day.isToday ? "Past" : "Swap";
+                    return (
+                      <li key={session.sessionKey}>
+                        <button
+                          type="button"
+                          data-swap-session={session.sessionKey}
+                          disabled={pending || blocked}
+                          onClick={() => requestSessionSwap(session, day)}
+                          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-line px-3 py-2 text-left disabled:opacity-45"
+                        >
+                          <span className="min-w-0">
+                            <span className="block font-semibold">{session.title}</span>
+                            <span className="block truncate text-sm text-muted">{day.label}</span>
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+                            {label}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
             </ul>
+            {mode === "swap" && !swapLocked && swapTargets.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">No other session to swap with this week.</p>
+            ) : null}
             {error ? <p className="mt-3 text-sm text-muted">{error}</p> : null}
             <button
               type="button"
@@ -253,10 +383,12 @@ export function WorkoutMoveButton({
   sessionKey,
   fromWeekday,
   title,
+  heavy = false,
 }: {
   sessionKey: string;
   fromWeekday: string;
   title: string;
+  heavy?: boolean;
 }) {
   const move = useWorkoutMove();
   if (!move || !move.editable) return null;
@@ -264,12 +396,14 @@ export function WorkoutMoveButton({
     <button
       type="button"
       data-move-workout
+      data-session-menu
+      aria-haspopup="menu"
       className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-accent px-3 text-sm font-semibold text-black"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        move.open({ sessionKey, fromWeekday, title });
+        move.open({ sessionKey, fromWeekday, title, heavy });
       }}
     >
       Move
@@ -282,11 +416,13 @@ export function HoldToMove({
   sessionKey,
   fromWeekday,
   title,
+  heavy = false,
   children,
 }: {
   sessionKey: string;
   fromWeekday: string;
   title: string;
+  heavy?: boolean;
   children: ReactNode;
 }) {
   const move = useWorkoutMove();
@@ -314,7 +450,7 @@ export function HoldToMove({
         timer.current = setTimeout(() => {
           timer.current = null;
           ignoreClick.current = true;
-          move.open({ sessionKey, fromWeekday, title });
+          move.open({ sessionKey, fromWeekday, title, heavy });
         }, HOLD_MS);
       }}
       onPointerMove={(event) => {
@@ -327,7 +463,7 @@ export function HoldToMove({
         event.preventDefault();
         clearTimer();
         ignoreClick.current = true;
-        move.open({ sessionKey, fromWeekday, title });
+        move.open({ sessionKey, fromWeekday, title, heavy });
       }}
       onClickCapture={(event) => {
         if (!ignoreClick.current) return;
