@@ -1,4 +1,4 @@
-import { loadKnowledgeBase } from "@/lib/coach/knowledge";
+import { loadCoreKnowledge, retrieveCoachKnowledge } from "@/lib/coach/knowledge";
 import { offlineReply } from "@/lib/coach/offline";
 import type { CoachRoute } from "@/lib/coach/router";
 import { coachingStyleVoice } from "@/lib/coaches";
@@ -84,6 +84,9 @@ export function buildCoachSystemPrompt(input: {
   planContext?: string;
   coachingStyle?: string;
   coachName?: string;
+  message?: string;
+  experienceLevel?: string;
+  memberProfile?: string;
 }) {
   const wantsPlan =
     input.route.primary === "programming" || input.route.secondary.includes("programming");
@@ -92,15 +95,24 @@ export function buildCoachSystemPrompt(input: {
     : input.planContext?.trim()
       ? `Member plan (this member only):\n${input.planContext.trim()}`
       : "No plan data available. Don't invent numbers.";
+  const notes = retrieveCoachKnowledge({
+    primary: input.route.primary,
+    secondary: input.route.secondary,
+    art: input.art,
+    message: input.message,
+    level: input.experienceLevel,
+  });
   return [
     safetyPreamble(),
     coachTopicContext(input.topic, input.art),
     styleInstructions(input.route, { topic: input.topic, art: input.art }),
     coachingStyleVoice(input.coachingStyle, input.coachName),
-    "Approved DEMO knowledge:",
-    loadKnowledgeBase(),
+    "Core coaching guide (always on):",
+    loadCoreKnowledge(),
+    notes ? `Retrieved notes (use these when they apply and cite the file name):\n${notes}` : "",
     "Member context (current user only):",
     input.ownSummary,
+    input.memberProfile?.trim() || "",
     planBlock,
   ]
     .filter(Boolean)

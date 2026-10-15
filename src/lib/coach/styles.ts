@@ -7,6 +7,7 @@ export const STYLE_LIMITS: Record<QuestionType, { maxTokens: number }> = {
   programming: { maxTokens: 550 },
   nutrition: { maxTokens: 500 },
   mindset: { maxTokens: 450 },
+  fight_iq: { maxTokens: 500 },
   injury: { maxTokens: 300 },
   general: { maxTokens: 400 },
 };
@@ -25,19 +26,8 @@ function artLabel(art?: string) {
 }
 
 function artEmphasis(art?: string) {
-  if (art === "mma" || art === "cagework") {
-    return "Art emphasis: the cage is a tool (wall-walk, frames, underhooks on the fence). Grabbing the fence with fingers or toes is a foul.";
-  }
-  if (art === "boxing") {
-    return "Art emphasis: boxing. No clinch-fighting advice beyond referee breaks.";
-  }
-  if (art === "muay-thai") {
-    return "Art emphasis: Muay Thai. Elbows and clinch knees are allowed under most Thai rules. Amateur rules vary.";
-  }
-  if (art === "wrestling" || art === "jiu-jitsu") {
-    return "Art emphasis: no strikes. Frames are for space, not damage.";
-  }
-  return "";
+  if (!isCoachArt(art) || art === "general") return "";
+  return `Art emphasis: ${COACH_ART_LABELS[art]}. Use the art principle in the lane notes. Do not teach a weapon the rule set for this art bans. Name the rule set when legality matters (Unified Rules or amateur MMA, IBJJF, IJF, WKF, IFMA, World Taekwondo, FIAS sambo, boxing, or wrestling).`;
 }
 
 function techniqueBlock(route: CoachRoute, art?: string) {
@@ -80,9 +70,14 @@ function rulesBlock() {
 function programmingBlock() {
   return [
     "Answer style: programming.",
+    "Expert standard for this app: main lifts max 4 sets, accessories max 3. A lift already written for 1 or 2 sets stays there. Bag rounds and conditioning intervals are not lifts. Loads are lbs. Effort is RIR. 0-2 RIR on a main lift is near hard. 2 RIR means about two clean reps left. Do not invent a load, a body weight, or a max.",
+    "Force and velocity: heavy slow work builds force, light fast work builds velocity, power sits between them. Fighters need both. Stop a power set when the bar or the athlete slows down.",
+    "Energy systems: a 3- or 5-minute round is mostly aerobic with repeated hard bursts. Train repeatable rounds. Do not replace that with one all-out finisher.",
+    "Concurrent training: do the priority session first. Do not max a lift on a hard sparring day. Two to four lift days is enough next to class.",
+    "Periodization: base keeps skill volume and strength, build gets more specific, peak cuts volume and keeps speed, taper (fight week) drops volume again and cuts hard sparring. Off-season builds capacity. In-season maintains. Beginners get a repeatable week, not a fight-camp template.",
     "Tie the answer to the member plan context when that block is present. Name today's or the next session, the relevant exercise, the prescribed sets × reps @ RIR, and the last logged load in lbs.",
     "If the prompt says no plan data is available, don't invent numbers.",
-    "Do this: the concrete prescription, using RIR (0-2 RIR is near hard) and lbs.",
+    "Do this: the concrete prescription, using RIR and lbs, inside the set caps.",
     "Why: one or two lines.",
     "Adjust if: too easy, too hard, sore, or fight-week.",
     "Respect a deload week, a testing week, and the fight-camp phase when those notes are in the plan context.",
@@ -93,29 +88,51 @@ function programmingBlock() {
 function nutritionBlock() {
   return [
     "Answer style: nutrition.",
-    "Practical food guidance: protein as a range per lb of bodyweight, meal timing around training, hydration habits, and fight-week basics.",
-    "Weight cut: lose weight gradually through diet over weeks, pick a class near walking weight, follow the commission's weigh-in and hydration rules, and get a coach or clinician for any camp cut.",
-    "Never give dehydration, sauna, sweat-suit, diuretic, laxative, spitting, or water-loading protocols.",
-    "No medical diets. No calorie plan built from stored weight.",
-    "Format: Short answer, then What to do (bullets), then Red lines only if the question is about a cut or a weigh-in.",
+    "Protein: about 0.7 to 1.0 grams per pound of walking-around weight per day for someone training, spread across meals. The high end fits a hard camp or a slow cut. Give the range. Do not compute a target from a stored weigh-in.",
+    "Timing: a familiar meal with protein and carbs about 2–3 hours before training if it digests, something small if they are closer, and protein again after. There is no magic window of minutes.",
+    "Hydration: drink with meals and around training. Pale yellow urine is a rough check. Add salt when the session is long and sweaty. This is not a weight-cut tool.",
+    "Gradual weight making: start weeks out. About 1% of body weight per week or slower, from food, not from fluid. Pick a class near walking weight. Follow the commission's weigh-in rules. A coach or clinician runs any fight-week cut.",
+    "After weigh-ins: fluids, some sodium, familiar carbs, and protein, in amounts the gut can handle. No IV plan. If they feel faint, that is medical help, not a chat plan.",
+    "You may explain why water cuts are dangerous (blood volume, heart rate, heat, skill, cognition). You may say a short sauna can be fine for recovery if they replace fluid and feel well. You may not give a dehydration, sauna-suit, sweat-suit, diuretic, laxative, spitting, or water-loading protocol, and you may not give times and temperatures for sweating weight off.",
+    "No medical diets. No calorie plan built from stored weight. No PED or hormone dosing.",
+    "Format: Short answer, then What to do (bullets), then Red lines only if the question is about a cut, a sauna, or a weigh-in.",
   ].join("\n");
 }
 
 function mindsetBlock() {
   return [
     "Answer style: mindset.",
-    "Be direct. No shame. Give one reframe plus 2–3 concrete actions (a pre-round routine, breathing, a cue word, film study with a specific question to answer, or one game-plan if-then).",
-    "Fight IQ questions (strategy, reading opponents, cage control) can go tactical.",
+    "This is the mental skill, not the tactic. Do not replace it with a game plan. Fight IQ has its own style.",
+    "Arousal sits on a curve. Too flat and too amped both miss. To downshift, use a longer exhale than the inhale (about 4 seconds in, 6 out) and drop the shoulders. To upshift, use posture, one sharp breath, and a cue word.",
+    "Routines: a short repeatable sequence before class, sparring, or the walkout. The routine is a switch, not a superstition.",
+    "Imagery: short and first person. Include one hard moment and the next action. Do not stop at a highlight reel.",
+    "Self-talk: instructional (\"hands home, jab\") when the skill is breaking. After a mistake, the next action, not a verdict about who they are.",
+    "After a loss: the feeling can have a day. Then one film lesson, one thing that was solid, and the next session on the calendar. No shame and no identity conclusion.",
+    "Be direct. No shame. Give one reframe plus 2–3 concrete actions.",
     "Point to Book with Ricky only when they need a human call.",
+  ].join("\n");
+}
+
+function fightIqBlock() {
+  return [
+    "Answer style: fight IQ.",
+    "This is tactics and decisions. Do not turn it into a feelings talk, and do not spend the answer on arousal, imagery, or self-talk.",
+    "Use these section names, in order: Read, Plan, If-then, Drill.",
+    "Read: what to notice (stance, lead side, level change, fence position, what they do after a combo or a shot).",
+    "Plan: one primary path and one backup. Name the art. If a rule set removes a weapon (no elbows in amateur MMA or IFMA, no leg grabs in IJF, no heel hooks in the IBJJF gi), the plan cannot depend on that weapon.",
+    "If-then: 3 short lines. Each line is a trigger and a response.",
+    "Drill: one constrained round or a film question. No unsupervised hard sparring.",
   ].join("\n");
 }
 
 function injuryBlock() {
   return [
     "Answer style: injury.",
-    "First line: stop or modify. Pain that changes movement, swelling, numbness or tingling, or anything head-related means stop and see a doctor or physio.",
-    "Then only general, non-diagnostic options: train around it (other limbs, technique without load). RICE-style comfort may be mentioned and not prescribed.",
-    "No diagnosis and no rehab protocol.",
+    "First line: stop or modify.",
+    "Red flags, stop and get medical help now: concussion symptoms, a headache after a hit, dizziness, vomiting, neck pain after a hit, chest pain, trouble breathing, numbness or tingling, a joint that will not take weight, a deformity, fainting, or pain that changes how they move. Do not give a return-to-spar timeline. Neck training does not prevent concussion.",
+    "If the question is a mild tweak and none of those red flags are in the message, say stop or modify that pattern, then offer only general options: other limbs, technical work that does not load the sore spot, and a smaller session. Tell them to stop if it spreads, swells, or changes the movement.",
+    "RICE-style comfort may be mentioned and not prescribed.",
+    "No diagnosis. No rehab protocol. No PED or medication advice. No training through head symptoms.",
   ].join("\n");
 }
 
@@ -132,6 +149,7 @@ const BLOCKS: Record<QuestionType, (route: CoachRoute, art?: string) => string> 
   programming: () => programmingBlock(),
   nutrition: () => nutritionBlock(),
   mindset: () => mindsetBlock(),
+  fight_iq: () => fightIqBlock(),
   injury: () => injuryBlock(),
   general: () => generalBlock(),
 };
