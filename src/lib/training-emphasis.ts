@@ -37,6 +37,27 @@ const LANDING: PlyoDrill = {
   cues: "Stick each landing quietly. Knees track over the toes. Earn the jumps by landing well first.",
 };
 
+/** Absolute beginner: step and stick. No jumps. */
+export function beginnerPlyoBlock(): PlyoDrill[] {
+  return [
+    {
+      name: "Stick the landing",
+      prescription: "3 sets × 3",
+      cues: "Step down and freeze. No jump yet. Quiet feet.",
+    },
+    {
+      name: "Sit-to-stand",
+      prescription: "3 sets × 5",
+      cues: "Stand tall, sit back down. Form first.",
+    },
+    {
+      name: "Step and stick",
+      prescription: "3 sets × 3 / side",
+      cues: "Step forward and freeze. No broad jump.",
+    },
+  ];
+}
+
 /** Floor plyos when the member has no gym and no weights. No med ball, band, or loaded carry. */
 export function floorPlyoBlock(): PlyoDrill[] {
   return [

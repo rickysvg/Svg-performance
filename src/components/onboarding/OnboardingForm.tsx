@@ -9,16 +9,29 @@ import {
   EXPERIENCE_LEVELS,
   FOCUS_OPTIONS,
   GOAL_OPTIONS,
+  LIFT_DAY_OPTIONS,
+  TRAINING_FOCUS_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
+import { OutsideTrainingFields } from "@/components/profile/OutsideTrainingFields";
+import { defaultLiftDays } from "@/lib/member-plan";
 import type { ProfileRecord } from "@/lib/profile";
 
-export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
+export function OnboardingForm({
+  profile,
+  email,
+}: {
+  profile: ProfileRecord;
+  email?: string | null;
+}) {
   const [state, action, pending] = useActionState(
     completeOnboardingAction,
     {} as OnboardingActionState,
   );
   const [step, setStep] = useState(1);
+  const [trainingFocus, setTrainingFocus] = useState(profile.trainingFocus || "martial_arts_sc");
+  const [level, setLevel] = useState(profile.experienceLevel || "beginner");
+  const suggestedLifts = profile.liftDaysPerWeek ?? defaultLiftDays(level, email);
   const formRef = useRef<HTMLFormElement>(null);
 
   function goToCoach() {
@@ -96,7 +109,8 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
           <select
             name="experienceLevel"
             required
-            defaultValue={profile.experienceLevel || "beginner"}
+            value={level}
+            onChange={(event) => setLevel(event.target.value)}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           >
             {EXPERIENCE_LEVELS.map((level) => (
@@ -106,21 +120,44 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
             ))}
           </select>
         </label>
-        <label className="block">
-          <span className="text-sm font-medium">Primary martial art / focus</span>
-          <select
-            name="primaryFocus"
-            required
-            defaultValue={profile.primaryFocus || "mma"}
-            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
-          >
-            {FOCUS_OPTIONS.map((focus) => (
-              <option key={focus.value} value={focus.value}>
-                {focus.label}
-              </option>
+        <fieldset>
+          <legend className="text-sm font-medium">Training focus</legend>
+          <div className="mt-2 grid gap-2">
+            {TRAINING_FOCUS_OPTIONS.map((option) => (
+              <label key={option.value} className="flex items-center gap-3 text-sm">
+                <input
+                  type="radio"
+                  name="trainingFocus"
+                  value={option.value}
+                  checked={trainingFocus === option.value}
+                  onChange={() => setTrainingFocus(option.value)}
+                  className="h-5 w-5 accent-accent"
+                  required
+                />
+                {option.label}
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
+        {trainingFocus === "sc_only" ? (
+          <input type="hidden" name="primaryFocus" value={profile.primaryFocus || "general-fitness"} />
+        ) : (
+          <label className="block">
+            <span className="text-sm font-medium">Primary martial art / focus</span>
+            <select
+              name="primaryFocus"
+              required
+              defaultValue={profile.primaryFocus || "mma"}
+              className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            >
+              {FOCUS_OPTIONS.map((focus) => (
+                <option key={focus.value} value={focus.value}>
+                  {focus.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </section>
 
       <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
@@ -159,6 +196,26 @@ export function OnboardingForm({ profile }: { profile: ProfileRecord }) {
             ))}
           </div>
         </fieldset>
+        <label className="block">
+          <span className="text-sm font-medium">Lift days per week</span>
+          <select
+            name="liftDaysPerWeek"
+            required
+            defaultValue={String(suggestedLifts)}
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          >
+            {LIFT_DAY_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count} lift days
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-muted">
+            You will not lift every day. The rest of the week is cardio, mobility, and — on the martial
+            arts track — bag work.
+          </span>
+        </label>
+        <OutsideTrainingFields days={profile.outsideTraining ?? []} />
         <label className="block">
           <span className="text-sm font-medium">Sessions per week (optional)</span>
           <input

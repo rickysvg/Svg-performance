@@ -97,7 +97,7 @@ export default async function ProfilePage() {
         </p>
       </section>
 
-      <ProfileForm profile={profile} />
+      <ProfileForm profile={profile} email={user.email} />
       <ReminderPrefsForm
         prefs={prefs}
         smtpConfigured={isSmtpReminderDeliveryEnabled()}

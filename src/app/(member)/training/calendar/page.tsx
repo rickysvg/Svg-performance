@@ -64,6 +64,11 @@ export default async function TrainingCalendarPage({
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+    trainingFocus: profile?.trainingFocus,
+    liftDaysPerWeek: profile?.liftDaysPerWeek,
+    experienceLevel: profile?.experienceLevel,
+    email: user.email,
+    outsideTraining: profile?.outsideTraining,
   };
   const dayPlan = planForDate(prefs, selected, tz, swaps);
   const planned = resolvePlanSessions(

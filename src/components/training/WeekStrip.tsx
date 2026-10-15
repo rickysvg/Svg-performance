@@ -18,13 +18,22 @@ export type WeekChipActivity = {
 };
 
 const WORD_LABELS = new Set(["Off", "Rest", "Recover"]);
-const LEGEND = ["Bag", "Lift", "Bike", "GPP"] as const;
-const ICON_ACTIVITIES = new Set<string>(LEGEND);
+const ICON_ACTIVITIES = new Set(["Bag", "Lift", "Cardio", "Mobility", "Sparring", "Bike", "GPP"]);
 
-/** Spoken and legend names. Plan summaries stay Bag+GPP. */
 const ACTIVITY_NAME: Record<string, string> = {
-  GPP: "GPP · conditioning",
+  GPP: "Cardio",
+  Bike: "Cardio",
+  Recover: "Mobility",
+  Cardio: "Cardio",
+  Mobility: "Mobility",
+  Sparring: "Sparring",
 };
+
+function chipId(part: string) {
+  if (part === "Bike" || part === "GPP") return "Cardio";
+  if (part === "Recover") return "Mobility";
+  return part;
+}
 
 export function activityChipName(id: string) {
   return ACTIVITY_NAME[id] ?? id;
@@ -46,8 +55,8 @@ export function weekChipActivities(summary: string): WeekChipActivity[] {
     .split("+")
     .filter((part) => part.length > 0)
     .map((part) => ({
-      id: part,
-      label: activityChipName(part),
+      id: chipId(part),
+      label: activityChipName(chipId(part)),
     }));
 }
 
@@ -75,22 +84,8 @@ function ActivityIcon({ id }: { id: string }) {
         </svg>
       );
     case "Bike":
-      return (
-        <svg
-          {...common}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.9}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="3.55" cy="11.55" r="2.5" />
-          <circle cx="12.45" cy="11.55" r="2.5" />
-          {/* One path. Both ends land on a wheel so the saddle, bars, and frame stay attached at chip size. */}
-          <path d="M5.15 9.6 6.3 5.35 5.05 3.6h2.5L6.3 5.35h3.45l1.15-1.75h2.2L10.9 5.35 10.9 9.6" />
-        </svg>
-      );
     case "GPP":
+    case "Cardio":
       return (
         <svg
           {...common}
@@ -101,6 +96,27 @@ function ActivityIcon({ id }: { id: string }) {
           strokeLinejoin="round"
         >
           <path d="M.7 8.2h3.2L5.4 4.2l2.8 7.6 1.6-3.6H15.3" />
+        </svg>
+      );
+    case "Mobility":
+      return (
+        <svg
+          {...common}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="8" cy="2.6" r="1.3" />
+          <path d="M3.2 7.2c1.4-.8 2.8-1 4.8-1s3.4.2 4.8 1M8 6.2v3.2M5.2 13.6 8 9.4l2.8 4.2" />
+        </svg>
+      );
+    case "Sparring":
+      return (
+        <svg {...common} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+          <circle cx="5" cy="8" r="2.4" />
+          <circle cx="11" cy="8" r="2.4" />
         </svg>
       );
     default:
@@ -151,14 +167,23 @@ function ActivityMarks({
   );
 }
 
-function WeekLegend() {
+function legendIds(days: Item[]) {
+  const parts = new Set(days.flatMap((day) => day.summary.split("+").map(chipId)));
+  const shown = ["Lift", "Cardio", "Mobility"].filter((id) => parts.has(id));
+  if (parts.has("Bag")) shown.push("Bag");
+  if (parts.has("Sparring")) shown.push("Sparring");
+  return shown.length > 0 ? shown : ["Lift", "Cardio", "Mobility"];
+}
+
+function WeekLegend({ days }: { days: Item[] }) {
+  const ids = legendIds(days);
   return (
     <ul
       data-week-legend
       aria-label="Activity key"
       className="mt-2 flex flex-nowrap items-center justify-center gap-x-2.5 gap-y-1"
     >
-      {LEGEND.map((id) => (
+      {ids.map((id) => (
         <li
           key={id}
           className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium leading-none text-foreground"
@@ -398,7 +423,7 @@ export function WeekStrip({
         );
       })}
       </ol>
-      <WeekLegend />
+      <WeekLegend days={days} />
       {rearrange && source ? (
         <div
           data-move-sheet

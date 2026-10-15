@@ -1,4 +1,4 @@
-import { BAG_THEME_CREDIT, bagFocusLines } from "@/lib/bag-themes";
+import { bagFocusLines } from "@/lib/bag-themes";
 
 export function BagFocusList({
   notes,
@@ -36,7 +36,7 @@ export function BagFocusList({
         ))}
       </ol>
       {parsed.credit ? (
-        <p className="mt-2 text-[11px] leading-snug text-muted">{BAG_THEME_CREDIT}</p>
+        <p className="mt-2 text-[11px] leading-snug text-muted">{parsed.credit}</p>
       ) : null}
     </details>
   );

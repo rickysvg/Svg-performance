@@ -4,9 +4,43 @@ export const SHADOW_EMPTY_NAME = "Shadowbox round 1 — empty hands";
 export const SHADOW_WEIGHTED_NAME = "Shadowbox round 2 — hand weights";
 export const SHADOW_COOL_NAME = "Easy shadow cool-down";
 
-/** Original SVG copy. Inspired by Bazooka Joe–style unit training, not their scripts. */
-export const BAG_THEME_CREDIT =
-  "Themed focus rounds in the Bazooka Joe unit-training style. SVG wrote this copy. Not an affiliation or endorsement.";
+/** Shared disclaimer. Each session adds its own "Inspired by …" line. */
+export const BAG_CREDIT_SUFFIX = "SVG wrote this copy. Not an affiliation or endorsement.";
+
+/** Original SVG copy. Inspired by public champion styles, not their scripts. */
+export const BAG_THEME_CREDIT = `Inspired by Joseph “Bazooka Joe” Valtellini’s unit training. ${BAG_CREDIT_SUFFIX}`;
+
+export function bagCreditLine(inspiredBy: string) {
+  return `Inspired by ${inspiredBy}. ${BAG_CREDIT_SUFFIX}`;
+}
+
+/** Style credits for the 3-week bag themes. Not an endorsement. */
+export const BAG_INSPIRED_BY: Record<MesoBlock, Record<BagWeekdayName, string>> = {
+  A: {
+    Monday: "Giorgio Petrosyan’s jab and Joseph “Bazooka Joe” Valtellini’s unit training",
+    Tuesday: "Saenchai and Sitthichai’s teeps and low kicks",
+    Wednesday: "Joseph “Bazooka Joe” Valtellini’s hooks and Rob Kaman’s Dutch pivots",
+    Thursday: "Buakaw and Rodtang’s clinch knees",
+    Friday: "Giorgio Petrosyan’s defense and counters",
+    Saturday: "Rob Kaman’s Dutch speed and power rounds",
+  },
+  B: {
+    Monday: "Joseph “Bazooka Joe” Valtellini’s level changes",
+    Tuesday: "Sitthichai’s switch kicks and teeps",
+    Wednesday: "Rodtang’s body work",
+    Thursday: "Buakaw’s entries into the knee",
+    Friday: "Giorgio Petrosyan’s counters after a level change",
+    Saturday: "Rob Kaman’s Dutch power after a pivot",
+  },
+  C: {
+    Monday: "Giorgio Petrosyan and Joseph “Bazooka Joe” Valtellini’s jab traps",
+    Tuesday: "Saenchai’s counter kicks",
+    Wednesday: "Joseph “Bazooka Joe” Valtellini’s combo flow",
+    Thursday: "Buakaw and Rodtang’s short strikes",
+    Friday: "Giorgio Petrosyan’s one-and-done counters",
+    Saturday: "Saenchai, Petrosyan, and Kaman — a light review",
+  },
+};
 
 export type BagTechnique = {
   name: string;
@@ -42,21 +76,24 @@ function technique(
   return { name, reps: "3:00", loadText, notes };
 }
 
-export function formatBagRoundNotes(rounds: readonly string[]) {
+export function formatBagRoundNotes(rounds: readonly string[], credit = BAG_THEME_CREDIT) {
   const lines = rounds.map((focus, index) => `R${index + 1} ${focus}`).join(" ");
-  return `${lines} ${BAG_THEME_CREDIT}`;
+  return `${lines} ${credit}`;
 }
 
 /** Split stored bag notes into one line per focus round for the day page and logger. */
-export function bagFocusLines(notes: string): { rounds: string[]; credit: boolean } | null {
+export function bagFocusLines(notes: string): { rounds: string[]; credit: string | null } | null {
   if (!/\bR1\s/.test(notes)) return null;
-  const body = notes.replace(BAG_THEME_CREDIT, "").trim();
+  const creditStart = notes.search(/Inspired by|Themed focus rounds/i);
+  const credit =
+    creditStart >= 0 ? notes.slice(creditStart).replace(/\s+Heavy bag or pads[\s\S]*$/, "").trim() : null;
+  const body = (creditStart >= 0 ? notes.slice(0, creditStart) : notes).trim();
   const rounds = body
     .split(/\s+(?=R\d+\s)/)
     .map((part) => part.trim())
     .filter((part) => /^R\d+\s+\S/.test(part));
   if (rounds.length === 0) return null;
-  return { rounds, credit: notes.includes(BAG_THEME_CREDIT) };
+  return { rounds, credit };
 }
 
 const A_MON = [

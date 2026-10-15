@@ -27,15 +27,15 @@ describe("training scale bands", () => {
       "advanced",
     );
     expect(scaleCopy("advanced")).toMatch(/advanced \/ competition/i);
-    expect(scaleCopy("advanced", 1)).toMatch(/60 min bag/i);
+    expect(scaleCopy("advanced", 1)).not.toMatch(/60 min bag/i);
     expect(scaleCopy("advanced", 2)).not.toMatch(/60 min bag/i);
     expect(scaleCopy("beginner")).toMatch(/beginner pacing/i);
   });
 
-  it("gives beginners ~2:30 bag rounds and 60s rest", () => {
+  it("gives beginners ~2:30 bag rounds and 45s rest", () => {
     expect(SKILL_ROUND_SECONDS.beginner[1]).toBe(150);
     expect(SKILL_ROUND_SECONDS.beginner[6]).toBe(150);
-    expect(SKILL_REST_SECONDS.beginner[1]).toBe(60);
+    expect(SKILL_REST_SECONDS.beginner[1]).toBe(45);
     const round = scaleExercise(
       {
         name: "Bag rounds — boxing combos",
@@ -48,20 +48,20 @@ describe("training scale bands", () => {
       { band: "beginner", programSlug: "demo-combat-skills", dayNumber: 1 },
     );
     expect(round.reps).toBe("2:30");
-    expect(round.restSeconds).toBe(60);
+    expect(round.restSeconds).toBe(45);
     expect(round.sets).toBe(7);
   });
 
-  it("gives advanced / pro 3 min bag rounds, 60-min Mon/Wed/Fri, and longer optional day-6 clocks", () => {
+  it("gives advanced / pro 3 min bag rounds inside a 30–45 minute session", () => {
     expect(SKILL_ROUND_SECONDS.advanced[1]).toBe(180);
     expect(SKILL_ROUND_SECONDS.advanced[2]).toBe(180);
-    expect(SKILL_ROUND_SECONDS.advanced[6]).toBe(300);
-    expect(SKILL_REST_SECONDS.advanced[1]).toBe(45);
-    expect(SKILL_REST_SECONDS.advanced[6]).toBe(45);
-    expect(SKILL_ROUND_COUNTS.advanced[1]).toBe(14);
-    expect(SKILL_ROUND_COUNTS.advanced[2]).toBe(10);
-    expect(SKILL_ROUND_COUNTS.advanced[3]).toBe(14);
-    expect(SKILL_ROUND_COUNTS.advanced[5]).toBe(14);
+    expect(SKILL_ROUND_SECONDS.advanced[6]).toBe(180);
+    expect(SKILL_REST_SECONDS.advanced[1]).toBe(30);
+    expect(SKILL_REST_SECONDS.advanced[6]).toBe(30);
+    expect(SKILL_ROUND_COUNTS.advanced[1]).toBe(8);
+    expect(SKILL_ROUND_COUNTS.advanced[2]).toBe(8);
+    expect(SKILL_ROUND_COUNTS.advanced[3]).toBe(8);
+    expect(SKILL_ROUND_COUNTS.advanced[5]).toBe(8);
     const power = scaleExercise(
       {
         name: "Bag rounds — boxing combos",
@@ -74,8 +74,8 @@ describe("training scale bands", () => {
       { band: "advanced", programSlug: "demo-combat-skills", dayNumber: 1 },
     );
     expect(power.reps).toBe("3:00");
-    expect(power.restSeconds).toBe(45);
-    expect(power.sets).toBe(14);
+    expect(power.restSeconds).toBe(30);
+    expect(power.sets).toBe(8);
     const tue = scaleExercise(
       {
         name: "Bag rounds — kicks & teeps",
@@ -87,7 +87,7 @@ describe("training scale bands", () => {
       },
       { band: "advanced", programSlug: "demo-combat-skills", dayNumber: 2 },
     );
-    expect(tue.sets).toBe(10);
+    expect(tue.sets).toBe(8);
     const optional = scaleExercise(
       {
         name: "Bag rounds — power & speed",
@@ -99,8 +99,9 @@ describe("training scale bands", () => {
       },
       { band: "advanced", programSlug: "demo-combat-skills", dayNumber: 6 },
     );
-    expect(optional.reps).toBe("5:00");
-    expect(optional.restSeconds).toBe(45);
+    expect(optional.reps).toBe("3:00");
+    expect(optional.restSeconds).toBe(30);
+    expect(optional.sets).toBe(8);
   });
 
   it("hardens DEMO strength for advanced and keeps beginner easier", () => {

@@ -13,6 +13,7 @@ import {
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import { safeTrainingNext } from "@/lib/weight-access";
+import { normalizeOutsideInput } from "@/lib/member-plan";
 
 export type ProfileActionState = { error?: string; success?: string };
 
@@ -66,6 +67,15 @@ export async function saveProfileAction(
       coachingStyle: String(formData.get("coachingStyle") ?? ""),
       trainingEmphasis: String(formData.get("trainingEmphasis") ?? ""),
       obstacles: formData.getAll("obstacles").map(String),
+      trainingFocus: String(formData.get("trainingFocus") ?? ""),
+      liftDaysPerWeek: nullableNumber("liftDaysPerWeek"),
+      outsideTraining: normalizeOutsideInput(
+        formData.getAll("outsideWeekday").map((weekday) => ({
+          weekday: String(weekday),
+          kind: String(formData.get(`outsideKind-${String(weekday)}`) ?? "class"),
+          time: String(formData.get(`outsideTime-${String(weekday)}`) ?? ""),
+        })),
+      ),
       calorieTarget: optionalNumber("calorieTarget"),
       proteinTargetG: optionalNumber("proteinTargetG"),
       carbsTargetG: optionalNumber("carbsTargetG"),

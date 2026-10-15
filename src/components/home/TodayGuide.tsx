@@ -7,6 +7,7 @@ import {
 } from "@/lib/exercise-media";
 import { SectionHeading } from "@/components/home/SectionHeading";
 import { WeekStrip } from "@/components/training/WeekStrip";
+import { SparringLogForm } from "@/components/training/SparringLogForm";
 
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
 
@@ -81,7 +82,16 @@ export function TodayGuide({ guide }: { guide: Guide }) {
         <span className="text-muted"> — bag, pads, or sparring rounds</span>
       </p>
       {today.weekStrip?.length ? <WeekStrip days={today.weekStrip} /> : null}
-      {workoutSessions.length === 0 ? (
+      {today.dayNote ? <p className="text-sm text-muted">{today.dayNote}</p> : null}
+      {today.outsideKind === "sparring" ? (
+        <SparringLogForm
+          dateKey={today.weekStrip.find((day) => day.isSelected)?.dayParam ?? ""}
+          weekday={today.planWeekday}
+          timeLabel={today.outsideLabel.replace(/^Sparring\s*·\s*/, "")}
+          saved={today.sparringLog}
+        />
+      ) : null}
+      {today.outsideKind === "sparring" ? null : workoutSessions.length === 0 ? (
         <div className="rounded-[2rem] bg-black px-5 py-6 text-white">
           <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
             {today.planWeekday || "Training"} · Rest

@@ -13,10 +13,10 @@ import {
   COACH_ARTS,
   COACH_ART_LABELS,
   COACH_PUBLIC_NAME,
-  COACH_TOPICS,
   COACH_TOPIC_BLURBS,
-  COACH_TOPIC_LABELS,
   buildCoachHref,
+  coachTopicLabel,
+  coachTopicsForMember,
   coachLaneLabel,
   resolveCoachArt,
   resolveCoachTopic,
@@ -104,13 +104,15 @@ export default async function CoachPage({
         <section className="space-y-4">
           <p className="text-xs uppercase tracking-wide text-muted">Pick a topic</p>
           <ul className="space-y-3">
-            {COACH_TOPICS.map((item) => (
+            {coachTopicsForMember(profile?.trainingFocus).map((item) => (
               <li key={item}>
                 <Link
                   href={buildCoachHref({ topic: item })}
                   className="block rounded-2xl border border-line bg-card px-5 py-5"
                 >
-                  <p className="font-display text-lg uppercase tracking-wide">{COACH_TOPIC_LABELS[item]}</p>
+                  <p className="font-display text-lg uppercase tracking-wide">
+                    {coachTopicLabel(item, profile?.trainingFocus)}
+                  </p>
                   <p className="mt-1 text-sm text-muted">{COACH_TOPIC_BLURBS[item]}</p>
                 </Link>
               </li>

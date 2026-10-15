@@ -1,19 +1,33 @@
 export const COACH_PUBLIC_NAME = "SVG Coach";
 
-export const COACH_TOPICS = ["martial_art", "conditioning", "mental"] as const;
+export const COACH_TOPICS = ["martial_art", "conditioning", "mental", "nutrition"] as const;
 export type CoachTopic = (typeof COACH_TOPICS)[number];
 
 export const COACH_TOPIC_LABELS: Record<CoachTopic, string> = {
   martial_art: "Martial art",
   conditioning: "Conditioning",
   mental: "Mental",
+  nutrition: "Nutrition",
 };
 
 export const COACH_TOPIC_BLURBS: Record<CoachTopic, string> = {
   martial_art: "Technique, rules, and fight IQ for a specific art.",
   conditioning: "Strength, conditioning, recovery, and training load.",
   mental: "Mindset and fight IQ: arousal, routines, and decisions.",
+  nutrition: "Food basics for training. No cuts and no medical plans.",
 };
+
+/** S&C-only members see conditioning, mindset, and nutrition first. Martial arts stays available. */
+export function coachTopicsForMember(trainingFocus?: string | null): CoachTopic[] {
+  if (trainingFocus === "sc_only") return ["conditioning", "mental", "nutrition", "martial_art"];
+  return ["martial_art", "conditioning", "mental", "nutrition"];
+}
+
+export function coachTopicLabel(topic: CoachTopic, trainingFocus?: string | null) {
+  if (trainingFocus === "sc_only" && topic === "conditioning") return "Strength & conditioning";
+  if (trainingFocus === "sc_only" && topic === "mental") return "Mindset";
+  return COACH_TOPIC_LABELS[topic];
+}
 
 export const COACH_ARTS = [
   "boxing",
@@ -135,6 +149,13 @@ export function coachTopicContext(topic?: string, art?: string) {
       "Periodize when they have a camp: base, build, peak, taper. Beginners and off-season athletes do not get a fight-week template.",
       "Keep loads honest. No medical calorie plans, no dehydration protocols, no training through injury or head symptoms.",
       "One next session beats a punishment week.",
+    ].join(" ");
+  }
+  if (topic === "nutrition") {
+    return [
+      "Stay in the nutrition lane: simple food for training.",
+      "No medical calorie plans, no rapid cuts, no supplement stacks.",
+      "Point estimates back to the member’s own targets.",
     ].join(" ");
   }
   return [

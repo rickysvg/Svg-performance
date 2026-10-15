@@ -19,6 +19,13 @@ import {
   type ProfileRecord,
 } from "@/lib/profile";
 import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
+import {
+  isScOnly,
+  normalizeTrainingFocus,
+  resolveLiftDays,
+  serializeOutsideTraining,
+  type OutsideDay,
+} from "@/lib/member-plan";
 
 export type OnboardingInput = {
   displayName: string;
@@ -35,6 +42,9 @@ export type OnboardingInput = {
   allergies: string;
   aiCoachId?: string;
   coachingStyle?: string;
+  trainingFocus?: string;
+  liftDaysPerWeek?: number | null;
+  outsideTraining?: OutsideDay[];
 };
 
 export function goalLabel(goalKey: string) {
@@ -166,6 +176,12 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingInput
     foodPreferences: input.foodPreferences.trim().slice(0, 400),
     allergies: input.allergies.trim().slice(0, 400),
     goals: formatGoalDisplay(input.goalKey, goalNote),
+    trainingFocus: normalizeTrainingFocus(input.trainingFocus),
+    liftDaysPerWeek: resolveLiftDays({
+      liftDaysPerWeek: input.liftDaysPerWeek,
+      experienceLevel: input.experienceLevel,
+    }),
+    outsideTraining: input.outsideTraining ?? [],
     ...coachChoiceFromIntake(input),
   };
 }
@@ -207,6 +223,9 @@ export async function completeOnboardingForUser(userId: string, input: Onboardin
       trainingLimitations: data.trainingLimitations,
       foodPreferences: data.foodPreferences,
       allergies: data.allergies,
+      trainingFocus: data.trainingFocus,
+      liftDaysPerWeek: data.liftDaysPerWeek,
+      outsideTrainingJson: serializeOutsideTraining(data.outsideTraining ?? []),
       onboardingCompletedAt: existing.onboardingCompletedAt ?? new Date(),
       ...(data.aiCoachId && data.coachingStyle
         ? {
@@ -230,7 +249,10 @@ export function preferredLearnLevel(profile: Pick<ProfileRecord, "experienceLeve
   return "beginner";
 }
 
-export function preferredLearnTopic(profile: Pick<ProfileRecord, "primaryFocus"> | null) {
+export function preferredLearnTopic(
+  profile: Pick<ProfileRecord, "primaryFocus"> & { trainingFocus?: string | null } | null,
+) {
+  if (profile && isScOnly(profile.trainingFocus)) return undefined;
   return profile ? learnTopicFromFocus(profile.primaryFocus) : undefined;
 }
 

@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { WEEKDAYS } from "@/lib/constants";
 import {
   BIKE_PROGRAM_DAY_NUMBER,
   BIKE_SESSIONS,
@@ -81,11 +82,14 @@ describe("assault bike catalog", () => {
     }
     expect(bikeWeekIndex(monday) % 3).toBe(1);
     expect(
-      coreSkeletonSessions("Tuesday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
-    ).toBe(5);
+      coreSkeletonSessions("Tuesday", "mma", 1).find((s) => s.kind === "conditioning"),
+    ).toBeUndefined();
     expect(
       coreSkeletonSessions("Thursday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
     ).toBe(6);
+    expect(
+      coreSkeletonSessions("Sunday", "mma", 1).find((s) => s.kind === "conditioning")?.label,
+    ).toMatch(/repeats/i);
   });
 
   it("scales 15/15 sets by experience: 3 / 4 / 5", () => {
@@ -186,53 +190,44 @@ describe("assault bike catalog", () => {
     expect(scaledAlactic.restSeconds).toBe(0);
   });
 
-  it("puts Bike on Tuesday and Thursday even when availability is Mon/Wed/Fri", () => {
+  it("keeps cardio on the open days and mobility twice, without a lift every day", () => {
     const week = buildCoreWeekPlan(MMA_MON_WED_FRI);
     expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Tuesday.summary).toBe("Bag+Lift+Bike");
+    expect(week.Tuesday.summary).toBe("Mobility");
     expect(week.Tuesday.active).toBe(true);
     expect(week.Wednesday.summary).toBe("Bag+Lift");
-    expect(week.Thursday.summary).toBe("Bag+Lift+Bike");
-    expect(week.Thursday.active).toBe(true);
-    expect(week.Friday.summary).toBe("Bag+GPP");
-    expect(week.Saturday.summary).toBe("Off");
+    expect(week.Thursday.summary).toBe("Off");
+    expect(week.Friday.summary).toBe("Bag+Lift");
+    expect(week.Saturday.summary).toBe("Mobility");
     expect(week.Sunday.summary).toBe("Off");
 
-    expect(coreSkeletonSessions("Tuesday", "mma").some((s) => s.kind === "conditioning")).toBe(
-      true,
+    const open = buildCoreWeekPlan({ primaryFocus: "mma", weeklyAvailability: [...WEEKDAYS] });
+    expect(open.Thursday.summary).toBe("Cardio");
+    expect(open.Sunday.summary).toBe("Cardio");
+    expect(open.Thursday.sessions.some((session) => session.kind === "conditioning")).toBe(true);
+    expect(open.Sunday.sessions.find((session) => session.kind === "conditioning")?.dayNumber).toBe(
+      FRIDAY_GPP_DAY_NUMBER,
     );
-    expect(coreSkeletonSessions("Tuesday", "mma").find((s) => s.kind === "conditioning")).toMatchObject({
+    expect(
+      coreSkeletonSessions("Thursday", "mma").find((session) => session.kind === "conditioning"),
+    ).toMatchObject({
       programSlug: "demo-strength-base",
-      dayNumber: BIKE_PROGRAM_DAY_NUMBER,
-    });
-    expect(coreSkeletonSessions("Thursday", "wrestling").find((s) => s.kind === "conditioning")).toMatchObject({
-      kind: "conditioning",
-      dayNumber: 7,
-    });
-    expect(coreSkeletonSessions("Friday", "mma").find((s) => s.dayNumber === FRIDAY_GPP_DAY_NUMBER)).toMatchObject({
-      kind: "conditioning",
-      dayNumber: FRIDAY_GPP_DAY_NUMBER,
     });
 
     const tue = planForDate(MMA_MON_WED_FRI, tuesday);
     expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bag+Lift+Bike");
-    expect(tue.sessions.find((s) => s.kind === "conditioning")?.dayNumber).toBe(5);
-    const thu = planForDate(MMA_MON_WED_FRI, thursday);
-    expect(thu.active).toBe(true);
-    expect(thu.summary).toBe("Bag+Lift+Bike");
-    expect(thu.sessions.find((s) => s.kind === "conditioning")?.dayNumber).toBe(6);
+    expect(tue.summary).toBe("Mobility");
     const mon = planForDate(MMA_MON_WED_FRI, monday);
     expect(mon.summary).toBe("Bag+Lift");
 
     const strip = weekStrip(MMA_MON_WED_FRI, monday);
     expect(strip.map((day) => day.summary)).toEqual([
       "Bag+Lift",
-      "Bag+Lift+Bike",
+      "Mobility",
       "Bag+Lift",
-      "Bag+Lift+Bike",
-      "Bag+GPP",
       "Off",
+      "Bag+Lift",
+      "Mobility",
       "Off",
     ]);
   });
@@ -293,15 +288,17 @@ describe("assault bike seeded days", () => {
     expect(scaled.exercises[0]?.sets).toBe(5);
     expect(scaled.exercises[0]?.restSeconds).toBe(60);
 
-    const resolved = resolvePlanSessions(planForDate(MMA_MON_WED_FRI, thursday), {
-      strength: program,
-    });
+    const resolved = resolvePlanSessions(
+      planForDate({ primaryFocus: "mma", weeklyAvailability: [...WEEKDAYS] }, thursday),
+      { strength: program },
+    );
     const bike = resolved.find((row) => row.dayNumber === 6);
     expect(bike?.dayNumber).toBe(6);
     expect(bike?.href).toBe(
       `/training/${program.days.find((row) => row.dayNumber === 6)!.id}`,
     );
-    expect(bike?.title).toMatch(/tempo/i);
+    expect(bike?.title).toMatch(/Cardio/i);
+    expect(bike?.day?.title).toMatch(/tempo/i);
   });
 
   it("seeds the rotation days plus Friday GPP and Mon/Wed Daru work", async () => {

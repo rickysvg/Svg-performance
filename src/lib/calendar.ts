@@ -1,4 +1,7 @@
+import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
+import { sparringLogsForWeek } from "@/lib/outside-log";
+import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
@@ -50,6 +53,12 @@ export type CalendarDay = {
   heading: string;
   isToday: boolean;
   activities: CalendarActivity[];
+  sparring?: {
+    dateKey: string;
+    weekday: string;
+    timeLabel: string;
+    saved: SparringLog | null;
+  } | null;
 };
 
 export type ProgramDaySummary = {
@@ -202,11 +211,12 @@ export async function getCalendarSchedule(
   /** When set, the list is that Monday–Sunday, including days already past. */
   weekAnchor?: Date,
 ) {
-  const [catalog, profile, sessions, swaps] = await Promise.all([
+  const [catalog, profile, sessions, swaps, account] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
     listWorkoutSessionsForUser(userId),
     getWeekPlanSwapsForUser(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const challenge = await getChallengeProgressForUser(userId, tz);
@@ -230,7 +240,14 @@ export async function getCalendarSchedule(
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+    trainingFocus: profile?.trainingFocus,
+    liftDaysPerWeek: profile?.liftDaysPerWeek,
+    experienceLevel: profile?.experienceLevel,
+    email: account?.email,
+    outsideTraining: profile?.outsideTraining,
   };
+  const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
+  const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
   const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
   const todayKey = formatDayParam(now, tz);
   const days: CalendarDay[] = dates.map((date) => ({
@@ -248,8 +265,19 @@ export async function getCalendarSchedule(
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
     const calendarWeekday = weekdayName(day.date, tz);
+    if (plan.outside?.kind === "sparring") {
+      const timeLabel = plan.outside.label.replace(/^Sparring\s*·\s*/, "");
+      day.sparring = {
+        dateKey: dayKey,
+        weekday: calendarWeekday,
+        timeLabel,
+        saved: sparringByDay.get(dayKey) ?? null,
+      };
+    }
     for (const session of resolved) {
-      if (!session.href || !session.dayId) continue;
+      if (session.kind === "rest") continue;
+      const href = session.href ?? (session.dayId ? `/training/${session.dayId}` : undefined);
+      if (!href) continue;
       const missed = past && plan.active && !done;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
@@ -267,7 +295,7 @@ export async function getCalendarSchedule(
             : origin
               ? `${session.label} — ${origin}’s workout, this week.`
               : `${session.label} — Core week plan (DEMO).`,
-        href: session.href,
+        href,
         status: done ? "complete" : "scheduled",
         programDayId: session.dayId,
         sessionKey: session.sessionKey,

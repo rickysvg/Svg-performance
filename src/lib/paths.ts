@@ -330,6 +330,7 @@ export async function recommendedLessonForUser(userId: string) {
     listLessonProgressForUser(userId),
   ]);
   const completed = new Set(progress.filter((row) => row.completed).map((row) => row.lessonId));
+  if (profile && profile.trainingFocus === "sc_only") return null;
   const level = preferredLearnLevel(profile);
   const topic = preferredLearnTopic(profile);
   const matched = lessons.filter((lesson) => {

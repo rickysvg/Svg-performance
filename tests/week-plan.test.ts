@@ -7,7 +7,6 @@ import { BAG_FOCUS, bagFocusFor } from "@/lib/bag-sessions";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
 import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { APP_TIMEZONE } from "@/lib/timezone";
-import { THU_STRENGTH_DAY_NUMBER } from "@/lib/daru-exercises";
 import {
   buildCoreWeekPlan,
   coreSkeletonSessions,
@@ -58,7 +57,7 @@ describe("Core weekday planner", () => {
     ).toBe("Saturday");
   });
 
-  it("gives every Mon–Fri training day a distinct bag + rotating lift", () => {
+  it("gives Monday and Wednesday a distinct bag plus a lift, and does not lift every day", () => {
     const mon = coreSkeletonSessions("Monday", "mma");
     expect(mon[0]).toMatchObject({
       kind: "skill",
@@ -86,27 +85,25 @@ describe("Core weekday planner", () => {
     expect(sessions.some((session) => session.kind === "strength")).toBe(true);
   });
 
-  it("stacks bag + pull + bike on Tuesday and bag + posterior + bike on Thursday", () => {
+  it("keeps Tuesday as mobility and Friday as a lift, not a daily lift", () => {
     const tue = coreSkeletonSessions("Tuesday", "mma");
-    expect(tue).toHaveLength(3);
-    expect(tue[0]?.kind).toBe("skill");
-    expect(tue[1]).toMatchObject({ kind: "strength", dayNumber: 2 });
-    expect(tue[2]).toMatchObject({ kind: "conditioning", dayNumber: 4 });
+    expect(tue.map((session) => session.kind)).toEqual(["mobility"]);
+    expect(tue.some((session) => session.kind === "strength")).toBe(false);
 
-    const thu = coreSkeletonSessions("Thursday", "wrestling");
-    expect(thu).toHaveLength(3);
-    expect(thu[0]?.dayNumber).toBe(BAG_FOCUS.Thursday.dayNumber);
-    expect(thu[1]).toMatchObject({ kind: "strength", dayNumber: THU_STRENGTH_DAY_NUMBER });
-    expect(thu[2]).toMatchObject({ kind: "conditioning", dayNumber: 7 });
+    const fri = coreSkeletonSessions("Friday", "mma");
+    expect(fri[0]?.dayNumber).toBe(BAG_FOCUS.Friday.dayNumber);
+    expect(fri[1]).toMatchObject({ kind: "strength" });
+    expect(fri.some((session) => session.dayNumber === 10)).toBe(false);
 
-    expect(coreSkeletonSessions("Friday", "mma")[0]?.dayNumber).toBe(BAG_FOCUS.Friday.dayNumber);
-    expect(coreSkeletonSessions("Friday", "mma")[1]).toMatchObject({
-      kind: "conditioning",
-      dayNumber: 10,
-    });
+    const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+    const liftDays = week.filter((day) =>
+      coreSkeletonSessions(day, "mma").some((session) => session.kind === "strength"),
+    );
+    expect(liftDays.length).toBeLessThan(7);
+    expect(liftDays.length).toBeLessThanOrEqual(4);
   });
 
-  it("keeps Saturday compressed off and still always-on Bike Tue/Thu", () => {
+  it("keeps mobility on even when the member only marked Mon/Wed/Fri", () => {
     const tue = planForDate(
       {
         primaryFocus: "mma",
@@ -116,7 +113,7 @@ describe("Core weekday planner", () => {
       tuesday,
     );
     expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bag+Lift+Bike");
+    expect(tue.summary).toBe("Mobility");
     expect(tue.skipReason).toBeUndefined();
 
     const days = resolveTrainingDays({
