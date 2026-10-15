@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
   getOwnWorkoutSessionOrNull,
   getPreviousLoadsForSlots,
@@ -15,6 +15,20 @@ import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import { applyGymExerciseName, gymHistoryNames, rekeyGymRecord } from "@/lib/gym-exercise";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
+import { alignWorkoutWithSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
+import { listRemovalsForDay, listRemovalsForSession } from "@/lib/exercise-removal-store";
+import {
+  activeRemovals,
+  hiddenNamesForRemovals,
+  omitRemovedSlots,
+} from "@/lib/exercise-removal";
+import {
+  applySwapsToExercises,
+  retiredNamesFromSwaps,
+  swapSlotsFor,
+  trainingBlockKey,
+} from "@/lib/exercise-swap";
+import { normalizeWeightAccess } from "@/lib/weight-access";
 
 export default async function WorkoutLogPage({
   params,
@@ -32,28 +46,84 @@ export default async function WorkoutLogPage({
   if (!loaded) {
     notFound();
   }
-  const session = await reopenEmptyCompletion(loaded);
-
-  const band = scaleBandFromPrefs({
+  const opened = await reopenEmptyCompletion(loaded);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const scale = {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
-  });
-  const loggedSession = {
-    ...session,
-    sets: session.sets.map((set) => applyGymExerciseName(set, band)),
-    programDay: session.programDay
-      ? scaleProgramDay(session.programDay, {
+    weightAccess: profile?.weightAccess,
+  };
+  if (opened.programDay && opened.status !== "complete") {
+    await alignWorkoutWithSwaps(opened, scale, tz);
+  }
+  const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
+  const band = scaleBandFromPrefs(scale);
+  const scaledDay = session.programDay
+    ? scaleProgramDay(
+        {
+          ...session.programDay,
+          exercises: [...session.programDay.exercises].sort((a, b) => a.sortOrder - b.sortOrder),
+        },
+        {
           band,
           programSlug: session.programDay.program.slug,
           weightAccess: profile?.weightAccess,
+        },
+      )
+    : null;
+  const swaps =
+    session.programDay && scaledDay
+      ? await listSwapsForDay({
+          userId: user.id,
+          programSlug: session.programDay.program.slug,
+          dayNumber: session.programDay.dayNumber,
         })
-      : session.programDay,
+      : [];
+  const swappedExercises = scaledDay
+    ? applySwapsToExercises(scaledDay.exercises, swaps, {
+        sessionId: session.id,
+        blockKey: trainingBlockKey(new Date(), tz),
+        includePending: false,
+      })
+    : [];
+  const removals = session.programDay
+    ? await listRemovalsForDay({
+        userId: user.id,
+        programSlug: session.programDay.program.slug,
+        dayNumber: session.programDay.dayNumber,
+      })
+    : await listRemovalsForSession(user.id, session.id);
+  const removalScope = { sessionId: session.id, includePending: false };
+  const omitted = scaledDay
+    ? omitRemovedSlots(scaledDay.exercises, swappedExercises, removals, removalScope)
+    : { programmed: [], shown: [] };
+  const shownExercises = omitted.shown;
+  const swapSlots = swapSlotsFor(omitted.programmed, omitted.shown);
+  const removedNames = hiddenNamesForRemovals(
+    activeRemovals(removals, removalScope),
+    shownExercises.map((exercise) => exercise.name),
+  );
+  const removed = new Set(removedNames);
+  const shownNames = new Set(shownExercises.map((exercise) => exercise.name));
+  const loggedSets = session.sets
+    .filter((set) => !removed.has(set.exerciseName))
+    .map((set) => (shownNames.has(set.exerciseName) ? set : applyGymExerciseName(set, band)));
+  const loggedSession = {
+    ...session,
+    sets: loggedSets,
+    programDay:
+      session.programDay && scaledDay
+        ? {
+            ...scaledDay,
+            exercises: shownExercises,
+          }
+        : session.programDay,
   };
   const historyNames = gymHistoryNames([
     ...session.sets.map((set) => set.exerciseName),
-    ...loggedSession.sets.map((set) => set.exerciseName),
+    ...loggedSets.map((set) => set.exerciseName),
     ...(session.programDay?.exercises.map((exercise) => exercise.name) ?? []),
-    ...(loggedSession.programDay?.exercises.map((exercise) => exercise.name) ?? []),
+    ...shownExercises.map((exercise) => exercise.name),
   ]);
   const promptRating =
     session.status === "complete" &&
@@ -113,7 +183,22 @@ export default async function WorkoutLogPage({
           <HrWorkoutForm workoutSessionId={session.id} defaultStartedAt={startedInput} />
         )
       ) : null}
-      <WorkoutLogForm session={loggedSession} previousLoads={previousLoads} notes={notes} />
+      <WorkoutLogForm
+        session={loggedSession}
+        previousLoads={previousLoads}
+        notes={notes}
+        swap={{
+          programSlug: session.programDay?.program.slug ?? "",
+          dayNumber: session.programDay?.dayNumber ?? 0,
+          weightAccess: normalizeWeightAccess(profile?.weightAccess),
+          slots: swapSlots,
+          retiredNames: retiredNamesFromSwaps(
+            swaps,
+            shownExercises.map((exercise) => exercise.name),
+          ),
+          removedNames,
+        }}
+      />
     </main>
   );
 }

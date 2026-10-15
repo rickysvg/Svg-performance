@@ -10,6 +10,7 @@ import {
   listWeekDates,
   ordinalDay,
   resolveTrainingWeekdays,
+  weekSessionTally,
 } from "@/lib/calendar";
 import { addZonedDays } from "@/lib/timezone";
 
@@ -133,7 +134,14 @@ describe("calendar schedule loader", () => {
       day.activities.filter((row) => row.kind === "workout"),
     );
     expect(workouts.length).toBeGreaterThan(0);
-    expect(workouts.every((row) => row.href.startsWith("/training/"))).toBe(true);
+    expect(
+      workouts.every(
+        (row) =>
+          row.href.startsWith("/training/") ||
+          row.href.startsWith("/mobility/") ||
+          row.href.startsWith("/timer"),
+      ),
+    ).toBe(true);
     expect(workouts.some((row) => /bag|clinch|ground-and-pound|sprawl/i.test(row.title))).toBe(
       true,
     );
@@ -144,10 +152,11 @@ describe("calendar schedule loader", () => {
     const wedWorkouts = wednesday?.activities.filter((row) => row.kind === "workout") ?? [];
     expect(wedWorkouts.length).toBe(2);
 
-    const firstDay = program.days[0];
+    const target = wedWorkouts.find((row) => row.programDayId);
+    expect(target?.programDayId).toBeTruthy();
     const session = await startWorkoutFromDay({
       userId: user.id,
-      programDayId: firstDay.id,
+      programDayId: target?.programDayId ?? "",
       preferredUnits: "lb",
     });
     await updateWorkoutSessionForUser({
@@ -171,9 +180,14 @@ describe("calendar schedule loader", () => {
 
     const after = await getCalendarSchedule(user.id, tuesday);
     const wed = after.days.find((day) => day.heading.startsWith("Tomorrow"));
-    expect(wed?.activities.some((row) => row.kind === "workout" && row.status === "complete")).toBe(
+    const afterWork = wed?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(afterWork.find((row) => row.programDayId === target?.programDayId)?.status).toBe("complete");
+    expect(afterWork.some((row) => row.programDayId !== target?.programDayId && row.status === "scheduled")).toBe(
       true,
     );
+    const tally = weekSessionTally(after.days);
+    expect(tally.done).toBe(1);
+    expect(tally.total).toBeGreaterThan(1);
   });
 
   it("lists the whole week, including a logged past day and a missed day", async () => {
@@ -190,11 +204,14 @@ describe("calendar schedule loader", () => {
     const wednesday = new Date(2026, 8, 23, 10, 0, 0);
     expect(listWeekDates(wednesday)).toHaveLength(7);
 
-    const program = await getDemoProgram();
-    const firstDay = program.days[0];
+    const before = await getCalendarSchedule(user.id, wednesday, monday);
+    const mondayBefore =
+      before.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    const loggedDayId = mondayBefore.find((row) => row.programDayId)?.programDayId;
+    expect(loggedDayId).toBeTruthy();
     const session = await startWorkoutFromDay({
       userId: user.id,
-      programDayId: firstDay.id,
+      programDayId: loggedDayId ?? "",
       preferredUnits: "lb",
     });
     await updateWorkoutSessionForUser({
@@ -222,9 +239,15 @@ describe("calendar schedule loader", () => {
     expect(schedule.days[0]?.isToday).toBe(false);
     const mondayWorkouts =
       schedule.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(mondayWorkouts.length).toBeGreaterThan(0);
-    expect(mondayWorkouts.every((row) => row.status === "complete")).toBe(true);
-    expect(mondayWorkouts[0]?.subtitle).toContain("Logged this day");
+    expect(mondayWorkouts.length).toBeGreaterThan(1);
+    const logged = mondayWorkouts.filter((row) => row.programDayId === loggedDayId);
+    expect(logged.length).toBeGreaterThan(0);
+    expect(logged.every((row) => row.status === "complete")).toBe(true);
+    expect(logged[0]?.subtitle).toContain("Logged this day");
+    const open = mondayWorkouts.filter((row) => row.programDayId !== loggedDayId);
+    expect(open.length).toBeGreaterThan(0);
+    expect(open.every((row) => row.status === "scheduled")).toBe(true);
+    expect(open[0]?.subtitle).toContain("Missed");
 
     const tuesdayRow = schedule.days[1];
     const tuesdayWorkouts = tuesdayRow?.activities.filter((row) => row.kind === "workout") ?? [];

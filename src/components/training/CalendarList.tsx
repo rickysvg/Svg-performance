@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { CalendarActivity, CalendarDay } from "@/lib/calendar";
+import { weekSessionTally, type CalendarActivity, type CalendarDay } from "@/lib/calendar";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
+import { SparringLogForm } from "@/components/training/SparringLogForm";
 
 function StatusCircle({
   kind,
@@ -29,7 +30,10 @@ function StatusCircle({
 
 function ActivityCard({ activity }: { activity: CalendarActivity }) {
   const movable = Boolean(
-    activity.kind === "workout" && activity.sessionKey && activity.weekday,
+    activity.kind === "workout" &&
+      activity.sessionKey &&
+      activity.weekday &&
+      activity.status !== "complete",
   );
   const card = (
     <div
@@ -59,20 +63,38 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
           sessionKey={activity.sessionKey!}
           fromWeekday={activity.weekday!}
           title={activity.title}
+          heavy={Boolean(activity.heavy)}
         />
       ) : null}
     </div>
   );
   if (!movable || !activity.sessionKey || !activity.weekday) return card;
   return (
-    <HoldToMove sessionKey={activity.sessionKey} fromWeekday={activity.weekday} title={activity.title}>
+    <HoldToMove
+      sessionKey={activity.sessionKey}
+      fromWeekday={activity.weekday}
+      title={activity.title}
+      heavy={Boolean(activity.heavy)}
+    >
       {card}
     </HoldToMove>
   );
 }
 
 export function CalendarList({ days }: { days: CalendarDay[] }) {
+  const tally = weekSessionTally(days);
   return (
+    <div className="space-y-4">
+      {tally.total > 0 ? (
+        <div>
+          <p data-week-session-progress className="text-sm font-semibold">
+            This week: {tally.done} of {tally.total} sessions done
+          </p>
+          <p data-week-flexible className="mt-1 text-sm text-muted">
+            Workouts are interchangeable through the week.
+          </p>
+        </div>
+      ) : null}
     <ol className="space-y-6">
       {days.map((day) => (
         <li key={day.heading} data-calendar-day={day.heading} className="space-y-3">
@@ -82,6 +104,14 @@ export function CalendarList({ days }: { days: CalendarDay[] }) {
             ) : null}
             {day.heading}
           </h2>
+          {day.sparring ? (
+            <SparringLogForm
+              dateKey={day.sparring.dateKey}
+              weekday={day.sparring.weekday}
+              timeLabel={day.sparring.timeLabel}
+              saved={day.sparring.saved}
+            />
+          ) : null}
           {day.activities.length > 0 ? (
             <ul className="space-y-2">
               {day.activities.map((activity) => (
@@ -96,5 +126,6 @@ export function CalendarList({ days }: { days: CalendarDay[] }) {
         </li>
       ))}
     </ol>
+    </div>
   );
 }

@@ -31,15 +31,16 @@ describe("Train / Calendar day chips", () => {
   });
 
   it("turns summaries into activity icons and keeps rest words", () => {
-    expect(weekChipActivities("Bag+Lift+Bike").map((item) => item.id)).toEqual(["Bag", "Lift", "Bike"]);
-    expect(weekChipActivities("Bag+Lift").map((item) => item.label)).toEqual(["Bag", "Lift"]);
-    expect(weekChipActivities("Bag+GPP").map((item) => item.label)).toEqual([
+    expect(weekChipActivities("Bag+Lift+Cardio").map((item) => item.id)).toEqual([
       "Bag",
-      "GPP · conditioning",
+      "Lift",
+      "Cardio",
     ]);
+    expect(weekChipActivities("Bag+Lift").map((item) => item.label)).toEqual(["Bag", "Lift"]);
+    expect(weekChipActivities("Bag+GPP").map((item) => item.label)).toEqual(["Bag", "Cardio"]);
     expect(weekChipActivities("Off")).toEqual([{ id: "Off", label: "Off" }]);
     expect(weekChipActivities("Rest")).toEqual([{ id: "Rest", label: "Rest" }]);
-    expect(weekChipActivities("Recover")).toEqual([{ id: "Recover", label: "Recover" }]);
+    expect(weekChipActivities("Recover")).toEqual([{ id: "Mobility", label: "Mobility" }]);
 
     const strip = read("src/components/training/WeekStrip.tsx");
     expect(strip).toContain("<svg");
@@ -49,8 +50,8 @@ describe("Train / Calendar day chips", () => {
     expect(strip).toContain("WORD_LABELS");
     expect(strip).toContain("data-week-legend");
     expect(strip).toContain("Activity key");
-    expect(strip).toContain("GPP · conditioning");
-    for (const label of ["Bag", "Lift", "Bike", "GPP"]) {
+    expect(strip).not.toContain("GPP · conditioning");
+    for (const label of ["Bag", "Lift", "Cardio", "Mobility"]) {
       expect(strip).toContain(label);
     }
     expect(strip).not.toContain("ACTIVITY_MARK");
@@ -65,33 +66,18 @@ describe("Train / Calendar day chips", () => {
     expect(mon).not.toBe(wed);
   });
 
-  it("scales bag minutes beginner ~30, intermediate ~35–40, advanced ~45 / ~60 on long days", () => {
-    expect(bagMinutesForBand("beginner")).toBeGreaterThanOrEqual(28);
-    expect(bagMinutesForBand("beginner")).toBeLessThanOrEqual(32);
-    expect(bagMinutesForBand("intermediate")).toBeGreaterThanOrEqual(34);
-    expect(bagMinutesForBand("intermediate")).toBeLessThanOrEqual(42);
-    // Tue/Thu (and default) advanced stay ~45
-    expect(bagMinutesForBand("advanced")).toBeGreaterThanOrEqual(42);
-    expect(bagMinutesForBand("advanced")).toBeLessThanOrEqual(48);
-    expect(bagMinutesForBand("advanced", 2)).toBeGreaterThanOrEqual(42);
-    expect(bagMinutesForBand("advanced", 2)).toBeLessThanOrEqual(48);
-    expect(bagMinutesForBand("advanced", 4)).toBeGreaterThanOrEqual(42);
-    expect(bagMinutesForBand("advanced", 4)).toBeLessThanOrEqual(48);
-    // Mon/Wed/Fri advanced long bag ~60
-    for (const day of [1, 3, 5]) {
-      expect(bagMinutesForBand("advanced", day)).toBeGreaterThanOrEqual(58);
-      expect(bagMinutesForBand("advanced", day)).toBeLessThanOrEqual(62);
+  it("keeps every bag day between 30 and 45 minutes", () => {
+    for (const band of ["beginner", "intermediate", "advanced"] as const) {
+      for (const day of [1, 2, 3, 4, 5, 6]) {
+        const minutes = bagMinutesForBand(band, day);
+        expect(minutes).toBeGreaterThanOrEqual(30);
+        expect(minutes).toBeLessThanOrEqual(45);
+      }
     }
-  });
-
-  it("gives advanced Mon/Wed/Fri more rounds than Tue/Thu", () => {
+    expect(isAdvancedLongBagDay(1)).toBe(false);
     expect(bagRoundCountFor("advanced", 1)).toBe(BAG_ROUND_COUNTS_ADVANCED_LONG);
-    expect(bagRoundCountFor("advanced", 3)).toBe(BAG_ROUND_COUNTS_ADVANCED_LONG);
-    expect(bagRoundCountFor("advanced", 5)).toBe(BAG_ROUND_COUNTS_ADVANCED_LONG);
-    expect(bagRoundCountFor("advanced", 2)).toBe(10);
-    expect(bagRoundCountFor("advanced", 4)).toBe(10);
-    expect(isAdvancedLongBagDay(1)).toBe(true);
-    expect(isAdvancedLongBagDay(2)).toBe(false);
+    expect(bagRoundCountFor("advanced", 1)).toBe(bagRoundCountFor("advanced", 2));
+    expect(bagRoundCountFor("advanced", 5)).toBe(bagRoundCountFor("advanced", 4));
   });
 
   it("never says bout in the new week seed or planner", () => {

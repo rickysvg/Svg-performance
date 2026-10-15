@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { saveProfileAction, type ProfileActionState } from "@/app/actions/profile";
 import { CoachPicker } from "@/components/coach/CoachPicker";
 import { StatusBanner } from "@/components/StatusBanner";
@@ -12,15 +12,26 @@ import {
   EXPERIENCE_LEVELS,
   FOCUS_OPTIONS,
   GOAL_OPTIONS,
+  LIFT_DAY_OPTIONS,
+  TRAINING_FOCUS_OPTIONS,
   OBSTACLE_OPTIONS,
   SESSION_LENGTH_OPTIONS,
   TRAINING_LOCATION_OPTIONS,
   WEEKDAYS,
 } from "@/lib/constants";
+import { OutsideTrainingFields } from "@/components/profile/OutsideTrainingFields";
+import { defaultLiftDays } from "@/lib/member-plan";
 import type { ProfileRecord } from "@/lib/profile";
 import { timezoneSelectOptions } from "@/lib/timezone";
 
-export function ProfileForm({ profile }: { profile: ProfileRecord }) {
+export function ProfileForm({
+  profile,
+  email,
+}: {
+  profile: ProfileRecord;
+  email?: string | null;
+}) {
+  const [trainingFocus, setTrainingFocus] = useState(profile.trainingFocus || "martial_arts_sc");
   const [state, action, pending] = useActionState(
     saveProfileAction,
     {} as ProfileActionState,
@@ -115,19 +126,58 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
         </select>
       </label>
 
+      <fieldset>
+        <legend className="text-sm font-medium">Training focus</legend>
+        <div className="mt-2 grid gap-2">
+          {TRAINING_FOCUS_OPTIONS.map((option) => (
+            <label key={option.value} className="flex items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="trainingFocus"
+                value={option.value}
+                checked={trainingFocus === option.value}
+                onChange={() => setTrainingFocus(option.value)}
+                className="h-5 w-5 accent-accent"
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {trainingFocus === "sc_only" ? (
+        <input type="hidden" name="primaryFocus" value={profile.primaryFocus || "general-fitness"} />
+      ) : (
+        <label className="block">
+          <span className="text-sm font-medium">Primary martial art / focus</span>
+          <select
+            name="primaryFocus"
+            defaultValue={profile.primaryFocus || "mma"}
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          >
+            {FOCUS_OPTIONS.map((focus) => (
+              <option key={focus.value} value={focus.value}>
+                {focus.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <label className="block">
-        <span className="text-sm font-medium">Primary martial art / focus</span>
+        <span className="text-sm font-medium">Lift days per week</span>
         <select
-          name="primaryFocus"
-          defaultValue={profile.primaryFocus || "mma"}
+          name="liftDaysPerWeek"
+          defaultValue={String(profile.liftDaysPerWeek ?? defaultLiftDays(profile.experienceLevel, email))}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
-          {FOCUS_OPTIONS.map((focus) => (
-            <option key={focus.value} value={focus.value}>
-              {focus.label}
+          {LIFT_DAY_OPTIONS.map((count) => (
+            <option key={count} value={count}>
+              {count} lift days
             </option>
           ))}
         </select>
+        <span className="mt-1 block text-xs text-muted">You will not lift every day.</span>
       </label>
 
       <label className="block">
@@ -165,6 +215,8 @@ export function ProfileForm({ profile }: { profile: ProfileRecord }) {
           ))}
         </div>
       </fieldset>
+
+      <OutsideTrainingFields days={profile.outsideTraining ?? []} />
 
       <fieldset>
         <legend className="text-sm font-medium">Days you can train</legend>

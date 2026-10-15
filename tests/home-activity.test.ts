@@ -18,13 +18,13 @@ describe("home aggregation and weekly activity", () => {
     await prisma.$disconnect();
   });
 
-  it("marks Sunday as rest and names the next session weekday", async () => {
+  it("uses Sunday for cardio on an open week", async () => {
     const user = await makeUser("rest-sunday@example.com");
     const sunday = new Date(2026, 8, 27, 10, 0, 0);
     const today = await getHomeToday(user.id, sunday);
-    expect(today.planSummary).toMatch(/rest/i);
-    expect(today.plannedSessions.every((session) => session.kind === "rest")).toBe(true);
-    expect(today.nextSessionWeekday).toBeTruthy();
+    expect(today.planSummary).toMatch(/Cardio/i);
+    expect(today.plannedSessions.some((session) => session.kind === "conditioning")).toBe(true);
+    expect(today.plannedSessions.some((session) => session.kind === "skill")).toBe(false);
   });
 
   it("uses no-shame copy for zero, some, and seven days", () => {

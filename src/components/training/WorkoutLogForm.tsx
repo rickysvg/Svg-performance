@@ -74,8 +74,12 @@ import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
+import { ExerciseCardMenu } from "@/components/training/ExerciseCardMenu";
+import { RemoveToast } from "@/components/training/RemoveToast";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
+import type { SwapSlot } from "@/lib/exercise-swap";
 import { convertLoad, roundLoadForInput } from "@/lib/units";
+import type { WorkoutSetInput } from "@/lib/workouts";
 
 type Session = WorkoutSession & {
   sets: WorkoutSet[];
@@ -139,6 +143,60 @@ function newClientSet(
     notes: "",
     prescriptionKey: prescriptionSlotKey({ exerciseName }),
     rir: "",
+  };
+}
+
+function toSetInput(set: WorkoutSet): WorkoutSetInput {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: "lb",
+    logMode: resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  };
+}
+
+function swapSource(
+  name: string,
+  group: WorkoutSet[],
+  planned:
+    | {
+        sets: number;
+        reps: string;
+        restSeconds: number;
+        loadText?: string;
+        notes?: string;
+        logMode?: string;
+      }
+    | undefined,
+  restSeconds: number,
+  mode: LogMode,
+  slots: SwapSlot[] | undefined,
+) {
+  const slot = slots?.find((row) => row.currentName === name);
+  if (slot) {
+    return {
+      sets: slot.sets,
+      reps: slot.reps,
+      loadText: slot.loadText,
+      restSeconds: slot.restSeconds,
+      logMode: slot.logMode,
+      notes: slot.notes,
+    };
+  }
+  return {
+    sets: planned?.sets ?? Math.max(1, group.length),
+    reps: planned?.reps ?? "",
+    loadText: planned?.loadText ?? "",
+    restSeconds: planned?.restSeconds ?? restSeconds,
+    logMode: planned?.logMode ?? mode,
+    notes: planned?.notes ?? "",
   };
 }
 
@@ -247,10 +305,19 @@ export function WorkoutLogForm({
   session,
   previousLoads = {},
   notes = {},
+  swap,
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
   notes?: Record<string, ExerciseNoteView>;
+  swap?: {
+    programSlug: string;
+    dayNumber: number;
+    weightAccess: "gym" | "none";
+    slots: SwapSlot[];
+    retiredNames: string[];
+    removedNames?: string[];
+  };
 }) {
   const [state, action, pending] = useActionState(
     saveWorkoutWithNotice,
@@ -283,7 +350,12 @@ export function WorkoutLogForm({
     setAppliedPhase("client");
     if (session.status !== "complete") {
       const draft = hydration.draft;
-      setSets(setsForLogger(session, draft));
+      const hidden = new Set([...(swap?.retiredNames ?? []), ...(swap?.removedNames ?? [])]);
+      const visibleDraft =
+        draft && hidden.size > 0
+          ? { ...draft, sets: draft.sets.filter((set) => !hidden.has(set.exerciseName)) }
+          : draft;
+      setSets(setsForLogger(session, visibleDraft));
       setRestTimer(
         draft ? activeRest(draft.rest, hydration.nowMs) : serverRest(session, hydration.nowMs),
       );
@@ -642,6 +714,7 @@ export function WorkoutLogForm({
 
   return (
     <div>
+      <RemoveToast />
       <form ref={formRef} action={action} className="space-y-5">
         <header
           data-logger-chrome
@@ -952,6 +1025,33 @@ export function WorkoutLogForm({
                     />
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    {session.status !== "complete" ? (
+                      <ExerciseCardMenu
+                        programSlug={swap?.programSlug ?? ""}
+                        dayNumber={swap?.dayNumber ?? 0}
+                        programDayId={session.programDayId ?? undefined}
+                        originalName={
+                          swap?.slots.find((slot) => slot.currentName === name)?.programmedName ?? name
+                        }
+                        currentName={name}
+                        source={swapSource(name, group, planned, restSeconds, mode, swap?.slots)}
+                        weightAccess={swap?.weightAccess ?? "gym"}
+                        workoutSessionId={session.id}
+                        canRemove={grouped.length > 1}
+                        getCurrentSets={() => setsRef.current.map(toSetInput)}
+                        onSetsReplaced={(next) => {
+                          const lb = setsInLb(next);
+                          const names = new Set(lb.map((set) => set.exerciseName));
+                          const nextRest =
+                            restTimer && names.has(restTimer.exerciseName) ? restTimer : null;
+                          setsRef.current = lb;
+                          setSets(lb);
+                          setRestTimer(nextRest);
+                          remember(lb, nextRest);
+                          syncDraft(lb, nextRest);
+                        }}
+                      />
+                    ) : null}
                     {previousLoads[name] ? (
                       <button
                         type="button"

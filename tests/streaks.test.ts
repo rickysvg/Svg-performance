@@ -17,13 +17,14 @@ const prefs: PlannerPrefs = {
 
 describe("training streak (scheduled days)", () => {
   it("does not break across scheduled rest days", () => {
-    // Friday 18 Sep 2026 + Monday 21 Sep. Sat/Sun are rest.
+    // Wednesday 16 Sep + Friday 18 Sep. Thursday is off this Mon/Wed/Fri plan.
+    // Saturday mobility is a real session, so a Friday-to-Monday gap is a miss.
+    const wednesday = new Date("2026-09-16T18:00:00.000Z");
     const friday = new Date("2026-09-18T18:00:00.000Z");
-    const monday = new Date("2026-09-21T18:00:00.000Z");
     const tz = "America/Denver";
-    const keys = [dayKey(friday, tz), dayKey(monday, tz)];
-    expect(currentTrainingStreak(keys, prefs, monday, tz)).toBe(2);
-    expect(longestTrainingStreak(keys, prefs, monday, tz)).toBe(2);
+    const keys = [dayKey(wednesday, tz), dayKey(friday, tz)];
+    expect(currentTrainingStreak(keys, prefs, friday, tz)).toBe(2);
+    expect(longestTrainingStreak(keys, prefs, friday, tz)).toBe(2);
   });
 
   it("breaks when a scheduled training day is missed", () => {
@@ -36,23 +37,24 @@ describe("training streak (scheduled days)", () => {
   });
 
   it("keeps the streak alive when today is scheduled and not logged yet", () => {
-    const friday = new Date("2026-09-18T18:00:00.000Z");
-    const mondayMorning = new Date("2026-09-21T14:00:00.000Z");
+    const wednesday = new Date("2026-09-16T18:00:00.000Z");
+    const fridayMorning = new Date("2026-09-18T14:00:00.000Z");
     const tz = "America/Denver";
-    const keys = [dayKey(friday, tz)];
-    expect(currentTrainingStreak(keys, prefs, mondayMorning, tz)).toBe(1);
+    const keys = [dayKey(wednesday, tz)];
+    expect(currentTrainingStreak(keys, prefs, fridayMorning, tz)).toBe(1);
   });
 
   it("uses the athlete time zone around UTC midnight", () => {
-    // Friday 16:00 UTC = Friday in Denver, Saturday in Sydney.
-    const instant = new Date("2026-09-25T16:00:00.000Z");
+    // Saturday 16:00 UTC = Saturday in Denver, Sunday in Sydney.
+    // Sunday is off this plan. Saturday mobility is a scheduled session.
+    const instant = new Date("2026-09-26T16:00:00.000Z");
     const denver = "America/Denver";
     const sydney = "Australia/Sydney";
     const denverKeys = [dayKey(instant, denver)];
     const sydneyKeys = [dayKey(instant, sydney)];
 
-    expect(dayKey(instant, denver)).toBe("2026-09-25");
-    expect(dayKey(instant, sydney)).toBe("2026-09-26");
+    expect(dayKey(instant, denver)).toBe("2026-09-26");
+    expect(dayKey(instant, sydney)).toBe("2026-09-27");
     expect(currentTrainingStreak(denverKeys, prefs, instant, denver)).toBe(1);
     expect(currentTrainingStreak(sydneyKeys, prefs, instant, sydney)).toBe(0);
   });
@@ -64,7 +66,7 @@ describe("training streak (scheduled days)", () => {
     expect(dots).toHaveLength(7);
     expect(dots[0]?.label).toBe("M");
     expect(dots[0]?.completed).toBe(true);
-    expect(dots[5]?.scheduled).toBe(false);
+    expect(dots[5]?.scheduled).toBe(true);
     expect(dots[6]?.scheduled).toBe(false);
   });
 

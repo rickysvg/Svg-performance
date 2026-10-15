@@ -54,7 +54,7 @@ export default async function ProfilePage() {
       <details className="rounded-2xl border border-line bg-card">
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Training</summary>
         <div className="space-y-6 px-4 pb-4">
-          <ProfileForm profile={profile} />
+          <ProfileForm profile={profile} email={user.email} />
           <SoundEffectsToggle />
           <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
         </div>

@@ -35,6 +35,7 @@ export function PlanSessionCard({
   compact,
   draftId,
   calendarWeekday,
+  completed = false,
 }: {
   session: ResolvedPlanSession;
   highlight?: boolean;
@@ -42,6 +43,8 @@ export function PlanSessionCard({
   draftId?: string;
   /** Calendar day this card is showing on. Swap uses this, not the skeleton day. */
   calendarWeekday?: string;
+  /** A logged session stays on the day it was finished. */
+  completed?: boolean;
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
@@ -56,7 +59,7 @@ export function PlanSessionCard({
     label: session.label,
   });
   const fromWeekday = calendarWeekday || session.sourceWeekday || "";
-  const canMove = Boolean(session.sessionKey && session.href && fromWeekday);
+  const canMove = Boolean(session.sessionKey && session.href && fromWeekday && !completed);
 
   const article = (
     <article
@@ -123,6 +126,7 @@ export function PlanSessionCard({
             sessionKey={session.sessionKey}
             fromWeekday={fromWeekday}
             title={session.title}
+            heavy={Boolean(session.heavy)}
           />
         </div>
       ) : null}
@@ -176,7 +180,12 @@ export function PlanSessionCard({
 
   if (!canMove || !session.sessionKey) return article;
   return (
-    <HoldToMove sessionKey={session.sessionKey} fromWeekday={fromWeekday} title={session.title}>
+    <HoldToMove
+      sessionKey={session.sessionKey}
+      fromWeekday={fromWeekday}
+      title={session.title}
+      heavy={Boolean(session.heavy)}
+    >
       {article}
     </HoldToMove>
   );

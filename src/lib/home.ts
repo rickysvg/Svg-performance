@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { isScOnly } from "@/lib/member-plan";
+import { getSparringLog } from "@/lib/outside-log";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   listDraftSessionsForUser,
@@ -186,6 +188,10 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     planWeekday: weekdayInAppZone(selected, timeZone),
     planSummary: "",
     mesoLabel: "",
+    outsideKind: null as "class" | "sparring" | null,
+    outsideLabel: "",
+    dayNote: "",
+    sparringLog: null as Awaited<ReturnType<typeof getSparringLog>>,
     suggestionCopy:
       "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
@@ -224,7 +230,7 @@ export async function getHomeToday(
     (await timeZoneForUser(userId, profileForZone?.timeZone ?? null));
   const selected = startOfLocalDay(selectedDay, tz);
   const now = new Date();
-  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile, swaps] =
+  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile, swaps, account] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
@@ -235,6 +241,7 @@ export async function getHomeToday(
       getWeeklyActivity(userId, now, tz),
       profileForZone ? Promise.resolve(profileForZone) : getProfileForUser(userId),
       getWeekPlanSwapsForUser(userId),
+      prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
     ]);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
@@ -248,6 +255,11 @@ export async function getHomeToday(
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+    trainingFocus: profile?.trainingFocus,
+    liftDaysPerWeek: profile?.liftDaysPerWeek,
+    experienceLevel: profile?.experienceLevel,
+    email: account?.email,
+    outsideTraining: profile?.outsideTraining,
   };
   const todayPlan = planForDate(prefs, selected, tz, swaps);
   const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
@@ -280,10 +292,16 @@ export async function getHomeToday(
   });
   const fallbackLessons = allLessons.filter((lesson) => lesson.skillLevel === "beginner");
   const lessonPool = matchedLessons.length > 0 ? matchedLessons : fallbackLessons;
-  const incompleteLesson =
-    lessonPool.find((lesson) => !completedLessonIds.has(lesson.id)) ??
-    allLessons.find((lesson) => !completedLessonIds.has(lesson.id)) ??
-    null;
+  const scOnly = isScOnly(profile?.trainingFocus);
+  const incompleteLesson = scOnly
+    ? null
+    : (lessonPool.find((lesson) => !completedLessonIds.has(lesson.id)) ??
+      allLessons.find((lesson) => !completedLessonIds.has(lesson.id)) ??
+      null);
+  const sparringLog =
+    todayPlan.outside?.kind === "sparring"
+      ? await getSparringLog(userId, zonedDayKey(selected, tz))
+      : null;
 
   return {
     selected,
@@ -295,8 +313,12 @@ export async function getHomeToday(
     nextSessionWeekday: nextPlan?.weekday ?? "",
     weekStrip: weekStrip(prefs, selected, tz, undefined, swaps),
     planWeekday: todayPlan.weekday,
-    planSummary: todayPlan.active ? todayPlan.summary : "Rest / skip",
+    planSummary: todayPlan.summary,
     mesoLabel: todayPlan.mesoLabel,
+    outsideKind: todayPlan.outside?.kind ?? null,
+    outsideLabel: todayPlan.outside?.label ?? "",
+    dayNote: todayPlan.dayNote ?? "",
+    sparringLog,
     suggestionCopy: hasCatalog
       ? demoSuggestionCopy({
           goalKey: profile?.goalKey,

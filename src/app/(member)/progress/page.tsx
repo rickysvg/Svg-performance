@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { PROGRESS_SESSION_TAKE, listRecentSessionsForUser } from "@/lib/workouts";
 import { buildProgressSummary } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
@@ -21,6 +21,7 @@ import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion"
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
+import { sparringLogsForWeek, sparringMinutes } from "@/lib/outside-log";
 
 function MetricTile({
   title,
@@ -55,6 +56,8 @@ export default async function ProgressPage() {
       getTrialState(user.id),
     ]);
   const units = profile?.preferredUnits ?? "lb";
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
   const records = await getPersonalRecordsForUser(user.id, units);
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
@@ -128,6 +131,28 @@ export default async function ProgressPage() {
         <p className="mt-1 text-xs text-muted">
           {weight ? "Typed by you" : "Log a weigh-in below."}
         </p>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-card p-4">
+        <h2 className="text-lg">Sparring this week</h2>
+        <p className="stat-display mt-2 text-3xl">
+          {sparringWeek.rounds} rounds · {sparringWeek.minutes} min
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          Saved sparring logs only. Class and drilling days are not counted.
+        </p>
+        {sparringWeek.logs.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-sm">
+            {sparringWeek.logs.map((log) => (
+              <li key={log.dateKey}>
+                {log.weekday || log.dateKey}: {log.rounds} × {log.minutesPerRound} min
+                {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted">No sparring logged this week.</p>
+        )}
       </section>
 
       <Link

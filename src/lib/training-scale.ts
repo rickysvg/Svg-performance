@@ -1,12 +1,13 @@
 import {
   BAG_REST_SECONDS,
   BAG_ROUND_COUNTS,
-  BAG_ROUND_COUNTS_ADVANCED_LONG,
   BAG_ROUND_SECONDS,
   OPTIONAL_BAG_DAY_NUMBERS,
+  bagMinutesForBand,
   bagRoundCountFor,
   isAdvancedLongBagDay,
 } from "@/lib/bag-sessions";
+import { bagFocusLines, formatBagRoundNotes } from "@/lib/bag-themes";
 import {
   bikeIntervalReps,
   bikeSessionForLogger,
@@ -23,6 +24,7 @@ import {
   formatClock,
   isDurationMode,
   isEmptyShadowRound,
+  isShadowName,
   isWeightedShadowName,
   parseDurationSeconds,
   resolveLogMode,
@@ -31,6 +33,7 @@ import {
 import { prescribeGymExercise } from "@/lib/gym-exercise";
 import { effortLoadText, mergeLoadText } from "@/lib/rir";
 import { capSetsForRole, exerciseSetRole, isConditioningIntervalName } from "@/lib/set-budget";
+import { memberCopy } from "@/lib/member-copy";
 import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
 
 export type ScaleBand = "beginner" | "intermediate" | "advanced";
@@ -57,8 +60,7 @@ export type ScaleableExercise = {
 
 /**
  * Skill-day round length (seconds) by DEMO Combat Skills dayNumber.
- * Bag days 1–5 use level-scaled bag minutes (beginner ~30, intermediate ~35–40,
- * advanced ~45 on Tue/Thu and ~60 on Mon/Wed/Fri). Day 6 keeps longer open clocks.
+ * Every bag day is 30–45 minutes: warm-up, themed rounds, cooldown.
  */
 export const SKILL_ROUND_SECONDS: Record<ScaleBand, Record<number, number>> = {
   beginner: {
@@ -67,7 +69,7 @@ export const SKILL_ROUND_SECONDS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_ROUND_SECONDS.beginner,
     4: BAG_ROUND_SECONDS.beginner,
     5: BAG_ROUND_SECONDS.beginner,
-    6: 150,
+    6: BAG_ROUND_SECONDS.beginner,
   },
   intermediate: {
     1: BAG_ROUND_SECONDS.intermediate,
@@ -75,7 +77,7 @@ export const SKILL_ROUND_SECONDS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_ROUND_SECONDS.intermediate,
     4: BAG_ROUND_SECONDS.intermediate,
     5: BAG_ROUND_SECONDS.intermediate,
-    6: 180,
+    6: BAG_ROUND_SECONDS.intermediate,
   },
   advanced: {
     1: BAG_ROUND_SECONDS.advanced,
@@ -83,7 +85,7 @@ export const SKILL_ROUND_SECONDS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_ROUND_SECONDS.advanced,
     4: BAG_ROUND_SECONDS.advanced,
     5: BAG_ROUND_SECONDS.advanced,
-    6: 300,
+    6: BAG_ROUND_SECONDS.advanced,
   },
 };
 
@@ -95,7 +97,7 @@ export const SKILL_REST_SECONDS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_REST_SECONDS.beginner,
     4: BAG_REST_SECONDS.beginner,
     5: BAG_REST_SECONDS.beginner,
-    6: 90,
+    6: BAG_REST_SECONDS.beginner,
   },
   intermediate: {
     1: BAG_REST_SECONDS.intermediate,
@@ -103,7 +105,7 @@ export const SKILL_REST_SECONDS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_REST_SECONDS.intermediate,
     4: BAG_REST_SECONDS.intermediate,
     5: BAG_REST_SECONDS.intermediate,
-    6: 60,
+    6: BAG_REST_SECONDS.intermediate,
   },
   advanced: {
     1: BAG_REST_SECONDS.advanced,
@@ -111,7 +113,7 @@ export const SKILL_REST_SECONDS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_REST_SECONDS.advanced,
     4: BAG_REST_SECONDS.advanced,
     5: BAG_REST_SECONDS.advanced,
-    6: 45,
+    6: BAG_REST_SECONDS.advanced,
   },
 };
 
@@ -122,7 +124,7 @@ export const SKILL_ROUND_COUNTS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_ROUND_COUNTS.beginner,
     4: BAG_ROUND_COUNTS.beginner,
     5: BAG_ROUND_COUNTS.beginner,
-    6: 3,
+    6: BAG_ROUND_COUNTS.beginner,
   },
   intermediate: {
     1: BAG_ROUND_COUNTS.intermediate,
@@ -130,15 +132,15 @@ export const SKILL_ROUND_COUNTS: Record<ScaleBand, Record<number, number>> = {
     3: BAG_ROUND_COUNTS.intermediate,
     4: BAG_ROUND_COUNTS.intermediate,
     5: BAG_ROUND_COUNTS.intermediate,
-    6: 3,
+    6: BAG_ROUND_COUNTS.intermediate,
   },
   advanced: {
-    1: BAG_ROUND_COUNTS_ADVANCED_LONG,
+    1: BAG_ROUND_COUNTS.advanced,
     2: BAG_ROUND_COUNTS.advanced,
-    3: BAG_ROUND_COUNTS_ADVANCED_LONG,
+    3: BAG_ROUND_COUNTS.advanced,
     4: BAG_ROUND_COUNTS.advanced,
-    5: BAG_ROUND_COUNTS_ADVANCED_LONG,
-    6: 4,
+    5: BAG_ROUND_COUNTS.advanced,
+    6: BAG_ROUND_COUNTS.advanced,
   },
 };
 
@@ -244,7 +246,7 @@ export function scaleBandFromPrefs(prefs?: ScalePrefs | null): ScaleBand {
 
 export function scaleCopy(band: ScaleBand, dayNumber?: number) {
   if (band === "advanced" && dayNumber != null && isAdvancedLongBagDay(dayNumber)) {
-    return "Scaled for advanced / competition · ~60 min bag";
+    return "Scaled for advanced / competition";
   }
   if (band === "advanced") return "Scaled for advanced / competition";
   if (band === "intermediate") return "Scaled for intermediate";
@@ -340,6 +342,16 @@ function scaleNamedExercise(
   }
 
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
+    if (/\bcool/i.test(exercise.name) && isShadowName(exercise.name)) {
+      return {
+        ...exercise,
+        logMode: "timed",
+        sets: 1,
+        reps: "2:00",
+        restSeconds: 0,
+        loadText: "Breathe — no power",
+      };
+    }
     if (isEmptyShadowRound(exercise.name)) {
       return {
         ...exercise,
@@ -354,16 +366,24 @@ function scaleNamedExercise(
       const seconds = skillRoundSeconds(band, dayNumber);
       const rounds = bagRoundCountFor(band, dayNumber);
       const isBagBlock = /\bbag rounds?\b/i.test(exercise.name);
+      const parsed = isBagBlock && exercise.notes ? bagFocusLines(exercise.notes) : null;
+      const notes =
+        parsed && parsed.rounds.length > rounds
+          ? `${formatBagRoundNotes(
+              parsed.rounds.slice(0, rounds).map((line) => line.replace(/^R\d+\s+/, "")),
+              parsed.credit ?? undefined,
+            )} Heavy bag or pads if you have them. Bodyweight only: shadow the same work at technical speed — no full power.`
+          : exercise.notes;
       return {
         ...exercise,
+        notes,
         logMode: mode,
-        sets: isBagBlock
-          ? rounds
-          : Math.max(exercise.sets, band === "beginner" ? 3 : band === "advanced" ? 4 : 3),
+        sets: isBagBlock ? rounds : 1,
         reps: formatClock(seconds),
         restSeconds: skillRestSeconds(band, dayNumber),
-        loadText:
-          band === "beginner"
+        loadText: isBagBlock
+          ? `${rounds} rounds × ${formatClock(seconds)}, ${skillRestSeconds(band, dayNumber)}s rest`
+          : band === "beginner"
             ? exercise.loadText
             : `${exercise.loadText} · fight pace`,
       };
@@ -647,6 +667,53 @@ function harderLoadText(text: string) {
   return text.replace(/moderate/i, "Heavy").replace(/light/i, "Challenging");
 }
 
+const BEGINNER_NAME: Record<string, string> = {
+  "Squat jump": "Sit-to-stand",
+  "Jump squat": "Sit-to-stand",
+  "Jump squats": "Sit-to-stand",
+  "Broad jump": "Step and stick",
+  "Broad jumps": "Step and stick",
+  "Lateral bound": "Step-out and stick",
+};
+
+function formFirstBeginner<T extends ScaleableExercise>(exercise: T): T {
+  const load = exercise.loadText ?? "";
+  if (/hold/i.test(load) || /2-4 RIR/.test(load)) return exercise;
+  if (!/\d+\s*%|0-2 RIR|1-2 RIR|1-3 RIR/.test(load)) return exercise;
+  const softened = load
+    .replace(/·?\s*~?\d+\s*%[^·]*/g, "")
+    .replace(/0-2 RIR|1-2 RIR|1-3 RIR/g, "3-5 RIR")
+    .replace(/\s+/g, " ")
+    .trim();
+  return { ...exercise, loadText: `Form first — light. ${softened}`.replace(/\s+/g, " ").trim() };
+}
+
+function presentExercise<T extends ScaleableExercise>(exercise: T, band: ScaleBand, seen: Set<string>): T {
+  let next: T = {
+    ...exercise,
+    loadText: memberCopy(exercise.loadText ?? ""),
+    notes: exercise.notes ? memberCopy(exercise.notes) : exercise.notes,
+  };
+  if (band === "beginner") {
+    next = formFirstBeginner(next);
+    const swapped = BEGINNER_NAME[next.name];
+    if (swapped) next = { ...next, name: swapped };
+  }
+  if (seen.has(next.name)) next = { ...next, name: `${next.name} (second)` };
+  seen.add(next.name);
+  if (
+    next.sets >= 5 &&
+    !/finisher|interval|round|conditioning|reason|extra set/i.test(`${next.notes ?? ""} ${next.name}`)
+  ) {
+    next = {
+      ...next,
+      notes: `${next.notes ? `${next.notes} ` : ""}Extra sets are the conditioning finisher, not a strength set.`.trim(),
+    };
+  }
+  if (!next.reps?.trim()) next = { ...next, reps: "8" };
+  return next;
+}
+
 export function scaleExercises<T extends ScaleableExercise>(
   exercises: T[],
   input: {
@@ -656,7 +723,10 @@ export function scaleExercises<T extends ScaleableExercise>(
     weightAccess?: WeightAccess;
   },
 ): T[] {
-  return exercises.map((exercise) => ({ ...exercise, ...scaleExercise(exercise, input) }));
+  const seen = new Set<string>();
+  return exercises.map((exercise) =>
+    presentExercise({ ...exercise, ...scaleExercise(exercise, input) }, input.band, seen),
+  );
 }
 
 function stampFloorExercises<T extends ScaleableExercise>(
@@ -695,11 +765,14 @@ export function scaleProgramDay<
   if (floor) {
     const note = scaleCopy(input.band);
     const focus = floor.focus.includes(note) ? floor.focus : `${floor.focus} · ${note}`;
+    const seen = new Set<string>();
     return {
       ...day,
-      title: floor.title,
-      focus,
-      exercises: stampFloorExercises(day.exercises, floor.exercises),
+      title: memberCopy(floor.title),
+      focus: memberCopy(focus),
+      exercises: stampFloorExercises(day.exercises, floor.exercises).map((exercise) =>
+        presentExercise(exercise, input.band, seen),
+      ),
     };
   }
   const exercises = scaleExercises(day.exercises, {
@@ -717,7 +790,17 @@ export function scaleProgramDay<
   const focus = day.focus.includes("Scaled") || day.focus.includes("DEMO Core")
     ? day.focus
     : `${day.focus} · ${note}`;
-  return { ...day, exercises, focus };
+  const minutes =
+    input.programSlug === DEMO_SKILL_PROGRAM_SLUG || input.programSlug === "skill"
+      ? bagMinutesForBand(input.band, day.dayNumber)
+      : null;
+  const timedFocus = minutes ? `${focus} · about ${minutes} min` : focus;
+  return {
+    ...day,
+    title: day.title ? memberCopy(day.title) : day.title,
+    exercises,
+    focus: memberCopy(timedFocus),
+  };
 }
 
 export function scaleDemoCatalog<

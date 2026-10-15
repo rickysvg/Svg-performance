@@ -1,4 +1,7 @@
+import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
+import { sparringLogsForWeek } from "@/lib/outside-log";
+import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
@@ -43,6 +46,8 @@ export type CalendarActivity = {
   sessionKey?: string;
   /** Calendar weekday this card is sitting on. */
   weekday?: string;
+  /** Lift, hard bag, or hard conditioning. */
+  heavy?: boolean;
 };
 
 export type CalendarDay = {
@@ -50,6 +55,12 @@ export type CalendarDay = {
   heading: string;
   isToday: boolean;
   activities: CalendarActivity[];
+  sparring?: {
+    dateKey: string;
+    weekday: string;
+    timeLabel: string;
+    saved: SparringLog | null;
+  } | null;
 };
 
 export type ProgramDaySummary = {
@@ -196,17 +207,32 @@ export function buildCalendarDays(input: {
   return days;
 }
 
+/** Planned workouts this week, counted by session rather than by calendar day. */
+export function weekSessionTally(days: CalendarDay[]) {
+  let done = 0;
+  let total = 0;
+  for (const day of days) {
+    for (const activity of day.activities) {
+      if (activity.kind !== "workout") continue;
+      total += 1;
+      if (activity.status === "complete") done += 1;
+    }
+  }
+  return { done, total };
+}
+
 export async function getCalendarSchedule(
   userId: string,
   now = new Date(),
   /** When set, the list is that Monday–Sunday, including days already past. */
   weekAnchor?: Date,
 ) {
-  const [catalog, profile, sessions, swaps] = await Promise.all([
+  const [catalog, profile, sessions, swaps, account] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
     listWorkoutSessionsForUser(userId),
     getWeekPlanSwapsForUser(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const challenge = await getChallengeProgressForUser(userId, tz);
@@ -215,12 +241,16 @@ export async function getCalendarSchedule(
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
   });
-  const completedOnDay = new Set<string>();
+  const completedDayIds = new Map<string, Set<string>>();
   const loggedTitles = new Map<string, string[]>();
   for (const session of sessions) {
     if (session.status !== "complete" || !sessionHasLoggedWork(session.sets)) continue;
     const key = formatDayParam(session.performedAt, tz);
-    completedOnDay.add(key);
+    if (session.programDayId) {
+      const ids = completedDayIds.get(key) ?? new Set<string>();
+      ids.add(session.programDayId);
+      completedDayIds.set(key, ids);
+    }
     const titles = loggedTitles.get(key) ?? [];
     const title = session.title.trim();
     if (title && !titles.includes(title)) titles.push(title);
@@ -230,7 +260,14 @@ export async function getCalendarSchedule(
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+    trainingFocus: profile?.trainingFocus,
+    liftDaysPerWeek: profile?.liftDaysPerWeek,
+    experienceLevel: profile?.experienceLevel,
+    email: account?.email,
+    outsideTraining: profile?.outsideTraining,
   };
+  const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
+  const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
   const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
   const todayKey = formatDayParam(now, tz);
   const days: CalendarDay[] = dates.map((date) => ({
@@ -244,13 +281,27 @@ export async function getCalendarSchedule(
     const plan = planForDate(prefs, day.date, tz, swaps);
     const resolved = resolvePlanSessions(plan, { strength, skill });
     const dayKey = formatDayParam(day.date, tz);
-    const done = completedOnDay.has(dayKey);
+    const doneIds = completedDayIds.get(dayKey) ?? new Set<string>();
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
     const calendarWeekday = weekdayName(day.date, tz);
+    if (plan.outside?.kind === "sparring") {
+      const timeLabel = plan.outside.label.replace(/^Sparring\s*·\s*/, "");
+      day.sparring = {
+        dateKey: dayKey,
+        weekday: calendarWeekday,
+        timeLabel,
+        saved: sparringByDay.get(dayKey) ?? null,
+      };
+    }
     for (const session of resolved) {
-      if (!session.href || !session.dayId) continue;
-      const missed = past && plan.active && !done;
+      if (session.kind === "rest") continue;
+      const href = session.href ?? (session.dayId ? `/training/${session.dayId}` : undefined);
+      if (!href) continue;
+      const sessionDone = session.dayId
+        ? doneIds.has(session.dayId)
+        : (loggedTitles.get(dayKey) ?? []).includes(session.title.trim());
+      const missed = past && !sessionDone;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
@@ -258,7 +309,7 @@ export async function getCalendarSchedule(
       day.activities.push({
         kind: "workout",
         title: session.title,
-        subtitle: done
+        subtitle: sessionDone
           ? loggedSummary
             ? `Logged this day. ${loggedSummary}`
             : "Logged this day. Open to review or run a session again."
@@ -267,11 +318,12 @@ export async function getCalendarSchedule(
             : origin
               ? `${session.label} — ${origin}’s workout, this week.`
               : `${session.label} — Core week plan (DEMO).`,
-        href: session.href,
-        status: done ? "complete" : "scheduled",
+        href,
+        status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,
         sessionKey: session.sessionKey,
         weekday: calendarWeekday,
+        heavy: Boolean(session.heavy),
       });
     }
   }

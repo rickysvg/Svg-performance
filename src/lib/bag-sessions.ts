@@ -1,16 +1,21 @@
 import type { ScaleBand } from "@/lib/bike-sessions";
 import {
+  BAG_INSPIRED_BY,
   BAG_THEMES,
+  bagCreditLine,
   type BagWeekdayName,
 } from "@/lib/bag-themes";
 import type { MesoBlock } from "@/lib/mesocycle";
 
 export {
+  BAG_CREDIT_SUFFIX,
+  BAG_INSPIRED_BY,
   BAG_THEME_CREDIT,
   BAG_THEMES,
   SHADOW_COOL_NAME,
   SHADOW_EMPTY_NAME,
   SHADOW_WEIGHTED_NAME,
+  bagCreditLine,
   formatBagRoundNotes,
 } from "@/lib/bag-themes";
 
@@ -47,9 +52,12 @@ export function bagDayNumber(weekday: BagWeekday, block: MesoBlock = "A") {
 
 export function bagFocusFor(weekday: BagWeekday, block: MesoBlock = "A") {
   const theme = BAG_THEMES[block][weekday];
+  const inspiredBy = BAG_INSPIRED_BY[block][weekday];
   return {
     ...theme,
     block,
+    inspiredBy,
+    credit: bagCreditLine(inspiredBy),
     dayNumber: bagDayNumber(weekday, block),
   };
 }
@@ -97,7 +105,10 @@ export const BAG_FOCUS: Record<
   },
 };
 
-/** Round length (seconds of work) by athlete band. Rest between rounds is 60s (45s advanced). */
+/**
+ * Round length so warm-up + themed rounds + cooldown land in 30–45 minutes.
+ * Beginner rounds are shorter. Nobody gets a 60-minute bag.
+ */
 export const BAG_ROUND_SECONDS: Record<ScaleBand, number> = {
   beginner: 150, // 2:30
   intermediate: 180, // 3:00
@@ -105,76 +116,70 @@ export const BAG_ROUND_SECONDS: Record<ScaleBand, number> = {
 };
 
 export const BAG_REST_SECONDS: Record<ScaleBand, number> = {
-  beginner: 60,
-  intermediate: 60,
-  advanced: 45,
+  beginner: 45,
+  intermediate: 45,
+  advanced: 30,
 };
 
-/**
- * Round counts so beginner ~30, intermediate ~35–40, advanced ~45 on Tue/Thu
- * (and optional Sat). Advanced Mon/Wed/Fri use the long count (~60).
- */
+/** Themed bag rounds only. Warm-up and cooldown sit around this block. */
 export const BAG_ROUND_COUNTS: Record<ScaleBand, number> = {
   beginner: 7,
-  intermediate: 8,
-  advanced: 10,
+  intermediate: 7,
+  advanced: 8,
 };
 
-/** Advanced long bag days (Mon / Wed / Fri) — ~60 min of rounds. */
-export const BAG_ROUND_COUNTS_ADVANCED_LONG = 14;
+/** Kept so older imports compile. Every bag day now uses the 30–45 minute count. */
+export const BAG_ROUND_COUNTS_ADVANCED_LONG = BAG_ROUND_COUNTS.advanced;
 
-/** Combat-skills day numbers that get the advanced 60-min bag (Mon/Wed/Fri, every block). */
-export const ADVANCED_LONG_BAG_DAY_NUMBERS = new Set<number>(
-  (["A", "B", "C"] as const).flatMap((block) =>
-    (["Monday", "Wednesday", "Friday"] as const).map((weekday) => bagDayNumber(weekday, block)),
-  ),
-);
+/** No day is a long bag anymore. */
+export const ADVANCED_LONG_BAG_DAY_NUMBERS = new Set<number>();
 
 /** Optional Saturday bag days. */
 export const OPTIONAL_BAG_DAY_NUMBERS = new Set<number>(
   (["A", "B", "C"] as const).map((block) => bagDayNumber("Saturday", block)),
 );
 
-const BAG_WARM_COOL_SECONDS: Record<ScaleBand, number> = {
-  beginner: 390, // ~6.5 min shadow + cool
-  intermediate: 300,
-  advanced: 450,
-};
+const TRANSITION_SECONDS = 30;
 
-const BAG_WARM_COOL_ADVANCED_LONG = 495; // ~8.25 min so long days land ~60
+/** Matches the day-page clock: work + rest on every set, plus a short transition. */
+function blockSeconds(sets: number, workSeconds: number, restSeconds: number) {
+  return sets * (workSeconds + restSeconds) + TRANSITION_SECONDS;
+}
 
-export function isAdvancedLongBagDay(dayNumber: number) {
-  return ADVANCED_LONG_BAG_DAY_NUMBERS.has(dayNumber);
+export function isAdvancedLongBagDay(dayNumber?: number) {
+  return dayNumber != null && ADVANCED_LONG_BAG_DAY_NUMBERS.has(dayNumber);
 }
 
 export function bagRoundCountFor(band: ScaleBand, dayNumber?: number) {
-  if (band === "advanced" && dayNumber != null && isAdvancedLongBagDay(dayNumber)) {
-    return BAG_ROUND_COUNTS_ADVANCED_LONG;
-  }
+  if (isAdvancedLongBagDay(dayNumber)) return BAG_ROUND_COUNTS_ADVANCED_LONG;
   return BAG_ROUND_COUNTS[band];
 }
 
+/**
+ * Warm-up (empty shadow, weighted shadow, one technique round) + themed rounds + cooldown.
+ * Same total for every weekday. Lands between 30 and 45 minutes.
+ */
 export function bagMinutesForBand(band: ScaleBand, dayNumber?: number) {
+  const roundSeconds = BAG_ROUND_SECONDS[band];
+  const rest = BAG_REST_SECONDS[band];
+  const shadowWork = band === "beginner" ? 120 : 180;
+  const weightedRest = band === "advanced" ? 30 : 45;
   const rounds = bagRoundCountFor(band, dayNumber);
-  const work = BAG_ROUND_SECONDS[band] * rounds;
-  const rest = BAG_REST_SECONDS[band] * Math.max(0, rounds - 1);
-  const warmCool =
-    band === "advanced" && dayNumber != null && isAdvancedLongBagDay(dayNumber)
-      ? BAG_WARM_COOL_ADVANCED_LONG
-      : BAG_WARM_COOL_SECONDS[band];
-  return Math.round((work + rest + warmCool) / 60);
+  const seconds =
+    blockSeconds(1, shadowWork, 30) +
+    blockSeconds(1, shadowWork, weightedRest) +
+    blockSeconds(1, roundSeconds, rest) +
+    blockSeconds(rounds, roundSeconds, rest) +
+    blockSeconds(1, 120, 0);
+  return Math.round(seconds / 60);
 }
 
-/** Short label for the level toggle — advanced spans ~45 (Tue/Thu) to ~60 (Mon/Wed/Fri). */
+/** Short label for the level toggle. Every bag day is in this range. */
 export function bagMinutesHintForBand(band: ScaleBand) {
-  if (band === "advanced") return "45–60";
   return String(bagMinutesForBand(band));
 }
 
 export function bagRoundLabel(band: ScaleBand, dayNumber?: number) {
-  if (band === "advanced" && dayNumber == null) {
-    return `${BAG_ROUND_COUNTS.advanced}–${BAG_ROUND_COUNTS_ADVANCED_LONG} rounds × 3:00 · ~45–60 min`;
-  }
   const minutes = bagMinutesForBand(band, dayNumber);
   const rounds = bagRoundCountFor(band, dayNumber);
   const work = BAG_ROUND_SECONDS[band];

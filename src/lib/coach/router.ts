@@ -310,6 +310,7 @@ function lanePrior(lane: CoachLane): QuestionType[] {
   if (lane.topic === "martial_art") return ["technique", "rules", "fight_iq", "mindset"];
   if (lane.topic === "conditioning") return ["programming", "nutrition", "injury"];
   if (lane.topic === "mental") return ["mindset", "fight_iq", "nutrition"];
+  if (lane.topic === "nutrition") return ["nutrition", "programming"];
   return [];
 }
 
@@ -326,6 +327,7 @@ function laneDefault(lane: CoachLane): QuestionType {
   if (lane.topic === "martial_art") return "technique";
   if (lane.topic === "conditioning") return "programming";
   if (lane.topic === "mental") return "mindset";
+  if (lane.topic === "nutrition") return "nutrition";
   return "general";
 }
 

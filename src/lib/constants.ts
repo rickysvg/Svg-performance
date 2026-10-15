@@ -42,6 +42,18 @@ export const GOAL_OPTIONS = [
   { value: "other", label: "Something else" },
 ] as const;
 
+export const TRAINING_FOCUS_OPTIONS = [
+  { value: "martial_arts_sc", label: "Martial arts + strength & conditioning" },
+  { value: "sc_only", label: "Strength & conditioning only" },
+] as const;
+
+export const LIFT_DAY_OPTIONS = [2, 3, 4] as const;
+
+export const OUTSIDE_KIND_OPTIONS = [
+  { value: "class", label: "Class / drilling" },
+  { value: "sparring", label: "Sparring" },
+] as const;
+
 export const FOCUS_OPTIONS = [
   { value: "mma", label: "MMA" },
   { value: "muay-thai", label: "Muay Thai" },

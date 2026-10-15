@@ -8,7 +8,12 @@ import { requireUser } from "@/lib/session";
 import { formatCalendarHeading, getCalendarSchedule, weekdayName } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { formatDayParam, parseDayParam } from "@/lib/home";
-import { moveDayChoices, planForDate, weekStrip } from "@/lib/week-plan";
+import {
+  moveDayChoices,
+  planForDate,
+  weekStrip,
+  type MoveListedSession,
+} from "@/lib/week-plan";
 import { scaleBandFromPrefs, type ScaleBand } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
@@ -47,6 +52,11 @@ export default async function TrainingCalendarPage({
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+    trainingFocus: profile?.trainingFocus,
+    liftDaysPerWeek: profile?.liftDaysPerWeek,
+    experienceLevel: profile?.experienceLevel,
+    email: user.email,
+    outsideTraining: profile?.outsideTraining,
   };
   const dayPlan = planForDate(prefs, selected, tz, swaps);
   const strip = weekStrip(prefs, now, tz, selected, swaps, selected);
@@ -66,16 +76,30 @@ export default async function TrainingCalendarPage({
     .map((day) => formatDayParam(day.date, tz));
   const selectedLogged = completedDays.includes(dayParam);
   const selectedPast = dayParam < formatDayParam(now, tz);
+  const selectedSummary = schedule.days
+    .find((day) => formatDayParam(day.date, tz) === dayParam)
+    ?.activities.find((item) => item.kind === "workout" && item.status === "complete")?.subtitle;
   const selectedMissed = selectedPast && dayPlan.active && !selectedLogged;
+  const missedWorkouts = schedule.days.reduce(
+    (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
+    0,
+  );
   const weekTitle =
     viewedWeek === currentWeek
       ? "This week"
       : `Week of ${viewedMonday.toLocaleDateString("en-US", { month: "short", timeZone: tz })} ${zonedParts(viewedMonday, tz).day}`;
-  const titles: Partial<Record<(typeof strip)[number]["weekday"], string[]>> = {};
+  const titles: Partial<Record<(typeof strip)[number]["weekday"], MoveListedSession[]>> = {};
   for (const day of schedule.days) {
     const name = weekdayName(day.date, tz);
     if (!isPlanWeekday(name)) continue;
-    titles[name] = day.activities.filter((item) => item.kind === "workout").map((item) => item.title);
+    titles[name] = day.activities
+      .filter((item) => item.kind === "workout")
+      .map((item) => ({
+        title: item.title,
+        sessionKey: item.sessionKey,
+        completed: item.status === "complete",
+        heavy: item.heavy,
+      }));
   }
   const moveDays = moveDayChoices(prefs, now, tz, selected, swaps, titles);
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
@@ -97,7 +121,7 @@ export default async function TrainingCalendarPage({
           <div>
             <h1 className="text-2xl">Calendar</h1>
             <p className="mt-1 text-sm text-muted">
-              Tap Move on a day to slide that workout.
+              Tap Move on a session to do it today, move it, or swap it.
             </p>
           </div>
           <DemoBadge />
@@ -156,11 +180,17 @@ export default async function TrainingCalendarPage({
           {formatCalendarHeading(selected, now, tz)}
           {selectedLogged ? " · Logged" : selectedMissed ? " · Missed" : ""}
           {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
+          {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
         </p>
         <h2 className="text-lg">{dayPlan.summary}</h2>
         {dayPlan.movedFrom ? (
           <p className="text-sm text-muted" data-moved-workout>
             {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
+          </p>
+        ) : null}
+        {selectedSummary ? (
+          <p className="text-sm text-muted" data-completed-summary>
+            {selectedSummary}
           </p>
         ) : null}
         {dayPlan.skipReason && !dayPlan.active ? (
@@ -173,6 +203,17 @@ export default async function TrainingCalendarPage({
           DEMO training days are not loaded on this preview yet. Your account is fine. Open
           Training when the template is seeded.
         </p>
+      ) : null}
+
+      {missedWorkouts > 0 ? (
+        <aside data-missed-note className="rounded-2xl bg-black px-4 py-4 text-white">
+          <p className="font-display text-xs uppercase tracking-wide text-highlighter">
+            Missed a workout?
+          </p>
+          <p className="mt-1 text-sm text-white/80">
+            Move one session, or the whole day, onto a day that fits.
+          </p>
+        </aside>
       ) : null}
 
       <h2 className="text-lg">{weekTitle}</h2>

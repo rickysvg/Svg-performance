@@ -9,6 +9,7 @@ import {
   getWeekPlanSwapsForUser,
   moveWorkoutForUser,
   restoreWeekPlanForUser,
+  swapWorkoutForUser,
   swapCurrentWeekForUser,
   swapWeekOnDateForUser,
 } from "@/lib/week-plan-swap-store";
@@ -57,6 +58,22 @@ export async function resetCalendarWeekAction(
     }
     refreshPlan();
     return {};
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function swapWorkoutAction(
+  sessionKey: string,
+  otherKey: string,
+  weekStart: string,
+): Promise<WeekPlanActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const undo = await snapshot(user.id);
+    await swapWorkoutForUser(user.id, sessionKey, otherKey, weekStart);
+    refreshPlan();
+    return { undo };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

@@ -193,10 +193,20 @@ export function plannerPrefsFromProfile(profile: {
   primaryFocus?: string | null;
   weeklyAvailability?: string[] | null;
   sessionsPerWeek?: number | null;
+  trainingFocus?: string | null;
+  liftDaysPerWeek?: number | null;
+  experienceLevel?: string | null;
+  email?: string | null;
+  outsideTraining?: PlannerPrefs["outsideTraining"];
 }): PlannerPrefs {
   return {
     primaryFocus: profile.primaryFocus,
     weeklyAvailability: profile.weeklyAvailability ?? [],
     sessionsPerWeek: profile.sessionsPerWeek,
+    trainingFocus: profile.trainingFocus,
+    liftDaysPerWeek: profile.liftDaysPerWeek,
+    experienceLevel: profile.experienceLevel,
+    email: profile.email,
+    outsideTraining: profile.outsideTraining ?? [],
   };
 }

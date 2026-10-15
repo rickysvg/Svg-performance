@@ -15,7 +15,7 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
-import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
 import {
@@ -73,6 +73,11 @@ export default async function TrainingPage({
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
     sessionsPerWeek: profile?.sessionsPerWeek ?? null,
+    trainingFocus: profile?.trainingFocus,
+    liftDaysPerWeek: profile?.liftDaysPerWeek,
+    experienceLevel: profile?.experienceLevel,
+    email: user.email,
+    outsideTraining: profile?.outsideTraining,
   };
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, now, tz);
@@ -103,12 +108,14 @@ export default async function TrainingPage({
   const deload = isDeloadWeek(selected, tz);
   const testing = isTestingWeek(selected, tz);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
-  const showPlyo = dayPlan.weekday === "Monday" || dayPlan.weekday === "Wednesday";
+  const showPlyo = planned.some((session) => session.kind === "strength");
   const plyo =
     showPlyo && dayPlan.active
-      ? weightAccess === "none"
-        ? floorPlyoBlock()
-        : plyoBlockFor(emphasis)
+      ? profile?.experienceLevel === "beginner"
+        ? beginnerPlyoBlock()
+        : weightAccess === "none"
+          ? floorPlyoBlock()
+          : plyoBlockFor(emphasis)
       : [];
   const hasSkill = planned.some((session) => session.kind === "skill");
   const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
@@ -154,6 +161,16 @@ export default async function TrainingPage({
       tz,
     ),
   );
+  const doneOnView = isToday
+    ? doneToday
+    : new Set(
+        await completedProgramDayIdsOnDay(
+          user.id,
+          planned.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+          selected,
+          tz,
+        ),
+      );
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -178,7 +195,9 @@ export default async function TrainingPage({
     ...(testing ? [] : [{ href: "/training/testing", label: "Testing week" }]),
     { href: "/training/travel", label: "No gym / travel day" },
     { href: "/mobility", label: "Mobility" },
-    { href: "/mobility/drills", label: "Hip and kick drills" },
+    ...(profile?.trainingFocus === "sc_only"
+      ? []
+      : [{ href: "/mobility/drills", label: "Hip and kick drills" }]),
   ];
 
   const viewedWeek = weekStartKey(selected, tz);
@@ -278,6 +297,7 @@ export default async function TrainingPage({
               calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && planned.length > 1}
               draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
+              completed={session.dayId ? doneOnView.has(session.dayId) : false}
             />
           </div>
         ))}

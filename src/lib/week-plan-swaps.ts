@@ -139,6 +139,70 @@ export function swapWeekdays(
   ];
 }
 
+/** Calendar weekday a session is on, after whole-day swaps and per-session pins. */
+export function placedWeekdayForSession(
+  sourceByDay: Partial<Record<PlanWeekday, PlanWeekday>>,
+  sessionDays: Partial<Record<string, PlanWeekday>> | undefined,
+  sessionKey: string,
+): PlanWeekday | null {
+  const home = sessionHomeWeekday(sessionKey);
+  if (!home) return null;
+  const pinned = sessionDays?.[sessionKey];
+  if (pinned && isPlanWeekday(pinned)) return pinned;
+  return calendarDayForSource(sourceByDay, home);
+}
+
+/**
+ * Trade two sessions that currently sit on different days.
+ * The rest of each day stays put. Swapping the same pair again undoes it.
+ */
+export function swapSessionsOnPlan(
+  swaps: WeekPlanSwap[],
+  weekStart: string,
+  sessionKey: string,
+  otherKey: string,
+): WeekPlanSwap[] {
+  if (!WEEK_START.test(weekStart) || !isSessionKey(sessionKey) || !isSessionKey(otherKey)) {
+    return swaps;
+  }
+  if (sessionKey === otherKey) return swaps;
+  const row = swaps.find((item) => item.weekStart === weekStart);
+  const sourceByDay = row?.sourceByDay ?? {};
+  const dayA = placedWeekdayForSession(sourceByDay, row?.sessionDays, sessionKey);
+  const dayB = placedWeekdayForSession(sourceByDay, row?.sessionDays, otherKey);
+  if (!dayA || !dayB || dayA === dayB) return swaps;
+  const moved = moveSessionOnPlan(swaps, weekStart, sessionKey, dayB);
+  return moveSessionOnPlan(moved, weekStart, otherKey, dayA);
+}
+
+/**
+ * Gentle note when a lift or hard session lands on class, sparring, or the day
+ * before sparring. Sparring can take any session. Never a reason to refuse.
+ */
+export function sessionMoveCaution(input: {
+  heavy: boolean;
+  outside?: "class" | "sparring" | null;
+  beforeSparring?: boolean;
+  dayName: string;
+}): string | null {
+  const day = input.dayName;
+  if (input.outside === "sparring") {
+    return `${day} is usually sparring, with no app workout. You can still put this session there.`;
+  }
+  if (!input.heavy) return null;
+  const heavyNote = "A lift or hard session is heavier than the usual plan. You can still move it.";
+  if (input.beforeSparring && input.outside === "class") {
+    return `${day} is class, and the day before sparring. ${heavyNote}`;
+  }
+  if (input.beforeSparring) {
+    return `${day} is the day before sparring. ${heavyNote}`;
+  }
+  if (input.outside === "class") {
+    return `${day} is a class day. ${heavyNote}`;
+  }
+  return null;
+}
+
 /** Put one skeleton workout on a calendar weekday. Sending it home clears the pin. */
 export function moveSessionOnPlan(
   swaps: WeekPlanSwap[],

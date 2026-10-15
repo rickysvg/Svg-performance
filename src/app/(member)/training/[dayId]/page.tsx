@@ -30,9 +30,15 @@ import { hasRirCue } from "@/lib/rir";
 import { isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
-import { floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
+import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { WeightAccessToggle } from "@/components/training/WeightAccessToggle";
+import { ExerciseCardMenu } from "@/components/training/ExerciseCardMenu";
+import { RemoveToast } from "@/components/training/RemoveToast";
+import { listSwapsForDay } from "@/lib/exercise-swap-store";
+import { listRemovalsForDay } from "@/lib/exercise-removal-store";
+import { applySwapsToExercises, swapSlotsFor, trainingBlockKey } from "@/lib/exercise-swap";
+import { omitRemovedSlots } from "@/lib/exercise-removal";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 
@@ -44,15 +50,16 @@ export default async function TrainingDayPage({
   const user = await requireUser();
   const profile = await getProfileForUser(user.id);
   const { dayId } = await params;
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
   let day;
   try {
     const raw = await getProgramDayById(dayId);
     const weightAccess = normalizeWeightAccess(profile?.weightAccess);
     day = scaleProgramDay(raw, {
-      band: scaleBandFromPrefs({
-        experienceLevel: profile?.experienceLevel,
-        competitionStatus: profile?.competitionStatus,
-      }),
+      band,
       programSlug: raw.program.slug,
       weightAccess,
     });
@@ -62,25 +69,48 @@ export default async function TrainingDayPage({
 
   const drafts = await listDraftSessionsForUser(user.id);
   const draft = drafts.find((session) => session.programDayId === day.id);
-  const equipment = equipmentForExercises(day.exercises.map((exercise) => exercise.name));
-  const minutes = estimateSessionMinutes(day.exercises);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const swaps = await listSwapsForDay({
+    userId: user.id,
+    programSlug: day.program.slug,
+    dayNumber: day.dayNumber,
+  });
+  const swapped = applySwapsToExercises(day.exercises, swaps, {
+    sessionId: draft?.id,
+    blockKey: trainingBlockKey(new Date(), tz),
+    includePending: !draft,
+  });
+  const removals = await listRemovalsForDay({
+    userId: user.id,
+    programSlug: day.program.slug,
+    dayNumber: day.dayNumber,
+  });
+  const omitted = omitRemovedSlots(day.exercises, swapped, removals, {
+    sessionId: draft?.id,
+    includePending: !draft,
+  });
+  const exercises = omitted.shown;
+  const slots = swapSlotsFor(omitted.programmed, omitted.shown);
+  const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
+  const minutes = estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = draft ? "Continue" : "Start Now";
-  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const deload = isDeloadWeek(new Date(), tz);
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const plyo = liftDay
-    ? weightAccess === "none"
-      ? floorPlyoBlock()
-      : plyoBlockFor(profile?.trainingEmphasis)
+    ? band === "beginner"
+      ? beginnerPlyoBlock()
+      : weightAccess === "none"
+        ? floorPlyoBlock()
+        : plyoBlockFor(profile?.trainingEmphasis)
     : [];
   const notes = await listExerciseNotesForUser(user.id, {
-    exerciseNames: day.exercises.map((exercise) => exercise.name),
+    exerciseNames: exercises.map((exercise) => exercise.name),
     programDayId: day.id,
   });
-  const firstRir = day.exercises.find((exercise) => hasRirCue(exercise.loadText))?.id;
+  const firstRir = exercises.find((exercise) => hasRirCue(exercise.loadText))?.id;
   const bookend = mobilityBookendsForSession({
     kind,
     title: day.title,
@@ -90,6 +120,7 @@ export default async function TrainingDayPage({
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
+      <RemoveToast />
       <header className="flex items-center gap-2 px-4 pb-2">
         <Link
           href="/training"
@@ -125,7 +156,7 @@ export default async function TrainingDayPage({
         <DaySessionMeta
           kind={kind}
           minutes={minutes}
-          exerciseCount={day.exercises.length}
+          exerciseCount={exercises.length}
         />
 
         {deload ? (
@@ -180,8 +211,9 @@ export default async function TrainingDayPage({
       <section data-session-phase="next" className="flex-1">
         <p className="px-4 pb-2 font-display text-xs uppercase tracking-wide text-accent">Next</p>
         <ol className="border-t border-line pb-32">
-          {day.exercises.map((exercise, index) => {
-            const form = lookupFormVideo(exercise.name, day.exercises);
+          {exercises.map((exercise, index) => {
+            const slot = slots[index];
+            const form = lookupFormVideo(exercise.name, exercises);
             const planned = plannedSetLine({
               sets: exercise.sets,
               reps: exercise.reps,
@@ -202,7 +234,27 @@ export default async function TrainingDayPage({
                   formVideoPending={form.pending}
                 />
                 <div className="min-w-0 flex-1">
-                  <h2 className="leading-snug">{exercise.name}</h2>
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="leading-snug">{exercise.name}</h2>
+                    <ExerciseCardMenu
+                      programSlug={day.program.slug}
+                      dayNumber={day.dayNumber}
+                      programDayId={day.id}
+                      originalName={slot?.programmedName ?? exercise.name}
+                      currentName={exercise.name}
+                      source={{
+                        sets: exercise.sets,
+                        reps: exercise.reps,
+                        loadText: exercise.loadText ?? "",
+                        restSeconds: exercise.restSeconds,
+                        logMode: exercise.logMode,
+                        notes: exercise.notes,
+                      }}
+                      weightAccess={weightAccess}
+                      workoutSessionId={draft?.id}
+                      canRemove={exercises.length > 1}
+                    />
+                  </div>
                   <CoachCredit name={exercise.name} />
                   <p className="mt-1 text-sm text-muted">{planned}</p>
                   {exercise.notes && !bagFocusLines(exercise.notes) ? (
