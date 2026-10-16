@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { StatusBanner } from "@/components/StatusBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { useCoachStream } from "@/components/coach/useCoachStream";
 import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
+import { CoachSpeakButton } from "@/components/coach/CoachSpeakButton";
 
 type ChatBubble = {
   id: string;
@@ -25,6 +26,8 @@ export function CoachBubble({
   offline,
   coachName = COACH_PUBLIC_NAME,
   coachThumb,
+  coachId,
+  audioRef,
 }: {
   speaker: "user" | "assistant";
   content: string;
@@ -34,6 +37,8 @@ export function CoachBubble({
   viewerRole?: UserRole;
   coachName?: string;
   coachThumb?: string;
+  coachId?: string;
+  audioRef?: RefObject<HTMLAudioElement | null>;
 }) {
   const quick = speaker === "assistant" && Boolean(offline);
   const label = speaker === "user" ? "You" : coachName;
@@ -61,6 +66,9 @@ export function CoachBubble({
           {refused ? " · safety refusal" : ""}
           {quick ? " · quick answer" : ""}
         </p>
+        {speaker === "assistant" && coachId && audioRef ? (
+          <CoachSpeakButton text={content} coachId={coachId} audioRef={audioRef} />
+        ) : null}
       </div>
       <p className="mt-2 whitespace-pre-wrap">{content}</p>
     </article>
@@ -73,6 +81,7 @@ export function CoachLiveThread({
   lane,
   viewerRole = "member",
   coachName = COACH_PUBLIC_NAME,
+  coachId = "skye",
   coachThumb,
   initialMessages,
 }: {
@@ -81,6 +90,7 @@ export function CoachLiveThread({
   lane: string;
   viewerRole?: UserRole;
   coachName?: string;
+  coachId?: string;
   coachThumb?: string;
   initialMessages: Array<{
     id: string;
@@ -101,6 +111,7 @@ export function CoachLiveThread({
   );
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { streaming, partial, error, offline, fallbackReason, start, stop } = useCoachStream();
 
   useEffect(() => {
@@ -135,6 +146,7 @@ export function CoachLiveThread({
 
   return (
     <div className="space-y-3" data-coach-thread>
+      <audio ref={audioRef} data-coach-audio playsInline preload="auto" className="hidden" />
       {messages.length === 0 && !streaming && !partial ? (
         <EmptyState title={`Ask ${coachName} about ${lane}`}>
           Stay in this lane. For live eyes, talk to a coach on the floor. Safety
@@ -151,7 +163,9 @@ export function CoachLiveThread({
             fallbackReason={message.fallbackReason}
             viewerRole={viewerRole}
             coachName={coachName}
+            coachId={coachId}
             coachThumb={coachThumb}
+            audioRef={audioRef}
           />
         ))
       )}

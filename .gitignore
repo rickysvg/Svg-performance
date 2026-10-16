@@ -54,6 +54,9 @@ yarn-error.log*
 *.db-shm
 *.db-wal
 
+# generated coach voice previews (scripts/coach-voice-samples.mjs)
+/voice-samples/
+
 # vercel
 .vercel
 

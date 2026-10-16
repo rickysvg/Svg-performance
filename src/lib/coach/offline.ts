@@ -8,6 +8,7 @@ import { composeOfflineAnswer } from "@/lib/coach/offline-compose";
 import type { OfflineMemberFacts } from "@/lib/coach/member-facts";
 import { domainOfflineFallback, matchOfflineBank } from "@/lib/coach/offline-bank";
 import { classifyQuestion, intentFor } from "@/lib/coach/router";
+import { offlineCoachLine } from "@/lib/coaches";
 
 export type OfflineReplyOptions = {
   coachName?: string;
@@ -135,6 +136,12 @@ function offlineAnswer(
   return composeOfflineAnswer({ message: question, intent, topic, art, ...options });
 }
 
+function withCoachLine(text: string, options?: OfflineReplyOptions) {
+  const line = offlineCoachLine(options?.coachName, options?.coachingStyle);
+  if (!line || text.includes(line)) return text;
+  return `${text}\n\n${line}`;
+}
+
 export function offlineReply(
   message: string,
   _experienceLevel: string,
@@ -146,9 +153,9 @@ export function offlineReply(
   const scoped = parseScopedNote(message);
   const question = scoped.question || message;
   if (scoped.exercise) {
-    return cueForExercise(scoped.exercise);
+    return withCoachLine(cueForExercise(scoped.exercise), options);
   }
-  return offlineAnswer(question, topic, art, options);
+  return withCoachLine(offlineAnswer(question, topic, art, options), options);
 }
 
 export function liveModelUnavailableReply(

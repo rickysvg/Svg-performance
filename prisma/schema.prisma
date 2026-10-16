@@ -152,6 +152,8 @@ model Profile {
   aiCoachId                  String    @default("skye")
   /** tough | supportive | technical | hype. Empty uses the default style. */
   coachingStyle              String    @default("")
+  /** Spoken cues during a logged workout. On until the member turns it off. */
+  coachMotivation            Boolean   @default(true)
   /** Set when the member picks a coach or dismisses the one-time prompt. */
   coachChoiceAt              DateTime?
   /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
@@ -194,6 +196,24 @@ model CoachDaySummary {
 
   @@unique([userId, dayKey, coachId, factsKey])
   @@index([userId, dayKey])
+}
+
+/**
+ * Shared spoken cue. Keyed by coach, intensity, and cue so members reuse one clip.
+ * Generic keys (start, rest10, halfway) stay small. Dynamic keys add the exercise.
+ */
+model CoachCueCache {
+  id        String   @id @default(cuid())
+  coachId   String
+  style     String
+  cueKey    String
+  voice     String
+  script    String
+  audio     Bytes
+  mimeType  String   @default("audio/mpeg")
+  createdAt DateTime @default(now())
+
+  @@unique([coachId, style, cueKey])
 }
 
 /** Sparring log. Class/drilling days are not stored here. Saved only on Save. */

@@ -157,6 +157,7 @@ export default async function CoachPage({
             lane={lane}
             viewerRole={user.role}
             coachName={coach.name}
+            coachId={coach.id}
             coachThumb={coach.thumb}
             initialMessages={thread.messages}
           />

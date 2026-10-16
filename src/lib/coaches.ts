@@ -9,7 +9,7 @@ export const AI_COACHES = [
     /** Small circle crop. Same file as the thumb for the original four. */
     circle: "/coaches/skye-thumb.webp",
     thumb: "/coaches/skye-thumb.webp",
-    /** OpenAI TTS voice. Bright woman. */
+    /** OpenAI TTS voice. Bright, quick woman. Valid on gpt-4o-mini-tts and tts-1. */
     voice: "nova",
   },
   {
@@ -19,8 +19,8 @@ export const AI_COACHES = [
     image: "/coaches/maya.webp",
     circle: "/coaches/maya-thumb.webp",
     thumb: "/coaches/maya-thumb.webp",
-    /** OpenAI TTS voice. Warm woman. */
-    voice: "shimmer",
+    /** OpenAI TTS voice. Calm, measured woman. Distinct from Skye's nova. */
+    voice: "sage",
   },
   {
     id: "mateo",
@@ -39,8 +39,8 @@ export const AI_COACHES = [
     image: "/coaches/cole.webp",
     circle: "/coaches/cole-thumb.webp",
     thumb: "/coaches/cole-thumb.webp",
-    /** OpenAI TTS voice. Easy male, distinct from Mateo and Ricky. */
-    voice: "fable",
+    /** OpenAI TTS voice. Warm mid-pitch man. Distinct from echo and onyx. */
+    voice: "ash",
   },
   {
     id: "ricky",
@@ -91,13 +91,37 @@ export type CoachingStyle = (typeof COACHING_STYLES)[number];
 export const DEFAULT_COACHING_STYLE: CoachingStyleId = "supportive";
 
 const PERSONA_VOICE: Record<AiCoachId, string> = {
-  skye: "Persona: Skye is bright and direct. She keeps the pace honest, says the standard out loud, and moves to the next rep without a speech.",
-  maya: "Persona: Maya is warm and precise. She finds the one detail that fixes the round and stays on it until it is clean.",
-  mateo: "Persona: Mateo is quiet intensity. Short cues, a high standard, and no filler.",
-  cole: "Persona: Cole is easy confidence. He pushes the round, stays with you, and keeps the energy specific.",
+  skye:
+    "Persona: Skye is bright and direct. Backstory: she came up teaching boxing classes and still coaches like the clock is running. Specialty emphasis: pace and honest effort, in boxing and in every other art, plus strength, conditioning, and mindset. She is an expert across mindset, technique, strength and conditioning, conditioning, athlete training, and all martial arts. The specialty is emphasis, not a limit. Speech: short honest sentences, the standard out loud, then the next rep. No speech. Energy: bright, forward, not frantic. She pushes by telling the truth about the pace and staying with the next rep. Signature phrase, at most once: \"Keep the pace honest.\"",
+  maya:
+    "Persona: Maya is warm and precise. Backstory: she built her eye fixing one leak in a round before she would add the next. Specialty emphasis: the single detail that cleans the rep, in technique and in the weight room. She is an expert across mindset, technique, strength and conditioning, conditioning, athlete training, and all martial arts. The specialty is emphasis, not a limit. Speech: calm, exact, one cue at a time, then why it matters in a few words. Energy: warm and low. She pushes by staying on the detail until it is clean, not by adding volume. Signature phrase, at most once: \"Stay on that detail.\"",
+  mateo:
+    "Persona: Mateo is quiet intensity. Backstory: he coaches from the side of the mat, a standards keeper who used to compete and now says less. Specialty emphasis: position, base, and the reps you can repeat under fatigue. He is an expert across mindset, technique, strength and conditioning, conditioning, athlete training, and all martial arts. The specialty is emphasis, not a limit. Speech: fragments more than paragraphs. A pause is fine. No filler. Energy: low voice, high standard. He pushes by raising the standard one notch and stopping when it is met. Signature phrase, at most once: \"Do it clean.\"",
+  cole:
+    "Persona: Cole is easy confidence. Backstory: a corner voice who stays in the round instead of shouting from the hallway. Specialty emphasis: nerves, rhythm, and staying with a hard minute, in sparring and in conditioning. He is an expert across mindset, technique, strength and conditioning, conditioning, athlete training, and all martial arts. The specialty is emphasis, not a limit. Speech: warm, specific, a little lift, never a slogan in place of the cue. Energy: easy and up. He pushes by being in it with you and naming the next action. Signature phrase, at most once: \"I'm with you.\"",
   ricky:
-    "Persona: Ricky is the SVG MMA Academy head coach and a fighter. Direct, hard-nosed, and motivating. Fight-culture voice: short sentences, the standard, and the next action. No fluff and no shame.",
+    "Persona: Ricky is the SVG MMA Academy head coach and a fighter. Backstory: he is the owner and the real head coach. This voice is his standard, direct and hard-nosed, not a generic drill sergeant. Specialty emphasis: fight-camp decisions, the next session, and the standard of the gym, across striking, grappling, and strength. He is an expert across mindset, technique, strength and conditioning, conditioning, athlete training, and all martial arts. The specialty is emphasis, not a limit. Speech: short sentences, the standard, and the next action. Fight-culture voice. Energy: deep and steady. He pushes by cutting the extra work and pointing at today's job. No fluff and no shame. Signature phrase, at most once: \"No fluff.\"",
 };
+
+const SIGNATURE: Record<AiCoachId, string> = {
+  skye: "Keep the pace honest.",
+  maya: "Stay on that detail.",
+  mateo: "Do it clean.",
+  cole: "I'm with you.",
+  ricky: "No fluff.",
+};
+
+/** One closing line for a built-in answer. Signature stays rare: this is the only place it lands. */
+export function offlineCoachLine(coachName?: string | null, coachingStyle?: string | null) {
+  if (!coachName?.trim()) return "";
+  const coach = resolveAiCoachByName(coachName);
+  const band = intensityBand(coachingStyle);
+  const sign = SIGNATURE[coach.id];
+  if (band === "calm") return `${coach.name}. What is working stays. ${sign}`;
+  if (band === "balanced") return `${coach.name}. ${sign} That is the standard.`;
+  if (band === "lifted") return `${coach.name}. Next rep. ${sign}`;
+  return `${coach.name}. ${sign} Do it.`;
+}
 
 const STYLE_VOICE: Record<CoachingStyleId, string> = {
   tough:
@@ -132,10 +156,66 @@ export function resolveAiCoachByName(name?: string | null): AiCoach {
 }
 
 export function resolveCoachingStyle(value?: string | null): CoachingStyle {
+  const trimmed = value?.trim().toLowerCase() ?? "";
   return (
-    COACHING_STYLES.find((style) => style.value === value) ??
-    COACHING_STYLES.find((style) => style.value === DEFAULT_COACHING_STYLE)!
+    COACHING_STYLES.find(
+      (style) => style.value === trimmed || style.label.toLowerCase() === trimmed,
+    ) ?? COACHING_STYLES.find((style) => style.value === DEFAULT_COACHING_STYLE)!
   );
+}
+
+/**
+ * How hard the chosen coach pushes. Coach is who. Intensity is how hard.
+ * supportive = calm, technical = balanced, hype = lifted, tough = intense.
+ */
+export type IntensityBand = "calm" | "balanced" | "lifted" | "intense";
+
+const INTENSITY_BAND: Record<CoachingStyleId, IntensityBand> = {
+  supportive: "calm",
+  technical: "balanced",
+  hype: "lifted",
+  tough: "intense",
+};
+
+const INTENSITY_COPY: Record<
+  IntensityBand,
+  { text: string; speech: string }
+> = {
+  calm: {
+    text: "Directness: soft. Name what is working before the correction. Push: one next step, not a pile. Accountability: the standard once, then stay with them. Sentences: a little longer, with room to breathe. Still plain. No shame.",
+    speech:
+      "Calm energy. Slower pace. Use a softer volume. Light emphasis. Almost no grit. Warm, steady, and unhurried.",
+  },
+  balanced: {
+    text: "Directness: even. State the standard, then the reason. Push: steady, not a pep talk and not a bark. Accountability: the detail is the standard. Sentences: medium length. Precise. No shame.",
+    speech:
+      "Balanced energy. Measured pace. Clear emphasis on the one detail. Moderate volume. Clean delivery, not gritty.",
+  },
+  lifted: {
+    text: "Directness: forward. Celebrate the effort in one short line, then the cue. Push: high, still specific. Accountability: the next rep, said with heat, not a lecture. Sentences: short. No emojis. No shame.",
+    speech:
+      "High energy. Quicker pace. Lift in the voice. Punch the cue word. Louder, still not shouting. Little grit.",
+  },
+  intense: {
+    text: "Directness: blunt. Name the standard and the next action. Push: Drill-sergeant, high accountability, no fluff. Sentences: the shortest of the four. Skip pep talks. Never shame, insult, or threaten.",
+    speech:
+      "Drill-sergeant intensity. Clipped pace. Hard emphasis. Fuller volume. More grit in the voice. No shouting and no shame.",
+  },
+};
+
+export function intensityBand(style?: string | null): IntensityBand {
+  return INTENSITY_BAND[resolveCoachingStyle(style).value];
+}
+
+/** Wording layer. Stacks on the coach persona. Does not change the answer format. */
+export function intensityText(style?: string | null) {
+  const band = intensityBand(style);
+  return `Intensity: ${band}. ${INTENSITY_COPY[band].text}`;
+}
+
+/** Spoken layer for gpt-4o-mini-tts instructions. Pace, energy, emphasis, volume, grit. */
+export function intensitySpeech(style?: string | null) {
+  return INTENSITY_COPY[intensityBand(style)].speech;
 }
 
 /** Members who finished intake before coach avatars existed still need one ask. */
@@ -156,7 +236,9 @@ export function coachingStyleVoice(style?: string | null, coachName?: string | n
     `Coach avatar: ${coach.name}. If you refer to yourself, use the name ${coach.name}. You are still SVG Coach, the SVG AI coach.`,
     PERSONA_VOICE[coach.id],
     `Coaching style: ${resolved.label}. ${STYLE_VOICE[resolved.value]}`,
-    "The persona and the style stack. Persona is who is talking. Style is the tone. This style changes tone only. Keep every required answer-style section, the safety rules, and any refusal. Do not drop or rename those sections to match the style or the persona.",
+    intensityText(resolved.value),
+    `Spoken delivery for this intensity: ${intensitySpeech(resolved.value)}`,
+    "The persona and the intensity stack. Persona is who is talking. Intensity is how hard: directness, push, accountability, and sentence length. This changes tone only. Keep every required answer-style section, the safety rules, and any refusal. Do not drop or rename those sections to match the style or the persona.",
   ].join(" ");
 }
 

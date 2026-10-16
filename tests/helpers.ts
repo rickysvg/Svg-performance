@@ -11,6 +11,7 @@ export async function resetDatabase() {
   await prisma.formCheck.deleteMany();
   await prisma.memberFeedback.deleteMany();
   await prisma.coachDaySummary.deleteMany();
+  await prisma.coachCueCache.deleteMany();
   await prisma.fightCamp.deleteMany();
   await prisma.clipTimestampNote.deleteMany();
   await prisma.trainingClip.deleteMany();

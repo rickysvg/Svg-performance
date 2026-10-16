@@ -3,7 +3,14 @@ import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessi
 import { bikeWeekIndex, pickBikeSessionForPlan, type ScaleBand } from "@/lib/bike-sessions";
 import { completeCoachText } from "@/lib/coach/llm";
 import { synthesizeCoachSpeech } from "@/lib/coach/tts";
-import { coachingStyleVoice, resolveAiCoach, resolveCoachingStyle, type AiCoachId } from "@/lib/coaches";
+import {
+  coachingStyleVoice,
+  intensityBand,
+  resolveAiCoach,
+  resolveCoachingStyle,
+  type AiCoachId,
+  type IntensityBand,
+} from "@/lib/coaches";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
@@ -37,7 +44,7 @@ export type DaySummaryFacts = {
   sessions: DaySummarySession[];
 };
 
-const SUMMARY_VERSION = "1";
+const SUMMARY_VERSION = "2";
 
 const BAG_DAYS = new Set<PlanWeekday>([
   "Monday",
@@ -50,12 +57,37 @@ const BAG_DAYS = new Set<PlanWeekday>([
 
 const ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
-const FRAME: Record<AiCoachId, { close: string }> = {
-  skye: { close: "Keep the pace honest, then move on." },
-  maya: { close: "Stay on that detail until it is clean." },
-  mateo: { close: "Do it clean. Then you are done." },
-  cole: { close: "Stay with the work. I am with you." },
-  ricky: { close: "Show up and do today's work. No extra. No fluff." },
+const CLOSE: Record<AiCoachId, Record<IntensityBand, string>> = {
+  skye: {
+    calm: "Keep the pace honest, then move on.",
+    balanced: "One clean piece, then the next. Keep the pace honest.",
+    lifted: "You're on it. Keep the pace honest.",
+    intense: "Do the work. Keep the pace honest.",
+  },
+  maya: {
+    calm: "Stay on that detail until it is clean.",
+    balanced: "That detail is the standard. Stay on that detail.",
+    lifted: "Make the detail clean. Stay on that detail.",
+    intense: "The detail. Stay on that detail.",
+  },
+  mateo: {
+    calm: "Do it clean. Then you are done.",
+    balanced: "That is the standard. Do it clean.",
+    lifted: "Same standard. Do it clean.",
+    intense: "Do it clean.",
+  },
+  cole: {
+    calm: "Stay with the work. I'm with you.",
+    balanced: "Do the piece in front of you. I'm with you.",
+    lifted: "Next rep. I'm with you.",
+    intense: "Do it. I'm with you.",
+  },
+  ricky: {
+    calm: "Show up and do today's work. No extra. No fluff.",
+    balanced: "Today's work. That is the standard. No fluff.",
+    lifted: "We're on today's work. No fluff.",
+    intense: "Do today's work. No extra. No fluff.",
+  },
 };
 
 type ExerciseCue = {
@@ -361,10 +393,28 @@ export function buildDaySummaryFacts(input: {
 }
 
 function opener(facts: DaySummaryFacts) {
-  if (facts.coachId === "ricky") return `Ricky here. ${facts.weekday}.`;
-  if (facts.coachId === "skye") return `Skye. ${facts.weekday}. Here is the day.`;
-  if (facts.coachId === "maya") return `Maya. ${facts.weekday}. One detail to get right.`;
-  if (facts.coachId === "mateo") return `Mateo. ${facts.weekday}.`;
+  const band = intensityBand(facts.coachingStyle);
+  if (facts.coachId === "ricky") {
+    if (band === "calm") return `Ricky here. ${facts.weekday}. You're in.`;
+    if (band === "lifted") return `Ricky here. ${facts.weekday}. We're on this.`;
+    if (band === "balanced") return `Ricky here. ${facts.weekday}. One standard.`;
+    return `Ricky here. ${facts.weekday}.`;
+  }
+  if (facts.coachId === "skye") {
+    if (band === "intense") return `Skye. ${facts.weekday}. Here is the day. Do the work.`;
+    if (band === "lifted") return `Skye. ${facts.weekday}. Here is the day. You're on it.`;
+    return `Skye. ${facts.weekday}. Here is the day.`;
+  }
+  if (facts.coachId === "maya") {
+    if (band === "intense") return `Maya. ${facts.weekday}. One detail. Make it clean.`;
+    return `Maya. ${facts.weekday}. One detail to get right.`;
+  }
+  if (facts.coachId === "mateo") {
+    if (band === "calm") return `Mateo. ${facts.weekday}. We'll keep it clean.`;
+    return `Mateo. ${facts.weekday}.`;
+  }
+  if (band === "intense") return `Cole. ${facts.weekday}. Do the work.`;
+  if (band === "calm") return `Cole. ${facts.weekday}. I'm with you on this.`;
   return `Cole. ${facts.weekday}. We are on this.`;
 }
 
@@ -397,7 +447,7 @@ function sessionLine(session: DaySummarySession, index: number) {
 
 /** Deterministic script. Used when the model is unavailable, and as the quality check. */
 export function templateDaySummary(facts: DaySummaryFacts) {
-  const close = FRAME[facts.coachId].close;
+  const close = CLOSE[facts.coachId][intensityBand(facts.coachingStyle)];
   if (facts.dayKind === "rest") {
     const note = facts.sessions[0]?.cues.join(" ") ?? "Rest or easy movement.";
     return tidy(
@@ -419,12 +469,8 @@ export function summaryWordCount(script: string) {
 
 export function daySummaryPrompts(facts: DaySummaryFacts) {
   const system = [
-    coachingStyleVoice(
-      facts.coachingStyle.toLowerCase() === "tough"
-        ? "tough"
-        : facts.coachingStyle.toLowerCase(),
-      facts.coachName,
-    ),
+    coachingStyleVoice(resolveCoachingStyle(facts.coachingStyle).value, facts.coachName),
+    "Say it in that coach's voice at that intensity. Directness, push, accountability, and sentence length follow the intensity. Do not switch coaches.",
     "You are recording a spoken briefing of this member's training for today.",
     "Use only the facts in the user message. Do not invent sessions, loads, a fight date, or medical advice.",
     "Plain spoken sentences. No markdown, no labels, no bullet lists, and no emojis.",
@@ -465,8 +511,9 @@ export function chooseSpokenScript(
 }
 
 export function daySummaryFactsKey(facts: DaySummaryFacts) {
+  const intensity = intensityBand(facts.coachingStyle);
   return createHash("sha256")
-    .update(SUMMARY_VERSION + JSON.stringify(facts))
+    .update(`${SUMMARY_VERSION}|intensity:${intensity}|${JSON.stringify(facts)}`)
     .digest("hex")
     .slice(0, 24);
 }
@@ -538,6 +585,7 @@ type SummaryDeps = {
   synthesize?: (
     text: string,
     coachId: string,
+    coachingStyle?: string,
   ) => Promise<{ audio: Buffer; mime: string; voice: string } | null>;
 };
 
@@ -638,7 +686,7 @@ export async function getTodayCoachSummary(
         coachId: facts.coachId,
       };
     }
-    const spoken = await synthesize(existing.script, facts.coachId);
+    const spoken = await synthesize(existing.script, facts.coachId, facts.coachingStyle);
     if (spoken) {
       await writeSummary({
         userId,
@@ -669,7 +717,7 @@ export async function getTodayCoachSummary(
   const live = await complete(prompts.system, prompts.user);
   const script = chooseSpokenScript(live, fallback, facts.dayKind);
   const source = script === fallback ? "template" : "llm";
-  const spoken = await synthesize(script, facts.coachId);
+  const spoken = await synthesize(script, facts.coachId, facts.coachingStyle);
   const voice = spoken?.voice ?? resolveAiCoach(facts.coachId).voice;
   await writeSummary({
     userId,
