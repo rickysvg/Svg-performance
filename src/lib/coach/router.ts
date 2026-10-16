@@ -369,6 +369,172 @@ function prefersFightIq(text: string, scores: Record<QuestionType, number>) {
   return true;
 }
 
+const MONTH_NAME =
+  /\b(?:january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\b/i;
+
+/** A date, a count of weeks, or "until February". "This week" alone is not a camp date. */
+export function hasTimeframe(text: string) {
+  return (
+    MONTH_NAME.test(text) ||
+    /\b(?:in|until|till|by|before)\s+may\b/i.test(text) ||
+    /\b\d{4}-\d{2}-\d{2}\b/.test(text) ||
+    /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/.test(text) ||
+    /\b(?:in|until|till|by|before)\s+\d{1,2}\s+(?:weeks?|months?)\b/i.test(text) ||
+    /\b\d{1,2}\s+(?:weeks?|months?)\s+(?:out|away|from now)\b/i.test(text) ||
+    /\b(?:don'?t|do not|not|won'?t)\s+fight\s+until\b/i.test(text) ||
+    /\b(?:next|this)\s+(?:spring|summer|fall|winter|month)\b/i.test(text)
+  );
+}
+
+function mentionsFight(text: string) {
+  return /\b(?:fight(?:ing|s)?|bout|main event|fight camp|fight week)\b/i.test(text);
+}
+
+/** "Without a fight camp" is not a camp question. "I don't fight until February" is. */
+function negatedCamp(text: string) {
+  if (/\b(?:don'?t|do not|won'?t|will not)\s+fight\s+until\b/i.test(text)) return false;
+  return /\b(?:without|no|not in|don'?t have|do not have|isn'?t|is not)\b(?:\s+\w+){0,4}\s+(?:a\s+)?fight(?:\s+camp)?\b/i.test(
+    text,
+  );
+}
+
+function isTrainingFocus(text: string) {
+  return (
+    /\bfocus on\b/i.test(text) &&
+    !/\b(?:nerves?|anxious|anxiety|scared|mindset|mental|can'?t focus|cannot focus|lose focus|lost focus|stay focused)\b/i.test(
+      text,
+    )
+  );
+}
+
+function pushSignal(signals: string[], name: string) {
+  if (!signals.includes(name)) signals.push(name);
+}
+
+/**
+ * Multi-word intents. A lone "focus" is not nerves when the ask is what to train.
+ * A fight plus a date is camp planning even if "focus" is in the sentence.
+ */
+function applyIntentSignals(
+  text: string,
+  scores: Record<QuestionType, number>,
+  signals: string[],
+) {
+  if (isTrainingFocus(text)) {
+    const index = signals.indexOf("focus");
+    if (index >= 0) {
+      scores.mindset = Math.max(0, scores.mindset - 2);
+      signals.splice(index, 1);
+    }
+  }
+
+  const fight = mentionsFight(text);
+  const time = hasTimeframe(text);
+  const planning =
+    /\b(?:focus|prepare|prep|train(?:ing)?|plan|priorit\w*|suggest|work on|right now|\brn\b)\b/i.test(
+      text,
+    );
+  if (fight && (time || planning) && !negatedCamp(text) && (time || /\bcamp\b/i.test(text))) {
+    scores.programming += 6;
+    pushSignal(signals, "fight-camp");
+  } else if (
+    fight &&
+    planning &&
+    /\b(?:until|till|before|after|in|on|by)\b/i.test(text) &&
+    !negatedCamp(text)
+  ) {
+    scores.programming += 6;
+    pushSignal(signals, "fight-camp");
+  }
+
+  if (
+    /\b(?:winner of|whoever wins|unknown opponent|don'?t know (?:the |my )?opponent|after the (?:fight|event|card|main event))\b/i.test(
+      text,
+    )
+  ) {
+    scores.fight_iq += 2;
+    pushSignal(signals, "unknown-opponent");
+  }
+
+  if (
+    /\b(?:opponent|southpaw|orthodox|game ?plan|scout(?:ing)?|film study|study film|their style)\b/i.test(
+      text,
+    ) ||
+    /\b(?:wrestler|striker|grappler|kicker)\b/i.test(text)
+  ) {
+    scores.fight_iq += 2;
+    pushSignal(signals, "opponent-prep");
+  }
+
+  const missed = /\b(?:missed|skip(?:ped)?|fell off|inconsistent)\b/i.test(text);
+  const liftAsk = /\b(?:rir|how heavy|sets?|reps?|squat|deadlift|rdl)\b/i.test(text);
+  if (
+    !missed &&
+    !liftAsk &&
+    (/\b(?:my schedule|which days|what(?:'s| is) on (?:my )?week)\b/i.test(text) ||
+      (/\bthis week\b/i.test(text) && /\b(?:schedule|plan the week|what should i do)\b/i.test(text)))
+  ) {
+    scores.programming += 3;
+    pushSignal(signals, "schedule");
+  }
+}
+
+export const COACH_INTENTS = [
+  "fight_camp",
+  "opponent_prep",
+  "technique",
+  "strength",
+  "conditioning",
+  "weight_cut",
+  "nutrition",
+  "mindset",
+  "injury",
+  "recovery",
+  "schedule",
+  "rules",
+  "general",
+] as const;
+
+export type CoachIntent = (typeof COACH_INTENTS)[number];
+
+function isWeightCutIntent(text: string) {
+  return /\bweight cuts?\b|\bcut weight\b|\bweigh-?ins?\b|\bmake weight\b/i.test(text);
+}
+
+function isRecoveryIntent(text: string) {
+  return /\bsore(?:ness)?\b|\bsleep\b|\brest day\b|\btired\b|\bwrecked\b|\bachy\b|\brecover(?:y|ing)?\b/i.test(
+    text,
+  );
+}
+
+function isConditioningIntent(text: string) {
+  return /\bconditioning\b|\bintervals?\b|\bgas tank\b|\bengine\b|\bcardio\b|\bbike\b|\benergy systems?\b|\b5[- ]?minute rounds?\b/i.test(
+    text,
+  );
+}
+
+export function intentFor(message: string, route: CoachRoute): CoachIntent {
+  if (route.primary === "injury") return "injury";
+  if (route.signals.includes("fight-camp")) return "fight_camp";
+  if (route.primary === "rules") return "rules";
+  if (route.primary === "nutrition" && isWeightCutIntent(message)) return "weight_cut";
+  if (route.primary === "nutrition") return "nutrition";
+  if (route.primary === "fight_iq") return "opponent_prep";
+  if (route.primary === "technique") return "technique";
+  if (route.primary === "mindset") return "mindset";
+  if (route.signals.includes("schedule")) return "schedule";
+  if (route.primary === "programming" && isRecoveryIntent(message) && !isConditioningIntent(message)) {
+    return "recovery";
+  }
+  if (route.primary === "programming" && isConditioningIntent(message)) return "conditioning";
+  if (route.primary === "programming") return "strength";
+  return "general";
+}
+
+export function classifyIntent(message: string, lane: CoachLane = {}): CoachIntent {
+  return intentFor(message, classifyQuestion(message, lane));
+}
+
 function secondaryFor(
   scores: Record<QuestionType, number>,
   primary: QuestionType,
@@ -396,6 +562,7 @@ export function classifyQuestion(message: string, lane: CoachLane = {}): CoachRo
   }
 
   stripGenericTechnique(scores, signals);
+  applyIntentSignals(text, scores, signals);
 
   if (scores.injury >= 3) {
     return { primary: "injury", secondary: secondaryFor(scores, "injury"), signals };

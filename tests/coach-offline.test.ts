@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { offlineReply } from "@/lib/coach/offline";
-import { classifyQuestion } from "@/lib/coach/router";
+import { classifyIntent, classifyQuestion } from "@/lib/coach/router";
+import { weeksUntil } from "@/lib/coach/timeframe";
 
 const banned = /COACHING_GUIDE|DEMO-seeds|\.md\b|Topic:|demo mode|offline mode|API key|OPENAI/i;
 
@@ -157,6 +158,37 @@ describe("offline answers by question type", () => {
     );
     expect(rules).toMatch(/legal|illegal|foul/i);
     expect(rules).toMatch(/commission|promotion/i);
+  });
+
+  it("answers the February CFC question as a camp, not a nerves line", () => {
+    const message =
+      "I will be fighting the winner of the CFC 8 main event in El Paso TX. What do you suggest I focus on rn considering I don't fight until February?";
+    const now = new Date("2026-10-16T15:00:00Z");
+    expect(classifyIntent(message, { topic: "conditioning" })).toBe("fight_camp");
+    expect(weeksUntil(new Date("2027-02-01T12:00:00Z"), now)).toBeGreaterThanOrEqual(14);
+    expect(weeksUntil(new Date("2027-02-01T12:00:00Z"), now)).toBeLessThanOrEqual(16);
+    const reply = offlineReply(message, "intermediate", "tough", "conditioning", "mma", {
+      coachName: "Ricky",
+      coachingStyle: "tough",
+      now,
+      facts: {
+        liftDays: ["Monday", "Wednesday"],
+        bagDays: ["Monday", "Wednesday"],
+        sparringDays: ["Saturday"],
+      },
+    });
+    expect(reply).toMatch(/February/i);
+    expect(reply).toMatch(/base/i);
+    expect(reply).toMatch(/specific/i);
+    expect(reply).toMatch(/peak|taper/i);
+    expect(reply).toMatch(/fight week/i);
+    expect(reply).toMatch(/\b1[4-6] weeks\b/);
+    expect(reply).toMatch(/Monday/);
+    expect(reply).toMatch(/Saturday/);
+    expect(reply).toMatch(/wrestler or a striker/i);
+    expect(reply).toMatch(/rewatch/i);
+    expect(reply).not.toMatch(/Nerves mean you care/);
+    expect(reply).not.toMatch(banned);
   });
 
   it("reserves the canned generic line for a general question with no lane", () => {

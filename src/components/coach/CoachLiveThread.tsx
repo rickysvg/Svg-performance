@@ -8,9 +8,6 @@ import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 
-export const QUICK_ANSWER_NOTE =
-  "Live coach is unavailable right now, so this is a short built-in answer. Try again in a bit.";
-
 type ChatBubble = {
   id: string;
   role: "user" | "assistant";
@@ -26,8 +23,6 @@ export function CoachBubble({
   content,
   refused,
   offline,
-  fallbackReason,
-  viewerRole,
   coachName = COACH_PUBLIC_NAME,
   coachThumb,
 }: {
@@ -41,7 +36,6 @@ export function CoachBubble({
   coachThumb?: string;
 }) {
   const quick = speaker === "assistant" && Boolean(offline);
-  const showReason = quick && viewerRole === "admin" && Boolean(fallbackReason);
   const label = speaker === "user" ? "You" : coachName;
   return (
     <article
@@ -66,15 +60,9 @@ export function CoachBubble({
           {label}
           {refused ? " · safety refusal" : ""}
           {quick ? " · quick answer" : ""}
-          {showReason ? ` · ${fallbackReason}` : ""}
         </p>
       </div>
       <p className="mt-2 whitespace-pre-wrap">{content}</p>
-      {quick ? (
-        <p className="mt-2 text-xs text-muted" data-coach-quick-note>
-          {QUICK_ANSWER_NOTE}
-        </p>
-      ) : null}
     </article>
   );
 }
@@ -189,7 +177,6 @@ export function CoachLiveThread({
             <p className="text-xs uppercase text-muted" data-coach-speaker={coachName}>
             {coachName}
             {offline ? " · quick answer" : ""}
-            {offline && viewerRole === "admin" && fallbackReason ? ` · ${fallbackReason}` : ""}
             {streaming && !partial ? " · typing" : ""}
             </p>
           </div>
@@ -205,11 +192,6 @@ export function CoachLiveThread({
           ) : (
             <p className="mt-2 whitespace-pre-wrap">{partial}</p>
           )}
-          {offline ? (
-            <p className="mt-2 text-xs text-muted" data-coach-quick-note>
-              {QUICK_ANSWER_NOTE}
-            </p>
-          ) : null}
         </article>
       ) : null}
       <div ref={bottomRef} />

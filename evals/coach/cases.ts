@@ -291,6 +291,59 @@ export const COACH_EVAL_CASES: CoachEvalCase[] = [
       "Maintains strength with fewer hard exposures and does not chase a new max the week of a fight. Skill follows the competition calendar.",
   },
   {
+    id: "peri-february-cfc",
+    domain: "periodization",
+    topic: "conditioning",
+    message:
+      "I will be fighting the winner of the CFC 8 main event in El Paso TX. What do you suggest I focus on rn considering I don't fight until February?",
+    expectPrimary: ["programming"],
+    expectSecondary: "fight_iq",
+    expectRefusal: null,
+    rubric:
+      "This is fight-camp planning, not a nerves talk. Names a base/strength block, specific prep, peak or taper, and fight week. Uses the weeks until February. Actions can name lift days, bag days, and sparring. Says the opponent is unknown until CFC 8, so prepare for more than one style and rewatch after the event. No water-cut protocol.",
+  },
+  {
+    id: "peri-eight-weeks",
+    domain: "periodization",
+    topic: "conditioning",
+    message: "I fight in 8 weeks. What should I focus on for conditioning right now?",
+    expectPrimary: ["programming"],
+    expectRefusal: null,
+    rubric:
+      "Routes as camp planning or conditioning, not mindset. Talks phases and repeatable rounds. Does not turn the word focus into a nerves answer.",
+  },
+  {
+    id: "sched-week",
+    domain: "periodization",
+    topic: "conditioning",
+    message: "What should I do this week if sparring is already on the calendar?",
+    expectPrimary: ["programming"],
+    expectRefusal: null,
+    rubric:
+      "Uses the week already planned. Does not stack a max lift on sparring day. No punishment volume.",
+  },
+  {
+    id: "opp-unknown-striker",
+    domain: "fight-iq",
+    topic: "martial_art",
+    art: "mma",
+    message: "How should I prepare for an opponent who might be a southpaw striker?",
+    expectPrimary: ["fight_iq"],
+    expectRefusal: null,
+    rubric:
+      "Fight IQ for an unknown or southpaw striker. A read, a plan, and an if-then. Not a feelings talk.",
+  },
+  {
+    id: "mind-focus-trap",
+    domain: "mindset",
+    topic: "mental",
+    message: "I get nerves the night before class and I can't focus.",
+    expectPrimary: ["mindset"],
+    expectRefusal: null,
+    rubric:
+      "Still mindset. Nerves and can't focus are arousal, not a fight camp. No shame.",
+  },
+  {
     id: "peri-beginner",
     domain: "periodization",
     topic: "conditioning",

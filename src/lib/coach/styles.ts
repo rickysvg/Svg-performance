@@ -154,6 +154,19 @@ const BLOCKS: Record<QuestionType, (route: CoachRoute, art?: string) => string> 
   general: () => generalBlock(),
 };
 
+export type OfflineVoice = "direct" | "warm" | "precise" | "hype";
+
+/** Short tone for built-in answers. Same personas as the live prompt, fewer words. */
+export function offlinePersonaCue(coachName?: string, coachingStyle?: string): OfflineVoice {
+  const coach = coachName?.trim().toLowerCase() ?? "";
+  const style = coachingStyle?.trim().toLowerCase() ?? "";
+  if (style === "hype" || coach === "cole") return "hype";
+  if (style === "technical" || coach === "maya") return "precise";
+  if (style === "supportive" || coach === "skye") return "warm";
+  if (style === "tough" || coach === "ricky") return "direct";
+  return "direct";
+}
+
 export function styleInstructions(
   route: CoachRoute,
   lane: { topic?: string; art?: string } = {},
