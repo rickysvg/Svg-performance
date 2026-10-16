@@ -85,7 +85,7 @@ export default async function CoachPage({
       <div className="flex items-center gap-3" data-coach-header>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={coach.image}
+          src={coach.circle}
           alt=""
           width={512}
           height={512}

@@ -33,7 +33,7 @@ export default async function MemberLayout({
         timeZone={profile?.timeZone}
         graceEndsOn={showGrace && graceUntil ? formatGraceDate(graceUntil) : null}
         coachName={coach.name}
-        coachThumb={coach.thumb}
+        coachThumb={coach.circle}
       >
         {children}
       </MemberFrame>

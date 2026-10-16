@@ -311,3 +311,55 @@ export async function collectCoachCompletion(
   }
   return { content: live.trim(), offline: false };
 }
+
+/**
+ * One non-streaming completion for short spoken scripts.
+ * A missing key or any failure returns null so the caller can use its template.
+ */
+export async function completeCoachText(input: {
+  system: string;
+  user: string;
+  maxTokens?: number;
+  temperature?: number;
+}): Promise<string | null> {
+  const key = openAiApiKey();
+  if (!key) return null;
+  const timeoutMs = coachLlmTimeoutMs();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: openAiModel(),
+        temperature: input.temperature ?? 0.4,
+        max_tokens: input.maxTokens ?? 320,
+        messages: [
+          { role: "system", content: input.system },
+          { role: "user", content: input.user },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      console.warn("[coach] summary model unavailable", { status: response.status });
+      return null;
+    }
+    const payload = (await response.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const text = payload.choices?.[0]?.message?.content?.trim() ?? "";
+    return text || null;
+  } catch (error) {
+    console.warn("[coach] summary model unavailable", {
+      reason: error instanceof Error ? error.name : "network",
+    });
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

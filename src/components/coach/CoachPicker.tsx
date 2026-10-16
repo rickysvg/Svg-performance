@@ -24,9 +24,7 @@ export function CoachPicker({
     <div className="space-y-5">
       <fieldset>
         <legend className="text-sm font-medium">Coach</legend>
-        <p className="mt-1 text-xs text-muted">
-          Fictional coaches. Pick the face you want in SVG Coach.
-        </p>
+        <p className="mt-1 text-xs text-muted">Pick the face you want in SVG Coach.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           {AI_COACHES.map((item) => {
             const selected = coach === item.id;
