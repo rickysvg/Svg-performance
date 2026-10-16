@@ -76,6 +76,23 @@ describe("Home shop promo", () => {
     expect(source).not.toMatch(/function Tee|function Hoodie|function Cap/);
   });
 
+  it("puts the product tiles at the top of Shop and leaves them off Home", () => {
+    const shop = fs.readFileSync(
+      path.join(process.cwd(), "src/app/(member)/shop/page.tsx"),
+      "utf8",
+    );
+    const home = fs.readFileSync(
+      path.join(process.cwd(), "src/app/(member)/home/page.tsx"),
+      "utf8",
+    );
+    const tiles = shop.indexOf("<HomeMerchPromo");
+    const title = shop.indexOf("<h1");
+    expect(tiles).toBeGreaterThan(-1);
+    expect(title).toBeGreaterThan(tiles);
+    expect(shop.indexOf("SVG Performance does not sell gear")).toBeGreaterThan(tiles);
+    expect(home).not.toContain("HomeMerchPromo");
+  });
+
   it("lets /shop/*.webp through the auth proxy so next/image can read them", () => {
     const source = fs.readFileSync(path.join(process.cwd(), "src/proxy.ts"), "utf8");
     expect(source).toContain("PUBLIC_FILE");

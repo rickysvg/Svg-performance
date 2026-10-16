@@ -1,3 +1,4 @@
+import { HomeMerchPromo } from "@/components/home/HomeMerchPromo";
 import {
   SHOP_HOME,
   SHOP_PRODUCTS,
@@ -8,6 +9,8 @@ import {
 export default function ShopPage() {
   return (
     <main className="space-y-6">
+      <HomeMerchPromo />
+
       <div>
         <h1 className="text-2xl">Shop</h1>
         <p className="mt-2 text-sm text-muted">
