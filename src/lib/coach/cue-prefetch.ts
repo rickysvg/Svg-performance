@@ -1,5 +1,6 @@
 import type { PlannedCue } from "@/lib/coach/motivation";
-import { COACH_AUDIO_MIME } from "@/lib/coach/tts";
+
+const COACH_AUDIO_MIME = "audio/mpeg";
 
 export type CueClip = {
   cueKey: string;
