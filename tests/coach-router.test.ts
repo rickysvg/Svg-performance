@@ -70,6 +70,24 @@ describe("question router", () => {
     expect(classifyQuestion(message, rowLane).primary).toBe(primary);
   });
 
+  it("routes a February fight to camp planning, not nerves", () => {
+    const message =
+      "I will be fighting the winner of the CFC 8 main event in El Paso TX. What do you suggest I focus on rn considering I don't fight until February?";
+    const route = classifyQuestion(message, { topic: "conditioning" });
+    expect(route.primary).toBe("programming");
+    expect(route.primary).not.toBe("mindset");
+    expect(route.signals).toContain("fight-camp");
+    expect(route.secondary).toContain("fight_iq");
+    expect(route.signals).not.toContain("focus");
+  });
+
+  it("keeps a real nerves question on mindset", () => {
+    const route = classifyQuestion("I get nerves the night before class and I can't focus.", {
+      topic: "mental",
+    });
+    expect(route.primary).toBe("mindset");
+  });
+
   it("routes a game plan to fight IQ, not mindset", () => {
     const route = classifyQuestion("How do I build a game plan against a wrestler?", lane);
     expect(route.primary).toBe("fight_iq");

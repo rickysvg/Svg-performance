@@ -8,6 +8,7 @@ import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
 import { timeZoneForUser } from "@/lib/profile";
 import { athleteLocalDayLine } from "@/lib/timezone";
 import { EMPTY_COACH_FALLBACK } from "@/lib/coach/offline";
+import { loadOfflineMemberFacts } from "@/lib/coach/member-facts";
 import { buildPlanContext } from "@/lib/coach/plan-context";
 import { classifyQuestion } from "@/lib/coach/router";
 import {
@@ -107,9 +108,10 @@ async function drainCoachTokens(
   });
   const wantsPlan =
     route.primary === "programming" || route.secondary.includes("programming");
-  const [planContext, memberProfile] = await Promise.all([
+  const [planContext, memberProfile, memberFacts] = await Promise.all([
     wantsPlan ? buildPlanContext(input.userId, input.message) : Promise.resolve(""),
     loadMemberContext(input.userId, { topic: input.topic, art: input.art }),
+    loadOfflineMemberFacts(input.userId),
   ]);
   const system = buildCoachSystemPrompt({
     topic: input.topic,
@@ -142,6 +144,9 @@ async function drainCoachTokens(
     coachingTone: input.coachingTone,
     topic: input.topic,
     art: input.art,
+    coachName: input.coachName,
+    coachingStyle: input.coachingStyle,
+    memberFacts,
   });
   let next = await generator.next();
   let live = "";

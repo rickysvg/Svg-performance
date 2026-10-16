@@ -55,12 +55,14 @@ const NUTRITION_FALLBACK = [
 const MINDSET_FALLBACK = [
   "Nerves mean you care. Settle arousal with a longer exhale than the inhale, then a short routine you can repeat: breath, cue word, first job in the round.",
   "Show up, do the work you planned, and leave. Instructional self-talk names the next action. I will not pile shame on you.",
+  "If you are flat, stand tall, take one sharp breath, and say the cue word tied to the first action.",
 ].join(" ");
 
 const FIGHT_IQ_FALLBACK = [
   "Read one habit first: stance, level change, or what they do after the jab.",
   "Plan one primary path and one backup. If they shoot, sprawl and get the whizzer. If they jab and exit, step off the line and answer with one shot. If you are on the fence, frame the head, win an underhook, and angle out.",
   "Drill it as a constrained round with a coach watching. No unsupervised hard sparring.",
+  "If the opponent is not decided yet, prepare both a wrestler and a striker. Rewatch the tape after the fight and lock the plan then.",
 ].join(" ");
 
 const INJURY_FALLBACK = [
@@ -79,11 +81,97 @@ export const DOMAIN_FALLBACKS: Record<QuestionType, string> = {
   general: TECHNIQUE_FALLBACK,
 };
 
+const WRESTLER_PLAN = [
+  "Read the level change and the lead foot before the hands.",
+  "Plan one primary path and one backup. Primary: hands on the head, hips back, sprawl, whizzer, then stand or a clinch you chose. Backup: frame the head, win an underhook, and angle off the fence.",
+  "If they shoot, sprawl. If they jab and level, paw the hand and circle off the lead foot. If you are under them, frame the neck and the hip before you accept the bottom.",
+  "Drill a constrained round where they can only shoot and you can only defend and stand. A coach watches. No unsupervised hard sparring.",
+].join(" ");
+
+const STRIKER_PLAN = [
+  "Read the jab and what the rear hand does after it.",
+  "Plan one primary path and one backup. Primary: catch or slip the jab and answer with one shot, then exit. Backup: teep or check the kick and reset the stance.",
+  "If they press, take an angle instead of walking straight back. If they kick the lead leg, check and step out. If you are on the fence, frame and circle.",
+  "Drill it as a constrained round with a coach watching. No unsupervised hard sparring.",
+].join(" ");
+
+const UNKNOWN_OPPONENT = [
+  "You do not know the winner yet, so do not build a one-style camp.",
+  "Plan one path for a wrestler and one path for a striker. Wrestler: sprawl, whizzer, get back up. Striker: jab home, check the kick, exit on an angle.",
+  "Split skill days until the card. After the fight, rewatch the tape once and lock a primary path plus a backup.",
+  "Drill both as constrained rounds with a coach watching. No unsupervised hard sparring.",
+].join(" ");
+
+const CONDITIONING_ROUNDS = [
+  "A 3- or 5-minute round is mostly aerobic with hard bursts you can repeat. The last round should look like the first.",
+  "Count rounds. Do not replace that with one all-out finisher. Bike or bag intervals stay inside the round length.",
+  "Lift before hard sparring only when the lift is the priority, and do not max out that day. No punishment volume after a miss.",
+].join(" ");
+
+const STRENGTH_SC = [
+  "Do the sets already written on your plan. Main lifts stop at 4 sets. Accessories stop at 3. Loads stay in lbs. Effort is RIR. 2 RIR means about two clean reps left. 0-2 RIR is near hard.",
+  "Heavy slow work builds force. Light fast work builds velocity. Power sits between them and stops when the bar slows down.",
+  "If the log is empty, do not invent a number. Too easy: add a little load next time. Too hard or sore: keep the sets and drop the load.",
+].join(" ");
+
+const SCHEDULE_WEEK = [
+  "Use the week already on your plan. Lift days stay lift days. Bag days stay bag days. Sparring day stays sparring. Do not stack a max lift on the sparring day.",
+  "The day before sparring or class stays lighter. Main lifts stop at 4 sets. Accessories stop at 3. Loads in lbs, effort in RIR.",
+  "A missed day is not a punishment day. Hit the next session that is already written.",
+].join(" ");
+
+const RECOVERY_NOTE = [
+  "Soreness after honest work is normal. Walk, drink water, and keep the next session a little smaller if you need it. Sleep is part of the training.",
+  "If pain changes how you move, stop and see a coach or a doctor. Do not spar through a headache or a head hit.",
+].join(" ");
+
 export const OFFLINE_BANK: OfflineBankEntry[] = [
   {
     id: "cage-forearm-frame",
     match: [/(?:cage|fence|wall)/i, /(?:elbow|forearm|frame)/i, /(?:jaw|chin|face|head)/i],
     answer: CAGE_FOREARM_FRAME,
+  },
+  {
+    id: "unknown-opponent",
+    domain: "fight_iq",
+    match: [/winner of|unknown opponent|whoever wins|don'?t know (?:the |my )?opponent/i],
+    answer: UNKNOWN_OPPONENT,
+  },
+  {
+    id: "wrestler-plan",
+    domain: "fight_iq",
+    match: [/wrestler/i, /plan|prepare|prep|game|against|fight/i],
+    answer: WRESTLER_PLAN,
+  },
+  {
+    id: "striker-plan",
+    domain: "fight_iq",
+    match: [/striker|southpaw|boxer|kickbox/i, /plan|prepare|prep|game|against|counter|read/i],
+    answer: STRIKER_PLAN,
+  },
+  {
+    id: "conditioning-rounds",
+    domain: "programming",
+    match: [/conditioning|gas tank|energy system|interval|5[- ]?minute round|engine/i],
+    answer: CONDITIONING_ROUNDS,
+  },
+  {
+    id: "strength-sc",
+    domain: "programming",
+    match: [/squat|deadlift|rdl|bench|rir|how heavy|force[- ]velocity|strength/i],
+    answer: STRENGTH_SC,
+  },
+  {
+    id: "schedule-week",
+    domain: "programming",
+    match: [/schedule|which days|what should i do this week/i],
+    answer: SCHEDULE_WEEK,
+  },
+  {
+    id: "recovery-note",
+    domain: "programming",
+    match: [/sore|soreness|sleep|rest day|tired|wrecked|achy/i],
+    answer: RECOVERY_NOTE,
   },
   {
     id: "periodization",

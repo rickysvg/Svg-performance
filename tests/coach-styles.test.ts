@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CoachBubble, QUICK_ANSWER_NOTE } from "@/components/coach/CoachLiveThread";
+import { CoachBubble } from "@/components/coach/CoachLiveThread";
 import { buildCoachSystemPrompt } from "@/lib/coach/llm";
 import { classifyQuestion } from "@/lib/coach/router";
 import { STYLE_LIMITS, styleInstructions } from "@/lib/coach/styles";
@@ -49,8 +49,8 @@ describe("coach answer styles", () => {
       }),
     );
     expect(offline).toContain("quick answer");
-    expect(offline).toContain(QUICK_ANSWER_NOTE);
-    expect(offline).not.toMatch(/API key|OPENAI/i);
+    expect(offline).not.toMatch(/unavailable right now/i);
+    expect(offline).not.toMatch(/API key|OPENAI|no_key/i);
 
     const live = renderToStaticMarkup(
       createElement(CoachBubble, {
@@ -61,10 +61,10 @@ describe("coach answer styles", () => {
       }),
     );
     expect(live).not.toContain("quick answer");
-    expect(live).not.toContain(QUICK_ANSWER_NOTE);
+    expect(live).not.toMatch(/unavailable right now/i);
   });
 
-  it("shows the fallback reason to an admin and hides it from a member", () => {
+  it("hides the fallback reason from members and admins", () => {
     const member = renderToStaticMarkup(
       createElement(CoachBubble, {
         speaker: "assistant",
@@ -87,17 +87,7 @@ describe("coach answer styles", () => {
       }),
     );
     expect(admin).toContain("quick answer");
-    expect(admin).toContain("no_key");
-
-    const reloaded = renderToStaticMarkup(
-      createElement(CoachBubble, {
-        speaker: "assistant",
-        content: "Frame the jaw.",
-        offline: true,
-        viewerRole: "admin",
-      }),
-    );
-    expect(reloaded).toContain("quick answer");
-    expect(reloaded).not.toContain("no_key");
+    expect(admin).not.toContain("no_key");
+    expect(admin).not.toMatch(/unavailable right now/i);
   });
 });

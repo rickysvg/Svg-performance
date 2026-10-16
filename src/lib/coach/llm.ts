@@ -1,5 +1,6 @@
 import { loadCoreKnowledge, retrieveCoachKnowledge } from "@/lib/coach/knowledge";
-import { offlineReply } from "@/lib/coach/offline";
+import type { OfflineMemberFacts } from "@/lib/coach/member-facts";
+import { offlineReply, type OfflineReplyOptions } from "@/lib/coach/offline";
 import type { CoachRoute } from "@/lib/coach/router";
 import { coachingStyleVoice } from "@/lib/coaches";
 import { styleInstructions, STYLE_LIMITS } from "@/lib/coach/styles";
@@ -177,7 +178,17 @@ export async function* streamCoachCompletion(input: {
   coachingTone?: string;
   topic?: string;
   art?: string;
+  coachName?: string;
+  coachingStyle?: string;
+  memberFacts?: OfflineMemberFacts | null;
+  now?: Date;
 }): AsyncGenerator<string, CoachCompletionResult> {
+  const offlineOptions: OfflineReplyOptions = {
+    coachName: input.coachName,
+    coachingStyle: input.coachingStyle,
+    facts: input.memberFacts,
+    now: input.now,
+  };
   const fallbackText = () =>
     offlineReply(
       input.message,
@@ -185,6 +196,7 @@ export async function* streamCoachCompletion(input: {
       input.coachingTone,
       input.topic,
       input.art,
+      offlineOptions,
     );
 
   const fail = (reason: FallbackReason, status?: number): CoachCompletionResult => {

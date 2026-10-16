@@ -4,8 +4,17 @@
  * No files, keys, demo mode, or topic labels.
  */
 
+import { composeOfflineAnswer } from "@/lib/coach/offline-compose";
+import type { OfflineMemberFacts } from "@/lib/coach/member-facts";
 import { domainOfflineFallback, matchOfflineBank } from "@/lib/coach/offline-bank";
-import { classifyQuestion } from "@/lib/coach/router";
+import { classifyQuestion, intentFor } from "@/lib/coach/router";
+
+export type OfflineReplyOptions = {
+  coachName?: string;
+  coachingStyle?: string;
+  facts?: OfflineMemberFacts | null;
+  now?: Date;
+};
 
 function parseScopedNote(message: string) {
   const exercise = /Exercise:\s*(.+?)\.\s*Log mode:/i.exec(message)?.[1]?.trim();
@@ -31,79 +40,8 @@ function missedReply(text: string) {
   return `${open} Don't try to make it up with a punishment session. Get to your next scheduled class, then hit the rest of the week as planned. Consistency beats catching up.`;
 }
 
-function sorenessReply() {
-  return "Soreness after honest work is normal. Walk, drink water, and keep the next session a little smaller if you need it. Sleep is part of the training. If pain changes how you move, stop and see a coach or a doctor.";
-}
-
-function foodReply(question: string) {
-  if (/\bsauna\b/i.test(question) && /\brecover/i.test(question)) {
-    return "A short sauna can be fine for recovery if you feel well and you replace the fluid. Get out if you feel dizzy. It is not a way to make weight. I will not write a sweat-off protocol.";
-  }
-  if (/\bwater cuts?\b/i.test(question) && /\b(why|dangerous|risk)/i.test(question)) {
-    return "Water cuts drop blood volume. Heart rate climbs, you overheat faster, and skill and thinking get worse. That is why they are dangerous. I will not explain how to do one. Lose weight gradually from food instead, about 1% of body weight per week or slower.";
-  }
-  return domainOfflineFallback("nutrition");
-}
-
-function weightCutReply() {
-  return "Start a weight cut weeks out and lose about 1% of body weight per week or slower through meals, not in the last day. Keep protein in each meal, eat carbs around training, and hydrate on a normal schedule until the rules for your weigh-in say otherwise. Pick a class near walking weight. Red lines: no sauna suit, sweat suit, diuretic, laxative, or water-cut protocol. After weigh-ins, drink, take in some salt and familiar carbs, and get help if you feel faint. A coach or clinician should run any fight-week plan.";
-}
-
-function nervesReply() {
-  return domainOfflineFallback("mindset");
-}
-
-function formReply(art?: string) {
-  if (art === "boxing") {
-    return "Hands up. Sit on your stance. Throw a short straight jab and snap it back to guard. Then have a coach watch one round — live eyes beat this chat.";
-  }
-  if (art === "muay-thai") {
-    return "Posture first, then the weapon. Chamber the kick or teep, hit, and recover on the standing leg. Don't throw yourself into the shot.";
-  }
-  if (art === "wrestling") {
-    return "Level change, stay in your stance, and finish on your feet. Don't dive on a bad shot. Get a coach to watch one live go.";
-  }
-  if (art === "jiu-jitsu") {
-    return "Frames first, then the hips. Make one clean move and reset. Don't muscle a bad position. An armbar needs the angle, the knees tight, and the hips in. Tap early.";
-  }
-  if (art === "kickboxing") {
-    return "Stay in a kickboxing stance, turn the hip, and meet the target with the shin. Bring the leg home. Most kickboxing rules ban elbows and keep the clinch short. Have a coach watch one round.";
-  }
-  if (art === "judo") {
-    return "Break balance first, then commit the hips into the throw. For osoto, reap the leg you have already moved them onto. Do not just kick. Under IJF rules, do not grab the leg with your hand in standing. Practice the fall.";
-  }
-  if (art === "karate") {
-    return "Keep the front knee stacked, turn the back hip, and send a short reverse punch. Recover the stance and the hand. WKF face contact depends on the category, so keep the touch controlled until a coach says otherwise.";
-  }
-  if (art === "taekwondo") {
-    return "Chamber the kick, turn the hip, and put the foot back down on a live base. Head kicks score in World Taekwondo. Punches to the head do not. Retract before you admire the kick.";
-  }
-  if (art === "sambo") {
-    return "Grip the jacket, get the hips in, and finish the throw. Do not stall on the cloth. Sport sambo has no chokes and no strikes. Combat sambo is a different rule set. Practice the fall.";
-  }
-  if (art === "catch-wrestling") {
-    return "From the front headlock, keep the head and arm tight, step to the side, and turn them to a pin. Control the body. Do not crank the neck. A tap ends the rep.";
-  }
-  if (art === "mma" || art === "cagework") {
-    return "Start from the position on the cage: frame in, elbow tight, then one step off the fence. Win an underhook, turn the head, and angle out. Drill the position with a partner before you add speed. A coach can watch the rep. Don't grab the fence.";
-  }
-  return "Start with the position, then one clean step, then a partner drill. Keep the frame or the hands where they belong. Get a coach to watch the rep before you add speed.";
-}
-
-function conditioningReply() {
-  return "Keep the work honest and count rounds. The last round should look like the first. Don't sprint the rest, and don't add extra work after a miss.";
-}
-
-function programmingReply(text: string) {
-  return matchOfflineBank(text, "programming") ?? domainOfflineFallback("programming");
-}
-
 function injuryReply() {
   return domainOfflineFallback("injury");
-}
-
-function fightIqReply() {
-  return domainOfflineFallback("fight_iq");
 }
 
 function rulesReply(text: string) {
@@ -132,18 +70,6 @@ function genericReply() {
 
 function isMissed(text: string) {
   return /\b(?:missed|skip(?:ped)?|fell off|inconsistent)\b/i.test(text);
-}
-
-function isSoreness(text: string) {
-  return /\bsore(?:ness)?\b|\brecover|\bsleep\b|\brest day\b|\btired\b|\bwrecked\b|\bachy\b/i.test(text);
-}
-
-function isConditioningWork(text: string) {
-  return /\bbike\b|\binterval|\bengine\b|\bconditioning\b|\brounds\b|\bbag work\b/i.test(text);
-}
-
-function isWeightCutQuestion(text: string) {
-  return /\bweight cuts?\b|\bcut weight\b|\bweigh-?ins?\b|\bmake weight\b|\bfight week\b/i.test(text);
 }
 
 function cueForExercise(name: string) {
@@ -188,32 +114,25 @@ function cueForExercise(name: string) {
   return `For ${name}, pick one clean cue and do the set. Control the load and finish the last rep like the first.`;
 }
 
-function offlineAnswer(question: string, topic?: string, art?: string) {
+function offlineAnswer(
+  question: string,
+  topic?: string,
+  art?: string,
+  options?: OfflineReplyOptions,
+) {
   const route = classifyQuestion(question, { topic, art });
+  const intent = intentFor(question, route);
   if (route.primary === "injury") return injuryReply();
-  if (route.primary === "technique") {
-    return matchOfflineBank(question) ?? formReply(art);
-  }
   if (route.primary === "rules") return rulesReply(question);
-  if (route.primary === "nutrition") {
-    return isWeightCutQuestion(question) ? weightCutReply() : foodReply(question);
-  }
-  if (route.primary === "mindset") {
-    return isMissed(question) ? missedReply(question) : nervesReply();
-  }
-  if (route.primary === "fight_iq") return fightIqReply();
-  if (route.primary === "programming") {
-    if (isSoreness(question)) return sorenessReply();
-    if (isMissed(question)) return missedReply(question);
-    if (isConditioningWork(question)) return conditioningReply();
-    return programmingReply(question);
+  if (isMissed(question)) return missedReply(question);
+  if (route.primary === "technique") {
+    return (
+      matchOfflineBank(question) ??
+      composeOfflineAnswer({ message: question, intent, topic, art, ...options })
+    );
   }
   if (route.primary === "general" && !topic) return genericReply();
-  if (topic === "martial_art") return formReply(art);
-  if (topic === "mental") return isMissed(question) ? missedReply(question) : nervesReply();
-  if (topic === "conditioning") return programmingReply(question);
-  if (topic === "nutrition") return foodReply(question);
-  return formReply(art);
+  return composeOfflineAnswer({ message: question, intent, topic, art, ...options });
 }
 
 export function offlineReply(
@@ -222,13 +141,14 @@ export function offlineReply(
   _coachingTone?: string,
   topic?: string,
   art?: string,
+  options?: OfflineReplyOptions,
 ) {
   const scoped = parseScopedNote(message);
   const question = scoped.question || message;
   if (scoped.exercise) {
     return cueForExercise(scoped.exercise);
   }
-  return offlineAnswer(question, topic, art);
+  return offlineAnswer(question, topic, art, options);
 }
 
 export function liveModelUnavailableReply(
@@ -237,8 +157,9 @@ export function liveModelUnavailableReply(
   coachingTone = "",
   topic?: string,
   art?: string,
+  options?: OfflineReplyOptions,
 ) {
-  return offlineReply(message, experienceLevel, coachingTone, topic, art);
+  return offlineReply(message, experienceLevel, coachingTone, topic, art, options);
 }
 
 export const EMPTY_COACH_FALLBACK =

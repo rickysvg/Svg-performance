@@ -24,6 +24,8 @@ export type DaySummarySession = {
   kind: SummarySessionKind;
   title: string;
   cues: string[];
+  /** On-screen lines. Spoken cues stay written for the voice. */
+  lines: string[];
 };
 
 export type DaySummaryFacts = {
@@ -234,6 +236,12 @@ export function buildDaySummaryFacts(input: {
             "First round stays technical. Hands home. Feet under you.",
             "If your head gets rung, you stop. That is not toughness.",
           ],
+          lines: [
+            "No app workout on a sparring day.",
+            "Log rounds after you spar.",
+            "First round stays technical. Hands home. Feet under you.",
+            "If your head gets rung, you stop.",
+          ],
         },
       ],
     };
@@ -250,6 +258,7 @@ export function buildDaySummaryFacts(input: {
           kind: "rest",
           title: "Rest",
           cues: [note, "Rest is part of the plan.", "Do not add a guilt workout."],
+          lines: [note, "Rest is part of the plan.", "Do not add a guilt workout."],
         },
       ],
     };
@@ -258,18 +267,26 @@ export function buildDaySummaryFacts(input: {
   const built: DaySummarySession[] = planned.map((session) => {
     const kind = sessionKind(session);
     const cues: string[] = [];
+    const lines: string[] = [];
     if (kind === "bag") {
       const day = asBagDay(session.sourceWeekday) ?? asBagDay(input.plan.weekday);
       if (day) {
         const focus = bagFocusFor(day, input.plan.mesoBlock);
         const minutes = bagMinutesForBand(scaleBand(input.experienceLevel), focus.dayNumber);
         cues.push(`The bag theme is ${focus.theme}.`);
+        lines.push(`Theme: ${focus.theme}.`);
+        if (focus.technique?.name) lines.push(focus.technique.name);
         if (focus.technique?.notes) cues.push(focus.technique.notes);
         const round = focus.rounds.find((line) => line.trim().length > 0 && line.length < 140);
-        if (round) cues.push(round);
+        if (round) {
+          cues.push(round);
+          lines.push(round);
+        }
         cues.push(`About ${minutes} minutes. Warm up, themed rounds, then a short cooldown.`);
+        lines.push(`About ${minutes} minutes. Warm up, themed rounds, then a short cooldown.`);
       } else {
         cues.push(session.title);
+        lines.push(session.title);
       }
     } else if (kind === "lift") {
       const exercises =
@@ -278,18 +295,27 @@ export function buildDaySummaryFacts(input: {
         const rir = rirFromLoadText(exercise.loadText);
         if (!rir) continue;
         cues.push(`${exercise.name} at ${speakCue(rir)}.`);
+        lines.push(`${exercise.name} · ${rir}`);
         if (cues.length >= 2) break;
       }
       cues.push("Main lifts stop at four sets. Accessories stop at three. Last rep can slow down and still stay clean.");
+      lines.push("Main lifts: 4 sets max. Accessories: 3 sets max. Last rep can slow down and still stay clean.");
     } else if (kind === "cardio") {
       const bikeDay = input.plan.weekday === "Thursday" ? "Thursday" : "Tuesday";
       if (/bike/i.test(`${session.label} ${session.title}`)) {
         const bike = pickBikeSessionForPlan(bikeDay, input.weekIndex ?? 0);
-        cues.push(bike.focus.replace(/—/g, ",").replace(/(\d+)s\b/g, "$1 seconds"));
+        const bikeLine = bike.focus.replace(/—/g, ",").replace(/(\d+)s\b/g, "$1 seconds");
+        cues.push(bikeLine);
+        lines.push(bikeLine);
         const note = spokenNote(bike.notes.split(". ").slice(0, 2).join(". "));
-        if (note.length > 12) cues.push(note.endsWith(".") ? note : `${note}.`);
+        if (note.length > 12) {
+          const sentence = note.endsWith(".") ? note : `${note}.`;
+          cues.push(sentence);
+          lines.push(sentence);
+        }
       } else {
         cues.push(session.subtitle || session.title);
+        lines.push(session.subtitle || session.title);
         const exercises =
           session.dayNumber != null ? input.exercisesByDayNumber?.get(session.dayNumber) ?? [] : [];
         for (const exercise of exercises.slice(0, 3)) {
@@ -298,7 +324,7 @@ export function buildDaySummaryFacts(input: {
           const note = (dose ? noteWithoutDose(rawNote) : rawNote).replace(/[.\s]+$/, "");
           const load = extraLoad(exercise.loadText, `${note} ${dose}`);
           const pieces = [exercise.name];
-          const sentence = (text: string) =>
+          const asSentence = (text: string) =>
             text
               .split(/(?<=[.!?])\s+/)
               .map((part) => {
@@ -308,20 +334,26 @@ export function buildDaySummaryFacts(input: {
               })
               .filter(Boolean)
               .join(". ");
-          if (dose) pieces.push(sentence(dose));
-          if (note.length > 8) pieces.push(sentence(note));
-          if (load) pieces.push(sentence(load));
-          cues.push(`${pieces.filter(Boolean).join(". ")}.`);
+          if (dose) pieces.push(asSentence(dose));
+          if (note.length > 8) pieces.push(asSentence(note));
+          if (load) pieces.push(asSentence(load));
+          const spoken = `${pieces.filter(Boolean).join(". ")}.`;
+          cues.push(spoken);
+          lines.push(spoken);
         }
       }
     } else if (kind === "mobility") {
-      cues.push(session.title.replace(/^Mobility — /, ""));
+      const focus = session.title.replace(/^Mobility — /, "");
+      cues.push(focus);
       cues.push(session.subtitle || "Easy range. No hard effort.");
+      lines.push(focus);
+      lines.push(session.subtitle || "Easy range. No grinding.");
     }
     return {
       kind,
       title: session.title,
       cues: cues.map(speakCue).filter(Boolean),
+      lines: (lines.length ? lines : cues).map((line) => line.trim()).filter(Boolean),
     };
   });
 
