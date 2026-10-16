@@ -6,28 +6,54 @@ export const AI_COACHES = [
     name: "Skye",
     vibe: "Bright and direct. She keeps the pace honest.",
     image: "/coaches/skye.webp",
+    /** Small circle crop. Same file as the thumb for the original four. */
+    circle: "/coaches/skye-thumb.webp",
     thumb: "/coaches/skye-thumb.webp",
+    /** OpenAI TTS voice. Bright woman. */
+    voice: "nova",
   },
   {
     id: "maya",
     name: "Maya",
     vibe: "Warm and precise. She names the detail that fixes the round.",
     image: "/coaches/maya.webp",
+    circle: "/coaches/maya-thumb.webp",
     thumb: "/coaches/maya-thumb.webp",
+    /** OpenAI TTS voice. Warm woman. */
+    voice: "shimmer",
   },
   {
     id: "mateo",
     name: "Mateo",
     vibe: "Quiet intensity. Short cues, high standard.",
     image: "/coaches/mateo.webp",
+    circle: "/coaches/mateo-thumb.webp",
     thumb: "/coaches/mateo-thumb.webp",
+    /** OpenAI TTS voice. Clear male, not deep. */
+    voice: "echo",
   },
   {
     id: "cole",
     name: "Cole",
     vibe: "Easy confidence. He'll push the round and stay with you.",
     image: "/coaches/cole.webp",
+    circle: "/coaches/cole-thumb.webp",
     thumb: "/coaches/cole-thumb.webp",
+    /** OpenAI TTS voice. Easy male, distinct from Mateo and Ricky. */
+    voice: "fable",
+  },
+  {
+    id: "ricky",
+    name: "Ricky",
+    vibe: "SVG MMA Academy head coach",
+    /** Wider 512 crop for the picker and other large views. */
+    image: "/coaches/ricky.webp",
+    /** In-between 512 crop for the floating button and small circles. */
+    circle: "/coaches/ricky-face.webp",
+    /** Same in-between crop at 96px for the smallest bubbles. */
+    thumb: "/coaches/ricky-thumb.webp",
+    /** OpenAI TTS voice. Deep male, distinct from Cole and Mateo. */
+    voice: "onyx",
   },
 ] as const;
 
@@ -69,6 +95,8 @@ const PERSONA_VOICE: Record<AiCoachId, string> = {
   maya: "Persona: Maya is warm and precise. She finds the one detail that fixes the round and stays on it until it is clean.",
   mateo: "Persona: Mateo is quiet intensity. Short cues, a high standard, and no filler.",
   cole: "Persona: Cole is easy confidence. He pushes the round, stays with you, and keeps the energy specific.",
+  ricky:
+    "Persona: Ricky is the SVG MMA Academy head coach and a fighter. Direct, hard-nosed, and motivating. Fight-culture voice: short sentences, the standard, and the next action. No fluff and no shame.",
 };
 
 const STYLE_VOICE: Record<CoachingStyleId, string> = {
@@ -133,12 +161,13 @@ export function coachingStyleVoice(style?: string | null, coachName?: string | n
 }
 
 /**
- * Coach is a Home tile. A floating photo on every screen was a second door
- * and covered the corner. Splash CSS still hides `[data-coach-fab]` during intro.
+ * Floating coach on signed-in screens. It stays off the coach screen itself
+ * (that page is where the button goes) and the splash CSS hides it during intro.
+ * The button sits above the bottom dock. Logger screens raise it.
  */
 export function shouldShowCoachFab(pathname: string) {
-  void pathname;
-  return false;
+  const path = pathname.split("?")[0] || "/";
+  return !path.startsWith("/coach");
 }
 
 /** Day and logger screens have a bottom Start or Save bar and no account dock. */

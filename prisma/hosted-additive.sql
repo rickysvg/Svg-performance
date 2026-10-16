@@ -476,3 +476,36 @@ BEGIN
   END IF;
 END $$;
 
+-- Spoken daily briefing. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."CoachDaySummary"') IS NULL THEN
+    CREATE TABLE "CoachDaySummary" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "dayKey" TEXT NOT NULL,
+      "coachId" TEXT NOT NULL,
+      "factsKey" TEXT NOT NULL,
+      "voice" TEXT NOT NULL,
+      "script" TEXT NOT NULL,
+      "audio" BYTEA,
+      "mimeType" TEXT NOT NULL DEFAULT 'audio/mpeg',
+      "source" TEXT NOT NULL DEFAULT 'template',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "CoachDaySummary_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "CoachDaySummary_userId_dayKey_coachId_factsKey_key"
+      ON "CoachDaySummary"("userId", "dayKey", "coachId", "factsKey");
+    CREATE INDEX "CoachDaySummary_userId_dayKey_idx"
+      ON "CoachDaySummary"("userId", "dayKey");
+    ALTER TABLE "CoachDaySummary"
+      ADD CONSTRAINT "CoachDaySummary_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+

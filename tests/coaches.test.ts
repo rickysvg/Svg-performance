@@ -44,11 +44,28 @@ const intake = {
 };
 
 describe("AI coach avatars", () => {
-  it("ships four square webp portraits and thumbs", () => {
-    expect(AI_COACHES.map((coach) => coach.name)).toEqual(["Skye", "Maya", "Mateo", "Cole"]);
+  it("ships five square webp portraits, circle crops, and thumbs", () => {
+    expect(AI_COACHES.map((coach) => coach.name)).toEqual([
+      "Skye",
+      "Maya",
+      "Mateo",
+      "Cole",
+      "Ricky",
+    ]);
+    const voices = AI_COACHES.map((coach) => coach.voice);
+    expect(new Set(voices).size).toBe(AI_COACHES.length);
+    const ricky = AI_COACHES.find((coach) => coach.id === "ricky");
+    expect(ricky?.vibe).toBe("SVG MMA Academy head coach");
+    expect(ricky?.image).toBe("/coaches/ricky.webp");
+    expect(ricky?.circle).toBe("/coaches/ricky-face.webp");
+    expect(ricky?.thumb).toBe("/coaches/ricky-thumb.webp");
+    expect(ricky?.voice).toBe("onyx");
+    expect(AI_COACHES.find((coach) => coach.id === "mateo")?.voice).toBe("echo");
+    expect(AI_COACHES.find((coach) => coach.id === "cole")?.voice).toBe("fable");
     for (const coach of AI_COACHES) {
       expect(coach.vibe.length).toBeGreaterThan(12);
-      for (const file of [coach.image, coach.thumb]) {
+      expect(coach.circle.endsWith(".webp")).toBe(true);
+      for (const file of [coach.image, coach.circle, coach.thumb]) {
         const abs = path.join(process.cwd(), "public", file);
         expect(fs.existsSync(abs), file).toBe(true);
         expect(fs.statSync(abs).size).toBeGreaterThan(400);
@@ -108,6 +125,9 @@ describe("AI coach avatars", () => {
     expect(coachingStyleVoice("hype", "Cole")).toMatch(/No emojis/);
     expect(coachingStyleVoice(undefined, undefined)).toMatch(/Skye/);
     expect(coachingStyleVoice(undefined, undefined)).toMatch(/Supportive/);
+    expect(coachingStyleVoice("tough", "Ricky")).toMatch(/SVG MMA Academy head coach/);
+    expect(coachingStyleVoice("tough", "Ricky")).toMatch(/No fluff/);
+    expect(coachingStyleVoice("tough", "Ricky")).not.toMatch(/Coach Savage/);
   });
 
   it("names the chosen coach on assistant messages", () => {
@@ -125,10 +145,13 @@ describe("AI coach avatars", () => {
     expect(html).not.toContain(">SVG Coach<");
   });
 
-  it("keeps the floating coach button off every screen", () => {
-    expect(shouldShowCoachFab("/home")).toBe(false);
-    expect(shouldShowCoachFab("/training")).toBe(false);
-    expect(shouldShowCoachFab("/training/calendar")).toBe(false);
+  it("shows the floating coach on signed-in pages and hides it on the coach screen", () => {
+    expect(shouldShowCoachFab("/home")).toBe(true);
+    expect(shouldShowCoachFab("/training")).toBe(true);
+    expect(shouldShowCoachFab("/training/calendar")).toBe(true);
+    expect(shouldShowCoachFab("/nutrition")).toBe(true);
+    expect(shouldShowCoachFab("/profile")).toBe(true);
+    expect(shouldShowCoachFab("/learn")).toBe(true);
     expect(shouldShowCoachFab("/coach")).toBe(false);
     expect(shouldShowCoachFab("/coach?topic=mental")).toBe(false);
     expect(coachFabClearsBottomBar("/training/log/abc")).toBe(true);
@@ -149,6 +172,16 @@ describe("AI coach avatars", () => {
     expect(frame).toContain("<CoachFab");
     expect(frame).toContain("shouldShowCoachFab");
     expect(frame.match(/data-coach-fab/g)?.length ?? 0).toBeLessThan(3);
+
+    const home = fs.readFileSync(
+      path.join(process.cwd(), "src/app/(member)/home/page.tsx"),
+      "utf8",
+    );
+    const welcome = home.indexOf("bg-[#CBF805]");
+    const summary = home.indexOf("<TodaySummaryButton");
+    expect(welcome).toBeGreaterThan(-1);
+    expect(summary).toBeGreaterThan(welcome);
+    expect(home).toContain("Welcome");
   });
 });
 

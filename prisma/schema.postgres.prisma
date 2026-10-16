@@ -65,6 +65,7 @@ model User {
   fightCamp                FightCamp?
   formChecks               FormCheck[]
   memberFeedback           MemberFeedback[]
+  coachDaySummaries        CoachDaySummary[]
   gymdeskMembers           GymdeskMember[]
   gymMembershipEvents      GymMembershipEvent[]
   emailVerificationCodes   EmailVerificationCode[]
@@ -151,7 +152,7 @@ model Profile {
   competitionStatus          String    @default("")
   nextFightDate              DateTime?
   coachingTone               String    @default("")
-  /** Fictional SVG Coach portrait. Empty or unknown uses Skye. */
+  /** SVG Coach portrait id. Empty or unknown uses Skye. */
   aiCoachId                  String    @default("skye")
   /** tough | supportive | technical | hype. Empty uses the default style. */
   coachingStyle              String    @default("")
@@ -176,6 +177,27 @@ model Profile {
   fatTargetG             Int      @default(70)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
+}
+
+/** Spoken daily briefing. One row per member, local day, coach, and plan facts. */
+model CoachDaySummary {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey    String
+  coachId   String
+  factsKey  String
+  voice     String
+  script    String
+  audio     Bytes?
+  mimeType  String   @default("audio/mpeg")
+  /** llm | template */
+  source    String   @default("template")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayKey, coachId, factsKey])
+  @@index([userId, dayKey])
 }
 
 /** Sparring log. Class/drilling days are not stored here. Saved only on Save. */

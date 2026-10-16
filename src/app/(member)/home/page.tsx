@@ -8,6 +8,8 @@ import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { HomeToday } from "@/components/home/HomeToday";
+import { TodaySummaryButton } from "@/components/home/TodaySummaryButton";
+import { resolveAiCoach } from "@/lib/coaches";
 import { ReadinessCard } from "@/components/home/ReadinessCard";
 import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
@@ -55,6 +57,7 @@ export default async function HomePage({
   const greetingName = today.firstName || "athlete";
   const weight = latestMetrics.get("weight");
   const units = profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb";
+  const coach = resolveAiCoach(profile?.aiCoachId);
 
   return (
     <main className="space-y-6 pb-8">
@@ -66,6 +69,8 @@ export default async function HomePage({
           {profile?.goals ? ` · ${profile.goals}` : ""}
         </p>
       </section>
+
+      <TodaySummaryButton name={coach.name} circle={coach.circle} coachId={coach.id} />
 
       <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
 
