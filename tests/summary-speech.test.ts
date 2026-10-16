@@ -75,23 +75,29 @@ describe("browser speech helpers", () => {
     expect(pickEnglishVoice([{ name: "Samantha", lang: "en-US" }], "skye")?.name).toBe("Samantha");
   });
 
-  it("speaks inside the click, before the audio fetch", () => {
+  it("unlocks a persistent audio element in the tap, then falls back to speech", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/SummaryReader.tsx"),
       "utf8",
     );
+    const spoken = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/coach/spoken-audio.ts"),
+      "utf8",
+    );
     const click = source.indexOf("function onRead");
     const body = source.slice(click);
-    const speak = body.indexOf("speakInGesture()");
+    const unlock = body.indexOf("unlockCoachAudio");
     const fetchAt = body.indexOf("void fetchAudio");
     expect(click).toBeGreaterThan(-1);
-    expect(speak).toBeGreaterThan(-1);
-    expect(fetchAt).toBeGreaterThan(speak);
-    expect(source).toContain("speechSynthesis");
-    expect(source).toContain("voiceschanged");
-    expect(source).toContain("synth.cancel()");
-    expect(source).toContain("synth.resume()");
-    expect(source).toContain("chunkSpeech");
+    expect(unlock).toBeGreaterThan(-1);
+    expect(fetchAt).toBeGreaterThan(unlock);
+    expect(source).toContain("data-summary-audio");
+    expect(source).toContain("playsInline");
+    expect(source).toContain("fallbackSpeech");
+    const fetchFn = source.slice(source.indexOf("async function fetchAudio"));
+    expect(fetchFn.indexOf("fallbackSpeech")).toBeGreaterThan(fetchFn.indexOf("await fetch"));
+    expect(spoken).toContain("speechSynthesis");
+    expect(spoken).toContain("SILENT_WAV");
     expect(source).not.toMatch(/no_key/);
   });
 });

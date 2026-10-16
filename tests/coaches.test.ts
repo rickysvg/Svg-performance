@@ -60,8 +60,10 @@ describe("AI coach avatars", () => {
     expect(ricky?.circle).toBe("/coaches/ricky-face.webp");
     expect(ricky?.thumb).toBe("/coaches/ricky-thumb.webp");
     expect(ricky?.voice).toBe("onyx");
+    expect(AI_COACHES.find((coach) => coach.id === "skye")?.voice).toBe("nova");
+    expect(AI_COACHES.find((coach) => coach.id === "maya")?.voice).toBe("sage");
     expect(AI_COACHES.find((coach) => coach.id === "mateo")?.voice).toBe("echo");
-    expect(AI_COACHES.find((coach) => coach.id === "cole")?.voice).toBe("fable");
+    expect(AI_COACHES.find((coach) => coach.id === "cole")?.voice).toBe("ash");
     for (const coach of AI_COACHES) {
       expect(coach.vibe.length).toBeGreaterThan(12);
       expect(coach.circle.endsWith(".webp")).toBe(true);

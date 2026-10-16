@@ -1,4 +1,5 @@
 import { soundFxEnabled } from "@/lib/badge-sfx";
+import { noteCoachBeep } from "@/lib/coach/motivation-clock";
 import { playEndCue, playWarningCue, primeMediaOutput, vibratePattern } from "@/lib/media-output";
 
 export type RestTimerState = {
@@ -95,12 +96,14 @@ export function primeRestAudio() {
 }
 
 export function signalRestWarning() {
+  noteCoachBeep(450);
   if (typeof window === "undefined") return;
   if (!soundFxEnabled()) return;
   playWarningCue();
 }
 
 export function signalRestComplete() {
+  noteCoachBeep(800);
   if (typeof window === "undefined") return;
   vibratePattern([...REST_ALARM.vibrate]);
   if (!soundFxEnabled()) return;

@@ -79,6 +79,8 @@ import { RemoveToast } from "@/components/training/RemoveToast";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
 import type { SwapSlot } from "@/lib/exercise-swap";
 import { convertLoad, roundLoadForInput } from "@/lib/units";
+import { WorkoutCoachCues } from "@/components/training/WorkoutCoachCues";
+import type { MotivationView } from "@/lib/coach/motivation";
 import type { WorkoutSetInput } from "@/lib/workouts";
 
 type Session = WorkoutSession & {
@@ -306,10 +308,14 @@ export function WorkoutLogForm({
   previousLoads = {},
   notes = {},
   swap,
+  coachId = "skye",
+  coachMotivation = true,
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
   notes?: Record<string, ExerciseNoteView>;
+  coachId?: string;
+  coachMotivation?: boolean;
   swap?: {
     programSlug: string;
     dayNumber: number;
@@ -405,6 +411,32 @@ export function WorkoutLogForm({
     : "/training";
   const restRemaining = remainingRestSeconds(restTimer, nowMs);
   const restRunning = isRestActive(restTimer, nowMs);
+  const motivationView = useMemo<MotivationView>(() => {
+    return {
+      restRemaining: restRunning ? restRemaining : null,
+      restActive: restRunning,
+      restKey: restTimer ? `${restTimer.exerciseName}:${restTimer.endsAtMs}` : "",
+      groups: grouped.map(([name, group]) => {
+        const planned = session.programDay?.exercises.find((row) => row.name === name);
+        return {
+          name,
+          logMode: resolveLogMode({
+            logMode: group[0]?.logMode ?? planned?.logMode,
+            name,
+            reps: planned?.reps,
+          }),
+          previousLoad: null,
+          sets: group.map((set) => ({
+            id: set.id,
+            completed: set.completed,
+            loadValue: set.loadValue,
+            rir: set.rir ?? "",
+            previousLoad: previousLoads[name]?.[set.setNumber]?.loadValue ?? null,
+          })),
+        };
+      }),
+    };
+  }, [grouped, previousLoads, restRemaining, restRunning, restTimer, session.programDay]);
 
   function remember(nextSets: WorkoutSet[], nextRest: RestTimerState | null) {
     if (session.status === "complete") return;
@@ -740,6 +772,11 @@ export function WorkoutLogForm({
               <SessionTimer />
             </div>
             <div className="flex flex-col items-end">
+              <WorkoutCoachCues
+                initialEnabled={coachMotivation}
+                coachId={coachId}
+                view={motivationView}
+              />
               <button
                 type="button"
                 onClick={() => setShowNotes((open) => !open)}

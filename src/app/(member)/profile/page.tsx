@@ -15,6 +15,7 @@ import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
 import { getTrialState } from "@/lib/trial";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
 import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
+import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggle";
 import { prisma } from "@/lib/prisma";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
@@ -55,6 +56,7 @@ export default async function ProfilePage() {
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Training</summary>
         <div className="space-y-6 px-4 pb-4">
           <ProfileForm profile={profile} email={user.email} />
+          <CoachMotivationToggle enabled={profile.coachMotivation} />
           <SoundEffectsToggle />
           <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
         </div>

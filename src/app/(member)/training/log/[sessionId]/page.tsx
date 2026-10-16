@@ -29,6 +29,7 @@ import {
   trainingBlockKey,
 } from "@/lib/exercise-swap";
 import { normalizeWeightAccess } from "@/lib/weight-access";
+import { resolveAiCoach } from "@/lib/coaches";
 
 export default async function WorkoutLogPage({
   params,
@@ -187,6 +188,8 @@ export default async function WorkoutLogPage({
         session={loggedSession}
         previousLoads={previousLoads}
         notes={notes}
+        coachId={resolveAiCoach(profile?.aiCoachId).id}
+        coachMotivation={profile?.coachMotivation !== false}
         swap={{
           programSlug: session.programDay?.program.slug ?? "",
           dayNumber: session.programDay?.dayNumber ?? 0,

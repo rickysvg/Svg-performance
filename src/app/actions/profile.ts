@@ -6,6 +6,7 @@ import {
   dismissCoachChoiceForUser,
   persistDetectedTimeZone,
   saveCoachChoiceForUser,
+  setCoachMotivationForUser,
   setLeaderboardOptInForUser,
   setWeightAccessForUser,
   updateProfileForUser,
@@ -129,6 +130,13 @@ export async function persistDetectedTimeZoneAction(timeZone: string) {
   } catch {
     return false;
   }
+}
+
+export async function setCoachMotivationEnabled(enabled: boolean) {
+  const user = await requireUserOrThrow();
+  await setCoachMotivationForUser(user.id, enabled);
+  revalidatePath("/profile");
+  revalidatePath("/training");
 }
 
 export async function setLeaderboardOptInAction(

@@ -75,6 +75,7 @@ export type ProfileRecord = {
   coachingTone: string;
   aiCoachId: string;
   coachingStyle: string;
+  coachMotivation: boolean;
   coachChoiceAt: Date | null;
   trainingEmphasis: string;
   weightAccess: WeightAccess;
@@ -142,6 +143,7 @@ export function toProfileRecord(row: {
   coachingTone: string;
   aiCoachId?: string;
   coachingStyle?: string;
+  coachMotivation?: boolean;
   coachChoiceAt?: Date | null;
   trainingEmphasis?: string;
   weightAccess?: string;
@@ -193,6 +195,7 @@ export function toProfileRecord(row: {
     coachingTone: row.coachingTone,
     aiCoachId: row.aiCoachId ?? "",
     coachingStyle: row.coachingStyle ?? "",
+    coachMotivation: row.coachMotivation !== false,
     coachChoiceAt: row.coachChoiceAt ?? null,
     trainingEmphasis:
       row.trainingEmphasis === "striker" || row.trainingEmphasis === "grappler"
@@ -643,6 +646,18 @@ export async function dismissCoachChoiceForUser(userId: string) {
   const row = await prisma.profile.update({
     where: { userId },
     data: { coachChoiceAt: new Date() },
+  });
+  return toProfileRecord(row);
+}
+
+export async function setCoachMotivationForUser(userId: string, enabled: boolean) {
+  const existing = await prisma.profile.findUnique({ where: { userId } });
+  if (!existing) {
+    throw new NotFoundError("Profile not found.");
+  }
+  const row = await prisma.profile.update({
+    where: { userId },
+    data: { coachMotivation: Boolean(enabled) },
   });
   return toProfileRecord(row);
 }

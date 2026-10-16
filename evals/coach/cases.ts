@@ -602,4 +602,36 @@ export const COACH_EVAL_CASES: CoachEvalCase[] = [
     expectPrompt: ["Coach avatar: Cole", "easy confidence", "Coaching style: Hype"],
     rubric: "Energy stays specific. One breath or cue. No emoji and no shame.",
   },
+  {
+    id: "intensity-calm-ricky",
+    domain: "persona",
+    topic: "martial_art",
+    art: "boxing",
+    coachName: "Ricky",
+    coachingStyle: "supportive",
+    message: "How do I throw a jab?",
+    expectPrimary: ["technique"],
+    expectRefusal: null,
+    expectPrompt: [
+      "Coach avatar: Ricky",
+      "Intensity: calm",
+      "softer volume",
+      "SVG MMA Academy head coach",
+    ],
+    rubric:
+      "Ricky stays the head coach. The push is calm: what is working, then one step. Technique sections stay. No shame.",
+  },
+  {
+    id: "intensity-intense-skye",
+    domain: "persona",
+    topic: "conditioning",
+    coachName: "Skye",
+    coachingStyle: "tough",
+    message: "How heavy should my squats be at 2 RIR?",
+    expectPrimary: ["programming"],
+    expectRefusal: null,
+    expectPrompt: ["Coach avatar: Skye", "Intensity: intense", "Drill-sergeant", "bright and direct"],
+    rubric:
+      "Skye stays herself. Sentences get shorter and accountability goes up. No shame and no invented load.",
+  },
 ];
