@@ -15,6 +15,7 @@ export function NextSessionCta({ action }: { action: NextTrainAction }) {
       <Link
         href={`/training/log/${action.draftId}`}
         data-next-session
+        data-prime-coach-audio
         className={`${buttonClass} ${stickyClass}`}
       >
         {label}
@@ -24,7 +25,7 @@ export function NextSessionCta({ action }: { action: NextTrainAction }) {
 
   if (action.dayId) {
     return (
-      <form action={startSessionAction} data-next-session className={stickyClass}>
+      <form action={startSessionAction} data-next-session data-prime-coach-audio className={stickyClass}>
         <input type="hidden" name="programDayId" value={action.dayId} />
         <button type="submit" className={buttonClass}>
           {label}
@@ -35,7 +36,7 @@ export function NextSessionCta({ action }: { action: NextTrainAction }) {
 
   if (action.href) {
     return (
-      <Link href={action.href} data-next-session className={`${buttonClass} ${stickyClass}`}>
+      <Link href={action.href} data-next-session data-prime-coach-audio className={`${buttonClass} ${stickyClass}`}>
         {label}
       </Link>
     );

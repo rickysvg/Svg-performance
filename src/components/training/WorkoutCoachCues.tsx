@@ -5,11 +5,22 @@ import { setCoachMotivationEnabled } from "@/app/actions/profile";
 import { coachBeepUntilMs, subscribeCoachBeeps } from "@/lib/coach/motivation-clock";
 import {
   cuesOnTransition,
+  cuesToPrefetch,
   decideMotivationCue,
   type MotivationView,
   type PlannedCue,
 } from "@/lib/coach/motivation";
-import { playCoachSrc, speakFallback, unlockCoachAudio } from "@/lib/coach/spoken-audio";
+import { prefetchCueClips, resolveCueClip } from "@/lib/coach/cue-prefetch";
+import {
+  playCoachBytes,
+  reportCoachAudioIssue,
+  setCoachOutputVolume,
+  speakFallback,
+  stopCoachPlayback,
+  unlockCoachAudio,
+  whenCoachOutputReady,
+  COACH_AUDIO_FAILED,
+} from "@/lib/coach/spoken-audio";
 
 export function WorkoutCoachCues({
   initialEnabled,
@@ -21,7 +32,6 @@ export function WorkoutCoachCues({
   view: MotivationView;
 }) {
   const [enabled, setEnabled] = useState(initialEnabled);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const enabledRef = useRef(enabled);
   const coachRef = useRef(coachId);
   const viewRef = useRef(view);
@@ -29,7 +39,6 @@ export function WorkoutCoachCues({
   const firedRef = useRef(new Set<string>());
   const lastSpokenRef = useRef<number | null>(null);
   const queueRef = useRef<PlannedCue[]>([]);
-  const urlRef = useRef<string | null>(null);
   const busyRef = useRef(false);
   const armedRef = useRef(false);
   useEffect(() => {
@@ -38,12 +47,20 @@ export function WorkoutCoachCues({
     viewRef.current = view;
   }, [enabled, coachId, view]);
 
+  const warmKey = view.groups.map((group) => `${group.name}:${group.logMode}`).join("|");
+
   function remember(cue: PlannedCue) {
     if (firedRef.current.has(cue.id)) return;
     if (queueRef.current.some((row) => row.id === cue.id)) return;
     if (cue.moment === "rest10" || cue.moment === "finish") queueRef.current.unshift(cue);
     else queueRef.current.push(cue);
     if (queueRef.current.length > 3) queueRef.current.splice(1, queueRef.current.length - 3);
+  }
+
+  function release(cue: PlannedCue) {
+    firedRef.current.delete(cue.id);
+    lastSpokenRef.current = null;
+    remember(cue);
   }
 
   async function speakCue(cue: PlannedCue) {
@@ -68,49 +85,25 @@ export function WorkoutCoachCues({
     firedRef.current.add(cue.id);
     lastSpokenRef.current = Date.now();
     queueRef.current = queueRef.current.filter((row) => row.id !== cue.id);
+    let script = headerTextFromCue(cue);
     try {
-      const response = await fetch("/api/coach/motivation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "audio/mpeg, application/json" },
-        body: JSON.stringify({
-          moment: cue.moment,
-          exerciseName: cue.exerciseName,
-          previousLoad: cue.previousLoad ?? null,
-          load: cue.load ?? null,
-          bagTheme: cue.bagTheme,
-          id: cue.id,
-        }),
-      });
+      const { clip } = await resolveCueClip(cue);
+      if (clip?.script) script = clip.script;
       if (!enabledRef.current) return;
-      const type = response.headers.get("content-type") ?? "";
-      const headerScript = response.headers.get("X-Coach-Script");
-      const headerText = headerScript ? decodeURIComponent(headerScript) : "";
-      if (!type.includes("audio")) {
-        const body = type.includes("json")
-          ? ((await response.json()) as { text?: string; muted?: boolean })
-          : null;
-        if (body?.muted) return;
-        const text = body?.text || headerText;
-        if (text) speakFallback(text, coachRef.current);
-        return;
-      }
-      const blob = await response.blob();
-      const audio = audioRef.current;
-      if (!audio || blob.size < 32) throw new Error("tts");
       if (Date.now() < coachBeepUntilMs()) {
-        firedRef.current.delete(cue.id);
-        lastSpokenRef.current = null;
-        remember(cue);
+        release(cue);
         return;
       }
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      const url = URL.createObjectURL(blob);
-      urlRef.current = url;
-      audio.volume = 1;
-      await playCoachSrc(audio, url);
+      if (!clip?.bytes || clip.bytes.byteLength < 32) {
+        reportCoachAudioIssue(COACH_AUDIO_FAILED);
+        if (script) speakFallback(script, coachRef.current);
+        return;
+      }
+      await playCoachBytes(clip.bytes);
     } catch {
-      const text = headerTextFromCue(cue);
-      if (enabledRef.current && text) speakFallback(text, coachRef.current);
+      if (!enabledRef.current) return;
+      reportCoachAudioIssue(COACH_AUDIO_FAILED);
+      if (script) speakFallback(script, coachRef.current);
     } finally {
       busyRef.current = false;
     }
@@ -122,15 +115,40 @@ export function WorkoutCoachCues({
     if (next) void speakCue(next);
   }
 
+  function armFromGesture() {
+    unlockCoachAudio();
+    if (!enabledRef.current || armedRef.current) return;
+    armedRef.current = true;
+    const cues = cuesOnTransition(null, viewRef.current);
+    prevRef.current = viewRef.current;
+    enqueue(cues);
+  }
+
   useEffect(() => {
-    const onPointer = () => {
-      const audio = audioRef.current;
-      if (audio) unlockCoachAudio(audio);
-      if (!enabledRef.current || armedRef.current) return;
+    if (!enabled) return;
+    void prefetchCueClips(cuesToPrefetch(viewRef.current));
+  }, [enabled, warmKey]);
+
+  useEffect(() => {
+    if (!enabled || armedRef.current) return;
+    let cancelled = false;
+    void whenCoachOutputReady().then((ready) => {
+      if (cancelled || !ready || !enabledRef.current || armedRef.current) return;
       armedRef.current = true;
       const cues = cuesOnTransition(null, viewRef.current);
       prevRef.current = viewRef.current;
       enqueue(cues);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // enqueue reads refs. Arm once when Start already unlocked the context.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
+
+  useEffect(() => {
+    const onPointer = () => {
+      armFromGesture();
     };
     document.addEventListener("pointerdown", onPointer);
     return () => document.removeEventListener("pointerdown", onPointer);
@@ -140,7 +158,7 @@ export function WorkoutCoachCues({
 
   useEffect(() => {
     if (!enabled) {
-      audioRef.current?.pause();
+      stopCoachPlayback();
       window.speechSynthesis?.cancel();
       queueRef.current = [];
       prevRef.current = view;
@@ -159,18 +177,13 @@ export function WorkoutCoachCues({
 
   useEffect(() => {
     return subscribeCoachBeeps(() => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      if (Date.now() < coachBeepUntilMs()) audio.volume = 0.15;
+      if (Date.now() < coachBeepUntilMs()) setCoachOutputVolume(0.15);
     });
   }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const audio = audioRef.current;
-      if (audio && Date.now() >= coachBeepUntilMs() && audio.volume < 1 && !audio.paused) {
-        audio.volume = 1;
-      }
+      if (Date.now() >= coachBeepUntilMs()) setCoachOutputVolume(1);
       const waiting = queueRef.current[0];
       if (!waiting || busyRef.current || !enabledRef.current) return;
       void speakCue(waiting);
@@ -181,17 +194,15 @@ export function WorkoutCoachCues({
   }, []);
 
   useEffect(() => {
-    const audio = audioRef.current;
     return () => {
-      audio?.pause();
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      stopCoachPlayback();
       window.speechSynthesis?.cancel();
     };
   }, []);
 
   return (
     <>
-      <audio ref={audioRef} data-coach-audio playsInline preload="auto" className="hidden" />
+      <audio data-coach-audio playsInline preload="auto" className="hidden" />
       <button
         type="button"
         data-coach-motivation={enabled ? "on" : "off"}
@@ -199,10 +210,17 @@ export function WorkoutCoachCues({
         aria-label="Coach motivation during workouts"
         onClick={() => {
           const next = !enabled;
+          unlockCoachAudio();
           setEnabled(next);
-          const audio = audioRef.current;
-          if (next && audio) unlockCoachAudio(audio);
+          enabledRef.current = next;
           void setCoachMotivationEnabled(next);
+          if (!next) return;
+          if (!armedRef.current) {
+            armedRef.current = true;
+            const cues = cuesOnTransition(null, viewRef.current);
+            prevRef.current = viewRef.current;
+            enqueue(cues);
+          }
         }}
         className="touch-target text-sm font-medium"
       >

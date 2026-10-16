@@ -34,6 +34,7 @@ function SessionCta({
     return (
       <Link
         href={`/training/log/${draftId}`}
+        data-prime-coach-audio
         className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
       >
         {resumeLabel}
@@ -42,7 +43,7 @@ function SessionCta({
   }
   if (dayId) {
     return (
-      <form action={startSessionAction} className="mt-6">
+      <form action={startSessionAction} data-prime-coach-audio className="mt-6">
         <input type="hidden" name="programDayId" value={dayId} />
         <button
           type="submit"

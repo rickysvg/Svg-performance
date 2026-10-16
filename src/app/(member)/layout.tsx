@@ -7,6 +7,7 @@ import { getProfileForUser } from "@/lib/profile";
 import { formatGraceDate } from "@/lib/gymdesk/recompute";
 import { needsCoachChoicePrompt, resolveAiCoach } from "@/lib/coaches";
 import { CoachChoicePrompt } from "@/components/coach/CoachChoicePrompt";
+import { PrimeCoachAudio } from "@/components/coach/PrimeCoachAudio";
 
 export default async function MemberLayout({
   children,
@@ -44,6 +45,7 @@ export default async function MemberLayout({
       <Suspense fallback={null}>
         <BadgeUnlockOverlay />
       </Suspense>
+      <PrimeCoachAudio />
     </>
   );
 }

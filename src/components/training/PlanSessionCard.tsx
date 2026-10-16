@@ -138,12 +138,13 @@ export function PlanSessionCard({
           {draftId ? (
             <Link
               href={`/training/log/${draftId}`}
+              data-prime-coach-audio
               className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
             >
               Resume
             </Link>
           ) : session.dayId ? (
-            <form action={startSessionAction}>
+            <form action={startSessionAction} data-prime-coach-audio>
               <input type="hidden" name="programDayId" value={session.dayId} />
               <button
                 type="submit"

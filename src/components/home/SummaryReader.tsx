@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { playCoachSrc, speakFallback, unlockCoachAudio } from "@/lib/coach/spoken-audio";
+import {
+  pauseCoachPlayback,
+  playCoachBytes,
+  stopCoachPlayback,
+  reportCoachAudioIssue,
+  resumeCoachPlayback,
+  speakFallback,
+  unlockCoachAudio,
+  COACH_AUDIO_FAILED,
+} from "@/lib/coach/spoken-audio";
 
 type Phase = "idle" | "loading" | "playing" | "paused";
 
@@ -12,23 +21,20 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
   const [phase, setPhase] = useState<Phase>("idle");
   const [notice, setNotice] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const urlRef = useRef<string | null>(null);
   const modeRef = useRef<"audio" | "speech" | null>(null);
   const tokenRef = useRef(0);
 
   useEffect(() => {
-    const audio = audioRef.current;
     return () => {
       tokenRef.current += 1;
-      audio?.pause();
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      stopCoachPlayback();
       window.speechSynthesis?.cancel();
     };
   }, []);
 
   function pauseAll() {
     if (modeRef.current === "speech") window.speechSynthesis?.pause();
-    else audioRef.current?.pause();
+    else pauseCoachPlayback();
     setPhase("paused");
   }
 
@@ -38,15 +44,13 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
       setPhase("playing");
       return;
     }
-    const audio = audioRef.current;
-    if (!audio) {
-      setPhase("idle");
-      return;
-    }
-    void audio.play().then(() => setPhase("playing")).catch(() => {
-      setNotice(SPEECH_MISSING);
-      setPhase("idle");
-    });
+    void resumeCoachPlayback()
+      .then(() => setPhase("playing"))
+      .catch(() => {
+        reportCoachAudioIssue(COACH_AUDIO_FAILED);
+        setNotice(SPEECH_MISSING);
+        setPhase("idle");
+      });
   }
 
   function fallbackSpeech(token: number) {
@@ -77,22 +81,19 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
       if (!response.ok || !type.includes("audio")) {
         throw new Error("tts");
       }
-      const blob = await response.blob();
-      if (tokenRef.current !== token || blob.size < 32) throw new Error("tts");
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      const url = URL.createObjectURL(blob);
-      urlRef.current = url;
+      const bytes = await response.arrayBuffer();
+      if (tokenRef.current !== token || bytes.byteLength < 32) throw new Error("tts");
       window.speechSynthesis?.cancel();
-      const audio = audioRef.current;
-      if (!audio) throw new Error("tts");
       modeRef.current = "audio";
-      audio.onended = () => {
-        if (tokenRef.current === token) setPhase("idle");
-      };
-      await playCoachSrc(audio, url);
+      await playCoachBytes(bytes, {
+        onEnded: () => {
+          if (tokenRef.current === token) setPhase("idle");
+        },
+      });
       if (tokenRef.current === token) setPhase("playing");
     } catch {
       if (tokenRef.current !== token) return;
+      reportCoachAudioIssue(COACH_AUDIO_FAILED);
       fallbackSpeech(token);
     }
   }
@@ -108,8 +109,7 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
       return;
     }
     setNotice("");
-    const audio = audioRef.current;
-    if (audio) unlockCoachAudio(audio);
+    unlockCoachAudio(audioRef.current);
     const token = tokenRef.current + 1;
     tokenRef.current = token;
     modeRef.current = null;

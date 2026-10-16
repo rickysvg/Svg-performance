@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { anchorPopover } from "@/lib/popover-anchor";
 import { swapExerciseAction } from "@/app/actions/exercise-swap";
 import {
   removeExerciseAction,
@@ -54,7 +56,10 @@ export function ExerciseCardMenu({
 }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORY_FILTERS)[number]["id"]>("all");
@@ -78,10 +83,36 @@ export function ExerciseCardMenu({
   useEffect(() => {
     if (!menuOpen) return;
     function onPointer(event: PointerEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setMenuOpen(false);
     }
     document.addEventListener("pointerdown", onPointer);
     return () => document.removeEventListener("pointerdown", onPointer);
+  }, [menuOpen]);
+
+  useLayoutEffect(() => {
+    if (!menuOpen) return;
+    function place() {
+      const button = buttonRef.current;
+      const panel = panelRef.current;
+      if (!button || !panel) return;
+      const next = anchorPopover(
+        button.getBoundingClientRect(),
+        { width: panel.offsetWidth || 176, height: panel.offsetHeight || 96 },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      setMenuPos((current) =>
+        current && current.left === next.left && current.top === next.top ? current : next,
+      );
+    }
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
   }, [menuOpen]);
 
   function closeSheet() {
@@ -164,6 +195,7 @@ export function ExerciseCardMenu({
     <>
       <div ref={menuRef} className="relative shrink-0">
         <button
+          ref={buttonRef}
           type="button"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
@@ -172,18 +204,28 @@ export function ExerciseCardMenu({
           disabled={pending}
           onClick={() => {
             setError("");
+            setMenuPos(null);
             setMenuOpen((value) => !value);
           }}
           className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-line px-2.5 text-xs font-semibold disabled:opacity-60"
         >
           ···
         </button>
-        {menuOpen ? (
+        {menuOpen && typeof document !== "undefined"
+          ? createPortal(
           <div
+            ref={panelRef}
             role="menu"
             aria-label={`Options for ${currentName}`}
             data-exercise-menu-panel
-            className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-2xl border border-line bg-card shadow-lg"
+            style={{
+              position: "fixed",
+              top: menuPos?.top ?? 0,
+              left: menuPos?.left ?? 0,
+              visibility: menuPos ? "visible" : "hidden",
+              width: "11rem",
+            }}
+            className="z-50 w-44 max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-line bg-card shadow-lg"
           >
             <button
               type="button"
@@ -215,8 +257,10 @@ export function ExerciseCardMenu({
               </p>
             ) : null}
             {error ? <p className="px-3 pb-2 text-xs text-red-600">{error}</p> : null}
-          </div>
-        ) : null}
+          </div>,
+          document.body,
+        )
+          : null}
       </div>
       {open ? (
         <div className="fixed inset-0 z-40 flex flex-col bg-background text-foreground">
