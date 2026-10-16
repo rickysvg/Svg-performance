@@ -10,7 +10,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.draftId) {
     return (
-      <Link href={`/training/log/${action.draftId}`} data-start-today className={buttonClass}>
+      <Link href={`/training/log/${action.draftId}`} data-start-today data-prime-coach-audio className={buttonClass}>
         {label}
       </Link>
     );
@@ -18,7 +18,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.dayId) {
     return (
-      <form action={startSessionAction} data-start-today>
+      <form action={startSessionAction} data-start-today data-prime-coach-audio>
         <input type="hidden" name="programDayId" value={action.dayId} />
         <button type="submit" className={buttonClass}>
           {label}
@@ -29,7 +29,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.href) {
     return (
-      <Link href={action.href} data-start-today className={buttonClass}>
+      <Link href={action.href} data-start-today data-prime-coach-audio className={buttonClass}>
         {label}
       </Link>
     );

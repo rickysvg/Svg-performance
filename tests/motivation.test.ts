@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   cuesOnTransition,
+  cuesToPrefetch,
   decideMotivationCue,
   formCueForExercise,
   motivationScript,
@@ -158,6 +159,19 @@ describe("workout motivation cues", () => {
         moment: "rest10",
       }).decision,
     ).toBe("speak");
+  });
+
+  it("prefetches start, each exercise, the rest ending, and the finish", () => {
+    const cues = cuesToPrefetch(squat);
+    expect(cues.map((cue) => cue.cueKey)).toEqual([
+      "start",
+      "exercise:back-squat",
+      "bag:intelligent-jab",
+      "rest10",
+      "finish",
+    ]);
+    expect(cues[0]?.exerciseName).toBe("Back squat");
+    expect(cues.find((cue) => cue.moment === "bag-round")?.bagTheme).toBe("intelligent jab");
   });
 
   it("ships the setting and the logger toggle", () => {

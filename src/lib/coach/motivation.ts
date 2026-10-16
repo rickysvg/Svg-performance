@@ -349,6 +349,41 @@ export function cuesOnTransition(prev: MotivationView | null, next: MotivationVi
   return cues;
 }
 
+/**
+ * Clips to fetch when a workout opens: the start line, one line per exercise,
+ * the rest-ending line, and the finish line. Playback then reads memory.
+ */
+export function cuesToPrefetch(view: MotivationView): PlannedCue[] {
+  const cues: PlannedCue[] = [];
+  const seen = new Set<string>();
+  const first =
+    view.groups.find((group) => group.sets.some((set) => !set.completed)) ?? view.groups[0];
+  const start: PlannedCue = {
+    id: "start",
+    moment: "start",
+    cueKey: "start",
+    dynamic: false,
+    exerciseName: first?.name,
+  };
+  cues.push(start);
+  seen.add(start.cueKey);
+  for (const group of view.groups) {
+    const cue = exerciseCue(group, "exercise");
+    if (seen.has(cue.cueKey)) continue;
+    seen.add(cue.cueKey);
+    cues.push(cue);
+  }
+  for (const moment of ["rest10", "finish"] as const) {
+    cues.push({
+      id: moment,
+      moment,
+      cueKey: moment,
+      dynamic: false,
+    });
+  }
+  return cues;
+}
+
 export type CueDecision = "speak" | "queue" | "skip";
 
 export function decideMotivationCue(input: {

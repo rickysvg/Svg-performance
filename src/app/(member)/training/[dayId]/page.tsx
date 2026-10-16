@@ -166,12 +166,13 @@ export default async function TrainingDayPage({
         {draft ? (
           <Link
             href={`/training/log/${draft.id}`}
+            data-prime-coach-audio
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
           >
             Continue
           </Link>
         ) : (
-          <form action={startSessionAction}>
+          <form action={startSessionAction} data-prime-coach-audio>
             <input type="hidden" name="programDayId" value={day.id} />
             <button
               type="submit"
@@ -295,6 +296,7 @@ export default async function TrainingDayPage({
         >
           <Link
             href={`/training/log/${draft.id}`}
+            data-prime-coach-audio
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
           >
             Continue

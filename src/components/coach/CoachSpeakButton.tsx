@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import { playCoachSrc, speakFallback, unlockCoachAudio } from "@/lib/coach/spoken-audio";
+import {
+  playCoachBytes,
+  reportCoachAudioIssue,
+  speakFallback,
+  unlockCoachAudio,
+  COACH_AUDIO_FAILED,
+} from "@/lib/coach/spoken-audio";
 
 export function CoachSpeakButton({
   text,
@@ -16,8 +22,7 @@ export function CoachSpeakButton({
 
   async function onPlay() {
     if (!text.trim() || busy) return;
-    const audio = audioRef.current;
-    if (audio) unlockCoachAudio(audio);
+    unlockCoachAudio(audioRef.current);
     setBusy(true);
     try {
       const response = await fetch("/api/coach/speak", {
@@ -26,17 +31,14 @@ export function CoachSpeakButton({
         body: JSON.stringify({ text }),
       });
       const type = response.headers.get("content-type") ?? "";
-      const playing = audioRef.current;
-      if (!response.ok || !type.includes("audio") || !playing) throw new Error("tts");
-      const blob = await response.blob();
-      if (blob.size < 32) throw new Error("tts");
-      const url = URL.createObjectURL(blob);
-      playing.onended = () => {
-        URL.revokeObjectURL(url);
-        setBusy(false);
-      };
-      await playCoachSrc(playing, url);
+      if (!response.ok || !type.includes("audio")) throw new Error("tts");
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength < 32) throw new Error("tts");
+      await playCoachBytes(bytes, {
+        onEnded: () => setBusy(false),
+      });
     } catch {
+      reportCoachAudioIssue(COACH_AUDIO_FAILED);
       window.speechSynthesis?.cancel();
       speakFallback(text, coachId);
       setBusy(false);

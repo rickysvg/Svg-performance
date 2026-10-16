@@ -4,6 +4,10 @@ import { scriptForCue, type PlannedCue } from "@/lib/coach/motivation";
 import { synthesizeCoachSpeech } from "@/lib/coach/tts";
 
 const memory = new Map<string, { audio: Buffer; mime: string; voice: string; script: string }>();
+const pending = new Map<
+  string,
+  { script: string; promise: Promise<{ audio: Buffer; mime: string; voice: string; script: string } | null> }
+>();
 
 function cacheId(coachId: string, style: string, cueKey: string) {
   return `${coachId}:${style}:${cueKey}`;
@@ -25,9 +29,29 @@ export async function loadCachedCue(input: {
   const id = cacheId(coach.id, style.value, input.cue.cueKey);
   const warm = memory.get(id);
   if (warm && warm.script === script) return warm;
+  const inflight = pending.get(id);
+  if (inflight && inflight.script === script) return inflight.promise;
 
+  const promise = loadCueFromStore(input, coach.id, style.value, script, id).finally(() => {
+    if (pending.get(id)?.promise === promise) pending.delete(id);
+  });
+  pending.set(id, { script, promise });
+  return promise;
+}
+
+async function loadCueFromStore(
+  input: {
+    cue: PlannedCue;
+    synthesize?: typeof synthesizeCoachSpeech;
+  },
+  coachId: string,
+  style: string,
+  script: string,
+  id: string,
+): Promise<{ audio: Buffer; mime: string; voice: string; script: string } | null> {
+  const coach = resolveAiCoach(coachId);
   const existing = await prisma.coachCueCache.findUnique({
-    where: { coachId_style_cueKey: { coachId: coach.id, style: style.value, cueKey: input.cue.cueKey } },
+    where: { coachId_style_cueKey: { coachId: coach.id, style, cueKey: input.cue.cueKey } },
   });
   if (existing && existing.audio.byteLength > 32 && existing.script === script) {
     const hit = {
@@ -41,14 +65,14 @@ export async function loadCachedCue(input: {
   }
 
   const synthesize = input.synthesize ?? synthesizeCoachSpeech;
-  const spoken = await synthesize(script, coach.id, style.value);
+  const spoken = await synthesize(script, coach.id, style, { latency: "low" });
   if (!spoken) return { audio: Buffer.alloc(0), mime: "audio/mpeg", voice: coach.voice, script };
 
   await prisma.coachCueCache.upsert({
-    where: { coachId_style_cueKey: { coachId: coach.id, style: style.value, cueKey: input.cue.cueKey } },
+    where: { coachId_style_cueKey: { coachId: coach.id, style, cueKey: input.cue.cueKey } },
     create: {
       coachId: coach.id,
-      style: style.value,
+      style,
       cueKey: input.cue.cueKey,
       voice: spoken.voice,
       script,

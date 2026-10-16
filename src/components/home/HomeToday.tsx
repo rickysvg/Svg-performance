@@ -22,7 +22,7 @@ export function HomeToday({ guide }: { guide: Guide }) {
             : "Recover today."}
         </p>
         {next?.dayId ? (
-          <form action={startSessionAction} className="mt-4">
+          <form action={startSessionAction} data-prime-coach-audio className="mt-4">
             <input type="hidden" name="programDayId" value={next.dayId} />
             <button
               type="submit"
@@ -61,12 +61,13 @@ export function HomeToday({ guide }: { guide: Guide }) {
       {draft ? (
         <Link
           href={`/training/log/${guide.today.draft?.id}`}
+          data-prime-coach-audio
           className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
         >
           Resume
         </Link>
       ) : first.dayId ? (
-        <form action={startSessionAction} className="mt-4">
+        <form action={startSessionAction} data-prime-coach-audio className="mt-4">
           <input type="hidden" name="programDayId" value={first.dayId} />
           <button
             type="submit"

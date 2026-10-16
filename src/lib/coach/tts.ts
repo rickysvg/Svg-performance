@@ -46,13 +46,34 @@ export function coachSpeechProfile(
 }
 
 const TTS_TIMEOUT_MS = 25_000;
+const TTS_FAST_TIMEOUT_MS = 12_000;
+
+/** What the browser and iOS decode. Opus is smaller but Safari often cannot decode it. */
+export const COACH_AUDIO_MIME = "audio/mpeg";
+
+export type CoachSpeechOptions = {
+  /**
+   * "low" uses tts-1 first. Short workout cues return sooner than gpt-4o-mini-tts.
+   * "quality" keeps the instruction-following model and falls back to tts-1.
+   */
+  latency?: "low" | "quality";
+};
+
+export function speechModelsFor(text: string, latency?: CoachSpeechOptions["latency"]) {
+  const quality = process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";
+  const fast = "tts-1";
+  const preferFast = latency === "low" || (latency !== "quality" && text.trim().length <= 320);
+  if (quality === fast) return [fast];
+  return preferFast ? [fast, quality] : [quality, fast];
+}
 
 export async function requestSpeech(
   key: string,
   body: Record<string, string>,
+  timeoutMs = TTS_TIMEOUT_MS,
 ): Promise<Buffer | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
@@ -82,33 +103,35 @@ export async function requestSpeech(
 
 /**
  * MP3 in the coach's voice, with the member's intensity on the delivery.
- * Tries gpt-4o-mini-tts (instructions). Falls back to tts-1 with the same voice.
- * Null when the key is missing or both models fail.
+ * Short cues and latency: "low" use tts-1 first (it returns sooner).
+ * Longer reads use gpt-4o-mini-tts, then tts-1 if that fails.
+ * Null when the key is missing or every model fails.
  */
 export async function synthesizeCoachSpeech(
   text: string,
   coachId?: string | null,
   coachingStyle?: string | null,
+  options?: CoachSpeechOptions,
 ): Promise<{ audio: Buffer; mime: string; voice: string } | null> {
   const key = openAiApiKey();
   if (!key) return null;
   const spoken = text.trim().slice(0, 3500);
   if (!spoken) return null;
   const profile = coachSpeechProfile(coachId, coachingStyle);
-  const primary = process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";
-  const first = await requestSpeech(key, {
-    model: primary,
-    voice: profile.voice,
-    input: spoken,
-    instructions: profile.instructions,
-  });
-  if (first) return { audio: first, mime: "audio/mpeg", voice: profile.voice };
-  if (primary === "tts-1") return null;
-  const fallback = await requestSpeech(key, {
-    model: "tts-1",
-    voice: profile.voice,
-    input: spoken,
-  });
-  if (!fallback) return null;
-  return { audio: fallback, mime: "audio/mpeg", voice: profile.voice };
+  for (const model of speechModelsFor(spoken, options?.latency)) {
+    const body: Record<string, string> = {
+      model,
+      voice: profile.voice,
+      input: spoken,
+    };
+    // tts-1 has no instructions field. Sending one makes the request fail.
+    if (model !== "tts-1" && model !== "tts-1-hd") body.instructions = profile.instructions;
+    const audio = await requestSpeech(
+      key,
+      body,
+      model === "tts-1" ? TTS_FAST_TIMEOUT_MS : TTS_TIMEOUT_MS,
+    );
+    if (audio) return { audio, mime: COACH_AUDIO_MIME, voice: profile.voice };
+  }
+  return null;
 }
