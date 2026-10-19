@@ -148,9 +148,9 @@ export default async function ProgressPage() {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-4">
+      <section className="rounded-2xl border border-line bg-card p-4 max-sm:pl-16" data-clear-coach>
         <h2 className="text-lg">Sparring this week</h2>
-        <p className="stat-display mt-2 text-3xl pl-14 sm:pl-0" data-clear-coach>
+        <p className="stat-display mt-2 text-3xl">
           {sparringWeek.rounds} rounds · {sparringWeek.minutes} min
         </p>
         <p className="mt-1 text-xs text-muted">

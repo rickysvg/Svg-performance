@@ -88,7 +88,7 @@ function ActionTile({
         aria-hidden
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"
       />
-      <span className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
+      <span className="tile-copy absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
         <span aria-hidden className="mb-1.5 block h-0.5 w-6 rounded-full bg-accent" />
         <span className="font-display block text-lg uppercase leading-tight tracking-wide text-white">
           {action.label}
@@ -118,7 +118,7 @@ export function HomeQuickActions({
   const lockedMap = new Map(locked.map((item) => [item.href, item.kind]));
   return (
     <section className="min-w-0">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 max-sm:[&>:nth-child(odd)_.tile-copy]:pl-14">
         {PHOTO_ACTIONS.map((action) => {
           const kind = lockedMap.get(action.href);
           const className =

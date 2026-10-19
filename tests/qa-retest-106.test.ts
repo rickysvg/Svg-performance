@@ -5,7 +5,7 @@ import { homeSubtitle } from "@/lib/member-copy";
 import { omitSwapFirstMarks } from "@/lib/personal-bests";
 import { limitCardFooter } from "@/lib/pricing";
 import { sameDaySparringEaseNote } from "@/lib/recovery-ease";
-import { sparringDateError, sparringWeekTotals } from "@/lib/outside-log";
+import { pickLatestSparringRatings, sparringDateError, sparringWeekTotals } from "@/lib/outside-log";
 import { sparringTileHint } from "@/lib/sparring-tile";
 import { sessionDurationSeconds } from "@/lib/share-card";
 import { APP_TIMEZONE } from "@/lib/timezone";
@@ -165,6 +165,15 @@ describe("retest copy", () => {
     expect(totals.rounds).toBe(3);
     expect(totals.minutes).toBe(9);
     expect(totals.logs).toHaveLength(1);
+    expect(
+      pickLatestSparringRatings(
+        [
+          { dateKey: "2026-10-19", bodyRating: 4, sessionRating: 3 },
+          { dateKey: "2026-10-20", bodyRating: 5, sessionRating: 5 },
+        ],
+        "2026-10-19",
+      ),
+    ).toEqual({ bodyRating: 4, sessionRating: 3 });
   });
 
   it("does not call today's sparring yesterday", () => {
