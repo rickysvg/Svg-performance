@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/stripe";
 import { deleteProgressPhotoMediaForUser, progressPhotoRoot } from "@/lib/progress-photos";
 import { trainingClipRoot } from "@/lib/clips";
 import { deleteFormCheckMediaForUser } from "@/lib/form-check-storage";
+import { deleteWeeklyCheckInMediaForUser } from "@/lib/weekly-checkin";
 import { deleteFeedbackMediaForUser } from "@/lib/feedback-storage";
 import type { PublicUser } from "@/lib/auth";
 import { isDeleteConfirmation } from "@/lib/account-confirm";
@@ -96,6 +97,7 @@ export async function exportAccountData(userId: string) {
     readinessCheckIns,
     testingResults,
     fightCamp,
+    weeklyCheckIns,
     formChecks,
     gymMembershipEvents,
   ] = await Promise.all([
@@ -190,6 +192,29 @@ export async function exportAccountData(userId: string) {
     prisma.readinessCheckIn.findMany({ where: { userId }, orderBy: { dayKey: "desc" } }),
     prisma.testingResult.findMany({ where: { userId }, orderBy: { performedAt: "desc" } }),
     prisma.fightCamp.findUnique({ where: { userId } }),
+    prisma.weeklyCheckIn.findMany({
+      where: { userId },
+      orderBy: { submittedAt: "desc" },
+      select: {
+        id: true,
+        weekKey: true,
+        bodyweightLb: true,
+        sleepQuality: true,
+        energy: true,
+        stress: true,
+        sorenessNotes: true,
+        sessionsCompleted: true,
+        sessionsPlanned: true,
+        sparringSummary: true,
+        wins: true,
+        struggles: true,
+        aiSummary: true,
+        coachStatus: true,
+        coachReply: true,
+        submittedAt: true,
+        sentAt: true,
+      },
+    }),
     prisma.formCheck.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -303,6 +328,7 @@ export async function exportAccountData(userId: string) {
     readinessCheckIns,
     testingResults,
     fightCamp,
+    weeklyCheckIns,
     formChecks: formChecks.map((row) => ({
       ...row,
       reviewerLabel: row.status === "reviewed" && row.feedback ? "SVG Coach" : null,
@@ -374,6 +400,7 @@ export async function deleteAccountForUser(user: PublicUser | null, confirmation
 
   await cancelStripeSubscriptions(signedIn.id);
   await deleteProgressPhotoMediaForUser(signedIn.id);
+  await deleteWeeklyCheckInMediaForUser(signedIn.id);
   await deleteFormCheckMediaForUser(signedIn.id);
   await deleteFeedbackMediaForUser(signedIn.id);
 

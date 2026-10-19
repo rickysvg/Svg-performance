@@ -244,6 +244,15 @@ async function deleteOneMedia(input: {
   }
 }
 
+export async function deleteStoredFormMedia(input: {
+  userId: string;
+  storageKind: string;
+  storageKey: string;
+}) {
+  if (!input.storageKey) return;
+  await deleteOneMedia(input);
+}
+
 export async function deleteFormCheckMediaForUser(userId: string) {
   const rows = await prisma.formCheck.findMany({
     where: { userId },
