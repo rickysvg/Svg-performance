@@ -117,6 +117,7 @@ export const EXERCISE_LIBRARY: LibraryExercise[] = [
   row("Lateral lunge", "lower", "none", 3, "8 / side", "2-4 RIR · Sit into the working hip.", 45, "reps_only", "Trail leg stays straight. Chest stays up."),
 
   row("Dumbbell bench press", "upper_push", "gym", 4, "8", "0-2 RIR · Last rep slow and clean.", 120, "load_reps", "Dumbbells on a bench. Do not bounce off the chest."),
+  row("Barbell bench press", "upper_push", "gym", 4, "6", "0-2 RIR · Bar to the lower chest.", 120, "load_reps", "Shoulder blades pinned. Feet drive the floor. Do not bounce the bar."),
   row("Overhead press", "upper_push", "gym", 3, "6", "1-3 RIR · Ribs down, lockout clean.", 90, "load_reps", "Bells or a bar. No lean-back to finish."),
   row("Single-arm overhead press", "upper_push", "gym", 3, "6 / side", "1-3 RIR · Brace, no side bend.", 75, "load_reps", "One bell. The ribs stay stacked."),
   row("Floor press", "upper_push", "gym", 4, "6", "1-3 RIR · Upper arms to the floor.", 90, "load_reps", "Limited range. Pause on the floor."),

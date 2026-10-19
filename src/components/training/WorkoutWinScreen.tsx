@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
+import { resumeWorkoutAction } from "@/app/actions/workouts";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
 import { SessionRecap } from "@/components/training/SessionRecap";
 import type { SessionSummary } from "@/lib/session-summary";
@@ -157,6 +158,16 @@ export function WorkoutWinScreen({
         >
           DONE
         </button>
+        <form action={resumeWorkoutAction} className="mt-2 w-full">
+          <input type="hidden" name="workoutId" value={workoutId} />
+          <button
+            type="submit"
+            className="touch-target w-full text-sm text-white/80 underline-offset-4 hover:underline"
+            data-undo-finish="1"
+          >
+            Undo finish
+          </button>
+        </form>
         {badgeTitle ? (
           <div className="mt-4 w-full rounded-2xl border border-white/15 bg-black px-4 py-3" data-win-badge="1">
             <p className="text-[11px] uppercase tracking-[0.16em] text-white/55">Badge earned</p>

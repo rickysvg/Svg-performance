@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { resumeWorkoutAction } from "@/app/actions/workouts";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -157,12 +158,24 @@ export default async function WorkoutLogPage({
   return (
     <main className="space-y-6">
       {session.status === "complete" ? (
-        <Link
-          href={`/training/log/${session.id}/done`}
-          className="touch-target flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
-        >
-          Share workout card
-        </Link>
+        <div className="space-y-2">
+          <form action={resumeWorkoutAction}>
+            <input type="hidden" name="workoutId" value={session.id} />
+            <button
+              type="submit"
+              data-resume-workout="1"
+              className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
+            >
+              Resume workout
+            </button>
+          </form>
+          <Link
+            href={`/training/log/${session.id}/done`}
+            className="touch-target flex items-center justify-center rounded-full border border-line px-4 text-sm"
+          >
+            Share workout card
+          </Link>
+        </div>
       ) : null}
       {promptRating ? (
         <DifficultyRatingForm

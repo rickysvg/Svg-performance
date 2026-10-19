@@ -615,6 +615,26 @@ export async function reopenEmptyCompletion<
   return { ...session, status: "draft" };
 }
 
+/**
+ * Put a finished session back in the logger. Logged sets stay.
+ * Used when SAVE fired by accident (for example Enter in the swap search).
+ */
+export async function reopenCompletedWorkoutForUser(userId: string, workoutId: string) {
+  const existing = assertOwnSession(
+    await prisma.workoutSession.findUnique({
+      where: { id: workoutId },
+      include: { sets: true },
+    }),
+    userId,
+  );
+  if (existing.status !== "complete") return existing;
+  return prisma.workoutSession.update({
+    where: { id: existing.id },
+    data: { status: "draft" },
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+  });
+}
+
 /** Delete a draft the member left without logging. Never deletes a set they typed. */
 export async function discardEmptyWorkoutDraft(userId: string, workoutId: string) {
   const session = await prisma.workoutSession.findUnique({

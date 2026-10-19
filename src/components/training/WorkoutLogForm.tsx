@@ -58,6 +58,7 @@ import {
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { loggerCursorFollowing, nextIncompleteSetId } from "@/lib/logger-progress";
+import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
@@ -347,6 +348,19 @@ export function WorkoutLogForm({
 }) {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [restByName, setRestByName] = useState<Record<string, number>>({});
+  const [swapOverlay, setSwapOverlay] = useState<
+    Record<
+      string,
+      {
+        sets: number;
+        reps: string;
+        loadText: string;
+        restSeconds: number;
+        logMode: string;
+        notes: string;
+      }
+    >
+  >({});
   const [state, action, pending] = useActionState(
     saveWorkoutWithNotice,
     {} as WorkoutActionState,
@@ -821,7 +835,22 @@ export function WorkoutLogForm({
   return (
     <div>
       <RemoveToast />
-      <form ref={formRef} action={action} className="space-y-5">
+      <form
+        ref={formRef}
+        action={action}
+        className="space-y-5"
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          const inputType =
+            target instanceof HTMLInputElement || target instanceof HTMLButtonElement
+              ? target.type
+              : null;
+          if (!fieldEnterFinishesWorkout(target.tagName, inputType)) return;
+          event.preventDefault();
+        }}
+      >
         <header
           data-logger-chrome
           className="sticky top-0 z-30 -mx-4 overflow-hidden border-b border-line bg-background pt-[env(safe-area-inset-top)] backdrop-blur md:top-[calc(env(safe-area-inset-top)+3.5rem)] md:z-10 md:pt-0"
@@ -1026,9 +1055,23 @@ export function WorkoutLogForm({
 
         {grouped.map(([name, group]) => {
           const form = lookupFormVideo(name, session.programDay?.exercises);
-          const planned = session.programDay?.exercises.find(
+          const overlay = swapOverlay[name];
+          const plannedMatch = session.programDay?.exercises.find(
             (row) => gymExerciseKey(row.name) === gymExerciseKey(name),
           );
+          const planned = plannedMatch ?? (overlay
+            ? {
+                name,
+                sets: overlay.sets,
+                reps: overlay.reps,
+                loadText: overlay.loadText,
+                restSeconds: overlay.restSeconds,
+                logMode: overlay.logMode,
+                notes: overlay.notes,
+                formVideoUrl: "",
+                formVideoPending: false,
+              }
+            : undefined);
           const title = planned?.name ?? name;
           const mode = resolveLogMode({
             logMode: group[0]?.logMode ?? planned?.logMode,
@@ -1152,11 +1195,15 @@ export function WorkoutLogForm({
                         workoutSessionId={session.id}
                         canRemove={grouped.length > 1}
                         getCurrentSets={() => setsRef.current.map(toSetInput)}
-                        onSwapped={(swappedName, seconds) => {
-                          setRestByName((current) => ({ ...current, [swappedName]: seconds }));
+                        onSwapped={(swappedName, prescription) => {
+                          setSwapOverlay((current) => ({ ...current, [swappedName]: prescription }));
+                          setRestByName((current) => ({
+                            ...current,
+                            [swappedName]: prescription.restSeconds,
+                          }));
                           setActiveName(swappedName);
                         }}
-                        onSetsReplaced={(next) => {
+                        onSetsReplaced={(next, focusName) => {
                           const lb = setsInLb(next);
                           const previous = new Set(setsRef.current.map((set) => set.exerciseName));
                           const added = lb.find((set) => !previous.has(set.exerciseName))?.exerciseName;
@@ -1168,14 +1215,15 @@ export function WorkoutLogForm({
                           setRestTimer(nextRest);
                           remember(lb, nextRest);
                           syncDraft(lb, nextRest);
-                          if (!added) return;
-                          setActiveName(added);
+                          const focus = focusName && names.has(focusName) ? focusName : added;
+                          if (!focus) return;
+                          setActiveName(focus);
                           requestAnimationFrame(() => {
                             const escaped =
-                              typeof CSS !== "undefined" && CSS.escape ? CSS.escape(added) : added;
+                              typeof CSS !== "undefined" && CSS.escape ? CSS.escape(focus) : focus;
                             formRef.current
                               ?.querySelector<HTMLElement>(`[data-exercise-block="${escaped}"]`)
-                              ?.scrollIntoView({ block: "start" });
+                              ?.scrollIntoView({ block: "center" });
                           });
                         }}
                       />

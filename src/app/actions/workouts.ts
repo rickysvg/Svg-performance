@@ -8,6 +8,7 @@ import {
   deleteWorkoutSessionForUser,
   getOwnWorkoutSessionOrNull,
   rateWorkoutSessionForUser,
+  reopenCompletedWorkoutForUser,
   startRoundWorkoutForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
@@ -268,6 +269,20 @@ export async function rateFinishedWorkoutAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+}
+
+/** Undo an accidental finish and return to the same logger, sets intact. */
+export async function resumeWorkoutAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const workoutId = String(formData.get("workoutId") ?? "");
+  await reopenCompletedWorkoutForUser(user.id, workoutId);
+  revalidatePath("/home");
+  revalidatePath("/training");
+  revalidatePath("/training/history");
+  revalidatePath("/progress");
+  revalidatePath(`/training/log/${workoutId}`);
+  revalidatePath(`/training/log/${workoutId}/done`);
+  redirect(`/training/log/${workoutId}`);
 }
 
 export async function deleteWorkoutAction(formData: FormData) {

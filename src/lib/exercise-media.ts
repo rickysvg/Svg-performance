@@ -53,6 +53,7 @@ const STRENGTH_NAME_EQUIPMENT: Record<string, EquipmentId[]> = {
   "Squat jump or box step-up": ["bodyweight"],
   "Front plank": ["bodyweight"],
   "Dumbbell bench press": ["dumbbell", "bench"],
+  "Barbell bench press": ["barbell", "bench"],
   "One-arm row": ["dumbbell", "bench"],
   "Overhead press": ["barbell", "dumbbell"],
   "Face pull": ["cable"],
