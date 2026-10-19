@@ -135,7 +135,19 @@ export function zonedCivilToUtc(
   day: number,
   timeZone: string,
 ): Date {
-  const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
+  return zonedDateTimeToUtc(year, month, day, 0, 0, timeZone);
+}
+
+/** UTC instant of a civil date and clock time in `timeZone`. */
+export function zonedDateTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): Date {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0);
   let instant = utcGuess - zoneOffsetMs(new Date(utcGuess), timeZone);
   instant = utcGuess - zoneOffsetMs(new Date(instant), timeZone);
   return new Date(instant);

@@ -10,7 +10,18 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.youtube.com", pathname: "/vi/**" },
     ],
   },
-  serverExternalPackages: ["@prisma/client", "nodemailer"],
+  serverExternalPackages: ["@prisma/client", "nodemailer", "web-push"],
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "32mb",

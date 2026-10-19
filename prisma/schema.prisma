@@ -66,6 +66,10 @@ model User {
   gymMembershipEvents      GymMembershipEvent[]
   emailVerificationCodes   EmailVerificationCode[]
   gymdeskMatchQueue        GymdeskMatchQueue[]
+  weeklyCheckIns           WeeklyCheckIn[]
+  weeklyCheckInPrefs       WeeklyCheckInPrefs?
+  pushSubscriptions        PushSubscription[]
+  checkInReminderLogs      CheckInReminderLog[]
 }
 
 model Session {
@@ -169,6 +173,8 @@ model Profile {
   obstaclesJson              String    @default("[]")
   /** Voluntary swaps for one week. The default weekday plan is unchanged. */
   weekPlanSwapsJson          String    @default("[]")
+  /** none | force_on. Admin override so a non-coaching account can test weekly check-ins. */
+  weeklyCheckInOverride      String    @default("none")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
   carbsTargetG           Int      @default(220)
@@ -1153,4 +1159,92 @@ model GymdeskRateLimit {
   createdAt DateTime @default(now())
 
   @@index([keyHash, createdAt])
+}
+
+/** One row per member. Missing row means Sunday 6:00 PM local. */
+model WeeklyCheckInPrefs {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** 0 Sunday … 6 Saturday. */
+  weekday     Int      @default(0)
+  /** Minutes from local midnight. 1080 = 6:00 PM. */
+  minuteOfDay Int      @default(1080)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/** One submitted weekly check-in per member per local week (Monday key). */
+model WeeklyCheckIn {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Monday of the member's local week, YYYY-MM-DD. */
+  weekKey              String
+  bodyweightLb         Float?
+  sleepQuality         Int
+  energy               Int
+  stress               Int
+  /** JSON string[] of body-map region ids. */
+  sorenessRegionsJson  String    @default("[]")
+  sorenessNotes        String    @default("")
+  sessionsCompleted    Int       @default(0)
+  sessionsPlanned      Int       @default(0)
+  sparringSummary      String    @default("")
+  wins                 String    @default("")
+  struggles            String    @default("")
+  videoStorageKey      String    @default("")
+  videoStorageKind     String    @default("")
+  videoMimeType        String    @default("")
+  videoByteSize        Int       @default(0)
+  videoDurationSeconds Int       @default(0)
+  aiSummary            String    @default("")
+  aiFlagsJson          String    @default("[]")
+  aiReply              String    @default("")
+  aiTweaks             String    @default("")
+  /** openai | fallback */
+  aiSource             String    @default("fallback")
+  /** pending | reviewed | sent */
+  coachStatus          String    @default("pending")
+  coachReply           String    @default("")
+  reviewerUserId       String    @default("")
+  submittedAt          DateTime  @default(now())
+  reviewedAt           DateTime?
+  sentAt               DateTime?
+  replySeenAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([userId, weekKey])
+  @@index([coachStatus, submittedAt])
+  @@index([userId, submittedAt])
+}
+
+model CheckInReminderLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekKey String
+  /** initial | followup */
+  kind    String
+  /** push | email */
+  channel String   @default("push")
+  sentAt  DateTime @default(now())
+
+  @@unique([userId, weekKey, kind])
+  @@index([userId, weekKey])
 }
