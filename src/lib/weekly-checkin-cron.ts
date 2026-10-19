@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { performanceAppOrigin } from "@/lib/reminders";
 import { reminderEmailHtml, sendMail } from "@/lib/mail";
-import { normalizePlanId, planHasFeature } from "@/lib/plans";
 import { resolveTimeZone } from "@/lib/timezone";
 import { sendPushToUser, vapidConfig } from "@/lib/weekly-checkin-push";
 import {
@@ -9,6 +8,7 @@ import {
   decideCheckInReminder,
   DEFAULT_REMINDER_MINUTE,
   DEFAULT_REMINDER_WEEKDAY,
+  planIsOneOnOneCoaching,
   type ReminderDecision,
 } from "@/lib/weekly-checkin-shared";
 
@@ -94,9 +94,8 @@ async function loadCandidates(now: Date): Promise<Candidate[]> {
 
   for (const row of latestByUser.values()) {
     if (row.currentPeriodEnd && row.currentPeriodEnd < now) continue;
-    const planId = normalizePlanId(row.plan);
     const forced = row.user.profile?.weeklyCheckInOverride === "force_on";
-    if (!planHasFeature(planId, "coaching") && !forced) continue;
+    if (!planIsOneOnOneCoaching(row.plan) && !forced) continue;
     seen.add(row.userId);
     candidates.push(toCandidate(row.userId, row.user.email, row.user.profile, row.user));
   }

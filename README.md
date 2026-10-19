@@ -107,7 +107,7 @@ If Polar keys are missing: Heart rate still works with Apple Health import, manu
 
 ## Weekly check-ins
 
-Coaching-plan members (Fighter Development, Elite, VIP, Platinum) get a weekly form at `/checkin`. Admins, including emails in `ADMIN_EMAILS`, review them at `/coach/checkins`. An admin can turn the form on for one account from that page when testing.
+1-on-1 Coaching with Ricky (`coaching` and `coaching_*` checkout rows, $249/mo) gets a weekly form at `/checkin`. Existing Fighter Development, Elite, VIP, and Platinum subscriptions keep that access. SVG Performance does not. Admins, including emails in `ADMIN_EMAILS`, review check-ins at `/coach/checkins`. An admin can turn the form on for one account from that page when testing.
 
 Reminders:
 

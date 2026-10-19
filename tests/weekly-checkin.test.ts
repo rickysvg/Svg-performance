@@ -10,6 +10,7 @@ import {
   fallbackCheckInDraft,
   isWeeklyCheckInDue,
   memberHasWeeklyCheckInAccess,
+  planIsOneOnOneCoaching,
   reminderInstant,
   sortCheckInsFlaggedFirst,
   summaryLineCount,
@@ -48,11 +49,28 @@ function scores(overrides: Partial<Parameters<typeof detectCheckInFlags>[0]> = {
 }
 
 describe("weekly check-in rules", () => {
-  it("gates on the coaching feature unless an admin forces it on", () => {
+  it("gates on 1-on-1 coaching, including legacy coaching plans", () => {
+    expect(planIsOneOnOneCoaching("coaching")).toBe(true);
+    expect(planIsOneOnOneCoaching("coaching_monthly")).toBe(true);
+    expect(planIsOneOnOneCoaching("fighter_development")).toBe(true);
+    expect(planIsOneOnOneCoaching("development_gym")).toBe(true);
+    expect(planIsOneOnOneCoaching("elite")).toBe(true);
+    expect(planIsOneOnOneCoaching("elite_non")).toBe(true);
+    expect(planIsOneOnOneCoaching("vip")).toBe(true);
+    expect(planIsOneOnOneCoaching("platinum")).toBe(true);
+    expect(planIsOneOnOneCoaching("performance")).toBe(false);
+    expect(planIsOneOnOneCoaching("performance_yearly")).toBe(false);
+    expect(planIsOneOnOneCoaching("fighter_conditioning")).toBe(false);
+    expect(planIsOneOnOneCoaching("member_access")).toBe(false);
+    expect(planIsOneOnOneCoaching(null)).toBe(false);
+
     expect(memberHasWeeklyCheckInAccess({ planId: "performance", override: "none" })).toBe(false);
     expect(memberHasWeeklyCheckInAccess({ planId: "member_access", override: "none" })).toBe(false);
+    expect(memberHasWeeklyCheckInAccess({ planId: "coaching", override: "none" })).toBe(true);
     expect(memberHasWeeklyCheckInAccess({ planId: "fighter_development", override: "none" })).toBe(true);
     expect(memberHasWeeklyCheckInAccess({ planId: "elite", override: "none" })).toBe(true);
+    expect(memberHasWeeklyCheckInAccess({ planId: "vip", override: "none" })).toBe(true);
+    expect(memberHasWeeklyCheckInAccess({ planId: "platinum", override: "none" })).toBe(true);
     expect(memberHasWeeklyCheckInAccess({ planId: "performance", override: "force_on" })).toBe(true);
   });
 
@@ -276,6 +294,50 @@ describe("weekly check-in access, submit, and reminders", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
     expect(isWeeklyCheckInCoach(admin)).toBe(true);
     expect(isWeeklyCheckInCoach(free)).toBe(false);
+
+    const performance = await makeUser("perf-checkin@example.com");
+    await prisma.subscription.create({
+      data: {
+        userId: performance.id,
+        plan: "performance",
+        status: "active",
+        currentPeriodEnd: new Date("2027-01-01T00:00:00.000Z"),
+      },
+    });
+    expect(await weeklyCheckInAllowed(performance.id, NOW)).toBe(false);
+
+    const coaching = await makeUser("new-coaching@example.com");
+    await prisma.subscription.create({
+      data: {
+        userId: coaching.id,
+        plan: "coaching_monthly",
+        status: "active",
+        currentPeriodEnd: new Date("2027-01-01T00:00:00.000Z"),
+      },
+    });
+    expect(await weeklyCheckInAllowed(coaching.id, NOW)).toBe(true);
+
+    const legacy = await makeUser("legacy-checkin@example.com");
+    await prisma.subscription.create({
+      data: {
+        userId: legacy.id,
+        plan: "development_gym",
+        status: "active",
+        currentPeriodEnd: new Date("2027-01-01T00:00:00.000Z"),
+      },
+    });
+    expect(await weeklyCheckInAllowed(legacy.id, NOW)).toBe(true);
+
+    const expired = await makeUser("expired-coaching@example.com");
+    await prisma.subscription.create({
+      data: {
+        userId: expired.id,
+        plan: "coaching",
+        status: "active",
+        currentPeriodEnd: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    });
+    expect(await weeklyCheckInAllowed(expired.id, NOW)).toBe(false);
   });
 
   it("saves a check-in with auto session counts and a fallback draft", async () => {

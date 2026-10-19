@@ -11,7 +11,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   }
   if (!(await weeklyCheckInAllowed(user.id))) {
-    return NextResponse.json({ error: "Weekly check-ins are on coaching plans." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Weekly check-ins are on 1-on-1 Coaching with Ricky." },
+      { status: 403 },
+    );
   }
   let body: unknown;
   try {

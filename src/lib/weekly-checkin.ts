@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { getEffectivePlanId } from "@/lib/entitlements";
+import { getLatestSubscription } from "@/lib/access";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
 import {
   assertClipDuration,
@@ -72,15 +72,18 @@ function plannedCount(profile: {
 }
 
 export async function weeklyCheckInAllowed(userId: string, now = new Date()) {
-  const [planId, profile] = await Promise.all([
-    getEffectivePlanId(userId, now),
+  const [subscription, profile] = await Promise.all([
+    getLatestSubscription(userId),
     prisma.profile.findUnique({
       where: { userId },
       select: { weeklyCheckInOverride: true },
     }),
   ]);
+  const active =
+    subscription?.status === "active" &&
+    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < now);
   return memberHasWeeklyCheckInAccess({
-    planId,
+    planId: active ? subscription.plan : null,
     override: profile?.weeklyCheckInOverride,
   });
 }

@@ -41,18 +41,19 @@ export default async function CheckInPage({
           <p className="font-display text-xs uppercase tracking-[0.06em]">Coaching</p>
           <h2 className="mt-2 text-2xl">This is on 1-on-1 coaching</h2>
           <p className="mt-2 text-sm text-muted">
-            Weekly check-ins are for coaching-plan members. Ricky reads one short form a week.
-            An admin can turn it on for a test account from the coach dashboard.
+            Weekly check-ins are included with 1-on-1 Coaching with Ricky. SVG Performance does
+            not include them. An admin can turn the form on for a test account from the coach
+            dashboard.
           </p>
           <Link
             href="/plan"
             className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
           >
-            See coaching plans
+            See plans
           </Link>
           {trial.canStartTrial ? (
             <p className="mt-3 text-xs text-muted">
-              A Performance trial does not include the weekly coaching check-in.
+              SVG Performance, including a trial, does not include the weekly check-in.
             </p>
           ) : null}
         </section>

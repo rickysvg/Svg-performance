@@ -1,4 +1,4 @@
-import { planHasFeature, type CatalogPlanId } from "@/lib/plans";
+import { normalizePlanId } from "@/lib/plans";
 import {
   addZonedDays,
   dayKey,
@@ -82,12 +82,39 @@ const INJURY_PATTERN =
 const HEAD_PATTERN =
   /\b(head|concussion|knocked out|knockout|ko'd|eye poke|hard spar(?:ring)?|head kick|head shot)\b/i;
 
+/**
+ * Catalog id for 1-on-1 Coaching with Ricky ($249/mo).
+ * The simplified pricing catalog adds this id. Until that lands, checkout
+ * rows may already store `coaching` or `coaching_*`.
+ */
+export const ONE_ON_ONE_COACHING_PLAN_ID = "coaching";
+
+/** Older catalog ids that stay on the weekly check-in if either pricing PR merges first. */
+const LEGACY_ONE_ON_ONE_PLAN_IDS = new Set([
+  "fighter_development",
+  "elite",
+  "vip",
+  "platinum",
+]);
+
+export function planIsOneOnOneCoaching(plan: string | null | undefined) {
+  const raw = plan?.trim().toLowerCase() ?? "";
+  if (!raw) return false;
+  if (raw === ONE_ON_ONE_COACHING_PLAN_ID || raw.startsWith(`${ONE_ON_ONE_COACHING_PLAN_ID}_`)) {
+    return true;
+  }
+  if (LEGACY_ONE_ON_ONE_PLAN_IDS.has(raw)) return true;
+  const normalized = normalizePlanId(raw) as string;
+  if (normalized === ONE_ON_ONE_COACHING_PLAN_ID) return true;
+  return LEGACY_ONE_ON_ONE_PLAN_IDS.has(normalized);
+}
+
 export function memberHasWeeklyCheckInAccess(input: {
-  planId: CatalogPlanId;
+  planId: string | null | undefined;
   override: string | null | undefined;
 }) {
   if (input.override === "force_on") return true;
-  return planHasFeature(input.planId, "coaching");
+  return planIsOneOnOneCoaching(input.planId);
 }
 
 export function clampScore(value: number) {
