@@ -1,6 +1,7 @@
 import { TodaySummaryView } from "@/components/home/TodaySummaryView";
-import { loadDaySummaryFacts, templateDaySummary } from "@/lib/coach/day-summary";
+import { loadDaySummaryFacts, summaryHeaderWhen, templateDaySummary } from "@/lib/coach/day-summary";
 import { resolveAiCoach } from "@/lib/coaches";
+import { getAiAllowance } from "@/lib/ai-usage";
 import { requireUser } from "@/lib/session";
 
 export default async function TodaySummaryPage() {
@@ -15,11 +16,14 @@ export default async function TodaySummaryPage() {
     );
   }
   const coach = resolveAiCoach(loaded.facts.coachId);
+  const allowance = await getAiAllowance(user.id);
   return (
     <TodaySummaryView
       facts={loaded.facts}
       script={templateDaySummary(loaded.facts)}
       circle={coach.circle}
+      when={summaryHeaderWhen(loaded.facts.weekday, loaded.dayKey)}
+      readAloudsLeft={allowance.readAloudsLeft}
     />
   );
 }

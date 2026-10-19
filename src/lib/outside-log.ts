@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
-import { mondayOfZoned, addZonedDays, dayKey } from "@/lib/timezone";
+import { mondayOfZoned, addZonedDays, dayKey, APP_TIMEZONE } from "@/lib/timezone";
 
 export const SORE_SPOTS = [
   "head",
@@ -76,6 +76,15 @@ export function ratingInRange(value: number) {
   return Number.isInteger(value) && value >= 1 && value <= 5;
 }
 
+/** Future civil days stay closed. Today and earlier can be logged on any gym-day type. */
+export function sparringDateError(dateKey: string, now = new Date(), timeZone = APP_TIMEZONE) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return "Pick a valid day.";
+  if (dateKey > dayKey(now, timeZone)) {
+    return "You can log sparring through today. Future days stay closed.";
+  }
+  return null;
+}
+
 /** Body at 2 or below, or a tapped head, means the next day should be easier. */
 export function sparringNeedsEase(log: {
   bodyRating: number | null;
@@ -104,10 +113,13 @@ export async function saveSparringLog(
     sessionRating: number;
     bodyRating: number;
     soreSpots?: string[];
+    now?: Date;
+    timeZone?: string;
   },
 ) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dateKey)) {
-    throw new AppError("LOG", "Pick a valid day.");
+  const dateError = sparringDateError(input.dateKey, input.now ?? new Date(), input.timeZone ?? APP_TIMEZONE);
+  if (dateError) {
+    throw new AppError("LOG", dateError);
   }
   if (!Number.isInteger(input.rounds) || input.rounds < 1 || input.rounds > 30) {
     throw new AppError("LOG", "Rounds should be between 1 and 30.");

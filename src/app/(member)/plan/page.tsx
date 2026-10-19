@@ -6,8 +6,7 @@ import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
-import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
-import { getTrialState } from "@/lib/trial";
+import { currentPlanLine, getTrialState } from "@/lib/trial";
 
 export default async function PlanPage() {
   const user = await requireUser();
@@ -24,13 +23,14 @@ export default async function PlanPage() {
     <main className="space-y-6">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-accent">Current plan</p>
-        <h1 className="text-2xl">{plan.label}</h1>
+        <h1 className="text-2xl" data-current-plan>
+          {currentPlanLine({
+            trialActive: trial.trialActive,
+            trialDaysLeft: trial.trialDaysLeft,
+            planLabel: plan.label,
+          })}
+        </h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
-        {trial.trialActive ? (
-          <div className="mt-3">
-            <TrialDaysLeft daysLeft={trial.trialDaysLeft} />
-          </div>
-        ) : null}
         <AiDisclaimer className="mt-2" />
       </div>
 

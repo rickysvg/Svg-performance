@@ -24,7 +24,7 @@ import { hasRirCue } from "@/lib/rir";
 import { bikeIntervalCompletionEffects } from "@/lib/bike-interval-timer";
 import { releaseSetWakeLock, requestSetWakeLock } from "@/lib/bike-interval-signals";
 import { lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
-import { plannedSetLine, previousSetLabel, restBannerSeconds } from "@/lib/exercise-media";
+import { plannedSetLine, prescribedRestSeconds, previousSetLabel, restBannerSeconds } from "@/lib/exercise-media";
 import {
   countLabel,
   hidesLoad,
@@ -37,6 +37,11 @@ import {
   resolveLogMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
+import {
+  loggerProgressDetail,
+  orderWorkoutSets,
+  timedRoundMarkAllowed,
+} from "@/lib/logger-progress";
 import {
   addRestSeconds,
   clockNow,
@@ -110,7 +115,7 @@ function toDateInput(value: Date | string, timeZone: string) {
 }
 
 function setsInLb(sets: WorkoutSet[]): WorkoutSet[] {
-  return sets.map((set) => {
+  return orderWorkoutSets(sets).map((set) => {
     if (set.loadUnit !== "kg") {
       return { ...set, loadUnit: "lb" };
     }
@@ -341,6 +346,7 @@ export function WorkoutLogForm({
   };
 }) {
   const [activeName, setActiveName] = useState<string | null>(null);
+  const [restByName, setRestByName] = useState<Record<string, number>>({});
   const [state, action, pending] = useActionState(
     saveWorkoutWithNotice,
     {} as WorkoutActionState,
@@ -414,11 +420,48 @@ export function WorkoutLogForm({
     name: cursor.exerciseName,
     reps: currentPlanned?.reps,
   });
-  const progressUnit = currentMode === "timed_round" ? "Round" : "Set";
+  const groupKey = grouped.map(([name]) => name).join("\u0000");
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || typeof IntersectionObserver === "undefined") return;
+    const blocks = [...form.querySelectorAll<HTMLElement>("[data-exercise-block]")];
+    if (blocks.length === 0) return;
+    const ratios = new Map<Element, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          ratios.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        let best: Element | null = null;
+        let bestRatio = 0;
+        for (const [element, ratio] of ratios) {
+          if (ratio > bestRatio) {
+            best = element;
+            bestRatio = ratio;
+          }
+        }
+        const name = best instanceof HTMLElement ? best.dataset.exerciseBlock : "";
+        if (name) setActiveName(name);
+      },
+      { threshold: [0.2, 0.45, 0.7], rootMargin: "-18% 0px -42% 0px" },
+    );
+    for (const block of blocks) observer.observe(block);
+    return () => observer.disconnect();
+  }, [groupKey]);
+
+  function restForName(name: string, plannedRest: number | undefined, mode: LogMode) {
+    return prescribedRestSeconds({
+      override: restByName[name],
+      slot: swap?.slots.find((row) => row.currentName === name)?.restSeconds,
+      planned: plannedRest,
+      fallback: isBikeIntervalName(name) ? 60 : mode === "timed_round" ? 90 : 60,
+    });
+  }
+
   const currentRestSeconds = cursor.done
     ? 0
-    : (currentPlanned?.restSeconds ??
-      (isBikeIntervalName(cursor.exerciseName) ? 60 : currentMode === "timed_round" ? 90 : 60));
+    : restForName(cursor.exerciseName, currentPlanned?.restSeconds, currentMode);
+  const checkedCount = currentGroup?.filter((set) => set.completed).length ?? 0;
   const firstRirName = session.programDay?.exercises.find((row) => hasRirCue(row.loadText))?.name;
 
   const defaultUnit = "lb";
@@ -693,6 +736,17 @@ export function WorkoutLogForm({
     restSeconds: number,
     completed: boolean,
   ) {
+    const target = sets.find((set) => set.id === setId);
+    const mode = resolveLogMode({ logMode: target?.logMode, name: exerciseName });
+    if (
+      !timedRoundMarkAllowed({
+        mode,
+        markingDone: completed,
+        durationSeconds: target?.durationSeconds,
+      })
+    ) {
+      return;
+    }
     setActiveName(exerciseName);
     const nextSets = sets.map((set) => (set.id === setId ? { ...set, completed } : set));
     setSets(nextSets);
@@ -784,8 +838,13 @@ export function WorkoutLogForm({
               {cursor.exerciseCount > 0 ? (
                 <p data-logger-progress className="font-display text-sm uppercase leading-tight">
                   Exercise {cursor.exerciseIndex} of {cursor.exerciseCount}
-                  <span className="mt-0.5 block text-xs">
-                    {progressUnit} {cursor.setIndex} of {cursor.setCount}
+                  <span className="mt-0.5 block text-xs" data-logger-detail>
+                    {loggerProgressDetail({
+                      mode: currentMode,
+                      setIndex: cursor.setIndex,
+                      setCount: cursor.setCount,
+                      checked: checkedCount,
+                    })}
                   </span>
                 </p>
               ) : null}
@@ -979,7 +1038,7 @@ export function WorkoutLogForm({
           const bike = isBikeIntervalName(name);
           const bikeSession = bike ? bikeSessionForLogger(name, planned) : null;
           const timed = isDurationMode(mode) && !bike;
-          const restSeconds = planned?.restSeconds ?? (bike ? 60 : mode === "timed_round" ? 90 : 60);
+          const restSeconds = restForName(name, planned?.restSeconds, mode);
           const layout = loggerRowLayout(mode, name);
           const columns =
             layout === "bag"
@@ -1093,8 +1152,14 @@ export function WorkoutLogForm({
                         workoutSessionId={session.id}
                         canRemove={grouped.length > 1}
                         getCurrentSets={() => setsRef.current.map(toSetInput)}
+                        onSwapped={(swappedName, seconds) => {
+                          setRestByName((current) => ({ ...current, [swappedName]: seconds }));
+                          setActiveName(swappedName);
+                        }}
                         onSetsReplaced={(next) => {
                           const lb = setsInLb(next);
+                          const previous = new Set(setsRef.current.map((set) => set.exerciseName));
+                          const added = lb.find((set) => !previous.has(set.exerciseName))?.exerciseName;
                           const names = new Set(lb.map((set) => set.exerciseName));
                           const nextRest =
                             restTimer && names.has(restTimer.exerciseName) ? restTimer : null;
@@ -1103,6 +1168,15 @@ export function WorkoutLogForm({
                           setRestTimer(nextRest);
                           remember(lb, nextRest);
                           syncDraft(lb, nextRest);
+                          if (!added) return;
+                          setActiveName(added);
+                          requestAnimationFrame(() => {
+                            const escaped =
+                              typeof CSS !== "undefined" && CSS.escape ? CSS.escape(added) : added;
+                            formRef.current
+                              ?.querySelector<HTMLElement>(`[data-exercise-block="${escaped}"]`)
+                              ?.scrollIntoView({ block: "start" });
+                          });
                         }}
                       />
                     ) : null}
@@ -1334,8 +1408,20 @@ export function WorkoutLogForm({
                         <input
                           name={`sets.${index}.completed`}
                           data-set-field={primaryField ? undefined : set.id}
+                          data-round-needs-seconds={
+                            mode === "timed_round" &&
+                            !(set.durationSeconds != null && set.durationSeconds > 0)
+                              ? "1"
+                              : undefined
+                          }
                           type="checkbox"
                           checked={set.completed}
+                          title={
+                            mode === "timed_round" &&
+                            !(set.durationSeconds != null && set.durationSeconds > 0)
+                              ? "Enter seconds before marking this round done."
+                              : undefined
+                          }
                           onChange={(event) =>
                             markDone(set.id, name, restSeconds, event.target.checked)
                           }

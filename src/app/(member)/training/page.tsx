@@ -261,6 +261,13 @@ export default async function TrainingPage({
       ) : null}
 
       {todayAction ? <StartTodayButton action={todayAction} /> : null}
+      <Link
+        href="/sparring"
+        data-log-sparring
+        className="touch-target flex items-center justify-center rounded-full border border-line text-sm font-semibold"
+      >
+        Log sparring
+      </Link>
 
       <WeekStrip days={strip} basePath="/training" />
 

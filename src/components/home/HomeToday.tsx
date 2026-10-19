@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { startSessionAction } from "@/app/actions/workouts";
+import { StartSubmit } from "@/components/training/StartTodayButton";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import type { getTodayGuide } from "@/lib/today";
 
@@ -31,12 +32,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         ) : next?.dayId ? (
           <form action={startSessionAction} data-prime-coach-audio className="mt-4">
             <input type="hidden" name="programDayId" value={next.dayId} />
-            <button
-              type="submit"
+            <StartSubmit
+              label="Start next session"
               className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-            >
-              Start next session
-            </button>
+            />
           </form>
         ) : (
           <Link
@@ -83,12 +82,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
       ) : first.dayId ? (
         <form action={startSessionAction} data-prime-coach-audio className="mt-4">
           <input type="hidden" name="programDayId" value={first.dayId} />
-          <button
-            type="submit"
+          <StartSubmit
+            label="Start"
             className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          >
-            Start
-          </button>
+          />
         </form>
       ) : (
         <Link

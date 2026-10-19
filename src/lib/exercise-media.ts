@@ -230,6 +230,19 @@ export function exerciseCountLabel(count: number) {
 }
 
 /** Prescribed rest for the logger row. Whole minutes stay in minutes; 90s stays "90s". */
+/** Override from a swap wins, then the saved slot, then the plan, then the mode fallback. */
+export function prescribedRestSeconds(input: {
+  override?: number | null;
+  slot?: number | null;
+  planned?: number | null;
+  fallback: number;
+}) {
+  for (const value of [input.override, input.slot, input.planned]) {
+    if (value != null && Number.isFinite(value)) return value;
+  }
+  return input.fallback;
+}
+
 export function restBannerSeconds(seconds: number) {
   const total = Math.round(seconds);
   if (total >= 60 && total % 60 === 0) {

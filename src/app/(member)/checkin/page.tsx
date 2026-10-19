@@ -19,6 +19,7 @@ import {
 } from "@/lib/weekly-checkin";
 import { canUseFeature } from "@/lib/entitlements";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { resolveAiCoach } from "@/lib/coaches";
 
 export default async function CheckInPage({
   searchParams,
@@ -85,9 +86,18 @@ export default async function CheckInPage({
       <section className="-mx-4 -mt-6 bg-black px-4 pb-6 pt-5 text-white">
         <div className="flex items-center gap-3">
           <PageBackLink href="/home" />
-          <p className="text-xs uppercase tracking-[0.14em] text-accent">Coach Ricky</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={resolveAiCoach("ricky").circle}
+            alt=""
+            width={96}
+            height={96}
+            data-checkin-avatar
+            className="h-10 w-10 rounded-full object-cover ring-2 ring-accent"
+          />
+          <p className="font-display text-xs uppercase tracking-[0.14em] text-highlighter">Coach Ricky</p>
         </div>
-        <h1 className="mt-3 text-4xl">Weekly check-in</h1>
+        <h1 className="mt-3 text-4xl text-white">Weekly check-in</h1>
         <p className="mt-2 text-sm text-white/80">
           One form. About two minutes. {timeZone}.
         </p>

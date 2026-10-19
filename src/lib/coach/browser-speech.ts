@@ -56,6 +56,18 @@ function splitLong(text: string, max: number) {
   });
 }
 
+/** Limit is known before playback, so Read it to me does not sit on Loading. */
+export function summaryReadAction(input: {
+  phase: "idle" | "loading" | "playing" | "paused";
+  readAloudsLeft: number;
+}): "wait" | "pause" | "resume" | "blocked" | "play" {
+  if (input.phase === "loading") return "wait";
+  if (input.phase === "playing") return "pause";
+  if (input.phase === "paused") return "resume";
+  if (input.readAloudsLeft <= 0) return "blocked";
+  return "play";
+}
+
 /** First sentence, so read-aloud can start before the rest of the script is spoken. */
 export function firstSpokenChunk(text: string) {
   const sentence = text

@@ -590,9 +590,10 @@ export async function updateWorkoutSessionForUser(input: {
           }),
         },
       },
-      include: { sets: true },
+      include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
     });
   });
+  updated.sets.sort((left, right) => left.sortOrder - right.sortOrder || left.setNumber - right.setNumber);
   if (input.status === "complete" && existing.status !== "complete") {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }

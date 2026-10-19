@@ -42,8 +42,10 @@ describe("today summary page", () => {
         facts,
         script: "Ricky here. Friday. You have bag work and a lift.",
         circle: "/coaches/ricky-face.webp",
+        when: "Friday · Oct 16",
       }),
     );
+    expect(html).toContain("Friday · Oct 16");
     expect(html).toContain("Coach Ricky");
     expect(html).toContain("Today&#x27;s summary");
     expect(html).toContain("intelligent jab");

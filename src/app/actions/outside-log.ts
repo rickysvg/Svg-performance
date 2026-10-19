@@ -5,6 +5,7 @@ import { saveSparringLog } from "@/lib/outside-log";
 import { writeRecoveryCheckIn } from "@/lib/recovery-ease";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 
 export type SparringLogState = {
   error?: string;
@@ -26,6 +27,8 @@ export async function saveSparringLogAction(
 ): Promise<SparringLogState> {
   try {
     const user = await requireUserOrThrow();
+    const profile = await getProfileForUser(user.id);
+    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
     const log = await saveSparringLog(user.id, {
       dateKey: String(formData.get("dateKey") ?? ""),
       weekday: String(formData.get("weekday") ?? ""),
@@ -36,9 +39,11 @@ export async function saveSparringLogAction(
       sessionRating: integer(formData.get("sessionRating")),
       bodyRating: integer(formData.get("bodyRating")),
       soreSpots: formData.getAll("soreSpots").map(String),
+      timeZone,
     });
     const checkIn = await writeRecoveryCheckIn(user.id, log);
     revalidatePath("/home");
+    revalidatePath("/sparring");
     revalidatePath("/training");
     revalidatePath("/training/calendar");
     revalidatePath("/progress");

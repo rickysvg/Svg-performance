@@ -69,10 +69,7 @@ export default async function HomePage({
       <section className="-mx-4 -mt-6 bg-[#CBF805] px-4 pb-8 pt-7 text-black">
         <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
         <h1 className="mt-1 text-4xl">Welcome {greetingName}</h1>
-        <p className="mt-2 text-sm">
-          SVG Performance
-          {profile?.goals ? ` · ${profile.goals}` : ""}
-        </p>
+        {profile?.goals ? <p className="mt-2 text-sm">{profile.goals}</p> : null}
       </section>
 
       {trialEnded ? <TrialEndedPaywall /> : null}
@@ -82,6 +79,14 @@ export default async function HomePage({
       <TodaySummaryButton name={coach.name} circle={coach.circle} coachId={coach.id} />
 
       <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
+
+      <Link
+        href="/sparring"
+        data-log-sparring
+        className="touch-target flex items-center justify-center rounded-full border border-black bg-white text-sm font-semibold"
+      >
+        Log sparring
+      </Link>
 
       <HomeQuickActions
         locked={

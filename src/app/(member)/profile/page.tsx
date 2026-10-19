@@ -11,8 +11,9 @@ import { isFormCheckReviewer } from "@/lib/form-check-access";
 import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
-import { TrialDaysLeft } from "@/components/upgrade/TrialDaysLeft";
-import { getTrialState } from "@/lib/trial";
+import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { getEffectivePlanId } from "@/lib/entitlements";
+import { PLAN_CATALOG } from "@/lib/plans";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
 import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
 import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggle";
@@ -22,7 +23,7 @@ import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [profile, prefs, trial, verifiedEvent] = await Promise.all([
+  const [profile, prefs, trial, verifiedEvent, planId] = await Promise.all([
     getProfileForUser(user.id),
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
@@ -30,6 +31,7 @@ export default async function ProfilePage() {
       where: { userId: user.id, to: "verified" },
       orderBy: { at: "desc" },
     }),
+    getEffectivePlanId(user.id),
   ]);
   if (!profile) {
     return (
@@ -46,11 +48,16 @@ export default async function ProfilePage() {
         <p className="mt-1 text-sm text-muted">
           {user.email}. Intake answers can be edited here anytime.
         </p>
-        {trial.trialActive ? (
-          <div className="mt-3">
-            <TrialDaysLeft daysLeft={trial.trialDaysLeft} />
-          </div>
-        ) : null}
+        <p className="mt-3 text-sm" data-current-plan>
+          Current plan:{" "}
+          <strong>
+            {currentPlanLine({
+              trialActive: trial.trialActive,
+              trialDaysLeft: trial.trialDaysLeft,
+              planLabel: PLAN_CATALOG[planId].label,
+            })}
+          </strong>
+        </p>
       </div>
 
       <details className="rounded-2xl border border-line bg-card">

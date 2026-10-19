@@ -15,10 +15,14 @@ export function TodaySummaryView({
   facts,
   script,
   circle,
+  when,
+  readAloudsLeft = 1,
 }: {
   facts: DaySummaryFacts;
   script: string;
   circle: string;
+  when: string;
+  readAloudsLeft?: number;
 }) {
   return (
     <main className="space-y-5 pb-8" data-today-summary-page>
@@ -37,8 +41,8 @@ export function TodaySummaryView({
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">Today&apos;s summary</p>
           <h1 className="text-2xl">Coach {facts.coachName}</h1>
-          <p className="text-sm text-muted">
-            {facts.weekday}
+          <p className="text-sm text-muted" data-summary-when>
+            {when}
             {facts.dayKind === "rest"
               ? " · rest"
               : facts.dayKind === "sparring"
@@ -48,7 +52,7 @@ export function TodaySummaryView({
         </div>
       </header>
 
-      <SummaryReader script={script} coachId={facts.coachId} />
+      <SummaryReader script={script} coachId={facts.coachId} readAloudsLeft={readAloudsLeft} />
 
       <section className="space-y-3">
         {facts.sessions.map((session) => (

@@ -42,6 +42,7 @@ export function ExerciseCardMenu({
   canRemove,
   getCurrentSets,
   onSetsReplaced,
+  onSwapped,
 }: {
   programSlug: string;
   dayNumber: number;
@@ -54,6 +55,7 @@ export function ExerciseCardMenu({
   canRemove: boolean;
   getCurrentSets?: () => WorkoutSetInput[];
   onSetsReplaced?: (sets: WorkoutSet[]) => void;
+  onSwapped?: (name: string, restSeconds: number) => void;
 }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -161,6 +163,7 @@ export function ExerciseCardMenu({
         return;
       }
       closeSheet();
+      onSwapped?.(choice.name, choice.restSeconds);
       applySets(result.sets);
     });
   }
@@ -314,7 +317,7 @@ export function ExerciseCardMenu({
                 </button>
               ))}
             </div>
-            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Category">
+            <div className="no-scrollbar flex max-w-full min-w-0 gap-2 overflow-x-auto pb-1" role="group" aria-label="Category">
               {CATEGORY_FILTERS.map((filter) => (
                 <button
                   key={filter.id}

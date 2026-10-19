@@ -103,6 +103,40 @@ export function loggerCursorFollowing(
   };
 }
 
+/** Timed rounds show how many are checked. Other modes show the open set. */
+export function loggerProgressDetail(input: {
+  mode: string;
+  setIndex: number;
+  setCount: number;
+  checked: number;
+}) {
+  if (input.mode === "timed_round") {
+    return `Done ${input.checked} of ${input.setCount}`;
+  }
+  return `Set ${input.setIndex} of ${input.setCount}`;
+}
+
+/** A timed round stays open until the member enters seconds. */
+export function timedRoundMarkAllowed(input: {
+  mode: string;
+  markingDone: boolean;
+  durationSeconds: number | null | undefined;
+}) {
+  if (!input.markingDone || input.mode !== "timed_round") return true;
+  return input.durationSeconds != null && input.durationSeconds > 0;
+}
+
+/** Stable order so an undone exercise returns to its original card, not the end. */
+export function orderWorkoutSets<T extends { sortOrder?: number | null; setNumber?: number | null }>(
+  sets: T[],
+): T[] {
+  return [...sets].sort(
+    (left, right) =>
+      (left.sortOrder ?? 0) - (right.sortOrder ?? 0) ||
+      (left.setNumber ?? 0) - (right.setNumber ?? 0),
+  );
+}
+
 /** Next open set after the one just marked done. */
 export function nextIncompleteSetId(
   sets: LoggerProgressSet[],

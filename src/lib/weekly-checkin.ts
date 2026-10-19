@@ -142,7 +142,7 @@ export async function weekTrainingSnapshot(userId: string, now: Date, timeZone: 
       where: {
         userId,
         status: "complete",
-        performedAt: { gte: start, lt: end },
+        performedAt: { gte: start, lt: end, lte: now },
         sets: loggedSetSome,
       },
       select: { id: true, title: true },

@@ -9,6 +9,7 @@ import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { CoachSpeakButton } from "@/components/coach/CoachSpeakButton";
+import { CoachMarkdown } from "@/components/coach/CoachMarkdown";
 
 type ChatBubble = {
   id: string;
@@ -71,7 +72,11 @@ export function CoachBubble({
           <CoachSpeakButton text={content} coachId={coachId} audioRef={audioRef} />
         ) : null}
       </div>
-      <p className="mt-2 whitespace-pre-wrap">{content}</p>
+      {speaker === "assistant" ? (
+        <CoachMarkdown text={content} />
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap">{content}</p>
+      )}
     </article>
   );
 }
@@ -208,7 +213,7 @@ export function CoachLiveThread({
               </span>
             </p>
           ) : (
-            <p className="mt-2 whitespace-pre-wrap">{partial}</p>
+            <CoachMarkdown text={partial} />
           )}
         </article>
       ) : null}

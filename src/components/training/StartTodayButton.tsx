@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useFormStatus } from "react-dom";
 import { startSessionAction } from "@/app/actions/workouts";
 import { todayStartLabel, type TodayStartAction } from "@/lib/today-start";
 
@@ -20,9 +23,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
     return (
       <form action={startSessionAction} data-start-today data-prime-coach-audio>
         <input type="hidden" name="programDayId" value={action.dayId} />
-        <button type="submit" className={buttonClass}>
-          {label}
-        </button>
+        <StartSubmit label={label} className={buttonClass} />
       </form>
     );
   }
@@ -36,4 +37,19 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
   }
 
   return null;
+}
+
+export function StartSubmit({ label, className }: { label: string; className: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      data-start-pending={pending ? "" : undefined}
+      className={className}
+    >
+      {pending ? "Starting…" : label}
+    </button>
+  );
 }

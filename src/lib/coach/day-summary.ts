@@ -29,6 +29,17 @@ import {
   resolvePlanSessions,
 } from "@/lib/week-plan";
 
+export function summaryHeaderWhen(weekday: string, dayKey: string) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  if (!year || !month || !day) return weekday;
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day, 12)));
+  return `${weekday} · ${formatted}`;
+}
+
 export type SummarySessionKind = "lift" | "bag" | "cardio" | "mobility" | "sparring" | "rest";
 
 export type DaySummarySession = {

@@ -9,7 +9,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { COACHING_CAP, FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
-import { getTrialState } from "@/lib/trial";
+import { currentPlanLine, getTrialState } from "@/lib/trial";
 import { countFoundingSeats } from "@/lib/billing";
 
 export default async function PricingPage() {
@@ -50,7 +50,14 @@ export default async function PricingPage() {
         <AiDisclaimer className="mt-3" />
         {currentPlan ? (
           <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
-            Current plan: <strong>{PLAN_CATALOG[currentPlan].label}</strong>
+            Current plan:{" "}
+            <strong data-current-plan>
+              {currentPlanLine({
+                trialActive: Boolean(trial?.trialActive),
+                trialDaysLeft: trial?.trialDaysLeft ?? 0,
+                planLabel: PLAN_CATALOG[currentPlan].label,
+              })}
+            </strong>
             {subscription ? ` · recorded ${subscription.plan} / ${subscription.status}` : ""}.{" "}
             <Link href="/plan" className="text-accent underline">
               See your plan

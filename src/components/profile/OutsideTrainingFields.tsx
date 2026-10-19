@@ -26,13 +26,13 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
                 />
                 {day}
               </label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 space-y-2">
                 <label className="block text-xs text-muted">
                   Type
                   <select
                     name={`outsideKind-${day}`}
                     defaultValue={saved?.kind ?? "class"}
-                    className="mt-1 w-full rounded-xl border border-line bg-background px-2 py-2 text-sm text-foreground"
+                    className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2 text-sm text-foreground"
                   >
                     {OUTSIDE_KIND_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
