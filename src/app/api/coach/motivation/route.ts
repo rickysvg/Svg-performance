@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
+import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { cueFromRequest, loadCachedCue } from "@/lib/coach/cue-cache";
 import { COACH_AUDIO_MIME } from "@/lib/coach/tts";
 import type { PlannedCue } from "@/lib/coach/motivation";
@@ -36,7 +37,15 @@ function cueFromUrl(url: URL): PlannedCue | null {
   });
 }
 
+function motivationOffResponse() {
+  return NextResponse.json(
+    { speak: false, muted: true },
+    { status: 200, headers: { "Cache-Control": "private, no-store" } },
+  );
+}
+
 async function respond(cue: PlannedCue | null) {
+  if (!COACH_WORKOUT_MOTIVATION_ENABLED) return motivationOffResponse();
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in to hear your coach." }, { status: 401 });

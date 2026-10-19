@@ -12,6 +12,7 @@ import {
   type MotivationView,
 } from "@/lib/coach/motivation";
 import { resetCoachBeeps } from "@/lib/coach/motivation-clock";
+import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 
 function view(partial: Partial<MotivationView> & Pick<MotivationView, "groups">): MotivationView {
   return {
@@ -193,14 +194,50 @@ describe("workout motivation cues", () => {
       "utf8",
     );
     expect(logger).toContain("WorkoutCoachCues");
+    expect(logger).toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
     expect(cues).toContain("data-coach-motivation");
     expect(cues).toContain("data-coach-audio");
     expect(cues).toContain("unlockCoachAudio");
+    expect(cues).toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
     const thread = fs.readFileSync(
       path.join(process.cwd(), "src/components/coach/CoachLiveThread.tsx"),
       "utf8",
     );
     expect(thread).toContain("data-coach-speak");
     expect(thread).toContain("data-coach-audio");
+    expect(thread).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
+  });
+
+  it("keeps in-workout motivation off behind one flag", () => {
+    expect(COACH_WORKOUT_MOTIVATION_ENABLED).toBe(false);
+    const profilePage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/(member)/profile/page.tsx"),
+      "utf8",
+    );
+    expect(profilePage).toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
+    expect(profilePage).toContain("CoachMotivationToggle");
+    const route = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/coach/motivation/route.ts"),
+      "utf8",
+    );
+    expect(route).toContain("if (!COACH_WORKOUT_MOTIVATION_ENABLED) return motivationOffResponse()");
+    const summary = fs.readFileSync(
+      path.join(process.cwd(), "src/components/home/SummaryReader.tsx"),
+      "utf8",
+    );
+    const speaker = fs.readFileSync(
+      path.join(process.cwd(), "src/components/coach/CoachSpeakButton.tsx"),
+      "utf8",
+    );
+    const sounds = fs.readFileSync(
+      path.join(process.cwd(), "src/components/profile/SoundEffectsToggle.tsx"),
+      "utf8",
+    );
+    expect(summary).toContain("Read it to me");
+    expect(summary).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
+    expect(speaker).toContain("data-coach-speak");
+    expect(speaker).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
+    expect(sounds).toContain("rest-timer");
+    expect(sounds).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
   });
 });
