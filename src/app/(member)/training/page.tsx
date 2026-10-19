@@ -98,6 +98,7 @@ export default async function TrainingPage({
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
   const camp = await getActiveCampSnapshot(user.id, selected, tz);
   const campOn = Boolean(camp && camp.weightClass.trim());
+  const weekIndex = planWeekIndex(selected, tz, profile?.onboardingCompletedAt);
   const corePlan = planForDate(prefs, selected, tz, swaps);
   const shaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
@@ -110,11 +111,12 @@ export default async function TrainingPage({
       experienceLevel: band,
       competitionStatus: levelOverride ? null : profile?.competitionStatus,
       weightAccess,
+      weekIndex,
+      campPhase: campOn && camp ? camp.phase : null,
     }),
   );
   const strip = weekStrip(prefs, now, tz, selected, swaps);
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
-  const weekIndex = planWeekIndex(selected, tz, profile?.onboardingCompletedAt);
   const deload = isDeloadWeekIndex(weekIndex);
   const testing = isTestingWeekIndex(weekIndex);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
@@ -162,6 +164,8 @@ export default async function TrainingPage({
       experienceLevel: profileBand,
       competitionStatus: profile?.competitionStatus,
       weightAccess,
+      weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
+      campPhase: campOn && camp ? camp.phase : null,
     }),
   );
   const doneToday = new Set(

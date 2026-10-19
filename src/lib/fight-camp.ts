@@ -327,6 +327,18 @@ export function buildCampSnapshot(input: {
   };
 }
 
+/**
+ * Camp raises the existing bike scale band. It does not invent a new session.
+ * Base keeps the member's band. Build steps up one. Peak uses advanced. Taper uses beginner.
+ */
+export function campBikeBand(phase: CampPhase, band: "beginner" | "intermediate" | "advanced") {
+  if (phase === "pre-camp" || phase === "complete" || phase === "base") return band;
+  if (phase === "taper") return "beginner" as const;
+  if (phase === "peak") return "advanced" as const;
+  if (band === "beginner") return "intermediate" as const;
+  return "advanced" as const;
+}
+
 export function shapeDayPlan(day: DayPlan, phase: CampPhase): DayPlan {
   if (phase === "pre-camp" || phase === "complete") return day;
   if (!day.active) {

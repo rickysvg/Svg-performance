@@ -33,29 +33,31 @@ describe("gym press names", () => {
   it("prescribes the dumbbell bench for intermediate and advanced, with no push-up", () => {
     for (const block of Object.values(STRENGTH_DAY_BY_BLOCK)) {
       for (const band of ["intermediate", "advanced"] as const) {
-        const day = scaled(block.wednesday, band);
+        const day = scaled(block.monday, band);
         const blob = day.exercises
           .map((exercise) => `${exercise.name} ${exercise.notes ?? ""} ${exercise.loadText}`)
           .join("\n");
-        expect(blob, `${band} day ${block.wednesday}`).not.toMatch(PUSH_UP);
+        expect(blob, `${band} day ${block.monday}`).not.toMatch(PUSH_UP);
         const bench = day.exercises.find((exercise) => exercise.name === "Dumbbell bench press");
         expect(bench, `${band} bench`).toBeTruthy();
         expect(bench?.logMode).toBe("load_reps");
         expect(rirFromLoadText(bench?.loadText)).toBeTruthy();
         expect(bench?.loadText).not.toMatch(/kg/i);
+        expect(day.exercises.filter((exercise) => exercise.name === "Dumbbell bench press")).toHaveLength(1);
+        expect(bench?.restSeconds).toBeGreaterThanOrEqual(90);
         expect(day.exercises.some((exercise) => exercise.name === "Explosive dumbbell press")).toBe(
-          true,
+          false,
         );
       }
     }
   });
 
   it("keeps a push-up on the beginner press day", () => {
-    const day = scaled(STRENGTH_DAY_BY_BLOCK.A.wednesday, "beginner");
+    const day = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "beginner");
     const push = day.exercises.find((exercise) => exercise.name === "Push-up");
     expect(push?.logMode).toBe("reps_only");
-    expect(rirFromLoadText(push?.loadText)).toBe("2-4 RIR");
-    expect(day.exercises.some((exercise) => exercise.name === "Plyo push-up")).toBe(true);
+    expect(rirFromLoadText(push?.loadText)).toBeTruthy();
+    expect(day.exercises.some((exercise) => exercise.name === "Plyo push-up")).toBe(false);
     expect(day.exercises.some((exercise) => /dumbbell bench/i.test(exercise.name))).toBe(false);
   });
 
@@ -99,10 +101,8 @@ describe("no gym or weights", () => {
     for (const [block, days] of Object.entries(STRENGTH_DAY_BY_BLOCK)) {
       const lower = scaled(days.monday, "intermediate", "none");
       const pull = scaled(days.tuesday, "intermediate", "none");
-      const push = scaled(days.wednesday, "intermediate", "none");
       const posterior = scaled(days.thursday, "intermediate", "none");
-      const gpp = scaled(days.friday, "intermediate", "none");
-      for (const day of [lower, pull, push, posterior, gpp]) {
+      for (const day of [lower, pull, posterior]) {
         expect(day.exercises.length, day.title).toBeGreaterThanOrEqual(6);
         expect(new Set(day.exercises.map((exercise) => exercise.name)).size).toBe(
           day.exercises.length,
@@ -114,14 +114,6 @@ describe("no gym or weights", () => {
       expect(lower.exercises.some((exercise) => PUSH_UP.test(exercise.name))).toBe(false);
       expect(pull.exercises.some((exercise) => PUSH_UP.test(exercise.name))).toBe(false);
       expect(posterior.exercises.some((exercise) => PUSH_UP.test(exercise.name))).toBe(false);
-      expect(push.exercises.filter((exercise) => PUSH_UP.test(exercise.name)).length).toBeGreaterThan(
-        1,
-      );
-      expect(push.exercises.some((exercise) => /pike/i.test(exercise.name))).toBe(true);
-      expect(gpp.exercises.filter((exercise) => PUSH_UP.test(exercise.name))).toHaveLength(1);
-      expect(gpp.exercises.some((exercise) => /squat|lunge|bridge|bound/i.test(exercise.name))).toBe(
-        true,
-      );
     }
     const lowerA = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "advanced", "none")
       .exercises.map((exercise) => exercise.name)

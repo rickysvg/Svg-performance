@@ -251,9 +251,6 @@ describe("calendar schedule loader", () => {
 
     const tuesdayRow = schedule.days[1];
     const tuesdayWorkouts = tuesdayRow?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(tuesdayWorkouts.length).toBeGreaterThan(0);
-    expect(tuesdayWorkouts.every((row) => row.status === "scheduled")).toBe(true);
-    expect(tuesdayWorkouts[0]?.subtitle).toContain("Missed");
-    expect(tuesdayWorkouts[0]?.title.length).toBeGreaterThan(0);
+    expect(tuesdayWorkouts).toHaveLength(0);
   });
 });

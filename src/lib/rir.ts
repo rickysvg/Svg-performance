@@ -1,7 +1,8 @@
 /** Reps in reserve. Stored inside ProgramExercise.loadText so the seed can carry it. */
 
-const RIR_PATTERN = /\b(\d+\s*-\s*\d+|\d+\+)\s*RIR\b/i;
-const PERCENT_PATTERN = /~\d+%\s+of\s+a\s+\d+-rep max/i;
+const RIR_PATTERN = /\b(\d+\s*-\s*\d+|\d+\+|\d+)\s*RIR\b/i;
+const PERCENT_PATTERN =
+  /~\d+%\s+of\s+(?:an?\s+\d+-rep max|bodyweight(?:\s+per\s+hand)?)/i;
 
 export const RIR_PLAIN =
   "RIR is reps in reserve: how many clean reps you could still do after the set. 0-2 RIR is near hard. A higher RIR means leave more in the tank. Power work stays fast, so it uses a higher RIR.";

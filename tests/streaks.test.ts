@@ -32,8 +32,9 @@ describe("training streak (scheduled days)", () => {
     const tuesday = new Date("2026-09-22T18:00:00.000Z");
     const tz = "America/Denver";
     const keys = [dayKey(friday, tz), dayKey(tuesday, tz)];
-    // Monday 21 Sep is scheduled and was missed.
-    expect(currentTrainingStreak(keys, prefs, tuesday, tz)).toBe(1);
+    // Monday 21 Sep is on this Mon/Wed/Fri plan and was missed.
+    // Tuesday is not a scheduled day, so a Tuesday log does not keep the streak.
+    expect(currentTrainingStreak(keys, prefs, tuesday, tz)).toBe(0);
   });
 
   it("keeps the streak alive when today is scheduled and not logged yet", () => {

@@ -56,7 +56,7 @@ async function main() {
       slug: DEMO_SLUG,
       title: "DEMO — Strength Base for Class",
       description:
-        "A five-day strength / GPP skeleton plus Tuesday/Thursday assault-bike rotation for this private preview. Bag work lives in DEMO Combat Skills. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
+        "Three full-body lift days (Monday, Tuesday, Thursday) plus the Daru, Jamieson, and Edwards bike rotation on Wednesday and Sunday. Bag work lives in DEMO Combat Skills. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
       isDemo: true,
       days: {
         create: [
@@ -168,7 +168,10 @@ async function tagSeededExerciseModes() {
           tags: string;
         } = { logMode, tags: formatStoredTags(tagsForExercise(exercise.name)) };
         if (logMode === "timed") {
-          if (/\b(plank|hold|wall sit|hollow|dead hang)\b/i.test(exercise.name)) {
+          if (
+            /\b(plank|hold|wall sit|hollow|dead hang)\b/i.test(exercise.name) &&
+            !/\bRIR\b/i.test(exercise.loadText)
+          ) {
             data.loadText = "Hold — no weight";
           }
           if (/\bplank\b/i.test(exercise.name) && exercise.restSeconds < 60) {
@@ -176,14 +179,25 @@ async function tagSeededExerciseModes() {
           }
         }
         if (logMode === "load_timed") {
-          if (/meter/i.test(exercise.reps) || !/\bsec\b|\d+\s*:/i.test(exercise.reps)) {
+          const hasMeter = /meter/i.test(exercise.reps);
+          const hasTime = /\bsec\b|\d+\s*:/i.test(exercise.reps);
+          if (!hasMeter && !hasTime) {
             data.reps = "30–40 sec";
           }
         }
-        if (logMode === "reps_only" && /bodyweight/i.test(exercise.loadText)) {
+        if (
+          logMode === "reps_only" &&
+          /bodyweight/i.test(exercise.loadText) &&
+          !/\bRIR\b/i.test(exercise.loadText)
+        ) {
           data.loadText = "Bodyweight — no lbs";
         }
-        if (logMode === "timed_round" && !isBikeIntervalName(exercise.name)) {
+        // Bag and technique rounds keep the seeded 3:00 / 60s clock.
+        if (
+          logMode === "timed_round" &&
+          !isBikeIntervalName(exercise.name) &&
+          program.slug !== DEMO_SKILL_SLUG
+        ) {
           data.reps = "2:00";
           data.restSeconds = 90;
         }

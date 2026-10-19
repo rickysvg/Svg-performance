@@ -58,12 +58,15 @@ describe("Train / Calendar day chips", () => {
     expect(strip).not.toContain("activity.mark");
   });
 
-  it("keeps Mon and Wed bag day numbers distinct", () => {
-    const mon = coreSkeletonSessions("Monday", "mma")[0]?.dayNumber;
-    const wed = coreSkeletonSessions("Wednesday", "mma")[0]?.dayNumber;
-    expect(mon).toBe(BAG_FOCUS.Monday.dayNumber);
-    expect(wed).toBe(BAG_FOCUS.Wednesday.dayNumber);
-    expect(mon).not.toBe(wed);
+  it("keeps Monday and Tuesday bag day numbers distinct, and Wednesday is the bike", () => {
+    const mon = coreSkeletonSessions("Monday", "mma");
+    const tue = coreSkeletonSessions("Tuesday", "mma");
+    const wed = coreSkeletonSessions("Wednesday", "mma");
+    expect(mon[0]?.dayNumber).toBe(BAG_FOCUS.Monday.dayNumber);
+    expect(tue[0]?.dayNumber).toBe(BAG_FOCUS.Tuesday.dayNumber);
+    expect(mon[0]?.dayNumber).not.toBe(tue[0]?.dayNumber);
+    expect(wed[0]?.kind).toBe("conditioning");
+    expect(wed.some((session) => session.kind === "skill")).toBe(false);
   });
 
   it("keeps every bag day between 30 and 45 minutes", () => {

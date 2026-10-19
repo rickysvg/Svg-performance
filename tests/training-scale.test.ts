@@ -87,7 +87,7 @@ describe("training scale bands", () => {
       },
       { band: "advanced", programSlug: "demo-combat-skills", dayNumber: 2 },
     );
-    expect(tue.sets).toBe(8);
+    expect(tue.sets).toBe(4);
     const optional = scaleExercise(
       {
         name: "Bag rounds — power & speed",
@@ -124,11 +124,12 @@ describe("training scale bands", () => {
     });
     expect(intermediate.sets).toBe(4);
     expect(intermediate.loadText).toMatch(/last reps should slow/i);
-    expect(intermediate.restSeconds).toBeLessThan(beginner.restSeconds);
+    expect(intermediate.restSeconds).toBeGreaterThanOrEqual(120);
+    expect(beginner.restSeconds).toBeGreaterThanOrEqual(120);
     expect(advanced.sets).toBe(4);
     expect(advanced.reps).toBe("5–6");
     expect(advanced.loadText).toMatch(/heavy/i);
-    expect(advanced.restSeconds).toBe(45);
+    expect(advanced.restSeconds).toBe(120);
 
     const plank = scaleExercise(
       {
@@ -264,16 +265,18 @@ describe("scaled DEMO days in the database", () => {
     await prisma.$disconnect();
   });
 
-  it("tags plank as timed and bag work as timed rounds", async () => {
+  it("tags the neck hold as timed and bag work as 3:00 rounds", async () => {
     const strength = await getDemoProgram();
     const skill = await findSkillProgram();
-    const plank = strength.days[0]?.exercises.find((row) => row.name === "Front plank");
-    expect(plank?.logMode).toBe("timed");
-    expect(plank?.loadText).toMatch(/hold/i);
-    const bag = skill?.days[0]?.exercises.find((row) => /jab/i.test(row.name));
+    const hold = strength.days
+      .find((day) => day.dayNumber === 1)
+      ?.exercises.find((row) => row.name === "Neck extension hold");
+    expect(hold?.logMode).toBe("timed");
+    expect(hold?.loadText).toMatch(/RIR/i);
+    const bag = skill?.days[0]?.exercises.find((row) => /bag rounds/i.test(row.name));
     expect(bag?.logMode).toBe("timed_round");
-    expect(bag?.reps).toMatch(/2:00/);
-    expect(bag?.restSeconds).toBe(90);
+    expect(bag?.reps).toMatch(/3:00/);
+    expect(bag?.restSeconds).toBe(60);
   });
 
   it("reserves load_reps for weighted DEMO strength lifts only", async () => {
@@ -283,30 +286,23 @@ describe("scaled DEMO days in the database", () => {
       strength.days.flatMap((day) => day.exercises.map((row) => [row.name, row.logMode])),
     );
     expect(modes["Goblet squat"]).toBe("load_reps");
-    expect(modes["Romanian deadlift"]).toBe("load_reps");
-    expect(modes["Reverse lunge"]).toBe("load_reps");
+    expect(modes["Dumbbell Romanian deadlift"]).toBe("load_reps");
+    expect(modes["Walking lunge"]).toBe("load_reps");
     expect(modes["Dumbbell bench press"]).toBe("load_reps");
     expect(modes["One-arm row"]).toBe("load_reps");
     expect(modes["Overhead press"]).toBe("load_reps");
     expect(modes["Farmer carry"]).toBe("load_timed");
-    expect(modes["Kettlebell swing"]).toBe("load_reps");
-    expect(modes["Face pull"]).toBe("load_reps");
     expect(modes["Lat pulldown"]).toBe("load_reps");
-    expect(modes["Dead bug"]).toBe("timed");
-    expect(modes["Front plank"]).toBe("timed");
-    expect(modes["Side plank"]).toBe("timed");
+    expect(modes["Neck extension hold"]).toBe("timed");
+    expect(modes["Neck isometric matrix"]).toBe("timed");
+    expect(modes["Squat jump"]).toBe("reps_only");
+    expect(modes["Suitcase carry"]).toBe("load_timed");
     expect(modes["Assault bike intervals"]).toBe("timed_round");
     expect(modes["Daru alactic power bike"]).toBe("timed_round");
     expect(modes["Trap-bar deadlift"]).toBe("load_reps");
-    expect(modes["Floor press"]).toBe("load_reps");
     expect(modes["Landmine press"]).toBe("load_reps");
     expect(modes["Rotational med-ball throw"]).toBe("load_reps");
-    expect(modes["Med-ball chest pass"]).toBe("load_reps");
-    expect(modes["Farmer's carry"]).toBe("load_timed");
-    expect(modes["Sled push"]).toBe("timed");
-    expect(modes["Sled hamstring drag"]).toBe("timed");
-    expect(modes["Banded kettlebell swing"]).toBe("timed");
-    expect(modes["Neck isometric matrix"]).toBe("timed");
+    expect(modes["Cable woodchop"]).toBe("load_reps");
     const counts = Object.values(modes).reduce(
       (acc, mode) => {
         acc[mode] = (acc[mode] ?? 0) + 1;
@@ -316,7 +312,7 @@ describe("scaled DEMO days in the database", () => {
     );
     expect(counts.load_reps).toBeGreaterThan(8);
     expect(counts.timed_round).toBeGreaterThanOrEqual(6);
-    expect(counts.timed).toBeGreaterThan(3);
+    expect(counts.timed).toBeGreaterThanOrEqual(2);
     const skillRows = skill?.days.flatMap((day) => day.exercises) ?? [];
     expect(
       skillRows.every(
@@ -334,38 +330,32 @@ describe("scaled DEMO days in the database", () => {
     );
   });
 
-  it("opens plank rows that match the prescription and shortens advanced rest", async () => {
+  it("opens Monday with the written week dose and does not shorten the bench rest", async () => {
     const user = await makeUser("adv-scale@example.com");
     const strength = await getDemoProgram();
-    const day = strength.days[0];
-    const beginner = await startWorkoutFromDay({
-      userId: user.id,
-      programDayId: day.id,
-      preferredUnits: "lb",
-      scale: { experienceLevel: "beginner" },
-    });
+    const day = strength.days.find((row) => row.dayNumber === 1)!;
     const advanced = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day.id,
       preferredUnits: "lb",
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
     });
-    const beginnerPlank = beginner.sets.filter((set) => set.exerciseName === "Front plank");
-    const advancedPlank = advanced.sets.filter((set) => set.exerciseName === "Front plank");
-    expect(beginnerPlank).toHaveLength(3);
-    expect(advancedPlank).toHaveLength(3);
-    expect(beginnerPlank[0]?.logMode).toBe("timed");
-    expect(advancedPlank[0]?.logMode).toBe("timed");
-    expect(advancedPlank[0]?.durationSeconds).toBeNull();
-    expect(advancedPlank[0]?.reps).toBeNull();
-    expect(advancedPlank[0]?.loadValue).toBeNull();
+    const hold = advanced.sets.filter((set) => set.exerciseName === "Neck extension hold");
+    expect(hold).toHaveLength(3);
+    expect(hold[0]?.logMode).toBe("timed");
+    expect(hold[0]?.durationSeconds).toBeNull();
+    expect(hold[0]?.reps).toBeNull();
+    expect(hold[0]?.loadValue).toBeNull();
 
     const scaled = scaleProgramDay(
       { ...day, exercises: day.exercises },
       { band: "advanced", programSlug: "demo-strength-base" },
     );
     expect(scaled.focus).toMatch(/advanced \/ competition/i);
-    expect(scaled.exercises.find((row) => row.name === "Goblet squat")?.sets).toBe(4);
+    const bench = scaled.exercises.find((row) => row.name === "Dumbbell bench press");
+    expect(bench?.sets).toBe(4);
+    expect(bench?.restSeconds).toBe(120);
+    expect(bench?.loadText).toMatch(/2-3 RIR/);
     for (const exercise of scaled.exercises) {
       const rows = advanced.sets.filter((set) => set.exerciseName === exercise.name);
       expect(rows, exercise.name).toHaveLength(exercise.sets);

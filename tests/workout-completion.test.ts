@@ -96,7 +96,7 @@ describe("a workout is complete only after a logged save", () => {
     expect(reopened.status).toBe("draft");
     expect(reopened.sets.length).toBeGreaterThan(0);
 
-    const squat = reopened.sets.find((set) => set.exerciseName === "Goblet squat") ?? reopened.sets[0];
+    const squat = reopened.sets.find((set) => set.exerciseName === "Trap-bar deadlift") ?? reopened.sets[0];
     const finished = await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,

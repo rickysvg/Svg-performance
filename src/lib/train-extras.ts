@@ -14,7 +14,7 @@ export type TrainDayExtra = {
   deload: boolean;
 };
 
-const LIFT_DAYS = new Set<PlanWeekday>(["Monday", "Wednesday", "Thursday"]);
+const LIFT_DAYS = new Set<PlanWeekday>(["Monday", "Tuesday", "Thursday"]);
 
 export function trainDayExtra(input: {
   weekday: PlanWeekday;
@@ -27,7 +27,7 @@ export function trainDayExtra(input: {
   const emphasis: TrainingEmphasis = isTrainingEmphasis(input.emphasis) ? input.emphasis : "balanced";
   const weekday = input.weekday;
   const bike =
-    weekday === "Tuesday" || weekday === "Thursday"
+    weekday === "Wednesday" || weekday === "Sunday"
       ? pickBikeSessionForPlan(weekday, input.weekIndex)
       : null;
   const energy = bike ? bikeEnergyForSession(bike) : null;

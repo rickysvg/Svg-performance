@@ -1,3 +1,4 @@
+import { memberWeekIndex } from "@/lib/bike-sessions";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode";
@@ -478,6 +479,8 @@ export async function alignWorkoutWithSwaps<
     band: scaleBandFromPrefs(prefs),
     programSlug: slug,
     weightAccess: prefs?.weightAccess,
+    weekIndex: memberWeekIndex(new Date(), planAnchor ?? new Date(), timeZone),
+    campPhase: prefs?.campPhase,
   });
   const names = new Set(session.sets.map((set) => set.exerciseName));
   let changed = false;

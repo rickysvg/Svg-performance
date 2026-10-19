@@ -7,6 +7,7 @@
  * durationSeconds >= MOBILITY_STREAK_MIN_SECONDS can later count toward the
  * daily streak and a Mobility badge group. See MOBILITY_STREAK_MIN_SECONDS.
  */
+import { mobilityVideoUrl } from "@/lib/form-videos";
 import type { CatalogPlanId } from "@/lib/plans";
 import { planHasFeature } from "@/lib/plans";
 import { mondayOfZoned } from "@/lib/timezone";
@@ -39,6 +40,7 @@ export type MobilityBlock = {
   holdSeconds: number | null;
   track: MobilityTrack;
   advanced: boolean;
+  videoUrl?: string;
 };
 
 export type MobilityRoutine = {
@@ -108,6 +110,7 @@ function block(input: BlockInput): MobilityBlock {
     holdSeconds: input.holdSeconds ?? null,
     track: input.track ?? "none",
     advanced: input.advanced ?? false,
+    videoUrl: mobilityVideoUrl(input.name),
   };
 }
 

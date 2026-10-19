@@ -1,7 +1,7 @@
 /**
- * Core plan mesocycle. Three calendar weeks, then it repeats.
- * Uses the same Monday week index as bike rotation and deload weeks
- * (`bikeWeekIndex` in bike-sessions.ts), so one week is one block.
+ * Core plan mesocycle. A block is three calendar weeks, then the next block.
+ * Week 0 is week 1 of block A. Weeks 0–2 stay on A; weeks 3–5 are block B.
+ * Uses the same Monday week index as bike rotation (`bikeWeekIndex`).
  */
 export const MESOCYCLE_WEEKS = 3;
 
@@ -15,22 +15,31 @@ export const MESO_BLOCK_META: Record<MesoBlock, { title: string; intent: string 
   C: { title: "Block C", intent: "Traps, flow, and exits" },
 };
 
-/** Strength catalog day numbers. Bikes stay on days 4–9 in every block. */
+/**
+ * Strength catalog day numbers. Three full-body days: Monday, Tuesday, Thursday.
+ * Bikes stay on days 4–9. Wednesday and Friday are not lift days.
+ */
 export const STRENGTH_DAY_BY_BLOCK: Record<
   MesoBlock,
-  { monday: number; tuesday: number; wednesday: number; thursday: number; friday: number }
+  { monday: number; tuesday: number; thursday: number }
 > = {
-  A: { monday: 1, tuesday: 2, wednesday: 3, thursday: 11, friday: 10 },
-  B: { monday: 12, tuesday: 13, wednesday: 14, thursday: 15, friday: 16 },
-  C: { monday: 17, tuesday: 18, wednesday: 19, thursday: 20, friday: 21 },
+  A: { monday: 1, tuesday: 2, thursday: 11 },
+  B: { monday: 12, tuesday: 13, thursday: 15 },
+  C: { monday: 17, tuesday: 18, thursday: 20 },
 };
 
 function mod(value: number, base: number) {
   return ((value % base) + base) % base;
 }
 
+/** Which 3-week block this calendar week belongs to. Not `week % 3`. */
 export function mesoBlockIndex(weekIndex: number) {
-  return mod(weekIndex, MESOCYCLE_WEEKS);
+  return mod(Math.floor(weekIndex / MESOCYCLE_WEEKS), MESOCYCLE_WEEKS);
+}
+
+/** 1, 2, or 3 inside the current block. Week 0 is week 1. */
+export function weekInBlock(weekIndex: number) {
+  return mod(weekIndex, MESOCYCLE_WEEKS) + 1;
 }
 
 export function mesoBlockForWeekIndex(weekIndex: number): MesoBlock {
@@ -46,14 +55,12 @@ export function strengthDaysForWeek(weekIndex: number) {
   return STRENGTH_DAY_BY_BLOCK[mesoBlockForWeekIndex(weekIndex)];
 }
 
-export function isGppStrengthDay(dayNumber: number) {
-  return Object.values(STRENGTH_DAY_BY_BLOCK).some((row) => row.friday === dayNumber);
+/** Friday GPP is no longer a seeded lift. The catalog names stay for reference. */
+export function isGppStrengthDay(_dayNumber: number) {
+  return false;
 }
 
-/** Mon / Wed / Thu lift days get the short plyo add-on. */
-export function isPlyoStrengthDay(dayNumber: number) {
-  return Object.values(STRENGTH_DAY_BY_BLOCK).some(
-    (row) =>
-      row.monday === dayNumber || row.wednesday === dayNumber || row.thursday === dayNumber,
-  );
+/** Plyo add-on days are off. Power work is already inside the three lift days. */
+export function isPlyoStrengthDay(_dayNumber: number) {
+  return false;
 }

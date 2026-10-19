@@ -7,7 +7,8 @@ import { APP_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
-import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
+import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import {
   hidesLoad,
   isDurationMode,
@@ -368,6 +369,12 @@ export async function startWorkoutFromDay(input: {
 }) {
   const rawDay = await getProgramDayById(input.programDayId);
   const band = scaleBandFromPrefs(input.scale);
+  const now = new Date();
+  const zone = input.timeZone || APP_TIMEZONE;
+  const weekIndex =
+    input.scale?.weekIndex ??
+    memberWeekIndex(now, input.planAnchor ?? now, zone);
+  const camp = await getActiveCampSnapshot(input.userId, now, zone);
   const day = scaleProgramDay(
     {
       ...rawDay,
@@ -376,7 +383,13 @@ export async function startWorkoutFromDay(input: {
         logMode: exercise.logMode,
       })),
     },
-    { band, programSlug: rawDay.program.slug, weightAccess: input.scale?.weightAccess },
+    {
+      band,
+      programSlug: rawDay.program.slug,
+      weightAccess: input.scale?.weightAccess,
+      weekIndex,
+      campPhase: input.scale?.campPhase ?? camp?.phase ?? null,
+    },
   );
   const blockKey = trainingBlockKey(new Date(), input.timeZone || APP_TIMEZONE, input.planAnchor);
   const swaps = await listSwapsForDay({

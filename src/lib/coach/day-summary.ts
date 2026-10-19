@@ -357,7 +357,7 @@ export function buildDaySummaryFacts(input: {
       cues.push("Main lifts stop at four sets. Accessories stop at three. Last rep can slow down and still stay clean.");
       lines.push("Main lifts: 4 sets max. Accessories: 3 sets max. Last rep can slow down and still stay clean.");
     } else if (kind === "cardio") {
-      const bikeDay = input.plan.weekday === "Thursday" ? "Thursday" : "Tuesday";
+      const bikeDay = input.plan.weekday === "Sunday" ? "Sunday" : "Wednesday";
       if (/bike/i.test(`${session.label} ${session.title}`)) {
         const bike = pickBikeSessionForPlan(bikeDay, input.weekIndex ?? 0);
         const bikeLine = bike.focus.replace(/—/g, ",").replace(/(\d+)s\b/g, "$1 seconds");
@@ -582,6 +582,7 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
       band,
       programSlug: strength?.slug,
       weightAccess,
+      weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
     });
     exercisesByDayNumber.set(
       day.dayNumber,
@@ -598,6 +599,7 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
     const scaled = scaleProgramDay(day, {
       band,
       programSlug: skill?.slug,
+      weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
       weightAccess,
     });
     skillExercisesByDayNumber.set(

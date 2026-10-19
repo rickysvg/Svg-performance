@@ -33,7 +33,7 @@ describe("workout logger media and previous loads", () => {
   });
 
   it("maps every DEMO exercise to a slug, equipment, and square thumb file", () => {
-    expect(DEMO_EXERCISE_NAMES).toHaveLength(45);
+    expect(DEMO_EXERCISE_NAMES).toHaveLength(46);
     for (const name of DEMO_EXERCISE_NAMES) {
       const slug = exerciseSlug(name);
       expect(slug.length).toBeGreaterThan(2);
@@ -217,8 +217,8 @@ describe("workout logger media and previous loads", () => {
       preferredUnits: "lb",
     });
     expect(draft.sets.length).toBeGreaterThan(0);
-    expect(draft.sets.some((set) => set.exerciseName === "Goblet squat")).toBe(true);
-    expect(draft.sets.some((set) => set.exerciseName === "Front plank")).toBe(true);
+    expect(draft.sets.some((set) => set.exerciseName === "Trap-bar deadlift")).toBe(true);
+    expect(draft.sets.some((set) => set.exerciseName === "Neck extension hold")).toBe(true);
     for (const set of draft.sets) {
       expect(set.reps, set.exerciseName).toBeNull();
       expect(set.loadValue, set.exerciseName).toBeNull();
@@ -265,27 +265,21 @@ describe("workout logger media and previous loads", () => {
   it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {
     const user = await makeUser("carry-logger@example.com");
     const program = await getDemoProgram();
-    const day = program.days.find((row) => row.dayNumber === 11)!;
-    const pullDay = program.days.find((row) => row.dayNumber === 2)!;
+    const day = program.days.find((row) => row.dayNumber === 2)!;
     const draft = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day.id,
       preferredUnits: "lb",
     });
-    const pullDraft = await startWorkoutFromDay({
-      userId: user.id,
-      programDayId: pullDay.id,
-      preferredUnits: "lb",
-    });
     const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
-    const band = pullDraft.sets.filter((set) => set.exerciseName === "Face pull");
+    const pulldown = draft.sets.filter((set) => set.exerciseName === "Lat pulldown");
     expect(carry.length).toBeGreaterThan(0);
     expect(carry[0]?.logMode).toBe("load_timed");
     expect(carry[0]?.durationSeconds).toBeNull();
     expect(carry[0]?.loadValue).toBeNull();
     expect(carry[0]?.reps).toBeNull();
-    expect(band[0]?.logMode).toBe("load_reps");
-    expect(band.length).toBeGreaterThanOrEqual(3);
+    expect(pulldown[0]?.logMode).toBe("load_reps");
+    expect(pulldown.length).toBeGreaterThanOrEqual(4);
 
     const saved = await updateWorkoutSessionForUser({
       userId: user.id,
@@ -324,12 +318,12 @@ describe("workout logger media and previous loads", () => {
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
       deload: true,
     });
-    const band = draft.sets.filter((set) => set.exerciseName === "Face pull");
-    const bug = draft.sets.filter((set) => set.exerciseName === "Dead bug");
-    expect(band).toHaveLength(3);
-    expect(bug).toHaveLength(3);
-    expect(band[0]?.logMode).toBe("load_reps");
-    expect(bug[0]?.logMode).toBe("timed");
+    const pull = draft.sets.filter((set) => set.exerciseName === "Lat pulldown");
+    const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
+    expect(pull).toHaveLength(4);
+    expect(carry).toHaveLength(3);
+    expect(pull[0]?.logMode).toBe("load_reps");
+    expect(carry[0]?.logMode).toBe("load_timed");
     expect(draft.notes).toMatch(/prescribed set/i);
   });
 });

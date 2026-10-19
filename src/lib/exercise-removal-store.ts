@@ -1,3 +1,4 @@
+import { memberWeekIndex } from "@/lib/bike-sessions";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { isLogMode } from "@/lib/exercise-log-mode";
@@ -132,6 +133,7 @@ async function planSlots(input: {
       experienceLevel: profile?.experienceLevel,
       competitionStatus: profile?.competitionStatus,
     }),
+    weekIndex: memberWeekIndex(new Date(), profile?.onboardingCompletedAt ?? new Date()),
     programSlug: raw.program.slug,
     weightAccess: normalizeWeightAccess(profile?.weightAccess),
   });

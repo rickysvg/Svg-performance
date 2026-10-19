@@ -95,8 +95,8 @@ describe("mid-workout swap", () => {
   it("stays a draft, keeps the other logs, and gives the new press its own video", async () => {
     const user = await makeUser("swap-bench@example.com");
     const program = await getDemoProgram();
-    const day = program.days.find((row) => row.dayNumber === 3);
-    expect(day, "Wednesday strength day").toBeTruthy();
+    const day = program.days.find((row) => row.dayNumber === 1);
+    expect(day, "Monday full-body day").toBeTruthy();
     const scaled = scaleProgramDay(day!, {
       band: "intermediate",
       programSlug: DEMO_PROGRAM_SLUG,

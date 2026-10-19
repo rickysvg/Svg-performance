@@ -1,4 +1,5 @@
 import { resolveLogMode, type LogMode } from "@/lib/exercise-log-mode";
+import { keepWeekTrailer } from "@/lib/v2-lifts";
 
 export type GymBand = "beginner" | "intermediate" | "advanced";
 
@@ -235,7 +236,7 @@ export function prescribeGymExercise(exercise: GymExerciseInput, band: GymBand):
     const nextLoad = cue?.loadText ? cue.loadText(loadText) : loadText;
     return {
       name: exercise.name,
-      notes: unchanged(notes, nextNotes),
+      notes: keepWeekTrailer(notes, unchanged(notes, nextNotes)),
       loadText: unchanged(loadText, nextLoad),
       logMode: resolveLogMode({ ...exercise, reps: exercise.reps ?? undefined }),
       renamed: false,
@@ -250,7 +251,7 @@ export function prescribeGymExercise(exercise: GymExerciseInput, band: GymBand):
       : variant.logMode;
   return {
     name: variant.name,
-    notes: scrubbed.notes,
+    notes: keepWeekTrailer(notes, scrubbed.notes ?? notes),
     loadText: scrubbed.loadText,
     logMode,
     renamed: variant.name !== exercise.name,

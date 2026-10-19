@@ -95,9 +95,7 @@ export function floorRoleForDay(dayNumber: number, programSlug?: string): FloorR
     const days = STRENGTH_DAY_BY_BLOCK[block];
     if (days.monday === dayNumber) return "lower";
     if (days.tuesday === dayNumber) return "pull";
-    if (days.wednesday === dayNumber) return "push";
     if (days.thursday === dayNumber) return "posterior";
-    if (days.friday === dayNumber) return "gpp";
   }
   if (dayNumber >= 4 && dayNumber <= 9) return "bike";
   return null;
@@ -1170,6 +1168,8 @@ function gpp(block: MesoBlock, band: ScaleBand): ScaleableExercise[] {
 
 function bike(dayNumber: number, band: ScaleBand): { title: string; focus: string; exercises: ScaleableExercise[] } {
   const easy = "Easy enough to repeat. You should be able to talk.";
+  // Sunday aerobic days share the easy day-8 menu. Sprint days stay on 4, 5, and 9.
+  if (dayNumber === 6 || dayNumber === 7) return bike(8, band);
   if (dayNumber === 5) {
     return {
       title: "No gym — short power",

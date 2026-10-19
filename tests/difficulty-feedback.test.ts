@@ -126,17 +126,19 @@ describe("post-workout difficulty feedback", () => {
     const member = await makeUser("feel-member@example.com");
     const other = await makeUser("feel-other@example.com");
     const program = await getDemoProgram();
-    const liftDay = program.days.find((day) => /lower body/i.test(day.title));
+    const liftDay = program.days.find((day) => /full body/i.test(day.title) && !/light/i.test(day.title));
     const bikeDay = program.days.find((day) => /bike/i.test(day.title));
-    const gppDay = program.days.find((day) => /gpp/i.test(day.title));
-    expect(liftDay && bikeDay && gppDay).toBeTruthy();
-    if (!liftDay || !bikeDay || !gppDay) return;
+    const cardioDay = program.days.find((day) => day.dayNumber === 11);
+    expect(liftDay && bikeDay && cardioDay).toBeTruthy();
+    if (!liftDay || !bikeDay || !cardioDay) return;
 
     const easy = await finishDay(member.id, liftDay.id, new Date("2026-09-20T12:00:00Z"));
     const right = await finishDay(member.id, liftDay.id, new Date("2026-09-21T12:00:00Z"));
     const bike = await finishDay(member.id, bikeDay.id, new Date("2026-09-22T12:00:00Z"));
-    const gppHard = await finishDay(member.id, gppDay.id, new Date("2026-09-23T12:00:00Z"));
-    const gppMax = await finishDay(member.id, gppDay.id, new Date("2026-09-24T12:00:00Z"));
+    const gppHard = await finishDay(member.id, cardioDay.id, new Date("2026-09-23T12:00:00Z"));
+    const gppMax = await finishDay(member.id, cardioDay.id, new Date("2026-09-24T12:00:00Z"));
+    await prisma.workoutSession.update({ where: { id: gppHard.id }, data: { title: "Friday GPP — hard" } });
+    await prisma.workoutSession.update({ where: { id: gppMax.id }, data: { title: "Friday GPP — max" } });
     const bag = await finishBag(member.id, new Date("2026-09-25T15:00:00Z"));
     const skipped = await finishDay(member.id, liftDay.id, new Date("2026-09-19T12:00:00Z"));
 

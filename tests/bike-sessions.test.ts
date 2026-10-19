@@ -15,7 +15,6 @@ import {
   pickBikeSessionForPlan,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
-import { FRIDAY_GPP_DAY_NUMBER, FRIDAY_GPP_NAMES } from "@/lib/daru-exercises";
 import { creditForExercise } from "@/lib/coach-credits";
 import { fallbackLogMode, plannedSetLine } from "@/lib/exercise-log-mode";
 import { getDemoProgram } from "@/lib/programs";
@@ -31,7 +30,6 @@ import { startWorkoutFromDay } from "@/lib/workouts";
 import { makeUser, resetDatabase } from "./helpers";
 
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
-const thursday = new Date(2026, 8, 24, 10, 0, 0);
 const monday = new Date(2026, 8, 21, 10, 0, 0);
 
 const MMA_MON_WED_FRI = {
@@ -68,16 +66,16 @@ describe("assault bike catalog", () => {
     expect(creditForExercise("Leon Edwards 10/20 bike finisher")?.url).toMatch(/7Jf_JutBJlo/);
   });
 
-  it("rotates Tue/Thu so the two bike days differ each week", () => {
-    expect(pickBikeSessionForPlan("Tuesday", 0).id).toBe("intervals-15-15");
-    expect(pickBikeSessionForPlan("Thursday", 0).id).toBe("daru-75-endurance");
-    expect(pickBikeSessionForPlan("Tuesday", 1).id).toBe("daru-alactic");
-    expect(pickBikeSessionForPlan("Thursday", 1).id).toBe("jamieson-tempo");
-    expect(pickBikeSessionForPlan("Tuesday", 2).id).toBe("jamieson-cardiac");
-    expect(pickBikeSessionForPlan("Thursday", 2).id).toBe("edwards-10-20");
+  it("rotates Wed/Sun so the sprint and the easier bike differ each week", () => {
+    expect(pickBikeSessionForPlan("Wednesday", 0).id).toBe("intervals-15-15");
+    expect(pickBikeSessionForPlan("Sunday", 0).id).toBe("daru-75-endurance");
+    expect(pickBikeSessionForPlan("Wednesday", 1).id).toBe("daru-alactic");
+    expect(pickBikeSessionForPlan("Sunday", 1).id).toBe("jamieson-tempo");
+    expect(pickBikeSessionForPlan("Wednesday", 2).id).toBe("edwards-10-20");
+    expect(pickBikeSessionForPlan("Sunday", 2).id).toBe("jamieson-cardiac");
     for (const week of [0, 1, 2, 3, 9]) {
-      expect(pickBikeSessionForPlan("Tuesday", week).id).not.toBe(
-        pickBikeSessionForPlan("Thursday", week).id,
+      expect(pickBikeSessionForPlan("Wednesday", week).id).not.toBe(
+        pickBikeSessionForPlan("Sunday", week).id,
       );
     }
     expect(bikeWeekIndex(monday) % 3).toBe(1);
@@ -85,11 +83,14 @@ describe("assault bike catalog", () => {
       coreSkeletonSessions("Tuesday", "mma", 1).find((s) => s.kind === "conditioning"),
     ).toBeUndefined();
     expect(
-      coreSkeletonSessions("Thursday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
+      coreSkeletonSessions("Wednesday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
+    ).toBe(5);
+    expect(
+      coreSkeletonSessions("Sunday", "mma", 1).find((s) => s.kind === "conditioning")?.dayNumber,
     ).toBe(6);
     expect(
       coreSkeletonSessions("Sunday", "mma", 1).find((s) => s.kind === "conditioning")?.label,
-    ).toMatch(/repeats/i);
+    ).toMatch(/bike/i);
   });
 
   it("scales 15/15 sets by experience: 3 / 4 / 5", () => {
@@ -132,6 +133,25 @@ describe("assault bike catalog", () => {
         name: DEFAULT_BIKE_SESSION.name,
       }),
     ).toBe("5 rounds · 15s work / 15s rest × 8, 60s between rounds");
+    const camp = scaleExercise(seed, {
+      band: "intermediate",
+      programSlug: "demo-strength-base",
+      campPhase: "build",
+    });
+    expect(camp.sets).toBe(5);
+    expect(camp.loadText).toMatch(/Camp build: same bike, advanced dose\./);
+    expect(
+      plannedSetLine({
+        sets: camp.sets,
+        reps: camp.reps,
+        restSeconds: camp.restSeconds,
+        logMode: camp.logMode,
+        name: seed.name,
+        loadText: camp.loadText,
+      }),
+    ).toBe(
+      "5 rounds · 15s work / 15s rest × 8, 60s between rounds. Camp build: same bike, advanced dose.",
+    );
   });
 
   it("scales coach bike sessions by level with SVG scaling", () => {
@@ -193,41 +213,41 @@ describe("assault bike catalog", () => {
   it("keeps cardio on the open days and mobility twice, without a lift every day", () => {
     const week = buildCoreWeekPlan(MMA_MON_WED_FRI);
     expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Tuesday.summary).toBe("Mobility");
-    expect(week.Tuesday.active).toBe(true);
-    expect(week.Wednesday.summary).toBe("Bag+Lift");
+    expect(week.Tuesday.summary).toBe("Off");
+    expect(week.Tuesday.active).toBe(false);
+    expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Thursday.summary).toBe("Off");
-    expect(week.Friday.summary).toBe("Bag+Lift");
-    expect(week.Saturday.summary).toBe("Mobility");
+    expect(week.Friday.summary).toBe("Bag+Mobility");
+    expect(week.Saturday.summary).toBe("Sparring");
     expect(week.Sunday.summary).toBe("Off");
 
     const open = buildCoreWeekPlan({ primaryFocus: "mma", weeklyAvailability: [...WEEKDAYS] });
-    expect(open.Thursday.summary).toBe("Cardio");
-    expect(open.Sunday.summary).toBe("Cardio");
-    expect(open.Thursday.sessions.some((session) => session.kind === "conditioning")).toBe(true);
-    expect(open.Sunday.sessions.find((session) => session.kind === "conditioning")?.dayNumber).toBe(
-      FRIDAY_GPP_DAY_NUMBER,
-    );
+    expect(open.Thursday.summary).toBe("Bag+Lift");
+    expect(open.Wednesday.summary).toBe("Cardio+Mobility");
+    expect(open.Sunday.summary).toBe("Cardio+Mobility");
+    expect(open.Wednesday.sessions.some((session) => session.kind === "conditioning")).toBe(true);
+    expect(open.Sunday.sessions.find((session) => session.kind === "conditioning")?.dayNumber).toBe(7);
+    expect(open.Saturday.summary).toBe("Sparring");
     expect(
-      coreSkeletonSessions("Thursday", "mma").find((session) => session.kind === "conditioning"),
+      coreSkeletonSessions("Wednesday", "mma").find((session) => session.kind === "conditioning"),
     ).toMatchObject({
       programSlug: "demo-strength-base",
     });
 
     const tue = planForDate(MMA_MON_WED_FRI, tuesday);
-    expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Mobility");
+    expect(tue.active).toBe(false);
+    expect(tue.summary).toBe("Off");
     const mon = planForDate(MMA_MON_WED_FRI, monday);
     expect(mon.summary).toBe("Bag+Lift");
 
     const strip = weekStrip(MMA_MON_WED_FRI, monday);
     expect(strip.map((day) => day.summary)).toEqual([
       "Bag+Lift",
-      "Mobility",
-      "Bag+Lift",
       "Off",
-      "Bag+Lift",
-      "Mobility",
+      "Cardio+Mobility",
+      "Off",
+      "Bag+Mobility",
+      "Sparring",
       "Off",
     ]);
   });
@@ -251,7 +271,7 @@ describe("assault bike seeded days", () => {
     expect(exercise?.logMode).toBe("timed_round");
     expect(exercise?.reps).toBe("15s work / 15s rest × 8");
     expect(exercise?.restSeconds).toBe(60);
-    expect(exercise?.formVideoUrl).toMatch(/youtube\.com\/watch\?v=MJdqtIIyz-A/);
+    expect(exercise?.formVideoUrl).toMatch(/youtube\.com\/watch\?v=KC-ZSfOmXgE/);
     expect(exercise?.notes).toMatch(/3–5 min easy spin/i);
 
     const user = await makeUser("bike-scale@example.com");
@@ -288,8 +308,9 @@ describe("assault bike seeded days", () => {
     expect(scaled.exercises[0]?.sets).toBe(5);
     expect(scaled.exercises[0]?.restSeconds).toBe(60);
 
+    const sunday = new Date(2026, 8, 27, 10, 0, 0);
     const resolved = resolvePlanSessions(
-      planForDate({ primaryFocus: "mma", weeklyAvailability: [...WEEKDAYS] }, thursday),
+      planForDate({ primaryFocus: "mma", weeklyAvailability: [...WEEKDAYS] }, sunday),
       { strength: program },
     );
     const bike = resolved.find((row) => row.dayNumber === 6);
@@ -301,37 +322,32 @@ describe("assault bike seeded days", () => {
     expect(bike?.day?.title).toMatch(/tempo/i);
   });
 
-  it("seeds the rotation days plus Friday GPP and Mon/Wed Daru work", async () => {
+  it("seeds the rotation days and the three full-body lifts", async () => {
     const program = await getDemoProgram();
     const numbers = program.days.map((row) => row.dayNumber);
-    expect(numbers).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]));
+    expect(numbers).toEqual(expect.arrayContaining([1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 15, 17, 18, 20]));
+    expect(numbers).not.toContain(3);
+    expect(numbers).not.toContain(10);
 
     const alactic = program.days.find((row) => row.dayNumber === 5);
     expect(alactic?.exercises[0]?.name).toBe("Daru alactic power bike");
     expect(alactic?.exercises[0]?.logMode).toBe("timed_round");
-    expect(alactic?.exercises[0]?.formVideoUrl).toMatch(/MJdqtIIyz-A/);
+    expect(alactic?.exercises[0]?.formVideoUrl).toMatch(/KC-ZSfOmXgE/);
     expect(alactic?.exercises[0]?.reps).toBe("10s work / 50s rest × 3");
-
-    const friday = program.days.find((row) => row.dayNumber === FRIDAY_GPP_DAY_NUMBER);
-    expect(friday?.title).toMatch(/GPP/i);
-    const fridayNames = friday?.exercises.map((row) => row.name) ?? [];
-    expect(fridayNames.slice(0, FRIDAY_GPP_NAMES.length)).toEqual([...FRIDAY_GPP_NAMES]);
-    expect(fridayNames.length).toBeGreaterThan(FRIDAY_GPP_NAMES.length);
-    expect(friday?.exercises.find((row) => row.name === "Farmer's carry")?.logMode).toBe("load_timed");
-    expect(friday?.exercises.find((row) => row.name === "Sled push")?.logMode).toBe("timed");
-    expect(friday?.exercises.find((row) => row.name === "Banded kettlebell swing")?.logMode).toBe(
-      "timed",
-    );
 
     const mondayLift = program.days.find((row) => row.dayNumber === 1);
     expect(mondayLift?.exercises.some((row) => row.name === "Trap-bar deadlift")).toBe(true);
     expect(mondayLift?.exercises.find((row) => row.name === "Trap-bar deadlift")?.logMode).toBe(
       "load_reps",
     );
+    expect(mondayLift?.title).toMatch(/Full body/i);
+    expect(program.days.find((row) => row.dayNumber === 3)).toBeUndefined();
 
-    const wednesdayLift = program.days.find((row) => row.dayNumber === 3);
-    for (const name of ["Floor press", "Landmine press", "Rotational med-ball throw", "Med-ball chest pass"]) {
-      expect(wednesdayLift?.exercises.some((row) => row.name === name), name).toBe(true);
+    const tuesday = program.days.find((row) => row.dayNumber === 2);
+    expect(tuesday?.exercises.some((row) => row.name === "Rotational med-ball throw")).toBe(true);
+    const thursdayLift = program.days.find((row) => row.dayNumber === 11);
+    expect(thursdayLift?.exercises.some((row) => row.name === "Landmine press")).toBe(true);
+    for (const name of ["Landmine press", "Rotational med-ball throw", "Trap-bar deadlift"]) {
       expect(creditForExercise(name)?.line).toMatch(/Phil Daru/);
     }
   });
