@@ -10,6 +10,7 @@ import {
   type MotivationView,
   type PlannedCue,
 } from "@/lib/coach/motivation";
+import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { prefetchCueClips, resolveCueClip } from "@/lib/coach/cue-prefetch";
 import {
   playCoachBytes,
@@ -22,7 +23,16 @@ import {
   COACH_AUDIO_FAILED,
 } from "@/lib/coach/spoken-audio";
 
-export function WorkoutCoachCues({
+export function WorkoutCoachCues(props: {
+  initialEnabled: boolean;
+  coachId: string;
+  view: MotivationView;
+}) {
+  if (!COACH_WORKOUT_MOTIVATION_ENABLED) return null;
+  return <WorkoutCoachCuesLive {...props} />;
+}
+
+function WorkoutCoachCuesLive({
   initialEnabled,
   coachId,
   view,

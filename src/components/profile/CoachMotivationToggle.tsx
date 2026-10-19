@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { setCoachMotivationEnabled } from "@/app/actions/profile";
+import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 
 export function CoachMotivationToggle({ enabled }: { enabled: boolean }) {
+  if (!COACH_WORKOUT_MOTIVATION_ENABLED) return null;
+  return <CoachMotivationToggleLive enabled={enabled} />;
+}
+
+function CoachMotivationToggleLive({ enabled }: { enabled: boolean }) {
   const [on, setOn] = useState(enabled);
   const [pending, setPending] = useState(false);
 

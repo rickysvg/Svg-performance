@@ -80,6 +80,7 @@ import type { ExerciseNoteView } from "@/lib/exercise-notes";
 import type { SwapSlot } from "@/lib/exercise-swap";
 import { convertLoad, roundLoadForInput } from "@/lib/units";
 import { WorkoutCoachCues } from "@/components/training/WorkoutCoachCues";
+import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import type { MotivationView } from "@/lib/coach/motivation";
 import type { WorkoutSetInput } from "@/lib/workouts";
 
@@ -772,11 +773,13 @@ export function WorkoutLogForm({
               <SessionTimer />
             </div>
             <div className="flex flex-col items-end">
-              <WorkoutCoachCues
-                initialEnabled={coachMotivation}
-                coachId={coachId}
-                view={motivationView}
-              />
+              {COACH_WORKOUT_MOTIVATION_ENABLED ? (
+                <WorkoutCoachCues
+                  initialEnabled={coachMotivation}
+                  coachId={coachId}
+                  view={motivationView}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={() => setShowNotes((open) => !open)}
