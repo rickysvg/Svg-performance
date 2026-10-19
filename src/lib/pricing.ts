@@ -90,6 +90,13 @@ export const PRO_INCLUDES = [
 
 export const PRO_FAIR_USE_LINE = `Fair use: ${PRO_AI_MESSAGES_PER_DAY} AI messages, ${PRO_VOICE_MINUTES_PER_DAY} minutes of voice, and ${PRO_READ_ALOUD_PER_DAY} read-aloud a day.`;
 
+/** Limit cards use the same prices and checkout date as Pricing. */
+export const CHECKOUT_OPENS_LINE = "Paid checkout opens Nov 16.";
+
+export function limitCardFooter() {
+  return `Pro is ${usd(PERFORMANCE_MONTHLY)}/mo or ${usd(PERFORMANCE_ANNUAL)}/yr. Founding ${usd(FOUNDING_ANNUAL)}/yr for the first ${FOUNDING_CAP} members. ${CHECKOUT_OPENS_LINE} You can look at pricing anytime from Profile.`;
+}
+
 export const COACHING_INCLUDES = [
   "Custom programming with Ricky",
   "Weekly AI-assisted check-ins reviewed by Ricky",

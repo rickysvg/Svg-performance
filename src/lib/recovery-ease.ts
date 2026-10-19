@@ -52,6 +52,18 @@ export function recoveryEaseReason(log: {
   return `Eased from yesterday's sparring (${parts.join(", ")}).`;
 }
 
+/** Shown on the day the member just logged. Tomorrow is what changes. */
+export function sameDaySparringEaseNote(log: {
+  bodyRating: number | null;
+  soreSpots: readonly string[];
+}) {
+  const yesterday = recoveryEaseReason(log);
+  return yesterday.replace(
+    "Eased from yesterday's sparring",
+    "Tomorrow eases from this sparring",
+  );
+}
+
 function isHeavy(session: PlanSessionSlot) {
   return Boolean(session.heavy) || session.kind === "strength";
 }
@@ -220,7 +232,7 @@ export async function writeRecoveryCheckIn(userId: string, log: SparringLog) {
     message,
     coachName: coach.name,
     coachImage: coach.circle,
-    easeNote: eased.plan.easeNote ?? recoveryEaseReason(log),
+    easeNote: sameDaySparringEaseNote(log),
     nextWeekday: eased.plan.weekday,
   };
 }

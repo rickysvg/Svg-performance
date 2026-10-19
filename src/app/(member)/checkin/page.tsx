@@ -83,7 +83,7 @@ export default async function CheckInPage({
 
   return (
     <main className="space-y-5">
-      <section className="-mx-4 -mt-6 bg-black px-4 pb-6 pt-5 text-white">
+      <section data-on-black className="-mx-4 -mt-6 bg-black px-4 pb-6 pt-5 text-white">
         <div className="flex items-center gap-3">
           <PageBackLink href="/home" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -111,7 +111,7 @@ export default async function CheckInPage({
 
       {shownReplies.map((row) => (
         <section key={row.id} className="rounded-2xl border border-black bg-black px-4 py-4 text-white">
-          <p className="text-xs uppercase tracking-wide text-accent">Coach Ricky replied</p>
+          <p className="text-xs uppercase tracking-wide text-highlighter">Coach Ricky replied</p>
           <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{row.coachReply}</p>
         </section>
       ))}

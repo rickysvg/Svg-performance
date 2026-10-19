@@ -116,8 +116,10 @@ describe("Home photo tiles", () => {
   });
 
   it("shows the last sparring rating, or invites today's log", () => {
-    expect(sparringTileHint(4)).toBe("Last session 4/5");
-    expect(sparringTileHint(1)).toBe("Last session 1/5");
+    expect(sparringTileHint(4)).toBe("Session 4/5");
+    expect(sparringTileHint(1)).toBe("Session 1/5");
+    expect(sparringTileHint({ bodyRating: 4, sessionRating: null })).toBe("Body 4/5");
+    expect(sparringTileHint({ bodyRating: 3, sessionRating: 4 })).toBe("Body 3/5 · Session 4/5");
     expect(sparringTileHint(null)).toBe("Log today's rounds");
     expect(sparringTileHint(undefined)).toBe("Log today's rounds");
     expect(sparringTileHint(0)).toBe("Log today's rounds");

@@ -75,6 +75,15 @@ export async function listSwapsForDay(input: {
   return rows.map(toRecord);
 }
 
+/** "Goblet squat (2)" is the same exercise. A swap must not invent that suffix. */
+export function cleanSwapName(name: string) {
+  return name.replace(/\s*\(\d+\)\s*$/g, "").trim();
+}
+
+export function swapAlreadyInWorkoutMessage(name: string) {
+  return `${cleanSwapName(name)} is already in this workout.`;
+}
+
 export function mergeReplacementSets(
   existing: WorkoutSetInput[],
   fromNames: string[],
@@ -87,47 +96,78 @@ export function mergeReplacementSets(
   },
   place: { programSlug: string; dayNumber: number; loadUnit: "lb" },
 ): WorkoutSetInput[] {
-  const from = new Set(fromNames);
-  const prior = existing.filter((set) => from.has(set.exerciseName));
-  const name = replacement.name;
-  const logged = prior.filter((set) => setHasLoggedWork(set));
-  const keepLogs =
-    logged.length === 0 ||
-    logged.every((set) => !set.logMode || set.logMode === replacement.logMode);
+  const from = new Set(fromNames.map(cleanSwapName));
+  const prior = existing.filter((set) => from.has(cleanSwapName(set.exerciseName)));
+  const name = cleanSwapName(replacement.name);
+  const targetAlready = existing.some(
+    (set) => cleanSwapName(set.exerciseName) === name && !from.has(cleanSwapName(set.exerciseName)),
+  );
   const planRir = rirFromLoadText(replacement.loadText) || "";
-  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
-    const previous = keepLogs ? prior[index] : undefined;
-    const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
-    return {
+  const slot = (index: number, copy: WorkoutSetInput | undefined): WorkoutSetInput => ({
+    exerciseName: name,
+    setNumber: index + 1,
+    reps: copy?.reps ?? null,
+    loadValue: copy?.loadValue ?? null,
+    loadUnit: place.loadUnit,
+    logMode: replacement.logMode,
+    durationSeconds: copy?.durationSeconds ?? null,
+    completed: Boolean(copy?.completed) && Boolean(copy && setHasLoggedWork(copy)),
+    notes: copy?.notes ?? "",
+    prescriptionKey: prescriptionSlotKey({
       exerciseName: name,
-      setNumber: index + 1,
-      reps: copy?.reps ?? null,
-      loadValue: copy?.loadValue ?? null,
-      loadUnit: place.loadUnit,
-      logMode: replacement.logMode,
-      durationSeconds: copy?.durationSeconds ?? null,
-      completed: copy?.completed ?? false,
-      notes: copy?.notes ?? "",
-      prescriptionKey: prescriptionSlotKey({
-        exerciseName: name,
-        reps: replacement.reps,
-        programSlug: place.programSlug,
-        dayNumber: place.dayNumber,
-      }),
-      rir: planRir,
-    };
+      reps: replacement.reps,
+      programSlug: place.programSlug,
+      dayNumber: place.dayNumber,
+    }),
+    rir: planRir || copy?.rir || "",
   });
+  if (targetAlready) {
+    const loggedSource = prior.filter((set) => setHasLoggedWork(set));
+    const targetSets = existing.filter((set) => cleanSwapName(set.exerciseName) === name);
+    const maxNumber = targetSets.reduce((max, set) => Math.max(max, set.setNumber), 0);
+    const targetKey = targetSets.find((set) => set.prescriptionKey)?.prescriptionKey ?? "";
+    const extras = loggedSource.map((copy, index) => ({
+      ...slot(maxNumber + index, copy),
+      prescriptionKey: targetKey || slot(maxNumber + index, copy).prescriptionKey,
+      rir: planRir || copy.rir || "",
+    }));
+    const next: WorkoutSetInput[] = [];
+    let inserted = false;
+    for (const set of existing) {
+      if (from.has(cleanSwapName(set.exerciseName))) {
+        if (!inserted) {
+          next.push(...extras);
+          inserted = true;
+        }
+        continue;
+      }
+      next.push({ ...set, exerciseName: cleanSwapName(set.exerciseName) });
+    }
+    if (!inserted) next.push(...extras);
+    return next;
+  }
+  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
+    const previous = prior[index];
+    const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
+    return slot(index, copy);
+  });
+  // A shorter plan must not throw away a set the member already logged.
+  for (let index = replacement.sets; index < prior.length; index += 1) {
+    const previous = prior[index];
+    if (!previous || !setHasLoggedWork(previous)) continue;
+    created.push(slot(created.length, previous));
+  }
   const next: WorkoutSetInput[] = [];
   let inserted = false;
   for (const set of existing) {
-    if (from.has(set.exerciseName)) {
+    if (from.has(cleanSwapName(set.exerciseName))) {
       if (!inserted) {
         next.push(...created);
         inserted = true;
       }
       continue;
     }
-    next.push(set);
+    next.push({ ...set, exerciseName: cleanSwapName(set.exerciseName) });
   }
   if (!inserted) next.push(...created);
   return next;
@@ -303,7 +343,6 @@ export async function applyExerciseSwap(input: {
   if (!originalName || originalName.length > 80 || input.replacementName.length > 80) {
     throw new AppError("WORKOUT", "Exercise name is too long.");
   }
-
   const existing = input.programSlug
     ? await prisma.exerciseSwap.findFirst({
         where: {

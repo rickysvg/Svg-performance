@@ -180,22 +180,40 @@ export async function sparringLogsForWeek(userId: string, anchor: Date, timeZone
     where: { userId, dateKey: { in: keys } },
     orderBy: { dateKey: "asc" },
   });
-  const logs = rows.map(toLog);
+  const today = dayKey(anchor, timeZone);
+  return sparringWeekTotals(rows.map(toLog), today);
+}
+
+export function sparringWeekTotals<T extends { dateKey: string; rounds: number; minutesPerRound: number }>(
+  logs: T[],
+  today: string,
+) {
+  const counted = logs.filter((log) => log.dateKey <= today);
   return {
-    logs,
-    rounds: logs.reduce((sum, log) => sum + log.rounds, 0),
-    minutes: logs.reduce((sum, log) => sum + sparringMinutes(log), 0),
+    logs: counted,
+    rounds: counted.reduce((sum, log) => sum + log.rounds, 0),
+    minutes: counted.reduce((sum, log) => sum + sparringMinutes(log), 0),
   };
+}
+
+/** Most recent saved ratings, if the member has logged one. */
+export async function latestSparringRatings(userId: string) {
+  const row = await prisma.outsideSessionLog.findFirst({
+    where: {
+      userId,
+      OR: [{ sessionRating: { not: null } }, { bodyRating: { not: null } }],
+    },
+    orderBy: { dateKey: "desc" },
+    select: { sessionRating: true, bodyRating: true, dateKey: true },
+  });
+  if (!row) return null;
+  return { sessionRating: row.sessionRating, bodyRating: row.bodyRating };
 }
 
 /** Most recent saved session rating, if the member has logged one. */
 export async function latestSparringSessionRating(userId: string) {
-  const row = await prisma.outsideSessionLog.findFirst({
-    where: { userId, sessionRating: { not: null } },
-    orderBy: { dateKey: "desc" },
-    select: { sessionRating: true },
-  });
-  return row?.sessionRating ?? null;
+  const ratings = await latestSparringRatings(userId);
+  return ratings?.sessionRating ?? null;
 }
 
 /** Oldest to newest, so a trend reads left to right. */

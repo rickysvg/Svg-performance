@@ -217,6 +217,24 @@ function noteWithoutDose(note: string) {
     .trim();
 }
 
+function uniqueSummaryLines(lines: string[]) {
+  const out: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const key = line.toLowerCase();
+    if (out.some((existing) => existing.toLowerCase() === key)) continue;
+    if (
+      /shadowbox round 2/i.test(line) &&
+      out.some((existing) => /shadowbox round 2/i.test(existing))
+    ) {
+      continue;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
 function tidy(text: string) {
   return text
     .replace(/\s+/g, " ")
@@ -408,8 +426,8 @@ export function buildDaySummaryFacts(input: {
     return {
       kind,
       title: session.title,
-      cues: cues.map(speakCue).filter(Boolean),
-      lines: (lines.length ? lines : cues).map((line) => line.trim()).filter(Boolean),
+      cues: uniqueSummaryLines(cues.map(speakCue).filter(Boolean)),
+      lines: uniqueSummaryLines((lines.length ? lines : cues).map((line) => line.trim()).filter(Boolean)),
     };
   });
 

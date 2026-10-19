@@ -63,7 +63,11 @@ export function buildProgressSummary(
     }
   }
 
-  const last = completed[0];
+  const last = [...completed].sort((a, b) => {
+    const aAt = a.updatedAt?.getTime() ?? a.performedAt.getTime();
+    const bAt = b.updatedAt?.getTime() ?? b.performedAt.getTime();
+    return bAt - aAt;
+  })[0];
   return {
     sessionCount: completed.length,
     lastSessionTitle: last?.title ?? null,

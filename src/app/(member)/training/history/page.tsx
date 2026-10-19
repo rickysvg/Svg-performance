@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { memberFacingTitle } from "@/lib/member-copy";
+import { formatHistoryWhen } from "@/lib/workout-complete";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 
 export default async function HistoryPage() {
   const user = await requireUser();
+  const profile = await getProfileForUser(user.id);
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sessions = await listWorkoutSessionsForUser(user.id);
 
   return (
@@ -48,7 +52,7 @@ export default async function HistoryPage() {
                   <p className="font-semibold">{memberFacingTitle(session.title)}</p>
                 </div>
                 <p className="mt-1 text-sm text-muted">
-                  {new Date(session.performedAt).toLocaleString()} · {label} ·{" "}
+                  {formatHistoryWhen(new Date(session.performedAt), timeZone)} · {label} ·{" "}
                   {session.sets.length} sets
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`

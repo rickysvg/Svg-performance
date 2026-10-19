@@ -17,12 +17,14 @@ export function TodaySummaryView({
   circle,
   when,
   readAloudsLeft = 1,
+  blockedReason = "read_aloud",
 }: {
   facts: DaySummaryFacts;
   script: string;
   circle: string;
   when: string;
   readAloudsLeft?: number;
+  blockedReason?: "read_aloud" | "ai_daily_cap";
 }) {
   return (
     <main className="space-y-5 pb-8" data-today-summary-page>
@@ -52,7 +54,12 @@ export function TodaySummaryView({
         </div>
       </header>
 
-      <SummaryReader script={script} coachId={facts.coachId} readAloudsLeft={readAloudsLeft} />
+      <SummaryReader
+        script={script}
+        coachId={facts.coachId}
+        readAloudsLeft={readAloudsLeft}
+        blockedReason={blockedReason}
+      />
 
       <section className="space-y-3">
         {facts.sessions.map((session) => (

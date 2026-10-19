@@ -330,7 +330,7 @@ model WorkoutSet {
   /** load_reps | load_timed | reps_only | timed | timed_round */
   logMode          String         @default("load_reps")
   durationSeconds  Int?
-  completed        Boolean        @default(true)
+  completed        Boolean        @default(false)
   notes            String         @default("")
   /** Program day + exercise + rep scheme. A 5×5 day does not share history with 8–12. */
   prescriptionKey  String         @default("")

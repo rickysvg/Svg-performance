@@ -68,9 +68,9 @@ export default async function ProgressPage() {
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
   const summary = buildProgressSummary(sessions, units);
-  const lastComplete = sessions.find(
-    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
-  );
+  const lastComplete = [...sessions]
+    .filter((session) => session.status === "complete" && sessionHasLoggedWork(session.sets))
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
   const lastWhen = lastComplete
     ? formatWorkoutCompleteDate(civilDayInstant(lastComplete.performedAt, tz), tz)
     : null;
@@ -150,7 +150,7 @@ export default async function ProgressPage() {
 
       <section className="rounded-2xl border border-line bg-card p-4">
         <h2 className="text-lg">Sparring this week</h2>
-        <p className="stat-display mt-2 text-3xl">
+        <p className="stat-display mt-2 text-3xl pl-14 sm:pl-0" data-clear-coach>
           {sparringWeek.rounds} rounds · {sparringWeek.minutes} min
         </p>
         <p className="mt-1 text-xs text-muted">

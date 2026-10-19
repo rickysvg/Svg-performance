@@ -179,6 +179,21 @@ export function loggerRowLayout(mode: LogMode, name = ""): LoggerRowLayout {
   return "standard";
 }
 
+/** Title already says "Shadowbox round 2". Notes should not say it again. */
+export function visibleExerciseNote(name: string, notes?: string | null) {
+  const text = (notes ?? "").trim();
+  if (!text) return "";
+  if (!/shadowbox round 2/i.test(name)) return text;
+  const cleaned = text
+    .replace(/^Round\s*2\s*,\s*/i, "")
+    .replace(/\s*Log seconds and lbs\.?/gi, "")
+    .replace(/\s*Log the clock and the lbs\.?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!cleaned || cleaned.toLowerCase() === name.trim().toLowerCase()) return "";
+  return cleaned;
+}
+
 export function countLabel(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }

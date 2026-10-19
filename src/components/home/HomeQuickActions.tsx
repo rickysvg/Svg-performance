@@ -110,7 +110,10 @@ export function HomeQuickActions({
   locked?: { href: string; kind: "fuel" | "coach" }[];
   canStartTrial?: boolean;
   trialDays?: number;
-  sparringRating?: number | null;
+  sparringRating?:
+    | number
+    | null
+    | { sessionRating?: number | null; bodyRating?: number | null };
 }) {
   const lockedMap = new Map(locked.map((item) => [item.href, item.kind]));
   return (

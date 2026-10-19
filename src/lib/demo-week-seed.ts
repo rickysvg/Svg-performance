@@ -79,6 +79,10 @@ function liftExercise(input: {
   };
 }
 
+function shadowCue(text: string) {
+  return text.replace(/^Round\s*\d+\s*,\s*/i, "").trim();
+}
+
 function shadowRounds(emptyNotes: string, weightedNotes: string) {
   return [
     {
@@ -88,7 +92,7 @@ function shadowRounds(emptyNotes: string, weightedNotes: string) {
       reps: "3:00",
       loadText: "Empty hands — technical pace",
       restSeconds: 30,
-      notes: emptyNotes,
+      notes: shadowCue(emptyNotes),
       tags: formatStoredTags(tagsForExercise(SHADOW_EMPTY_NAME)),
       ...formVideoFieldsFor(SHADOW_EMPTY_NAME),
     },
@@ -99,7 +103,7 @@ function shadowRounds(emptyNotes: string, weightedNotes: string) {
       reps: "3:00",
       loadText: "1–3 lb hand weights",
       restSeconds: 45,
-      notes: `${weightedNotes} Log seconds and lbs.`,
+      notes: shadowCue(weightedNotes),
       tags: formatStoredTags(tagsForExercise(SHADOW_WEIGHTED_NAME)),
       ...formVideoFieldsFor(SHADOW_WEIGHTED_NAME),
     },
