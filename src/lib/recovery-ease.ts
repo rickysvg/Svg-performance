@@ -1,3 +1,4 @@
+import { canUseFeature } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { resolveAiCoach, type AiCoachId } from "@/lib/coaches";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -188,6 +189,8 @@ async function plannerForUser(userId: string) {
 }
 
 export async function writeRecoveryCheckIn(userId: string, log: SparringLog) {
+  // RIR auto-adjust and the coach's recovery check-in are Pro.
+  if (!(await canUseFeature(userId, "rir_auto"))) return null;
   const { profile, prefs, swaps, tz } = await plannerForUser(userId);
   const coach = resolveAiCoach(profile?.aiCoachId);
   if (!sparringNeedsEase(log)) {
@@ -228,6 +231,9 @@ export async function easePlanForUser(
   timeZone: string,
   plan: DayPlan,
 ): Promise<{ plan: DayPlan; checkIn: RecoveryCheckIn | null }> {
+  if (!(await canUseFeature(userId, "rir_auto"))) {
+    return { plan, checkIn: null };
+  }
   const previousKey = dayKey(addZonedDays(date, -1, timeZone), timeZone);
   const row = await prisma.outsideSessionLog.findUnique({
     where: { userId_dateKey: { userId, dateKey: previousKey } },

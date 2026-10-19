@@ -70,6 +70,8 @@ model User {
   weeklyCheckInPrefs       WeeklyCheckInPrefs?
   pushSubscriptions        PushSubscription[]
   checkInReminderLogs      CheckInReminderLog[]
+  aiUsageEvents            AiUsageEvent[]
+  memberProReminders       MemberProReminderLog[]
 }
 
 model Session {
@@ -143,6 +145,8 @@ model Profile {
   onboardingDeepCompletedAt  DateTime?
   trialStartedAt             DateTime?
   trialEndsAt                DateTime?
+  /// Start of the 30-day free Pro month for a verified academy member. Set once.
+  memberProStartedAt         DateTime?
   planChoiceAt               DateTime?
   thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
@@ -1258,4 +1262,34 @@ model CheckInReminderLog {
 
   @@unique([userId, weekKey, kind])
   @@index([userId, weekKey])
+}
+
+/// One metered AI use: a chat or logger-note message, voice seconds, or a read-aloud.
+model AiUsageEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** message | voice | read_aloud */
+  kind      String
+  /** chat | note | speak | today_summary */
+  surface   String   @default("")
+  /** 1 per message or read-aloud; seconds for voice */
+  units     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+}
+
+/// Day 25 / 29 / 31 reminders for the member Pro month. One row per stage.
+model MemberProReminderLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** day25 | day29 | day31 */
+  stage   String
+  /** push | in_app */
+  channel String   @default("push")
+  sentAt  DateTime @default(now())
+
+  @@unique([userId, stage])
 }

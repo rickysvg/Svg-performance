@@ -15,7 +15,10 @@ import {
   unseenCoachReply,
   weekTrainingSnapshot,
   weeklyCheckInAllowed,
+  weeklyCheckInReviewed,
 } from "@/lib/weekly-checkin";
+import { canUseFeature } from "@/lib/entitlements";
+import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 
 export default async function CheckInPage({
   searchParams,
@@ -38,12 +41,11 @@ export default async function CheckInPage({
           <h1 className="text-2xl">Weekly check-in</h1>
         </div>
         <section className="rounded-2xl border border-line bg-white p-5">
-          <p className="font-display text-xs uppercase tracking-[0.06em]">Coaching</p>
-          <h2 className="mt-2 text-2xl">This is on 1-on-1 coaching</h2>
+          <p className="font-display text-xs uppercase tracking-[0.06em]">SVG Pro</p>
+          <h2 className="mt-2 text-2xl">The weekly check-in is in Pro</h2>
           <p className="mt-2 text-sm text-muted">
-            Weekly check-ins are included with 1-on-1 Coaching with Ricky. SVG Performance does
-            not include them. An admin can turn the form on for a test account from the coach
-            dashboard.
+            Verified SVG Academy members get the weekly check-in form with their dues. Pro adds
+            AI feedback on every check-in. 1-on-1 Coaching with Ricky adds his review.
           </p>
           <Link
             href="/plan"
@@ -52,15 +54,18 @@ export default async function CheckInPage({
             See plans
           </Link>
           {trial.canStartTrial ? (
-            <p className="mt-3 text-xs text-muted">
-              SVG Performance, including a trial, does not include the weekly check-in.
-            </p>
+            <p className="mt-3 text-xs text-muted">Start the 7-day Pro trial from Plan. No card.</p>
           ) : null}
         </section>
       </main>
     );
   }
 
+  const [reviewed, aiFeedback] = await Promise.all([
+    weeklyCheckInReviewed(user.id, now),
+    canUseFeature(user.id, "ai_feedback", now),
+  ]);
+  const trialState = await getTrialState(user.id);
   const [current, unseenReply, snapshot, prefs] = await Promise.all([
     getCurrentCheckIn(user.id, now, timeZone),
     unseenCoachReply(user.id),
@@ -90,7 +95,7 @@ export default async function CheckInPage({
 
       {params.sent === "1" ? (
         <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">
-          Sent. Ricky will reply in the app.
+          {reviewed ? "Sent. Ricky will reply in the app." : "Saved. Your check-in is in your history."}
         </p>
       ) : null}
 
@@ -114,8 +119,11 @@ export default async function CheckInPage({
           struggles={current.struggles}
           regions={parseRegionIds(current.sorenessRegionsJson)}
           sorenessNotes={current.sorenessNotes}
-          summary={current.aiSummary}
-          waiting={current.coachStatus !== "sent"}
+          summary={aiFeedback ? current.aiSummary : ""}
+          coachTakeLocked={!aiFeedback}
+          canStartTrial={trialState.canStartTrial}
+          trialDays={trialState.trialLengthDays}
+          waiting={reviewed && current.coachStatus !== "sent"}
           hasVideo={Boolean(current.videoStorageKey)}
           id={current.id}
         />
@@ -149,6 +157,9 @@ function SubmittedCheckIn({
   regions,
   sorenessNotes,
   summary,
+  coachTakeLocked,
+  canStartTrial,
+  trialDays,
   waiting,
   hasVideo,
   id,
@@ -165,6 +176,9 @@ function SubmittedCheckIn({
   regions: string[];
   sorenessNotes: string;
   summary: string;
+  coachTakeLocked: boolean;
+  canStartTrial: boolean;
+  trialDays: number;
   waiting: boolean;
   hasVideo: boolean;
   id: string;
@@ -176,7 +190,33 @@ function SubmittedCheckIn({
       {waiting ? (
         <p className="text-sm text-muted">Ricky reviews this once. The reply shows up here.</p>
       ) : null}
-      {summary ? <p className="whitespace-pre-line text-sm">{summary}</p> : null}
+      {summary ? (
+        <div data-coach-take className="rounded-2xl bg-black/5 p-3">
+          <p className="text-xs uppercase tracking-wide text-muted">Coach&apos;s take</p>
+          <p className="mt-1 whitespace-pre-line text-sm">{summary}</p>
+        </div>
+      ) : null}
+      {coachTakeLocked ? (
+        <div data-coach-take-locked className="relative overflow-hidden rounded-2xl border border-line">
+          <div aria-hidden className="pointer-events-none select-none p-3 blur-sm">
+            <p className="text-xs uppercase tracking-wide text-muted">Coach&apos;s take</p>
+            <div className="mt-2 space-y-2">
+              <div className="h-3 w-11/12 rounded bg-black/15" />
+              <div className="h-3 w-4/5 rounded bg-black/15" />
+              <div className="h-3 w-2/3 rounded bg-black/15" />
+            </div>
+          </div>
+          <div className="border-t border-line bg-white">
+            <UpgradePreview
+              kind="coach_take"
+              canStartTrial={canStartTrial}
+              trialDays={trialDays}
+              next="/checkin"
+              framed={false}
+            />
+          </div>
+        </div>
+      ) : null}
       <dl className="grid grid-cols-2 gap-2 text-sm">
         <Item label="Weight" value={bodyweightLb != null ? `${bodyweightLb} lb` : "—"} />
         <Item label="Sleep" value={`${sleepQuality}/5`} />

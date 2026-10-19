@@ -4,7 +4,7 @@ import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 
 const RANGES: Array<{ id: ChartRange; label: string; paid?: boolean }> = [
   { id: "4w", label: "4W" },
-  { id: "12w", label: "12W" },
+  { id: "12w", label: "12W", paid: true },
   { id: "1y", label: "1Y", paid: true },
   { id: "all", label: "All", paid: true },
 ];
@@ -75,12 +75,29 @@ export function ExerciseChart({
         })}
       </div>
       {locked ? (
-        <UpgradePreview
-          kind="history"
-          canStartTrial={canStartTrial}
-          trialDays={trialDays}
-          next={`/progress/records/${slug}`}
-        />
+        <div data-history-locked className="relative overflow-hidden rounded-2xl border border-line">
+          <svg
+            aria-hidden
+            viewBox={`0 0 ${width} ${height}`}
+            className="pointer-events-none h-48 w-full select-none bg-[#f4ffe0] blur-sm"
+          >
+            <path
+              d={`M${pad},120 L80,110 L130,96 L180,100 L230,72 L280,60 L${width - pad},48`}
+              fill="none"
+              stroke="#0a0a0a"
+              strokeWidth="2"
+            />
+          </svg>
+          <div className="border-t border-line bg-white">
+            <UpgradePreview
+              kind="history"
+              canStartTrial={canStartTrial}
+              trialDays={trialDays}
+              next={`/progress/records/${slug}`}
+              framed={false}
+            />
+          </div>
+        </div>
       ) : points.length === 0 ? (
         <p className="text-sm text-muted">No loaded sets in this window yet.</p>
       ) : (

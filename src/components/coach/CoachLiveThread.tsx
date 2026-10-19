@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { StatusBanner } from "@/components/StatusBanner";
 import { EmptyState } from "@/components/EmptyState";
+import { AiPaywallPrompt } from "@/components/upgrade/AiPaywallPrompt";
 import { useCoachStream } from "@/components/coach/useCoachStream";
 import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
@@ -112,7 +113,7 @@ export function CoachLiveThread({
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { streaming, partial, error, offline, fallbackReason, start, stop } = useCoachStream();
+  const { streaming, partial, error, offline, fallbackReason, paywall, setPaywall, start, stop } = useCoachStream();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -212,6 +213,9 @@ export function CoachLiveThread({
 
       <form onSubmit={onSend} className="space-y-3">
         <StatusBanner error={error} />
+        {paywall ? (
+          <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} />
+        ) : null}
         <label className="block text-sm">
           Message
           <textarea

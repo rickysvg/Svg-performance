@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { saveExerciseNoteAction, type ExerciseNoteState } from "@/app/actions/exercise-notes";
 import { StatusBanner } from "@/components/StatusBanner";
+import { AiPaywallPrompt } from "@/components/upgrade/AiPaywallPrompt";
 import { useCoachStream } from "@/components/coach/useCoachStream";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
@@ -44,7 +45,7 @@ export function ExerciseNotepad({
     saveExerciseNoteAction,
     {} as ExerciseNoteState,
   );
-  const { streaming, partial, error, start, stop } = useCoachStream();
+  const { streaming, partial, error, paywall, setPaywall, start, stop } = useCoachStream();
   const [liveReply, setLiveReply] = useState("");
   const replyRef = useRef<HTMLDivElement | null>(null);
   const pending = saving || streaming;
@@ -91,6 +92,9 @@ export function ExerciseNotepad({
             error={error || saveState.error}
             success={error || saveState.error ? undefined : saveState.success}
           />
+          {paywall ? (
+            <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} />
+          ) : null}
           <label className="block">
             <span className="text-xs font-medium text-muted">Note or question</span>
             <textarea

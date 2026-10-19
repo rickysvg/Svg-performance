@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { AppError, AuthError } from "@/lib/errors";
+import { AiCapError } from "@/lib/ai-usage";
 import {
   coachStreamResponse,
   handleCoachStreamRequest,
@@ -46,6 +47,9 @@ export async function coachStreamForTest(
   } catch (error) {
     if (error instanceof AuthError) {
       return { status: 401, error: error.message };
+    }
+    if (error instanceof AiCapError) {
+      return { status: 402, error: error.message, paywall: error.reason };
     }
     if (error instanceof AppError) {
       return { status: error.status, error: error.message };

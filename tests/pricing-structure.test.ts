@@ -37,37 +37,40 @@ describe("owner-approved three-plan pricing", () => {
     await prisma.$disconnect();
   });
 
-  it("shows Free, SVG Performance, and 1-on-1 coaching with one price each", () => {
+  it("shows SVG Pro, the academy tier, and 1-on-1 coaching with the approved prices", () => {
     expect(PERFORMANCE_MONTHLY).toBe(9.99);
-    expect(PERFORMANCE_ANNUAL).toBe(79);
+    expect(PERFORMANCE_ANNUAL).toBe(72.99);
     expect(FOUNDING_ANNUAL).toBe(59);
-    expect(FOUNDING_CAP).toBe(250);
+    expect(FOUNDING_CAP).toBe(100);
     expect(COACHING_MONTHLY).toBe(249);
     expect(COACHING_CAP).toBe(20);
     expect(usd(9.99)).toBe("$9.99");
-    expect(usd(79)).toBe("$79");
-    expect(performancePriceLine()).toBe("$9.99/mo or $79/yr, save 34%");
-    expect(performanceAnnualLine()).toBe("or $79/yr, save 34%");
-    expect(foundingPriceLine(250)).toContain("$59/year");
-    expect(foundingPriceLine(250)).toContain("first 250 members");
-    expect(foundingPriceLine(250)).toContain("250 of 250 spots left");
+    expect(usd(72.99)).toBe("$72.99");
+    expect(performancePriceLine()).toBe("$9.99/mo or $72.99/yr, save 39%");
+    expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
+    expect(foundingPriceLine(100)).toContain("$59/year");
+    expect(foundingPriceLine(100)).toContain("first 100 members");
+    expect(foundingPriceLine(100)).toContain("100 of 100 spots left");
     expect(isFoundingDealOpen(0)).toBe(true);
-    expect(isFoundingDealOpen(250)).toBe(false);
+    expect(isFoundingDealOpen(100)).toBe(false);
     expect(coachingSpotsLine(12)).toBe("12 of 20 spots left");
     expect(coachingSpotsLine(null)).toBe("Limited to 20 athletes");
-    expect(PLAN_CATALOG.member_access.label).toBe("Free");
-    expect(PLAN_CATALOG.member_access.includes).toEqual(["Workout log", "Timers", "1 sample plan"]);
+    expect(PLAN_CATALOG.member_access.label).toBe("Trial ended");
+    expect(PLAN_CATALOG.academy.gymPriceLabel).toBe("Included in dues");
+    expect(PLAN_CATALOG.academy.includes).toEqual(
+      expect.arrayContaining(["Sparring log", "Weekly check-in form", "Fuel logging", "30 days of history"]),
+    );
+    expect(PLAN_CATALOG.performance.label).toBe("SVG Pro");
     expect(PLAN_CATALOG.performance.gymPriceLabel).toBe("$9.99/mo");
     expect(PLAN_CATALOG.performance.nonmemberPriceLabel).toBe("$9.99/mo");
     expect(PLAN_CATALOG.performance.includes).toEqual(
       expect.arrayContaining([
-        "Full training plans",
-        "Fight camp",
-        "SVG Coach (AI coach)",
-        "Mobility",
-        "Fuel",
-        "Form check",
-        "Sparring log",
+        "AI coach chat with voices",
+        "Today's Summary read-aloud",
+        "RIR auto-adjust after sparring or low readiness",
+        "AI feedback on check-ins and meals",
+        "Sparring trends",
+        "Full history",
       ]),
     );
     expect(PLAN_CATALOG.coaching.label).toBe("1-on-1 Coaching with Ricky");
@@ -75,13 +78,13 @@ describe("owner-approved three-plan pricing", () => {
     expect(PLAN_CATALOG.coaching.cap).toBe(20);
     expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Custom programming/);
     expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/check-ins reviewed by Ricky/);
-    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Video form reviews/);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Includes Pro/);
   });
 
   it("keeps new checkout SKUs inactive and does not pair member and nonmember prices on the page", () => {
     expect(CHECKOUT_SKUS.performance_monthly.checkoutEnabled).toBe(false);
     expect(CHECKOUT_SKUS.performance_monthly.amountCents).toBe(999);
-    expect(CHECKOUT_SKUS.performance_year.amountCents).toBe(7900);
+    expect(CHECKOUT_SKUS.performance_year.amountCents).toBe(7299);
     expect(CHECKOUT_SKUS.performance_founding.amountCents).toBe(5900);
     expect(CHECKOUT_SKUS.coaching_monthly.amountCents).toBe(24900);
     expect(CHECKOUT_SKUS.coaching_monthly.catalogId).toBe("coaching");
@@ -96,6 +99,11 @@ describe("owner-approved three-plan pricing", () => {
       const text = read(file);
       expect(text).not.toMatch(/\$19\/mo/);
       expect(text).not.toMatch(/\$29\/mo/);
+      expect(text).not.toMatch(/\$119\b/);
+      expect(text).not.toMatch(/\$79\/yr/);
+      expect(text).not.toMatch(/14-day/);
+      expect(text.toLowerCase()).not.toMatch(/proposal/);
+      expect(text.toLowerCase()).not.toMatch(/additional to gym dues/);
       expect(text).not.toMatch(/Fighter Development/);
       expect(text).not.toMatch(/Elite Online/);
       expect(text).not.toMatch(/Platinum VIP/);
@@ -104,7 +112,7 @@ describe("owner-approved three-plan pricing", () => {
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
     expect(catalog).toContain("Coming soon");
     expect(catalog).toContain("performanceAnnualLine()");
-    expect(performanceAnnualLine()).toBe("or $79/yr, save 34%");
+    expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
     expect(catalog).toContain("In-person intensives and VIP");
     expect(catalog).toContain("Book with Ricky");
     expect(catalog).not.toContain("data-pricing-toggle");

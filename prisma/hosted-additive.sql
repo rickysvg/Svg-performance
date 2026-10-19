@@ -579,3 +579,51 @@ BEGIN
     CREATE INDEX "Subscription_founding_status_idx" ON "Subscription"("founding", "status");
   END IF;
 END $$;
+
+-- Pro tiers: member Pro month, AI usage metering, member Pro reminders. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."Profile"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'memberProStartedAt'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "memberProStartedAt" TIMESTAMP(3);
+  END IF;
+
+  IF to_regclass('public."AiUsageEvent"') IS NULL THEN
+    CREATE TABLE "AiUsageEvent" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "kind" TEXT NOT NULL,
+      "surface" TEXT NOT NULL DEFAULT '',
+      "units" INTEGER NOT NULL DEFAULT 1,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "AiUsageEvent_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "AiUsageEvent_userId_kind_createdAt_idx"
+      ON "AiUsageEvent"("userId", "kind", "createdAt");
+    ALTER TABLE "AiUsageEvent"
+      ADD CONSTRAINT "AiUsageEvent_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."MemberProReminderLog"') IS NULL THEN
+    CREATE TABLE "MemberProReminderLog" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "stage" TEXT NOT NULL,
+      "channel" TEXT NOT NULL DEFAULT 'push',
+      "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "MemberProReminderLog_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "MemberProReminderLog_userId_stage_key"
+      ON "MemberProReminderLog"("userId", "stage");
+    ALTER TABLE "MemberProReminderLog"
+      ADD CONSTRAINT "MemberProReminderLog_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

@@ -3,6 +3,7 @@ import {
   applyFreeHistoryCutoff,
   filterChartPoints,
   FREE_CHART_WEEKS,
+  FREE_HISTORY_DAYS,
   resolveChartWindow,
   weeklyBestLoad,
   type ChartPoint,
@@ -23,15 +24,15 @@ function point(weeksAgo: number, value: number): ChartPoint {
   };
 }
 
-describe("12-week free chart cutoff", () => {
-  it("keeps a point inside 12 weeks for the free plan", () => {
-    const points = [point(11, 150), point(0, 180)];
+describe("30-day academy chart cutoff", () => {
+  it("keeps a point inside 30 days for the academy tier", () => {
+    const points = [point(3, 150), point(0, 180)];
     const { visible, hiddenCount } = applyFreeHistoryCutoff(points, now, false, tz);
     expect(visible).toHaveLength(2);
     expect(hiddenCount).toBe(0);
   });
 
-  it("hides a point older than 12 weeks on the free plan", () => {
+  it("hides a point older than 30 days on the academy tier", () => {
     const points = [point(13, 140), point(2, 170)];
     const { visible, hiddenCount } = applyFreeHistoryCutoff(points, now, false, tz);
     expect(visible.map((row) => row.value)).toEqual([170]);
@@ -49,11 +50,14 @@ describe("12-week free chart cutoff", () => {
     const year = resolveChartWindow({ range: "1y", paid: false, now, timeZone: tz });
     const all = resolveChartWindow({ range: "all", paid: false, now, timeZone: tz });
     const free12 = resolveChartWindow({ range: "12w", paid: false, now, timeZone: tz });
+    const free4 = resolveChartWindow({ range: "4w", paid: false, now, timeZone: tz });
     expect(year.locked).toBe(true);
     expect(all.locked).toBe(true);
-    expect(year.range).toBe("12w");
-    expect(free12.locked).toBe(false);
+    expect(year.range).toBe("4w");
+    expect(free12.locked).toBe(true);
+    expect(free4.locked).toBe(false);
     expect(FREE_CHART_WEEKS).toBe(12);
+    expect(FREE_HISTORY_DAYS).toBe(30);
   });
 
   it("unlocks longer ranges on a paid plan", () => {

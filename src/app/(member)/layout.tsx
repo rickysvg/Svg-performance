@@ -8,6 +8,12 @@ import { formatGraceDate } from "@/lib/gymdesk/recompute";
 import { needsCoachChoicePrompt, resolveAiCoach } from "@/lib/coaches";
 import { CoachChoicePrompt } from "@/components/coach/CoachChoicePrompt";
 import { PrimeCoachAudio } from "@/components/coach/PrimeCoachAudio";
+import { headers } from "next/headers";
+import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
+import { MemberProReminderBanner } from "@/components/upgrade/MemberProReminderBanner";
+import { getAppTier } from "@/lib/entitlements";
+import { ensureMemberProMonth } from "@/lib/trial";
+import { isOpenWhenLocked, PATH_HEADER } from "@/lib/locked-paths";
 
 export default async function MemberLayout({
   children,
@@ -15,7 +21,13 @@ export default async function MemberLayout({
   children: React.ReactNode;
 }) {
   const user = await requireOnboardedUser();
+  // Verified academy members get one 30-day Pro month, started the first time we see them.
+  await ensureMemberProMonth(user.id);
   const profile = await getProfileForUser(user.id);
+  const tier = await getAppTier(user.id);
+  const pathname = (await headers()).get(PATH_HEADER);
+  const staff = user.role === "admin" || user.role === "coach";
+  const locked = tier === "locked" && !staff && !isOpenWhenLocked(pathname);
   const graceUntil = profile?.gymMembershipGraceUntil;
   // Request-time check: hide the banner once the grace date has passed.
   // eslint-disable-next-line react-hooks/purity -- grace window is compared to request time
@@ -36,7 +48,16 @@ export default async function MemberLayout({
         coachName={coach.name}
         coachThumb={coach.circle}
       >
-        {children}
+        {profile?.gymMembershipVerified &&
+        profile.memberProStartedAt &&
+        (pathname === "/home" || pathname === "/plan") ? (
+          <MemberProReminderBanner
+            memberProStartedAt={profile.memberProStartedAt}
+            tier={tier}
+            userId={user.id}
+          />
+        ) : null}
+        {locked ? <TrialEndedPaywall /> : children}
       </MemberFrame>
       {needsCoachChoicePrompt(profile) ? <CoachChoicePrompt /> : null}
       <Suspense fallback={null}>

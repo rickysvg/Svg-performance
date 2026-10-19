@@ -101,7 +101,7 @@ export default async function ProfilePage() {
           </p>
         ) : (
           <p className="text-sm text-muted">
-            Not verified as an SVG Academy member yet. Verified members get the full app free.
+            Not verified as an SVG Academy member yet. Verified members get the core app with their dues and Pro free for 30 days.
           </p>
         )}
         {isGymdeskSyncEnabled() && !profile.emailVerifiedAt ? (

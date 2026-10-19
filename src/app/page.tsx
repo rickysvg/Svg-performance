@@ -98,14 +98,15 @@ export default async function MarketingPage({
               separately.
             </li>
             <li>
-              Draft prices (App Plans, Online Coaching, VIP) are a proposal / Stripe TEST
-              only. There is no live checkout. Paid plans are additional to gym dues.
+              Pro is $9.99/mo or $72.99/yr after a 7-day trial with no card. Verified SVG
+              Academy members get the core app with their dues and Pro free for 30 days.
+              Checkout is coming soon.
             </li>
             <li>SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Weight-cut services are not sold here.</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/pricing" className="text-sm text-accent underline-offset-4 hover:underline">
-              Read the draft pricing note
+              See pricing
             </Link>
             <a
               href="https://www.svgandco.com/products"

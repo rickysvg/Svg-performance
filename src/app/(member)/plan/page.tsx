@@ -37,15 +37,17 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
-          {trial.verified && entitlements.planId === "performance" && !subscription
-            ? "Verified SVG Academy member. The full app is free. Gym dues stay on Gymdesk."
+          {trial.verified && trial.trialActive && !subscription
+            ? `Verified SVG Academy member. Your ${trial.trialLengthDays}-day Pro month is active. After it ends you go back to the core app included with your dues. You are never auto-billed.`
+            : trial.verified && entitlements.planId === "academy"
+              ? "Verified SVG Academy member. The core app is included with your dues. Pro is $9.99/mo or $72.99/yr."
             : trial.trialActive
-              ? `Your ${trial.trialLengthDays}-day Performance trial is active. When it ends you return to the free plan: workout log, timers, and 1 sample plan.`
+              ? `Your ${trial.trialLengthDays}-day Pro trial is active. No card. When it ends, Pro keeps the app open. Your past data stays viewable and exportable.`
             : subscription
               ? `${subscription.plan} / ${subscription.status}${
                   subscription.source === "admin" ? " · admin override" : " · webhook"
                 }`
-              : "Free plan — workout log, timers, and 1 sample plan."}
+              : "Your trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data."}
         </p>
         {!configured ? (
           <p className="mt-3 text-sm text-muted">

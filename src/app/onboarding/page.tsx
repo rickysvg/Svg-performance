@@ -22,8 +22,8 @@ export default async function OnboardingPage() {
         <p className="mt-2 text-sm text-muted">
           We&apos;ll use this to tailor your app — Learn level, Home
           suggestions, and units. For combat athletes, class training, and
-          people getting in shape. After this you pick the free plan or a short
-          Performance trial. An optional two-minute screen can be skipped. This
+          people getting in shape. After this you start a 7-day Pro trial (no card),
+          or your 30-day member Pro month if you train at SVG Academy. An optional two-minute screen can be skipped. This
           is not a custom Elite coaching plan.
         </p>
         <div className="mt-6">

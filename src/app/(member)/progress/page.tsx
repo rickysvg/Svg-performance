@@ -53,9 +53,10 @@ export default async function ProgressPage() {
       getNutritionSummaryForDay(user.id),
       getRecentNutritionDays(user.id, 7),
       getProgressHeartTiles(user.id),
-      canUseFeature(user.id, "daily_quote"),
+      canUseFeature(user.id, "progress"),
       getTrialState(user.id),
     ]);
+  const showTrends = await canUseFeature(user.id, "sparring_trends");
   const units = profile?.preferredUnits ?? "lb";
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
@@ -159,7 +160,29 @@ export default async function ProgressPage() {
         )}
       </section>
 
-      <SparringTrend logs={trend} />
+      {showTrends ? (
+        <SparringTrend logs={trend} />
+      ) : trend.length > 0 ? (
+        <section data-trend-locked className="relative overflow-hidden rounded-2xl border border-line">
+          <div aria-hidden className="pointer-events-none select-none p-4 blur-sm">
+            <p className="text-xs uppercase tracking-wide text-muted">Sparring and body trend</p>
+            <div className="mt-3 flex h-20 items-end gap-2">
+              {[3, 4, 2, 5, 3, 4, 2, 4].map((h, i) => (
+                <div key={i} className="w-full rounded bg-black/20" style={{ height: `${h * 18}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="border-t border-line bg-white">
+            <UpgradePreview
+              kind="charts"
+              canStartTrial={trial.canStartTrial}
+              trialDays={trial.trialLengthDays}
+              next="/progress"
+              framed={false}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <Link
         href="/progress/photos"

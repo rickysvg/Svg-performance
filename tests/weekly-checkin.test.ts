@@ -304,7 +304,8 @@ describe("weekly check-in access, submit, and reminders", () => {
         currentPeriodEnd: new Date("2027-01-01T00:00:00.000Z"),
       },
     });
-    expect(await weeklyCheckInAllowed(performance.id, NOW)).toBe(false);
+    // Pro gets the weekly check-in form (with AI feedback); Ricky only reviews coaching.
+    expect(await weeklyCheckInAllowed(performance.id, NOW)).toBe(true);
 
     const coaching = await makeUser("new-coaching@example.com");
     await prisma.subscription.create({

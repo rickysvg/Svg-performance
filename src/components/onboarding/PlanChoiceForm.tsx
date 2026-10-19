@@ -4,38 +4,42 @@ import { continueFreePlanAction, startTrialAction } from "@/app/actions/trial";
 export function PlanChoiceForm({
   verified,
   trialDays,
+  canStartTrial = true,
 }: {
   verified: boolean;
   trialDays: number;
+  canStartTrial?: boolean;
 }) {
   if (verified) {
     return (
       <div className="space-y-6">
         <div>
-          <p className="font-display text-xs uppercase tracking-[0.06em] text-black">Free</p>
+          <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Academy</p>
           <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
-            The full app is included
+            {canStartTrial ? `Pro free for ${trialDays} days` : "The core app is included"}
           </h1>
           <p className="mt-3 text-sm text-muted">
-            Verified SVG Academy members get every app feature free. Gym dues stay on Gymdesk
-            and are not part of this price.
+            Verified SVG Academy members get the core app with their dues: rounds, mobility and
+            form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, and Fuel
+            logging. Your first {trialDays} days are full Pro, no card. On day {trialDays + 1} you
+            go back to the included tier. You are never auto-billed.
           </p>
         </div>
-        <form action={continueFreePlanAction}>
+        <form action={canStartTrial ? startTrialAction : continueFreePlanAction}>
           <input type="hidden" name="next" value="/onboarding/deeper" />
           <button
             type="submit"
             className="touch-target w-full rounded-full bg-accent text-black"
           >
-            Continue
+            {canStartTrial ? `Start my ${trialDays}-day Pro month` : "Continue"}
           </button>
         </form>
         <p className="text-sm text-muted">
-          Want 1-on-1 with Ricky later?{" "}
+          Pro is $9.99/mo or $72.99/yr. Want 1-on-1 with Ricky?{" "}
           <Link href="/pricing" className="text-accent underline">
             See pricing
           </Link>
-          . Checkout is coming soon.
+          .
         </p>
       </div>
     );
@@ -44,39 +48,38 @@ export function PlanChoiceForm({
   return (
     <div className="space-y-6">
       <div>
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">Free</p>
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Pro</p>
         <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
-          Start with {trialDays} days
+          Try Pro for {trialDays} days
         </h1>
         <p className="mt-3 text-sm text-muted">
-          A {trialDays}-day trial opens the full app. After that, the free version is the
-          workout log, timers, and 1 sample plan. SVG Performance is $9.99/mo or $79/yr.
-          Academy members get the full app free once verified.
+          A {trialDays}-day Pro trial opens the full app. No card. After it ends, Pro is
+          $9.99/mo or $72.99/yr to keep using the app. Your past data stays viewable and
+          exportable. Train at SVG Academy? Verified members get the core app with their dues.
         </p>
       </div>
 
-      <form action={startTrialAction} className="space-y-3">
-        <input type="hidden" name="next" value="/onboarding/deeper" />
-        <button
-          type="submit"
-          className="touch-target w-full rounded-full bg-accent text-black"
+      {canStartTrial ? (
+        <form action={startTrialAction} className="space-y-3">
+          <input type="hidden" name="next" value="/onboarding/deeper" />
+          <button
+            type="submit"
+            className="touch-target w-full rounded-full bg-accent text-black"
+          >
+            Start {trialDays} days of Pro, no card
+          </button>
+        </form>
+      ) : (
+        <Link
+          href="/pricing"
+          className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent text-black"
         >
-          Start {trialDays} days free
-        </button>
-      </form>
-
-      <form action={continueFreePlanAction}>
-        <input type="hidden" name="next" value="/onboarding/deeper" />
-        <button
-          type="submit"
-          className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
-        >
-          Continue with the free plan
-        </button>
-      </form>
+          Subscribe to Pro
+        </Link>
+      )}
 
       <p className="text-sm text-muted">
-        Paid checkout is coming soon. You can look at pricing anytime from Profile.
+        Checkout is coming soon. You can look at pricing anytime from Profile.
       </p>
     </div>
   );

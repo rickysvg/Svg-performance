@@ -6,8 +6,12 @@ import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { recomputeMembership } from "@/lib/gymdesk/recompute";
 
-export const MEMBER_TRIAL_DAYS = 14;
-export const NONMEMBER_TRIAL_DAYS = 7;
+import { MEMBER_PRO_DAYS, NONMEMBER_TRIAL_DAYS as NONMEMBER_DAYS } from "@/lib/pricing";
+
+/** Verified academy members: Pro free for 30 days, no card, never auto-billed. */
+export const MEMBER_TRIAL_DAYS = MEMBER_PRO_DAYS;
+/** Nonmembers: 7-day no-card Pro trial, then Pro is required. */
+export const NONMEMBER_TRIAL_DAYS = NONMEMBER_DAYS;
 
 export type TrialState = {
   verified: boolean;
@@ -55,12 +59,16 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
       trialEndsAt: true,
       planChoiceAt: true,
       thirdWorkoutCardDismissedAt: true,
+      memberProStartedAt: true,
     },
   });
   const verified = Boolean(profile?.gymMembershipVerified);
   const trialStartedAt = profile?.trialStartedAt ?? null;
   const trialEndsAt = profile?.trialEndsAt ?? null;
-  const trialUsed = Boolean(trialStartedAt || trialEndsAt);
+  // Verified members get one 30-day Pro month even if they used a nonmember trial before.
+  const trialUsed = verified
+    ? Boolean(profile?.memberProStartedAt)
+    : Boolean(trialStartedAt || trialEndsAt);
   const active = isTrialActive(trialEndsAt, now);
   return {
     verified,
@@ -93,6 +101,7 @@ export async function startTrialForUser(userId: string, now = new Date()) {
       trialStartedAt: now,
       trialEndsAt,
       planChoiceAt: state.planChoiceAt ?? now,
+      ...(state.verified ? { memberProStartedAt: now } : {}),
     },
   });
   return {
@@ -101,6 +110,35 @@ export async function startTrialForUser(userId: string, now = new Date()) {
     days,
     verified: state.verified,
   };
+}
+
+/**
+ * Start the 30-day member Pro month once for a verified academy member. No card.
+ * Safe to call on every request; it only writes the first time.
+ */
+export async function ensureMemberProMonth(userId: string, now = new Date()) {
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    select: { gymMembershipVerified: true, memberProStartedAt: true, planChoiceAt: true },
+  });
+  if (!profile?.gymMembershipVerified || profile.memberProStartedAt) return null;
+  return prisma.profile.update({
+    where: { userId },
+    data: {
+      memberProStartedAt: now,
+      trialStartedAt: now,
+      trialEndsAt: addTrialDays(now, MEMBER_TRIAL_DAYS),
+      planChoiceAt: profile.planChoiceAt ?? now,
+    },
+  });
+}
+
+/** Day of the member Pro month, 1-based. Null when the month never started. */
+export function memberProDay(memberProStartedAt: Date | null, now = new Date()) {
+  if (!memberProStartedAt) return null;
+  const ms = now.getTime() - memberProStartedAt.getTime();
+  if (ms < 0) return 1;
+  return Math.floor(ms / (24 * 60 * 60 * 1000)) + 1;
 }
 
 export async function continueWithFreePlan(userId: string, now = new Date()) {
@@ -170,4 +208,4 @@ export function paidPlanPriceCopy(plan: CatalogPlan, verified: boolean) {
 }
 
 export const ACADEMY_PRICE_HINT =
-  "Train at SVG MMA Academy? Verified members get the full app free. Gym dues stay separate.";
+  "Train at SVG MMA Academy? Verified members get the core app with their dues and Pro free for 30 days.";

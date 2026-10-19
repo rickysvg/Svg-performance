@@ -41,9 +41,10 @@ describe("sparring session and body ratings", () => {
 
   it("stores ratings and sore spots", async () => {
     const user = await makeUser("spar@example.com");
+    // RIR auto-adjust and the recovery check-in are Pro; give this member an active trial.
     await prisma.profile.update({
       where: { userId: user.id },
-      data: { aiCoachId: "maya" },
+      data: { aiCoachId: "maya", trialEndsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) },
     });
     const saved = await saveSparringLog(user.id, {
       dateKey: "2026-10-17",

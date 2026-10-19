@@ -62,7 +62,7 @@ function LessonBody({
         <p className="line-clamp-4 text-sm leading-snug text-muted">{lesson.technicalDescription}</p>
       ) : (
         <p className="text-sm text-muted">
-          Preview only on the free plan. Start a trial or upgrade to watch.
+          Preview only. Start the 7-day trial or upgrade to Pro to watch.
         </p>
       )}
       <p className="text-xs text-muted">

@@ -41,8 +41,8 @@ export default async function PricingPage() {
         <p className="font-display text-xs uppercase tracking-[0.06em] text-black">App plans</p>
         <h1 className="mt-2 text-3xl text-black">SVG Performance pricing</h1>
         <p className="mt-3 text-muted">
-          Three options. These prices are for the app only. Gymdesk dues are separate and are
-          not changed here.
+          One Pro price for everyone. Verified SVG Academy members get the core app with their
+          dues and Pro free for 30 days.
         </p>
         <AiDisclaimer className="mt-3" />
         {currentPlan ? (
@@ -55,9 +55,8 @@ export default async function PricingPage() {
           </p>
         ) : null}
         <p className="mt-4 rounded-xl border border-black bg-accent/20 p-4 text-sm text-black">
-          Paid plans coming soon. The free plan and the 7-day trial still work.
-          {verified ? " Your verified academy membership already includes the full app." : ""}{" "}
-          Checkout stays off until paid billing is ready.
+          Paid plans coming soon. The 7-day Pro trial works now, no card.
+          {verified ? " Your verified academy membership includes the core app and a free Pro month." : ""}
           {configured ? " TEST billing stubs do not turn the buttons on." : ""}
         </p>
 
@@ -75,11 +74,13 @@ export default async function PricingPage() {
         <section className="mt-10 rounded-2xl border border-line bg-card p-6">
           <h2 className="text-lg text-black">Pricing FAQ</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
-            <li>Gym dues and SVG &amp; CO merch are separate from these app plans.</li>
-            <li>Verified SVG Academy members get the full app free. That check uses the existing Gymdesk member match.</li>
-            <li>Nonmembers get a 7-day trial, then the basic free version.</li>
-            <li>SVG Performance is one price: $9.99/month or $79/year. Founding annual is $59 for the first 250 members.</li>
-            <li>1-on-1 Coaching with Ricky is $249/month and limited to 20 athletes.</li>
+            <li>Nonmembers get a 7-day Pro trial with no card. After it ends, Pro ($9.99/mo or $72.99/yr) keeps the app open. You can always view and export your past data.</li>
+            <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for 30 days. On day 31 you go back to the included tier. You are never auto-billed.</li>
+            <li>Pro is $9.99/month or $72.99/year for everyone, academy members included. Founding annual is $59 for the first 100 members.</li>
+            <li>Pro fair use: 30 AI messages, 20 minutes of voice, and 1 read-aloud a day.</li>
+            <li>1-on-1 Coaching with Ricky is $249/month, includes Pro, and is limited to 20 athletes. VIP is by application.</li>
+            <li>Logging workouts, timers, and class programming are never locked for members or Pro.</li>
+            <li>Academy Gymdesk dues are billed by the gym and are not changed here.</li>
             <li>Weight-cut services are not sold here.</li>
           </ul>
         </section>

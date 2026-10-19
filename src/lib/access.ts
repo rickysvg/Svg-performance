@@ -29,12 +29,9 @@ export async function hasWebhookGrantedAccess(userId: string) {
 }
 
 /**
- * Training stays open for every signed-in member.
- * Nutrition / SVG Coach require Performance+ (nutrition feature),
- * a verified SVG Academy membership (full app, not gym dues),
- * an active no-card trial, or an admin/staff plan override.
- * Missing Stripe keys do not unlock those tools.
- * Learn stays reachable on the free plan as beginner-only.
+ * Fuel / SVG Coach need the academy tier (verified member) or Pro
+ * (subscription, 7-day trial, or the 30-day member Pro month).
+ * A nonmember whose trial ended gets the paywall. Missing Stripe keys do not unlock those tools.
  */
 export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
