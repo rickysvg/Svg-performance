@@ -20,7 +20,7 @@ The app is in good shape as a private preview. People can sign up, train, log se
 **What would embarrass you in week one**
 
 1. **A phone on gym Wi-Fi or cellular downloads about 4.4 MB of celebration graphics on every signed-in screen**, including the workout logger. That is the single biggest speed and data-cost problem. The graphics are for badge fireworks. They should load only when a badge actually unlocks.
-2. **The AI voice can run up an OpenAI bill.** Any signed-in account can ask the server to read arbitrary text out loud, with no daily cap. Coach chat is limited to people on a trial or paid plan, but those people can also send unlimited messages. Put a simple cap on before the link gets shared.
+2. **The AI voice and the logger notepad can run up an OpenAI bill.** Any signed-in account can ask the server to read arbitrary text out loud, with no daily cap. The exercise notepad in the logger calls the same model without checking that the account is on a trial or paid plan. Coach chat is limited to people on a trial or paid plan, but those people can also send unlimited messages. Put one daily cap on chat, notes, and voice before the link gets shared.
 3. **There is no privacy policy, terms, or fitness disclaimer page.** The coach and heart-rate screens say “not medical advice” inside the product. A public page, linked from signup, is what you want before strangers train with an AI coach.
 4. **You cannot see crashes.** Nothing like Sentry is installed. If an iPhone hits a bug in the logger, you will hear about it from a text, not from a dashboard.
 5. **Do not flip on real card charges from this branch.** Buy buttons are Coming soon on purpose, and the code rejects a live Stripe secret. Finish and test PR #79, then turn billing on.
@@ -30,7 +30,7 @@ The app is in good shape as a private preview. People can sign up, train, log se
 
 - Public pages score 97–99 on a mobile Lighthouse run. Layout does not jump around.
 - Workouts, photos, clips, food logs, and chats are checked against the signed-in person. Admin screens require an admin. A sample of “open someone else’s record” paths was closed.
-- Download-my-data and delete-account exist on Profile and look complete (database rows cascade; photos, form-check clips, and feedback screenshots are removed).
+- Download-my-data and delete-account exist on Profile. Delete removes the account, photos, form-check clips, and feedback screenshots. The download covers workouts, food, chat, and form checks, and leaves out the in-app feedback messages (bugs and ideas).
 - The logger keeps a copy of the sets on the phone, so a refresh in the middle of a workout puts the numbers back. It is not a full offline app: with no signal, the page itself will not open.
 - Age 18+ is a required checkbox at signup.
 
@@ -49,7 +49,7 @@ Effort is **S** (a focused change), **M** (a few files and a test pass), **L** (
 | Item | Why it matters | Effort |
 | --- | --- | --- |
 | Stop preloading all four celebration sprite sheets on every signed-in page | ~4.4 MB on Home, Train, the logger, Calendar, Progress, Shop, Coach, and Today’s Summary. Cold cellular load, not the Lighthouse score (those runs were already cached). | S |
-| Cap coach chat and text-to-speech per account per day | `/api/coach/speak` has no plan check and no rate limit. `/api/coach/stream` and today’s summary have no rate limit. This is an OpenAI cost leak. | S |
+| Cap coach chat, the exercise notepad, and text-to-speech per account per day | `/api/coach/speak` has no plan check and no rate limit. Chat requires a trial or paid plan and has no rate limit. `POST /api/coach/stream` with `kind: "note"` skips that plan check and still calls the model (logger notepad). Today’s summary has no rate limit. | S |
 | Privacy policy, terms, and a fitness / medical disclaimer, linked from signup and the coach | No `/privacy` or `/terms` route exists. AI and heart copy is in-product only. | M (writing the pages is S; a lawyer reading them is the real step) |
 | Error monitoring (Sentry or Vercel’s equivalent) | No Sentry, PostHog, or analytics SDK in the repo. Internal `metricEvent` rows count workouts and meals only. | S |
 | Confirm production SMTP, SPF/DKIM, and a real From address | Password reset, reminder email, and feedback-to-admin all no-op when `SMTP_HOST` is empty. | S to verify; M if mail is not set up |
@@ -67,6 +67,7 @@ Effort is **S** (a focused change), **M** (a few files and a test pass), **L** (
 | Put training-clip and focus-video uploads on Vercel Blob | Form checks and progress photos already use Blob when `BLOB_READ_WRITE_TOKEN` is set. Clips and focus videos write to local disk, which disappears on Vercel. | M |
 | Share card for iMessage: Open Graph title, description, and a 1200×630 image | Metadata is a single title and “private preview” description. No `og:image`. `/robots.txt` and `/sitemap.xml` 404. | S |
 | Show “not saved yet” when the logger’s background sync fails | Numbers survive on that phone. The server copy can lag, and the failure is swallowed. | S |
+| Include in-app feedback in Download my data | `MemberFeedback` (bug and idea messages, plus screenshot metadata) is omitted from `/api/account/export`. Delete still removes those rows and the files. | S |
 | Compress or drop the duplicate badge FX files (sheet plus animated WebP, ~8.4 MB in `public/fx`) | Only matters once the preload bug is fixed; the win screen should fetch one clip, not eight files. | S |
 
 ### P2 — later
@@ -175,7 +176,7 @@ Hot pages do too much work per view, even though indexes exist for the common fi
 - Calendar’s `getCalendarSchedule` calls it once to mark completed days.
 - Home’s `getHomeToday` is bounded (recent sessions, draft sessions) but also loads **every published lesson** and may send a reminder email on the way in (`processDueRemindersForUser`).
 - Coach `getOrCreateThread` includes **every message** in the thread. The model only uses the last 8 (`HISTORY_LIMIT` in `src/lib/coach/llm.ts`), so the page and the database still grow without a cap.
-- Account export loads the whole account in one request. That is correct for a download and should stay rare (it already tries to cap repeats).
+- Account export loads most of the account in one request (workouts, food, chat, form checks, and the rest of the export object). It omits in-app feedback submissions. That is still a heavy read and should stay rare (it already tries to cap repeats).
 
 No classic N+1 loop (query inside `for` against Prisma) stood out on these pages. The pattern is “one query that returns the athlete’s whole history.”
 
@@ -243,7 +244,7 @@ API routes under `src/app/api` that serve private bytes check the session and th
 | `GET /api/feedback/[feedbackId]` | Session + `readFeedbackImageForActor` |
 | `GET /api/focus-videos/[videoId]` | Session + Performance+ (or equivalent) + published rows only |
 | `POST /api/workouts/discard-empty` | Session + `discardEmptyWorkoutDraft(user.id, …)` |
-| `POST /api/coach/stream` | Session + `canUseMemberTools` |
+| `POST /api/coach/stream` | Session + `canUseMemberTools` when `kind` is chat. `kind: "note"` checks the session only, saves the exercise note, then calls the model |
 | `POST /api/coach/speak` | Session only |
 | `GET /api/coach/today-summary` | Session only |
 | `POST /api/coach/motivation` | Flag off, returns muted |
@@ -257,6 +258,8 @@ Admin pages call `requireAdmin`, except feedback (`isFeedbackAdmin`) and form-ch
 
 Server actions sampled (journal, nutrition, workouts, clips, session summary) pass `user.id` into helpers that throw `ForbiddenError` on a mismatched owner. This was a code read and the existing ownership tests, not a live attack against production.
 
+Next.js 16 runs `src/proxy.ts` before the matched pages (this version’s replacement for `middleware.ts`). It redirects to `/login` when the `svg_session` cookie is missing. It does not look up the session, so a junk cookie still reaches the page, and `requireUser` / `requireOnboardedUser` is what rejects it. The matcher covers Home, Train, Progress, Profile, nutrition, Learn, Coach, admin, staff, Shop, Book, and a few others. It does not list `/mobility`, `/clips`, `/challenges`, `/timer`, or `/feedback`. Those pages still live under the member layout, so they stay signed-in-only; they skip the early redirect.
+
 Focus videos: any entitled member who knows a **published** id can fetch that file, not only “this week’s” video. Drafts are rejected. Acceptable if every published focus video is meant for members.
 
 ### Rate limits and OpenAI cost
@@ -267,12 +270,13 @@ Focus videos: any entitled member who knows a **published** id can fetch that fi
 | Feedback | Database, 5 per window |
 | Account export | In-memory map, 5 per 15 minutes, **per server instance** |
 | Gymdesk webhook | Database-backed, 60/min/IP |
-| `/api/coach/stream` | Plan/trial required. **No rate limit.** History sent to the model is capped at 8 turns. |
+| `/api/coach/stream` chat | Plan/trial required (`canUseMemberTools` inside `runCoachChatStream`). **No rate limit.** History sent to the model is capped at 8 turns. |
+| `/api/coach/stream` note | Session only (`runCoachNoteStream`). **No plan check, no rate limit.** Message sliced to 2,000 characters. This is the logger exercise notepad: `handleCoachStreamRequest` sends `kind: "note"` there before the chat path. |
 | `/api/coach/speak` | Any signed-in user, text sliced to 3,500 characters, **no plan check, no rate limit, no cache.** `CoachSpeakButton` only appears in coach chat, but the route does not care. |
 | `/api/coach/today-summary` | Cached per day and facts. Changing coach or style busts the cache and calls TTS again. |
 | `/api/coach/motivation` | Hard-off while the flag is false, so it cannot spend money right now. |
 
-A small script with one trial account can call speak and stream until the OpenAI budget is gone. Cap both (for example a few dozen speaks and a few dozen chats per user per day, stored like the password-reset counter). Also require `canUseMemberTools` on speak.
+A small script with one signed-in account can call speak, and the notepad path, until the OpenAI budget is gone. A trial account can do the same with chat. Cap all three (for example a few dozen speaks, notes, and chats per user per day, stored like the password-reset counter). Also require `canUseMemberTools` on speak and on note streams.
 
 ### Secrets, validation, uploads
 
@@ -281,7 +285,7 @@ A small script with one trial account can call speak and stream until the OpenAI
 - Session cookie: `httpOnly`, `sameSite: lax`, `secure` in production (`src/lib/session.ts`). 30 days.
 - Passwords: bcrypt, 12 rounds, minimum 8 characters. Signup requires the 18+ checkbox. Reset tokens are hashed.
 - Uploads: progress photos 5 MB (jpeg/png/webp, magic-byte check), feedback screenshots 5 MB, form checks 24 MB and 60 seconds, training clips and focus videos 25 MB (mp4/webm). Next server actions allow a **32 MB** body (`next.config.ts`), so a client can still push a large body before the app-level check. Worth tightening to the largest real limit.
-- Polar tokens are **not** included in the data export (id, timestamps, and last error only). Password hashes are not exported.
+- Polar tokens are **not** included in the data export (id, timestamps, and last error only). Password hashes are not exported. `MemberFeedback` rows are also absent: the athlete’s bug and idea messages, the page they were sent from, and screenshot metadata. Delete still removes those rows (`onDelete: Cascade`) and the screenshot files (`deleteFeedbackMediaForUser`).
 - Account delete cancels Stripe subscriptions best-effort, deletes photo / form-check / feedback media, then deletes the user. Prisma relations use `onDelete: Cascade`. Training-clip files are removed from the local directory only; on Vercel those files were never durable (see P1).
 
 ### Headers (measured on production `/`)
@@ -324,7 +328,7 @@ Add to Home Screen today would bookmark a Safari-style page with the favicon, no
 | SEO | Title “SVG Performance” and a “private preview” description in `src/app/layout.tsx`. No Open Graph or Twitter card. Marketing copy still says “preview account.” |
 | App Store | No Capacitor/React Native project. README: Phase 2 native iOS for HealthKit. v1 should stay a website. |
 
-Trials: 14 days if gym-verified, 7 days otherwise (`src/lib/trial.ts`). That window is also the window of unlimited coach chat.
+Trials: 14 days if gym-verified, 7 days otherwise (`src/lib/trial.ts`). That window is also the window of unlimited coach chat. The exercise notepad can call the model outside that window.
 
 ---
 
