@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, AuthError } from "@/lib/errors";
 import { canUseMemberTools } from "@/lib/access";
+import { AiCapError, consumeAiUse } from "@/lib/ai-usage";
 import { detectSafetyRefusal, logCoachRefusal } from "@/lib/coach/safety";
 import { loadMemberContext } from "@/lib/coach/member-context";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
@@ -204,6 +205,7 @@ export async function runCoachChatStream(input: {
   if (!message) {
     throw new AppError("VALIDATION", "Type a message first.");
   }
+  await consumeAiUse({ userId: user.id, kind: "message", surface: "chat" });
   const topic = String(input.body.topic ?? "");
   const art = topic === "martial_art" ? String(input.body.art ?? "") : "";
   const thread = await getOrCreateThread(user.id, { topic, art });
@@ -369,6 +371,23 @@ export async function runCoachNoteStream(input: {
     programDayId: input.body.programDayId,
     body,
   });
+  // The note is always saved (logging is never locked). The AI reply uses the same cap as chat.
+  try {
+    await consumeAiUse({ userId: user.id, kind: "message", surface: "note" });
+  } catch (error) {
+    if (error instanceof AiCapError) {
+      input.onEvent?.({ type: "paywall", reason: error.reason, message: error.message });
+      return {
+        status: 402,
+        content: "",
+        offline: !isOpenAiConfigured(),
+        refused: false,
+        paywall: error.reason,
+        error: error.message,
+      };
+    }
+    throw error;
+  }
   const mode = resolveLogMode({
     logMode: input.body.logMode,
     name: note.exerciseName,
@@ -536,6 +555,12 @@ export function coachStreamResponse(
         if (error instanceof AuthError) {
           controller.enqueue(
             encoder.encode(encodeSse({ type: "error", message: error.message })),
+          );
+        } else if (error instanceof AiCapError) {
+          controller.enqueue(
+            encoder.encode(
+              encodeSse({ type: "paywall", reason: error.reason, message: error.message }),
+            ),
           );
         } else if (error instanceof AppError) {
           controller.enqueue(

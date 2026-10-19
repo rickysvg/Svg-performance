@@ -5,6 +5,7 @@ import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { canUseMemberTools } from "@/lib/access";
 import { AppError } from "@/lib/errors";
+import { consumeAiUse } from "@/lib/ai-usage";
 import { sendCoachMessage } from "@/lib/coach/chat";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
@@ -22,9 +23,10 @@ export async function sendCoachMessageAction(
     if (!access.allowed) {
       throw new AppError(
         "PAYWALL",
-        `${COACH_PUBLIC_NAME} is locked until Stripe TEST confirms payment.`,
+        `${COACH_PUBLIC_NAME} is locked. Subscribe to Pro to keep using it.`,
       );
     }
+    await consumeAiUse({ userId: user.id, kind: "message", surface: "chat" });
     const profile = await getProfileForUser(user.id);
     const coach = resolveAiCoach(profile?.aiCoachId);
     const style = resolveCoachingStyle(profile?.coachingStyle);

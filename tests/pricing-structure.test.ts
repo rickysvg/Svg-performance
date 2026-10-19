@@ -7,27 +7,25 @@ import { assertCanCheckoutPlan } from "@/lib/billing";
 import { CHECKOUT_SKUS, PLAN_CATALOG, publicSkusForPlan } from "@/lib/plans";
 import { SKU_AMOUNT_CENTS } from "@/lib/bnpl";
 import {
-  academyPerkLine,
-  appOffersForView,
-  coachingOffersForView,
-  COACHING_MONEY_BACK,
-  COACHING_TERMS,
-  CONDITIONING_PRICES,
-  DEVELOPMENT_PRICES,
-  ELITE_PRICES,
-  FOUNDING_DEAL,
-  FOUNDING_DEAL_LINE,
-  foundingDealLine,
+  COACHING_CAP,
+  COACHING_MONTHLY,
+  FOUNDING_ANNUAL,
+  FOUNDING_CAP,
+  PERFORMANCE_ANNUAL,
+  PERFORMANCE_MONTHLY,
+  coachingSpotsLine,
+  foundingPriceLine,
   isFoundingDealOpen,
-  PERFORMANCE_PRICES,
-  VIP_PRICES,
+  performanceAnnualLine,
+  performancePriceLine,
+  usd,
 } from "@/lib/pricing";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
 }
 
-describe("Ricky-approved pricing structure", () => {
+describe("owner-approved three-plan pricing", () => {
   beforeEach(async () => {
     await resetDatabase();
     delete process.env.STRIPE_SECRET_KEY;
@@ -39,111 +37,103 @@ describe("Ricky-approved pricing structure", () => {
     await prisma.$disconnect();
   });
 
-  it("keeps approved USD member / regular pairs", () => {
-    expect(PERFORMANCE_PRICES.monthly).toEqual({ member: 19, regular: 29 });
-    expect(PERFORMANCE_PRICES.annual).toMatchObject({ member: 149, regular: 229, offLabel: "about 35% off" });
-    expect(PERFORMANCE_PRICES.foundingAnnual).toMatchObject({ member: 119, regular: 179, offLabel: "about 20% off" });
-    expect(CONDITIONING_PRICES.monthly).toEqual({ member: 49, regular: 59 });
-    expect(CONDITIONING_PRICES.fightCamp).toMatchObject({ member: 125, regular: 149, brand: "12-Week Fight Camp" });
-    expect(CONDITIONING_PRICES.annual).toEqual({ member: 389, regular: 469 });
-    expect(CONDITIONING_PRICES.foundingAnnual).toMatchObject({ member: 309, regular: 369 });
-    expect(DEVELOPMENT_PRICES.monthly).toEqual({ member: 149, regular: 179 });
-    expect(DEVELOPMENT_PRICES.prepaid3).toMatchObject({ member: 399, regular: 479, recommended: true });
-    expect(DEVELOPMENT_PRICES.prepaid6).toEqual({ member: 759, regular: 909 });
-    expect(ELITE_PRICES.monthly).toEqual({ member: 299, regular: 349 });
-    expect(ELITE_PRICES.prepaid3).toMatchObject({ member: 799, regular: 939, recommended: true });
-    expect(ELITE_PRICES.prepaid6).toEqual({ member: 1519, regular: 1779 });
-    expect(VIP_PRICES.vip).toEqual({ member: 699, regular: 699 });
-    expect(VIP_PRICES.platinum).toEqual({ member: 1199, regular: 1199 });
-    expect(PLAN_CATALOG.performance.gymPriceLabel).toBe("$19/mo");
-    expect(PLAN_CATALOG.vip.gymPriceLabel).toBe("$699");
-    expect(PLAN_CATALOG.platinum.gymPriceLabel).toBe("$1,199");
-    expect(SKU_AMOUNT_CENTS.gym).toBe(1900);
-    expect(SKU_AMOUNT_CENTS.performance_founding_gym).toBe(11900);
-    expect(SKU_AMOUNT_CENTS.conditioning_camp_non).toBe(14900);
-    expect(SKU_AMOUNT_CENTS.elite_6mo_non).toBe(177900);
-    expect(SKU_AMOUNT_CENTS.vip).toBe(69900);
-  });
-
-  it("shows founding annual app offers only while the one config is open", () => {
-    expect(FOUNDING_DEAL.enabled).toBe(true);
-    expect(FOUNDING_DEAL.windowDays).toBe(90);
-    expect(FOUNDING_DEAL.memberCap).toBe(250);
-    expect(FOUNDING_DEAL_LINE).toBe("Founding member price, first 90 days or first 250 members");
-    expect(foundingDealLine({ ...FOUNDING_DEAL, windowDays: 30, memberCap: 10 })).toContain("first 30 days");
-    const start = new Date(FOUNDING_DEAL.startsAtIso);
-    expect(isFoundingDealOpen(start, 0)).toBe(true);
-    expect(isFoundingDealOpen(start, 250)).toBe(false);
-    expect(isFoundingDealOpen(start, 0, { ...FOUNDING_DEAL, enabled: false })).toBe(false);
-    const monthly = appOffersForView("monthly", true);
-    expect(monthly.performance.map((row) => row.id)).toEqual(["performance-monthly"]);
-    const prepay = appOffersForView("prepay", true);
-    expect(prepay.performance.some((row) => row.id === "performance-founding")).toBe(true);
-    expect(prepay.fighter_conditioning.some((row) => row.title === "12-Week Fight Camp")).toBe(true);
-    expect(appOffersForView("prepay", false).performance.some((row) => row.id === "performance-founding")).toBe(
-      false,
+  it("shows SVG Pro, the academy tier, and 1-on-1 coaching with the approved prices", () => {
+    expect(PERFORMANCE_MONTHLY).toBe(9.99);
+    expect(PERFORMANCE_ANNUAL).toBe(72.99);
+    expect(FOUNDING_ANNUAL).toBe(59);
+    expect(FOUNDING_CAP).toBe(100);
+    expect(COACHING_MONTHLY).toBe(249);
+    expect(COACHING_CAP).toBe(20);
+    expect(usd(9.99)).toBe("$9.99");
+    expect(usd(72.99)).toBe("$72.99");
+    expect(performancePriceLine()).toBe("$9.99/mo or $72.99/yr, save 39%");
+    expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
+    expect(foundingPriceLine(100)).toContain("$59/year");
+    expect(foundingPriceLine(100)).toContain("first 100 members");
+    expect(foundingPriceLine(100)).toContain("100 of 100 spots left");
+    expect(isFoundingDealOpen(0)).toBe(true);
+    expect(isFoundingDealOpen(100)).toBe(false);
+    expect(coachingSpotsLine(12)).toBe("12 of 20 spots left");
+    expect(coachingSpotsLine(null)).toBe("Limited to 20 athletes");
+    expect(PLAN_CATALOG.member_access.label).toBe("Trial ended");
+    expect(PLAN_CATALOG.academy.gymPriceLabel).toBe("Included in dues");
+    expect(PLAN_CATALOG.academy.includes).toEqual(
+      expect.arrayContaining(["Sparring log", "Weekly check-in form", "Fuel logging", "30 days of history"]),
     );
-    const coaching = coachingOffersForView("prepay");
-    expect(coaching.fighter_development[0]?.badge).toMatch(/Recommended program length/i);
-    expect(coaching.elite.some((row) => row.id.includes("founding"))).toBe(false);
-  });
-
-  it("keeps new prepaid and founding SKUs inactive", () => {
-    const inactive = Object.values(CHECKOUT_SKUS).filter((sku) => !sku.checkoutEnabled);
-    expect(inactive.length).toBeGreaterThanOrEqual(16);
-    expect(CHECKOUT_SKUS.performance_annual_gym.checkoutEnabled).toBe(false);
-    expect(CHECKOUT_SKUS.performance_founding_non.checkoutEnabled).toBe(false);
-    expect(CHECKOUT_SKUS.conditioning_camp_gym.checkoutEnabled).toBe(false);
-    expect(CHECKOUT_SKUS.development_3mo_gym.checkoutEnabled).toBe(false);
-    expect(CHECKOUT_SKUS.elite_6mo_non.checkoutEnabled).toBe(false);
-    expect(CHECKOUT_SKUS.gym.checkoutEnabled).toBe(true);
-    expect(CHECKOUT_SKUS.vip.checkoutMode).toBe("payment");
-    expect(CHECKOUT_SKUS.platinum.checkoutMode).toBe("payment");
-    expect(publicSkusForPlan("performance").map((row) => row.id)).toEqual([
-      "performance_gym",
-      "performance_non",
-    ]);
-  });
-
-  it("refuses checkout on inactive SKUs even when Stripe TEST keys exist", async () => {
-    process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
-    process.env.STRIPE_WEBHOOK_SECRET = "whsec_dummy";
-    process.env.STRIPE_PRICE_STANDALONE = "price_standalone";
-    process.env.STRIPE_PRICE_PERFORMANCE_ANNUAL_NON = "price_annual";
-    const user = await makeUser("inactive-sku@example.com");
-    await expect(assertCanCheckoutPlan(user.id, "performance_annual_non")).rejects.toMatchObject({
-      code: "BILLING",
-      message: "Paid plans coming soon.",
-    });
-  });
-
-  it("uses academy perk copy and coaching terms without banned wording", () => {
-    expect(academyPerkLine({ member: 19, regular: 29 }, "/mo")).toBe(
-      "Academy member price $19/mo (normally $29)",
+    expect(PLAN_CATALOG.performance.label).toBe("SVG Pro");
+    expect(PLAN_CATALOG.performance.gymPriceLabel).toBe("$9.99/mo");
+    expect(PLAN_CATALOG.performance.nonmemberPriceLabel).toBe("$9.99/mo");
+    expect(PLAN_CATALOG.performance.includes).toEqual(
+      expect.arrayContaining([
+        "AI coach chat with voices",
+        "Today's Summary read-aloud",
+        "RIR auto-adjust after sparring or low readiness",
+        "AI feedback on check-ins and meals",
+        "Sparring trends",
+        "Full history",
+      ]),
     );
-    expect(COACHING_TERMS).toBe(
-      "No contracts. Prepay for a program and save. Cancel anytime: we charge months used at the monthly rate and refund the rest.",
-    );
-    expect(COACHING_MONEY_BACK).toBe("First-month money-back guarantee");
+    expect(PLAN_CATALOG.coaching.label).toBe("1-on-1 Coaching with Ricky");
+    expect(PLAN_CATALOG.coaching.gymPriceLabel).toBe("$249/mo");
+    expect(PLAN_CATALOG.coaching.cap).toBe(20);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Custom programming/);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/check-ins reviewed by Ricky/);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Includes Pro/);
+  });
+
+  it("keeps new checkout SKUs inactive and does not pair member and nonmember prices on the page", () => {
+    expect(CHECKOUT_SKUS.performance_monthly.checkoutEnabled).toBe(false);
+    expect(CHECKOUT_SKUS.performance_monthly.amountCents).toBe(999);
+    expect(CHECKOUT_SKUS.performance_year.amountCents).toBe(7299);
+    expect(CHECKOUT_SKUS.performance_founding.amountCents).toBe(5900);
+    expect(CHECKOUT_SKUS.coaching_monthly.amountCents).toBe(24900);
+    expect(CHECKOUT_SKUS.coaching_monthly.catalogId).toBe("coaching");
+    expect(SKU_AMOUNT_CENTS.performance_monthly).toBe(999);
+    expect(publicSkusForPlan("coaching")).toEqual([]);
     const files = [
       "src/lib/pricing.ts",
-      "src/lib/plans.ts",
       "src/components/pricing/PricingCatalog.tsx",
       "src/app/pricing/page.tsx",
     ];
     for (const file of files) {
       const text = read(file);
+      expect(text).not.toMatch(/\$19\/mo/);
+      expect(text).not.toMatch(/\$29\/mo/);
+      expect(text).not.toMatch(/\$119\b/);
+      expect(text).not.toMatch(/\$79\/yr/);
+      expect(text).not.toMatch(/14-day/);
+      expect(text.toLowerCase()).not.toMatch(/proposal/);
+      expect(text.toLowerCase()).not.toMatch(/additional to gym dues/);
+      expect(text).not.toMatch(/Fighter Development/);
+      expect(text).not.toMatch(/Elite Online/);
+      expect(text).not.toMatch(/Platinum VIP/);
       expect(text.toLowerCase()).not.toMatch(/\bbout\b/);
     }
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
-    expect(catalog).toContain("Monthly");
-    expect(catalog).toContain("Prepay");
     expect(catalog).toContain("Coming soon");
-    expect(catalog).toContain("El Paso");
-    expect(catalog).toContain("data-pricing-toggle");
-    expect(catalog).toContain("sticky top-14 z-10 -mx-4 bg-white");
-    expect(catalog).toContain("scroll-mt-32");
+    expect(catalog).toContain("performanceAnnualLine()");
+    expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
+    expect(catalog).toContain("In-person intensives and VIP");
+    expect(catalog).toContain("Book with Ricky");
+    expect(catalog).not.toContain("data-pricing-toggle");
     expect(read("src/app/pricing/page.tsx")).toContain("Paid plans coming soon");
+    expect(read("src/app/pricing/page.tsx")).toContain("Gymdesk dues");
     expect(read("src/lib/billing.ts")).toContain("Paid plans coming soon.");
+  });
+
+  it("refuses checkout on the new SKUs even when Stripe TEST keys exist", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_dummy";
+    process.env.STRIPE_PRICE_STANDALONE = "price_standalone";
+    process.env.STRIPE_PRICE_PERFORMANCE_YEAR = "price_year";
+    const user = await makeUser("inactive-sku@example.com");
+    await expect(assertCanCheckoutPlan(user.id, "performance_year")).rejects.toMatchObject({
+      code: "BILLING",
+      message: "Paid plans coming soon.",
+    });
+    await expect(assertCanCheckoutPlan(user.id, "coaching_monthly")).rejects.toMatchObject({
+      code: "BILLING",
+      message: "Paid plans coming soon.",
+    });
   });
 });

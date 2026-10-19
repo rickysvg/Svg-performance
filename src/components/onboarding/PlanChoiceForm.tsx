@@ -1,54 +1,86 @@
+import Link from "next/link";
 import { continueFreePlanAction, startTrialAction } from "@/app/actions/trial";
 
 export function PlanChoiceForm({
   verified,
   trialDays,
+  canStartTrial = true,
 }: {
   verified: boolean;
   trialDays: number;
+  canStartTrial?: boolean;
 }) {
-  const title = verified ? "Your free member plan is ready" : "Your free preview is ready";
-  const trialButton = `Start ${trialDays} days of Performance free`;
+  if (verified) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Academy</p>
+          <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
+            {canStartTrial ? `Pro free for ${trialDays} days` : "The core app is included"}
+          </h1>
+          <p className="mt-3 text-sm text-muted">
+            Verified SVG Academy members get the core app with their dues: rounds, mobility and
+            form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, and Fuel
+            logging. Your first {trialDays} days are full Pro, no card. On day {trialDays + 1} you
+            go back to the included tier. You are never auto-billed.
+          </p>
+        </div>
+        <form action={canStartTrial ? startTrialAction : continueFreePlanAction}>
+          <input type="hidden" name="next" value="/onboarding/deeper" />
+          <button
+            type="submit"
+            className="touch-target w-full rounded-full bg-accent text-black"
+          >
+            {canStartTrial ? `Start my ${trialDays}-day Pro month` : "Continue"}
+          </button>
+        </form>
+        <p className="text-sm text-muted">
+          Pro is $9.99/mo or $72.99/yr. Want 1-on-1 with Ricky?{" "}
+          <Link href="/pricing" className="text-accent underline">
+            See pricing
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
-          {verified ? "SVG Member Access" : "Free preview"}
-        </p>
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Pro</p>
         <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
-          {title}
+          Try Pro for {trialDays} days
         </h1>
         <p className="mt-3 text-sm text-muted">
-          Workout logging, beginner tutorials, one starter program, announcements,
-          shop links, and a daily quote teaser
-          {verified ? " come with your academy membership." : " stay open on the free preview."}{" "}
-          Performance adds the full Learn library, food tracking, SVG Coach, and
-          progress charts.
+          A {trialDays}-day Pro trial opens the full app. No card. After it ends, Pro is
+          $9.99/mo or $72.99/yr to keep using the app. Your past data stays viewable and
+          exportable. Train at SVG Academy? Verified members get the core app with their dues.
         </p>
       </div>
 
-      <form action={startTrialAction} className="space-y-3">
-        <input type="hidden" name="next" value="/onboarding/deeper" />
-        <button
-          type="submit"
-          className="touch-target w-full rounded-full bg-accent text-black"
+      {canStartTrial ? (
+        <form action={startTrialAction} className="space-y-3">
+          <input type="hidden" name="next" value="/onboarding/deeper" />
+          <button
+            type="submit"
+            className="touch-target w-full rounded-full bg-accent text-black"
+          >
+            Start {trialDays} days of Pro, no card
+          </button>
+        </form>
+      ) : (
+        <Link
+          href="/pricing"
+          className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent text-black"
         >
-          {trialButton}
-        </button>
-      </form>
+          Subscribe to Pro
+        </Link>
+      )}
 
-      <form action={continueFreePlanAction}>
-        <input type="hidden" name="next" value="/onboarding/deeper" />
-        <button
-          type="submit"
-          className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
-        >
-          Continue with free plan
-        </button>
-      </form>
-
-      <p className="text-sm text-muted">You can upgrade anytime from Profile.</p>
+      <p className="text-sm text-muted">
+        Checkout is coming soon. You can look at pricing anytime from Profile.
+      </p>
     </div>
   );
 }

@@ -42,7 +42,7 @@ export async function saveMobilityLogAction(
     const routine = getMobilityRoutine(routineId);
     if (!routine) return { error: "That routine is not on the list." };
     if (routineIsPro(routineId) && !(await canUseFeature(user.id, "mobility_pro"))) {
-      return { error: "That routine is on Performance. Paid plans coming soon." };
+      return { error: "That routine is on SVG Performance. Verified academy members get the app free. Paid plans coming soon." };
     }
     const profile = await getProfileForUser(user.id);
     const unit = lengthUnitFor(profile?.preferredUnits ?? "lb");

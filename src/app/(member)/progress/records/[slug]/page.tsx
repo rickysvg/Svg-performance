@@ -37,7 +37,7 @@ export default async function ExerciseRecordPage({
   const exerciseName = findExerciseBySlug(names, slug);
   if (!exerciseName) notFound();
 
-  const requested = isChartRange(query.range) ? query.range : "12w";
+  const requested = isChartRange(query.range) ? query.range : paid ? "12w" : "4w";
   const window = resolveChartWindow({
     range: requested,
     paid,

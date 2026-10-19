@@ -2,6 +2,30 @@ import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
 import { mondayOfZoned, addZonedDays, dayKey } from "@/lib/timezone";
 
+export const SORE_SPOTS = [
+  "head",
+  "neck",
+  "ribs",
+  "shins",
+  "hands",
+  "knees",
+  "shoulders",
+  "other",
+] as const;
+
+export type SoreSpot = (typeof SORE_SPOTS)[number];
+
+export const SORE_SPOT_LABELS: Record<SoreSpot, string> = {
+  head: "Head",
+  neck: "Neck",
+  ribs: "Ribs",
+  shins: "Shins",
+  hands: "Hands",
+  knees: "Knees",
+  shoulders: "Shoulders",
+  other: "Other",
+};
+
 export type SparringLog = {
   dateKey: string;
   weekday: string;
@@ -9,12 +33,56 @@ export type SparringLog = {
   minutesPerRound: number;
   intensity: string;
   notes: string;
+  sessionRating: number | null;
+  bodyRating: number | null;
+  soreSpots: SoreSpot[];
+  coachCheckIn: string;
 };
 
 const INTENSITIES = new Set(["", "easy", "moderate", "hard"]);
 
 export function sparringMinutes(log: { rounds: number; minutesPerRound: number }) {
   return log.rounds * log.minutesPerRound;
+}
+
+export function isSoreSpot(value: string): value is SoreSpot {
+  return (SORE_SPOTS as readonly string[]).includes(value);
+}
+
+export function parseSoreSpots(value: unknown): SoreSpot[] {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? safeJsonArray(value)
+      : [];
+  const spots: SoreSpot[] = [];
+  for (const item of raw) {
+    const spot = String(item).trim().toLowerCase();
+    if (isSoreSpot(spot) && !spots.includes(spot)) spots.push(spot);
+  }
+  return spots;
+}
+
+function safeJsonArray(raw: string): unknown[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function ratingInRange(value: number) {
+  return Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
+/** Body at 2 or below, or a tapped head, means the next day should be easier. */
+export function sparringNeedsEase(log: {
+  bodyRating: number | null;
+  soreSpots: readonly string[];
+}) {
+  if (log.bodyRating != null && log.bodyRating <= 2) return true;
+  return log.soreSpots.includes("head");
 }
 
 export async function getSparringLog(userId: string, dateKey: string) {
@@ -33,6 +101,9 @@ export async function saveSparringLog(
     minutesPerRound: number;
     intensity?: string;
     notes?: string;
+    sessionRating: number;
+    bodyRating: number;
+    soreSpots?: string[];
   },
 ) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dateKey)) {
@@ -52,6 +123,13 @@ export async function saveSparringLog(
   if (!INTENSITIES.has(intensity)) {
     throw new AppError("LOG", "Intensity should be easy, moderate, hard, or blank.");
   }
+  if (!ratingInRange(input.sessionRating)) {
+    throw new AppError("LOG", "Session rating should be from 1 to 5.");
+  }
+  if (!ratingInRange(input.bodyRating)) {
+    throw new AppError("LOG", "Body rating should be from 1 to 5.");
+  }
+  const soreSpots = parseSoreSpots(input.soreSpots ?? []);
   const notes = (input.notes ?? "").trim().slice(0, 400);
   const row = await prisma.outsideSessionLog.upsert({
     where: { userId_dateKey: { userId, dateKey: input.dateKey } },
@@ -63,6 +141,10 @@ export async function saveSparringLog(
       minutesPerRound: input.minutesPerRound,
       intensity,
       notes,
+      sessionRating: input.sessionRating,
+      bodyRating: input.bodyRating,
+      soreSpots: JSON.stringify(soreSpots),
+      coachCheckIn: "",
     },
     update: {
       weekday: input.weekday,
@@ -70,6 +152,10 @@ export async function saveSparringLog(
       minutesPerRound: input.minutesPerRound,
       intensity,
       notes,
+      sessionRating: input.sessionRating,
+      bodyRating: input.bodyRating,
+      soreSpots: JSON.stringify(soreSpots),
+      coachCheckIn: "",
     },
   });
   return toLog(row);
@@ -90,6 +176,16 @@ export async function sparringLogsForWeek(userId: string, anchor: Date, timeZone
   };
 }
 
+/** Oldest to newest, so a trend reads left to right. */
+export async function sparringTrend(userId: string, take = 8) {
+  const rows = await prisma.outsideSessionLog.findMany({
+    where: { userId },
+    orderBy: { dateKey: "desc" },
+    take,
+  });
+  return rows.map(toLog).reverse();
+}
+
 function toLog(row: {
   dateKey: string;
   weekday: string;
@@ -97,6 +193,10 @@ function toLog(row: {
   minutesPerRound: number;
   intensity: string;
   notes: string;
+  sessionRating?: number | null;
+  bodyRating?: number | null;
+  soreSpots?: string | null;
+  coachCheckIn?: string | null;
 }): SparringLog {
   return {
     dateKey: row.dateKey,
@@ -105,5 +205,9 @@ function toLog(row: {
     minutesPerRound: row.minutesPerRound,
     intensity: row.intensity,
     notes: row.notes,
+    sessionRating: row.sessionRating ?? null,
+    bodyRating: row.bodyRating ?? null,
+    soreSpots: parseSoreSpots(row.soreSpots ?? "[]"),
+    coachCheckIn: row.coachCheckIn ?? "",
   };
 }

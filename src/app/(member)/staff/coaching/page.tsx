@@ -113,7 +113,7 @@ export default async function StaffCoachingPage({
         </section>
       ) : (
         <p className="text-sm text-muted">
-          This member&apos;s plan is below Fighter Development. No comment slot.
+          This member&apos;s plan is below 1-on-1 Coaching. No comment slot.
         </p>
       )}
 

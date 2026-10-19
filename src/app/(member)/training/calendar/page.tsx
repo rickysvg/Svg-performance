@@ -217,7 +217,11 @@ export default async function TrainingCalendarPage({
       ) : null}
 
       <h2 className="text-lg">{weekTitle}</h2>
-      <CalendarList days={schedule.days} />
+      <CalendarList
+        days={schedule.days}
+        coachName={schedule.coachName}
+        coachImage={schedule.coachImage}
+      />
     </main>
     </WorkoutMoveProvider>
   );

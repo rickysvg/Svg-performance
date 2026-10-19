@@ -16,10 +16,9 @@ export default async function BookPage() {
     remainingCredit(user.id, "strategy_45"),
   ]);
   const plan = PLAN_CATALOG[planId];
-  const vipOrPlatinum = planId === "vip" || planId === "platinum";
+  const vipOrPlatinum = planId === "vip" || planId === "platinum" || planId === "coaching";
   const extraKinds: BookingKind[] = ["mindset", "entrepreneur"];
-  const intensiveKinds: BookingKind[] =
-    planId === "platinum" ? ["intensive_elpaso", "intensive_travel"] : [];
+  const intensiveKinds: BookingKind[] = ["intensive_elpaso", "intensive_travel"];
 
   return (
     <main className="space-y-6">
@@ -57,7 +56,7 @@ export default async function BookPage() {
           <p className="mt-3 text-sm text-muted">
             This plan has no monthly coaching credits.{" "}
             <Link href="/pricing" className="text-accent underline">
-              See Online Coaching / VIP
+              See 1-on-1 Coaching
             </Link>
           </p>
         )}
@@ -99,31 +98,20 @@ export default async function BookPage() {
       </section>
 
       <section className="rounded-2xl border border-accent/40 bg-card p-5">
-        <h2>Platinum intensives</h2>
+        <h2>In-person intensives and VIP</h2>
         <p className="mt-2 text-sm text-muted">
-          El Paso: {BOOKING_OFFERS.intensive_elpaso.priceLabel}. Travel:{" "}
-          {BOOKING_OFFERS.intensive_travel.priceLabel}. Request stub only — no
-          deposit. Higher-ticket intensives are a main Affirm/Klarna use case
-          once Stripe TEST checkout exists for them; this Book form does not
-          fake a loan or a successful buy.
+          Apply here. El Paso: {BOOKING_OFFERS.intensive_elpaso.priceLabel}. Travel:{" "}
+          {BOOKING_OFFERS.intensive_travel.priceLabel}. This is a request, not a
+          deposit and not a live calendar. App pricing does not include these.
         </p>
         <ul className="mt-3 list-disc pl-5 text-sm text-muted">
           {bookingPrep("intensive_elpaso").map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
-        {intensiveKinds.length > 0 ? (
-          <div className="mt-4">
-            <BookingRequestForm kinds={intensiveKinds} defaultKind="intensive_elpaso" />
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-muted">
-            Intensives are for Platinum members.{" "}
-            <Link href="/pricing" className="text-accent underline">
-              Read the Platinum section
-            </Link>
-          </p>
-        )}
+        <div className="mt-4">
+          <BookingRequestForm kinds={intensiveKinds} defaultKind="intensive_elpaso" />
+        </div>
       </section>
 
       {requests.length > 0 ? (

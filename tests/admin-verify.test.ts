@@ -40,7 +40,7 @@ describe("gym checkbox vs admin verify", () => {
     expect(profile?.gymMembershipVerified).toBe(false);
   });
 
-  it("lets an admin verify, which is required for the $19 gym checkout", async () => {
+  it("lets an admin verify, which is required for the verified gym checkout", async () => {
     const admin = await makeUser("boss@example.com", false, "admin");
     const member = await makeUser("gym@example.com", true);
     process.env.STRIPE_SECRET_KEY = "sk_test_dummy";

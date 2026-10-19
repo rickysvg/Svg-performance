@@ -2,23 +2,65 @@
 
 import { useActionState } from "react";
 import { saveSparringLogAction, type SparringLogState } from "@/app/actions/outside-log";
-import type { SparringLog } from "@/lib/outside-log";
+import { RecoveryNotice } from "@/components/training/RecoveryNotice";
+import { SORE_SPOTS, SORE_SPOT_LABELS, type SparringLog } from "@/lib/outside-log";
+
+function RatingRow({
+  name,
+  label,
+  hint,
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  hint: string;
+  defaultValue: number | null;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium">{label}</legend>
+      <p className="text-xs text-muted">{hint}</p>
+      <div className="mt-2 grid grid-cols-5 gap-2">
+        {[1, 2, 3, 4, 5].map((score) => (
+          <label key={score} className="block">
+            <input
+              type="radio"
+              name={name}
+              value={score}
+              required
+              defaultChecked={defaultValue === score}
+              className="peer sr-only"
+            />
+            <span className="touch-target flex items-center justify-center rounded-full border border-black bg-white text-sm font-semibold peer-checked:bg-accent">
+              {score}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 export function SparringLogForm({
   dateKey,
   weekday,
   timeLabel,
   saved,
+  coachName,
+  coachImage,
 }: {
   dateKey: string;
   weekday: string;
   timeLabel?: string;
   saved: SparringLog | null;
+  coachName?: string;
+  coachImage?: string;
 }) {
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
+  const checkIn = state.checkIn || saved?.coachCheckIn || "";
 
   return (
-    <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-4">
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-4" data-sparring-log>
       <div>
         <p className="font-display text-xs uppercase tracking-wide text-accent">Sparring</p>
         <h3 className="mt-1 text-lg">
@@ -26,7 +68,8 @@ export function SparringLogForm({
           {timeLabel ? ` · ${timeLabel}` : ""}
         </h3>
         <p className="mt-1 text-sm text-muted">
-          No app workout today. Log rounds when you are done. Nothing is saved until you press Save.
+          No app workout today. Log rounds when you are done, then rate the session and how your
+          body feels. Nothing is saved until you press Save.
         </p>
       </div>
       <input type="hidden" name="dateKey" value={dateKey} />
@@ -70,6 +113,38 @@ export function SparringLogForm({
           <option value="hard">Hard</option>
         </select>
       </label>
+      <RatingRow
+        name="sessionRating"
+        label="Session rating"
+        hint="How it went. 1 was rough, 5 went well."
+        defaultValue={saved?.sessionRating ?? null}
+      />
+      <RatingRow
+        name="bodyRating"
+        label="Body rating"
+        hint="How the body feels. 1 is wrecked, 5 feels fresh."
+        defaultValue={saved?.bodyRating ?? null}
+      />
+      <fieldset>
+        <legend className="text-sm font-medium">Sore spots</legend>
+        <p className="text-xs text-muted">Tap anywhere that is sore. Head eases the next day.</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {SORE_SPOTS.map((spot) => (
+            <label key={spot}>
+              <input
+                type="checkbox"
+                name="soreSpots"
+                value={spot}
+                defaultChecked={saved?.soreSpots.includes(spot)}
+                className="peer sr-only"
+              />
+              <span className="inline-flex min-h-11 items-center rounded-full border border-black bg-white px-3 text-sm peer-checked:bg-accent">
+                {SORE_SPOT_LABELS[spot]}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label className="block text-sm">
         Notes (optional)
         <textarea
@@ -81,6 +156,14 @@ export function SparringLogForm({
       </label>
       {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
       {state.saved ? <p className="text-sm text-accent">Saved.</p> : null}
+      {checkIn ? (
+        <RecoveryNotice
+          note={state.easeNote}
+          coachName={state.coachName || coachName}
+          coachImage={state.coachImage || coachImage}
+          message={checkIn}
+        />
+      ) : null}
       <button
         type="submit"
         disabled={pending}

@@ -52,4 +52,10 @@ export type CoachStreamEvent =
       refused: boolean;
       fallbackReason?: FallbackReason;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** Over the AI cap or the plan does not include it. The client shows a paywall prompt. */
+  | {
+      type: "paywall";
+      reason: "locked" | "ai_limit" | "ai_daily_cap" | "voice" | "read_aloud";
+      message: string;
+    };

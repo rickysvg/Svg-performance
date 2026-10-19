@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { getLatestSubscription } from "@/lib/access";
+import { getAppTier } from "@/lib/entitlements";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
 import {
   assertClipDuration,
@@ -71,7 +72,18 @@ function plannedCount(profile: {
   }).size;
 }
 
+/**
+ * The weekly check-in form is in the academy tier and Pro. Ricky only reviews check-ins
+ * from 1-on-1 coaching members (or accounts an admin turned on); see weeklyCheckInReviewed.
+ */
 export async function weeklyCheckInAllowed(userId: string, now = new Date()) {
+  if (await weeklyCheckInReviewed(userId, now)) return true;
+  const tier = await getAppTier(userId, now);
+  return tier === "academy" || tier === "pro";
+}
+
+/** 1-on-1 coaching (or an admin override): Ricky reviews and replies. */
+export async function weeklyCheckInReviewed(userId: string, now = new Date()) {
   const [subscription, profile] = await Promise.all([
     getLatestSubscription(userId),
     prisma.profile.findUnique({
@@ -93,7 +105,7 @@ async function assertCheckInAccess(userId: string, now: Date) {
   if (!allowed) {
     throw new AppError(
       "PLAN",
-      "Weekly check-ins are on 1-on-1 coaching with Ricky.",
+      "The weekly check-in is for verified academy members and Pro.",
     );
   }
 }
@@ -375,6 +387,27 @@ function presentFlags(raw: string): CheckInFlag[] {
 
 export async function listCheckInsForCoach() {
   const rows = await prisma.weeklyCheckIn.findMany({
+    // Ricky's queue: 1-on-1 coaching members and admin-enabled accounts only.
+    where: {
+      OR: [
+        { user: { profile: { weeklyCheckInOverride: "force_on" } } },
+        {
+          user: {
+            subscriptions: {
+              some: {
+                status: "active",
+                OR: [
+                  { plan: { startsWith: "coaching" } },
+                  { plan: { startsWith: "development" } },
+                  { plan: { startsWith: "elite" } },
+                  { plan: { in: ["vip", "platinum"] } },
+                ],
+              },
+            },
+          },
+        },
+      ],
+    },
     orderBy: { submittedAt: "desc" },
     take: 80,
     include: {

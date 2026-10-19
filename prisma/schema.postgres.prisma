@@ -74,6 +74,8 @@ model User {
   weeklyCheckInPrefs       WeeklyCheckInPrefs?
   pushSubscriptions        PushSubscription[]
   checkInReminderLogs      CheckInReminderLog[]
+  aiUsageEvents            AiUsageEvent[]
+  memberProReminders       MemberProReminderLog[]
 }
 
 model Session {
@@ -147,6 +149,8 @@ model Profile {
   onboardingDeepCompletedAt  DateTime?
   trialStartedAt             DateTime?
   trialEndsAt                DateTime?
+  /// Start of the 30-day free Pro month for a verified academy member. Set once.
+  memberProStartedAt         DateTime?
   planChoiceAt               DateTime?
   thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
@@ -238,6 +242,14 @@ model OutsideSessionLog {
   minutesPerRound Int
   intensity       String   @default("")
   notes           String   @default("")
+  /** 1–5, how the sparring session went. Null on logs saved before ratings. */
+  sessionRating   Int?
+  /** 1–5, how the body feels. 1–2 eases the next day. */
+  bodyRating      Int?
+  /** JSON array of sore spots: head, neck, ribs, shins, hands, knees, shoulders, other. */
+  soreSpots       String   @default("[]")
+  /** Check-in from the member's chosen AI coach when the next day is eased. */
+  coachCheckIn    String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -513,6 +525,8 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
+  /// True when this subscription holds a founding seat ($59/yr, first 100).
+  founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")
   createdAt            DateTime @default(now())
@@ -520,6 +534,7 @@ model Subscription {
 
   @@index([userId])
   @@index([stripeSubscriptionId])
+  @@index([founding, status])
 }
 
 model ReminderPrefs {
@@ -1251,4 +1266,34 @@ model CheckInReminderLog {
 
   @@unique([userId, weekKey, kind])
   @@index([userId, weekKey])
+}
+
+/// One metered AI use: a chat or logger-note message, voice seconds, or a read-aloud.
+model AiUsageEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** message | voice | read_aloud */
+  kind      String
+  /** chat | note | speak | today_summary */
+  surface   String   @default("")
+  /** 1 per message or read-aloud; seconds for voice */
+  units     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+}
+
+/// Day 25 / 29 / 31 reminders for the member Pro month. One row per stage.
+model MemberProReminderLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** day25 | day29 | day31 */
+  stage   String
+  /** push | in_app */
+  channel String   @default("push")
+  sentAt  DateTime @default(now())
+
+  @@unique([userId, stage])
 }

@@ -9,7 +9,6 @@ import {
   isBnplStripeError,
   KLARNA_MIN_CENTS,
   skuHighlightsFinancing,
-  skuOffersBnpl,
   SKU_AMOUNT_CENTS,
 } from "@/lib/bnpl";
 import { createBnplCheckoutSession, getStripe } from "@/lib/stripe";
@@ -56,11 +55,10 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
     expect(checkoutPaymentMethodTypes(1900, "eur")).toEqual(["card"]);
   });
 
-  it("offers Klarna on $19/$29 Performance SKUs but not Affirm", () => {
-    expect(SKU_AMOUNT_CENTS.gym).toBe(1900);
-    expect(SKU_AMOUNT_CENTS.standalone).toBe(2900);
-    expect(checkoutPaymentMethodTypes(SKU_AMOUNT_CENTS.gym)).toEqual(["card", "klarna"]);
-    expect(skuOffersBnpl("gym")).toBe(true);
+  it("keeps the $9.99 Pro SKUs card-only (below the Klarna minimum)", () => {
+    expect(SKU_AMOUNT_CENTS.gym).toBe(999);
+    expect(SKU_AMOUNT_CENTS.standalone).toBe(999);
+    expect(checkoutPaymentMethodTypes(SKU_AMOUNT_CENTS.gym)).toEqual(["card"]);
     expect(skuHighlightsFinancing("gym")).toBe(false);
     expect(skuHighlightsFinancing("standalone")).toBe(false);
   });

@@ -19,6 +19,7 @@ describe("vercel.json crons", () => {
     expect(config.crons.map((row) => `${row.path} ${row.schedule}`)).toEqual([
       "/api/cron/gymdesk 0 12 * * *",
       "/api/cron/checkins 0 0 * * *",
+      "/api/cron/member-pro 0 16 * * *",
     ]);
     for (const cron of config.crons) {
       expect(hobbyCronRunsMoreThanDaily(cron.schedule)).toBe(false);

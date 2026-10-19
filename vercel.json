@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/checkins",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/member-pro",
+      "schedule": "0 16 * * *"
     }
   ]
 }

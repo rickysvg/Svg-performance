@@ -29,10 +29,14 @@ export default async function OnboardingPlanPage() {
             <Link href="/verify-email" className="text-accent underline-offset-4 hover:underline">
               Confirm your email
             </Link>{" "}
-            before starting a trial so we can match academy records for the 14-day member trial.
+            before starting a trial so we can match academy records for your 30-day member Pro month.
           </p>
         ) : null}
-        <PlanChoiceForm verified={trial.verified} trialDays={trial.trialLengthDays} />
+        <PlanChoiceForm
+          verified={trial.verified}
+          trialDays={trial.trialLengthDays}
+          canStartTrial={trial.canStartTrial}
+        />
       </main>
     </div>
   );
