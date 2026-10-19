@@ -28,7 +28,7 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
     const profile = await getProfileForUser(userId);
     if (!profile?.gymMembershipVerified) {
       throw new ForbiddenError(
-        "Gym-member prices are only available after we verify your SVG MMA Academy membership. Checking the box yourself is not enough.",
+        "That checkout needs a verified SVG MMA Academy membership. Checking the box yourself is not enough. Academy members get the app free — gym dues stay separate.",
       );
     }
   }

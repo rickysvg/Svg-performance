@@ -48,20 +48,23 @@ describe("member free tier and Performance trial", () => {
     await prisma.$disconnect();
   });
 
-  it("keeps verified members and nonmembers on the free tier without a trial", async () => {
+  it("gives verified academy members the full app and leaves nonmembers on free", async () => {
     const member = await makeUser("free-member@example.com");
     await verifyMember(member.id);
     const guest = await makeUser("free-guest@example.com");
 
-    expect(await getEffectivePlanId(member.id)).toBe("member_access");
+    expect(await getEffectivePlanId(member.id)).toBe("performance");
     expect(await getEffectivePlanId(guest.id)).toBe("member_access");
     expect(await canUseFeature(member.id, "training")).toBe(true);
-    expect(await canUseFeature(member.id, "learn_beginner")).toBe(true);
-    expect(await canUseFeature(member.id, "learn_full")).toBe(false);
-    expect(await canUseFeature(member.id, "nutrition")).toBe(false);
-    expect(await canUseFeature(member.id, "ai")).toBe(false);
-    expect(await canUseFeature(member.id, "daily_quote")).toBe(false);
-    expect((await canUseMemberTools(member.id)).allowed).toBe(false);
+    expect(await canUseFeature(member.id, "learn_full")).toBe(true);
+    expect(await canUseFeature(member.id, "nutrition")).toBe(true);
+    expect(await canUseFeature(member.id, "ai")).toBe(true);
+    expect(await canUseFeature(member.id, "fight_camp")).toBe(true);
+    expect(await canUseFeature(member.id, "form_check")).toBe(true);
+    expect(await canUseFeature(member.id, "coaching")).toBe(false);
+    expect(await canUseFeature(guest.id, "nutrition")).toBe(false);
+    expect((await canUseMemberTools(member.id)).allowed).toBe(true);
+    expect((await canUseMemberTools(guest.id)).allowed).toBe(false);
   });
 
   it("treats an active trial as Performance", async () => {

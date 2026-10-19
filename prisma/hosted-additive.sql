@@ -476,6 +476,54 @@ BEGIN
   END IF;
 END $$;
 
+-- Sparring session rating, body rating, and sore spots. Additive.
+DO $$
+BEGIN
+  IF to_regclass('public."OutsideSessionLog"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'OutsideSessionLog'
+      AND column_name = 'sessionRating'
+  ) THEN
+    ALTER TABLE "OutsideSessionLog" ADD COLUMN "sessionRating" INTEGER;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'OutsideSessionLog'
+      AND column_name = 'bodyRating'
+  ) THEN
+    ALTER TABLE "OutsideSessionLog" ADD COLUMN "bodyRating" INTEGER;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'OutsideSessionLog'
+      AND column_name = 'soreSpots'
+  ) THEN
+    ALTER TABLE "OutsideSessionLog" ADD COLUMN "soreSpots" TEXT NOT NULL DEFAULT '[]';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'OutsideSessionLog'
+      AND column_name = 'coachCheckIn'
+  ) THEN
+    ALTER TABLE "OutsideSessionLog" ADD COLUMN "coachCheckIn" TEXT NOT NULL DEFAULT '';
+  END IF;
+END $$;
+
 -- Spoken daily briefing. Additive, idempotent.
 DO $$
 BEGIN

@@ -169,4 +169,5 @@ export function paidPlanPriceCopy(plan: CatalogPlan, verified: boolean) {
   };
 }
 
-export const ACADEMY_PRICE_HINT = "Train at SVG MMA Academy? Get the member price.";
+export const ACADEMY_PRICE_HINT =
+  "Train at SVG MMA Academy? Verified members get the full app free. Gym dues stay separate.";

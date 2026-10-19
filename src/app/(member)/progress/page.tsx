@@ -21,7 +21,8 @@ import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion"
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
-import { sparringLogsForWeek, sparringMinutes } from "@/lib/outside-log";
+import { sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
+import { SparringTrend } from "@/components/progress/SparringTrend";
 
 function MetricTile({
   title,
@@ -58,6 +59,7 @@ export default async function ProgressPage() {
   const units = profile?.preferredUnits ?? "lb";
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
+  const trend = await sparringTrend(user.id);
   const records = await getPersonalRecordsForUser(user.id, units);
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
@@ -147,6 +149,8 @@ export default async function ProgressPage() {
               <li key={log.dateKey}>
                 {log.weekday || log.dateKey}: {log.rounds} × {log.minutesPerRound} min
                 {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
+                {log.sessionRating ? ` · session ${log.sessionRating}/5` : ""}
+                {log.bodyRating ? ` · body ${log.bodyRating}/5` : ""}
               </li>
             ))}
           </ul>
@@ -154,6 +158,8 @@ export default async function ProgressPage() {
           <p className="mt-2 text-sm text-muted">No sparring logged this week.</p>
         )}
       </section>
+
+      <SparringTrend logs={trend} />
 
       <Link
         href="/progress/photos"

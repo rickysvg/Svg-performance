@@ -106,7 +106,7 @@ export async function assertCanUploadClip(userId: string) {
   if (!planHasCoachReview(planId)) {
     throw new AppError(
       "CLIP",
-      "Timestamped video feedback is for Fighter Development and higher. Lower plans stay locked on purpose.",
+      "Timestamped video feedback is on 1-on-1 Coaching with Ricky. Lower plans stay locked on purpose.",
     );
   }
 }
@@ -198,7 +198,7 @@ export async function addClipTimestampNote(input: {
   });
   const planId = await getEffectivePlanId(clip.userId);
   if (!planHasCoachReview(planId)) {
-    throw new AppError("CLIP", "Timestamped notes are for Fighter Development and higher.");
+    throw new AppError("CLIP", "Timestamped notes are on 1-on-1 Coaching with Ricky.");
   }
   const correction = input.correction.trim().slice(0, 800);
   if (!correction) {

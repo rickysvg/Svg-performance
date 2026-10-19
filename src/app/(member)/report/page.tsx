@@ -49,9 +49,9 @@ export default async function WeeklyReportPage() {
           )
         ) : (
           <p className="mt-2 text-sm text-muted">
-            Personal comments start on Fighter Development.{" "}
+            Personal comments start on 1-on-1 Coaching with Ricky.{" "}
             <Link href="/pricing" className="text-accent underline">
-              See coaching plans
+              See pricing
             </Link>
           </p>
         )}

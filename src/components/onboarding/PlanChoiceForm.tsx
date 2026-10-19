@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { continueFreePlanAction, startTrialAction } from "@/app/actions/trial";
 
 export function PlanChoiceForm({
@@ -7,24 +8,50 @@ export function PlanChoiceForm({
   verified: boolean;
   trialDays: number;
 }) {
-  const title = verified ? "Your free member plan is ready" : "Your free preview is ready";
-  const trialButton = `Start ${trialDays} days of Performance free`;
+  if (verified) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <p className="font-display text-xs uppercase tracking-[0.06em] text-black">Free</p>
+          <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
+            The full app is included
+          </h1>
+          <p className="mt-3 text-sm text-muted">
+            Verified SVG Academy members get every app feature free. Gym dues stay on Gymdesk
+            and are not part of this price.
+          </p>
+        </div>
+        <form action={continueFreePlanAction}>
+          <input type="hidden" name="next" value="/onboarding/deeper" />
+          <button
+            type="submit"
+            className="touch-target w-full rounded-full bg-accent text-black"
+          >
+            Continue
+          </button>
+        </form>
+        <p className="text-sm text-muted">
+          Want 1-on-1 with Ricky later?{" "}
+          <Link href="/pricing" className="text-accent underline">
+            See pricing
+          </Link>
+          . Checkout is coming soon.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
-          {verified ? "SVG Member Access" : "Free preview"}
-        </p>
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">Free</p>
         <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
-          {title}
+          Start with {trialDays} days
         </h1>
         <p className="mt-3 text-sm text-muted">
-          Workout logging, beginner tutorials, one starter program, announcements,
-          shop links, and a daily quote teaser
-          {verified ? " come with your academy membership." : " stay open on the free preview."}{" "}
-          Performance adds the full Learn library, food tracking, SVG Coach, and
-          progress charts.
+          A {trialDays}-day trial opens the full app. After that, the free version is the
+          workout log, timers, and 1 sample plan. SVG Performance is $9.99/mo or $79/yr.
+          Academy members get the full app free once verified.
         </p>
       </div>
 
@@ -34,7 +61,7 @@ export function PlanChoiceForm({
           type="submit"
           className="touch-target w-full rounded-full bg-accent text-black"
         >
-          {trialButton}
+          Start {trialDays} days free
         </button>
       </form>
 
@@ -44,11 +71,13 @@ export function PlanChoiceForm({
           type="submit"
           className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
         >
-          Continue with free plan
+          Continue with the free plan
         </button>
       </form>
 
-      <p className="text-sm text-muted">You can upgrade anytime from Profile.</p>
+      <p className="text-sm text-muted">
+        Paid checkout is coming soon. You can look at pricing anytime from Profile.
+      </p>
     </div>
   );
 }

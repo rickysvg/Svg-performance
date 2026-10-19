@@ -37,13 +37,15 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
-          {trial.trialActive
-            ? "Performance trial is active. When it ends you return to the free plan automatically."
+          {trial.verified && entitlements.planId === "performance" && !subscription
+            ? "Verified SVG Academy member. The full app is free. Gym dues stay on Gymdesk."
+            : trial.trialActive
+              ? `Your ${trial.trialLengthDays}-day Performance trial is active. When it ends you return to the free plan: workout log, timers, and 1 sample plan.`
             : subscription
               ? `${subscription.plan} / ${subscription.status}${
                   subscription.source === "admin" ? " · admin override" : " · webhook"
                 }`
-              : "Member Access — no paid subscription row."}
+              : "Free plan — workout log, timers, and 1 sample plan."}
         </p>
         {!configured ? (
           <p className="mt-3 text-sm text-muted">

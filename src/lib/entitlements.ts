@@ -20,12 +20,17 @@ export async function getEffectivePlanId(userId: string, now = new Date()): Prom
     subscription?.status === "active" &&
     !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < now)
   ) {
-    return normalizePlanId(subscription.plan);
+    const plan = normalizePlanId(subscription.plan);
+    if (plan !== "member_access") return plan;
   }
   const profile = await prisma.profile.findUnique({
     where: { userId },
-    select: { trialEndsAt: true },
+    select: { trialEndsAt: true, gymMembershipVerified: true },
   });
+  // Verified SVG Academy members get the full app. Gymdesk dues are separate.
+  if (profile?.gymMembershipVerified) {
+    return "performance";
+  }
   if (isTrialActive(profile?.trialEndsAt ?? null, now)) {
     return "performance";
   }

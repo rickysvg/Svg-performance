@@ -72,7 +72,7 @@ async function assertFormCheckAccess(userId: string, now: Date) {
   if (!allowed) {
     throw new AppError(
       "PLAN",
-      "Form check is on Performance. Paid plans coming soon.",
+      "Form check is on SVG Performance. Verified academy members get the app free. Paid plans coming soon.",
     );
   }
 }

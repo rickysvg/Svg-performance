@@ -52,7 +52,7 @@ export async function listWaitlist(plan?: CatalogPlanId) {
 }
 
 export async function listSeatStatus() {
-  const ids = ["elite", "vip", "platinum"] as const;
+  const ids = ["coaching", "elite", "vip", "platinum"] as const;
   const rows = await Promise.all(
     ids.map(async (id) => ({
       id,

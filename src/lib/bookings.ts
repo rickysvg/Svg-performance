@@ -17,7 +17,7 @@ export const BOOKING_PREP: Record<BookingKind, string[]> = {
     "List preferred times. We do not invent Ricky’s calendar.",
   ],
   intensive_elpaso: [
-    "Read the Platinum package copy. This is a request stub, not a deposit.",
+    "This is an application, not a deposit. In-person intensives and VIP are requested here.",
     "Travel to El Paso is on you unless quoted otherwise.",
     "Bring training history and one written goal. No invented itinerary until a coach writes next steps.",
   ],
@@ -43,15 +43,7 @@ export async function createBookingRequestForUser(
   let usesIncludedCredit = false;
   if (input.kind === "mindset" || input.kind === "entrepreneur") {
     const remaining = await remainingCredit(userId, "strategy_45");
-    usesIncludedCredit = remaining > 0 && (planId === "vip" || planId === "platinum");
-  }
-  if (input.kind === "intensive_elpaso" || input.kind === "intensive_travel") {
-    if (planId !== "platinum") {
-      throw new AppError(
-        "BOOKING",
-        "Platinum intensives are a request stub for Platinum members. This is not a live deposit.",
-      );
-    }
+    usesIncludedCredit = remaining > 0 && (planId === "vip" || planId === "platinum" || planId === "coaching");
   }
   return prisma.bookingRequest.create({
     data: {

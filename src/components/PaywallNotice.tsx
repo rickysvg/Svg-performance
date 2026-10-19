@@ -8,15 +8,15 @@ export function PaywallNotice({ feature }: { feature: string }) {
       </p>
       <h1 className="mt-2 text-2xl">{feature}</h1>
       <p className="mt-2 text-sm text-muted">
-        Stripe TEST keys are configured on this server, so this tool needs a
-        webhook-confirmed Performance+ plan — not just the browser redirect.
-        Member Access still has basic training, progress, shop, and beginner Learn.
+        This opens on SVG Performance ($9.99/mo or $79/yr) or with a verified SVG Academy
+        membership. The free plan keeps the workout log, timers, and 1 sample plan. Paid
+        plans coming soon.
       </p>
       <Link
         href="/pricing"
         className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
       >
-        View TEST plans
+        See pricing
       </Link>
     </section>
   );

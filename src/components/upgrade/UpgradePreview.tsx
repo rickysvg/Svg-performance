@@ -76,7 +76,10 @@ export function UpgradePreview({
           </button>
         ) : null}
       </div>
-      <p className="mt-3 text-xs text-muted">You can upgrade anytime from Profile.</p>
+      <p className="mt-3 text-xs text-muted">
+        SVG Performance is $9.99/mo or $79/yr. Verified SVG Academy members get the full app
+        free. Paid plans coming soon. You can look at pricing anytime from Profile.
+      </p>
     </section>
   );
 }

@@ -11,6 +11,7 @@ export const AI_DISCLAIMER = `${COACH_AI_BLURB} For injuries or pain, talk to a 
 export const CATALOG_PLAN_IDS = [
   "member_access",
   "performance",
+  "coaching",
   "fighter_conditioning",
   "fighter_development",
   "elite",
@@ -75,18 +76,15 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
   member_access: {
     id: "member_access",
     section: "app",
-    label: "SVG Member Access",
-    gymPriceLabel: "Included",
-    nonmemberPriceLabel: "Free preview",
+    label: "Free",
+    gymPriceLabel: "Free",
+    nonmemberPriceLabel: "Free",
     summary:
-      "Basic logging and selected beginner notes. Gym members get this with membership. Others get a free preview only.",
+      "Workout log, timers, and 1 sample plan after a 7-day trial. Verified SVG Academy members get the full app free. Gym dues stay on Gymdesk.",
     includes: [
-      "Basic workout + progress logging",
-      "Selected beginner tutorials",
-      "One starter DEMO program",
-      "Gym announcements (when posted)",
-      "Shop links to svgandco.com",
-      "One free daily-quote teaser (full quotes on Performance+)",
+      "Workout log",
+      "Timers",
+      "1 sample plan",
     ],
     rank: 0,
     features: ["training", "progress", "shop", "learn_beginner"],
@@ -98,19 +96,18 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     id: "performance",
     section: "app",
     label: "SVG Performance",
-    gymPriceLabel: "$19/mo",
-    nonmemberPriceLabel: "$29/mo",
-    summary: "Self-guided app: full library, fuel logging, and SVG Coach.",
+    gymPriceLabel: "$9.99/mo",
+    nonmemberPriceLabel: "$9.99/mo",
+    summary:
+      "The full app. $9.99/month or $79/year. Founding price $59/year for the first 250 members. Same price for everyone. Not gym dues.",
     includes: [
-      "Everything in Member Access",
-      "Full general tutorial library",
-      "Calorie / macro tracking (manual estimates)",
-      "Meal ideas and progress charts",
+      "Full training plans",
+      "Fight camp",
       "SVG Coach (AI coach)",
-      "Daily motivational quote",
-      "Full mobility progression and check-in history",
-      "Fight camp countdown",
-      "Two form checks a month, reviewed by a real coach",
+      "Mobility",
+      "Fuel",
+      "Form check",
+      "Sparring log",
     ],
     rank: 1,
     features: [
@@ -121,6 +118,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "learn_full",
       "nutrition",
       "ai",
+      "conditioning",
       "daily_quote",
       "mobility_pro",
       "fight_camp",
@@ -130,6 +128,41 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     credits: {},
     cap: null,
     responseTime: null,
+  },
+  coaching: {
+    id: "coaching",
+    section: "coaching",
+    label: "1-on-1 Coaching with Ricky",
+    gymPriceLabel: "$249/mo",
+    nonmemberPriceLabel: "$249/mo",
+    summary:
+      "Custom programming with Ricky. Limited to 20 athletes. App plan only — gym dues are separate.",
+    includes: [
+      "Custom programming",
+      "Weekly AI-assisted check-ins reviewed by Ricky",
+      "Video form reviews",
+      "Everything in SVG Performance",
+    ],
+    rank: 7,
+    features: [
+      "training",
+      "progress",
+      "shop",
+      "learn_beginner",
+      "learn_full",
+      "nutrition",
+      "ai",
+      "conditioning",
+      "coaching",
+      "daily_quote",
+      "mobility_pro",
+      "fight_camp",
+      "form_check",
+      "progress_history",
+    ],
+    credits: { checkin_30: 4, video_review: 4 },
+    cap: 20,
+    responseTime: "Within 2 business days",
   },
   fighter_conditioning: {
     id: "fighter_conditioning",
@@ -307,6 +340,7 @@ export const PLAN_CAPS = {
   elite: PLAN_CATALOG.elite.cap ?? 6,
   vip: PLAN_CATALOG.vip.cap ?? 2,
   platinum: PLAN_CATALOG.platinum.cap ?? 1,
+  coaching: PLAN_CATALOG.coaching.cap ?? 20,
 } as const;
 
 export type CheckoutSkuId =
@@ -339,7 +373,11 @@ export type CheckoutSkuId =
   | "elite_6mo_gym"
   | "elite_6mo_non"
   | "vip"
-  | "platinum";
+  | "platinum"
+  | "performance_monthly"
+  | "performance_year"
+  | "performance_founding"
+  | "coaching_monthly";
 
 export type CheckoutSku = {
   id: CheckoutSkuId;
@@ -684,6 +722,50 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     checkoutEnabled: true,
     checkoutMode: "payment",
   },
+  performance_monthly: {
+    id: "performance_monthly",
+    catalogId: "performance",
+    audience: "both",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_MONTHLY",
+    amountLabel: "$9.99/mo",
+    amountCents: 999,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "subscription",
+  },
+  performance_year: {
+    id: "performance_year",
+    catalogId: "performance",
+    audience: "both",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_YEAR",
+    amountLabel: "$79/yr",
+    amountCents: 7900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "subscription",
+  },
+  performance_founding: {
+    id: "performance_founding",
+    catalogId: "performance",
+    audience: "both",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING",
+    amountLabel: "$59/yr",
+    amountCents: 5900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "subscription",
+  },
+  coaching_monthly: {
+    id: "coaching_monthly",
+    catalogId: "coaching",
+    audience: "both",
+    envPrice: "STRIPE_PRICE_COACHING_MONTHLY",
+    amountLabel: "$249/mo",
+    amountCents: 24900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "subscription",
+  },
 };
 
 /** Legacy names used by existing Stripe TEST docs and tests. */
@@ -721,6 +803,7 @@ export function normalizePlanId(plan: string): CatalogPlanId {
   if (plan.startsWith("conditioning_")) return "fighter_conditioning";
   if (plan.startsWith("development_")) return "fighter_development";
   if (plan.startsWith("elite_")) return "elite";
+  if (plan === "coaching" || plan.startsWith("coaching_")) return "coaching";
   if (isCatalogPlanId(plan)) return plan;
   return "member_access";
 }
@@ -762,7 +845,7 @@ export const BOOKING_OFFERS = {
     label: "Fighter Mindset",
     priceLabel: "$75",
     duration: "30 min",
-    summary: "Standalone extra. VIP includes 1×45 strategy/month; Platinum includes 2×45 (either topic).",
+    summary: "Standalone extra. Not included with the app plans.",
   },
   entrepreneur: {
     id: "entrepreneur" as const,

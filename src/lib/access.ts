@@ -31,9 +31,10 @@ export async function hasWebhookGrantedAccess(userId: string) {
 /**
  * Training stays open for every signed-in member.
  * Nutrition / SVG Coach require Performance+ (nutrition feature),
+ * a verified SVG Academy membership (full app, not gym dues),
  * an active no-card trial, or an admin/staff plan override.
  * Missing Stripe keys do not unlock those tools.
- * Learn stays reachable on Member Access as beginner-only.
+ * Learn stays reachable on the free plan as beginner-only.
  */
 export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
@@ -49,8 +50,11 @@ export async function canUseMemberTools(userId: string): Promise<{
   }
   const profile = await prisma.profile.findUnique({
     where: { userId },
-    select: { trialEndsAt: true },
+    select: { trialEndsAt: true, gymMembershipVerified: true },
   });
+  if (profile?.gymMembershipVerified) {
+    return { allowed: true, reason: "subscribed" };
+  }
   if (isTrialActive(profile?.trialEndsAt ?? null)) {
     return { allowed: true, reason: "subscribed" };
   }

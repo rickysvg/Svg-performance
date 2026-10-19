@@ -232,6 +232,14 @@ model OutsideSessionLog {
   minutesPerRound Int
   intensity       String   @default("")
   notes           String   @default("")
+  /** 1–5, how the sparring session went. Null on logs saved before ratings. */
+  sessionRating   Int?
+  /** 1–5, how the body feels. 1–2 eases the next day. */
+  bodyRating      Int?
+  /** JSON array of sore spots: head, neck, ribs, shins, hands, knees, shoulders, other. */
+  soreSpots       String   @default("[]")
+  /** Check-in from the member's chosen AI coach when the next day is eased. */
+  coachCheckIn    String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

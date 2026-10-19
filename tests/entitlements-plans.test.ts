@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { AppError, ForbiddenError } from "@/lib/errors";
+import { ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 import { canUseFeature, getEffectivePlanId } from "@/lib/entitlements";
 import { canUseMemberTools } from "@/lib/access";
@@ -188,13 +188,13 @@ describe("M5 entitlements, caps, and booking credits", () => {
       targetUserId: perf.id,
       plan: "performance",
     });
-    await expect(
-      createBookingRequestForUser(perf.id, {
-        kind: "intensive_elpaso",
-        preferredTimes: "Next month",
-        note: "",
-      }),
-    ).rejects.toBeInstanceOf(AppError);
+    const applied = await createBookingRequestForUser(perf.id, {
+      kind: "intensive_elpaso",
+      preferredTimes: "Next month",
+      note: "",
+    });
+    expect(applied.kind).toBe("intensive_elpaso");
+    expect(applied.usesIncludedCredit).toBe(false);
 
     await expect(
       markCreditUsed({

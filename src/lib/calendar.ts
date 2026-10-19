@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { sparringLogsForWeek } from "@/lib/outside-log";
+import { easePlanForUser } from "@/lib/recovery-ease";
+import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
@@ -61,6 +63,8 @@ export type CalendarDay = {
     timeLabel: string;
     saved: SparringLog | null;
   } | null;
+  easeNote?: string | null;
+  coachCheckIn?: { name: string; image: string; message: string } | null;
 };
 
 export type ProgramDaySummary = {
@@ -278,7 +282,11 @@ export async function getCalendarSchedule(
   }));
 
   for (const day of days) {
-    const plan = planForDate(prefs, day.date, tz, swaps);
+    const built = planForDate(prefs, day.date, tz, swaps);
+    const eased = await easePlanForUser(userId, day.date, tz, built);
+    const plan = eased.plan;
+    day.easeNote = plan.easeNote ?? null;
+    day.coachCheckIn = eased.checkIn;
     const resolved = resolvePlanSessions(plan, { strength, skill });
     const dayKey = formatDayParam(day.date, tz);
     const doneIds = completedDayIds.get(dayKey) ?? new Set<string>();
@@ -356,8 +364,11 @@ export async function getCalendarSchedule(
 
   const titles = [skill?.title, strength?.title].filter((title): title is string => Boolean(title));
 
+  const coach = resolveAiCoach(profile?.aiCoachId);
   return {
     programTitle: titles.join(" · ") || null,
     days,
+    coachName: coach.name,
+    coachImage: coach.circle,
   };
 }
