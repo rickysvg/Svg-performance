@@ -19,6 +19,7 @@ describe("lift set caps", () => {
     for (const band of bands) {
       for (const day of demoStrengthDays()) {
         for (const exercise of day.exercises.create) {
+          const written = /written for this week/i.test(exercise.notes ?? "");
           const scaled = scaleExercise(
             {
               name: exercise.name,
@@ -30,6 +31,10 @@ describe("lift set caps", () => {
             },
             { band, programSlug: "demo-strength-base", dayNumber: day.dayNumber },
           );
+          if (written) {
+            expect(scaled.sets, `${band} day ${day.dayNumber} ${scaled.name}`).toBe(exercise.sets);
+            continue;
+          }
           const role = exerciseSetRole(scaled);
           if (role === "conditioning") continue;
           const cap = role === "main" ? MAIN_LIFT_MAX_SETS : ACCESSORY_MAX_SETS;
@@ -103,14 +108,19 @@ describe("lift set caps", () => {
   });
 
   it("caps no-gym lifts and leaves the bike substitute volumes", () => {
-    const tempo = floorSessionForDay(6, DEMO_PROGRAM_SLUG, "intermediate");
-    expect(tempo?.exercises.find((exercise) => exercise.name === "Air squat")?.sets).toBe(8);
+    const easy = floorSessionForDay(6, DEMO_PROGRAM_SLUG, "intermediate");
+    expect(easy?.title).toMatch(/easy aerobic/i);
+    expect(easy?.exercises.find((exercise) => exercise.name === "Air squat")?.sets).toBe(4);
+    const sunday = floorSessionForDay(8, DEMO_PROGRAM_SLUG, "intermediate");
+    expect(easy?.exercises.map((exercise) => exercise.name)).toEqual(
+      sunday?.exercises.map((exercise) => exercise.name),
+    );
     const power = floorSessionForDay(5, DEMO_PROGRAM_SLUG, "advanced");
     expect(power?.exercises.find((exercise) => exercise.name === "Broad jump")?.sets).toBe(6);
 
     for (const band of bands) {
       for (const days of Object.values(STRENGTH_DAY_BY_BLOCK)) {
-        for (const dayNumber of [days.monday, days.tuesday, days.wednesday, days.thursday, days.friday]) {
+        for (const dayNumber of [days.monday, days.tuesday, days.thursday]) {
           const session = floorSessionForDay(dayNumber, DEMO_PROGRAM_SLUG, band);
           for (const exercise of session?.exercises ?? []) {
             const role = exerciseSetRole({
@@ -127,25 +137,21 @@ describe("lift set caps", () => {
     }
   });
 
-  it("keeps RIR, percent, and rest on a capped advanced squat", () => {
-    const day = demoStrengthDays().find((row) => row.dayNumber === 1);
-    const goblet = day?.exercises.create.find((exercise) => exercise.name === "Goblet squat");
+  it("keeps RIR, percent, and a long rest on an unlocked advanced squat", () => {
     const advanced = scaleExercise(
       {
-        name: goblet!.name,
-        sets: goblet!.sets,
-        reps: goblet!.reps,
-        loadText: goblet!.loadText,
-        restSeconds: goblet!.restSeconds,
-        notes: goblet!.notes,
+        name: "Goblet squat",
+        sets: 3,
+        reps: "8",
+        loadText: "Moderate",
+        restSeconds: 90,
       },
-      { band: "advanced", programSlug: "demo-strength-base", dayNumber: 1 },
+      { band: "advanced", programSlug: "demo-strength-base", dayNumber: 2 },
     );
-    expect(goblet?.sets).toBe(4);
     expect(advanced.sets).toBe(4);
     expect(advanced.loadText).toMatch(/0-2 RIR/);
     expect(advanced.loadText).toMatch(/~80% of a 5-rep max/);
-    expect(advanced.restSeconds).toBe(45);
+    expect(advanced.restSeconds).toBe(120);
     expect(advanced.reps).toBe("5–6");
   });
 });

@@ -132,10 +132,11 @@ describe("DEMO form videos", () => {
     expect(stale.pending).toBe(false);
 
     const neck = lookupFormVideo("Neck isometric matrix");
-    expect(neck.pending).toBe(true);
+    expect(neck.pending).toBe(false);
     expect(neck.omit).toBe(false);
-    expect(neck.url).toBe("");
-    expect(showFormVideoPending(neck)).toBe(true);
+    expect(neck.url).toMatch(/LPIKF7Rrzc0/);
+    expect(isYoutubeFormUrl(neck.url)).toBe(true);
+    expect(showFormVideoPending(neck)).toBe(false);
 
     const staleShadow = lookupFormVideo("Shadowbox round 1 — empty hands", [
       {

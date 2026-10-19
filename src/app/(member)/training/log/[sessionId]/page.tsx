@@ -13,6 +13,8 @@ import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
+import { planWeekIndex } from "@/lib/week-plan";
+import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import { applyGymExerciseName, gymHistoryNames, rekeyGymRecord } from "@/lib/gym-exercise";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { alignWorkoutWithSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
@@ -69,6 +71,8 @@ export default async function WorkoutLogPage({
           band,
           programSlug: session.programDay.program.slug,
           weightAccess: profile?.weightAccess,
+          weekIndex: planWeekIndex(new Date(), tz, profile?.onboardingCompletedAt ?? null),
+          campPhase: (await getActiveCampSnapshot(user.id, new Date(), tz))?.phase ?? null,
         },
       )
     : null;

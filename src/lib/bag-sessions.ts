@@ -117,7 +117,7 @@ export const BAG_ROUND_SECONDS: Record<ScaleBand, number> = {
 
 export const BAG_REST_SECONDS: Record<ScaleBand, number> = {
   beginner: 45,
-  intermediate: 45,
+  intermediate: 60,
   advanced: 30,
 };
 

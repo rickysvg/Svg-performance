@@ -10,7 +10,7 @@ import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
-import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
+import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { timeZoneForUser } from "@/lib/profile";
@@ -244,6 +244,7 @@ export async function getCalendarSchedule(
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
+    weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
   });
   const completedDayIds = new Map<string, Set<string>>();
   const loggedTitles = new Map<string, string[]>();

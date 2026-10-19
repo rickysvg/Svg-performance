@@ -37,6 +37,7 @@ import {
 import {
   nextActiveDate,
   planForDate,
+  planWeekIndex,
   resolvePlanSessions,
   weekdayInAppZone,
   weekStrip,
@@ -250,6 +251,7 @@ export async function getHomeToday(
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
+    weekIndex: planWeekIndex(selected, tz, profile?.onboardingCompletedAt ?? null),
   });
   const hasCatalog = Boolean(strength || skill);
 

@@ -34,6 +34,7 @@ const EXACT: Record<string, readonly string[]> = {
   "Side plank": ["trunk brace"],
   "Dead bug": ["trunk brace"],
   "Dumbbell bench press": ["pressing strength"],
+  "Single-arm dumbbell bench press": ["pressing strength"],
   "Floor press": ["pressing strength"],
   "Overhead press": ["pressing strength"],
   "Single-arm overhead press": ["pressing strength"],

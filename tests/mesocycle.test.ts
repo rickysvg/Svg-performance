@@ -22,11 +22,12 @@ import { resetDatabase } from "./helpers";
 const BAG_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 describe("3-week mesocycle", () => {
-  it("maps week index 0, 1, 2, 3 onto blocks A, B, C, A", () => {
+  it("maps week index 0, 1, 2, 3 onto blocks A, A, A, B", () => {
     expect(mesoBlockForWeekIndex(0)).toBe("A");
-    expect(mesoBlockForWeekIndex(1)).toBe("B");
-    expect(mesoBlockForWeekIndex(2)).toBe("C");
-    expect(mesoBlockForWeekIndex(3)).toBe("A");
+    expect(mesoBlockForWeekIndex(1)).toBe("A");
+    expect(mesoBlockForWeekIndex(2)).toBe("A");
+    expect(mesoBlockForWeekIndex(3)).toBe("B");
+    expect(mesoBlockForWeekIndex(6)).toBe("C");
     expect(mesoBlockForWeekIndex(-1)).toBe("C");
     expect(mesoBlockLabel("A")).toMatch(/Block A/);
     expect(mesoBlockLabel("B")).toMatch(/Level changes/);
@@ -36,26 +37,30 @@ describe("3-week mesocycle", () => {
   it("keeps the weekday skeleton and swaps bag and lift day numbers by block", () => {
     const monA = coreSkeletonSessions("Monday", "mma", 0);
     const wedA = coreSkeletonSessions("Wednesday", "mma", 0);
-    const monB = coreSkeletonSessions("Monday", "mma", 1);
-    const monC = coreSkeletonSessions("Monday", "mma", 2);
-    const monAgain = coreSkeletonSessions("Monday", "mma", 3);
+    const monStillA = coreSkeletonSessions("Monday", "mma", 2);
+    const monB = coreSkeletonSessions("Monday", "mma", 3);
+    const monC = coreSkeletonSessions("Monday", "mma", 6);
 
     expect(monA.map((session) => session.kind)).toEqual(["skill", "strength"]);
     expect(monA[0]?.dayNumber).toBe(bagFocusFor("Monday", "A").dayNumber);
-    expect(wedA[0]?.dayNumber).toBe(bagFocusFor("Wednesday", "A").dayNumber);
-    expect(monA[0]?.dayNumber).not.toBe(wedA[0]?.dayNumber);
-    expect(monA[0]?.label).not.toBe(wedA[0]?.label);
+    expect(wedA.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
+    expect(wedA.some((session) => session.kind === "skill")).toBe(false);
+    expect(monStillA[0]?.dayNumber).toBe(monA[0]?.dayNumber);
+    expect(monStillA[1]?.dayNumber).toBe(monA[1]?.dayNumber);
+    expect(monB[0]?.dayNumber).toBe(bagFocusFor("Monday", "B").dayNumber);
     expect(monB[0]?.dayNumber).toBe(7);
-    expect(monC[0]?.dayNumber).toBe(13);
-    expect(monAgain[0]?.dayNumber).toBe(monA[0]?.dayNumber);
-    expect(monB[1]?.dayNumber).toBe(strengthDaysForWeek(1).monday);
+    expect(monC[0]?.dayNumber).toBe(bagFocusFor("Monday", "C").dayNumber);
+    expect(monB[1]?.dayNumber).toBe(strengthDaysForWeek(3).monday);
     expect(monB[1]?.dayNumber).not.toBe(monA[1]?.dayNumber);
 
     const tue = coreSkeletonSessions("Tuesday", "mma", 1);
     const thu = coreSkeletonSessions("Thursday", "mma", 1);
-    expect(tue.map((session) => session.kind)).toEqual(["mobility"]);
-    expect(thu[0]?.kind).toBe("conditioning");
-    expect(coreSkeletonSessions("Friday", "mma", 2)[1]?.dayNumber).toBe(strengthDaysForWeek(2).tuesday);
+    expect(tue.map((session) => session.kind)).toEqual(["skill", "strength"]);
+    expect(thu.map((session) => session.kind)).toEqual(["skill", "strength"]);
+    expect(thu[1]?.label).toMatch(/light/i);
+    const friday = coreSkeletonSessions("Friday", "mma", 2);
+    expect(friday.map((session) => session.kind)).toEqual(["skill", "mobility"]);
+    expect(friday.some((session) => session.kind === "strength")).toBe(false);
   });
 
   it("writes a distinct themed round list for every weekday and block", () => {

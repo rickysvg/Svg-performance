@@ -10,8 +10,7 @@ import {
   skipsFormVideo,
   youtubeThumbSrcs,
 } from "@/lib/form-videos";
-
-const FORM_CAPTION = "Form reference (YouTube) — not an SVG-produced video";
+import { FormClipPlayer } from "@/components/training/FormClipPlayer";
 
 function PlayMark() {
   return (
@@ -104,15 +103,8 @@ export function ExerciseThumb({
   }
 
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="relative shrink-0"
-      aria-label={`Watch form: ${name}. ${FORM_CAPTION}`}
-      title={FORM_CAPTION}
-    >
+    <FormClipPlayer name={name} url={url} className="relative shrink-0">
       {frame}
-    </a>
+    </FormClipPlayer>
   );
 }

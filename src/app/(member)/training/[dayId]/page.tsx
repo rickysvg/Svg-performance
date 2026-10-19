@@ -6,6 +6,8 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
+import { planWeekIndex } from "@/lib/week-plan";
+import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { isPlyoStrengthDay } from "@/lib/mesocycle";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
@@ -28,7 +30,6 @@ import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { isDeloadWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
-import { planWeekIndex } from "@/lib/week-plan";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -55,6 +56,9 @@ export default async function TrainingDayPage({
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
   });
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const weekIndex = planWeekIndex(new Date(), tz, profile?.onboardingCompletedAt ?? null);
+  const camp = await getActiveCampSnapshot(user.id, new Date(), tz);
   let day;
   try {
     const raw = await getProgramDayById(dayId);
@@ -63,6 +67,8 @@ export default async function TrainingDayPage({
       band,
       programSlug: raw.program.slug,
       weightAccess,
+      weekIndex,
+      campPhase: camp?.phase ?? null,
     });
   } catch {
     notFound();
@@ -70,7 +76,6 @@ export default async function TrainingDayPage({
 
   const drafts = await listDraftSessionsForUser(user.id);
   const draft = drafts.find((session) => session.programDayId === day.id);
-  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const swaps = await listSwapsForDay({
     userId: user.id,
     programSlug: day.program.slug,

@@ -183,79 +183,54 @@ export function assignWeek(input: {
     };
   }
 
-  const liftTarget = resolveLiftDays(input);
-  const liftPriority: TrainingWeekday[] = [
-    "Monday",
-    "Wednesday",
-    "Friday",
-    "Thursday",
-    "Tuesday",
-    "Sunday",
-    "Saturday",
-  ];
-  const liftDays: TrainingWeekday[] = [];
-  for (const day of liftPriority) {
-    if (liftDays.length >= liftTarget) break;
+  // Saturday sparring is the martial default. Strength-only weeks do not add it.
+  if (!isScOnly(input.trainingFocus) && !byDay.has("Saturday")) {
+    const saturday: OutsideDay = { weekday: "Saturday", kind: "sparring" };
+    byDay.set("Saturday", saturday);
+    roles.Saturday.outside = saturday;
+    sparring.add("Saturday");
+    blocked.add("Saturday");
+    pre.add(prevWeekday("Saturday"));
+    preSpar.add(prevWeekday("Saturday"));
+  }
+
+  const liftCap = Math.min(3, resolveLiftDays(input));
+  const liftOrder: TrainingWeekday[] = ["Monday", "Tuesday", "Thursday"];
+  const liftKind: Partial<Record<TrainingWeekday, LiftKind>> = {
+    Monday: "lower",
+    Tuesday: "pull",
+    Thursday: "posterior",
+  };
+  for (const day of liftOrder) {
+    if (ORDER.filter((name) => roles[name].lift).length >= liftCap) break;
     if (blocked.has(day)) continue;
-    liftDays.push(day);
+    roles[day].lift = day === "Thursday" && preSpar.has(day) ? "moderate-upper" : liftKind[day] ?? "posterior";
   }
 
-  const lowerDay = liftDays.find((day) => !pre.has(day)) ?? null;
-  const upperPool: LiftKind[] = ["push", "pull", "posterior"];
-  let upperIndex = 0;
-  for (const day of liftDays) {
-    if (day === lowerDay) {
-      roles[day].lift = "lower";
-      continue;
-    }
-    if (pre.has(day)) {
-      roles[day].lift = "moderate-upper";
-      continue;
-    }
-    roles[day].lift = upperPool[Math.min(upperIndex, upperPool.length - 1)];
-    upperIndex += 1;
-  }
-
-  const mobilityDays: TrainingWeekday[] = [];
-  for (const day of ORDER) {
-    if (mobilityDays.length >= 2) break;
-    if (classDays.has(day)) mobilityDays.push(day);
-  }
-  const mobilityPriority: TrainingWeekday[] = [
-    "Tuesday",
-    "Saturday",
-    "Sunday",
-    "Thursday",
-    "Monday",
-    "Friday",
-    "Wednesday",
-  ];
-  for (const day of mobilityPriority) {
-    if (mobilityDays.length >= 2) break;
-    if (sparring.has(day) || mobilityDays.includes(day) || roles[day].lift) continue;
-    mobilityDays.push(day);
-  }
-  for (const day of mobilityPriority) {
-    if (mobilityDays.length >= 2) break;
-    if (sparring.has(day) || mobilityDays.includes(day)) continue;
-    mobilityDays.push(day);
-  }
-  mobilityDays.forEach((day, index) => {
+  const mobilityTargets: TrainingWeekday[] = isScOnly(input.trainingFocus)
+    ? ["Wednesday", "Sunday"]
+    : ["Wednesday", "Friday", "Sunday"];
+  mobilityTargets.forEach((day, index) => {
+    if (sparring.has(day)) return;
     roles[day].mobility = index === 0 ? "primary" : "secondary";
   });
 
-  const bagTarget = bagDaysForLevel(input.experienceLevel, input.trainingFocus);
-  if (bagTarget > 0) {
-    const bagDays: TrainingWeekday[] = [];
-    const bagPriority = [...liftDays, ...ORDER];
-    for (const day of bagPriority) {
-      if (bagDays.length >= bagTarget) break;
-      if (bagDays.includes(day)) continue;
+  if (!isScOnly(input.trainingFocus)) {
+    const beginner = input.experienceLevel === "beginner";
+    const bagPlan: Array<[TrainingWeekday, BagIntensity]> = beginner
+      ? [
+          ["Monday", "hard"],
+          ["Friday", "moderate"],
+        ]
+      : [
+          ["Monday", "hard"],
+          ["Tuesday", "moderate"],
+          ["Thursday", "hard"],
+          ["Friday", preSpar.has("Friday") ? "moderate" : "hard"],
+        ];
+    for (const [day, intensity] of bagPlan) {
       if (sparring.has(day) || classDays.has(day) || preClass.has(day)) continue;
-      bagDays.push(day);
-    }
-    for (const day of bagDays) {
-      roles[day].bag = preSpar.has(day) ? "moderate" : "hard";
+      roles[day].bag = intensity;
     }
   }
 
@@ -266,19 +241,9 @@ export function assignWeek(input: {
       role.cardio = "easy";
       continue;
     }
-    if (role.lift || role.bag || role.mobility) continue;
-    role.cardio = pre.has(day) ? "moderate" : "hard";
-  }
-
-  let hardIndex = 0;
-  const hardDays = ORDER.filter((day) => roles[day].cardio === "hard");
-  for (const day of hardDays) {
-    if (hardDays.length === 1) {
-      roles[day].cardio = "hard-repeats";
-      continue;
+    if (day === "Wednesday" || day === "Sunday") {
+      role.cardio = "hard-bike";
     }
-    roles[day].cardio = hardIndex === 0 ? "hard-bike" : "hard-repeats";
-    hardIndex += 1;
   }
 
   return roles;

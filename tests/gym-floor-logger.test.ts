@@ -57,7 +57,7 @@ describe("prescription slot history", () => {
   it("does not reuse the other scheme as previous load, and keeps RIR off the previous label", async () => {
     const user = await makeUser("slots@example.com");
     const program = await getDemoProgram();
-    const day = program.days[0];
+    const day = program.days.find((row) => row.dayNumber === 2)!;
     const five = prescriptionSlotKey({
       exerciseName: "Goblet squat",
       reps: "5",
@@ -262,7 +262,7 @@ describe("crash-proof logger draft", () => {
   it("syncs a logged set and the original rest end time", async () => {
     const user = await makeUser("draft-rest@example.com");
     const program = await getDemoProgram();
-    const day = program.days[0];
+    const day = program.days.find((row) => row.dayNumber === 2)!;
     const session = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day.id,
@@ -426,7 +426,7 @@ describe("today's finished program days", () => {
   it("counts a program day complete only when it was finished on that local day", async () => {
     const user = await makeUser("done-today@example.com");
     const program = await getDemoProgram();
-    const day = program.days[0];
+    const day = program.days.find((row) => row.dayNumber === 2)!;
     const other = program.days[1];
     const finished = await startWorkoutFromDay({
       userId: user.id,

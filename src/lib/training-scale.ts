@@ -3,10 +3,14 @@ import {
   BAG_ROUND_COUNTS,
   BAG_ROUND_SECONDS,
   OPTIONAL_BAG_DAY_NUMBERS,
+  bagDayNumber,
   bagMinutesForBand,
   bagRoundCountFor,
   isAdvancedLongBagDay,
 } from "@/lib/bag-sessions";
+import { campBikeBand, type CampPhase } from "@/lib/fight-camp";
+import { weekInBlock } from "@/lib/mesocycle";
+import { parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
 import { bagFocusLines, formatBagRoundNotes } from "@/lib/bag-themes";
 import {
   bikeIntervalReps,
@@ -42,6 +46,10 @@ export type ScalePrefs = {
   experienceLevel?: string | null;
   competitionStatus?: string | null;
   weightAccess?: string | null;
+  /** Member week since they started. Picks week 1–3 loads inside the block. */
+  weekIndex?: number | null;
+  /** Fight-camp phase. Bike days use a harder band of the same session. */
+  campPhase?: CampPhase | null;
 };
 
 export type ScaleableExercise = {
@@ -56,6 +64,8 @@ export type ScaleableExercise = {
   tags?: string;
   formVideoUrl?: string;
   formVideoPending?: boolean;
+  /** Week 1–3 dose is already applied. Skip Daru, set caps, and rest shrink. */
+  lockWeek?: boolean;
 };
 
 /**
@@ -155,13 +165,13 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     sets: 4,
     reps: "5–6",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy — last rep slows but stays clean",
-    restSeconds: 45,
+    restSeconds: 120,
   },
   "Romanian deadlift": {
     sets: 4,
     reps: "5",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy hinge — flat back",
-    restSeconds: 45,
+    restSeconds: 120,
   },
   "Reverse lunge": {
     sets: 3,
@@ -183,6 +193,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     sets: 4,
     reps: "8–10",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbells",
+    restSeconds: 120,
   },
   "One-arm row": {
     sets: 4,
@@ -203,7 +214,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     sets: 3,
     reps: "40–50 sec",
     loadText: "2-3 RIR · Heavy — walk tall",
-    restSeconds: 45,
+    restSeconds: 75,
   },
   "Kettlebell swing": {
     sets: 4,
@@ -271,6 +282,54 @@ function skillRestSeconds(band: ScaleBand, dayNumber: number) {
   return BAG_REST_SECONDS[band];
 }
 
+const SHORT_BAG_DAY_NUMBERS = new Set<number>([
+  bagDayNumber("Tuesday", "A"),
+  bagDayNumber("Tuesday", "B"),
+  bagDayNumber("Tuesday", "C"),
+]);
+
+function roundsForBagDay(band: ScaleBand, dayNumber: number) {
+  const full = bagRoundCountFor(band, dayNumber);
+  if (SHORT_BAG_DAY_NUMBERS.has(dayNumber)) return Math.min(4, full);
+  return full;
+}
+
+function withWeekDose(exercise: ScaleableExercise, weekIndex?: number | null): ScaleableExercise {
+  const doses = parseWeekDoses(exercise.notes);
+  if (!doses) {
+    return { ...exercise, notes: stripWeekMarker(exercise.notes) };
+  }
+  const slot = Math.min(2, Math.max(0, weekInBlock(weekIndex ?? 0) - 1));
+  const next = doses[slot];
+  if (!next) return { ...exercise, notes: stripWeekMarker(exercise.notes) };
+  return {
+    ...exercise,
+    sets: next.sets,
+    reps: next.reps,
+    loadText: next.loadText,
+    restSeconds: next.restSeconds,
+    notes: stripWeekMarker(exercise.notes),
+    lockWeek: true,
+  };
+}
+
+/** Hard compounds keep a long rest. Light finishers and power primers stay short. */
+function floorStrengthRest(name: string, rest: number) {
+  if (rest <= 0) return rest;
+  if (/neck|pallof|plank|woodchop|landmine rotation|lateral bound|squat jump|med-ball|medicine ball/i.test(name)) {
+    return rest;
+  }
+  if (/trap-bar deadlift/i.test(name)) return Math.max(rest, 150);
+  if (/bench press|overhead press|goblet squat|walking lunge|pause goblet/i.test(name)) {
+    return Math.max(rest, 120);
+  }
+  if (/farmer|suitcase/i.test(name)) return Math.max(rest, 75);
+  if (/row|pulldown|deadlift|rdl|step-up|landmine press|\blunge\b/i.test(name)) {
+    return Math.max(rest, 90);
+  }
+  return rest;
+}
+
 export function scaleExercise(
   exercise: ScaleableExercise,
   input: {
@@ -278,6 +337,8 @@ export function scaleExercise(
     programSlug?: string;
     dayNumber?: number;
     weightAccess?: WeightAccess;
+    weekIndex?: number | null;
+    campPhase?: CampPhase | null;
   },
 ): ScaleableExercise {
   const gym = prescribeGymExercise(exercise, input.band);
@@ -300,8 +361,11 @@ function scaleNamedExercise(
     programSlug?: string;
     dayNumber?: number;
     weightAccess?: WeightAccess;
+    weekIndex?: number | null;
+    campPhase?: CampPhase | null;
   },
 ): ScaleableExercise {
+  exercise = withWeekDose(exercise, input.weekIndex);
   const mode = resolveLogMode(exercise);
   const slug = input.programSlug ?? "";
   const dayNumber = input.dayNumber ?? 1;
@@ -338,7 +402,12 @@ function scaleNamedExercise(
   }
 
   if (isBikeIntervalName(exercise.name)) {
-    return scaleBikeInterval(exercise, band);
+    return scaleBikeInterval(exercise, band, input.campPhase);
+  }
+
+  if (exercise.lockWeek) {
+    const { lockWeek: _locked, ...rest } = exercise;
+    return { ...rest, logMode: mode };
   }
 
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
@@ -364,7 +433,7 @@ function scaleNamedExercise(
     }
     if (mode === "timed_round") {
       const seconds = skillRoundSeconds(band, dayNumber);
-      const rounds = bagRoundCountFor(band, dayNumber);
+      const rounds = roundsForBagDay(band, dayNumber);
       const isBagBlock = /\bbag rounds?\b/i.test(exercise.name);
       const parsed = isBagBlock && exercise.notes ? bagFocusLines(exercise.notes) : null;
       const notes =
@@ -408,16 +477,29 @@ function scaleNamedExercise(
   return { ...exercise, logMode: mode, restSeconds: restForBand(exercise.restSeconds, band) };
 }
 
-function scaleBikeInterval(exercise: ScaleableExercise, band: ScaleBand): ScaleableExercise {
+function scaleBikeInterval(
+  exercise: ScaleableExercise,
+  band: ScaleBand,
+  campPhase?: CampPhase | null,
+): ScaleableExercise {
+  const used =
+    campPhase && campPhase !== "pre-camp" && campPhase !== "complete"
+      ? campBikeBand(campPhase, band)
+      : band;
   const session = bikeSessionForName(exercise.name);
-  const scaled = session ? scaleBikeSession(session, band) : null;
+  const scaled = session ? scaleBikeSession(session, used) : null;
+  const campNote =
+    campPhase && campPhase !== "pre-camp" && campPhase !== "complete"
+      ? `Camp ${campPhase}: same bike, ${used} dose.`
+      : "";
+  const loadText = scaled?.loadText ?? "Timed — no lbs or reps";
   return {
     ...exercise,
     logMode: "timed_round",
     sets: scaled?.sets ?? exercise.sets,
     reps: scaled ? bikeIntervalReps(scaled) : exercise.reps,
     restSeconds: scaled?.restBetweenSetsSeconds ?? 60,
-    loadText: scaled?.loadText ?? "Timed — no lbs or reps",
+    loadText: campNote ? `${loadText} · ${campNote}` : loadText,
   };
 }
 
@@ -480,7 +562,7 @@ function scaleLoadedCarry(
       logMode: mode,
       reps: "40–50 sec",
       loadText: mergeLoadText(exercise.loadText, "Heavy — walk tall"),
-      restSeconds: 45,
+      restSeconds: floorStrengthRest(exercise.name, 75),
     };
   }
   if (band === "intermediate") {
@@ -594,7 +676,7 @@ function scaleConditioningStrength(
   return {
     ...exercise,
     logMode: mode,
-    restSeconds: override?.restSeconds ?? rest,
+    restSeconds: floorStrengthRest(exercise.name, override?.restSeconds ?? rest),
     sets: override?.sets ?? Math.min(exercise.sets + 1, 5),
     reps: override?.reps ?? exercise.reps,
     loadText: mergeLoadText(exercise.loadText, override?.loadText ?? harderLoadText(exercise.loadText)),
@@ -623,7 +705,7 @@ function scaleStrengthLoad(
   if (isConditioningIntervalName(exercise.name, exercise.reps)) {
     return scaleConditioningStrength(exercise, band, mode);
   }
-  const rest = restForBand(exercise.restSeconds, band);
+  const rest = floorStrengthRest(exercise.name, restForBand(exercise.restSeconds, band));
   if (mode === "load_timed") {
     return withSetBudget(scaleLoadedCarry(exercise, band, mode, rest));
   }
@@ -647,7 +729,7 @@ function scaleStrengthLoad(
   return withSetBudget({
     ...exercise,
     logMode: mode,
-    restSeconds: override?.restSeconds ?? rest,
+    restSeconds: floorStrengthRest(exercise.name, override?.restSeconds ?? rest),
     sets: override?.sets ?? (role === "main" ? exercise.sets + 1 : exercise.sets),
     reps: override?.reps ?? exercise.reps,
     loadText: mergeLoadText(exercise.loadText, override?.loadText ?? harderLoadText(exercise.loadText)),
@@ -656,9 +738,9 @@ function scaleStrengthLoad(
 
 function restForBand(seedRest: number, band: ScaleBand) {
   if (seedRest <= 0) return 0;
-  if (band === "advanced") return Math.min(STRENGTH_REST.advanced, Math.max(30, seedRest - 45));
-  if (band === "intermediate") return Math.min(STRENGTH_REST.intermediate, Math.max(45, seedRest - 15));
-  return Math.max(seedRest, 75);
+  if (band === "beginner") return Math.max(seedRest, STRENGTH_REST.beginner);
+  // Written strength rest stays. Do not crush a main lift down to 45s.
+  return seedRest;
 }
 
 function harderLoadText(text: string) {
@@ -692,7 +774,7 @@ function presentExercise<T extends ScaleableExercise>(exercise: T, band: ScaleBa
   let next: T = {
     ...exercise,
     loadText: memberCopy(exercise.loadText ?? ""),
-    notes: exercise.notes ? memberCopy(exercise.notes) : exercise.notes,
+    notes: exercise.notes ? memberCopy(stripWeekMarker(exercise.notes)) : exercise.notes,
   };
   if (band === "beginner") {
     next = formFirstBeginner(next);
@@ -721,6 +803,8 @@ export function scaleExercises<T extends ScaleableExercise>(
     programSlug?: string;
     dayNumber?: number;
     weightAccess?: WeightAccess;
+    weekIndex?: number | null;
+    campPhase?: CampPhase | null;
   },
 ): T[] {
   const seen = new Set<string>();
@@ -755,7 +839,13 @@ export function scaleProgramDay<
   T extends { dayNumber: number; focus: string; title?: string; exercises: ScaleableExercise[] },
 >(
   day: T,
-  input: { band: ScaleBand; programSlug?: string; weightAccess?: string | null },
+  input: {
+    band: ScaleBand;
+    programSlug?: string;
+    weightAccess?: string | null;
+    weekIndex?: number | null;
+    campPhase?: CampPhase | null;
+  },
 ): T {
   const weightAccess = normalizeWeightAccess(input.weightAccess);
   const floor =
@@ -780,6 +870,8 @@ export function scaleProgramDay<
     programSlug: input.programSlug,
     dayNumber: day.dayNumber,
     weightAccess,
+    weekIndex: input.weekIndex,
+    campPhase: input.campPhase,
   });
   const note = scaleCopy(
     input.band,
@@ -817,7 +909,13 @@ export function scaleDemoCatalog<
       ? {
           ...catalog.strength,
           days: catalog.strength.days.map((day) =>
-            scaleProgramDay(day, { band, programSlug: DEMO_PROGRAM_SLUG, weightAccess }),
+            scaleProgramDay(day, {
+              band,
+              programSlug: DEMO_PROGRAM_SLUG,
+              weightAccess,
+              weekIndex: prefs?.weekIndex,
+              campPhase: prefs?.campPhase,
+            }),
           ),
         }
       : catalog.strength,
@@ -825,7 +923,13 @@ export function scaleDemoCatalog<
       ? {
           ...catalog.skill,
           days: catalog.skill.days.map((day) =>
-            scaleProgramDay(day, { band, programSlug: DEMO_SKILL_PROGRAM_SLUG, weightAccess }),
+            scaleProgramDay(day, {
+              band,
+              programSlug: DEMO_SKILL_PROGRAM_SLUG,
+              weightAccess,
+              weekIndex: prefs?.weekIndex,
+              campPhase: prefs?.campPhase,
+            }),
           ),
         }
       : catalog.skill,

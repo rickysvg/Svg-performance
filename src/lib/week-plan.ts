@@ -155,7 +155,7 @@ export function isGeneralFitnessFocus(focus?: string | null) {
   return !focus || focus === "general-fitness";
 }
 
-function bikeSlot(weekday: "Tuesday" | "Thursday", weekIndex = 0): PlanSessionSlot {
+function bikeSlot(weekday: "Wednesday" | "Sunday", weekIndex = 0): PlanSessionSlot {
   const session = pickBikeSessionForPlan(weekday, weekIndex);
   return {
     kind: "conditioning",
@@ -226,20 +226,13 @@ function moderateCardioSlot(): PlanSessionSlot {
   };
 }
 
-function repeatsSlot(weekIndex: number): PlanSessionSlot {
-  const lifts = strengthDaysForWeek(weekIndex);
-  return strengthSlot(lifts.friday, "Cardio — repeats", "conditioning");
-}
-
 function liftSlot(kind: LiftKind, weekIndex: number): PlanSessionSlot {
   const lifts = strengthDaysForWeek(weekIndex);
-  if (kind === "lower") return strengthSlot(lifts.monday, "Strength — lower (squat / hinge)");
-  if (kind === "push") return strengthSlot(lifts.wednesday, "Strength — upper push");
-  if (kind === "pull") return strengthSlot(lifts.tuesday, "Strength — upper pull");
-  if (kind === "posterior") return strengthSlot(lifts.thursday, "Strength — posterior");
+  if (kind === "lower") return strengthSlot(lifts.monday, "Strength — full body");
+  if (kind === "pull" || kind === "push") return strengthSlot(lifts.tuesday, "Strength — full body");
   return {
-    ...strengthSlot(lifts.wednesday, "Strength — moderate upper"),
-    detail: "Leave reps in the tank. No heavy legs and no max efforts.",
+    ...strengthSlot(lifts.thursday, "Strength — light full body"),
+    detail: "Lightest lift of the week. No near-max set.",
   };
 }
 
@@ -260,16 +253,15 @@ function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number)
     });
   }
   if (role.lift) sessions.push({ ...liftSlot(role.lift, weekIndex), heavy: true });
-  if (role.cardio === "hard-bike" || role.cardio === "hard") {
-    const bikeDay = weekday === "Thursday" ? "Thursday" : "Tuesday";
-    sessions.push({ ...bikeSlot(bikeDay, weekIndex), heavy: true });
-  } else if (role.cardio === "hard-repeats") {
+  if (role.cardio === "hard-bike" || role.cardio === "hard" || role.cardio === "hard-repeats") {
+    const bikeDay = weekday === "Sunday" ? "Sunday" : "Wednesday";
     sessions.push({
-      ...repeatsSlot(weekIndex),
-      heavy: true,
-      label: "Cardio — repeats",
-      title: "Cardio — repeats",
-      detail: "Sprints, carries, and the other conditioning on this menu.",
+      ...bikeSlot(bikeDay, weekIndex),
+      heavy: weekday !== "Sunday",
+      detail:
+        weekday === "Sunday"
+          ? "Easier bike of the pair. Zone 2. No sprints."
+          : "Sprint bike. The harder session of this week's pair.",
     });
   } else if (role.cardio === "easy") {
     sessions.push({ ...easyCardioSlot(), heavy: false });

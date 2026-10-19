@@ -145,7 +145,7 @@ describe("swapped logging and progress", () => {
       weightAccess: "gym",
     });
     expect(scaled.exercises.some((exercise) => / or /i.test(exercise.name))).toBe(false);
-    const source = scaled.exercises.find((exercise) => exercise.name === "Reverse lunge")!;
+    const source = scaled.exercises.find((exercise) => exercise.name === "Cable woodchop")!;
     const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
 
     const first = await startWorkoutFromDay({
@@ -154,7 +154,7 @@ describe("swapped logging and progress", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    const gobletKey = first.sets.find((set) => set.exerciseName === "Goblet squat")?.prescriptionKey;
+    const gobletKey = first.sets.find((set) => set.exerciseName === "Dumbbell bench press")?.prescriptionKey;
     expect(gobletKey).toBeTruthy();
     await updateWorkoutSessionForUser({
       userId: user.id,
@@ -166,12 +166,12 @@ describe("swapped logging and progress", () => {
       sets: first.sets.map((set) => ({
         exerciseName: set.exerciseName,
         setNumber: set.setNumber,
-        reps: set.exerciseName === "Goblet squat" ? 6 : null,
-        loadValue: set.exerciseName === "Goblet squat" ? 50 : null,
+        reps: set.exerciseName === "Dumbbell bench press" ? 6 : null,
+        loadValue: set.exerciseName === "Dumbbell bench press" ? 50 : null,
         loadUnit: "lb" as const,
         logMode: isLogMode(set.logMode) ? set.logMode : undefined,
         durationSeconds: set.durationSeconds,
-        completed: set.exerciseName === "Goblet squat",
+        completed: set.exerciseName === "Dumbbell bench press",
         notes: "",
         prescriptionKey: set.prescriptionKey,
         rir: set.rir,
@@ -184,14 +184,14 @@ describe("swapped logging and progress", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(second.sets.some((set) => set.exerciseName === "Reverse lunge")).toBe(true);
+    expect(second.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(true);
     await applyExerciseSwap({
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
-      originalName: "Reverse lunge",
-      currentName: "Reverse lunge",
-      replacementName: "Goblet squat",
+      originalName: "Cable woodchop",
+      currentName: "Cable woodchop",
+      replacementName: "Dumbbell bench press",
       scope: "session",
       workoutSessionId: second.id,
       blockKey,
@@ -207,9 +207,9 @@ describe("swapped logging and progress", () => {
       where: { id: second.id },
       include: { sets: true },
     });
-    expect(swapped.sets.some((set) => set.exerciseName === "Reverse lunge")).toBe(false);
+    expect(swapped.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
     const replacement = swapped.sets.filter(
-      (set) => set.exerciseName === "Goblet squat" && set.prescriptionKey === gobletKey,
+      (set) => set.exerciseName === "Dumbbell bench press" && set.prescriptionKey === gobletKey,
     );
     expect(replacement.length).toBeGreaterThan(0);
     const previous = await getPreviousLoadsForSlots(
@@ -220,7 +220,7 @@ describe("swapped logging and progress", () => {
       })),
       swapped.id,
     );
-    expect(previous["Goblet squat"]?.[1]?.loadValue).toBe(50);
+    expect(previous["Dumbbell bench press"]?.[1]?.loadValue).toBe(50);
 
     const finished = await updateWorkoutSessionForUser({
       userId: user.id,
@@ -232,21 +232,21 @@ describe("swapped logging and progress", () => {
       sets: swapped.sets.map((set) => ({
         exerciseName: set.exerciseName,
         setNumber: set.setNumber,
-        reps: set.exerciseName === "Goblet squat" ? 6 : null,
-        loadValue: set.exerciseName === "Goblet squat" ? 95 : null,
+        reps: set.exerciseName === "Dumbbell bench press" ? 6 : null,
+        loadValue: set.exerciseName === "Dumbbell bench press" ? 95 : null,
         loadUnit: "lb" as const,
         logMode: isLogMode(set.logMode) ? set.logMode : undefined,
         durationSeconds: set.durationSeconds,
-        completed: set.exerciseName === "Goblet squat",
+        completed: set.exerciseName === "Dumbbell bench press",
         notes: "",
         prescriptionKey: set.prescriptionKey,
         rir: set.rir,
       })),
     });
     const summary = buildProgressSummary([finished], "lb");
-    expect(summary.exerciseBests.map((best) => best.exerciseName)).toContain("Goblet squat");
-    expect(summary.exerciseBests.map((best) => best.exerciseName)).not.toContain("Reverse lunge");
-    expect(summary.exerciseBests.find((best) => best.exerciseName === "Goblet squat")?.bestLoad).toBe(95);
+    expect(summary.exerciseBests.map((best) => best.exerciseName)).toContain("Dumbbell bench press");
+    expect(summary.exerciseBests.map((best) => best.exerciseName)).not.toContain("Cable woodchop");
+    expect(summary.exerciseBests.find((best) => best.exerciseName === "Dumbbell bench press")?.bestLoad).toBe(95);
   });
 
   it("applies a block swap to the next session in that block only", async () => {
@@ -258,7 +258,7 @@ describe("swapped logging and progress", () => {
       programSlug: DEMO_PROGRAM_SLUG,
       weightAccess: "gym",
     });
-    const source = scaled.exercises.find((exercise) => exercise.name === "Reverse lunge")!;
+    const source = scaled.exercises.find((exercise) => exercise.name === "Cable woodchop")!;
     const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
 
     const earlier = await startWorkoutFromDay({
@@ -277,11 +277,11 @@ describe("swapped logging and progress", () => {
       sets: earlier.sets.map((set) => ({
         exerciseName: set.exerciseName,
         setNumber: set.setNumber,
-        reps: set.exerciseName === "Goblet squat" ? 6 : null,
-        loadValue: set.exerciseName === "Goblet squat" ? 40 : null,
+        reps: set.exerciseName === "Dumbbell bench press" ? 6 : null,
+        loadValue: set.exerciseName === "Dumbbell bench press" ? 40 : null,
         loadUnit: "lb" as const,
         logMode: isLogMode(set.logMode) ? set.logMode : undefined,
-        completed: set.exerciseName === "Goblet squat",
+        completed: set.exerciseName === "Dumbbell bench press",
         prescriptionKey: set.prescriptionKey,
         rir: set.rir,
       })),
@@ -291,9 +291,9 @@ describe("swapped logging and progress", () => {
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
-      originalName: "Reverse lunge",
-      currentName: "Reverse lunge",
-      replacementName: "Goblet squat",
+      originalName: "Cable woodchop",
+      currentName: "Cable woodchop",
+      replacementName: "Dumbbell bench press",
       scope: "block",
       blockKey,
       source: {
@@ -311,23 +311,23 @@ describe("swapped logging and progress", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(next.sets.some((set) => set.exerciseName === "Reverse lunge")).toBe(false);
+    expect(next.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
     const previous = await getPreviousLoadsForSlots(
       user.id,
       next.sets
-        .filter((set) => set.exerciseName === "Goblet squat")
+        .filter((set) => set.exerciseName === "Dumbbell bench press")
         .map((set) => ({
           exerciseName: set.exerciseName,
           prescriptionKey: set.prescriptionKey,
         })),
       next.id,
     );
-    expect(previous["Goblet squat"]?.[1]?.loadValue).toBe(40);
+    expect(previous["Dumbbell bench press"]?.[1]?.loadValue).toBe(40);
 
     const other = applySwapsToExercises(scaled.exercises, [
       {
-        originalName: "Reverse lunge",
-        replacementName: "Goblet squat",
+        originalName: "Cable woodchop",
+        replacementName: "Dumbbell bench press",
         scope: "block",
         workoutSessionId: "",
         blockKey: "1999-01-04:Z",
@@ -337,9 +337,9 @@ describe("swapped logging and progress", () => {
         restSeconds: source.restSeconds,
         logMode: "load_reps",
         notes: "",
-        retiredNames: ["Reverse lunge"],
+        retiredNames: ["Cable woodchop"],
       },
     ], { blockKey, includePending: false });
-    expect(other.find((exercise) => exercise.name === "Reverse lunge")).toBeTruthy();
+    expect(other.find((exercise) => exercise.name === "Cable woodchop")).toBeTruthy();
   });
 });

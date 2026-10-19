@@ -35,7 +35,7 @@ describe("member week", () => {
     expect(lifts).toHaveLength(3);
     expect(bags.length).toBeGreaterThanOrEqual(2);
     expect(bags.length).toBeLessThanOrEqual(3);
-    expect(mobility).toHaveLength(2);
+    expect(mobility).toEqual(["Wednesday", "Friday", "Sunday"]);
     expect(roles.Wednesday.lift).toBeNull();
     expect(roles.Wednesday.bag).toBeNull();
     expect(roles.Wednesday.cardio).toBe("easy");
@@ -44,7 +44,7 @@ describe("member week", () => {
     expect(roles.Saturday.bag).toBeNull();
     expect(roles.Saturday.mobility).toBeNull();
     expect(roles.Saturday.cardio).toBeNull();
-    expect(roles.Tuesday.lift).toBeNull();
+    expect(roles.Tuesday.lift).toBe("pull");
     expect(roles.Tuesday.bag).toBeNull();
     expect(roles.Friday.lift).not.toBe("lower");
     expect(roles.Friday.bag).toBe("moderate");

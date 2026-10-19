@@ -6,6 +6,7 @@ import { getTrialState } from "@/lib/trial";
 import { getMobilityRoutine, routineIsPro } from "@/lib/mobility";
 import { CreditList } from "@/components/mobility/CreditList";
 import { MobilityFigure } from "@/components/mobility/MobilityFigure";
+import { FormClipPlayer } from "@/components/training/FormClipPlayer";
 import { IgDrillCard } from "@/components/mobility/IgDrillCard";
 import { IG_DRILLS } from "@/lib/ig-drills";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
@@ -90,6 +91,15 @@ export default async function MobilityRoutinePage({
                   </p>
                   <p className="text-sm text-muted">{block.prescription}</p>
                   <p className="mt-1 text-sm">{block.cues}</p>
+                  {block.videoUrl ? (
+                    <FormClipPlayer
+                      name={block.name}
+                      url={block.videoUrl}
+                      className="mt-2 text-sm font-semibold text-accent"
+                    >
+                      Watch form
+                    </FormClipPlayer>
+                  ) : null}
                 </div>
               </li>
             ))}

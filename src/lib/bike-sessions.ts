@@ -208,10 +208,11 @@ export const BIKE_SESSIONS: BikeSession[] = [
 
 export const DEFAULT_BIKE_SESSION = BIKE_SESSIONS[0];
 
-const ROTATION: Array<{ tue: string; thu: string }> = [
-  { tue: "intervals-15-15", thu: "daru-75-endurance" },
-  { tue: "daru-alactic", thu: "jamieson-tempo" },
-  { tue: "jamieson-cardiac", thu: "edwards-10-20" },
+/** Wednesday takes the sprint of the pair. Sunday takes the easier aerobic bike. */
+const ROTATION: Array<{ wed: string; sun: string }> = [
+  { wed: "intervals-15-15", sun: "daru-75-endurance" },
+  { wed: "daru-alactic", sun: "jamieson-tempo" },
+  { wed: "edwards-10-20", sun: "jamieson-cardiac" },
 ];
 
 /** Monday-based week index from a fixed epoch so Tue/Thu pairings stay stable. */
@@ -237,11 +238,11 @@ export function pickBikeSession(index = 0): BikeSession {
 }
 
 export function pickBikeSessionForPlan(
-  weekday: "Tuesday" | "Thursday",
+  weekday: "Wednesday" | "Sunday",
   weekIndex = 0,
 ): BikeSession {
   const pair = ROTATION[((weekIndex % BIKE_ROTATION_LENGTH) + BIKE_ROTATION_LENGTH) % BIKE_ROTATION_LENGTH];
-  const id = weekday === "Tuesday" ? pair.tue : pair.thu;
+  const id = weekday === "Wednesday" ? pair.wed : pair.sun;
   return BIKE_SESSIONS.find((session) => session.id === id) ?? DEFAULT_BIKE_SESSION;
 }
 
