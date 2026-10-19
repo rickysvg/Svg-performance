@@ -133,6 +133,25 @@ describe("assault bike catalog", () => {
         name: DEFAULT_BIKE_SESSION.name,
       }),
     ).toBe("5 rounds · 15s work / 15s rest × 8, 60s between rounds");
+    const camp = scaleExercise(seed, {
+      band: "intermediate",
+      programSlug: "demo-strength-base",
+      campPhase: "build",
+    });
+    expect(camp.sets).toBe(5);
+    expect(camp.loadText).toMatch(/Camp build: same bike, advanced dose\./);
+    expect(
+      plannedSetLine({
+        sets: camp.sets,
+        reps: camp.reps,
+        restSeconds: camp.restSeconds,
+        logMode: camp.logMode,
+        name: seed.name,
+        loadText: camp.loadText,
+      }),
+    ).toBe(
+      "5 rounds · 15s work / 15s rest × 8, 60s between rounds. Camp build: same bike, advanced dose.",
+    );
   });
 
   it("scales coach bike sessions by level with SVG scaling", () => {

@@ -199,7 +199,8 @@ export function plannedSetLine(input: {
   if (isBikeIntervalName(input.name ?? "")) {
     const reps = input.reps || bikeIntervalReps();
     const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between rounds` : "";
-    return `${countLabel(input.sets, "round")} · ${reps}${between}`;
+    const camp = input.loadText?.match(/Camp [a-z-]+: same bike, [a-z]+ dose\./i)?.[0] ?? "";
+    return `${countLabel(input.sets, "round")} · ${reps}${between}${camp ? `. ${camp}` : ""}`;
   }
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
   const rir = rirFromLoadText(input.loadText);
