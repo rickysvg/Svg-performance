@@ -885,3 +885,25 @@ export function publicSkusForPlan(catalogId: CatalogPlanId) {
       row.id !== "standalone",
   );
 }
+
+/** Checkout SKUs that buy a founding seat ($59/yr, first 100 members). */
+export const FOUNDING_SKU_IDS: readonly CheckoutSkuId[] = [
+  "performance_founding",
+  "performance_founding_gym",
+  "performance_founding_non",
+];
+
+export function isFoundingSku(planRaw: string) {
+  return (FOUNDING_SKU_IDS as readonly string[]).includes(planRaw);
+}
+
+/** Stripe price IDs configured for founding SKUs. Values come from env and are never logged. */
+export function foundingPriceIds(): string[] {
+  const ids = FOUNDING_SKU_IDS.map((sku) => process.env[CHECKOUT_SKUS[sku].envPrice] ?? "");
+  return Array.from(new Set(ids.filter((id) => id.length > 0)));
+}
+
+export function isFoundingPriceId(priceId: string | null | undefined) {
+  if (!priceId) return false;
+  return foundingPriceIds().includes(priceId);
+}

@@ -4,7 +4,7 @@ export const PERFORMANCE_MONTHLY = 9.99;
 export const PERFORMANCE_ANNUAL = 79;
 export const PERFORMANCE_ANNUAL_SAVE = "save 34%";
 export const FOUNDING_ANNUAL = 59;
-export const FOUNDING_CAP = 250;
+export const FOUNDING_CAP = 100;
 export const COACHING_MONTHLY = 249;
 export const COACHING_CAP = 20;
 

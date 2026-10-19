@@ -517,6 +517,8 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
+  /// True when this subscription holds a founding seat ($59/yr, first 100).
+  founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")
   createdAt            DateTime @default(now())
@@ -524,6 +526,7 @@ model Subscription {
 
   @@index([userId])
   @@index([stripeSubscriptionId])
+  @@index([founding, status])
 }
 
 model ReminderPrefs {

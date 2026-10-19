@@ -9,7 +9,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { COACHING_CAP, FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
-import { prisma } from "@/lib/prisma";
+import { countFoundingSeats } from "@/lib/billing";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
@@ -18,9 +18,12 @@ export default async function PricingPage() {
   const currentPlan = user ? await getEffectivePlanId(user.id) : null;
   const configured = isStripeConfigured();
   const verified = Boolean(profile?.gymMembershipVerified);
-  const foundingUsed = await prisma.subscription.count({
-    where: { status: "active", plan: { contains: "founding" } },
-  });
+  let foundingUsed = 0;
+  try {
+    foundingUsed = Math.min(FOUNDING_CAP, await countFoundingSeats());
+  } catch {
+    foundingUsed = 0;
+  }
   const foundingOpen = isFoundingDealOpen(foundingUsed);
   let coachingSeats = 0;
   let coachingSpotsLeft: number | null = COACHING_CAP;

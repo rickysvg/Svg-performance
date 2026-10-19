@@ -557,3 +557,25 @@ BEGIN
   END IF;
 END $$;
 
+
+-- Founding seat flag on Subscription. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."Subscription"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Subscription'
+      AND column_name = 'founding'
+  ) THEN
+    ALTER TABLE "Subscription" ADD COLUMN "founding" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+
+  IF to_regclass('public."Subscription_founding_status_idx"') IS NULL THEN
+    CREATE INDEX "Subscription_founding_status_idx" ON "Subscription"("founding", "status");
+  END IF;
+END $$;
