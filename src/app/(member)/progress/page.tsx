@@ -7,7 +7,8 @@ import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
 import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
-import { getLatestBodyMetricsForUser, listBodyMetricsForUser, weightSeriesPoints } from "@/lib/body-metrics";
+import { displayBodyMetric, getLatestBodyMetricsForUser, listBodyMetricsForUser, weightSeriesPoints } from "@/lib/body-metrics";
+import { massCaption } from "@/lib/mass-caption";
 import { BodyWeightChart } from "@/components/progress/BodyWeightChart";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { listProgressPhotosForUser } from "@/lib/progress-photos";
@@ -68,6 +69,8 @@ export default async function ProgressPage() {
   const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
   const trend = await sparringTrend(user.id, 16);
   const weightPoints = weightSeriesPoints(weightHistory, tz);
+  const shownWeights = weightHistory.map((row) => displayBodyMetric(row));
+  const massLine = massCaption(shownWeights[0] ?? null, shownWeights[1] ?? null, tz);
   const records = await getPersonalRecordsForUser(user.id, units);
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
@@ -159,11 +162,21 @@ export default async function ProgressPage() {
           <details>
             <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
             <div className="mt-3">
-              <HomeBodyWeight carbon={false} value={weight.value} unit={units === "kg" ? "lb" : units || "lb"} />
+              <HomeBodyWeight
+                carbon={false}
+                value={weight.value}
+                unit={units === "kg" ? "lb" : units || "lb"}
+                caption={massLine}
+              />
             </div>
           </details>
         ) : (
-          <HomeBodyWeight carbon={false} value={null} unit={units === "kg" ? "lb" : units || "lb"} />
+          <HomeBodyWeight
+            carbon={false}
+            value={null}
+            unit={units === "kg" ? "lb" : units || "lb"}
+            caption={massLine}
+          />
         )}
       </section>
 

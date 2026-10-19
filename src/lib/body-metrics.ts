@@ -145,6 +145,15 @@ export function displayBodyMetric<T extends { kind: string; value: number; unit:
   return row;
 }
 
+export async function getRecentWeightsForUser(userId: string, take = 2) {
+  const rows = await prisma.bodyMetric.findMany({
+    where: { userId, kind: "weight" },
+    orderBy: { recordedAt: "desc" },
+    take,
+  });
+  return rows.map((row) => displayBodyMetric(row));
+}
+
 export async function getLatestBodyMetricsForUser(userId: string) {
   const rows = await prisma.bodyMetric.findMany({
     where: { userId },

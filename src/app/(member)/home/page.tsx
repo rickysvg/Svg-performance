@@ -19,7 +19,9 @@ import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
-import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { getRecentWeightsForUser } from "@/lib/body-metrics";
+import { massCaption } from "@/lib/mass-caption";
+import { massFontFromParam } from "@/components/home/mass-fonts";
 import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
@@ -28,16 +30,17 @@ import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ day?: string }>;
+  searchParams: Promise<{ day?: string; massFont?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
+  const massFont = massFontFromParam(params.massFont);
   const fallbackQuote = DAILY_QUOTES[0];
   const profile = await homeLoad("profile", getProfileForUser(user.id), null);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics, sparringRating, telemetry] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -53,7 +56,7 @@ export default async function HomePage({
       homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
-      homeLoad("weight", getLatestBodyMetricsForUser(user.id), new Map()),
+      homeLoad("weight", getRecentWeightsForUser(user.id), []),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
       homeLoad(
         "telemetry",
@@ -68,8 +71,9 @@ export default async function HomePage({
     null,
   );
   const greetingName = today.firstName || "athlete";
-  const weight = latestMetrics.get("weight");
-  const units = profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb";
+  const weight = recentWeights[0] ?? null;
+  const units = weight?.unit || (profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb");
+  const massLine = massCaption(weight, recentWeights[1] ?? null, tz);
   const coach = resolveAiCoach(profile?.aiCoachId);
   const trialEnded = planId === "member_access";
 
@@ -93,7 +97,13 @@ export default async function HomePage({
 
       <TodaySummaryButton name={coach.name} circle={coach.circle} coachId={coach.id} />
 
-      <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
+      <HomeBodyWeight
+        value={weight ? weight.value : null}
+        unit={units}
+        caption={massLine}
+        fontClassName={massFont.className}
+        fontId={massFont.id}
+      />
 
       <HomeQuickActions
         sparringRating={sparringRating}

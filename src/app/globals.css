@@ -709,6 +709,14 @@ body:has(.app-splash.is-visible) {
   letter-spacing: 0.04em;
 }
 
+.mass-anton {
+  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-synthesis: none;
+  letter-spacing: 0.02em;
+}
+
 .hc-panel {
   position: relative;
   border: 1px solid rgba(203, 248, 5, 0.35);
