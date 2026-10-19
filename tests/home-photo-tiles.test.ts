@@ -14,6 +14,7 @@ const TILES = [
   "fuel.webp",
   "calendar.webp",
   "timer.webp",
+  "sparring.webp",
 ] as const;
 
 const APPROVED_HASHES = {
@@ -78,8 +79,12 @@ describe("Home photo tiles", () => {
     const tile = fs.readFileSync(path.join(process.cwd(), "src/components/home/SparringLogTile.tsx"), "utf8");
     expect(tile).toContain('href="/sparring"');
     expect(tile).toContain("Sparring Log");
-    expect(tile).toContain("#CBF805");
+    expect(tile).toContain("/tiles/sparring.webp");
     expect(tile).toContain("aspect-[4/3]");
+    expect(tile).toContain("from-black/85 via-black/25");
+    expect(tile).toContain("bg-accent");
+    expect(tile).toContain("px-3 pb-3 pt-8");
+    expect(tile).not.toContain("<svg");
     const home = fs.readFileSync(path.join(process.cwd(), "src/app/(member)/home/page.tsx"), "utf8");
     const train = fs.readFileSync(path.join(process.cwd(), "src/app/(member)/training/page.tsx"), "utf8");
     expect(home).not.toContain("Log sparring");
