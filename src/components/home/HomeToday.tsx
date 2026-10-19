@@ -14,10 +14,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
 
   if (!first) {
     return (
-      <section className="rounded-[1.75rem] bg-black px-5 py-5 text-white">
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">Today</p>
+      <section className="hc-panel px-5 py-5">
+        <p className="hc-kicker">Today</p>
         <h2 className="mt-2 text-2xl">Rest day</h2>
-        <p className="mt-1 text-sm text-white/70">
+        <p className="mt-1 text-sm text-muted">
           {guide.today.nextSessionWeekday
             ? `Next session: ${guide.today.nextSessionWeekday}.`
             : "Recover today."}
@@ -54,13 +54,13 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
   const draft = guide.today.draft && guide.today.draft.programDayId === first.dayId;
 
   return (
-    <section className="rounded-[1.75rem] bg-black px-5 py-5 text-white">
-      <p className="font-display text-xs uppercase tracking-[0.06em] text-highlighter">
+    <section className="hc-panel px-5 py-5">
+      <p className="hc-kicker">
         Today
         {minutes > 0 ? ` · ${minutes} min` : ""}
       </p>
       <h2 className="mt-2 text-2xl leading-tight">{first.title}</h2>
-      <p className="mt-1 text-sm text-white/70">
+      <p className="mt-1 text-sm text-muted">
         {count > 0 ? exerciseCountLabel(count) : first.label}
         {extra > 0 ? ` · ${extra} more today` : ""}
       </p>
@@ -96,7 +96,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         </Link>
       )}
       {extra > 0 ? (
-        <Link href="/training" className="mt-3 block text-sm text-white/80">
+        <Link href="/training" className="mt-3 block text-sm text-muted">
           See the rest of today
         </Link>
       ) : null}

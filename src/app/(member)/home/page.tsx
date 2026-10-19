@@ -7,6 +7,7 @@ import { DAILY_QUOTES, getDailyQuoteCard, teaserFromQuote } from "@/lib/quotes";
 import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
+import { HomeTelemetry } from "@/components/home/HomeTelemetry";
 import { HomeToday } from "@/components/home/HomeToday";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -19,6 +20,7 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
@@ -35,7 +37,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics, sparringRating] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics, sparringRating, telemetry] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -53,6 +55,11 @@ export default async function HomePage({
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getLatestBodyMetricsForUser(user.id), new Map()),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
+      homeLoad(
+        "telemetry",
+        getHomeTelemetry({ userId: user.id, timeZone: tz }),
+        emptyHomeTelemetry(new Date(), tz),
+      ),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
@@ -68,10 +75,16 @@ export default async function HomePage({
 
   return (
     <main className="space-y-6 pb-8">
-      <section className="-mx-4 -mt-6 bg-[#CBF805] px-4 pb-8 pt-7 text-black">
-        <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
-        <h1 className="mt-1 text-4xl">Welcome {greetingName}</h1>
-        {profile?.goals ? <p className="mt-2 text-sm">{profile.goals}</p> : null}
+      <section className="hc-panel -mx-4 -mt-6 px-4 pb-6 pt-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="hc-kicker">Let&apos;s go</p>
+          <span className="bg-[#CBF805] px-2 py-1 font-telemetry text-[10px] uppercase tracking-[0.16em] text-black">
+            <span className="hc-live mr-1 inline-block h-1.5 w-1.5 rounded-full bg-black align-middle" aria-hidden />
+            Live
+          </span>
+        </div>
+        <h1 className="mt-3 text-4xl">Welcome {greetingName}</h1>
+        {profile?.goals ? <p className="mt-2 max-w-[22rem] text-sm text-muted">{profile.goals}</p> : null}
       </section>
 
       {trialEnded ? <TrialEndedPaywall /> : null}
@@ -97,7 +110,7 @@ export default async function HomePage({
       />
 
       {reminderResult.due.length > 0 ? (
-        <section className="space-y-2 rounded-2xl border border-line bg-card px-4 py-4">
+        <section className="hc-panel space-y-2 px-4 py-4">
           {reminderResult.due.map((item) => (
             <p key={item.kind} className="text-sm text-muted">
               {item.message}
@@ -135,9 +148,11 @@ export default async function HomePage({
         />
       ) : null}
 
+      <HomeTelemetry data={telemetry} />
+
       <Link
         href="/nutrition"
-        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4"
+        className="hc-panel flex min-h-14 items-center justify-between gap-3 px-4"
       >
         <span>
           <span className="block text-xs uppercase tracking-wide text-muted">Fuel</span>
@@ -152,7 +167,7 @@ export default async function HomePage({
         <p className="text-sm text-muted">“{quoteCard.quote.text}”</p>
       ) : null}
 
-      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+      <details className="hc-panel px-4 py-3">
         <summary className="cursor-pointer font-semibold">Readiness</summary>
         <div className="mt-3">
           <ReadinessCard

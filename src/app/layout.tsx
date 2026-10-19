@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Anton, Geist } from "next/font/google";
+import { Anton, Geist, Geist_Mono } from "next/font/google";
 import { AppSplash } from "@/components/AppSplash";
 import "./globals.css";
 
@@ -12,6 +12,11 @@ const anton = Anton({
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -33,14 +38,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#CBF805",
+  themeColor: "#07080a",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${anton.variable} ${geistSans.variable} h-full antialiased`}
+      className={`${anton.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       // The splash script sets data-splash on this element before hydrate.
       suppressHydrationWarning
     >

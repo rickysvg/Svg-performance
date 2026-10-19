@@ -41,7 +41,7 @@ export function SparringLogTile({
       href="/sparring"
       data-sparring-tile
       data-sparring-layout="card"
-      className="relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black"
+      className="relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black ring-1 ring-[#cbf805]/40"
     >
       <Image
         src={ART}
@@ -54,6 +54,7 @@ export function SparringLogTile({
         aria-hidden
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"
       />
+      <span aria-hidden className="hc-corners" />
       <span className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
         <span aria-hidden className="mb-1.5 block h-0.5 w-6 rounded-full bg-accent" />
         <span className="font-display block text-lg uppercase leading-tight tracking-wide text-white">

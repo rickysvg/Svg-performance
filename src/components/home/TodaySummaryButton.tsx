@@ -21,7 +21,7 @@ export function TodaySummaryButton({
       href="/home/summary"
       data-today-summary
       aria-label={`Open Coach ${name} today's summary`}
-      className="flex h-14 w-full items-center gap-2.5 rounded-2xl border border-line bg-card px-2.5 text-left"
+      className="hc-panel flex h-14 w-full items-center gap-2.5 px-2.5 text-left"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

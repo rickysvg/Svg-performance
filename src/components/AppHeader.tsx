@@ -9,12 +9,12 @@ import {
 } from "@/lib/member-nav";
 
 function chipClass(active = false, compact = false) {
-  return `inline-flex shrink-0 items-center justify-center rounded-full border ${
-    compact ? "h-8 px-2.5 text-[11px]" : "h-9 px-3 text-xs"
+  return `inline-flex shrink-0 items-center justify-center border font-telemetry uppercase tracking-[0.14em] ${
+    compact ? "h-8 px-2.5 text-[10px]" : "h-9 px-3 text-[11px]"
   } ${
     active
-      ? "border-black bg-accent font-semibold text-black"
-      : "border-line bg-background text-foreground hover:border-black"
+      ? "border-[#CBF805] bg-[#CBF805] text-black"
+      : "border-[#2a3124] bg-[#101216] text-foreground hover:border-[#CBF805]"
   }`;
 }
 
@@ -79,13 +79,17 @@ function DockLink({
     <Link
       href={href}
       data-dock-link={label}
-      className={`font-display flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 uppercase leading-none tracking-[0.06em] ${
-        active ? "bg-accent text-black" : "text-muted hover:text-foreground"
+      className={`flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 ${
+        active ? "text-[#CBF805]" : "text-muted hover:text-foreground"
       }`}
       aria-current={active ? "page" : undefined}
     >
       {Icon ? <Icon /> : null}
-      <span className="text-[9px]">{label}</span>
+      <span className="font-telemetry text-[9px] uppercase tracking-[0.14em]">{label}</span>
+      <span
+        aria-hidden
+        className={`h-0.5 w-5 ${active ? "bg-[#CBF805] shadow-[0_0_8px_#CBF805]" : "bg-transparent"}`}
+      />
     </Link>
   );
 }
@@ -113,8 +117,12 @@ export function AppHeader({
     return (
       <header
         data-bottom-dock
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-[#cbf805]/45 bg-[#07080a]/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_36px_rgba(0,0,0,0.55)] backdrop-blur"
       >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#CBF805] to-transparent"
+        />
         {!hideMemberLinks && (role === "admin" || staff) ? (
           <div className="mx-auto flex max-w-3xl justify-end gap-1.5 px-3 pt-2">
             {role === "admin" ? (

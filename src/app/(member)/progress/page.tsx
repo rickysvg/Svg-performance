@@ -7,7 +7,9 @@ import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
 import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
-import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { getLatestBodyMetricsForUser, listBodyMetricsForUser, weightSeriesPoints } from "@/lib/body-metrics";
+import { BodyWeightChart } from "@/components/progress/BodyWeightChart";
+import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { listProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
 import { getPersonalRecordsForUser } from "@/lib/records";
@@ -39,7 +41,7 @@ function MetricTile({
   return (
     <article className="rounded-2xl border border-line bg-card p-4">
       <p className="text-sm text-muted">{title}</p>
-      <p className="stat-display mt-3 text-2xl">{value}</p>
+      <p className="font-telemetry mt-3 text-2xl text-[#CBF805]">{value}</p>
       <p className="mt-2 text-xs text-muted">{hint}</p>
     </article>
   );
@@ -47,11 +49,12 @@ function MetricTile({
 
 export default async function ProgressPage() {
   const user = await requireUser();
-  const [profile, sessions, latestMetrics, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
+  const [profile, sessions, latestMetrics, weightHistory, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
       getProfileForUser(user.id),
       listRecentSessionsForUser(user.id, PROGRESS_SESSION_TAKE),
       getLatestBodyMetricsForUser(user.id),
+      listBodyMetricsForUser(user.id, "weight"),
       listProgressPhotosForUser(user.id),
       getNutritionSummaryForDay(user.id),
       getRecentNutritionDays(user.id, 7),
@@ -63,7 +66,8 @@ export default async function ProgressPage() {
   const units = profile?.preferredUnits ?? "lb";
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
-  const trend = await sparringTrend(user.id);
+  const trend = await sparringTrend(user.id, 16);
+  const weightPoints = weightSeriesPoints(weightHistory, tz);
   const records = await getPersonalRecordsForUser(user.id, units);
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
@@ -118,8 +122,8 @@ export default async function ProgressPage() {
         <StreakHero streak={companion.streak} />
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-4">
-        <p className="text-sm text-muted">Last session</p>
+      <section className="hc-panel p-4">
+        <p className="hc-kicker">Last session</p>
         <p className="mt-1 text-lg font-semibold">
           {summary.sessionCount === 0 ? "None yet" : lastTitle}
           {lastWhen ? (
@@ -138,19 +142,35 @@ export default async function ProgressPage() {
         ) : null}
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-4">
-        <p className="text-sm text-muted">Body weight</p>
-        <p className="stat-display mt-2 text-4xl">
-          {weight ? `${weight.value} ${weight.unit}` : "—"}
-        </p>
-        <p className="mt-1 text-xs text-muted">
-          {weight ? "Typed by you" : "Log a weigh-in below."}
-        </p>
+      <div data-progress-charts className="space-y-6">
+      <section className="hc-panel space-y-4 p-4">
+        <div>
+          <p className="hc-kicker">Mass</p>
+          <p className="font-telemetry mt-2 text-4xl text-[#CBF805]">
+            {weight ? `${weight.value}` : "—"}
+            {weight ? <span className="ml-2 text-base text-muted">{weight.unit}</span> : null}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {weight ? "Typed by you. The line is every weigh-in." : "Log a weigh-in below."}
+          </p>
+        </div>
+        <BodyWeightChart points={weightPoints} unit={weightPoints[0]?.unit || weight?.unit || "lb"} />
+        {weight ? (
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
+            <div className="mt-3">
+              <HomeBodyWeight value={weight.value} unit={units === "kg" ? "lb" : units || "lb"} />
+            </div>
+          </details>
+        ) : (
+          <HomeBodyWeight value={null} unit={units === "kg" ? "lb" : units || "lb"} />
+        )}
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-4">
-        <h2 className="text-lg">Sparring this week</h2>
-        <p className="stat-display mt-2 text-3xl">
+      <section className="hc-panel p-4">
+        <p className="hc-kicker">Sparring</p>
+        <h2 className="mt-2 text-lg">This week</h2>
+        <p className="font-telemetry mt-2 text-3xl text-[#CBF805]">
           {sparringWeek.rounds} rounds · {sparringWeek.minutes} min
         </p>
         <p className="mt-1 text-xs text-muted">
@@ -184,7 +204,7 @@ export default async function ProgressPage() {
               ))}
             </div>
           </div>
-          <div className="border-t border-line bg-white">
+          <div className="border-t border-line bg-card">
             <UpgradePreview
               kind="charts"
               canStartTrial={trial.canStartTrial}
@@ -195,10 +215,11 @@ export default async function ProgressPage() {
           </div>
         </section>
       ) : null}
+      </div>
 
       <Link
         href="/progress/photos"
-        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4"
+        className="hc-panel flex min-h-14 items-center justify-between gap-3 px-4"
       >
         <span>
           <span className="block font-semibold">Progress photos</span>

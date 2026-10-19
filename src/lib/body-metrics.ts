@@ -117,6 +117,26 @@ export async function listBodyMetricsForUser(userId: string, kind?: BodyMetricKi
   });
 }
 
+/** Oldest first, in display units. Weight already lives on BodyMetric (kind = weight). */
+export function weightSeriesPoints(
+  rows: Array<{ id: string; recordedAt: Date; value: number; unit: string; kind: string }>,
+  timeZone: string,
+) {
+  return [...rows]
+    .map((row) => displayBodyMetric(row))
+    .reverse()
+    .map((row) => ({
+      id: row.id,
+      label: new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone,
+      }).format(row.recordedAt),
+      value: row.value,
+      unit: row.unit,
+    }));
+}
+
 /** Convert legacy kg weight / lean-mass rows to whole lbs for display. */
 export function displayBodyMetric<T extends { kind: string; value: number; unit: string }>(row: T): T {
   if ((row.kind === "weight" || row.kind === "leanMass") && row.unit === "kg") {

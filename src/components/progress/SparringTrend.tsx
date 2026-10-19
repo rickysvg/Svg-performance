@@ -1,4 +1,16 @@
+import Link from "next/link";
+import { TelemetryChart } from "@/components/design/TelemetryChart";
 import { SORE_SPOT_LABELS, sparringMinutes, type SparringLog } from "@/lib/outside-log";
+
+function dayLabel(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!year || !month || !day) return dateKey;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
 
 function Pips({ value, label }: { value: number | null; label: string }) {
   return (
@@ -19,16 +31,54 @@ function Pips({ value, label }: { value: number | null; label: string }) {
 export function SparringTrend({ logs }: { logs: SparringLog[] }) {
   const rated = logs.filter((log) => log.sessionRating != null || log.bodyRating != null);
   return (
-    <section className="rounded-2xl border border-line bg-card p-4" data-sparring-trend>
-      <h2 className="text-lg">Sparring and body</h2>
+    <section className="hc-panel p-4" data-sparring-trend>
+      <p className="hc-kicker">Ratings</p>
+      <h2 className="mt-2 text-lg">Sparring and body</h2>
       <p className="mt-1 text-xs text-muted">
         Session is how it went. Body is how you felt after. Oldest is first.
       </p>
       {rated.length === 0 ? (
         <p className="mt-3 text-sm text-muted">
-          Log sparring with a session rating and a body rating to see the trend.
+          Log sparring with a session rating and a body rating to see the trend.{" "}
+          <Link href="/sparring" className="text-accent underline">
+            Open the sparring log
+          </Link>
+          .
         </p>
       ) : (
+        <div className="mt-4">
+          <TelemetryChart
+            title="Ratings"
+            description="Session and body, 1 to 5"
+            unit="score"
+            yDomain={{ min: 1, max: 5 }}
+            empty="Log sparring with a session rating and a body rating to see the trend."
+            series={[
+              {
+                id: "session",
+                label: "Session",
+                color: "#CBF805",
+                points: rated.map((log) => ({
+                  label: dayLabel(log.dateKey),
+                  detail: log.weekday || log.dateKey,
+                  value: log.sessionRating,
+                })),
+              },
+              {
+                id: "body",
+                label: "Body",
+                color: "#5ee0ff",
+                points: rated.map((log) => ({
+                  label: dayLabel(log.dateKey),
+                  detail: log.weekday || log.dateKey,
+                  value: log.bodyRating,
+                })),
+              },
+            ]}
+          />
+        </div>
+      )}
+      {rated.length === 0 ? null : (
         <ol className="mt-4 space-y-3">
           {rated.map((log) => (
             <li key={log.dateKey} className="border-t border-line pt-3 first:border-0 first:pt-0">
