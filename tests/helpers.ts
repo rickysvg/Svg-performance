@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { registerAccount } from "@/lib/auth";
 
 export async function resetDatabase() {
+  await prisma.testerRedemption.deleteMany();
+  await prisma.testerInvite.deleteMany();
   await prisma.memberProReminderLog.deleteMany();
   await prisma.aiUsageEvent.deleteMany();
   await prisma.checkInReminderLog.deleteMany();

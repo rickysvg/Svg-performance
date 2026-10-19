@@ -8,6 +8,7 @@ import {
   planIsPro,
 } from "@/lib/plans";
 import { isTrialActive } from "@/lib/trial";
+import { isTesterFlagActive } from "@/lib/tester";
 import { prisma } from "@/lib/prisma";
 
 /** Missing Stripe keys never grant paid access. Free, trial, and admin rows still apply. */
@@ -26,8 +27,12 @@ export async function getEffectivePlanId(userId: string, now = new Date()): Prom
   }
   const profile = await prisma.profile.findUnique({
     where: { userId },
-    select: { trialEndsAt: true, gymMembershipVerified: true },
+    select: { trialEndsAt: true, gymMembershipVerified: true, tester: true },
   });
+  // Beta tester: full Pro until Nov 16, 2026. No card and no subscription.
+  if (isTesterFlagActive(Boolean(profile?.tester), now)) {
+    return "performance";
+  }
   // 7-day nonmember trial or the 30-day member Pro month: full Pro, no card.
   if (isTrialActive(profile?.trialEndsAt ?? null, now)) {
     return "performance";

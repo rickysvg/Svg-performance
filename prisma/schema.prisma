@@ -72,6 +72,8 @@ model User {
   checkInReminderLogs      CheckInReminderLog[]
   aiUsageEvents            AiUsageEvent[]
   memberProReminders       MemberProReminderLog[]
+  testerInvitesCreated     TesterInvite[]         @relation("TesterInviteAuthor")
+  testerRedemption         TesterRedemption?
 }
 
 model Session {
@@ -147,6 +149,9 @@ model Profile {
   trialEndsAt                DateTime?
   /// Start of the 30-day free Pro month for a verified academy member. Set once.
   memberProStartedAt         DateTime?
+  /// Beta tester. Full Pro until Nov 16, 2026, no card and no subscription.
+  tester                     Boolean   @default(false)
+  testerRedeemedAt           DateTime?
   planChoiceAt               DateTime?
   thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
@@ -820,6 +825,33 @@ model PilotInvite {
   joinedAt    DateTime?
 
   @@index([status])
+}
+
+/// Shareable beta code. Only ADMIN_EMAILS can create these.
+model TesterInvite {
+  id          String             @id @default(cuid())
+  code        String             @unique
+  maxUses     Int
+  /// Claimed seats. Incremented in the same transaction as a redemption.
+  uses        Int                @default(0)
+  note        String             @default("")
+  createdById String
+  createdBy   User               @relation("TesterInviteAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  redemptions TesterRedemption[]
+
+  @@index([createdById])
+}
+
+model TesterRedemption {
+  id         String       @id @default(cuid())
+  inviteId   String
+  invite     TesterInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  userId     String       @unique
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redeemedAt DateTime     @default(now())
+
+  @@index([inviteId])
 }
 
 model TrainingClip {

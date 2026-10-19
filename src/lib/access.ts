@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
 import { isTrialActive } from "@/lib/trial";
+import { isTesterFlagActive } from "@/lib/tester";
 
 export function isStripeConfigured() {
   return Boolean(
@@ -30,8 +31,9 @@ export async function hasWebhookGrantedAccess(userId: string) {
 
 /**
  * Fuel / SVG Coach need the academy tier (verified member) or Pro
- * (subscription, 7-day trial, or the 30-day member Pro month).
+ * (subscription, tester code, 7-day trial, or the 30-day member Pro month).
  * A nonmember whose trial ended gets the paywall. Missing Stripe keys do not unlock those tools.
+ * A tester code does not create a subscription.
  */
 export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
@@ -47,8 +49,11 @@ export async function canUseMemberTools(userId: string): Promise<{
   }
   const profile = await prisma.profile.findUnique({
     where: { userId },
-    select: { trialEndsAt: true, gymMembershipVerified: true },
+    select: { trialEndsAt: true, gymMembershipVerified: true, tester: true },
   });
+  if (isTesterFlagActive(Boolean(profile?.tester))) {
+    return { allowed: true, reason: "subscribed" };
+  }
   if (profile?.gymMembershipVerified) {
     return { allowed: true, reason: "subscribed" };
   }

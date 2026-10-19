@@ -627,3 +627,61 @@ BEGIN
       FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;
+
+-- Beta tester codes. Additive, idempotent. No billing rows.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."Profile"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'tester'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "tester" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+
+  IF to_regclass('public."Profile"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'testerRedeemedAt'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "testerRedeemedAt" TIMESTAMP(3);
+  END IF;
+
+  IF to_regclass('public."TesterInvite"') IS NULL THEN
+    CREATE TABLE "TesterInvite" (
+      "id" TEXT NOT NULL,
+      "code" TEXT NOT NULL,
+      "maxUses" INTEGER NOT NULL,
+      "uses" INTEGER NOT NULL DEFAULT 0,
+      "note" TEXT NOT NULL DEFAULT '',
+      "createdById" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "TesterInvite_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "TesterInvite_code_key" ON "TesterInvite"("code");
+    CREATE INDEX "TesterInvite_createdById_idx" ON "TesterInvite"("createdById");
+    ALTER TABLE "TesterInvite"
+      ADD CONSTRAINT "TesterInvite_createdById_fkey"
+      FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."TesterRedemption"') IS NULL THEN
+    CREATE TABLE "TesterRedemption" (
+      "id" TEXT NOT NULL,
+      "inviteId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "redeemedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "TesterRedemption_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "TesterRedemption_userId_key" ON "TesterRedemption"("userId");
+    CREATE INDEX "TesterRedemption_inviteId_idx" ON "TesterRedemption"("inviteId");
+    ALTER TABLE "TesterRedemption"
+      ADD CONSTRAINT "TesterRedemption_inviteId_fkey"
+      FOREIGN KEY ("inviteId") REFERENCES "TesterInvite"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    ALTER TABLE "TesterRedemption"
+      ADD CONSTRAINT "TesterRedemption_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

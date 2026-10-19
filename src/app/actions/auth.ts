@@ -42,6 +42,7 @@ export async function registerAction(
       isAdultConfirmed: formData.get("isAdultConfirmed") === "on",
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
       phone: String(formData.get("phone") ?? ""),
+      testerCode: String(formData.get("testerCode") ?? ""),
     });
     const session = await createSessionRecord(user.id);
     await setSessionCookie(session.token, session.expiresAt);

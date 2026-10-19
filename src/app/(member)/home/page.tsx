@@ -23,6 +23,7 @@ import { latestSparringRatings } from "@/lib/outside-log";
 import { homeSubtitle } from "@/lib/member-copy";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
+import { isTesterFlagActive } from "@/lib/tester";
 
 export default async function HomePage({
   searchParams,
@@ -80,6 +81,17 @@ export default async function HomePage({
       </section>
 
       {trialEnded ? <TrialEndedPaywall /> : null}
+
+      {profile?.tester ? (
+        <Link
+          href="/feedback?from=/home"
+          data-tester-feedback
+          className="block rounded-2xl border border-accent bg-card px-4 py-3 text-sm font-semibold"
+        >
+          Send tester feedback
+          {isTesterFlagActive(profile.tester) ? " · Pro until Nov 16, no card" : ""}
+        </Link>
+      ) : null}
 
       <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 

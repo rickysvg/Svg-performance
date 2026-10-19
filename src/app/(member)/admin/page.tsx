@@ -5,9 +5,10 @@ import { getPilotDashboardCounts } from "@/lib/pilot";
 import { AdminVerifyForm } from "@/components/admin/AdminVerifyForm";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
 import { normalizePlanId, PLAN_CATALOG } from "@/lib/plans";
+import { isTesterCodeAdmin } from "@/lib/tester";
 
 export default async function AdminPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const [users, counts] = await Promise.all([listUsersForAdmin(), getPilotDashboardCounts()]);
 
   return (
@@ -45,6 +46,11 @@ export default async function AdminPage() {
         <Link href="/admin/invites" className="text-accent underline">
           Invites
         </Link>
+        {isTesterCodeAdmin(admin) ? (
+          <Link href="/admin/testers" className="text-accent underline" data-tester-admin-link>
+            Tester codes
+          </Link>
+        ) : null}
         <Link href="/admin/queues" className="text-accent underline">
           Comment queues
         </Link>

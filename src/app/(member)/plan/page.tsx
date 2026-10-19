@@ -7,15 +7,19 @@ import { PLAN_CATALOG } from "@/lib/plans";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { getProfileForUser } from "@/lib/profile";
+import { isTesterFlagActive } from "@/lib/tester";
 
 export default async function PlanPage() {
   const user = await requireUser();
-  const [entitlements, creditBundle, subscription, trial] = await Promise.all([
+  const [entitlements, creditBundle, subscription, trial, profile] = await Promise.all([
     getMemberEntitlements(user.id),
     creditsForCurrentPlan(user.id),
     getLatestSubscription(user.id),
     getTrialState(user.id),
+    getProfileForUser(user.id),
   ]);
+  const tester = isTesterFlagActive(Boolean(profile?.tester));
   const configured = isStripeConfigured();
   const plan = entitlements.plan;
 
@@ -28,6 +32,7 @@ export default async function PlanPage() {
             trialActive: trial.trialActive,
             trialDaysLeft: trial.trialDaysLeft,
             planLabel: plan.label,
+            tester,
           })}
         </h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
@@ -37,7 +42,9 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
-          {trial.verified && trial.trialActive && !subscription
+          {tester
+            ? "Tester access. Full Pro until Nov 16, 2026. No card and no billing."
+            : trial.verified && trial.trialActive && !subscription
             ? `Verified SVG Academy member. Your ${trial.trialLengthDays}-day Pro month is active. After it ends you go back to the core app included with your dues. You are never auto-billed.`
             : trial.verified && entitlements.planId === "academy"
               ? "Verified SVG Academy member. The core app is included with your dues. Pro is $9.99/mo or $72.99/yr."
