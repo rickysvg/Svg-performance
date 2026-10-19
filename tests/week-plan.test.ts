@@ -1,4 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+
+async function startedWithProgram(userId: string) {
+  await prisma.profile.update({
+    where: { userId },
+    data: { onboardingCompletedAt: new Date("2026-01-05T12:00:00.000Z") },
+  });
+}
 import { prisma } from "@/lib/prisma";
 import { completeOnboardingForUser } from "@/lib/onboarding";
 import { getHomeToday } from "@/lib/home";
@@ -344,6 +351,7 @@ describe("Core planner on Home", () => {
       foodPreferences: "",
       allergies: "",
     });
+    await startedWithProgram(user.id);
     const catalog = await findDemoTrainingCatalog();
     const today = await getHomeToday(user.id, monday);
     expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
@@ -388,6 +396,7 @@ describe("Core planner on Home", () => {
       foodPreferences: "",
       allergies: "",
     });
+    await startedWithProgram(user.id);
     const start = weekStartKey(monday, APP_TIMEZONE);
     await swapWeekPlanForUser(user.id, start, "Monday", "Wednesday");
 
@@ -431,6 +440,7 @@ describe("Core planner on Home", () => {
       foodPreferences: "",
       allergies: "",
     });
+    await startedWithProgram(user.id);
     const start = weekStartKey(monday, APP_TIMEZONE);
     const prefs = {
       primaryFocus: "mma",
@@ -479,6 +489,7 @@ describe("Core planner on Home", () => {
       foodPreferences: "",
       allergies: "",
     });
+    await startedWithProgram(user.id);
     const prefs = {
       primaryFocus: "mma",
       weeklyAvailability: ["Monday", "Wednesday", "Friday"],

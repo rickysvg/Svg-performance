@@ -10,9 +10,8 @@ import {
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
-import { bikeWeekIndex } from "@/lib/bike-sessions";
 import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
-import { isDeloadWeek, isTestingWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { isDeloadWeekIndex, isTestingWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -22,6 +21,7 @@ import {
   moveDayChoices,
   nextActiveWeekday,
   planForDate,
+  planWeekIndex,
   resolvePlanSessions,
   weekStrip,
 } from "@/lib/week-plan";
@@ -83,6 +83,7 @@ export default async function TrainingPage({
     experienceLevel: profile?.experienceLevel,
     email: user.email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, now, tz);
@@ -111,9 +112,9 @@ export default async function TrainingPage({
   );
   const strip = weekStrip(prefs, now, tz, selected, swaps);
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
-  const weekIndex = bikeWeekIndex(selected, tz);
-  const deload = isDeloadWeek(selected, tz);
-  const testing = isTestingWeek(selected, tz);
+  const weekIndex = planWeekIndex(selected, tz, profile?.onboardingCompletedAt);
+  const deload = isDeloadWeekIndex(weekIndex);
+  const testing = isTestingWeekIndex(weekIndex);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const showPlyo = planned.some((session) => session.kind === "strength");
   const plyo =

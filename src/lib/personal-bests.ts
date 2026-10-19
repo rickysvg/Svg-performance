@@ -1,5 +1,6 @@
 import { isHoldName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { convertLoad, formatLoad, isLoadUnit, type LoadUnit } from "@/lib/units";
+import { APP_TIMEZONE } from "@/lib/timezone";
 
 export const PR_KINDS = ["heaviest", "reps_at_weight", "e1rm", "most_rounds", "longest"] as const;
 export type PrKind = (typeof PR_KINDS)[number];
@@ -66,8 +67,12 @@ function modeOf(set: SetLike) {
   return resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
 }
 
-function formatDate(date: Date) {
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+function formatDate(date: Date, timeZone = APP_TIMEZONE) {
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone,
+  });
 }
 
 function formatDuration(totalSeconds: number) {
@@ -254,10 +259,16 @@ function valueUnit(best: PersonalBest, _displayUnit: LoadUnit) {
   return "lb";
 }
 
+/** Finish-screen count: one PR per exercise, not one per heaviest / e1RM / reps row. */
+export function newPrExerciseCount(prs: Array<{ exerciseName: string }>) {
+  return new Set(prs.map((row) => row.exerciseName.trim()).filter(Boolean)).size;
+}
+
 export function detectNewPrs(
   priorSets: DatedSetLike[],
   sessionSets: DatedSetLike[],
   displayUnit: LoadUnit,
+  timeZone = APP_TIMEZONE,
 ): DetectedPr[] {
   const prior = bestsFromSets(priorSets, displayUnit);
   const next = bestsFromSets(sessionSets, displayUnit);
@@ -275,7 +286,7 @@ export function detectNewPrs(
       ...best,
       previousValue: previous?.value ?? null,
       headline: headlineForBest(best, displayUnit),
-      detail: `${best.exerciseName} · ${deltaText(best.value, previous?.value ?? null, valueUnit(best, displayUnit))} · ${formatDate(best.date)}`,
+      detail: `${best.exerciseName} · ${deltaText(best.value, previous?.value ?? null, valueUnit(best, displayUnit))} · ${formatDate(best.date, timeZone)}`,
     });
   }
 

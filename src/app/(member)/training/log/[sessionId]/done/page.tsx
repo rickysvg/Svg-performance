@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
 import { getProfileForUser } from "@/lib/profile";
-import { detectNewPrsForSession, evaluateBadgesForUser } from "@/lib/progress-companion";
+import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import {
   formatWorkoutCompleteDate,
@@ -45,7 +45,7 @@ export default async function WorkoutDonePage({
   const tiles = workoutCompleteTiles({
     session: view.session,
     displayUnit: unit,
-    newPrCount: prs.length,
+    newPrCount: newPrExerciseCount(prs),
   });
 
   return (

@@ -10,6 +10,7 @@ import { readSeenBadgeUnlocksForUser, writeSeenBadgeUnlocksForUser } from "@/lib
 import {
   bestsFromSets,
   detectNewPrs,
+  newPrExerciseCount,
   recordListFromBests,
   type DatedSetLike,
   type DetectedPr,
@@ -63,13 +64,18 @@ export async function detectNewPrsForSession(
     include: { sets: true },
   });
   if (!session) return [] as DetectedPr[];
-  const prior = await datedSetsForUser(userId, sessionId);
+  const [prior, timeZone] = await Promise.all([
+    datedSetsForUser(userId, sessionId),
+    timeZoneForUser(userId),
+  ]);
   const current: DatedSetLike[] = session.sets.map((set) => ({
     ...set,
     performedAt: session.performedAt,
   }));
-  return detectNewPrs(prior, current, displayUnit);
+  return detectNewPrs(prior, current, displayUnit, timeZone);
 }
+
+export { newPrExerciseCount };
 
 export async function getCompanionProgress(userId: string, displayUnit: LoadUnit, now = new Date()) {
   const [profile, sessions, tz] = await Promise.all([

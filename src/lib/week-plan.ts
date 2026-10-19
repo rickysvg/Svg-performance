@@ -1,5 +1,5 @@
 import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessions";
-import { bikeWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
+import { bikeWeekIndex, memberWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
 import {
   mesoBlockForWeekIndex,
   mesoBlockLabel,
@@ -86,7 +86,14 @@ export type PlannerPrefs = {
   experienceLevel?: string | null;
   email?: string | null;
   outsideTraining?: OutsideDay[] | null;
+  /** Member start. Week 0 is their first week, so a new member is not dropped onto Day 17. */
+  planAnchor?: Date | null;
 };
+
+export function planWeekIndex(date: Date, timeZone: string, anchor?: Date | null) {
+  if (anchor && !Number.isNaN(anchor.getTime())) return memberWeekIndex(date, anchor, timeZone);
+  return bikeWeekIndex(date, timeZone);
+}
 
 export type CatalogDayLike = {
   id: string;
@@ -523,7 +530,7 @@ export function planForDate(
   swaps: WeekPlanSwap[] = [],
 ): DayPlan {
   const calendarWeekday = weekdayInAppZone(date, timeZone);
-  const built = buildCoreWeekPlan(prefs, bikeWeekIndex(date, timeZone));
+  const built = buildCoreWeekPlan(prefs, planWeekIndex(date, timeZone, prefs.planAnchor));
   return arrangeCalendarDay(built, calendarWeekday, weekStartKey(date, timeZone), swaps);
 }
 
@@ -566,7 +573,7 @@ export function weekStrip(
   const anchor = weekAnchor ?? now;
   const monday = mondayOfZoned(anchor, timeZone);
   const weekStart = weekStartKey(anchor, timeZone);
-  const built = buildCoreWeekPlan(prefs, bikeWeekIndex(anchor, timeZone));
+  const built = buildCoreWeekPlan(prefs, planWeekIndex(anchor, timeZone, prefs.planAnchor));
   return WEEKDAYS.map((weekday, index) => {
     const date = addZonedDays(monday, index, timeZone);
     const plan = arrangeCalendarDay(built, weekday, weekStart, swaps);

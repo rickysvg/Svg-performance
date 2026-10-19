@@ -32,15 +32,30 @@ export function ProfileForm({
   email?: string | null;
 }) {
   const [trainingFocus, setTrainingFocus] = useState(profile.trainingFocus || "martial_arts_sc");
+  const [dayError, setDayError] = useState("");
   const [state, action, pending] = useActionState(
     saveProfileAction,
     {} as ProfileActionState,
   );
 
   return (
-    <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
+    <form
+      action={action}
+      className="space-y-4 rounded-2xl border border-line bg-card p-5"
+      onSubmit={(event) => {
+        const days = event.currentTarget.querySelectorAll<HTMLInputElement>(
+          'input[name="weeklyAvailability"]:checked',
+        );
+        if (days.length > 0) {
+          setDayError("");
+          return;
+        }
+        event.preventDefault();
+        setDayError("Pick at least one day you can train.");
+      }}
+    >
       <h2 className="text-lg">Training profile</h2>
-      <StatusBanner error={state.error} success={state.success} />
+      <StatusBanner error={dayError || state.error} success={state.success} />
 
       <details className="rounded-xl border border-line px-3 py-3">
         <summary className="cursor-pointer text-sm font-medium">Coach</summary>

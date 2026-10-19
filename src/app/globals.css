@@ -666,6 +666,15 @@ body:has(.app-splash.is-visible) {
   }
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Beat Tailwind font-semibold/bold on Anton — the face has no 600/700 cut. */
 h1,
 h2,

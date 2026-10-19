@@ -52,7 +52,8 @@ import {
   startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
-import { loggerCursor, nextIncompleteSetId } from "@/lib/logger-progress";
+import { loggerCursorFollowing, nextIncompleteSetId } from "@/lib/logger-progress";
+import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import { setHasLoggedWork } from "@/lib/logged-work";
@@ -102,10 +103,10 @@ type Session = WorkoutSession & {
   } | null;
 };
 
-function toDateInput(value: Date | string) {
+function toDateInput(value: Date | string, timeZone: string) {
   const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  if (Number.isNaN(date.getTime())) return "";
+  return formatDateTimeLocal(date, timeZone);
 }
 
 function setsInLb(sets: WorkoutSet[]): WorkoutSet[] {
@@ -293,14 +294,25 @@ function serverRest(session: { restExerciseName: string; restEndsAt: Date | null
   );
 }
 
-function SessionTimer() {
-  const [seconds, setSeconds] = useState(0);
+function SessionTimer({ startedAtMs }: { startedAtMs: number }) {
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000);
-    return () => window.clearInterval(timer);
+    const tick = () => setNow(Date.now());
+    const timer = window.setInterval(tick, 1000);
+    const onWake = () => tick();
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
+    };
   }, []);
+  const seconds = Math.max(0, Math.floor((now - startedAtMs) / 1000));
   return (
-    <span className="tabular-nums text-sm text-muted">{formatRestClock(seconds)}</span>
+    <span className="tabular-nums text-sm text-muted" data-session-elapsed={seconds}>
+      {formatRestClock(seconds)}
+    </span>
   );
 }
 
@@ -311,12 +323,14 @@ export function WorkoutLogForm({
   swap,
   coachId = "skye",
   coachMotivation = true,
+  timeZone = APP_TIMEZONE,
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
   notes?: Record<string, ExerciseNoteView>;
   coachId?: string;
   coachMotivation?: boolean;
+  timeZone?: string;
   swap?: {
     programSlug: string;
     dayNumber: number;
@@ -326,6 +340,7 @@ export function WorkoutLogForm({
     removedNames?: string[];
   };
 }) {
+  const [activeName, setActiveName] = useState<string | null>(null);
   const [state, action, pending] = useActionState(
     saveWorkoutWithNotice,
     {} as WorkoutActionState,
@@ -381,13 +396,14 @@ export function WorkoutLogForm({
 
   const cursor = useMemo(
     () =>
-      loggerCursor(
+      loggerCursorFollowing(
         grouped.map(([name, group]) => ({
           name,
           sets: group.map((set) => ({ id: set.id, completed: set.completed })),
         })),
+        activeName,
       ),
-    [grouped],
+    [activeName, grouped],
   );
   const currentPlanned = session.programDay?.exercises.find(
     (row) => row.name === cursor.exerciseName,
@@ -457,7 +473,7 @@ export function WorkoutLogForm({
       form?.querySelector<HTMLTextAreaElement>("[data-workout-title]")?.value || session.title;
     const performedAt =
       form?.querySelector<HTMLInputElement>('[name="performedAt"]')?.value ||
-      toDateInput(session.performedAt);
+      toDateInput(session.performedAt, timeZone);
     const notesField = form?.querySelector<HTMLTextAreaElement>('[name="notes"]');
     const notes = notesField ? notesField.value : session.notes;
     const payload = {
@@ -642,6 +658,8 @@ export function WorkoutLogForm({
   }, [restTimer]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
+    const name = sets.find((set) => set.id === id)?.exerciseName;
+    if (name) setActiveName(name);
     setSets((current) =>
       current.map((set) => (set.id === id ? { ...set, ...patch } : set)),
     );
@@ -675,6 +693,7 @@ export function WorkoutLogForm({
     restSeconds: number,
     completed: boolean,
   ) {
+    setActiveName(exerciseName);
     const nextSets = sets.map((set) => (set.id === setId ? { ...set, completed } : set));
     setSets(nextSets);
     let nextRest = restTimer;
@@ -770,7 +789,7 @@ export function WorkoutLogForm({
                   </span>
                 </p>
               ) : null}
-              <SessionTimer />
+              <SessionTimer startedAtMs={new Date(session.createdAt).getTime()} />
             </div>
             <div className="flex flex-col items-end">
               {COACH_WORKOUT_MOTIVATION_ENABLED ? (
@@ -902,7 +921,7 @@ export function WorkoutLogForm({
               <input
                 name="performedAt"
                 type="datetime-local"
-                defaultValue={toDateInput(session.performedAt)}
+                defaultValue={toDateInput(session.performedAt, timeZone)}
                 className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
               />
             </label>
@@ -946,7 +965,7 @@ export function WorkoutLogForm({
           </div>
         ) : (
           <>
-            <input type="hidden" name="performedAt" defaultValue={toDateInput(session.performedAt)} />
+            <input type="hidden" name="performedAt" defaultValue={toDateInput(session.performedAt, timeZone)} />
             <input type="hidden" name="notes" defaultValue={session.notes} />
           </>
         )}

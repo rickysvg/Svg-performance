@@ -52,7 +52,7 @@ export async function swapExerciseAction(input: SwapExerciseInput): Promise<Swap
       replacementName: input.replacementName,
       scope,
       workoutSessionId: input.workoutSessionId || undefined,
-      blockKey: trainingBlockKey(new Date(), timeZone),
+      blockKey: trainingBlockKey(new Date(), timeZone, profile?.onboardingCompletedAt ?? null),
       source: {
         sets: input.source.sets,
         reps: input.source.reps,

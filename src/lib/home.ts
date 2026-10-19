@@ -263,6 +263,7 @@ export async function getHomeToday(
     experienceLevel: profile?.experienceLevel,
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const builtToday = planForDate(prefs, selected, tz, swaps);
   const easedToday = await easePlanForUser(userId, selected, tz, builtToday);

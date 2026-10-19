@@ -269,6 +269,7 @@ export async function getCalendarSchedule(
     experienceLevel: profile?.experienceLevel,
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));

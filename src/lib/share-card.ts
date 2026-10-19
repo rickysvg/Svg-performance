@@ -32,6 +32,7 @@ export type ShareSetLike = {
 export type ShareSessionLike = {
   title: string;
   performedAt: Date;
+  createdAt?: Date;
   updatedAt?: Date;
   status: string;
   sets: ShareSetLike[];
@@ -84,9 +85,10 @@ export function sessionDurationSeconds(session: ShareSessionLike) {
     (sum, set) => sum + (set.durationSeconds && set.durationSeconds > 0 ? set.durationSeconds : 0),
     0,
   );
-  if (session.updatedAt) {
-    const elapsed = Math.round((session.updatedAt.getTime() - session.performedAt.getTime()) / 1000);
-    if (elapsed >= 5 * 60 && elapsed <= 4 * 60 * 60) {
+  const start = session.createdAt ?? session.performedAt;
+  if (loggedSets(session.sets).length > 0 && session.updatedAt && start) {
+    const elapsed = Math.round((session.updatedAt.getTime() - start.getTime()) / 1000);
+    if (elapsed >= 1 && elapsed <= 4 * 60 * 60) {
       return elapsed;
     }
   }

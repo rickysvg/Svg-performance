@@ -10,6 +10,7 @@ import {
   type SwapRecord,
   type SwapScope,
 } from "@/lib/exercise-swap";
+import { setHasLoggedWork } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
 import { scaleBandFromPrefs, scaleProgramDay, type ScalePrefs } from "@/lib/training-scale";
@@ -74,6 +75,13 @@ export async function listSwapsForDay(input: {
   return rows.map(toRecord);
 }
 
+function distinctExerciseName(taken: Set<string>, name: string) {
+  if (!taken.has(name)) return name;
+  let n = 2;
+  while (taken.has(`${name} (${n})`)) n += 1;
+  return `${name} (${n})`;
+}
+
 export function mergeReplacementSets(
   existing: WorkoutSetInput[],
   fromNames: string[],
@@ -87,24 +95,37 @@ export function mergeReplacementSets(
   place: { programSlug: string; dayNumber: number; loadUnit: "lb" },
 ): WorkoutSetInput[] {
   const from = new Set(fromNames);
-  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => ({
-    exerciseName: replacement.name,
-    setNumber: index + 1,
-    reps: null,
-    loadValue: null,
-    loadUnit: place.loadUnit,
-    logMode: replacement.logMode,
-    durationSeconds: null,
-    completed: false,
-    notes: "",
-    prescriptionKey: prescriptionSlotKey({
-      exerciseName: replacement.name,
-      reps: replacement.reps,
-      programSlug: place.programSlug,
-      dayNumber: place.dayNumber,
-    }),
-    rir: rirFromLoadText(replacement.loadText) ?? "",
-  }));
+  const prior = existing.filter((set) => from.has(set.exerciseName));
+  const taken = new Set(
+    existing.filter((set) => !from.has(set.exerciseName)).map((set) => set.exerciseName),
+  );
+  const name = distinctExerciseName(taken, replacement.name);
+  const logged = prior.filter((set) => setHasLoggedWork(set));
+  const keepLogs =
+    logged.length === 0 ||
+    logged.every((set) => !set.logMode || set.logMode === replacement.logMode);
+  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
+    const previous = keepLogs ? prior[index] : undefined;
+    const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
+    return {
+      exerciseName: name,
+      setNumber: index + 1,
+      reps: copy?.reps ?? null,
+      loadValue: copy?.loadValue ?? null,
+      loadUnit: place.loadUnit,
+      logMode: replacement.logMode,
+      durationSeconds: copy?.durationSeconds ?? null,
+      completed: copy?.completed ?? false,
+      notes: copy?.notes ?? "",
+      prescriptionKey: prescriptionSlotKey({
+        exerciseName: name,
+        reps: replacement.reps,
+        programSlug: place.programSlug,
+        dayNumber: place.dayNumber,
+      }),
+      rir: copy?.rir || rirFromLoadText(replacement.loadText) || "",
+    };
+  });
   const next: WorkoutSetInput[] = [];
   let inserted = false;
   for (const set of existing) {
@@ -346,7 +367,7 @@ export async function applyExerciseSwap(input: {
 
   let sets = null;
   if (input.workoutSessionId) {
-    const fromNames = [...retired, input.currentName, originalName].filter(
+    const fromNames = [input.currentName, originalName].filter(
       (name) => name && name !== prescription.name,
     );
     const updated = await rewriteSessionSets({
@@ -389,7 +410,7 @@ export async function alignWorkoutWithSwaps<
     } | null;
     sets: Array<{ exerciseName: string }>;
   },
->(session: T, prefs: ScalePrefs | null, timeZone: string) {
+>(session: T, prefs: ScalePrefs | null, timeZone: string, planAnchor?: Date | null) {
   if (!session.programDay || session.status === "complete") return session;
   const slug = session.programDay.program.slug;
   const swaps = await listSwapsForDay({
@@ -398,7 +419,7 @@ export async function alignWorkoutWithSwaps<
     dayNumber: session.programDay.dayNumber,
   });
   if (swaps.length === 0) return session;
-  const blockKey = trainingBlockKey(new Date(), timeZone);
+  const blockKey = trainingBlockKey(new Date(), timeZone, planAnchor);
   const scaled = scaleProgramDay(session.programDay, {
     band: scaleBandFromPrefs(prefs),
     programSlug: slug,

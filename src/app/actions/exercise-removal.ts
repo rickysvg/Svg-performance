@@ -50,7 +50,7 @@ export async function removeExerciseAction(
       originalName: input.originalName,
       exerciseName: input.exerciseName,
       workoutSessionId: input.workoutSessionId || undefined,
-      blockKey: trainingBlockKey(new Date(), timeZone),
+      blockKey: trainingBlockKey(new Date(), timeZone, profile?.onboardingCompletedAt ?? null),
       currentSets: input.currentSets,
     });
     revalidateWorkout(input.programDayId, input.workoutSessionId);

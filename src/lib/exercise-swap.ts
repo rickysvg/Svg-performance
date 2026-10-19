@@ -3,7 +3,7 @@
  * Same pattern (lower for lower, press for press) keeps the day's sets, RIR, and rest.
  * A different pattern uses the library's own sets, reps, RIR, and rest.
  */
-import { bikeWeekIndex } from "@/lib/bike-sessions";
+import { bikeWeekIndex, memberWeekIndex } from "@/lib/bike-sessions";
 import {
   canonicalExerciseName,
   categoryLabel,
@@ -58,8 +58,11 @@ export type SwapSlot = {
 
 const RIR_TOKEN = /\b(\d+\s*-\s*\d+|\d+\+)\s*RIR\b/i;
 
-export function trainingBlockKey(date: Date, timeZone: string) {
-  const weekIndex = bikeWeekIndex(date, timeZone);
+export function trainingBlockKey(date: Date, timeZone: string, anchor?: Date | null) {
+  const weekIndex =
+    anchor && !Number.isNaN(anchor.getTime())
+      ? memberWeekIndex(date, anchor, timeZone)
+      : bikeWeekIndex(date, timeZone);
   const block = mesoBlockForWeekIndex(weekIndex);
   return `${dayKey(mondayOfZoned(date, timeZone), timeZone)}:${block}`;
 }

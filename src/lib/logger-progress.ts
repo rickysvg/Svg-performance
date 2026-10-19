@@ -55,6 +55,54 @@ export function loggerCursor(groups: LoggerProgressGroup[]): LoggerCursor {
   };
 }
 
+/**
+ * Header follows the exercise the member just logged.
+ * An earlier unfinished exercise does not pull the cursor back.
+ */
+export function loggerCursorFollowing(
+  groups: LoggerProgressGroup[],
+  activeName: string | null | undefined,
+): LoggerCursor {
+  const fallback = loggerCursor(groups);
+  if (!activeName) return fallback;
+  const index = groups.findIndex((group) => group.name === activeName);
+  if (index < 0) return fallback;
+  const group = groups[index]!;
+  const open = group.sets.findIndex((set) => !set.completed);
+  if (open >= 0) {
+    return {
+      exerciseIndex: index + 1,
+      exerciseCount: groups.length,
+      exerciseName: group.name,
+      setIndex: open + 1,
+      setCount: group.sets.length,
+      done: false,
+    };
+  }
+  for (let next = index + 1; next < groups.length; next += 1) {
+    const later = groups[next]!;
+    const laterOpen = later.sets.findIndex((set) => !set.completed);
+    if (laterOpen >= 0) {
+      return {
+        exerciseIndex: next + 1,
+        exerciseCount: groups.length,
+        exerciseName: later.name,
+        setIndex: laterOpen + 1,
+        setCount: later.sets.length,
+        done: false,
+      };
+    }
+  }
+  return {
+    exerciseIndex: index + 1,
+    exerciseCount: groups.length,
+    exerciseName: group.name,
+    setIndex: group.sets.length,
+    setCount: group.sets.length,
+    done: true,
+  };
+}
+
 /** Next open set after the one just marked done. */
 export function nextIncompleteSetId(
   sets: LoggerProgressSet[],

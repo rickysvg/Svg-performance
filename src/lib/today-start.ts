@@ -31,9 +31,17 @@ export function sessionModality(kind: string) {
   return MODALITY[kind] ?? kind;
 }
 
-/** First clause of the day focus. Bag days lead with the theme. */
+function isEstimateClause(value: string) {
+  return /^(moderate pace\s*[·.]?\s*)?(est\.|~)\s*\d+\s*min\b/i.test(value) || /^est\.\s*\d+\s*min\b/i.test(value);
+}
+
+/** First clause of the day focus. Bag days lead with the theme, not a second minute estimate. */
 export function sessionTheme(subtitle: string, fallback: string) {
-  const head = subtitle.split("·")[0]?.trim() ?? "";
+  const clauses = subtitle
+    .split("·")
+    .map((part) => part.trim())
+    .filter((part) => part && !isEstimateClause(part) && !/^est\./i.test(part));
+  const head = clauses[0] ?? "";
   if (head && !/^rest day$/i.test(head)) return head;
   return fallback.trim() || "Session";
 }
