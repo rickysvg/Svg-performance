@@ -7,9 +7,11 @@ import { StatusBanner } from "@/components/StatusBanner";
 export function HomeBodyWeight({
   value,
   unit,
+  carbon = true,
 }: {
   value: number | null;
   unit: string;
+  carbon?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     saveBodyMetricAction,
@@ -18,11 +20,11 @@ export function HomeBodyWeight({
   const recordedAt = new Date().toISOString();
 
   return (
-    <form action={action} className="rounded-[1.75rem] border border-line bg-card px-4 py-4">
+    <form action={action} className={carbon ? "hc-panel hc-carbon px-4 py-4" : "px-0 py-1"}>
       <div className="flex items-end justify-between gap-3">
         <label className="min-w-0 flex-1">
-          <span className="text-sm font-medium">Body weight</span>
-          <span className="mt-1 flex items-baseline gap-2">
+          <span className="hc-kicker">Mass</span>
+          <span className="mt-2 flex items-baseline gap-2">
             <input
               name="value"
               inputMode="decimal"
@@ -32,7 +34,7 @@ export function HomeBodyWeight({
               defaultValue={value ?? ""}
               placeholder="—"
               aria-label="Body weight in pounds"
-              className="w-full min-w-0 bg-transparent font-display text-4xl leading-none outline-none"
+              className="w-full min-w-0 bg-transparent font-telemetry text-4xl leading-none text-[#CBF805] outline-none"
             />
             <span className="shrink-0 text-sm text-muted">{unit}</span>
           </span>

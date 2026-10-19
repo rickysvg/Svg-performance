@@ -313,7 +313,7 @@ describe("app-open splash video", () => {
     expect(css).toMatch(/\.app-splash-skip/);
     expect(css).toMatch(/\.app-splash\.is-still-fallback/);
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce/);
-    expect(css).toMatch(/--background:\s*#ffffff/);
+    expect(css).toMatch(/--background:\s*#07080a/);
     expect(css).toMatch(/--accent:\s*#cbf805/);
   });
 });

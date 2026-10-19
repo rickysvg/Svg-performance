@@ -1,15 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+  /* Hypercar shell: deep carbon, lime instrument light, cyan for a second series. */
+  --background: #07080a;
+  --foreground: #f3f4ef;
   --accent: #cbf805;
   --accent-ink: #14180a;
-  --card: #f4f5ee;
-  --line: #d6d8cc;
-  --muted: #5c6156;
-  --danger: #b42318;
-  --ok: #3d4a00;
+  --card: #121418;
+  --line: #2a3124;
+  --muted: #9aa394;
+  --danger: #ff6b5a;
+  --ok: #cbf805;
+  --data: #5ee0ff;
+  --carbon: #0c0e11;
+  --carbon-weave: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2264%22%20height%3D%2264%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22dw%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%2316181b%22%2F%3E%3Cstop%20offset%3D%22.4%22%20stop-color%3D%22%23121416%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b0c0e%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22df%22%20x1%3D%221%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%220%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23131518%22%2F%3E%3Cstop%20offset%3D%22.55%22%20stop-color%3D%22%23101216%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b0c0e%22%2F%3E%3C%2FlinearGradient%3E%3Cpattern%20id%3D%22dh%22%20width%3D%224%22%20height%3D%224%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M0%20.8H4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.055%22%2F%3E%3Cpath%20d%3D%22M0%202.6H4%22%20stroke%3D%22%23000%22%20stroke-opacity%3D%22.22%22%2F%3E%3C%2Fpattern%3E%3Cpattern%20id%3D%22dv%22%20width%3D%224%22%20height%3D%224%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M.8%200V4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.05%22%2F%3E%3Cpath%20d%3D%22M2.6%200V4%22%20stroke%3D%22%23000%22%20stroke-opacity%3D%22.2%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20fill%3D%22%230b0c0e%22%2F%3E%3Cg%3E%3Crect%20x%3D%2232%22%20y%3D%220%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23df)%22%2F%3E%3Crect%20x%3D%2232%22%20y%3D%220%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dh)%22%2F%3E%3Crect%20x%3D%2263%22%20y%3D%220%22%20width%3D%221%22%20height%3D%2216%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%220%22%20y%3D%2216%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23df)%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2216%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23dh)%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%2216%22%20width%3D%221%22%20height%3D%2216%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%2248%22%20y%3D%2216%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23df)%22%2F%3E%3Crect%20x%3D%2248%22%20y%3D%2216%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23dh)%22%2F%3E%3Crect%20x%3D%2263%22%20y%3D%2216%22%20width%3D%221%22%20height%3D%2216%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%220%22%20y%3D%2232%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23df)%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2232%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dh)%22%2F%3E%3Crect%20x%3D%2231%22%20y%3D%2232%22%20width%3D%221%22%20height%3D%2216%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%2216%22%20y%3D%2248%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23df)%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2248%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dh)%22%2F%3E%3Crect%20x%3D%2247%22%20y%3D%2248%22%20width%3D%221%22%20height%3D%2216%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dw)%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dv)%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2215%22%20width%3D%2232%22%20height%3D%221%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%2216%22%20y%3D%2216%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dw)%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2216%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dv)%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2231%22%20width%3D%2232%22%20height%3D%221%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%2232%22%20y%3D%2232%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dw)%22%2F%3E%3Crect%20x%3D%2232%22%20y%3D%2232%22%20width%3D%2232%22%20height%3D%2216%22%20fill%3D%22url(%23dv)%22%2F%3E%3Crect%20x%3D%2232%22%20y%3D%2247%22%20width%3D%2232%22%20height%3D%221%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%220%22%20y%3D%2248%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23dw)%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2248%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23dv)%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2263%22%20width%3D%2216%22%20height%3D%221%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Crect%20x%3D%2248%22%20y%3D%2248%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23dw)%22%2F%3E%3Crect%20x%3D%2248%22%20y%3D%2248%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22url(%23dv)%22%2F%3E%3Crect%20x%3D%2248%22%20y%3D%2263%22%20width%3D%2216%22%20height%3D%221%22%20fill%3D%22%23000%22%20opacity%3D%220.16%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
 }
 
 @theme inline {
@@ -21,10 +25,16 @@
   --color-line: var(--line);
   --color-muted: var(--muted);
   --color-danger: var(--danger);
+  --color-data: var(--data);
+  --color-carbon: var(--carbon);
   --font-sans: var(--font-geist-sans);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --font-display: var(--font-anton);
+}
+
+html {
+  color-scheme: dark;
 }
 
 html,
@@ -35,6 +45,7 @@ body {
 
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--background);
 }
 
 /*
@@ -75,7 +86,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--accent-ink);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -105,11 +116,17 @@ textarea:focus-visible {
 }
 
 /*
-  Neon lime is the highlighter fill. Small text that uses text-accent must stay
-  readable on white, so ink it nearly black. Buttons keep bg-accent + text-black.
+  Neon lime is the instrument color on carbon. White cards that remain
+  (paywalls, mail-like panels) still ink accent text so it stays readable.
+  Buttons keep bg-accent + black text.
 */
 @layer utilities {
   .text-accent {
+    color: var(--accent);
+  }
+
+  .bg-white .text-accent,
+  .bg-accent .text-accent {
     color: var(--accent-ink);
   }
 
@@ -117,7 +134,7 @@ textarea:focus-visible {
     color: var(--accent);
   }
 
-  /* text-accent is dark ink on white. On black chips it must stay lime. */
+  /* Kept so black chips never inherit a dark remap. */
   .bg-black.text-accent {
     color: var(--accent);
   }
@@ -673,6 +690,174 @@ body:has(.app-splash.is-visible) {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* White islands on the dark shell keep dark ink. */
+.bg-white {
+  color: #14180a;
+}
+
+::selection {
+  background: #cbf805;
+  color: #14180a;
+}
+
+.font-telemetry {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.04em;
+}
+
+.hc-panel {
+  position: relative;
+  border: 1px solid rgba(203, 248, 5, 0.35);
+  border-radius: 1rem;
+  background-color: #101216;
+  box-shadow: inset 0 1px 0 rgba(203, 248, 5, 0.55);
+}
+
+/* 16px 2×2 twill. Clear coat sits above the tile and under the type. */
+.hc-carbon {
+  isolation: isolate;
+  overflow: hidden;
+  background-color: #0b0c0e;
+  background-image: var(--carbon-weave);
+  background-size: 64px 64px;
+}
+
+.hc-carbon::before,
+.hc-carbon::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hc-carbon::before {
+  inset: 0;
+  background:
+    radial-gradient(130% 90% at 16% -20%, rgba(255, 255, 255, 0.1), transparent 44%),
+    radial-gradient(85% 70% at 110% 125%, rgba(0, 0, 0, 0.58), transparent 54%);
+}
+
+.hc-carbon::after {
+  inset: -70% -35%;
+  background: linear-gradient(
+    112deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.03) 48%,
+    rgba(255, 255, 255, 0.075) 50%,
+    rgba(255, 255, 255, 0.03) 52%,
+    transparent 60%
+  );
+  animation: hc-coat 16s ease-in-out infinite;
+}
+
+@keyframes hc-coat {
+  0%,
+  100% {
+    transform: translate3d(-6%, 0, 0);
+  }
+  50% {
+    transform: translate3d(8%, 3%, 0);
+  }
+}
+
+.hc-kicker {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #cbf805;
+}
+
+.hc-corners {
+  pointer-events: none;
+  position: absolute;
+  inset: 7px;
+  background:
+    linear-gradient(#cbf805, #cbf805) left top / 12px 1px no-repeat,
+    linear-gradient(#cbf805, #cbf805) left top / 1px 12px no-repeat,
+    linear-gradient(#cbf805, #cbf805) right top / 12px 1px no-repeat,
+    linear-gradient(#cbf805, #cbf805) right top / 1px 12px no-repeat,
+    linear-gradient(#cbf805, #cbf805) left bottom / 12px 1px no-repeat,
+    linear-gradient(#cbf805, #cbf805) left bottom / 1px 12px no-repeat,
+    linear-gradient(#cbf805, #cbf805) right bottom / 12px 1px no-repeat,
+    linear-gradient(#cbf805, #cbf805) right bottom / 1px 12px no-repeat;
+}
+
+.hc-plot {
+  background: #07080a;
+  border: 1px solid #243024;
+  border-radius: 0.7rem;
+}
+
+.hc-live {
+  animation: hc-live 2.4s ease-in-out infinite;
+}
+
+.hc-scan {
+  position: relative;
+  overflow: hidden;
+}
+
+.hc-scan::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(203, 248, 5, 0.16), transparent);
+  animation: hc-scan 5.5s linear infinite;
+}
+
+@keyframes hc-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes hc-scan {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+[data-hypercar-logger] [data-exercise-block] {
+  background-color: #121418;
+  box-shadow: inset 0 1px 0 rgba(203, 248, 5, 0.28);
+}
+
+[data-hypercar-logger] [data-current-exercise="true"] {
+  box-shadow:
+    inset 0 1px 0 #cbf805,
+    0 0 0 1px #cbf805,
+    0 0 18px rgba(203, 248, 5, 0.22);
+}
+
+[data-hypercar-logger] input,
+[data-hypercar-logger] textarea,
+[data-hypercar-logger] select {
+  color: #f3f4ef;
+  border-color: #2a3124;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-live,
+  .hc-scan::after,
+  .hc-carbon::after {
+    animation: none;
+  }
 }
 
 /* Beat Tailwind font-semibold/bold on Anton — the face has no 600/700 cut. */

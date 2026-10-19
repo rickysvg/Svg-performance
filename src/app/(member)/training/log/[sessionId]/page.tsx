@@ -160,7 +160,18 @@ export default async function WorkoutLogPage({
   const notes = rekeyGymRecord(exerciseNotes, band);
 
   return (
-    <main className="space-y-6">
+    <main data-hypercar-logger className="space-y-6">
+      <header className="hc-panel hc-carbon flex items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="hc-kicker">Logger</p>
+          <p className="mt-1 font-display text-xl">
+            {session.status === "complete" ? "Saved" : "Live session"}
+          </p>
+        </div>
+        <p className="font-telemetry text-xs uppercase tracking-[0.16em] text-[#CBF805]">
+          {session.status === "complete" ? "Hold" : "Armed"}
+        </p>
+      </header>
       {session.status === "complete" ? (
         <div className="space-y-2">
           <form action={resumeWorkoutAction}>

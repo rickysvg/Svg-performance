@@ -9,7 +9,7 @@ export function PrimaryNav() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 z-20 hidden border-b border-line bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur md:block"
+      className="hc-carbon sticky top-0 z-20 hidden border-b border-[#cbf805]/45 pt-[env(safe-area-inset-top)] md:block"
     >
       <ul className="mx-auto grid max-w-3xl grid-cols-5 px-1">
         {PRIMARY_NAV_LINKS.map((link) => {
@@ -18,8 +18,8 @@ export function PrimaryNav() {
             <li key={link.href} className="px-0.5 py-1.5">
               <Link
                 href={link.href}
-                className={`font-display touch-target flex flex-col items-center justify-center rounded-full px-1 text-[12px] uppercase leading-tight tracking-[0.06em] whitespace-nowrap ${
-                  active ? "bg-accent text-black" : "text-muted hover:text-foreground"
+                className={`font-telemetry touch-target flex flex-col items-center justify-center border-b-2 px-1 text-[11px] uppercase leading-tight tracking-[0.16em] whitespace-nowrap ${
+                  active ? "border-[#CBF805] text-[#CBF805]" : "border-transparent text-muted hover:text-foreground"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
