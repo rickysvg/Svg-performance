@@ -56,6 +56,16 @@ function splitLong(text: string, max: number) {
   });
 }
 
+/** First sentence, so read-aloud can start before the rest of the script is spoken. */
+export function firstSpokenChunk(text: string) {
+  const sentence = text
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .find(Boolean);
+  return sentence || text.trim();
+}
+
 /** Sentence-sized chunks. iOS cuts off one long utterance. */
 export function chunkSpeech(text: string, max = 160) {
   const sentences = text

@@ -1,14 +1,25 @@
 import type { ProgressPoint } from "@/lib/progress";
+import { civilDayInstant } from "@/lib/performed-at";
+import { APP_TIMEZONE } from "@/lib/timezone";
 
-export function ProgressBars({ points }: { points: ProgressPoint[] }) {
+export function ProgressBars({
+  points,
+  timeZone,
+}: {
+  points: ProgressPoint[];
+  timeZone?: string;
+}) {
   const max = Math.max(...points.map((point) => point.volume), 1);
   return (
     <ol className="mt-4 space-y-3">
       {points.map((point) => {
         const width = Math.max(6, Math.round((point.volume / max) * 100));
-        const date = new Date(point.performedAt).toLocaleDateString(undefined, {
+        const zone = timeZone || APP_TIMEZONE;
+        const date = civilDayInstant(new Date(point.performedAt), zone).toLocaleDateString("en-US", {
+          weekday: "short",
           month: "short",
           day: "numeric",
+          timeZone: zone,
         });
         return (
           <li key={point.id}>

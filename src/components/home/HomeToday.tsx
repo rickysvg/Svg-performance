@@ -5,7 +5,7 @@ import type { getTodayGuide } from "@/lib/today";
 
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
 
-export function HomeToday({ guide }: { guide: Guide }) {
+export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: boolean }) {
   const planned = (guide.today.plannedSessions ?? []).filter((session) => session.href);
   const first = planned[0];
   const extra = planned.length - 1;
@@ -21,7 +21,14 @@ export function HomeToday({ guide }: { guide: Guide }) {
             ? `Next session: ${guide.today.nextSessionWeekday}.`
             : "Recover today."}
         </p>
-        {next?.dayId ? (
+        {locked ? (
+          <a
+            href="#trial-ended"
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+          >
+            Subscribe
+          </a>
+        ) : next?.dayId ? (
           <form action={startSessionAction} data-prime-coach-audio className="mt-4">
             <input type="hidden" name="programDayId" value={next.dayId} />
             <button
@@ -58,7 +65,14 @@ export function HomeToday({ guide }: { guide: Guide }) {
         {count > 0 ? exerciseCountLabel(count) : first.label}
         {extra > 0 ? ` · ${extra} more today` : ""}
       </p>
-      {draft ? (
+      {locked ? (
+        <a
+          href="#trial-ended"
+          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+        >
+          Subscribe
+        </a>
+      ) : draft ? (
         <Link
           href={`/training/log/${guide.today.draft?.id}`}
           data-prime-coach-audio

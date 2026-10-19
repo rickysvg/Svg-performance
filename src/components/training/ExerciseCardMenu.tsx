@@ -138,7 +138,7 @@ export function ExerciseCardMenu({
     if (logged.length > 0 && nextMode !== currentMode) {
       const noun = logged.length === 1 ? "set" : "sets";
       const ok = window.confirm(
-        `Swap ${currentName} for this session? The ${logged.length} logged ${noun} use a different log and will be cleared.`,
+        `This exercise logs differently, so your ${logged.length} logged ${noun} will be cleared.`,
       );
       if (!ok) return;
     }

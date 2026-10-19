@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DemoBadge } from "@/components/DemoBadge";
 import { requireUser } from "@/lib/session";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
@@ -234,7 +233,6 @@ export default async function TrainingPage({
             {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
           </p>
         </div>
-        <DemoBadge />
       </div>
 
       <FightCampOptIn

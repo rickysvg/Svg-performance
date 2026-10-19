@@ -75,13 +75,6 @@ export async function listSwapsForDay(input: {
   return rows.map(toRecord);
 }
 
-function distinctExerciseName(taken: Set<string>, name: string) {
-  if (!taken.has(name)) return name;
-  let n = 2;
-  while (taken.has(`${name} (${n})`)) n += 1;
-  return `${name} (${n})`;
-}
-
 export function mergeReplacementSets(
   existing: WorkoutSetInput[],
   fromNames: string[],
@@ -96,14 +89,12 @@ export function mergeReplacementSets(
 ): WorkoutSetInput[] {
   const from = new Set(fromNames);
   const prior = existing.filter((set) => from.has(set.exerciseName));
-  const taken = new Set(
-    existing.filter((set) => !from.has(set.exerciseName)).map((set) => set.exerciseName),
-  );
-  const name = distinctExerciseName(taken, replacement.name);
+  const name = replacement.name;
   const logged = prior.filter((set) => setHasLoggedWork(set));
   const keepLogs =
     logged.length === 0 ||
     logged.every((set) => !set.logMode || set.logMode === replacement.logMode);
+  const planRir = rirFromLoadText(replacement.loadText) || "";
   const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
     const previous = keepLogs ? prior[index] : undefined;
     const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
@@ -123,7 +114,7 @@ export function mergeReplacementSets(
         programSlug: place.programSlug,
         dayNumber: place.dayNumber,
       }),
-      rir: copy?.rir || rirFromLoadText(replacement.loadText) || "",
+      rir: planRir,
     };
   });
   const next: WorkoutSetInput[] = [];

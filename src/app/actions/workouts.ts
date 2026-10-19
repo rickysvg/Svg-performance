@@ -20,6 +20,7 @@ import { parseDateTimeLocal } from "@/lib/timezone";
 import { isDeloadWeekIndex } from "@/lib/training-cycle";
 import { planWeekIndex } from "@/lib/week-plan";
 import { publicErrorMessage } from "@/lib/errors";
+import { getAppTier } from "@/lib/entitlements";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { createWorkoutHrForUser } from "@/lib/heart";
@@ -38,6 +39,10 @@ export type WorkoutActionState = {
 
 export async function startRoundLogAction(formData: FormData) {
   const user = await requireUserOrThrow();
+  const tier = await getAppTier(user.id);
+  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
+    redirect("/home");
+  }
   const profile = await getProfileForUser(user.id);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const modeRaw = String(formData.get("mode") ?? "bag");
@@ -56,6 +61,10 @@ export async function startRoundLogAction(formData: FormData) {
 
 export async function startSessionAction(formData: FormData) {
   const user = await requireUserOrThrow();
+  const tier = await getAppTier(user.id);
+  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
+    redirect("/home");
+  }
   const profile = await getProfileForUser(user.id);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);

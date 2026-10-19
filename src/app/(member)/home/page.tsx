@@ -20,6 +20,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
+import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 
 export default async function HomePage({
   searchParams,
@@ -61,6 +62,7 @@ export default async function HomePage({
   const weight = latestMetrics.get("weight");
   const units = profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb";
   const coach = resolveAiCoach(profile?.aiCoachId);
+  const trialEnded = planId === "member_access";
 
   return (
     <main className="space-y-6 pb-8">
@@ -72,6 +74,8 @@ export default async function HomePage({
           {profile?.goals ? ` · ${profile.goals}` : ""}
         </p>
       </section>
+
+      {trialEnded ? <TrialEndedPaywall /> : null}
 
       <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 
@@ -88,7 +92,7 @@ export default async function HomePage({
               ]
             : []
         }
-        canStartTrial={trial.canStartTrial}
+        canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
       />
 
@@ -118,7 +122,7 @@ export default async function HomePage({
         />
       ) : null}
 
-      <HomeToday guide={guide} />
+      <HomeToday guide={guide} locked={trialEnded} />
 
       {guide.today.outsideKind === "sparring" ? (
         <SparringLogForm

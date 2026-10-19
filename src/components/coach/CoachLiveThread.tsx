@@ -85,6 +85,7 @@ export function CoachLiveThread({
   coachId = "skye",
   coachThumb,
   initialMessages,
+  remainingLabel = null,
 }: {
   topic: string;
   art?: string;
@@ -100,6 +101,7 @@ export function CoachLiveThread({
     refused: boolean;
     offline: boolean;
   }>;
+  remainingLabel?: string | null;
 }) {
   const [messages, setMessages] = useState<ChatBubble[]>(
     initialMessages.map((message) => ({
@@ -130,7 +132,8 @@ export function CoachLiveThread({
       { id: userId, role: "user", content: message },
     ]);
     const result = await start({ kind: "chat", message, topic, art });
-    const reply = result.content || partial;
+    if (result.paywall) return;
+    const reply = result.content;
     if (reply) {
       setMessages((current) => [
         ...current,
@@ -212,6 +215,11 @@ export function CoachLiveThread({
       <div ref={bottomRef} />
 
       <form onSubmit={onSend} className="space-y-3">
+        {remainingLabel ? (
+          <p data-ai-remaining className="text-xs text-muted">
+            {remainingLabel}
+          </p>
+        ) : null}
         <StatusBanner error={error} />
         {paywall ? (
           <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} />

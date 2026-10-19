@@ -11,7 +11,7 @@ import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
-import { DemoBadge } from "@/components/DemoBadge";
+import { memberFacingTitle } from "@/lib/member-copy";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
@@ -890,17 +890,12 @@ export function WorkoutLogForm({
         </header>
 
         <div className="space-y-2 pt-2">
-          {session.title.startsWith("DEMO") ? (
-            <div className="flex justify-end">
-              <DemoBadge />
-            </div>
-          ) : null}
           <label className="block">
             <span className="sr-only">Workout title</span>
             <textarea
               name="title"
               data-workout-title
-              defaultValue={session.title}
+              defaultValue={memberFacingTitle(session.title)}
               rows={2}
               className="font-display min-h-[3.4rem] w-full min-w-0 resize-none bg-transparent text-2xl leading-tight tracking-wide break-words whitespace-normal outline-none"
             />

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DemoBadge } from "@/components/DemoBadge";
+import { memberFacingTitle } from "@/lib/member-copy";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
@@ -131,17 +131,15 @@ export default async function TrainingDayPage({
           ×
         </Link>
         <p className="min-w-0 flex-1 truncate text-center text-sm text-muted">
-          {day.program.title}
+          {memberFacingTitle(day.program.title)}
         </p>
-        <span className="inline-flex w-11 justify-end">
-          {day.program.isDemo ? <DemoBadge /> : null}
-        </span>
+        <span className="inline-flex w-11 justify-end" />
       </header>
 
       <section className="space-y-4 px-4 pb-4 pt-3" data-session-phase="first">
         <p className="font-display text-xs uppercase tracking-wide text-accent">First</p>
         <div>
-          <h1 className="text-2xl leading-tight">{day.title}</h1>
+          <h1 className="text-2xl leading-tight">{memberFacingTitle(day.title)}</h1>
           <p className="mt-1 text-sm text-muted">{day.focus}</p>
           <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
             {scaleCopy(

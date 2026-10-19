@@ -23,6 +23,9 @@ import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
 import { sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
 import { SparringTrend } from "@/components/progress/SparringTrend";
+import { formatWorkoutCompleteDate } from "@/lib/workout-complete";
+import { civilDayInstant } from "@/lib/performed-at";
+import { memberFacingTitle } from "@/lib/member-copy";
 
 function MetricTile({
   title,
@@ -68,6 +71,10 @@ export default async function ProgressPage() {
   const lastComplete = sessions.find(
     (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
   );
+  const lastWhen = lastComplete
+    ? formatWorkoutCompleteDate(civilDayInstant(lastComplete.performedAt, tz), tz)
+    : null;
+  const lastTitle = summary.lastSessionTitle ? memberFacingTitle(summary.lastSessionTitle) : null;
   const weight = latestMetrics.get("weight");
   const sleep = latestMetrics.get("sleepHours");
   const typedHr = latestMetrics.get("restingHr");
@@ -114,7 +121,12 @@ export default async function ProgressPage() {
       <section className="rounded-2xl border border-line bg-card p-4">
         <p className="text-sm text-muted">Last session</p>
         <p className="mt-1 text-lg font-semibold">
-          {summary.sessionCount === 0 ? "None yet" : summary.lastSessionTitle}
+          {summary.sessionCount === 0 ? "None yet" : lastTitle}
+          {lastWhen ? (
+            <span data-last-session-date className="mt-1 block text-sm font-medium text-muted">
+              {lastWhen}
+            </span>
+          ) : null}
         </p>
         {lastComplete ? (
           <Link
@@ -352,7 +364,10 @@ export default async function ProgressPage() {
             <article className="rounded-2xl border border-line bg-card p-4">
               <p className="text-xs uppercase text-muted">Last session</p>
               <p className="mt-1 text-sm font-semibold">
-                {summary.lastSessionTitle}
+                {lastTitle}
+                {lastWhen ? (
+                  <span className="mt-1 block text-xs font-medium text-muted">{lastWhen}</span>
+                ) : null}
               </p>
               {lastComplete ? (
                 <Link
@@ -368,7 +383,7 @@ export default async function ProgressPage() {
           <section className="rounded-2xl border border-line bg-card p-5">
             <h2>Session volume ({units})</h2>
             {showCharts ? (
-              <ProgressBars points={summary.points} />
+              <ProgressBars points={summary.points} timeZone={tz} />
             ) : (
               <div className="mt-3">
                 <UpgradePreview

@@ -13,6 +13,7 @@ import {
   unlockCoachAudio,
   COACH_AUDIO_FAILED,
 } from "@/lib/coach/spoken-audio";
+import { firstSpokenChunk } from "@/lib/coach/browser-speech";
 
 type Phase = "idle" | "loading" | "playing" | "paused";
 
@@ -130,7 +131,14 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
     const token = tokenRef.current + 1;
     tokenRef.current = token;
     modeRef.current = null;
-    setPhase("loading");
+    const lead = firstSpokenChunk(script);
+    const started = speakFallback(lead, coachId);
+    if (started) {
+      modeRef.current = "speech";
+      setPhase("playing");
+    } else {
+      setPhase("loading");
+    }
     void fetchAudio(token);
   }
 

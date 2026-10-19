@@ -50,10 +50,12 @@ describe("owner-approved three-plan pricing", () => {
     expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
     expect(foundingPriceLine(100)).toContain("$59/year");
     expect(foundingPriceLine(100)).toContain("first 100 members");
-    expect(foundingPriceLine(100)).toContain("100 of 100 spots left");
+    expect(foundingPriceLine(100)).toContain("100 founding spots left");
+    expect(foundingPriceLine(0)).toContain("Sold out");
     expect(isFoundingDealOpen(0)).toBe(true);
     expect(isFoundingDealOpen(100)).toBe(false);
-    expect(coachingSpotsLine(12)).toBe("12 of 20 spots left");
+    expect(coachingSpotsLine(12)).toBe("12 coaching spots open");
+    expect(coachingSpotsLine(0)).toBe("Sold out");
     expect(coachingSpotsLine(null)).toBe("Limited to 20 athletes");
     expect(PLAN_CATALOG.member_access.label).toBe("Trial ended");
     expect(PLAN_CATALOG.academy.gymPriceLabel).toBe("Included in dues");
@@ -110,13 +112,15 @@ describe("owner-approved three-plan pricing", () => {
       expect(text.toLowerCase()).not.toMatch(/\bbout\b/);
     }
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
-    expect(catalog).toContain("Coming soon");
+    expect(catalog).toContain("Start 7-day free trial");
+    expect(catalog).toContain("Subscribe — opening Nov 16");
     expect(catalog).toContain("performanceAnnualLine()");
     expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
     expect(catalog).toContain("In-person intensives and VIP");
     expect(catalog).toContain("Book with Ricky");
     expect(catalog).not.toContain("data-pricing-toggle");
-    expect(read("src/app/pricing/page.tsx")).toContain("Paid plans coming soon");
+    expect(read("src/app/pricing/page.tsx")).toContain("Paid checkout opens Nov 16");
+    expect(read("src/app/pricing/page.tsx")).toContain("academy members and Pro subscribers");
     expect(read("src/app/pricing/page.tsx")).toContain("Gymdesk dues");
     expect(read("src/lib/billing.ts")).toContain("Paid plans coming soon.");
   });
