@@ -183,6 +183,11 @@ export function streakStatusLine(streak: TrainingStreak) {
   if (!streak.todayScheduled) {
     return "Rest day. Streak safe.";
   }
+  const todayDone = streak.weekDots.some((dot) => dot.isToday && dot.completed);
+  if (todayDone) {
+    const unit = streak.current === 1 ? "day" : "days";
+    return `Today counts. Streak is ${streak.current} ${unit}.`;
+  }
   if (streak.daysToNext > 0) {
     return `train today to make it ${streak.current + 1}`;
   }
@@ -198,6 +203,7 @@ export function plannerPrefsFromProfile(profile: {
   experienceLevel?: string | null;
   email?: string | null;
   outsideTraining?: PlannerPrefs["outsideTraining"];
+  onboardingCompletedAt?: Date | null;
 }): PlannerPrefs {
   return {
     primaryFocus: profile.primaryFocus,
@@ -208,5 +214,6 @@ export function plannerPrefsFromProfile(profile: {
     experienceLevel: profile.experienceLevel,
     email: profile.email,
     outsideTraining: profile.outsideTraining ?? [],
+    planAnchor: profile.onboardingCompletedAt ?? undefined,
   };
 }

@@ -57,6 +57,7 @@ export default async function TrainingCalendarPage({
     experienceLevel: profile?.experienceLevel,
     email: user.email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const dayPlan = planForDate(prefs, selected, tz, swaps);
   const strip = weekStrip(prefs, now, tz, selected, swaps, selected);

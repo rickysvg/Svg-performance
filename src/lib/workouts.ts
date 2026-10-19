@@ -363,6 +363,7 @@ export async function startWorkoutFromDay(input: {
   scale?: ScalePrefs | null;
   deload?: boolean;
   timeZone?: string;
+  planAnchor?: Date | null;
 }) {
   const rawDay = await getProgramDayById(input.programDayId);
   const band = scaleBandFromPrefs(input.scale);
@@ -376,7 +377,7 @@ export async function startWorkoutFromDay(input: {
     },
     { band, programSlug: rawDay.program.slug, weightAccess: input.scale?.weightAccess },
   );
-  const blockKey = trainingBlockKey(new Date(), input.timeZone || APP_TIMEZONE);
+  const blockKey = trainingBlockKey(new Date(), input.timeZone || APP_TIMEZONE, input.planAnchor);
   const swaps = await listSwapsForDay({
     userId: input.userId,
     programSlug: rawDay.program.slug,

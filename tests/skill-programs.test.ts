@@ -105,6 +105,10 @@ describe("seeded DEMO combat skills", () => {
       foodPreferences: "",
       allergies: "",
     });
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { onboardingCompletedAt: new Date("2026-01-05T12:00:00.000Z") },
+    });
     const when = new Date(2026, 8, 21, 10, 0, 0);
     const today = await getHomeToday(user.id, when);
     expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);

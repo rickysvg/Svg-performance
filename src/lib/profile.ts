@@ -325,6 +325,9 @@ export async function updateProfileForUser(
   const weeklyAvailability = input.weeklyAvailability.filter((item) =>
     (WEEKDAYS as readonly string[]).includes(item),
   );
+  if (weeklyAvailability.length === 0) {
+    throw new AppError("PROFILE", "Pick at least one day you can train.");
+  };
 
   let hoursPerWeek = input.hoursPerWeek;
   if (hoursPerWeek != null) {

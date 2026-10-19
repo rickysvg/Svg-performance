@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
-import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
 import { SessionRecap } from "@/components/training/SessionRecap";
 import type { SessionSummary } from "@/lib/session-summary";
@@ -50,8 +49,6 @@ export function WorkoutWinScreen({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const pending = parseUnlockQuery(params.get("pendingUnlock") ?? params.get("unlock"));
-  const [open, setOpen] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [tip, setTip] = useState("");
   const reduce = useSyncExternalStore(subscribeReducedMotion, reducedMotionNow, () => false);
@@ -62,7 +59,6 @@ export function WorkoutWinScreen({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
     const buzz = window.setTimeout(() => {
       if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
         navigator.vibrate([28, 22, 48]);
@@ -72,14 +68,12 @@ export function WorkoutWinScreen({
       }
     }, reduce ? 40 : 700);
     return () => window.clearTimeout(buzz);
-  }, [open, reduce]);
+  }, [reduce]);
 
   function onDone() {
-    setOpen(false);
-    window.dispatchEvent(new Event("svg-workout-win-done"));
-    if (pending.length === 0) {
-      router.replace("/home");
-    }
+    const unlock = params.get("unlock") ?? params.get("pendingUnlock");
+    const href = unlock ? `/home?unlock=${encodeURIComponent(unlock)}` : "/home";
+    router.replace(href);
   }
 
   async function onShare() {
@@ -102,8 +96,6 @@ export function WorkoutWinScreen({
       setSharing(false);
     }
   }
-
-  if (!open) return null;
 
   return (
     <div

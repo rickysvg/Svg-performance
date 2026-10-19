@@ -38,7 +38,7 @@ export function StreakHero({ streak }: { streak: TrainingStreak }) {
             ))}
           </ol>
           <p className="mt-3 text-sm leading-snug">
-            Best streak: {streak.longest} days · {streakStatusLine(streak)}
+            Best streak: {streak.longest} {streak.longest === 1 ? "day" : "days"} · {streakStatusLine(streak)}
           </p>
         </div>
       </div>

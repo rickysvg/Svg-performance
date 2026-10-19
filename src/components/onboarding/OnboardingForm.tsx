@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { completeOnboardingAction, type OnboardingActionState } from "@/app/actions/onboarding";
 import { CoachPicker } from "@/components/coach/CoachPicker";
 import { StatusBanner } from "@/components/StatusBanner";
@@ -17,6 +17,17 @@ import { OutsideTrainingFields } from "@/components/profile/OutsideTrainingField
 import { defaultLiftDays } from "@/lib/member-plan";
 import type { ProfileRecord } from "@/lib/profile";
 
+const INTAKE_STEP_KEY = "svg-onboarding-intake-step";
+
+function storedIntakeStep(): 1 | 2 {
+  if (typeof window === "undefined") return 1;
+  try {
+    return window.sessionStorage.getItem(INTAKE_STEP_KEY) === "2" ? 2 : 1;
+  } catch {
+    return 1;
+  }
+}
+
 export function OnboardingForm({
   profile,
   email,
@@ -28,15 +39,44 @@ export function OnboardingForm({
     completeOnboardingAction,
     {} as OnboardingActionState,
   );
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [dayError, setDayError] = useState("");
+  useLayoutEffect(() => {
+    const stored = storedIntakeStep();
+    if (stored !== 1) setStep(stored);
+  }, []);
+  useEffect(() => {
+    if (!state.error?.toLowerCase().includes("day you can train")) return;
+    setStep(1);
+    try {
+      window.sessionStorage.setItem(INTAKE_STEP_KEY, "1");
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [state.error]);
   const [trainingFocus, setTrainingFocus] = useState(profile.trainingFocus || "martial_arts_sc");
   const [level, setLevel] = useState(profile.experienceLevel || "beginner");
   const suggestedLifts = profile.liftDaysPerWeek ?? defaultLiftDays(level, email);
   const formRef = useRef<HTMLFormElement>(null);
 
+  function rememberStep(next: 1 | 2) {
+    setStep(next);
+    try {
+      window.sessionStorage.setItem(INTAKE_STEP_KEY, String(next));
+    } catch {
+      // Private mode can block storage. The in-memory step still moves forward.
+    }
+  }
+
   function goToCoach() {
     const form = formRef.current;
     if (!form) return;
+    const days = form.querySelectorAll<HTMLInputElement>('input[name="weeklyAvailability"]:checked');
+    if (days.length === 0) {
+      setDayError("Pick at least one day you can train.");
+      return;
+    }
+    setDayError("");
     const fields = form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
       "[data-intake-step='1'] input, [data-intake-step='1'] select, [data-intake-step='1'] textarea",
     );
@@ -46,18 +86,18 @@ export function OnboardingForm({
         return;
       }
     }
-    setStep(2);
+    rememberStep(2);
   }
 
   return (
     <form ref={formRef} action={action} className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-wide text-muted">
-          Intake · step {step} of 2
+          Intake · step {step} of 3
         </p>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">
           <div
-            className={`h-full rounded-full bg-accent/70 ${step === 1 ? "w-1/2" : "w-full"}`}
+            className={`h-full rounded-full bg-accent/70 ${step === 1 ? "w-1/3" : "w-2/3"}`}
           />
         </div>
         <p className="mt-2 text-xs text-muted">
@@ -66,7 +106,7 @@ export function OnboardingForm({
             : "Pick a face and a style. You can change both later in Profile."}
         </p>
       </div>
-      <StatusBanner error={state.error} />
+      <StatusBanner error={dayError || state.error} />
 
       <div data-intake-step="1" hidden={step !== 1} className="space-y-6">
       <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
@@ -283,7 +323,7 @@ export function OnboardingForm({
         </section>
         <button
           type="button"
-          onClick={() => setStep(1)}
+          onClick={() => rememberStep(1)}
           className="touch-target w-full rounded-full border border-line font-semibold"
         >
           Back

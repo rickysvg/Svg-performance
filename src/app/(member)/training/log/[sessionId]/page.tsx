@@ -55,7 +55,7 @@ export default async function WorkoutLogPage({
     weightAccess: profile?.weightAccess,
   };
   if (opened.programDay && opened.status !== "complete") {
-    await alignWorkoutWithSwaps(opened, scale, tz);
+    await alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null);
   }
   const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
   const band = scaleBandFromPrefs(scale);
@@ -83,7 +83,7 @@ export default async function WorkoutLogPage({
   const swappedExercises = scaledDay
     ? applySwapsToExercises(scaledDay.exercises, swaps, {
         sessionId: session.id,
-        blockKey: trainingBlockKey(new Date(), tz),
+        blockKey: trainingBlockKey(new Date(), tz, profile?.onboardingCompletedAt ?? null),
         includePending: false,
       })
     : [];
@@ -190,6 +190,7 @@ export default async function WorkoutLogPage({
         notes={notes}
         coachId={resolveAiCoach(profile?.aiCoachId).id}
         coachMotivation={profile?.coachMotivation !== false}
+        timeZone={tz}
         swap={{
           programSlug: session.programDay?.program.slug ?? "",
           dayNumber: session.programDay?.dayNumber ?? 0,

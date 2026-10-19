@@ -27,7 +27,8 @@ import { BagFocusList } from "@/components/training/BagFocusList";
 import { bagFocusLines } from "@/lib/bag-themes";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
-import { isDeloadWeek, DELOAD_LABEL } from "@/lib/training-cycle";
+import { isDeloadWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
+import { planWeekIndex } from "@/lib/week-plan";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -77,7 +78,7 @@ export default async function TrainingDayPage({
   });
   const swapped = applySwapsToExercises(day.exercises, swaps, {
     sessionId: draft?.id,
-    blockKey: trainingBlockKey(new Date(), tz),
+    blockKey: trainingBlockKey(new Date(), tz, profile?.onboardingCompletedAt ?? null),
     includePending: !draft,
   });
   const removals = await listRemovalsForDay({
@@ -95,7 +96,7 @@ export default async function TrainingDayPage({
   const minutes = estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = draft ? "Continue" : "Start Now";
-  const deload = isDeloadWeek(new Date(), tz);
+  const deload = isDeloadWeekIndex(planWeekIndex(new Date(), tz, profile?.onboardingCompletedAt));
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);

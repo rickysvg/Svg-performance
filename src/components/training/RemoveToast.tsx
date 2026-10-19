@@ -17,6 +17,10 @@ function emit() {
 export function showRemoveToast(toast: RemoveToastState) {
   current = toast;
   emit();
+  if (typeof window === "undefined") return;
+  window.setTimeout(() => {
+    if (current === toast) clearRemoveToast();
+  }, 5000);
 }
 
 export function clearRemoveToast() {

@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { extendActiveSession, requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { isDeloadWeek } from "@/lib/training-cycle";
 import {
   deleteWorkoutSessionForUser,
+  getOwnWorkoutSessionOrNull,
   rateWorkoutSessionForUser,
   startRoundWorkoutForUser,
   startWorkoutFromDay,
@@ -15,6 +15,10 @@ import {
 } from "@/lib/workouts";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { hasActivityOnLocalDay } from "@/lib/home";
+import { resolveLoggedPerformedAt } from "@/lib/performed-at";
+import { parseDateTimeLocal } from "@/lib/timezone";
+import { isDeloadWeekIndex } from "@/lib/training-cycle";
+import { planWeekIndex } from "@/lib/week-plan";
 import { publicErrorMessage } from "@/lib/errors";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
@@ -55,6 +59,7 @@ export async function startSessionAction(formData: FormData) {
   const profile = await getProfileForUser(user.id);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const now = new Date();
   const session = await startWorkoutFromDay({
     userId: user.id,
     programDayId: String(formData.get("programDayId") ?? ""),
@@ -64,7 +69,9 @@ export async function startSessionAction(formData: FormData) {
       competitionStatus: profile?.competitionStatus,
       weightAccess: profile?.weightAccess,
     },
-    deload: isDeloadWeek(new Date(), timeZone),
+    deload: isDeloadWeekIndex(planWeekIndex(now, timeZone, profile?.onboardingCompletedAt)),
+    timeZone,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   });
   redirect(`/training/log/${session.id}`);
 }
@@ -101,12 +108,24 @@ export async function saveWorkoutAction(
   let redirectPath = "";
   try {
     const user = await requireUserOrThrow();
+    const profile = await getProfileForUser(user.id);
+    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
     const workoutId = String(formData.get("workoutId") ?? "");
     const intentRaw = String(formData.get("intent") ?? "");
     const intent = intentRaw === "complete" ? "complete" : "draft";
-    const performedAt = new Date(String(formData.get("performedAt") ?? ""));
+    const existing = await getOwnWorkoutSessionOrNull(workoutId, user.id);
+    const now = new Date();
+    const performedAt = existing
+      ? resolveLoggedPerformedAt({
+          raw: String(formData.get("performedAt") ?? ""),
+          existing: existing.performedAt,
+          now,
+          timeZone,
+          completing: intent === "complete",
+        })
+      : now;
     const alreadyActive =
-      intent === "complete" ? await hasActivityOnLocalDay(user.id, performedAt) : true;
+      intent === "complete" ? await hasActivityOnLocalDay(user.id, performedAt, timeZone) : true;
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId,
@@ -117,7 +136,6 @@ export async function saveWorkoutAction(
       sets: parseSets(formData),
       rest: intent === "complete" ? null : undefined,
     });
-    const profile = await getProfileForUser(user.id);
     const units: LoadUnit = profile?.preferredUnits ?? "lb";
     const newPrs =
       intent === "complete" ? await detectNewPrsForSession(user.id, workoutId, units) : [];
@@ -172,12 +190,16 @@ export async function syncWorkoutDraftAction(input: {
   try {
     const user = await requireUserOrThrow();
     await extendActiveSession();
-    const performedAt = new Date(input.performedAt);
+    const profile = await getProfileForUser(user.id);
+    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+    const parsed = parseDateTimeLocal(input.performedAt, timeZone);
+    const loose = new Date(input.performedAt);
+    const performedAt = parsed ?? (Number.isNaN(loose.getTime()) ? new Date() : loose);
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: input.workoutId,
       title: input.title || "Workout",
-      performedAt: Number.isNaN(performedAt.getTime()) ? new Date() : performedAt,
+      performedAt,
       notes: input.notes ?? "",
       status: "draft",
       sets: input.sets,

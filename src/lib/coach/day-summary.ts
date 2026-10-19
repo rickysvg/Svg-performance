@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessions";
-import { bikeWeekIndex, pickBikeSessionForPlan, type ScaleBand } from "@/lib/bike-sessions";
+import { pickBikeSessionForPlan, type ScaleBand } from "@/lib/bike-sessions";
+import { normalizeWeightAccess } from "@/lib/weight-access";
+import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import { completeCoachText } from "@/lib/coach/llm";
 import { synthesizeCoachSpeech } from "@/lib/coach/tts";
 import {
@@ -19,6 +21,7 @@ import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import {
   planForDate,
+  planWeekIndex,
   type DayPlan,
   type PlanWeekday,
   type ResolvedPlanSession,
@@ -325,10 +328,8 @@ export function buildDaySummaryFacts(input: {
         session.dayNumber != null ? input.exercisesByDayNumber?.get(session.dayNumber) ?? [] : [];
       for (const exercise of exercises) {
         const rir = rirFromLoadText(exercise.loadText);
-        if (!rir) continue;
-        cues.push(`${exercise.name} at ${speakCue(rir)}.`);
-        lines.push(`${exercise.name} · ${rir}`);
-        if (cues.length >= 2) break;
+        lines.push(rir ? `${exercise.name} · ${rir}` : exercise.name);
+        cues.push(rir ? `${exercise.name} at ${speakCue(rir)}.` : exercise.name);
       }
       cues.push("Main lifts stop at four sets. Accessories stop at three. Last rep can slow down and still stay clean.");
       lines.push("Main lifts: 4 sets max. Accessories: 3 sets max. Last rep can slow down and still stay clean.");
@@ -538,16 +539,27 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
     experienceLevel: profile?.experienceLevel,
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const plan = planForDate(prefs, now, tz, swaps);
   const catalog = await findDemoTrainingCatalog();
   const { strength, skill } = catalog;
   const sessions = resolvePlanSessions(plan, { strength, skill });
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
+  const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const exercisesByDayNumber = new Map<number, ExerciseCue[]>();
   for (const day of strength?.days ?? []) {
+    const scaled = scaleProgramDay(day, {
+      band,
+      programSlug: strength?.slug,
+      weightAccess,
+    });
     exercisesByDayNumber.set(
       day.dayNumber,
-      day.exercises.map((exercise) => ({
+      scaled.exercises.map((exercise) => ({
         name: exercise.name,
         loadText: exercise.loadText,
         notes: exercise.notes ?? "",
@@ -563,7 +575,7 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
     sessions,
     exercisesByDayNumber,
     experienceLevel: profile?.experienceLevel,
-    weekIndex: bikeWeekIndex(now, tz),
+    weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
   });
   return { facts, dayKey: zonedDayKey(now, tz) };
 }

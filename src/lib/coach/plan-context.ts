@@ -2,9 +2,9 @@ import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { rirFromLoadText } from "@/lib/rir";
-import { DELOAD_LABEL, TESTING_LABEL, isDeloadWeek, isTestingWeek } from "@/lib/training-cycle";
+import { DELOAD_LABEL, TESTING_LABEL, isDeloadWeekIndex, isTestingWeekIndex } from "@/lib/training-cycle";
 import { convertLoad } from "@/lib/units";
-import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
+import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
 import { getPreviousLoadsForUser, listRecentSessionsForUser } from "@/lib/workouts";
 
 const PLAN_CONTEXT_CAP = 1200;
@@ -86,8 +86,9 @@ export async function buildPlanContext(userId: string, message = ""): Promise<st
       getActiveCampSnapshot(userId, now, timeZone),
     ]);
     const lines: string[] = [];
-    if (isDeloadWeek(now, timeZone)) lines.push(DELOAD_LABEL);
-    else if (isTestingWeek(now, timeZone)) lines.push(TESTING_LABEL);
+    const weekIndex = planWeekIndex(now, timeZone, profile?.onboardingCompletedAt);
+    if (isDeloadWeekIndex(weekIndex)) lines.push(DELOAD_LABEL);
+    else if (isTestingWeekIndex(weekIndex)) lines.push(TESTING_LABEL);
     if (camp && camp.phase !== "complete") {
       const week = camp.weekNumber ? `week ${camp.weekNumber}` : "pre-camp";
       lines.push(`Fight camp: ${camp.phaseLabel}, ${week}, ${camp.daysToFight} days to fight.`);
@@ -97,6 +98,7 @@ export async function buildPlanContext(userId: string, message = ""): Promise<st
       {
         primaryFocus: profile?.primaryFocus,
         weeklyAvailability: profile?.weeklyAvailability ?? [],
+        planAnchor: profile?.onboardingCompletedAt ?? null,
         sessionsPerWeek: profile?.sessionsPerWeek ?? null,
         trainingFocus: profile?.trainingFocus,
         liftDaysPerWeek: profile?.liftDaysPerWeek,

@@ -222,6 +222,16 @@ export function bikeWeekIndex(date: Date, timeZone = APP_TIMEZONE) {
   return Math.floor(days / 7);
 }
 
+/**
+ * Weeks since the member started, not since the global epoch.
+ * The week they join is week 0 (Block A / Day 1), even if the calendar is in Block C.
+ */
+export function memberWeekIndex(date: Date, anchor: Date, timeZone = APP_TIMEZONE) {
+  if (Number.isNaN(anchor.getTime())) return bikeWeekIndex(date, timeZone);
+  const delta = bikeWeekIndex(date, timeZone) - bikeWeekIndex(anchor, timeZone);
+  return delta > 0 ? delta : 0;
+}
+
 export function pickBikeSession(index = 0): BikeSession {
   return BIKE_SESSIONS[index % BIKE_SESSIONS.length] ?? DEFAULT_BIKE_SESSION;
 }

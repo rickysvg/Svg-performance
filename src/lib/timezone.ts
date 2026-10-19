@@ -128,6 +128,21 @@ function zoneOffsetMs(date: Date, timeZone: string) {
   return asUtc - date.getTime();
 }
 
+/** UTC instant of a wall-clock date and time in `timeZone`. */
+export function zonedDateTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): Date {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0);
+  let instant = utcGuess - zoneOffsetMs(new Date(utcGuess), timeZone);
+  instant = utcGuess - zoneOffsetMs(new Date(instant), timeZone);
+  return new Date(instant);
+}
+
 /** UTC instant of y-m-d 00:00:00 in `timeZone`. */
 export function zonedCivilToUtc(
   year: number,
@@ -135,10 +150,40 @@ export function zonedCivilToUtc(
   day: number,
   timeZone: string,
 ): Date {
-  const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
-  let instant = utcGuess - zoneOffsetMs(new Date(utcGuess), timeZone);
-  instant = utcGuess - zoneOffsetMs(new Date(instant), timeZone);
-  return new Date(instant);
+  return zonedDateTimeToUtc(year, month, day, 0, 0, timeZone);
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+/** `datetime-local` value for an instant in the member's zone, not the server zone. */
+export function formatDateTimeLocal(date: Date, timeZone: string) {
+  const parts = zonedParts(date, timeZone);
+  return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}T${pad2(parts.hour)}:${pad2(parts.minute)}`;
+}
+
+/** Parse a `datetime-local` value as wall time in `timeZone`. */
+export function parseDateTimeLocal(value: string, timeZone: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour > 23 ||
+    minute > 59
+  ) {
+    return null;
+  }
+  const parsed = zonedDateTimeToUtc(year, month, day, hour, minute, timeZone);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export function startOfZonedDay(date: Date, timeZone: string): Date {

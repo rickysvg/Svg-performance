@@ -98,6 +98,14 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
     }
   }
 
+  function stopAll() {
+    tokenRef.current += 1;
+    stopCoachPlayback();
+    window.speechSynthesis?.cancel();
+    modeRef.current = null;
+    setPhase("idle");
+  }
+
   function onRead() {
     if (phase === "loading") return;
     if (phase === "playing") {
@@ -118,24 +126,44 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
   }
 
   const label =
-    phase === "playing" ? "Pause" : phase === "paused" ? "Resume" : "Read it to me";
+    phase === "loading"
+      ? "Loading…"
+      : phase === "playing"
+        ? "Pause"
+        : phase === "paused"
+          ? "Resume"
+          : "Read it to me";
+  const live = phase === "loading" || phase === "playing" || phase === "paused";
 
   return (
     <div className="space-y-2">
       <audio ref={audioRef} data-summary-audio playsInline preload="auto" className="hidden" />
-      <button
-        type="button"
-        data-summary-read
-        data-summary-state={phase}
-        aria-pressed={phase === "playing"}
-        onClick={onRead}
-        className="touch-target flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 text-base font-semibold text-black"
-      >
-        <span aria-hidden className="text-lg">
-          {phase === "playing" ? "❚❚" : "▶"}
-        </span>
-        {label}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          data-summary-read
+          data-summary-state={phase}
+          aria-pressed={phase === "playing"}
+          aria-busy={phase === "loading"}
+          onClick={onRead}
+          className="touch-target flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-accent px-4 text-base font-semibold text-black"
+        >
+          <span aria-hidden className="text-lg">
+            {phase === "loading" ? "…" : phase === "playing" ? "❚❚" : "▶"}
+          </span>
+          {label}
+        </button>
+        {live ? (
+          <button
+            type="button"
+            data-summary-stop
+            onClick={stopAll}
+            className="touch-target shrink-0 rounded-full border border-line px-4 text-sm font-semibold"
+          >
+            Stop
+          </button>
+        ) : null}
+      </div>
       {notice ? (
         <p role="alert" data-summary-speech-note className="text-sm text-muted">
           {notice}

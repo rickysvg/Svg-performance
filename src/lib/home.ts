@@ -260,6 +260,7 @@ export async function getHomeToday(
     experienceLevel: profile?.experienceLevel,
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const todayPlan = planForDate(prefs, selected, tz, swaps);
   const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });

@@ -15,7 +15,8 @@ import {
   filterExerciseLibrary,
   libraryExercise,
 } from "@/lib/exercise-library";
-import { plannedSetLine } from "@/lib/exercise-log-mode";
+import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
+import { setHasLoggedWork } from "@/lib/logged-work";
 import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
 import { showRemoveToast } from "@/components/training/RemoveToast";
@@ -129,6 +130,18 @@ export function ExerciseCardMenu({
 
   function confirm(scope: "session" | "block") {
     if (!choice) return;
+    const logged = (getCurrentSets?.() ?? []).filter(
+      (set) => set.exerciseName === currentName && setHasLoggedWork(set),
+    );
+    const nextMode = resolveLogMode({ logMode: choice.logMode, name: choice.name, reps: choice.reps });
+    const currentMode = resolveLogMode({ logMode: source.logMode, name: currentName, reps: source.reps });
+    if (logged.length > 0 && nextMode !== currentMode) {
+      const noun = logged.length === 1 ? "set" : "sets";
+      const ok = window.confirm(
+        `Swap ${currentName} for this session? The ${logged.length} logged ${noun} use a different log and will be cleared.`,
+      );
+      if (!ok) return;
+    }
     setError("");
     startTransition(async () => {
       const result = await swapExerciseAction({
@@ -301,7 +314,7 @@ export function ExerciseCardMenu({
                 </button>
               ))}
             </div>
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Category">
+            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Category">
               {CATEGORY_FILTERS.map((filter) => (
                 <button
                   key={filter.id}
@@ -368,16 +381,18 @@ export function ExerciseCardMenu({
                 <button
                   type="button"
                   disabled={pending}
+                  data-swap-scope="session"
                   onClick={() => confirm("session")}
-                  className="touch-target flex-1 rounded-full border border-line text-sm font-semibold disabled:opacity-60"
+                  className="touch-target flex-1 rounded-full bg-accent text-sm font-semibold text-black disabled:opacity-60"
                 >
                   This session
                 </button>
                 <button
                   type="button"
                   disabled={pending || !programSlug}
+                  data-swap-scope="block"
                   onClick={() => confirm("block")}
-                  className="touch-target flex-1 rounded-full bg-accent text-sm font-semibold text-black disabled:opacity-60"
+                  className="touch-target flex-1 rounded-full border border-line text-sm font-semibold disabled:opacity-60"
                 >
                   Rest of the block
                 </button>

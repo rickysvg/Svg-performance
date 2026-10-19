@@ -59,6 +59,7 @@ function prefsFromProfile(
     experienceLevel: profile?.experienceLevel,
     email,
     outsideTraining: profile?.outsideTraining,
+    planAnchor: profile?.onboardingCompletedAt ?? null,
   };
 }
 
