@@ -99,7 +99,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `FORM_CHECK_DIR` | Optional. Local folder for private form-check clips (default `uploads/form-checks`). Never commit those files |
 | `BLOB_READ_WRITE_TOKEN` | Optional locally. **Set this on Vercel** (Vercel Blob store → read/write token) so form-check videos persist and stay private. Without it, hosted uploads do not save and the form says so. Weekly check-in form videos use this same store |
 | `VAPID_PUBLIC_KEY` `VAPID_PRIVATE_KEY` `VAPID_SUBJECT` | Web Push for weekly check-in reminders. Generate with `npx web-push generate-vapid-keys --json`. `VAPID_SUBJECT` is a `mailto:` or `https:` contact URL. Empty keys: the in-app banner still shows, and email is the fallback when SMTP is set |
-| `CRON_SECRET` | Shared secret for Vercel cron routes (`/api/cron/gymdesk` daily, `/api/cron/checkins` hourly). Vercel sends `Authorization: Bearer <CRON_SECRET>` |
+| `CRON_SECRET` | Shared secret for the cron routes. Vercel sends `Authorization: Bearer <CRON_SECRET>`. Copy the same value into a GitHub Actions secret named `CRON_SECRET` so the hourly check-in workflow can call the route |
 | `POLAR_CLIENT_ID` `POLAR_CLIENT_SECRET` `POLAR_REDIRECT_URI` | Optional. Polar AccessLink. Empty = Connect Polar (TEST) / not configured |
 | `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
 
@@ -112,7 +112,7 @@ If Polar keys are missing: Heart rate still works with Apple Health import, manu
 Reminders:
 
 1. The member opts in with **Turn on check-in reminders**. On iPhone, Safari will not deliver Web Push until they add the app to the Home Screen (Share → Add to Home Screen) and open it from the icon. The page shows those steps when it detects that case.
-2. Vercel cron hits `/api/cron/checkins` every hour. The route sends the reminder on the member's chosen local day and time (default Sunday 6:00 PM in their timezone) and a follow-up 24 hours later if the form is still open. The notification opens `/checkin`.
+2. Reminders go out on the member's chosen local day and time (default Sunday 6:00 PM in their timezone), with a follow-up 24 hours later if the form is still open. The notification opens `/checkin`. Vercel Hobby only allows a cron that runs once a day, so `/api/cron/checkins` is scheduled `0 0 * * *` (daily, sometime in the 00:00 UTC hour). That daily run still sends the reminder and the next day's follow-up; the send can land later than the chosen hour. For the chosen hour, add the Vercel `CRON_SECRET` value as a repository secret named `CRON_SECRET` (GitHub → Settings → Secrets and variables → Actions). The workflow `.github/workflows/checkin-reminders.yml` then POSTs to `https://svg-performance.vercel.app/api/cron/checkins` every hour. Until that secret exists, the workflow skips and the daily Vercel cron is what sends reminders.
 3. If the device has no push subscription, or push is not configured, the same moment sends one email with an **Open check-in** button. SMTP must be set (`SMTP_HOST` and the rest). The in-app Home banner stays up until they submit, with or without push.
 
 Generate VAPID keys and put them in the environment (local `.env` and Vercel):
@@ -121,7 +121,7 @@ Generate VAPID keys and put them in the environment (local `.env` and Vercel):
 npx web-push generate-vapid-keys --json
 ```
 
-Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:you@example.com`). Also set `CRON_SECRET` so the hourly route accepts Vercel's cron call. Without `OPENAI_API_KEY`, submit still saves and drafts the summary and reply from the check-in numbers.
+Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:you@example.com`). Also set `CRON_SECRET` on Vercel, and add that same value as the GitHub Actions secret `CRON_SECRET`. Without `OPENAI_API_KEY`, submit still saves and drafts the summary and reply from the check-in numbers.
 
 Form videos reuse the private form-check upload (`BLOB_READ_WRITE_TOKEN` on Vercel).
 
