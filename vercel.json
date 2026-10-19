@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/gymdesk",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/checkins",
+      "schedule": "0 * * * *"
     }
   ]
 }

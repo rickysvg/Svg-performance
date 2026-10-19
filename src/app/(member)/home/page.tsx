@@ -17,6 +17,7 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 
 export default async function HomePage({
   searchParams,
@@ -69,6 +70,8 @@ export default async function HomePage({
           {profile?.goals ? ` · ${profile.goals}` : ""}
         </p>
       </section>
+
+      <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 
       <TodaySummaryButton name={coach.name} circle={coach.circle} coachId={coach.id} />
 
