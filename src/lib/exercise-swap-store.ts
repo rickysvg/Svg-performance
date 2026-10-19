@@ -4,8 +4,10 @@ import { isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode
 import { libraryExercise } from "@/lib/exercise-library";
 import {
   applySwapsToExercises,
+  cleanSwapName,
   replacementForSlot,
   sensiblePrescription,
+  swapAlreadyInWorkoutMessage,
   trainingBlockKey,
   type SwapRecord,
   type SwapScope,
@@ -75,6 +77,37 @@ export async function listSwapsForDay(input: {
   return rows.map(toRecord);
 }
 
+export { cleanSwapName, swapAlreadyInWorkoutMessage };
+
+/**
+ * Prefer the logger's current rows, but never drop an exercise the server
+ * still has if the client payload forgot it. Swap is not a delete.
+ */
+export function combineSwapSets(
+  server: WorkoutSetInput[],
+  client?: WorkoutSetInput[],
+): WorkoutSetInput[] {
+  if (!client || client.length === 0) {
+    return server.map((set) => ({ ...set, exerciseName: cleanSwapName(set.exerciseName) }));
+  }
+  const clientNames = new Set(client.map((set) => cleanSwapName(set.exerciseName)));
+  const ordered: string[] = [];
+  const pushName = (name: string) => {
+    if (!ordered.includes(name)) ordered.push(name);
+  };
+  for (const set of server) pushName(cleanSwapName(set.exerciseName));
+  for (const set of client) pushName(cleanSwapName(set.exerciseName));
+  const next: WorkoutSetInput[] = [];
+  for (const name of ordered) {
+    const source = clientNames.has(name) ? client : server;
+    for (const set of source) {
+      if (cleanSwapName(set.exerciseName) !== name) continue;
+      next.push({ ...set, exerciseName: name });
+    }
+  }
+  return next;
+}
+
 export function mergeReplacementSets(
   existing: WorkoutSetInput[],
   fromNames: string[],
@@ -87,47 +120,78 @@ export function mergeReplacementSets(
   },
   place: { programSlug: string; dayNumber: number; loadUnit: "lb" },
 ): WorkoutSetInput[] {
-  const from = new Set(fromNames);
-  const prior = existing.filter((set) => from.has(set.exerciseName));
-  const name = replacement.name;
-  const logged = prior.filter((set) => setHasLoggedWork(set));
-  const keepLogs =
-    logged.length === 0 ||
-    logged.every((set) => !set.logMode || set.logMode === replacement.logMode);
+  const from = new Set(fromNames.map(cleanSwapName));
+  const prior = existing.filter((set) => from.has(cleanSwapName(set.exerciseName)));
+  const name = cleanSwapName(replacement.name);
+  const targetAlready = existing.some(
+    (set) => cleanSwapName(set.exerciseName) === name && !from.has(cleanSwapName(set.exerciseName)),
+  );
   const planRir = rirFromLoadText(replacement.loadText) || "";
-  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
-    const previous = keepLogs ? prior[index] : undefined;
-    const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
-    return {
+  const slot = (index: number, copy: WorkoutSetInput | undefined): WorkoutSetInput => ({
+    exerciseName: name,
+    setNumber: index + 1,
+    reps: copy?.reps ?? null,
+    loadValue: copy?.loadValue ?? null,
+    loadUnit: place.loadUnit,
+    logMode: replacement.logMode,
+    durationSeconds: copy?.durationSeconds ?? null,
+    completed: Boolean(copy?.completed) && Boolean(copy && setHasLoggedWork(copy)),
+    notes: copy?.notes ?? "",
+    prescriptionKey: prescriptionSlotKey({
       exerciseName: name,
-      setNumber: index + 1,
-      reps: copy?.reps ?? null,
-      loadValue: copy?.loadValue ?? null,
-      loadUnit: place.loadUnit,
-      logMode: replacement.logMode,
-      durationSeconds: copy?.durationSeconds ?? null,
-      completed: copy?.completed ?? false,
-      notes: copy?.notes ?? "",
-      prescriptionKey: prescriptionSlotKey({
-        exerciseName: name,
-        reps: replacement.reps,
-        programSlug: place.programSlug,
-        dayNumber: place.dayNumber,
-      }),
-      rir: planRir,
-    };
+      reps: replacement.reps,
+      programSlug: place.programSlug,
+      dayNumber: place.dayNumber,
+    }),
+    rir: planRir || copy?.rir || "",
   });
+  if (targetAlready) {
+    const loggedSource = prior.filter((set) => setHasLoggedWork(set));
+    const targetSets = existing.filter((set) => cleanSwapName(set.exerciseName) === name);
+    const maxNumber = targetSets.reduce((max, set) => Math.max(max, set.setNumber), 0);
+    const targetKey = targetSets.find((set) => set.prescriptionKey)?.prescriptionKey ?? "";
+    const extras = loggedSource.map((copy, index) => ({
+      ...slot(maxNumber + index + 1, copy),
+      prescriptionKey: targetKey || slot(maxNumber + index + 1, copy).prescriptionKey,
+      rir: planRir || copy.rir || "",
+    }));
+    const next: WorkoutSetInput[] = [];
+    let inserted = false;
+    for (const set of existing) {
+      if (from.has(cleanSwapName(set.exerciseName))) {
+        if (!inserted) {
+          next.push(...extras);
+          inserted = true;
+        }
+        continue;
+      }
+      next.push({ ...set, exerciseName: cleanSwapName(set.exerciseName) });
+    }
+    if (!inserted) next.push(...extras);
+    return next;
+  }
+  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
+    const previous = prior[index];
+    const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
+    return slot(index, copy);
+  });
+  // A shorter plan must not throw away a set the member already logged.
+  for (let index = replacement.sets; index < prior.length; index += 1) {
+    const previous = prior[index];
+    if (!previous || !setHasLoggedWork(previous)) continue;
+    created.push(slot(created.length, previous));
+  }
   const next: WorkoutSetInput[] = [];
   let inserted = false;
   for (const set of existing) {
-    if (from.has(set.exerciseName)) {
+    if (from.has(cleanSwapName(set.exerciseName))) {
       if (!inserted) {
         next.push(...created);
         inserted = true;
       }
       continue;
     }
-    next.push(set);
+    next.push({ ...set, exerciseName: cleanSwapName(set.exerciseName) });
   }
   if (!inserted) next.push(...created);
   return next;
@@ -223,22 +287,20 @@ async function rewriteSessionSets(input: {
   if (session.status === "complete") {
     throw new AppError("WORKOUT", "This session is already finished.");
   }
-  const base: WorkoutSetInput[] =
-    input.currentSets && input.currentSets.length > 0
-      ? input.currentSets
-      : session.sets.map((set) => ({
-          exerciseName: set.exerciseName,
-          setNumber: set.setNumber,
-          reps: set.reps,
-          loadValue: set.loadValue,
-          loadUnit: "lb",
-          logMode: isLogMode(set.logMode) ? set.logMode : undefined,
-          durationSeconds: set.durationSeconds,
-          completed: set.completed,
-          notes: set.notes,
-          prescriptionKey: set.prescriptionKey,
-          rir: set.rir,
-        }));
+  const stored: WorkoutSetInput[] = session.sets.map((set) => ({
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: "lb",
+    logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  }));
+  const base = combineSwapSets(stored, input.currentSets);
   const merged = mergeReplacementSets(base, input.fromNames, input.replacement, {
     programSlug: input.programSlug,
     dayNumber: input.dayNumber,
@@ -252,6 +314,7 @@ async function rewriteSessionSets(input: {
     title: session.title,
     performedAt: session.performedAt,
     notes: session.notes,
+    // A swap never finishes the session, even if the logger payload says otherwise.
     status: "draft",
     sets: merged,
     rest: clearRest ? null : undefined,
