@@ -2,6 +2,8 @@ import { convertLoad, isLoadUnit, type LoadUnit, volumeInUnit } from "@/lib/unit
 import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned, startOfZonedDay } from "@/lib/timezone";
 
 export const FREE_CHART_WEEKS = 12;
+/** Academy tier history window. Pro sees everything. */
+export const FREE_HISTORY_DAYS = 30;
 export const CHART_RANGES = ["4w", "12w", "1y", "all"] as const;
 export type ChartRange = (typeof CHART_RANGES)[number];
 
@@ -27,7 +29,7 @@ export function isChartRange(value: string | null | undefined): value is ChartRa
 }
 
 export function isPaidChartRange(range: ChartRange) {
-  return range === "1y" || range === "all";
+  return range === "12w" || range === "1y" || range === "all";
 }
 
 export function chartRangeStart(range: ChartRange, now = new Date(), timeZone = APP_TIMEZONE) {
@@ -39,7 +41,7 @@ export function chartRangeStart(range: ChartRange, now = new Date(), timeZone = 
 }
 
 export function freeHistoryStart(now = new Date(), timeZone = APP_TIMEZONE) {
-  return addZonedDays(startOfZonedDay(now, timeZone), -FREE_CHART_WEEKS * 7, timeZone);
+  return addZonedDays(startOfZonedDay(now, timeZone), -FREE_HISTORY_DAYS, timeZone);
 }
 
 export function applyFreeHistoryCutoff<T extends { at: Date }>(
@@ -109,7 +111,7 @@ export function resolveChartWindow(input: {
   const timeZone = input.timeZone ?? APP_TIMEZONE;
   const now = input.now ?? new Date();
   const locked = isPaidChartRange(input.range) && !input.paid;
-  const range: ChartRange = locked ? "12w" : input.range;
+  const range: ChartRange = locked ? "4w" : input.range;
   return {
     range,
     requested: input.range,

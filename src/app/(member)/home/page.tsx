@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { emptyHomeToday, getHomeToday, homeLoad, parseDayParam } from "@/lib/home";
+import { emptyHomeToday, formatDayParam, getHomeToday, homeLoad, parseDayParam } from "@/lib/home";
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { DAILY_QUOTES, getDailyQuoteCard, teaserFromQuote } from "@/lib/quotes";
 import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { HomeToday } from "@/components/home/HomeToday";
+import { SparringLogForm } from "@/components/training/SparringLogForm";
+import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { TodaySummaryButton } from "@/components/home/TodaySummaryButton";
 import { resolveAiCoach } from "@/lib/coaches";
 import { ReadinessCard } from "@/components/home/ReadinessCard";
@@ -17,6 +19,7 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 
 export default async function HomePage({
   searchParams,
@@ -70,6 +73,8 @@ export default async function HomePage({
         </p>
       </section>
 
+      <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
+
       <TodaySummaryButton name={coach.name} circle={coach.circle} coachId={coach.id} />
 
       <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
@@ -104,7 +109,27 @@ export default async function HomePage({
         <ThirdWorkoutCard canStartTrial={trial.canStartTrial} trialDays={trial.trialLengthDays} />
       ) : null}
 
+      {guide.today.easeNote || guide.today.coachCheckIn ? (
+        <RecoveryNotice
+          note={guide.today.easeNote}
+          coachName={guide.today.coachCheckIn?.name}
+          coachImage={guide.today.coachCheckIn?.image}
+          message={guide.today.coachCheckIn?.message}
+        />
+      ) : null}
+
       <HomeToday guide={guide} />
+
+      {guide.today.outsideKind === "sparring" ? (
+        <SparringLogForm
+          dateKey={formatDayParam(guide.today.selected, tz)}
+          weekday={guide.today.planWeekday}
+          timeLabel={guide.today.outsideLabel.replace(/^Sparring\s*·\s*/, "")}
+          saved={guide.today.sparringLog}
+          coachName={coach.name}
+          coachImage={coach.circle}
+        />
+      ) : null}
 
       <Link
         href="/nutrition"

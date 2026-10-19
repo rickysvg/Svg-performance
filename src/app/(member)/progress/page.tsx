@@ -21,7 +21,8 @@ import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion"
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
-import { sparringLogsForWeek, sparringMinutes } from "@/lib/outside-log";
+import { sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
+import { SparringTrend } from "@/components/progress/SparringTrend";
 
 function MetricTile({
   title,
@@ -52,12 +53,14 @@ export default async function ProgressPage() {
       getNutritionSummaryForDay(user.id),
       getRecentNutritionDays(user.id, 7),
       getProgressHeartTiles(user.id),
-      canUseFeature(user.id, "daily_quote"),
+      canUseFeature(user.id, "progress"),
       getTrialState(user.id),
     ]);
+  const showTrends = await canUseFeature(user.id, "sparring_trends");
   const units = profile?.preferredUnits ?? "lb";
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
+  const trend = await sparringTrend(user.id);
   const records = await getPersonalRecordsForUser(user.id, units);
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
@@ -147,6 +150,8 @@ export default async function ProgressPage() {
               <li key={log.dateKey}>
                 {log.weekday || log.dateKey}: {log.rounds} × {log.minutesPerRound} min
                 {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
+                {log.sessionRating ? ` · session ${log.sessionRating}/5` : ""}
+                {log.bodyRating ? ` · body ${log.bodyRating}/5` : ""}
               </li>
             ))}
           </ul>
@@ -154,6 +159,30 @@ export default async function ProgressPage() {
           <p className="mt-2 text-sm text-muted">No sparring logged this week.</p>
         )}
       </section>
+
+      {showTrends ? (
+        <SparringTrend logs={trend} />
+      ) : trend.length > 0 ? (
+        <section data-trend-locked className="relative overflow-hidden rounded-2xl border border-line">
+          <div aria-hidden className="pointer-events-none select-none p-4 blur-sm">
+            <p className="text-xs uppercase tracking-wide text-muted">Sparring and body trend</p>
+            <div className="mt-3 flex h-20 items-end gap-2">
+              {[3, 4, 2, 5, 3, 4, 2, 4].map((h, i) => (
+                <div key={i} className="w-full rounded bg-black/20" style={{ height: `${h * 18}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="border-t border-line bg-white">
+            <UpgradePreview
+              kind="charts"
+              canStartTrial={trial.canStartTrial}
+              trialDays={trial.trialLengthDays}
+              next="/progress"
+              framed={false}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <Link
         href="/progress/photos"

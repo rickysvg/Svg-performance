@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { AppError, ForbiddenError } from "@/lib/errors";
+import { ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 import { canUseFeature, getEffectivePlanId } from "@/lib/entitlements";
 import { canUseMemberTools } from "@/lib/access";
@@ -38,11 +38,13 @@ describe("M5 entitlements, caps, and booking credits", () => {
     await prisma.$disconnect();
   });
 
-  it("enforces the free plan when Stripe keys are missing", async () => {
+  it("locks a nonmember without a trial or Pro when Stripe keys are missing", async () => {
     const user = await makeUser("preview@example.com");
     expect(await getEffectivePlanId(user.id)).toBe("member_access");
-    expect(await canUseFeature(user.id, "training")).toBe(true);
-    expect(await canUseFeature(user.id, "learn_beginner")).toBe(true);
+    // No free tier for nonmembers: past data stays viewable (progress), training needs Pro.
+    expect(await canUseFeature(user.id, "training")).toBe(false);
+    expect(await canUseFeature(user.id, "progress")).toBe(true);
+    expect(await canUseFeature(user.id, "learn_beginner")).toBe(false);
     expect(await canUseFeature(user.id, "nutrition")).toBe(false);
     expect(await canUseFeature(user.id, "ai")).toBe(false);
     expect((await canUseMemberTools(user.id)).allowed).toBe(false);
@@ -72,15 +74,15 @@ describe("M5 entitlements, caps, and booking credits", () => {
     expect((await canUseMemberTools(user.id)).reason).toBe("subscribed");
   });
 
-  it("treats Member Access as beginner Learn only when Stripe is on", async () => {
+  it("keeps a nonmember locked after the trial when Stripe is on", async () => {
     turnStripeOn();
     const user = await makeUser("access@example.com");
     expect(await getEffectivePlanId(user.id)).toBe("member_access");
-    expect(await canUseFeature(user.id, "learn_beginner")).toBe(true);
+    expect(await canUseFeature(user.id, "learn_beginner")).toBe(false);
     expect(await canUseFeature(user.id, "learn_full")).toBe(false);
     expect(await canUseFeature(user.id, "nutrition")).toBe(false);
     expect(await canUseFeature(user.id, "ai")).toBe(false);
-    expect(await canUseFeature(user.id, "training")).toBe(true);
+    expect(await canUseFeature(user.id, "training")).toBe(false);
     expect((await canUseMemberTools(user.id)).allowed).toBe(false);
   });
 
@@ -188,13 +190,13 @@ describe("M5 entitlements, caps, and booking credits", () => {
       targetUserId: perf.id,
       plan: "performance",
     });
-    await expect(
-      createBookingRequestForUser(perf.id, {
-        kind: "intensive_elpaso",
-        preferredTimes: "Next month",
-        note: "",
-      }),
-    ).rejects.toBeInstanceOf(AppError);
+    const applied = await createBookingRequestForUser(perf.id, {
+      kind: "intensive_elpaso",
+      preferredTimes: "Next month",
+      note: "",
+    });
+    expect(applied.kind).toBe("intensive_elpaso");
+    expect(applied.usesIncludedCredit).toBe(false);
 
     await expect(
       markCreditUsed({
@@ -218,7 +220,7 @@ describe("M5 entitlements, caps, and booking credits", () => {
   it("keeps the SVG Coach AI disclaimer", () => {
     expect(AI_DISCLAIMER).toMatch(/AI coach trained on/i);
     expect(AI_DISCLAIMER).not.toMatch(/not Ricky/i);
-    expect(PLAN_CATALOG.performance.includes).toContain("SVG Coach (AI coach)");
+    expect(PLAN_CATALOG.performance.includes).toContain("AI coach chat with voices");
     expect(PLAN_CATALOG.vip.includes.join(" ")).toMatch(/1 month of Fighter Development/i);
     expect(PLAN_CATALOG.platinum.includes.join(" ")).toMatch(/1 month of Elite Online/i);
   });

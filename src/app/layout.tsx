@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Geist } from "next/font/google";
 import { AppSplash } from "@/components/AppSplash";
 import "./globals.css";
@@ -19,6 +19,21 @@ export const metadata: Metadata = {
   title: "SVG Performance",
   description:
     "Private preview for anyone who wants to improve performance — combat athletes and people getting in shape. From Ricky / SVG MMA Academy.",
+  applicationName: "SVG Performance",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "SVG Performance",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: "/favicon-64.png",
+    apple: "/svg-performance-badge-mark.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#CBF805",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

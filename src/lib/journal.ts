@@ -93,7 +93,7 @@ export async function addJournalFeedback(input: {
   if (!planHasCoachReview(planId)) {
     throw new AppError(
       "JOURNAL",
-      "Coach feedback is for Fighter Development and higher. The member still owns their notes.",
+      "Coach feedback is on 1-on-1 Coaching with Ricky. The member still owns their notes.",
     );
   }
   const body = input.body.trim().slice(0, 2000);

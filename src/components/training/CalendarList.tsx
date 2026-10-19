@@ -2,6 +2,7 @@ import Link from "next/link";
 import { weekSessionTally, type CalendarActivity, type CalendarDay } from "@/lib/calendar";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
+import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 
 function StatusCircle({
   kind,
@@ -81,7 +82,15 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
   );
 }
 
-export function CalendarList({ days }: { days: CalendarDay[] }) {
+export function CalendarList({
+  days,
+  coachName,
+  coachImage,
+}: {
+  days: CalendarDay[];
+  coachName?: string;
+  coachImage?: string;
+}) {
   const tally = weekSessionTally(days);
   return (
     <div className="space-y-4">
@@ -104,12 +113,22 @@ export function CalendarList({ days }: { days: CalendarDay[] }) {
             ) : null}
             {day.heading}
           </h2>
+          {day.easeNote || day.coachCheckIn ? (
+            <RecoveryNotice
+              note={day.easeNote}
+              coachName={day.coachCheckIn?.name}
+              coachImage={day.coachCheckIn?.image}
+              message={day.coachCheckIn?.message}
+            />
+          ) : null}
           {day.sparring ? (
             <SparringLogForm
               dateKey={day.sparring.dateKey}
               weekday={day.sparring.weekday}
               timeLabel={day.sparring.timeLabel}
               saved={day.sparring.saved}
+              coachName={coachName}
+              coachImage={coachImage}
             />
           ) : null}
           {day.activities.length > 0 ? (

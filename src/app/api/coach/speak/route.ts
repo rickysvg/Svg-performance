@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { synthesizeCoachSpeech } from "@/lib/coach/tts";
+import { AiCapError, consumeAiUse, estimateSpeechSeconds } from "@/lib/ai-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,22 @@ export async function POST(request: Request) {
   const text = String(body.text ?? "").trim().slice(0, 3500);
   if (!text) {
     return NextResponse.json({ error: "Nothing to read." }, { status: 400 });
+  }
+  try {
+    await consumeAiUse({
+      userId: user.id,
+      kind: "voice",
+      surface: "speak",
+      units: estimateSpeechSeconds(text),
+    });
+  } catch (error) {
+    if (error instanceof AiCapError) {
+      return NextResponse.json(
+        { error: error.message, paywall: error.reason },
+        { status: 402, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+    throw error;
   }
   const profile = await getProfileForUser(user.id);
   const coach = resolveAiCoach(profile?.aiCoachId);

@@ -70,6 +70,12 @@ model User {
   gymMembershipEvents      GymMembershipEvent[]
   emailVerificationCodes   EmailVerificationCode[]
   gymdeskMatchQueue        GymdeskMatchQueue[]
+  weeklyCheckIns           WeeklyCheckIn[]
+  weeklyCheckInPrefs       WeeklyCheckInPrefs?
+  pushSubscriptions        PushSubscription[]
+  checkInReminderLogs      CheckInReminderLog[]
+  aiUsageEvents            AiUsageEvent[]
+  memberProReminders       MemberProReminderLog[]
 }
 
 model Session {
@@ -143,6 +149,8 @@ model Profile {
   onboardingDeepCompletedAt  DateTime?
   trialStartedAt             DateTime?
   trialEndsAt                DateTime?
+  /// Start of the 30-day free Pro month for a verified academy member. Set once.
+  memberProStartedAt         DateTime?
   planChoiceAt               DateTime?
   thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
@@ -173,6 +181,8 @@ model Profile {
   obstaclesJson              String    @default("[]")
   /** Voluntary swaps for one week. The default weekday plan is unchanged. */
   weekPlanSwapsJson          String    @default("[]")
+  /** none | force_on. Admin override so a non-coaching account can test weekly check-ins. */
+  weeklyCheckInOverride      String    @default("none")
   calorieTarget          Int      @default(2200)
   proteinTargetG         Int      @default(140)
   carbsTargetG           Int      @default(220)
@@ -232,6 +242,14 @@ model OutsideSessionLog {
   minutesPerRound Int
   intensity       String   @default("")
   notes           String   @default("")
+  /** 1–5, how the sparring session went. Null on logs saved before ratings. */
+  sessionRating   Int?
+  /** 1–5, how the body feels. 1–2 eases the next day. */
+  bodyRating      Int?
+  /** JSON array of sore spots: head, neck, ribs, shins, hands, knees, shoulders, other. */
+  soreSpots       String   @default("[]")
+  /** Check-in from the member's chosen AI coach when the next day is eased. */
+  coachCheckIn    String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -507,6 +525,8 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
+  /// True when this subscription holds a founding seat ($59/yr, first 100).
+  founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")
   createdAt            DateTime @default(now())
@@ -514,6 +534,7 @@ model Subscription {
 
   @@index([userId])
   @@index([stripeSubscriptionId])
+  @@index([founding, status])
 }
 
 model ReminderPrefs {
@@ -1157,4 +1178,122 @@ model GymdeskRateLimit {
   createdAt DateTime @default(now())
 
   @@index([keyHash, createdAt])
+}
+
+/** One row per member. Missing row means Sunday 6:00 PM local. */
+model WeeklyCheckInPrefs {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** 0 Sunday … 6 Saturday. */
+  weekday     Int      @default(0)
+  /** Minutes from local midnight. 1080 = 6:00 PM. */
+  minuteOfDay Int      @default(1080)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/** One submitted weekly check-in per member per local week (Monday key). */
+model WeeklyCheckIn {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Monday of the member's local week, YYYY-MM-DD. */
+  weekKey              String
+  bodyweightLb         Float?
+  sleepQuality         Int
+  energy               Int
+  stress               Int
+  /** JSON string[] of body-map region ids. */
+  sorenessRegionsJson  String    @default("[]")
+  sorenessNotes        String    @default("")
+  sessionsCompleted    Int       @default(0)
+  sessionsPlanned      Int       @default(0)
+  sparringSummary      String    @default("")
+  wins                 String    @default("")
+  struggles            String    @default("")
+  videoStorageKey      String    @default("")
+  videoStorageKind     String    @default("")
+  videoMimeType        String    @default("")
+  videoByteSize        Int       @default(0)
+  videoDurationSeconds Int       @default(0)
+  aiSummary            String    @default("")
+  aiFlagsJson          String    @default("[]")
+  aiReply              String    @default("")
+  aiTweaks             String    @default("")
+  /** openai | fallback */
+  aiSource             String    @default("fallback")
+  /** pending | reviewed | sent */
+  coachStatus          String    @default("pending")
+  coachReply           String    @default("")
+  reviewerUserId       String    @default("")
+  submittedAt          DateTime  @default(now())
+  reviewedAt           DateTime?
+  sentAt               DateTime?
+  replySeenAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([userId, weekKey])
+  @@index([coachStatus, submittedAt])
+  @@index([userId, submittedAt])
+}
+
+model CheckInReminderLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekKey String
+  /** initial | followup */
+  kind    String
+  /** push | email */
+  channel String   @default("push")
+  sentAt  DateTime @default(now())
+
+  @@unique([userId, weekKey, kind])
+  @@index([userId, weekKey])
+}
+
+/// One metered AI use: a chat or logger-note message, voice seconds, or a read-aloud.
+model AiUsageEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** message | voice | read_aloud */
+  kind      String
+  /** chat | note | speak | today_summary */
+  surface   String   @default("")
+  /** 1 per message or read-aloud; seconds for voice */
+  units     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+}
+
+/// Day 25 / 29 / 31 reminders for the member Pro month. One row per stage.
+model MemberProReminderLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** day25 | day29 | day31 */
+  stage   String
+  /** push | in_app */
+  channel String   @default("push")
+  sentAt  DateTime @default(now())
+
+  @@unique([userId, stage])
 }

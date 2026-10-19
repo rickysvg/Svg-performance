@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isScOnly } from "@/lib/member-plan";
 import { getSparringLog } from "@/lib/outside-log";
+import { easePlanForUser } from "@/lib/recovery-ease";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   listDraftSessionsForUser,
@@ -191,6 +192,8 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     outsideKind: null as "class" | "sparring" | null,
     outsideLabel: "",
     dayNote: "",
+    easeNote: "",
+    coachCheckIn: null as { name: string; image: string; message: string } | null,
     sparringLog: null as Awaited<ReturnType<typeof getSparringLog>>,
     suggestionCopy:
       "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
@@ -262,10 +265,14 @@ export async function getHomeToday(
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
   };
-  const todayPlan = planForDate(prefs, selected, tz, swaps);
+  const builtToday = planForDate(prefs, selected, tz, swaps);
+  const easedToday = await easePlanForUser(userId, selected, tz, builtToday);
+  const todayPlan = easedToday.plan;
   const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
   const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected, tz, swaps);
-  const nextPlan = nextDate ? planForDate(prefs, nextDate, tz, swaps) : null;
+  const nextBuilt = nextDate ? planForDate(prefs, nextDate, tz, swaps) : null;
+  const nextEased = nextBuilt && nextDate ? await easePlanForUser(userId, nextDate, tz, nextBuilt) : null;
+  const nextPlan = nextEased?.plan ?? null;
   const nextSessions = nextPlan ? resolvePlanSessions(nextPlan, { strength, skill }) : [];
   const nextSession: ResolvedPlanSession | null =
     nextSessions.find((session) => session.day) ?? nextSessions[0] ?? null;
@@ -319,6 +326,8 @@ export async function getHomeToday(
     outsideKind: todayPlan.outside?.kind ?? null,
     outsideLabel: todayPlan.outside?.label ?? "",
     dayNote: todayPlan.dayNote ?? "",
+    easeNote: todayPlan.easeNote ?? "",
+    coachCheckIn: easedToday.checkIn,
     sparringLog,
     suggestionCopy: hasCatalog
       ? demoSuggestionCopy({

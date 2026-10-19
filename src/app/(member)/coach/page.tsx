@@ -7,8 +7,10 @@ import { getTrialState } from "@/lib/trial";
 import { getOrCreateThread } from "@/lib/coach/chat";
 import { CoachLiveThread } from "@/components/coach/CoachLiveThread";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
+import { recentRecoveryCheckIn } from "@/lib/recovery-ease";
+import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import {
   COACH_ARTS,
   COACH_ART_LABELS,
@@ -52,6 +54,10 @@ export default async function CoachPage({
 }) {
   const user = await requireUser();
   const access = await canUseMemberTools(user.id);
+  const profile = await getProfileForUser(user.id);
+  const coach = resolveAiCoach(profile?.aiCoachId);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const recovery = await recentRecoveryCheckIn(user.id, new Date(), tz);
   if (!access.allowed) {
     const trial = await getTrialState(user.id);
     return (
@@ -59,6 +65,13 @@ export default async function CoachPage({
         <h1 className="font-display text-2xl uppercase tracking-wide">
           {COACH_PUBLIC_NAME}
         </h1>
+        {recovery ? (
+          <RecoveryNotice
+            coachName={recovery.name}
+            coachImage={recovery.image}
+            message={recovery.message}
+          />
+        ) : null}
         <UpgradePreview
           kind="coach"
           canStartTrial={trial.canStartTrial}
@@ -69,8 +82,6 @@ export default async function CoachPage({
     );
   }
   const query = await searchParams;
-  const profile = await getProfileForUser(user.id);
-  const coach = resolveAiCoach(profile?.aiCoachId);
   const style = resolveCoachingStyle(profile?.coachingStyle);
   const topic = resolveCoachTopic(query.topic);
   const art = topic === "martial_art" ? resolveCoachArt(query.art) : undefined;
@@ -99,6 +110,13 @@ export default async function CoachPage({
         </div>
       </div>
       <AiDisclaimer className="text-sm text-muted" />
+      {recovery ? (
+        <RecoveryNotice
+          coachName={recovery.name}
+          coachImage={recovery.image}
+          message={recovery.message}
+        />
+      ) : null}
 
       {!topic ? (
         <section className="space-y-4">
@@ -166,7 +184,7 @@ export default async function CoachPage({
 
       <p className="text-sm">
         <Link href="/clips" className="text-muted hover:text-foreground">
-          Timestamped training clips (Fighter Development+)
+          Timestamped training clips (1-on-1 Coaching)
         </Link>
       </p>
     </main>

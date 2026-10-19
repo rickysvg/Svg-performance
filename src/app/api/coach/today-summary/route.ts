@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTodayCoachSummary } from "@/lib/coach/day-summary";
 import { getCurrentUser } from "@/lib/session";
+import { AiCapError, consumeAiUse } from "@/lib/ai-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,18 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in to hear today's summary." }, { status: 401 });
+  }
+
+  try {
+    await consumeAiUse({ userId: user.id, kind: "read_aloud", surface: "today_summary" });
+  } catch (error) {
+    if (error instanceof AiCapError) {
+      return NextResponse.json(
+        { error: error.message, paywall: error.reason },
+        { status: 402, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+    throw error;
   }
 
   const summary = await getTodayCoachSummary(user.id);

@@ -15,7 +15,7 @@ export default async function ClipsPage() {
       <main className="space-y-4">
         <PaywallNotice feature="Timestamped video feedback" />
         <p className="text-sm text-muted">
-          This is for Fighter Development and higher. We do not fake a live stream.
+          This is on 1-on-1 Coaching with Ricky. We do not fake a live stream.
         </p>
       </main>
     );

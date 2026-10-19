@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/constants";
+import { PATH_HEADER } from "@/lib/locked-paths";
 
 const PROTECTED = [
   "/home",
@@ -41,7 +42,10 @@ export function proxy(request: NextRequest) {
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
-  return NextResponse.next();
+  // Member layout reads the path to decide what stays open after a nonmember trial ends.
+  const headers = new Headers(request.headers);
+  headers.set(PATH_HEADER, pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

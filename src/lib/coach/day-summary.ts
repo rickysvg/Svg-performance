@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { rirFromLoadText } from "@/lib/rir";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { easePlanForUser } from "@/lib/recovery-ease";
 import {
   planForDate,
   planWeekIndex,
@@ -541,7 +542,9 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
   };
-  const plan = planForDate(prefs, now, tz, swaps);
+  const builtPlan = planForDate(prefs, now, tz, swaps);
+  const eased = await easePlanForUser(userId, now, tz, builtPlan);
+  const plan = eased.plan;
   const catalog = await findDemoTrainingCatalog();
   const { strength, skill } = catalog;
   const sessions = resolvePlanSessions(plan, { strength, skill });

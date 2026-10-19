@@ -73,6 +73,8 @@ export type DayPlan = {
   movedFrom?: PlanWeekday;
   outside?: { kind: "class" | "sparring"; time?: string; label: string } | null;
   dayNote?: string;
+  /** Set when yesterday's sparring log eased this day. */
+  easeNote?: string;
 };
 
 export type PlannerPrefs = {

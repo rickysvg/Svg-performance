@@ -45,6 +45,11 @@ import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { getSparringLog } from "@/lib/outside-log";
+import { easePlanForUser } from "@/lib/recovery-ease";
+import { SparringLogForm } from "@/components/training/SparringLogForm";
+import { RecoveryNotice } from "@/components/training/RecoveryNotice";
+import { resolveAiCoach } from "@/lib/coaches";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -92,8 +97,10 @@ export default async function TrainingPage({
   const camp = await getActiveCampSnapshot(user.id, selected, tz);
   const campOn = Boolean(camp && camp.weightClass.trim());
   const corePlan = planForDate(prefs, selected, tz, swaps);
-  const dayPlan =
+  const shaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
+  const easedSelected = await easePlanForUser(user.id, selected, tz, shaped);
+  const dayPlan = easedSelected.plan;
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const planned = resolvePlanSessions(
     dayPlan,
@@ -146,8 +153,9 @@ export default async function TrainingPage({
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
+  const todayEased = await easePlanForUser(user.id, now, tz, todayShaped);
   const todaySessions = resolvePlanSessions(
-    todayShaped,
+    todayEased.plan,
     scaleDemoCatalog(catalog, {
       experienceLevel: profileBand,
       competitionStatus: profile?.competitionStatus,
@@ -203,6 +211,9 @@ export default async function TrainingPage({
 
   const viewedWeek = weekStartKey(selected, tz);
   const moveDays = moveDayChoices(prefs, now, tz, selected, swaps);
+  const coach = resolveAiCoach(profile?.aiCoachId);
+  const sparringSaved =
+    dayPlan.outside?.kind === "sparring" ? await getSparringLog(user.id, dayParam) : null;
 
   return (
     <WorkoutMoveProvider
@@ -278,6 +289,16 @@ export default async function TrainingPage({
           {dayPlan.skipReason && !dayPlan.active ? (
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
+          {dayPlan.easeNote || easedSelected.checkIn ? (
+            <div className="mt-3">
+              <RecoveryNotice
+                note={dayPlan.easeNote}
+                coachName={easedSelected.checkIn?.name}
+                coachImage={easedSelected.checkIn?.image}
+                message={easedSelected.checkIn?.message}
+              />
+            </div>
+          ) : null}
         </div>
 
         {nextAction && !isToday ? <NextSessionCta action={nextAction} /> : null}
@@ -285,6 +306,17 @@ export default async function TrainingPage({
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
       </section>
+
+      {dayPlan.outside?.kind === "sparring" ? (
+        <SparringLogForm
+          dateKey={dayParam}
+          weekday={dayPlan.weekday}
+          timeLabel={dayPlan.outside.label.replace(/^Sparring\s*·\s*/, "")}
+          saved={sparringSaved}
+          coachName={coach.name}
+          coachImage={coach.circle}
+        />
+      ) : null}
 
       <section className="space-y-3" data-session-phase="next">
         {planned.map((session, index) => (
@@ -392,9 +424,10 @@ export default async function TrainingPage({
           </p>
         ) : (
           <p className="mt-2 text-sm text-muted">
-            Structured fighter conditioning is on the $49 / $59 plan.{" "}
+            Full plans, including fighter conditioning, are on SVG Performance. Verified
+            academy members get the app free.{" "}
             <Link href="/pricing" className="text-accent underline">
-              See App Plans
+              See pricing
             </Link>
           </p>
         )}

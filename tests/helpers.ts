@@ -2,6 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { registerAccount } from "@/lib/auth";
 
 export async function resetDatabase() {
+  await prisma.memberProReminderLog.deleteMany();
+  await prisma.aiUsageEvent.deleteMany();
+  await prisma.checkInReminderLog.deleteMany();
+  await prisma.pushSubscription.deleteMany();
+  await prisma.weeklyCheckIn.deleteMany();
+  await prisma.weeklyCheckInPrefs.deleteMany();
   await prisma.gymdeskMatchQueue.deleteMany();
   await prisma.gymMembershipEvent.deleteMany();
   await prisma.emailVerificationCode.deleteMany();

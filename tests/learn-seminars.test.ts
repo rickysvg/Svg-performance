@@ -177,7 +177,8 @@ describe("seminar plan gating", () => {
     turnStripeOn();
     const user = await makeUser("learn-member@example.com");
     const fullLibrary = await canUseFeature(user.id, "learn_full");
-    expect(await canUseFeature(user.id, "learn_beginner")).toBe(true);
+    // Nonmember after the trial: locked until Pro.
+    expect(await canUseFeature(user.id, "learn_beginner")).toBe(false);
     expect(fullLibrary).toBe(false);
 
     const beginner = SEMINARS.find((seminar) => seminar.level === "beginner");

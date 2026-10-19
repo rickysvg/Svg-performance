@@ -64,6 +64,7 @@ export type ProfileRecord = {
   onboardingDeepCompletedAt: Date | null;
   trialStartedAt: Date | null;
   trialEndsAt: Date | null;
+  memberProStartedAt: Date | null;
   planChoiceAt: Date | null;
   thirdWorkoutCardDismissedAt: Date | null;
   currentWeight: number | null;
@@ -132,6 +133,7 @@ export function toProfileRecord(row: {
   onboardingDeepCompletedAt: Date | null;
   trialStartedAt?: Date | null;
   trialEndsAt?: Date | null;
+  memberProStartedAt?: Date | null;
   planChoiceAt?: Date | null;
   thirdWorkoutCardDismissedAt?: Date | null;
   currentWeight: number | null;
@@ -184,6 +186,7 @@ export function toProfileRecord(row: {
     onboardingDeepCompletedAt: row.onboardingDeepCompletedAt,
     trialStartedAt: row.trialStartedAt ?? null,
     trialEndsAt: row.trialEndsAt ?? null,
+    memberProStartedAt: row.memberProStartedAt ?? null,
     planChoiceAt: row.planChoiceAt ?? null,
     thirdWorkoutCardDismissedAt: row.thirdWorkoutCardDismissedAt ?? null,
     currentWeight: bodyWeightInLb(row.currentWeight, row.preferredUnits),

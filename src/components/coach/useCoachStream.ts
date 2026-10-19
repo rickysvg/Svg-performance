@@ -9,12 +9,15 @@ import {
   type FallbackReason,
 } from "@/lib/coach/stream-types";
 
+export type PaywallReason = Extract<CoachStreamEvent, { type: "paywall" }>["reason"];
+
 export function useCoachStream() {
   const [streaming, setStreaming] = useState(false);
   const [partial, setPartial] = useState("");
   const [error, setError] = useState("");
   const [offline, setOffline] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<FallbackReason | undefined>();
+  const [paywall, setPaywall] = useState<PaywallReason | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   function stop() {
@@ -28,6 +31,7 @@ export function useCoachStream() {
     setStreaming(true);
     setPartial("");
     setError("");
+    setPaywall(null);
     setOffline(false);
     setFallbackReason(undefined);
     let assembled = "";
@@ -75,6 +79,8 @@ export function useCoachStream() {
             setFallbackReason(event.fallbackReason);
           } else if (event.type === "error") {
             setError(event.message);
+          } else if (event.type === "paywall") {
+            setPaywall(event.reason);
           } else if (event.type === "meta") {
             liveOffline = event.offline;
             liveReason = event.fallbackReason;
@@ -110,6 +116,8 @@ export function useCoachStream() {
     error,
     offline,
     fallbackReason,
+    paywall,
+    setPaywall,
     start,
     stop,
     setError,

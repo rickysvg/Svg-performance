@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AiPaywallPrompt } from "@/components/upgrade/AiPaywallPrompt";
+import type { PaywallReason } from "@/components/coach/useCoachStream";
 import {
   pauseCoachPlayback,
   playCoachBytes,
@@ -20,6 +22,7 @@ const SPEECH_MISSING =
 export function SummaryReader({ script, coachId }: { script: string; coachId: string }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [notice, setNotice] = useState("");
+  const [paywall, setPaywall] = useState<PaywallReason | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const modeRef = useRef<"audio" | "speech" | null>(null);
   const tokenRef = useRef(0);
@@ -77,6 +80,12 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
         headers: { Accept: "audio/mpeg, application/json" },
       });
       if (tokenRef.current !== token) return;
+      if (response.status === 402) {
+        const payload = (await response.json().catch(() => null)) as { paywall?: PaywallReason } | null;
+        setPaywall(payload?.paywall ?? "read_aloud");
+        setPhase("idle");
+        return;
+      }
       const type = response.headers.get("content-type") ?? "";
       if (!response.ok || !type.includes("audio")) {
         throw new Error("tts");
@@ -164,6 +173,7 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
           </button>
         ) : null}
       </div>
+      {paywall ? <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} /> : null}
       {notice ? (
         <p role="alert" data-summary-speech-note className="text-sm text-muted">
           {notice}
