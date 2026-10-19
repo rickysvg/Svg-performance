@@ -44,7 +44,9 @@ import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { getSparringLog } from "@/lib/outside-log";
+import { getSparringLog, latestSparringSessionRating } from "@/lib/outside-log";
+import { sparringTileHint } from "@/lib/sparring-tile";
+import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -65,13 +67,14 @@ export default async function TrainingPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [catalog, drafts, sessionCount, conditioning, profile, swaps] = await Promise.all([
+  const [catalog, drafts, sessionCount, conditioning, profile, swaps, sparringRating] = await Promise.all([
     findDemoTrainingCatalog(),
     listDraftSessionsForUser(user.id),
     countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
+    latestSparringSessionRating(user.id),
   ]);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
@@ -261,13 +264,7 @@ export default async function TrainingPage({
       ) : null}
 
       {todayAction ? <StartTodayButton action={todayAction} /> : null}
-      <Link
-        href="/sparring"
-        data-log-sparring
-        className="touch-target flex items-center justify-center rounded-full border border-line text-sm font-semibold"
-      >
-        Log sparring
-      </Link>
+      <SparringLogTile hint={sparringTileHint(sparringRating)} layout="row" />
 
       <WeekStrip days={strip} basePath="/training" />
 

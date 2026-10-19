@@ -188,6 +188,16 @@ export async function sparringLogsForWeek(userId: string, anchor: Date, timeZone
   };
 }
 
+/** Most recent saved session rating, if the member has logged one. */
+export async function latestSparringSessionRating(userId: string) {
+  const row = await prisma.outsideSessionLog.findFirst({
+    where: { userId, sessionRating: { not: null } },
+    orderBy: { dateKey: "desc" },
+    select: { sessionRating: true },
+  });
+  return row?.sessionRating ?? null;
+}
+
 /** Oldest to newest, so a trend reads left to right. */
 export async function sparringTrend(userId: string, take = 8) {
   const rows = await prisma.outsideSessionLog.findMany({

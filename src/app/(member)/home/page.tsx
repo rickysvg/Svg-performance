@@ -19,6 +19,7 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 
@@ -34,7 +35,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics, sparringRating] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -51,6 +52,7 @@ export default async function HomePage({
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getLatestBodyMetricsForUser(user.id), new Map()),
+      homeLoad("sparring", latestSparringSessionRating(user.id), null),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
@@ -80,15 +82,8 @@ export default async function HomePage({
 
       <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
 
-      <Link
-        href="/sparring"
-        data-log-sparring
-        className="touch-target flex items-center justify-center rounded-full border border-black bg-white text-sm font-semibold"
-      >
-        Log sparring
-      </Link>
-
       <HomeQuickActions
+        sparringRating={sparringRating}
         locked={
           planId === "member_access"
             ? [
