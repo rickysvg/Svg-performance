@@ -10,7 +10,7 @@ import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { COACHING_CAP, FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
-import { isTesterFlagActive } from "@/lib/tester";
+import { isTesterFlagActive } from "@/lib/tester-access";
 import { countFoundingSeats } from "@/lib/billing";
 
 export default async function PricingPage() {

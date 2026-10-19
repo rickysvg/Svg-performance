@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
 import { isTrialActive } from "@/lib/trial";
-import { isTesterFlagActive } from "@/lib/tester";
+import { isTesterFlagActive } from "@/lib/tester-access";
 
 export function isStripeConfigured() {
   return Boolean(

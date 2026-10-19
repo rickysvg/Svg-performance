@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { isTesterCodeAdmin, listTesterInvites } from "@/lib/tester";
+import { isTesterCodeAdmin } from "@/lib/tester-access";
+import { listTesterInvites } from "@/lib/tester";
 import { TesterCodeForm } from "@/components/admin/TesterCodeForm";
 
 export default async function AdminTestersPage() {

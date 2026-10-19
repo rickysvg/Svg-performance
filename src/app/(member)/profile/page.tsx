@@ -20,7 +20,7 @@ import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggl
 import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { prisma } from "@/lib/prisma";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
-import { isTesterCodeAdmin, isTesterFlagActive } from "@/lib/tester";
+import { isTesterCodeAdmin, isTesterFlagActive } from "@/lib/tester-access";
 import { TesterRedeemForm } from "@/components/profile/TesterRedeemForm";
 
 export default async function ProfilePage() {

@@ -23,7 +23,7 @@ import { latestSparringRatings } from "@/lib/outside-log";
 import { homeSubtitle } from "@/lib/member-copy";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
-import { isTesterFlagActive } from "@/lib/tester";
+import { isTesterFlagActive } from "@/lib/tester-access";
 
 export default async function HomePage({
   searchParams,

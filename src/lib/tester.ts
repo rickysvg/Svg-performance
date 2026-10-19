@@ -1,36 +1,23 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
-import { normalizeEmail } from "@/lib/auth";
-import { adminEmailsFromEnv } from "@/lib/form-check-access";
-import { APP_TIMEZONE, zonedCivilToUtc } from "@/lib/timezone";
+import {
+  isTesterCodeAdmin,
+  normalizeTesterCode,
+  TESTER_MAX_USES,
+  testerAccessOpen,
+} from "@/lib/tester-access";
 
-/** Tester Pro ends when paid checkout opens: Nov 16, 2026, America/Denver. */
-export const TESTER_LAUNCH_AT = zonedCivilToUtc(2026, 11, 16, APP_TIMEZONE);
-export const TESTER_PLAN_LINE = "Tester · full Pro until Nov 16";
-export const TESTER_MAX_USES = 100;
+export {
+  isTesterCodeAdmin,
+  isTesterFlagActive,
+  normalizeTesterCode,
+  TESTER_LAUNCH_AT,
+  TESTER_PLAN_LINE,
+  testerAccessOpen,
+} from "@/lib/tester-access";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-export function testerAccessOpen(now = new Date()) {
-  return now.getTime() < TESTER_LAUNCH_AT.getTime();
-}
-
-export function isTesterFlagActive(tester: boolean, now = new Date()) {
-  return tester && testerAccessOpen(now);
-}
-
-/** Creating codes is limited to ADMIN_EMAILS. A role of admin is not enough. */
-export function isTesterCodeAdmin(user: { email: string }) {
-  return adminEmailsFromEnv().includes(normalizeEmail(user.email));
-}
-
-export function normalizeTesterCode(raw: string) {
-  const compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const body = compact.startsWith("SVG") ? compact.slice(3) : compact;
-  if (body.length < 4 || body.length > 12) return "";
-  return `SVG-${body}`;
-}
 
 export function generateTesterCode() {
   const bytes = randomBytes(6);

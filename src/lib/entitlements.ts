@@ -8,7 +8,7 @@ import {
   planIsPro,
 } from "@/lib/plans";
 import { isTrialActive } from "@/lib/trial";
-import { isTesterFlagActive } from "@/lib/tester";
+import { isTesterFlagActive } from "@/lib/tester-access";
 import { prisma } from "@/lib/prisma";
 
 /** Missing Stripe keys never grant paid access. Free, trial, and admin rows still apply. */

@@ -5,7 +5,7 @@ import { getPilotDashboardCounts } from "@/lib/pilot";
 import { AdminVerifyForm } from "@/components/admin/AdminVerifyForm";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
 import { normalizePlanId, PLAN_CATALOG } from "@/lib/plans";
-import { isTesterCodeAdmin } from "@/lib/tester";
+import { isTesterCodeAdmin } from "@/lib/tester-access";
 
 export default async function AdminPage() {
   const admin = await requireAdmin();

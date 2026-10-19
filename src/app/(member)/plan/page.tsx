@@ -8,7 +8,7 @@ import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 import { getProfileForUser } from "@/lib/profile";
-import { isTesterFlagActive } from "@/lib/tester";
+import { isTesterFlagActive } from "@/lib/tester-access";
 
 export default async function PlanPage() {
   const user = await requireUser();
