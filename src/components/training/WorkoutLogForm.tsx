@@ -35,6 +35,7 @@ import {
   modeHint,
   prescribedLbLabel,
   resolveLogMode,
+  visibleExerciseNote,
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
@@ -241,6 +242,8 @@ function setsForLogger(session: Session, draft: LoggerDraft | null = null): Work
       );
     },
     gymExerciseKey,
+  ).map((set) =>
+    set.completed && !setHasLoggedWork(set) ? { ...set, completed: false } : set,
   );
 }
 
@@ -1095,8 +1098,8 @@ export function WorkoutLogForm({
                       <div className="mt-2 space-y-1">
                         <CoachCredit name={title} />
                         {hint ? <p className="text-xs text-muted">{hint}</p> : null}
-                        {planned?.notes && !bagFocusLines(planned.notes) ? (
-                          <p className="text-sm text-muted">{planned.notes}</p>
+                        {planned?.notes && !bagFocusLines(planned.notes) && visibleExerciseNote(title, planned.notes) ? (
+                          <p className="text-sm text-muted">{visibleExerciseNote(title, planned.notes)}</p>
                         ) : null}
                       </div>
                     </details>

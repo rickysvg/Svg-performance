@@ -55,7 +55,9 @@ export function currentPlanLine(input: {
   trialActive: boolean;
   trialDaysLeft: number;
   planLabel: string;
+  tester?: boolean;
 }) {
+  if (input.tester) return "Tester · full Pro until Nov 16";
   if (input.trialActive) {
     const unit = input.trialDaysLeft === 1 ? "day" : "days";
     return `Pro trial, ${input.trialDaysLeft} ${unit} left`;

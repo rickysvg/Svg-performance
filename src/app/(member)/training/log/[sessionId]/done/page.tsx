@@ -8,10 +8,11 @@ import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } fro
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import {
   formatWorkoutCompleteDate,
-  sessionOrdinal,
+  sameDaySessionOrdinal,
   workoutCompleteShareStats,
   workoutCompleteTiles,
 } from "@/lib/workout-complete";
+import { omitSwapFirstMarks } from "@/lib/personal-bests";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
 import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
 import { loggedSetSome } from "@/lib/logged-work";
@@ -32,15 +33,23 @@ export default async function WorkoutDonePage({
   const profile = await getProfileForUser(user.id);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const unit = profile?.preferredUnits ?? "lb";
-  const [prs, completeIds, badges] = await Promise.all([
+  const [detected, completeRows, badges, swaps] = await Promise.all([
     detectNewPrsForSession(user.id, sessionId, unit),
     prisma.workoutSession.findMany({
       where: { userId: user.id, status: "complete", sets: loggedSetSome },
-      select: { id: true },
-      orderBy: { performedAt: "asc" },
+      select: { id: true, performedAt: true, updatedAt: true },
+      orderBy: { updatedAt: "asc" },
     }),
     evaluateBadgesForUser(user.id, unit),
+    prisma.exerciseSwap.findMany({
+      where: { userId: user.id, workoutSessionId: sessionId },
+      select: { replacementName: true },
+    }),
   ]);
+  const prs = omitSwapFirstMarks(
+    detected,
+    swaps.map((row) => row.replacementName),
+  );
   const unlockIds = parseUnlockQuery(query.pendingUnlock ?? query.unlock);
   const firstBadge = unlockIds
     .map((id) => badges.find((row) => row.id === id))
@@ -55,10 +64,7 @@ export default async function WorkoutDonePage({
     <main className="min-h-[50vh]">
       <WorkoutWinScreen
         dateLine={formatWorkoutCompleteDate(civilDayInstant(view.session.performedAt, tz), tz)}
-        sessionNumber={sessionOrdinal(
-          sessionId,
-          completeIds.map((row) => row.id),
-        )}
+        sessionNumber={sameDaySessionOrdinal(sessionId, completeRows, tz)}
         tiles={tiles}
         shareTitle={memberFacingTitle(view.session.title)}
         shareStats={workoutCompleteShareStats(tiles)}

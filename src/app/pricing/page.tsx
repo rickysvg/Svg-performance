@@ -10,6 +10,7 @@ import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { COACHING_CAP, FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { isTesterFlagActive } from "@/lib/tester-access";
 import { countFoundingSeats } from "@/lib/billing";
 
 export default async function PricingPage() {
@@ -56,6 +57,7 @@ export default async function PricingPage() {
                 trialActive: Boolean(trial?.trialActive),
                 trialDaysLeft: trial?.trialDaysLeft ?? 0,
                 planLabel: PLAN_CATALOG[currentPlan].label,
+                tester: isTesterFlagActive(Boolean(profile?.tester)),
               })}
             </strong>
             {subscription ? ` · recorded ${subscription.plan} / ${subscription.status}` : ""}.{" "}

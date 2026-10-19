@@ -150,6 +150,7 @@ export async function registerAccount(input: {
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
   phone?: string;
+  testerCode?: string;
 }): Promise<PublicUser> {
   if (!input.isAdultConfirmed) {
     throw new AppError(
@@ -195,6 +196,17 @@ export async function registerAccount(input: {
       },
     },
   });
+
+  const testerCode = input.testerCode?.trim() ?? "";
+  if (testerCode) {
+    const { redeemTesterCode } = await import("@/lib/tester");
+    try {
+      await redeemTesterCode(user.id, testerCode);
+    } catch (error) {
+      await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
+      throw error;
+    }
+  }
 
   await prisma.pilotInvite
     .updateMany({

@@ -88,9 +88,8 @@ export function sessionDurationSeconds(session: ShareSessionLike) {
   const start = session.createdAt ?? session.performedAt;
   if (loggedSets(session.sets).length > 0 && session.updatedAt && start) {
     const elapsed = Math.round((session.updatedAt.getTime() - start.getTime()) / 1000);
-    if (elapsed >= 1 && elapsed <= 4 * 60 * 60) {
-      return elapsed;
-    }
+    // Same clock the logger shows, including a session left open for hours.
+    if (elapsed >= 1) return elapsed;
   }
   return logged > 0 ? logged : 0;
 }

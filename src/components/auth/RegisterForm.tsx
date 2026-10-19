@@ -95,6 +95,21 @@ export function RegisterForm() {
           className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
         />
       </label>
+      <label className="block">
+        <span className="text-sm font-medium">Tester invite code (optional)</span>
+        <input
+          name="testerCode"
+          type="text"
+          autoComplete="off"
+          autoCapitalize="characters"
+          placeholder="SVG-••••••"
+          data-tester-code
+          className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3 uppercase"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          A code from Ricky gives full Pro until Nov 16, with no card.
+        </span>
+      </label>
       <label className="flex items-start gap-3 rounded-xl border border-line bg-card p-4">
         <input
           name="isAdultConfirmed"

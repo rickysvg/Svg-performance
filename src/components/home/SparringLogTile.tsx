@@ -54,7 +54,7 @@ export function SparringLogTile({
         aria-hidden
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"
       />
-      <span className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
+      <span className="tile-copy absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
         <span aria-hidden className="mb-1.5 block h-0.5 w-6 rounded-full bg-accent" />
         <span className="font-display block text-lg uppercase leading-tight tracking-wide text-white">
           {LABEL}

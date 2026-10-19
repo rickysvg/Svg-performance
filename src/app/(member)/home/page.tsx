@@ -19,9 +19,11 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
-import { latestSparringSessionRating } from "@/lib/outside-log";
+import { latestSparringRatings } from "@/lib/outside-log";
+import { homeSubtitle } from "@/lib/member-copy";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
+import { isTesterFlagActive } from "@/lib/tester-access";
 
 export default async function HomePage({
   searchParams,
@@ -52,7 +54,7 @@ export default async function HomePage({
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getLatestBodyMetricsForUser(user.id), new Map()),
-      homeLoad("sparring", latestSparringSessionRating(user.id), null),
+      homeLoad("sparring", latestSparringRatings(user.id), null),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
@@ -71,10 +73,25 @@ export default async function HomePage({
       <section className="-mx-4 -mt-6 bg-[#CBF805] px-4 pb-8 pt-7 text-black">
         <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
         <h1 className="mt-1 text-4xl">Welcome {greetingName}</h1>
-        {profile?.goals ? <p className="mt-2 text-sm">{profile.goals}</p> : null}
+        {homeSubtitle(profile?.goals, greetingName) ? (
+          <p className="mt-2 text-sm" data-home-subtitle>
+            {homeSubtitle(profile?.goals, greetingName)}
+          </p>
+        ) : null}
       </section>
 
       {trialEnded ? <TrialEndedPaywall /> : null}
+
+      {profile?.tester ? (
+        <Link
+          href="/feedback?from=/home"
+          data-tester-feedback
+          className="block rounded-2xl border border-accent bg-card px-4 py-3 text-sm font-semibold"
+        >
+          Send tester feedback
+          {isTesterFlagActive(profile.tester) ? " · Pro until Nov 16, no card" : ""}
+        </Link>
+      ) : null}
 
       <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 

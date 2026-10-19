@@ -264,6 +264,22 @@ export function newPrExerciseCount(prs: Array<{ exerciseName: string }>) {
   return new Set(prs.map((row) => row.exerciseName.trim()).filter(Boolean)).size;
 }
 
+/**
+ * Renaming a logged set must not mint a "first mark" for the new name.
+ * A real improvement on an exercise that already has a best still counts.
+ */
+export function omitSwapFirstMarks<
+  T extends { exerciseName: string; previousValue: number | null; detail?: string },
+>(prs: T[], replacementNames: string[]) {
+  const names = new Set(replacementNames.map((name) => name.trim().toLowerCase()).filter(Boolean));
+  if (names.size === 0) return prs;
+  return prs.filter((pr) => {
+    if (!names.has(pr.exerciseName.trim().toLowerCase())) return true;
+    const first = pr.previousValue == null || pr.previousValue <= 0 || /first mark/i.test(pr.detail ?? "");
+    return !first;
+  });
+}
+
 export function detectNewPrs(
   priorSets: DatedSetLike[],
   sessionSets: DatedSetLike[],

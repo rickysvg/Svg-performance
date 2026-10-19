@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { StatusBanner } from "@/components/StatusBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { AiPaywallPrompt } from "@/components/upgrade/AiPaywallPrompt";
-import { useCoachStream } from "@/components/coach/useCoachStream";
+import { useCoachStream, type PaywallReason } from "@/components/coach/useCoachStream";
 import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
@@ -91,6 +91,8 @@ export function CoachLiveThread({
   coachThumb,
   initialMessages,
   remainingLabel = null,
+  messagesLeft = 1,
+  sendBlockedReason = null,
 }: {
   topic: string;
   art?: string;
@@ -107,6 +109,9 @@ export function CoachLiveThread({
     offline: boolean;
   }>;
   remainingLabel?: string | null;
+  messagesLeft?: number;
+  /** Shown instead of sending when the allowance is already 0. */
+  sendBlockedReason?: PaywallReason | null;
 }) {
   const [messages, setMessages] = useState<ChatBubble[]>(
     initialMessages.map((message) => ({
@@ -130,6 +135,10 @@ export function CoachLiveThread({
     event.preventDefault();
     const message = draft.trim();
     if (!message || streaming) return;
+    if (messagesLeft < 1) {
+      setPaywall(sendBlockedReason ?? "ai_daily_cap");
+      return;
+    }
     setDraft("");
     const userId = `local-user-${Date.now()}`;
     setMessages((current) => [
@@ -244,7 +253,7 @@ export function CoachLiveThread({
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="submit"
-            disabled={streaming || !draft.trim()}
+            disabled={streaming || !draft.trim() || messagesLeft < 1}
             data-coach-send
             className="touch-target flex-1 rounded-full bg-accent text-black disabled:opacity-60"
           >

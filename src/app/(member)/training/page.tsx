@@ -44,7 +44,7 @@ import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { getSparringLog, latestSparringSessionRating } from "@/lib/outside-log";
+import { getSparringLog, latestSparringRatings } from "@/lib/outside-log";
 import { sparringTileHint } from "@/lib/sparring-tile";
 import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { easePlanForUser } from "@/lib/recovery-ease";
@@ -74,7 +74,7 @@ export default async function TrainingPage({
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
-    latestSparringSessionRating(user.id),
+    latestSparringRatings(user.id),
   ]);
   const prefs = {
     primaryFocus: profile?.primaryFocus,

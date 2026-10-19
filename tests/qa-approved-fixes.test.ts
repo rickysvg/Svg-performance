@@ -26,7 +26,8 @@ describe("QA-approved access and surface fixes", () => {
     expect(billing).toContain("Paid plans coming soon.");
     const history = read("src/components/upgrade/UpgradePreview.tsx");
     const chart = read("src/components/progress/ExerciseChart.tsx");
-    expect(history).toContain("Paid plans coming soon");
+    expect(history).toContain("limitCardFooter");
+    expect(history).not.toContain("Paid plans coming soon");
     expect(history).toContain("Older history is in Pro");
     expect(chart).toContain('kind="history"');
   });

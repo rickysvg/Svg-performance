@@ -173,7 +173,7 @@ html[data-splash="done"] .app-splash {
   position: fixed;
   z-index: 30;
   left: max(0.75rem, env(safe-area-inset-left, 0px));
-  bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(7.25rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   width: 48px;
   height: 48px;
@@ -186,7 +186,15 @@ html[data-splash="done"] .app-splash {
 }
 
 .coach-fab[data-coach-fab-raised] {
-  bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(8.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Check-in and other black bands: titles stay white. text-accent ink is for white cards. */
+.bg-black h1,
+.bg-black h2,
+[data-on-black] h1,
+[data-on-black] h2 {
+  color: #fff;
 }
 
 .coach-fab-photo {

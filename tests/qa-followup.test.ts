@@ -223,6 +223,6 @@ describe("onboarding and swap copy", () => {
     expect(form).toContain('type="hidden" name="weeklyAvailability"');
     expect(form).toContain("if (days.length > 0) return;");
     expect(plan).not.toMatch(/confirm your email/i);
-    expect(menu).toContain("This exercise logs differently, so your");
+    expect(menu).not.toMatch(/will be cleared/);
   });
 });

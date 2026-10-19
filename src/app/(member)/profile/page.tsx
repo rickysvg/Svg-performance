@@ -20,6 +20,8 @@ import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggl
 import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { prisma } from "@/lib/prisma";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
+import { isTesterCodeAdmin, isTesterFlagActive } from "@/lib/tester-access";
+import { TesterRedeemForm } from "@/components/profile/TesterRedeemForm";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -55,10 +57,34 @@ export default async function ProfilePage() {
               trialActive: trial.trialActive,
               trialDaysLeft: trial.trialDaysLeft,
               planLabel: PLAN_CATALOG[planId].label,
+              tester: isTesterFlagActive(profile.tester),
             })}
           </strong>
         </p>
+        {profile.tester ? (
+          <p
+            className="mt-3 inline-flex rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-black"
+            data-tester-badge
+          >
+            Tester
+          </p>
+        ) : null}
       </div>
+
+      {profile.tester ? (
+        <Link
+          href="/feedback?from=/profile"
+          data-tester-feedback
+          className="block rounded-2xl border border-accent bg-card p-5"
+        >
+          <h2 className="text-lg">Send tester feedback</h2>
+          <p className="mt-1 text-sm text-muted">
+            Bug, idea, or how a workout felt. This uses the same feedback inbox Ricky already reads.
+          </p>
+        </Link>
+      ) : (
+        <TesterRedeemForm />
+      )}
 
       <details className="rounded-2xl border border-line bg-card">
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Training</summary>
@@ -227,6 +253,13 @@ export default async function ProfilePage() {
             <li>
               <Link href="/admin/feedback" className="text-accent underline-offset-4 hover:underline">
                 Feedback inbox
+              </Link>
+            </li>
+          ) : null}
+          {isTesterCodeAdmin(user) ? (
+            <li>
+              <Link href="/admin/testers" className="text-accent underline-offset-4 hover:underline">
+                Tester codes
               </Link>
             </li>
           ) : null}

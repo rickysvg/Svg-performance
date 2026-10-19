@@ -1,4 +1,6 @@
 import { formatClock } from "@/lib/exercise-log-mode";
+import { civilDayInstant } from "@/lib/performed-at";
+import { dayKey } from "@/lib/timezone";
 import {
   formatShareVolume,
   sessionDurationSeconds,
@@ -20,6 +22,38 @@ export type WorkoutCompleteTile = {
 export function sessionOrdinal(sessionId: string, completeIdsInOrder: string[]) {
   const index = completeIdsInOrder.indexOf(sessionId);
   return index >= 0 ? index + 1 : completeIdsInOrder.length;
+}
+
+/** Session 2 is the second logged workout on that local day, not the second workout ever. */
+export function sameDaySessionOrdinal(
+  sessionId: string,
+  sessions: Array<{ id: string; performedAt: Date; updatedAt?: Date }>,
+  timeZone: string,
+) {
+  const current = sessions.find((row) => row.id === sessionId);
+  if (!current) return sessionOrdinal(sessionId, sessions.map((row) => row.id));
+  const key = dayKey(civilDayInstant(current.performedAt, timeZone), timeZone);
+  const same = sessions
+    .filter((row) => dayKey(civilDayInstant(row.performedAt, timeZone), timeZone) === key)
+    .sort((a, b) => {
+      const aAt = (a.updatedAt ?? a.performedAt).getTime();
+      const bAt = (b.updatedAt ?? b.performedAt).getTime();
+      return aAt - bAt || a.id.localeCompare(b.id);
+    });
+  return sessionOrdinal(
+    sessionId,
+    same.map((row) => row.id),
+  );
+}
+
+export function formatHistoryWhen(date: Date, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 export function formatWorkoutCompleteDate(date: Date, timeZone?: string) {

@@ -25,8 +25,8 @@ export default async function SparringPage({
   const today = dayKey(new Date(), timeZone);
   const requested = params.day && /^\d{4}-\d{2}-\d{2}$/.test(params.day) ? params.day : today;
   const future = sparringDateError(requested, new Date(), timeZone);
-  const dateKey = future ? today : requested;
-  const saved = await getSparringLog(user.id, dateKey);
+  const dateKey = requested;
+  const saved = future ? null : await getSparringLog(user.id, dateKey);
   const coach = resolveAiCoach(profile?.aiCoachId);
 
   return (
@@ -44,8 +44,8 @@ export default async function SparringPage({
           <input
             type="date"
             name="day"
-            max={today}
-            defaultValue={dateKey}
+            defaultValue={requested}
+            aria-describedby={future ? "sparring-future" : undefined}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           />
         </label>
@@ -54,10 +54,15 @@ export default async function SparringPage({
         </button>
       </form>
       {future ? (
-        <p className="rounded-2xl border border-line bg-card px-4 py-3 text-sm" data-sparring-future>
+        <p
+          id="sparring-future"
+          role="alert"
+          className="rounded-2xl border border-danger bg-card px-4 py-3 text-sm text-danger"
+          data-sparring-future
+        >
           {future}
         </p>
-      ) : null}
+      ) : (
       <SparringLogForm
         dateKey={dateKey}
         weekday={weekdayForDateKey(dateKey)}
@@ -66,6 +71,7 @@ export default async function SparringPage({
         coachImage={coach.circle}
         anyDay
       />
+      )}
       <Link href="/home" className="text-sm text-muted">
         Home
       </Link>

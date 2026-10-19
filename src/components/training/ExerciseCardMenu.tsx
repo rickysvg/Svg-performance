@@ -15,8 +15,7 @@ import {
   filterExerciseLibrary,
   libraryExercise,
 } from "@/lib/exercise-library";
-import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { plannedSetLine } from "@/lib/exercise-log-mode";
 import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
 import { showRemoveToast } from "@/components/training/RemoveToast";
@@ -132,18 +131,6 @@ export function ExerciseCardMenu({
 
   function confirm(scope: "session" | "block") {
     if (!choice) return;
-    const logged = (getCurrentSets?.() ?? []).filter(
-      (set) => set.exerciseName === currentName && setHasLoggedWork(set),
-    );
-    const nextMode = resolveLogMode({ logMode: choice.logMode, name: choice.name, reps: choice.reps });
-    const currentMode = resolveLogMode({ logMode: source.logMode, name: currentName, reps: source.reps });
-    if (logged.length > 0 && nextMode !== currentMode) {
-      const noun = logged.length === 1 ? "set" : "sets";
-      const ok = window.confirm(
-        `This exercise logs differently, so your ${logged.length} logged ${noun} will be cleared.`,
-      );
-      if (!ok) return;
-    }
     setError("");
     startTransition(async () => {
       const result = await swapExerciseAction({
@@ -279,7 +266,7 @@ export function ExerciseCardMenu({
           : null}
       </div>
       {open ? (
-        <div className="fixed inset-0 z-40 flex flex-col bg-background text-foreground">
+        <div className="fixed inset-0 z-40 flex flex-col overflow-x-hidden bg-background text-foreground">
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <button type="button" onClick={closeSheet} className="touch-target text-2xl leading-none" aria-label="Close">
               ×
@@ -317,7 +304,7 @@ export function ExerciseCardMenu({
                 </button>
               ))}
             </div>
-            <div className="no-scrollbar flex max-w-full min-w-0 gap-2 overflow-x-auto pb-1" role="group" aria-label="Category">
+            <div className="flex max-w-full min-w-0 flex-wrap gap-2" role="group" aria-label="Category">
               {CATEGORY_FILTERS.map((filter) => (
                 <button
                   key={filter.id}
@@ -332,7 +319,7 @@ export function ExerciseCardMenu({
               ))}
             </div>
           </div>
-          <ul className="min-h-0 flex-1 overflow-y-auto">
+          <ul className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
             {results.length === 0 ? (
               <li className="px-4 py-6 text-sm text-muted">No exercises match that search.</li>
             ) : (
@@ -354,7 +341,7 @@ export function ExerciseCardMenu({
                           {exercise.equipment === "none" ? " · No weights" : exercise.equipment === "both" ? " · Gym or floor" : " · Gym"}
                         </span>
                       </span>
-                      <span className={`shrink-0 text-xs ${selected ? "text-black/80" : "text-muted"}`}>
+                      <span className={`max-w-[40%] shrink text-right text-xs whitespace-normal ${selected ? "text-black/80" : "text-muted"}`}>
                         {plannedSetLine({
                           sets: exercise.sets,
                           reps: exercise.reps,

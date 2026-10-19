@@ -90,7 +90,16 @@ export default async function CoachPage({
   const thread = ready
     ? await getOrCreateThread(user.id, { topic, art })
     : null;
-  const remainingLabel = aiRemainingLabel(await getAiAllowance(user.id));
+  const allowance = await getAiAllowance(user.id);
+  const remainingLabel = aiRemainingLabel(allowance);
+  const sendBlockedReason =
+    allowance.messagesLeft < 1
+      ? allowance.tier === "pro"
+        ? "ai_daily_cap"
+        : allowance.tier === "academy"
+          ? "ai_limit"
+          : "locked"
+      : null;
   const lane = coachLaneLabel(topic, art);
 
   return (
@@ -181,6 +190,8 @@ export default async function CoachPage({
             coachThumb={coach.thumb}
             initialMessages={thread.messages}
             remainingLabel={remainingLabel}
+            messagesLeft={allowance.messagesLeft}
+            sendBlockedReason={sendBlockedReason}
           />
         </>
       ) : null}

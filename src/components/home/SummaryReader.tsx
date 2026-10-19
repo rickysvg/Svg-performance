@@ -24,10 +24,13 @@ export function SummaryReader({
   script,
   coachId,
   readAloudsLeft = 1,
+  blockedReason = "read_aloud",
 }: {
   script: string;
   coachId: string;
   readAloudsLeft?: number;
+  /** Trial and Pro already include read-aloud, so a block is the daily limit. */
+  blockedReason?: PaywallReason;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [notice, setNotice] = useState("");
@@ -139,7 +142,7 @@ export function SummaryReader({
       return;
     }
     if (next === "blocked") {
-      setPaywall(readAloudsLeft <= 0 && phase === "idle" ? "read_aloud" : "read_aloud");
+      setPaywall(blockedReason);
       setPhase("idle");
       return;
     }

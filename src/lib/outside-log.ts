@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
+import { timeZoneForUser } from "@/lib/profile";
 import { mondayOfZoned, addZonedDays, dayKey, APP_TIMEZONE } from "@/lib/timezone";
 
 export const SORE_SPOTS = [
@@ -180,22 +181,54 @@ export async function sparringLogsForWeek(userId: string, anchor: Date, timeZone
     where: { userId, dateKey: { in: keys } },
     orderBy: { dateKey: "asc" },
   });
-  const logs = rows.map(toLog);
+  const today = dayKey(anchor, timeZone);
+  return sparringWeekTotals(rows.map(toLog), today);
+}
+
+export function sparringWeekTotals<T extends { dateKey: string; rounds: number; minutesPerRound: number }>(
+  logs: T[],
+  today: string,
+) {
+  const counted = logs.filter((log) => log.dateKey <= today);
   return {
-    logs,
-    rounds: logs.reduce((sum, log) => sum + log.rounds, 0),
-    minutes: logs.reduce((sum, log) => sum + sparringMinutes(log), 0),
+    logs: counted,
+    rounds: counted.reduce((sum, log) => sum + log.rounds, 0),
+    minutes: counted.reduce((sum, log) => sum + sparringMinutes(log), 0),
   };
+}
+
+/** Latest ratings on or before today. A future log is not "last session". */
+export function pickLatestSparringRatings<
+  T extends { dateKey: string; sessionRating?: number | null; bodyRating?: number | null },
+>(logs: T[], today: string) {
+  const row = logs
+    .filter((log) => log.dateKey <= today && (log.sessionRating != null || log.bodyRating != null))
+    .sort((a, b) => b.dateKey.localeCompare(a.dateKey))[0];
+  if (!row) return null;
+  return { sessionRating: row.sessionRating ?? null, bodyRating: row.bodyRating ?? null };
+}
+
+/** Most recent saved ratings, if the member has logged one. Future days stay out. */
+export async function latestSparringRatings(userId: string, now = new Date()) {
+  const timeZone = await timeZoneForUser(userId);
+  const today = dayKey(now, timeZone);
+  const rows = await prisma.outsideSessionLog.findMany({
+    where: {
+      userId,
+      dateKey: { lte: today },
+      OR: [{ sessionRating: { not: null } }, { bodyRating: { not: null } }],
+    },
+    orderBy: { dateKey: "desc" },
+    take: 1,
+    select: { sessionRating: true, bodyRating: true, dateKey: true },
+  });
+  return pickLatestSparringRatings(rows, today);
 }
 
 /** Most recent saved session rating, if the member has logged one. */
 export async function latestSparringSessionRating(userId: string) {
-  const row = await prisma.outsideSessionLog.findFirst({
-    where: { userId, sessionRating: { not: null } },
-    orderBy: { dateKey: "desc" },
-    select: { sessionRating: true },
-  });
-  return row?.sessionRating ?? null;
+  const ratings = await latestSparringRatings(userId);
+  return ratings?.sessionRating ?? null;
 }
 
 /** Oldest to newest, so a trend reads left to right. */
