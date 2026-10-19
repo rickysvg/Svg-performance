@@ -426,7 +426,7 @@ export default async function TrainingPage({
         {conditioning ? (
           <p className="mt-2 text-sm text-muted">
             Shared combat S&amp;C / mobility blocks publish here when ready. This Core
-            week stays labeled DEMO and is not a 1:1 assigned fight camp.
+            week is the shared template and is not a 1:1 assigned fight camp.
           </p>
         ) : (
           <p className="mt-2 text-sm text-muted">

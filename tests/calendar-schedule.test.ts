@@ -251,6 +251,9 @@ describe("calendar schedule loader", () => {
 
     const tuesdayRow = schedule.days[1];
     const tuesdayWorkouts = tuesdayRow?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(tuesdayWorkouts).toHaveLength(0);
+    expect(tuesdayWorkouts.length).toBeGreaterThan(0);
+    const workouts = schedule.days.flatMap((day) => day.activities.filter((row) => row.kind === "workout"));
+    expect(workouts.some((row) => row.subtitle.includes("Core week plan."))).toBe(true);
+    expect(workouts.some((row) => row.subtitle.includes("DEMO"))).toBe(false);
   });
 });

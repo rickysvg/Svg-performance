@@ -107,16 +107,17 @@ export const BAG_FOCUS: Record<
 
 /**
  * Round length so warm-up + themed rounds + cooldown land in 30–45 minutes.
- * Beginner rounds are shorter. Nobody gets a 60-minute bag.
+ * Every level uses 3:00 rounds. Beginners rest 60s, the same as intermediate.
+ * Advanced keeps the shorter 30s rest. Nobody gets a 60-minute bag.
  */
 export const BAG_ROUND_SECONDS: Record<ScaleBand, number> = {
-  beginner: 150, // 2:30
+  beginner: 180, // 3:00
   intermediate: 180, // 3:00
   advanced: 180, // 3:00
 };
 
 export const BAG_REST_SECONDS: Record<ScaleBand, number> = {
-  beginner: 45,
+  beginner: 60,
   intermediate: 60,
   advanced: 30,
 };

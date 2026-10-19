@@ -20,7 +20,6 @@ import {
   isBikeIntervalName,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
-import { floorSessionForDay } from "@/lib/bodyweight-plan";
 import { daruExerciseForName } from "@/lib/daru-exercises";
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
@@ -330,6 +329,79 @@ function floorStrengthRest(name: string, rest: number) {
   return rest;
 }
 
+const NO_WEIGHT_MOVES: Array<{ match: RegExp; name: string; logMode: LogMode }> = [
+  { match: /trap-bar deadlift/i, name: "Hip hinge", logMode: "reps_only" },
+  { match: /pause goblet squat/i, name: "Pause air squat", logMode: "reps_only" },
+  { match: /goblet squat/i, name: "Air squat", logMode: "reps_only" },
+  { match: /romanian deadlift|single-leg rdl/i, name: "Hip hinge", logMode: "reps_only" },
+  { match: /dumbbell bench|push-up or dumbbell/i, name: "Push-up", logMode: "reps_only" },
+  { match: /one-arm row|chest-supported|half-kneeling one-arm row|lat pulldown|chin-up/i, name: "Inverted row", logMode: "reps_only" },
+  { match: /overhead press|landmine press/i, name: "Pike push-up", logMode: "reps_only" },
+  { match: /step-up/i, name: "Box step-up", logMode: "reps_only" },
+  { match: /woodchop|landmine rotation/i, name: "Standing woodchop", logMode: "reps_only" },
+  { match: /med-ball|medicine ball/i, name: "Rotational throw", logMode: "reps_only" },
+  { match: /farmer carry/i, name: "Farmer march", logMode: "timed" },
+  { match: /suitcase carry/i, name: "Suitcase march", logMode: "timed" },
+  { match: /pallof/i, name: "Dead bug", logMode: "reps_only" },
+  { match: /walking lunge/i, name: "Walking lunge", logMode: "reps_only" },
+  { match: /neck extension/i, name: "Neck extension hold", logMode: "timed" },
+  { match: /neck isometric/i, name: "Neck isometric matrix", logMode: "timed" },
+];
+
+function bodyweightLoadText(load: string) {
+  const parts = load
+    .split("·")
+    .map((part) => part.trim())
+    .filter(
+      (part) =>
+        part &&
+        !/%|dumbbell|barbell|kettlebell|cable|landmine|trap-bar|\bband\b|harness|\bkg\b|\blbs?\b/i.test(
+          part,
+        ),
+    );
+  const body = parts.join(" · ");
+  if (/no weights/i.test(body)) return body;
+  return body ? `Bodyweight — no weights · ${body}` : "Bodyweight — no weights";
+}
+
+function bodyweightNotes(notes: string | undefined) {
+  const text = (notes ?? "")
+    .replace(/two dumbbells\./gi, "Hands on the floor.")
+    .replace(/dumbbells?/gi, "bodyweight")
+    .replace(/barbells?/gi, "bodyweight")
+    .replace(/trap-bar/gi, "hinge")
+    .replace(/\bcables?\b/gi, "body")
+    .replace(/landmines?/gi, "bodyweight")
+    .replace(/light band or harness/gi, "hand on the forehead")
+    .replace(/\d+\s*[–-]\s*\d+\s*kg ball|med-ball|medicine ball/gi, "no ball");
+  if (/no gym or weights/i.test(text)) return text.trim();
+  return `${text} No gym or weights.`.replace(/\s+/g, " ").trim();
+}
+
+/** Same v2 slot, done without a gym. Sets, reps, and rest stay. The name is the floor version. */
+function applyNoWeightVariant(exercise: ScaleableExercise): ScaleableExercise {
+  if (isBikeIntervalName(exercise.name) || isWeightedShadowName(exercise.name) || isShadowName(exercise.name)) {
+    return exercise;
+  }
+  if (/\bbag rounds?\b/i.test(exercise.name)) return exercise;
+  const mapped = NO_WEIGHT_MOVES.find((row) => row.match.test(exercise.name));
+  const gear =
+    /dumbbell|barbell|kettlebell|cable|landmine|trap-bar|pulldown|med-ball|medicine|\bband\b|harness|%/.test(
+      `${exercise.name} ${exercise.loadText}`,
+    );
+  if (!mapped && !gear) return exercise;
+  const name = mapped?.name ?? exercise.name;
+  const renamed = name !== exercise.name;
+  return {
+    ...exercise,
+    name,
+    logMode: mapped?.logMode ?? exercise.logMode,
+    loadText: bodyweightLoadText(exercise.loadText),
+    notes: bodyweightNotes(exercise.notes),
+    ...(renamed ? formVideoFieldsFor(name) : {}),
+  };
+}
+
 export function scaleExercise(
   exercise: ScaleableExercise,
   input: {
@@ -350,8 +422,9 @@ export function scaleExercise(
     logMode: gym.logMode,
   };
   const scaled = scaleNamedExercise(named, input);
-  if (!gym.renamed) return scaled;
-  return { ...scaled, ...formVideoFieldsFor(gym.name) };
+  const withVideo = gym.renamed ? { ...scaled, ...formVideoFieldsFor(gym.name) } : scaled;
+  if (input.weightAccess !== "none") return withVideo;
+  return applyNoWeightVariant(withVideo);
 }
 
 function scaleNamedExercise(
@@ -760,6 +833,8 @@ const BEGINNER_NAME: Record<string, string> = {
 
 function formFirstBeginner<T extends ScaleableExercise>(exercise: T): T {
   const load = exercise.loadText ?? "";
+  // Locked v2 doses stay. Beginners do not get the old 3-5 RIR rewrite on this week's sets.
+  if (/Written for this week/i.test(exercise.notes ?? "")) return exercise;
   if (/hold/i.test(load) || /2-4 RIR/.test(load)) return exercise;
   if (!/\d+\s*%|0-2 RIR|1-2 RIR|1-3 RIR/.test(load)) return exercise;
   const softened = load
@@ -779,7 +854,7 @@ function presentExercise<T extends ScaleableExercise>(exercise: T, band: ScaleBa
   if (band === "beginner") {
     next = formFirstBeginner(next);
     const swapped = BEGINNER_NAME[next.name];
-    if (swapped) next = { ...next, name: swapped };
+    if (swapped) next = { ...next, name: swapped, ...formVideoFieldsFor(swapped) };
   }
   if (seen.has(next.name)) next = { ...next, name: `${next.name} (second)` };
   seen.add(next.name);
@@ -813,28 +888,6 @@ export function scaleExercises<T extends ScaleableExercise>(
   );
 }
 
-function stampFloorExercises<T extends ScaleableExercise>(
-  originals: T[],
-  menu: ScaleableExercise[],
-): T[] {
-  return menu.map((exercise, index) => {
-    const base = originals[index] ?? originals[0];
-    const video = formVideoFieldsFor(exercise.name);
-    const id =
-      base && typeof (base as unknown as { id?: unknown }).id === "string"
-        ? `${(base as unknown as { id: string }).id}-floor-${index}`
-        : undefined;
-    return {
-      ...(base ?? ({} as T)),
-      ...exercise,
-      ...(id ? { id } : {}),
-      sortOrder: index + 1,
-      formVideoUrl: video.formVideoUrl,
-      formVideoPending: video.formVideoPending,
-    } as T;
-  });
-}
-
 export function scaleProgramDay<
   T extends { dayNumber: number; focus: string; title?: string; exercises: ScaleableExercise[] },
 >(
@@ -848,23 +901,6 @@ export function scaleProgramDay<
   },
 ): T {
   const weightAccess = normalizeWeightAccess(input.weightAccess);
-  const floor =
-    weightAccess === "none"
-      ? floorSessionForDay(day.dayNumber, input.programSlug, input.band)
-      : null;
-  if (floor) {
-    const note = scaleCopy(input.band);
-    const focus = floor.focus.includes(note) ? floor.focus : `${floor.focus} · ${note}`;
-    const seen = new Set<string>();
-    return {
-      ...day,
-      title: memberCopy(floor.title),
-      focus: memberCopy(focus),
-      exercises: stampFloorExercises(day.exercises, floor.exercises).map((exercise) =>
-        presentExercise(exercise, input.band, seen),
-      ),
-    };
-  }
   const exercises = scaleExercises(day.exercises, {
     band: input.band,
     programSlug: input.programSlug,
@@ -887,11 +923,21 @@ export function scaleProgramDay<
       ? bagMinutesForBand(input.band, day.dayNumber)
       : null;
   const timedFocus = minutes ? `${focus} · about ${minutes} min` : focus;
+  const noGym =
+    weightAccess === "none" &&
+    input.programSlug !== DEMO_SKILL_PROGRAM_SLUG &&
+    input.programSlug !== "skill";
+  const floorNote = noGym
+    ? exercises.some((exercise) => isBikeIntervalName(exercise.name))
+      ? "No bike: same clock. March or shadow."
+      : "No gym or weights. Same sets and rest as the gym day."
+    : "";
+  const withFloor = floorNote && !timedFocus.includes(floorNote) ? `${timedFocus} · ${floorNote}` : timedFocus;
   return {
     ...day,
     title: day.title ? memberCopy(day.title) : day.title,
     exercises,
-    focus: memberCopy(timedFocus),
+    focus: memberCopy(withFloor),
   };
 }
 

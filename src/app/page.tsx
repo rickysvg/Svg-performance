@@ -77,7 +77,7 @@ export default async function MarketingPage({
         <section className="grid gap-4 sm:grid-cols-3">
           {[
             ["What am I working toward?", "Save a simple profile and a goal you can see on Home."],
-            ["What should I do today?", "Open the labeled DEMO strength program and start a session."],
+            ["What should I do today?", "Open the strength program and start a session."],
             ["What progress am I making?", "Logged workouts stay after refresh. Charts use your own data."],
           ].map(([title, body]) => (
             <article key={title} className="rounded-2xl border border-line bg-card p-5">
@@ -91,7 +91,7 @@ export default async function MarketingPage({
           <h2 className="text-lg">What this preview is — and is not</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
             <li>Auth, workout logs, and your profile are real and stored in a database.</li>
-            <li>The strength program is clearly marked DEMO.</li>
+            <li>The strength program is the shared week template, not a private fight camp.</li>
             <li>
               Anyone 18+ can create an account. Checking “I train at SVG” does
               not unlock member pricing — an admin verifies gym membership

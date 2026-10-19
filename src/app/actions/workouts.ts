@@ -20,7 +20,7 @@ import { resolveLoggedPerformedAt } from "@/lib/performed-at";
 import { parseDateTimeLocal } from "@/lib/timezone";
 import { isDeloadWeekIndex } from "@/lib/training-cycle";
 import { planWeekIndex } from "@/lib/week-plan";
-import { publicErrorMessage } from "@/lib/errors";
+import { publicErrorMessage, StaleDraftError } from "@/lib/errors";
 import { getAppTier } from "@/lib/entitlements";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
@@ -196,7 +196,9 @@ export async function syncWorkoutDraftAction(input: {
   notes: string;
   sets: WorkoutSetInput[];
   rest: { exerciseName: string; endsAtMs: number } | null;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+  /** Session updatedAt the logger built this payload from. A newer save wins. */
+  baseUpdatedAt?: string | null;
+}): Promise<{ ok: true; updatedAt: string } | { ok: false; error: string; stale?: boolean }> {
   try {
     const user = await requireUserOrThrow();
     await extendActiveSession();
@@ -205,7 +207,7 @@ export async function syncWorkoutDraftAction(input: {
     const parsed = parseDateTimeLocal(input.performedAt, timeZone);
     const loose = new Date(input.performedAt);
     const performedAt = parsed ?? (Number.isNaN(loose.getTime()) ? new Date() : loose);
-    await updateWorkoutSessionForUser({
+    const saved = await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: input.workoutId,
       title: input.title || "Workout",
@@ -214,11 +216,15 @@ export async function syncWorkoutDraftAction(input: {
       status: "draft",
       sets: input.sets,
       rest: input.rest,
+      baseUpdatedAt: input.baseUpdatedAt,
     });
     revalidatePath("/training");
     revalidatePath("/home");
-    return { ok: true };
+    return { ok: true, updatedAt: saved.updatedAt.toISOString() };
   } catch (error) {
+    if (error instanceof StaleDraftError) {
+      return { ok: false, stale: true, error: "" };
+    }
     return { ok: false, error: publicErrorMessage(error) };
   }
 }

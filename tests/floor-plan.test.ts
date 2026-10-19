@@ -97,23 +97,31 @@ describe("no gym or weights", () => {
     }
   };
 
-  it("builds a different floor session for each block and weekday job", () => {
+  it("scales each v2 lift to a floor name and keeps the day's sets", () => {
     for (const [block, days] of Object.entries(STRENGTH_DAY_BY_BLOCK)) {
       const lower = scaled(days.monday, "intermediate", "none");
       const pull = scaled(days.tuesday, "intermediate", "none");
       const posterior = scaled(days.thursday, "intermediate", "none");
+      const gym = scaled(days.monday, "intermediate", "gym");
+      expect(lower.title).toMatch(/Lift 1/);
+      expect(lower.exercises).toHaveLength(gym.exercises.length);
       for (const day of [lower, pull, posterior]) {
         expect(day.exercises.length, day.title).toBeGreaterThanOrEqual(6);
         expect(new Set(day.exercises.map((exercise) => exercise.name)).size).toBe(
           day.exercises.length,
         );
         gearFree(day.exercises.map((exercise) => exercise.name));
-        expect(day.title).toMatch(/No gym/);
+        expect(day.title).not.toMatch(/No gym —/);
+        expect(day.focus).toMatch(/No gym or weights/);
         expect(day.focus).toMatch(new RegExp(`Block ${block}`));
       }
-      expect(lower.exercises.some((exercise) => PUSH_UP.test(exercise.name))).toBe(false);
-      expect(pull.exercises.some((exercise) => PUSH_UP.test(exercise.name))).toBe(false);
-      expect(posterior.exercises.some((exercise) => PUSH_UP.test(exercise.name))).toBe(false);
+      expect(lower.exercises.some((exercise) => exercise.name === "Push-up")).toBe(true);
+      const bench = gym.exercises.find((exercise) => exercise.name === "Dumbbell bench press");
+      const push = lower.exercises.find((exercise) => exercise.name === "Push-up");
+      expect(push?.sets).toBe(bench?.sets);
+      expect(push?.restSeconds).toBe(bench?.restSeconds);
+      expect(push?.loadText).toMatch(/RIR/);
+      expect(push?.loadText).not.toMatch(/%/);
     }
     const lowerA = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "advanced", "none")
       .exercises.map((exercise) => exercise.name)
@@ -128,7 +136,7 @@ describe("no gym or weights", () => {
     expect(lowerB).not.toBe(lowerC);
   });
 
-  it("replaces a bike day with floor sets and leaves bag themes alone", () => {
+  it("keeps the bike clock for a no-gym week and leaves bag themes alone", () => {
     const bike = scaleProgramDay(
       {
         dayNumber: 6,
@@ -149,11 +157,11 @@ describe("no gym or weights", () => {
       },
       { band: "intermediate", programSlug: DEMO_PROGRAM_SLUG, weightAccess: "none" },
     );
-    expect(bike.title).toMatch(/No gym/);
-    expect(bike.exercises.some((exercise) => /bike/i.test(exercise.name))).toBe(false);
-    expect(bike.exercises.every((exercise) => exercise.logMode === "reps_only" || exercise.logMode === "timed")).toBe(
-      true,
-    );
+    expect(bike.title).toMatch(/bike/i);
+    expect(bike.focus).toMatch(/No bike: same clock/);
+    expect(bike.exercises.some((exercise) => /bike/i.test(exercise.name))).toBe(true);
+    expect(bike.exercises).toHaveLength(1);
+    expect(bike.exercises[0]?.logMode).toBe("timed_round");
 
     const bag = scaleProgramDay(
       {

@@ -111,6 +111,13 @@ const squatJump = ready({
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Squat Jump | Proper Form & Technique | NASM",
 });
+// The form-video report has no Sit-to-stand row. This Short is a chair sit-to-stand, not the NASM squat jump.
+const sitToStand = ready({
+  url: "https://www.youtube.com/shorts/pIAzucMjibQ",
+  seconds: 20,
+  channel: "YouTube Shorts",
+  title: "Chair sit-to-stand",
+});
 const plank = ready({
   url: "https://www.youtube.com/watch?v=mwlp75MS6Rg",
   seconds: 15,
@@ -589,6 +596,7 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Reverse lunge": lunge,
   "Squat jump or box step-up": squatJump,
   "Squat jump": squatJump,
+  "Sit-to-stand": sitToStand,
   "Jump rope": jumpRope,
   "Easy bike intervals": airBike,
   "Box step-up": stepUp,

@@ -54,7 +54,7 @@ export function ExerciseCardMenu({
   workoutSessionId?: string;
   canRemove: boolean;
   getCurrentSets?: () => WorkoutSetInput[];
-  onSetsReplaced?: (sets: WorkoutSet[], focusName?: string) => void;
+  onSetsReplaced?: (sets: WorkoutSet[], focusName?: string, updatedAt?: string | null) => void;
   onSwapped?: (
     name: string,
     prescription: {
@@ -75,6 +75,7 @@ export function ExerciseCardMenu({
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const confirmRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState<(typeof CATEGORY_FILTERS)[number]["id"]>("all");
   const [equipment, setEquipment] = useState<"gym" | "none">(weightAccess);
   const [picked, setPicked] = useState<string | null>(null);
@@ -92,6 +93,11 @@ export function ExerciseCardMenu({
     [query, category, equipment, currentName],
   );
   const choice = picked ? libraryExercise(picked) : null;
+
+  useEffect(() => {
+    if (!picked) return;
+    confirmRef.current?.scrollIntoView({ block: "nearest" });
+  }, [picked]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -135,8 +141,8 @@ export function ExerciseCardMenu({
     setQuery("");
   }
 
-  function applySets(sets: WorkoutSet[] | null, focusName?: string) {
-    if (sets && onSetsReplaced) onSetsReplaced(sets, focusName);
+  function applySets(sets: WorkoutSet[] | null, focusName?: string, updatedAt?: string | null) {
+    if (sets && onSetsReplaced) onSetsReplaced(sets, focusName, updatedAt);
     else router.refresh();
   }
 
@@ -169,7 +175,7 @@ export function ExerciseCardMenu({
       }
       closeSheet();
       onSwapped?.(result.replacementName, result.prescription);
-      applySets(result.sets, result.replacementName);
+      applySets(result.sets, result.replacementName, result.updatedAt);
       if (already) {
         showRemoveToast({ message: swapAlreadyInWorkoutMessage(result.replacementName) });
       }
@@ -289,7 +295,7 @@ export function ExerciseCardMenu({
       {open && typeof document !== "undefined"
         ? createPortal(
         <div
-          className="fixed inset-0 z-40 flex flex-col overflow-x-hidden bg-background text-foreground"
+          className="fixed inset-0 z-[80] flex flex-col overflow-hidden bg-background text-foreground"
           data-swap-sheet={currentName}
         >
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
@@ -387,7 +393,11 @@ export function ExerciseCardMenu({
             )}
           </ul>
           {choice ? (
-            <div className="space-y-2 border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div
+              ref={confirmRef}
+              data-swap-confirm
+              className="shrink-0 space-y-2 border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            >
               <p className="text-sm">
                 <span className="font-semibold">{choice.name}</span>
                 <span className="text-muted">

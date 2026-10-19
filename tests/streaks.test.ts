@@ -13,18 +13,18 @@ const prefs: PlannerPrefs = {
   primaryFocus: "general-fitness",
   weeklyAvailability: ["Monday", "Wednesday", "Friday"],
   sessionsPerWeek: 3,
+  trainingFocus: "sc_only",
 };
 
 describe("training streak (scheduled days)", () => {
   it("does not break across scheduled rest days", () => {
-    // Wednesday 16 Sep + Friday 18 Sep. Thursday is off this Mon/Wed/Fri plan.
-    // Saturday mobility is a real session, so a Friday-to-Monday gap is a miss.
-    const wednesday = new Date("2026-09-16T18:00:00.000Z");
-    const friday = new Date("2026-09-18T18:00:00.000Z");
+    // Strength-only week: Thursday lift and Sunday bike, Friday and Saturday off.
+    const thursday = new Date("2026-09-17T18:00:00.000Z");
+    const sunday = new Date("2026-09-20T18:00:00.000Z");
     const tz = "America/Denver";
-    const keys = [dayKey(wednesday, tz), dayKey(friday, tz)];
-    expect(currentTrainingStreak(keys, prefs, friday, tz)).toBe(2);
-    expect(longestTrainingStreak(keys, prefs, friday, tz)).toBe(2);
+    const keys = [dayKey(thursday, tz), dayKey(sunday, tz)];
+    expect(currentTrainingStreak(keys, prefs, sunday, tz)).toBe(2);
+    expect(longestTrainingStreak(keys, prefs, sunday, tz)).toBe(2);
   });
 
   it("breaks when a scheduled training day is missed", () => {
@@ -32,22 +32,21 @@ describe("training streak (scheduled days)", () => {
     const tuesday = new Date("2026-09-22T18:00:00.000Z");
     const tz = "America/Denver";
     const keys = [dayKey(friday, tz), dayKey(tuesday, tz)];
-    // Monday 21 Sep is on this Mon/Wed/Fri plan and was missed.
-    // Tuesday is not a scheduled day, so a Tuesday log does not keep the streak.
-    expect(currentTrainingStreak(keys, prefs, tuesday, tz)).toBe(0);
+    // Monday 21 Sep is a lift day and was missed. Tuesday's log does not skip it.
+    expect(currentTrainingStreak(keys, prefs, tuesday, tz)).toBe(1);
   });
 
   it("keeps the streak alive when today is scheduled and not logged yet", () => {
-    const wednesday = new Date("2026-09-16T18:00:00.000Z");
-    const fridayMorning = new Date("2026-09-18T14:00:00.000Z");
+    const tuesday = new Date("2026-09-15T18:00:00.000Z");
+    const wednesdayMorning = new Date("2026-09-16T14:00:00.000Z");
     const tz = "America/Denver";
-    const keys = [dayKey(wednesday, tz)];
-    expect(currentTrainingStreak(keys, prefs, fridayMorning, tz)).toBe(1);
+    const keys = [dayKey(tuesday, tz)];
+    expect(currentTrainingStreak(keys, prefs, wednesdayMorning, tz)).toBe(1);
   });
 
   it("uses the athlete time zone around UTC midnight", () => {
     // Saturday 16:00 UTC = Saturday in Denver, Sunday in Sydney.
-    // Sunday is off this plan. Saturday mobility is a scheduled session.
+    // Sunday is a bike on the strength-only week. Saturday is off.
     const instant = new Date("2026-09-26T16:00:00.000Z");
     const denver = "America/Denver";
     const sydney = "Australia/Sydney";
@@ -56,8 +55,8 @@ describe("training streak (scheduled days)", () => {
 
     expect(dayKey(instant, denver)).toBe("2026-09-26");
     expect(dayKey(instant, sydney)).toBe("2026-09-27");
-    expect(currentTrainingStreak(denverKeys, prefs, instant, denver)).toBe(1);
-    expect(currentTrainingStreak(sydneyKeys, prefs, instant, sydney)).toBe(0);
+    expect(currentTrainingStreak(denverKeys, prefs, instant, denver)).toBe(0);
+    expect(currentTrainingStreak(sydneyKeys, prefs, instant, sydney)).toBe(1);
   });
 
   it("marks the week strip from Monday with rest days unchecked", () => {
@@ -67,18 +66,19 @@ describe("training streak (scheduled days)", () => {
     expect(dots).toHaveLength(7);
     expect(dots[0]?.label).toBe("M");
     expect(dots[0]?.completed).toBe(true);
-    expect(dots[5]?.scheduled).toBe(true);
-    expect(dots[6]?.scheduled).toBe(false);
+    expect(dots[4]?.scheduled).toBe(false);
+    expect(dots[5]?.scheduled).toBe(false);
+    expect(dots[6]?.scheduled).toBe(true);
   });
 
   it("says the streak is safe on a scheduled rest day", () => {
-    const sunday = new Date("2026-09-27T18:00:00.000Z");
-    const friday = new Date("2026-09-25T18:00:00.000Z");
+    const saturday = new Date("2026-09-26T18:00:00.000Z");
+    const thursday = new Date("2026-09-24T18:00:00.000Z");
     const tz = "America/Denver";
     const streak = buildTrainingStreak({
-      completedDates: [friday],
+      completedDates: [thursday],
       prefs,
-      now: sunday,
+      now: saturday,
       timeZone: tz,
     });
     expect(streak.todayScheduled).toBe(false);

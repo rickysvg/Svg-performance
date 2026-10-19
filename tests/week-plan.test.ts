@@ -114,18 +114,19 @@ describe("Core weekday planner", () => {
     expect(liftDays).toEqual(["Monday", "Tuesday", "Thursday"]);
   });
 
-  it("keeps mobility on even when the member only marked Mon/Wed/Fri", () => {
+  it("keeps the v2 week even when the member only marked Mon/Wed/Fri", () => {
     const tue = planForDate(
       {
         primaryFocus: "mma",
         weeklyAvailability: ["Monday", "Wednesday", "Friday"],
         sessionsPerWeek: 3,
+        experienceLevel: "beginner",
+        liftDaysPerWeek: 2,
       },
       tuesday,
     );
-    expect(tue.active).toBe(false);
-    expect(tue.summary).toBe("Off");
-    expect(tue.skipReason).toBeTruthy();
+    expect(tue.active).toBe(true);
+    expect(tue.summary).toBe("Bag+Lift");
 
     const wed = planForDate(
       {
@@ -141,9 +142,12 @@ describe("Core weekday planner", () => {
     const days = resolveTrainingDays({
       weeklyAvailability: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
       sessionsPerWeek: 3,
+      primaryFocus: "mma",
     });
-    expect([...days]).toEqual(["Monday", "Wednesday", "Friday"]);
-    expect(days.has("Saturday")).toBe(false);
+    expect(days.has("Tuesday")).toBe(true);
+    expect(days.has("Thursday")).toBe(true);
+    expect(days.has("Sunday")).toBe(true);
+    expect(days.has("Saturday")).toBe(true);
   });
 
   it("builds a dual-day Monday plan for MMA with clickable week-strip dates", () => {
@@ -157,7 +161,8 @@ describe("Core weekday planner", () => {
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Wednesday.sessions[0]?.kind).toBe("conditioning");
     expect(week.Wednesday.sessions[0]?.dayNumber).not.toBe(week.Monday.sessions[0]?.dayNumber);
-    expect(week.Sunday.active).toBe(false);
+    expect(week.Sunday.active).toBe(true);
+    expect(week.Sunday.summary).toBe("Cardio+Mobility");
 
     const strip = weekStrip(
       { primaryFocus: "mma", weeklyAvailability: ["Monday", "Wednesday", "Friday"] },
@@ -227,10 +232,11 @@ describe("Core weekday planner", () => {
     expect(pastStrip.find((day) => day.weekday === "Wednesday")?.isSelected).toBe(false);
 
     const ontoSunday = swapWeekdays([], start, "Monday", "Sunday");
-    expect(planForDate(prefs, monday, APP_TIMEZONE, ontoSunday).active).toBe(false);
-    expect(planForDate(prefs, new Date(2026, 8, 27, 10, 0, 0), APP_TIMEZONE, ontoSunday).active).toBe(
-      true,
-    );
+    const sunday = new Date(2026, 8, 27, 10, 0, 0);
+    expect(planForDate(prefs, monday, APP_TIMEZONE, ontoSunday).summary).toBe("Cardio+Mobility");
+    expect(planForDate(prefs, sunday, APP_TIMEZONE, ontoSunday).summary).toBe("Bag+Lift");
+    expect(planForDate(prefs, monday, APP_TIMEZONE, ontoSunday).active).toBe(true);
+    expect(planForDate(prefs, sunday, APP_TIMEZONE, ontoSunday).active).toBe(true);
   });
 
   it("moves one workout onto another day and leaves the rest of that day", () => {
