@@ -16,15 +16,48 @@ import {
   usd,
 } from "@/lib/pricing";
 import { PLAN_CATALOG } from "@/lib/plans";
+import { startTrialAction } from "@/app/actions/trial";
 
-function ComingSoonButton() {
+function PlanCheckoutButton({
+  canStartTrial,
+  checkoutLive,
+}: {
+  canStartTrial: boolean;
+  checkoutLive: boolean;
+}) {
+  if (checkoutLive) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Coming soon
+      </button>
+    );
+  }
+  if (canStartTrial) {
+    return (
+      <form action={startTrialAction}>
+        <input type="hidden" name="next" value="/home" />
+        <button
+          type="submit"
+          data-plan-action="trial"
+          className="touch-target w-full rounded-full bg-accent text-black"
+        >
+          Start 7-day free trial
+        </button>
+      </form>
+    );
+  }
   return (
     <button
       type="button"
       disabled
-      className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed disabled:opacity-60"
+      data-plan-action="subscribe"
+      className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed disabled:opacity-80"
     >
-      Coming soon
+      Subscribe — opening Nov 16
     </button>
   );
 }
@@ -36,6 +69,8 @@ export function PricingCatalog({
   coachingSpotsLeft,
   coachingAtCap,
   userLoggedIn,
+  canStartTrial = false,
+  checkoutLive = false,
 }: {
   verified: boolean;
   foundingOpen: boolean;
@@ -43,6 +78,8 @@ export function PricingCatalog({
   coachingSpotsLeft: number | null;
   coachingAtCap: boolean;
   userLoggedIn: boolean;
+  canStartTrial?: boolean;
+  checkoutLive?: boolean;
 }) {
   const coaching = PLAN_CATALOG.coaching;
 
@@ -74,7 +111,7 @@ export function PricingCatalog({
           {PRO_FAIR_USE_LINE}
         </p>
         <div className="mt-5">
-          <ComingSoonButton />
+          <PlanCheckoutButton canStartTrial={canStartTrial} checkoutLive={checkoutLive} />
         </div>
       </article>
 
@@ -119,7 +156,7 @@ export function PricingCatalog({
               <p className="text-sm text-muted">Log in to join the waitlist.</p>
             )
           ) : (
-            <ComingSoonButton />
+            <PlanCheckoutButton canStartTrial={false} checkoutLive={checkoutLive} />
           )}
         </div>
       </article>

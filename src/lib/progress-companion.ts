@@ -19,6 +19,7 @@ import { getProfileForUser, timeZoneForUser, type ProfileRecord } from "@/lib/pr
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
 import { type LoadUnit } from "@/lib/units";
 import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import { civilDayInstant } from "@/lib/performed-at";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
 
@@ -86,7 +87,7 @@ export async function getCompanionProgress(userId: string, displayUnit: LoadUnit
   const complete = sessions.filter(
     (row) => row.status === "complete" && sessionHasLoggedWork(row.sets),
   );
-  const completedDates = complete.map((row) => row.performedAt);
+  const completedDates = complete.map((row) => civilDayInstant(row.performedAt, tz));
   const prefs = plannerPrefsFromProfile(profile ?? {});
   const streak = buildTrainingStreak({
     completedDates,
@@ -147,7 +148,7 @@ export async function evaluateBadgesForUser(
   );
   const prefs = plannerPrefsFromProfile(profile ?? {});
   const streak = buildTrainingStreak({
-    completedDates: complete.map((row) => row.performedAt),
+    completedDates: complete.map((row) => civilDayInstant(row.performedAt, tz)),
     prefs,
     now,
     timeZone: tz,

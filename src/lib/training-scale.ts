@@ -250,7 +250,7 @@ export function scaleCopy(band: ScaleBand, dayNumber?: number) {
   }
   if (band === "advanced") return "Scaled for advanced / competition";
   if (band === "intermediate") return "Scaled for intermediate";
-  return "DEMO Core — beginner pacing";
+  return "Beginner pacing";
 }
 
 export function isHardStrengthBand(band: ScaleBand) {

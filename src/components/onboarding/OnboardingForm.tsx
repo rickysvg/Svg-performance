@@ -41,19 +41,21 @@ export function OnboardingForm({
   );
   const [step, setStep] = useState<1 | 2>(1);
   const [dayError, setDayError] = useState("");
+  const [days, setDays] = useState<string[]>(profile.weeklyAvailability ?? []);
   useLayoutEffect(() => {
     const stored = storedIntakeStep();
     if (stored !== 1) setStep(stored);
   }, []);
   useEffect(() => {
     if (!state.error?.toLowerCase().includes("day you can train")) return;
+    if (days.length > 0) return;
     setStep(1);
     try {
       window.sessionStorage.setItem(INTAKE_STEP_KEY, "1");
     } catch {
       // Ignore storage failures.
     }
-  }, [state.error]);
+  }, [state.error, days.length]);
   const [trainingFocus, setTrainingFocus] = useState(profile.trainingFocus || "martial_arts_sc");
   const [level, setLevel] = useState(profile.experienceLevel || "beginner");
   const suggestedLifts = profile.liftDaysPerWeek ?? defaultLiftDays(level, email);
@@ -71,7 +73,6 @@ export function OnboardingForm({
   function goToCoach() {
     const form = formRef.current;
     if (!form) return;
-    const days = form.querySelectorAll<HTMLInputElement>('input[name="weeklyAvailability"]:checked');
     if (days.length === 0) {
       setDayError("Pick at least one day you can train.");
       return;
@@ -91,6 +92,9 @@ export function OnboardingForm({
 
   return (
     <form ref={formRef} action={action} className="space-y-6">
+      {days.map((day) => (
+        <input key={day} type="hidden" name="weeklyAvailability" value={day} />
+      ))}
       <div>
         <p className="text-xs uppercase tracking-wide text-muted">
           Intake · step {step} of 3
@@ -142,9 +146,13 @@ export function OnboardingForm({
               <label key={day} className="flex items-center gap-3 text-sm">
                 <input
                   type="checkbox"
-                  name="weeklyAvailability"
                   value={day}
-                  defaultChecked={profile.weeklyAvailability.includes(day)}
+                  checked={days.includes(day)}
+                  onChange={() =>
+                    setDays((current) =>
+                      current.includes(day) ? current.filter((item) => item !== day) : [...current, day],
+                    )
+                  }
                   className="h-5 w-5 accent-accent"
                 />
                 {day}

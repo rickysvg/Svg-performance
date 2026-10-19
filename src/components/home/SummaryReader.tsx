@@ -13,13 +13,22 @@ import {
   unlockCoachAudio,
   COACH_AUDIO_FAILED,
 } from "@/lib/coach/spoken-audio";
+import { firstSpokenChunk, summaryReadAction } from "@/lib/coach/browser-speech";
 
 type Phase = "idle" | "loading" | "playing" | "paused";
 
 const SPEECH_MISSING =
   "This browser can't read the summary aloud. The plan above is still yours to use.";
 
-export function SummaryReader({ script, coachId }: { script: string; coachId: string }) {
+export function SummaryReader({
+  script,
+  coachId,
+  readAloudsLeft = 1,
+}: {
+  script: string;
+  coachId: string;
+  readAloudsLeft?: number;
+}) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [notice, setNotice] = useState("");
   const [paywall, setPaywall] = useState<PaywallReason | null>(null);
@@ -82,6 +91,9 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
       if (tokenRef.current !== token) return;
       if (response.status === 402) {
         const payload = (await response.json().catch(() => null)) as { paywall?: PaywallReason } | null;
+        window.speechSynthesis?.cancel();
+        stopCoachPlayback();
+        modeRef.current = null;
         setPaywall(payload?.paywall ?? "read_aloud");
         setPhase("idle");
         return;
@@ -116,13 +128,19 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
   }
 
   function onRead() {
-    if (phase === "loading") return;
-    if (phase === "playing") {
+    const next = summaryReadAction({ phase, readAloudsLeft });
+    if (next === "wait") return;
+    if (next === "pause") {
       pauseAll();
       return;
     }
-    if (phase === "paused") {
+    if (next === "resume") {
       resumeAll();
+      return;
+    }
+    if (next === "blocked") {
+      setPaywall(readAloudsLeft <= 0 && phase === "idle" ? "read_aloud" : "read_aloud");
+      setPhase("idle");
       return;
     }
     setNotice("");
@@ -130,7 +148,14 @@ export function SummaryReader({ script, coachId }: { script: string; coachId: st
     const token = tokenRef.current + 1;
     tokenRef.current = token;
     modeRef.current = null;
-    setPhase("loading");
+    const lead = firstSpokenChunk(script);
+    const started = speakFallback(lead, coachId);
+    if (started) {
+      modeRef.current = "speech";
+      setPhase("playing");
+    } else {
+      setPhase("loading");
+    }
     void fetchAudio(token);
   }
 

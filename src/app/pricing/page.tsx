@@ -9,6 +9,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { COACHING_CAP, FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
+import { currentPlanLine, getTrialState } from "@/lib/trial";
 import { countFoundingSeats } from "@/lib/billing";
 
 export default async function PricingPage() {
@@ -18,6 +19,8 @@ export default async function PricingPage() {
   const currentPlan = user ? await getEffectivePlanId(user.id) : null;
   const configured = isStripeConfigured();
   const verified = Boolean(profile?.gymMembershipVerified);
+  const trial = user ? await getTrialState(user.id) : null;
+  const canStartTrial = Boolean(trial?.canStartTrial);
   let foundingUsed = 0;
   try {
     foundingUsed = Math.min(FOUNDING_CAP, await countFoundingSeats());
@@ -47,15 +50,24 @@ export default async function PricingPage() {
         <AiDisclaimer className="mt-3" />
         {currentPlan ? (
           <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
-            Current plan: <strong>{PLAN_CATALOG[currentPlan].label}</strong>
+            Current plan:{" "}
+            <strong data-current-plan>
+              {currentPlanLine({
+                trialActive: Boolean(trial?.trialActive),
+                trialDaysLeft: trial?.trialDaysLeft ?? 0,
+                planLabel: PLAN_CATALOG[currentPlan].label,
+              })}
+            </strong>
             {subscription ? ` · recorded ${subscription.plan} / ${subscription.status}` : ""}.{" "}
             <Link href="/plan" className="text-accent underline">
               See your plan
             </Link>
           </p>
         ) : null}
-        <p className="mt-4 rounded-xl border border-black bg-accent/20 p-4 text-sm text-black">
-          Paid plans coming soon. The 7-day Pro trial works now, no card.
+        <p className="mt-4 rounded-xl border border-black bg-accent/20 p-4 text-sm text-black" data-pricing-banner>
+          {canStartTrial
+            ? "The 7-day Pro trial is open now, no card. Paid checkout opens Nov 16."
+            : "Paid checkout opens Nov 16. A trial can be used once per account."}
           {verified ? " Your verified academy membership includes the core app and a free Pro month." : ""}
           {configured ? " TEST billing stubs do not turn the buttons on." : ""}
         </p>
@@ -68,6 +80,8 @@ export default async function PricingPage() {
             coachingSpotsLeft={coachingSpotsLeft}
             coachingAtCap={coachingSpotsLeft === 0}
             userLoggedIn={Boolean(user)}
+            canStartTrial={canStartTrial}
+            checkoutLive={false}
           />
         </div>
 
@@ -79,7 +93,7 @@ export default async function PricingPage() {
             <li>Pro is $9.99/month or $72.99/year for everyone, academy members included. Founding annual is $59 for the first 100 members.</li>
             <li>Pro fair use: 30 AI messages, 20 minutes of voice, and 1 read-aloud a day.</li>
             <li>1-on-1 Coaching with Ricky is $249/month, includes Pro, and is limited to 20 athletes. VIP is by application.</li>
-            <li>Logging workouts, timers, and class programming are never locked for members or Pro.</li>
+            <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the 7-day trial, then subscribe to Pro to keep training. Past data stays viewable and exportable.</li>
             <li>Academy Gymdesk dues are billed by the gym and are not changed here.</li>
             <li>Weight-cut services are not sold here.</li>
           </ul>

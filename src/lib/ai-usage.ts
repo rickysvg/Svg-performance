@@ -145,3 +145,14 @@ export async function consumeAiUse(input: {
   });
   return allowance;
 }
+
+/** Shown near coach chat. Pro only when 5 or fewer remain today. Academy always shows the week. */
+export function aiRemainingLabel(allowance: Pick<AiAllowance, "tier" | "messagesLeft" | "messagesWindow">) {
+  if (allowance.tier === "pro" && allowance.messagesLeft <= 5) {
+    return `${allowance.messagesLeft} of ${PRO_AI_MESSAGES_PER_DAY} left today`;
+  }
+  if (allowance.tier === "academy") {
+    return `${allowance.messagesLeft} of ${ACADEMY_AI_MESSAGES_PER_WEEK} left this week`;
+  }
+  return null;
+}

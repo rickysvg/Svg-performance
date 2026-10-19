@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { sparringTileHint } from "@/lib/sparring-tile";
 
 const TILES = [
   "train.webp",
@@ -13,6 +14,7 @@ const TILES = [
   "fuel.webp",
   "calendar.webp",
   "timer.webp",
+  "sparring.webp",
 ] as const;
 
 const APPROVED_HASHES = {
@@ -46,7 +48,7 @@ describe("Home photo tiles", () => {
     }
   });
 
-  it("renders photo cards in a 2x4 grid with Mobility beside Train", () => {
+  it("keeps the Home grid even, with Sparring Log beside Timer", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/HomeQuickActions.tsx"),
       "utf8",
@@ -72,6 +74,22 @@ describe("Home photo tiles", () => {
       source.indexOf('href: "/training/calendar"'),
     );
     expect(source.indexOf('href: "/training/calendar"')).toBeLessThan(source.indexOf('href: "/timer"'));
+    expect(source.indexOf('href: "/timer"')).toBeLessThan(source.indexOf("<SparringLogTile"));
+    expect(source).toContain("grid-cols-2");
+    const tile = fs.readFileSync(path.join(process.cwd(), "src/components/home/SparringLogTile.tsx"), "utf8");
+    expect(tile).toContain('href="/sparring"');
+    expect(tile).toContain("Sparring Log");
+    expect(tile).toContain("/tiles/sparring.webp");
+    expect(tile).toContain("aspect-[4/3]");
+    expect(tile).toContain("from-black/85 via-black/25");
+    expect(tile).toContain("bg-accent");
+    expect(tile).toContain("px-3 pb-3 pt-8");
+    expect(tile).not.toContain("<svg");
+    const home = fs.readFileSync(path.join(process.cwd(), "src/app/(member)/home/page.tsx"), "utf8");
+    const train = fs.readFileSync(path.join(process.cwd(), "src/app/(member)/training/page.tsx"), "utf8");
+    expect(home).not.toContain("Log sparring");
+    expect(train).not.toContain("Log sparring");
+    expect(train).toContain('layout="row"');
     expect(source).toContain("/tiles/train.webp");
     expect(source).toContain("/tiles/mobility.webp");
     expect(source).toContain("/tiles/timer.webp");
@@ -95,5 +113,13 @@ describe("Home photo tiles", () => {
     expect(source).toContain("font-display");
     expect(source).not.toMatch(/lime Anton label pills|rounded-full bg-accent.*Train/);
     expect(source).not.toMatch(/#FFC629|#0072CE|chuze/i);
+  });
+
+  it("shows the last sparring rating, or invites today's log", () => {
+    expect(sparringTileHint(4)).toBe("Last session 4/5");
+    expect(sparringTileHint(1)).toBe("Last session 1/5");
+    expect(sparringTileHint(null)).toBe("Log today's rounds");
+    expect(sparringTileHint(undefined)).toBe("Log today's rounds");
+    expect(sparringTileHint(0)).toBe("Log today's rounds");
   });
 });

@@ -19,7 +19,9 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
+import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
+import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 
 export default async function HomePage({
   searchParams,
@@ -33,7 +35,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, latestMetrics, sparringRating] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -50,6 +52,7 @@ export default async function HomePage({
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getLatestBodyMetricsForUser(user.id), new Map()),
+      homeLoad("sparring", latestSparringSessionRating(user.id), null),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
@@ -61,17 +64,17 @@ export default async function HomePage({
   const weight = latestMetrics.get("weight");
   const units = profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb";
   const coach = resolveAiCoach(profile?.aiCoachId);
+  const trialEnded = planId === "member_access";
 
   return (
     <main className="space-y-6 pb-8">
       <section className="-mx-4 -mt-6 bg-[#CBF805] px-4 pb-8 pt-7 text-black">
         <p className="font-display text-sm uppercase tracking-[0.06em]">Let&apos;s go</p>
         <h1 className="mt-1 text-4xl">Welcome {greetingName}</h1>
-        <p className="mt-2 text-sm">
-          SVG Performance
-          {profile?.goals ? ` · ${profile.goals}` : ""}
-        </p>
+        {profile?.goals ? <p className="mt-2 text-sm">{profile.goals}</p> : null}
       </section>
+
+      {trialEnded ? <TrialEndedPaywall /> : null}
 
       <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 
@@ -80,6 +83,7 @@ export default async function HomePage({
       <HomeBodyWeight value={weight ? weight.value : null} unit={units} />
 
       <HomeQuickActions
+        sparringRating={sparringRating}
         locked={
           planId === "member_access"
             ? [
@@ -88,7 +92,7 @@ export default async function HomePage({
               ]
             : []
         }
-        canStartTrial={trial.canStartTrial}
+        canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
       />
 
@@ -118,7 +122,7 @@ export default async function HomePage({
         />
       ) : null}
 
-      <HomeToday guide={guide} />
+      <HomeToday guide={guide} locked={trialEnded} />
 
       {guide.today.outsideKind === "sparring" ? (
         <SparringLogForm

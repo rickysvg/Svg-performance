@@ -9,6 +9,7 @@ import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { CoachSpeakButton } from "@/components/coach/CoachSpeakButton";
+import { CoachMarkdown } from "@/components/coach/CoachMarkdown";
 
 type ChatBubble = {
   id: string;
@@ -71,7 +72,11 @@ export function CoachBubble({
           <CoachSpeakButton text={content} coachId={coachId} audioRef={audioRef} />
         ) : null}
       </div>
-      <p className="mt-2 whitespace-pre-wrap">{content}</p>
+      {speaker === "assistant" ? (
+        <CoachMarkdown text={content} />
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap">{content}</p>
+      )}
     </article>
   );
 }
@@ -85,6 +90,7 @@ export function CoachLiveThread({
   coachId = "skye",
   coachThumb,
   initialMessages,
+  remainingLabel = null,
 }: {
   topic: string;
   art?: string;
@@ -100,6 +106,7 @@ export function CoachLiveThread({
     refused: boolean;
     offline: boolean;
   }>;
+  remainingLabel?: string | null;
 }) {
   const [messages, setMessages] = useState<ChatBubble[]>(
     initialMessages.map((message) => ({
@@ -130,7 +137,8 @@ export function CoachLiveThread({
       { id: userId, role: "user", content: message },
     ]);
     const result = await start({ kind: "chat", message, topic, art });
-    const reply = result.content || partial;
+    if (result.paywall) return;
+    const reply = result.content;
     if (reply) {
       setMessages((current) => [
         ...current,
@@ -205,13 +213,18 @@ export function CoachLiveThread({
               </span>
             </p>
           ) : (
-            <p className="mt-2 whitespace-pre-wrap">{partial}</p>
+            <CoachMarkdown text={partial} />
           )}
         </article>
       ) : null}
       <div ref={bottomRef} />
 
       <form onSubmit={onSend} className="space-y-3">
+        {remainingLabel ? (
+          <p data-ai-remaining className="text-xs text-muted">
+            {remainingLabel}
+          </p>
+        ) : null}
         <StatusBanner error={error} />
         {paywall ? (
           <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} />

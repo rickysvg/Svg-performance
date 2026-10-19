@@ -29,6 +29,17 @@ import {
   resolvePlanSessions,
 } from "@/lib/week-plan";
 
+export function summaryHeaderWhen(weekday: string, dayKey: string) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  if (!year || !month || !day) return weekday;
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day, 12)));
+  return `${weekday} · ${formatted}`;
+}
+
 export type SummarySessionKind = "lift" | "bag" | "cardio" | "mobility" | "sparring" | "rest";
 
 export type DaySummarySession = {
@@ -246,6 +257,7 @@ export function buildDaySummaryFacts(input: {
   plan: DayPlan;
   sessions: ResolvedPlanSession[];
   exercisesByDayNumber?: Map<number, ExerciseCue[]>;
+  skillExercisesByDayNumber?: Map<number, ExerciseCue[]>;
   experienceLevel?: string | null;
   weekIndex?: number;
 }): DaySummaryFacts {
@@ -305,6 +317,16 @@ export function buildDaySummaryFacts(input: {
     const cues: string[] = [];
     const lines: string[] = [];
     if (kind === "bag") {
+      const bagExercises =
+        session.dayNumber != null
+          ? input.skillExercisesByDayNumber?.get(session.dayNumber) ?? []
+          : [];
+      if (bagExercises.length > 0) {
+        for (const exercise of bagExercises) {
+          lines.push(exercise.name);
+          cues.push(exercise.name);
+        }
+      }
       const day = asBagDay(session.sourceWeekday) ?? asBagDay(input.plan.weekday);
       if (day) {
         const focus = bagFocusFor(day, input.plan.mesoBlock);
@@ -554,6 +576,7 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
   });
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const exercisesByDayNumber = new Map<number, ExerciseCue[]>();
+  const skillExercisesByDayNumber = new Map<number, ExerciseCue[]>();
   for (const day of strength?.days ?? []) {
     const scaled = scaleProgramDay(day, {
       band,
@@ -571,12 +594,30 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
       })),
     );
   }
+  for (const day of skill?.days ?? []) {
+    const scaled = scaleProgramDay(day, {
+      band,
+      programSlug: skill?.slug,
+      weightAccess,
+    });
+    skillExercisesByDayNumber.set(
+      day.dayNumber,
+      scaled.exercises.map((exercise) => ({
+        name: exercise.name,
+        loadText: exercise.loadText,
+        notes: exercise.notes ?? "",
+        sets: exercise.sets,
+        reps: exercise.reps,
+      })),
+    );
+  }
   const facts = buildDaySummaryFacts({
     coachId: profile?.aiCoachId,
     coachingStyle: profile?.coachingStyle,
     plan,
     sessions,
     exercisesByDayNumber,
+    skillExercisesByDayNumber,
     experienceLevel: profile?.experienceLevel,
     weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
   });

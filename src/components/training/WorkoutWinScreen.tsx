@@ -99,7 +99,7 @@ export function WorkoutWinScreen({
 
   return (
     <div
-      className="workout-win-backdrop fixed inset-0 z-[80] overflow-y-auto px-5 py-8"
+      className="workout-win-backdrop fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto px-5 py-8"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workout-win-title"
@@ -117,7 +117,7 @@ export function WorkoutWinScreen({
           {reduce ? null : (
             <div
               data-win-sparks
-              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[min(720px,170vw)] w-[min(720px,170vw)] -translate-x-1/2 -translate-y-1/2 overflow-visible"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-72 w-72 max-w-full -translate-x-1/2 -translate-y-1/2 overflow-hidden"
             >
               <CelebrationFx active delayMs={700} size={680} />
             </div>

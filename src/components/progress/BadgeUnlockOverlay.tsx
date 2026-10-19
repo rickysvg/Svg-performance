@@ -168,7 +168,7 @@ export function BadgeUnlockOverlay() {
   if (summary && capped.extra > 0) {
     return (
       <div
-        className="badge-unlock-backdrop fixed inset-0 z-[90] flex items-center justify-center overflow-hidden px-5"
+        className="badge-unlock-backdrop fixed inset-0 z-[90] flex items-center justify-center overflow-x-hidden overflow-y-hidden px-5"
         role="dialog"
         aria-modal="true"
         aria-labelledby="badge-unlock-more"
@@ -197,7 +197,7 @@ export function BadgeUnlockOverlay() {
 
   return (
     <div
-      className="badge-unlock-backdrop fixed inset-0 z-[90] overflow-y-auto px-5 py-8"
+      className="badge-unlock-backdrop fixed inset-0 z-[90] overflow-x-hidden overflow-y-auto px-5 py-8"
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-unlock-title"
@@ -209,7 +209,7 @@ export function BadgeUnlockOverlay() {
       <div className="badge-unlock-glow" aria-hidden />
       <div className="relative mx-auto flex min-h-full w-full max-w-sm flex-col items-center justify-center text-center text-white">
         <div
-          className={`badge-unlock-stage relative mx-auto flex h-[320px] w-[320px] items-center justify-center ${
+          className={`badge-unlock-stage relative mx-auto flex h-[min(320px,70vw)] w-[min(320px,100%)] max-w-full items-center justify-center ${
             reduce ? "" : "badge-unlock-shake"
           }`}
         >

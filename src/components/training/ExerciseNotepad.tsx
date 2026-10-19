@@ -50,7 +50,7 @@ export function ExerciseNotepad({
   const replyRef = useRef<HTMLDivElement | null>(null);
   const pending = saving || streaming;
   const shownBody = saveState.body ?? body;
-  const aiReply = liveReply || partial || saveState.aiReply || note?.aiReply || "";
+  const aiReply = paywall ? "" : liveReply || partial || saveState.aiReply || note?.aiReply || "";
   const hasNote = Boolean(shownBody || aiReply);
   const label = hasNote ? "Notes · saved" : "Notes";
 
@@ -131,6 +131,10 @@ export function ExerciseNotepad({
                   logMode,
                   plannedLine,
                 });
+                if (result.paywall) {
+                  setLiveReply("");
+                  return;
+                }
                 if (result.content) setLiveReply(result.content);
               }}
               className="inline-flex min-h-9 items-center rounded-full bg-accent px-3 text-xs text-black disabled:opacity-60"

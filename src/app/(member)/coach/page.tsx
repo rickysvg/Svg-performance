@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
+import { aiRemainingLabel, getAiAllowance } from "@/lib/ai-usage";
 import { getOrCreateThread } from "@/lib/coach/chat";
 import { CoachLiveThread } from "@/components/coach/CoachLiveThread";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
@@ -89,6 +90,7 @@ export default async function CoachPage({
   const thread = ready
     ? await getOrCreateThread(user.id, { topic, art })
     : null;
+  const remainingLabel = aiRemainingLabel(await getAiAllowance(user.id));
   const lane = coachLaneLabel(topic, art);
 
   return (
@@ -178,6 +180,7 @@ export default async function CoachPage({
             coachId={coach.id}
             coachThumb={coach.thumb}
             initialMessages={thread.messages}
+            remainingLabel={remainingLabel}
           />
         </>
       ) : null}

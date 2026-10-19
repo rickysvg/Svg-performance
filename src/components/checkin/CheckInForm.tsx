@@ -118,8 +118,12 @@ export function CheckInForm({
 
       <section className="rounded-2xl border border-line bg-card px-4 py-3 text-sm">
         <p className="text-xs uppercase tracking-wide text-muted">Sessions logged this week</p>
-        <p className="mt-1 text-lg font-semibold">
+        <p className="mt-1 text-lg font-semibold" data-session-count>
           {sessionsCompleted} of {sessionsPlanned}
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          Finished workouts from Monday through today. Sparring logs stay separate, so this number
+          does not change when you log rounds.
         </p>
         {sessionTitles.length > 0 ? (
           <p className="mt-1 text-muted">{sessionTitles.join(" · ")}</p>

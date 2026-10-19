@@ -51,7 +51,8 @@ export function foundingPriceLine(spotsLeft: number | null = null) {
   const price = `Founding price ${usd(FOUNDING_ANNUAL)}/year for the first ${FOUNDING_CAP} members`;
   if (spotsLeft == null) return price;
   const left = Math.max(0, Math.min(FOUNDING_CAP, spotsLeft));
-  return `${price}. ${left} of ${FOUNDING_CAP} spots left`;
+  if (left === 0) return `${price}. Sold out`;
+  return `${price}. ${left} founding spots left`;
 }
 
 export function isFoundingDealOpen(enrolledCount = 0) {
@@ -61,7 +62,8 @@ export function isFoundingDealOpen(enrolledCount = 0) {
 export function coachingSpotsLine(spotsLeft: number | null) {
   if (spotsLeft == null) return `Limited to ${COACHING_CAP} athletes`;
   const left = Math.max(0, Math.min(COACHING_CAP, spotsLeft));
-  return `${left} of ${COACHING_CAP} spots left`;
+  if (left === 0) return "Sold out";
+  return `${left} coaching spots open`;
 }
 
 export const ACADEMY_INCLUDES = [

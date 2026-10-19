@@ -37,6 +37,7 @@ export function useCoachStream() {
     let assembled = "";
     let liveOffline = false;
     let liveReason: FallbackReason | undefined;
+    let blocked: PaywallReason | null = null;
 
     try {
       const response = await fetch("/api/coach/stream", {
@@ -80,6 +81,9 @@ export function useCoachStream() {
           } else if (event.type === "error") {
             setError(event.message);
           } else if (event.type === "paywall") {
+            assembled = "";
+            blocked = event.reason;
+            setPartial("");
             setPaywall(event.reason);
           } else if (event.type === "meta") {
             liveOffline = event.offline;
@@ -89,7 +93,12 @@ export function useCoachStream() {
           }
         }
       }
-      return { content: assembled, offline: liveOffline, fallbackReason: liveReason };
+      return {
+        content: blocked ? "" : assembled,
+        offline: liveOffline,
+        fallbackReason: liveReason,
+        paywall: blocked,
+      };
     } catch (caught) {
       if (controller.signal.aborted) {
         const kept = assembled.includes("[Stopped")
@@ -98,12 +107,12 @@ export function useCoachStream() {
             ? `${assembled}${STREAM_STOPPED_MARKER}`
             : assembled;
         setPartial(kept);
-        return { content: kept, offline: liveOffline, fallbackReason: liveReason };
+        return { content: kept, offline: liveOffline, fallbackReason: liveReason, paywall: blocked };
       }
       const message =
         caught instanceof Error ? caught.message : STREAM_FAIL_COPY;
       setError(message);
-      return { content: "", offline: liveOffline, fallbackReason: liveReason };
+      return { content: "", offline: liveOffline, fallbackReason: liveReason, paywall: blocked };
     } finally {
       setStreaming(false);
       abortRef.current = null;

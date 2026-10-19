@@ -48,6 +48,7 @@ export function SparringLogForm({
   saved,
   coachName,
   coachImage,
+  anyDay = false,
 }: {
   dateKey: string;
   weekday: string;
@@ -55,6 +56,8 @@ export function SparringLogForm({
   saved: SparringLog | null;
   coachName?: string;
   coachImage?: string;
+  /** Standalone logger. Does not change the day's gym type. */
+  anyDay?: boolean;
 }) {
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
@@ -68,8 +71,9 @@ export function SparringLogForm({
           {timeLabel ? ` · ${timeLabel}` : ""}
         </h3>
         <p className="mt-1 text-sm text-muted">
-          No app workout today. Log rounds when you are done, then rate the session and how your
-          body feels. Nothing is saved until you press Save.
+          {anyDay
+            ? "Rate the session and how your body feels. This does not change the gym-day type. A rough score still eases the next day. Nothing is saved until you press Save."
+            : "No app workout today. Log rounds when you are done, then rate the session and how your body feels. Nothing is saved until you press Save."}
         </p>
       </div>
       <input type="hidden" name="dateKey" value={dateKey} />

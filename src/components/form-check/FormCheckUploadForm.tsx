@@ -87,10 +87,7 @@ export function FormCheckUploadForm({
           <video src={previewUrl} controls className="aspect-video w-full bg-black" />
         ) : (
           <div className="flex aspect-video flex-col items-center justify-center gap-3 px-6 text-center text-white">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-3xl text-black">
-              ▶
-            </span>
-            <p className="text-sm text-white/80">Up to 60 seconds · mp4, mov, or webm</p>
+            <p className="text-sm text-white/80">Choose a clip below. Up to 60 seconds · mp4, mov, or webm</p>
           </div>
         )}
       </div>

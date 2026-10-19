@@ -21,6 +21,7 @@ import {
   type ScalePrefs,
 } from "@/lib/training-scale";
 import { DELOAD_LABEL } from "@/lib/training-cycle";
+import { memberFacingTitle } from "@/lib/member-copy";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { bindPendingSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
 import { omitRemovedSlots } from "@/lib/exercise-removal";
@@ -427,7 +428,7 @@ export async function startWorkoutFromDay(input: {
     data: {
       userId: input.userId,
       programDayId: day.id,
-      title: `${day.program.isDemo ? `DEMO — ${day.title}` : day.title}${input.deload ? " · Deload" : ""}`,
+      title: `${memberFacingTitle(day.title)}${input.deload ? " · Deload" : ""}`,
       performedAt: new Date(),
       notes: input.deload ? DELOAD_LABEL : "",
       status: "draft",
@@ -589,9 +590,10 @@ export async function updateWorkoutSessionForUser(input: {
           }),
         },
       },
-      include: { sets: true },
+      include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
     });
   });
+  updated.sets.sort((left, right) => left.sortOrder - right.sortOrder || left.setNumber - right.setNumber);
   if (input.status === "complete" && existing.status !== "complete") {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }

@@ -5,7 +5,7 @@ export function UpgradeCtas({
   canStartTrial,
   next = "/home",
   trialLabel,
-  upgradeLabel = "Upgrade",
+  upgradeLabel = "Subscribe",
 }: {
   canStartTrial: boolean;
   trialDays?: number;
@@ -21,7 +21,7 @@ export function UpgradeCtas({
           type="submit"
           className="touch-target w-full rounded-full bg-accent text-black"
         >
-          {trialLabel ?? "Start free trial"}
+          {trialLabel ?? "Start 7-day free trial"}
         </button>
       </form>
     );

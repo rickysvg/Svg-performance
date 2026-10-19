@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DemoBadge } from "@/components/DemoBadge";
 import { CalendarList } from "@/components/training/CalendarList";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
@@ -125,7 +124,6 @@ export default async function TrainingCalendarPage({
               Tap Move on a session to do it today, move it, or swap it.
             </p>
           </div>
-          <DemoBadge />
         </div>
       </div>
 

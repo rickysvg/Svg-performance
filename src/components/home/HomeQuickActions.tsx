@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { UpgradePreviewSheet } from "@/components/upgrade/UpgradePreviewSheet";
+import { sparringTileHint } from "@/lib/sparring-tile";
 
 const PHOTO_ACTIONS = [
   {
@@ -103,10 +105,12 @@ export function HomeQuickActions({
   locked = [],
   canStartTrial = false,
   trialDays = 7,
+  sparringRating = null,
 }: {
   locked?: { href: string; kind: "fuel" | "coach" }[];
   canStartTrial?: boolean;
   trialDays?: number;
+  sparringRating?: number | null;
 }) {
   const lockedMap = new Map(locked.map((item) => [item.href, item.kind]));
   return (
@@ -137,6 +141,7 @@ export function HomeQuickActions({
             </Link>
           );
         })}
+        <SparringLogTile hint={sparringTileHint(sparringRating)} />
       </div>
     </section>
   );

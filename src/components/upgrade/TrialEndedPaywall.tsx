@@ -11,6 +11,7 @@ import {
 export function TrialEndedPaywall({ foundingOpen = true }: { foundingOpen?: boolean }) {
   return (
     <section
+      id="trial-ended"
       data-paywall="trial_ended"
       className="mx-auto max-w-md rounded-2xl border border-black bg-white p-5"
     >
@@ -19,8 +20,9 @@ export function TrialEndedPaywall({ foundingOpen = true }: { foundingOpen?: bool
         Your 7-day trial ended
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Subscribe to Pro to keep training in the app: plans, timers, logging, AI coach with
-        voices, Today&apos;s Summary, sparring trends, and full history.
+        Subscribe to Pro to keep training. Logging, timers, and class programming stay open
+        for academy members and Pro subscribers. After the 7-day trial, past data stays
+        viewable and exportable.
       </p>
       <p className="font-display stat-display mt-4 text-3xl text-black">
         {usd(PERFORMANCE_MONTHLY)}/mo

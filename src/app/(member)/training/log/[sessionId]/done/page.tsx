@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { civilDayInstant } from "@/lib/performed-at";
+import { memberFacingTitle } from "@/lib/member-copy";
 import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import {
@@ -28,6 +30,7 @@ export default async function WorkoutDonePage({
   const view = await getShareCardView(user.id, sessionId);
   if (!view) notFound();
   const profile = await getProfileForUser(user.id);
+  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const unit = profile?.preferredUnits ?? "lb";
   const [prs, completeIds, badges] = await Promise.all([
     detectNewPrsForSession(user.id, sessionId, unit),
@@ -51,20 +54,20 @@ export default async function WorkoutDonePage({
   return (
     <main className="min-h-[50vh]">
       <WorkoutWinScreen
-        dateLine={formatWorkoutCompleteDate(view.session.performedAt, profile?.timeZone ?? undefined)}
+        dateLine={formatWorkoutCompleteDate(civilDayInstant(view.session.performedAt, tz), tz)}
         sessionNumber={sessionOrdinal(
           sessionId,
           completeIds.map((row) => row.id),
         )}
         tiles={tiles}
-        shareTitle={view.session.title}
+        shareTitle={memberFacingTitle(view.session.title)}
         shareStats={workoutCompleteShareStats(tiles)}
         badgeTitle={firstBadge?.title ?? null}
         unit={unit}
         workoutId={sessionId}
         difficultyRating={view.session.difficultyRating}
         summary={buildSessionSummary({
-          title: view.session.title,
+          title: memberFacingTitle(view.session.title),
           programDayTitle: view.session.programDay?.title,
           programDayFocus: view.session.programDay?.focus,
           exercises: summaryExercises(view.session),

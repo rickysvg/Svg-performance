@@ -50,6 +50,19 @@ export function trialLabel(daysLeft: number) {
   return `Trial: ${daysLeft} ${unit} left`;
 }
 
+/** Shared by Profile and Pricing so an active trial is not labeled as paid Pro. */
+export function currentPlanLine(input: {
+  trialActive: boolean;
+  trialDaysLeft: number;
+  planLabel: string;
+}) {
+  if (input.trialActive) {
+    const unit = input.trialDaysLeft === 1 ? "day" : "days";
+    return `Pro trial, ${input.trialDaysLeft} ${unit} left`;
+  }
+  return input.planLabel;
+}
+
 export async function getTrialState(userId: string, now = new Date()): Promise<TrialState> {
   const profile = await prisma.profile.findUnique({
     where: { userId },

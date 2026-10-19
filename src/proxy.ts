@@ -22,6 +22,9 @@ const PROTECTED = [
   "/heart",
   "/fight-camp",
   "/form-check",
+  "/sparring",
+  "/checkin",
+  "/fuel",
 ];
 
 const PUBLIC_FILE = /\.(webp|png|jpe?g|gif|svg|ico|mp4|webm|woff2?)$/i;
