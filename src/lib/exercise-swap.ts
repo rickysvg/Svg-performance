@@ -19,6 +19,15 @@ import { dayKey, mondayOfZoned } from "@/lib/timezone";
 
 export type SwapScope = "session" | "block";
 
+/** "Goblet squat (2)" is the same exercise. A swap must not invent that suffix. */
+export function cleanSwapName(name: string) {
+  return name.replace(/\s*\((?:\d+|second)\)\s*$/i, "").trim();
+}
+
+export function swapAlreadyInWorkoutMessage(name: string) {
+  return `${cleanSwapName(name)} is already in this workout. Logged sets were moved onto it.`;
+}
+
 export type SwapPrescription = {
   name: string;
   sets: number;

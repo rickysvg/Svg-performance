@@ -157,10 +157,14 @@ describe("exercise swap keeps the session", () => {
       },
       { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
     );
-    const swapped = merged.filter((set) => set.setNumber === 1 && set.reps === 8);
-    expect(swapped[0]?.exerciseName).toBe("Goblet squat");
-    expect(swapped[0]?.exerciseName).not.toMatch(/\(2\)/);
-    expect(swapped[0]?.completed).toBe(true);
+    const swapped = merged.find((set) => set.reps === 8);
+    expect(swapped?.exerciseName).toBe("Goblet squat");
+    expect(swapped?.exerciseName).not.toMatch(/\(2\)/);
+    expect(swapped?.completed).toBe(true);
+    expect(merged.some((set) => set.exerciseName === "Goblet squat" && set.loadValue === 25)).toBe(
+      true,
+    );
+    expect(merged.some((set) => set.exerciseName === "Sit-to-stand")).toBe(false);
   });
 });
 

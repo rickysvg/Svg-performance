@@ -31,7 +31,20 @@ export type SwapExerciseInput = {
 };
 
 export type SwapExerciseResult =
-  | { ok: true; replacementName: string; sets: WorkoutSet[] | null; retiredNames: string[] }
+  | {
+      ok: true;
+      replacementName: string;
+      sets: WorkoutSet[] | null;
+      retiredNames: string[];
+      prescription: {
+        sets: number;
+        reps: string;
+        loadText: string;
+        restSeconds: number;
+        logMode: string;
+        notes: string;
+      };
+    }
   | { ok: false; error: string };
 
 export async function swapExerciseAction(input: SwapExerciseInput): Promise<SwapExerciseResult> {
@@ -74,6 +87,14 @@ export async function swapExerciseAction(input: SwapExerciseInput): Promise<Swap
       replacementName: applied.prescription.name,
       sets: applied.sets,
       retiredNames: applied.retiredNames,
+      prescription: {
+        sets: applied.prescription.sets,
+        reps: applied.prescription.reps,
+        loadText: applied.prescription.loadText,
+        restSeconds: applied.prescription.restSeconds,
+        logMode: applied.prescription.logMode,
+        notes: applied.prescription.notes,
+      },
     };
   } catch (error) {
     return { ok: false, error: publicErrorMessage(error) };

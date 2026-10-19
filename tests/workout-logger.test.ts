@@ -33,7 +33,7 @@ describe("workout logger media and previous loads", () => {
   });
 
   it("maps every DEMO exercise to a slug, equipment, and square thumb file", () => {
-    expect(DEMO_EXERCISE_NAMES).toHaveLength(45);
+    expect(DEMO_EXERCISE_NAMES).toHaveLength(46);
     for (const name of DEMO_EXERCISE_NAMES) {
       const slug = exerciseSlug(name);
       expect(slug.length).toBeGreaterThan(2);

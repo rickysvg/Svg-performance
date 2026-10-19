@@ -15,8 +15,8 @@ import {
   filterExerciseLibrary,
   libraryExercise,
 } from "@/lib/exercise-library";
-import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { plannedSetLine } from "@/lib/exercise-log-mode";
+import { cleanSwapName, swapAlreadyInWorkoutMessage } from "@/lib/exercise-swap";
 import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
 import { showRemoveToast } from "@/components/training/RemoveToast";
@@ -54,8 +54,18 @@ export function ExerciseCardMenu({
   workoutSessionId?: string;
   canRemove: boolean;
   getCurrentSets?: () => WorkoutSetInput[];
-  onSetsReplaced?: (sets: WorkoutSet[]) => void;
-  onSwapped?: (name: string, restSeconds: number) => void;
+  onSetsReplaced?: (sets: WorkoutSet[], focusName?: string) => void;
+  onSwapped?: (
+    name: string,
+    prescription: {
+      sets: number;
+      reps: string;
+      loadText: string;
+      restSeconds: number;
+      logMode: string;
+      notes: string;
+    },
+  ) => void;
 }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -125,25 +135,20 @@ export function ExerciseCardMenu({
     setQuery("");
   }
 
-  function applySets(sets: WorkoutSet[] | null) {
-    if (sets && onSetsReplaced) onSetsReplaced(sets);
+  function applySets(sets: WorkoutSet[] | null, focusName?: string) {
+    if (sets && onSetsReplaced) onSetsReplaced(sets, focusName);
     else router.refresh();
   }
 
   function confirm(scope: "session" | "block") {
     if (!choice) return;
-    const logged = (getCurrentSets?.() ?? []).filter(
-      (set) => set.exerciseName === currentName && setHasLoggedWork(set),
+    const replacementName = choice.name;
+    const currentSets = getCurrentSets?.() ?? [];
+    const already = currentSets.some(
+      (set) =>
+        cleanSwapName(set.exerciseName) === cleanSwapName(replacementName) &&
+        cleanSwapName(set.exerciseName) !== cleanSwapName(currentName),
     );
-    const nextMode = resolveLogMode({ logMode: choice.logMode, name: choice.name, reps: choice.reps });
-    const currentMode = resolveLogMode({ logMode: source.logMode, name: currentName, reps: source.reps });
-    if (logged.length > 0 && nextMode !== currentMode) {
-      const noun = logged.length === 1 ? "set" : "sets";
-      const ok = window.confirm(
-        `This exercise logs differently, so your ${logged.length} logged ${noun} will be cleared.`,
-      );
-      if (!ok) return;
-    }
     setError("");
     startTransition(async () => {
       const result = await swapExerciseAction({
@@ -152,19 +157,22 @@ export function ExerciseCardMenu({
         programDayId,
         originalName,
         currentName,
-        replacementName: choice.name,
+        replacementName,
         scope,
         workoutSessionId,
         source,
-        currentSets: getCurrentSets?.(),
+        currentSets,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       closeSheet();
-      onSwapped?.(choice.name, choice.restSeconds);
-      applySets(result.sets);
+      onSwapped?.(result.replacementName, result.prescription);
+      applySets(result.sets, result.replacementName);
+      if (already) {
+        showRemoveToast({ message: swapAlreadyInWorkoutMessage(result.replacementName) });
+      }
     });
   }
 
@@ -278,8 +286,12 @@ export function ExerciseCardMenu({
         )
           : null}
       </div>
-      {open ? (
-        <div className="fixed inset-0 z-40 flex flex-col bg-background text-foreground">
+      {open && typeof document !== "undefined"
+        ? createPortal(
+        <div
+          className="fixed inset-0 z-40 flex flex-col overflow-x-hidden bg-background text-foreground"
+          data-swap-sheet={currentName}
+        >
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <button type="button" onClick={closeSheet} className="touch-target text-2xl leading-none" aria-label="Close">
               ×
@@ -293,8 +305,12 @@ export function ExerciseCardMenu({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.preventDefault();
+              }}
               placeholder="Search exercises"
               aria-label="Search exercises"
+              enterKeyHint="search"
               className="w-full rounded-xl border border-line bg-background px-3 py-3 text-base"
               autoFocus
             />
@@ -402,8 +418,10 @@ export function ExerciseCardMenu({
               </div>
             </div>
           ) : null}
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+        )
+        : null}
     </>
   );
 }

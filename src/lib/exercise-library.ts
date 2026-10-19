@@ -128,6 +128,7 @@ export const EXERCISE_LIBRARY: LibraryExercise[] = [
     "load_reps",
     "One dumbbell. Brace. Don’t let the torso rotate. Work one side, then the other.",
   ),
+  row("Barbell bench press", "upper_push", "gym", 4, "6", "0-2 RIR · Bar to the lower chest.", 120, "load_reps", "Shoulder blades pinned. Feet drive the floor. Do not bounce the bar."),
   row("Overhead press", "upper_push", "gym", 3, "6", "1-3 RIR · Ribs down, lockout clean.", 90, "load_reps", "Bells or a bar. No lean-back to finish."),
   row("Single-arm overhead press", "upper_push", "gym", 3, "6 / side", "1-3 RIR · Brace, no side bend.", 75, "load_reps", "One bell. The ribs stay stacked."),
   row("Floor press", "upper_push", "gym", 4, "6", "1-3 RIR · Upper arms to the floor.", 90, "load_reps", "Limited range. Pause on the floor."),

@@ -136,6 +136,12 @@ const singleArmDbBench = ready({
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Single-Arm Dumbbell Chest Press | Proper Form & Technique | NASM",
 });
+const barBench = ready({
+  url: "https://www.youtube.com/shorts/0cXAp6WhSj4",
+  seconds: 58,
+  channel: "Jeremy Ethier",
+  title: "The PERFECT Bench Press (5 Steps)",
+});
 const oneArmRow = ready({
   url: "https://www.youtube.com/watch?v=ZRSGpBUVcNw",
   seconds: 11,
@@ -593,6 +599,7 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Push-up": pushUp,
   "Dumbbell bench press": dbBench,
   "Single-arm dumbbell bench press": singleArmDbBench,
+  "Barbell bench press": barBench,
   "Explosive dumbbell press": PENDING,
   "Pause push-up": pushUp,
   "Close-grip push-up": pushUp,
