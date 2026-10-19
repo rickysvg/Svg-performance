@@ -75,7 +75,7 @@ export default async function HomePage({
 
   return (
     <main className="space-y-6 pb-8">
-      <section className="hc-panel -mx-4 -mt-6 px-4 pb-6 pt-6">
+      <section className="hc-panel hc-carbon -mx-4 -mt-6 px-4 pb-6 pt-6">
         <div className="flex items-center justify-between gap-3">
           <p className="hc-kicker">Let&apos;s go</p>
           <span className="bg-[#CBF805] px-2 py-1 font-telemetry text-[10px] uppercase tracking-[0.16em] text-black">

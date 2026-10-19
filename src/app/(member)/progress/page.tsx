@@ -143,7 +143,7 @@ export default async function ProgressPage() {
       </section>
 
       <div data-progress-charts className="space-y-6">
-      <section className="hc-panel space-y-4 p-4">
+      <section className="hc-panel hc-carbon space-y-4 p-4">
         <div>
           <p className="hc-kicker">Mass</p>
           <p className="font-telemetry mt-2 text-4xl text-[#CBF805]">
@@ -159,11 +159,11 @@ export default async function ProgressPage() {
           <details>
             <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
             <div className="mt-3">
-              <HomeBodyWeight value={weight.value} unit={units === "kg" ? "lb" : units || "lb"} />
+              <HomeBodyWeight carbon={false} value={weight.value} unit={units === "kg" ? "lb" : units || "lb"} />
             </div>
           </details>
         ) : (
-          <HomeBodyWeight value={null} unit={units === "kg" ? "lb" : units || "lb"} />
+          <HomeBodyWeight carbon={false} value={null} unit={units === "kg" ? "lb" : units || "lb"} />
         )}
       </section>
 

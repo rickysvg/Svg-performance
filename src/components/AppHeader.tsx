@@ -117,7 +117,7 @@ export function AppHeader({
     return (
       <header
         data-bottom-dock
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-[#cbf805]/45 bg-[#07080a]/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_36px_rgba(0,0,0,0.55)] backdrop-blur"
+        className="hc-carbon fixed inset-x-0 bottom-0 z-20 border-t border-[#cbf805]/55 pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_36px_rgba(0,0,0,0.55)]"
       >
         <div
           aria-hidden

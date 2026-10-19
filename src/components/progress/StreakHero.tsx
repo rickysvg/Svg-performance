@@ -2,7 +2,7 @@ import { streakStatusLine, type TrainingStreak } from "@/lib/streaks";
 
 export function StreakHero({ streak }: { streak: TrainingStreak }) {
   return (
-    <section className="hc-panel overflow-hidden px-4 py-5">
+    <section className="hc-panel hc-carbon px-4 py-5">
       <div className="flex items-stretch gap-4">
         <div className="min-w-[7.5rem] border-r border-[#cbf805]/30 pr-4">
           <p className="font-telemetry text-6xl leading-none tracking-tight text-[#CBF805]">{streak.current}</p>

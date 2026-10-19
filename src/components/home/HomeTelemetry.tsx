@@ -56,7 +56,7 @@ function StreakGauge({ current, longest }: { current: number; longest: number })
 
 export function HomeTelemetry({ data }: { data: HomeTelemetrySnapshot }) {
   return (
-    <section className="hc-panel px-4 py-4" data-home-telemetry aria-labelledby="home-telemetry-title">
+    <section className="hc-panel hc-carbon px-4 py-4" data-home-telemetry aria-labelledby="home-telemetry-title">
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="hc-kicker">Telemetry</p>

@@ -7,9 +7,11 @@ import { StatusBanner } from "@/components/StatusBanner";
 export function HomeBodyWeight({
   value,
   unit,
+  carbon = true,
 }: {
   value: number | null;
   unit: string;
+  carbon?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     saveBodyMetricAction,
@@ -18,7 +20,7 @@ export function HomeBodyWeight({
   const recordedAt = new Date().toISOString();
 
   return (
-    <form action={action} className="hc-panel px-4 py-4">
+    <form action={action} className={carbon ? "hc-panel hc-carbon px-4 py-4" : "px-0 py-1"}>
       <div className="flex items-end justify-between gap-3">
         <label className="min-w-0 flex-1">
           <span className="hc-kicker">Mass</span>

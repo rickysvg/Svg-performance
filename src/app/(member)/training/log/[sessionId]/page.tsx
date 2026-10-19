@@ -157,7 +157,7 @@ export default async function WorkoutLogPage({
 
   return (
     <main data-hypercar-logger className="space-y-6">
-      <header className="hc-panel flex items-center justify-between gap-3 px-4 py-3">
+      <header className="hc-panel hc-carbon flex items-center justify-between gap-3 px-4 py-3">
         <div>
           <p className="hc-kicker">Logger</p>
           <p className="mt-1 font-display text-xl">

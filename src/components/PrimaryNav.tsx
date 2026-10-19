@@ -9,7 +9,7 @@ export function PrimaryNav() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 z-20 hidden border-b border-[#cbf805]/35 bg-[#07080a]/95 pt-[env(safe-area-inset-top)] backdrop-blur md:block"
+      className="hc-carbon sticky top-0 z-20 hidden border-b border-[#cbf805]/45 pt-[env(safe-area-inset-top)] md:block"
     >
       <ul className="mx-auto grid max-w-3xl grid-cols-5 px-1">
         {PRIMARY_NAV_LINKS.map((link) => {

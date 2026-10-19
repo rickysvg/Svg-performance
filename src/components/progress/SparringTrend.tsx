@@ -31,7 +31,7 @@ function Pips({ value, label }: { value: number | null; label: string }) {
 export function SparringTrend({ logs }: { logs: SparringLog[] }) {
   const rated = logs.filter((log) => log.sessionRating != null || log.bodyRating != null);
   return (
-    <section className="hc-panel p-4" data-sparring-trend>
+    <section className="hc-panel hc-carbon p-4" data-sparring-trend>
       <p className="hc-kicker">Ratings</p>
       <h2 className="mt-2 text-lg">Sparring and body</h2>
       <p className="mt-1 text-xs text-muted">

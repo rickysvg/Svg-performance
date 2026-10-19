@@ -14,7 +14,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
 
   if (!first) {
     return (
-      <section className="hc-panel px-5 py-5">
+      <section className="hc-panel hc-carbon px-5 py-5">
         <p className="hc-kicker">Today</p>
         <h2 className="mt-2 text-2xl">Rest day</h2>
         <p className="mt-1 text-sm text-muted">
@@ -54,7 +54,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
   const draft = guide.today.draft && guide.today.draft.programDayId === first.dayId;
 
   return (
-    <section className="hc-panel px-5 py-5">
+    <section className="hc-panel hc-carbon px-5 py-5">
       <p className="hc-kicker">
         Today
         {minutes > 0 ? ` · ${minutes} min` : ""}
