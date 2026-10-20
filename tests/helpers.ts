@@ -46,6 +46,7 @@ export async function resetDatabase() {
   await prisma.helpRequest.deleteMany();
   await prisma.coachAssignment.deleteMany();
   await prisma.reminderPrefs.deleteMany();
+  await prisma.coachAutoNote.deleteMany();
   await prisma.chatMessage.deleteMany();
   await prisma.chatThread.deleteMany();
   await prisma.lessonProgress.deleteMany();

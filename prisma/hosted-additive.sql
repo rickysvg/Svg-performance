@@ -678,7 +678,6 @@ BEGIN
       "id" TEXT NOT NULL,
       "savedWorkoutId" TEXT NOT NULL,
       "sortOrder" INTEGER NOT NULL,
-      "name" TEXT NOT NULL,
       "sets" INTEGER NOT NULL,
       "reps" TEXT NOT NULL,
       "loadText" TEXT NOT NULL DEFAULT '',
@@ -727,5 +726,31 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'dayPlanId'
   ) THEN
     ALTER TABLE "WorkoutSession" ADD COLUMN "dayPlanId" TEXT;
+  END IF;
+END $$;
+
+-- Coach template notes: weekly recap and one proactive message per day. No OpenAI required.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."CoachAutoNote"') IS NULL THEN
+    CREATE TABLE "CoachAutoNote" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "dedupeKey" TEXT NOT NULL,
+      "kind" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "CoachAutoNote_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "CoachAutoNote_userId_dedupeKey_key"
+      ON "CoachAutoNote"("userId", "dedupeKey");
+    CREATE INDEX "CoachAutoNote_userId_createdAt_idx"
+      ON "CoachAutoNote"("userId", "createdAt");
+    ALTER TABLE "CoachAutoNote"
+      ADD CONSTRAINT "CoachAutoNote_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;
