@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { massCaption, massGaugeScale, parseMassFont } from "@/lib/mass-caption";
+import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 
 const tz = "America/Denver";
 
@@ -42,13 +42,6 @@ describe("mass caption", () => {
         tz,
       ),
     ).toBe("▲ 0.6 LBS VS LAST WEEK");
-  });
-
-  it("treats an omitted or unknown massFont as the segmented cluster", () => {
-    expect(parseMassFont(undefined)).toBe(1);
-    expect(parseMassFont("1")).toBe(1);
-    expect(parseMassFont("3")).toBe(1);
-    expect(parseMassFont("2")).toBe(2);
   });
 
   it("puts the current weight on the sweep and rests when empty", () => {

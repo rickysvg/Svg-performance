@@ -1,7 +1,5 @@
 import { dayKey } from "@/lib/timezone";
 
-export type MassFontId = 1 | 2;
-
 export type MassGauge = {
   /** 0–1 along the sweep. 0 rests at the low end. */
   t: number;
@@ -14,13 +12,6 @@ export type WeighInPoint = {
   unit: string;
   recordedAt: Date;
 };
-
-/** 1 segmented digits with a filled arc. 2 wide italic with a tick sweep. */
-export function parseMassFont(raw: string | string[] | undefined): MassFontId {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "2") return 2;
-  return 1;
-}
 
 /**
  * Places the current weight on a sweep. The scale is the recent range, widened

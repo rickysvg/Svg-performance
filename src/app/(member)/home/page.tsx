@@ -21,7 +21,6 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentWeightsForUser } from "@/lib/body-metrics";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
-import { massFontFromParam } from "@/components/home/mass-fonts";
 import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
@@ -30,11 +29,10 @@ import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ day?: string; massFont?: string }>;
+  searchParams: Promise<{ day?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const massFont = massFontFromParam(params.massFont);
   const fallbackQuote = DAILY_QUOTES[0];
   const profile = await homeLoad("profile", getProfileForUser(user.id), null);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
@@ -106,8 +104,6 @@ export default async function HomePage({
         value={weight ? weight.value : null}
         unit={units}
         caption={massLine}
-        variant={massFont.id}
-        speedoClassName={massFont.className}
         gauge={massGauge}
       />
 
