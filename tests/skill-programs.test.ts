@@ -84,10 +84,10 @@ describe("seeded DEMO combat skills", () => {
       MESO_BLOCKS.flatMap((block) => bagWeekdays.map((weekday) => bagFocusFor(weekday, block).label)),
     );
     expect(strength.days.map((day) => day.dayNumber).sort((a, b) => a - b)).toEqual([
-      1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 15, 17, 18, 20,
+      1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 20, 21, 22,
     ]);
     expect(strength.days.find((day) => day.dayNumber === 4)?.title).toMatch(/assault bike/i);
-    expect(strength.days.find((day) => day.dayNumber === 10)).toBeUndefined();
+    expect(strength.days.find((day) => day.dayNumber === 10)?.title).toMatch(/Friday circuit/);
     expect(strength.days.find((day) => day.dayNumber === 11)?.title).toMatch(/Light full body/i);
 
     const user = await makeUser("muay@example.com");

@@ -1,6 +1,9 @@
+import { bagFocusFor } from "@/lib/bag-sessions";
+import { BIKE_SESSIONS } from "@/lib/bike-sessions";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
 import { canUseFeature } from "@/lib/entitlements";
+import { DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { dayKey } from "@/lib/timezone";
 import type { DayPlan, PlanSessionSlot } from "@/lib/week-plan";
 import {
@@ -339,6 +342,22 @@ export function campBikeBand(phase: CampPhase, band: "beginner" | "intermediate"
   return "advanced" as const;
 }
 
+function isFridayCircuit(session: PlanSessionSlot) {
+  return session.label === "Friday circuit" || session.title === "Friday circuit";
+}
+
+function fridayTechnicalBag(day: DayPlan): PlanSessionSlot {
+  const bag = bagFocusFor("Friday", day.mesoBlock);
+  return {
+    kind: "skill",
+    label: bag.label,
+    programSlug: DEMO_SKILL_PROGRAM_SLUG,
+    dayNumber: bag.dayNumber,
+    heavy: false,
+    detail: "Technical bag. The Friday circuit comes back after camp.",
+  };
+}
+
 export function shapeDayPlan(day: DayPlan, phase: CampPhase): DayPlan {
   if (phase === "pre-camp" || phase === "complete") return day;
   if (!day.active) {
@@ -356,6 +375,22 @@ export function shapeDayPlan(day: DayPlan, phase: CampPhase): DayPlan {
   }
 
   const mapSession = (session: PlanSessionSlot): PlanSessionSlot => {
+    if (isFridayCircuit(session)) {
+      if (phase === "base" || phase === "build" || phase === "peak") return fridayTechnicalBag(day);
+    }
+    if (
+      (phase === "build" || phase === "peak") &&
+      day.weekday === "Sunday" &&
+      session.kind === "conditioning" &&
+      session.dayNumber
+    ) {
+      const fight = BIKE_SESSIONS.find((row) => row.id === "fight-pace");
+      session = {
+        ...session,
+        dayNumber: fight?.programDayNumber ?? session.dayNumber,
+        detail: "Fight-pace rounds. 10s sprint, then moderate. About 1:2 to 1:4.",
+      };
+    }
     if (phase === "taper") {
       if (session.kind === "conditioning") return { ...session, label: "Easy conditioning" };
       if (session.kind === "strength") return { ...session, label: "Light strength · speed" };
@@ -367,10 +402,11 @@ export function shapeDayPlan(day: DayPlan, phase: CampPhase): DayPlan {
     return session;
   };
 
-  const sessions =
+  const kept =
     phase === "taper"
-      ? day.sessions.filter((session) => !session.optional).map(mapSession)
-      : day.sessions.map(mapSession);
+      ? day.sessions.filter((session) => !session.optional && !isFridayCircuit(session))
+      : day.sessions;
+  const sessions = kept.map(mapSession);
 
   const prefix =
     phase === "taper"

@@ -16,16 +16,16 @@ export const MESO_BLOCK_META: Record<MesoBlock, { title: string; intent: string 
 };
 
 /**
- * Strength catalog day numbers. Three full-body days: Monday, Tuesday, Thursday.
- * Bikes stay on days 4–9. Wednesday and Friday are not lift days.
+ * Strength catalog day numbers. Three full-body days plus Friday circuit.
+ * Bikes stay on days 4–9. Fight-pace bike is day 22.
  */
 export const STRENGTH_DAY_BY_BLOCK: Record<
   MesoBlock,
-  { monday: number; tuesday: number; thursday: number }
+  { monday: number; tuesday: number; thursday: number; friday: number }
 > = {
-  A: { monday: 1, tuesday: 2, thursday: 11 },
-  B: { monday: 12, tuesday: 13, thursday: 15 },
-  C: { monday: 17, tuesday: 18, thursday: 20 },
+  A: { monday: 1, tuesday: 2, thursday: 11, friday: 10 },
+  B: { monday: 12, tuesday: 13, thursday: 15, friday: 16 },
+  C: { monday: 17, tuesday: 18, thursday: 20, friday: 21 },
 };
 
 function mod(value: number, base: number) {
@@ -55,9 +55,13 @@ export function strengthDaysForWeek(weekIndex: number) {
   return STRENGTH_DAY_BY_BLOCK[mesoBlockForWeekIndex(weekIndex)];
 }
 
-/** Friday GPP is no longer a seeded lift. The catalog names stay for reference. */
-export function isGppStrengthDay(_dayNumber: number) {
-  return false;
+const FRIDAY_CIRCUIT_DAYS = new Set(
+  (["A", "B", "C"] as const).map((block) => STRENGTH_DAY_BY_BLOCK[block].friday),
+);
+
+/** Friday circuit days. The member-facing title is "Friday circuit". */
+export function isGppStrengthDay(dayNumber: number) {
+  return FRIDAY_CIRCUIT_DAYS.has(dayNumber);
 }
 
 /** Plyo add-on days are off. Power work is already inside the three lift days. */

@@ -23,13 +23,13 @@ describe("exercise removal", () => {
   it("drops one slot and the logger counts that follow it", () => {
     const programmed = [
       { name: "Goblet squat", sets: 4 },
-      { name: "Cable woodchop", sets: 3 },
+      { name: "One-arm row", sets: 3 },
       { name: "Face pull", sets: 3 },
     ];
     const omitted = omitRemovedSlots(
       programmed,
       programmed,
-      [{ originalName: "Cable woodchop", exerciseName: "Cable woodchop", workoutSessionId: "s1" }],
+      [{ originalName: "One-arm row", exerciseName: "One-arm row", workoutSessionId: "s1" }],
       { sessionId: "s1" },
     );
     expect(omitted.shown.map((row) => row.name)).toEqual(["Goblet squat", "Face pull"]);
@@ -38,14 +38,14 @@ describe("exercise removal", () => {
     const sets = [
       { exerciseName: "Goblet squat", setNumber: 1 },
       { exerciseName: "Goblet squat", setNumber: 2 },
-      { exerciseName: "Cable woodchop", setNumber: 1 },
+      { exerciseName: "One-arm row", setNumber: 1 },
       { exerciseName: "Face pull", setNumber: 1 },
     ];
-    const kept = withoutExerciseName(sets, "Cable woodchop");
+    const kept = withoutExerciseName(sets, "One-arm row");
     expect(visibleExerciseCount(omitted.shown, kept)).toBe(2);
     const groups = [
       { name: "Goblet squat", sets: [{ id: "a", completed: true }, { id: "b", completed: false }] },
-      { name: "Cable woodchop", sets: [{ id: "c", completed: false }] },
+      { name: "One-arm row", sets: [{ id: "c", completed: false }] },
       { name: "Face pull", sets: [{ id: "d", completed: false }, { id: "e", completed: false }, { id: "f", completed: false }] },
     ];
     expect(loggerCursor(groups)).toMatchObject({
@@ -55,7 +55,7 @@ describe("exercise removal", () => {
       setIndex: 2,
       setCount: 2,
     });
-    const after = groups.filter((group) => group.name !== "Cable woodchop");
+    const after = groups.filter((group) => group.name !== "One-arm row");
     expect(loggerCursor(after)).toMatchObject({
       exerciseIndex: 1,
       exerciseCount: 2,
@@ -64,22 +64,22 @@ describe("exercise removal", () => {
       setCount: 2,
     });
     expect(hiddenNamesForRemovals(
-      [{ originalName: "Cable woodchop", exerciseName: "Cable woodchop", workoutSessionId: "s1" }],
+      [{ originalName: "One-arm row", exerciseName: "One-arm row", workoutSessionId: "s1" }],
       after.map((group) => group.name),
-    )).toEqual(["Cable woodchop"]);
+    )).toEqual(["One-arm row"]);
   });
 
   it("puts a removed block of sets back where it was", () => {
     const sets = [
       { exerciseName: "Goblet squat", setNumber: 1, reps: 6, loadValue: 50, loadUnit: "lb" as const, completed: true },
-      { exerciseName: "Cable woodchop", setNumber: 1, reps: 8, loadValue: 30, loadUnit: "lb" as const, completed: true },
+      { exerciseName: "One-arm row", setNumber: 1, reps: 8, loadValue: 30, loadUnit: "lb" as const, completed: true },
       { exerciseName: "Face pull", setNumber: 1, reps: null, loadValue: null, loadUnit: "lb" as const, completed: false },
     ];
-    const snapshot = snapshotRemovedSets(sets, "Cable woodchop");
-    const next = withoutExerciseName(sets, "Cable woodchop");
+    const snapshot = snapshotRemovedSets(sets, "One-arm row");
+    const next = withoutExerciseName(sets, "One-arm row");
     expect(restoreSnapshotSets(next, snapshot).map((set) => set.exerciseName)).toEqual([
       "Goblet squat",
-      "Cable woodchop",
+      "One-arm row",
       "Face pull",
     ]);
   });
@@ -107,15 +107,15 @@ describe("persisted session removal", () => {
     });
     const names = [...new Set(started.sets.map((set) => set.exerciseName))];
     expect(names.length).toBeGreaterThan(1);
-    expect(names).toContain("Cable woodchop");
+    expect(names).toContain("One-arm row");
 
     const removed = await removeSessionExercise({
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
       programDayId: day.id,
-      originalName: "Cable woodchop",
-      exerciseName: "Cable woodchop",
+      originalName: "One-arm row",
+      exerciseName: "One-arm row",
       workoutSessionId: started.id,
       blockKey,
     });
@@ -124,15 +124,15 @@ describe("persisted session removal", () => {
       include: { sets: true },
     });
     expect(after.status).toBe("draft");
-    expect(after.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
+    expect(after.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
     expect(new Set(after.sets.map((set) => set.exerciseName)).size).toBe(names.length - 1);
-    expect(removed.sets?.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
+    expect(removed.sets?.some((set) => set.exerciseName === "One-arm row")).toBe(false);
 
     const restored = await undoExerciseRemoval({
       userId: user.id,
       removalId: removed.id,
     });
-    expect(restored.sets?.some((set) => set.exerciseName === "Cable woodchop")).toBe(true);
+    expect(restored.sets?.some((set) => set.exerciseName === "One-arm row")).toBe(true);
     expect(await prisma.exerciseRemoval.count({ where: { userId: user.id } })).toBe(0);
 
     let current = [...names];
@@ -176,15 +176,15 @@ describe("persisted session removal", () => {
       programSlug: DEMO_PROGRAM_SLUG,
       weightAccess: "gym",
     });
-    expect(scaled.exercises.some((exercise) => exercise.name === "Cable woodchop")).toBe(true);
+    expect(scaled.exercises.some((exercise) => exercise.name === "One-arm row")).toBe(true);
 
     await removeSessionExercise({
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
       programDayId: day.id,
-      originalName: "Cable woodchop",
-      exerciseName: "Cable woodchop",
+      originalName: "One-arm row",
+      exerciseName: "One-arm row",
       blockKey,
     });
     const first = await startWorkoutFromDay({
@@ -194,7 +194,7 @@ describe("persisted session removal", () => {
       timeZone: APP_TIMEZONE,
       scale: { experienceLevel: "intermediate", weightAccess: "gym" },
     });
-    expect(first.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
+    expect(first.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
     expect(first.sets.length).toBeGreaterThan(0);
     expect(first.status).toBe("draft");
     const bound = await prisma.exerciseRemoval.findFirstOrThrow({ where: { userId: user.id } });
@@ -207,6 +207,6 @@ describe("persisted session removal", () => {
       timeZone: APP_TIMEZONE,
       scale: { experienceLevel: "intermediate", weightAccess: "gym" },
     });
-    expect(second.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(true);
+    expect(second.sets.some((set) => set.exerciseName === "One-arm row")).toBe(true);
   });
 });

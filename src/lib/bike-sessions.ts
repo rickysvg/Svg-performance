@@ -204,16 +204,39 @@ export const BIKE_SESSIONS: BikeSession[] = [
       advanced: intervalScale(10, 20, 5, 1, 0, SPRINT_NO_LBS),
     },
   },
+  {
+    id: "fight-pace",
+    energyZone: "sprint",
+    name: "Fight-pace bike rounds",
+    title: "Day 22 — Fight-pace bike",
+    focus: "Fight-pace rounds — 10s sprint, then moderate, inside a 5 min round",
+    weekStripLabel: "Bike",
+    programDayNumber: 22,
+    workSeconds: 10,
+    restSeconds: 40,
+    roundsPerSet: 5,
+    restBetweenSetsSeconds: 60,
+    sets: 3,
+    loadText: "10s sprint, then moderate — no lbs",
+    svgScaling: false,
+    notes:
+      "Camp build and peak Sunday. 3 rounds × 5 min, 1 min between rounds. Each minute is a 10s sprint and then 20–40s moderate, a 1:2 to 1:4 work-to-easy ratio. Timed only.",
+    scale: {
+      beginner: intervalScale(10, 40, 5, 3, 60, "10s sprint, then moderate — no lbs"),
+      intermediate: intervalScale(10, 40, 5, 3, 60, "10s sprint, then moderate — no lbs"),
+      advanced: intervalScale(10, 20, 5, 3, 60, "10s sprint, then moderate — no lbs"),
+    },
+  },
 ];
 
 export const DEFAULT_BIKE_SESSION = BIKE_SESSIONS[0];
 
-/** Wednesday takes the sprint of the pair. Sunday takes the easier aerobic bike. */
-const ROTATION: Array<{ wed: string; sun: string }> = [
-  { wed: "intervals-15-15", sun: "daru-75-endurance" },
-  { wed: "daru-alactic", sun: "jamieson-tempo" },
-  { wed: "edwards-10-20", sun: "jamieson-cardiac" },
-];
+/**
+ * Wednesday is always the alactic bike. The week dose moves 10/50 toward 10/20.
+ * Sunday is cardiac, tempo, then a longer cardiac ride.
+ * Build and peak camp Sundays use fight-pace instead.
+ */
+const SUNDAY_ROTATION = ["jamieson-cardiac", "jamieson-tempo", "jamieson-cardiac"] as const;
 
 /** Monday-based week index from a fixed epoch so Tue/Thu pairings stay stable. */
 export function bikeWeekIndex(date: Date, timeZone = APP_TIMEZONE) {
@@ -240,10 +263,91 @@ export function pickBikeSession(index = 0): BikeSession {
 export function pickBikeSessionForPlan(
   weekday: "Wednesday" | "Sunday",
   weekIndex = 0,
+  phase?: string | null,
 ): BikeSession {
-  const pair = ROTATION[((weekIndex % BIKE_ROTATION_LENGTH) + BIKE_ROTATION_LENGTH) % BIKE_ROTATION_LENGTH];
-  const id = weekday === "Wednesday" ? pair.wed : pair.sun;
+  if (weekday === "Sunday" && (phase === "build" || phase === "peak")) {
+    return BIKE_SESSIONS.find((session) => session.id === "fight-pace") ?? DEFAULT_BIKE_SESSION;
+  }
+  if (weekday === "Wednesday") {
+    return BIKE_SESSIONS.find((session) => session.id === "daru-alactic") ?? DEFAULT_BIKE_SESSION;
+  }
+  const slot = ((weekIndex % BIKE_ROTATION_LENGTH) + BIKE_ROTATION_LENGTH) % BIKE_ROTATION_LENGTH;
+  const id = SUNDAY_ROTATION[slot] ?? "jamieson-cardiac";
   return BIKE_SESSIONS.find((session) => session.id === id) ?? DEFAULT_BIKE_SESSION;
+}
+
+/**
+ * Week doses for the alactic, cardiac, tempo, and fight-pace bikes.
+ * Other sessions keep the scale stored on the session.
+ * `phase` is a camp name string so this file does not import the camp module.
+ */
+export function planBikeDose(
+  session: BikeSession,
+  band: ScaleBand,
+  weekIndex = 0,
+  phase?: string | null,
+): BikeSession {
+  const week = ((weekIndex % BIKE_ROTATION_LENGTH) + BIKE_ROTATION_LENGTH) % BIKE_ROTATION_LENGTH;
+  const apply = (scale: BikeScale, notes?: string): BikeSession => ({
+    ...session,
+    workSeconds: scale.workSeconds,
+    restSeconds: scale.restSeconds,
+    roundsPerSet: scale.roundsPerSet,
+    restBetweenSetsSeconds: scale.restBetweenSetsSeconds,
+    sets: scale.sets,
+    loadText: scale.loadText,
+    notes: notes ?? session.notes,
+  });
+
+  if (phase === "taper") {
+    return apply(
+      intervalScale(8, 60, 4, 1, 0, "Easy spin — stop while it still feels fast"),
+      "Taper. 4 × 8s easy / 60s spin. Not a lactic session.",
+    );
+  }
+
+  if (session.id === "fight-pace") {
+    const rest = phase === "peak" ? 20 : 40;
+    return apply(
+      intervalScale(10, rest, 5, 3, 60, "10s sprint, then moderate — no lbs"),
+      "3 rounds × 5 min, 1 min between rounds. Each minute: 10s sprint, then 20–40s moderate.",
+    );
+  }
+
+  if (session.id === "daru-alactic") {
+    if (phase === "peak" || week === 2) {
+      const beginner = band === "beginner";
+      return apply(
+        intervalScale(10, 20, beginner ? 4 : 5, beginner ? 1 : 2, beginner ? 0 : 180, SPRINT_NO_LBS),
+        "Alactic week 3. 10s sprint / 20s rest. Two blocks of five, 3 min between. Beginners do one block of four.",
+      );
+    }
+    if (week === 1) {
+      const rounds = band === "beginner" ? 6 : 8;
+      return apply(
+        intervalScale(10, 40, rounds, 1, 0, SPRINT_NO_LBS),
+        "Alactic week 2. 10s all-out / 40s easy. Quality stays high.",
+      );
+    }
+    const rounds = band === "beginner" ? 4 : 6;
+    return apply(
+      intervalScale(10, 50, rounds, 1, 0, SPRINT_NO_LBS),
+      "Alactic week 1. 10s all-out / 50s easy. Stop if the next sprint is slower.",
+    );
+  }
+
+  if (session.id === "jamieson-cardiac") {
+    const long = week === 2;
+    const minutes = band === "beginner" ? (long ? 25 : 20) : long ? 40 : 30;
+    return apply(
+      intervalScale(minutes * 60, 0, 1, 1, 0, STEADY_NO_LBS),
+      long
+        ? "Aerobic week 3. Longer steady spin, still conversational."
+        : "Aerobic week 1. Steady spin, heart rate about 130–150.",
+    );
+  }
+
+  return scaleBikeSession(session, band);
 }
 
 /** Jump-rope “easy bike” finishers stay on Friday — they are not this catalog. */

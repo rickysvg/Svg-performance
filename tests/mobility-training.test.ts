@@ -86,8 +86,8 @@ describe("deload and testing weeks", () => {
 });
 
 describe("bike zones, plyo emphasis, and mobility gating", () => {
-  it("tags all six bike sessions as Aerobic Base, Threshold, or Sprint", () => {
-    expect(BIKE_SESSIONS).toHaveLength(6);
+  it("tags every bike session as Aerobic Base, Threshold, or Sprint", () => {
+    expect(BIKE_SESSIONS).toHaveLength(7);
     const labels = new Set(BIKE_SESSIONS.map((session) => bikeEnergyCopy(session.energyZone).label));
     expect(labels).toEqual(new Set(["Aerobic Base", "Threshold", "Sprint"]));
     expect(bikeEnergyCopy("aerobic-base").guide).toMatch(/130/);

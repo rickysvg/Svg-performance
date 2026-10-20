@@ -59,7 +59,8 @@ describe("3-week mesocycle", () => {
     expect(thu.map((session) => session.kind)).toEqual(["skill", "strength"]);
     expect(thu[1]?.label).toMatch(/light/i);
     const friday = coreSkeletonSessions("Friday", "mma", 2);
-    expect(friday.map((session) => session.kind)).toEqual(["skill", "mobility"]);
+    expect(friday.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
+    expect(friday[0]?.label).toBe("Friday circuit");
     expect(friday.some((session) => session.kind === "strength")).toBe(false);
   });
 

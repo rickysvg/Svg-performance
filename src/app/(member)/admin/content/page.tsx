@@ -22,8 +22,61 @@ export default async function AdminContentPage() {
     <AdminScreen
       kicker="Library"
       title="Content"
-      hint="Form videos still waiting, then the catalog refresh."
+      hint={`${content.clipReview.live} exercises live, ${content.clipReview.held} held. Form videos still waiting, then the catalog refresh.`}
     >
+      <section className="space-y-2">
+        <h2 className="text-lg">Needs review</h2>
+        <p className="text-sm text-muted">
+          Low-confidence clips stay out of member swaps until a coach clears them.
+        </p>
+        {content.clipReview.needsReview.length === 0 ? (
+          <p className="text-sm text-muted">No clips waiting on a confidence check.</p>
+        ) : (
+          <ul className="space-y-2">
+            {content.clipReview.needsReview.map((row) => (
+              <li
+                key={row.name}
+                data-desk-tone="attention"
+                className={`hc-panel flex items-center justify-between gap-3 px-4 py-3 ${deskSurfaceClass("attention")}`}
+              >
+                <span>{row.name}</span>
+                <DeskBadge tone="attention" label="Needs review" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg">Needs a trim</h2>
+        <p className="text-sm text-muted">
+          Clips over 60 seconds with no end time. A clip that already starts on the form can stay
+          swappable. The others stay hidden until they are trimmed.
+        </p>
+        {content.clipReview.needsTrim.length === 0 ? (
+          <p className="text-sm text-muted">No long clips waiting on a trim.</p>
+        ) : (
+          <ul className="space-y-2">
+            {content.clipReview.needsTrim.map((row) => (
+              <li
+                key={row.name}
+                data-desk-tone="attention"
+                className={`hc-panel flex items-center justify-between gap-3 px-4 py-3 ${deskSurfaceClass("attention")}`}
+              >
+                <span>
+                  {row.name}
+                  <span className="mt-1 block text-sm text-muted">{row.durationSec}s</span>
+                </span>
+                <DeskBadge
+                  tone="attention"
+                  label={row.swappable ? "Needs trim" : "Hidden"}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="space-y-2">
         <h2 className="text-lg">Form videos pending</h2>
         {content.formVideos.length === 0 ? (

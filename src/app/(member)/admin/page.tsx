@@ -16,7 +16,7 @@ export default async function AdminPage() {
   ]);
   const name = profile?.displayName?.trim().split(/\s+/)[0] || "Coach";
   const feedbackWaiting = counts.feedbackNew + counts.feelFlags;
-  const contentWaiting = counts.pendingVideos + counts.pendingLessons;
+  const contentWaiting = counts.pendingVideos + counts.pendingLessons + counts.clipReview;
   const formTone = deskTone(counts.formChecks, counts.formChecksReviewed);
   const checkTone = deskTone(counts.checkIns, counts.checkInsAnswered);
   const coachTone = coachingCapacityTone(counts.coachingUsed, counts.coachingCap);

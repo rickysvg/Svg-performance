@@ -50,7 +50,8 @@ describe("member week", () => {
     expect(roles.Tuesday.lift).toBe("pull");
     expect(roles.Tuesday.bag).toBeNull();
     expect(roles.Friday.lift).not.toBe("lower");
-    expect(roles.Friday.bag).toBe("moderate");
+    expect(roles.Friday.bag).toBeNull();
+    expect(roles.Friday.gpp).toBe(true);
     expect(roles.Monday.lift).toBe("lower");
 
     const week = buildCoreWeekPlan({

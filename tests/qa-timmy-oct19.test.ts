@@ -247,14 +247,14 @@ describe("Timmy Oct 19 logger", () => {
           .map((set) => set.exerciseName),
       ),
     ];
-    expect(before.indexOf("Cable woodchop")).toBeGreaterThan(0);
+    expect(before.indexOf("One-arm row")).toBeGreaterThan(0);
     const removed = await removeSessionExercise({
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
       programDayId: day.id,
-      originalName: "Cable woodchop",
-      exerciseName: "Cable woodchop",
+      originalName: "One-arm row",
+      exerciseName: "One-arm row",
       workoutSessionId: started.id,
       blockKey: trainingBlockKey(NOW, APP_TIMEZONE),
     });

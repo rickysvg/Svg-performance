@@ -145,7 +145,7 @@ describe("swapped logging and progress", () => {
       weightAccess: "gym",
     });
     expect(scaled.exercises.some((exercise) => / or /i.test(exercise.name))).toBe(false);
-    const source = scaled.exercises.find((exercise) => exercise.name === "Cable woodchop")!;
+    const source = scaled.exercises.find((exercise) => exercise.name === "One-arm row")!;
     const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
 
     const first = await startWorkoutFromDay({
@@ -184,13 +184,13 @@ describe("swapped logging and progress", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(second.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(true);
+    expect(second.sets.some((set) => set.exerciseName === "One-arm row")).toBe(true);
     await applyExerciseSwap({
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
-      originalName: "Cable woodchop",
-      currentName: "Cable woodchop",
+      originalName: "One-arm row",
+      currentName: "One-arm row",
       replacementName: "Dumbbell bench press",
       scope: "session",
       workoutSessionId: second.id,
@@ -207,7 +207,7 @@ describe("swapped logging and progress", () => {
       where: { id: second.id },
       include: { sets: true },
     });
-    expect(swapped.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
+    expect(swapped.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
     const replacement = swapped.sets.filter(
       (set) => set.exerciseName === "Dumbbell bench press" && set.prescriptionKey === gobletKey,
     );
@@ -245,7 +245,7 @@ describe("swapped logging and progress", () => {
     });
     const summary = buildProgressSummary([finished], "lb");
     expect(summary.exerciseBests.map((best) => best.exerciseName)).toContain("Dumbbell bench press");
-    expect(summary.exerciseBests.map((best) => best.exerciseName)).not.toContain("Cable woodchop");
+    expect(summary.exerciseBests.map((best) => best.exerciseName)).not.toContain("One-arm row");
     expect(summary.exerciseBests.find((best) => best.exerciseName === "Dumbbell bench press")?.bestLoad).toBe(95);
   });
 
@@ -258,7 +258,7 @@ describe("swapped logging and progress", () => {
       programSlug: DEMO_PROGRAM_SLUG,
       weightAccess: "gym",
     });
-    const source = scaled.exercises.find((exercise) => exercise.name === "Cable woodchop")!;
+    const source = scaled.exercises.find((exercise) => exercise.name === "One-arm row")!;
     const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
 
     const earlier = await startWorkoutFromDay({
@@ -291,8 +291,8 @@ describe("swapped logging and progress", () => {
       userId: user.id,
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: day.dayNumber,
-      originalName: "Cable woodchop",
-      currentName: "Cable woodchop",
+      originalName: "One-arm row",
+      currentName: "One-arm row",
       replacementName: "Dumbbell bench press",
       scope: "block",
       blockKey,
@@ -311,7 +311,7 @@ describe("swapped logging and progress", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(next.sets.some((set) => set.exerciseName === "Cable woodchop")).toBe(false);
+    expect(next.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
     const previous = await getPreviousLoadsForSlots(
       user.id,
       next.sets
@@ -326,7 +326,7 @@ describe("swapped logging and progress", () => {
 
     const other = applySwapsToExercises(scaled.exercises, [
       {
-        originalName: "Cable woodchop",
+        originalName: "One-arm row",
         replacementName: "Dumbbell bench press",
         scope: "block",
         workoutSessionId: "",
@@ -337,9 +337,9 @@ describe("swapped logging and progress", () => {
         restSeconds: source.restSeconds,
         logMode: "load_reps",
         notes: "",
-        retiredNames: ["Cable woodchop"],
+        retiredNames: ["One-arm row"],
       },
     ], { blockKey, includePending: false });
-    expect(other.find((exercise) => exercise.name === "Cable woodchop")).toBeTruthy();
+    expect(other.find((exercise) => exercise.name === "One-arm row")).toBeTruthy();
   });
 });

@@ -10,7 +10,7 @@ import {
 } from "@/lib/bag-sessions";
 import { campBikeBand, type CampPhase } from "@/lib/fight-camp";
 import { weekInBlock } from "@/lib/mesocycle";
-import { parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
+import { catalogMeta, catalogSlot, parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
 import { bagFocusLines, formatBagRoundNotes } from "@/lib/bag-themes";
 import {
   bikeIntervalReps,
@@ -18,6 +18,7 @@ import {
   bikeSessionForName,
   bikeWorkSecondsPerSet,
   isBikeIntervalName,
+  planBikeDose,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
 import { daruExerciseForName } from "@/lib/daru-exercises";
@@ -330,6 +331,15 @@ function floorStrengthRest(name: string, rest: number) {
 }
 
 const NO_WEIGHT_MOVES: Array<{ match: RegExp; name: string; logMode: LogMode }> = [
+  { match: /trap-bar jump/i, name: "Squat jump", logMode: "reps_only" },
+  { match: /zercher|sandbag/i, name: "Air squat", logMode: "reps_only" },
+  { match: /bulgarian/i, name: "Split squat", logMode: "reps_only" },
+  { match: /nordic/i, name: "Hip hinge", logMode: "reps_only" },
+  { match: /pull-up/i, name: "Inverted row", logMode: "reps_only" },
+  { match: /push press/i, name: "Pike push-up", logMode: "reps_only" },
+  { match: /kettlebell swing/i, name: "Hip hinge", logMode: "reps_only" },
+  { match: /high pull/i, name: "High pull", logMode: "reps_only" },
+  { match: /shrug/i, name: "Shoulder shrug", logMode: "reps_only" },
   { match: /trap-bar deadlift/i, name: "Hip hinge", logMode: "reps_only" },
   { match: /pause goblet squat/i, name: "Pause air squat", logMode: "reps_only" },
   { match: /goblet squat/i, name: "Air squat", logMode: "reps_only" },
@@ -427,6 +437,71 @@ export function scaleExercise(
   return applyNoWeightVariant(withVideo);
 }
 
+function replaceRir(loadText: string, rir: string, extra?: string) {
+  const without = loadText
+    .replace(/\b\d+\s*-\s*\d+\s*RIR\b|\b\d+\s*RIR\b/gi, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*|\s*·\s*$/g, "")
+    .trim();
+  return [`${rir} RIR`, extra, without].filter(Boolean).join(" · ").replace(/\s+/g, " ").trim();
+}
+
+function applyCampDose(
+  exercise: ScaleableExercise,
+  meta: { slot: string | null; main: boolean; lift3: boolean },
+  input: { band: ScaleBand; campPhase?: CampPhase | null },
+): ScaleableExercise {
+  const phase = input.campPhase;
+  if (!phase || phase === "pre-camp" || phase === "complete") return exercise;
+  if (!meta.slot && !meta.main && !meta.lift3) return exercise;
+
+  if (phase === "taper") {
+    if (meta.slot === "power" || meta.slot === "contrast" || meta.slot === "french") {
+      return {
+        ...exercise,
+        sets: Math.min(exercise.sets, 2),
+        loadText: replaceRir(exercise.loadText, "3-5", "Fast reps. About half the off-season volume."),
+      };
+    }
+    const sets = meta.main ? Math.min(exercise.sets, 3) : Math.min(exercise.sets, 2);
+    const rir = meta.lift3 ? "2" : "2-3";
+    return {
+      ...exercise,
+      sets,
+      loadText: replaceRir(exercise.loadText, rir, "Fast reps. Stop while you still feel sharp."),
+    };
+  }
+
+  if (meta.lift3) {
+    return {
+      ...exercise,
+      loadText: replaceRir(exercise.loadText, "2", "Stay off a max. Speed over grind."),
+    };
+  }
+  if (meta.main) {
+    const sets = input.band === "beginner" ? Math.min(exercise.sets, 3) : 4;
+    return {
+      ...exercise,
+      sets,
+      reps: "3-5",
+      loadText: replaceRir(exercise.loadText, "1-2", "Camp strength. Last reps still move."),
+    };
+  }
+  if (meta.slot === "power" || meta.slot === "contrast" || meta.slot === "french") {
+    const percent = /%/.test(exercise.loadText) ? "~55% of a 5-rep max" : undefined;
+    return { ...exercise, loadText: replaceRir(exercise.loadText, "3-5", percent) };
+  }
+  return exercise;
+}
+
+function finishLockedWeek(
+  exercise: ScaleableExercise,
+  meta: { slot: string | null; main: boolean; lift3: boolean },
+  input: { band: ScaleBand; campPhase?: CampPhase | null },
+): ScaleableExercise {
+  return prescribeGymPush(applyCampDose(exercise, meta, input), input.band);
+}
+
 function scaleNamedExercise(
   exercise: ScaleableExercise,
   input: {
@@ -438,6 +513,7 @@ function scaleNamedExercise(
     campPhase?: CampPhase | null;
   },
 ): ScaleableExercise {
+  const meta = catalogMeta(exercise.notes);
   exercise = withWeekDose(exercise, input.weekIndex);
   const mode = resolveLogMode(exercise);
   const slug = input.programSlug ?? "";
@@ -475,12 +551,12 @@ function scaleNamedExercise(
   }
 
   if (isBikeIntervalName(exercise.name)) {
-    return scaleBikeInterval(exercise, band, input.campPhase);
+    return scaleBikeInterval(exercise, band, input.campPhase, input.weekIndex);
   }
 
   if (exercise.lockWeek) {
     const { lockWeek: _locked, ...rest } = exercise;
-    return { ...rest, logMode: mode };
+    return finishLockedWeek({ ...rest, logMode: mode }, meta, input);
   }
 
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {
@@ -554,15 +630,21 @@ function scaleBikeInterval(
   exercise: ScaleableExercise,
   band: ScaleBand,
   campPhase?: CampPhase | null,
+  weekIndex?: number | null,
 ): ScaleableExercise {
-  const used =
-    campPhase && campPhase !== "pre-camp" && campPhase !== "complete"
-      ? campBikeBand(campPhase, band)
-      : band;
+  const camp = Boolean(campPhase && campPhase !== "pre-camp" && campPhase !== "complete");
+  const used = camp && campPhase ? campBikeBand(campPhase, band) : band;
   const session = bikeSessionForName(exercise.name);
-  const scaled = session ? scaleBikeSession(session, used) : null;
+  const scaled = session
+    ? weekIndex != null || camp
+      ? planBikeDose(session, used, weekIndex ?? 0, campPhase)
+      : scaleBikeSession(session, used)
+    : null;
+  const stockDose =
+    !session ||
+    !["daru-alactic", "jamieson-cardiac", "jamieson-tempo", "fight-pace"].includes(session.id);
   const campNote =
-    campPhase && campPhase !== "pre-camp" && campPhase !== "complete"
+    camp && campPhase && campPhase !== "taper" && stockDose
       ? `Camp ${campPhase}: same bike, ${used} dose.`
       : "";
   const loadText = scaled?.loadText ?? "Timed — no lbs or reps";
@@ -573,6 +655,7 @@ function scaleBikeInterval(
     reps: scaled ? bikeIntervalReps(scaled) : exercise.reps,
     restSeconds: scaled?.restBetweenSetsSeconds ?? 60,
     loadText: campNote ? `${loadText} · ${campNote}` : loadText,
+    notes: scaled?.notes ?? exercise.notes,
   };
 }
 
@@ -883,9 +966,25 @@ export function scaleExercises<T extends ScaleableExercise>(
   },
 ): T[] {
   const seen = new Set<string>();
-  return exercises.map((exercise) =>
-    presentExercise({ ...exercise, ...scaleExercise(exercise, input) }, input.band, seen),
-  );
+  return exercises
+    .filter((exercise) => keepForLevel(exercise, input.band, input.campPhase))
+    .map((exercise) =>
+      presentExercise({ ...exercise, ...scaleExercise(exercise, input) }, input.band, seen),
+    );
+}
+
+function keepForLevel(
+  exercise: ScaleableExercise,
+  band: ScaleBand,
+  campPhase?: CampPhase | null,
+) {
+  const slot = catalogSlot(exercise.notes);
+  if (slot === "contrast" && band === "beginner") return false;
+  if (slot === "french") {
+    const offseason = !campPhase || campPhase === "pre-camp" || campPhase === "complete";
+    if (band !== "advanced" || !offseason) return false;
+  }
+  return true;
 }
 
 export function scaleProgramDay<
