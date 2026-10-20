@@ -1,16 +1,22 @@
 import type { MassGauge as MassGaugeScale } from "@/lib/mass-caption";
 
-/** Circular tach. Same radius on both axes so the arch cannot squash. */
-const CX = 140;
-const CY = 118;
-const R = 100;
-const START = 190;
-const SWEEP = 200;
+/** Snug circular crown. Radius is equal on both axes so the arch cannot squash. */
+const R = 146;
+const SAGITTA = 36;
+const HALF = 96;
+const PAD = 8;
+const CX = PAD + HALF;
+const CROWN = 8;
+const CY = CROWN + R;
+const ALPHA = Math.acos((R - SAGITTA) / R);
+const START = 90 + (ALPHA * 180) / Math.PI;
+const SWEEP = ((ALPHA * 180) / Math.PI) * 2;
+const BASELINE = CY - (R - SAGITTA);
+
 export const MASS_DIAL = {
-  width: 280,
-  height: 148,
-  /** Arc ends, where the readout baseline sits. */
-  baseline: (CY + R * Math.sin((10 * Math.PI) / 180)) / 148,
+  width: PAD + HALF * 2 + PAD,
+  height: BASELINE + PAD,
+  baseline: BASELINE / (BASELINE + PAD),
 };
 
 function polar(r: number, deg: number) {
@@ -29,20 +35,19 @@ function tickEnds(deg: number, inward: number, outward: number) {
   };
 }
 
+/** Short arc over the top. Sweep flag 0 takes the minor path through the crown. */
 function sweep(r: number, from: number, to: number) {
   const start = polar(r, from);
   const end = polar(r, to);
   const large = Math.abs(from - to) > 180 ? 1 : 0;
-  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${large} 0 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
 }
 
-/** 200° tach arch. The hub is the circle center; the needle rises to the rim. */
+/** White crown sized to the readout. No needle. */
 export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolean }) {
-  const ticks = Array.from({ length: 21 }, (_, i) => i / 20);
+  const ticks = Array.from({ length: 13 }, (_, i) => i / 12);
   const angle = START - gauge.t * SWEEP;
-  const tip = polar(R - 1, angle);
-  const tail = polar(14, angle + 180);
-  const goal = gauge.goalT == null ? null : tickEnds(START - gauge.goalT * SWEEP, 14, 8);
+  const goal = gauge.goalT == null ? null : tickEnds(START - gauge.goalT * SWEEP, 8, 5);
   return (
     <svg
       viewBox={`0 0 ${MASS_DIAL.width} ${MASS_DIAL.height}`}
@@ -50,11 +55,11 @@ export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolea
       className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden
     >
-      <path d={sweep(R, START, START - SWEEP)} fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="1.7" />
-      {live ? <path d={sweep(R, START, angle)} fill="none" stroke="#ffffff" strokeWidth="2.3" /> : null}
+      <path d={sweep(R, START, START - SWEEP)} fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="1.6" />
+      {live ? <path d={sweep(R, START, angle)} fill="none" stroke="#ffffff" strokeWidth="2.2" /> : null}
       {ticks.map((tick, index) => {
         const major = index % 2 === 0;
-        const ends = tickEnds(START - tick * SWEEP, major ? 11 : 6, major ? 7 : 4);
+        const ends = tickEnds(START - tick * SWEEP, major ? 6 : 3.5, major ? 5 : 3);
         const passed = live && tick <= gauge.t + 0.001;
         return (
           <line
@@ -64,7 +69,7 @@ export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolea
             x2={ends.outer.x}
             y2={ends.outer.y}
             stroke={passed || major ? "#ffffff" : "rgba(255,255,255,0.78)"}
-            strokeWidth={major ? 2.2 : 1.35}
+            strokeWidth={major ? 2 : 1.25}
             strokeLinecap="butt"
           />
         );
@@ -79,10 +84,6 @@ export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolea
           strokeWidth="1.8"
         />
       ) : null}
-      {live ? (
-        <line x1={tail.x} y1={tail.y} x2={tip.x} y2={tip.y} stroke="#CBF805" strokeWidth="2.2" strokeLinecap="round" />
-      ) : null}
-      <circle cx={CX} cy={CY} r="3.2" fill="#07080a" stroke="#CBF805" strokeWidth="1.4" />
     </svg>
   );
 }

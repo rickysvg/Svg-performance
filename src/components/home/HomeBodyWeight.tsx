@@ -40,8 +40,11 @@ export function HomeBodyWeight({
         <div className="min-w-0 flex-1">
           <span className="hc-kicker mb-1 block">Mass</span>
           <div
-            className="relative w-full"
-            style={{ aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}` }}
+            className="relative max-w-full"
+            style={{
+              width: MASS_DIAL.width,
+              aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}`,
+            }}
           >
             <MassGauge gauge={gauge} live={value != null} />
             <label
@@ -52,21 +55,23 @@ export function HomeBodyWeight({
                 transform: "translate(-50%, -100%)",
               }}
             >
-              <input
-                name="value"
-                inputMode="decimal"
-                required
-                min={1}
-                step="0.1"
-                value={draft}
-                placeholder="—"
-                aria-label="Body weight in pounds"
-                onChange={(event) => setDraft(event.target.value)}
-                style={{ width: figureWidth, textAlign: "center" }}
-                className={`block bg-transparent text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
-              />
-              <span className="absolute bottom-0.5 left-full ml-1 font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]">
-                {inlineUnit(unit)}
+              <span className="inline-flex items-end">
+                <input
+                  name="value"
+                  inputMode="decimal"
+                  required
+                  min={1}
+                  step="0.1"
+                  value={draft}
+                  placeholder="—"
+                  aria-label="Body weight in pounds"
+                  onChange={(event) => setDraft(event.target.value)}
+                  style={{ width: figureWidth, textAlign: "center" }}
+                  className={`block bg-transparent text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
+                />
+                <span className="mb-1 ml-1 font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]">
+                  {inlineUnit(unit)}
+                </span>
               </span>
             </label>
           </div>
