@@ -1,14 +1,13 @@
 import Link from "next/link";
 import {
-  FOUNDING_ANNUAL,
-  FOUNDING_CAP,
   PERFORMANCE_ANNUAL,
+  PERFORMANCE_ANNUAL_SAVE,
   PERFORMANCE_MONTHLY,
   usd,
 } from "@/lib/pricing";
 
 /** Shown to a nonmember after the 7-day Pro trial ends without a subscription. */
-export function TrialEndedPaywall({ foundingOpen = true }: { foundingOpen?: boolean }) {
+export function TrialEndedPaywall() {
   return (
     <section
       id="trial-ended"
@@ -27,12 +26,9 @@ export function TrialEndedPaywall({ foundingOpen = true }: { foundingOpen?: bool
       <p className="font-display stat-display mt-4 text-3xl text-black">
         {usd(PERFORMANCE_MONTHLY)}/mo
       </p>
-      <p className="text-sm text-black">or {usd(PERFORMANCE_ANNUAL)}/yr</p>
-      {foundingOpen ? (
-        <p className="mt-2 text-sm font-medium text-black">
-          Founding price {usd(FOUNDING_ANNUAL)}/year for the first {FOUNDING_CAP} members.
-        </p>
-      ) : null}
+      <p className="text-sm text-black">
+        or {usd(PERFORMANCE_ANNUAL)}/yr, {PERFORMANCE_ANNUAL_SAVE}
+      </p>
       <div className="mt-5 space-y-3">
         <Link
           href="/pricing"

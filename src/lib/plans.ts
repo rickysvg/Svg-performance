@@ -129,7 +129,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     gymPriceLabel: "$9.99/mo",
     nonmemberPriceLabel: "$9.99/mo",
     summary:
-      "$9.99/month or $72.99/year for everyone, academy members included. Founding price $59/year for the first 100 members.",
+      "$9.99/month or $72.99/year, save 39%, for everyone, academy members included.",
     includes: [...PRO_INCLUDES],
     rank: 1,
     features: [
@@ -372,8 +372,6 @@ export type CheckoutSkuId =
   | "performance_non"
   | "performance_annual_gym"
   | "performance_annual_non"
-  | "performance_founding_gym"
-  | "performance_founding_non"
   | "conditioning_gym"
   | "conditioning_non"
   | "conditioning_camp_gym"
@@ -398,7 +396,6 @@ export type CheckoutSkuId =
   | "platinum"
   | "performance_monthly"
   | "performance_year"
-  | "performance_founding"
   | "coaching_monthly";
 
 export type CheckoutSku = {
@@ -476,28 +473,6 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     envPrice: "STRIPE_PRICE_PERFORMANCE_ANNUAL_NON",
     amountLabel: "$72.99/yr",
     amountCents: 7299,
-    requiresGymVerify: false,
-    checkoutEnabled: false,
-    checkoutMode: "payment",
-  },
-  performance_founding_gym: {
-    id: "performance_founding_gym",
-    catalogId: "performance",
-    audience: "gym",
-    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING_GYM",
-    amountLabel: "$59/yr",
-    amountCents: 5900,
-    requiresGymVerify: true,
-    checkoutEnabled: false,
-    checkoutMode: "payment",
-  },
-  performance_founding_non: {
-    id: "performance_founding_non",
-    catalogId: "performance",
-    audience: "nonmember",
-    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING_NON",
-    amountLabel: "$59/yr",
-    amountCents: 5900,
     requiresGymVerify: false,
     checkoutEnabled: false,
     checkoutMode: "payment",
@@ -766,17 +741,6 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     checkoutEnabled: false,
     checkoutMode: "subscription",
   },
-  performance_founding: {
-    id: "performance_founding",
-    catalogId: "performance",
-    audience: "both",
-    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING",
-    amountLabel: "$59/yr",
-    amountCents: 5900,
-    requiresGymVerify: false,
-    checkoutEnabled: false,
-    checkoutMode: "subscription",
-  },
   coaching_monthly: {
     id: "coaching_monthly",
     catalogId: "coaching",
@@ -924,24 +888,3 @@ export function publicSkusForPlan(catalogId: CatalogPlanId) {
   );
 }
 
-/** Checkout SKUs that buy a founding seat ($59/yr, first 100 members). */
-export const FOUNDING_SKU_IDS: readonly CheckoutSkuId[] = [
-  "performance_founding",
-  "performance_founding_gym",
-  "performance_founding_non",
-];
-
-export function isFoundingSku(planRaw: string) {
-  return (FOUNDING_SKU_IDS as readonly string[]).includes(planRaw);
-}
-
-/** Stripe price IDs configured for founding SKUs. Values come from env and are never logged. */
-export function foundingPriceIds(): string[] {
-  const ids = FOUNDING_SKU_IDS.map((sku) => process.env[CHECKOUT_SKUS[sku].envPrice] ?? "");
-  return Array.from(new Set(ids.filter((id) => id.length > 0)));
-}
-
-export function isFoundingPriceId(priceId: string | null | undefined) {
-  if (!priceId) return false;
-  return foundingPriceIds().includes(priceId);
-}
