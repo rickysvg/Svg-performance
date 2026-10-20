@@ -143,8 +143,12 @@ describe("owner-approved three-plan pricing", () => {
     expect(read("src/components/pricing/FoundingOfferHighlight.tsx")).toContain("bg-accent");
     expect(read("src/app/pricing/page.tsx")).toContain("loadFoundingOffer");
     expect(read("src/lib/founding-offer.ts")).toContain("countFoundingSeats");
-    expect(read("src/app/(member)/admin/page.tsx")).toContain("data-founding-count");
-    expect(read("src/app/(member)/admin/page.tsx")).toContain("foundingSeatCountLine");
+    const desk = read("src/app/(member)/admin/page.tsx");
+    expect(desk).toContain('label="Founding"');
+    expect(desk).toContain("foundingDealTone");
+    expect(desk).toContain("deskTone");
+    expect(desk).not.toContain("of 40 left");
+    expect(read("src/app/(member)/admin/founding/page.tsx")).toContain("data-founding-fraction");
     const publicSurfaces = [
       "src/components/pricing/PricingCatalog.tsx",
       "src/app/pricing/page.tsx",

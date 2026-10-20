@@ -97,6 +97,7 @@ function DockLink({
 export function AppHeader({
   email,
   role,
+  showAdmin = false,
   homeHref,
   hideMemberLinks = false,
   placement = "top",
@@ -104,12 +105,14 @@ export function AppHeader({
 }: {
   email?: string;
   role?: string;
+  showAdmin?: boolean;
   homeHref?: string;
   hideMemberLinks?: boolean;
   placement?: "top" | "bottom";
   currentPath?: string;
 }) {
   const staff = role === "admin" || role === "coach";
+  const adminLink = showAdmin || role === "admin";
   const docked = placement === "bottom";
   const path = currentPath ?? "";
 
@@ -123,9 +126,9 @@ export function AppHeader({
           aria-hidden
           className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#CBF805] to-transparent"
         />
-        {!hideMemberLinks && (role === "admin" || staff) ? (
+        {!hideMemberLinks && (adminLink || staff) ? (
           <div className="mx-auto flex max-w-3xl justify-end gap-1.5 px-3 pt-2">
-            {role === "admin" ? (
+            {adminLink ? (
               <Link href="/admin" className={chipClass(isAccountNavActive(path, "/admin"), true)}>
                 Admin
               </Link>
@@ -196,7 +199,7 @@ export function AppHeader({
             aria-label="Account"
             className="flex min-w-0 flex-nowrap items-center justify-end gap-1.5"
           >
-            {!hideMemberLinks && role === "admin" ? (
+            {!hideMemberLinks && adminLink ? (
               <Link
                 href="/admin"
                 className={chipClass(isAccountNavActive(path, "/admin"), docked)}

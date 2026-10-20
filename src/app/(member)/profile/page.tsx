@@ -7,6 +7,7 @@ import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { YourDataSection } from "@/components/profile/YourDataSection";
 import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
 import { isAdmin, isStaff } from "@/lib/roles";
+import { isDashboardAdmin } from "@/lib/admin-access";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
 import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
@@ -231,19 +232,19 @@ export default async function ProfilePage() {
               </Link>
             </li>
           ) : null}
+          {isDashboardAdmin(user) ? (
+            <li>
+              <Link href="/admin" className="text-accent underline-offset-4 hover:underline">
+                Admin
+              </Link>
+            </li>
+          ) : null}
           {isAdmin(user) ? (
-            <>
-              <li>
-                <Link href="/admin" className="text-accent underline-offset-4 hover:underline">
-                  Admin
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/gymdesk" className="text-accent underline-offset-4 hover:underline">
-                  Gymdesk roster
-                </Link>
-              </li>
-            </>
+            <li>
+              <Link href="/admin/gymdesk" className="text-accent underline-offset-4 hover:underline">
+                Gymdesk roster
+              </Link>
+            </li>
           ) : null}
         </ul>
       </section>

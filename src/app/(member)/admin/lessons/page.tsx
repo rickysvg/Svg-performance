@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { lessonLevelLabel, lessonTopicLabel, listAllLessonsForAdmin } from "@/lib/lessons";
 import { publishLessonAction } from "@/app/actions/lessons";
 import { memberFacingTitle } from "@/lib/member-copy";
@@ -10,9 +11,7 @@ export default async function AdminLessonsPage() {
 
   return (
     <main className="space-y-6">
-      <Link href="/admin" className="text-sm text-accent underline">
-        Back to admin
-      </Link>
+      <AdminBack />
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl">Lessons</h1>
         <Link

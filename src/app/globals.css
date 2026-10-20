@@ -765,6 +765,25 @@ body:has(.app-splash.is-visible) {
   box-shadow: inset 0 1px 0 rgba(203, 248, 5, 0.55);
 }
 
+.hc-panel.desk-attention {
+  border-color: #ff3b3b;
+  box-shadow:
+    0 0 16px rgba(255, 59, 59, 0.45),
+    inset 0 1px 0 rgba(255, 59, 59, 0.7);
+}
+
+.hc-panel.desk-clear {
+  border-color: #cbf805;
+  box-shadow:
+    0 0 16px rgba(203, 248, 5, 0.4),
+    inset 0 1px 0 rgba(203, 248, 5, 0.75);
+}
+
+.hc-panel.desk-idle {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
 /* 16px 2×2 twill. Clear coat sits above the tile and under the type. */
 .hc-carbon {
   isolation: isolate;

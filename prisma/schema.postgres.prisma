@@ -246,6 +246,8 @@ model OutsideSessionLog {
   minutesPerRound Int
   intensity       String   @default("")
   notes           String   @default("")
+  /** Optional training partner. Blank when the member skips it. */
+  partner         String   @default("")
   /** 1–5, how the sparring session went. Null on logs saved before ratings. */
   sessionRating   Int?
   /** 1–5, how the body feels. 1–2 eases the next day. */
@@ -529,7 +531,7 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
-  /// True when this subscription holds a founding seat ($59/yr, first 100).
+  /// True when this subscription holds a founding seat ($59/yr, first 40).
   founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")

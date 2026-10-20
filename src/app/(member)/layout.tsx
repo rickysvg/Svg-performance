@@ -16,6 +16,7 @@ import { MemberProReminderBanner } from "@/components/upgrade/MemberProReminderB
 import { getAppTier } from "@/lib/entitlements";
 import { ensureMemberProMonth } from "@/lib/trial";
 import { isOpenWhenLocked, isResumeLoggerPath, PATH_HEADER } from "@/lib/locked-paths";
+import { isDashboardAdmin } from "@/lib/admin-access";
 
 export default async function MemberLayout({
   children,
@@ -28,7 +29,8 @@ export default async function MemberLayout({
   const profile = await getProfileForUser(user.id);
   const tier = await getAppTier(user.id);
   const pathname = (await headers()).get(PATH_HEADER);
-  const staff = user.role === "admin" || user.role === "coach";
+  const dashboardAdmin = isDashboardAdmin(user);
+  const staff = user.role === "admin" || user.role === "coach" || dashboardAdmin;
   const locked = tier === "locked" && !staff && !isOpenWhenLocked(pathname);
   const resumeLogger = isResumeLoggerPath(pathname);
   const showFullPaywall = locked && pathname !== "/home" && !resumeLogger;
@@ -49,6 +51,7 @@ export default async function MemberLayout({
       <MemberFrame
         email={user.email}
         role={user.role}
+        showAdmin={dashboardAdmin}
         timeZone={profile?.timeZone}
         graceEndsOn={showGrace && graceUntil ? formatGraceDate(graceUntil) : null}
         coachName={coach.name}

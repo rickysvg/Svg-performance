@@ -341,7 +341,7 @@ describe("scaled DEMO days in the database", () => {
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
     });
     const hold = advanced.sets.filter((set) => set.exerciseName === "Neck extension hold");
-    expect(hold).toHaveLength(3);
+    expect(hold).toHaveLength(4);
     expect(hold[0]?.logMode).toBe("timed");
     expect(hold[0]?.durationSeconds).toBeNull();
     expect(hold[0]?.reps).toBeNull();

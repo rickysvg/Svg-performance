@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { listUsersForAdmin } from "@/lib/admin";
 import { listGymdeskAdminSnapshot } from "@/lib/gymdesk/csv-apply";
 import {
@@ -51,9 +51,7 @@ export default async function AdminGymdeskPage() {
   return (
     <main className="space-y-6">
       <div>
-        <Link href="/admin" className="text-sm text-accent underline">
-          Back to toolkit
-        </Link>
+        <AdminBack />
         <h1 className="mt-2 text-2xl">Gymdesk roster</h1>
         <p className="mt-1 text-sm text-muted">
           Read-only match against SVG MMA Academy records. This app never writes to Gymdesk.
