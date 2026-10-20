@@ -21,7 +21,10 @@ export async function CheckInHomeBanner({
         className="flex min-h-16 items-center justify-between gap-3 rounded-2xl bg-[#CBF805] px-4 py-3 text-black"
       >
         <span className="flex items-center gap-2">
-          <span className="rounded-full bg-black px-2 py-0.5 text-xs font-semibold text-[#CBF805]">Due</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-black px-2 py-0.5 text-xs font-semibold text-[#CBF805]">
+            <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden />
+            Due
+          </span>
           <span className="text-sm uppercase tracking-wide">Weekly check-in due</span>
         </span>
         <span className="rounded-full bg-black px-3 py-2 text-sm text-[#CBF805]">Open</span>

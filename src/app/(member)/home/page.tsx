@@ -8,7 +8,6 @@ import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { HomeDailyQuote } from "@/components/home/HomeDailyQuote";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
-import { HomeTelemetry } from "@/components/home/HomeTelemetry";
 import { HomeToday } from "@/components/home/HomeToday";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -23,7 +22,6 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentWeightsForUser } from "@/lib/body-metrics";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
-import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
@@ -40,7 +38,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -58,11 +56,6 @@ export default async function HomePage({
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getRecentWeightsForUser(user.id, 8), []),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
-      homeLoad(
-        "telemetry",
-        getHomeTelemetry({ userId: user.id, timeZone: tz }),
-        emptyHomeTelemetry(new Date(), tz),
-      ),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
@@ -168,8 +161,6 @@ export default async function HomePage({
           coachImage={coach.circle}
         />
       ) : null}
-
-      <HomeTelemetry data={telemetry} />
 
       <Link
         href="/nutrition"

@@ -83,6 +83,9 @@ export function SparringTrend({ logs }: { logs: SparringLog[] }) {
           {rated.map((log) => (
             <li key={log.dateKey} className="border-t border-line pt-3 first:border-0 first:pt-0">
               <p className="text-sm font-semibold">
+                {log.bodyRating != null && log.bodyRating <= 2 ? (
+                  <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-signal align-middle" aria-hidden />
+                ) : null}
                 {log.weekday || log.dateKey}
                 <span className="font-normal text-muted">
                   {" "}

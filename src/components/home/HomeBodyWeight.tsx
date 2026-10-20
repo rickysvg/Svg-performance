@@ -37,7 +37,9 @@ export function HomeBodyWeight({
     <form action={action} data-mass-box className={carbon ? "hc-panel hc-carbon px-3 py-2" : "px-0 py-1"}>
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <span className="hc-kicker mb-1 block">Mass</span>
+          <span className="mb-1 block font-telemetry text-[10px] uppercase leading-none tracking-[0.22em] text-signal">
+            Current Weight
+          </span>
           <div
             className="relative max-w-full shrink-0"
             style={{
@@ -71,7 +73,7 @@ export function HomeBodyWeight({
               <span
                 data-mass-unit
                 aria-hidden
-                className={`${massUnitClass} text-[11px] font-semibold leading-none tracking-normal text-[#CBF805] [text-shadow:0_0_1px_#07080a,0_0_6px_rgba(203,248,5,0.28)]`}
+                className={`${massUnitClass} text-[11px] font-semibold leading-none tracking-normal text-signal [text-shadow:0_0_1px_#07080a,0_0_6px_rgba(255,59,59,0.35)]`}
                 style={{ gridArea: "1 / 1", justifySelf: "end", transform: "translateX(calc(100% + 2px))" }}
               >
                 {unitLabel(unit)}
@@ -92,7 +94,8 @@ export function HomeBodyWeight({
       <input type="hidden" name="recordedAt" value={recordedAt} />
       <input type="hidden" name="notes" value="" />
       <p className="mt-0.5 text-center font-telemetry text-[10px] uppercase leading-tight tracking-[0.16em] text-[#CBF805]/85">
-        {caption}
+        {caption.startsWith("▼") ? <span className="text-signal">{caption.slice(0, 1)}</span> : null}
+        {caption.startsWith("▼") ? caption.slice(1) : caption}
       </p>
       <StatusBanner error={state.error} success={state.success} />
     </form>
