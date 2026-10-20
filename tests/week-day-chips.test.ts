@@ -30,6 +30,20 @@ describe("Train / Calendar day chips", () => {
     expect(read("src/app/(member)/training/page.tsx")).not.toContain("rearrange");
   });
 
+  it("gives today the lime chip and a previewed day a thin light outline", () => {
+    const strip = read("src/components/training/WeekStrip.tsx");
+    expect(strip).toContain("data-week-today");
+    expect(strip).toContain("data-week-selected");
+    expect(strip).toContain("border-accent");
+    expect(strip).toContain("bg-accent/15");
+    expect(strip).toContain("border-[#cfd6c8]");
+    expect(strip).toContain('aria-current={day.isToday ? "date" : undefined}');
+    expect(strip).not.toContain("ring-accent");
+    expect(strip).not.toContain("bg-black text-white");
+    expect(read("src/app/globals.css")).toContain("[data-week-strip] a:focus-visible");
+    expect(read("src/lib/home.ts")).toContain("weekStrip(prefs, now, tz, selected, swaps, selected)");
+  });
+
   it("turns summaries into activity icons and keeps rest words", () => {
     expect(weekChipActivities("Bag+Lift+Cardio").map((item) => item.id)).toEqual([
       "Bag",

@@ -90,6 +90,12 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
+/* Week chips: focus must not wear the same lime outline as today. */
+[data-week-strip] a:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 0.55);
+  outline-offset: 2px;
+}
+
 .touch-target {
   min-height: 44px;
   min-width: 44px;

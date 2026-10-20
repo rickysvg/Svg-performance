@@ -551,7 +551,9 @@ export function weekStrip(
       dayParam,
       dateLabel: String(zonedParts(date, timeZone).day),
       isToday: dayParam === todayKey,
-      isSelected: weekAnchor ? dayParam === selectedKey : weekday === selectedWeekday,
+      // Match the calendar date, not the weekday name. A Thursday in another
+      // week must not light up this week's Thursday.
+      isSelected: dayParam === selectedKey,
       isPast: dayParam < todayKey,
       active: plan.active,
       summary: plan.summary,

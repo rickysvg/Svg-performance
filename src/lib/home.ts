@@ -321,7 +321,7 @@ export async function getHomeToday(
     plannedSessions,
     nextSession: nextSession as ResolvedPlanSession | null,
     nextSessionWeekday: nextPlan?.weekday ?? "",
-    weekStrip: weekStrip(prefs, selected, tz, undefined, swaps),
+    weekStrip: weekStrip(prefs, now, tz, selected, swaps, selected),
     planWeekday: todayPlan.weekday,
     planSummary: todayPlan.summary,
     mesoLabel: todayPlan.mesoLabel,

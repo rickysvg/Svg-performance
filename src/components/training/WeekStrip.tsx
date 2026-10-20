@@ -338,7 +338,9 @@ export function WeekStrip({
               data-move-source={held ? "true" : undefined}
               data-week-past={day.isPast ? "true" : undefined}
               data-week-missed={missed ? "true" : undefined}
-              aria-current={selected ? "date" : undefined}
+              aria-current={day.isToday ? "date" : undefined}
+              data-week-today={day.isToday ? "true" : undefined}
+              data-week-selected={selected ? "true" : undefined}
               aria-pressed={rearrange ? held : undefined}
               aria-label={label}
               draggable={false}
@@ -361,42 +363,38 @@ export function WeekStrip({
                 setError(null);
               }}
               onClick={(event) => onChipClick(event, day.weekday)}
-              className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center transition-colors ${
+              className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center text-foreground transition-colors ${
                 rearrange ? "touch-manipulation select-none" : ""
               } ${
-                held || day.movedFrom ? "ring-2 ring-inset ring-accent" : ""
-              } ${
-                selected
-                  ? "bg-black text-white"
-                  : "border border-line bg-card text-foreground hover:border-black/40"
-              }`}
+                day.isToday
+                  ? "border-2 border-accent bg-accent/15 shadow-[0_0_16px_rgba(203,248,5,0.35)]"
+                  : selected
+                    ? "border border-[#cfd6c8] bg-card"
+                    : "border border-line bg-card hover:border-white/30"
+              } ${held ? "ring-2 ring-inset ring-white/70" : ""}`}
             >
               <span
                 className={`font-display text-[11px] uppercase leading-none tracking-wide ${
-                  selected ? "text-highlighter" : "text-muted"
+                  day.isToday ? "text-accent" : selected ? "text-foreground" : "text-muted"
                 }`}
               >
                 {day.short}
               </span>
               <span
                 data-week-chip-date
-                className={`font-display mt-1 text-base leading-none ${
-                  selected ? "text-white" : "text-foreground"
-                }`}
+                className="font-display mt-1 text-base leading-none text-foreground"
               >
                 {day.dateLabel}
               </span>
               {word ? (
                 <span
                   data-week-chip-label
-                  className={`mt-1 text-[11px] font-medium leading-none ${
-                    selected ? "text-white" : "text-foreground"
-                  }`}
+                  className="mt-1 text-[11px] font-medium leading-none text-foreground"
                 >
                   {word}
                 </span>
               ) : (
-                <ActivityMarks activities={activities} selected={selected} />
+                <ActivityMarks activities={activities} selected={false} />
               )}
               {logged ? (
                 <span
@@ -408,8 +406,6 @@ export function WeekStrip({
                     <path d="M2.2 6.2 4.8 8.6 9.8 3.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </span>
-              ) : day.isToday && !selected ? (
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
               ) : missed ? (
                 <span
                   className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full border border-foreground/40"
