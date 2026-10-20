@@ -16,6 +16,11 @@ export type OutsideDay = {
   kind: OutsideKind;
   /** 24-hour HH:MM. Optional. */
   time?: string;
+  /**
+   * Hard class (wrestling, MMA, live rounds that are not a sparring day).
+   * Absent means "not set". False is an explicit off.
+   */
+  hard?: boolean;
 };
 
 export type LiftKind = "lower" | "push" | "pull" | "posterior" | "moderate-upper";
@@ -91,7 +96,7 @@ export function parseOutsideTraining(raw: string | null | undefined): OutsideDay
   const seen = new Set<string>();
   for (const item of parsed) {
     if (!item || typeof item !== "object") continue;
-    const row = item as { weekday?: unknown; kind?: unknown; time?: unknown };
+    const row = item as { weekday?: unknown; kind?: unknown; time?: unknown; hard?: unknown };
     if (typeof row.weekday !== "string" || !isTrainingWeekday(row.weekday)) continue;
     if (seen.has(row.weekday)) continue;
     const kind: OutsideKind = row.kind === "sparring" ? "sparring" : "class";
@@ -99,14 +104,15 @@ export function parseOutsideTraining(raw: string | null | undefined): OutsideDay
       typeof row.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(row.time)
         ? row.time
         : undefined;
+    const hard = row.hard === true ? true : row.hard === false ? false : undefined;
     seen.add(row.weekday);
-    days.push({ weekday: row.weekday, kind, time });
+    days.push({ weekday: row.weekday, kind, time, ...(hard === undefined ? {} : { hard }) });
   }
   return days;
 }
 
 export function normalizeOutsideInput(
-  rows: Array<{ weekday: string; kind?: string; time?: string }>,
+  rows: Array<{ weekday: string; kind?: string; time?: string; hard?: boolean }>,
 ) {
   return parseOutsideTraining(
     JSON.stringify(
@@ -114,6 +120,7 @@ export function normalizeOutsideInput(
         weekday: row.weekday,
         kind: row.kind === "sparring" ? "sparring" : "class",
         ...(row.time?.trim() ? { time: row.time.trim() } : {}),
+        hard: row.hard === true,
       })),
     ),
   );
@@ -125,6 +132,7 @@ export function serializeOutsideTraining(days: OutsideDay[]) {
       weekday: day.weekday,
       kind: day.kind,
       ...(day.time ? { time: day.time } : {}),
+      ...(day.hard === true || day.hard === false ? { hard: day.hard } : {}),
     })),
   );
 }
@@ -140,9 +148,43 @@ export function formatClockTime(time?: string) {
 }
 
 export function outsideDayLabel(day: OutsideDay) {
-  const name = day.kind === "sparring" ? "Sparring" : "Class / drilling";
+  const name =
+    day.kind === "sparring" ? "Sparring" : day.hard ? "Hard class" : "Class / drilling";
   const clock = formatClockTime(day.time);
   return clock ? `${name} · ${clock}` : name;
+}
+
+/**
+ * Schedule used by the week planner.
+ * Ricky spars on Saturday only. Wednesday is a hard class day unless he saved hard: false.
+ * That default is applied here and is not written back to his profile.
+ */
+export function resolveOutsideDays(input: {
+  outsideTraining?: OutsideDay[] | null;
+  trainingFocus?: string | null;
+  email?: string | null;
+}): OutsideDay[] {
+  const days = v2OutsideDays(input.outsideTraining ?? [], input.trainingFocus).map((day) => ({
+    ...day,
+  }));
+  const ricky = (input.email ?? "").trim().toLowerCase() === RICKY_EMAIL;
+  if (!ricky) return days;
+  const withoutOtherSparring = days.filter(
+    (day) => day.kind !== "sparring" || day.weekday === "Saturday",
+  );
+  const wednesdayIndex = withoutOtherSparring.findIndex((day) => day.weekday === "Wednesday");
+  if (wednesdayIndex === -1) {
+    withoutOtherSparring.push({ weekday: "Wednesday", kind: "class", time: "18:00", hard: true });
+  } else if (withoutOtherSparring[wednesdayIndex]?.hard !== false) {
+    const current = withoutOtherSparring[wednesdayIndex]!;
+    withoutOtherSparring[wednesdayIndex] = {
+      ...current,
+      kind: "class",
+      hard: true,
+      time: current.time ?? "18:00",
+    };
+  }
+  return withoutOtherSparring;
 }
 
 /**
@@ -176,10 +218,13 @@ export function assignWeek(input: {
   email?: string | null;
   outsideTraining?: OutsideDay[] | null;
 }): Record<TrainingWeekday, DayRole> {
-  const outside = v2OutsideDays(input.outsideTraining ?? [], input.trainingFocus);
+  const outside = resolveOutsideDays(input);
   const byDay = new Map(outside.map((day) => [day.weekday, day]));
   const sparring = new Set(outside.filter((day) => day.kind === "sparring").map((day) => day.weekday));
   const classDays = new Set(outside.filter((day) => day.kind === "class").map((day) => day.weekday));
+  const hardClass = new Set(
+    outside.filter((day) => day.kind === "class" && day.hard === true).map((day) => day.weekday),
+  );
   const blocked = new Set<TrainingWeekday>([...sparring, ...classDays]);
   const preClass = new Set<TrainingWeekday>();
   const preSpar = new Set<TrainingWeekday>();
@@ -221,7 +266,8 @@ export function assignWeek(input: {
   };
   for (const day of liftOrder) {
     if (blocked.has(day)) continue;
-    roles[day].lift = day === "Thursday" && preSpar.has(day) ? "moderate-upper" : liftKind[day] ?? "posterior";
+    // A scheduled sparring day does not lighten the next lift. Only a logged rating does that.
+    roles[day].lift = liftKind[day] ?? "posterior";
   }
 
   const mobilityTargets: TrainingWeekday[] = isScOnly(input.trainingFocus)
@@ -249,7 +295,7 @@ export function assignWeek(input: {
     const role = roles[day];
     if (sparring.has(day)) continue;
     if (classDays.has(day)) {
-      role.cardio = "easy";
+      role.cardio = hardClass.has(day) ? "moderate" : "easy";
       continue;
     }
     if (day === "Wednesday" || day === "Sunday") {

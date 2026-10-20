@@ -20,7 +20,7 @@ import {
   WEEKDAYS,
 } from "@/lib/constants";
 import { OutsideTrainingFields } from "@/components/profile/OutsideTrainingFields";
-import { defaultLiftDays } from "@/lib/member-plan";
+import { defaultLiftDays, resolveOutsideDays } from "@/lib/member-plan";
 import type { ProfileRecord } from "@/lib/profile";
 import { timezoneSelectOptions } from "@/lib/timezone";
 
@@ -260,7 +260,13 @@ export function ProfileForm({
         </div>
       </fieldset>
 
-      <OutsideTrainingFields days={profile.outsideTraining ?? []} />
+      <OutsideTrainingFields
+        days={resolveOutsideDays({
+          outsideTraining: profile.outsideTraining,
+          trainingFocus,
+          email,
+        })}
+      />
 
       <fieldset>
         <legend className="text-sm font-medium">Days you can train</legend>

@@ -238,7 +238,14 @@ export async function easePlanForUser(
   const row = await prisma.outsideSessionLog.findUnique({
     where: { userId_dateKey: { userId, dateKey: previousKey } },
   });
-  if (!row || !sparringNeedsEase({ bodyRating: row.bodyRating, soreSpots: parseStoredSpots(row.soreSpots) })) {
+  if (
+    !row ||
+    !sparringNeedsEase({
+      bodyRating: row.bodyRating,
+      sessionRating: row.sessionRating,
+      soreSpots: parseStoredSpots(row.soreSpots),
+    })
+  ) {
     return { plan, checkIn: null };
   }
   const spots = parseStoredSpots(row.soreSpots);
@@ -288,7 +295,15 @@ export async function easeWeekStripDays<
     const previous = byKey.get(dayKey(addZonedDays(day.date, -1, timeZone), timeZone));
     if (!previous) return day;
     const spots = parseStoredSpots(previous.soreSpots);
-    if (!sparringNeedsEase({ bodyRating: previous.bodyRating, soreSpots: spots })) return day;
+    if (
+      !sparringNeedsEase({
+        bodyRating: previous.bodyRating,
+        sessionRating: previous.sessionRating,
+        soreSpots: spots,
+      })
+    ) {
+      return day;
+    }
     const eased = easeDayPlan(
       planForDate(prefs, day.date, timeZone, swaps),
       recoveryEaseReason({ bodyRating: previous.bodyRating, soreSpots: spots }),

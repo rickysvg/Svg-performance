@@ -86,11 +86,19 @@ export function sparringDateError(dateKey: string, now = new Date(), timeZone = 
   return null;
 }
 
-/** Body at 2 or below, or a tapped head, means the next day should be easier. */
+/**
+ * The next day eases only after a saved sparring log that includes a 1–5 rating.
+ * Body at 2 or below, or a tapped head, is the trigger. A scheduled class or
+ * sparring day never eases the next day by itself.
+ */
 export function sparringNeedsEase(log: {
   bodyRating: number | null;
   soreSpots: readonly string[];
+  sessionRating?: number | null;
 }) {
+  const rated =
+    ratingInRange(log.bodyRating ?? Number.NaN) || ratingInRange(log.sessionRating ?? Number.NaN);
+  if (!rated) return false;
   if (log.bodyRating != null && log.bodyRating <= 2) return true;
   return log.soreSpots.includes("head");
 }
