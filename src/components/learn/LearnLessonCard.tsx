@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { DemoBadge } from "@/components/DemoBadge";
 import { LearnThumb } from "@/components/learn/LearnThumb";
+import { memberFacingTitle } from "@/lib/member-copy";
 import { UpgradePreviewSheet } from "@/components/upgrade/UpgradePreviewSheet";
 import { lessonLevelLabel, lessonTopicLabel } from "@/lib/lessons";
 import { catalogEntryForSlug } from "@/lib/learn-catalog";
@@ -44,10 +44,9 @@ function LessonBody({
       </div>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className=" leading-snug">{lesson.title}</h2>
+          <h2 className=" leading-snug">{memberFacingTitle(lesson.title)}</h2>
           <p className="mt-1 text-sm text-muted">{channel}</p>
         </div>
-        {lesson.isDemo ? <DemoBadge /> : null}
       </div>
       <p className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full border border-line px-2.5 py-1 text-muted">

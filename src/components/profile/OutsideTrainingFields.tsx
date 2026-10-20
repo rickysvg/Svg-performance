@@ -9,9 +9,10 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
       <legend className="text-sm font-medium">My gym / class days</legend>
       <p className="mt-1 text-xs text-foreground">
         Class / drilling keeps that day light (mobility and easy cardio) and the day before off heavy
-        legs and hard intervals. Hard class day keeps the app work to a light-to-moderate bike and
-        does not change the next day. Sparring has no app workout — you log rounds after. The next
-        day eases only when that log has a rating. Time is optional.
+        legs and hard intervals. Hard class day saves on its own, even when that weekday box is off,
+        and keeps the app work to a light-to-moderate bike. It does not change the next day. Sparring
+        has no app workout — you log rounds after. The next day eases only when that log has a rating.
+        Time is optional.
       </p>
       <div className="mt-3 space-y-3">
         {WEEKDAYS.map((day) => {
@@ -57,7 +58,7 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
                     type="checkbox"
                     name={`outsideHard-${day}`}
                     data-hard-class={day}
-                    defaultChecked={saved?.kind !== "sparring" && saved?.hard === true}
+                    defaultChecked={saved?.hard === true}
                     className="h-5 w-5 accent-accent"
                   />
                   Hard class day

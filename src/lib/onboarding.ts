@@ -410,18 +410,18 @@ export function sessionLengthHint(sessionLengthMin: number | null) {
   if (!sessionLengthMin) {
     return "";
   }
-  return `You said typical sessions are ${sessionLengthMin} minutes. This DEMO day is a template — stop when the work is honest.`;
+  return `You said typical sessions are ${sessionLengthMin} minutes. This day is a template — stop when the work is honest.`;
 }
 
 export function trainingLocationHint(location: string) {
   if (location === "home") {
-    return "You train at home. The DEMO template uses simple equipment.";
+    return "You train at home. The template uses simple equipment.";
   }
   if (location === "gym") {
-    return "You train at the gym. The DEMO template still stays labeled DEMO.";
+    return "You train at the gym. The template uses the gym equipment you listed.";
   }
   if (location === "both") {
-    return "You train at the gym and at home. The DEMO template uses simple equipment on purpose.";
+    return "You train at the gym and at home. The template uses simple equipment on purpose.";
   }
   return "";
 }

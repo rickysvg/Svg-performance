@@ -74,7 +74,7 @@ export function LessonForm({ lesson }: { lesson?: Lesson }) {
       <textarea name="supervisedNote" defaultValue={lesson?.supervisedNote} placeholder="Supervision note" rows={2} className="w-full rounded-xl border border-line bg-card px-3 py-3" />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isDemo" defaultChecked={lesson?.isDemo ?? true} className="h-5 w-5 accent-accent" />
-        Label as DEMO
+        Sample content
       </label>
       <button disabled={pending} className="touch-target w-full rounded-full bg-accent text-black">
         {pending ? "Saving…" : "Save lesson"}

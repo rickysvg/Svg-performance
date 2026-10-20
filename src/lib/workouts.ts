@@ -3,7 +3,8 @@ import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
-import { APP_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
+import { civilDayInstant } from "@/lib/performed-at";
+import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
@@ -561,16 +562,51 @@ export async function updateWorkoutSessionForUser(input: {
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    if (input.baseUpdatedAt) {
+    const databaseUrl = process.env.DATABASE_URL ?? "";
+    if (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://")) {
+      await tx.$queryRaw`SELECT "id" FROM "WorkoutSession" WHERE "id" = ${input.workoutId} FOR UPDATE`;
+    }
+    const current = await tx.workoutSession.findUnique({
+      where: { id: input.workoutId },
+      include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+    });
+    if (!current || current.userId !== input.userId) {
+      throw new NotFoundError("Workout not found.");
+    }
+    if (input.status === "draft" && current.status === "complete") {
+      return current;
+    }
+    if (input.baseUpdatedAt && input.status === "draft") {
       const base = new Date(input.baseUpdatedAt);
       if (Number.isNaN(base.getTime())) {
         throw new AppError("WORKOUT", "Draft is out of date. Reload the workout.");
       }
       const claimed = await tx.workoutSession.updateMany({
-        where: { id: input.workoutId, userId: input.userId, updatedAt: base },
+        where: {
+          id: input.workoutId,
+          userId: input.userId,
+          status: "draft",
+          updatedAt: base,
+        },
         data: { title },
       });
       if (claimed.count === 0) throw new StaleDraftError();
+    }
+    const stillDraft = await tx.workoutSession.updateMany({
+      where: {
+        id: input.workoutId,
+        userId: input.userId,
+        ...(input.status === "draft" ? { status: "draft" as const } : {}),
+      },
+      data: { title },
+    });
+    if (stillDraft.count === 0) {
+      const saved = await tx.workoutSession.findUnique({
+        where: { id: input.workoutId },
+        include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+      });
+      if (saved?.status === "complete" && input.status === "draft") return saved;
+      throw new StaleDraftError();
     }
     await tx.workoutSet.deleteMany({
       where: { workoutSessionId: input.workoutId },
@@ -633,6 +669,36 @@ export async function updateWorkoutSessionForUser(input: {
  * A finished session with no reps, load, or time was never really saved.
  * Put it back to draft so the local logger can still save into the same id.
  */
+/**
+ * A draft that already has logged sets, dated before today in the member zone,
+ * is a finish that never stuck. Mark it complete. Do not invent sets, and do
+ * not close a draft the member still has open today.
+ */
+export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZone: string) {
+  const today = dayKey(now, timeZone);
+  const drafts = await prisma.workoutSession.findMany({
+    where: { userId, status: "draft" },
+    select: {
+      id: true,
+      performedAt: true,
+      sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
+    },
+  });
+  const ids = drafts
+    .filter(
+      (row) =>
+        sessionHasLoggedWork(row.sets) &&
+        dayKey(civilDayInstant(row.performedAt, timeZone), timeZone) < today,
+    )
+    .map((row) => row.id);
+  if (ids.length === 0) return 0;
+  const result = await prisma.workoutSession.updateMany({
+    where: { id: { in: ids }, userId, status: "draft" },
+    data: { status: "complete" },
+  });
+  return result.count;
+}
+
 export async function reopenEmptyCompletion<
   T extends { id: string; status: string; sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[] },
 >(session: T): Promise<T> {

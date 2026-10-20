@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { DemoBadge } from "@/components/DemoBadge";
 import type { getChallengeProgressForUser } from "@/lib/challenges";
+import { memberFacingTitle } from "@/lib/member-copy";
 
 type Progress = Awaited<ReturnType<typeof getChallengeProgressForUser>>;
 
@@ -14,9 +14,8 @@ export function ChallengeHomeCard({ progress }: { progress: Progress }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-accent">Monthly challenge</p>
-          <h2 className="mt-1">{challenge.title}</h2>
+          <h2 className="mt-1">{memberFacingTitle(challenge.title)}</h2>
         </div>
-        {challenge.isDemo ? <DemoBadge /> : null}
       </div>
       <p className="mt-2 text-sm text-muted">
         {enrollment

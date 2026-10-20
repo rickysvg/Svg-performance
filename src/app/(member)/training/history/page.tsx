@@ -27,7 +27,7 @@ export default async function HistoryPage() {
           title="No sessions yet"
           action={
             <Link href="/training" className="text-accent underline">
-              Start a DEMO session
+              Start a session
             </Link>
           }
         >

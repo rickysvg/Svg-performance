@@ -3,10 +3,19 @@ export function memberCopy(text: string) {
   return text.replace(/\bGPP\b/g, "Cardio").replace(/\bgpp\b/g, "cardio");
 }
 
-/** New members should not see seeded DEMO labels or catalog day numbers. */
+/** Drop the seeded sample label from anything a member can read. */
+export function stripDemoLabel(text: string) {
+  return text
+    .replace(/\bDEMO\b\s*[—–-]\s*/gi, "")
+    .replace(/\bDEMO\b/gi, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([,.;:])/g, "$1")
+    .trim();
+}
+
+/** New members should not see seeded sample labels or catalog day numbers. */
 export function memberFacingTitle(title: string) {
-  return memberCopy(title)
-    .replace(/^DEMO\s*[—–-]\s*/i, "")
+  return stripDemoLabel(memberCopy(title))
     .replace(/^Day\s+\d+\s*[—–-]\s*/i, "")
     .trim();
 }

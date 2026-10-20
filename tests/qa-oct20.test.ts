@@ -9,6 +9,8 @@ import { restAfterExerciseChange, startRestTimer } from "@/lib/rest-timer";
 import { REMOVE_TOAST_MS } from "@/components/training/RemoveToast";
 import { DEMO_FORM_VIDEOS, lookupFormVideo, showFormVideoPending } from "@/lib/form-videos";
 import { saveSparringLog, sparringDateError } from "@/lib/outside-log";
+import { outsideRowsFromForm } from "@/lib/member-plan";
+import { memberDayTimeZone } from "@/lib/timezone";
 import { AppError } from "@/lib/errors";
 import { stripWeekMarker, v2StrengthDays } from "@/lib/v2-lifts";
 import type { DayPlan } from "@/lib/week-plan";
@@ -50,6 +52,29 @@ describe("QA Oct 20", () => {
     expect(blocks[0]).toMatchObject({ type: "list", ordered: true });
     if (blocks[0]?.type !== "list") return;
     expect(blocks[0].items).toHaveLength(3);
+  });
+
+  it("keeps nested bullets inside the same numbered list", () => {
+    const blocks = parseCoachMarkdown(
+      "1. Hands home\n   - Chin tucked\n   - Elbows in\n2. Exit on the bell",
+    );
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatchObject({ type: "list", ordered: true, start: 1 });
+    if (blocks[0]?.type !== "list") return;
+    expect(blocks[0].items).toHaveLength(2);
+    const nested = blocks[0].items[0]?.children?.[0];
+    expect(nested).toMatchObject({ type: "list", ordered: false });
+    if (nested?.type === "list") expect(nested.items).toHaveLength(2);
+    expect(blocks[0].items[1]?.inlines[0]).toMatchObject({ type: "text", text: "Exit on the bell" });
+  });
+
+  it("saves a hard class day even when that weekday box is off", () => {
+    const form = new FormData();
+    form.append("outsideHard-Wednesday", "on");
+    form.append("outsideKind-Wednesday", "class");
+    expect(outsideRowsFromForm(form)).toEqual([
+      expect.objectContaining({ weekday: "Wednesday", kind: "class", hard: true }),
+    ]);
   });
 
   it("labels an eased heavy day Mobility+Cardio for the week chip", () => {
@@ -131,5 +156,26 @@ describe("QA Oct 20 sparring save", () => {
     });
     expect(saved.intensity).toBe("moderate");
     expect(saved.partner).toBe("Alex");
+  });
+
+  it("rejects a Denver-future day when the only zone signal is a UTC cookie", async () => {
+    const now = new Date("2026-10-21T02:00:00.000Z");
+    const zone = memberDayTimeZone(null, "UTC");
+    expect(zone).toBe("America/Denver");
+    expect(sparringDateError("2026-10-21", now, "UTC")).toBeNull();
+    expect(sparringDateError("2026-10-21", now, zone)).toMatch(/Future/);
+    const user = await makeUser("qa-oct21-utc@example.com");
+    await expect(
+      saveSparringLog(user.id, {
+        dateKey: "2026-10-21",
+        weekday: "Wednesday",
+        rounds: 3,
+        minutesPerRound: 3,
+        sessionRating: 4,
+        bodyRating: 3,
+        now,
+        timeZone: zone,
+      }),
+    ).rejects.toBeInstanceOf(AppError);
   });
 });

@@ -78,7 +78,7 @@ export default async function NutritionPage() {
         <h2 className="text-lg">Your log</h2>
       {entries.length === 0 ? (
           <EmptyState title="No meals yet">
-            Search a DEMO food or type an estimate above. Numbers stay yours to correct.
+            Search a food or type an estimate above. Numbers stay yours to correct.
           </EmptyState>
         ) : (
           <ul className="space-y-3">

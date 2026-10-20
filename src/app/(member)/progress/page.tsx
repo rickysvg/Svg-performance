@@ -333,7 +333,7 @@ export default async function ProgressPage() {
           value={heartTiles.lastWorkout?.value ?? "—"}
           hint={
             heartTiles.lastWorkout?.hint ??
-            "Avg / max — Apple Health import, manual, Polar, or DEMO"
+            "Avg / max — Apple Health import, manual, or Polar"
           }
         />
         <MetricTile
@@ -408,7 +408,7 @@ export default async function ProgressPage() {
           title="Nothing to chart yet"
           action={
             <Link href="/training" className="text-accent underline">
-              Log a DEMO session
+              Log a session
             </Link>
           }
         >

@@ -1,4 +1,24 @@
-import { parseCoachMarkdown, type CoachInline } from "@/lib/coach/markdown";
+import { parseCoachMarkdown, type CoachBlock, type CoachInline } from "@/lib/coach/markdown";
+
+function CoachList({ block }: { block: Extract<CoachBlock, { type: "list" }> }) {
+  const Tag = block.ordered ? "ol" : "ul";
+  const start = block.ordered && block.start && block.start > 1 ? block.start : undefined;
+  return (
+    <Tag
+      start={start}
+      className={`space-y-1 pl-5 ${block.ordered ? "list-decimal" : "list-disc"}`}
+    >
+      {block.items.map((item, itemIndex) => (
+        <li key={itemIndex}>
+          <InlineRun inlines={item.inlines} />
+          {item.children?.map((child, childIndex) =>
+            child.type === "list" ? <CoachList key={childIndex} block={child} /> : null,
+          )}
+        </li>
+      ))}
+    </Tag>
+  );
+}
 
 function InlineRun({ inlines }: { inlines: CoachInline[] }) {
   return (
@@ -47,16 +67,7 @@ export function CoachMarkdown({ text }: { text: string }) {
           );
         }
         if (block.type === "list") {
-          const Tag = block.ordered ? "ol" : "ul";
-          return (
-            <Tag key={index} className={`space-y-1 pl-5 ${block.ordered ? "list-decimal" : "list-disc"}`}>
-              {block.items.map((item, itemIndex) => (
-                <li key={itemIndex}>
-                  <InlineRun inlines={item} />
-                </li>
-              ))}
-            </Tag>
-          );
+          return <CoachList key={index} block={block} />;
         }
         if (block.type === "code") {
           return (

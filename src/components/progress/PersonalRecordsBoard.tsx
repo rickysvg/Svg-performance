@@ -25,7 +25,7 @@ export function PersonalRecordsBoard({ records }: { records: PersonalRecords }) 
             this board fills in.
           </p>
           <Link href="/training" className="mt-3 inline-block text-sm text-accent underline">
-            Log a DEMO session
+            Log a session
           </Link>
         </div>
       ) : (

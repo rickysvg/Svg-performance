@@ -39,7 +39,7 @@ export async function getDemoProgram() {
   const program = await findDemoProgram();
   if (!program) {
     throw new NotFoundError(
-      "The DEMO program is missing. Run npm run db:setup to load it.",
+      "The training program is missing. Run npm run db:setup to load it.",
     );
   }
   return program;

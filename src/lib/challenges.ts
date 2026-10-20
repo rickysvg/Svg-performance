@@ -176,10 +176,10 @@ export async function ensureDemoChallenge(now = new Date()) {
   return prisma.svgChallenge.upsert({
     where: { monthKey },
     create: {
-      title: "DEMO — Show up this month",
+      title: "Show up this month",
       monthKey,
       summary:
-        "Consistency only: log a workout and/or a meal on enough days. Not a heaviest-lift contest. Labeled DEMO.",
+        "Consistency only: log a workout and/or a meal on enough days. Not a heaviest-lift contest.",
       beginnerGoalDays: 8,
       advancedGoalDays: 16,
       active: true,

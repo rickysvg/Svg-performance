@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
 import { lessonLevelLabel, lessonTopicLabel, listAllLessonsForAdmin } from "@/lib/lessons";
 import { publishLessonAction } from "@/app/actions/lessons";
-import { DemoBadge } from "@/components/DemoBadge";
+import { memberFacingTitle } from "@/lib/member-copy";
 
 export default async function AdminLessonsPage() {
   await requireAdmin();
@@ -26,8 +26,7 @@ export default async function AdminLessonsPage() {
         {lessons.map((lesson) => (
           <li key={lesson.id} className="rounded-2xl border border-line bg-card p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-semibold">{lesson.title}</p>
-              {lesson.isDemo ? <DemoBadge /> : null}
+              <p className="font-semibold">{memberFacingTitle(lesson.title)}</p>
             </div>
             <p className="text-sm text-muted">
               {lesson.status} · {lessonTopicLabel(lesson.topic)} · {lessonLevelLabel(lesson.skillLevel)}

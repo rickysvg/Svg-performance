@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { dayKey, zonedParts } from "@/lib/timezone";
+import { getProfileForUser } from "@/lib/profile";
+import { dayKey, memberDayTimeZone, readTimeZoneCookie, zonedParts } from "@/lib/timezone";
 import { getSparringLog, sparringDateError } from "@/lib/outside-log";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { resolveAiCoach } from "@/lib/coaches";
@@ -21,7 +21,7 @@ export default async function SparringPage({
   const user = await requireUser();
   const params = await searchParams;
   const profile = await getProfileForUser(user.id);
-  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const timeZone = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
   const today = dayKey(new Date(), timeZone);
   const requested = params.day && /^\d{4}-\d{2}-\d{2}$/.test(params.day) ? params.day : today;
   const future = sparringDateError(requested, new Date(), timeZone);

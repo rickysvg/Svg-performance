@@ -16,7 +16,7 @@ import {
   swapWorkoutAction,
 } from "@/app/actions/week-plan";
 import type { MoveDayChoice, MoveSessionChoice } from "@/lib/week-plan";
-import { sessionMoveCaution } from "@/lib/week-plan-swaps";
+import { futureWorkoutPulledBack, sessionMoveCaution } from "@/lib/week-plan-swaps";
 
 type OpenMove = {
   sessionKey: string;
@@ -170,6 +170,7 @@ export function WorkoutMoveProvider({
   }
 
   const today = days.find((day) => day.isToday);
+  const todayName = today?.weekday ?? null;
   const fromDay = target ? days.find((day) => day.weekday === target.fromWeekday) : undefined;
   const swapLocked = Boolean(fromDay && fromDay.isPast && !fromDay.isToday);
   const swapTargets = target
@@ -214,7 +215,9 @@ export function WorkoutMoveProvider({
               interchangeable through the week.
             </p>
             <div aria-label={`Move ${target.title}`} className="mt-4 space-y-2">
-              {today && target.fromWeekday !== today.weekday ? (
+              {today &&
+              target.fromWeekday !== today.weekday &&
+              !futureWorkoutPulledBack(target.sessionKey, today.weekday, todayName) ? (
                 <button
                   type="button"
                   data-move-today
@@ -293,7 +296,9 @@ export function WorkoutMoveProvider({
               {mode === "move"
                 ? days.map((day) => {
                     const current = day.weekday === target.fromWeekday;
-                    const blocked = day.isPast && !day.isToday;
+                    const blocked =
+                      (day.isPast && !day.isToday) ||
+                      futureWorkoutPulledBack(target.sessionKey, day.weekday, todayName);
                     const disabled = pending || current || blocked;
                     return (
                       <li key={day.weekday}>
@@ -316,7 +321,12 @@ export function WorkoutMoveProvider({
                     );
                   })
                 : swapTargets.map(({ day, session }) => {
-                    const blocked = swapLocked || (day.isPast && !day.isToday) || session.completed;
+                    const blocked =
+                      swapLocked ||
+                      (day.isPast && !day.isToday) ||
+                      session.completed ||
+                      futureWorkoutPulledBack(target.sessionKey, day.weekday, todayName) ||
+                      futureWorkoutPulledBack(session.sessionKey, target.fromWeekday, todayName);
                     const label = session.completed ? "Done" : day.isPast && !day.isToday ? "Past" : "Swap";
                     return (
                       <li key={session.sessionKey}>

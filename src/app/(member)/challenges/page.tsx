@@ -2,8 +2,8 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/session";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { ChallengeJoinForm } from "@/components/challenges/ChallengeJoinForm";
-import { DemoBadge } from "@/components/DemoBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { memberFacingTitle, stripDemoLabel } from "@/lib/member-copy";
 
 export default async function ChallengesPage() {
   const user = await requireOnboardedUser();
@@ -26,9 +26,8 @@ export default async function ChallengesPage() {
     <main className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-wide text-accent">{challenge.monthKey}</p>
-        <h1 className="mt-1 text-2xl">{challenge.title}</h1>
-        {challenge.isDemo ? <DemoBadge className="mt-2" /> : null}
-        <p className="mt-2 text-sm text-muted">{challenge.summary}</p>
+        <h1 className="mt-1 text-2xl">{memberFacingTitle(challenge.title)}</h1>
+        <p className="mt-2 text-sm text-muted">{stripDemoLabel(challenge.summary)}</p>
       </div>
       <section className="rounded-2xl border border-line bg-card p-5">
         <p className="text-sm text-muted">

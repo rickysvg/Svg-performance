@@ -262,7 +262,20 @@ export function resolveSavedOrCookieTimeZone(
   saved?: string | null,
   cookie?: string | null,
 ) {
-  return resolveTimeZone(saved, cookie, APP_TIMEZONE, "UTC");
+  return memberDayTimeZone(saved, cookie);
+}
+
+/**
+ * Civil day for member logs. A saved profile zone wins, including UTC.
+ * A cookie of "UTC" is not a member zone — browsers and servers emit it when
+ * detection fails — so the gym zone is used instead.
+ */
+export function memberDayTimeZone(saved?: string | null, cookie?: string | null) {
+  const profile = saved?.trim();
+  if (isValidTimeZone(profile)) return profile;
+  const fromCookie = cookie?.trim();
+  if (isValidTimeZone(fromCookie) && fromCookie.toUpperCase() !== "UTC") return fromCookie;
+  return APP_TIMEZONE;
 }
 
 export function timezoneSelectOptions(current?: string | null) {

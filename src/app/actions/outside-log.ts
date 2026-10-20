@@ -5,7 +5,8 @@ import { saveSparringLog } from "@/lib/outside-log";
 import { writeRecoveryCheckIn } from "@/lib/recovery-ease";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
-import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { getProfileForUser } from "@/lib/profile";
+import { memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 
 export type SparringLogState = {
   error?: string;
@@ -30,7 +31,7 @@ export async function saveSparringLogAction(
   try {
     const user = await requireUserOrThrow();
     const profile = await getProfileForUser(user.id);
-    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+    const timeZone = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
     const log = await saveSparringLog(user.id, {
       dateKey: String(formData.get("dateKey") ?? ""),
       weekday: String(formData.get("weekday") ?? ""),

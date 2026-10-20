@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
 import { listFocusVideosForAdmin } from "@/lib/focus-videos";
 import { FocusVideoForm } from "@/components/admin/FocusVideoForm";
-import { DemoBadge } from "@/components/DemoBadge";
+import { memberFacingTitle } from "@/lib/member-copy";
 
 export default async function AdminFocusPage() {
   await requireAdmin();
@@ -25,7 +25,7 @@ export default async function AdminFocusPage() {
         {videos.map((row) => (
           <li key={row.id} className="rounded-2xl border border-line bg-card p-4">
             <p className="font-semibold">
-              {row.title} {row.isDemo ? <DemoBadge className="ml-2" /> : null}
+              {memberFacingTitle(row.title)}
             </p>
             <p className="text-sm text-muted">
               week {row.weekStart.toLocaleDateString()} · {row.status}
