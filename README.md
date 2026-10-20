@@ -101,6 +101,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `VAPID_PUBLIC_KEY` `VAPID_PRIVATE_KEY` `VAPID_SUBJECT` | Web Push for weekly check-in reminders. Generate with `npx web-push generate-vapid-keys --json`. `VAPID_SUBJECT` is a `mailto:` or `https:` contact URL. Empty keys: the in-app banner still shows, and email is the fallback when SMTP is set |
 | `CRON_SECRET` | Shared secret for the cron routes. Vercel sends `Authorization: Bearer <CRON_SECRET>`. Copy the same value into a GitHub Actions secret named `CRON_SECRET` so the hourly check-in workflow can call the route |
 | `POLAR_CLIENT_ID` `POLAR_CLIENT_SECRET` `POLAR_REDIRECT_URI` | Optional. Polar AccessLink. Empty = Connect Polar (TEST) / not configured |
+| `MAILCHIMP_API_KEY` `MAILCHIMP_SERVER_PREFIX` `MAILCHIMP_AUDIENCE_ID` | Optional. `/waitlist` for the Nov 16 drop. Empty shows a coming-soon note. Set, the route adds the address as `pending` so Mailchimp runs double opt-in. `MAILCHIMP_SERVER_PREFIX` is the datacenter suffix, like `us21` |
 | `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` `S3_ENDPOINT` | Names only for a later cloud disk. **Not wired** in this preview |
 
 If Polar keys are missing: Heart rate still works with Apple Health import, manual entry, and labeled DEMO samples. Connect Polar (TEST) stays off. We never show Apple Watch as connected.
