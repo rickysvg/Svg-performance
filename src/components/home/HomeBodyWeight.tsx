@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useLayoutEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
 import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
@@ -32,25 +32,6 @@ export function HomeBodyWeight({
   const recordedAt = new Date().toISOString();
   const initial = value == null ? "" : String(value);
   const [draft, setDraft] = useState(initial);
-  const sample = draft || "—";
-  const rulerRef = useRef<HTMLSpanElement>(null);
-  const [figurePx, setFigurePx] = useState(0);
-
-  useLayoutEffect(() => {
-    const node = rulerRef.current;
-    if (!node) return;
-    const measure = () => setFigurePx(node.offsetWidth);
-    measure();
-    let cancelled = false;
-    document.fonts?.ready.then(() => {
-      if (!cancelled) measure();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [sample]);
-
-  const figureWidth = figurePx > 0 ? `${figurePx}px` : `${Math.max(sample.length, 1)}ch`;
 
   return (
     <form action={action} data-mass-box className={carbon ? "hc-panel hc-carbon px-3 py-2" : "px-0 py-1"}>
@@ -65,19 +46,12 @@ export function HomeBodyWeight({
             }}
           >
             <MassGauge gauge={gauge} live={value != null} />
-            <span
-              ref={rulerRef}
-              aria-hidden
-              className={`pointer-events-none invisible absolute whitespace-pre text-3xl leading-none tabular-nums ${massSpeedoClass}`}
-            >
-              {sample}
-            </span>
             <label
-              className="absolute z-10 flex items-baseline"
+              className="absolute z-10 grid items-baseline"
               style={{
-                left: `calc(50% - ${figureWidth} / 2)`,
+                left: "50%",
                 top: `${MASS_DIAL.baseline * 100}%`,
-                transform: "translateY(-100%)",
+                transform: "translate(-50%, -100%)",
               }}
             >
               <input
@@ -86,17 +60,19 @@ export function HomeBodyWeight({
                 required
                 min={1}
                 step="0.1"
+                size={Math.max(draft.length, 1)}
                 value={draft}
                 placeholder="—"
                 aria-label="Body weight in pounds"
                 onChange={(event) => setDraft(event.target.value)}
-                style={{ width: figureWidth, textAlign: "center" }}
-                className={`block min-w-0 border-0 bg-transparent p-0 text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
+                style={{ fieldSizing: "content", gridArea: "1 / 1", justifySelf: "center" }}
+                className={`block w-auto min-w-[1ch] border-0 bg-transparent p-0 text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
               />
               <span
                 data-mass-unit
                 aria-hidden
-                className={`${massUnitClass} ml-0.5 shrink-0 text-[11px] font-semibold leading-none tracking-normal text-[#CBF805] [text-shadow:0_0_1px_#07080a,0_0_6px_rgba(203,248,5,0.28)]`}
+                className={`${massUnitClass} text-[11px] font-semibold leading-none tracking-normal text-[#CBF805] [text-shadow:0_0_1px_#07080a,0_0_6px_rgba(203,248,5,0.28)]`}
+                style={{ gridArea: "1 / 1", justifySelf: "end", transform: "translateX(calc(100% + 2px))" }}
               >
                 {unitLabel(unit)}
               </span>
