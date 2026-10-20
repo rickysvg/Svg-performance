@@ -66,12 +66,15 @@ describe("harder fighter lift days", () => {
     return day!.exercises.create;
   }
 
-  it("runs 6 exercises on Monday and Tuesday, and 7 on Thursday", () => {
+  it("runs 6 exercises of 4 sets on Monday, Tuesday, and Thursday", () => {
     for (const block of Object.values(STRENGTH_DAY_BY_BLOCK)) {
-      expect(exercisesFor(block.monday)).toHaveLength(6);
-      expect(exercisesFor(block.tuesday)).toHaveLength(6);
-      expect(exercisesFor(block.thursday)).toHaveLength(7);
+      for (const dayNumber of [block.monday, block.tuesday, block.thursday]) {
+        const rows = exercisesFor(dayNumber);
+        expect(rows).toHaveLength(6);
+        for (const row of rows) expect(row.sets, row.name).toBe(4);
+      }
     }
+    expect(days.find((day) => day.dayNumber === 2)?.title).toBe("Lift 2 — Full body");
     expect(isGppStrengthDay(10)).toBe(false);
   });
 

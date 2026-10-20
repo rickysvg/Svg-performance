@@ -6,7 +6,6 @@ import {
   type NutritionActionState,
 } from "@/app/actions/nutrition";
 import { StatusBanner } from "@/components/StatusBanner";
-import { DemoBadge } from "@/components/DemoBadge";
 import { MEAL_TYPES } from "@/lib/nutrition";
 import { searchFoodOptions, type SearchableMeal } from "@/lib/foods";
 
@@ -111,7 +110,7 @@ export function NutritionEntryForm({
       {!entry ? (
         <div>
           <label className="block text-sm">
-            Search saved meals or DEMO foods
+            Search saved meals or foods
             <input
               type="search"
               value={query}
@@ -134,13 +133,9 @@ export function NutritionEntryForm({
                     >
                       <span>
                         {item.name}
-                        {item.kind === "demo" ? (
-                          <span className="ml-2 inline-block align-middle">
-                            <DemoBadge />
-                          </span>
-                        ) : (
+                        {item.kind === "saved" ? (
                           <span className="ml-2 text-xs text-muted">saved</span>
-                        )}
+                        ) : null}
                       </span>
                       <span className="text-xs text-muted">
                         {Math.round(item.calories)} kcal / {item.servingLabel}

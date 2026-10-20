@@ -6,6 +6,7 @@ import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
+import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 
 export default async function PlanPage() {
@@ -38,7 +39,7 @@ export default async function PlanPage() {
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
           {trial.verified && trial.trialActive && !subscription
-            ? `Verified SVG Academy member. Your ${trial.trialLengthDays}-day Pro month is active. After it ends you go back to the core app included with your dues. You are never auto-billed.`
+            ? `Verified SVG Academy member. Your ${trial.trialLengthDays} days of free Pro are active. After they end you go back to the core app included with your dues. You are never auto-billed.`
             : trial.verified && entitlements.planId === "academy"
               ? "Verified SVG Academy member. The core app is included with your dues. Pro is $9.99/mo or $72.99/yr."
             : trial.trialActive
@@ -49,6 +50,7 @@ export default async function PlanPage() {
                 }`
               : "Your trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data."}
         </p>
+        <FoundingOfferHighlight />
         {!configured ? (
           <p className="mt-3 text-sm text-muted">
             Paid plans coming soon.{" "}

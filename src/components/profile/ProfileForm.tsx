@@ -510,7 +510,7 @@ export function ProfileForm({
       <fieldset className="mt-3">
         <legend className="sr-only">Daily nutrition targets (estimates)</legend>
         <p className="mt-1 text-xs text-muted">
-          Used on Home rings. These are your numbers or DEMO defaults — not a personalized
+          Used on Home rings. These are your numbers or the starter defaults — not a personalized
           meal plan from a coach.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-3">

@@ -1,3 +1,5 @@
+import { stripDemoLabel } from "@/lib/member-copy";
+
 export type DemoFood = {
   id: string;
   name: string;
@@ -222,11 +224,12 @@ export function searchFoodOptions(
   const needle = query.trim().toLowerCase();
   const saved: SearchableMeal[] = savedMeals.map((meal) => ({
     ...meal,
+    name: stripDemoLabel(meal.name),
     kind: "saved" as const,
   }));
   const demo: SearchableMeal[] = DEMO_FOODS.map((food) => ({
     id: food.id,
-    name: food.name,
+    name: stripDemoLabel(food.name),
     servingLabel: food.servingLabel,
     calories: food.calories,
     proteinG: food.proteinG,

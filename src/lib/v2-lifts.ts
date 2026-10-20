@@ -190,10 +190,10 @@ function monday(block: MesoBlock) {
           sortOrder: 1,
           name: "Squat jump",
           notes:
-            "Explosive primer. The reason for 5 sets is low-rep speed at full intent. Quiet landing. Stop if the knees cave.",
+            "Explosive primer. Four sets of low-rep speed at full intent. Quiet landing. Stop if the knees cave.",
           weeks: weeksOf(
             [1, 2, 3].map(() => ({
-              sets: 5,
+              sets: 4,
               reps: "3",
               rir: "3-5",
               note: "Bodyweight. Crisp landings. Leave speed in the tank.",
@@ -270,12 +270,12 @@ function monday(block: MesoBlock) {
           sortOrder: 6,
           name: "Neck extension hold",
           notes:
-            "Light finisher. 3 sets. Neutral chin, gentle hold, no weight on the neck. Stop if it hurts.",
+            "Light finisher. Neutral chin, gentle hold, no weight on the neck. Stop if it hurts.",
           weeks: weeksOf(
             [
-              { sets: 3, reps: "20 sec", rir: "3", note: "Light band or harness." },
-              { sets: 3, reps: "25 sec", rir: "3", note: "Light band or harness." },
-              { sets: 3, reps: "30 sec", rir: "3", note: "Light band or harness." },
+              { sets: 4, reps: "20 sec", rir: "3", note: "Light band or harness." },
+              { sets: 4, reps: "25 sec", rir: "3", note: "Light band or harness." },
+              { sets: 4, reps: "30 sec", rir: "3", note: "Light band or harness." },
             ],
             45,
           ),
@@ -306,10 +306,10 @@ function tuesday(block: MesoBlock) {
           sortOrder: 1,
           name: "Rotational med-ball throw",
           notes:
-            "Done first, while you are fresh. The reason for 5 sets is low-rep power. Load the back hip and throw hard.",
+            "Done first, while you are fresh. Four sets of low-rep power. Load the back hip and throw hard.",
           weeks: weeksOf(
             [1, 2, 3].map(() => ({
-              sets: 5,
+              sets: 4,
               reps: "3 / side",
               rir: "3-5",
               note: "3–4 kg ball. Speed, not a grind.",
@@ -368,12 +368,12 @@ function tuesday(block: MesoBlock) {
         lift({
           sortOrder: 6,
           name: "Farmer carry",
-          notes: "Grip finisher. 3 sets. Tall, shoulders packed, short quick steps.",
+          notes: "Grip finisher. Tall, shoulders packed, short quick steps.",
           weeks: weeksOf(
             [
-              { sets: 3, reps: "40 sec", rir: "2-3", percent: "~50% of bodyweight per hand", note: "Walk tall." },
-              { sets: 3, reps: "40 sec", rir: "2-3", percent: "~55% of bodyweight per hand", note: "Walk tall." },
-              { sets: 3, reps: "40 sec", rir: "2-3", percent: "~60% of bodyweight per hand", note: "Walk tall." },
+              { sets: 4, reps: "40 sec", rir: "2-3", percent: "~50% of bodyweight per hand", note: "Walk tall." },
+              { sets: 4, reps: "40 sec", rir: "2-3", percent: "~55% of bodyweight per hand", note: "Walk tall." },
+              { sets: 4, reps: "40 sec", rir: "2-3", percent: "~60% of bodyweight per hand", note: "Walk tall." },
             ],
             75,
           ),
@@ -466,39 +466,24 @@ function thursday(block: MesoBlock) {
         }),
         lift({
           sortOrder: 5,
-          name: "Cable Pallof press",
-          notes: "Anti-rotation. Press out and hold about 3 seconds. Resist the twist.",
-          weeks: weeksOf(
-            [1, 2, 3].map(() => ({
-              sets: 4,
-              reps: "10 / side",
-              rir: "2-3",
-              percent: "~60% of a 10-rep max",
-              note: "3 second hold. Ribs quiet.",
-            })),
-            45,
-          ),
-        }),
-        lift({
-          sortOrder: 6,
           name: "Suitcase carry",
-          notes: "Grip and anti-lateral-flexion finisher. 3 sets. One side loaded. Do not lean.",
+          notes: "Grip and anti-lateral-flexion finisher. One side loaded. Do not lean.",
           weeks: weeksOf(
             [
-              { sets: 3, reps: "30 meters / side", rir: "2-3", percent: "~40% of bodyweight", note: "Stay tall." },
-              { sets: 3, reps: "30 meters / side", rir: "2-3", percent: "~45% of bodyweight", note: "Stay tall." },
-              { sets: 3, reps: "30 meters / side", rir: "2-3", percent: "~50% of bodyweight", note: "Stay tall." },
+              { sets: 4, reps: "30 meters / side", rir: "2-3", percent: "~40% of bodyweight", note: "Stay tall." },
+              { sets: 4, reps: "30 meters / side", rir: "2-3", percent: "~45% of bodyweight", note: "Stay tall." },
+              { sets: 4, reps: "30 meters / side", rir: "2-3", percent: "~50% of bodyweight", note: "Stay tall." },
             ],
             75,
           ),
         }),
         lift({
-          sortOrder: 7,
+          sortOrder: 6,
           name: "Neck isometric matrix",
-          notes: `${neck?.notes ?? "Hand resistance. Never a max squeeze."} Optional finisher. 2 sets. Daru's 5-second ramp in four directions stays — not a 10-second hold.`,
+          notes: `${neck?.notes ?? "Hand resistance. Never a max squeeze."} Four sets. Daru's 5-second ramp in four directions stays — not a 10-second hold.`,
           weeks: weeksOf(
             [1, 2, 3].map(() => ({
-              sets: 2,
+              sets: 4,
               reps: "5 sec × 4 directions",
               rir: "3",
               note: "Hand resistance. Gentle ramp. Never a max squeeze.",

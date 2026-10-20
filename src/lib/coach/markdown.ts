@@ -5,13 +5,20 @@ export type CoachInline =
   | { type: "code"; text: string }
   | { type: "link"; text: string; href: string };
 
+export type CoachListItem = {
+  inlines: CoachInline[];
+  children?: CoachBlock[];
+};
+
 export type CoachBlock =
   | { type: "paragraph"; inlines: CoachInline[] }
   | { type: "heading"; level: 2 | 3; inlines: CoachInline[] }
-  | { type: "list"; ordered: boolean; items: CoachInline[][] }
+  | { type: "list"; ordered: boolean; start?: number; items: CoachListItem[] }
   | { type: "code"; text: string };
 
 const SAFE_LINK = /^https?:\/\//i;
+const NUMBERED = /^\s*(\d+)\.\s+/;
+const BULLET = /^\s*[-*]\s+/;
 
 /** Coach replies are markdown. Render tokens in React; never inject HTML. */
 export function parseCoachMarkdown(source: string): CoachBlock[] {
@@ -46,33 +53,16 @@ export function parseCoachMarkdown(source: string): CoachBlock[] {
       index += 1;
       continue;
     }
-    if (/^\s*[-*]\s+/.test(line)) {
-      const items: CoachInline[][] = [];
-      while (index < lines.length && /^\s*[-*]\s+/.test(lines[index] ?? "")) {
-        items.push(parseCoachInlines((lines[index] ?? "").replace(/^\s*[-*]\s+/, "")));
-        index += 1;
-      }
-      blocks.push({ type: "list", ordered: false, items });
+    if (BULLET.test(line)) {
+      const parsed = parseBulletList(lines, index);
+      blocks.push(parsed.block);
+      index = parsed.index;
       continue;
     }
-    if (/^\s*\d+\.\s+/.test(line)) {
-      const items: CoachInline[][] = [];
-      while (index < lines.length) {
-        const current = lines[index] ?? "";
-        if (!current.trim()) {
-          let look = index + 1;
-          while (look < lines.length && !(lines[look] ?? "").trim()) look += 1;
-          if (look < lines.length && /^\s*\d+\.\s+/.test(lines[look] ?? "")) {
-            index = look;
-            continue;
-          }
-          break;
-        }
-        if (!/^\s*\d+\.\s+/.test(current)) break;
-        items.push(parseCoachInlines(current.replace(/^\s*\d+\.\s+/, "")));
-        index += 1;
-      }
-      blocks.push({ type: "list", ordered: true, items });
+    if (NUMBERED.test(line)) {
+      const parsed = parseOrderedList(lines, index);
+      blocks.push(parsed.block);
+      index = parsed.index;
       continue;
     }
     const paragraph = [line.trim()];
@@ -86,8 +76,67 @@ export function parseCoachMarkdown(source: string): CoachBlock[] {
   return blocks;
 }
 
+function parseOrderedList(lines: string[], startIndex: number) {
+  const items: CoachListItem[] = [];
+  let index = startIndex;
+  const start = itemNumber(lines[index] ?? "");
+  while (index < lines.length) {
+    const current = lines[index] ?? "";
+    if (!current.trim()) {
+      const next = nextContent(lines, index + 1);
+      if (next && (NUMBERED.test(next.line) || BULLET.test(next.line))) {
+        index = next.index;
+        continue;
+      }
+      break;
+    }
+    if (NUMBERED.test(current)) {
+      items.push({ inlines: parseCoachInlines(current.replace(NUMBERED, "")) });
+      index += 1;
+      continue;
+    }
+    if (BULLET.test(current) && items.length > 0) {
+      const nested = parseBulletList(lines, index);
+      const last = items[items.length - 1]!;
+      last.children = [...(last.children ?? []), nested.block];
+      index = nested.index;
+      continue;
+    }
+    break;
+  }
+  return {
+    block: { type: "list" as const, ordered: true, start, items },
+    index,
+  };
+}
+
+function parseBulletList(lines: string[], startIndex: number) {
+  const items: CoachListItem[] = [];
+  let index = startIndex;
+  while (index < lines.length && BULLET.test(lines[index] ?? "")) {
+    items.push({ inlines: parseCoachInlines((lines[index] ?? "").replace(BULLET, "")) });
+    index += 1;
+  }
+  return {
+    block: { type: "list" as const, ordered: false, items },
+    index,
+  };
+}
+
+function nextContent(lines: string[], index: number) {
+  let look = index;
+  while (look < lines.length && !(lines[look] ?? "").trim()) look += 1;
+  if (look >= lines.length) return null;
+  return { index: look, line: lines[look] ?? "" };
+}
+
+function itemNumber(line: string) {
+  const value = Number(NUMBERED.exec(line)?.[1] ?? "1");
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
 function blockStart(line: string) {
-  return /^(```|#{1,3}\s+)/.test(line.trim()) || /^\s*[-*]\s+/.test(line) || /^\s*\d+\.\s+/.test(line);
+  return /^(```|#{1,3}\s+)/.test(line.trim()) || BULLET.test(line) || NUMBERED.test(line);
 }
 
 export function parseCoachInlines(input: string): CoachInline[] {

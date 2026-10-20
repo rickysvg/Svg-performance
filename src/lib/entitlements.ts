@@ -28,7 +28,7 @@ export async function getEffectivePlanId(userId: string, now = new Date()): Prom
     where: { userId },
     select: { trialEndsAt: true, gymMembershipVerified: true },
   });
-  // 7-day nonmember trial or the 30-day member Pro month: full Pro, no card.
+  // 7-day nonmember trial or the member Pro grant: full Pro, no card.
   if (isTrialActive(profile?.trialEndsAt ?? null, now)) {
     return "performance";
   }

@@ -14,6 +14,11 @@ export type WeekPlanSwap = {
   weekStart: string;
   sourceByDay: Partial<Record<PlanWeekday, PlanWeekday>>;
   sessionDays?: Partial<Record<string, PlanWeekday>>;
+  /**
+   * Session keys the member placed with Move.
+   * Pins without this flag are removed on read. They were not a choice.
+   */
+  manualSessions?: string[];
 };
 
 const WEEK_START = /^\d{4}-\d{2}-\d{2}$/;
@@ -65,14 +70,83 @@ export function parseWeekPlanSwaps(raw: string | null | undefined): WeekPlanSwap
         cleanSessions[key] = value;
       }
     }
+    const manualRaw = (row as { manualSessions?: unknown }).manualSessions;
+    const manualSessions = Array.isArray(manualRaw)
+      ? [...new Set(manualRaw.filter((key): key is string => typeof key === "string" && isSessionKey(key)))]
+          .filter((key) => Boolean(cleanSessions[key]))
+          .sort()
+      : [];
     if (Object.keys(clean).length === 0 && Object.keys(cleanSessions).length === 0) continue;
     swaps.push({
       weekStart,
       sourceByDay: clean,
       ...(Object.keys(cleanSessions).length > 0 ? { sessionDays: cleanSessions } : {}),
+      ...(manualSessions.length > 0 ? { manualSessions } : {}),
     });
   }
   return swaps;
+}
+
+function manualForSessions(
+  manual: Iterable<string> | undefined,
+  sessionDays: Partial<Record<string, PlanWeekday>>,
+) {
+  return [...new Set(manual ?? [])].filter((key) => Boolean(sessionDays[key])).sort();
+}
+
+function planRow(
+  weekStart: string,
+  sourceByDay: Partial<Record<PlanWeekday, PlanWeekday>>,
+  sessionDays: Partial<Record<string, PlanWeekday>>,
+  manual: Iterable<string> | undefined,
+): WeekPlanSwap | null {
+  const hasSessions = Object.keys(sessionDays).length > 0;
+  if (Object.keys(sourceByDay).length === 0 && !hasSessions) return null;
+  const manualSessions = manualForSessions(manual, sessionDays);
+  return {
+    weekStart,
+    sourceByDay,
+    ...(hasSessions ? { sessionDays } : {}),
+    ...(manualSessions.length > 0 ? { manualSessions } : {}),
+  };
+}
+
+/**
+ * A later workout pulled onto today, or onto a day already past.
+ * Monday’s missed session can still move forward onto Tuesday.
+ */
+export function futureWorkoutPulledBack(
+  sessionKey: string,
+  toDay: string,
+  today: string | null | undefined,
+) {
+  if (!today || !isPlanWeekday(toDay) || !isPlanWeekday(today)) return false;
+  const home = sessionHomeWeekday(sessionKey);
+  if (!home) return false;
+  const toIndex = WEEKDAYS.indexOf(toDay);
+  const homeIndex = WEEKDAYS.indexOf(home);
+  const todayIndex = WEEKDAYS.indexOf(today);
+  return toIndex < homeIndex && toIndex <= todayIndex;
+}
+
+/**
+ * Drop session pins the member did not make with Move.
+ * Whole-day swaps in `sourceByDay` stay.
+ * Idempotent: a second pass returns the same list.
+ */
+export function pruneAutoRolledSwaps(swaps: WeekPlanSwap[]) {
+  const next: WeekPlanSwap[] = [];
+  for (const row of swaps) {
+    const manual = new Set(row.manualSessions ?? []);
+    const sessionDays: Partial<Record<string, PlanWeekday>> = {};
+    for (const [key, day] of Object.entries(row.sessionDays ?? {})) {
+      if (!day || !manual.has(key)) continue;
+      sessionDays[key] = day;
+    }
+    const built = planRow(row.weekStart, row.sourceByDay, sessionDays, manual);
+    if (built) next.push(built);
+  }
+  return next;
 }
 
 /** Calendar weekday that currently shows a skeleton weekday, before per-workout pins. */
@@ -127,16 +201,10 @@ export function swapWeekdays(
   else next[a] = sourceB;
   if (sourceA === b) delete next[b];
   else next[b] = sourceA;
-  const sessionDays = flipSessionDays(row?.sessionDays, a, b);
-  if (Object.keys(next).length === 0 && !sessionDays) return rest;
-  return [
-    ...rest,
-    {
-      weekStart,
-      sourceByDay: next,
-      ...(sessionDays ? { sessionDays } : {}),
-    },
-  ];
+  const sessionDays = flipSessionDays(row?.sessionDays, a, b) ?? {};
+  const built = planRow(weekStart, next, sessionDays, row?.manualSessions);
+  if (!built) return rest;
+  return [...rest, built];
 }
 
 /** Calendar weekday a session is on, after whole-day swaps and per-session pins. */
@@ -219,20 +287,19 @@ export function moveSessionOnPlan(
   const current = swaps.find((row) => row.weekStart === weekStart);
   const sourceByDay = { ...(current?.sourceByDay ?? {}) };
   const sessionDays = { ...(current?.sessionDays ?? {}) };
+  const manual = new Set(current?.manualSessions ?? []);
   const base = calendarDayForSource(sourceByDay, home);
   if ((sessionDays[sessionKey] ?? base) === toDay && toDay === base) return swaps;
-  if (toDay === base) delete sessionDays[sessionKey];
-  else sessionDays[sessionKey] = toDay;
-  const hasSessions = Object.keys(sessionDays).length > 0;
-  if (Object.keys(sourceByDay).length === 0 && !hasSessions) return rest;
-  return [
-    ...rest,
-    {
-      weekStart,
-      sourceByDay,
-      ...(hasSessions ? { sessionDays } : {}),
-    },
-  ];
+  if (toDay === base) {
+    delete sessionDays[sessionKey];
+    manual.delete(sessionKey);
+  } else {
+    sessionDays[sessionKey] = toDay;
+    manual.add(sessionKey);
+  }
+  const built = planRow(weekStart, sourceByDay, sessionDays, manual);
+  if (!built) return rest;
+  return [...rest, built];
 }
 
 export function clearWeekSwap(swaps: WeekPlanSwap[], weekStart: string) {

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { DemoBadge } from "@/components/DemoBadge";
 import { LearnThumb } from "@/components/learn/LearnThumb";
+import { memberFacingTitle } from "@/lib/member-copy";
 import {
   getLessonProgress,
   getPublishedLessonBySlug,
@@ -43,11 +43,11 @@ export default async function LessonPage({
         <Link href="/learn" className="text-sm text-muted hover:text-foreground">
           Back to Learn
         </Link>
-        <LearnThumb url={video.url} pending={video.pending} title={lesson.title} />
+        <LearnThumb url={video.url} pending={video.pending} title={memberFacingTitle(lesson.title)} />
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">Locked preview</p>
           <h1 className="font-display mt-1 text-2xl uppercase tracking-wide">
-            {lesson.title}
+            {memberFacingTitle(lesson.title)}
           </h1>
         </div>
         <UpgradePreview
@@ -70,17 +70,16 @@ export default async function LessonPage({
         Back to Learn
       </Link>
 
-      <LearnThumb url={video.url} pending={video.pending} title={lesson.title} />
+      <LearnThumb url={video.url} pending={video.pending} title={memberFacingTitle(lesson.title)} />
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl leading-tight">{lesson.title}</h1>
+          <h1 className="text-2xl leading-tight">{memberFacingTitle(lesson.title)}</h1>
           <p className="mt-2 text-sm text-muted">{channel}</p>
           {catalog?.youtubeTitle ? (
             <p className="mt-1 text-sm text-muted">{catalog.youtubeTitle}</p>
           ) : null}
         </div>
-        {lesson.isDemo ? <DemoBadge /> : null}
       </div>
 
       <p className="flex flex-wrap gap-2 text-xs">

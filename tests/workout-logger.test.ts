@@ -321,7 +321,7 @@ describe("workout logger media and previous loads", () => {
     const pull = draft.sets.filter((set) => set.exerciseName === "Lat pulldown");
     const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
     expect(pull).toHaveLength(4);
-    expect(carry).toHaveLength(3);
+    expect(carry).toHaveLength(4);
     expect(pull[0]?.logMode).toBe("load_reps");
     expect(carry[0]?.logMode).toBe("load_timed");
     expect(draft.notes).toMatch(/prescribed set/i);

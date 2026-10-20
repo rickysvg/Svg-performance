@@ -30,7 +30,7 @@ export async function hasWebhookGrantedAccess(userId: string) {
 
 /**
  * Fuel / SVG Coach need the academy tier (verified member) or Pro
- * (subscription, 7-day trial, or the 30-day member Pro month).
+ * (subscription, 7-day trial, or the member Pro grant).
  * A nonmember whose trial ended gets the paywall. Missing Stripe keys do not unlock those tools.
  */
 export async function canUseMemberTools(userId: string): Promise<{

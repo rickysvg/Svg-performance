@@ -176,10 +176,10 @@ export async function ensureDemoFocusVideo(adminUserId: string, now = new Date()
   if (existing) return existing;
   return prisma.weeklyFocusVideo.create({
     data: {
-      title: "DEMO — This week's 60–90s focus",
+      title: "This week's 60–90s focus",
       weekStart,
       videoUrl: "https://www.youtube.com/watch?v=Z0a_XVJDV-g",
-      scriptNotes: "Labeled DEMO. External YouTube technique reference — not a live Ricky stream.",
+      scriptNotes: "External YouTube technique reference — not a live Ricky stream.",
       status: "published",
       isDemo: true,
       authorUserId: adminUserId,

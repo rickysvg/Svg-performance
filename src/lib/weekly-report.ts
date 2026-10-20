@@ -68,12 +68,12 @@ export async function getWeeklyProgressReport(userId: string, now = new Date()) 
   );
   const conditioningNote = conditioningHit
     ? "A session title or note in this window mentioned conditioning."
-    : "No conditioning note in this window. Day 3 of the DEMO program is the engine template when you want it.";
+    : "No conditioning note in this window. The conditioning day is the engine template when you want it.";
   const nextFocus = path.nextStep
     ? `Suggested next focus: ${path.nextStep.title} (from your ${path.path.title} path).`
     : path.complete
-      ? "Path milestones on this DEMO track are complete. Pick another path or keep logging."
-      : "Suggested next focus: log one DEMO session when you are ready.";
+      ? "Path milestones on this track are complete. Pick another path or keep logging."
+      : "Suggested next focus: log one session when you are ready.";
   const copy = automatedReportCopy({
     workoutsLogged: wrap.workoutsLogged,
     strengthNote,

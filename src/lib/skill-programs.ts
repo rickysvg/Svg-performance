@@ -39,10 +39,10 @@ export function skillEquipmentNote(equipment: string[] | undefined) {
     return "No bag or pads on file. Shadow or technical reps — no full power.";
   }
   if (hasBag && hasPads) {
-    return "You listed a heavy bag and pads. Use them for these DEMO skill rounds.";
+    return "You listed a heavy bag and pads. Use them for these skill rounds.";
   }
   if (hasBag) {
-    return "You listed a heavy bag. Use it for these DEMO skill rounds when you have it.";
+    return "You listed a heavy bag. Use it for these skill rounds when you have it.";
   }
   if (hasPads) {
     return "You listed pads. Use them if a partner is holding; otherwise shadow the same work.";

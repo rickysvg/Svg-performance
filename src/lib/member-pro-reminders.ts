@@ -2,17 +2,33 @@ import { prisma } from "@/lib/prisma";
 import { loggedSetSome } from "@/lib/logged-work";
 import { sendPushToUser } from "@/lib/weekly-checkin-push";
 import { getAppTier } from "@/lib/entitlements";
-import { memberProDay } from "@/lib/trial";
-import { MEMBER_PRO_DAYS, PERFORMANCE_ANNUAL, PERFORMANCE_MONTHLY, usd } from "@/lib/pricing";
+import { memberProDay, memberProGrantDays } from "@/lib/trial";
+import { loadFoundingOffer } from "@/lib/founding-offer";
+import {
+  LEGACY_MEMBER_PRO_DAYS,
+  MEMBER_PRO_DAYS,
+  PERFORMANCE_ANNUAL,
+  PERFORMANCE_MONTHLY,
+  usd,
+} from "@/lib/pricing";
 
 export type MemberProStage = "day25" | "day29" | "day31";
 
-/** Day 25 recap + offer, day 29 last day, day 31 downgrade summary. Shown for a short window. */
-export function memberProStage(day: number | null): MemberProStage | null {
+/**
+ * Recap while 5 days are left, last days of the grant, then the week after it ends.
+ * Stage ids stay day25 / day29 / day31 so a grant is reminded once.
+ * A 14-day grant uses days 9–12, 13–14, and 15–21. A 30-day grant keeps 25–28, 29–30, and 31–37.
+ */
+export function memberProStage(
+  day: number | null,
+  grantDays = LEGACY_MEMBER_PRO_DAYS,
+): MemberProStage | null {
   if (day == null) return null;
-  if (day >= 25 && day <= 28) return "day25";
-  if (day >= 29 && day <= MEMBER_PRO_DAYS) return "day29";
-  if (day >= MEMBER_PRO_DAYS + 1 && day <= MEMBER_PRO_DAYS + 7) return "day31";
+  const length = grantDays >= 1 ? Math.floor(grantDays) : LEGACY_MEMBER_PRO_DAYS;
+  const fiveLeft = length - 5;
+  if (fiveLeft >= 1 && day >= fiveLeft && day <= length - 2) return "day25";
+  if (day >= length - 1 && day <= length) return "day29";
+  if (day >= length + 1 && day <= length + 7) return "day31";
   return null;
 }
 
@@ -38,24 +54,42 @@ function recapLine(recap: MemberProRecap) {
 
 const PRICE = `${usd(PERFORMANCE_MONTHLY)}/mo or ${usd(PERFORMANCE_ANNUAL)}/yr`;
 
-export function memberProCopy(stage: MemberProStage, recap: MemberProRecap) {
+function withFounding(body: string, foundingLine?: string | null) {
+  if (!foundingLine) return body;
+  return `${body} ${foundingLine}`;
+}
+
+export function memberProCopy(
+  stage: MemberProStage,
+  recap: MemberProRecap,
+  foundingLine?: string | null,
+) {
   if (stage === "day25") {
     return {
-      title: "5 days left of your Pro month",
-      body: `${recapLine(recap)} Keep Pro for ${PRICE}, or stay on the core app with your dues. No card on file, never auto-billed.`,
+      title: "5 days left of free Pro",
+      body: withFounding(
+        `${recapLine(recap)} Keep Pro for ${PRICE}, or stay on the core app with your dues. No card on file, never auto-billed.`,
+        foundingLine,
+      ),
       cta: "Keep Pro",
     };
   }
   if (stage === "day29") {
     return {
-      title: "Last day of your Pro month",
-      body: `Tomorrow you go back to the core app included with your dues. Keep AI coach chat with voices, Today's Summary, and full history for ${PRICE}.`,
+      title: "Last day of free Pro",
+      body: withFounding(
+        `Tomorrow you go back to the core app included with your dues. Keep AI coach chat with voices, Today's Summary, and full history for ${PRICE}.`,
+        foundingLine,
+      ),
       cta: "Keep Pro",
     };
   }
   return {
-    title: "Your Pro month ended",
-    body: `You're on the core app included with your dues: rounds, mobility and form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, Fuel logging, 30 days of history, and 3 AI messages a week. ${recapLine(recap).replace(" so far.", " in your Pro month.")}`,
+    title: "Your free Pro ended",
+    body: withFounding(
+      `You're on the core app included with your dues: rounds, mobility and form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, Fuel logging, 30 days of history, and 3 AI messages a week. ${recapLine(recap).replace(" so far.", " during free Pro.")}`,
+      foundingLine,
+    ),
     cta: `Upgrade to Pro · ${usd(PERFORMANCE_MONTHLY)}/mo`,
   };
 }
@@ -64,15 +98,18 @@ export type MemberProCronResult = { checked: number; sent: number; skipped: numb
 
 /** Sends each stage once per member (push). Safe to run hourly. */
 export async function runMemberProReminderCron(now = new Date()): Promise<MemberProCronResult> {
-  const earliest = new Date(now.getTime() - (MEMBER_PRO_DAYS + 7) * 24 * 60 * 60 * 1000);
+  const lookbackDays = Math.max(MEMBER_PRO_DAYS, LEGACY_MEMBER_PRO_DAYS) + 7;
+  const earliest = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
   const profiles = await prisma.profile.findMany({
     where: { gymMembershipVerified: true, memberProStartedAt: { gte: earliest } },
-    select: { userId: true, memberProStartedAt: true },
+    select: { userId: true, memberProStartedAt: true, memberProDays: true },
   });
   let sent = 0;
   let skipped = 0;
+  const foundingLine = (await loadFoundingOffer())?.line ?? null;
   for (const profile of profiles) {
-    const stage = memberProStage(memberProDay(profile.memberProStartedAt, now));
+    const grantDays = memberProGrantDays(profile.memberProDays);
+    const stage = memberProStage(memberProDay(profile.memberProStartedAt, now), grantDays);
     if (!stage) {
       skipped += 1;
       continue;
@@ -94,7 +131,7 @@ export async function runMemberProReminderCron(now = new Date()): Promise<Member
       continue;
     }
     const recap = await memberProRecap(profile.userId, profile.memberProStartedAt!);
-    const copy = memberProCopy(stage, recap);
+    const copy = memberProCopy(stage, recap, foundingLine);
     await sendPushToUser(profile.userId, { title: copy.title, body: copy.body, url: "/pricing" });
     await prisma.memberProReminderLog.create({
       data: { userId: profile.userId, stage, channel: "push" },

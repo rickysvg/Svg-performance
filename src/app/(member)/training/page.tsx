@@ -39,12 +39,12 @@ import { todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
-import { dayKey } from "@/lib/timezone";
+import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { getSparringLog, latestSparringSessionRating } from "@/lib/outside-log";
+import { getSparringLog, latestSparringSessionRating, sparringDateError } from "@/lib/outside-log";
 import { sparringTileHint } from "@/lib/sparring-tile";
 import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { tileSrc } from "@/lib/athlete-imagery";
@@ -154,6 +154,9 @@ export default async function TrainingPage({
   ];
   const isToday = sameLocalDay(selected, now, tz);
   const dayParam = formatDayParam(selected, tz);
+  const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
+  const sparringFuture =
+    dayPlan.outside?.kind === "sparring" ? sparringDateError(dayParam, now, memberTz) : null;
   const draftsByDay = new Map(
     drafts
       .filter((session) => session.programDayId)
@@ -336,14 +339,20 @@ export default async function TrainingPage({
       </section>
 
       {dayPlan.outside?.kind === "sparring" ? (
-        <SparringLogForm
-          dateKey={dayParam}
-          weekday={dayPlan.weekday}
-          timeLabel={dayPlan.outside.label.replace(/^Sparring\s*·\s*/, "")}
-          saved={sparringSaved}
-          coachName={coach.name}
-          coachImage={coach.circle}
-        />
+        sparringFuture ? (
+          <p className="rounded-2xl border border-line bg-card px-4 py-3 text-sm" data-sparring-future>
+            {sparringFuture}
+          </p>
+        ) : (
+          <SparringLogForm
+            dateKey={dayParam}
+            weekday={dayPlan.weekday}
+            timeLabel={dayPlan.outside.label.replace(/^Sparring\s*·\s*/, "")}
+            saved={sparringSaved}
+            coachName={coach.name}
+            coachImage={coach.circle}
+          />
+        )
       ) : null}
 
       <section className="space-y-3" data-session-phase="next">

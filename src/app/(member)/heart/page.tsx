@@ -21,7 +21,7 @@ function flashMessage(query: { polar?: string; demo?: string; imported?: string 
     return "Imported Apple Health / watch workout data. Apple Watch is not connected on the web.";
   }
   if (query.demo === "1") {
-    return "Loaded labeled DEMO heart-rate samples. Not a real Polar or Apple Watch connection.";
+    return "Loaded sample heart-rate numbers. Not a real Polar or Apple Watch connection.";
   }
   if (query.polar === "connected") return "Polar connected. Pull recent activities when you want a refresh.";
   if (query.polar === "not-configured") {
@@ -69,7 +69,7 @@ export default async function HeartPage({
         {!analysis.latestRhr && !analysis.lastWorkout ? (
           <EmptyState title="No heart-rate data yet">
             Import an Apple Health export, type a resting HR, record avg/max after a
-            workout, connect Polar if keys exist, or load labeled DEMO samples.
+            workout, connect Polar if keys exist, or load sample heart-rate numbers.
           </EmptyState>
         ) : (
           <div className="mt-4 space-y-4">
@@ -154,7 +154,6 @@ export default async function HeartPage({
                   {row.bpm} bpm
                   <span className="block text-xs text-muted">
                     {row.recordedAt.toLocaleString()} · {hrSourceLabel(row.source)}
-                    {row.source === "demo" ? " · DEMO" : ""}
                     {isAppleSource(row.source) ? " · import" : ""}
                   </span>
                 </span>
@@ -183,7 +182,6 @@ export default async function HeartPage({
                   {row.avgBpm} / {row.maxBpm} bpm
                   <span className="block text-xs text-muted">
                     {row.startedAt.toLocaleString()} · {hrSourceLabel(row.source)}
-                    {row.source === "demo" ? " · DEMO" : ""}
                     {isAppleSource(row.source) ? " · import" : ""}
                   </span>
                 </span>

@@ -30,7 +30,7 @@ export const CELEBRATION_COPY: Record<string, { title: string; body: string }> =
   },
   milestone: {
     title: "Milestone done",
-    body: "That’s a DEMO path step in the book. Keep the next one honest.",
+    body: "That’s a path step in the book. Keep the next one honest.",
   },
   pr: {
     title: "New PR",

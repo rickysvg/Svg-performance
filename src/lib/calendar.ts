@@ -5,8 +5,10 @@ import { easePlanForUser } from "@/lib/recovery-ease";
 import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { memberFacingTitle } from "@/lib/member-copy";
+import { civilDayInstant } from "@/lib/performed-at";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
@@ -225,20 +227,73 @@ export function weekSessionTally(days: CalendarDay[]) {
   return { done, total };
 }
 
+type LoggedPlanSession = {
+  id: string;
+  title: string;
+  status: string;
+  programDayId: string | null;
+  performedAt: Date;
+  sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[];
+  programDay: { dayNumber: number; program: { slug: string } } | null;
+};
+
+function performedDayKey(performedAt: Date, timeZone: string) {
+  return formatDayParam(civilDayInstant(performedAt, timeZone), timeZone);
+}
+
+function titlesMatch(loggedTitle: string, plannedTitle: string) {
+  const logged = memberFacingTitle(loggedTitle);
+  const planned = memberFacingTitle(plannedTitle);
+  return logged.length > 0 && logged === planned;
+}
+
+function idMatch(log: LoggedPlanSession, planned: { dayId?: string }) {
+  return Boolean(planned.dayId && log.programDayId === planned.dayId);
+}
+
+function dayNumberMatch(
+  log: LoggedPlanSession,
+  planned: { dayNumber?: number; programSlug?: string },
+) {
+  return Boolean(
+    planned.dayNumber != null &&
+      planned.programSlug &&
+      log.programDay?.dayNumber === planned.dayNumber &&
+      log.programDay.program.slug === planned.programSlug,
+  );
+}
+
+/** A saved log belongs to this planned session even if a reseed replaced the day id. */
+function logMatchesPlanned(
+  log: LoggedPlanSession,
+  planned: { dayId?: string; dayNumber?: number; programSlug?: string; title: string },
+  plannedToday: { dayId?: string; dayNumber?: number; programSlug?: string; title: string }[],
+) {
+  if (idMatch(log, planned) || dayNumberMatch(log, planned)) return true;
+  if (!titlesMatch(log.title, planned.title)) return false;
+  const sameTitle = plannedToday.filter((row) => titlesMatch(log.title, row.title));
+  if (sameTitle.length !== 1) return false;
+  const owned = plannedToday.find(
+    (row) => row !== planned && (idMatch(log, row) || dayNumberMatch(log, row)),
+  );
+  return !owned;
+}
+
 export async function getCalendarSchedule(
   userId: string,
   now = new Date(),
   /** When set, the list is that Monday–Sunday, including days already past. */
   weekAnchor?: Date,
 ) {
-  const [catalog, profile, sessions, swaps, account] = await Promise.all([
+  const [catalog, profile, swaps, account] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
-    listWorkoutSessionsForUser(userId),
     getWeekPlanSwapsForUser(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
+  await finalizePastLoggedDrafts(userId, now, tz);
+  const sessions = await listWorkoutSessionsForUser(userId);
   const challenge = await getChallengeProgressForUser(userId, tz);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
@@ -246,21 +301,18 @@ export async function getCalendarSchedule(
     weightAccess: profile?.weightAccess,
     weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
   });
-  const completedDayIds = new Map<string, Set<string>>();
+  const loggedSessions = sessions.filter(
+    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
+  );
   const loggedTitles = new Map<string, string[]>();
-  for (const session of sessions) {
-    if (session.status !== "complete" || !sessionHasLoggedWork(session.sets)) continue;
-    const key = formatDayParam(session.performedAt, tz);
-    if (session.programDayId) {
-      const ids = completedDayIds.get(key) ?? new Set<string>();
-      ids.add(session.programDayId);
-      completedDayIds.set(key, ids);
-    }
+  for (const session of loggedSessions) {
+    const key = performedDayKey(session.performedAt, tz);
     const titles = loggedTitles.get(key) ?? [];
     const title = session.title.trim();
     if (title && !titles.includes(title)) titles.push(title);
     loggedTitles.set(key, titles);
   }
+  const linkRepairs: { id: string; programDayId: string }[] = [];
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -291,9 +343,9 @@ export async function getCalendarSchedule(
     day.coachCheckIn = eased.checkIn;
     const resolved = resolvePlanSessions(plan, { strength, skill });
     const dayKey = formatDayParam(day.date, tz);
-    const doneIds = completedDayIds.get(dayKey) ?? new Set<string>();
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
+    const dayLogs = loggedSessions.filter((session) => performedDayKey(session.performedAt, tz) === dayKey);
     const calendarWeekday = weekdayName(day.date, tz);
     if (plan.outside?.kind === "sparring") {
       const timeLabel = plan.outside.label.replace(/^Sparring\s*·\s*/, "");
@@ -308,9 +360,12 @@ export async function getCalendarSchedule(
       if (session.kind === "rest") continue;
       const href = session.href ?? (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
-      const sessionDone = session.dayId
-        ? doneIds.has(session.dayId)
-        : (loggedTitles.get(dayKey) ?? []).includes(session.title.trim());
+      const matched = dayLogs.find((log) => logMatchesPlanned(log, session, resolved));
+      if (matched && session.dayId && matched.programDayId !== session.dayId) {
+        linkRepairs.push({ id: matched.id, programDayId: session.dayId });
+        matched.programDayId = session.dayId;
+      }
+      const sessionDone = Boolean(matched);
       const missed = past && !sessionDone;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
@@ -363,6 +418,17 @@ export async function getCalendarSchedule(
       });
     }
   }
+
+  const uniqueRepairs = new Map<string, string>();
+  for (const repair of linkRepairs) uniqueRepairs.set(repair.id, repair.programDayId);
+  await Promise.all(
+    [...uniqueRepairs.entries()].map(([id, programDayId]) =>
+      prisma.workoutSession.updateMany({
+        where: { id, userId },
+        data: { programDayId },
+      }),
+    ),
+  );
 
   const titles = [skill?.title, strength?.title].filter((title): title is string => Boolean(title));
 

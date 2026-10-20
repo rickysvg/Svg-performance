@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { PlanChoiceForm } from "@/components/onboarding/PlanChoiceForm";
 import { getOnboardingStatus } from "@/lib/onboarding";
 import { requireUser } from "@/lib/session";
+import { loadFoundingOffer } from "@/lib/founding-offer";
 import { getTrialState } from "@/lib/trial";
 
 export default async function OnboardingPlanPage() {
@@ -15,7 +16,7 @@ export default async function OnboardingPlanPage() {
     redirect(status.deepCompleted ? "/home" : "/onboarding/deeper");
   }
 
-  const trial = await getTrialState(user.id);
+  const [trial, founding] = await Promise.all([getTrialState(user.id), loadFoundingOffer()]);
 
   return (
     <div className="min-h-full bg-white">
@@ -25,6 +26,7 @@ export default async function OnboardingPlanPage() {
           verified={trial.verified}
           trialDays={trial.trialLengthDays}
           canStartTrial={trial.canStartTrial}
+          foundingLine={founding?.line ?? null}
         />
       </main>
     </div>

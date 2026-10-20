@@ -121,10 +121,10 @@ describe("member free tier and Performance trial", () => {
     expect(await getEffectivePlanId(user.id)).toBe("member_access");
   });
 
-  it("gives verified members a 30-day Pro month and nonmembers a 7-day trial", async () => {
+  it("gives verified members a 14-day Pro grant and nonmembers a 7-day trial", async () => {
     expect(trialLengthDays(true)).toBe(MEMBER_TRIAL_DAYS);
     expect(trialLengthDays(false)).toBe(NONMEMBER_TRIAL_DAYS);
-    expect(MEMBER_TRIAL_DAYS).toBe(30);
+    expect(MEMBER_TRIAL_DAYS).toBe(14);
     expect(NONMEMBER_TRIAL_DAYS).toBe(7);
 
     const member = await makeUser("days-member@example.com");
@@ -132,10 +132,12 @@ describe("member free tier and Performance trial", () => {
     const guest = await makeUser("days-guest@example.com");
     const memberTrial = await startTrialForUser(member.id);
     const guestTrial = await startTrialForUser(guest.id);
-    expect(memberTrial.days).toBe(30);
+    expect(memberTrial.days).toBe(14);
     expect(guestTrial.days).toBe(7);
-    expect(trialDaysLeft(memberTrial.trialEndsAt)).toBe(30);
+    expect(trialDaysLeft(memberTrial.trialEndsAt)).toBe(14);
     expect(trialDaysLeft(guestTrial.trialEndsAt)).toBe(7);
+    const saved = await prisma.profile.findUnique({ where: { userId: member.id } });
+    expect(saved?.memberProDays).toBe(14);
   });
 
   it("shows the third-workout card once on free tier with no trial", async () => {

@@ -147,8 +147,10 @@ model Profile {
   onboardingDeepCompletedAt  DateTime?
   trialStartedAt             DateTime?
   trialEndsAt                DateTime?
-  /// Start of the 30-day free Pro month for a verified academy member. Set once.
+  /// Start of the free Pro grant for a verified academy member. Set once.
   memberProStartedAt         DateTime?
+  /// Days granted when the Pro period started. Null means the original 30-day grant.
+  memberProDays              Int?
   planChoiceAt               DateTime?
   thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
@@ -525,7 +527,7 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
-  /// True when this subscription holds a founding seat ($59/yr, first 100).
+  /// True when this subscription holds a founding seat ($59/yr, first 40).
   founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")

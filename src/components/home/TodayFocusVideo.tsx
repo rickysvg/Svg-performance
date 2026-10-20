@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { DemoBadge } from "@/components/DemoBadge";
 import { embedUrlFor, focusVideoSrc } from "@/lib/focus-videos";
+import { memberFacingTitle } from "@/lib/member-copy";
 import type { getFocusVideoForMember } from "@/lib/focus-videos";
 
 type Access = Awaited<ReturnType<typeof getFocusVideoForMember>>;
@@ -39,9 +39,8 @@ export function TodayFocusVideo({ access }: { access: Access }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-accent">Weekly SVG focus</p>
-          <h2 className="mt-1 text-lg">{access.video.title}</h2>
+          <h2 className="mt-1 text-lg">{memberFacingTitle(access.video.title)}</h2>
         </div>
-        {access.video.isDemo ? <DemoBadge /> : null}
       </div>
       <p className="mt-2 text-sm text-muted">
         Labeled as an SVG / Ricky focus video when published. About 60–90 seconds. Not a
@@ -50,7 +49,7 @@ export function TodayFocusVideo({ access }: { access: Access }) {
       {embed ? (
         <div className="mt-3 aspect-video overflow-hidden rounded-xl border border-line">
           <iframe
-            title={access.video.title}
+            title={memberFacingTitle(access.video.title)}
             src={embed}
             className="h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

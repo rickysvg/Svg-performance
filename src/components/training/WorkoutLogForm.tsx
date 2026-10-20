@@ -1001,7 +1001,7 @@ export function WorkoutLogForm({
             />
           </label>
           {session.programDay?.title ? (
-            <p className="text-sm text-muted">{session.programDay.title}</p>
+            <p className="text-sm text-muted">{memberFacingTitle(session.programDay.title)}</p>
           ) : null}
         </div>
 
@@ -1527,7 +1527,7 @@ export function WorkoutLogForm({
                 }
                 className="mt-2 font-semibold underline-offset-4 hover:underline"
               >
-                Retry
+                Retry save
               </button>
             </div>
           ) : null}

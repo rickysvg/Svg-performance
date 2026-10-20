@@ -7,6 +7,7 @@ import { makeUser, resetDatabase } from "./helpers";
 import {
   completedProgramDayIdsOnDay,
   discardEmptyWorkoutDraft,
+  finalizePastLoggedDrafts,
   reopenEmptyCompletion,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
@@ -178,5 +179,111 @@ describe("a workout is complete only after a logged save", () => {
       include: { sets: true },
     });
     expect(kept.sets.some((set) => set.reps === 5 && set.loadValue === 40)).toBe(true);
+  });
+
+  it("does not let a draft sync erase a finished workout", async () => {
+    const user = await makeUser("draft-clobber@example.com");
+    const program = await getDemoProgram();
+    const day = program.days[0];
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: session.performedAt,
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: "Draft overwrite",
+      performedAt: session.performedAt,
+      notes: "late autosave",
+      status: "draft",
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 99,
+          loadValue: 1,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    const saved = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: session.id },
+      include: { sets: true },
+    });
+    expect(saved.status).toBe("complete");
+    expect(saved.title).not.toBe("Draft overwrite");
+    expect(saved.sets.some((set) => set.reps === 8 && set.loadValue === 40)).toBe(true);
+    expect(saved.sets.some((set) => set.reps === 99)).toBe(false);
+  });
+
+  it("finalizes a past logged draft and leaves today's open draft", async () => {
+    const user = await makeUser("past-draft@example.com");
+    const program = await getDemoProgram();
+    const monday = new Date(2026, 8, 21, 16, 0, 0);
+    const wednesday = new Date(2026, 8, 23, 16, 0, 0);
+    const past = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const open = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[1].id,
+      preferredUnits: "lb",
+    });
+    const logged = [
+      {
+        exerciseName: "Goblet squat",
+        setNumber: 1,
+        reps: 8,
+        loadValue: 40,
+        loadUnit: "lb" as const,
+        completed: true,
+      },
+    ];
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: past.id,
+      title: past.title,
+      performedAt: monday,
+      notes: "",
+      status: "draft",
+      sets: logged,
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: open.id,
+      title: open.title,
+      performedAt: wednesday,
+      notes: "",
+      status: "draft",
+      sets: logged,
+    });
+    expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(1);
+    expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(0);
+    const pastRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: past.id } });
+    const openRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: open.id } });
+    expect(pastRow.status).toBe("complete");
+    expect(openRow.status).toBe("draft");
   });
 });

@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { OnboardingForm } from "@/components/onboarding/OnboardingForm";
 import { getOnboardingStatus } from "@/lib/onboarding";
 import { requireUser } from "@/lib/session";
+import { MEMBER_PRO_DAYS } from "@/lib/pricing";
 
 export default async function OnboardingPage() {
   const user = await requireUser();
@@ -23,7 +24,7 @@ export default async function OnboardingPage() {
           We&apos;ll use this to tailor your app — Learn level, Home
           suggestions, and units. For combat athletes, class training, and
           people getting in shape. After this you start a 7-day Pro trial (no card),
-          or your 30-day member Pro month if you train at SVG Academy. An optional two-minute screen can be skipped. This
+          or your {MEMBER_PRO_DAYS}-day member Pro grant if you train at SVG Academy. An optional two-minute screen can be skipped. This
           is not a custom Elite coaching plan.
         </p>
         <div className="mt-6">
