@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { athleteImageryOf, tileSrc } from "@/lib/athlete-imagery";
 import { sparringTileHint } from "@/lib/sparring-tile";
 
 const TILES = [
@@ -48,6 +49,36 @@ describe("Home photo tiles", () => {
     }
   });
 
+  it("ships a female WebP beside every Home tile", () => {
+    for (const name of TILES) {
+      const file = path.join(process.cwd(), "public/tiles", name.replace(".webp", "-female.webp"));
+      expect(fs.existsSync(file), file).toBe(true);
+      const bytes = fs.readFileSync(file);
+      expect(bytes[0]).toBe(0x52);
+      expect(bytes[1]).toBe(0x49);
+      expect(bytes[2]).toBe(0x46);
+      expect(bytes[8]).toBe(0x57);
+      expect(bytes[9]).toBe(0x45);
+      expect(bytes[10]).toBe(0x42);
+      expect(bytes[11]).toBe(0x50);
+      expect(bytes.length).toBeGreaterThan(8_000);
+      expect(bytes.length).toBeLessThan(250_000);
+    }
+  });
+
+  it("uses the female tile set only when the profile says female", () => {
+    expect(athleteImageryOf("")).toBe("male");
+    expect(athleteImageryOf(null)).toBe("male");
+    expect(athleteImageryOf(undefined)).toBe("male");
+    expect(athleteImageryOf("male")).toBe("male");
+    expect(athleteImageryOf("female")).toBe("female");
+    expect(tileSrc("/tiles/train.webp", "")).toBe("/tiles/train.webp");
+    expect(tileSrc("/tiles/train.webp", "male")).toBe("/tiles/train.webp");
+    expect(tileSrc("/tiles/train.webp", "female")).toBe("/tiles/train-female.webp");
+    expect(tileSrc("/tiles/sparring.webp", "female")).toBe("/tiles/sparring-female.webp");
+    expect(tileSrc("/tiles/form-check.webp", "female")).toBe("/tiles/form-check-female.webp");
+  });
+
   it("keeps the Home grid even, with Sparring Log beside Timer", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/HomeQuickActions.tsx"),
@@ -90,6 +121,8 @@ describe("Home photo tiles", () => {
     expect(home).not.toContain("Log sparring");
     expect(train).not.toContain("Log sparring");
     expect(train).toContain('layout="row"');
+    expect(source).toContain("tileSrc");
+    expect(source).toContain("imagery");
     expect(source).toContain("/tiles/train.webp");
     expect(source).toContain("/tiles/mobility.webp");
     expect(source).toContain("/tiles/timer.webp");
@@ -113,6 +146,22 @@ describe("Home photo tiles", () => {
     expect(source).toContain("font-display");
     expect(source).not.toMatch(/lime Anton label pills|rounded-full bg-accent.*Train/);
     expect(source).not.toMatch(/#FFC629|#0072CE|chuze/i);
+    const intake = fs.readFileSync(
+      path.join(process.cwd(), "src/components/onboarding/OnboardingForm.tsx"),
+      "utf8",
+    );
+    const profileForm = fs.readFileSync(
+      path.join(process.cwd(), "src/components/profile/ProfileForm.tsx"),
+      "utf8",
+    );
+    expect(intake).toContain('name="athleteImagery"');
+    expect(intake).toContain("tailors the athlete imagery on your Home");
+    expect(intake).toContain("Male");
+    expect(intake).toContain("Female");
+    expect(profileForm).toContain('name="athleteImagery"');
+    expect(profileForm).toContain("tailors the athlete imagery on your Home");
+    expect(home).toContain("imagery={profile?.athleteImagery}");
+    expect(train).toContain('tileSrc("/tiles/sparring.webp"');
   });
 
   it("shows the last sparring rating, or invites today's log", () => {

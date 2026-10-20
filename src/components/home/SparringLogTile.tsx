@@ -9,9 +9,11 @@ const LABEL = "Sparring Log";
 export function SparringLogTile({
   hint,
   layout = "card",
+  src = ART,
 }: {
   hint: string;
   layout?: "card" | "row";
+  src?: string;
 }) {
   if (layout === "row") {
     return (
@@ -22,7 +24,7 @@ export function SparringLogTile({
         className="flex min-w-0 items-center gap-3 rounded-[1.25rem] bg-black px-3 py-3 text-white"
       >
         <span className="relative h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-black">
-          <Image src={ART} alt="" fill sizes="64px" className="object-cover object-center" />
+          <Image src={src} alt="" fill sizes="64px" className="object-cover object-center" />
         </span>
         <span className="min-w-0">
           <span className="font-display block text-lg uppercase leading-tight tracking-wide">
@@ -44,7 +46,7 @@ export function SparringLogTile({
       className="relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black ring-1 ring-[#cbf805]/40"
     >
       <Image
-        src={ART}
+        src={src}
         alt={ALT}
         fill
         sizes="(max-width: 390px) 50vw, (max-width: 640px) 45vw, 320px"

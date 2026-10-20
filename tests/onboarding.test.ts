@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
+import { athleteImageryOf, tileSrc } from "@/lib/athlete-imagery";
 import { getProfileForUser, updateProfileForUser } from "@/lib/profile";
 import {
   completeOnboardingForUser,
@@ -138,6 +139,30 @@ describe("onboarding gate and persistence", () => {
       allergies: "shellfish",
       trainingLimitations: "Left shoulder",
     });
+
+    expect(updated.athleteImagery).toBe("");
+    expect(athleteImageryOf(updated.athleteImagery)).toBe("male");
+    expect(tileSrc("/tiles/train.webp", updated.athleteImagery)).toBe("/tiles/train.webp");
+
+    const female = await updateProfileForUser(user.id, {
+      displayName: "Edited",
+      goalKey: "build-muscle",
+      goalNote: "Add 5 lb to goblet squat",
+      experienceLevel: "intermediate",
+      primaryFocus: "wrestling",
+      equipment: ["Dumbbells", "Kettlebell"],
+      weeklyAvailability: ["Tuesday", "Thursday"],
+      hoursPerWeek: 5,
+      sessionsPerWeek: 4,
+      preferredUnits: "lb",
+      claimsGymMembership: false,
+      foodPreferences: "high protein",
+      allergies: "shellfish",
+      trainingLimitations: "Left shoulder",
+      athleteImagery: "female",
+    });
+    expect(female.athleteImagery).toBe("female");
+    expect(tileSrc("/tiles/sparring.webp", female.athleteImagery)).toBe("/tiles/sparring-female.webp");
 
     expect(updated.displayName).toBe("Edited");
     expect(updated.preferredUnits).toBe("lb");

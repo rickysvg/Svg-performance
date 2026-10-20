@@ -47,6 +47,7 @@ import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { getSparringLog, latestSparringSessionRating } from "@/lib/outside-log";
 import { sparringTileHint } from "@/lib/sparring-tile";
 import { SparringLogTile } from "@/components/home/SparringLogTile";
+import { tileSrc } from "@/lib/athlete-imagery";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -268,7 +269,11 @@ export default async function TrainingPage({
       ) : null}
 
       {todayAction ? <StartTodayButton action={todayAction} /> : null}
-      <SparringLogTile hint={sparringTileHint(sparringRating)} layout="row" />
+      <SparringLogTile
+        hint={sparringTileHint(sparringRating)}
+        layout="row"
+        src={tileSrc("/tiles/sparring.webp", profile?.athleteImagery)}
+      />
 
       <WeekStrip days={strip} basePath="/training" />
 

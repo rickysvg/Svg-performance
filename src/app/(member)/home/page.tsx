@@ -108,6 +108,7 @@ export default async function HomePage({
       />
 
       <HomeQuickActions
+        imagery={profile?.athleteImagery}
         sparringRating={sparringRating}
         locked={
           planId === "member_access"
