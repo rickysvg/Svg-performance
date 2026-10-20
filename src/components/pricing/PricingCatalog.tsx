@@ -111,7 +111,9 @@ export function PricingCatalog({
       <article data-plan-card="academy" className="rounded-2xl border border-line bg-card p-5 text-foreground">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">SVG Academy</p>
         <h2 className="mt-2 text-xl text-foreground">SVG Academy gym member</h2>
-        <p className="font-display stat-display mt-3 text-3xl text-accent">Included in dues</p>
+        <p className="mt-3 text-base font-medium leading-snug text-accent" data-academy-membership>
+          Free version included with gym membership at our academy
+        </p>
         <p className="mt-3 text-sm font-medium text-foreground" data-plan-expect>
           {ACADEMY_EXPECT}
         </p>

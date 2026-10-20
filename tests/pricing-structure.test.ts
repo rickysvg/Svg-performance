@@ -118,6 +118,8 @@ describe("owner-approved three-plan pricing", () => {
     expect(academyAt).toBeLessThan(proAt);
     expect(proAt).toBeLessThan(coachingAt);
     expect(catalog).toContain("SVG Academy gym member");
+    expect(catalog).toContain("Free version included with gym membership at our academy");
+    expect(catalog).not.toContain("Included in dues");
     expect(catalog).toContain('tone="add"');
     expect(catalog).toContain("text-accent");
     expect(catalog).toContain("Start 7-day free trial");
