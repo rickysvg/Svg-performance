@@ -141,6 +141,12 @@ export function WorkoutWinScreen({
         <h1 id="workout-win-title" className="font-display mt-2 text-3xl uppercase leading-none tracking-wide">
           {workoutCompleteHeadline()}
         </h1>
+        <p
+          className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#cbf805]"
+          data-workout-saved
+        >
+          Saved
+        </p>
         <SessionFeelPicker workoutId={workoutId} current={difficultyRating} />
         <p className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm">
           {tiles.map((tile) => (

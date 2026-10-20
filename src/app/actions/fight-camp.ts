@@ -7,7 +7,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { cancelFightCampForUser, saveFightCampForUser } from "@/lib/fight-camp";
 import { publicErrorMessage } from "@/lib/errors";
 
-export type CampActionState = { error?: string };
+export type CampActionState = { error?: string; saved?: boolean };
 
 function refreshCamp() {
   revalidatePath("/fight-camp");
@@ -43,6 +43,7 @@ export async function saveFightCampAction(
       timeZone,
     );
     refreshCamp();
+    if (next === "/training") return { saved: true };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
@@ -59,6 +60,7 @@ export async function cancelFightCampAction(
     const user = await requireUserOrThrow();
     await cancelFightCampForUser(user.id);
     refreshCamp();
+    if (next === "/training") return { saved: true };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

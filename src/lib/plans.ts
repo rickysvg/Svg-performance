@@ -1,4 +1,4 @@
-import { ACADEMY_INCLUDES, COACHING_INCLUDES, PRO_INCLUDES } from "@/lib/pricing";
+import { ACADEMY_INCLUDES, COACHING_INCLUDES, MEMBER_PRO_DAYS, PRO_INCLUDES } from "@/lib/pricing";
 /** Matches Coach topics: martial art (striking/grappling), conditioning, mental. */
 export const COACH_AI_TRAINED_ON =
   "striking, grappling, strength and conditioning, and fight mindset";
@@ -103,7 +103,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     gymPriceLabel: "Included in dues",
     nonmemberPriceLabel: "Academy members only",
     summary:
-      "Included with SVG Academy dues for verified members. Pro is free for your first 30 days, no card, never auto-billed.",
+      `Included with SVG Academy dues for verified members. Pro is free for your first ${MEMBER_PRO_DAYS} days, no card, never auto-billed.`,
     includes: [...ACADEMY_INCLUDES],
     rank: 0.5,
     features: [
@@ -396,6 +396,7 @@ export type CheckoutSkuId =
   | "platinum"
   | "performance_monthly"
   | "performance_year"
+  | "performance_founding"
   | "coaching_monthly";
 
 export type CheckoutSku = {
@@ -741,6 +742,17 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     checkoutEnabled: false,
     checkoutMode: "subscription",
   },
+  performance_founding: {
+    id: "performance_founding",
+    catalogId: "performance",
+    audience: "both",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING",
+    amountLabel: "$59/yr",
+    amountCents: 5900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "subscription",
+  },
   coaching_monthly: {
     id: "coaching_monthly",
     catalogId: "coaching",
@@ -809,7 +821,7 @@ export function planHasFeature(plan: CatalogPlanId, feature: FeatureId) {
   return PRO_FEATURES.includes(feature) && PLAN_CATALOG[plan].rank >= PLAN_CATALOG.performance.rank;
 }
 
-/** Pro or above: an active subscription, the 7-day trial, or the member Pro month. */
+/** Pro or above: an active subscription, the 7-day trial, or the member Pro grant. */
 export function planIsPro(plan: CatalogPlanId) {
   return PLAN_CATALOG[plan].rank >= PLAN_CATALOG.performance.rank;
 }
@@ -886,5 +898,23 @@ export function publicSkusForPlan(catalogId: CatalogPlanId) {
       row.id !== "gym" &&
       row.id !== "standalone",
   );
+}
+
+/** $59/yr founding seat. Academy members use this same price (no gym-only SKU). */
+export const FOUNDING_SKU_IDS: readonly CheckoutSkuId[] = ["performance_founding"];
+
+export function isFoundingSku(planRaw: string) {
+  return (FOUNDING_SKU_IDS as readonly string[]).includes(planRaw);
+}
+
+/** Stripe price id from STRIPE_PRICE_PERFORMANCE_FOUNDING. Empty until that price exists. */
+export function foundingPriceIds(): string[] {
+  const ids = FOUNDING_SKU_IDS.map((sku) => process.env[CHECKOUT_SKUS[sku].envPrice] ?? "");
+  return Array.from(new Set(ids.filter((id) => id.length > 0)));
+}
+
+export function isFoundingPriceId(priceId: string | null | undefined) {
+  if (!priceId) return false;
+  return foundingPriceIds().includes(priceId);
 }
 

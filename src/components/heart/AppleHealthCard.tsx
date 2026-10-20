@@ -1,4 +1,3 @@
-import { DemoBadge } from "@/components/DemoBadge";
 import { HeartImportForm } from "@/components/heart/HeartImportForm";
 import { loadDemoHeartAction } from "@/app/actions/heart";
 import type { getHeartDeviceStatus } from "@/lib/heart";
@@ -47,7 +46,7 @@ export function AppleHealthCard({
           type="submit"
           className="inline-flex items-center gap-2 text-sm text-accent underline-offset-4 hover:underline"
         >
-          Load DEMO heart-rate samples <DemoBadge />
+          Load sample heart-rate numbers
         </button>
       </form>
     </section>

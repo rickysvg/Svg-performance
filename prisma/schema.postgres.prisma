@@ -151,8 +151,10 @@ model Profile {
   onboardingDeepCompletedAt  DateTime?
   trialStartedAt             DateTime?
   trialEndsAt                DateTime?
-  /// Start of the 30-day free Pro month for a verified academy member. Set once.
+  /// Start of the free Pro grant for a verified academy member. Set once.
   memberProStartedAt         DateTime?
+  /// Days granted when the Pro period started. Null means the original 30-day grant.
+  memberProDays              Int?
   planChoiceAt               DateTime?
   thirdWorkoutCardDismissedAt DateTime?
   currentWeight              Float?
@@ -244,6 +246,8 @@ model OutsideSessionLog {
   minutesPerRound Int
   intensity       String   @default("")
   notes           String   @default("")
+  /** Optional training partner. Blank when the member skips it. */
+  partner         String   @default("")
   /** 1–5, how the sparring session went. Null on logs saved before ratings. */
   sessionRating   Int?
   /** 1–5, how the body feels. 1–2 eases the next day. */
@@ -527,7 +531,7 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
-  /// True when this subscription holds a founding seat ($59/yr, first 100).
+  /// True when this subscription holds a founding seat ($59/yr, first 40).
   founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")

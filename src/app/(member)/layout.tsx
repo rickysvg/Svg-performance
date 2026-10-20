@@ -9,6 +9,8 @@ import { needsCoachChoicePrompt, resolveAiCoach } from "@/lib/coaches";
 import { CoachChoicePrompt } from "@/components/coach/CoachChoicePrompt";
 import { PrimeCoachAudio } from "@/components/coach/PrimeCoachAudio";
 import { headers } from "next/headers";
+import { FoundingOfferProvider } from "@/components/pricing/FoundingOfferHighlight";
+import { loadFoundingOffer } from "@/lib/founding-offer";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 import { MemberProReminderBanner } from "@/components/upgrade/MemberProReminderBanner";
 import { getAppTier } from "@/lib/entitlements";
@@ -22,7 +24,7 @@ export default async function MemberLayout({
   children: React.ReactNode;
 }) {
   const user = await requireOnboardedUser();
-  // Verified academy members get one 30-day Pro month, started the first time we see them.
+  // Verified academy members get one Pro grant, started the first time we see them.
   await ensureMemberProMonth(user.id);
   const profile = await getProfileForUser(user.id);
   const tier = await getAppTier(user.id);
@@ -41,9 +43,11 @@ export default async function MemberLayout({
     Boolean(graceUntil) &&
     graceUntil!.getTime() > nowMs;
   const coach = resolveAiCoach(profile?.aiCoachId);
+  const founding = await loadFoundingOffer();
 
   return (
-    <>
+    <FoundingOfferProvider line={founding?.line ?? null}>
+      <>
       <MemberFrame
         email={user.email}
         role={user.role}
@@ -58,6 +62,7 @@ export default async function MemberLayout({
         (pathname === "/home" || pathname === "/plan") ? (
           <MemberProReminderBanner
             memberProStartedAt={profile.memberProStartedAt}
+            memberProDays={profile.memberProDays}
             tier={tier}
             userId={user.id}
           />
@@ -72,6 +77,7 @@ export default async function MemberLayout({
         <BadgeUnlockOverlay />
       </Suspense>
       <PrimeCoachAudio />
-    </>
+      </>
+    </FoundingOfferProvider>
   );
 }

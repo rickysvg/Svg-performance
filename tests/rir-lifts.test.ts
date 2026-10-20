@@ -3,6 +3,7 @@ import { demoStrengthDays } from "@/lib/demo-week-seed";
 import { fallbackLogMode, plannedSetLine } from "@/lib/exercise-log-mode";
 import { DEMO_FORM_VIDEOS } from "@/lib/form-videos";
 import { isGppStrengthDay, STRENGTH_DAY_BY_BLOCK, weekInBlock } from "@/lib/mesocycle";
+import { catalogSlot } from "@/lib/v2-lifts";
 import { mergeLoadText, percentFromLoadText, rirFromLoadText } from "@/lib/rir";
 import { scaleExercise } from "@/lib/training-scale";
 
@@ -66,14 +67,19 @@ describe("harder fighter lift days", () => {
     return day!.exercises.create;
   }
 
-  it("runs the full-body menus and a Friday circuit", () => {
+  it("runs 4-set full-body menus and a Friday circuit", () => {
     for (const block of Object.values(STRENGTH_DAY_BY_BLOCK)) {
-      expect(exercisesFor(block.monday).length).toBeGreaterThanOrEqual(8);
-      expect(exercisesFor(block.tuesday).length).toBeGreaterThanOrEqual(8);
-      expect(exercisesFor(block.thursday).length).toBeGreaterThanOrEqual(8);
-      expect(exercisesFor(block.friday).length).toBeGreaterThanOrEqual(8);
+      for (const dayNumber of [block.monday, block.tuesday, block.thursday, block.friday]) {
+        const rows = exercisesFor(dayNumber);
+        expect(rows.length, `day ${dayNumber}`).toBeGreaterThanOrEqual(8);
+        for (const row of rows) {
+          const sets = catalogSlot(row.notes) === "warmup" ? 2 : 4;
+          expect(row.sets, row.name).toBe(sets);
+        }
+      }
       expect(isGppStrengthDay(block.friday)).toBe(true);
     }
+    expect(days.find((day) => day.dayNumber === 2)?.title).toBe("Lift 2 — Full body");
     expect(isGppStrengthDay(4)).toBe(false);
   });
 

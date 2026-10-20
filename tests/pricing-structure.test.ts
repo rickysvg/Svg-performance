@@ -11,10 +11,18 @@ import {
   COACHING_CAP,
   COACHING_EXPECT,
   COACHING_MONTHLY,
+  FOUNDING_ANNUAL,
+  FOUNDING_CAP,
+  MEMBER_PRO_DAYS,
+  NONMEMBER_TRIAL_DAYS,
   PERFORMANCE_ANNUAL,
   PERFORMANCE_MONTHLY,
   PRO_EXPECT,
   coachingSpotsLine,
+  foundingOfferFromCount,
+  foundingOfferLine,
+  foundingSeatCountLine,
+  isFoundingDealOpen,
   performanceAnnualLine,
   performancePriceLine,
   usd,
@@ -37,6 +45,8 @@ describe("owner-approved three-plan pricing", () => {
   });
 
   it("shows SVG Pro, the academy tier, and 1-on-1 coaching with the approved prices", () => {
+    expect(MEMBER_PRO_DAYS).toBe(14);
+    expect(NONMEMBER_TRIAL_DAYS).toBe(7);
     expect(PERFORMANCE_MONTHLY).toBe(9.99);
     expect(PERFORMANCE_ANNUAL).toBe(72.99);
     expect(COACHING_MONTHLY).toBe(249);
@@ -51,6 +61,15 @@ describe("owner-approved three-plan pricing", () => {
     expect(coachingSpotsLine(12)).toBe("12 coaching spots open");
     expect(coachingSpotsLine(0)).toBe("Sold out");
     expect(coachingSpotsLine(null)).toBe("Limited to 20 athletes");
+    expect(FOUNDING_ANNUAL).toBe(59);
+    expect(FOUNDING_CAP).toBe(40);
+    expect(isFoundingDealOpen(39)).toBe(true);
+    expect(isFoundingDealOpen(40)).toBe(false);
+    expect(foundingOfferLine()).toBe("Founding member: $59/yr. Limited spots.");
+    expect(foundingOfferLine()).not.toMatch(/of 40/);
+    expect(foundingSeatCountLine(12)).toBe("12 of 40");
+    expect(foundingOfferFromCount(0)?.line).toBe("Founding member: $59/yr. Limited spots.");
+    expect(foundingOfferFromCount(40)).toBeNull();
     expect(PLAN_CATALOG.member_access.label).toBe("Trial ended");
     expect(PLAN_CATALOG.academy.gymPriceLabel).toBe("Included in dues");
     expect(PLAN_CATALOG.academy.includes).toEqual(
@@ -84,7 +103,15 @@ describe("owner-approved three-plan pricing", () => {
     expect(CHECKOUT_SKUS.performance_monthly.amountCents).toBe(999);
     expect(CHECKOUT_SKUS.performance_year.amountCents).toBe(7299);
     expect(CHECKOUT_SKUS.coaching_monthly.amountCents).toBe(24900);
-    expect("performance_founding" in CHECKOUT_SKUS).toBe(false);
+    expect(CHECKOUT_SKUS.performance_founding.checkoutEnabled).toBe(false);
+    expect(CHECKOUT_SKUS.performance_founding.amountCents).toBe(5900);
+    expect(CHECKOUT_SKUS.performance_founding.amountLabel).toBe("$59/yr");
+    expect(CHECKOUT_SKUS.performance_founding.requiresGymVerify).toBe(false);
+    expect(CHECKOUT_SKUS.performance_founding.envPrice).toBe("STRIPE_PRICE_PERFORMANCE_FOUNDING");
+    expect(CHECKOUT_SKUS.performance_founding.catalogId).toBe("performance");
+    expect(publicSkusForPlan("performance").some((row) => row.id === "performance_founding")).toBe(
+      false,
+    );
     expect(CHECKOUT_SKUS.coaching_monthly.catalogId).toBe("coaching");
     expect(SKU_AMOUNT_CENTS.performance_monthly).toBe(999);
     expect(publicSkusForPlan("coaching")).toEqual([]);
@@ -99,7 +126,8 @@ describe("owner-approved three-plan pricing", () => {
       expect(text).not.toMatch(/\$29\/mo/);
       expect(text).not.toMatch(/\$119\b/);
       expect(text).not.toMatch(/\$79\/yr/);
-      expect(text).not.toMatch(/14-day/);
+      expect(text).not.toMatch(/14-day trial/i);
+      expect(text).not.toMatch(/Pro free for 30 days/);
       expect(text.toLowerCase()).not.toMatch(/proposal/);
       expect(text.toLowerCase()).not.toMatch(/additional to gym dues/);
       expect(text).not.toMatch(/Fighter Development/);
@@ -107,9 +135,39 @@ describe("owner-approved three-plan pricing", () => {
       expect(text).not.toMatch(/Platinum VIP/);
       expect(text.toLowerCase()).not.toMatch(/\bbout\b/);
       expect(text).not.toMatch(/first 100/);
-      expect(text).not.toMatch(/Founding/);
-      expect(text).not.toMatch(/\$59/);
+      expect(text).not.toMatch(/\$59\/mo/);
     }
+    expect(read("src/lib/pricing.ts")).toContain("FOUNDING_CAP = 40");
+    expect(read("src/components/pricing/PricingCatalog.tsx")).toContain('marker="price"');
+    expect(read("src/components/pricing/FoundingOfferHighlight.tsx")).toContain("data-founding-price");
+    expect(read("src/components/pricing/FoundingOfferHighlight.tsx")).toContain("bg-accent");
+    expect(read("src/app/pricing/page.tsx")).toContain("loadFoundingOffer");
+    expect(read("src/lib/founding-offer.ts")).toContain("countFoundingSeats");
+    const desk = read("src/app/(member)/admin/page.tsx");
+    expect(desk).toContain('label="Founding"');
+    expect(desk).toContain("foundingDealTone");
+    expect(desk).toContain("deskTone");
+    expect(desk).not.toContain("of 40 left");
+    expect(read("src/app/(member)/admin/founding/page.tsx")).toContain("data-founding-fraction");
+    const publicSurfaces = [
+      "src/components/pricing/PricingCatalog.tsx",
+      "src/app/pricing/page.tsx",
+      "src/components/PaywallNotice.tsx",
+      "src/components/upgrade/TrialEndedPaywall.tsx",
+      "src/components/upgrade/UpgradePreview.tsx",
+      "src/components/upgrade/MemberProReminderBanner.tsx",
+      "src/components/onboarding/PlanChoiceForm.tsx",
+      "src/app/page.tsx",
+      "src/app/(member)/plan/page.tsx",
+      "src/lib/member-pro-reminders.ts",
+    ];
+    for (const file of publicSurfaces) {
+      const surface = read(file);
+      expect(surface).not.toMatch(/of 40 left/);
+      expect(surface).not.toMatch(/foundingSeatCountLine/);
+      expect(surface).not.toMatch(/data-founding-count/);
+    }
+    expect(read(".env.example")).toContain("STRIPE_PRICE_PERFORMANCE_FOUNDING");
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
     const academyAt = catalog.indexOf('data-plan-card="academy"');
     const proAt = catalog.indexOf('data-plan-card="performance"');

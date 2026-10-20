@@ -4,10 +4,14 @@ import { getProfileForUser } from "@/lib/profile";
 import { isStripeConfigured } from "@/lib/access";
 import { ensureCreditsForPlan } from "@/lib/credits";
 import { isPlanAtCap } from "@/lib/waitlist";
+import { isFoundingDealOpen } from "@/lib/pricing";
 import {
   CHECKOUT_SKUS,
   type CheckoutSkuId,
+  foundingPriceIds,
   isCheckoutSkuId,
+  isFoundingPriceId,
+  isFoundingSku,
   normalizePlanId,
   PLAN_CATALOG,
   PLANS,
@@ -23,6 +27,12 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
   const sku = CHECKOUT_SKUS[plan];
   if (!sku.checkoutEnabled) {
     throw new AppError("BILLING", "Paid plans coming soon.");
+  }
+  if (isFoundingSku(plan)) {
+    const seats = await countFoundingSeats();
+    if (!isFoundingDealOpen(seats)) {
+      throw new AppError("BILLING", "The founding price is full.");
+    }
   }
   if (sku.requiresGymVerify) {
     const profile = await getProfileForUser(userId);
@@ -72,10 +82,14 @@ export async function upsertSubscriptionFromWebhook(input: {
         orderBy: { updatedAt: "desc" },
       });
 
-  // Keep Stripe ids and a previously stored founding flag when a later event omits them.
-  // New checkouts do not set founding. The $59/yr first-100 price is not offered.
+  // Keep Stripe ids and the founding flag when a later event (payment failed, cancel) omits them.
   const stripePriceId = input.stripePriceId || existing?.stripePriceId || "";
-  const founding = input.founding ?? existing?.founding ?? false;
+  // A fresh Stripe price id wins when STRIPE_PRICE_PERFORMANCE_FOUNDING is set.
+  // Otherwise use the checkout SKU flag, then whatever was stored before.
+  const founding =
+    input.stripePriceId && foundingPriceIds().length > 0
+      ? isFoundingPriceId(input.stripePriceId)
+      : (input.founding ?? existing?.founding ?? false);
 
   const data = {
     userId: input.userId,
@@ -95,10 +109,17 @@ export async function upsertSubscriptionFromWebhook(input: {
   return prisma.subscription.create({ data });
 }
 
-/** Historical rows that were stored with founding=true. New checkouts do not set the flag. */
+/** Active founding seats: stored founding flag, or the configured founding Stripe price id. */
 export async function countFoundingSeats() {
+  const priceIds = foundingPriceIds();
   return prisma.subscription.count({
-    where: { status: "active", founding: true },
+    where: {
+      status: "active",
+      OR: [
+        { founding: true },
+        ...(priceIds.length > 0 ? [{ stripePriceId: { in: priceIds } }] : []),
+      ],
+    },
   });
 }
 
@@ -152,6 +173,7 @@ export async function applyStripeEvent(event: {
     ? CHECKOUT_SKUS[planRaw].catalogId
     : normalizePlanId(planRaw);
   const stripePriceId = object.items?.data?.[0]?.price?.id;
+  const founding = isFoundingSku(planRaw);
 
   if (!userId) {
     throw new AppError("BILLING", "Webhook event is missing the member id.");
@@ -206,6 +228,7 @@ export async function applyStripeEvent(event: {
           ? object.subscription
           : object.id,
       stripePriceId,
+      founding,
       currentPeriodEnd: periodEnd,
     });
     if (result.status === "active") {
@@ -240,6 +263,7 @@ export async function applyStripeEvent(event: {
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId: object.id,
       stripePriceId,
+      founding,
       currentPeriodEnd: periodEnd,
     });
     if (result.status === "active") {

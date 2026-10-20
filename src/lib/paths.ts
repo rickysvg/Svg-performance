@@ -41,13 +41,13 @@ export const TRAINING_PATHS: TrainingPath[] = [
     slug: "beginner-foundations",
     title: "Beginner Foundations",
     summary:
-      "DEMO starting point: one strength day, one tutorial, a logged week, then a written goal. Not a custom Elite plan.",
+      "Starting point: one strength day, one tutorial, a logged week, then a written goal. Not a custom Elite plan.",
     audience: "beginner",
     isDemo: true,
     steps: [
       {
         key: "day-1",
-        title: "Log DEMO Day 1",
+        title: "Log day 1",
         summary: "Lower-body power template. Stop when the work is honest.",
         href: "/training",
         programDayNumber: 1,
@@ -79,13 +79,13 @@ export const TRAINING_PATHS: TrainingPath[] = [
     slug: "build-your-gas-tank",
     title: "Build Your Gas Tank",
     summary:
-      "DEMO conditioning path: engine work, a second session, a feel rating, then a tutorial. Still labeled DEMO.",
+      "Conditioning path: engine work, a second session, a feel rating, then a tutorial.",
     audience: "conditioning",
     isDemo: true,
     steps: [
       {
         key: "day-3",
-        title: "Log DEMO Day 3",
+        title: "Log the conditioning day",
         summary: "Conditioning template. This is not a fight-camp weight cut.",
         href: "/training",
         programDayNumber: 3,
@@ -93,7 +93,7 @@ export const TRAINING_PATHS: TrainingPath[] = [
       {
         key: "second-session",
         title: "Log a second completed session",
-        summary: "Any DEMO day counts. Two sessions on the books.",
+        summary: "Any training day counts. Two sessions on the books.",
         href: "/training",
         minWorkouts: 2,
       },
@@ -116,21 +116,21 @@ export const TRAINING_PATHS: TrainingPath[] = [
     slug: "strength-for-combat",
     title: "Strength for Combat",
     summary:
-      "DEMO strength path for people who compete or want combat strength. Not a live fight camp.",
+      "Strength path for people who compete or want combat strength. Not a live fight camp.",
     audience: "combat",
     isDemo: true,
     steps: [
       {
         key: "day-1",
-        title: "Log DEMO Day 1 (strength)",
+        title: "Log day 1 (strength)",
         summary: "Lower-body power. Loads you type are yours.",
         href: "/training",
         programDayNumber: 1,
       },
       {
         key: "day-2",
-        title: "Log DEMO Day 2",
-        summary: "Upper / pull template from the same DEMO program.",
+        title: "Log day 2",
+        summary: "Upper / pull template from the same program.",
         href: "/training",
         programDayNumber: 2,
       },

@@ -197,7 +197,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     coachCheckIn: null as { name: string; image: string; message: string } | null,
     sparringLog: null as Awaited<ReturnType<typeof getSparringLog>>,
     suggestionCopy:
-      "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
+      "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
     loggedOnSelected: null,
     foodToday: { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },

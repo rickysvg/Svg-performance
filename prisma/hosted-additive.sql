@@ -638,3 +638,14 @@ BEGIN
     ALTER TABLE "Profile" ADD COLUMN "athleteImagery" TEXT NOT NULL DEFAULT '';
   END IF;
 END $$;
+
+-- Member Pro grant length. Null keeps an already-started 30-day period. Additive, idempotent.
+DO $$
+BEGIN
+  IF to_regclass('public."Profile"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'memberProDays'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "memberProDays" INTEGER;
+  END IF;
+END $$;

@@ -128,6 +128,24 @@ export function normalizeOutsideInput(
   );
 }
 
+/** A hard checkbox saves that weekday even when the day box itself is off. */
+export function outsideRowsFromForm(formData: FormData) {
+  const checked = new Set(formData.getAll("outsideWeekday").map(String));
+  const rows = WEEKDAYS.flatMap((weekday) => {
+    const hard = formData.get(`outsideHard-${weekday}`) === "on";
+    if (!checked.has(weekday) && !hard) return [];
+    return [
+      {
+        weekday,
+        kind: String(formData.get(`outsideKind-${weekday}`) ?? "class"),
+        time: String(formData.get(`outsideTime-${weekday}`) ?? ""),
+        hard,
+      },
+    ];
+  });
+  return normalizeOutsideInput(rows);
+}
+
 export function serializeOutsideTraining(days: OutsideDay[]) {
   return JSON.stringify(
     days.map((day) => ({

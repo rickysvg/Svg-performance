@@ -24,7 +24,7 @@ export function todayPriorityCopy(lane: "beginner" | "fighter") {
   }
   return {
     headline: "Beginner priorities today",
-    body: "Keep it simple: one DEMO session and one tutorial. A written goal beats a complicated plan.",
+    body: "Keep it simple: one session and one tutorial. A written goal beats a complicated plan.",
   };
 }
 

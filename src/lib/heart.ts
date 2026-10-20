@@ -38,7 +38,7 @@ export function hrSourceLabel(source: string) {
     case "import":
       return "Imported (Apple Health export / watch workout)";
     case "demo":
-      return "DEMO sample";
+      return "Sample data";
     case "manual":
     default:
       return "Typed by you";

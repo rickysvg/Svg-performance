@@ -1,22 +1,31 @@
 /**
  * Public app prices. One Pro price for everyone, academy members included.
- * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR,
- * STRIPE_PRICE_COACHING_MONTHLY). Nothing here creates Stripe products.
+ * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR /
+ * _FOUNDING, STRIPE_PRICE_COACHING_MONTHLY). Nothing here creates Stripe products.
+ * STRIPE_PRICE_PERFORMANCE_FOUNDING is the $59/yr founding price (first 40).
  */
 
 export const PRO_LABEL = "SVG Pro";
 export const PERFORMANCE_MONTHLY = 9.99;
 export const PERFORMANCE_ANNUAL = 72.99;
 export const PERFORMANCE_ANNUAL_SAVE = "save 39%";
+/** Founding Pro annual. First FOUNDING_CAP signups, academy members included. */
+export const FOUNDING_ANNUAL = 59;
+export const FOUNDING_CAP = 40;
 export const COACHING_MONTHLY = 249;
 export const COACHING_CAP = 20;
 
 /** Nonmembers: 7-day no-card Pro trial, then Pro is required to keep training in the app. */
 export const NONMEMBER_TRIAL_DAYS = 7;
-/** Verified academy members: Pro free for 30 days, no card, never auto-billed. */
-export const MEMBER_PRO_DAYS = 30;
-/** In-app and push reminders for the member Pro month. */
-export const MEMBER_PRO_REMINDER_DAYS = [25, 29, 31] as const;
+/** New verified academy claims: Pro free for 14 days, no card, never auto-billed. */
+export const MEMBER_PRO_DAYS = 14;
+/**
+ * Grants that already started before the 14-day change.
+ * A null Profile.memberProDays means this length. Do not shorten those periods.
+ */
+export const LEGACY_MEMBER_PRO_DAYS = 30;
+/** Reminder days for a new 14-day grant: 5 days left, last days, and the day after it ends. */
+export const MEMBER_PRO_REMINDER_DAYS = [9, 13, 15] as const;
 
 /** Academy tier (included in dues) limits. */
 export const ACADEMY_AI_MESSAGES_PER_WEEK = 3;
@@ -43,6 +52,27 @@ export function performancePriceLine() {
 
 export function performanceAnnualLine() {
   return `or ${usd(PERFORMANCE_ANNUAL)}/yr, ${PERFORMANCE_ANNUAL_SAVE}`;
+}
+
+export function isFoundingDealOpen(enrolledCount = 0) {
+  return enrolledCount < FOUNDING_CAP;
+}
+
+/** Public founding sentence. No seat count. Callers hide it once the cap is reached. */
+export function foundingOfferLine() {
+  return `Founding member: ${usd(FOUNDING_ANNUAL)}/yr. Limited spots.`;
+}
+
+/** Admin-only count. Not for pricing, banners, or reminders. */
+export function foundingSeatCountLine(enrolled: number) {
+  const used = Math.max(0, Math.floor(enrolled));
+  return `${used} of ${FOUNDING_CAP}`;
+}
+
+export function foundingOfferFromCount(enrolled: number) {
+  if (!isFoundingDealOpen(enrolled)) return null;
+  const spotsLeft = Math.max(0, FOUNDING_CAP - enrolled);
+  return { enrolled, spotsLeft, line: foundingOfferLine() };
 }
 
 export function coachingSpotsLine(spotsLeft: number | null) {

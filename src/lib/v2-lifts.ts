@@ -94,7 +94,7 @@ export function stripWeekMarker(notes?: string | null) {
   return notes.slice(0, index).trim();
 }
 
-/** Three full-body days plus Friday circuit, three blocks. */
+/** Three full-body days plus Friday circuit, three blocks. Working sets are 4. */
 export function v2StrengthDays() {
   return catalogStrengthDays();
 }

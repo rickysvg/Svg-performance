@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/roles";
 import { AdminBack } from "@/components/admin/AdminChrome";
 import { listChallengesForAdmin, monthKeyFrom } from "@/lib/challenges";
 import { ChallengeAdminForm } from "@/components/admin/ChallengeAdminForm";
-import { DemoBadge } from "@/components/DemoBadge";
+import { memberFacingTitle } from "@/lib/member-copy";
 
 export default async function AdminChallengesPage() {
   await requireAdmin();
@@ -23,7 +23,7 @@ export default async function AdminChallengesPage() {
         {rows.map((row) => (
           <li key={row.id} className="rounded-2xl border border-line bg-card p-4">
             <p className="font-semibold">
-              {row.title} {row.isDemo ? <DemoBadge className="ml-2" /> : null}
+              {memberFacingTitle(row.title)}
             </p>
             <p className="text-sm text-muted">
               {row.monthKey} · {row.active ? "active" : "inactive"} ·{" "}

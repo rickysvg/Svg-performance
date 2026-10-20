@@ -5,15 +5,19 @@ import { findDemoTrainingCatalog } from "@/lib/programs";
 import { loggedSetSome } from "@/lib/logged-work";
 import { planForDate, resolvePlanSessions, type PlannerPrefs } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
-import { addZonedDays, dayKey, zonedCivilToUtc } from "@/lib/timezone";
+import { civilDayInstant } from "@/lib/performed-at";
+import { memberFacingTitle } from "@/lib/member-copy";
+import { addZonedDays, dayKey, weekdayInZone, zonedCivilToUtc } from "@/lib/timezone";
 import { WEEKDAYS } from "@/lib/constants";
 import {
   clearWeekSwap,
+  futureWorkoutPulledBack,
   isPlanWeekday,
   isSessionKey,
   moveSessionOnPlan,
   parseWeekPlanSwaps,
   placedWeekdayForSession,
+  pruneAutoRolledSwaps,
   pruneWeekPlanSwaps,
   shiftDayKey,
   swapSessionsOnPlan,
@@ -31,7 +35,15 @@ export async function getWeekPlanSwapsForUser(userId: string): Promise<WeekPlanS
     where: { userId },
     select: { weekPlanSwapsJson: true },
   });
-  return parseWeekPlanSwaps(row?.weekPlanSwapsJson);
+  const parsed = parseWeekPlanSwaps(row?.weekPlanSwapsJson);
+  const pruned = pruneAutoRolledSwaps(parsed);
+  if (row && JSON.stringify(pruned) !== JSON.stringify(parsed)) {
+    await prisma.profile.update({
+      where: { userId },
+      data: { weekPlanSwapsJson: JSON.stringify(pruned) },
+    });
+  }
+  return pruned;
 }
 
 async function writeWeekPlanSwaps(userId: string, swaps: WeekPlanSwap[]) {
@@ -90,7 +102,12 @@ async function loggedSessionKeys(
       performedAt: { gte: monday, lt: addZonedDays(monday, 7, timeZone) },
       sets: loggedSetSome,
     },
-    select: { programDayId: true, title: true, performedAt: true },
+    select: {
+      programDayId: true,
+      title: true,
+      performedAt: true,
+      programDay: { select: { dayNumber: true, program: { select: { slug: true } } } },
+    },
   });
   const done = new Set<string>();
   for (let index = 0; index < WEEKDAYS.length; index += 1) {
@@ -100,9 +117,18 @@ async function loggedSessionKeys(
     for (const session of resolved) {
       if (!session.sessionKey || session.kind === "rest") continue;
       const hit = logs.some((log) => {
-        if (dayKey(log.performedAt, timeZone) !== key) return false;
+        if (dayKey(civilDayInstant(log.performedAt, timeZone), timeZone) !== key) return false;
         if (session.dayId && log.programDayId === session.dayId) return true;
-        return !session.dayId && log.title.trim() === session.title.trim();
+        if (
+          session.dayNumber != null &&
+          session.programSlug &&
+          log.programDay?.dayNumber === session.dayNumber &&
+          log.programDay.program.slug === session.programSlug
+        ) {
+          return true;
+        }
+        const plannedTitle = memberFacingTitle(session.title);
+        return plannedTitle.length > 0 && memberFacingTitle(log.title) === plannedTitle;
       });
       if (hit) done.add(session.sessionKey);
     }
@@ -216,6 +242,9 @@ export async function moveWorkoutForUser(
   if (destination < dayKey(now, timeZone)) {
     throw new AppError("PLAN", "Move it to today or a later day.");
   }
+  if (futureWorkoutPulledBack(sessionKey, toDay, weekdayInZone(now, timeZone))) {
+    throw new AppError("PLAN", "A future workout stays on its own day.");
+  }
   const existing = await getWeekPlanSwapsForUser(userId);
   const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
   assertSessionsOpen(done, [sessionKey]);
@@ -249,9 +278,16 @@ export async function swapWorkoutForUser(
     throw new AppError("PLAN", "Pick a session on another day.");
   }
   const today = dayKey(now, timeZone);
+  const todayName = weekdayInZone(now, timeZone);
   const landing = (day: PlanWeekday) => shiftDayKey(weekStart, WEEKDAYS.indexOf(day));
   if (landing(dayA) < today || landing(dayB) < today) {
     throw new AppError("PLAN", "Move it to today or a later day.");
+  }
+  if (
+    futureWorkoutPulledBack(sessionKey, dayB, todayName) ||
+    futureWorkoutPulledBack(otherKey, dayA, todayName)
+  ) {
+    throw new AppError("PLAN", "A future workout stays on its own day.");
   }
   const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
   assertSessionsOpen(done, [sessionKey, otherKey]);
@@ -266,7 +302,9 @@ export async function swapWorkoutForUser(
 /** Replace the saved week with a previously stored snapshot. Used by Undo. */
 export async function restoreWeekPlanForUser(userId: string, raw: string, now = new Date()) {
   const timeZone = await timeZoneForUser(userId);
-  const next = pruneWeekPlanSwaps(parseWeekPlanSwaps(raw), weekStartKey(now, timeZone));
+  const next = pruneAutoRolledSwaps(
+    pruneWeekPlanSwaps(parseWeekPlanSwaps(raw), weekStartKey(now, timeZone)),
+  );
   await writeWeekPlanSwaps(userId, next);
   return next;
 }

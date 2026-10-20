@@ -254,7 +254,7 @@ describe("heart rate wearables", () => {
     await loadDemoHeartDataForUser(user.id, new Date("2026-09-22T12:00:00Z"));
     const tiles = await getProgressHeartTiles(user.id);
     expect(tiles.rhr?.source).toBe("demo");
-    expect(tiles.rhr?.hint).toBe("DEMO sample");
+    expect(tiles.rhr?.hint).toBe("Sample data");
     expect(tiles.lastWorkout?.source).toBe("demo");
     const status = await getHeartDeviceStatus(user.id);
     expect(status.polarConnected).toBe(false);

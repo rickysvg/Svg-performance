@@ -56,9 +56,14 @@ describe("coach desk access and counters", () => {
   it("keeps the founding counter off public pricing", () => {
     const pricing = read("src/components/pricing/PricingCatalog.tsx");
     const page = read("src/app/pricing/page.tsx");
-    expect(pricing).not.toContain("Founding");
+    expect(pricing).toContain("FoundingOfferHighlight");
+    expect(pricing).not.toMatch(/of 40/);
+    expect(pricing).not.toContain("FOUNDING_DEAL_CAP");
+    expect(pricing).not.toContain("foundingSeatCountLine");
     expect(page).not.toContain("FOUNDING_DEAL_CAP");
     expect(page).not.toContain("/admin/founding");
+    expect(page).not.toMatch(/of 40 left/);
+    expect(read("src/lib/pricing.ts")).toContain("Limited spots.");
   });
 
   it("labels plan, trial, and academy from the same rules as access", () => {

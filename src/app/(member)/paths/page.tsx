@@ -18,7 +18,7 @@ export default async function PathsPage() {
         <div>
           <h1 className="text-2xl">Training paths</h1>
           <p className="mt-1 text-sm text-muted">
-            DEMO tracks with milestones. Default comes from your intake. Today pulls the next step.
+            Tracks with milestones. Default comes from your intake. Today pulls the next step.
           </p>
         </div>
         <DemoBadge />
@@ -42,7 +42,7 @@ export default async function PathsPage() {
               <p className="mt-3 text-sm">
                 {progress.nextStep
                   ? `Next: ${progress.nextStep.title}`
-                  : "All DEMO milestones on this path are complete."}
+                  : "All milestones on this path are complete."}
               </p>
             ) : null}
             <div className="mt-4 flex flex-col items-start gap-3">

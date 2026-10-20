@@ -256,4 +256,64 @@ describe("calendar schedule loader", () => {
     expect(workouts.some((row) => row.subtitle.includes("Core week plan."))).toBe(true);
     expect(workouts.some((row) => row.subtitle.includes("DEMO"))).toBe(false);
   });
+
+  it("links a logged Monday workout after its catalog id is gone, including a UTC-midnight stamp", async () => {
+    const user = await makeUser("monday-link@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+        timeZone: "America/Denver",
+      },
+    });
+    const monday = new Date(2026, 8, 21, 10, 0, 0);
+    const wednesday = new Date(2026, 8, 23, 10, 0, 0);
+    const before = await getCalendarSchedule(user.id, wednesday, monday);
+    const mondayBefore = before.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    const loggedDayId = mondayBefore.find((row) => row.programDayId)?.programDayId ?? "";
+    expect(loggedDayId).toBeTruthy();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: loggedDayId,
+      preferredUnits: "lb",
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: new Date("2026-09-21T00:00:00.000Z"),
+      notes: "",
+      status: "draft",
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { programDayId: null },
+    });
+
+    const schedule = await getCalendarSchedule(user.id, wednesday, monday);
+    const mondayWorkouts = schedule.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    const logged = mondayWorkouts.filter((row) => row.programDayId === loggedDayId);
+    expect(logged.length).toBeGreaterThan(0);
+    expect(logged.every((row) => row.status === "complete")).toBe(true);
+    const tally = weekSessionTally(schedule.days);
+    expect(tally.done).toBeGreaterThan(0);
+    const linked = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    expect(linked.status).toBe("complete");
+    expect(linked.programDayId).toBe(loggedDayId);
+
+    const sundayWork = schedule.days[6]?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(sundayWork.every((row) => row.status !== "complete")).toBe(true);
+  });
 });

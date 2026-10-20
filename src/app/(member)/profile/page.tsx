@@ -13,6 +13,7 @@ import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { MEMBER_PRO_DAYS } from "@/lib/pricing";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
@@ -109,7 +110,7 @@ export default async function ProfilePage() {
           </p>
         ) : (
           <p className="text-sm text-muted">
-            Not verified as an SVG Academy member yet. Verified members get the core app with their dues and Pro free for 30 days.
+            Not verified as an SVG Academy member yet. Verified members get the core app with their dues and Pro free for {MEMBER_PRO_DAYS} days.
           </p>
         )}
         {isGymdeskSyncEnabled() && !profile.emailVerifiedAt ? (

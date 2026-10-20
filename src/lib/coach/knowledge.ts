@@ -44,7 +44,7 @@ export function listRuntimeKnowledgeFiles(): string[] {
 export function loadKnowledgeBase(): string {
   const files = listRuntimeKnowledgeFiles();
   if (files.length === 0) {
-    return "DEMO knowledge base folder is empty.";
+    return "Knowledge base folder is empty.";
   }
   return files
     .map((name) => {
