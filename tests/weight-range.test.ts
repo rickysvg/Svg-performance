@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterWeightRange, weightValuesSince, type WeightSeriesPoint } from "@/lib/weight-series";
+import { filterWeightRange, type WeightSeriesPoint } from "@/lib/weight-series";
 
 function point(id: string, iso: string, value: number): WeightSeriesPoint {
   return { id, label: id, value, unit: "lb", recordedAt: iso };
@@ -19,18 +19,5 @@ describe("weight range", () => {
     expect(filterWeightRange(points, "30", now).map((row) => row.id)).toEqual(["d10", "d2"]);
     expect(filterWeightRange(points, "90", now).map((row) => row.id)).toEqual(["d40", "d10", "d2"]);
     expect(filterWeightRange(points, "all", now)).toHaveLength(4);
-  });
-
-  it("keeps the last seven days of weigh-ins, oldest first", () => {
-    const values = weightValuesSince(
-      [
-        { value: 190, recordedAt: new Date("2026-07-20T18:00:00Z") },
-        { value: 186.2, recordedAt: new Date("2026-10-10T18:00:00Z") },
-        { value: 185.4, recordedAt: new Date("2026-10-18T18:00:00Z") },
-        { value: 98, recordedAt: new Date("2026-10-20T16:00:00Z") },
-      ],
-      now,
-    );
-    expect(values).toEqual([185.4, 98]);
   });
 });

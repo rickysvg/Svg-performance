@@ -54,12 +54,24 @@ function StreakGauge({ current, longest }: { current: number; longest: number })
   );
 }
 
-export function HomeTelemetry({ data }: { data: HomeTelemetrySnapshot }) {
+export function HomeTelemetry({
+  data,
+  title,
+}: {
+  data: HomeTelemetrySnapshot;
+  title: string;
+}) {
   return (
-    <section className="hc-panel hc-carbon px-4 py-4" data-home-telemetry aria-labelledby="home-telemetry-title">
+    <section
+      className="hc-panel hc-carbon px-4 py-4"
+      data-home-telemetry
+      aria-labelledby="home-telemetry-kicker home-telemetry-title"
+    >
       <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="hc-kicker">Telemetry</p>
+        <div className="min-w-0">
+          <p id="home-telemetry-kicker" className="hc-kicker">
+            {title}
+          </p>
           <h2 id="home-telemetry-title" className="mt-2 text-2xl">
             This week
           </h2>

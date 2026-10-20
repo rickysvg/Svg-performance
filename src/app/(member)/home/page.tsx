@@ -8,6 +8,7 @@ import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
 import { HomeDailyQuote } from "@/components/home/HomeDailyQuote";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
+import { HomeTelemetry } from "@/components/home/HomeTelemetry";
 import { HomeToday } from "@/components/home/HomeToday";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -21,9 +22,10 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentWeightsForUser } from "@/lib/body-metrics";
-import { HomeWeekCards } from "@/components/home/HomeWeekCards";
-import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
+import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
+import { getFightCampRow } from "@/lib/fight-camp";
+import { telemetryGraphTitle } from "@/lib/telemetry-title";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
@@ -40,7 +42,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry, camp] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -56,15 +58,21 @@ export default async function HomePage({
       homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
-      homeLoad("weight", getRecentWeightsForUser(user.id, 30), []),
+      homeLoad("weight", getRecentWeightsForUser(user.id, 8), []),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
       homeLoad(
         "telemetry",
         getHomeTelemetry({ userId: user.id, timeZone: tz }),
         emptyHomeTelemetry(new Date(), tz),
       ),
+      homeLoad("camp", getFightCampRow(user.id), null),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
+  const telemetryTitle = telemetryGraphTitle({
+    status: camp?.status,
+    fightDateKey: camp?.fightDateKey,
+    todayKey: dayKey,
+  });
   const readiness = await homeLoad(
     "readiness",
     getReadinessForDay(user.id, dayKey),
@@ -130,13 +138,6 @@ export default async function HomePage({
         trialDays={trial.trialLengthDays}
       />
 
-      <HomeWeekCards
-        weights={recentWeights}
-        days={telemetry.days}
-        todayKey={dayKey}
-        now={new Date()}
-      />
-
       {reminderResult.due.length > 0 ? (
         <section className="hc-panel space-y-2 px-4 py-4">
           {reminderResult.due.map((item) => (
@@ -175,6 +176,8 @@ export default async function HomePage({
           coachImage={coach.circle}
         />
       ) : null}
+
+      <HomeTelemetry data={telemetry} title={telemetryTitle} />
 
       <Link
         href="/nutrition"

@@ -12,6 +12,9 @@ import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { BodyWeightChart } from "@/components/progress/BodyWeightChart";
 import { HomeTelemetry } from "@/components/home/HomeTelemetry";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
+import { getFightCampRow } from "@/lib/fight-camp";
+import { telemetryGraphTitle } from "@/lib/telemetry-title";
+import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { listProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
@@ -72,6 +75,12 @@ export default async function ProgressPage() {
   const trend = await sparringTrend(user.id, 16);
   const weightPoints = weightSeriesPoints(weightHistory, tz);
   const telemetry = await getHomeTelemetry({ userId: user.id, timeZone: tz });
+  const camp = await getFightCampRow(user.id);
+  const telemetryTitle = telemetryGraphTitle({
+    status: camp?.status,
+    fightDateKey: camp?.fightDateKey,
+    todayKey: zonedDayKey(new Date(), tz),
+  });
   const chartNow = new Date().toISOString();
   const shownWeights = weightHistory.map((row) => displayBodyMetric(row));
   const massLine = massCaption(shownWeights[0] ?? null, shownWeights[1] ?? null, tz);
@@ -195,7 +204,7 @@ export default async function ProgressPage() {
         )}
       </section>
 
-      <HomeTelemetry data={telemetry} />
+      <HomeTelemetry data={telemetry} title={telemetryTitle} />
 
       <section className="hc-panel p-4" data-coach-clear>
         <p className="hc-kicker">Sparring</p>
