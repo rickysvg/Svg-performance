@@ -396,6 +396,7 @@ export type CheckoutSkuId =
   | "platinum"
   | "performance_monthly"
   | "performance_year"
+  | "performance_founding"
   | "coaching_monthly";
 
 export type CheckoutSku = {
@@ -741,6 +742,17 @@ export const CHECKOUT_SKUS: Record<CheckoutSkuId, CheckoutSku> = {
     checkoutEnabled: false,
     checkoutMode: "subscription",
   },
+  performance_founding: {
+    id: "performance_founding",
+    catalogId: "performance",
+    audience: "both",
+    envPrice: "STRIPE_PRICE_PERFORMANCE_FOUNDING",
+    amountLabel: "$59/yr",
+    amountCents: 5900,
+    requiresGymVerify: false,
+    checkoutEnabled: false,
+    checkoutMode: "subscription",
+  },
   coaching_monthly: {
     id: "coaching_monthly",
     catalogId: "coaching",
@@ -886,5 +898,23 @@ export function publicSkusForPlan(catalogId: CatalogPlanId) {
       row.id !== "gym" &&
       row.id !== "standalone",
   );
+}
+
+/** $59/yr founding seat. Academy members use this same price (no gym-only SKU). */
+export const FOUNDING_SKU_IDS: readonly CheckoutSkuId[] = ["performance_founding"];
+
+export function isFoundingSku(planRaw: string) {
+  return (FOUNDING_SKU_IDS as readonly string[]).includes(planRaw);
+}
+
+/** Stripe price id from STRIPE_PRICE_PERFORMANCE_FOUNDING. Empty until that price exists. */
+export function foundingPriceIds(): string[] {
+  const ids = FOUNDING_SKU_IDS.map((sku) => process.env[CHECKOUT_SKUS[sku].envPrice] ?? "");
+  return Array.from(new Set(ids.filter((id) => id.length > 0)));
+}
+
+export function isFoundingPriceId(priceId: string | null | undefined) {
+  if (!priceId) return false;
+  return foundingPriceIds().includes(priceId);
 }
 

@@ -1,3 +1,6 @@
+"use client";
+
+import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 import { UpgradeCtas } from "@/components/upgrade/UpgradeCtas";
 
 const BLURBS: Record<string, { title: string; body: string }> = {
@@ -100,6 +103,7 @@ export function UpgradePreview({
         Pro is $9.99/mo or $72.99/yr, save 39%, for everyone. Paid plans coming soon. You can
         look at pricing anytime from Profile.
       </p>
+      <FoundingOfferHighlight />
     </section>
   );
 }

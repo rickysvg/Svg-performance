@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { continueFreePlanAction, startTrialAction } from "@/app/actions/trial";
+import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 
 export function PlanChoiceForm({
   verified,
   trialDays,
   canStartTrial = true,
+  foundingLine = null,
 }: {
   verified: boolean;
   trialDays: number;
   canStartTrial?: boolean;
+  foundingLine?: string | null;
 }) {
   if (verified) {
     return (
@@ -41,6 +44,7 @@ export function PlanChoiceForm({
           </Link>
           .
         </p>
+        <FoundingOfferHighlight line={foundingLine} />
       </div>
     );
   }
@@ -81,6 +85,7 @@ export function PlanChoiceForm({
       <p className="text-sm text-muted">
         Checkout is coming soon. You can look at pricing anytime from Profile.
       </p>
+      <FoundingOfferHighlight line={foundingLine} />
     </div>
   );
 }

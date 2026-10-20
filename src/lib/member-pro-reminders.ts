@@ -3,6 +3,7 @@ import { loggedSetSome } from "@/lib/logged-work";
 import { sendPushToUser } from "@/lib/weekly-checkin-push";
 import { getAppTier } from "@/lib/entitlements";
 import { memberProDay, memberProGrantDays } from "@/lib/trial";
+import { loadFoundingOffer } from "@/lib/founding-offer";
 import {
   LEGACY_MEMBER_PRO_DAYS,
   MEMBER_PRO_DAYS,
@@ -53,24 +54,42 @@ function recapLine(recap: MemberProRecap) {
 
 const PRICE = `${usd(PERFORMANCE_MONTHLY)}/mo or ${usd(PERFORMANCE_ANNUAL)}/yr`;
 
-export function memberProCopy(stage: MemberProStage, recap: MemberProRecap) {
+function withFounding(body: string, foundingLine?: string | null) {
+  if (!foundingLine) return body;
+  return `${body} ${foundingLine}`;
+}
+
+export function memberProCopy(
+  stage: MemberProStage,
+  recap: MemberProRecap,
+  foundingLine?: string | null,
+) {
   if (stage === "day25") {
     return {
       title: "5 days left of free Pro",
-      body: `${recapLine(recap)} Keep Pro for ${PRICE}, or stay on the core app with your dues. No card on file, never auto-billed.`,
+      body: withFounding(
+        `${recapLine(recap)} Keep Pro for ${PRICE}, or stay on the core app with your dues. No card on file, never auto-billed.`,
+        foundingLine,
+      ),
       cta: "Keep Pro",
     };
   }
   if (stage === "day29") {
     return {
       title: "Last day of free Pro",
-      body: `Tomorrow you go back to the core app included with your dues. Keep AI coach chat with voices, Today's Summary, and full history for ${PRICE}.`,
+      body: withFounding(
+        `Tomorrow you go back to the core app included with your dues. Keep AI coach chat with voices, Today's Summary, and full history for ${PRICE}.`,
+        foundingLine,
+      ),
       cta: "Keep Pro",
     };
   }
   return {
     title: "Your free Pro ended",
-    body: `You're on the core app included with your dues: rounds, mobility and form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, Fuel logging, 30 days of history, and 3 AI messages a week. ${recapLine(recap).replace(" so far.", " during free Pro.")}`,
+    body: withFounding(
+      `You're on the core app included with your dues: rounds, mobility and form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, Fuel logging, 30 days of history, and 3 AI messages a week. ${recapLine(recap).replace(" so far.", " during free Pro.")}`,
+      foundingLine,
+    ),
     cta: `Upgrade to Pro · ${usd(PERFORMANCE_MONTHLY)}/mo`,
   };
 }
@@ -87,6 +106,7 @@ export async function runMemberProReminderCron(now = new Date()): Promise<Member
   });
   let sent = 0;
   let skipped = 0;
+  const foundingLine = (await loadFoundingOffer())?.line ?? null;
   for (const profile of profiles) {
     const grantDays = memberProGrantDays(profile.memberProDays);
     const stage = memberProStage(memberProDay(profile.memberProStartedAt, now), grantDays);
@@ -111,7 +131,7 @@ export async function runMemberProReminderCron(now = new Date()): Promise<Member
       continue;
     }
     const recap = await memberProRecap(profile.userId, profile.memberProStartedAt!);
-    const copy = memberProCopy(stage, recap);
+    const copy = memberProCopy(stage, recap, foundingLine);
     await sendPushToUser(profile.userId, { title: copy.title, body: copy.body, url: "/pricing" });
     await prisma.memberProReminderLog.create({
       data: { userId: profile.userId, stage, channel: "push" },

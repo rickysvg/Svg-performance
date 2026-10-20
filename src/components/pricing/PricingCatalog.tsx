@@ -19,6 +19,7 @@ import {
 } from "@/lib/pricing";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { startTrialAction } from "@/app/actions/trial";
+import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 
 function PlanCheckoutButton({
   canStartTrial,
@@ -96,6 +97,7 @@ export function PricingCatalog({
   userLoggedIn,
   canStartTrial = false,
   checkoutLive = false,
+  foundingLine = null,
 }: {
   verified: boolean;
   coachingSpotsLeft: number | null;
@@ -103,6 +105,7 @@ export function PricingCatalog({
   userLoggedIn: boolean;
   canStartTrial?: boolean;
   checkoutLive?: boolean;
+  foundingLine?: string | null;
 }) {
   const coaching = PLAN_CATALOG.coaching;
 
@@ -137,6 +140,7 @@ export function PricingCatalog({
         <h2 className="mt-2 text-xl text-foreground">{PRO_LABEL}</h2>
         <p className="font-display stat-display mt-3 text-3xl text-accent">{usd(PERFORMANCE_MONTHLY)}/mo</p>
         <p className="mt-1 text-sm text-foreground">{performanceAnnualLine()}</p>
+        <FoundingOfferHighlight line={foundingLine} marker="price" />
         <p className="mt-3 text-sm font-medium text-foreground" data-plan-expect>
           {PRO_EXPECT}
         </p>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 import {
   PERFORMANCE_ANNUAL,
   PERFORMANCE_ANNUAL_SAVE,
@@ -29,6 +30,7 @@ export function TrialEndedPaywall() {
       <p className="text-sm text-black">
         or {usd(PERFORMANCE_ANNUAL)}/yr, {PERFORMANCE_ANNUAL_SAVE}
       </p>
+      <FoundingOfferHighlight />
       <div className="mt-5 space-y-3">
         <Link
           href="/pricing"

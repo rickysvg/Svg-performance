@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AppTier } from "@/lib/entitlements";
+import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 import { memberProCopy, memberProRecap, memberProStage } from "@/lib/member-pro-reminders";
 import { memberProDay, memberProGrantDays } from "@/lib/trial";
 import { prisma } from "@/lib/prisma";
@@ -36,6 +37,7 @@ export async function MemberProReminderBanner({
       <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Pro</p>
       <h2 className="mt-1 text-lg text-black">{copy.title}</h2>
       <p className="mt-1 text-sm text-black">{copy.body}</p>
+      <FoundingOfferHighlight className="mt-2" />
       <Link
         href="/pricing"
         className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent text-black"

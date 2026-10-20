@@ -1,13 +1,17 @@
 /**
  * Public app prices. One Pro price for everyone, academy members included.
- * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR,
- * STRIPE_PRICE_COACHING_MONTHLY). Nothing here creates Stripe products.
+ * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR /
+ * _FOUNDING, STRIPE_PRICE_COACHING_MONTHLY). Nothing here creates Stripe products.
+ * STRIPE_PRICE_PERFORMANCE_FOUNDING is the $59/yr founding price (first 40).
  */
 
 export const PRO_LABEL = "SVG Pro";
 export const PERFORMANCE_MONTHLY = 9.99;
 export const PERFORMANCE_ANNUAL = 72.99;
 export const PERFORMANCE_ANNUAL_SAVE = "save 39%";
+/** Founding Pro annual. First FOUNDING_CAP signups, academy members included. */
+export const FOUNDING_ANNUAL = 59;
+export const FOUNDING_CAP = 40;
 export const COACHING_MONTHLY = 249;
 export const COACHING_CAP = 20;
 
@@ -48,6 +52,27 @@ export function performancePriceLine() {
 
 export function performanceAnnualLine() {
   return `or ${usd(PERFORMANCE_ANNUAL)}/yr, ${PERFORMANCE_ANNUAL_SAVE}`;
+}
+
+export function isFoundingDealOpen(enrolledCount = 0) {
+  return enrolledCount < FOUNDING_CAP;
+}
+
+/** Live counter, e.g. "12 of 40 left". */
+export function foundingLeftLine(spotsLeft: number) {
+  const left = Math.max(0, Math.min(FOUNDING_CAP, spotsLeft));
+  return `${left} of ${FOUNDING_CAP} left`;
+}
+
+/** Public founding sentence. Callers hide it once the cap is reached. */
+export function foundingOfferLine(spotsLeft: number) {
+  return `Founding member: ${usd(FOUNDING_ANNUAL)}/yr. ${foundingLeftLine(spotsLeft)}. Academy members can claim it.`;
+}
+
+export function foundingOfferFromCount(enrolled: number) {
+  if (!isFoundingDealOpen(enrolled)) return null;
+  const spotsLeft = Math.max(0, FOUNDING_CAP - enrolled);
+  return { enrolled, spotsLeft, line: foundingOfferLine(spotsLeft) };
 }
 
 export function coachingSpotsLine(spotsLeft: number | null) {
