@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
-import { MassGauge } from "@/components/home/MassGauge";
+import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
 import { massSpeedoClass } from "@/components/home/mass-fonts";
 import type { MassGauge as MassGaugeScale } from "@/lib/mass-caption";
 
@@ -36,12 +36,22 @@ export function HomeBodyWeight({
 
   return (
     <form action={action} data-mass-box className={carbon ? "hc-panel hc-carbon px-3 py-2" : "px-0 py-1"}>
-      <div className="flex items-center gap-2">
-        <div className="relative h-[4.5rem] min-w-0 flex-1">
-          <span className="hc-kicker absolute left-0 top-0 z-20">Mass</span>
-          <MassGauge gauge={gauge} live={value != null} />
-          <label className="absolute inset-0 z-10">
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <span className="hc-kicker mb-1 block">Mass</span>
+          <div
+            className="relative w-full"
+            style={{ aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}` }}
+          >
+            <MassGauge gauge={gauge} live={value != null} />
+            <label
+              className="absolute z-10"
+              style={{
+                left: "50%",
+                top: `${MASS_DIAL.baseline * 100}%`,
+                transform: "translate(-50%, -100%)",
+              }}
+            >
               <input
                 name="value"
                 inputMode="decimal"
@@ -53,18 +63,18 @@ export function HomeBodyWeight({
                 aria-label="Body weight in pounds"
                 onChange={(event) => setDraft(event.target.value)}
                 style={{ width: figureWidth, textAlign: "center" }}
-                className={`block max-w-full bg-transparent text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
+                className={`block bg-transparent text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
               />
-              <span className="absolute top-1/2 left-full ml-1 -translate-y-1/2 font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]">
+              <span className="absolute bottom-0.5 left-full ml-1 font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]">
                 {inlineUnit(unit)}
               </span>
-            </span>
-          </label>
+            </label>
+          </div>
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="touch-target shrink-0 rounded-full bg-accent px-3 text-sm font-semibold text-black disabled:opacity-60"
+          className="touch-target mb-0.5 shrink-0 rounded-full bg-accent px-3 text-sm font-semibold text-black disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save"}
         </button>
