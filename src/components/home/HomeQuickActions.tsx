@@ -11,7 +11,7 @@ const PHOTO_ACTIONS = [
     label: "Train",
     hint: "Today’s work",
     src: "/tiles/train.webp",
-    alt: "Athlete punching a heavy bag",
+    alt: "Athlete lifting a dumbbell beside an assault bike",
   },
   {
     href: "/mobility",
