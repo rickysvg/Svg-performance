@@ -79,22 +79,44 @@ describe("combat swap library", () => {
     expect(live).toBe(187);
     expect(preview.length - live).toBe(16);
     expect(withClipTrim(COMBAT_LIBRARY.find((row) => row.id === "rope-climb")!, { videoStart: 0, videoEnd: 30 }).videoEnd).toBeNull();
-    expect(withClipTrim(COMBAT_LIBRARY.find((row) => row.id === "zercher-squat")!, { videoStart: 0, videoEnd: 90 }).videoEnd).toBeNull();
+    const zercher = COMBAT_LIBRARY.find((row) => row.id === "zercher-squat")!;
+    const rejected = withClipTrim(zercher, { videoStart: 0, videoEnd: 90 });
+    expect(rejected.videoStart).toBe(zercher.videoStart);
+    expect(rejected.videoEnd).toBe(zercher.videoEnd);
   });
 
-  it("hides low-confidence clips and long clips that do not start on the form", () => {
+  it("hides low-confidence clips and the six untrimmed long clips", () => {
     const hidden = COMBAT_LIBRARY.filter((row) => !memberSwappable(row)).map((row) => row.name);
-    expect(hidden).toContain("Hip-hinge isometric mid-thigh pull");
+    expect(hidden).toContain("Gi pull-up");
+    expect(hidden).toContain("Rope climb");
     expect(hidden).toContain("Banded neck flexion");
-    expect(hidden).toContain("Zercher squat");
-    expect(hidden).toContain("Pull-up");
-    expect(memberSwappable(COMBAT_LIBRARY.find((row) => row.name === "Meadows row")!)).toBe(true);
-    expect(needsTrim(COMBAT_LIBRARY.find((row) => row.name === "Meadows row")!)).toBe(true);
-    expect(needsReview(COMBAT_LIBRARY.find((row) => row.name === "Dragon flag")!)).toBe(true);
+    expect(hidden).toContain("Sledgehammer tire strike");
+    expect(hidden).not.toContain("Zercher squat");
+    expect(hidden).not.toContain("Pull-up");
+    const meadows = COMBAT_LIBRARY.find((row) => row.name === "Meadows row")!;
+    expect(memberSwappable(meadows)).toBe(true);
+    expect(needsTrim(meadows)).toBe(false);
+    expect(meadows.videoStart).toBe(20);
+    expect(meadows.videoEnd).toBe(80);
+    const dragon = COMBAT_LIBRARY.find((row) => row.name === "Dragon flag")!;
+    expect(needsReview(dragon)).toBe(false);
+    expect(memberSwappable(dragon)).toBe(true);
+    const gi = COMBAT_LIBRARY.find((row) => row.id === "gi-pull-up")!;
+    expect(gi.videoStart).toBe(40);
+    expect(gi.videoEnd).toBe(72);
+    expect(needsReview(gi)).toBe(true);
+    for (const id of UNTRIMMED_CLIP_IDS) {
+      expect(COMBAT_LIBRARY.find((row) => row.id === id)?.videoEnd).toBeNull();
+    }
 
     const picker = filterExerciseLibrary({ category: "lower", equipment: "gym" }).map((row) => row.name);
-    expect(picker).not.toContain("Hip-hinge isometric mid-thigh pull");
+    expect(picker).toContain("Zercher squat");
     expect(picker).toContain("Bulgarian split squat");
+    expect(picker).not.toContain("Gi pull-up");
+    expect(DEMO_FORM_VIDEOS["Zercher squat"]?.url).toContain("t=8");
+    expect(DEMO_FORM_VIDEOS["Zercher squat"]?.url).toContain("end=50");
+    expect(DEMO_FORM_VIDEOS["Pull-up"]?.url).toContain("t=40");
+    expect(DEMO_FORM_VIDEOS["Pull-up"]?.url).toContain("end=100");
   });
 
   it("puts high and medium library lifts in the templates and leaves the unverified moves out", () => {
