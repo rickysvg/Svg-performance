@@ -709,12 +709,23 @@ body:has(.app-splash.is-visible) {
   letter-spacing: 0.04em;
 }
 
-.mass-anton {
-  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
-  font-weight: 400;
-  font-style: normal;
+.mass-speedo {
+  font-style: italic;
+  font-weight: 600;
   font-synthesis: none;
   letter-spacing: 0.02em;
+  text-shadow: 0 0 10px rgba(203, 248, 5, 0.55);
+  transform: skewX(-8deg);
+  transform-origin: left bottom;
+}
+
+.mass-seg-on {
+  fill: #cbf805;
+  filter: drop-shadow(0 0 1.5px rgba(203, 248, 5, 0.95));
+}
+
+.mass-seg-off {
+  fill: rgba(203, 248, 5, 0.16);
 }
 
 .hc-panel {

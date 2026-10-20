@@ -1,4 +1,4 @@
-import { Barlow_Condensed, Orbitron } from "next/font/google";
+import { Orbitron } from "next/font/google";
 import { parseMassFont, type MassFontId } from "@/lib/mass-caption";
 
 const orbitron = Orbitron({
@@ -8,20 +8,10 @@ const orbitron = Orbitron({
   preload: false,
 });
 
-const condensedItalic = Barlow_Condensed({
-  weight: "600",
-  style: "italic",
-  subsets: ["latin"],
-  display: "swap",
-  preload: false,
-});
-
-/** Class for the weight figure. 1 keeps the telemetry mono already on the card. */
+/** Variant 2 only. Variant 1 is drawn as segmented digits, not a webfont. */
 export function massFontClass(id: MassFontId) {
-  if (id === 2) return "mass-anton";
-  if (id === 3) return `${orbitron.className} font-semibold`;
-  if (id === 4) return `${condensedItalic.className} font-semibold italic`;
-  return "font-telemetry";
+  if (id === 2) return `${orbitron.className} mass-speedo`;
+  return "";
 }
 
 export function massFontFromParam(raw: string | string[] | undefined) {

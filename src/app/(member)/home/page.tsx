@@ -20,7 +20,7 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentWeightsForUser } from "@/lib/body-metrics";
-import { massCaption } from "@/lib/mass-caption";
+import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { massFontFromParam } from "@/components/home/mass-fonts";
 import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { latestSparringSessionRating } from "@/lib/outside-log";
@@ -56,7 +56,7 @@ export default async function HomePage({
       homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
-      homeLoad("weight", getRecentWeightsForUser(user.id), []),
+      homeLoad("weight", getRecentWeightsForUser(user.id, 8), []),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
       homeLoad(
         "telemetry",
@@ -74,6 +74,11 @@ export default async function HomePage({
   const weight = recentWeights[0] ?? null;
   const units = weight?.unit || (profile?.preferredUnits === "kg" ? "lb" : profile?.preferredUnits || "lb");
   const massLine = massCaption(weight, recentWeights[1] ?? null, tz);
+  const massGauge = massGaugeScale({
+    value: weight?.value ?? null,
+    goal: profile?.goalWeight ?? null,
+    recent: recentWeights.map((row) => row.value),
+  });
   const coach = resolveAiCoach(profile?.aiCoachId);
   const trialEnded = planId === "member_access";
 
@@ -101,8 +106,9 @@ export default async function HomePage({
         value={weight ? weight.value : null}
         unit={units}
         caption={massLine}
-        fontClassName={massFont.className}
-        fontId={massFont.id}
+        variant={massFont.id}
+        speedoClassName={massFont.className}
+        gauge={massGauge}
       />
 
       <HomeQuickActions

@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
 import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
 import { displayBodyMetric, getLatestBodyMetricsForUser, listBodyMetricsForUser, weightSeriesPoints } from "@/lib/body-metrics";
-import { massCaption } from "@/lib/mass-caption";
+import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { BodyWeightChart } from "@/components/progress/BodyWeightChart";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { listProgressPhotosForUser } from "@/lib/progress-photos";
@@ -71,6 +71,11 @@ export default async function ProgressPage() {
   const weightPoints = weightSeriesPoints(weightHistory, tz);
   const shownWeights = weightHistory.map((row) => displayBodyMetric(row));
   const massLine = massCaption(shownWeights[0] ?? null, shownWeights[1] ?? null, tz);
+  const massGauge = massGaugeScale({
+    value: shownWeights[0]?.value ?? null,
+    goal: profile?.goalWeight ?? null,
+    recent: shownWeights.map((row) => row.value),
+  });
   const records = await getPersonalRecordsForUser(user.id, units);
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
@@ -167,6 +172,7 @@ export default async function ProgressPage() {
                 value={weight.value}
                 unit={units === "kg" ? "lb" : units || "lb"}
                 caption={massLine}
+                gauge={massGauge}
               />
             </div>
           </details>
@@ -176,6 +182,7 @@ export default async function ProgressPage() {
             value={null}
             unit={units === "kg" ? "lb" : units || "lb"}
             caption={massLine}
+            gauge={massGauge}
           />
         )}
       </section>
