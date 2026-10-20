@@ -21,6 +21,8 @@ import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentWeightsForUser } from "@/lib/body-metrics";
+import { HomeWeekCards } from "@/components/home/HomeWeekCards";
+import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
@@ -38,7 +40,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -54,8 +56,13 @@ export default async function HomePage({
       homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
-      homeLoad("weight", getRecentWeightsForUser(user.id, 8), []),
+      homeLoad("weight", getRecentWeightsForUser(user.id, 30), []),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
+      homeLoad(
+        "telemetry",
+        getHomeTelemetry({ userId: user.id, timeZone: tz }),
+        emptyHomeTelemetry(new Date(), tz),
+      ),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
   const readiness = await homeLoad(
@@ -121,6 +128,13 @@ export default async function HomePage({
         }
         canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
+      />
+
+      <HomeWeekCards
+        weights={recentWeights}
+        days={telemetry.days}
+        todayKey={dayKey}
+        now={new Date()}
       />
 
       {reminderResult.due.length > 0 ? (
