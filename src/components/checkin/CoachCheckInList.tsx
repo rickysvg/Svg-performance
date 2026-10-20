@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import { coachCheckInAction, type CheckInActionState } from "@/app/actions/weekly-checkin";
 import { StatusBanner } from "@/components/StatusBanner";
 import { regionLabel, type CheckInFlag } from "@/lib/weekly-checkin-shared";
+import { DeskBadge } from "@/components/admin/DeskStatus";
+import { deskSurfaceClass, queueItemTone } from "@/lib/admin-desk-status";
 
 export type CoachCheckInCard = {
   id: string;
@@ -53,11 +55,11 @@ export function CoachCheckInList({ cards }: { cards: CoachCheckInCard[] }) {
 function CoachCard({ card }: { card: CoachCheckInCard }) {
   const [state, action, pending] = useActionState(coachCheckInAction, {} as CheckInActionState);
   const flagged = card.flags.length > 0;
+  const tone = queueItemTone(card.coachStatus !== "pending");
   return (
     <article
-      className={`flex h-full flex-col rounded-3xl border p-4 ${
-        flagged ? "border-[#FF3B3B]/70 bg-black text-white" : "border-[#cbf805]/35 bg-[#101216] text-white"
-      }`}
+      data-desk-tone={tone}
+      className={`hc-panel flex h-full flex-col p-4 text-white ${deskSurfaceClass(tone)}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -69,11 +71,7 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
             {card.email} · {card.submittedLabel}
           </p>
         </div>
-        <p
-          className="rounded-full bg-[#CBF805] px-3 py-1 text-xs uppercase tracking-wide text-black"
-        >
-          {card.coachStatus}
-        </p>
+        <DeskBadge tone={tone} label={card.coachStatus === "pending" ? "Waiting" : "Done"} />
       </div>
 
       <p className="mt-4 whitespace-pre-line text-sm leading-relaxed">{card.summary}</p>

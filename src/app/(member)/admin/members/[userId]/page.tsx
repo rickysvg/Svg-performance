@@ -4,6 +4,7 @@ import { getAdminMember } from "@/lib/admin-dashboard";
 import { AdminScreen } from "@/components/admin/AdminChrome";
 import { AdminVerifyForm } from "@/components/admin/AdminVerifyForm";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
+import { deskSurfaceClass, weekDayTone } from "@/lib/admin-desk-status";
 
 export default async function AdminMemberPage({
   params,
@@ -30,8 +31,14 @@ export default async function AdminMemberPage({
       </section>
 
       <ul className="space-y-2">
-        {member.week.map((day) => (
-          <li key={day.key} className="hc-panel flex items-center justify-between gap-3 px-4 py-3">
+        {member.week.map((day) => {
+          const tone = weekDayTone(day);
+          return (
+          <li
+            key={day.key}
+            data-desk-tone={tone}
+            className={`hc-panel flex items-center justify-between gap-3 px-4 py-3 ${deskSurfaceClass(tone)}`}
+          >
             <span>
               <span className="font-telemetry text-[10px] uppercase tracking-[0.14em] text-muted">
                 {day.weekday}
@@ -46,7 +53,8 @@ export default async function AdminMemberPage({
               {day.completed ? "Done" : day.missed ? "Missed" : day.scheduled ? "Planned" : "Rest"}
             </span>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {actor.role === "admin" ? (

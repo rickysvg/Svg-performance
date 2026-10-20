@@ -2,7 +2,9 @@ import Link from "next/link";
 import { requireDashboardAdmin } from "@/lib/admin-access";
 import { getContentDesk } from "@/lib/admin-dashboard";
 import { AdminScreen, AdminToolkit } from "@/components/admin/AdminChrome";
+import { DeskBadge } from "@/components/admin/DeskStatus";
 import { ReseedCatalogButton } from "@/components/admin/ReseedCatalogButton";
+import { deskSurfaceClass } from "@/lib/admin-desk-status";
 
 export default async function AdminContentPage() {
   const user = await requireDashboardAdmin();
@@ -29,11 +31,13 @@ export default async function AdminContentPage() {
         ) : (
           <ul className="space-y-2">
             {content.formVideos.map((name) => (
-              <li key={name} className="hc-panel flex items-center justify-between gap-3 px-4 py-3">
+              <li
+                key={name}
+                data-desk-tone="attention"
+                className={`hc-panel flex items-center justify-between gap-3 px-4 py-3 ${deskSurfaceClass("attention")}`}
+              >
                 <span>{name}</span>
-                <span className="shrink-0 rounded-full bg-[#FF3B3B] px-2 py-1 font-telemetry text-[10px] uppercase text-white">
-                  Pending
-                </span>
+                <DeskBadge tone="attention" label="Pending" />
               </li>
             ))}
           </ul>
@@ -45,7 +49,11 @@ export default async function AdminContentPage() {
           <h2 className="text-lg">Lessons without a video</h2>
           <ul className="space-y-2">
             {content.lessons.map((lesson) => (
-              <li key={lesson.id} className="hc-panel px-4 py-3">
+              <li
+                key={lesson.id}
+                data-desk-tone="attention"
+                className={`hc-panel px-4 py-3 ${deskSurfaceClass("attention")}`}
+              >
                 {user.role === "admin" ? (
                   <Link href={`/admin/lessons/${lesson.id}`}>
                     <span className="block font-semibold">{lesson.title}</span>

@@ -5,6 +5,8 @@ import { isWeeklyCheckInCoach, listCheckInOverrides, listCheckInsForCoach } from
 import { CheckInOverrideForm } from "@/components/checkin/CheckInOverrideForm";
 import { CoachCheckInList } from "@/components/checkin/CoachCheckInList";
 import { AdminScreen, AdminToolkit } from "@/components/admin/AdminChrome";
+import { DeskBadge } from "@/components/admin/DeskStatus";
+import { deskSurfaceClass, queueItemTone } from "@/lib/admin-desk-status";
 
 export default async function CoachCheckInsPage({
   searchParams,
@@ -16,6 +18,7 @@ export default async function CoachCheckInsPage({
   const query = await searchParams;
   const [cards, overrides] = await Promise.all([listCheckInsForCoach(), listCheckInOverrides()]);
   const open = cards.filter((card) => card.coachStatus === "pending");
+  const answered = cards.filter((card) => card.coachStatus !== "pending");
   const flagged = cards.filter((card) => card.flagCount > 0 && card.coachStatus === "pending").length;
   const selected = query.id ? cards.find((card) => card.id === query.id) : null;
   const toolkit =
@@ -84,36 +87,21 @@ export default async function CoachCheckInsPage({
           : "Template summaries. The live model stays off."
       }
     >
-      {open.length === 0 && cards.length === 0 ? (
+      {cards.length === 0 ? (
         <p className="text-sm text-muted">No check-ins yet. Coaching members send one from Check-in.</p>
       ) : (
-        <ul className="space-y-2">
-          {(open.length > 0 ? open : cards).map((card) => (
-            <li key={card.id}>
-              <Link href={`/coach/checkins?id=${card.id}`} className="hc-panel block px-4 py-4">
-                <span className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="font-display block text-xl uppercase leading-tight">{card.name}</span>
-                    <span className="mt-1 block text-sm text-muted">Week of {card.weekKey}</span>
-                  </span>
-                  {card.flagCount > 0 ? (
-                    <span className="shrink-0 rounded-full bg-[#FF3B3B] px-2 py-1 font-telemetry text-[10px] uppercase text-white">
-                      {card.flagCount} flag{card.flagCount === 1 ? "" : "s"}
-                    </span>
-                  ) : (
-                    <span className="shrink-0 font-telemetry text-[10px] uppercase text-[#CBF805]">
-                      {card.coachStatus}
-                    </span>
-                  )}
-                </span>
-                <span className="mt-3 block line-clamp-2 text-sm text-white/80">{card.summary}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          {open.length === 0 ? <p className="text-sm text-muted">No check-ins waiting.</p> : <CheckInQueue rows={open} />}
+          {answered.length > 0 ? (
+            <section className="space-y-2">
+              <h2 className="text-lg">Answered</h2>
+              <CheckInQueue rows={answered} />
+            </section>
+          ) : null}
+        </>
       )}
 
-      <details className="hc-panel px-4 py-3">
+      <details className="hc-panel desk-idle px-4 py-3">
         <summary className="cursor-pointer font-semibold">Testing access</summary>
         <div className="mt-3">
           <CheckInOverrideForm enabled={overrides} />
@@ -121,5 +109,50 @@ export default async function CoachCheckInsPage({
       </details>
       <AdminToolkit links={toolkit} />
     </AdminScreen>
+  );
+}
+
+function CheckInQueue({
+  rows,
+}: {
+  rows: {
+    id: string;
+    name: string;
+    weekKey: string;
+    summary: string;
+    flagCount: number;
+    coachStatus: string;
+  }[];
+}) {
+  return (
+    <ul className="space-y-2">
+      {rows.map((card) => {
+        const tone = queueItemTone(card.coachStatus !== "pending");
+        const label =
+          card.coachStatus === "pending"
+            ? card.flagCount > 0
+              ? `${card.flagCount} flag${card.flagCount === 1 ? "" : "s"}`
+              : "Waiting"
+            : "Done";
+        return (
+          <li key={card.id}>
+            <Link
+              href={`/coach/checkins?id=${card.id}`}
+              data-desk-tone={tone}
+              className={`hc-panel block px-4 py-4 ${deskSurfaceClass(tone)}`}
+            >
+              <span className="flex items-start justify-between gap-3">
+                <span>
+                  <span className="font-display block text-xl uppercase leading-tight">{card.name}</span>
+                  <span className="mt-1 block text-sm text-muted">Week of {card.weekKey}</span>
+                </span>
+                <DeskBadge tone={tone} label={label} />
+              </span>
+              <span className="mt-3 block line-clamp-2 text-sm text-white/80">{card.summary}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
