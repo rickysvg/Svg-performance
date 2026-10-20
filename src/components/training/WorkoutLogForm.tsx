@@ -378,6 +378,7 @@ export function WorkoutLogForm({
   const setsRef = useRef<WorkoutSet[]>([]);
   const pendingRef = useRef(false);
   const syncChain = useRef(Promise.resolve());
+  const draftBaseRef = useRef(new Date(session.updatedAt).toISOString());
   const scrolled = useRef(false);
   const routeRelease = useRef<(() => void) | null>(null);
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
@@ -538,6 +539,7 @@ export function WorkoutLogForm({
       title,
       performedAt,
       notes,
+      baseUpdatedAt: draftBaseRef.current,
       rest: nextRest
         ? { exerciseName: nextRest.exerciseName, endsAtMs: nextRest.endsAtMs }
         : null,
@@ -557,13 +559,22 @@ export function WorkoutLogForm({
     };
     syncChain.current = syncChain.current
       .then(() => syncWorkoutDraftAction(payload))
-      .then(() => undefined)
+      .then((result) => {
+        if (result.ok) draftBaseRef.current = result.updatedAt;
+      })
       .catch(() => undefined);
   }
 
   useEffect(() => {
     setsRef.current = sets;
   }, [sets]);
+
+  useEffect(() => {
+    const incoming = new Date(session.updatedAt).getTime();
+    if (Number.isNaN(incoming)) return;
+    const current = new Date(draftBaseRef.current).getTime();
+    if (incoming > current) draftBaseRef.current = new Date(incoming).toISOString();
+  }, [session.updatedAt]);
 
   useEffect(() => {
     pendingRef.current = pending;
@@ -1203,7 +1214,8 @@ export function WorkoutLogForm({
                           }));
                           setActiveName(swappedName);
                         }}
-                        onSetsReplaced={(next, focusName) => {
+                        onSetsReplaced={(next, focusName, updatedAt) => {
+                          if (updatedAt) draftBaseRef.current = updatedAt;
                           const lb = setsInLb(next);
                           const previous = new Set(setsRef.current.map((set) => set.exerciseName));
                           const added = lb.find((set) => !previous.has(set.exerciseName))?.exerciseName;

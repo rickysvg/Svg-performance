@@ -32,10 +32,10 @@ describe("training scale bands", () => {
     expect(scaleCopy("beginner")).toMatch(/beginner pacing/i);
   });
 
-  it("gives beginners ~2:30 bag rounds and 45s rest", () => {
-    expect(SKILL_ROUND_SECONDS.beginner[1]).toBe(150);
-    expect(SKILL_ROUND_SECONDS.beginner[6]).toBe(150);
-    expect(SKILL_REST_SECONDS.beginner[1]).toBe(45);
+  it("gives beginners 3:00 bag rounds and 60s rest", () => {
+    expect(SKILL_ROUND_SECONDS.beginner[1]).toBe(180);
+    expect(SKILL_ROUND_SECONDS.beginner[6]).toBe(180);
+    expect(SKILL_REST_SECONDS.beginner[1]).toBe(60);
     const round = scaleExercise(
       {
         name: "Bag rounds — boxing combos",
@@ -47,8 +47,8 @@ describe("training scale bands", () => {
       },
       { band: "beginner", programSlug: "demo-combat-skills", dayNumber: 1 },
     );
-    expect(round.reps).toBe("2:30");
-    expect(round.restSeconds).toBe(45);
+    expect(round.reps).toBe("3:00");
+    expect(round.restSeconds).toBe(60);
     expect(round.sets).toBe(7);
   });
 

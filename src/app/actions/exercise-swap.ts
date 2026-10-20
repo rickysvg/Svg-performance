@@ -36,6 +36,7 @@ export type SwapExerciseResult =
       replacementName: string;
       sets: WorkoutSet[] | null;
       retiredNames: string[];
+      updatedAt: string | null;
       prescription: {
         sets: number;
         reps: string;
@@ -87,6 +88,7 @@ export async function swapExerciseAction(input: SwapExerciseInput): Promise<Swap
       replacementName: applied.prescription.name,
       sets: applied.sets,
       retiredNames: applied.retiredNames,
+      updatedAt: applied.updatedAt,
       prescription: {
         sets: applied.prescription.sets,
         reps: applied.prescription.reps,

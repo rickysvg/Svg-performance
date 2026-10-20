@@ -327,7 +327,7 @@ export async function getCalendarSchedule(
             ? "Missed. Tap Move to do it another day."
             : origin
               ? `${session.label} — ${origin}’s workout, this week.`
-              : `${session.label} — Core week plan (DEMO).`,
+              : `${session.label} — Core week plan.`,
         href,
         status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,

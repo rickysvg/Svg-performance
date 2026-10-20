@@ -195,7 +195,8 @@ describe("onboarding gate and persistence", () => {
       bagFocusFor("Monday", mesoBlockForWeekIndex(bikeWeekIndex(when, APP_TIMEZONE))).label,
     );
     expect(today.plannedSessions.map((session) => session.kind)).toEqual(["skill", "strength"]);
-    expect(today.suggestionCopy).toMatch(/DEMO Core week plan \(bag \+ strength\)/i);
+    expect(today.suggestionCopy).toMatch(/Core week plan \(bag \+ strength\)/i);
+    expect(today.suggestionCopy).not.toMatch(/DEMO Core week plan/i);
     expect(today.suggestionCopy).toMatch(/Not a custom Elite/i);
     expect(today.incompleteLesson?.topic).toBe("boxing");
     expect(today.incompleteLesson?.skillLevel).toBe("intermediate");

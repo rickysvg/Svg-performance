@@ -24,6 +24,13 @@ export class ForbiddenError extends AppError {
   }
 }
 
+export class StaleDraftError extends AppError {
+  constructor() {
+    super("STALE_DRAFT", "A newer save landed first. This draft was not applied.", 409);
+    this.name = "StaleDraftError";
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = "Not found.") {
     super("NOT_FOUND", message, 404);

@@ -445,10 +445,7 @@ export function demoSuggestionCopy(prefs: { goalKey?: string; primaryFocus?: str
   const art = prefs.primaryFocus ? focusLabel(prefs.primaryFocus) : "";
   const goal = prefs.goalKey ? goalLabel(prefs.goalKey) : "";
   const matched = [goal, art].filter(Boolean).join(" · ");
-  const skillMix =
-    prefs.primaryFocus && prefs.primaryFocus !== "general-fitness"
-      ? "DEMO Core week plan (bag + strength)"
-      : "DEMO Core week plan (bag + strength)";
+  const skillMix = "Core week plan (bag + strength)";
   if (!matched) {
     return `Suggested from the ${skillMix}. This is not a custom Elite coaching plan.`;
   }

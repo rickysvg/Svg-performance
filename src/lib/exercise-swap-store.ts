@@ -421,6 +421,7 @@ export async function applyExerciseSwap(input: {
   }
 
   let sets = null;
+  let updatedAt: string | null = null;
   if (input.workoutSessionId) {
     const fromNames = [input.currentName, originalName].filter(
       (name) => name && name !== prescription.name,
@@ -435,9 +436,10 @@ export async function applyExerciseSwap(input: {
       currentSets: input.currentSets,
     });
     sets = updated.sets;
+    updatedAt = updated.updatedAt.toISOString();
   }
 
-  return { prescription, sets, retiredNames: [...retired] };
+  return { prescription, sets, retiredNames: [...retired], updatedAt };
 }
 
 export async function alignWorkoutWithSwaps<

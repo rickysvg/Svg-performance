@@ -53,8 +53,8 @@ export function clampLiftDays(value: number) {
 
 export function defaultLiftDays(level?: string | null, email?: string | null) {
   if ((email ?? "").trim().toLowerCase() === RICKY_EMAIL) return 3;
-  if (level === "beginner") return 2;
   if (level === "advanced") return 4;
+  // Beginners train the same three full-body days. Difficulty is scaled on the exercises.
   return 3;
 }
 
@@ -69,9 +69,9 @@ export function resolveLiftDays(input: {
   return defaultLiftDays(input.experienceLevel, input.email);
 }
 
-export function bagDaysForLevel(level?: string | null, trainingFocus?: string | null) {
+export function bagDaysForLevel(_level?: string | null, trainingFocus?: string | null) {
   if (isScOnly(trainingFocus)) return 0;
-  return level === "beginner" ? 2 : 3;
+  return 3;
 }
 
 export function isTrainingWeekday(value: string): value is TrainingWeekday {
@@ -146,9 +146,28 @@ export function outsideDayLabel(day: OutsideDay) {
 }
 
 /**
- * Full-week roles. Lift count is capped at 4. Sparring days get no work.
- * Class/drilling days stay light. The day before either stays off heavy legs
- * and max intervals. Bag sessions stack onto lift days when the week is full.
+ * Drop an untimed Wednesday sparring row left by the old template.
+ * Saturday is the sparring day. A Wednesday sparring time is intentional and stays.
+ */
+export function v2OutsideDays(
+  days: OutsideDay[],
+  trainingFocus?: string | null,
+): OutsideDay[] {
+  const addsSaturday =
+    !isScOnly(trainingFocus) && !days.some((day) => day.weekday === "Saturday");
+  const saturdaySparring =
+    addsSaturday || days.some((day) => day.weekday === "Saturday" && day.kind === "sparring");
+  if (!saturdaySparring) return days;
+  return days.filter((day) => {
+    if (day.weekday !== "Wednesday" || day.kind !== "sparring") return true;
+    return Boolean(day.time);
+  });
+}
+
+/**
+ * Full-week roles. Every profile gets three full-body lifts (Mon / Tue / Thu),
+ * bikes on Wednesday and Sunday, and Saturday sparring for martial weeks.
+ * A saved lift-day count does not drop Thursday. Sparring and class still block that weekday.
  */
 export function assignWeek(input: {
   trainingFocus?: string | null;
@@ -157,7 +176,7 @@ export function assignWeek(input: {
   email?: string | null;
   outsideTraining?: OutsideDay[] | null;
 }): Record<TrainingWeekday, DayRole> {
-  const outside = input.outsideTraining ?? [];
+  const outside = v2OutsideDays(input.outsideTraining ?? [], input.trainingFocus);
   const byDay = new Map(outside.map((day) => [day.weekday, day]));
   const sparring = new Set(outside.filter((day) => day.kind === "sparring").map((day) => day.weekday));
   const classDays = new Set(outside.filter((day) => day.kind === "class").map((day) => day.weekday));
@@ -194,7 +213,6 @@ export function assignWeek(input: {
     preSpar.add(prevWeekday("Saturday"));
   }
 
-  const liftCap = Math.min(3, resolveLiftDays(input));
   const liftOrder: TrainingWeekday[] = ["Monday", "Tuesday", "Thursday"];
   const liftKind: Partial<Record<TrainingWeekday, LiftKind>> = {
     Monday: "lower",
@@ -202,7 +220,6 @@ export function assignWeek(input: {
     Thursday: "posterior",
   };
   for (const day of liftOrder) {
-    if (ORDER.filter((name) => roles[name].lift).length >= liftCap) break;
     if (blocked.has(day)) continue;
     roles[day].lift = day === "Thursday" && preSpar.has(day) ? "moderate-upper" : liftKind[day] ?? "posterior";
   }
@@ -216,18 +233,12 @@ export function assignWeek(input: {
   });
 
   if (!isScOnly(input.trainingFocus)) {
-    const beginner = input.experienceLevel === "beginner";
-    const bagPlan: Array<[TrainingWeekday, BagIntensity]> = beginner
-      ? [
-          ["Monday", "hard"],
-          ["Friday", "moderate"],
-        ]
-      : [
-          ["Monday", "hard"],
-          ["Tuesday", "moderate"],
-          ["Thursday", "hard"],
-          ["Friday", preSpar.has("Friday") ? "moderate" : "hard"],
-        ];
+    const bagPlan: Array<[TrainingWeekday, BagIntensity]> = [
+      ["Monday", "hard"],
+      ["Tuesday", "moderate"],
+      ["Thursday", "hard"],
+      ["Friday", preSpar.has("Friday") ? "moderate" : "hard"],
+    ];
     for (const [day, intensity] of bagPlan) {
       if (sparring.has(day) || classDays.has(day) || preClass.has(day)) continue;
       roles[day].bag = intensity;

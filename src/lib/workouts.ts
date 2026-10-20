@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ForbiddenError, NotFoundError, AppError } from "@/lib/errors";
+import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
@@ -533,6 +533,11 @@ export async function updateWorkoutSessionForUser(input: {
   difficultyRating?: string | null;
   /** undefined leaves a running rest alone. null clears it. */
   rest?: { exerciseName: string; endsAtMs: number } | null;
+  /**
+   * Autosave only. The write is skipped when the session changed after this
+   * instant, so a swap that already landed is not overwritten by an older draft.
+   */
+  baseUpdatedAt?: string | Date | null;
 }) {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -556,6 +561,17 @@ export async function updateWorkoutSessionForUser(input: {
   }
 
   const updated = await prisma.$transaction(async (tx) => {
+    if (input.baseUpdatedAt) {
+      const base = new Date(input.baseUpdatedAt);
+      if (Number.isNaN(base.getTime())) {
+        throw new AppError("WORKOUT", "Draft is out of date. Reload the workout.");
+      }
+      const claimed = await tx.workoutSession.updateMany({
+        where: { id: input.workoutId, userId: input.userId, updatedAt: base },
+        data: { title },
+      });
+      if (claimed.count === 0) throw new StaleDraftError();
+    }
     await tx.workoutSet.deleteMany({
       where: { workoutSessionId: input.workoutId },
     });

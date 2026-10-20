@@ -283,12 +283,6 @@ function summaryForRole(role: DayRole, active: boolean) {
   return parts.join("+") || "Rest";
 }
 
-function listedAvailability(prefs: PlannerPrefs) {
-  return (prefs.weeklyAvailability ?? []).filter((day): day is PlanWeekday =>
-    (WEEKDAYS as readonly string[]).includes(day),
-  );
-}
-
 function weekRoles(prefs: PlannerPrefs) {
   return assignWeek({
     trainingFocus: prefs.trainingFocus,
@@ -336,42 +330,22 @@ function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, a
   return "Rest";
 }
 
+/**
+ * Days that have a v2 role. Saved availability and sessions-per-week do not
+ * blank Tuesday, Thursday, or the bikes. Outside class and sparring still count.
+ */
 export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
-  const listed = listedAvailability(prefs);
-  const base: PlanWeekday[] =
-    listed.length > 0 ? listed : [...CORE_DEFAULT_TRAINING_DAYS];
-  const active = new Set<PlanWeekday>(base);
-
-  const keepOrder: PlanWeekday[] = [
-    "Monday",
-    "Wednesday",
-    "Friday",
-    "Thursday",
-    "Tuesday",
-    "Saturday",
-    "Sunday",
-  ];
-
-  if (prefs.sessionsPerWeek != null && prefs.sessionsPerWeek > 0) {
-    const ranked = keepOrder.filter((day) => active.has(day));
-    const kept = ranked.slice(0, prefs.sessionsPerWeek);
-    return new Set(kept);
+  const roles = weekRoles(prefs);
+  const active = new Set<PlanWeekday>();
+  for (const weekday of WEEKDAYS) {
+    if (dayIsActive(roles[weekday])) active.add(weekday);
   }
-
-  if (listed.length === 0) {
-    return new Set(CORE_DEFAULT_TRAINING_DAYS as unknown as PlanWeekday[]);
-  }
-
   return active;
 }
 
-function dayIsActive(weekday: PlanWeekday, role: DayRole, prefs: PlannerPrefs) {
+function dayIsActive(role: DayRole) {
   if (role.outside) return true;
-  if (role.mobility && !role.lift && !role.bag && !role.cardio) return true;
-  const listed = listedAvailability(prefs);
-  const openWeek = listed.length === 0 && !(prefs.sessionsPerWeek != null && prefs.sessionsPerWeek > 0);
-  if (openWeek) return true;
-  return resolveTrainingDays(prefs).has(weekday);
+  return Boolean(role.lift || role.bag || role.cardio || role.mobility);
 }
 
 function outsideNote(role: DayRole) {
@@ -390,7 +364,7 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
 
   for (const weekday of WEEKDAYS) {
     const role = roles[weekday];
-    const active = dayIsActive(weekday, role, prefs);
+    const active = dayIsActive(role);
     const sessions = sessionsForRole(weekday, role, weekIndex);
     const outside = role.outside
       ? { kind: role.outside.kind, time: role.outside.time, label: outsideDayLabel(role.outside) }
@@ -731,7 +705,7 @@ export function moveDayChoices(
 export function corePlanCopy(prefs: { goalKey?: string; primaryFocus?: string }) {
   const focus = prefs.primaryFocus;
   if (focus && focus !== "general-fitness") {
-    return "Core week plan (DEMO) from your intake — bag + strength on set weekdays. Not Elite or fight-camp coaching.";
+    return "Core week plan from your intake — bag, strength, and bikes on set weekdays. Not Elite or fight-camp coaching.";
   }
-  return "Core week plan (DEMO) — bag, strength, and conditioning on set weekdays. Not Elite or fight-camp coaching.";
+  return "Core week plan — bag, strength, and conditioning on set weekdays. Not Elite or fight-camp coaching.";
 }

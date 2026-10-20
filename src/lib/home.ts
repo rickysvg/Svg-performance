@@ -336,7 +336,7 @@ export async function getHomeToday(
           goalKey: profile?.goalKey,
           primaryFocus: profile?.primaryFocus,
         })
-      : "DEMO training days are not loaded on this preview yet. Your account and logs still work.",
+      : "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: sameLocalDay(selected, now, tz) ? draft : undefined,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,

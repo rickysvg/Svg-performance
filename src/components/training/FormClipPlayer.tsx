@@ -92,6 +92,17 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
     };
   }, [hostId, src, url]);
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const sheet = (
     <div className="fixed inset-0 z-50 flex items-end bg-black/70" data-form-player role="presentation">
       <div

@@ -71,7 +71,7 @@ describe("deload and testing weeks", () => {
     expect(isTestingWeek(instant, "Australia/Sydney")).toBe(isTestingWeekIndex(sydney));
     expect(planForDate(prefs, instant, "America/Denver").weekday).toBe("Sunday");
     expect(planForDate(prefs, instant, "Australia/Sydney").weekday).toBe("Monday");
-    expect(planForDate(prefs, instant, "America/Denver").sessions[0]?.kind).toBe("rest");
+    expect(planForDate(prefs, instant, "America/Denver").sessions[0]?.kind).toBe("conditioning");
   });
 
   it("does not rewrite the written plan when readiness is low", () => {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NotFoundError } from "@/lib/errors";
+import { ensureDemoCatalog } from "@/lib/demo-catalog-sync";
 
 export const DEMO_PROGRAM_SLUG = "demo-strength-base";
 export const DEMO_SKILL_PROGRAM_SLUG = "demo-combat-skills";
@@ -14,6 +15,7 @@ const programInclude = {
 };
 
 export async function findDemoProgram() {
+  await ensureDemoCatalog();
   return prisma.program.findUnique({
     where: { slug: DEMO_PROGRAM_SLUG },
     include: programInclude,
@@ -21,6 +23,7 @@ export async function findDemoProgram() {
 }
 
 export async function findSkillProgram() {
+  await ensureDemoCatalog();
   return prisma.program.findUnique({
     where: { slug: DEMO_SKILL_PROGRAM_SLUG },
     include: programInclude,
@@ -43,6 +46,7 @@ export async function getDemoProgram() {
 }
 
 export async function getProgramDayById(dayId: string) {
+  await ensureDemoCatalog();
   const day = await prisma.programDay.findUnique({
     where: { id: dayId },
     include: {

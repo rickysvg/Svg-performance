@@ -199,7 +199,7 @@ export default async function TrainingCalendarPage({
 
       {schedule.days.every((day) => day.activities.every((item) => item.kind !== "workout")) ? (
         <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">
-          DEMO training days are not loaded on this preview yet. Your account is fine. Open
+          Training days are not loaded on this preview yet. Your account is fine. Open
           Training when the template is seeded.
         </p>
       ) : null}

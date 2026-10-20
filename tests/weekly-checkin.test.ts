@@ -382,7 +382,7 @@ describe("weekly check-in access, submit, and reminders", () => {
       struggles: "Gas in round 3.",
     });
     expect(row.sessionsCompleted).toBe(1);
-    expect(row.sessionsPlanned).toBe(4);
+    expect(row.sessionsPlanned).toBe(7);
     expect(row.sparringSummary).toContain("head kick");
     expect(row.aiSource).toBe("fallback");
     expect(summaryLineCount(row.aiSummary)).toBe(3);
