@@ -57,8 +57,19 @@ export function parseCoachMarkdown(source: string): CoachBlock[] {
     }
     if (/^\s*\d+\.\s+/.test(line)) {
       const items: CoachInline[][] = [];
-      while (index < lines.length && /^\s*\d+\.\s+/.test(lines[index] ?? "")) {
-        items.push(parseCoachInlines((lines[index] ?? "").replace(/^\s*\d+\.\s+/, "")));
+      while (index < lines.length) {
+        const current = lines[index] ?? "";
+        if (!current.trim()) {
+          let look = index + 1;
+          while (look < lines.length && !(lines[look] ?? "").trim()) look += 1;
+          if (look < lines.length && /^\s*\d+\.\s+/.test(lines[look] ?? "")) {
+            index = look;
+            continue;
+          }
+          break;
+        }
+        if (!/^\s*\d+\.\s+/.test(current)) break;
+        items.push(parseCoachInlines(current.replace(/^\s*\d+\.\s+/, "")));
         index += 1;
       }
       blocks.push({ type: "list", ordered: true, items });

@@ -224,10 +224,16 @@ html:not([data-splash="done"]) [data-coach-fab] {
   pointer-events: none;
 }
 
-/* On a phone, keep the logger SAVE buttons out of the floating coach's column. */
+/* On a phone, keep left-edge controls out of the floating coach's column. */
 @media (max-width: 48rem) {
-  [data-logger-save] {
+  [data-logger-save],
+  [data-add-set],
+  [data-coach-clear] {
     padding-left: calc(3.75rem + env(safe-area-inset-left, 0px));
+  }
+
+  [data-coach-clear] {
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

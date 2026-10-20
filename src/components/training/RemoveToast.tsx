@@ -7,6 +7,8 @@ type RemoveToastState = {
   undo?: () => void | Promise<void>;
 };
 
+export const REMOVE_TOAST_MS = 8000;
+
 let current: RemoveToastState | null = null;
 const listeners = new Set<() => void>();
 
@@ -20,7 +22,7 @@ export function showRemoveToast(toast: RemoveToastState) {
   if (typeof window === "undefined") return;
   window.setTimeout(() => {
     if (current === toast) clearRemoveToast();
-  }, 5000);
+  }, REMOVE_TOAST_MS);
 }
 
 export function clearRemoveToast() {

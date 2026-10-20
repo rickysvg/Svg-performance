@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { RegisterForm } from "@/components/auth/RegisterForm";
+import { getCurrentUser } from "@/lib/session";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  if (await getCurrentUser()) redirect("/home");
   return (
     <div className="min-h-full">
       <AppHeader />

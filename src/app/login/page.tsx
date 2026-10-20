@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { getCurrentUser } from "@/lib/session";
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ reset?: string; changed?: string }>;
 }) {
+  if (await getCurrentUser()) redirect("/home");
   const query = await searchParams;
   const notice = query.reset
     ? "Password updated. Log in with the new password."

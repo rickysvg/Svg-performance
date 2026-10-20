@@ -14,6 +14,7 @@ import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { TodaySummaryButton } from "@/components/home/TodaySummaryButton";
 import { resolveAiCoach } from "@/lib/coaches";
+import { dedupeGoalLine } from "@/lib/onboarding";
 import { ReadinessCard } from "@/components/home/ReadinessCard";
 import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
@@ -96,7 +97,9 @@ export default async function HomePage({
           text={quoteCard.unlocked ? quoteCard.quote.text : quoteCard.teaser}
           attribution={quoteCard.unlocked ? quoteCard.quote.attribution : ""}
         />
-        {profile?.goals ? <p className="mt-2 max-w-[22rem] text-sm text-muted">{profile.goals}</p> : null}
+        {profile?.goals ? (
+          <p className="mt-2 max-w-[22rem] text-sm text-muted">{dedupeGoalLine(profile.goals)}</p>
+        ) : null}
       </section>
 
       {trialEnded ? <TrialEndedPaywall /> : null}

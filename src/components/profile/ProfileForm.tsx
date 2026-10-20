@@ -57,19 +57,17 @@ export function ProfileForm({
       <h2 className="text-lg">Training profile</h2>
       <StatusBanner error={dayError || state.error} success={state.success} />
 
-      <details className="rounded-xl border border-line px-3 py-3">
-        <summary className="cursor-pointer text-sm font-medium">Coach</summary>
-        <div className="mt-3 space-y-3">
-          <p className="text-xs text-muted">
-            The face and style used in SVG Coach. Saving this profile keeps the choice.
-          </p>
-          <CoachPicker
-            coachId={profile.aiCoachId}
-            coachingStyle={profile.coachingStyle}
-            idPrefix="profile-coach"
-          />
-        </div>
-      </details>
+      <section className="space-y-3 rounded-xl border border-line px-3 py-3" data-profile-coach>
+        <h3 className="text-sm font-medium">Coach</h3>
+        <p className="text-xs text-muted">
+          The face and style used in SVG Coach. Saving this profile keeps the choice.
+        </p>
+        <CoachPicker
+          coachId={profile.aiCoachId}
+          coachingStyle={profile.coachingStyle}
+          idPrefix="profile-coach"
+        />
+      </section>
 
       <label className="block">
         <span className="text-sm font-medium">Display name</span>

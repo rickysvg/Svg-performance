@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { saveSparringLogAction, type SparringLogState } from "@/app/actions/outside-log";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { SORE_SPOTS, SORE_SPOT_LABELS, type SparringLog } from "@/lib/outside-log";
@@ -60,6 +60,13 @@ export function SparringLogForm({
   anyDay?: boolean;
 }) {
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
+  const [intensity, setIntensity] = useState(saved?.intensity ?? "");
+  const [partner, setPartner] = useState(saved?.partner ?? "");
+  useEffect(() => {
+    if (!state.saved) return;
+    if (typeof state.intensity === "string") setIntensity(state.intensity);
+    if (typeof state.partner === "string") setPartner(state.partner);
+  }, [state]);
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
 
   return (
@@ -108,7 +115,8 @@ export function SparringLogForm({
         Intensity (optional)
         <select
           name="intensity"
-          defaultValue={saved?.intensity ?? ""}
+          value={intensity}
+          onChange={(event) => setIntensity(event.target.value)}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           <option value="">Skip</option>
@@ -149,6 +157,16 @@ export function SparringLogForm({
           ))}
         </div>
       </fieldset>
+      <label className="block text-sm">
+        Partner (optional)
+        <input
+          name="partner"
+          value={partner}
+          onChange={(event) => setPartner(event.target.value)}
+          maxLength={80}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        />
+      </label>
       <label className="block text-sm">
         Notes (optional)
         <textarea

@@ -38,6 +38,24 @@ export function isRestActive(timer: RestTimerState | null, nowMs = Date.now()): 
   return remainingRestSeconds(timer, nowMs) > 0;
 }
 
+/**
+ * A swap renames the exercise under a running clock. Keep the countdown and
+ * point it at the replacement. A remove of that exercise still clears it.
+ */
+export function restAfterExerciseChange(
+  timer: RestTimerState | null,
+  names: ReadonlySet<string>,
+  focusName: string | undefined,
+  nowMs = Date.now(),
+): RestTimerState | null {
+  if (!timer) return null;
+  if (names.has(timer.exerciseName)) return timer;
+  if (focusName && names.has(focusName) && isRestActive(timer, nowMs)) {
+    return { ...timer, exerciseName: focusName };
+  }
+  return null;
+}
+
 export function formatRestClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
   const minutes = Math.floor(safe / 60);

@@ -72,7 +72,7 @@ describe("sparring session and body ratings", () => {
 
     const sunday = zonedCivilToUtc(2026, 10, 18, APP_TIMEZONE);
     const eased = await easePlanForUser(user.id, sunday, APP_TIMEZONE, heavyDay());
-    expect(eased.plan.summary).toBe("Mobility");
+    expect(eased.plan.summary).toBe("Mobility+Cardio");
     expect(eased.plan.sessions.map((session) => session.kind)).toEqual(["mobility", "conditioning"]);
     expect(eased.plan.easeNote).toMatch(/body rating 2/);
     expect(eased.plan.easeNote).toMatch(/head marked sore/);

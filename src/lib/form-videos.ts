@@ -82,16 +82,12 @@ const dbRdl = ready({
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Dumbbell Romanian Deadlift | Proper Form & Technique | NASM",
 });
-/**
- * Squat University's single-leg RDL tutorial. `t=366` is the creator's "Example"
- * chapter (6:06): the side-view demo after the hinge, soft-knee, level-pelvis,
- * and free-leg cues. Public length is 9:17.
- */
+/** NASM form demo, 37s. Replaces the clickbait single-leg RDL thumbnail. */
 const singleLegRdl = ready({
-  url: "https://www.youtube.com/watch?v=Zfr6wizR8rs&t=366&end=448",
-  seconds: 557,
-  channel: "Squat University",
-  title: "The BEST Single-Leg RDL Tutorial (Romanian Deadlift)",
+  url: "https://www.youtube.com/watch?v=6xdD0Ny0ztk",
+  seconds: 37,
+  channel: "National Academy of Sports Medicine (NASM)",
+  title: "How to Do a Single-Leg Romanian Deadlift to Cobra | Proper Form & Technique | NASM",
 });
 const lunge = ready({
   url: "https://www.youtube.com/watch?v=xrPteyQLGAo",
@@ -629,6 +625,7 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Band-assisted chin-up": bandChin,
   "Lateral bound or side step-over": lateralBound,
   "Lateral bound": lateralBound,
+  "Step-out and stick": lateralBound,
   "Assault bike intervals": airBike,
   "Daru alactic power bike": airBike,
   "Jamieson tempo bike": airBike,

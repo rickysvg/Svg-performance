@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isScOnly } from "@/lib/member-plan";
 import { getSparringLog } from "@/lib/outside-log";
-import { easePlanForUser } from "@/lib/recovery-ease";
+import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   listDraftSessionsForUser,
@@ -321,7 +321,13 @@ export async function getHomeToday(
     plannedSessions,
     nextSession: nextSession as ResolvedPlanSession | null,
     nextSessionWeekday: nextPlan?.weekday ?? "",
-    weekStrip: weekStrip(prefs, now, tz, selected, swaps, selected),
+    weekStrip: await easeWeekStripDays(
+      userId,
+      prefs,
+      weekStrip(prefs, now, tz, selected, swaps, selected),
+      tz,
+      swaps,
+    ),
     planWeekday: todayPlan.weekday,
     planSummary: todayPlan.summary,
     mesoLabel: todayPlan.mesoLabel,

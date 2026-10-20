@@ -21,6 +21,22 @@ import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
 import { showRemoveToast } from "@/components/training/RemoveToast";
 
+function removalSetInput(set: WorkoutSet): WorkoutSetInput {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: "lb",
+    logMode: (set.logMode || undefined) as WorkoutSetInput["logMode"],
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes ?? "",
+    prescriptionKey: set.prescriptionKey ?? "",
+    rir: set.rir ?? "",
+  };
+}
+
 type Source = {
   sets: number;
   reps: string;
@@ -41,6 +57,7 @@ export function ExerciseCardMenu({
   workoutSessionId,
   canRemove,
   getCurrentSets,
+  snapshotSets,
   onSetsReplaced,
   onSwapped,
 }: {
@@ -54,6 +71,7 @@ export function ExerciseCardMenu({
   workoutSessionId?: string;
   canRemove: boolean;
   getCurrentSets?: () => WorkoutSetInput[];
+  snapshotSets?: () => WorkoutSet[];
   onSetsReplaced?: (sets: WorkoutSet[], focusName?: string, updatedAt?: string | null) => void;
   onSwapped?: (
     name: string,
@@ -185,6 +203,7 @@ export function ExerciseCardMenu({
   function remove() {
     if (!canRemove || pending) return;
     setError("");
+    const before = snapshotSets?.().map((set) => ({ ...set })) ?? null;
     startTransition(async () => {
       const result = await removeExerciseAction({
         programSlug,
@@ -202,16 +221,19 @@ export function ExerciseCardMenu({
       setMenuOpen(false);
       applySets(result.sets);
       const removalId = result.removalId;
+      const removedSets = result.sets?.map(removalSetInput);
       showRemoveToast({
         message: `Removed ${currentName}.`,
         undo: async () => {
+          if (before) applySets(before);
           const restored = await undoExerciseRemovalAction({
             removalId,
             programDayId,
             workoutSessionId,
-            currentSets: getCurrentSets?.(),
+            currentSets: removedSets ?? getCurrentSets?.(),
           });
           if (!restored.ok) {
+            applySets(result.sets);
             showRemoveToast({ message: restored.error });
             return;
           }

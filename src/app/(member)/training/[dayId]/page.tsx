@@ -15,6 +15,7 @@ import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { DaySessionMeta } from "@/components/training/DaySessionMeta";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { startSessionAction } from "@/app/actions/workouts";
+import { StartSubmit } from "@/components/training/StartTodayButton";
 import {
   equipmentForExercises,
   estimateSessionMinutes,
@@ -178,12 +179,10 @@ export default async function TrainingDayPage({
         ) : (
           <form action={startSessionAction} data-prime-coach-audio>
             <input type="hidden" name="programDayId" value={day.id} />
-            <button
-              type="submit"
+            <StartSubmit
+              label={startLabel}
               className="touch-target w-full rounded-full bg-accent text-base text-black"
-            >
-              {startLabel}
-            </button>
+            />
           </form>
         )}
 
@@ -313,12 +312,10 @@ export default async function TrainingDayPage({
           className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
         >
           <input type="hidden" name="programDayId" value={day.id} />
-          <button
-            type="submit"
+          <StartSubmit
+            label={startLabel}
             className="touch-target w-full rounded-full bg-accent text-base text-black"
-          >
-            {startLabel}
-          </button>
+          />
         </form>
       )}
     </main>

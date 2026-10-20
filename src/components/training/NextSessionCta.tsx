@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { startSessionAction } from "@/app/actions/workouts";
+import { StartSubmit } from "@/components/training/StartTodayButton";
 import type { NextTrainAction } from "@/lib/train-next";
 
 const buttonClass =
@@ -27,9 +28,7 @@ export function NextSessionCta({ action }: { action: NextTrainAction }) {
     return (
       <form action={startSessionAction} data-next-session data-prime-coach-audio className={stickyClass}>
         <input type="hidden" name="programDayId" value={action.dayId} />
-        <button type="submit" className={buttonClass}>
-          {label}
-        </button>
+        <StartSubmit label={label} className={buttonClass} />
       </form>
     );
   }

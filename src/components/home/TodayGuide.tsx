@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { getTodayGuide } from "@/lib/today";
 import { startSessionAction } from "@/app/actions/workouts";
+import { StartSubmit } from "@/components/training/StartTodayButton";
 import {
   estimateSessionMinutes,
   exerciseCountLabel,
@@ -45,12 +46,10 @@ function SessionCta({
     return (
       <form action={startSessionAction} data-prime-coach-audio className="mt-6">
         <input type="hidden" name="programDayId" value={dayId} />
-        <button
-          type="submit"
+        <StartSubmit
+          label={startLabel}
           className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        >
-          {startLabel}
-        </button>
+        />
       </form>
     );
   }

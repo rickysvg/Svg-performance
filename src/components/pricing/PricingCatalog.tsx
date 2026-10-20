@@ -30,7 +30,7 @@ function PlanCheckoutButton({
       <button
         type="button"
         disabled
-        className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed disabled:opacity-60"
+        className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed"
       >
         Coming soon
       </button>
@@ -55,7 +55,7 @@ function PlanCheckoutButton({
       type="button"
       disabled
       data-plan-action="subscribe"
-      className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed disabled:opacity-80"
+      className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed"
     >
       Subscribe — opening Nov 16
     </button>
@@ -85,13 +85,13 @@ export function PricingCatalog({
 
   return (
     <div className="space-y-4" data-pricing-plans="3">
-      <article data-plan-card="performance" className="rounded-2xl border border-black bg-card p-5">
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">App</p>
-        <h2 className="mt-2 text-xl text-black">{PRO_LABEL}</h2>
-        <p className="font-display stat-display mt-3 text-3xl text-black">{usd(PERFORMANCE_MONTHLY)}/mo</p>
-        <p className="mt-1 text-sm text-black">{performanceAnnualLine()}</p>
+      <article data-plan-card="performance" className="rounded-2xl border border-line bg-card p-5 text-foreground">
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">App</p>
+        <h2 className="mt-2 text-xl text-foreground">{PRO_LABEL}</h2>
+        <p className="font-display stat-display mt-3 text-3xl text-accent">{usd(PERFORMANCE_MONTHLY)}/mo</p>
+        <p className="mt-1 text-sm text-foreground">{performanceAnnualLine()}</p>
         {foundingOpen ? (
-          <p className="mt-2 text-sm font-medium text-black" data-founding-price>
+          <p className="mt-2 text-sm font-medium text-accent" data-founding-price>
             {foundingPriceLine(foundingSpotsLeft)}
           </p>
         ) : (
@@ -115,12 +115,12 @@ export function PricingCatalog({
         </div>
       </article>
 
-      <article data-plan-card="academy" className="rounded-2xl border border-line bg-card p-5">
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Academy</p>
-        <h2 className="mt-2 text-xl text-black">Academy member</h2>
-        <p className="font-display stat-display mt-3 text-3xl text-black">Included in dues</p>
+      <article data-plan-card="academy" className="rounded-2xl border border-line bg-card p-5 text-foreground">
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">SVG Academy</p>
+        <h2 className="mt-2 text-xl text-foreground">Academy member</h2>
+        <p className="font-display stat-display mt-3 text-3xl text-accent">Included in dues</p>
         {verified ? (
-          <p className="mt-2 text-sm text-black">You&apos;re verified. The core app comes with your dues.</p>
+          <p className="mt-2 text-sm text-foreground">You&apos;re verified. The core app comes with your dues.</p>
         ) : (
           <p className="mt-2 text-sm text-muted">For verified SVG Academy members (Gymdesk member check).</p>
         )}
@@ -136,11 +136,11 @@ export function PricingCatalog({
         </ul>
       </article>
 
-      <article data-plan-card="coaching" className="rounded-2xl border border-line bg-card p-5">
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">Coaching</p>
-        <h2 className="mt-2 text-xl text-black">{coaching.label}</h2>
-        <p className="font-display stat-display mt-3 text-3xl text-black">{usd(COACHING_MONTHLY)}/mo</p>
-        <p className="mt-1 text-sm text-black" data-coaching-spots>
+      <article data-plan-card="coaching" className="rounded-2xl border border-line bg-card p-5 text-foreground">
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">Coaching</p>
+        <h2 className="mt-2 text-xl text-foreground">{coaching.label}</h2>
+        <p className="font-display stat-display mt-3 text-3xl text-accent">{usd(COACHING_MONTHLY)}/mo</p>
+        <p className="mt-1 text-sm text-foreground" data-coaching-spots>
           {coachingSpotsLine(coachingSpotsLeft)}
         </p>
         <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">

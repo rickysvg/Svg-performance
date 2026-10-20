@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { memberWeekIndex } from "@/lib/bike-sessions";
 import { buildDaySummaryFacts } from "@/lib/coach/day-summary";
 import { mergeReplacementSets } from "@/lib/exercise-swap-store";
-import { loggerCursorFollowing } from "@/lib/logger-progress";
+import { loggerCursor } from "@/lib/logger-progress";
 import { APP_TIMEZONE, dayKey, formatDateTimeLocal, parseDateTimeLocal } from "@/lib/timezone";
 import { newPrExerciseCount } from "@/lib/personal-bests";
 import { resolveLoggedPerformedAt } from "@/lib/performed-at";
@@ -169,7 +169,7 @@ describe("exercise swap keeps the session", () => {
 });
 
 describe("logger header", () => {
-  it("follows the exercise that was just logged", () => {
+  it("stays on the first unfinished set after a later exercise is in view", () => {
     const groups = [
       {
         name: "Sit-to-stand",
@@ -187,9 +187,9 @@ describe("logger header", () => {
         ],
       },
     ];
-    const cursor = loggerCursorFollowing(groups, "Goblet squat");
-    expect(cursor.exerciseIndex).toBe(2);
-    expect(cursor.exerciseName).toBe("Goblet squat");
+    const cursor = loggerCursor(groups);
+    expect(cursor.exerciseIndex).toBe(1);
+    expect(cursor.exerciseName).toBe("Sit-to-stand");
     expect(cursor.setIndex).toBe(2);
   });
 });

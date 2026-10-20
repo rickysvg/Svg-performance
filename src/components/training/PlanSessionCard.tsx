@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { startSessionAction } from "@/app/actions/workouts";
+import { StartSubmit } from "@/components/training/StartTodayButton";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { lookupFormVideo } from "@/lib/form-videos";
@@ -146,12 +147,10 @@ export function PlanSessionCard({
           ) : session.dayId ? (
             <form action={startSessionAction} data-prime-coach-audio>
               <input type="hidden" name="programDayId" value={session.dayId} />
-              <button
-                type="submit"
+              <StartSubmit
+                label="Start"
                 className="touch-target rounded-full bg-accent px-4 text-sm text-black"
-              >
-                Start
-              </button>
+              />
             </form>
           ) : href ? (
             <Link

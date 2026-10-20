@@ -33,6 +33,7 @@ export type SparringLog = {
   minutesPerRound: number;
   intensity: string;
   notes: string;
+  partner: string;
   sessionRating: number | null;
   bodyRating: number | null;
   soreSpots: SoreSpot[];
@@ -110,6 +111,7 @@ export async function saveSparringLog(
     minutesPerRound: number;
     intensity?: string;
     notes?: string;
+    partner?: string;
     sessionRating: number;
     bodyRating: number;
     soreSpots?: string[];
@@ -143,6 +145,7 @@ export async function saveSparringLog(
   }
   const soreSpots = parseSoreSpots(input.soreSpots ?? []);
   const notes = (input.notes ?? "").trim().slice(0, 400);
+  const partner = (input.partner ?? "").trim().slice(0, 80);
   const row = await prisma.outsideSessionLog.upsert({
     where: { userId_dateKey: { userId, dateKey: input.dateKey } },
     create: {
@@ -153,6 +156,7 @@ export async function saveSparringLog(
       minutesPerRound: input.minutesPerRound,
       intensity,
       notes,
+      partner,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -164,6 +168,7 @@ export async function saveSparringLog(
       minutesPerRound: input.minutesPerRound,
       intensity,
       notes,
+      partner,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -215,6 +220,7 @@ function toLog(row: {
   minutesPerRound: number;
   intensity: string;
   notes: string;
+  partner?: string | null;
   sessionRating?: number | null;
   bodyRating?: number | null;
   soreSpots?: string | null;
@@ -227,6 +233,7 @@ function toLog(row: {
     minutesPerRound: row.minutesPerRound,
     intensity: row.intensity,
     notes: row.notes,
+    partner: row.partner ?? "",
     sessionRating: row.sessionRating ?? null,
     bodyRating: row.bodyRating ?? null,
     soreSpots: parseSoreSpots(row.soreSpots ?? "[]"),

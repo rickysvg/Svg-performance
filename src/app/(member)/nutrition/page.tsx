@@ -74,7 +74,7 @@ export default async function NutritionPage() {
         </div>
       </details>
 
-      <section className="space-y-3">
+      <section className="space-y-3" data-coach-clear>
         <h2 className="text-lg">Your log</h2>
       {entries.length === 0 ? (
           <EmptyState title="No meals yet">
