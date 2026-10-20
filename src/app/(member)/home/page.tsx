@@ -5,6 +5,7 @@ import { emptyHomeToday, formatDayParam, getHomeToday, homeLoad, parseDayParam }
 import { processDueRemindersForUser } from "@/lib/reminders";
 import { DAILY_QUOTES, getDailyQuoteCard, teaserFromQuote } from "@/lib/quotes";
 import { emptyTodayGuide, getTodayGuide } from "@/lib/today";
+import { HomeDailyQuote } from "@/components/home/HomeDailyQuote";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { HomeTelemetry } from "@/components/home/HomeTelemetry";
@@ -91,6 +92,10 @@ export default async function HomePage({
           </span>
         </div>
         <h1 className="mt-3 text-4xl">Welcome {greetingName}</h1>
+        <HomeDailyQuote
+          text={quoteCard.unlocked ? quoteCard.quote.text : quoteCard.teaser}
+          attribution={quoteCard.unlocked ? quoteCard.quote.attribution : ""}
+        />
         {profile?.goals ? <p className="mt-2 max-w-[22rem] text-sm text-muted">{profile.goals}</p> : null}
       </section>
 
@@ -108,6 +113,7 @@ export default async function HomePage({
       />
 
       <HomeQuickActions
+        imagery={profile?.athleteImagery}
         sparringRating={sparringRating}
         locked={
           planId === "member_access"
@@ -174,10 +180,6 @@ export default async function HomePage({
         </span>
         <span className="font-semibold">Log food</span>
       </Link>
-
-      {quoteCard.unlocked ? (
-        <p className="text-sm text-muted">“{quoteCard.quote.text}”</p>
-      ) : null}
 
       <details className="hc-panel px-4 py-3">
         <summary className="cursor-pointer font-semibold">Readiness</summary>

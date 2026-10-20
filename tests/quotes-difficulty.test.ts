@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
@@ -7,6 +8,7 @@ import { assignPlanForPilot } from "@/lib/billing";
 import {
   DAILY_QUOTES,
   getDailyQuoteCard,
+  compactQuoteLine,
   quoteForLocalDate,
   quoteSourceCounts,
   teaserFromQuote,
@@ -118,6 +120,27 @@ describe("daily quotes and difficulty ratings", () => {
     }
     expect(DAILY_QUOTES.some((quote) => /UFC/i.test(quote.attribution))).toBe(true);
     expect(DAILY_QUOTES.some((quote) => /:\d/.test(quote.attribution))).toBe(true);
+    for (const quote of DAILY_QUOTES) {
+      const line = compactQuoteLine(quote);
+      expect(line.attribution).toBe(quote.attribution);
+      expect(`${line.text} ${line.attribution}`.length).toBeLessThanOrEqual(112);
+      if (quote.text.length + 3 + quote.attribution.length <= 110) {
+        expect(line.text).toBe(quote.text);
+      } else {
+        expect(line.text.endsWith("…")).toBe(true);
+        expect(line.text.length).toBeLessThan(quote.text.length);
+      }
+    }
+    const home = fs.readFileSync("src/app/(member)/home/page.tsx", "utf8");
+    const welcome = home.indexOf("Welcome {greetingName}");
+    const quoteMark = home.indexOf("<HomeDailyQuote");
+    expect(quoteMark).toBeGreaterThan(welcome);
+    expect(home.indexOf("profile?.goals")).toBeGreaterThan(quoteMark);
+    expect(home).not.toContain('text-sm text-muted">“');
+    const quoteUi = fs.readFileSync("src/components/home/HomeDailyQuote.tsx", "utf8");
+    expect(quoteUi).toContain("line-clamp-2");
+    expect(quoteUi).toContain("text-[#CBF805]");
+    expect(quoteUi).toContain("italic");
     const first = quoteForLocalDate(new Date("2026-01-01T12:00:00"));
     const later = quoteForLocalDate(new Date("2026-06-15T12:00:00"));
     expect(first.id).not.toBe(later.id);

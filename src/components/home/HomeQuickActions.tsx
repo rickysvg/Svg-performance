@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { UpgradePreviewSheet } from "@/components/upgrade/UpgradePreviewSheet";
+import { tileSrc } from "@/lib/athlete-imagery";
 import { sparringTileHint } from "@/lib/sparring-tile";
 
 const PHOTO_ACTIONS = [
@@ -73,7 +74,13 @@ const PHOTO_ACTIONS = [
 function ActionTile({
   action,
 }: {
-  action: (typeof PHOTO_ACTIONS)[number];
+  action: {
+    href: string;
+    label: string;
+    hint: string;
+    src: string;
+    alt: string;
+  };
 }) {
   return (
     <>
@@ -107,17 +114,20 @@ export function HomeQuickActions({
   canStartTrial = false,
   trialDays = 7,
   sparringRating = null,
+  imagery = "",
 }: {
   locked?: { href: string; kind: "fuel" | "coach" }[];
   canStartTrial?: boolean;
   trialDays?: number;
   sparringRating?: number | null;
+  imagery?: string | null;
 }) {
   const lockedMap = new Map(locked.map((item) => [item.href, item.kind]));
   return (
     <section className="min-w-0">
       <div className="grid grid-cols-2 gap-3">
         {PHOTO_ACTIONS.map((action) => {
+          const art = { ...action, src: tileSrc(action.src, imagery) };
           const kind = lockedMap.get(action.href);
           const className =
             "relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black ring-1 ring-[#cbf805]/40";
@@ -131,18 +141,18 @@ export function HomeQuickActions({
                 next={action.href}
               >
                 <span className={className}>
-                  <ActionTile action={action} />
+                  <ActionTile action={art} />
                 </span>
               </UpgradePreviewSheet>
             );
           }
           return (
             <Link key={action.href} href={action.href} className={className}>
-              <ActionTile action={action} />
+              <ActionTile action={art} />
             </Link>
           );
         })}
-        <SparringLogTile hint={sparringTileHint(sparringRating)} />
+        <SparringLogTile hint={sparringTileHint(sparringRating)} src={tileSrc("/tiles/sparring.webp", imagery)} />
       </div>
     </section>
   );

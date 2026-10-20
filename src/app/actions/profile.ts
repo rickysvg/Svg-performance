@@ -36,8 +36,10 @@ export async function saveProfileAction(
     };
     const fightRaw = String(formData.get("nextFightDate") ?? "").trim();
     const fightMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fightRaw);
+    const imageryRaw = formData.get("athleteImagery");
     await updateProfileForUser(user.id, {
       displayName: String(formData.get("displayName") ?? ""),
+      ...(imageryRaw == null ? {} : { athleteImagery: String(imageryRaw) }),
       goalKey: String(formData.get("goalKey") ?? ""),
       goalNote: String(formData.get("goalNote") ?? ""),
       experienceLevel: String(formData.get("experienceLevel") ?? "beginner"),

@@ -6,7 +6,7 @@ import {
   getOnboardingStatus,
   saveDeepOnboardingForUser,
 } from "@/lib/onboarding";
-import { publicErrorMessage } from "@/lib/errors";
+import { AppError, publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import { normalizeOutsideInput } from "@/lib/member-plan";
 
@@ -32,8 +32,16 @@ export async function completeOnboardingAction(
 ): Promise<OnboardingActionState> {
   try {
     const user = await requireUserOrThrow();
+    const athleteImagery = String(formData.get("athleteImagery") ?? "");
+    if (athleteImagery !== "male" && athleteImagery !== "female") {
+      throw new AppError(
+        "ONBOARDING",
+        "Pick male or female so we can tailor the athlete imagery on your Home.",
+      );
+    }
     await completeOnboardingForUser(user.id, {
       displayName: String(formData.get("displayName") ?? ""),
+      athleteImagery,
       goalKey: String(formData.get("goalKey") ?? ""),
       goalNote: String(formData.get("goalNote") ?? ""),
       experienceLevel: String(formData.get("experienceLevel") ?? ""),

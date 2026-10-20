@@ -19,6 +19,7 @@ import {
   type ProfileRecord,
 } from "@/lib/profile";
 import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
+import { parseAthleteImagery } from "@/lib/athlete-imagery";
 import {
   isScOnly,
   normalizeTrainingFocus,
@@ -29,6 +30,7 @@ import {
 
 export type OnboardingInput = {
   displayName: string;
+  athleteImagery?: string;
   goalKey: string;
   goalNote: string;
   experienceLevel: string;
@@ -136,6 +138,10 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingInput
   if (!displayName) {
     throw new AppError("ONBOARDING", "Add the name we should use for you.");
   }
+  const athleteImagery = parseAthleteImagery(input.athleteImagery ?? "");
+  if (athleteImagery == null) {
+    throw new AppError("ONBOARDING", "Pick male or female for the Home athlete imagery.");
+  }
   if (!GOAL_OPTIONS.some((goal) => goal.value === input.goalKey)) {
     throw new AppError("ONBOARDING", "Pick a main goal.");
   }
@@ -164,6 +170,7 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingInput
   const goalNote = input.goalNote.trim().slice(0, 400);
   return {
     displayName,
+    athleteImagery,
     goalKey: input.goalKey,
     goalNote,
     experienceLevel: input.experienceLevel,
@@ -212,6 +219,7 @@ export async function completeOnboardingForUser(userId: string, input: Onboardin
     where: { userId },
     data: {
       displayName: data.displayName,
+      athleteImagery: data.athleteImagery ?? "",
       goalKey: data.goalKey,
       goals: data.goals,
       experienceLevel: data.experienceLevel,

@@ -27,10 +27,12 @@ import {
   type OutsideDay,
 } from "@/lib/member-plan";
 import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
+import { parseAthleteImagery } from "@/lib/athlete-imagery";
 
 export type ProfileRecord = {
   userId: string;
   displayName: string;
+  athleteImagery: string;
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
   gymMembershipVerified: boolean;
@@ -100,6 +102,7 @@ function parseJsonArray(value: string): string[] {
 export function toProfileRecord(row: {
   userId: string;
   displayName: string;
+  athleteImagery?: string;
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
   gymMembershipVerified: boolean;
@@ -157,6 +160,7 @@ export function toProfileRecord(row: {
   return {
     userId: row.userId,
     displayName: row.displayName,
+    athleteImagery: row.athleteImagery ?? "",
     isAdultConfirmed: row.isAdultConfirmed,
     claimsGymMembership: row.claimsGymMembership,
     gymMembershipVerified: row.gymMembershipVerified,
@@ -276,6 +280,7 @@ export async function updateProfileForUser(
   userId: string,
   input: {
     displayName: string;
+    athleteImagery?: string;
     goals?: string;
     goalKey?: string;
     goalNote?: string;
@@ -313,6 +318,11 @@ export async function updateProfileForUser(
   },
 ): Promise<ProfileRecord> {
   const displayName = input.displayName.trim().slice(0, 80);
+  const athleteImagery =
+    input.athleteImagery === undefined ? null : parseAthleteImagery(input.athleteImagery);
+  if (input.athleteImagery !== undefined && athleteImagery == null) {
+    throw new AppError("PROFILE", "Pick male or female for the Home athlete imagery.");
+  }
   if (!["beginner", "intermediate", "advanced"].includes(input.experienceLevel)) {
     throw new AppError("PROFILE", "Pick a valid experience level.");
   }
@@ -451,6 +461,7 @@ export async function updateProfileForUser(
     where: { userId },
     data: {
       displayName,
+      ...(athleteImagery == null ? {} : { athleteImagery }),
       goals,
       goalKey,
       experienceLevel: input.experienceLevel,

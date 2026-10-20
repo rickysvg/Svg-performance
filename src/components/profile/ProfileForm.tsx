@@ -81,6 +81,37 @@ export function ProfileForm({
         />
       </label>
 
+      <fieldset>
+        <legend className="text-sm font-medium">Athlete on your Home</legend>
+        <p className="mt-1 text-xs text-muted">
+          Male or female. This tailors the athlete imagery on your Home.
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="flex items-center gap-3 text-sm">
+            <input
+              type="radio"
+              name="athleteImagery"
+              value="male"
+              required
+              defaultChecked={profile.athleteImagery !== "female"}
+              className="h-5 w-5 accent-accent"
+            />
+            Male
+          </label>
+          <label className="flex items-center gap-3 text-sm">
+            <input
+              type="radio"
+              name="athleteImagery"
+              value="female"
+              required
+              defaultChecked={profile.athleteImagery === "female"}
+              className="h-5 w-5 accent-accent"
+            />
+            Female
+          </label>
+        </div>
+      </fieldset>
+
       <label className="block">
         <span className="text-sm font-medium">Phone (optional)</span>
         <input
