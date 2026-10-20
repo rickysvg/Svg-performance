@@ -4,12 +4,12 @@ import { useActionState, useState } from "react";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
 import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
-import { massSpeedoClass } from "@/components/home/mass-fonts";
+import { massSpeedoClass, massUnitClass } from "@/components/home/mass-fonts";
 import type { MassGauge as MassGaugeScale } from "@/lib/mass-caption";
 
-function inlineUnit(unit: string) {
+function unitLabel(unit: string) {
   const normalized = unit === "kg" ? "lb" : unit || "lb";
-  return normalized === "lb" ? "(lbs)" : `(${normalized})`;
+  return normalized === "lb" ? "lbs" : normalized;
 }
 
 export function HomeBodyWeight({
@@ -32,51 +32,53 @@ export function HomeBodyWeight({
   const recordedAt = new Date().toISOString();
   const initial = value == null ? "" : String(value);
   const [draft, setDraft] = useState(initial);
-  const figureWidth = `${Math.max(draft.length, 1)}ch`;
 
   return (
     <form action={action} data-mass-box className={carbon ? "hc-panel hc-carbon px-3 py-2" : "px-0 py-1"}>
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <span className="hc-kicker mb-1 block">Mass</span>
-          <div className="flex items-end gap-1">
-            <div
-              className="relative max-w-full shrink-0"
+          <span className="mb-1 block font-telemetry text-[10px] uppercase leading-none tracking-[0.22em] text-signal">
+            Current Weight
+          </span>
+          <div
+            className="relative max-w-full shrink-0"
+            style={{
+              width: MASS_DIAL.width,
+              aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}`,
+            }}
+          >
+            <MassGauge gauge={gauge} live={value != null} />
+            <label
+              className="absolute z-10 grid items-baseline"
               style={{
-                width: MASS_DIAL.width,
-                aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}`,
+                left: "50%",
+                top: `${MASS_DIAL.baseline * 100}%`,
+                transform: "translate(-50%, -100%)",
               }}
             >
-              <MassGauge gauge={gauge} live={value != null} />
-              <label
-                className="absolute z-10"
-                style={{
-                  left: "50%",
-                  top: `${MASS_DIAL.baseline * 100}%`,
-                  transform: "translate(-50%, -100%)",
-                }}
+              <input
+                name="value"
+                inputMode="decimal"
+                required
+                min={1}
+                step="0.1"
+                size={Math.max(draft.length, 1)}
+                value={draft}
+                placeholder="—"
+                aria-label="Body weight in pounds"
+                onChange={(event) => setDraft(event.target.value)}
+                style={{ fieldSizing: "content", gridArea: "1 / 1", justifySelf: "center" }}
+                className={`block w-auto min-w-[1ch] border-0 bg-transparent p-0 text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
+              />
+              <span
+                data-mass-unit
+                aria-hidden
+                className={`${massUnitClass} text-[11px] font-semibold leading-none tracking-normal text-signal [text-shadow:0_0_1px_#07080a,0_0_6px_rgba(255,59,59,0.35)]`}
+                style={{ gridArea: "1 / 1", justifySelf: "end", transform: "translateX(calc(100% + 2px))" }}
               >
-                <input
-                  name="value"
-                  inputMode="decimal"
-                  required
-                  min={1}
-                  step="0.1"
-                  value={draft}
-                  placeholder="—"
-                  aria-label="Body weight in pounds"
-                  onChange={(event) => setDraft(event.target.value)}
-                  style={{ width: figureWidth, textAlign: "center" }}
-                  className={`block bg-transparent text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
-                />
-              </label>
-            </div>
-            <span
-              className="font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]"
-              style={{ marginBottom: MASS_DIAL.height * (1 - MASS_DIAL.baseline) + 2 }}
-            >
-              {inlineUnit(unit)}
-            </span>
+                {unitLabel(unit)}
+              </span>
+            </label>
           </div>
         </div>
         <button
@@ -92,7 +94,8 @@ export function HomeBodyWeight({
       <input type="hidden" name="recordedAt" value={recordedAt} />
       <input type="hidden" name="notes" value="" />
       <p className="mt-0.5 text-center font-telemetry text-[10px] uppercase leading-tight tracking-[0.16em] text-[#CBF805]/85">
-        {caption}
+        {caption.startsWith("▼") ? <span className="text-signal">{caption.slice(0, 1)}</span> : null}
+        {caption.startsWith("▼") ? caption.slice(1) : caption}
       </p>
       <StatusBanner error={state.error} success={state.success} />
     </form>

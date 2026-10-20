@@ -10,6 +10,7 @@
   --line: #2a3124;
   --muted: #9aa394;
   --danger: #ff6b5a;
+  --signal: #ff3b3b;
   --ok: #cbf805;
   --data: #5ee0ff;
   --carbon: #0c0e11;
@@ -25,6 +26,7 @@
   --color-line: var(--line);
   --color-muted: var(--muted);
   --color-danger: var(--danger);
+  --color-signal: var(--signal);
   --color-data: var(--data);
   --color-carbon: var(--carbon);
   --font-sans: var(--font-geist-sans);
@@ -733,6 +735,26 @@ body:has(.app-splash.is-visible) {
     0 0 8px rgba(203, 248, 5, 0.28);
   transform: skewX(-8deg);
   transform-origin: center center;
+}
+
+/* The weigh-in figure is type, not a field. No border, fill, or focus ring. */
+[data-mass-box] input[name="value"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  caret-color: #cbf805;
+}
+
+[data-mass-box] input[name="value"]:focus,
+[data-mass-box] input[name="value"]:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+  border: 0;
 }
 
 .hc-panel {

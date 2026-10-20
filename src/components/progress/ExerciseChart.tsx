@@ -107,13 +107,14 @@ export function ExerciseChart({
             <path d={path} fill="none" stroke="#0a0a0a" strokeWidth="2" />
             {coords.map((point, index) => {
               const last = index === coords.length - 1;
+              const dropped = last && index > 0 && point.value < coords[index - 1]!.value;
               return (
                 <circle
                   key={point.weekKey}
                   cx={point.x}
                   cy={point.y}
                   r={last ? 7 : 3.5}
-                  fill={last ? "#CBF805" : "#0a0a0a"}
+                  fill={dropped ? "#FF3B3B" : last ? "#CBF805" : "#0a0a0a"}
                   stroke="#0a0a0a"
                   strokeWidth={last ? 2 : 0}
                 />

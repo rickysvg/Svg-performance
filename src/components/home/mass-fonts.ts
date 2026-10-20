@@ -8,3 +8,5 @@ const orbitron = Orbitron({
 });
 
 export const massSpeedoClass = `${orbitron.className} mass-speedo`;
+/** Same face as the figure, without the speedo skew that would shove the unit into the arc. */
+export const massUnitClass = orbitron.className;

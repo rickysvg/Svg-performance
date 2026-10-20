@@ -3,6 +3,8 @@ export type TelemetryPoint = {
   /** Full name for the screen-reader table. */
   detail?: string;
   value: number | null;
+  /** A drop from the previous point. Drawn as a small red marker. */
+  mark?: "down";
 };
 
 export type TelemetrySeries = {
@@ -141,6 +143,7 @@ export function TelemetryChart({
                     x: xAt(index),
                     y: point.value == null ? 0 : yAt(point.value),
                     value: point.value,
+                    mark: point.mark,
                   }));
                   const paths = linePaths(coords);
                   return (
@@ -170,7 +173,13 @@ export function TelemetryChart({
                       ))}
                       {coords.map((point, index) =>
                         point.value == null ? null : (
-                          <circle key={index} cx={point.x} cy={point.y} r="2.6" fill={item.color} />
+                          <circle
+                            key={index}
+                            cx={point.x}
+                            cy={point.y}
+                            r={point.mark === "down" ? 3.4 : 2.6}
+                            fill={point.mark === "down" ? "#FF3B3B" : item.color}
+                          />
                         ),
                       )}
                     </g>
@@ -185,11 +194,14 @@ export function TelemetryChart({
       )}
       {labels.length > 0 ? (
         <div className="mt-1 flex justify-between gap-1 px-1" aria-hidden>
-          {labels.map((point, index) => (
-            <span key={`${point.label}-${index}`} className="font-telemetry text-[10px] text-muted">
-              {point.label}
-            </span>
-          ))}
+          {labels.map((point, index) => {
+            const show = labels.length <= 6 || index === 0 || index === labels.length - 1 || index === Math.floor(labels.length / 2);
+            return (
+              <span key={`${point.label}-${index}`} className="font-telemetry text-[10px] text-muted">
+                {show ? point.label : ""}
+              </span>
+            );
+          })}
         </div>
       ) : null}
       {series.length > 1 ? (

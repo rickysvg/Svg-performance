@@ -10,6 +10,11 @@ import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
 import { displayBodyMetric, getLatestBodyMetricsForUser, listBodyMetricsForUser, weightSeriesPoints } from "@/lib/body-metrics";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { BodyWeightChart } from "@/components/progress/BodyWeightChart";
+import { HomeTelemetry } from "@/components/home/HomeTelemetry";
+import { getHomeTelemetry } from "@/lib/home-telemetry";
+import { getFightCampRow } from "@/lib/fight-camp";
+import { telemetryGraphTitle } from "@/lib/telemetry-title";
+import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { listProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
@@ -69,6 +74,14 @@ export default async function ProgressPage() {
   const sparringWeek = await sparringLogsForWeek(user.id, new Date(), tz);
   const trend = await sparringTrend(user.id, 16);
   const weightPoints = weightSeriesPoints(weightHistory, tz);
+  const telemetry = await getHomeTelemetry({ userId: user.id, timeZone: tz });
+  const camp = await getFightCampRow(user.id);
+  const telemetryTitle = telemetryGraphTitle({
+    status: camp?.status,
+    fightDateKey: camp?.fightDateKey,
+    todayKey: zonedDayKey(new Date(), tz),
+  });
+  const chartNow = new Date().toISOString();
   const shownWeights = weightHistory.map((row) => displayBodyMetric(row));
   const massLine = massCaption(shownWeights[0] ?? null, shownWeights[1] ?? null, tz);
   const massGauge = massGaugeScale({
@@ -162,7 +175,11 @@ export default async function ProgressPage() {
             {weight ? "Typed by you. The line is every weigh-in." : "Log a weigh-in below."}
           </p>
         </div>
-        <BodyWeightChart points={weightPoints} unit={weightPoints[0]?.unit || weight?.unit || "lb"} />
+        <BodyWeightChart
+          points={weightPoints}
+          unit={weightPoints[0]?.unit || weight?.unit || "lb"}
+          now={chartNow}
+        />
         {weight ? (
           <details>
             <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
@@ -186,6 +203,8 @@ export default async function ProgressPage() {
           />
         )}
       </section>
+
+      <HomeTelemetry data={telemetry} title={telemetryTitle} />
 
       <section className="hc-panel p-4" data-coach-clear>
         <p className="hc-kicker">Sparring</p>

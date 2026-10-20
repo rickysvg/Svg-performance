@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { kgToWholeLb } from "@/lib/units";
+import type { WeightSeriesPoint } from "@/lib/weight-series";
+
+export type { WeightRange, WeightSeriesPoint } from "@/lib/weight-series";
+export { filterWeightRange } from "@/lib/weight-series";
 
 export const BODY_METRIC_KINDS = [
   "weight",
@@ -121,7 +125,7 @@ export async function listBodyMetricsForUser(userId: string, kind?: BodyMetricKi
 export function weightSeriesPoints(
   rows: Array<{ id: string; recordedAt: Date; value: number; unit: string; kind: string }>,
   timeZone: string,
-) {
+): WeightSeriesPoint[] {
   return [...rows]
     .map((row) => displayBodyMetric(row))
     .reverse()
@@ -134,6 +138,7 @@ export function weightSeriesPoints(
       }).format(row.recordedAt),
       value: row.value,
       unit: row.unit,
+      recordedAt: row.recordedAt.toISOString(),
     }));
 }
 

@@ -24,6 +24,8 @@ import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentWeightsForUser } from "@/lib/body-metrics";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
+import { getFightCampRow } from "@/lib/fight-camp";
+import { telemetryGraphTitle } from "@/lib/telemetry-title";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
@@ -40,7 +42,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry, camp] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -63,8 +65,14 @@ export default async function HomePage({
         getHomeTelemetry({ userId: user.id, timeZone: tz }),
         emptyHomeTelemetry(new Date(), tz),
       ),
+      homeLoad("camp", getFightCampRow(user.id), null),
     ]);
   const dayKey = zonedDayKey(new Date(), tz);
+  const telemetryTitle = telemetryGraphTitle({
+    status: camp?.status,
+    fightDateKey: camp?.fightDateKey,
+    todayKey: dayKey,
+  });
   const readiness = await homeLoad(
     "readiness",
     getReadinessForDay(user.id, dayKey),
@@ -169,7 +177,7 @@ export default async function HomePage({
         />
       ) : null}
 
-      <HomeTelemetry data={telemetry} />
+      <HomeTelemetry data={telemetry} title={telemetryTitle} />
 
       <Link
         href="/nutrition"
