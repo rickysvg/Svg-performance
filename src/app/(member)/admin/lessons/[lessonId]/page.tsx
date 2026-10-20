@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { getLessonForAdmin } from "@/lib/lessons";
 import { LessonForm } from "@/components/admin/LessonForm";
 
@@ -19,9 +19,7 @@ export default async function EditLessonPage({
   }
   return (
     <main className="space-y-6">
-      <Link href="/admin/lessons" className="text-sm text-accent underline">
-        Back
-      </Link>
+      <AdminBack href="/admin/lessons" label="Lessons" />
       <h1 className="text-2xl">Edit lesson</h1>
       <LessonForm lesson={lesson} />
     </main>

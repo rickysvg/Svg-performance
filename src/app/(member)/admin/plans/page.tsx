@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { listUsersForAdmin } from "@/lib/admin";
 import { listWaitlist, listSeatStatus } from "@/lib/waitlist";
 import { listBookingRequestsForAdmin, bookingLabel } from "@/lib/bookings";
@@ -29,11 +29,7 @@ export default async function AdminPlansPage() {
           Pilot override: assign a catalog plan for 30 days, mark a credit used after a
           real session, and review waitlist / booking requests. This is not live billing.
         </p>
-        <p className="mt-2 text-sm">
-          <Link href="/admin" className="text-accent underline">
-            Back to gym verify
-          </Link>
-        </p>
+        <AdminBack />
       </div>
 
       <section className="rounded-2xl border border-line bg-card p-5">

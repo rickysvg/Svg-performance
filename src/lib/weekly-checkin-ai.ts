@@ -31,9 +31,15 @@ function stripFence(text: string) {
   return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 }
 
+/** Live check-in drafts stay off unless CHECKIN_AI=1, so a stored API key does not spend. */
+export function checkInAiEnabled() {
+  const raw = process.env.CHECKIN_AI?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "on";
+}
+
 export async function generateCheckInDraft(input: CheckInAiInput): Promise<CheckInDraft> {
   const fallback = fallbackCheckInDraft(input);
-  if (!isOpenAiConfigured()) return fallback;
+  if (!checkInAiEnabled() || !isOpenAiConfigured()) return fallback;
 
   const flags = detectCheckInFlags(input);
   const controller = new AbortController();

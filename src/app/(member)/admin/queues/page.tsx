@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { getPilotQueues } from "@/lib/pilot";
 import { bookingLabel } from "@/lib/bookings";
 import { PLAN_CATALOG, normalizePlanId } from "@/lib/plans";
@@ -11,9 +12,7 @@ export default async function AdminQueuesPage() {
   return (
     <main className="space-y-8">
       <div>
-        <Link href="/admin" className="text-sm text-accent underline">
-          Back to toolkit
-        </Link>
+        <AdminBack />
         <h1 className="mt-2 text-2xl">Comment queues</h1>
         <p className="mt-1 text-sm text-muted">
           Work lists only. Open a member on Staff → Coach notes to write in your own words.

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { listPilotInvites } from "@/lib/invites";
 import { InviteForm } from "@/components/admin/InviteForm";
 import { deleteInviteAction } from "@/app/actions/admin";
@@ -11,9 +11,7 @@ export default async function AdminInvitesPage() {
   return (
     <main className="space-y-6">
       <div>
-        <Link href="/admin" className="text-sm text-accent underline">
-          Back to toolkit
-        </Link>
+        <AdminBack />
         <h1 className="mt-2 text-2xl">Pilot invites</h1>
         <p className="mt-1 text-sm text-muted">
           Status is invited until they create an account, then joined. This does not send
