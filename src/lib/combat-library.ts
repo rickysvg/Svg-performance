@@ -2,8 +2,13 @@
  * Research Rae's combat swap library (Oct 2026).
  * 203 exercises. Member swaps hide low-confidence clips and long clips that
  * do not already start on the form. The admin Content queue still lists both.
+ *
+ * Trim windows live in src/data/combat-clip-trims.json, keyed by exercise id:
+ * `{ "belt-squat": { "videoStart": 12, "videoEnd": 48 } }`.
+ * A window has to be 60 seconds or under. The six untrimmed ids below are ignored.
  */
 import raw from "@/data/combat-exercise-library.json";
+import trimsFile from "@/data/combat-clip-trims.json";
 import type { ExerciseCategory, EquipmentAccess, LibraryExercise } from "@/lib/exercise-library";
 import type { LogMode } from "@/lib/exercise-log-mode";
 
@@ -74,11 +79,92 @@ function asCombat(row: (typeof raw)[number]): CombatExercise {
   };
 }
 
-export const COMBAT_LIBRARY: CombatExercise[] = raw.map(asCombat);
+/** Left untrimmed on purpose. They stay in the admin Content queue. */
+export const UNTRIMMED_CLIP_IDS = [
+  "rope-climb",
+  "sledgehammer-tire-strike",
+  "turkish-get-up",
+  "band-resisted-penetration-shot",
+  "penetration-step",
+  "granby-roll",
+] as const;
 
-/** Over 60s and no end trim. A start time alone is not a finished trim. */
+/** Medium after a valid trim. The other trimmed clips are high, except gi-pull-up. */
+const MEDIUM_TRIM_IDS = new Set([
+  "belt-squat",
+  "pistol-squat",
+  "glute-ham-raise",
+  "meadows-row",
+  "l-sit",
+  "dragon-flag",
+  "kettlebell-complex",
+]);
+
+/** Trimmed, but low confidence, so it stays in admin Content review. */
+const REVIEW_TRIM_IDS = new Set(["gi-pull-up"]);
+
+const UNTRIMMED_IDS = new Set<string>(UNTRIMMED_CLIP_IDS);
+
+export type ClipTrim = {
+  videoStart: number;
+  videoEnd: number;
+};
+
+function isClipTrim(value: unknown, durationSec: number): value is ClipTrim {
+  if (!value || typeof value !== "object") return false;
+  const start = (value as ClipTrim).videoStart;
+  const end = (value as ClipTrim).videoEnd;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
+  if (start < 0 || end <= start) return false;
+  if (end - start > 60) return false;
+  if (end > durationSec) return false;
+  return true;
+}
+
+const trimsById = trimsFile as Record<string, unknown>;
+
+export function clipTrimFor(id: string, durationSec: number): ClipTrim | null {
+  if (UNTRIMMED_IDS.has(id)) return null;
+  const trim = trimsById[id];
+  return isClipTrim(trim, durationSec) ? trim : null;
+}
+
+function confidenceAfterTrim(id: string): CombatConfidence {
+  if (REVIEW_TRIM_IDS.has(id)) return "low";
+  if (MEDIUM_TRIM_IDS.has(id)) return "medium";
+  return "high";
+}
+
+/** Apply one trim. Untrimmed ids and windows over 60s are left unchanged. */
+export function withClipTrim(row: CombatExercise, trim: ClipTrim | null): CombatExercise {
+  if (!trim || !isClipTrim(trim, row.durationSec) || UNTRIMMED_IDS.has(row.id)) return row;
+  return {
+    ...row,
+    videoStart: trim.videoStart,
+    videoEnd: trim.videoEnd,
+    confidence: confidenceAfterTrim(row.id),
+  };
+}
+
+function applyStoredTrim(row: CombatExercise): CombatExercise {
+  return withClipTrim(row, clipTrimFor(row.id, row.durationSec));
+}
+
+export const COMBAT_LIBRARY: CombatExercise[] = raw.map((row) => applyStoredTrim(asCombat(row)));
+
+/**
+ * Played length once a human set both ends. Null when the file is still the full upload.
+ */
+export function trimmedLength(row: CombatExercise): number | null {
+  if (row.videoEnd == null) return null;
+  return row.videoEnd - row.videoStart;
+}
+
+/** Over 60s with no finished window, or a window that is still longer than 60s. */
 export function needsTrim(row: CombatExercise) {
-  return row.durationSec > 60 && row.videoEnd == null;
+  const window = trimmedLength(row);
+  if (window != null) return window <= 0 || window > 60;
+  return row.durationSec > 60;
 }
 
 export function needsReview(row: CombatExercise) {

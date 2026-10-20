@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   COMBAT_LIBRARY,
+  UNTRIMMED_CLIP_IDS,
   libraryReviewQueue,
   memberSwappable,
   needsReview,
   needsTrim,
+  withClipTrim,
 } from "@/lib/combat-library";
 import { filterExerciseLibrary } from "@/lib/exercise-library";
 import { DEMO_FORM_VIDEOS, isYoutubeFormUrl } from "@/lib/form-videos";
@@ -17,13 +19,67 @@ import type { DayPlan } from "@/lib/week-plan";
 describe("combat swap library", () => {
   it("keeps 151 exercises live and holds the rest", () => {
     const queue = libraryReviewQueue();
+    const trimmed = COMBAT_LIBRARY.filter((row) => row.videoEnd != null);
     expect(COMBAT_LIBRARY).toHaveLength(203);
-    expect(queue.needsReview).toHaveLength(20);
-    expect(queue.needsTrim).toHaveLength(46);
-    expect(queue.live).toBe(151);
-    expect(queue.held).toBe(52);
     expect(queue.live + queue.held).toBe(203);
-    expect(queue.queueCount).toBe(55);
+    if (trimmed.length === 0) {
+      expect(queue.needsReview).toHaveLength(20);
+      expect(queue.needsTrim).toHaveLength(46);
+      expect(queue.live).toBe(151);
+      expect(queue.held).toBe(52);
+      expect(queue.queueCount).toBe(55);
+      return;
+    }
+    expect(trimmed).toHaveLength(40);
+    for (const row of trimmed) {
+      expect(row.videoEnd! - row.videoStart).toBeLessThanOrEqual(60);
+      expect(row.videoEnd).toBeGreaterThan(row.videoStart);
+    }
+    expect(queue.live).toBe(187);
+    expect(queue.held).toBe(16);
+    expect(queue.needsTrim).toHaveLength(6);
+    expect(queue.needsReview.map((row) => row.id)).toContain("gi-pull-up");
+    expect(memberSwappable(COMBAT_LIBRARY.find((row) => row.id === "gi-pull-up")!)).toBe(false);
+  });
+
+  it("publishes 32 high and 7 medium trims and leaves six clips plus the gi pull-up in review", () => {
+    const mediumIds = [
+      "belt-squat",
+      "pistol-squat",
+      "glute-ham-raise",
+      "meadows-row",
+      "l-sit",
+      "dragon-flag",
+      "kettlebell-complex",
+    ];
+    const preview = COMBAT_LIBRARY.map((row) => {
+      if ((UNTRIMMED_CLIP_IDS as readonly string[]).includes(row.id)) return row;
+      if (row.durationSec <= 60) return row;
+      return withClipTrim(row, { videoStart: 0, videoEnd: Math.min(30, row.durationSec) });
+    });
+    const long = preview.filter((row) => row.durationSec > 60);
+    const trimmed = long.filter((row) => row.videoEnd != null);
+    const high = trimmed.filter((row) => row.confidence === "high" && memberSwappable(row));
+    const medium = trimmed.filter((row) => row.confidence === "medium" && memberSwappable(row));
+    const gi = trimmed.find((row) => row.id === "gi-pull-up");
+    expect(trimmed).toHaveLength(40);
+    expect(high).toHaveLength(32);
+    expect(medium.map((row) => row.id).sort()).toEqual([...mediumIds].sort());
+    expect(gi?.confidence).toBe("low");
+    expect(memberSwappable(gi!)).toBe(false);
+    expect(needsReview(gi!)).toBe(true);
+    expect(needsTrim(gi!)).toBe(false);
+    for (const id of UNTRIMMED_CLIP_IDS) {
+      const row = preview.find((item) => item.id === id)!;
+      expect(row.videoEnd).toBeNull();
+      expect(needsTrim(row)).toBe(true);
+      expect(memberSwappable(row)).toBe(false);
+    }
+    const live = preview.filter(memberSwappable).length;
+    expect(live).toBe(187);
+    expect(preview.length - live).toBe(16);
+    expect(withClipTrim(COMBAT_LIBRARY.find((row) => row.id === "rope-climb")!, { videoStart: 0, videoEnd: 30 }).videoEnd).toBeNull();
+    expect(withClipTrim(COMBAT_LIBRARY.find((row) => row.id === "zercher-squat")!, { videoStart: 0, videoEnd: 90 }).videoEnd).toBeNull();
   });
 
   it("hides low-confidence clips and long clips that do not start on the form", () => {
