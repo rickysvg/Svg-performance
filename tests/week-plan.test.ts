@@ -8,7 +8,7 @@ async function startedWithProgram(userId: string) {
 }
 import { prisma } from "@/lib/prisma";
 import { completeOnboardingForUser } from "@/lib/onboarding";
-import { getHomeToday } from "@/lib/home";
+import { formatDayParam, getHomeToday, parseDayParam } from "@/lib/home";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { BAG_FOCUS, bagFocusFor } from "@/lib/bag-sessions";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
@@ -173,6 +173,45 @@ describe("Core weekday planner", () => {
     expect(strip.find((day) => day.weekday === "Wednesday")?.isSelected).toBe(true);
     expect(strip.find((day) => day.weekday === "Monday")?.isToday).toBe(true);
     expect(strip.every((day) => Boolean(day.dayParam))).toBe(true);
+  });
+
+  it("marks today in America/Denver, not UTC, and does not select another week's Thursday", () => {
+    const prefs = { primaryFocus: "mma" as const };
+    const zone = "America/Denver";
+    // 12:24 AM Mountain on Tue Oct 20. UTC is already 06:24 the same morning.
+    const justAfterMidnight = new Date("2026-10-20T06:24:00.000Z");
+    const strip = weekStrip(prefs, justAfterMidnight, zone);
+    expect(formatDayParam(parseDayParam(undefined, justAfterMidnight, zone), zone)).toBe("2026-10-20");
+    expect(strip.find((day) => day.isToday)?.dayParam).toBe("2026-10-20");
+    expect(strip.find((day) => day.isToday)?.weekday).toBe("Tuesday");
+    expect(strip.find((day) => day.isToday)?.isSelected).toBe(true);
+    expect(strip.find((day) => day.weekday === "Thursday")?.isToday).toBe(false);
+    expect(strip.find((day) => day.weekday === "Thursday")?.isSelected).toBe(false);
+
+    // 11:30 PM Mountain on Tue Oct 20. UTC has already rolled to Wednesday.
+    const lateEvening = new Date("2026-10-21T05:30:00.000Z");
+    const late = weekStrip(prefs, lateEvening, zone);
+    expect(late.find((day) => day.isToday)?.dayParam).toBe("2026-10-20");
+    expect(late.find((day) => day.weekday === "Wednesday")?.isToday).toBe(false);
+
+    // 11:30 PM Mountain on Mon Oct 19. A UTC date would already say Tuesday.
+    const stillMonday = weekStrip(prefs, new Date("2026-10-20T05:30:00.000Z"), zone);
+    expect(stillMonday.find((day) => day.isToday)?.dayParam).toBe("2026-10-19");
+    expect(stillMonday.find((day) => day.weekday === "Tuesday")?.isToday).toBe(false);
+
+    const nextThursday = new Date("2026-10-29T18:00:00.000Z");
+    const stale = weekStrip(prefs, justAfterMidnight, zone, nextThursday);
+    expect(stale.find((day) => day.weekday === "Thursday")?.dayParam).toBe("2026-10-22");
+    expect(stale.find((day) => day.weekday === "Thursday")?.isSelected).toBe(false);
+    expect(stale.find((day) => day.isSelected)).toBeUndefined();
+    expect(stale.find((day) => day.isToday)?.weekday).toBe("Tuesday");
+
+    const thisThursday = new Date("2026-10-22T18:00:00.000Z");
+    const preview = weekStrip(prefs, justAfterMidnight, zone, thisThursday);
+    expect(preview.find((day) => day.weekday === "Thursday")?.isSelected).toBe(true);
+    expect(preview.find((day) => day.weekday === "Thursday")?.isToday).toBe(false);
+    expect(preview.find((day) => day.weekday === "Tuesday")?.isToday).toBe(true);
+    expect(preview.find((day) => day.weekday === "Tuesday")?.isSelected).toBe(false);
   });
 
   it("swaps one week’s workouts and leaves the default plan for every other week", () => {
