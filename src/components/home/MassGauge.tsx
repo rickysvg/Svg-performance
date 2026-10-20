@@ -50,8 +50,8 @@ export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolea
       className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden
     >
-      <path d={sweep(R, START, START - SWEEP)} fill="none" stroke="rgba(203,248,5,0.45)" strokeWidth="1.6" />
-      {live ? <path d={sweep(R, START, angle)} fill="none" stroke="#CBF805" strokeWidth="2.4" /> : null}
+      <path d={sweep(R, START, START - SWEEP)} fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="1.7" />
+      {live ? <path d={sweep(R, START, angle)} fill="none" stroke="#ffffff" strokeWidth="2.3" /> : null}
       {ticks.map((tick, index) => {
         const major = index % 2 === 0;
         const ends = tickEnds(START - tick * SWEEP, major ? 11 : 6, major ? 7 : 4);
@@ -63,7 +63,7 @@ export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolea
             y1={ends.inner.y}
             x2={ends.outer.x}
             y2={ends.outer.y}
-            stroke={passed || major ? "#CBF805" : "rgba(203,248,5,0.8)"}
+            stroke={passed || major ? "#ffffff" : "rgba(255,255,255,0.78)"}
             strokeWidth={major ? 2.2 : 1.35}
             strokeLinecap="butt"
           />
@@ -75,7 +75,7 @@ export function MassGauge({ gauge, live }: { gauge: MassGaugeScale; live: boolea
           y1={goal.inner.y}
           x2={goal.outer.x}
           y2={goal.outer.y}
-          stroke="#f3f4ef"
+          stroke="#CBF805"
           strokeWidth="1.8"
         />
       ) : null}
