@@ -3,7 +3,7 @@ import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
-import { civilDayInstant } from "@/lib/performed-at";
+import { sessionCivilDay } from "@/lib/performed-at";
 import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
@@ -292,6 +292,25 @@ export async function completedProgramDayIdsOnDay(
     select: { programDayId: true },
   });
   return [...new Set(rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)))];
+}
+
+/** Local days in [from, to) that have a finished session. Same day key as Calendar. */
+export async function completedLocalDayKeys(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+) {
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId,
+      status: "complete",
+      sets: loggedSetSome,
+      performedAt: { gte: from, lt: to },
+    },
+    select: { performedAt: true, createdAt: true },
+  });
+  return [...new Set(rows.map((row) => sessionCivilDay(row, timeZone)))];
 }
 
 const WORKOUT_DETAIL_INCLUDE = {
@@ -681,14 +700,13 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
     select: {
       id: true,
       performedAt: true,
+      createdAt: true,
       sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
     },
   });
   const ids = drafts
     .filter(
-      (row) =>
-        sessionHasLoggedWork(row.sets) &&
-        dayKey(civilDayInstant(row.performedAt, timeZone), timeZone) < today,
+      (row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today,
     )
     .map((row) => row.id);
   if (ids.length === 0) return 0;

@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { loggedSetSome } from "@/lib/logged-work";
-import { civilDayInstant } from "@/lib/performed-at";
+import { sessionCivilDay } from "@/lib/performed-at";
 import { getProfileForUser } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
-import { addZonedDays, dayKey, mondayOfZoned, APP_TIMEZONE } from "@/lib/timezone";
+import { addZonedDays, dayKey, mondayOfZoned, zonedCivilToUtc, APP_TIMEZONE } from "@/lib/timezone";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -114,6 +114,8 @@ export async function getHomeTelemetry(input: {
   const displayUnit = input.displayUnit ?? "lb";
   const monday = mondayOfZoned(now, timeZone);
   const next = addZonedDays(monday, 7, timeZone);
+  const from = addZonedDays(monday, -1, timeZone);
+  const to = addZonedDays(next, 1, timeZone);
   const weekKeys = Array.from({ length: 7 }, (_, index) =>
     dayKey(addZonedDays(monday, index, timeZone), timeZone),
   );
@@ -125,10 +127,11 @@ export async function getHomeTelemetry(input: {
         userId: input.userId,
         status: "complete",
         sets: loggedSetSome,
-        performedAt: { gte: monday, lt: next },
+        performedAt: { gte: from, lt: to },
       },
       select: {
         performedAt: true,
+        createdAt: true,
         sets: { select: { reps: true, loadValue: true, loadUnit: true } },
       },
     }),
@@ -138,12 +141,12 @@ export async function getHomeTelemetry(input: {
     }),
     prisma.workoutSession.findMany({
       where: { userId: input.userId, status: "complete", sets: loggedSetSome },
-      select: { performedAt: true },
+      select: { performedAt: true, createdAt: true },
     }),
   ]);
 
   const sessions = weekSessions.map((session) => {
-    const key = dayKey(civilDayInstant(session.performedAt, timeZone), timeZone);
+    const key = sessionCivilDay(session, timeZone);
     const volume = session.sets.reduce(
       (sum, set) =>
         sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit),
@@ -152,7 +155,11 @@ export async function getHomeTelemetry(input: {
     return { dayKey: key, volume };
   });
   const streak = buildTrainingStreak({
-    completedDates: completed.map((row) => civilDayInstant(row.performedAt, timeZone)),
+    completedDates: completed.map((row) => {
+      const key = sessionCivilDay(row, timeZone);
+      const [year, month, day] = key.split("-").map(Number);
+      return zonedCivilToUtc(year!, month!, day!, timeZone);
+    }),
     prefs: plannerPrefsFromProfile(profile ?? {}),
     now,
     timeZone,

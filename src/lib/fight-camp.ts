@@ -5,7 +5,7 @@ import { AppError } from "@/lib/errors";
 import { canUseFeature } from "@/lib/entitlements";
 import { DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { dayKey } from "@/lib/timezone";
-import type { DayPlan, PlanSessionSlot } from "@/lib/week-plan";
+import { planWeekIndex, type DayPlan, type PlanSessionSlot } from "@/lib/week-plan";
 import {
   disciplineLabel,
   isFightDiscipline,
@@ -173,6 +173,32 @@ export function selectTemplateWeeks(daysToFight: number): CampTemplateWeeks {
   if (weeksLeft >= 8) return 12;
   if (weeksLeft >= 5) return 8;
   return 6;
+}
+
+/**
+ * Camp week 1 is week index 0 of the same 3-week blocks as the off-season plan.
+ * Pre-camp and a finished camp keep the member's own week.
+ */
+export function campPlanWeekIndex(camp: { weekNumber: number | null; phase: CampPhase } | null) {
+  if (!camp || camp.weekNumber == null) return null;
+  if (camp.phase === "pre-camp" || camp.phase === "complete") return null;
+  if (!Number.isFinite(camp.weekNumber) || camp.weekNumber < 1) return null;
+  return camp.weekNumber - 1;
+}
+
+/** Fight camp uses the camp week. Off-season keeps the member's own week. */
+export async function activePlanWeekIndex(
+  userId: string,
+  date: Date,
+  timeZone: string,
+  anchor?: Date | null,
+) {
+  const camp = await getActiveCampSnapshot(userId, date, timeZone);
+  if (camp && camp.weightClass.trim()) {
+    const campWeek = campPlanWeekIndex(camp);
+    if (campWeek != null) return { weekIndex: campWeek, camp };
+  }
+  return { weekIndex: planWeekIndex(date, timeZone, anchor), camp };
 }
 
 export function phaseForCampWeek(week: number, total: CampTemplateWeeks): CampPhaseId {

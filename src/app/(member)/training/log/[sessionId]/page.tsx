@@ -14,8 +14,7 @@ import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
 import { HrWorkoutForm } from "@/components/heart/HrWorkoutForm";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
-import { planWeekIndex } from "@/lib/week-plan";
-import { getActiveCampSnapshot } from "@/lib/fight-camp";
+import { activePlanWeekIndex } from "@/lib/fight-camp";
 import { applyGymExerciseName, gymHistoryNames, rekeyGymRecord } from "@/lib/gym-exercise";
 import { listExerciseNotesForUser } from "@/lib/exercise-notes";
 import { alignWorkoutWithSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
@@ -62,6 +61,12 @@ export default async function WorkoutLogPage({
   }
   const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
   const band = scaleBandFromPrefs(scale);
+  const planned = await activePlanWeekIndex(
+    user.id,
+    new Date(),
+    tz,
+    profile?.onboardingCompletedAt ?? null,
+  );
   const scaledDay = session.programDay
     ? scaleProgramDay(
         {
@@ -72,8 +77,8 @@ export default async function WorkoutLogPage({
           band,
           programSlug: session.programDay.program.slug,
           weightAccess: profile?.weightAccess,
-          weekIndex: planWeekIndex(new Date(), tz, profile?.onboardingCompletedAt ?? null),
-          campPhase: (await getActiveCampSnapshot(user.id, new Date(), tz))?.phase ?? null,
+          weekIndex: planned.weekIndex,
+          campPhase: planned.camp?.phase ?? null,
         },
       )
     : null;
@@ -88,7 +93,12 @@ export default async function WorkoutLogPage({
   const swappedExercises = scaledDay
     ? applySwapsToExercises(scaledDay.exercises, swaps, {
         sessionId: session.id,
-        blockKey: trainingBlockKey(new Date(), tz, profile?.onboardingCompletedAt ?? null),
+        blockKey: trainingBlockKey(
+          new Date(),
+          tz,
+          profile?.onboardingCompletedAt ?? null,
+          planned.weekIndex,
+        ),
         includePending: false,
       })
     : [];

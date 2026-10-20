@@ -25,7 +25,21 @@ export function cleanSwapName(name: string) {
 }
 
 export function swapAlreadyInWorkoutMessage(name: string) {
-  return `${cleanSwapName(name)} is already in this workout. Logged sets were moved onto it.`;
+  return `${cleanSwapName(name)} is already in this workout. This swap stays as its own exercise.`;
+}
+
+/** A second copy keeps its own name so the logger does not fold the two together. */
+export function distinctExerciseName(used: Iterable<string>, baseName: string) {
+  const taken = new Set(used);
+  const base = cleanSwapName(baseName);
+  if (!taken.has(base)) return base;
+  let n = 2;
+  let candidate = `${base} · ${n}`;
+  while (taken.has(candidate)) {
+    n += 1;
+    candidate = `${base} · ${n}`;
+  }
+  return candidate;
 }
 
 export type SwapPrescription = {
@@ -67,12 +81,19 @@ export type SwapSlot = {
 
 const RIR_TOKEN = /\b(\d+\s*-\s*\d+|\d+\+)\s*RIR\b/i;
 
-export function trainingBlockKey(date: Date, timeZone: string, anchor?: Date | null) {
-  const weekIndex =
-    anchor && !Number.isNaN(anchor.getTime())
-      ? memberWeekIndex(date, anchor, timeZone)
-      : bikeWeekIndex(date, timeZone);
-  const block = mesoBlockForWeekIndex(weekIndex);
+export function trainingBlockKey(
+  date: Date,
+  timeZone: string,
+  anchor?: Date | null,
+  weekIndex?: number | null,
+) {
+  const index =
+    typeof weekIndex === "number" && Number.isFinite(weekIndex)
+      ? Math.max(0, Math.floor(weekIndex))
+      : anchor && !Number.isNaN(anchor.getTime())
+        ? memberWeekIndex(date, anchor, timeZone)
+        : bikeWeekIndex(date, timeZone);
+  const block = mesoBlockForWeekIndex(index);
   return `${dayKey(mondayOfZoned(date, timeZone), timeZone)}:${block}`;
 }
 
@@ -194,14 +215,18 @@ export function applySwapsToExercises<T extends Swappable>(
   swaps: SwapRecord[],
   input: { sessionId?: string | null; blockKey: string; includePending?: boolean },
 ): T[] {
+  const used = new Set(exercises.map((exercise) => exercise.name));
   return exercises.map((exercise) => {
     const swap = replacementForSlot(swaps, exercise.name, input);
     if (!swap || swap.replacementName === exercise.name) return exercise;
+    used.delete(exercise.name);
+    const name = distinctExerciseName(used, swap.replacementName);
+    used.add(name);
     const mode = isLogMode(swap.logMode) ? swap.logMode : resolveLogMode({ name: swap.replacementName, reps: swap.reps });
-    const video = formVideoFieldsFor(swap.replacementName);
+    const video = formVideoFieldsFor(name);
     return {
       ...exercise,
-      name: swap.replacementName,
+      name,
       sets: swap.sets,
       reps: swap.reps,
       loadText: swap.loadText,

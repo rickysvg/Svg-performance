@@ -2,14 +2,17 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
+  completedLocalDayKeys,
   completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
+  finalizePastLoggedDrafts,
   listDraftSessionsForUser,
 } from "@/lib/workouts";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
 import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
+import { blockWeekLabel } from "@/lib/plan-structure";
 import { isDeloadWeekIndex, isTestingWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
@@ -37,9 +40,10 @@ import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-me
 import { nextTrainAction } from "@/lib/train-next";
 import { todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
-import { getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
+import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
-import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
+import { addZonedDays, dayKey, memberDayTimeZone, mondayOfZoned, readTimeZoneCookie } from "@/lib/timezone";
+import { sessionCivilDay } from "@/lib/performed-at";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -68,15 +72,17 @@ export default async function TrainingPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [catalog, drafts, sessionCount, conditioning, profile, swaps, sparringRating] = await Promise.all([
+  const [catalog, sessionCount, conditioning, profile, swaps, sparringRating] = await Promise.all([
     findDemoTrainingCatalog(),
-    listDraftSessionsForUser(user.id),
     countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
     latestSparringSessionRating(user.id),
   ]);
+  const tzEarly = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  await finalizePastLoggedDrafts(user.id, now, tzEarly);
+  const drafts = await listDraftSessionsForUser(user.id);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -87,8 +93,9 @@ export default async function TrainingPage({
     email: user.email,
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
+    forcedWeekIndex: null as number | null,
   };
-  const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const tz = tzEarly;
   const selected = parseDayParam(params.day, now, tz);
   const levelOverride = parseLevelParam(params.level);
   const profileBand = scaleBandFromPrefs({
@@ -99,7 +106,9 @@ export default async function TrainingPage({
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
   const camp = await getActiveCampSnapshot(user.id, selected, tz);
   const campOn = Boolean(camp && camp.weightClass.trim());
-  const weekIndex = planWeekIndex(selected, tz, profile?.onboardingCompletedAt);
+  const campWeekIndex = campPlanWeekIndex(camp);
+  if (campWeekIndex != null) prefs.forcedWeekIndex = campWeekIndex;
+  const weekIndex = campWeekIndex ?? planWeekIndex(selected, tz, profile?.onboardingCompletedAt);
   const corePlan = planForDate(prefs, selected, tz, swaps);
   const shaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
@@ -123,9 +132,8 @@ export default async function TrainingPage({
     tz,
     swaps,
   );
-  const openDraft = drafts[0] ?? null;
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
-  const deload = isDeloadWeekIndex(weekIndex);
+  const deload = campWeekIndex == null && isDeloadWeekIndex(weekIndex);
   const testing = isTestingWeekIndex(weekIndex);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const showPlyo = planned.some((session) => session.kind === "strength");
@@ -175,7 +183,7 @@ export default async function TrainingPage({
       experienceLevel: profileBand,
       competitionStatus: profile?.competitionStatus,
       weightAccess,
-      weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
+      weekIndex,
       campPhase: campOn && camp ? camp.phase : null,
     }),
   );
@@ -209,6 +217,21 @@ export default async function TrainingPage({
       completed: session.dayId ? doneToday.has(session.dayId) : false,
     })),
     (dayId) => draftsByDay.get(dayId),
+  );
+  const todayKey = formatDayParam(now, tz);
+  const todayDayIds = new Set(
+    todaySessions.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+  );
+  const resumeDraft =
+    drafts.find((draft) =>
+      draft.programDayId ? todayDayIds.has(draft.programDayId) : sessionCivilDay(draft, tz) === todayKey,
+    ) ?? null;
+  const weekMonday = mondayOfZoned(now, tz);
+  const completedDays = await completedLocalDayKeys(
+    user.id,
+    addZonedDays(weekMonday, -1, tz),
+    addZonedDays(weekMonday, 8, tz),
+    tz,
   );
   const bagIndex = planned.findIndex((session) => session.kind === "skill");
   const showDetails =
@@ -247,8 +270,8 @@ export default async function TrainingPage({
               ? `Fight camp is on. This day follows the ${camp.phaseLabel.toLowerCase()}.`
               : "Today’s session."}
           </p>
-          <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent">
-            {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))}
+          <p className="font-display mt-2 text-xs uppercase tracking-wide text-accent" data-block-week>
+            {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))} · {blockWeekLabel(weekIndex)}
           </p>
         </div>
       </div>
@@ -278,9 +301,9 @@ export default async function TrainingPage({
         </Link>
       ) : null}
 
-      {isToday && openDraft && todayAction?.draftId !== openDraft.id ? (
+      {isToday && resumeDraft ? (
         <Link
-          href={`/training/log/${openDraft.id}`}
+          href={`/training/log/${resumeDraft.id}`}
           data-resume-workout
           data-prime-coach-audio
           className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
@@ -295,7 +318,7 @@ export default async function TrainingPage({
         src={tileSrc("/tiles/sparring.webp", profile?.athleteImagery)}
       />
 
-      <WeekStrip days={strip} basePath="/training" />
+      <WeekStrip days={strip} basePath="/training" completedDays={completedDays} />
 
       <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
 
@@ -456,8 +479,8 @@ export default async function TrainingPage({
         <summary className="cursor-pointer font-semibold">Fighter conditioning</summary>
         {conditioning ? (
           <p className="mt-2 text-sm text-muted">
-            Shared combat S&amp;C / mobility blocks publish here when ready. This Core
-            week is the shared template and is not a 1:1 assigned fight camp.
+            The sessions above are the combat plan: warm-up, power, strength, then
+            conditioning, in 3-week blocks. Fight camp uses that same plan.
           </p>
         ) : (
           <p className="mt-2 text-sm text-muted">

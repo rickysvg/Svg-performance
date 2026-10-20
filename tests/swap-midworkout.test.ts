@@ -86,10 +86,11 @@ describe("mid-workout swap", () => {
     expect(merged.some((set) => / \(2\)|\(second\)/i.test(set.exerciseName))).toBe(false);
     const squat = merged.find((set) => set.exerciseName === "Squat jump");
     expect(squat).toMatchObject({ reps: 3, completed: true });
-    const rowLogs = merged.filter((set) => set.exerciseName === "One-arm row" && set.reps === 8);
-    expect(rowLogs.length).toBeGreaterThanOrEqual(2);
-    expect(rowLogs.some((set) => set.loadValue === 30)).toBe(true);
-    expect(rowLogs.some((set) => set.loadValue === 40)).toBe(true);
+    const original = merged.filter((set) => set.exerciseName === "One-arm row");
+    const swapped = merged.filter((set) => set.exerciseName === "One-arm row · 2");
+    expect(original.some((set) => set.loadValue === 30)).toBe(true);
+    expect(swapped.some((set) => set.loadValue === 40 && set.reps === 8)).toBe(true);
+    expect(new Set(merged.map((set) => set.exerciseName)).size).toBe(3);
   });
 
   it("stays a draft, keeps the other logs, and gives the new press its own video", async () => {

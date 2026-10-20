@@ -16,6 +16,7 @@ import {
 } from "@/lib/workouts";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { hasActivityOnLocalDay } from "@/lib/home";
+import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { resolveLoggedPerformedAt } from "@/lib/performed-at";
 import { parseDateTimeLocal } from "@/lib/timezone";
 import { isDeloadWeekIndex } from "@/lib/training-cycle";
@@ -132,6 +133,7 @@ export async function saveWorkoutAction(
           now,
           timeZone,
           completing: intent === "complete",
+          hasPriorLogs: sessionHasLoggedWork(existing.sets),
         })
       : now;
     const alreadyActive =

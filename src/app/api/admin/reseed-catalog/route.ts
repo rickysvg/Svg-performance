@@ -11,8 +11,10 @@ export const runtime = "nodejs";
 /**
  * Refresh the shared strength and bag catalogs in place.
  *
- * Does not delete workout sessions, draft sets, or days that still have logs.
- * Safe to call more than once.
+ * Does not delete workout sessions or draft sets.
+ * A day number that left the catalog and still has a logged session is kept.
+ * Day numbers that are still in the catalog are rewritten in place, including
+ * form-video trims. Safe to call more than once.
  *
  * Authorize with either:
  * - `Authorization: Bearer $CRON_SECRET` (or `?secret=$CRON_SECRET`)
