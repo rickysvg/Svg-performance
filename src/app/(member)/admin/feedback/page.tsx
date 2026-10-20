@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { listMemberFeedback } from "@/lib/feedback";
+import { listSessionFeel } from "@/lib/admin-dashboard";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import {
   FEEDBACK_STATUSES,
   FEEDBACK_STATUS_LABEL,
@@ -28,22 +30,74 @@ export default async function AdminFeedbackPage({
   const query = await searchParams;
   const type = query.type && isFeedbackType(query.type) ? query.type : "";
   const status = query.status && isFeedbackStatus(query.status) ? query.status : "";
-  const rows = await listMemberFeedback(user, { type, status });
+  const [rows, feel] = await Promise.all([
+    listMemberFeedback(user, { type, status }),
+    listSessionFeel(),
+  ]);
 
   return (
     <main className="space-y-6" data-feedback-inbox="1">
+      <AdminBack />
       <div>
-        <p className="text-xs uppercase tracking-[0.08em] text-muted">Admin</p>
-        <h1 className="text-2xl">Feedback</h1>
+        <p className="hc-kicker">Session feel</p>
+        <h1 className="mt-2 text-4xl">Feedback</h1>
         <p className="mt-2 text-sm text-muted">
-          Notes from members. Screenshots stay private to admin accounts and emails in ADMIN_EMAILS.
+          Difficulty ratings and flags first. Notes stay private to admin accounts and ADMIN_EMAILS.
         </p>
       </div>
-      <p className="text-sm">
-        <Link href="/admin" className="font-semibold underline">
-          Pilot toolkit
-        </Link>
-      </p>
+
+      <section className="space-y-2">
+        <h2 className="text-lg">Flags</h2>
+        {feel.flags.length === 0 ? (
+          <p className="text-sm text-muted">No difficulty flags in the last three weeks.</p>
+        ) : (
+          <ul className="space-y-2">
+            {feel.flags.map((flag) => (
+              <li key={`${flag.userId}-${flag.label}`} className="hc-panel px-4 py-3">
+                <p className="flex items-center justify-between gap-3">
+                  <span className="font-semibold">{flag.name}</span>
+                  <span className="rounded-full bg-[#FF3B3B] px-2 py-1 font-telemetry text-[10px] uppercase text-white">
+                    {flag.label}
+                  </span>
+                </p>
+                <p className="mt-1 text-sm text-muted">{flag.detail}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg">Recent ratings</h2>
+        {feel.recent.length === 0 ? (
+          <p className="text-sm text-muted">No session ratings yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {feel.recent.map((row) => (
+              <li key={row.id} className="hc-panel flex items-center justify-between gap-3 px-4 py-3">
+                <span>
+                  <span className="block font-semibold">{row.name}</span>
+                  <span className="text-sm text-muted">{row.title}</span>
+                </span>
+                <span className={`text-right text-sm ${row.hard ? "text-[#FF3B3B]" : "text-[#CBF805]"}`}>
+                  {row.label}
+                  <span className="mt-0.5 block font-telemetry text-[10px] uppercase text-muted">{row.when}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {user.role === "admin" || user.role === "coach" ? (
+        <p className="text-sm">
+          <Link href="/staff/reports#session-feel" className="text-[#CBF805] underline">
+            Full session feel report
+          </Link>
+        </p>
+      ) : null}
+
+      <h2 className="text-lg">Member notes</h2>
 
       <section className="space-y-3">
         <FilterRow

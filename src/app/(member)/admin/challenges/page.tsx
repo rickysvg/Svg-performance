@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { listChallengesForAdmin, monthKeyFrom } from "@/lib/challenges";
 import { ChallengeAdminForm } from "@/components/admin/ChallengeAdminForm";
 import { DemoBadge } from "@/components/DemoBadge";
@@ -11,9 +11,7 @@ export default async function AdminChallengesPage() {
   return (
     <main className="space-y-6">
       <div>
-        <Link href="/admin" className="text-sm text-accent underline">
-          Back to toolkit
-        </Link>
+        <AdminBack />
         <h1 className="mt-2 text-2xl">Monthly SVG challenge</h1>
         <p className="mt-1 text-sm text-muted">
           Beginner and advanced tracks use days active (workout and/or food log). Not a

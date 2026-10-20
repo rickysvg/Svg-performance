@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { listFocusVideosForAdmin } from "@/lib/focus-videos";
 import { FocusVideoForm } from "@/components/admin/FocusVideoForm";
 import { DemoBadge } from "@/components/DemoBadge";
@@ -11,9 +11,7 @@ export default async function AdminFocusPage() {
   return (
     <main className="space-y-6">
       <div>
-        <Link href="/admin" className="text-sm text-accent underline">
-          Back to toolkit
-        </Link>
+        <AdminBack />
         <h1 className="mt-2 text-2xl">Weekly focus video</h1>
         <p className="mt-1 text-sm text-muted">
           Aim for 60–90 seconds. Published videos show on Today for Performance+. Drafts

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { setMailSenderForTests, type MailInput } from "@/lib/mail";
@@ -15,7 +15,7 @@ import {
   sortCheckInsFlaggedFirst,
   summaryLineCount,
 } from "@/lib/weekly-checkin-shared";
-import { generateCheckInDraft } from "@/lib/weekly-checkin-ai";
+import { checkInAiEnabled, generateCheckInDraft } from "@/lib/weekly-checkin-ai";
 import {
   isWeeklyCheckInCoach,
   listCheckInsForCoach,
@@ -188,6 +188,26 @@ describe("weekly check-in rules", () => {
     const generated = await generateCheckInDraft({ ...scores(), displayName: "Ava Lopez" });
     expect(generated.source).toBe("fallback");
     if (previous) process.env.OPENAI_API_KEY = previous;
+  });
+
+  it("does not call the live model unless CHECKIN_AI is on", async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    const previousFlag = process.env.CHECKIN_AI;
+    process.env.OPENAI_API_KEY = "sk-test-not-used";
+    delete process.env.CHECKIN_AI;
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      expect(checkInAiEnabled()).toBe(false);
+      const draft = await generateCheckInDraft({ ...scores(), displayName: "Ava Lopez" });
+      expect(draft.source).toBe("fallback");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
+      if (previousFlag === undefined) delete process.env.CHECKIN_AI;
+      else process.env.CHECKIN_AI = previousFlag;
+    }
   });
 });
 

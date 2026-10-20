@@ -12,6 +12,7 @@ import { GraceBanner } from "@/components/gymdesk/GraceBanner";
 export function MemberFrame({
   email,
   role,
+  showAdmin = false,
   timeZone,
   graceEndsOn,
   coachName,
@@ -20,6 +21,7 @@ export function MemberFrame({
 }: {
   email: string;
   role?: string;
+  showAdmin?: boolean;
   timeZone?: string | null;
   graceEndsOn?: string | null;
   coachName: string;
@@ -55,6 +57,7 @@ export function MemberFrame({
         <AppHeader
           email={email}
           role={role}
+          showAdmin={showAdmin}
           placement="bottom"
           currentPath={pathname}
         />

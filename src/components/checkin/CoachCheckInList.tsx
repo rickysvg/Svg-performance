@@ -40,7 +40,7 @@ export function CoachCheckInList({ cards }: { cards: CoachCheckInCard[] }) {
     );
   }
   return (
-    <ul className="grid gap-4 lg:grid-cols-2">
+    <ul className="grid gap-4">
       {cards.map((card) => (
         <li key={card.id}>
           <CoachCard card={card} />
@@ -56,23 +56,21 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
   return (
     <article
       className={`flex h-full flex-col rounded-3xl border p-4 ${
-        flagged ? "border-black bg-black text-white" : "border-line bg-white"
+        flagged ? "border-[#FF3B3B]/70 bg-black text-white" : "border-[#cbf805]/35 bg-[#101216] text-white"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className={`text-xs uppercase tracking-wide ${flagged ? "text-accent" : "text-muted"}`}>
+          <p className={`text-xs uppercase tracking-wide ${flagged ? "text-[#FF3B3B]" : "text-muted"}`}>
             Week of {card.weekKey}
           </p>
           <h2 className="mt-1 text-2xl">{card.name}</h2>
-          <p className={`text-sm ${flagged ? "text-white/70" : "text-muted"}`}>
+          <p className="text-sm text-white/70">
             {card.email} · {card.submittedLabel}
           </p>
         </div>
         <p
-          className={`rounded-full px-3 py-1 text-xs uppercase tracking-wide ${
-            flagged ? "bg-accent text-black" : "bg-card text-muted"
-          }`}
+          className="rounded-full bg-[#CBF805] px-3 py-1 text-xs uppercase tracking-wide text-black"
         >
           {card.coachStatus}
         </p>
@@ -82,12 +80,12 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
 
       <div className="mt-3 flex flex-wrap gap-2">
         {card.flags.length === 0 ? (
-          <span className={`rounded-full px-3 py-1 text-xs ${flagged ? "bg-white/10" : "bg-card text-muted"}`}>
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
             No flags
           </span>
         ) : (
           card.flags.map((flag) => (
-            <span key={flag.code} className="rounded-full bg-accent px-3 py-1 text-xs text-black" title={flag.detail}>
+            <span key={flag.code} className="rounded-full bg-[#FF3B3B] px-3 py-1 text-xs text-white" title={flag.detail}>
               {flag.label}
             </span>
           ))
@@ -95,20 +93,19 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <Stat label="Weight" value={card.bodyweightLb != null ? `${card.bodyweightLb} lb` : "—"} light={flagged} />
-        <Stat label="Sleep" value={`${card.sleepQuality}/5`} light={flagged} />
-        <Stat label="Energy" value={`${card.energy}/5`} light={flagged} />
-        <Stat label="Stress" value={`${card.stress}/5`} light={flagged} />
+        <Stat label="Weight" value={card.bodyweightLb != null ? `${card.bodyweightLb} lb` : "—"} />
+        <Stat label="Sleep" value={`${card.sleepQuality}/5`} />
+        <Stat label="Energy" value={`${card.energy}/5`} />
+        <Stat label="Stress" value={`${card.stress}/5`} />
         <Stat
           label="Sessions"
           value={`${card.sessionsCompleted} of ${card.sessionsPlanned}`}
-          light={flagged}
         />
-        <Stat label="Sparring" value={card.sparringSummary || "None logged"} light={flagged} />
+        <Stat label="Sparring" value={card.sparringSummary || "None logged"} />
       </dl>
 
       {card.regions.length > 0 || card.sorenessNotes ? (
-        <p className={`mt-3 text-sm ${flagged ? "text-white/80" : "text-muted"}`}>
+        <p className="mt-3 text-sm text-white/80">
           {card.regions.map(regionLabel).join(", ")}
           {card.sorenessNotes ? ` — ${card.sorenessNotes}` : ""}
         </p>
@@ -116,23 +113,21 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
       {card.wins ? <p className="mt-2 text-sm">Win: {card.wins}</p> : null}
       {card.struggles ? <p className="mt-1 text-sm">Struggle: {card.struggles}</p> : null}
       {card.tweaks ? (
-        <p className={`mt-3 text-sm ${flagged ? "text-accent" : "text-muted"}`}>Tweak: {card.tweaks}</p>
+        <p className="mt-3 text-sm text-[#CBF805]">Tweak: {card.tweaks}</p>
       ) : null}
-      {card.aiSource === "fallback" ? (
-        <p className={`mt-2 text-xs ${flagged ? "text-white/60" : "text-muted"}`}>
-          Drafted without the live model.
-        </p>
-      ) : null}
+      <p className="mt-2 text-xs text-white/60">
+        {card.aiSource === "openai" ? "Live model draft." : "Template summary. Live model is off."}
+      </p>
 
       {card.hasVideo ? (
         <a
           href={`/api/checkins/${card.id}/video`}
-          className={`mt-3 inline-flex min-h-11 items-center text-sm underline ${flagged ? "text-accent" : "text-black"}`}
+          className="mt-3 inline-flex min-h-11 items-center text-sm text-[#CBF805] underline"
         >
           Watch form video
         </a>
       ) : (
-        <p className={`mt-3 text-sm ${flagged ? "text-white/60" : "text-muted"}`}>No form video</p>
+        <p className="mt-3 text-sm text-white/60">No form video</p>
       )}
 
       <form action={action} className="mt-4 space-y-3">
@@ -163,9 +158,7 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
             name="intent"
             value="save"
             disabled={pending}
-            className={`min-h-11 rounded-full border px-3 disabled:opacity-60 ${
-              flagged ? "border-white text-white" : "border-black"
-            }`}
+            className="min-h-11 rounded-full border border-white px-3 text-white disabled:opacity-60"
           >
             Edit
           </button>
@@ -174,9 +167,7 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
             name="intent"
             value="review"
             disabled={pending}
-            className={`min-h-11 rounded-full border px-3 disabled:opacity-60 ${
-              flagged ? "border-white/40 text-white" : "border-line text-muted"
-            }`}
+            className="min-h-11 rounded-full border border-white/40 px-3 text-white/80 disabled:opacity-60"
           >
             Mark reviewed
           </button>
@@ -186,10 +177,10 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
   );
 }
 
-function Stat({ label, value, light }: { label: string; value: string; light: boolean }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`rounded-2xl px-3 py-2 ${light ? "bg-white/10" : "bg-card"}`}>
-      <dt className={`text-xs uppercase tracking-wide ${light ? "text-white/60" : "text-muted"}`}>{label}</dt>
+    <div className="rounded-2xl bg-white/10 px-3 py-2">
+      <dt className="text-xs uppercase tracking-wide text-white/60">{label}</dt>
       <dd className="mt-0.5">{value}</dd>
     </div>
   );

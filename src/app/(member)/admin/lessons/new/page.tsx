@@ -1,14 +1,12 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/roles";
+import { AdminBack } from "@/components/admin/AdminChrome";
 import { LessonForm } from "@/components/admin/LessonForm";
 
 export default async function NewLessonPage() {
   await requireAdmin();
   return (
     <main className="space-y-6">
-      <Link href="/admin/lessons" className="text-sm text-accent underline">
-        Back
-      </Link>
+      <AdminBack href="/admin/lessons" label="Lessons" />
       <h1 className="text-2xl">New lesson draft</h1>
       <LessonForm />
     </main>

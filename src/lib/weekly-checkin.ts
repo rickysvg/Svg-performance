@@ -15,12 +15,13 @@ import { loggedSetSome } from "@/lib/logged-work";
 import { sparringLogsForWeek, type SparringLog } from "@/lib/outside-log";
 import { addZonedDays, mondayOfZoned } from "@/lib/timezone";
 import { resolveTrainingDays } from "@/lib/week-plan";
-import { generateCheckInDraft } from "@/lib/weekly-checkin-ai";
+import { checkInAiEnabled, generateCheckInDraft } from "@/lib/weekly-checkin-ai";
 import { sendPushToUser } from "@/lib/weekly-checkin-push";
 import {
   checkInWeekKey,
   clampScore,
   detectCheckInFlags,
+  fallbackCheckInDraft,
   isWeeklyCheckInDue,
   memberHasWeeklyCheckInAccess,
   normalizeReminderPrefs,
@@ -422,10 +423,31 @@ export async function listCheckInsForCoach() {
   });
   const cards = rows.map((row) => {
     const flags = presentFlags(row.aiFlagsJson);
+    const name = row.user.profile?.displayName?.trim() || row.user.email;
+    const live = checkInAiEnabled() && row.aiSource === "openai";
+    const template =
+      live || row.aiSource === "fallback"
+        ? null
+        : fallbackCheckInDraft({
+            displayName: name,
+            bodyweightLb: row.bodyweightLb,
+            previousWeightLb: null,
+            sleepQuality: row.sleepQuality,
+            energy: row.energy,
+            previousEnergy: null,
+            stress: row.stress,
+            regions: parseRegionIds(safeJsonArray(row.sorenessRegionsJson)),
+            sorenessNotes: row.sorenessNotes,
+            sessionsCompleted: row.sessionsCompleted,
+            sessionsPlanned: row.sessionsPlanned,
+            sparringSummary: row.sparringSummary,
+            wins: row.wins,
+            struggles: row.struggles,
+          });
     return {
       id: row.id,
       userId: row.userId,
-      name: row.user.profile?.displayName?.trim() || row.user.email,
+      name,
       email: row.user.email,
       weekKey: row.weekKey,
       submittedAt: row.submittedAt,
@@ -440,13 +462,13 @@ export async function listCheckInsForCoach() {
       struggles: row.struggles,
       sorenessNotes: row.sorenessNotes,
       regions: parseRegionIds(safeJsonArray(row.sorenessRegionsJson)),
-      summary: row.aiSummary,
+      summary: template?.summary || row.aiSummary,
       flags,
       flagCount: flags.length,
-      tweaks: row.aiTweaks,
-      aiSource: row.aiSource,
+      tweaks: template?.tweaks || row.aiTweaks,
+      aiSource: live ? "openai" : "fallback",
       coachStatus: row.coachStatus,
-      reply: row.coachReply || row.aiReply,
+      reply: row.coachReply || template?.reply || row.aiReply,
       hasVideo: Boolean(row.videoStorageKey),
       videoSeconds: row.videoDurationSeconds,
     };
