@@ -31,7 +31,7 @@ export function PlanChoiceForm({
             type="submit"
             className="touch-target w-full rounded-full bg-accent text-black"
           >
-            {canStartTrial ? `Start my ${trialDays}-day Pro month` : "Continue"}
+            {canStartTrial ? `Start my ${trialDays} days of free Pro` : "Continue"}
           </button>
         </form>
         <p className="text-sm text-muted">

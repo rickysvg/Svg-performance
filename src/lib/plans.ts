@@ -1,4 +1,4 @@
-import { ACADEMY_INCLUDES, COACHING_INCLUDES, PRO_INCLUDES } from "@/lib/pricing";
+import { ACADEMY_INCLUDES, COACHING_INCLUDES, MEMBER_PRO_DAYS, PRO_INCLUDES } from "@/lib/pricing";
 /** Matches Coach topics: martial art (striking/grappling), conditioning, mental. */
 export const COACH_AI_TRAINED_ON =
   "striking, grappling, strength and conditioning, and fight mindset";
@@ -103,7 +103,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     gymPriceLabel: "Included in dues",
     nonmemberPriceLabel: "Academy members only",
     summary:
-      "Included with SVG Academy dues for verified members. Pro is free for your first 30 days, no card, never auto-billed.",
+      `Included with SVG Academy dues for verified members. Pro is free for your first ${MEMBER_PRO_DAYS} days, no card, never auto-billed.`,
     includes: [...ACADEMY_INCLUDES],
     rank: 0.5,
     features: [
@@ -809,7 +809,7 @@ export function planHasFeature(plan: CatalogPlanId, feature: FeatureId) {
   return PRO_FEATURES.includes(feature) && PLAN_CATALOG[plan].rank >= PLAN_CATALOG.performance.rank;
 }
 
-/** Pro or above: an active subscription, the 7-day trial, or the member Pro month. */
+/** Pro or above: an active subscription, the 7-day trial, or the member Pro grant. */
 export function planIsPro(plan: CatalogPlanId) {
   return PLAN_CATALOG[plan].rank >= PLAN_CATALOG.performance.rank;
 }

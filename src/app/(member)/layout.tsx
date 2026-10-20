@@ -21,7 +21,7 @@ export default async function MemberLayout({
   children: React.ReactNode;
 }) {
   const user = await requireOnboardedUser();
-  // Verified academy members get one 30-day Pro month, started the first time we see them.
+  // Verified academy members get one Pro grant, started the first time we see them.
   await ensureMemberProMonth(user.id);
   const profile = await getProfileForUser(user.id);
   const tier = await getAppTier(user.id);
@@ -55,6 +55,7 @@ export default async function MemberLayout({
         (pathname === "/home" || pathname === "/plan") ? (
           <MemberProReminderBanner
             memberProStartedAt={profile.memberProStartedAt}
+            memberProDays={profile.memberProDays}
             tier={tier}
             userId={user.id}
           />

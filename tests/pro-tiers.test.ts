@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { AiCapError, consumeAiUse, getAiAllowance } from "@/lib/ai-usage";
 import { getAppTier, getEffectivePlanId } from "@/lib/entitlements";
 import { coachStreamForTest } from "@/app/api/coach/stream/route";
-import { ensureMemberProMonth, memberProDay, startTrialForUser } from "@/lib/trial";
+import { ensureMemberProMonth, getTrialState, memberProDay, startTrialForUser } from "@/lib/trial";
 import { memberProCopy, memberProStage, runMemberProReminderCron } from "@/lib/member-pro-reminders";
 import { isOpenWhenLocked } from "@/lib/locked-paths";
 import {
@@ -48,7 +48,7 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(isOpenWhenLocked("/training")).toBe(false);
   });
 
-  it("gives verified members Pro for 30 days, then the included academy tier", async () => {
+  it("gives verified members Pro for 14 days, then the included academy tier", async () => {
     const member = await makeUser("member-tier@example.com");
     await verify(member.id);
     const start = new Date("2026-10-01T15:00:00.000Z");
@@ -56,9 +56,14 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     await ensureMemberProMonth(member.id, new Date(start.getTime() + DAY)); // no restart
     const profile = await prisma.profile.findUnique({ where: { userId: member.id } });
     expect(profile?.memberProStartedAt?.toISOString()).toBe(start.toISOString());
-    expect(await getEffectivePlanId(member.id, new Date(start.getTime() + 29 * DAY))).toBe("performance");
-    expect(await getEffectivePlanId(member.id, new Date(start.getTime() + 30 * DAY + 1000))).toBe("academy");
-    expect(memberProDay(start, new Date(start.getTime() + 24 * DAY))).toBe(25);
+    expect(profile?.memberProDays).toBe(14);
+    expect(await getEffectivePlanId(member.id, new Date(start.getTime() + 13 * DAY))).toBe("performance");
+    expect(await getEffectivePlanId(member.id, new Date(start.getTime() + 14 * DAY + 1000))).toBe("academy");
+    expect(memberProDay(start, new Date(start.getTime() + 8 * DAY))).toBe(9);
+    expect(memberProStage(9, 14)).toBe("day25");
+    expect(memberProStage(13, 14)).toBe("day29");
+    expect(memberProStage(15, 14)).toBe("day31");
+    expect(memberProStage(8, 14)).toBeNull();
     expect(memberProStage(25)).toBe("day25");
     expect(memberProStage(29)).toBe("day29");
     expect(memberProStage(31)).toBe("day31");
@@ -67,7 +72,35 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(memberProCopy("day25", recap).body).toMatch(/6 workouts/);
     expect(memberProCopy("day29", recap).title).toMatch(/Last day/);
     expect(memberProCopy("day31", recap).cta).toMatch(/Upgrade to Pro/);
+    expect(memberProCopy("day31", recap).body).toMatch(/30 days of history/);
     expect(memberProCopy("day31", recap).body).not.toMatch(/auto-bill/i);
+  });
+
+  it("leaves an already-started 30-day member Pro period on the old length", async () => {
+    const member = await makeUser("legacy-pro@example.com");
+    await verify(member.id);
+    const start = new Date("2026-10-01T15:00:00.000Z");
+    await prisma.profile.update({
+      where: { userId: member.id },
+      data: {
+        memberProStartedAt: start,
+        memberProDays: null,
+        trialStartedAt: start,
+        trialEndsAt: new Date(start.getTime() + 30 * DAY),
+      },
+    });
+    await ensureMemberProMonth(member.id, new Date(start.getTime() + 20 * DAY));
+    const profile = await prisma.profile.findUnique({ where: { userId: member.id } });
+    expect(profile?.memberProDays).toBeNull();
+    expect(profile?.memberProStartedAt?.toISOString()).toBe(start.toISOString());
+    expect(profile?.trialEndsAt?.toISOString()).toBe(new Date(start.getTime() + 30 * DAY).toISOString());
+    const during = await getTrialState(member.id, new Date(start.getTime() + 10 * DAY));
+    expect(during.trialLengthDays).toBe(30);
+    expect(during.trialActive).toBe(true);
+    expect(await getEffectivePlanId(member.id, new Date(start.getTime() + 29 * DAY))).toBe("performance");
+    expect(await getEffectivePlanId(member.id, new Date(start.getTime() + 30 * DAY + 1000))).toBe("academy");
+    expect((await runMemberProReminderCron(new Date(start.getTime() + 8 * DAY))).sent).toBe(0);
+    expect((await runMemberProReminderCron(new Date(start.getTime() + 24 * DAY + 3600_000))).sent).toBe(1);
   });
 
   it("sends each member Pro reminder once", async () => {
@@ -75,12 +108,12 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     await verify(member.id);
     const start = new Date("2026-10-01T15:00:00.000Z");
     await ensureMemberProMonth(member.id, start);
-    const day25 = new Date(start.getTime() + 24 * DAY + 3600_000);
-    const first = await runMemberProReminderCron(day25);
-    const again = await runMemberProReminderCron(day25);
+    const fiveLeft = new Date(start.getTime() + 8 * DAY + 3600_000);
+    const first = await runMemberProReminderCron(fiveLeft);
+    const again = await runMemberProReminderCron(fiveLeft);
     expect(first.sent).toBe(1);
     expect(again.sent).toBe(0);
-    const day31 = new Date(start.getTime() + 30 * DAY + 3600_000);
+    const day31 = new Date(start.getTime() + 14 * DAY + 3600_000);
     expect((await runMemberProReminderCron(day31)).sent).toBe(1);
     const logs = await prisma.memberProReminderLog.findMany({ where: { userId: member.id } });
     expect(logs.map((row) => row.stage).sort()).toEqual(["day25", "day31"]);

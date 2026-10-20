@@ -13,10 +13,15 @@ export const COACHING_CAP = 20;
 
 /** Nonmembers: 7-day no-card Pro trial, then Pro is required to keep training in the app. */
 export const NONMEMBER_TRIAL_DAYS = 7;
-/** Verified academy members: Pro free for 30 days, no card, never auto-billed. */
-export const MEMBER_PRO_DAYS = 30;
-/** In-app and push reminders for the member Pro month. */
-export const MEMBER_PRO_REMINDER_DAYS = [25, 29, 31] as const;
+/** New verified academy claims: Pro free for 14 days, no card, never auto-billed. */
+export const MEMBER_PRO_DAYS = 14;
+/**
+ * Grants that already started before the 14-day change.
+ * A null Profile.memberProDays means this length. Do not shorten those periods.
+ */
+export const LEGACY_MEMBER_PRO_DAYS = 30;
+/** Reminder days for a new 14-day grant: 5 days left, last days, and the day after it ends. */
+export const MEMBER_PRO_REMINDER_DAYS = [9, 13, 15] as const;
 
 /** Academy tier (included in dues) limits. */
 export const ACADEMY_AI_MESSAGES_PER_WEEK = 3;

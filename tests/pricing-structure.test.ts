@@ -11,6 +11,8 @@ import {
   COACHING_CAP,
   COACHING_EXPECT,
   COACHING_MONTHLY,
+  MEMBER_PRO_DAYS,
+  NONMEMBER_TRIAL_DAYS,
   PERFORMANCE_ANNUAL,
   PERFORMANCE_MONTHLY,
   PRO_EXPECT,
@@ -37,6 +39,8 @@ describe("owner-approved three-plan pricing", () => {
   });
 
   it("shows SVG Pro, the academy tier, and 1-on-1 coaching with the approved prices", () => {
+    expect(MEMBER_PRO_DAYS).toBe(14);
+    expect(NONMEMBER_TRIAL_DAYS).toBe(7);
     expect(PERFORMANCE_MONTHLY).toBe(9.99);
     expect(PERFORMANCE_ANNUAL).toBe(72.99);
     expect(COACHING_MONTHLY).toBe(249);
@@ -99,7 +103,8 @@ describe("owner-approved three-plan pricing", () => {
       expect(text).not.toMatch(/\$29\/mo/);
       expect(text).not.toMatch(/\$119\b/);
       expect(text).not.toMatch(/\$79\/yr/);
-      expect(text).not.toMatch(/14-day/);
+      expect(text).not.toMatch(/14-day trial/i);
+      expect(text).not.toMatch(/Pro free for 30 days/);
       expect(text.toLowerCase()).not.toMatch(/proposal/);
       expect(text.toLowerCase()).not.toMatch(/additional to gym dues/);
       expect(text).not.toMatch(/Fighter Development/);

@@ -38,7 +38,7 @@ export default async function PlanPage() {
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
           {trial.verified && trial.trialActive && !subscription
-            ? `Verified SVG Academy member. Your ${trial.trialLengthDays}-day Pro month is active. After it ends you go back to the core app included with your dues. You are never auto-billed.`
+            ? `Verified SVG Academy member. Your ${trial.trialLengthDays} days of free Pro are active. After they end you go back to the core app included with your dues. You are never auto-billed.`
             : trial.verified && entitlements.planId === "academy"
               ? "Verified SVG Academy member. The core app is included with your dues. Pro is $9.99/mo or $72.99/yr."
             : trial.trialActive

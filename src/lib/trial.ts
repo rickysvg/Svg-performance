@@ -6,9 +6,13 @@ import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { recomputeMembership } from "@/lib/gymdesk/recompute";
 
-import { MEMBER_PRO_DAYS, NONMEMBER_TRIAL_DAYS as NONMEMBER_DAYS } from "@/lib/pricing";
+import {
+  LEGACY_MEMBER_PRO_DAYS,
+  MEMBER_PRO_DAYS,
+  NONMEMBER_TRIAL_DAYS as NONMEMBER_DAYS,
+} from "@/lib/pricing";
 
-/** Verified academy members: Pro free for 30 days, no card, never auto-billed. */
+/** New verified academy claims: Pro free for 14 days, no card, never auto-billed. */
 export const MEMBER_TRIAL_DAYS = MEMBER_PRO_DAYS;
 /** Nonmembers: 7-day no-card Pro trial, then Pro is required. */
 export const NONMEMBER_TRIAL_DAYS = NONMEMBER_DAYS;
@@ -73,12 +77,13 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
       planChoiceAt: true,
       thirdWorkoutCardDismissedAt: true,
       memberProStartedAt: true,
+      memberProDays: true,
     },
   });
   const verified = Boolean(profile?.gymMembershipVerified);
   const trialStartedAt = profile?.trialStartedAt ?? null;
   const trialEndsAt = profile?.trialEndsAt ?? null;
-  // Verified members get one 30-day Pro month even if they used a nonmember trial before.
+  // Verified members get one Pro grant even if they used a nonmember trial before.
   const trialUsed = verified
     ? Boolean(profile?.memberProStartedAt)
     : Boolean(trialStartedAt || trialEndsAt);
@@ -92,7 +97,9 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
     trialUsed,
     trialActive: active,
     trialDaysLeft: active ? trialDaysLeft(trialEndsAt, now) : 0,
-    trialLengthDays: trialLengthDays(verified),
+    trialLengthDays: profile?.memberProStartedAt
+      ? memberProGrantDays(profile.memberProDays)
+      : trialLengthDays(verified),
     canStartTrial: !trialUsed,
   };
 }
@@ -114,7 +121,7 @@ export async function startTrialForUser(userId: string, now = new Date()) {
       trialStartedAt: now,
       trialEndsAt,
       planChoiceAt: state.planChoiceAt ?? now,
-      ...(state.verified ? { memberProStartedAt: now } : {}),
+      ...(state.verified ? { memberProStartedAt: now, memberProDays: days } : {}),
     },
   });
   return {
@@ -126,7 +133,9 @@ export async function startTrialForUser(userId: string, now = new Date()) {
 }
 
 /**
- * Start the 30-day member Pro month once for a verified academy member. No card.
+ * Start the member Pro grant once for a verified academy member. No card.
+ * New claims last MEMBER_TRIAL_DAYS. A period that already started is left alone,
+ * including grants that began at 30 days before memberProDays was stored.
  * Safe to call on every request; it only writes the first time.
  */
 export async function ensureMemberProMonth(userId: string, now = new Date()) {
@@ -139,11 +148,18 @@ export async function ensureMemberProMonth(userId: string, now = new Date()) {
     where: { userId },
     data: {
       memberProStartedAt: now,
+      memberProDays: MEMBER_TRIAL_DAYS,
       trialStartedAt: now,
       trialEndsAt: addTrialDays(now, MEMBER_TRIAL_DAYS),
       planChoiceAt: profile.planChoiceAt ?? now,
     },
   });
+}
+
+/** Days granted for this member Pro period. Missing means the original 30-day grant. */
+export function memberProGrantDays(stored: number | null | undefined) {
+  if (stored == null || !Number.isFinite(stored) || stored < 1) return LEGACY_MEMBER_PRO_DAYS;
+  return Math.floor(stored);
 }
 
 /** Day of the member Pro month, 1-based. Null when the month never started. */
@@ -220,5 +236,4 @@ export function paidPlanPriceCopy(plan: CatalogPlan, verified: boolean) {
   };
 }
 
-export const ACADEMY_PRICE_HINT =
-  "Train at SVG MMA Academy? Verified members get the core app with their dues and Pro free for 30 days.";
+export const ACADEMY_PRICE_HINT = `Train at SVG MMA Academy? Verified members get the core app with their dues and Pro free for ${MEMBER_PRO_DAYS} days.`;

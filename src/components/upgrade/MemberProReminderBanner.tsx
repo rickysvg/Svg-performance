@@ -1,20 +1,22 @@
 import Link from "next/link";
 import type { AppTier } from "@/lib/entitlements";
 import { memberProCopy, memberProRecap, memberProStage } from "@/lib/member-pro-reminders";
-import { memberProDay } from "@/lib/trial";
+import { memberProDay, memberProGrantDays } from "@/lib/trial";
 import { prisma } from "@/lib/prisma";
 
-/** In-app reminder for the member Pro month: day 25, day 29, and day 31. */
+/** In-app reminder for the member Pro grant, using the length stored when it started. */
 export async function MemberProReminderBanner({
   memberProStartedAt,
+  memberProDays,
   tier,
   userId,
 }: {
   memberProStartedAt: Date;
+  memberProDays: number | null;
   tier: AppTier;
   userId?: string;
 }) {
-  const stage = memberProStage(memberProDay(memberProStartedAt));
+  const stage = memberProStage(memberProDay(memberProStartedAt), memberProGrantDays(memberProDays));
   if (!stage) return null;
   // Already paying for Pro after the free month: no reminder.
   if (stage === "day31" && tier === "pro") return null;
