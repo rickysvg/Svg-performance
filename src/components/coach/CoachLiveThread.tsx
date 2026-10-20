@@ -87,28 +87,28 @@ export function CoachBubble({
             {quick ? " · quick answer" : ""}
           </p>
           <div
-            className={`rounded-2xl px-3 py-2 text-sm ${
+            className={`rounded-2xl px-3 py-2 text-sm [&_[data-coach-markdown]]:mt-0 ${
               mine
                 ? "rounded-br-md bg-[#CBF805] text-black"
                 : "rounded-bl-md bg-[#101216] text-white ring-1 ring-white/10"
             }`}
           >
-            {speaker === "assistant" && coachId && audioRef ? (
-              <div className="mb-1 flex justify-end">
-                <CoachSpeakButton text={content} coachId={coachId} audioRef={audioRef} />
-              </div>
-            ) : null}
             {speaker === "assistant" ? (
               <CoachMarkdown text={content} />
             ) : (
               <p className="whitespace-pre-wrap">{content}</p>
             )}
           </div>
-          {stamp ? (
-            <p className="mt-1 text-[10px] text-white/45" data-coach-time>
-              {stamp}
-            </p>
-          ) : null}
+          <div className={`mt-1 flex items-center gap-2 ${mine ? "justify-end" : ""}`}>
+            {stamp ? (
+              <p className="text-[10px] text-white/45" data-coach-time>
+                {stamp}
+              </p>
+            ) : null}
+            {speaker === "assistant" && coachId && audioRef ? (
+              <CoachSpeakButton text={content} coachId={coachId} audioRef={audioRef} />
+            ) : null}
+          </div>
         </div>
       </div>
     </article>
@@ -159,7 +159,7 @@ export function CoachLiveThread({
   const empty = messages.length === 0 && !streaming;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages, partial, streaming]);
 
   async function sendText(raw: string) {
@@ -203,9 +203,7 @@ export function CoachLiveThread({
             speaker="assistant"
             content={COACH_WELCOME}
             coachName={coachName}
-            coachId={coachId}
             coachThumb={coachThumb}
-            audioRef={audioRef}
             viewerRole={viewerRole}
           />
         ) : (

@@ -27,7 +27,7 @@ export function CoachMessengerShell({ children }: { children: ReactNode }) {
   return (
     <main
       data-coach-messenger
-      className="fixed inset-x-0 z-10 mx-auto flex w-full max-w-3xl flex-col bg-background top-[env(safe-area-inset-top)] bottom-[calc(4.75rem+env(safe-area-inset-bottom)+var(--coach-keyboard,0px))] md:top-[calc(3.5rem+env(safe-area-inset-top))]"
+      className="fixed inset-x-0 z-10 mx-auto flex w-full max-w-3xl flex-col overflow-hidden bg-background top-[env(safe-area-inset-top)] bottom-[calc(3.75rem+env(safe-area-inset-bottom)+var(--coach-keyboard,0px))] md:top-[calc(3.5rem+env(safe-area-inset-top))]"
       style={{ ["--coach-keyboard" as string]: `${keyboard}px` }}
     >
       {children}
