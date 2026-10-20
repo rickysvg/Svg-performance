@@ -39,23 +39,23 @@ export function HomeBodyWeight({
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <span className="hc-kicker mb-1 block">Mass</span>
-          <div
-            className="relative max-w-full"
-            style={{
-              width: MASS_DIAL.width,
-              aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}`,
-            }}
-          >
-            <MassGauge gauge={gauge} live={value != null} />
-            <label
-              className="absolute z-10"
+          <div className="flex items-end gap-1">
+            <div
+              className="relative max-w-full shrink-0"
               style={{
-                left: "50%",
-                top: `${MASS_DIAL.baseline * 100}%`,
-                transform: "translate(-50%, -100%)",
+                width: MASS_DIAL.width,
+                aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}`,
               }}
             >
-              <span className="inline-flex items-end">
+              <MassGauge gauge={gauge} live={value != null} />
+              <label
+                className="absolute z-10"
+                style={{
+                  left: "50%",
+                  top: `${MASS_DIAL.baseline * 100}%`,
+                  transform: "translate(-50%, -100%)",
+                }}
+              >
                 <input
                   name="value"
                   inputMode="decimal"
@@ -69,11 +69,14 @@ export function HomeBodyWeight({
                   style={{ width: figureWidth, textAlign: "center" }}
                   className={`block bg-transparent text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
                 />
-                <span className="mb-1 ml-1 font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]">
-                  {inlineUnit(unit)}
-                </span>
-              </span>
-            </label>
+              </label>
+            </div>
+            <span
+              className="font-telemetry text-[10px] leading-none tracking-[0.16em] text-[#CBF805] [text-shadow:0_0_4px_#07080a]"
+              style={{ marginBottom: MASS_DIAL.height * (1 - MASS_DIAL.baseline) + 2 }}
+            >
+              {inlineUnit(unit)}
+            </span>
           </div>
         </div>
         <button
