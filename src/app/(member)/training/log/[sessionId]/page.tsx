@@ -32,6 +32,7 @@ import {
 } from "@/lib/exercise-swap";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { resolveAiCoach } from "@/lib/coaches";
+import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 
 export default async function WorkoutLogPage({
   params,
@@ -200,8 +201,11 @@ export default async function WorkoutLogPage({
           >
             Share workout card
           </Link>
+          <DeleteWorkoutButton workoutId={session.id} />
         </div>
-      ) : null}
+      ) : (
+        <DeleteWorkoutButton workoutId={session.id} />
+      )}
       {promptRating ? (
         <DifficultyRatingForm
           workoutId={session.id}

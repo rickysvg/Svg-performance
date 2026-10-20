@@ -5,6 +5,7 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 
 export default async function HistoryPage() {
   const user = await requireUser();
@@ -65,6 +66,7 @@ export default async function HistoryPage() {
                   Share
                 </Link>
               ) : null}
+              <DeleteWorkoutButton workoutId={session.id} compact />
             </li>
             );
           })}

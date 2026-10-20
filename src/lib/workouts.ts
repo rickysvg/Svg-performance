@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
@@ -378,6 +379,51 @@ export async function startRoundWorkoutForUser(input: {
   });
 }
 
+const SAME_DAY_SETS = {
+  sets: { orderBy: [{ sortOrder: "asc" as const }, { setNumber: "asc" as const }] },
+};
+
+/**
+ * One log per programmed session per civil day.
+ * Start, a second Start, and resume used to insert another row. Autosave then
+ * filled it, and the past-draft finish marked both complete.
+ */
+async function findSameDayProgramSession(
+  db: Prisma.TransactionClient | typeof prisma,
+  userId: string,
+  programDayId: string,
+  now: Date,
+  timeZone: string,
+) {
+  const from = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const to = new Date(now.getTime() + 36 * 60 * 60 * 1000);
+  const today = dayKey(now, timeZone);
+  const rows = await db.workoutSession.findMany({
+    where: {
+      userId,
+      programDayId,
+      OR: [
+        { performedAt: { gte: from, lte: to } },
+        { createdAt: { gte: from, lte: to } },
+      ],
+    },
+    include: SAME_DAY_SETS,
+    orderBy: { createdAt: "asc" },
+  });
+  const same = rows.filter((row) => sessionCivilDay(row, timeZone) === today);
+  same.sort((left, right) => {
+    const rank = (row: (typeof same)[number]) => {
+      const logged = sessionHasLoggedWork(row.sets);
+      if (row.status === "complete" && logged) return 0;
+      if (row.status === "draft" && logged) return 1;
+      if (row.status === "draft") return 2;
+      return 3;
+    };
+    return rank(left) - rank(right) || left.createdAt.getTime() - right.createdAt.getTime();
+  });
+  return same[0] ?? null;
+}
+
 export async function startWorkoutFromDay(input: {
   userId: string;
   programDayId: string;
@@ -432,6 +478,9 @@ export async function startWorkoutFromDay(input: {
   const visible = omitRemovedSlots(day.exercises, swapped, removals, {
     includePending: true,
   }).shown;
+  const sameDay = await findSameDayProgramSession(prisma, input.userId, rawDay.id, now, zone);
+  if (sameDay) return sameDay;
+
   const sets = visible.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
     // Match the set count printed on the logger card. Deload week used to
@@ -457,18 +506,29 @@ export async function startWorkoutFromDay(input: {
     }));
   });
 
-  const created = await prisma.workoutSession.create({
-    data: {
-      userId: input.userId,
-      programDayId: day.id,
-      title: `${memberFacingTitle(day.title)}${input.deload ? " · Deload" : ""}`,
-      performedAt: new Date(),
-      notes: input.deload ? DELOAD_LABEL : "",
-      status: "draft",
-      sets: { create: sets },
-    },
-    include: { sets: true },
+  let fresh = false;
+  const created = await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: input.userId },
+      data: { updatedAt: new Date() },
+    });
+    const again = await findSameDayProgramSession(tx, input.userId, rawDay.id, now, zone);
+    if (again) return again;
+    fresh = true;
+    return tx.workoutSession.create({
+      data: {
+        userId: input.userId,
+        programDayId: day.id,
+        title: `${memberFacingTitle(day.title)}${input.deload ? " · Deload" : ""}`,
+        performedAt: new Date(),
+        notes: input.deload ? DELOAD_LABEL : "",
+        status: "draft",
+        sets: { create: sets },
+      },
+      include: { sets: true },
+    });
   });
+  if (!fresh) return created;
   await bindPendingSwaps({
     userId: input.userId,
     programSlug: rawDay.program.slug,
@@ -558,13 +618,32 @@ export async function updateWorkoutSessionForUser(input: {
    * instant, so a swap that already landed is not overwritten by an older draft.
    */
   baseUpdatedAt?: string | Date | null;
+  timeZone?: string;
 }) {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
       where: { id: input.workoutId },
+      include: { sets: true },
     }),
     input.userId,
   );
+  if (input.status === "complete" && existing.programDayId) {
+    const canonical = await findSameDayProgramSession(
+      prisma,
+      input.userId,
+      existing.programDayId,
+      input.performedAt,
+      input.timeZone || APP_TIMEZONE,
+    );
+    if (
+      canonical &&
+      canonical.id !== existing.id &&
+      canonical.status === "complete" &&
+      sessionHasLoggedWork(canonical.sets)
+    ) {
+      return canonical;
+    }
+  }
   const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
   if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
     throw new AppError(
@@ -685,13 +764,11 @@ export async function updateWorkoutSessionForUser(input: {
 }
 
 /**
- * A finished session with no reps, load, or time was never really saved.
- * Put it back to draft so the local logger can still save into the same id.
- */
-/**
  * A draft that already has logged sets, dated before today in the member zone,
  * is a finish that never stuck. Mark it complete. Do not invent sets, and do
- * not close a draft the member still has open today.
+ * not close a draft the member still has open today. One programmed session
+ * per civil day is enough: a second past draft stays a draft when that slot
+ * is already logged.
  */
 export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZone: string) {
   const today = dayKey(now, timeZone);
@@ -699,15 +776,32 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
     where: { userId, status: "draft" },
     select: {
       id: true,
+      programDayId: true,
       performedAt: true,
       createdAt: true,
       sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
     },
+    orderBy: { createdAt: "asc" },
   });
+  const completes = await prisma.workoutSession.findMany({
+    where: { userId, status: "complete", sets: loggedSetSome },
+    select: { id: true, programDayId: true, performedAt: true, createdAt: true },
+  });
+  const alreadyLogged = new Set(
+    completes
+      .filter((row) => row.programDayId)
+      .map((row) => `${row.programDayId}:${sessionCivilDay(row, timeZone)}`),
+  );
+  const claimed = new Set<string>();
   const ids = drafts
-    .filter(
-      (row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today,
-    )
+    .filter((row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today)
+    .filter((row) => {
+      if (!row.programDayId) return true;
+      const key = `${row.programDayId}:${sessionCivilDay(row, timeZone)}`;
+      if (alreadyLogged.has(key) || claimed.has(key)) return false;
+      claimed.add(key);
+      return true;
+    })
     .map((row) => row.id);
   if (ids.length === 0) return 0;
   const result = await prisma.workoutSession.updateMany({
@@ -717,6 +811,10 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
   return result.count;
 }
 
+/**
+ * A finished session with no reps, load, or time was never really saved.
+ * Put it back to draft so the local logger can still save into the same id.
+ */
 export async function reopenEmptyCompletion<
   T extends { id: string; status: string; sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[] },
 >(session: T): Promise<T> {

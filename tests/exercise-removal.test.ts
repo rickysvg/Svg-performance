@@ -199,6 +199,10 @@ describe("persisted session removal", () => {
     expect(first.status).toBe("draft");
     const bound = await prisma.exerciseRemoval.findFirstOrThrow({ where: { userId: user.id } });
     expect(bound.workoutSessionId).toBe(first.id);
+    await prisma.workoutSession.update({
+      where: { id: first.id },
+      data: { performedAt: new Date("2026-09-01T18:00:00.000Z") },
+    });
 
     const second = await startWorkoutFromDay({
       userId: user.id,

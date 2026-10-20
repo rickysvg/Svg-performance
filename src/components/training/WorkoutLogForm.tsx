@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  deleteWorkoutAction,
-  saveWorkoutAction,
-  type WorkoutActionState,
-} from "@/app/actions/workouts";
+import { saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
@@ -1601,15 +1597,6 @@ export function WorkoutLogForm({
           <Link href="/coach" className="block text-sm font-semibold text-accent">
             Ask Coach
           </Link>
-          <form action={deleteWorkoutAction}>
-            <input type="hidden" name="workoutId" value={session.id} />
-            <button
-              type="submit"
-              className="touch-target text-sm text-danger underline-offset-4 hover:underline"
-            >
-              Delete this session
-            </button>
-          </form>
         </div>
       ) : null}
     </div>
