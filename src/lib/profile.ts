@@ -360,9 +360,10 @@ export async function updateProfileForUser(
     : existing.goalKey;
   const goalNote = (input.goalNote ?? "").trim().slice(0, 400);
   const goalLabel = GOAL_OPTIONS.find((goal) => goal.value === goalKey)?.label ?? "";
+  const noteRepeatsLabel = goalNote.toLowerCase() === goalLabel.toLowerCase();
   const goals = input.goals?.trim()
     ? input.goals.trim().slice(0, 500)
-    : goalNote
+    : goalNote && !noteRepeatsLabel
       ? `${goalLabel || "Goal"} — ${goalNote}`
       : goalLabel || existing.goals;
   const primaryFocus = FOCUS_OPTIONS.some((item) => item.value === input.primaryFocus)

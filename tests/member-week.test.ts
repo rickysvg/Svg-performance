@@ -38,8 +38,11 @@ describe("member week", () => {
     expect(mobility).toEqual(["Wednesday", "Friday", "Sunday"]);
     expect(roles.Wednesday.lift).toBeNull();
     expect(roles.Wednesday.bag).toBeNull();
-    expect(roles.Wednesday.cardio).toBe("easy");
+    expect(roles.Wednesday.outside?.hard).toBe(true);
+    expect(roles.Wednesday.cardio).toBe("moderate");
     expect(roles.Wednesday.mobility).toBeTruthy();
+    expect(roles.Thursday.lift).toBe("posterior");
+    expect(roles.Thursday.lift).not.toBe("moderate-upper");
     expect(roles.Saturday.lift).toBeNull();
     expect(roles.Saturday.bag).toBeNull();
     expect(roles.Saturday.mobility).toBeNull();
@@ -59,12 +62,18 @@ describe("member week", () => {
     expect(week.Saturday.sessions).toEqual([]);
     expect(week.Saturday.dayNote).toMatch(/log rounds/);
     expect(week.Wednesday.outside?.kind).toBe("class");
-    expect(week.Wednesday.summary).toMatch(/Mobility/);
-    expect(week.Wednesday.summary).toMatch(/Cardio/);
+    expect(week.Wednesday.outside?.hard).toBe(true);
+    expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Wednesday.sessions.length).toBeGreaterThan(0);
-    expect(week.Wednesday.dayNote).toMatch(/Nothing to log/);
+    expect(week.Wednesday.dayNote).toMatch(/no heavy lifting/);
+    expect(week.Wednesday.dayNote).toMatch(/log sparring/);
     expect(week.Wednesday.sessions.some((session) => session.kind === "skill")).toBe(false);
     expect(week.Wednesday.sessions.some((session) => session.kind === "strength")).toBe(false);
+    expect(week.Wednesday.sessions.every((session) => session.heavy !== true)).toBe(true);
+    expect(week.Wednesday.sessions.some((session) => /bike/i.test(session.title ?? session.label))).toBe(true);
+    expect(week.Thursday.summary).toMatch(/Lift/);
+    expect(week.Thursday.easeNote).toBeUndefined();
+    expect(week.Thursday.sessions.some((session) => session.kind === "strength")).toBe(true);
     expect(ALL_DAYS.filter((day) => week[day].summary.includes("Lift"))).toHaveLength(3);
   });
 

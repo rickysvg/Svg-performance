@@ -14,6 +14,8 @@ export type SparringLogState = {
   coachName?: string;
   coachImage?: string;
   easeNote?: string;
+  intensity?: string;
+  partner?: string;
 };
 
 function integer(raw: FormDataEntryValue | null) {
@@ -36,6 +38,7 @@ export async function saveSparringLogAction(
       minutesPerRound: integer(formData.get("minutesPerRound")),
       intensity: String(formData.get("intensity") ?? ""),
       notes: String(formData.get("notes") ?? ""),
+      partner: String(formData.get("partner") ?? ""),
       sessionRating: integer(formData.get("sessionRating")),
       bodyRating: integer(formData.get("bodyRating")),
       soreSpots: formData.getAll("soreSpots").map(String),
@@ -54,6 +57,8 @@ export async function saveSparringLogAction(
       coachName: checkIn?.coachName,
       coachImage: checkIn?.coachImage,
       easeNote: checkIn?.easeNote,
+      intensity: log.intensity,
+      partner: log.partner,
     };
   } catch (error) {
     return { error: publicErrorMessage(error) };

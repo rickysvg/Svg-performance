@@ -7,10 +7,12 @@ import type { getTodayGuide } from "@/lib/today";
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
 
 export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: boolean }) {
-  const planned = (guide.today.plannedSessions ?? []).filter((session) => session.href);
+  const planned = (guide.today.plannedSessions ?? []).filter((session) => session.kind !== "rest");
   const first = planned[0];
-  const extra = planned.length - 1;
+  const extra = Math.max(0, planned.length - 1);
   const next = guide.today.nextSession;
+  const draft = guide.today.draft;
+  const draftIsFirst = Boolean(draft && first && draft.programDayId === first.dayId);
 
   if (!first) {
     return (
@@ -29,6 +31,15 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           >
             Subscribe
           </a>
+        ) : draft ? (
+          <Link
+            href={`/training/log/${draft.id}`}
+            data-prime-coach-audio
+            data-resume-workout
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+          >
+            Resume
+          </Link>
         ) : next?.dayId ? (
           <form action={startSessionAction} data-prime-coach-audio className="mt-4">
             <input type="hidden" name="programDayId" value={next.dayId} />
@@ -51,7 +62,6 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
 
   const minutes = first.day ? estimateSessionMinutes(first.day.exercises) : 0;
   const count = first.day?.exercises.length ?? 0;
-  const draft = guide.today.draft && guide.today.draft.programDayId === first.dayId;
 
   return (
     <section className="hc-panel hc-carbon px-5 py-5">
@@ -71,10 +81,11 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         >
           Subscribe
         </a>
-      ) : draft ? (
+      ) : draftIsFirst && draft ? (
         <Link
-          href={`/training/log/${guide.today.draft?.id}`}
+          href={`/training/log/${draft.id}`}
           data-prime-coach-audio
+          data-resume-workout
           className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
         >
           Resume
@@ -95,8 +106,18 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Open Train
         </Link>
       )}
+      {draft && !draftIsFirst ? (
+        <Link
+          href={`/training/log/${draft.id}`}
+          data-prime-coach-audio
+          data-resume-workout
+          className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+        >
+          Resume
+        </Link>
+      ) : null}
       {extra > 0 ? (
-        <Link href="/training" className="mt-3 block text-sm text-muted">
+        <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
           See the rest of today
         </Link>
       ) : null}

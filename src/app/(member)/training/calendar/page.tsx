@@ -15,6 +15,7 @@ import {
 } from "@/lib/week-plan";
 import { scaleBandFromPrefs, type ScaleBand } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 
@@ -59,7 +60,13 @@ export default async function TrainingCalendarPage({
     planAnchor: profile?.onboardingCompletedAt ?? null,
   };
   const dayPlan = planForDate(prefs, selected, tz, swaps);
-  const strip = weekStrip(prefs, now, tz, selected, swaps, selected);
+  const strip = await easeWeekStripDays(
+    user.id,
+    prefs,
+    weekStrip(prefs, now, tz, selected, swaps, selected),
+    tz,
+    swaps,
+  );
   const dayParam = formatDayParam(selected, tz);
   const viewedMonday = mondayOfZoned(selected, tz);
   const viewedWeek = weekStartKey(selected, tz);

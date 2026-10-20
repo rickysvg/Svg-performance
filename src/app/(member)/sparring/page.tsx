@@ -59,6 +59,7 @@ export default async function SparringPage({
         </p>
       ) : null}
       <SparringLogForm
+        key={dateKey}
         dateKey={dateKey}
         weekday={weekdayForDateKey(dateKey)}
         saved={saved}

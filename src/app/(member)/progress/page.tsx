@@ -187,7 +187,7 @@ export default async function ProgressPage() {
         )}
       </section>
 
-      <section className="hc-panel p-4">
+      <section className="hc-panel p-4" data-coach-clear>
         <p className="hc-kicker">Sparring</p>
         <h2 className="mt-2 text-lg">This week</h2>
         <p className="font-telemetry mt-2 text-3xl text-[#CBF805]">

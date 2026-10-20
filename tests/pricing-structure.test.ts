@@ -7,15 +7,14 @@ import { assertCanCheckoutPlan } from "@/lib/billing";
 import { CHECKOUT_SKUS, PLAN_CATALOG, publicSkusForPlan } from "@/lib/plans";
 import { SKU_AMOUNT_CENTS } from "@/lib/bnpl";
 import {
+  ACADEMY_EXPECT,
   COACHING_CAP,
+  COACHING_EXPECT,
   COACHING_MONTHLY,
-  FOUNDING_ANNUAL,
-  FOUNDING_CAP,
   PERFORMANCE_ANNUAL,
   PERFORMANCE_MONTHLY,
+  PRO_EXPECT,
   coachingSpotsLine,
-  foundingPriceLine,
-  isFoundingDealOpen,
   performanceAnnualLine,
   performancePriceLine,
   usd,
@@ -40,20 +39,15 @@ describe("owner-approved three-plan pricing", () => {
   it("shows SVG Pro, the academy tier, and 1-on-1 coaching with the approved prices", () => {
     expect(PERFORMANCE_MONTHLY).toBe(9.99);
     expect(PERFORMANCE_ANNUAL).toBe(72.99);
-    expect(FOUNDING_ANNUAL).toBe(59);
-    expect(FOUNDING_CAP).toBe(100);
     expect(COACHING_MONTHLY).toBe(249);
     expect(COACHING_CAP).toBe(20);
     expect(usd(9.99)).toBe("$9.99");
     expect(usd(72.99)).toBe("$72.99");
     expect(performancePriceLine()).toBe("$9.99/mo or $72.99/yr, save 39%");
     expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
-    expect(foundingPriceLine(100)).toContain("$59/year");
-    expect(foundingPriceLine(100)).toContain("first 100 members");
-    expect(foundingPriceLine(100)).toContain("100 founding spots left");
-    expect(foundingPriceLine(0)).toContain("Sold out");
-    expect(isFoundingDealOpen(0)).toBe(true);
-    expect(isFoundingDealOpen(100)).toBe(false);
+    expect(ACADEMY_EXPECT).toMatch(/SVG Academy dues/);
+    expect(PRO_EXPECT).toBe("Everything in the academy tier, plus…");
+    expect(COACHING_EXPECT).toBe("Everything in Pro, plus…");
     expect(coachingSpotsLine(12)).toBe("12 coaching spots open");
     expect(coachingSpotsLine(0)).toBe("Sold out");
     expect(coachingSpotsLine(null)).toBe("Limited to 20 athletes");
@@ -80,15 +74,17 @@ describe("owner-approved three-plan pricing", () => {
     expect(PLAN_CATALOG.coaching.cap).toBe(20);
     expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Custom programming/);
     expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/check-ins reviewed by Ricky/);
-    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Includes Pro/);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Video form reviews/);
+    expect(PLAN_CATALOG.performance.summary).not.toMatch(/59/);
+    expect(PLAN_CATALOG.performance.summary).toMatch(/save 39%/);
   });
 
   it("keeps new checkout SKUs inactive and does not pair member and nonmember prices on the page", () => {
     expect(CHECKOUT_SKUS.performance_monthly.checkoutEnabled).toBe(false);
     expect(CHECKOUT_SKUS.performance_monthly.amountCents).toBe(999);
     expect(CHECKOUT_SKUS.performance_year.amountCents).toBe(7299);
-    expect(CHECKOUT_SKUS.performance_founding.amountCents).toBe(5900);
     expect(CHECKOUT_SKUS.coaching_monthly.amountCents).toBe(24900);
+    expect("performance_founding" in CHECKOUT_SKUS).toBe(false);
     expect(CHECKOUT_SKUS.coaching_monthly.catalogId).toBe("coaching");
     expect(SKU_AMOUNT_CENTS.performance_monthly).toBe(999);
     expect(publicSkusForPlan("coaching")).toEqual([]);
@@ -110,8 +106,22 @@ describe("owner-approved three-plan pricing", () => {
       expect(text).not.toMatch(/Elite Online/);
       expect(text).not.toMatch(/Platinum VIP/);
       expect(text.toLowerCase()).not.toMatch(/\bbout\b/);
+      expect(text).not.toMatch(/first 100/);
+      expect(text).not.toMatch(/Founding/);
+      expect(text).not.toMatch(/\$59/);
     }
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
+    const academyAt = catalog.indexOf('data-plan-card="academy"');
+    const proAt = catalog.indexOf('data-plan-card="performance"');
+    const coachingAt = catalog.indexOf('data-plan-card="coaching"');
+    expect(academyAt).toBeGreaterThan(-1);
+    expect(academyAt).toBeLessThan(proAt);
+    expect(proAt).toBeLessThan(coachingAt);
+    expect(catalog).toContain("SVG Academy gym member");
+    expect(catalog).toContain("Free version included with gym membership at our academy");
+    expect(catalog).not.toContain("Included in dues");
+    expect(catalog).toContain('tone="add"');
+    expect(catalog).toContain("text-accent");
     expect(catalog).toContain("Start 7-day free trial");
     expect(catalog).toContain("Subscribe — opening Nov 16");
     expect(catalog).toContain("performanceAnnualLine()");

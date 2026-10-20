@@ -77,6 +77,7 @@ export async function saveProfileAction(
           weekday: String(weekday),
           kind: String(formData.get(`outsideKind-${String(weekday)}`) ?? "class"),
           time: String(formData.get(`outsideTime-${String(weekday)}`) ?? ""),
+          hard: formData.get(`outsideHard-${String(weekday)}`) === "on",
         })),
       ),
       calorieTarget: optionalNumber("calorieTarget"),

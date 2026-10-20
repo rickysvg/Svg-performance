@@ -71,7 +71,7 @@ export type DayPlan = {
   mesoLabel: string;
   /** Skeleton weekday whose sessions are showing, when the member moved this day. */
   movedFrom?: PlanWeekday;
-  outside?: { kind: "class" | "sparring"; time?: string; label: string } | null;
+  outside?: { kind: "class" | "sparring"; time?: string; label: string; hard?: boolean } | null;
   dayNote?: string;
   /** Set when yesterday's sparring log eased this day. */
   easeNote?: string;
@@ -226,6 +226,17 @@ function moderateCardioSlot(): PlanSessionSlot {
   };
 }
 
+function hardClassBikeSlot(): PlanSessionSlot {
+  return {
+    kind: "conditioning",
+    label: "Cardio — bike",
+    title: "Cardio — bike",
+    detail: "Light-to-moderate bike or steady conditioning. No sprints and no heavy lifting.",
+    href: "/timer",
+    heavy: false,
+  };
+}
+
 function liftSlot(kind: LiftKind, weekIndex: number): PlanSessionSlot {
   const lifts = strengthDaysForWeek(weekIndex);
   if (kind === "lower") return strengthSlot(lifts.monday, "Strength — full body");
@@ -266,7 +277,9 @@ function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number)
   } else if (role.cardio === "easy") {
     sessions.push({ ...easyCardioSlot(), heavy: false });
   } else if (role.cardio === "moderate") {
-    sessions.push({ ...moderateCardioSlot(), heavy: false });
+    sessions.push(
+      role.outside?.hard ? hardClassBikeSlot() : { ...moderateCardioSlot(), heavy: false },
+    );
   }
   if (role.mobility) sessions.push({ ...mobilitySlot(role.mobility), heavy: false });
   return sessions;
@@ -353,6 +366,9 @@ function outsideNote(role: DayRole) {
   if (role.outside.kind === "sparring") {
     return `${outsideDayLabel(role.outside)}. No app workout — log rounds after you spar.`;
   }
+  if (role.outside.hard) {
+    return `${outsideDayLabel(role.outside)}. Light-to-moderate bike only — no heavy lifting. The next day stays as written unless you log sparring with a rating.`;
+  }
   return `${outsideDayLabel(role.outside)}. Light day only: mobility and easy cardio. Nothing to log.`;
 }
 
@@ -367,7 +383,12 @@ export function buildCoreWeekPlan(prefs: PlannerPrefs, weekIndex = 0): Record<Pl
     const active = dayIsActive(role);
     const sessions = sessionsForRole(weekday, role, weekIndex);
     const outside = role.outside
-      ? { kind: role.outside.kind, time: role.outside.time, label: outsideDayLabel(role.outside) }
+      ? {
+          kind: role.outside.kind,
+          time: role.outside.time,
+          label: outsideDayLabel(role.outside),
+          ...(role.outside.hard ? { hard: true } : {}),
+        }
       : null;
     let skipReason: string | undefined;
     if (!active) {

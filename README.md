@@ -84,7 +84,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
 | `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym monthly ($19) |
 | `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for SVG Performance nonmember monthly ($29) |
-| `STRIPE_PRICE_PERFORMANCE_ANNUAL_*` / `_FOUNDING_*` | Optional. Inactive prepaid / founding annual stubs |
+| `STRIPE_PRICE_PERFORMANCE_ANNUAL_*` | Optional. Inactive prepaid annual stubs ($72.99/yr) |
 | `STRIPE_PRICE_CONDITIONING_GYM` / `_NON` | Optional. Fighter Conditioning monthly $49 / $59 |
 | `STRIPE_PRICE_CONDITIONING_CAMP_*` / `_ANNUAL_*` / `_FOUNDING_*` | Optional. Inactive 12-Week Fight Camp / annual / founding stubs |
 | `STRIPE_PRICE_DEVELOPMENT_GYM` / `_NON` | Optional. Fighter Development monthly $149 / $179 |
@@ -162,7 +162,7 @@ Do this only with **test** keys. Do not turn on live billing.
 
 1. Create a Stripe account and stay in **Test mode** (toggle in the Stripe dashboard).
 2. Copy the **secret key** that starts with `sk_test_` into `STRIPE_SECRET_KEY`.
-3. In Stripe, create monthly recurring TEST prices for the plans you want to try. At minimum put ids in `STRIPE_PRICE_GYM` ($19) and `STRIPE_PRICE_STANDALONE` ($29). Prepaid / founding / 3-month / 6-month env names exist as inactive stubs. Gym-member prices still need an admin verify. Buy buttons stay **Coming soon** until live billing is approved.
+3. In Stripe, create monthly recurring TEST prices for the plans you want to try. At minimum put ids in `STRIPE_PRICE_GYM` ($19) and `STRIPE_PRICE_STANDALONE` ($29). Prepaid / 3-month / 6-month env names exist as inactive stubs. Gym-member prices still need an admin verify. Buy buttons stay **Coming soon** until live billing is approved.
 4. On your laptop, install the Stripe CLI, then forward webhooks:
 
    ```bash

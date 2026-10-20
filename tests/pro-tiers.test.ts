@@ -8,7 +8,6 @@ import { memberProCopy, memberProStage, runMemberProReminderCron } from "@/lib/m
 import { isOpenWhenLocked } from "@/lib/locked-paths";
 import {
   ACADEMY_AI_MESSAGES_PER_WEEK,
-  FOUNDING_CAP,
   PERFORMANCE_ANNUAL,
   PERFORMANCE_MONTHLY,
   PRO_AI_MESSAGES_PER_DAY,
@@ -33,7 +32,6 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
   it("uses the approved prices", () => {
     expect(PERFORMANCE_MONTHLY).toBe(9.99);
     expect(PERFORMANCE_ANNUAL).toBe(72.99);
-    expect(FOUNDING_CAP).toBe(100);
   });
 
   it("gives nonmembers a 7-day Pro trial, then locks them (no free tier)", async () => {

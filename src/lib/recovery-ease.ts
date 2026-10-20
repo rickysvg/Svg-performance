@@ -102,7 +102,7 @@ export function easeDayPlan(plan: DayPlan, reason: string): { plan: DayPlan; eas
       {
         ...plan,
         active: true,
-        summary: "Mobility",
+        summary: "Mobility+Cardio",
         sessions: [LIGHT_MOBILITY, EASY_CARDIO],
         skipReason: undefined,
       },
@@ -238,7 +238,14 @@ export async function easePlanForUser(
   const row = await prisma.outsideSessionLog.findUnique({
     where: { userId_dateKey: { userId, dateKey: previousKey } },
   });
-  if (!row || !sparringNeedsEase({ bodyRating: row.bodyRating, soreSpots: parseStoredSpots(row.soreSpots) })) {
+  if (
+    !row ||
+    !sparringNeedsEase({
+      bodyRating: row.bodyRating,
+      sessionRating: row.sessionRating,
+      soreSpots: parseStoredSpots(row.soreSpots),
+    })
+  ) {
     return { plan, checkIn: null };
   }
   const spots = parseStoredSpots(row.soreSpots);
@@ -259,6 +266,57 @@ export async function easePlanForUser(
     plan: eased.plan,
     checkIn: { name: coach.name, image: coach.circle, message },
   };
+}
+
+/**
+ * Week chips read `summary`, which the sync planner builds before recovery ease.
+ * Patch each day from the previous day's sparring log so an eased Tuesday shows
+ * Mobility + Cardio instead of the original Bag + Lift icons.
+ */
+export async function easeWeekStripDays<
+  T extends { date: Date; summary: string; active: boolean; sessionCount: number },
+>(
+  userId: string,
+  prefs: PlannerPrefs,
+  days: T[],
+  timeZone: string,
+  swaps: Parameters<typeof planForDate>[3] = [],
+): Promise<T[]> {
+  if (days.length === 0) return days;
+  if (!(await canUseFeature(userId, "rir_auto"))) return days;
+  const previousKeys = [
+    ...new Set(days.map((day) => dayKey(addZonedDays(day.date, -1, timeZone), timeZone))),
+  ];
+  const rows = await prisma.outsideSessionLog.findMany({
+    where: { userId, dateKey: { in: previousKeys } },
+  });
+  const byKey = new Map(rows.map((row) => [row.dateKey, row]));
+  return days.map((day) => {
+    const previous = byKey.get(dayKey(addZonedDays(day.date, -1, timeZone), timeZone));
+    if (!previous) return day;
+    const spots = parseStoredSpots(previous.soreSpots);
+    if (
+      !sparringNeedsEase({
+        bodyRating: previous.bodyRating,
+        sessionRating: previous.sessionRating,
+        soreSpots: spots,
+      })
+    ) {
+      return day;
+    }
+    const eased = easeDayPlan(
+      planForDate(prefs, day.date, timeZone, swaps),
+      recoveryEaseReason({ bodyRating: previous.bodyRating, soreSpots: spots }),
+    );
+    if (eased.easedTo === "already-light") return day;
+    const trainable = eased.plan.sessions.filter((session) => session.kind !== "rest");
+    return {
+      ...day,
+      summary: eased.plan.summary,
+      active: eased.plan.active,
+      sessionCount: eased.plan.active ? trainable.length : 0,
+    };
+  });
 }
 
 function parseStoredSpots(raw: string) {

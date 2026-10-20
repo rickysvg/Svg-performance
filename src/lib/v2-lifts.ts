@@ -410,7 +410,7 @@ function thursday(block: MesoBlock) {
         lift({
           sortOrder: 2,
           name: HINGE_NAME[block],
-          notes: "Hinge. RIR stays at 2 or easier so the legs are fresh for Saturday.",
+          notes: "Hinge. Stay at the RIR on the line so the legs are fresh for Saturday.",
           weeks: weeksOf(
             [
               {

@@ -1,6 +1,6 @@
 /**
  * Public app prices. One Pro price for everyone, academy members included.
- * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR / _FOUNDING,
+ * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR,
  * STRIPE_PRICE_COACHING_MONTHLY). Nothing here creates Stripe products.
  */
 
@@ -8,8 +8,6 @@ export const PRO_LABEL = "SVG Pro";
 export const PERFORMANCE_MONTHLY = 9.99;
 export const PERFORMANCE_ANNUAL = 72.99;
 export const PERFORMANCE_ANNUAL_SAVE = "save 39%";
-export const FOUNDING_ANNUAL = 59;
-export const FOUNDING_CAP = 100;
 export const COACHING_MONTHLY = 249;
 export const COACHING_CAP = 20;
 
@@ -47,24 +45,15 @@ export function performanceAnnualLine() {
   return `or ${usd(PERFORMANCE_ANNUAL)}/yr, ${PERFORMANCE_ANNUAL_SAVE}`;
 }
 
-export function foundingPriceLine(spotsLeft: number | null = null) {
-  const price = `Founding price ${usd(FOUNDING_ANNUAL)}/year for the first ${FOUNDING_CAP} members`;
-  if (spotsLeft == null) return price;
-  const left = Math.max(0, Math.min(FOUNDING_CAP, spotsLeft));
-  if (left === 0) return `${price}. Sold out`;
-  return `${price}. ${left} founding spots left`;
-}
-
-export function isFoundingDealOpen(enrolledCount = 0) {
-  return enrolledCount < FOUNDING_CAP;
-}
-
 export function coachingSpotsLine(spotsLeft: number | null) {
   if (spotsLeft == null) return `Limited to ${COACHING_CAP} athletes`;
   const left = Math.max(0, Math.min(COACHING_CAP, spotsLeft));
   if (left === 0) return "Sold out";
   return `${left} coaching spots open`;
 }
+
+export const ACADEMY_EXPECT =
+  "The training app that comes with your SVG Academy dues.";
 
 export const ACADEMY_INCLUDES = [
   "Full rounds library",
@@ -78,8 +67,9 @@ export const ACADEMY_INCLUDES = [
   `${ACADEMY_AI_MESSAGES_PER_WEEK} AI coach messages a week`,
 ] as const;
 
-export const PRO_INCLUDES = [
-  "Everything in the academy tier",
+export const PRO_EXPECT = "Everything in the academy tier, plus…";
+
+export const PRO_ADDS = [
   "AI coach chat with voices",
   "Today's Summary read-aloud",
   "RIR auto-adjust after sparring or low readiness",
@@ -88,11 +78,16 @@ export const PRO_INCLUDES = [
   "Full history",
 ] as const;
 
+export const PRO_INCLUDES = PRO_ADDS;
+
 export const PRO_FAIR_USE_LINE = `Fair use: ${PRO_AI_MESSAGES_PER_DAY} AI messages, ${PRO_VOICE_MINUTES_PER_DAY} minutes of voice, and ${PRO_READ_ALOUD_PER_DAY} read-aloud a day.`;
 
-export const COACHING_INCLUDES = [
+export const COACHING_EXPECT = "Everything in Pro, plus…";
+
+export const COACHING_ADDS = [
   "Custom programming with Ricky",
   "Weekly AI-assisted check-ins reviewed by Ricky",
   "Video form reviews",
-  "Includes Pro",
 ] as const;
+
+export const COACHING_INCLUDES = COACHING_ADDS;

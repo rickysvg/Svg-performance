@@ -8,9 +8,8 @@ import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
-import { COACHING_CAP, FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
+import { COACHING_CAP, performancePriceLine } from "@/lib/pricing";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
-import { countFoundingSeats } from "@/lib/billing";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
@@ -21,13 +20,6 @@ export default async function PricingPage() {
   const verified = Boolean(profile?.gymMembershipVerified);
   const trial = user ? await getTrialState(user.id) : null;
   const canStartTrial = Boolean(trial?.canStartTrial);
-  let foundingUsed = 0;
-  try {
-    foundingUsed = Math.min(FOUNDING_CAP, await countFoundingSeats());
-  } catch {
-    foundingUsed = 0;
-  }
-  const foundingOpen = isFoundingDealOpen(foundingUsed);
   let coachingSeats = 0;
   let coachingSpotsLeft: number | null = COACHING_CAP;
   try {
@@ -38,18 +30,18 @@ export default async function PricingPage() {
   }
 
   return (
-    <div className="min-h-full bg-white">
+    <div className="min-h-full bg-background text-foreground">
       <AppHeader email={user?.email} />
       <main className="mx-auto max-w-3xl px-4 py-10">
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-black">App plans</p>
-        <h1 className="mt-2 text-3xl text-black">SVG Performance pricing</h1>
-        <p className="mt-3 text-muted">
-          One Pro price for everyone. Verified SVG Academy members get the core app with their
-          dues and Pro free for 30 days.
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">App plans</p>
+        <h1 className="mt-2 text-3xl text-foreground">SVG Performance pricing</h1>
+        <p className="mt-3 text-foreground">
+          SVG Performance is for athletes anywhere. Pro is {performancePriceLine()}. Verified SVG
+          Academy members get the core app with their dues and Pro free for 30 days.
         </p>
         <AiDisclaimer className="mt-3" />
         {currentPlan ? (
-          <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
+          <p className="mt-4 rounded-xl border border-line bg-card p-4 text-sm text-foreground">
             Current plan:{" "}
             <strong data-current-plan>
               {currentPlanLine({
@@ -64,7 +56,7 @@ export default async function PricingPage() {
             </Link>
           </p>
         ) : null}
-        <p className="mt-4 rounded-xl border border-black bg-accent/20 p-4 text-sm text-black" data-pricing-banner>
+        <p className="mt-4 rounded-xl border border-accent bg-card p-4 text-sm text-foreground" data-pricing-banner>
           {canStartTrial
             ? "The 7-day Pro trial is open now, no card. Paid checkout opens Nov 16."
             : "Paid checkout opens Nov 16. A trial can be used once per account."}
@@ -75,8 +67,6 @@ export default async function PricingPage() {
         <div className="mt-8">
           <PricingCatalog
             verified={verified}
-            foundingOpen={foundingOpen}
-            foundingSpotsLeft={Math.max(0, FOUNDING_CAP - foundingUsed)}
             coachingSpotsLeft={coachingSpotsLeft}
             coachingAtCap={coachingSpotsLeft === 0}
             userLoggedIn={Boolean(user)}
@@ -86,11 +76,11 @@ export default async function PricingPage() {
         </div>
 
         <section className="mt-10 rounded-2xl border border-line bg-card p-6">
-          <h2 className="text-lg text-black">Pricing FAQ</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted">
-            <li>Nonmembers get a 7-day Pro trial with no card. After it ends, Pro ($9.99/mo or $72.99/yr) keeps the app open. You can always view and export your past data.</li>
+          <h2 className="text-lg text-foreground">Pricing FAQ</h2>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground">
+            <li>Nonmembers get a 7-day Pro trial with no card. After it ends, Pro ($9.99/mo or $72.99/yr, save 39%) keeps the app open. You can always view and export your past data.</li>
             <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for 30 days. On day 31 you go back to the included tier. You are never auto-billed.</li>
-            <li>Pro is $9.99/month or $72.99/year for everyone, academy members included. Founding annual is $59 for the first 100 members.</li>
+            <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
             <li>Pro fair use: 30 AI messages, 20 minutes of voice, and 1 read-aloud a day.</li>
             <li>1-on-1 Coaching with Ricky is $249/month, includes Pro, and is limited to 20 athletes. VIP is by application.</li>
             <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the 7-day trial, then subscribe to Pro to keep training. Past data stays viewable and exportable.</li>

@@ -57,10 +57,21 @@ export function focusLabel(focus: string) {
   return FOCUS_OPTIONS.find((item) => item.value === focus)?.label ?? focus;
 }
 
+/** "Get stronger for training — Get stronger for training" is one goal, written twice. */
+export function dedupeGoalLine(value: string) {
+  const trimmed = value.trim();
+  const match = /^(.+?)\s+[—–-]\s+(.+)$/.exec(trimmed);
+  if (match && match[1].trim().toLowerCase() === match[2].trim().toLowerCase()) {
+    return match[1].trim();
+  }
+  return trimmed;
+}
+
 export function formatGoalDisplay(goalKey: string, goalNote: string) {
   const label = goalLabel(goalKey) || "Training goal";
   const note = goalNote.trim();
-  return note ? `${label} — ${note}` : label;
+  if (!note || note.toLowerCase() === label.toLowerCase()) return label;
+  return `${label} — ${note}`;
 }
 
 export function isFocusOption(value: string) {

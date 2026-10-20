@@ -14,7 +14,7 @@ import {
   WEEKDAYS,
 } from "@/lib/constants";
 import { OutsideTrainingFields } from "@/components/profile/OutsideTrainingFields";
-import { defaultLiftDays } from "@/lib/member-plan";
+import { defaultLiftDays, resolveOutsideDays } from "@/lib/member-plan";
 import type { ProfileRecord } from "@/lib/profile";
 
 const INTAKE_STEP_KEY = "svg-onboarding-intake-step";
@@ -295,7 +295,13 @@ export function OnboardingForm({
             arts track — bag work.
           </span>
         </label>
-        <OutsideTrainingFields days={profile.outsideTraining ?? []} />
+        <OutsideTrainingFields
+          days={resolveOutsideDays({
+            outsideTraining: profile.outsideTraining,
+            trainingFocus,
+            email,
+          })}
+        />
         <label className="block">
           <span className="text-sm font-medium">Sessions per week (optional)</span>
           <input

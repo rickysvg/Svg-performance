@@ -1,0 +1,1 @@
+ALTER TABLE "OutsideSessionLog" ADD COLUMN "partner" TEXT NOT NULL DEFAULT '';

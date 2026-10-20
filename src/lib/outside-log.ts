@@ -33,6 +33,7 @@ export type SparringLog = {
   minutesPerRound: number;
   intensity: string;
   notes: string;
+  partner: string;
   sessionRating: number | null;
   bodyRating: number | null;
   soreSpots: SoreSpot[];
@@ -85,11 +86,19 @@ export function sparringDateError(dateKey: string, now = new Date(), timeZone = 
   return null;
 }
 
-/** Body at 2 or below, or a tapped head, means the next day should be easier. */
+/**
+ * The next day eases only after a saved sparring log that includes a 1–5 rating.
+ * Body at 2 or below, or a tapped head, is the trigger. A scheduled class or
+ * sparring day never eases the next day by itself.
+ */
 export function sparringNeedsEase(log: {
   bodyRating: number | null;
   soreSpots: readonly string[];
+  sessionRating?: number | null;
 }) {
+  const rated =
+    ratingInRange(log.bodyRating ?? Number.NaN) || ratingInRange(log.sessionRating ?? Number.NaN);
+  if (!rated) return false;
   if (log.bodyRating != null && log.bodyRating <= 2) return true;
   return log.soreSpots.includes("head");
 }
@@ -110,6 +119,7 @@ export async function saveSparringLog(
     minutesPerRound: number;
     intensity?: string;
     notes?: string;
+    partner?: string;
     sessionRating: number;
     bodyRating: number;
     soreSpots?: string[];
@@ -143,6 +153,7 @@ export async function saveSparringLog(
   }
   const soreSpots = parseSoreSpots(input.soreSpots ?? []);
   const notes = (input.notes ?? "").trim().slice(0, 400);
+  const partner = (input.partner ?? "").trim().slice(0, 80);
   const row = await prisma.outsideSessionLog.upsert({
     where: { userId_dateKey: { userId, dateKey: input.dateKey } },
     create: {
@@ -153,6 +164,7 @@ export async function saveSparringLog(
       minutesPerRound: input.minutesPerRound,
       intensity,
       notes,
+      partner,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -164,6 +176,7 @@ export async function saveSparringLog(
       minutesPerRound: input.minutesPerRound,
       intensity,
       notes,
+      partner,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -215,6 +228,7 @@ function toLog(row: {
   minutesPerRound: number;
   intensity: string;
   notes: string;
+  partner?: string | null;
   sessionRating?: number | null;
   bodyRating?: number | null;
   soreSpots?: string | null;
@@ -227,6 +241,7 @@ function toLog(row: {
     minutesPerRound: row.minutesPerRound,
     intensity: row.intensity,
     notes: row.notes,
+    partner: row.partner ?? "",
     sessionRating: row.sessionRating ?? null,
     bodyRating: row.bodyRating ?? null,
     soreSpots: parseSoreSpots(row.soreSpots ?? "[]"),

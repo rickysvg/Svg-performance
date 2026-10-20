@@ -97,8 +97,8 @@ export function UpgradePreview({
         ) : null}
       </div>
       <p className="mt-3 text-xs text-muted">
-        Pro is $9.99/mo or $72.99/yr for everyone. Founding $59/yr for the first 100 members.
-        Paid plans coming soon. You can look at pricing anytime from Profile.
+        Pro is $9.99/mo or $72.99/yr, save 39%, for everyone. Paid plans coming soon. You can
+        look at pricing anytime from Profile.
       </p>
     </section>
   );

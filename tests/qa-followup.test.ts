@@ -9,7 +9,7 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { mergeReplacementSets } from "@/lib/exercise-swap-store";
 import { civilDayInstant } from "@/lib/performed-at";
 import { detectNewPrs, newPrExerciseCount } from "@/lib/personal-bests";
-import { coachingSpotsLine, foundingPriceLine } from "@/lib/pricing";
+import { coachingSpotsLine } from "@/lib/pricing";
 import { isResumeLoggerPath } from "@/lib/locked-paths";
 import { prisma } from "@/lib/prisma";
 import { buildTrainingStreak, streakStatusLine } from "@/lib/streaks";
@@ -206,7 +206,6 @@ describe("AI cap and remaining count", () => {
 
 describe("pricing spots and logger resume", () => {
   it("uses natural spot copy and keeps an in-progress logger open", () => {
-    expect(foundingPriceLine(100)).toContain("100 founding spots left");
     expect(coachingSpotsLine(20)).toBe("20 coaching spots open");
     expect(coachingSpotsLine(0)).toBe("Sold out");
     expect(isResumeLoggerPath("/training/log/abc")).toBe(true);

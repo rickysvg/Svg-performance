@@ -48,7 +48,7 @@ import { getSparringLog, latestSparringSessionRating } from "@/lib/outside-log";
 import { sparringTileHint } from "@/lib/sparring-tile";
 import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { tileSrc } from "@/lib/athlete-imagery";
-import { easePlanForUser } from "@/lib/recovery-ease";
+import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { resolveAiCoach } from "@/lib/coaches";
@@ -116,7 +116,14 @@ export default async function TrainingPage({
       campPhase: campOn && camp ? camp.phase : null,
     }),
   );
-  const strip = weekStrip(prefs, now, tz, selected, swaps);
+  const strip = await easeWeekStripDays(
+    user.id,
+    prefs,
+    weekStrip(prefs, now, tz, selected, swaps),
+    tz,
+    swaps,
+  );
+  const openDraft = drafts[0] ?? null;
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
   const deload = isDeloadWeekIndex(weekIndex);
   const testing = isTestingWeekIndex(weekIndex);
@@ -268,6 +275,16 @@ export default async function TrainingPage({
         </Link>
       ) : null}
 
+      {isToday && openDraft && todayAction?.draftId !== openDraft.id ? (
+        <Link
+          href={`/training/log/${openDraft.id}`}
+          data-resume-workout
+          data-prime-coach-audio
+          className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
+        >
+          Resume
+        </Link>
+      ) : null}
       {todayAction ? <StartTodayButton action={todayAction} /> : null}
       <SparringLogTile
         hint={sparringTileHint(sparringRating)}

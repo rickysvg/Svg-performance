@@ -38,6 +38,7 @@ import {
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
+  loggerCursor,
   loggerProgressDetail,
   orderWorkoutSets,
   timedRoundMarkAllowed,
@@ -51,13 +52,14 @@ import {
   primeRestAudio,
   readRestNow,
   remainingRestSeconds,
+  restAfterExerciseChange,
   restCueForTick,
   signalRestComplete,
   signalRestWarning,
   startRestTimer,
   type RestTimerState,
 } from "@/lib/rest-timer";
-import { loggerCursorFollowing, nextIncompleteSetId } from "@/lib/logger-progress";
+import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
@@ -417,14 +419,13 @@ export function WorkoutLogForm({
 
   const cursor = useMemo(
     () =>
-      loggerCursorFollowing(
+      loggerCursor(
         grouped.map(([name, group]) => ({
           name,
           sets: group.map((set) => ({ id: set.id, completed: set.completed })),
         })),
-        activeName,
       ),
-    [activeName, grouped],
+    [grouped],
   );
   const currentPlanned = session.programDay?.exercises.find(
     (row) => row.name === cursor.exerciseName,
@@ -1206,6 +1207,7 @@ export function WorkoutLogForm({
                         workoutSessionId={session.id}
                         canRemove={grouped.length > 1}
                         getCurrentSets={() => setsRef.current.map(toSetInput)}
+                        snapshotSets={() => setsRef.current.map((set) => ({ ...set }))}
                         onSwapped={(swappedName, prescription) => {
                           setSwapOverlay((current) => ({ ...current, [swappedName]: prescription }));
                           setRestByName((current) => ({
@@ -1220,14 +1222,13 @@ export function WorkoutLogForm({
                           const previous = new Set(setsRef.current.map((set) => set.exerciseName));
                           const added = lb.find((set) => !previous.has(set.exerciseName))?.exerciseName;
                           const names = new Set(lb.map((set) => set.exerciseName));
-                          const nextRest =
-                            restTimer && names.has(restTimer.exerciseName) ? restTimer : null;
+                          const focus = focusName && names.has(focusName) ? focusName : added;
+                          const nextRest = restAfterExerciseChange(restTimer, names, focus, clockNow());
                           setsRef.current = lb;
                           setSets(lb);
                           setRestTimer(nextRest);
                           remember(lb, nextRest);
                           syncDraft(lb, nextRest);
-                          const focus = focusName && names.has(focusName) ? focusName : added;
                           if (!focus) return;
                           setActiveName(focus);
                           requestAnimationFrame(() => {
@@ -1496,6 +1497,7 @@ export function WorkoutLogForm({
 
               <button
                 type="button"
+                data-add-set
                 onClick={() => addSet(name)}
                 className="touch-target mt-2 text-sm font-medium underline-offset-4 hover:underline"
               >
