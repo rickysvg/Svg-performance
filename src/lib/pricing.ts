@@ -58,21 +58,21 @@ export function isFoundingDealOpen(enrolledCount = 0) {
   return enrolledCount < FOUNDING_CAP;
 }
 
-/** Live counter, e.g. "12 of 40 left". */
-export function foundingLeftLine(spotsLeft: number) {
-  const left = Math.max(0, Math.min(FOUNDING_CAP, spotsLeft));
-  return `${left} of ${FOUNDING_CAP} left`;
+/** Public founding sentence. No seat count. Callers hide it once the cap is reached. */
+export function foundingOfferLine() {
+  return `Founding member: ${usd(FOUNDING_ANNUAL)}/yr. Limited spots.`;
 }
 
-/** Public founding sentence. Callers hide it once the cap is reached. */
-export function foundingOfferLine(spotsLeft: number) {
-  return `Founding member: ${usd(FOUNDING_ANNUAL)}/yr. ${foundingLeftLine(spotsLeft)}. Academy members can claim it.`;
+/** Admin-only count. Not for pricing, banners, or reminders. */
+export function foundingSeatCountLine(enrolled: number) {
+  const used = Math.max(0, Math.floor(enrolled));
+  return `${used} of ${FOUNDING_CAP}`;
 }
 
 export function foundingOfferFromCount(enrolled: number) {
   if (!isFoundingDealOpen(enrolled)) return null;
   const spotsLeft = Math.max(0, FOUNDING_CAP - enrolled);
-  return { enrolled, spotsLeft, line: foundingOfferLine(spotsLeft) };
+  return { enrolled, spotsLeft, line: foundingOfferLine() };
 }
 
 export function coachingSpotsLine(spotsLeft: number | null) {

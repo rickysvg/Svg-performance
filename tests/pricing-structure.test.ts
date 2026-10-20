@@ -21,6 +21,7 @@ import {
   coachingSpotsLine,
   foundingOfferFromCount,
   foundingOfferLine,
+  foundingSeatCountLine,
   isFoundingDealOpen,
   performanceAnnualLine,
   performancePriceLine,
@@ -64,10 +65,10 @@ describe("owner-approved three-plan pricing", () => {
     expect(FOUNDING_CAP).toBe(40);
     expect(isFoundingDealOpen(39)).toBe(true);
     expect(isFoundingDealOpen(40)).toBe(false);
-    expect(foundingOfferLine(12)).toBe(
-      "Founding member: $59/yr. 12 of 40 left. Academy members can claim it.",
-    );
-    expect(foundingOfferFromCount(0)?.line).toMatch(/40 of 40 left/);
+    expect(foundingOfferLine()).toBe("Founding member: $59/yr. Limited spots.");
+    expect(foundingOfferLine()).not.toMatch(/of 40/);
+    expect(foundingSeatCountLine(12)).toBe("12 of 40");
+    expect(foundingOfferFromCount(0)?.line).toBe("Founding member: $59/yr. Limited spots.");
     expect(foundingOfferFromCount(40)).toBeNull();
     expect(PLAN_CATALOG.member_access.label).toBe("Trial ended");
     expect(PLAN_CATALOG.academy.gymPriceLabel).toBe("Included in dues");
@@ -142,6 +143,26 @@ describe("owner-approved three-plan pricing", () => {
     expect(read("src/components/pricing/FoundingOfferHighlight.tsx")).toContain("bg-accent");
     expect(read("src/app/pricing/page.tsx")).toContain("loadFoundingOffer");
     expect(read("src/lib/founding-offer.ts")).toContain("countFoundingSeats");
+    expect(read("src/app/(member)/admin/page.tsx")).toContain("data-founding-count");
+    expect(read("src/app/(member)/admin/page.tsx")).toContain("foundingSeatCountLine");
+    const publicSurfaces = [
+      "src/components/pricing/PricingCatalog.tsx",
+      "src/app/pricing/page.tsx",
+      "src/components/PaywallNotice.tsx",
+      "src/components/upgrade/TrialEndedPaywall.tsx",
+      "src/components/upgrade/UpgradePreview.tsx",
+      "src/components/upgrade/MemberProReminderBanner.tsx",
+      "src/components/onboarding/PlanChoiceForm.tsx",
+      "src/app/page.tsx",
+      "src/app/(member)/plan/page.tsx",
+      "src/lib/member-pro-reminders.ts",
+    ];
+    for (const file of publicSurfaces) {
+      const surface = read(file);
+      expect(surface).not.toMatch(/of 40 left/);
+      expect(surface).not.toMatch(/foundingSeatCountLine/);
+      expect(surface).not.toMatch(/data-founding-count/);
+    }
     expect(read(".env.example")).toContain("STRIPE_PRICE_PERFORMANCE_FOUNDING");
     const catalog = read("src/components/pricing/PricingCatalog.tsx");
     const academyAt = catalog.indexOf('data-plan-card="academy"');

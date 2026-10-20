@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { applyStripeEvent, assertCanCheckoutPlan, countFoundingSeats } from "@/lib/billing";
 import { loadFoundingOffer } from "@/lib/founding-offer";
 import { CHECKOUT_SKUS, isCheckoutSkuId } from "@/lib/plans";
-import { FOUNDING_CAP, isFoundingDealOpen } from "@/lib/pricing";
+import { FOUNDING_CAP, foundingOfferLine, isFoundingDealOpen } from "@/lib/pricing";
 import { memberProCopy } from "@/lib/member-pro-reminders";
 import { makeUser, resetDatabase } from "./helpers";
 
@@ -65,9 +65,8 @@ describe("founding seat count", () => {
     expect(await countFoundingSeats()).toBe(1);
     const offer = await loadFoundingOffer();
     expect(offer?.spotsLeft).toBe(FOUNDING_CAP - 1);
-    expect(offer?.line).toBe(
-      "Founding member: $59/yr. 39 of 40 left. Academy members can claim it.",
-    );
+    expect(offer?.line).toBe(foundingOfferLine());
+    expect(offer?.line).not.toMatch(/39|of 40/);
   });
 
   it("stores the Stripe price ID on create and update, and keeps it on payment failure", async () => {
@@ -153,11 +152,14 @@ describe("founding seat count", () => {
 
   it("adds the live line to member Pro reminder copy only while the deal is open", () => {
     const recap = { workouts: 6, checkIns: 1, aiMessages: 2 };
-    const line = "Founding member: $59/yr. 12 of 40 left. Academy members can claim it.";
+    const line = foundingOfferLine();
+    expect(line).toBe("Founding member: $59/yr. Limited spots.");
     expect(memberProCopy("day25", recap).body).not.toMatch(/Founding/);
-    expect(memberProCopy("day25", recap, line).body).toContain(line);
-    expect(memberProCopy("day29", recap, line).body).toContain("12 of 40 left");
+    expect(memberProCopy("day25", recap, line).body).toContain("Limited spots.");
+    expect(memberProCopy("day25", recap, line).body).not.toMatch(/of 40/);
+    expect(memberProCopy("day29", recap, line).body).toContain(line);
     expect(memberProCopy("day31", recap, line).body).toContain(line);
+    expect(memberProCopy("day31", recap, line).body).not.toMatch(/of 40/);
     expect(memberProCopy("day31", recap).body).toMatch(/30 days of history/);
   });
 });

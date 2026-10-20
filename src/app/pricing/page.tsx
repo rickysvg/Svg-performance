@@ -9,7 +9,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { loadFoundingOffer } from "@/lib/founding-offer";
-import { COACHING_CAP, FOUNDING_CAP, MEMBER_PRO_DAYS, performancePriceLine } from "@/lib/pricing";
+import { COACHING_CAP, MEMBER_PRO_DAYS, performancePriceLine } from "@/lib/pricing";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 
 export default async function PricingPage() {
@@ -84,11 +84,7 @@ export default async function PricingPage() {
             <li>Nonmembers get a 7-day Pro trial with no card. After it ends, Pro ($9.99/mo or $72.99/yr, save 39%) keeps the app open. You can always view and export your past data.</li>
             <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed.</li>
             <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
-            {founding ? (
-              <li data-founding-faq>
-                {founding.line} It closes automatically after {FOUNDING_CAP} founding subscriptions.
-              </li>
-            ) : null}
+            {founding ? <li data-founding-faq>{founding.line}</li> : null}
             <li>Pro fair use: 30 AI messages, 20 minutes of voice, and 1 read-aloud a day.</li>
             <li>1-on-1 Coaching with Ricky is $249/month, includes Pro, and is limited to 20 athletes. VIP is by application.</li>
             <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the 7-day trial, then subscribe to Pro to keep training. Past data stays viewable and exportable.</li>

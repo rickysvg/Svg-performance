@@ -4,11 +4,17 @@ import { listUsersForAdmin } from "@/lib/admin";
 import { getPilotDashboardCounts } from "@/lib/pilot";
 import { AdminVerifyForm } from "@/components/admin/AdminVerifyForm";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
+import { countFoundingSeats } from "@/lib/billing";
 import { normalizePlanId, PLAN_CATALOG } from "@/lib/plans";
+import { foundingSeatCountLine } from "@/lib/pricing";
 
 export default async function AdminPage() {
   await requireAdmin();
-  const [users, counts] = await Promise.all([listUsersForAdmin(), getPilotDashboardCounts()]);
+  const [users, counts, foundingSeats] = await Promise.all([
+    listUsersForAdmin(),
+    getPilotDashboardCounts(),
+    countFoundingSeats().catch(() => null),
+  ]);
 
   return (
     <main className="space-y-6">
@@ -39,6 +45,15 @@ export default async function AdminPage() {
             <p className="mt-1 text-2xl font-semibold text-accent">{value}</p>
           </div>
         ))}
+        <div data-founding-seats className="rounded-2xl border border-line bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Founding</p>
+          <p className="mt-1 text-2xl font-semibold text-accent" data-founding-count>
+            {foundingSeats == null ? "—" : foundingSeats}
+          </p>
+          <p className="text-xs text-muted">
+            {foundingSeats == null ? "count unavailable" : foundingSeatCountLine(foundingSeats)}
+          </p>
+        </div>
       </section>
 
       <nav className="flex flex-wrap gap-x-3 gap-y-2 text-sm">
