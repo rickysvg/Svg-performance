@@ -709,6 +709,20 @@ body:has(.app-splash.is-visible) {
   letter-spacing: 0.04em;
 }
 
+.mass-speedo {
+  font-style: italic;
+  font-weight: 600;
+  font-synthesis: none;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 1px #07080a,
+    0 0 2px #07080a,
+    0 1px 3px #07080a,
+    0 0 8px rgba(203, 248, 5, 0.28);
+  transform: skewX(-8deg);
+  transform-origin: center center;
+}
+
 .hc-panel {
   position: relative;
   border: 1px solid rgba(203, 248, 5, 0.35);
