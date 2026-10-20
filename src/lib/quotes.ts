@@ -413,3 +413,21 @@ export function teaserFromQuote(quote: DailyQuote) {
   const snippet = words.slice(0, 6).join(" ");
   return `${snippet}…`;
 }
+
+/** Quote plus attribution, short enough for two Home lines. Attribution is never invented. */
+export function compactQuoteLine(
+  quote: Pick<DailyQuote, "text" | "attribution">,
+  maxChars = 110,
+) {
+  const attribution = quote.attribution.trim();
+  const text = quote.text.replace(/\s+/g, " ").trim();
+  const suffix = attribution ? ` — ${attribution}` : "";
+  const budget = Math.max(24, maxChars - suffix.length);
+  if (text.length <= budget) {
+    return { text, attribution };
+  }
+  const cut = text.slice(0, budget);
+  const space = cut.lastIndexOf(" ");
+  const trimmed = (space > 16 ? cut.slice(0, space) : cut).replace(/[.,;:—\-]+$/u, "").trim();
+  return { text: `${trimmed}…`, attribution };
+}
