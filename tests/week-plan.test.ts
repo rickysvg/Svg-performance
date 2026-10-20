@@ -98,16 +98,17 @@ describe("Core weekday planner", () => {
     expect(sessions.some((session) => session.kind === "strength")).toBe(true);
   });
 
-  it("keeps Tuesday as a lift and Friday as bag plus mobility, not a daily lift", () => {
+  it("keeps Tuesday as a lift and Friday as the circuit plus mobility, not a daily lift", () => {
     const tue = coreSkeletonSessions("Tuesday", "mma");
     expect(tue.map((session) => session.kind)).toEqual(["skill", "strength"]);
     expect(tue[1]).toMatchObject({ kind: "strength", dayNumber: 2 });
 
     const fri = coreSkeletonSessions("Friday", "mma");
-    expect(fri[0]?.dayNumber).toBe(BAG_FOCUS.Friday.dayNumber);
-    expect(fri.map((session) => session.kind)).toEqual(["skill", "mobility"]);
+    expect(fri[0]?.label).toBe("Friday circuit");
+    expect(fri[0]?.dayNumber).toBe(10);
+    expect(fri.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
     expect(fri.some((session) => session.kind === "strength")).toBe(false);
-    expect(fri.some((session) => session.dayNumber === 10)).toBe(false);
+    expect(fri.some((session) => session.kind === "skill")).toBe(false);
 
     const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
     const liftDays = week.filter((day) =>
@@ -368,7 +369,8 @@ describe("Core weekday planner", () => {
     const week = buildCoreWeekPlan(prefs);
     expect(week.Monday.sessions.find((session) => session.kind === "strength")?.heavy).toBe(true);
     expect(week.Monday.sessions.find((session) => session.kind === "skill")?.heavy).toBe(true);
-    expect(week.Friday.sessions.find((session) => session.kind === "skill")?.heavy).toBe(false);
+    expect(week.Friday.sessions.find((session) => session.kind === "skill")).toBeUndefined();
+    expect(week.Friday.sessions.find((session) => session.label === "Friday circuit")?.heavy).toBe(false);
     expect(week.Wednesday.sessions.every((session) => session.heavy !== true)).toBe(true);
 
     const start = weekStartKey(monday, APP_TIMEZONE);
@@ -382,7 +384,8 @@ describe("Core weekday planner", () => {
     expect(sat.sessions.map((session) => session.sessionKey)).toContain(liftKey);
     expect(futureWorkoutPulledBack(liftKey, "Tuesday", "Tuesday")).toBe(false);
     const fridayPlan = planForDate(prefs, new Date(2026, 8, 25, 10, 0, 0));
-    const fridayBag = fridayPlan.sessions.find((session) => session.kind === "skill")?.sessionKey ?? "";
+    const fridayBag =
+      fridayPlan.sessions.find((session) => session.label === "Friday circuit")?.sessionKey ?? "";
     expect(fridayBag.startsWith("Friday:")).toBe(true);
     expect(futureWorkoutPulledBack(fridayBag, "Tuesday", "Tuesday")).toBe(true);
     const auto = moveSessionOnPlan([], start, fridayBag, "Tuesday").map((row) => ({
@@ -654,7 +657,8 @@ describe("Core planner on Home", () => {
       experienceLevel: "intermediate" as const,
     };
     const fridayPlan = planForDate(prefs, friday, APP_TIMEZONE);
-    const fridayBag = fridayPlan.sessions.find((session) => session.kind === "skill")?.sessionKey ?? "";
+    const fridayBag =
+      fridayPlan.sessions.find((session) => session.label === "Friday circuit")?.sessionKey ?? "";
     const mondayPlan = planForDate(prefs, monday, APP_TIMEZONE);
     const mondayLift = mondayPlan.sessions.find((session) => session.kind === "strength")?.sessionKey ?? "";
     expect(fridayBag.startsWith("Friday:")).toBe(true);

@@ -22,7 +22,7 @@ describe("coach credits", () => {
     expect(COACH_CREDIT_DISCLAIMER).toMatch(/not an svg program/i);
     expect(creditForExercise("Assault bike intervals")).toBeNull();
 
-    for (const session of BIKE_SESSIONS.filter((row) => row.id !== "intervals-15-15")) {
+    for (const session of BIKE_SESSIONS.filter((row) => row.svgScaling)) {
       const credit = creditForExercise(session.name);
       expect(credit, session.name).toBeTruthy();
       expect(credit?.svgScaling).toBe(true);

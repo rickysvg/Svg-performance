@@ -3,6 +3,7 @@
  * Combined "A or B" program titles are canonicalized before they render.
  */
 import type { LogMode } from "@/lib/exercise-log-mode";
+import { combatAsLibraryRows } from "@/lib/combat-library";
 
 export const EXERCISE_CATEGORIES = [
   "lower",
@@ -31,6 +32,10 @@ export type LibraryExercise = {
   notes: string;
   /** Mobility position figure. Counts as the image when there is no clip. */
   figureKey?: string;
+  /** Low-confidence or untrimmed clips stay out of the member swap picker. */
+  memberHidden?: boolean;
+  /** Same-pattern names from the combat library, including existing app exercises. */
+  swapsWith?: string[];
 };
 
 export const CATEGORY_FILTERS: Array<{ id: "all" | "upper" | ExerciseCategory; label: string }> = [
@@ -95,7 +100,7 @@ function row(
 
 const EASY = "Easy range. Stop if a joint pinches.";
 
-export const EXERCISE_LIBRARY: LibraryExercise[] = [
+const BASE_LIBRARY: LibraryExercise[] = [
   row("Goblet squat", "lower", "gym", 4, "6", "0-2 RIR · Own the bottom.", 120, "load_reps", "Dumbbell or kettlebell at the chest."),
   row("Pause goblet squat", "lower", "gym", 4, "5", "1-3 RIR · Pause at the bottom.", 120, "load_reps", "Two-count pause. No bounce."),
   row("Romanian deadlift", "lower", "gym", 3, "6", "1-3 RIR · Flat back, hamstrings on every rep.", 90, "load_reps", "Soft knees. This is a hinge, not a squat."),
@@ -206,6 +211,13 @@ export const EXERCISE_LIBRARY: LibraryExercise[] = [
   row("Neck isometric — flexion", "mobility", "none", 1, "5 sec", "Gentle. Never a max squeeze.", 15, "timed", "Hand on the forehead. Ramp a light push. Skip after a hard spar or a neck injury.", "neck-flex"),
 ];
 
+const COMBAT_ROWS = combatAsLibraryRows().filter(
+  (exercise) => !BASE_LIBRARY.some((existing) => existing.name === exercise.name),
+);
+
+/** App swaps plus the combat library. Hidden rows stay in the map for admin and for a direct lookup. */
+export const EXERCISE_LIBRARY: LibraryExercise[] = [...BASE_LIBRARY, ...COMBAT_ROWS];
+
 const BY_NAME = new Map(EXERCISE_LIBRARY.map((exercise) => [exercise.name, exercise]));
 
 export function libraryExercise(name: string) {
@@ -225,13 +237,23 @@ export type LibraryFilter = {
   category?: "all" | "upper" | ExerciseCategory;
   equipment?: "gym" | "none";
   excludeName?: string;
+  /** Sort same-pattern swaps ahead of the rest of the category. */
+  nearName?: string;
 };
 
 export function filterExerciseLibrary(input: LibraryFilter = {}) {
   const query = (input.query ?? "").trim().toLowerCase();
   const category = input.category ?? "all";
   const equipment = input.equipment ?? "gym";
+  const near = input.nearName ? libraryExercise(input.nearName) : null;
+  const preferred = new Set<string>([
+    ...(near?.swapsWith ?? []),
+    ...EXERCISE_LIBRARY.filter((exercise) => exercise.swapsWith?.includes(input.nearName ?? "")).map(
+      (exercise) => exercise.name,
+    ),
+  ]);
   return EXERCISE_LIBRARY.filter((exercise) => {
+    if (exercise.memberHidden) return false;
     if (input.excludeName && exercise.name === input.excludeName) return false;
     if (category === "upper") {
       if (exercise.category !== "upper_push" && exercise.category !== "upper_pull") return false;
@@ -248,6 +270,9 @@ export function filterExerciseLibrary(input: LibraryFilter = {}) {
       exercise.name.toLowerCase().includes(query) ||
       CATEGORY_LABEL[exercise.category].toLowerCase().includes(query)
     );
+  }).sort((a, b) => {
+    const rank = (name: string) => (preferred.has(name) ? 0 : 1);
+    return rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
   });
 }
 

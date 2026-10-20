@@ -1,3 +1,4 @@
+import { libraryReviewQueue, memberSwappable } from "@/lib/combat-library";
 import { prisma } from "@/lib/prisma";
 import { PLAN_CATALOG, normalizePlanId, type CatalogPlanId } from "@/lib/plans";
 import { COACHING_CAP } from "@/lib/pricing";
@@ -399,7 +400,26 @@ export async function getContentDesk() {
   const formVideos = [...new Set(exercises.map((row) => row.name))].sort((a, b) =>
     a.localeCompare(b),
   );
-  return { formVideos, lessons };
+  const queue = libraryReviewQueue();
+  return {
+    formVideos,
+    lessons,
+    clipReview: {
+      total: queue.total,
+      live: queue.live,
+      held: queue.held,
+      queueCount: queue.queueCount,
+      needsReview: queue.needsReview.map((row) => ({
+        name: row.name,
+        durationSec: row.durationSec,
+      })),
+      needsTrim: queue.needsTrim.map((row) => ({
+        name: row.name,
+        durationSec: row.durationSec,
+        swappable: memberSwappable(row),
+      })),
+    },
+  };
 }
 
 export type SessionFeelFlag = {
@@ -575,6 +595,7 @@ export async function getAdminDeskCounts(now = new Date()) {
     feelFlags,
     pendingVideos: new Set(exercises.map((row) => row.name)).size,
     pendingLessons,
+    clipReview: libraryReviewQueue().queueCount,
     contentReady: readyExercises + readyLessons,
     formChecksReviewed,
     checkInsAnswered,

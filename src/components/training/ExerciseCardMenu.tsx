@@ -107,6 +107,7 @@ export function ExerciseCardMenu({
         category,
         equipment,
         excludeName: currentName,
+        nearName: currentName,
       }),
     [query, category, equipment, currentName],
   );

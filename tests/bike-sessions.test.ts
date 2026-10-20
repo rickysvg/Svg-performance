@@ -39,8 +39,8 @@ const MMA_MON_WED_FRI = {
 };
 
 describe("assault bike catalog", () => {
-  it("keeps 15/15 × 8 and adds five coach sessions", () => {
-    expect(BIKE_SESSIONS).toHaveLength(6);
+  it("keeps 15/15 × 8 and adds the coach sessions plus fight-pace", () => {
+    expect(BIKE_SESSIONS).toHaveLength(7);
     expect(pickBikeSession(0)).toMatchObject({
       id: "intervals-15-15",
       name: "Assault bike intervals",
@@ -57,6 +57,7 @@ describe("assault bike catalog", () => {
     expect(isBikeIntervalName("Daru 75% endurance bike")).toBe(true);
     expect(isBikeIntervalName("Jamieson cardiac output bike")).toBe(true);
     expect(isBikeIntervalName("Leon Edwards 10/20 bike finisher")).toBe(true);
+    expect(isBikeIntervalName("Fight-pace bike rounds")).toBe(true);
     expect(isBikeIntervalName("Jump rope or easy bike intervals")).toBe(false);
     expect(fallbackLogMode("Assault bike intervals")).toBe("timed_round");
     expect(fallbackLogMode("Daru alactic power bike")).toBe("timed_round");
@@ -66,13 +67,14 @@ describe("assault bike catalog", () => {
     expect(creditForExercise("Leon Edwards 10/20 bike finisher")?.url).toMatch(/7Jf_JutBJlo/);
   });
 
-  it("rotates Wed/Sun so the sprint and the easier bike differ each week", () => {
-    expect(pickBikeSessionForPlan("Wednesday", 0).id).toBe("intervals-15-15");
-    expect(pickBikeSessionForPlan("Sunday", 0).id).toBe("daru-75-endurance");
+  it("keeps Wednesday alactic and rotates the Sunday aerobic bike", () => {
+    expect(pickBikeSessionForPlan("Wednesday", 0).id).toBe("daru-alactic");
+    expect(pickBikeSessionForPlan("Sunday", 0).id).toBe("jamieson-cardiac");
     expect(pickBikeSessionForPlan("Wednesday", 1).id).toBe("daru-alactic");
     expect(pickBikeSessionForPlan("Sunday", 1).id).toBe("jamieson-tempo");
-    expect(pickBikeSessionForPlan("Wednesday", 2).id).toBe("edwards-10-20");
+    expect(pickBikeSessionForPlan("Wednesday", 2).id).toBe("daru-alactic");
     expect(pickBikeSessionForPlan("Sunday", 2).id).toBe("jamieson-cardiac");
+    expect(pickBikeSessionForPlan("Sunday", 0, "peak").id).toBe("fight-pace");
     for (const week of [0, 1, 2, 3, 9]) {
       expect(pickBikeSessionForPlan("Wednesday", week).id).not.toBe(
         pickBikeSessionForPlan("Sunday", week).id,
@@ -217,7 +219,7 @@ describe("assault bike catalog", () => {
     expect(week.Tuesday.active).toBe(true);
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Thursday.summary).toBe("Bag+Lift");
-    expect(week.Friday.summary).toBe("Bag+Mobility");
+    expect(week.Friday.summary).toBe("Circuit+Mobility");
     expect(week.Saturday.summary).toBe("Sparring");
     expect(week.Sunday.summary).toBe("Cardio+Mobility");
 
@@ -226,7 +228,7 @@ describe("assault bike catalog", () => {
     expect(open.Wednesday.summary).toBe("Cardio+Mobility");
     expect(open.Sunday.summary).toBe("Cardio+Mobility");
     expect(open.Wednesday.sessions.some((session) => session.kind === "conditioning")).toBe(true);
-    expect(open.Sunday.sessions.find((session) => session.kind === "conditioning")?.dayNumber).toBe(7);
+    expect(open.Sunday.sessions.find((session) => session.kind === "conditioning")?.dayNumber).toBe(8);
     expect(open.Saturday.summary).toBe("Sparring");
     expect(
       coreSkeletonSessions("Wednesday", "mma").find((session) => session.kind === "conditioning"),
@@ -246,7 +248,7 @@ describe("assault bike catalog", () => {
       "Bag+Lift",
       "Cardio+Mobility",
       "Bag+Lift",
-      "Bag+Mobility",
+      "Circuit+Mobility",
       "Sparring",
       "Cardio+Mobility",
     ]);
@@ -325,9 +327,10 @@ describe("assault bike seeded days", () => {
   it("seeds the rotation days and the three full-body lifts", async () => {
     const program = await getDemoProgram();
     const numbers = program.days.map((row) => row.dayNumber);
-    expect(numbers).toEqual(expect.arrayContaining([1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 15, 17, 18, 20]));
+    expect(numbers).toEqual(
+      expect.arrayContaining([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 20, 21, 22]),
+    );
     expect(numbers).not.toContain(3);
-    expect(numbers).not.toContain(10);
 
     const alactic = program.days.find((row) => row.dayNumber === 5);
     expect(alactic?.exercises[0]?.name).toBe("Daru alactic power bike");
@@ -346,7 +349,8 @@ describe("assault bike seeded days", () => {
     const tuesday = program.days.find((row) => row.dayNumber === 2);
     expect(tuesday?.exercises.some((row) => row.name === "Rotational med-ball throw")).toBe(true);
     const thursdayLift = program.days.find((row) => row.dayNumber === 11);
-    expect(thursdayLift?.exercises.some((row) => row.name === "Landmine press")).toBe(true);
+    expect(thursdayLift?.exercises.some((row) => row.name === "Single-leg RDL")).toBe(true);
+    expect(tuesday?.exercises.some((row) => row.name === "Landmine press")).toBe(true);
     for (const name of ["Landmine press", "Rotational med-ball throw", "Trap-bar deadlift"]) {
       expect(creditForExercise(name)?.line).toMatch(/Phil Daru/);
     }

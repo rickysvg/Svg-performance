@@ -270,7 +270,7 @@ describe("scaled DEMO days in the database", () => {
     const skill = await findSkillProgram();
     const hold = strength.days
       .find((day) => day.dayNumber === 1)
-      ?.exercises.find((row) => row.name === "Neck extension hold");
+      ?.exercises.find((row) => row.name === "Neck isometric matrix");
     expect(hold?.logMode).toBe("timed");
     expect(hold?.loadText).toMatch(/RIR/i);
     const bag = skill?.days[0]?.exercises.find((row) => /bag rounds/i.test(row.name));
@@ -286,13 +286,13 @@ describe("scaled DEMO days in the database", () => {
       strength.days.flatMap((day) => day.exercises.map((row) => [row.name, row.logMode])),
     );
     expect(modes["Goblet squat"]).toBe("load_reps");
-    expect(modes["Dumbbell Romanian deadlift"]).toBe("load_reps");
+    expect(modes["Single-leg RDL"]).toBe("load_reps");
     expect(modes["Walking lunge"]).toBe("load_reps");
     expect(modes["Dumbbell bench press"]).toBe("load_reps");
     expect(modes["One-arm row"]).toBe("load_reps");
-    expect(modes["Overhead press"]).toBe("load_reps");
+    expect(modes["Single-arm overhead press"]).toBe("load_reps");
     expect(modes["Farmer carry"]).toBe("load_timed");
-    expect(modes["Lat pulldown"]).toBe("load_reps");
+    expect(modes["Pull-up"]).toBe("reps_only");
     expect(modes["Neck extension hold"]).toBe("timed");
     expect(modes["Neck isometric matrix"]).toBe("timed");
     expect(modes["Squat jump"]).toBe("reps_only");
@@ -340,7 +340,7 @@ describe("scaled DEMO days in the database", () => {
       preferredUnits: "lb",
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
     });
-    const hold = advanced.sets.filter((set) => set.exerciseName === "Neck extension hold");
+    const hold = advanced.sets.filter((set) => set.exerciseName === "Neck isometric matrix");
     expect(hold).toHaveLength(4);
     expect(hold[0]?.logMode).toBe("timed");
     expect(hold[0]?.durationSeconds).toBeNull();
@@ -354,7 +354,7 @@ describe("scaled DEMO days in the database", () => {
     expect(scaled.focus).toMatch(/advanced \/ competition/i);
     const bench = scaled.exercises.find((row) => row.name === "Dumbbell bench press");
     expect(bench?.sets).toBe(4);
-    expect(bench?.restSeconds).toBe(120);
+    expect(bench?.restSeconds).toBe(90);
     expect(bench?.loadText).toMatch(/2-3 RIR/);
     for (const exercise of scaled.exercises) {
       const rows = advanced.sets.filter((set) => set.exerciseName === exercise.name);

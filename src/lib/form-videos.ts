@@ -1,3 +1,5 @@
+import { combatFormVideoSeeds } from "@/lib/combat-library";
+
 /**
  * Curated YouTube form-reference catalog for the DEMO strength + skill programs.
  * These are external education links, not SVG-produced coaching videos.
@@ -82,12 +84,12 @@ const dbRdl = ready({
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Dumbbell Romanian Deadlift | Proper Form & Technique | NASM",
 });
-/** NASM form demo, 37s. Replaces the clickbait single-leg RDL thumbnail. */
+/** Form-video report clip. The demo window starts at 6:06 and ends at 7:28. */
 const singleLegRdl = ready({
-  url: "https://www.youtube.com/watch?v=6xdD0Ny0ztk",
-  seconds: 37,
-  channel: "National Academy of Sports Medicine (NASM)",
-  title: "How to Do a Single-Leg Romanian Deadlift to Cobra | Proper Form & Technique | NASM",
+  url: "https://youtu.be/Zfr6wizR8rs?t=366&end=448",
+  seconds: 82,
+  channel: "Squat University",
+  title: "Single-leg RDL",
 });
 const lunge = ready({
   url: "https://www.youtube.com/watch?v=xrPteyQLGAo",
@@ -632,6 +634,7 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Daru 75% endurance bike": airBike,
   "Jamieson cardiac output bike": airBike,
   "Leon Edwards 10/20 bike finisher": airBike,
+  "Fight-pace bike rounds": airBike,
   "Trap-bar deadlift": trapBar,
   "Floor press": floorPress,
   "Landmine press": landminePress,
@@ -821,6 +824,17 @@ const MOBILITY_FORM_VIDEOS: Record<string, FormVideoSeed> = {
 };
 
 Object.assign(DEMO_FORM_VIDEOS, MOBILITY_FORM_VIDEOS);
+
+for (const [name, seed] of Object.entries(combatFormVideoSeeds())) {
+  if (DEMO_FORM_VIDEOS[name]) continue;
+  DEMO_FORM_VIDEOS[name] = {
+    url: seed.url,
+    pending: seed.pending,
+    channel: seed.channel,
+    title: seed.title,
+    seconds: seed.seconds,
+  };
+}
 
 export function mobilityVideoUrl(name: string) {
   return MOBILITY_FORM_VIDEOS[name]?.url ?? "";

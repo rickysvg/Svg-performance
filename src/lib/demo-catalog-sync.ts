@@ -1,3 +1,4 @@
+import { libraryReviewQueue } from "@/lib/combat-library";
 import { prisma } from "@/lib/prisma";
 import {
   BIKE_SESSIONS,
@@ -45,6 +46,13 @@ export type DemoCatalogSyncResult = {
   ok: true;
   /** Workout rows and open drafts are never rewritten. */
   sessionsUntouched: true;
+  library: {
+    total: number;
+    live: number;
+    held: number;
+    needsReview: number;
+    needsTrim: number;
+  };
   programs: Array<{
     slug: string;
     created: boolean;
@@ -117,7 +125,7 @@ export function normalizeCatalogExercise(
     if (/\bplank\b/i.test(exercise.name) && restSeconds < 60) restSeconds = 60;
   }
   if (logMode === "load_timed") {
-    const hasMeter = /meter/i.test(reps);
+    const hasMeter = /meter|\b\d+\s*m\b/i.test(reps);
     const hasTime = /\bsec\b|\d+\s*:/i.test(reps);
     if (!hasMeter && !hasTime) reps = "30–40 sec";
   }
@@ -180,7 +188,7 @@ export function desiredDemoPrograms(): CatalogProgram[] {
       slug: STRENGTH_SLUG,
       title: "DEMO — Strength Base for Class",
       description:
-        "Three full-body lift days (Monday, Tuesday, Thursday) plus the Daru, Jamieson, and Edwards bike rotation on Wednesday and Sunday. Bag work lives in Combat Skills. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
+        "Three full-body lift days (Monday, Tuesday, Thursday), a Friday circuit, Wednesday alactic bike, and Sunday aerobic bike. Bag work lives in Combat Skills. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
       days: [
         ...daysFromSeed(STRENGTH_SLUG, demoStrengthDays()),
         ...BIKE_SESSIONS.map((session) => bikeProgramDay(session)),
@@ -343,7 +351,19 @@ export async function syncDemoCatalog(): Promise<DemoCatalogSyncResult> {
       orphanDaysRemoved,
     });
   }
-  return { ok: true, sessionsUntouched: true, programs };
+  const queue = libraryReviewQueue();
+  return {
+    ok: true,
+    sessionsUntouched: true,
+    library: {
+      total: queue.total,
+      live: queue.live,
+      held: queue.held,
+      needsReview: queue.needsReview.length,
+      needsTrim: queue.needsTrim.length,
+    },
+    programs,
+  };
 }
 
 let inflight: Promise<DemoCatalogSyncResult> | null = null;

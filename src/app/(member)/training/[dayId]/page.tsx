@@ -28,6 +28,7 @@ import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { BagFocusList } from "@/components/training/BagFocusList";
 import { bagFocusLines } from "@/lib/bag-themes";
+import { MethodExplainer } from "@/components/training/MethodExplainer";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
 import { isDeloadWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
@@ -163,6 +164,7 @@ export default async function TrainingDayPage({
           minutes={minutes}
           exerciseCount={exercises.length}
         />
+        <MethodExplainer />
 
         {deload ? (
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>

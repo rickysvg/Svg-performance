@@ -21,7 +21,7 @@ const LOADED_GEAR_NAME =
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
 const WEIGHTED_LIFT_NAME =
-  /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|floor press|one-arm row|\brow\b|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat|med-?ball|medicine ball)\b/i;
+  /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|push press|floor press|one-arm row|\brow\b|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat|zercher|sandbag|\bsquat\b|med-?ball|medicine ball)\b/i;
 const LOADED_OPTION_NAME = /\b(dumbbell|barbell|kettlebell|bench press|bar )\b/i;
 
 export function isLogMode(value: string | null | undefined): value is LogMode {

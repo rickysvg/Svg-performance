@@ -13,6 +13,7 @@ export function ReseedCatalogButton() {
       const response = await fetch("/api/admin/reseed-catalog", { method: "POST" });
       const payload = (await response.json().catch(() => null)) as {
         programs?: { daysUpdated?: number }[];
+        library?: { live?: number; held?: number };
       } | null;
       if (!response.ok) {
         setState("error");
@@ -23,11 +24,16 @@ export function ReseedCatalogButton() {
         (sum, row) => sum + (Number(row.daysUpdated) || 0),
         0,
       );
+      const library = payload?.library;
+      const counts =
+        library && typeof library.live === "number" && typeof library.held === "number"
+          ? ` ${library.live} exercises live, ${library.held} held for review.`
+          : "";
       setState("done");
       setDetail(
         updated > 0
-          ? `${updated} days updated. Logged sessions were left alone.`
-          : "Catalog refreshed. Logged sessions were left alone.",
+          ? `${updated} days updated. Logged sessions were left alone.${counts}`
+          : `Catalog refreshed. Logged sessions were left alone.${counts}`,
       );
     } catch {
       setState("error");

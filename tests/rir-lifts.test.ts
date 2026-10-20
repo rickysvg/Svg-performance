@@ -3,6 +3,7 @@ import { demoStrengthDays } from "@/lib/demo-week-seed";
 import { fallbackLogMode, plannedSetLine } from "@/lib/exercise-log-mode";
 import { DEMO_FORM_VIDEOS } from "@/lib/form-videos";
 import { isGppStrengthDay, STRENGTH_DAY_BY_BLOCK, weekInBlock } from "@/lib/mesocycle";
+import { catalogSlot } from "@/lib/v2-lifts";
 import { mergeLoadText, percentFromLoadText, rirFromLoadText } from "@/lib/rir";
 import { scaleExercise } from "@/lib/training-scale";
 
@@ -66,16 +67,20 @@ describe("harder fighter lift days", () => {
     return day!.exercises.create;
   }
 
-  it("runs 6 exercises of 4 sets on Monday, Tuesday, and Thursday", () => {
+  it("runs 4-set full-body menus and a Friday circuit", () => {
     for (const block of Object.values(STRENGTH_DAY_BY_BLOCK)) {
-      for (const dayNumber of [block.monday, block.tuesday, block.thursday]) {
+      for (const dayNumber of [block.monday, block.tuesday, block.thursday, block.friday]) {
         const rows = exercisesFor(dayNumber);
-        expect(rows).toHaveLength(6);
-        for (const row of rows) expect(row.sets, row.name).toBe(4);
+        expect(rows.length, `day ${dayNumber}`).toBeGreaterThanOrEqual(8);
+        for (const row of rows) {
+          const sets = catalogSlot(row.notes) === "warmup" ? 2 : 4;
+          expect(row.sets, row.name).toBe(sets);
+        }
       }
+      expect(isGppStrengthDay(block.friday)).toBe(true);
     }
     expect(days.find((day) => day.dayNumber === 2)?.title).toBe("Lift 2 — Full body");
-    expect(isGppStrengthDay(10)).toBe(false);
+    expect(isGppStrengthDay(4)).toBe(false);
   });
 
   it("stores an RIR cue on every loaded or counted lift", () => {
@@ -119,7 +124,7 @@ describe("harder fighter lift days", () => {
     const bench = monday.find((row) => row.name === "Dumbbell bench press");
     expect(monday.filter((row) => row.name === "Dumbbell bench press")).toHaveLength(1);
     expect(monday.some((row) => row.name === "Single-arm dumbbell bench press")).toBe(false);
-    expect(bench?.restSeconds).toBe(120);
+    expect(bench?.restSeconds).toBe(90);
     expect(bench?.formVideoUrl).toMatch(/O7ECGhZj_Hc/);
     expect(DEMO_FORM_VIDEOS["Single-arm dumbbell bench press"]?.url).toMatch(/qFTnmyC-nf4/);
     expect(DEMO_FORM_VIDEOS["Dumbbell bench press"]?.url).toMatch(/O7ECGhZj_Hc/);
@@ -134,7 +139,7 @@ describe("harder fighter lift days", () => {
     expect(heavy.sets).toBe(4);
     expect(heavy.reps).toBe("3");
     expect(rirFromLoadText(heavy.loadText)).toBe("0-1 RIR");
-    expect(heavy.loadText).toMatch(/back off/i);
+    expect(heavy.loadText).toMatch(/88%/);
     expect(heavy.restSeconds).toBe(150);
     expect(heavy.notes).not.toMatch(/@@weeks/);
 
@@ -149,7 +154,7 @@ describe("harder fighter lift days", () => {
     expect(light.restSeconds).toBeGreaterThanOrEqual(75);
 
     const suitcase = exercisesFor(11).find((row) => row.name === "Suitcase carry");
-    expect(suitcase?.reps).toBe("30 meters / side");
-    expect(percentFromLoadText(suitcase?.loadText)).toMatch(/bodyweight/i);
+    expect(suitcase?.reps).toBe("20 m / side");
+    expect(rirFromLoadText(suitcase?.loadText)).toBe("2-3 RIR");
   });
 });

@@ -218,7 +218,7 @@ describe("workout logger media and previous loads", () => {
     });
     expect(draft.sets.length).toBeGreaterThan(0);
     expect(draft.sets.some((set) => set.exerciseName === "Trap-bar deadlift")).toBe(true);
-    expect(draft.sets.some((set) => set.exerciseName === "Neck extension hold")).toBe(true);
+    expect(draft.sets.some((set) => set.exerciseName === "Neck isometric matrix")).toBe(true);
     for (const set of draft.sets) {
       expect(set.reps, set.exerciseName).toBeNull();
       expect(set.loadValue, set.exerciseName).toBeNull();
@@ -265,14 +265,14 @@ describe("workout logger media and previous loads", () => {
   it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {
     const user = await makeUser("carry-logger@example.com");
     const program = await getDemoProgram();
-    const day = program.days.find((row) => row.dayNumber === 2)!;
+    const day = program.days.find((row) => row.dayNumber === 1)!;
     const draft = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day.id,
       preferredUnits: "lb",
     });
     const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
-    const pulldown = draft.sets.filter((set) => set.exerciseName === "Lat pulldown");
+    const pulldown = draft.sets.filter((set) => set.exerciseName === "One-arm row");
     expect(carry.length).toBeGreaterThan(0);
     expect(carry[0]?.logMode).toBe("load_timed");
     expect(carry[0]?.durationSeconds).toBeNull();
@@ -318,12 +318,12 @@ describe("workout logger media and previous loads", () => {
       scale: { experienceLevel: "advanced", competitionStatus: "pro" },
       deload: true,
     });
-    const pull = draft.sets.filter((set) => set.exerciseName === "Lat pulldown");
-    const carry = draft.sets.filter((set) => set.exerciseName === "Farmer carry");
+    const pull = draft.sets.filter((set) => set.exerciseName === "Chest-supported dumbbell row");
+    const press = draft.sets.filter((set) => set.exerciseName === "Landmine press");
     expect(pull).toHaveLength(4);
-    expect(carry).toHaveLength(4);
+    expect(press).toHaveLength(4);
     expect(pull[0]?.logMode).toBe("load_reps");
-    expect(carry[0]?.logMode).toBe("load_timed");
+    expect(press[0]?.logMode).toBe("load_reps");
     expect(draft.notes).toMatch(/prescribed set/i);
   });
 });

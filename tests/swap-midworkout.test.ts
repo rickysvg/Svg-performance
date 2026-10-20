@@ -111,7 +111,9 @@ describe("mid-workout swap", () => {
       timeZone: APP_TIMEZONE,
     });
     expect(session.sets.filter((set) => set.exerciseName === "Dumbbell bench press").length).toBeGreaterThan(0);
-    const neighbor = session.sets.find((set) => set.exerciseName !== "Dumbbell bench press");
+    const neighbor = session.sets.find(
+      (set) => set.exerciseName === "One-arm row" && set.setNumber === 1,
+    );
     expect(neighbor).toBeTruthy();
 
     const withLogs = session.sets.map((set) => ({

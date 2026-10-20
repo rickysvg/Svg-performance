@@ -33,6 +33,8 @@ export type DayRole = {
   bag: BagIntensity | null;
   cardio: CardioKind | null;
   mobility: "primary" | "secondary" | null;
+  /** Off-season Friday circuit. Camp swaps or drops it. */
+  gpp: boolean;
   outside: OutsideDay | null;
 };
 
@@ -245,13 +247,8 @@ export function assignWeek(input: {
   );
   const blocked = new Set<TrainingWeekday>([...sparring, ...classDays]);
   const preClass = new Set<TrainingWeekday>();
-  const preSpar = new Set<TrainingWeekday>();
-  const pre = new Set<TrainingWeekday>();
   for (const day of outside) {
-    const before = prevWeekday(day.weekday);
-    pre.add(before);
-    if (day.kind === "sparring") preSpar.add(before);
-    else preClass.add(before);
+    if (day.kind === "class") preClass.add(prevWeekday(day.weekday));
   }
 
   const roles = {} as Record<TrainingWeekday, DayRole>;
@@ -261,6 +258,7 @@ export function assignWeek(input: {
       bag: null,
       cardio: null,
       mobility: null,
+      gpp: false,
       outside: byDay.get(day) ?? null,
     };
   }
@@ -272,8 +270,6 @@ export function assignWeek(input: {
     roles.Saturday.outside = saturday;
     sparring.add("Saturday");
     blocked.add("Saturday");
-    pre.add(prevWeekday("Saturday"));
-    preSpar.add(prevWeekday("Saturday"));
   }
 
   const liftOrder: TrainingWeekday[] = ["Monday", "Tuesday", "Thursday"];
@@ -301,13 +297,14 @@ export function assignWeek(input: {
       ["Monday", "hard"],
       ["Tuesday", "moderate"],
       ["Thursday", "hard"],
-      ["Friday", preSpar.has("Friday") ? "moderate" : "hard"],
     ];
     for (const [day, intensity] of bagPlan) {
       if (sparring.has(day) || classDays.has(day) || preClass.has(day)) continue;
       roles[day].bag = intensity;
     }
   }
+
+  if (!blocked.has("Friday")) roles.Friday.gpp = true;
 
   for (const day of ORDER) {
     const role = roles[day];

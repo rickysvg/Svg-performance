@@ -103,8 +103,10 @@ describe("QA Oct 20", () => {
     expect(REMOVE_TOAST_MS).toBe(8000);
   });
 
-  it("uses the NASM single-leg clip and a real video for step-out and stick", () => {
-    expect(DEMO_FORM_VIDEOS["Single-leg RDL"]?.url).toContain("6xdD0Ny0ztk");
+  it("uses the Squat University single-leg clip and a real video for step-out and stick", () => {
+    expect(DEMO_FORM_VIDEOS["Single-leg RDL"]?.url).toContain("Zfr6wizR8rs");
+    expect(DEMO_FORM_VIDEOS["Single-leg RDL"]?.url).toContain("t=366");
+    expect(DEMO_FORM_VIDEOS["Single-leg RDL"]?.url).toContain("end=448");
     expect(DEMO_FORM_VIDEOS["Single-leg RDL"]?.title).not.toMatch(/BEST|Master/i);
     const step = lookupFormVideo("Step-out and stick");
     expect(showFormVideoPending(step)).toBe(false);

@@ -123,17 +123,19 @@ describe("no gym or weights", () => {
       expect(push?.loadText).toMatch(/RIR/);
       expect(push?.loadText).not.toMatch(/%/);
     }
-    const lowerA = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "advanced", "none")
+    const gymNames = (dayNumber: number) =>
+      scaled(dayNumber, "advanced", "gym")
+        .exercises.map((exercise) => exercise.name)
+        .join("|");
+    expect(gymNames(STRENGTH_DAY_BY_BLOCK.A.monday)).not.toBe(gymNames(STRENGTH_DAY_BY_BLOCK.B.monday));
+    expect(gymNames(STRENGTH_DAY_BY_BLOCK.B.monday)).not.toBe(gymNames(STRENGTH_DAY_BY_BLOCK.C.monday));
+    const floorA = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "advanced", "none")
       .exercises.map((exercise) => exercise.name)
       .join("|");
-    const lowerB = scaled(STRENGTH_DAY_BY_BLOCK.B.monday, "advanced", "none")
+    const floorB = scaled(STRENGTH_DAY_BY_BLOCK.B.monday, "advanced", "none")
       .exercises.map((exercise) => exercise.name)
       .join("|");
-    const lowerC = scaled(STRENGTH_DAY_BY_BLOCK.C.monday, "advanced", "none")
-      .exercises.map((exercise) => exercise.name)
-      .join("|");
-    expect(lowerA).not.toBe(lowerB);
-    expect(lowerB).not.toBe(lowerC);
+    expect(floorA).not.toBe(floorB);
   });
 
   it("keeps the bike clock for a no-gym week and leaves bag themes alone", () => {

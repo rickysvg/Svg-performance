@@ -264,6 +264,18 @@ function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number)
     });
   }
   if (role.lift) sessions.push({ ...liftSlot(role.lift, weekIndex), heavy: true });
+  if (role.gpp) {
+    const circuit = strengthDaysForWeek(weekIndex).friday;
+    sessions.push({
+      kind: "conditioning",
+      label: "Friday circuit",
+      title: "Friday circuit",
+      detail: "General prep. 2–3 RIR. Nothing to failure.",
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: circuit,
+      heavy: false,
+    });
+  }
   if (role.cardio === "hard-bike" || role.cardio === "hard" || role.cardio === "hard-repeats") {
     const bikeDay = weekday === "Sunday" ? "Sunday" : "Wednesday";
     sessions.push({
@@ -291,6 +303,7 @@ function summaryForRole(role: DayRole, active: boolean) {
   const parts: string[] = [];
   if (role.bag) parts.push("Bag");
   if (role.lift) parts.push("Lift");
+  if (role.gpp) parts.push("Circuit");
   if (role.cardio) parts.push("Cardio");
   if (role.mobility) parts.push("Mobility");
   return parts.join("+") || "Rest";
