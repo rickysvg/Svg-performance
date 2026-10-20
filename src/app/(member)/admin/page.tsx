@@ -1,6 +1,11 @@
 import { getProfileForUser } from "@/lib/profile";
 import { requireDashboardAdmin } from "@/lib/admin-access";
 import { getAdminDeskCounts } from "@/lib/admin-dashboard";
+import {
+  coachingCapacityTone,
+  deskTone,
+  foundingDealTone,
+} from "@/lib/admin-desk-status";
 import { AdminTile } from "@/components/admin/AdminTile";
 
 export default async function AdminPage() {
@@ -10,7 +15,15 @@ export default async function AdminPage() {
     getAdminDeskCounts(),
   ]);
   const name = profile?.displayName?.trim().split(/\s+/)[0] || "Coach";
-  const feedbackBadge = counts.feedbackNew + counts.feelFlags;
+  const feedbackWaiting = counts.feedbackNew + counts.feelFlags;
+  const contentWaiting = counts.pendingVideos + counts.pendingLessons;
+  const formTone = deskTone(counts.formChecks, counts.formChecksReviewed);
+  const checkTone = deskTone(counts.checkIns, counts.checkInsAnswered);
+  const coachTone = coachingCapacityTone(counts.coachingUsed, counts.coachingCap);
+  const dealTone = foundingDealTone(counts.foundingClaimed, counts.foundingCap);
+  const revenueTone = deskTone(counts.failedPayments, counts.paidCurrent);
+  const feedbackTone = deskTone(feedbackWaiting, counts.recentRatings + counts.feedbackClosed);
+  const contentTone = deskTone(contentWaiting, counts.contentReady);
 
   return (
     <main className="space-y-6 pb-8" data-admin-desk="1">
@@ -31,20 +44,34 @@ export default async function AdminPage() {
           wide
           href="/admin/form-checks"
           label="Form checks"
-          hint={counts.formChecks > 0 ? `${counts.formChecks} waiting` : "Queue is clear"}
+          hint={
+            counts.formChecks > 0
+              ? `${counts.formChecks} waiting`
+              : counts.formChecksReviewed > 0
+                ? "Queue is clear"
+                : "No clips yet"
+          }
           src="/tiles/form-check.webp"
           alt="Athlete filming a form check in a dark gym"
           badge={counts.formChecks}
-          alert={counts.formChecks > 0}
+          tone={formTone}
         />
         <AdminTile
           href="/coach/checkins"
           label="Check-ins"
-          hint={counts.checkInFlags > 0 ? `${counts.checkInFlags} flagged` : "Weekly forms"}
+          hint={
+            counts.checkIns > 0
+              ? counts.checkInFlags > 0
+                ? `${counts.checkInFlags} flagged`
+                : `${counts.checkIns} waiting`
+              : counts.checkInsAnswered > 0
+                ? "All answered"
+                : "Weekly forms"
+          }
           src="/tiles/calendar.webp"
           alt="Athlete checking off training days on a whiteboard"
           badge={counts.checkIns}
-          alert={counts.checkInFlags > 0}
+          tone={checkTone}
         />
         <AdminTile
           href="/admin/members"
@@ -52,54 +79,83 @@ export default async function AdminPage() {
           hint="Plan, streak, week"
           src="/tiles/progress.webp"
           alt="Athlete standing after a session"
-          badge={counts.members}
+          tone="idle"
         />
         <AdminTile
           href="/admin/coaching"
           label="Coaching"
-          hint={`${counts.coachingUsed} / ${counts.coachingCap} spots`}
+          hint={
+            coachTone === "attention"
+              ? counts.coachingUsed >= counts.coachingCap
+                ? `${counts.coachingUsed} / ${counts.coachingCap} full`
+                : `${counts.coachingUsed} / ${counts.coachingCap} almost full`
+              : `${counts.coachingUsed} / ${counts.coachingCap} spots`
+          }
           src="/tiles/coach.webp"
           alt="Coach holding mitts in a dark gym"
-          badge={counts.coachingUsed}
-          alert={counts.coachingFull}
+          badge={counts.coachingCap - counts.coachingUsed <= 0 ? counts.coachingUsed : counts.coachingCap - counts.coachingUsed}
+          tone={coachTone}
         />
         <AdminTile
           href="/admin/founding"
           label="Founding"
-          hint={`${counts.foundingRemaining} left of ${counts.foundingCap}`}
+          hint={
+            dealTone === "clear"
+              ? `All ${counts.foundingCap} claimed`
+              : `${counts.foundingRemaining} left of ${counts.foundingCap}`
+          }
           icon="founding"
-          badge={counts.foundingClaimed}
-          alert={counts.foundingRemaining === 0 && counts.foundingClaimed > 0}
+          tone={dealTone}
         />
         <AdminTile
           href="/admin/revenue"
           label="Revenue"
-          hint={counts.activePro > 0 ? `${counts.activePro} active Pro` : "Pro, trials, conversions"}
+          hint={
+            counts.failedPayments > 0
+              ? `${counts.failedPayments} failed`
+              : counts.activePro > 0
+                ? `${counts.activePro} active Pro`
+                : "Pro, trials, conversions"
+          }
           icon="revenue"
-          badge={counts.activePro}
+          badge={counts.failedPayments}
+          tone={revenueTone}
         />
         <AdminTile
           href="/admin/feedback"
           label="Feedback"
-          hint={counts.feelFlags > 0 ? `${counts.feelFlags} session flags` : "Ratings and notes"}
+          hint={
+            feedbackWaiting > 0
+              ? `${feedbackWaiting} to review`
+              : feedbackTone === "clear"
+                ? "All caught up"
+                : "Ratings and notes"
+          }
           icon="feedback"
-          badge={feedbackBadge}
-          alert={counts.feelFlags > 0 || counts.feedbackNew > 0}
+          badge={feedbackWaiting}
+          tone={feedbackTone}
         />
         <AdminTile
           href="/admin/content"
           label="Content"
-          hint={counts.pendingVideos > 0 ? `${counts.pendingVideos} videos pending` : "Catalog and lessons"}
+          hint={
+            contentWaiting > 0
+              ? `${contentWaiting} to review`
+              : contentTone === "clear"
+                ? "Catalog is current"
+                : "Catalog and lessons"
+          }
           src="/tiles/learn.webp"
           alt="Two athletes drilling a takedown"
-          badge={counts.pendingVideos}
-          alert={counts.pendingVideos > 0}
+          badge={contentWaiting}
+          tone={contentTone}
         />
         <AdminTile
           href="/admin/announcements"
           label="Announce"
           hint="Draft a push or email"
           icon="announce"
+          tone="idle"
         />
       </section>
     </main>

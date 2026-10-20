@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { DeskTone } from "@/lib/admin-desk-status";
+import { DeskCheck } from "@/components/admin/DeskStatus";
 
 export type AdminTileIcon = "founding" | "revenue" | "feedback" | "announce";
 
@@ -42,7 +44,7 @@ export function AdminTile({
   alt = "",
   icon,
   badge,
-  alert = false,
+  tone = "idle",
   wide = false,
 }: {
   href: string;
@@ -52,15 +54,22 @@ export function AdminTile({
   alt?: string;
   icon?: AdminTileIcon;
   badge?: number | null;
-  alert?: boolean;
+  tone?: DeskTone;
   wide?: boolean;
 }) {
-  const ring = alert ? "ring-[#FF3B3B]/80" : "ring-[#cbf805]/40";
+  const frame =
+    tone === "attention"
+      ? "ring-2 ring-[#FF3B3B] shadow-[0_0_18px_rgba(255,59,59,0.45)]"
+      : tone === "clear"
+        ? "ring-2 ring-[#CBF805] shadow-[0_0_18px_rgba(203,248,5,0.4)]"
+        : "ring-1 ring-white/15";
+  const showBadge = tone === "attention" && badge != null && badge > 0;
   return (
     <Link
       href={href}
       data-admin-tile={label}
-      className={`relative block min-w-0 w-full overflow-hidden rounded-[1.25rem] bg-black ring-1 ${ring} ${
+      data-desk-tone={tone}
+      className={`relative block min-w-0 w-full overflow-hidden rounded-[1.25rem] bg-black ${frame} ${
         wide ? "col-span-2 aspect-[16/9]" : "aspect-[4/3]"
       }`}
     >
@@ -85,17 +94,24 @@ export function AdminTile({
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"
       />
       <span aria-hidden className="hc-corners" />
-      {badge != null && badge > 0 ? (
-        <span
-          className={`absolute right-2.5 top-2.5 z-10 min-w-6 rounded-full px-1.5 py-0.5 text-center font-telemetry text-[11px] ${
-            alert ? "bg-[#FF3B3B] text-white" : "bg-[#CBF805] text-black"
-          }`}
-        >
+      {showBadge ? (
+        <span className="absolute right-2.5 top-2.5 z-10 min-w-6 rounded-full bg-[#FF3B3B] px-1.5 py-0.5 text-center font-telemetry text-[11px] text-white">
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
+      {tone === "clear" ? (
+        <span className="absolute right-2.5 top-2.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#CBF805] text-black">
+          <DeskCheck />
+          <span className="sr-only">Clear</span>
+        </span>
+      ) : null}
       <span className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-8">
-        <span aria-hidden className={`mb-1.5 block h-0.5 w-6 rounded-full ${alert ? "bg-[#FF3B3B]" : "bg-accent"}`} />
+        <span
+          aria-hidden
+          className={`mb-1.5 block h-0.5 w-6 rounded-full ${
+            tone === "attention" ? "bg-[#FF3B3B]" : tone === "clear" ? "bg-[#CBF805]" : "bg-white/25"
+          }`}
+        />
         <span className="font-display block text-lg uppercase leading-tight tracking-wide text-white">
           {label}
         </span>

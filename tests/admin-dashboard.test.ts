@@ -10,6 +10,16 @@ import {
   memberPlanSnapshot,
   revenueSnapshot,
 } from "@/lib/admin-dashboard";
+import {
+  COACHING_NEAR_SEATS,
+  coachingCapacityTone,
+  deskTone,
+  foundingDealTone,
+  isFailedPaymentStatus,
+  memberListTone,
+  queueItemTone,
+  weekDayTone,
+} from "@/lib/admin-desk-status";
 import { validateAnnouncementDraft } from "@/lib/announcements";
 import { isDashboardAdmin } from "@/lib/admin-access";
 
@@ -149,7 +159,13 @@ describe("coach desk access and counters", () => {
     expect(desk).toContain("Content");
     expect(desk).toContain("Announce");
     expect(desk.indexOf("Form checks")).toBeLessThan(desk.indexOf("Check-ins"));
-    expect(read("src/components/admin/AdminTile.tsx")).toContain("#FF3B3B");
+    const tile = read("src/components/admin/AdminTile.tsx");
+    expect(tile).toContain("#FF3B3B");
+    expect(tile).toContain("#CBF805");
+    expect(tile).toContain("data-desk-tone");
+    expect(desk).toContain('tone="idle"');
+    expect(desk).toContain("deskTone");
+    expect(desk).toContain("coachingCapacityTone");
     expect(desk).not.toContain("Pilot toolkit");
     const form = read("src/components/form-check/FormCheckReviewForm.tsx");
     expect(form).toContain("Chin tucked.");
@@ -158,5 +174,34 @@ describe("coach desk access and counters", () => {
     expect(back).toContain("AdminBack");
     const ai = read("src/lib/weekly-checkin-ai.ts");
     expect(ai).toContain("checkInAiEnabled");
+  });
+
+  it("colors a tile red only while work is open, then lime, otherwise neutral", () => {
+    expect(deskTone(2, 4)).toBe("attention");
+    expect(deskTone(0, 4)).toBe("clear");
+    expect(deskTone(0, 0)).toBe("idle");
+    expect(queueItemTone(false)).toBe("attention");
+    expect(queueItemTone(true)).toBe("clear");
+  });
+
+  it("flags coaching when the cap is near or full, and founding only when the deal is filled", () => {
+    expect(COACHING_NEAR_SEATS).toBe(2);
+    expect(coachingCapacityTone(17, 20)).toBe("idle");
+    expect(coachingCapacityTone(18, 20)).toBe("attention");
+    expect(coachingCapacityTone(20, 20)).toBe("attention");
+    expect(foundingDealTone(12, 40)).toBe("idle");
+    expect(foundingDealTone(40, 40)).toBe("clear");
+    expect(isFailedPaymentStatus("past_due")).toBe(true);
+    expect(isFailedPaymentStatus("unpaid")).toBe(true);
+    expect(isFailedPaymentStatus("active")).toBe(false);
+    expect(isFailedPaymentStatus("incomplete")).toBe(false);
+  });
+
+  it("marks a missed week red and a completed week lime", () => {
+    expect(memberListTone([{ missed: true, completed: false }])).toBe("attention");
+    expect(memberListTone([{ missed: false, completed: true }])).toBe("clear");
+    expect(memberListTone([{ missed: false, completed: false }])).toBe("idle");
+    expect(weekDayTone({ missed: true, completed: false })).toBe("attention");
+    expect(weekDayTone({ missed: false, completed: true })).toBe("clear");
   });
 });

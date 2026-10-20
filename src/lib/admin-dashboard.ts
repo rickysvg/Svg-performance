@@ -14,6 +14,7 @@ import { planForDate } from "@/lib/week-plan";
 import { buildTrainingStreak, plannerPrefsFromProfile, type WeekStreakDot } from "@/lib/streaks";
 import { civilDayInstant } from "@/lib/performed-at";
 import { APP_TIMEZONE, addZonedDays, isValidTimeZone, mondayOfZoned } from "@/lib/timezone";
+import { isFailedPaymentStatus } from "@/lib/admin-desk-status";
 
 /** Admin-only counter. Never render this on a public page. */
 export const FOUNDING_DEAL_CAP = 40;
@@ -361,12 +362,19 @@ export async function getRevenueDesk(now = new Date()) {
   const trials = profiles.filter(
     (row) => isTrialActive(row.trialEndsAt, now) && !paid.has(row.userId),
   );
+  const failedRows = subscriptions.filter((row) => isFailedPaymentStatus(row.status));
   return {
     ...snapshot,
     wired: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
+    failedPayments: failedRows.length,
     activeProRows: activeProRows.map((row) => ({
       email: row.user.email,
       name: row.user.profile?.displayName?.trim() || row.user.email,
+    })),
+    failedRows: failedRows.map((row) => ({
+      email: row.user.email,
+      name: row.user.profile?.displayName?.trim() || row.user.email,
+      status: row.status,
     })),
     trialRows: trials.map((row) => ({
       email: row.user.email,
@@ -454,50 +462,75 @@ export async function listSessionFeel(now = new Date()) {
 
 export async function getAdminDeskCounts(now = new Date()) {
   const since = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000);
-  const [formChecks, checkInRows, members, subs, feedbackNew, feelRows, exercises, profiles] =
-    await Promise.all([
-      prisma.formCheck.count({ where: { status: { not: "reviewed" } } }),
-      prisma.weeklyCheckIn.findMany({
-        where: { coachStatus: "pending" },
-        select: { aiFlagsJson: true },
-      }),
-      prisma.user.count({ where: { role: "member" } }),
-      prisma.subscription.findMany({
-        where: { status: "active" },
-        select: {
-          userId: true,
-          plan: true,
-          status: true,
-          currentPeriodEnd: true,
-          founding: true,
-        },
-      }),
-      prisma.memberFeedback.count({ where: { status: "new" } }),
-      prisma.workoutSession.findMany({
-        where: {
-          status: "complete",
-          difficultyRating: { not: "" },
-          performedAt: { gte: since },
-        },
-        orderBy: { performedAt: "desc" },
-        take: 120,
-        select: { userId: true, difficultyRating: true, performedAt: true },
-      }),
-      prisma.programExercise.findMany({
-        where: { formVideoPending: true },
-        select: { name: true },
-      }),
-      prisma.profile.findMany({
-        select: { userId: true, trialEndsAt: true, trialStartedAt: true },
-      }),
-    ]);
+  const [
+    formChecks,
+    formChecksReviewed,
+    checkInRows,
+    checkInsAnswered,
+    members,
+    subs,
+    failedPayments,
+    feedbackNew,
+    feedbackClosed,
+    feelRows,
+    exercises,
+    pendingLessons,
+    readyExercises,
+    readyLessons,
+    profiles,
+  ] = await Promise.all([
+    prisma.formCheck.count({ where: { status: { not: "reviewed" } } }),
+    prisma.formCheck.count({ where: { status: "reviewed" } }),
+    prisma.weeklyCheckIn.findMany({
+      where: { coachStatus: "pending" },
+      select: { aiFlagsJson: true },
+    }),
+    prisma.weeklyCheckIn.count({ where: { coachStatus: { not: "pending" } } }),
+    prisma.user.count({ where: { role: "member" } }),
+    prisma.subscription.findMany({
+      where: { status: "active" },
+      select: {
+        userId: true,
+        plan: true,
+        status: true,
+        currentPeriodEnd: true,
+        founding: true,
+      },
+    }),
+    prisma.subscription.count({ where: { status: { in: ["past_due", "unpaid"] } } }),
+    prisma.memberFeedback.count({ where: { status: "new" } }),
+    prisma.memberFeedback.count({ where: { status: { in: ["reviewed", "done"] } } }),
+    prisma.workoutSession.findMany({
+      where: {
+        status: "complete",
+        difficultyRating: { not: "" },
+        performedAt: { gte: since },
+      },
+      orderBy: { performedAt: "desc" },
+      take: 120,
+      select: { userId: true, difficultyRating: true, performedAt: true },
+    }),
+    prisma.programExercise.findMany({
+      where: { formVideoPending: true },
+      select: { name: true },
+    }),
+    prisma.lesson.count({ where: { OR: [{ videoPending: true }, { youtubeUrl: "" }] } }),
+    prisma.programExercise.count({ where: { formVideoPending: false } }),
+    prisma.lesson.count({ where: { videoPending: false, NOT: { youtubeUrl: "" } } }),
+    prisma.profile.findMany({
+      select: { userId: true, trialEndsAt: true, trialStartedAt: true },
+    }),
+  ]);
 
   const coachingUsers = new Set<string>();
+  const paidUsers = new Set<string>();
   let foundingClaimed = 0;
   for (const sub of subs) {
     if (sub.founding) foundingClaimed += 1;
     if (!liveSub(sub, now)) continue;
-    if (normalizePlanId(sub.plan) === "coaching") coachingUsers.add(sub.userId);
+    const planId = normalizePlanId(sub.plan);
+    if (planId === "coaching") coachingUsers.add(sub.userId);
+    if (planId !== "member_access" && planId !== "academy") paidUsers.add(sub.userId);
   }
   const coaching = coachingDesk(coachingUsers.size);
   const founding = foundingDeal(foundingClaimed);
@@ -537,7 +570,15 @@ export async function getAdminDeskCounts(now = new Date()) {
     trials: revenue.trials,
     conversions: revenue.conversions,
     feedbackNew,
+    feedbackClosed,
+    recentRatings: feelRows.length,
     feelFlags,
     pendingVideos: new Set(exercises.map((row) => row.name)).size,
+    pendingLessons,
+    contentReady: readyExercises + readyLessons,
+    formChecksReviewed,
+    checkInsAnswered,
+    failedPayments,
+    paidCurrent: paidUsers.size,
   };
 }

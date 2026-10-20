@@ -3,6 +3,7 @@ import { requireDashboardAdmin } from "@/lib/admin-access";
 import { listAdminMembers } from "@/lib/admin-dashboard";
 import { AdminScreen, AdminToolkit } from "@/components/admin/AdminChrome";
 import type { AdminWeekDay } from "@/lib/admin-dashboard";
+import { deskSurfaceClass, memberListTone } from "@/lib/admin-desk-status";
 
 export default async function AdminMembersPage({
   searchParams,
@@ -40,9 +41,15 @@ export default async function AdminMembersPage({
         <p className="text-sm text-muted">{query.trim() ? "No members match that." : "No members yet."}</p>
       ) : (
         <ul className="space-y-2">
-          {members.map((member) => (
+          {members.map((member) => {
+            const tone = member.role === "member" ? memberListTone(member.week) : "idle";
+            return (
             <li key={member.id}>
-              <Link href={`/admin/members/${member.id}`} className="hc-panel block px-4 py-4">
+              <Link
+                href={`/admin/members/${member.id}`}
+                data-desk-tone={tone}
+                className={`hc-panel block px-4 py-4 ${deskSurfaceClass(tone)}`}
+              >
                 <span className="flex items-start justify-between gap-3">
                   <span>
                     <span className="font-display block text-xl uppercase leading-tight">{member.name}</span>
@@ -69,7 +76,8 @@ export default async function AdminMembersPage({
                 <WeekDots days={member.week} />
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
       <AdminToolkit links={toolkit} />

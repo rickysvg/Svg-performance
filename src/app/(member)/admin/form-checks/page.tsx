@@ -4,7 +4,9 @@ import { isFormCheckReviewer } from "@/lib/form-check-access";
 import { formCheckStatusLabel, listFormChecksForReview } from "@/lib/form-check";
 import { redirect } from "next/navigation";
 import { AdminScreen } from "@/components/admin/AdminChrome";
+import { DeskBadge } from "@/components/admin/DeskStatus";
 import { FormCheckReviewForm } from "@/components/form-check/FormCheckReviewForm";
+import { deskSurfaceClass, queueItemTone } from "@/lib/admin-desk-status";
 
 export default async function AdminFormChecksPage({
   searchParams,
@@ -41,12 +43,10 @@ export default async function AdminFormChecksPage({
     >
       <Queue rows={open} empty="Queue is clear." />
       {reviewed.length > 0 ? (
-        <details className="hc-panel px-4 py-3">
-          <summary className="cursor-pointer font-semibold">Reviewed · {reviewed.length}</summary>
-          <div className="mt-3">
-            <Queue rows={reviewed} empty="" />
-          </div>
-        </details>
+        <section className="space-y-2">
+          <h2 className="text-lg">Reviewed</h2>
+          <Queue rows={reviewed} empty="" />
+        </section>
       ) : null}
     </AdminScreen>
   );
@@ -65,12 +65,13 @@ function Queue({
   return (
     <ul className="space-y-2">
       {rows.map((row) => {
-        const waiting = row.status !== "reviewed";
+        const tone = queueItemTone(row.status === "reviewed");
         return (
           <li key={row.id}>
             <Link
               href={`/admin/form-checks?id=${row.id}`}
-              className="hc-panel flex items-center justify-between gap-3 px-4 py-4"
+              data-desk-tone={tone}
+              className={`hc-panel flex items-center justify-between gap-3 px-4 py-4 ${deskSurfaceClass(tone)}`}
             >
               <span>
                 <span className="font-display block text-xl uppercase leading-tight tracking-wide">
@@ -84,15 +85,7 @@ function Queue({
                   {formCheckStatusLabel(row.status)}
                 </span>
               </span>
-              {waiting ? (
-                <span className="shrink-0 rounded-full bg-[#FF3B3B] px-2 py-1 font-telemetry text-[10px] uppercase tracking-wide text-white">
-                  {row.status === "in_review" ? "Open" : "New"}
-                </span>
-              ) : (
-                <span className="shrink-0 font-telemetry text-[10px] uppercase tracking-wide text-[#CBF805]">
-                  Done
-                </span>
-              )}
+              <DeskBadge tone={tone} label={row.status === "reviewed" ? "Done" : row.status === "in_review" ? "Open" : "New"} />
             </Link>
           </li>
         );

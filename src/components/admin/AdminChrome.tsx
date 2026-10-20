@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { deskSurfaceClass, type DeskTone } from "@/lib/admin-desk-status";
 
 export function AdminBack({
   href = "/admin",
@@ -59,18 +60,18 @@ export function AdminScreen({
 export function AdminStat({
   label,
   value,
-  alert = false,
+  tone = "idle",
 }: {
   label: string;
   value: string;
-  alert?: boolean;
+  tone?: DeskTone;
 }) {
+  const ink =
+    tone === "attention" ? "text-[#FF3B3B]" : tone === "clear" ? "text-[#CBF805]" : "text-white";
   return (
-    <div className="hc-panel px-4 py-4">
+    <div className={`hc-panel px-4 py-4 ${deskSurfaceClass(tone)}`} data-desk-tone={tone}>
       <p className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className={`font-telemetry mt-2 text-3xl ${alert ? "text-[#FF3B3B]" : "text-[#CBF805]"}`}>
-        {value}
-      </p>
+      <p className={`font-telemetry mt-2 text-3xl ${ink}`}>{value}</p>
     </div>
   );
 }
