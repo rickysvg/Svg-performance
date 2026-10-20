@@ -19,6 +19,8 @@ describe("SVG Coach streaming UI", () => {
     expect(thread).toContain("data-coach-stop");
     expect(thread).toContain("Stop");
     expect(thread).toContain("data-coach-typing");
+    expect(thread).toContain("data-coach-suggestions");
+    expect(thread).not.toContain("Ask about this topic.");
     expect(hook).toContain("/api/coach/stream");
     const route = fs.readFileSync(
       path.join(process.cwd(), "src/app/api/coach/stream/route.ts"),

@@ -5,7 +5,12 @@ import { AiCapError, consumeAiUse } from "@/lib/ai-usage";
 import { detectSafetyRefusal, logCoachRefusal } from "@/lib/coach/safety";
 import { loadMemberContext } from "@/lib/coach/member-context";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
-import { getOrCreateThread, isOpenAiConfigured } from "@/lib/coach/chat";
+import {
+  getMemberCoachThread,
+  getOrCreateThread,
+  getThreadForUser,
+  isOpenAiConfigured,
+} from "@/lib/coach/chat";
 import { timeZoneForUser } from "@/lib/profile";
 import { athleteLocalDayLine } from "@/lib/timezone";
 import { EMPTY_COACH_FALLBACK } from "@/lib/coach/offline";
@@ -206,9 +211,14 @@ export async function runCoachChatStream(input: {
     throw new AppError("VALIDATION", "Type a message first.");
   }
   await consumeAiUse({ userId: user.id, kind: "message", surface: "chat" });
-  const topic = String(input.body.topic ?? "");
-  const art = topic === "martial_art" ? String(input.body.art ?? "") : "";
-  const thread = await getOrCreateThread(user.id, { topic, art });
+  const requestedTopic = String(input.body.topic ?? "");
+  const art = requestedTopic === "martial_art" ? String(input.body.art ?? "") : "";
+  const thread = input.body.threadId
+    ? await getThreadForUser(String(input.body.threadId), user.id)
+    : requestedTopic
+      ? await getOrCreateThread(user.id, { topic: requestedTopic, art })
+      : await getMemberCoachThread(user.id);
+  const topic = requestedTopic || undefined;
   const refusal = detectSafetyRefusal(message, {
     currentUserId: user.id,
     mentionedUserId: input.body.mentionedUserId,

@@ -83,6 +83,20 @@ async function replyWithCoach(input: {
   };
 }
 
+/** The member's one coach thread: the latest conversation, or a new general thread. */
+export async function getMemberCoachThread(userId: string) {
+  const existing = await prisma.chatThread.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  });
+  if (existing) return existing;
+  return prisma.chatThread.create({
+    data: { userId, topic: "", art: "" },
+    include: { messages: true },
+  });
+}
+
 export async function getOrCreateThread(
   userId: string,
   lane?: { topic?: string; art?: string },
