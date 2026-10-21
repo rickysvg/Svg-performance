@@ -12,6 +12,7 @@ import {
   recordWeightEntryForUser,
   upsertPhotoPlaceholderForUser,
 } from "@/lib/body-metrics";
+import { bodyMetricSaveMessage } from "@/lib/body-metric-copy";
 import {
   createProgressPhotoForUser,
   deleteProgressPhotoForUser,
@@ -39,8 +40,9 @@ export async function saveBodyMetricAction(
     const notes = String(formData.get("notes") ?? "");
     const value = Number(formData.get("value") ?? "");
     const unit = String(formData.get("unit") ?? "");
+    const bodyFatPercent =
+      kind === "weight" ? optionalBodyFatPercent(formData.get("bodyFatPercent")) : null;
     if (kind === "weight") {
-      const bodyFatPercent = optionalBodyFatPercent(formData.get("bodyFatPercent"));
       await recordWeightEntryForUser(user.id, {
         value,
         unit,
@@ -61,7 +63,7 @@ export async function saveBodyMetricAction(
     revalidatePath("/home");
     revalidatePath("/checkin");
     return {
-      success: "Metric saved. This is a number you typed — not a watch or wearable.",
+      success: bodyMetricSaveMessage(kind, bodyFatPercent),
       savedAt: Date.now(),
     };
   } catch (error) {

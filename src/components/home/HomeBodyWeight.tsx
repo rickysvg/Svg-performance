@@ -4,6 +4,7 @@ import { useActionState, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
+import { Toast } from "@/components/Toast";
 import { HomeSideStats } from "@/components/home/HomeSideStats";
 import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
 import { massSpeedoClass, massUnitClass } from "@/components/home/mass-fonts";
@@ -49,8 +50,12 @@ export function HomeBodyWeight({
   const [fatDraft, setFatDraft] = useState(savedFatText);
   const [sheet, setSheet] = useState(false);
   const [closedFor, setClosedFor] = useState<number | undefined>();
+  const [closedNotice, setClosedNotice] = useState<number | string | undefined>();
   const showSide = side != null;
   const showFatField = bodyFatValue !== undefined && !showSide;
+  const notice = state.error || state.success;
+  const noticeKey = state.savedAt ?? (state.error ? `error:${state.error}` : undefined);
+  const showNotice = Boolean(!sheet && notice && noticeKey !== undefined && noticeKey !== closedNotice);
   if (state.savedAt && sheet && closedFor !== state.savedAt) {
     setClosedFor(state.savedAt);
     setSheet(false);
@@ -244,18 +249,15 @@ export function HomeBodyWeight({
             document.body,
           )
         : null}
-      {!sheet && (state.error || state.success) && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              data-weigh-toast
-              className="fixed inset-x-4 z-40"
-              style={{ bottom: "calc(6.75rem + env(safe-area-inset-bottom))" }}
-            >
-              <StatusBanner error={state.error} success={state.success} />
-            </div>,
-            document.body,
-          )
-        : null}
+      {showNotice && notice ? (
+        <Toast
+          key={String(noticeKey)}
+          message={notice}
+          tone={state.error ? "danger" : "lime"}
+          onDismiss={() => setClosedNotice(noticeKey)}
+          attrs={{ "data-weigh-toast": "" }}
+        />
+      ) : null}
     </form>
   );
 }

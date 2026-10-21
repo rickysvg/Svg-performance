@@ -226,6 +226,30 @@ html:not([data-splash="done"]) [data-coach-fab] {
   pointer-events: none;
 }
 
+/*
+  Confirmation toasts clear the account dock and the 48px coach button.
+  Home coach sits at 5.75rem; logger screens raise it to 6.75rem.
+  48px is the button, 0.75rem is the gap under the toast.
+*/
+.app-toast {
+  position: fixed;
+  z-index: 35;
+  left: 1rem;
+  right: 1rem;
+  margin-inline: auto;
+  max-width: 28rem;
+  bottom: calc(5.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+html:has([data-coach-fab-raised]) .app-toast:not(.app-toast-top) {
+  bottom: calc(6.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.app-toast.app-toast-top {
+  top: max(0.75rem, env(safe-area-inset-top, 0px));
+  bottom: auto;
+}
+
 /* On a phone, keep the floating coach off section titles and the save row. */
 @media (max-width: 48rem) {
   [data-logger-save],

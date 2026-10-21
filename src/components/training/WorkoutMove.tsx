@@ -16,6 +16,8 @@ import {
   swapWorkoutAction,
 } from "@/app/actions/week-plan";
 import type { MoveDayChoice, MoveSessionChoice } from "@/lib/week-plan";
+import { Toast } from "@/components/Toast";
+import { REMOVE_TOAST_MS } from "@/components/training/RemoveToast";
 import { futureWorkoutPulledBack, sessionMoveCaution } from "@/lib/week-plan-swaps";
 
 type OpenMove = {
@@ -61,7 +63,8 @@ export function WorkoutMoveProvider({
   const [mode, setMode] = useState<"move" | "swap">("move");
   const [error, setError] = useState<string | null>(null);
   const [caution, setCaution] = useState<PendingCaution | null>(null);
-  const [toast, setToast] = useState<{ message: string; undo: string } | null>(null);
+  const [toast, setToast] = useState<{ id: number; message: string; undo: string } | null>(null);
+  const toastSerial = useRef(0);
   const [pending, startTransition] = useTransition();
 
   function close() {
@@ -77,7 +80,7 @@ export function WorkoutMoveProvider({
     setMode("move");
     setError(null);
     setCaution(null);
-    if (undo) setToast({ message, undo });
+    if (undo) setToast({ id: ++toastSerial.current, message, undo });
     router.refresh();
   }
 
@@ -161,7 +164,7 @@ export function WorkoutMoveProvider({
     startTransition(async () => {
       const result = await restoreWeekPlanAction(payload);
       if (result.error) {
-        setToast({ message: result.error, undo: payload });
+        setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
         return;
       }
       setToast(null);
@@ -365,25 +368,24 @@ export function WorkoutMoveProvider({
         </div>
       ) : null}
       {toast ? (
-        <div
-          data-move-toast
-          role="status"
-          className="fixed inset-x-4 z-50 flex items-center justify-between gap-3 rounded-2xl bg-black px-4 py-3 text-white shadow-lg"
-          style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
-        >
-          <p className="text-sm">{toast.message}</p>
-          {toast.undo ? (
-            <button
-              type="button"
-              data-move-undo
-              onClick={undo}
-              disabled={pending}
-              className="inline-flex min-h-11 shrink-0 items-center font-semibold text-highlighter disabled:opacity-60"
-            >
-              Undo
-            </button>
-          ) : null}
-        </div>
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          tone="dark"
+          durationMs={REMOVE_TOAST_MS}
+          onDismiss={() => setToast(null)}
+          attrs={{ "data-move-toast": "" }}
+          action={
+            toast.undo
+              ? {
+                  label: "Undo",
+                  attrs: { "data-move-undo": "" },
+                  disabled: pending,
+                  onClick: undo,
+                }
+              : undefined
+          }
+        />
       ) : null}
     </WorkoutMoveContext.Provider>
   );
