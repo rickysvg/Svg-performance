@@ -76,6 +76,9 @@ model User {
   dayWorkoutPlans          DayWorkoutPlan[]
   customBagWorkouts        CustomBagWorkout[]
   coachAutoNotes           CoachAutoNote[]
+  vipApplications          VipApplication[]
+  vipCheckoutGrants        VipCheckoutGrant[]
+  vipUpsellEvents          VipUpsellEvent[]
 }
 
 model Session {
@@ -727,6 +730,9 @@ model PlanWaitlist {
   plan      String
   status    String   @default("waiting")
   note      String   @default("")
+  /** Exclusive 72-hour window after a VIP Coaching spot opens. Null when not offered. */
+  holdUntil DateTime?
+  offeredAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1403,4 +1409,59 @@ model CustomBagWorkout {
   updatedAt   DateTime @updatedAt
 
   @@index([userId, updatedAt])
+}
+
+/** VIP Coaching application. Ricky approves before checkout unlocks. */
+model VipApplication {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals        String
+  experience   String
+  /** YYYY-MM-DD, or empty when the athlete has no fight on the calendar. */
+  fightDate    String    @default("")
+  injuries     String
+  availability String
+  /** pending | approved | declined */
+  status       String    @default("pending")
+  reviewerId   String    @default("")
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  grant        VipCheckoutGrant?
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+/** Checkout unlocked for one approved application. Discount ids stay in env. */
+model VipCheckoutGrant {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId String         @unique
+  application   VipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  /** open | consumed | revoked */
+  status        String         @default("open")
+  introApplied  Boolean        @default(false)
+  creditCents   Int            @default(0)
+  uncappedCents Int            @default(0)
+  createdAt     DateTime       @default(now())
+  consumedAt    DateTime?
+
+  @@index([userId, status])
+}
+
+/** Shown and dismissed VIP Coaching upsell cards. Rule cadence only. */
+model VipUpsellEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trigger   String
+  /** shown | dismissed */
+  action    String
+  createdAt DateTime @default(now())
+
+  @@index([userId, trigger, createdAt])
+  @@index([userId, createdAt])
 }

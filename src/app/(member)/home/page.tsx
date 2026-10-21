@@ -30,6 +30,7 @@ import { telemetryGraphTitle } from "@/lib/telemetry-title";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
+import { VipUpsellSlot } from "@/components/vip/VipUpsellSlot";
 
 export default async function HomePage({
   searchParams,
@@ -122,6 +123,8 @@ export default async function HomePage({
       </section>
 
       {trialEnded ? <TrialEndedPaywall /> : null}
+
+      <VipUpsellSlot userId={user.id} />
 
       <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 

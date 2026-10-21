@@ -107,6 +107,22 @@ See `.env.example`. Names only — put real values in your private `.env`:
 
 If Polar keys are missing: Heart rate still works with Apple Health import, manual entry, and labeled DEMO samples. Connect Polar (TEST) stays off. We never show Apple Watch as connected.
 
+## VIP Coaching
+
+The $249/mo plan is VIP Coaching (`coaching` / `coaching_monthly`). Athletes apply with five questions. Ricky approves or declines in `/admin/vip`, and only an approval unlocks checkout for that person. Public pages say "Limited spots". Caps (20 active, 3 new in a week, 4 in fight camp) stay on the admin desk. A full cap pauses intake and offers the waitlist a 72-hour hold when a seat opens.
+
+Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30 for unused Pro time. Those two offers do not combine. The app does not create Stripe products, prices, or coupons. Set the ids below in the Stripe Dashboard (TEST only) and leave them empty for a no-op:
+
+| Name | What it is for |
+| --- | --- |
+| `STRIPE_PRICE_COACHING_MONTHLY` | TEST price id for VIP Coaching at $249/mo. Empty = checkout does not call Stripe and nobody is charged |
+| `STRIPE_COUPON_VIP_ACADEMY_INTRO` | Once coupon, $100 off, so the first invoice is $149 and renewal stays $249. Empty = academy members are quoted $149 in the app and Stripe is not given a coupon |
+| `STRIPE_COUPON_VIP_PRO_CREDIT` | Once coupon for the $30 cap. Applied only when the computed credit is exactly $30 |
+| `STRIPE_COUPON_VIP_CREDIT_<cents>` | Optional once coupon for an exact credit, such as `STRIPE_COUPON_VIP_CREDIT_999` for $9.99 |
+| `STRIPE_VIP_PRORATION` | Set to `1` to prorate an existing Pro subscription when unused Pro value is already within $30. Without a stored subscription item id the app records the credit and does not call Stripe |
+
+Replies to messages, form checks, and check-ins are promised within 48 hours.
+
 ## Weekly check-ins
 
 VIP Coaching (`coaching` and `coaching_*` checkout rows, $249/mo) gets a weekly form at `/checkin`. Existing Fighter Development, Elite, VIP, and Platinum subscriptions keep that access. SVG Performance does not. Admins, including emails in `ADMIN_EMAILS`, review check-ins at `/coach/checkins`. An admin can turn the form on for one account from that page when testing.

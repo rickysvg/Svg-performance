@@ -82,9 +82,10 @@ describe("owner-approved three-plan pricing", () => {
     expect(PLAN_CATALOG.platinum.label).toBe("Platinum VIP");
     expect(PLAN_CATALOG.coaching.gymPriceLabel).toBe("$249/mo");
     expect(PLAN_CATALOG.coaching.cap).toBe(20);
-    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Custom programming/);
-    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/check-ins reviewed by Ricky/);
-    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Video form reviews/);
+    expect(PLAN_CATALOG.coaching.responseTime).toBe("Within 48 hours");
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/program Ricky writes/);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/Fight-camp plan/);
+    expect(PLAN_CATALOG.coaching.includes.join(" ")).toMatch(/48 hours/);
     expect(PLAN_CATALOG.performance.summary).not.toMatch(/59/);
     expect(PLAN_CATALOG.performance.summary).toMatch(/save 39%/);
   });

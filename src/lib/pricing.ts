@@ -50,8 +50,11 @@ export function performanceAnnualLine() {
   return `or ${usd(PERFORMANCE_ANNUAL)}/yr, ${PERFORMANCE_ANNUAL_SAVE}`;
 }
 
-/** Public copy. The cap stays internal; the page never prints a remaining count. */
-export function coachingSpotsLine(_spotsLeft: number | null) {
+/**
+ * Public copy. The cap stays internal; the page never prints a remaining count.
+ * The argument is ignored so older callers cannot leak a number.
+ */
+export function coachingSpotsLine(_spotsLeft?: number | null) {
   return "Limited spots";
 }
 
@@ -87,9 +90,13 @@ export const PRO_FAIR_USE_LINE = `Fair use: ${PRO_AI_MESSAGES_PER_DAY} AI messag
 export const COACHING_EXPECT = "Everything in Pro, plus…";
 
 export const COACHING_ADDS = [
-  "Custom programming with Ricky",
-  "Weekly AI-assisted check-ins reviewed by Ricky",
-  "Video form reviews",
+  "A program Ricky writes",
+  "Fight-camp plan",
+  "Timestamped form notes",
+  "Weekly plan adjustments",
+  "Direct messages with Ricky",
+  "Monthly assessment",
+  "Replies within 48 hours",
 ] as const;
 
 export const COACHING_INCLUDES = COACHING_ADDS;

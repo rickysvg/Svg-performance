@@ -6,10 +6,10 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { getEffectivePlanId } from "@/lib/entitlements";
-import { countActiveSeats } from "@/lib/waitlist";
 import { PLAN_CATALOG } from "@/lib/plans";
-import { COACHING_CAP, MEMBER_PRO_DAYS, PRO_AI_MESSAGES_PER_DAY, performancePriceLine } from "@/lib/pricing";
+import { MEMBER_PRO_DAYS, PRO_AI_MESSAGES_PER_DAY, performancePriceLine } from "@/lib/pricing";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { getVipPricingPhase } from "@/lib/vip-store";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
@@ -20,14 +20,7 @@ export default async function PricingPage() {
   const verified = Boolean(profile?.gymMembershipVerified);
   const trial = user ? await getTrialState(user.id) : null;
   const canStartTrial = Boolean(trial?.canStartTrial);
-  let coachingSeats = 0;
-  let coachingSpotsLeft: number | null = COACHING_CAP;
-  try {
-    coachingSeats = await countActiveSeats("coaching");
-    coachingSpotsLeft = Math.max(0, COACHING_CAP - coachingSeats);
-  } catch {
-    coachingSpotsLeft = null;
-  }
+  const vipPhase = await getVipPricingPhase(user?.id ?? null);
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -67,8 +60,7 @@ export default async function PricingPage() {
         <div className="mt-8">
           <PricingCatalog
             verified={verified}
-            coachingSpotsLeft={coachingSpotsLeft}
-            coachingAtCap={coachingSpotsLeft === 0}
+            vipPhase={vipPhase}
             userLoggedIn={Boolean(user)}
             canStartTrial={canStartTrial}
             checkoutLive={false}
@@ -82,7 +74,7 @@ export default async function PricingPage() {
             <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed.</li>
             <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
             <li>Pro fair use: {PRO_AI_MESSAGES_PER_DAY} AI messages a day.</li>
-            <li>VIP Coaching is $249/month and includes Pro. Limited spots. In-person VIP is by application.</li>
+            <li>VIP Coaching is $249/month and includes Pro. Limited spots. Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30. Ricky replies within 48 hours.</li>
             <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the 7-day trial, then subscribe to Pro to keep training. Past data stays viewable and exportable.</li>
             <li>Academy Gymdesk dues are billed by the gym and are not changed here.</li>
             <li>Weight-cut services are not sold here.</li>

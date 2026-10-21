@@ -163,7 +163,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     gymPriceLabel: "$249/mo",
     nonmemberPriceLabel: "$249/mo",
     summary:
-      "Custom programming with Ricky. Limited spots. Includes Pro. In-person VIP is by application.",
+      "A program Ricky writes. Limited spots. Includes Pro. Replies within 48 hours.",
     includes: [...COACHING_INCLUDES],
     rank: 7,
     features: [
@@ -184,7 +184,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     ],
     credits: { checkin_30: 4, video_review: 4 },
     cap: 20,
-    responseTime: "Within 2 business days",
+    responseTime: "Within 48 hours",
   },
   fighter_conditioning: {
     id: "fighter_conditioning",

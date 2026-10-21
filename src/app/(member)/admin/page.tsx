@@ -2,20 +2,33 @@ import { getProfileForUser } from "@/lib/profile";
 import { requireDashboardAdmin } from "@/lib/admin-access";
 import { getAdminDeskCounts } from "@/lib/admin-dashboard";
 import { coachingCapacityTone, deskTone } from "@/lib/admin-desk-status";
+import { getVipDesk } from "@/lib/vip-store";
 import { AdminTile } from "@/components/admin/AdminTile";
 
 export default async function AdminPage() {
   const user = await requireDashboardAdmin();
-  const [profile, counts] = await Promise.all([
+  const [profile, counts, vip] = await Promise.all([
     getProfileForUser(user.id),
     getAdminDeskCounts(),
+    getVipDesk().catch(() => null),
   ]);
   const name = profile?.displayName?.trim().split(/\s+/)[0] || "Coach";
   const feedbackWaiting = counts.feedbackNew + counts.feelFlags;
   const contentWaiting = counts.pendingVideos + counts.pendingLessons + counts.clipReview;
   const formTone = deskTone(counts.formChecks, counts.formChecksReviewed);
   const checkTone = deskTone(counts.checkIns, counts.checkInsAnswered);
-  const coachTone = coachingCapacityTone(counts.coachingUsed, counts.coachingCap);
+  const vipPending = vip?.pending ?? 0;
+  const vipReviewed = vip?.reviewed ?? 0;
+  const vipActive = vip?.active ?? counts.coachingUsed;
+  const vipCap = vip?.cap ?? counts.coachingCap;
+  const coachTone =
+    vipPending > 0
+      ? "attention"
+      : coachingCapacityTone(vipActive, vipCap) === "attention"
+        ? "attention"
+        : vipReviewed > 0 || vipActive > 0
+          ? "clear"
+          : "idle";
   const revenueTone = deskTone(counts.failedPayments, counts.paidCurrent);
   const feedbackTone = deskTone(feedbackWaiting, counts.recentRatings + counts.feedbackClosed);
   const contentTone = deskTone(contentWaiting, counts.contentReady);
@@ -77,18 +90,16 @@ export default async function AdminPage() {
           tone="idle"
         />
         <AdminTile
-          href="/admin/coaching"
+          href="/admin/vip"
           label="VIP Coaching"
           hint={
-            coachTone === "attention"
-              ? counts.coachingUsed >= counts.coachingCap
-                ? `${counts.coachingUsed} / ${counts.coachingCap} full`
-                : `${counts.coachingUsed} / ${counts.coachingCap} almost full`
-              : `${counts.coachingUsed} / ${counts.coachingCap} spots`
+            vip
+              ? `${vip.active}/${vip.cap} · ${vip.newThisWeek} new · ${vip.inCamp} camp`
+              : `${counts.coachingUsed}/${counts.coachingCap}`
           }
           src="/tiles/coach.webp"
           alt="Coach holding mitts in a dark gym"
-          badge={counts.coachingCap - counts.coachingUsed <= 0 ? counts.coachingUsed : counts.coachingCap - counts.coachingUsed}
+          badge={vipPending}
           tone={coachTone}
         />
         <AdminTile
