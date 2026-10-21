@@ -70,6 +70,7 @@ describe("completion counts ticked sets on the planned session", () => {
     completed: true,
     reps: 10,
     loadValue: null,
+    loadUnit: "lb",
     durationSeconds: null,
   };
   const bikeSet = {
@@ -77,6 +78,7 @@ describe("completion counts ticked sets on the planned session", () => {
     completed: true,
     reps: null,
     loadValue: null,
+    loadUnit: "lb",
     durationSeconds: 60,
   };
   const empty = {
@@ -84,6 +86,7 @@ describe("completion counts ticked sets on the planned session", () => {
     completed: true,
     reps: null,
     loadValue: null,
+    loadUnit: "lb",
     durationSeconds: null,
   };
 

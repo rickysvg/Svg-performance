@@ -292,11 +292,13 @@ function logMatchesPlanned(
     dayNumber?: number;
     programSlug?: string;
     title: string;
-    day?: { exercises?: { name: string }[] } | null;
+    day?: { exercises?: { name?: string | null }[] } | null;
   },
   plannedToday: { dayId?: string; dayNumber?: number; programSlug?: string; title: string }[],
 ) {
-  const plannedNames = (planned.day?.exercises ?? []).map((exercise) => exercise.name);
+  const plannedNames = (planned.day?.exercises ?? [])
+    .map((exercise) => (exercise.name ?? "").trim())
+    .filter((name) => name.length > 0);
   if (!sessionCountsAsPlannedCompletion(log, plannedNames)) return false;
   if (idMatch(log, planned) || dayNumberMatch(log, planned)) return true;
   if (!titlesMatch(log.title, planned.title)) return false;
