@@ -18,7 +18,7 @@ export function BadgesGrid({
 }) {
   const groups = laddersGroupedByCategory(badges);
   return (
-    <section id="badges" className="space-y-8" data-badge-grid="ladders">
+    <section id="badges" className="space-y-4" data-badge-grid="ladders">
       {showHeading ? (
         <div className="flex items-end justify-between gap-3">
           <h2 className="font-display text-2xl uppercase tracking-wide">Badges</h2>
@@ -28,18 +28,18 @@ export function BadgesGrid({
         </div>
       ) : null}
       {groups.map((group) => (
-        <div key={group.category} className="space-y-4">
+        <div key={group.category} className="space-y-2">
           <h3 className="font-display flex items-center gap-2 text-lg uppercase tracking-wide">
             {group.label}
             <span className="h-1 w-8 rounded-full bg-accent" aria-hidden />
           </h3>
-          <ul className="space-y-5">
+          <ul className="space-y-2">
             {group.ladders.map((ladder) => {
               const featured = ladder.featured;
               const gold = featured.tier === "gold" && featured.earned;
               return (
-                <li key={ladder.id} className="rounded-2xl border border-line bg-card px-3 py-4" data-ladder={ladder.id}>
-                  <div className="flex items-center gap-4">
+                <li key={ladder.id} className="rounded-2xl border border-line bg-card px-2.5 py-2" data-ladder={ladder.id}>
+                  <div className="flex items-center gap-2.5">
                     <div
                       className={`relative w-[112px] shrink-0 ${gold ? "badge-rung-gold" : ""}`}
                       data-rung-tier={featured.tier}

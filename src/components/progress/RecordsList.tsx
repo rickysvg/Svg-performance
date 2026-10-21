@@ -29,7 +29,7 @@ export function RecordsList({
           <li key={row.slug}>
             <Link
               href={`/progress/records/${row.slug}`}
-              className={`flex items-center justify-between gap-3 py-4 ${
+              className={`flex items-center justify-between gap-3 py-2 ${
                 isNew ? "rounded-xl bg-accent px-3 text-black" : ""
               }`}
             >

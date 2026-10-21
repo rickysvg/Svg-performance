@@ -31,9 +31,9 @@ function Pips({ value, label }: { value: number | null; label: string }) {
 export function SparringTrend({ logs }: { logs: SparringLog[] }) {
   const rated = logs.filter((log) => log.sessionRating != null || log.bodyRating != null);
   return (
-    <section className="hc-panel hc-carbon p-4" data-sparring-trend>
+    <section className="hc-panel hc-carbon px-2.5 py-2" data-sparring-trend>
       <p className="hc-kicker">Ratings</p>
-      <h2 className="mt-2 text-lg">Sparring and body</h2>
+      <h2 className="mt-1 text-lg">Sparring and body</h2>
       <p className="mt-1 text-xs text-muted">
         Session is how it went. Body is how you felt after. Oldest is first.
       </p>
@@ -46,7 +46,7 @@ export function SparringTrend({ logs }: { logs: SparringLog[] }) {
           .
         </p>
       ) : (
-        <div className="mt-4">
+        <div className="mt-2">
           <TelemetryChart
             title="Ratings"
             description="Session and body, 1 to 5"

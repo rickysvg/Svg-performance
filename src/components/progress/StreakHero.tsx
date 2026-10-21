@@ -2,10 +2,10 @@ import { streakStatusLine, type TrainingStreak } from "@/lib/streaks";
 
 export function StreakHero({ streak }: { streak: TrainingStreak }) {
   return (
-    <section className="hc-panel hc-carbon px-4 py-5">
-      <div className="flex items-stretch gap-4">
-        <div className="min-w-[7.5rem] border-r border-[#cbf805]/30 pr-4">
-          <p className="font-telemetry text-6xl leading-none tracking-tight text-[#CBF805]">{streak.current}</p>
+    <section className="hc-panel hc-carbon px-3 py-2.5">
+      <div className="flex items-stretch gap-3">
+        <div className="min-w-[5.5rem] border-r border-[#cbf805]/30 pr-3">
+          <p className="font-telemetry text-5xl leading-none tracking-tight text-[#CBF805]">{streak.current}</p>
           <p className="font-display mt-1 text-sm uppercase tracking-wide">Day streak</p>
         </div>
         <div className="flex-1">
@@ -37,7 +37,7 @@ export function StreakHero({ streak }: { streak: TrainingStreak }) {
               </li>
             ))}
           </ol>
-          <p className="mt-3 text-sm leading-snug">
+          <p className="mt-2 text-sm leading-snug">
             Best streak: {streak.longest} {streak.longest === 1 ? "day" : "days"} · {streakStatusLine(streak)}
           </p>
         </div>

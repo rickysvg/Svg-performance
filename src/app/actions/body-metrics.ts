@@ -9,9 +9,11 @@ import {
   deleteBodyMetricForUser,
   deletePhotoPlaceholderForUser,
   optionalBodyFatPercent,
+  recordBodyFatAlongsideTodayWeight,
   recordWeightEntryForUser,
   upsertPhotoPlaceholderForUser,
 } from "@/lib/body-metrics";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
   createProgressPhotoForUser,
   deleteProgressPhotoForUser,
@@ -60,6 +62,27 @@ export async function saveBodyMetricAction(
     revalidatePath("/progress");
     revalidatePath("/home");
     return { success: "Metric saved. This is a number you typed — not a watch or wearable." };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function saveHomeBodyFatAction(
+  _prev: BodyMetricActionState,
+  formData: FormData,
+): Promise<BodyMetricActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    const bodyFatPercent = optionalBodyFatPercent(formData.get("bodyFatPercent"));
+    if (bodyFatPercent == null) {
+      return { error: "Enter a body fat percent." };
+    }
+    const profile = await getProfileForUser(user.id);
+    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+    await recordBodyFatAlongsideTodayWeight(user.id, { value: bodyFatPercent, timeZone });
+    revalidatePath("/home");
+    revalidatePath("/progress");
+    return { success: "Body fat saved." };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

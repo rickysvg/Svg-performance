@@ -11,7 +11,7 @@ export function ProgressBars({
 }) {
   const max = Math.max(...points.map((point) => point.volume), 1);
   return (
-    <ol className="mt-4 space-y-3">
+    <ol className="mt-2 space-y-2">
       {points.map((point, index) => {
         const dropped = index > 0 && point.volume < points[index - 1]!.volume;
         const width = Math.max(6, Math.round((point.volume / max) * 100));

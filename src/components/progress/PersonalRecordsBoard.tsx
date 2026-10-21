@@ -3,7 +3,7 @@ import type { PersonalRecords } from "@/lib/records";
 
 export function PersonalRecordsBoard({ records }: { records: PersonalRecords }) {
   return (
-    <section id="personal-records" className="space-y-4 rounded-2xl border border-line bg-card p-5">
+    <section id="personal-records" className="space-y-2 rounded-2xl border border-line bg-card p-3">
       <div>
         <h2>Personal records</h2>
         <p className="mt-1 text-sm text-muted">
@@ -30,15 +30,15 @@ export function PersonalRecordsBoard({ records }: { records: PersonalRecords }) 
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <article className="rounded-xl border border-line p-3">
+          <div className="grid grid-cols-2 gap-2">
+            <article className="rounded-xl border border-line p-2">
               <p className="font-display text-xs uppercase tracking-wide text-muted">Longest days-active streak</p>
               <p className="stat-display mt-1 text-2xl">{records.longestActiveStreak}</p>
               <p className="mt-1 text-xs text-muted">
                 Days in a row with a workout or food log. Current: {records.currentActiveStreak}.
               </p>
             </article>
-            <article className="rounded-xl border border-line p-3">
+            <article className="rounded-xl border border-line p-2">
               <p className="font-display text-xs uppercase tracking-wide text-muted">Load PRs</p>
               <p className="stat-display mt-1 text-2xl">{records.loadRecords.length}</p>
               <p className="mt-1 text-xs text-muted">Heaviest logged load per exercise name.</p>
