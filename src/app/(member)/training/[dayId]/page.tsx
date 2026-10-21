@@ -45,6 +45,8 @@ import { omitRemovedSlots } from "@/lib/exercise-removal";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
+import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
+import { timerEntryModeFromText, type TimerEntryMode } from "@/lib/timer-session";
 
 export default async function TrainingDayPage({
   params,
@@ -128,6 +130,17 @@ export default async function TrainingDayPage({
     subtitle: day.focus,
     label: day.title,
   });
+  const bikeExercise = exercises.find((exercise) => isBikeIntervalName(exercise.name));
+  const bikeSession = bikeExercise
+    ? bikeSessionForLogger(bikeExercise.name, {
+        reps: bikeExercise.reps,
+        restSeconds: bikeExercise.restSeconds,
+      })
+    : null;
+  const entryMode: TimerEntryMode | null = bikeSession
+    ? "bike"
+    : timerEntryModeFromText(`${day.title} ${day.focus} ${exercises.map((exercise) => exercise.name).join(" ")}`);
+  const roundMode = entryMode && entryMode !== "bike" ? entryMode : null;
 
   return (
     <main className="-mx-4 flex min-h-[calc(100dvh-10rem)] flex-col">
@@ -143,7 +156,11 @@ export default async function TrainingDayPage({
         <p className="min-w-0 flex-1 truncate text-center text-sm text-muted">
           {memberFacingTitle(day.program.title)}
         </p>
-        <RoundTimerButton />
+        <RoundTimerButton
+          mode={roundMode}
+          bikeSession={bikeSession}
+          bikeDayId={bikeSession ? day.id : null}
+        />
       </header>
 
       <section className="space-y-4 px-4 pb-4 pt-3" data-session-phase="first">

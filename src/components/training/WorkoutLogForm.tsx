@@ -16,8 +16,10 @@ import { BikeWorkoutChooser } from "@/components/training/BikeWorkoutSheet";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
 import {
   bikeChoiceFromKey,
+  choiceToken,
   formatBikeRecipe,
   parseBikeRecipe,
+  rememberBikeChoice,
   retainBikeChoiceSets,
   sessionWithChoice,
   type BikeChoice,
@@ -70,6 +72,7 @@ import {
 import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import { resolveSessionElapsed, sessionElapsedState } from "@/lib/session-elapsed";
+import { timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
@@ -325,6 +328,34 @@ function serverRest(session: { restExerciseName: string; restEndsAt: Date | null
   );
 }
 
+let sessionClockMs = 0;
+
+function readSessionClock() {
+  return sessionClockMs;
+}
+
+function subscribeSessionClock(onChange: () => void) {
+  const tick = () => {
+    sessionClockMs = Date.now();
+    onChange();
+  };
+  const kick = window.setTimeout(tick, 0);
+  const timer = window.setInterval(tick, 1000);
+  const onWake = () => tick();
+  document.addEventListener("visibilitychange", onWake);
+  window.addEventListener("focus", onWake);
+  return () => {
+    window.clearTimeout(kick);
+    window.clearInterval(timer);
+    document.removeEventListener("visibilitychange", onWake);
+    window.removeEventListener("focus", onWake);
+  };
+}
+
+function subscribeFrozenClock() {
+  return () => {};
+}
+
 function SessionTimer({
   status,
   createdAt,
@@ -346,38 +377,25 @@ function SessionTimer({
     const created = new Date(createdAt).getTime();
     return Number.isFinite(created) ? created : 0;
   })();
-  // Wall clock stays unset until mount so the server and the first client render match.
-  const [now, setNow] = useState<number | null>(null);
+  const frozen = status === "complete";
+  // Server and the hydration render share the anchor. A live draft picks up the wall clock after that.
+  const now = useSyncExternalStore(
+    frozen ? subscribeFrozenClock : subscribeSessionClock,
+    frozen ? () => anchorMs : readSessionClock,
+    () => anchorMs,
+  );
   const view = resolveSessionElapsed(
     { status, createdAt, updatedAt, finishedAt, elapsedSeconds, timerStartedAt },
-    now ?? anchorMs,
+    now,
   );
-  const ticking = now != null && view.ticking;
-
-  useEffect(() => {
-    setNow(Date.now());
-  }, []);
-
-  useEffect(() => {
-    if (!ticking) return;
-    const tick = () => setNow(Date.now());
-    const timer = window.setInterval(tick, 1000);
-    const onWake = () => tick();
-    document.addEventListener("visibilitychange", onWake);
-    window.addEventListener("focus", onWake);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onWake);
-      window.removeEventListener("focus", onWake);
-    };
-  }, [ticking]);
+  const pending = !frozen && now === anchorMs;
 
   return (
     <>
       <span
         className="tabular-nums text-sm text-muted"
         data-session-elapsed={view.seconds}
-        data-session-elapsed-state={now == null ? "pending" : sessionElapsedState(view, status)}
+        data-session-elapsed-state={pending ? "pending" : sessionElapsedState(view, status)}
       >
         {view.label}
       </span>
@@ -485,6 +503,37 @@ export function WorkoutLogForm({
     }
     return [...map.entries()];
   }, [sets]);
+
+  const headerTimer = useMemo(() => {
+    const names = grouped.map(([name]) => name);
+    const bikeName = names.find((name) => isBikeIntervalName(name)) ?? null;
+    if (bikeName) {
+      const group = grouped.find(([name]) => name === bikeName)?.[1] ?? [];
+      const planned = session.programDay?.exercises.find(
+        (row) => gymExerciseKey(row.name) === gymExerciseKey(bikeName),
+      );
+      const stored = parseAddedPlan(group[0]?.prescriptionKey);
+      const choice =
+        bikeChoiceFromKey(group[0]?.prescriptionKey) ??
+        parseBikeRecipe(stored?.reps || "") ??
+        parseBikeRecipe(planned?.reps || "");
+      const base = bikeSessionForLogger(
+        bikeName,
+        planned ? { reps: planned.reps, restSeconds: planned.restSeconds } : null,
+      );
+      return {
+        bikeSession: base && choice ? sessionWithChoice(base, choice) : base,
+        bikeToken: choice ? choiceToken(choice) : null,
+        mode: null,
+      };
+    }
+    const mode = timerEntryModeFromText(`${session.title} ${names.join(" ")}`);
+    return {
+      bikeSession: null,
+      bikeToken: null,
+      mode: mode && mode !== "bike" ? mode : null,
+    };
+  }, [grouped, session.programDay, session.title]);
 
   const cursor = useMemo(
     () =>
@@ -977,6 +1026,7 @@ export function WorkoutLogForm({
     setRestByName((current) => ({ ...current, [exerciseName]: 0 }));
     const nextRest = restTimer?.exerciseName === exerciseName ? null : restTimer;
     if (nextRest !== restTimer) setRestTimer(nextRest);
+    rememberBikeChoice(choice);
     const next = retainBikeChoiceSets(setsRef.current, exerciseName, choice);
     setsRef.current = next;
     setSets(next);
@@ -1111,7 +1161,12 @@ export function WorkoutLogForm({
                 timerStartedAt={session.timerStartedAt}
               />
             </div>
-            <RoundTimerButton />
+            <RoundTimerButton
+              mode={headerTimer.mode}
+              bikeSession={headerTimer.bikeSession}
+              bikeToken={headerTimer.bikeToken}
+              bikeDayId={headerTimer.bikeSession ? session.programDayId : null}
+            />
             <div className="flex flex-col items-end">
               {COACH_WORKOUT_MOTIVATION_ENABLED ? (
                 <WorkoutCoachCues

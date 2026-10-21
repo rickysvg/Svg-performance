@@ -2,6 +2,7 @@ import Link from "next/link";
 import { startSessionAction } from "@/app/actions/workouts";
 import { StartSubmit } from "@/components/training/StartTodayButton";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
+import { isBikeTimerHref } from "@/lib/timer-session";
 import type { getTodayGuide } from "@/lib/today";
 
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
@@ -40,6 +41,14 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           >
             Resume
           </Link>
+        ) : next?.href && isBikeTimerHref(next.href) ? (
+          <Link
+            href={next.href}
+            data-open-bike-clock
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+          >
+            Start next session
+          </Link>
         ) : next?.dayId ? (
           <form action={startSessionAction} data-prime-coach-audio className="mt-4">
             <input type="hidden" name="programDayId" value={next.dayId} />
@@ -62,6 +71,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
 
   const minutes = first.day ? estimateSessionMinutes(first.day.exercises) : 0;
   const count = first.day?.exercises.length ?? 0;
+  const bikeHref = isBikeTimerHref(first.href) ? first.href : null;
 
   return (
     <section className="hc-panel hc-carbon px-5 py-5">
@@ -89,6 +99,15 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
         >
           Resume
+        </Link>
+      ) : bikeHref ? (
+        <Link
+          href={bikeHref}
+          data-open-bike-clock
+          data-prime-coach-audio
+          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+        >
+          Start
         </Link>
       ) : first.dayId ? (
         <form action={startSessionAction} data-prime-coach-audio className="mt-4">

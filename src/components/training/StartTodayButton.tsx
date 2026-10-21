@@ -4,12 +4,21 @@ import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { startSessionAction } from "@/app/actions/workouts";
 import { todayStartLabel, type TodayStartAction } from "@/lib/today-start";
+import { isBikeTimerHref } from "@/lib/timer-session";
 
 const buttonClass =
   "touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black";
 
 export function StartTodayButton({ action }: { action: TodayStartAction }) {
   const label = todayStartLabel(action);
+
+  if (isBikeTimerHref(action.href) && action.href && !action.draftId) {
+    return (
+      <Link href={action.href} data-start-today data-open-bike-clock data-prime-coach-audio className={buttonClass}>
+        {label}
+      </Link>
+    );
+  }
 
   if (action.draftId) {
     return (

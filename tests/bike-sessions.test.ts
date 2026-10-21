@@ -326,7 +326,7 @@ describe("assault bike seeded days", () => {
     const bike = resolved.find((row) => row.dayNumber === 6);
     expect(bike?.dayNumber).toBe(6);
     expect(bike?.href).toBe(
-      `/training/${program.days.find((row) => row.dayNumber === 6)!.id}`,
+      `/timer?mode=bike&day=${program.days.find((row) => row.dayNumber === 6)!.id}`,
     );
     expect(bike?.title).toMatch(/Cardio/i);
     expect(bike?.day?.title).toMatch(/tempo/i);

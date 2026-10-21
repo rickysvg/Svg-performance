@@ -1,4 +1,5 @@
 import { bikeWeekIndex, memberWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
+import { bikeTimerHref, isBikePlanSession } from "@/lib/timer-session";
 import {
   FRIDAY_CONDITIONING_LABEL,
   isGppStrengthDay,
@@ -231,7 +232,7 @@ function hardClassBikeSlot(): PlanSessionSlot {
     label: "Cardio — bike",
     title: "Cardio — bike",
     detail: "Light-to-moderate bike or steady conditioning. No sprints and no heavy lifting.",
-    href: "/timer",
+    href: bikeTimerHref(),
     heavy: false,
   };
 }
@@ -634,17 +635,20 @@ export function resolvePlanSessions(
         ? pool.find((row) => row.dayNumber === session.dayNumber) ?? null
         : null;
     const slotLetter = (["A", "B", "C"] as const)[Math.min(resolved.length, 2)];
+    const title = session.title ?? (day?.title ? memberCopy(day.title) : session.label);
+    const subtitle = session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label);
+    const bike = isBikePlanSession({ title, label: session.label, day });
     resolved.push({
       slot: slotLetter,
       kind: session.kind,
       label: session.label,
-      title: session.title ?? (day?.title ? memberCopy(day.title) : session.label),
-      subtitle: session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label),
+      title,
+      subtitle,
       optional: Boolean(session.optional),
       programSlug: session.programSlug,
       dayNumber: session.dayNumber,
       dayId: day?.id,
-      href: day?.id ? `/training/${day.id}` : session.href,
+      href: bike ? bikeTimerHref(day?.id) : day?.id ? `/training/${day.id}` : session.href,
       day,
       sessionKey: session.sessionKey,
       sourceWeekday: session.sourceWeekday,

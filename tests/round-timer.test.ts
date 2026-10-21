@@ -5,8 +5,10 @@ import {
   buildTimerTimeline,
   completedWorkRounds,
   configForPreset,
+  formatDurationPick,
   formatTimerClock,
   parseStoredCustom,
+  secondSteps,
   parseStoredTimerPrefs,
   resolveTimer,
   shouldPlayPhaseBell,
@@ -137,6 +139,18 @@ describe("round timer phase math", () => {
     expect(shouldPlayPhaseBell("work", "done")).toBe(true);
     expect(shouldPlayPhaseBell("idle", "work")).toBe(true);
     expect(shouldPlayPhaseBell("work", "work")).toBe(false);
+  });
+
+  it("offers work and rest in five-second steps", () => {
+    const steps = secondSteps(5, 15 * 60);
+    expect(steps[0]).toBe(5);
+    expect(steps).toContain(20);
+    expect(steps).toContain(90);
+    expect(steps).toContain(185);
+    expect(steps.at(-1)).toBe(15 * 60);
+    expect(formatDurationPick(185)).toBe("3:05");
+    expect(formatDurationPick(20)).toBe("0:20");
+    expect(secondSteps(5, 10 * 60, 45)).toContain(45);
   });
 
   it("restores last custom settings and never uses the word bout", () => {

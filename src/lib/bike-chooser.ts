@@ -355,6 +355,28 @@ export function parseBikeRecipe(reps: string): BikeChoice | null {
 
 const MARK = "#bw:";
 
+export const BIKE_CHOICE_STORAGE_KEY = "svg_bike_choice";
+export const BIKE_CHOICE_EVENT = "svg-bike-choice";
+
+export function rememberBikeChoice(choice: BikeChoice) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(BIKE_CHOICE_STORAGE_KEY, choiceToken(choice));
+    window.dispatchEvent(new Event(BIKE_CHOICE_EVENT));
+  } catch {
+    /* private mode */
+  }
+}
+
+export function readRememberedBikeChoice(): BikeChoice | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return choiceFromToken(window.localStorage.getItem(BIKE_CHOICE_STORAGE_KEY) ?? "");
+  } catch {
+    return null;
+  }
+}
+
 export function choiceToken(choice: BikeChoice) {
   const spec = choice.spec;
   const rounds = spec.repeatRounds ?? 1;
