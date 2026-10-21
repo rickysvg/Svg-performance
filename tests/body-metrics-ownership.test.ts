@@ -9,6 +9,8 @@ import {
   getBodyMetricForUser,
   getPhotoPlaceholderForUser,
   listBodyMetricsForUser,
+  optionalBodyFatPercent,
+  recordWeightEntryForUser,
   upsertPhotoPlaceholderForUser,
 } from "@/lib/body-metrics";
 
@@ -66,6 +68,35 @@ describe("body metric and photo placeholder ownership", () => {
     await expect(deletePhotoPlaceholderForUser(photo.id, userB.id)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+  });
+
+  it("stores optional body fat alongside a weigh-in", async () => {
+    const user = await makeUser("weigh-fat@example.com");
+    const recordedAt = new Date("2026-10-21T15:00:00.000Z");
+    await recordWeightEntryForUser(user.id, {
+      value: 185,
+      unit: "lb",
+      recordedAt,
+      bodyFatPercent: 12.5,
+    });
+    await recordWeightEntryForUser(user.id, {
+      value: 184,
+      unit: "lb",
+      recordedAt: new Date("2026-10-20T15:00:00.000Z"),
+    });
+
+    const rows = await listBodyMetricsForUser(user.id);
+    const fat = rows.filter((row) => row.kind === "bodyFat");
+    const weights = rows.filter((row) => row.kind === "weight");
+    expect(weights).toHaveLength(2);
+    expect(fat).toHaveLength(1);
+    expect(fat[0]?.value).toBe(12.5);
+    expect(fat[0]?.unit).toBe("percent");
+    expect(fat[0]?.recordedAt.toISOString()).toBe(recordedAt.toISOString());
+    expect(optionalBodyFatPercent("")).toBeNull();
+    expect(optionalBodyFatPercent("  ")).toBeNull();
+    expect(optionalBodyFatPercent("18.26")).toBe(18.3);
+    expect(() => optionalBodyFatPercent("80")).toThrow(/70/);
   });
 
   it("rejects fake wearable-looking kinds and empty values", async () => {

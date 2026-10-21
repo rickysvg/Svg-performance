@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   saveBodyMetricAction,
   type BodyMetricActionState,
@@ -19,6 +19,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
     saveBodyMetricAction,
     {} as BodyMetricActionState,
   );
+  const [kind, setKind] = useState("weight");
 
   return (
     <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
@@ -32,7 +33,8 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
         Metric
         <select
           name="kind"
-          defaultValue="weight"
+          value={kind}
+          onChange={(event) => setKind(event.target.value)}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           <option value="weight">Body weight</option>
@@ -68,6 +70,22 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
           </select>
         </label>
       </div>
+      {kind === "weight" ? (
+        <label className="block text-sm">
+          Body fat % (optional)
+          <input
+            name="bodyFatPercent"
+            type="number"
+            inputMode="decimal"
+            min={0.1}
+            max={70}
+            step="0.1"
+            placeholder="—"
+            aria-label="Body fat percent, optional"
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          />
+        </label>
+      ) : null}
       <label className="block text-sm">
         When
         <input

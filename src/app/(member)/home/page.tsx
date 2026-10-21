@@ -21,7 +21,8 @@ import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
-import { getRecentWeightsForUser } from "@/lib/body-metrics";
+import { getRecentBodyFatForUser, getRecentWeightsForUser } from "@/lib/body-metrics";
+import { bodyFatReadout, homeTrainingReadout } from "@/lib/home-side-stats";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { emptyHomeTelemetry, getHomeTelemetry } from "@/lib/home-telemetry";
 import { getFightCampRow } from "@/lib/fight-camp";
@@ -42,7 +43,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
-  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, sparringRating, telemetry, camp] =
+  const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, recentFat, sparringRating, telemetry, camp] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
       homeLoad(
@@ -59,6 +60,7 @@ export default async function HomePage({
       getTrialState(user.id),
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getRecentWeightsForUser(user.id, 8), []),
+      homeLoad("bodyFat", getRecentBodyFatForUser(user.id, 2), []),
       homeLoad("sparring", latestSparringSessionRating(user.id), null),
       homeLoad(
         "telemetry",
@@ -73,6 +75,15 @@ export default async function HomePage({
     fightDateKey: camp?.fightDateKey,
     todayKey: dayKey,
   });
+  const sideStats = {
+    bodyFat: bodyFatReadout(recentFat[0]?.value ?? null, recentFat[1]?.value ?? null),
+    training: homeTrainingReadout({
+      campStatus: camp?.status,
+      fightDateKey: camp?.fightDateKey,
+      todayKey: dayKey,
+      streakDays: telemetry.streakCurrent,
+    }),
+  };
   const readiness = await homeLoad(
     "readiness",
     getReadinessForDay(user.id, dayKey),
@@ -121,6 +132,7 @@ export default async function HomePage({
         unit={units}
         caption={massLine}
         gauge={massGauge}
+        side={sideStats}
       />
 
       <HomeQuickActions

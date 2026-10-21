@@ -181,7 +181,7 @@ export default async function ProgressPage() {
           now={chartNow}
         />
         {weight ? (
-          <details>
+          <details id="log-body-fat" className="scroll-mt-4" {...(fat ? {} : { open: true })}>
             <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
             <div className="mt-3">
               <HomeBodyWeight
@@ -194,13 +194,15 @@ export default async function ProgressPage() {
             </div>
           </details>
         ) : (
-          <HomeBodyWeight
-            carbon={false}
-            value={null}
-            unit={units === "kg" ? "lb" : units || "lb"}
-            caption={massLine}
-            gauge={massGauge}
-          />
+          <div id="log-body-fat" className="scroll-mt-4">
+            <HomeBodyWeight
+              carbon={false}
+              value={null}
+              unit={units === "kg" ? "lb" : units || "lb"}
+              caption={massLine}
+              gauge={massGauge}
+            />
+          </div>
         )}
       </section>
 

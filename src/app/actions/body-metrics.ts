@@ -8,6 +8,8 @@ import {
   createBodyMetricForUser,
   deleteBodyMetricForUser,
   deletePhotoPlaceholderForUser,
+  optionalBodyFatPercent,
+  recordWeightEntryForUser,
   upsertPhotoPlaceholderForUser,
 } from "@/lib/body-metrics";
 import {
@@ -32,13 +34,29 @@ export async function saveBodyMetricAction(
 ): Promise<BodyMetricActionState> {
   try {
     const user = await requireUserOrThrow();
-    await createBodyMetricForUser(user.id, {
-      kind: String(formData.get("kind") ?? ""),
-      value: Number(formData.get("value") ?? ""),
-      unit: String(formData.get("unit") ?? ""),
-      recordedAt: parseRecordedAt(String(formData.get("recordedAt") ?? "")),
-      notes: String(formData.get("notes") ?? ""),
-    });
+    const kind = String(formData.get("kind") ?? "");
+    const recordedAt = parseRecordedAt(String(formData.get("recordedAt") ?? ""));
+    const notes = String(formData.get("notes") ?? "");
+    const value = Number(formData.get("value") ?? "");
+    const unit = String(formData.get("unit") ?? "");
+    if (kind === "weight") {
+      const bodyFatPercent = optionalBodyFatPercent(formData.get("bodyFatPercent"));
+      await recordWeightEntryForUser(user.id, {
+        value,
+        unit,
+        recordedAt,
+        notes,
+        bodyFatPercent,
+      });
+    } else {
+      await createBodyMetricForUser(user.id, {
+        kind,
+        value,
+        unit,
+        recordedAt,
+        notes,
+      });
+    }
     revalidatePath("/progress");
     revalidatePath("/home");
     return { success: "Metric saved. This is a number you typed — not a watch or wearable." };
