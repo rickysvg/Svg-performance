@@ -141,8 +141,11 @@ export function HomeQuickActions({
                 trialDays={trialDays}
                 next={action.href}
               >
-                <span className={className}>
+                <span className={className} data-home-tile-locked={kind}>
                   <ActionTile action={art} />
+                  <span className="absolute top-2 right-2 z-10 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#CBF805]">
+                    Pro
+                  </span>
                 </span>
               </UpgradePreviewSheet>
             );

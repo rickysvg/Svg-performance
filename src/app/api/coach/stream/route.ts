@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     coachName: coach.name,
   };
 
-  return coachStreamResponse(user, payload, request.signal);
+  return await coachStreamResponse(user, payload, request.signal);
 }
 
 export async function coachStreamForTest(

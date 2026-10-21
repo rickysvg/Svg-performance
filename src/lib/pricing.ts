@@ -23,7 +23,7 @@ export const LEGACY_MEMBER_PRO_DAYS = 30;
 /** Reminder days for a new 14-day grant: 5 days left, last days, and the day after it ends. */
 export const MEMBER_PRO_REMINDER_DAYS = [9, 13, 15] as const;
 
-/** Academy tier (included in dues) limits. */
+/** Logger-note replies for the academy tier. Coach chat is Pro, VIP, and the Pro trial. */
 export const ACADEMY_AI_MESSAGES_PER_WEEK = 3;
 export const ACADEMY_HISTORY_DAYS = 30;
 
@@ -70,7 +70,6 @@ export const ACADEMY_INCLUDES = [
   "Weekly check-in form",
   "Fuel logging",
   `${ACADEMY_HISTORY_DAYS} days of history`,
-  `${ACADEMY_AI_MESSAGES_PER_WEEK} AI coach messages a week`,
 ] as const;
 
 export const PRO_EXPECT = "Everything in the academy tier, plus…";

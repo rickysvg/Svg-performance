@@ -46,6 +46,15 @@ export function useCoachStream() {
         body: JSON.stringify(body),
         signal: controller.signal,
       });
+      if (response.status === 402 || response.status === 403) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          paywall?: PaywallReason;
+        } | null;
+        const reason = payload?.paywall ?? "locked";
+        setPaywall(reason);
+        return { content: "", offline: false, fallbackReason: undefined, paywall: reason };
+      }
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
         throw new Error(payload?.error || "SVG Coach could not start that reply.");

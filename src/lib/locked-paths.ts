@@ -3,9 +3,19 @@ export const PATH_HEADER = "x-svg-path";
 
 /**
  * After a nonmember's 7-day trial ends without Pro, these stay open so they can view and
- * export their own past data, manage their account, subscribe, and apply for VIP Coaching.
+ * export their own past data, manage their account, subscribe, apply for VIP Coaching,
+ * and see the Pro upsell on SVG Coach instead of the chat.
  */
-const OPEN_WHEN_LOCKED = ["/progress", "/profile", "/plan", "/shop", "/book", "/feedback", "/vip"];
+const OPEN_WHEN_LOCKED = [
+  "/progress",
+  "/profile",
+  "/plan",
+  "/shop",
+  "/book",
+  "/feedback",
+  "/vip",
+  "/coach",
+];
 
 export function isOpenWhenLocked(pathname: string | null | undefined) {
   if (!pathname) return false;

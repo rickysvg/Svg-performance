@@ -3,11 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { canUseMemberTools } from "@/lib/access";
-import { AppError } from "@/lib/errors";
-import { consumeAiUse } from "@/lib/ai-usage";
+import { consumeAiUse, AiCapError } from "@/lib/ai-usage";
+import { canUseCoachChat, COACH_CHAT_LOCKED } from "@/lib/entitlements";
 import { sendCoachMessage } from "@/lib/coach/chat";
-import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { publicErrorMessage } from "@/lib/errors";
 
@@ -19,12 +17,8 @@ export async function sendCoachMessageAction(
 ): Promise<CoachActionState> {
   try {
     const user = await requireUserOrThrow();
-    const access = await canUseMemberTools(user.id);
-    if (!access.allowed) {
-      throw new AppError(
-        "PAYWALL",
-        `${COACH_PUBLIC_NAME} is locked. Subscribe to Pro to keep using it.`,
-      );
+    if (!(await canUseCoachChat(user))) {
+      throw new AiCapError("locked", COACH_CHAT_LOCKED);
     }
     await consumeAiUse({ userId: user.id, kind: "message", surface: "chat" });
     const profile = await getProfileForUser(user.id);

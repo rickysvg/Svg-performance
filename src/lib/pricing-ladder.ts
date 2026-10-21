@@ -51,7 +51,7 @@ export const PRICING_LADDER_ROWS: readonly LadderRow[] = [
   {
     id: "ai_chat",
     label: "AI coach chat (text)",
-    cells: { academy: yes, pro: yes, vip: yes },
+    cells: { academy: no, pro: add, vip: yes },
   },
   {
     id: "checkins",

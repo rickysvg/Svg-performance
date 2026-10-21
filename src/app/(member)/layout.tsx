@@ -52,6 +52,7 @@ export default async function MemberLayout({
         graceEndsOn={showGrace && graceUntil ? formatGraceDate(graceUntil) : null}
         coachName={coach.name}
         coachThumb={coach.circle}
+        coachChatLocked={tier !== "pro" && !dashboardAdmin}
       >
         {profile?.gymMembershipVerified &&
         profile.memberProStartedAt &&

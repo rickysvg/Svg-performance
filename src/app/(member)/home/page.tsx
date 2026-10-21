@@ -20,6 +20,8 @@ import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
+import { planIsPro } from "@/lib/plans";
+import { isDashboardAdmin } from "@/lib/admin-access";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentBodyFatForUser, getRecentWeightsForUser } from "@/lib/body-metrics";
 import { bodyFatReadout, homeTrainingReadout } from "@/lib/home-side-stats";
@@ -141,14 +143,14 @@ export default async function HomePage({
       <HomeQuickActions
         imagery={profile?.athleteImagery}
         sparringRating={sparringRating}
-        locked={
-          planId === "member_access"
-            ? [
-                { href: "/coach", kind: "coach" as const },
-                { href: "/nutrition", kind: "fuel" as const },
-              ]
-            : []
-        }
+        locked={[
+          ...(!planIsPro(planId) && !isDashboardAdmin(user)
+            ? [{ href: "/coach", kind: "coach" as const }]
+            : []),
+          ...(planId === "member_access"
+            ? [{ href: "/nutrition", kind: "fuel" as const }]
+            : []),
+        ]}
         canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
       />

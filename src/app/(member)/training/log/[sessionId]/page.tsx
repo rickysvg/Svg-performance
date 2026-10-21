@@ -32,6 +32,8 @@ import {
 } from "@/lib/exercise-swap";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { resolveAiCoach } from "@/lib/coaches";
+import { canUseCoachChat } from "@/lib/entitlements";
+import { getTrialState } from "@/lib/trial";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 
 export default async function WorkoutLogPage({
@@ -169,6 +171,10 @@ export default async function WorkoutLogPage({
     ...rekeyGymRecord(slotLoads, band),
   };
   const notes = rekeyGymRecord(exerciseNotes, band);
+  const [coachChatLocked, trial] = await Promise.all([
+    canUseCoachChat(user).then((allowed) => !allowed),
+    getTrialState(user.id),
+  ]);
 
   return (
     <main data-hypercar-logger className="space-y-6">
@@ -232,6 +238,9 @@ export default async function WorkoutLogPage({
         notes={notes}
         coachId={resolveAiCoach(profile?.aiCoachId).id}
         coachMotivation={profile?.coachMotivation !== false}
+        coachChatLocked={coachChatLocked}
+        canStartTrial={trial.canStartTrial}
+        trialDays={trial.trialLengthDays}
         timeZone={tz}
         swap={{
           programSlug: session.programDay?.program.slug ?? "",

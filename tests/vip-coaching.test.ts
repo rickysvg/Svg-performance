@@ -424,6 +424,12 @@ describe("VIP Coaching rules", () => {
       "assessment",
       "priority",
     ]);
+    const chat = PRICING_LADDER_ROWS.find((row) => row.id === "ai_chat");
+    expect(chat?.cells.academy.mark).toBe("no");
+    expect(chat?.cells.pro.mark).toBe("yes");
+    expect(chat?.cells.pro.adds).toBe(true);
+    expect(chat?.cells.vip.mark).toBe("yes");
+    expect(chat?.cells.vip.adds).toBeUndefined();
     const formChecks = PRICING_LADDER_ROWS.find((row) => row.id === "form_checks");
     expect(formChecks?.cells.pro.note).toBe("AI/self");
     expect(formChecks?.cells.vip.note).toBe("Timestamped notes from Ricky");

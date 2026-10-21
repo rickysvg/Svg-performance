@@ -17,7 +17,7 @@ const BLURBS: Record<string, { title: string; body: string }> = {
   },
   coach: {
     title: "SVG Coach chat is in Pro",
-    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Academy members get 3 messages a week. Pro opens daily chat.",
+    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Chat is included with Pro, VIP Coaching, and an active Pro trial.",
   },
   ai_limit: {
     title: "You used this week's 3 AI messages",
@@ -87,7 +87,13 @@ export function UpgradePreview({
       </h2>
       <p className="mt-2 text-sm text-muted">{copy.body}</p>
       <div className="mt-4 space-y-3">
-        <UpgradeCtas canStartTrial={canStartTrial} trialDays={trialDays} next={next} />
+        <UpgradeCtas
+          canStartTrial={canStartTrial}
+          trialDays={trialDays}
+          next={next}
+          trialLabel={kind === "coach" ? "Start 7-day trial" : undefined}
+          upgradeLabel={kind === "coach" ? "Upgrade" : undefined}
+        />
         {onDismiss ? (
           <button
             type="button"

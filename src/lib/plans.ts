@@ -113,7 +113,6 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
       "learn_beginner",
       "learn_full",
       "nutrition",
-      "ai",
       "conditioning",
       "mobility_pro",
       "form_check",

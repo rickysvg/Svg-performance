@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { canUseMemberTools } from "@/lib/access";
+import { canUseCoachChat } from "@/lib/entitlements";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
 import { aiRemainingLabel, getAiAllowance } from "@/lib/ai-usage";
@@ -15,15 +15,15 @@ import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 
 export default async function CoachPage() {
   const user = await requireUser();
-  const access = await canUseMemberTools(user.id);
+  const chatAllowed = await canUseCoachChat(user);
   const profile = await getProfileForUser(user.id);
   const coach = resolveAiCoach(profile?.aiCoachId);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const recovery = await recentRecoveryCheckIn(user.id, new Date(), tz);
-  if (!access.allowed) {
+  if (!chatAllowed) {
     const trial = await getTrialState(user.id);
     return (
-      <main className="space-y-6">
+      <main data-coach-locked="1" className="space-y-6">
         <h1 className="font-display text-2xl uppercase tracking-wide">{COACH_PUBLIC_NAME}</h1>
         {recovery ? (
           <RecoveryNotice

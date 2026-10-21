@@ -104,7 +104,7 @@ export default async function MarketingPage({
               Academy members get the core app with their dues and Pro free for {MEMBER_PRO_DAYS} days.
               Checkout is coming soon.
             </li>
-            <li>SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Weight-cut services are not sold here.</li>
+            <li>SVG Coach chat is on Pro, VIP Coaching, and the Pro trial. It is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Academy members and free accounts do not get chat. Weight-cut services are not sold here.</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/pricing" className="text-sm text-accent underline-offset-4 hover:underline">
