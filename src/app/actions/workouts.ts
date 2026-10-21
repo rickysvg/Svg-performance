@@ -133,7 +133,7 @@ export async function saveWorkoutAction(
           now,
           timeZone,
           completing: intent === "complete",
-          hasPriorLogs: sessionHasLoggedWork(existing.sets),
+          hasPriorLogs: sessionHasLoggedWork(existing.sets) || Boolean(existing.dayPlanId),
         })
       : now;
     const alreadyActive =
@@ -167,6 +167,8 @@ export async function saveWorkoutAction(
     }
     revalidatePath("/home");
     revalidatePath("/training");
+    revalidatePath("/training/calendar");
+    revalidatePath("/training/my-workouts");
     revalidatePath("/training/history");
     revalidatePath("/progress");
     revalidatePath("/progress/records");

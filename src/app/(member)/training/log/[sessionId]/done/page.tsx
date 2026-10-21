@@ -4,6 +4,7 @@ import { getShareCardView } from "@/lib/share-card-data";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { civilDayInstant } from "@/lib/performed-at";
 import { memberFacingTitle } from "@/lib/member-copy";
+import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import {
@@ -66,6 +67,11 @@ export default async function WorkoutDonePage({
         unit={unit}
         workoutId={sessionId}
         difficultyRating={view.session.difficultyRating}
+        savedWorkoutName={defaultSavedWorkoutName({
+          title: view.session.title,
+          date: view.session.performedAt,
+          timeZone: tz,
+        })}
         summary={buildSessionSummary({
           title: memberFacingTitle(view.session.title),
           programDayTitle: view.session.programDay?.title,

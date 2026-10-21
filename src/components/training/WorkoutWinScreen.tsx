@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
 import { resumeWorkoutAction } from "@/app/actions/workouts";
+import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
 import { SessionRecap } from "@/components/training/SessionRecap";
 import type { SessionSummary } from "@/lib/session-summary";
@@ -35,6 +36,7 @@ export function WorkoutWinScreen({
   workoutId,
   difficultyRating,
   summary,
+  savedWorkoutName,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -46,6 +48,7 @@ export function WorkoutWinScreen({
   workoutId: string;
   difficultyRating: string;
   summary?: SessionSummary | null;
+  savedWorkoutName: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -164,6 +167,9 @@ export function WorkoutWinScreen({
         >
           DONE
         </button>
+        <div className="mt-3 w-full">
+          <SaveWorkoutButton workoutId={workoutId} defaultName={savedWorkoutName} tone="dark" />
+        </div>
         <form action={resumeWorkoutAction} className="mt-2 w-full">
           <input type="hidden" name="workoutId" value={workoutId} />
           <button

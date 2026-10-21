@@ -56,6 +56,10 @@ import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { resolveAiCoach } from "@/lib/coaches";
+import { listDayPlansForUser } from "@/lib/my-workouts";
+import { applyPlansToProgramCards } from "@/lib/my-workout-plan";
+import { CustomWorkoutCard } from "@/components/training/CustomWorkoutCard";
+import { RevertDayButton } from "@/components/training/RevertDayButton";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -237,7 +241,12 @@ export default async function TrainingPage({
   const showDetails =
     dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
 
+  const dayPlans = await listDayPlansForUser(user.id, [dayParam]);
+  const dayOverlay = applyPlansToProgramCards(planned, dayPlans);
+  const visiblePlanned = dayOverlay.cards;
+
   const moreLinks = [
+    { href: "/training/my-workouts", label: "My Workouts" },
     { href: "/training/calendar", label: "Calendar" },
     { href: "/training/history", label: `Workout history (${sessionCount})` },
     { href: "/timer", label: "Round timer" },
@@ -274,6 +283,13 @@ export default async function TrainingPage({
             {mesoBlockLabel(mesoBlockForWeekIndex(weekIndex))} · {blockWeekLabel(weekIndex)}
           </p>
         </div>
+        <Link
+          href="/training/my-workouts"
+          data-my-workouts-link
+          className="touch-target inline-flex shrink-0 items-center rounded-full border border-line bg-card px-4 text-sm font-semibold"
+        >
+          My Workouts
+        </Link>
       </div>
 
       <FightCampOptIn
@@ -329,11 +345,13 @@ export default async function TrainingPage({
             {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
           </p>
           <h2 className="mt-1 text-lg">
-            {dayPlan.active
-              ? dayPlan.summary
-              : nextDay
-                ? `Rest · next up ${nextDay}`
-                : "Rest day"}
+            {dayOverlay.replaced
+              ? dayPlans.map((plan) => plan.name).join(" · ")
+              : dayPlan.active
+                ? dayPlan.summary
+                : nextDay
+                  ? `Rest · next up ${nextDay}`
+                  : "Rest day"}
           </h2>
           {dayPlan.movedFrom ? (
             <p className="mt-1 text-sm text-muted" data-moved-workout>
@@ -379,7 +397,7 @@ export default async function TrainingPage({
       ) : null}
 
       <section className="space-y-3" data-session-phase="next">
-        {planned.map((session, index) => (
+        {visiblePlanned.map((session, index) => (
           <div
             key={`${session.sessionKey ?? session.slot}-${session.dayId ?? session.label}`}
             {...(index === bagIndex ? { "data-bag-session": "" } : {})}
@@ -394,6 +412,12 @@ export default async function TrainingPage({
             />
           </div>
         ))}
+        {dayPlans.map((plan) => (
+          <CustomWorkoutCard key={plan.id} plan={plan} />
+        ))}
+        {dayPlans.length > 0 ? (
+          <RevertDayButton dayKey={dayParam} next={`/training?day=${dayParam}`} />
+        ) : null}
       </section>
 
       {showDetails || dayPlan.active ? (

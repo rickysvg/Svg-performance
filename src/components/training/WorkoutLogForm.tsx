@@ -81,6 +81,7 @@ import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { ExerciseCardMenu } from "@/components/training/ExerciseCardMenu";
 import { ExerciseLibrarySheet } from "@/components/training/ExerciseLibrarySheet";
+import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { RemoveToast } from "@/components/training/RemoveToast";
 import { libraryExercise, type LibraryExercise } from "@/lib/exercise-library";
 import {
@@ -92,6 +93,7 @@ import {
   parseAddedPlan,
   removeExerciseSets,
 } from "@/lib/logger-insert";
+import { defaultSavedWorkoutName, exercisesFromLoggerGroups } from "@/lib/my-workout-plan";
 import { rirFromLoadText } from "@/lib/rir";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
 import type { SwapSlot } from "@/lib/exercise-swap";
@@ -925,11 +927,56 @@ export function WorkoutLogForm({
           exerciseName: name,
           reps: plan?.reps ?? "",
           restSeconds: rest,
+          loadText: plan?.loadText,
+          notes: plan?.notes,
         }),
       };
     });
     commitSets(next);
   }
+
+  const saveExercises = exercisesFromLoggerGroups(
+    grouped.map(([name, group]) => {
+      const overlay = swapOverlay[name];
+      const stored = parseAddedPlan(group[0]?.prescriptionKey);
+      const planned = session.programDay?.exercises.find(
+        (row) => gymExerciseKey(row.name) === gymExerciseKey(name),
+      );
+      const mode = resolveLogMode({
+        logMode: group[0]?.logMode ?? overlay?.logMode ?? planned?.logMode,
+        name,
+        reps: overlay?.reps || stored?.reps || planned?.reps,
+      });
+      return {
+        name,
+        restSeconds: restForName(
+          name,
+          overlay?.restSeconds ?? stored?.restSeconds ?? planned?.restSeconds,
+          mode,
+        ),
+        planned: {
+          reps: overlay?.reps || stored?.reps || planned?.reps || "",
+          loadText: overlay?.loadText || stored?.loadText || planned?.loadText || "",
+          notes: overlay?.notes || stored?.notes || planned?.notes || "",
+          logMode: mode,
+        },
+        sets: group.map((set) => ({
+          reps: set.reps,
+          loadValue: set.loadValue,
+          loadUnit: set.loadUnit,
+          rir: set.rir,
+          logMode: set.logMode,
+          notes: set.notes,
+          durationSeconds: set.durationSeconds,
+        })),
+      };
+    }),
+  );
+  const saveDefaultName = defaultSavedWorkoutName({
+    title: session.title,
+    date: new Date(session.performedAt),
+    timeZone,
+  });
 
   return (
     <div>
@@ -1167,10 +1214,10 @@ export function WorkoutLogForm({
                   name,
                   sets: group.length,
                   reps: overlay?.reps || storedPlan?.reps || library?.reps || "",
-                  loadText: overlay?.loadText || library?.loadText || "",
+                  loadText: overlay?.loadText || storedPlan?.loadText || library?.loadText || "",
                   restSeconds: addedRest ?? library?.restSeconds ?? 60,
                   logMode: overlay?.logMode || group[0]?.logMode || library?.logMode || "",
-                  notes: overlay?.notes || library?.notes || "",
+                  notes: overlay?.notes || storedPlan?.notes || library?.notes || "",
                   formVideoUrl: "",
                   formVideoPending: false,
                 }
@@ -1720,6 +1767,13 @@ export function WorkoutLogForm({
                 Retry save
               </button>
             </div>
+          ) : null}
+          {saveExercises.length > 0 ? (
+            <SaveWorkoutButton
+              workoutId={session.id}
+              defaultName={saveDefaultName}
+              exercises={saveExercises}
+            />
           ) : null}
           <button
             type="submit"

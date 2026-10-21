@@ -58,10 +58,13 @@ export async function resetDatabase() {
   await prisma.readinessCheckIn.deleteMany();
   await prisma.testingResult.deleteMany();
   await prisma.workoutSet.deleteMany();
+  await prisma.workoutSession.deleteMany();
+  await prisma.savedWorkoutExercise.deleteMany();
+  await prisma.dayWorkoutPlan.deleteMany();
+  await prisma.savedWorkout.deleteMany();
   await prisma.exerciseNote.deleteMany();
   await prisma.exerciseRemoval.deleteMany();
   await prisma.exerciseSwap.deleteMany();
-  await prisma.workoutSession.deleteMany();
   await prisma.passwordResetAttempt.deleteMany();
   await prisma.passwordResetToken.deleteMany();
   await prisma.session.deleteMany();

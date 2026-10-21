@@ -76,6 +76,8 @@ model User {
   checkInReminderLogs      CheckInReminderLog[]
   aiUsageEvents            AiUsageEvent[]
   memberProReminders       MemberProReminderLog[]
+  savedWorkouts            SavedWorkout[]
+  dayWorkoutPlans          DayWorkoutPlan[]
 }
 
 model Session {
@@ -321,10 +323,70 @@ model WorkoutSession {
   restEndsAt       DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+  /** Template this session was started from. Null when the template is deleted. */
+  savedWorkoutId String?
+  savedWorkout   SavedWorkout? @relation(fields: [savedWorkoutId], references: [id], onDelete: SetNull)
+  /** Applied day this session logs. Null for Start now. */
+  dayPlanId      String?
+  dayPlan        DayWorkoutPlan? @relation(fields: [dayPlanId], references: [id], onDelete: SetNull)
   sets         WorkoutSet[]
   hrLogs       HrWorkoutSession[]
 
   @@index([userId, performedAt])
+  @@index([savedWorkoutId])
+  @@index([dayPlanId])
+}
+
+/** A member's named exercise list. Later edits do not rewrite a day already applied. */
+model SavedWorkout {
+  id         String                 @id @default(cuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  lastUsedAt DateTime?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  exercises  SavedWorkoutExercise[]
+  dayPlans   DayWorkoutPlan[]
+  sessions   WorkoutSession[]
+
+  @@index([userId, updatedAt])
+}
+
+model SavedWorkoutExercise {
+  id             String       @id @default(cuid())
+  savedWorkoutId String
+  savedWorkout   SavedWorkout @relation(fields: [savedWorkoutId], references: [id], onDelete: Cascade)
+  sortOrder      Int
+  name           String
+  sets           Int
+  reps           String
+  loadText       String       @default("")
+  restSeconds    Int          @default(60)
+  rir            String       @default("")
+  logMode        String       @default("load_reps")
+  notes          String       @default("")
+
+  @@index([savedWorkoutId])
+}
+
+/** One applied copy of a saved workout on a civil day. The exercise list is a snapshot. */
+model DayWorkoutPlan {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Member civil day, YYYY-MM-DD. */
+  dayKey         String
+  /** replace | extra */
+  mode           String
+  savedWorkoutId String?
+  savedWorkout   SavedWorkout?  @relation(fields: [savedWorkoutId], references: [id], onDelete: SetNull)
+  name           String
+  exercisesJson  String
+  createdAt      DateTime       @default(now())
+  sessions       WorkoutSession[]
+
+  @@index([userId, dayKey])
 }
 
 model WorkoutSet {

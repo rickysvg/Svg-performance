@@ -3,6 +3,7 @@ import { weekSessionTally, type CalendarActivity, type CalendarDay } from "@/lib
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
+import { RevertDayButton } from "@/components/training/RevertDayButton";
 
 function StatusCircle({
   kind,
@@ -40,6 +41,8 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
     <div
       data-status={activity.status}
       data-session-key={activity.sessionKey}
+      data-custom-workout={activity.customPlanId}
+      data-applied-workout={activity.customPlan ? activity.title : undefined}
       className="flex items-center gap-3 rounded-2xl border border-line bg-card py-3.5 pr-3 pl-4 shadow-sm"
     >
       <Link href={activity.href} className="flex min-w-0 flex-1 items-center gap-3">
@@ -142,6 +145,9 @@ export function CalendarList({
           ) : (
             <div className="h-px bg-line" />
           )}
+          {day.revertKey ? (
+            <RevertDayButton dayKey={day.revertKey} next={`/training/calendar?day=${day.revertKey}`} />
+          ) : null}
         </li>
       ))}
     </ol>
