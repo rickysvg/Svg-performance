@@ -33,7 +33,7 @@ export type DayRole = {
   bag: BagIntensity | null;
   cardio: CardioKind | null;
   mobility: "primary" | "secondary" | null;
-  /** Off-season Friday circuit. Camp swaps or drops it. */
+  /** Off-season Friday conditioning. Camp swaps or drops it. */
   gpp: boolean;
   outside: OutsideDay | null;
 };

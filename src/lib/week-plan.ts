@@ -1,6 +1,8 @@
 import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessions";
 import { bikeWeekIndex, memberWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
 import {
+  FRIDAY_CONDITIONING_LABEL,
+  isGppStrengthDay,
   mesoBlockForWeekIndex,
   mesoBlockLabel,
   strengthDaysForWeek,
@@ -277,8 +279,8 @@ function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number)
     const circuit = strengthDaysForWeek(weekIndex).friday;
     sessions.push({
       kind: "conditioning",
-      label: "Friday circuit",
-      title: "Friday circuit",
+      label: FRIDAY_CONDITIONING_LABEL,
+      title: FRIDAY_CONDITIONING_LABEL,
       detail: "General prep. 2–3 RIR. Nothing to failure.",
       programSlug: DEMO_PROGRAM_SLUG,
       dayNumber: circuit,
@@ -312,7 +314,7 @@ function summaryForRole(role: DayRole, active: boolean) {
   const parts: string[] = [];
   if (role.bag) parts.push("Bag");
   if (role.lift) parts.push("Lift");
-  if (role.gpp) parts.push("Circuit");
+  if (role.gpp) parts.push(FRIDAY_CONDITIONING_LABEL);
   if (role.cardio) parts.push("Cardio");
   if (role.mobility) parts.push("Mobility");
   return parts.join("+") || "Rest";
@@ -349,15 +351,32 @@ export function coreSkeletonSessions(
   return sessionsForRole(weekday, roles[weekday], weekIndex);
 }
 
+function sessionIsFridayConditioning(session: PlanSessionSlot) {
+  if (session.kind !== "conditioning") return false;
+  if (
+    session.label === FRIDAY_CONDITIONING_LABEL ||
+    session.title === FRIDAY_CONDITIONING_LABEL ||
+    session.label === "Friday circuit" ||
+    session.title === "Friday circuit"
+  ) {
+    return true;
+  }
+  return session.dayNumber != null && isGppStrengthDay(session.dayNumber);
+}
+
 function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, active: boolean) {
   if (!active) return "Off";
   const hasBag = sessions.some((session) => session.kind === "skill");
   const hasLift = sessions.some((session) => session.kind === "strength");
-  const hasCardio = sessions.some((session) => session.kind === "conditioning");
+  const hasConditioning = sessions.some(sessionIsFridayConditioning);
+  const hasCardio = sessions.some(
+    (session) => session.kind === "conditioning" && !sessionIsFridayConditioning(session),
+  );
   const hasMobility = sessions.some((session) => session.kind === "mobility");
   const parts: string[] = [];
   if (hasBag) parts.push("Bag");
   if (hasLift) parts.push("Lift");
+  if (hasConditioning) parts.push(FRIDAY_CONDITIONING_LABEL);
   if (hasCardio) parts.push("Cardio");
   if (hasMobility) parts.push("Mobility");
   if (parts.length > 0) return parts.join("+");

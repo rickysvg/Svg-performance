@@ -16,7 +16,7 @@ export const MESO_BLOCK_META: Record<MesoBlock, { title: string; intent: string 
 };
 
 /**
- * Strength catalog day numbers. Three full-body days plus Friday circuit.
+ * Strength catalog day numbers. Three full-body days plus Friday conditioning.
  * Bikes stay on days 4–9. Fight-pace bike is day 22.
  */
 export const STRENGTH_DAY_BY_BLOCK: Record<
@@ -59,7 +59,16 @@ const FRIDAY_CIRCUIT_DAYS = new Set(
   (["A", "B", "C"] as const).map((block) => STRENGTH_DAY_BY_BLOCK[block].friday),
 );
 
-/** Friday circuit days. The member-facing title is "Friday circuit". */
+/**
+ * Member-facing name for the Friday prep block.
+ * "Conditioning" is preferred. A day chip is about 48px wide and shares that
+ * row with another mark, so the chip draws a bolt instead of this word.
+ * "Engine" is the shorter word if a surface has to print the name inside the chip.
+ */
+export const FRIDAY_CONDITIONING_LABEL = "Conditioning";
+export const FRIDAY_CONDITIONING_CHIP_WORD = "Engine";
+
+/** Friday conditioning days. The member-facing title is "Conditioning". */
 export function isGppStrengthDay(dayNumber: number) {
   return FRIDAY_CIRCUIT_DAYS.has(dayNumber);
 }

@@ -56,7 +56,7 @@ async function main() {
       slug: DEMO_SLUG,
       title: "DEMO — Strength Base for Class",
       description:
-        "Three full-body lift days (Monday, Tuesday, Thursday), a Friday circuit, Wednesday alactic bike, and Sunday aerobic bike. Bag work lives in DEMO Combat Skills. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
+        "Three full-body lift days (Monday, Tuesday, Thursday), Friday conditioning, Wednesday alactic bike, and Sunday aerobic bike. Bag work lives in DEMO Combat Skills. Daru Strong and other-coach items are credited and are not an SVG program or a coach endorsement. It is labeled DEMO on purpose. It is not a personalized fight-camp plan and has not been assigned to you by a coach.",
       isDemo: true,
       days: {
         create: [

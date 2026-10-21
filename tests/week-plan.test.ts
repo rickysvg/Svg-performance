@@ -104,7 +104,7 @@ describe("Core weekday planner", () => {
     expect(tue[1]).toMatchObject({ kind: "strength", dayNumber: 2 });
 
     const fri = coreSkeletonSessions("Friday", "mma");
-    expect(fri[0]?.label).toBe("Friday circuit");
+    expect(fri[0]?.label).toBe("Conditioning");
     expect(fri[0]?.dayNumber).toBe(10);
     expect(fri.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
     expect(fri.some((session) => session.kind === "strength")).toBe(false);
@@ -370,7 +370,7 @@ describe("Core weekday planner", () => {
     expect(week.Monday.sessions.find((session) => session.kind === "strength")?.heavy).toBe(true);
     expect(week.Monday.sessions.find((session) => session.kind === "skill")?.heavy).toBe(true);
     expect(week.Friday.sessions.find((session) => session.kind === "skill")).toBeUndefined();
-    expect(week.Friday.sessions.find((session) => session.label === "Friday circuit")?.heavy).toBe(false);
+    expect(week.Friday.sessions.find((session) => session.label === "Conditioning")?.heavy).toBe(false);
     expect(week.Wednesday.sessions.every((session) => session.heavy !== true)).toBe(true);
 
     const start = weekStartKey(monday, APP_TIMEZONE);
@@ -385,7 +385,7 @@ describe("Core weekday planner", () => {
     expect(futureWorkoutPulledBack(liftKey, "Tuesday", "Tuesday")).toBe(false);
     const fridayPlan = planForDate(prefs, new Date(2026, 8, 25, 10, 0, 0));
     const fridayBag =
-      fridayPlan.sessions.find((session) => session.label === "Friday circuit")?.sessionKey ?? "";
+      fridayPlan.sessions.find((session) => session.label === "Conditioning")?.sessionKey ?? "";
     expect(fridayBag.startsWith("Friday:")).toBe(true);
     expect(futureWorkoutPulledBack(fridayBag, "Tuesday", "Tuesday")).toBe(true);
     const auto = moveSessionOnPlan([], start, fridayBag, "Tuesday").map((row) => ({
@@ -658,7 +658,7 @@ describe("Core planner on Home", () => {
     };
     const fridayPlan = planForDate(prefs, friday, APP_TIMEZONE);
     const fridayBag =
-      fridayPlan.sessions.find((session) => session.label === "Friday circuit")?.sessionKey ?? "";
+      fridayPlan.sessions.find((session) => session.label === "Conditioning")?.sessionKey ?? "";
     const mondayPlan = planForDate(prefs, monday, APP_TIMEZONE);
     const mondayLift = mondayPlan.sessions.find((session) => session.kind === "strength")?.sessionKey ?? "";
     expect(fridayBag.startsWith("Friday:")).toBe(true);

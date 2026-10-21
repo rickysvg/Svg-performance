@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { BAG_FOCUS, BAG_ROUND_COUNTS_ADVANCED_LONG, bagMinutesForBand, bagRoundCountFor, isAdvancedLongBagDay } from "@/lib/bag-sessions";
 import { coreSkeletonSessions } from "@/lib/week-plan";
 import { weekChipActivities } from "@/components/training/WeekStrip";
+import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
@@ -55,6 +56,18 @@ describe("Train / Calendar day chips", () => {
     expect(weekChipActivities("Off")).toEqual([{ id: "Off", label: "Off" }]);
     expect(weekChipActivities("Rest")).toEqual([{ id: "Rest", label: "Rest" }]);
     expect(weekChipActivities("Recover")).toEqual([{ id: "Mobility", label: "Mobility" }]);
+    expect(weekChipActivities("Conditioning+Mobility").map((item) => item.id)).toEqual([
+      "Conditioning",
+      "Mobility",
+    ]);
+    expect(weekChipActivities("Circuit+Mobility").map((item) => item.label)).toEqual([
+      "Conditioning",
+      "Mobility",
+    ]);
+    expect(weekChipActivities("Engine").map((item) => item.label)).toEqual(["Conditioning"]);
+    expect(FRIDAY_CONDITIONING_LABEL).toBe("Conditioning");
+    expect(FRIDAY_CONDITIONING_CHIP_WORD).toBe("Engine");
+    expect(FRIDAY_CONDITIONING_LABEL.length).toBeGreaterThan(8);
 
     const strip = read("src/components/training/WeekStrip.tsx");
     expect(strip).toContain("<svg");
@@ -70,6 +83,10 @@ describe("Train / Calendar day chips", () => {
     }
     expect(strip).not.toContain("ACTIVITY_MARK");
     expect(strip).not.toContain("activity.mark");
+    expect(strip).toContain("bg-carbon text-accent");
+    expect(strip).toContain("M9.15.9 3.2 8.7h3.7l-1 6.4 6.9-8.6H8.9L9.15.9z");
+    expect(strip).not.toContain('circle cx="8" cy="2.6"');
+    expect(strip).toContain("FRIDAY_CONDITIONING_LABEL");
   });
 
   it("keeps Monday and Tuesday bag day numbers distinct, and Wednesday is the bike", () => {

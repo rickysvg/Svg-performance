@@ -1,6 +1,9 @@
 /** Member-facing words. Daru conditioning menus stay; the GPP acronym does not. */
 export function memberCopy(text: string) {
-  return text.replace(/\bGPP\b/g, "Cardio").replace(/\bgpp\b/g, "cardio");
+  return text
+    .replace(/\bGPP\b/g, "Cardio")
+    .replace(/\bgpp\b/g, "cardio")
+    .replace(/\bFriday circuit\b/gi, "Conditioning");
 }
 
 /** Drop the seeded sample label from anything a member can read. */
