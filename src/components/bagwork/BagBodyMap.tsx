@@ -1,87 +1,96 @@
 "use client";
 
-import {
-  BAG_REGION_LABELS,
-  HEAD_PATH,
-  SILHOUETTE,
-  figureParts,
-  formatBagRegions,
-  partIsLit,
-  type BagRegion,
-  type BagSide,
-  type FigureView,
-} from "@/lib/bag-body";
+import Image from "next/image";
+import { BAG_REGION_LABELS, formatBagRegions, type BagRegion, type BagSide } from "@/lib/bag-body";
+import { focusGlows, glowCaption, regionTapSpots, type BodyGlow } from "@/lib/bag-glow";
 
-const VIEWS: FigureView[] = ["front", "back"];
+const ATHLETE = "/bagwork/athlete-front.webp";
+
+function Glow({ spot }: { spot: BodyGlow }) {
+  return (
+    <span
+      aria-hidden
+      data-body-glow={spot.id}
+      className="pointer-events-none absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full"
+      style={{
+        left: `${spot.x}%`,
+        top: `${spot.y}%`,
+        width: `${spot.size}%`,
+        background:
+          "radial-gradient(circle, rgba(203,248,5,0.92) 0%, rgba(203,248,5,0.48) 32%, rgba(203,248,5,0.16) 58%, rgba(203,248,5,0) 74%)",
+        mixBlendMode: "screen",
+      }}
+    />
+  );
+}
 
 export function BagBodyMap({
   regions,
   side = "both",
+  workoutKey = null,
   interactive = false,
   onToggle,
 }: {
   regions: readonly BagRegion[];
   side?: BagSide;
+  workoutKey?: string | null;
   interactive?: boolean;
   onToggle?: (region: BagRegion) => void;
 }) {
-  const label = formatBagRegions(regions);
+  const glows = focusGlows(interactive ? null : workoutKey, regions, side);
+  const caption = glowCaption(glows) || formatBagRegions(regions);
+  const emphasis = caption
+    ? `Emphasizes ${caption}.`
+    : interactive
+      ? "Tap a region to highlight it."
+      : "No regions highlighted.";
+
   return (
-    <figure className="space-y-3" data-body-map data-body-side={side}>
-      <div className="grid grid-cols-2 gap-2">
-        {VIEWS.map((view) => (
-          <div key={view} className="hc-carbon overflow-hidden rounded-2xl px-1 py-2" data-body-view={view}>
-            <svg viewBox="0 0 200 452" className="mx-auto h-auto w-full max-w-[11rem]" role="img" aria-label={`${view} body`}>
-              <path d={HEAD_PATH} fill="#16181c" stroke="none" />
-              {figureParts(view).map((part) => {
-                const lit = partIsLit(part, regions, side);
-                const name = BAG_REGION_LABELS[part.region];
+    <figure className="space-y-3" data-body-map data-body-side={side} data-body-round={workoutKey ?? ""}>
+      <div className="overflow-hidden rounded-2xl bg-[#0c0e11]">
+        <div className="relative">
+          <Image
+            src={ATHLETE}
+            alt={caption ? `Athlete facing forward. ${emphasis}` : "Athlete facing forward on a black background."}
+            width={720}
+            height={1280}
+            className="block h-auto w-full"
+            sizes="(max-width: 390px) 92vw, 420px"
+          />
+          <div className="pointer-events-none absolute inset-0" data-body-glows>
+            {glows.map((spot) => (
+              <Glow key={spot.id} spot={spot} />
+            ))}
+          </div>
+          {interactive
+            ? regionTapSpots(side).map((spot) => {
+                const region = spot.region;
+                if (!region) return null;
+                const lit = regions.includes(region);
                 return (
-                  <path
-                    key={part.id}
-                    d={part.d}
-                    data-region={part.region}
-                    data-side={part.side}
+                  <button
+                    key={spot.id}
+                    type="button"
+                    data-region={region}
                     data-lit={lit ? "true" : "false"}
-                    fill={lit ? "#CBF805" : "transparent"}
-                    stroke={lit ? "#101208" : "none"}
-                    strokeWidth="1.2"
-                    strokeLinejoin="round"
-                    className={interactive ? "cursor-pointer" : undefined}
-                    role={interactive ? "button" : undefined}
-                    tabIndex={interactive ? 0 : undefined}
-                    aria-pressed={interactive ? regions.includes(part.region) : undefined}
-                    aria-label={interactive ? name : undefined}
-                    onClick={
-                      interactive
-                        ? () => {
-                            onToggle?.(part.region);
-                          }
-                        : undefined
-                    }
-                    onKeyDown={
-                      interactive
-                        ? (event) => {
-                            if (event.key !== "Enter" && event.key !== " ") return;
-                            event.preventDefault();
-                            onToggle?.(part.region);
-                          }
-                        : undefined
-                    }
+                    aria-pressed={lit}
+                    aria-label={BAG_REGION_LABELS[region]}
+                    onClick={() => onToggle?.(region)}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                      left: `${spot.x}%`,
+                      top: `${spot.y}%`,
+                      width: `${Math.max(spot.size, 18)}%`,
+                      aspectRatio: "1",
+                    }}
                   />
                 );
-              })}
-              <path d={HEAD_PATH} fill="none" stroke="#d5d5d5" strokeWidth="1.75" />
-              <path d={SILHOUETTE[view]} fill="none" stroke="#c8c8c8" strokeWidth="1.75" strokeLinejoin="round" />
-            </svg>
-            <figcaption className="font-display text-center text-[11px] uppercase tracking-wide text-white/70">
-              {view}
-            </figcaption>
-          </div>
-        ))}
+              })
+            : null}
+        </div>
       </div>
       <p className="text-sm text-muted" data-body-emphasis>
-        {label ? `Emphasizes ${label}.` : interactive ? "Tap a region to highlight it." : "No regions highlighted."}
+        {emphasis}
       </p>
     </figure>
   );

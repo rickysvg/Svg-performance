@@ -44,7 +44,7 @@ export function BagWorkoutDetail({ view }: { view: BagworkView }) {
         ))}
       </ul>
 
-      <BagBodyMap regions={view.regions} side={view.side} />
+      <BagBodyMap regions={view.regions} side={view.side} workoutKey={view.key} />
 
       {view.custom ? (
         <Link href={`/bagwork/saved/${view.key.slice("saved:".length)}/edit`} className="inline-flex text-sm text-accent underline">
