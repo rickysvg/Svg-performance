@@ -38,7 +38,7 @@ describe("coach speech profiles", () => {
     const calm = coachingStyleVoice("supportive", "Ricky");
     const hard = coachingStyleVoice("tough", "Ricky");
     expect(calm).toMatch(/Intensity: calm/);
-    expect(calm).toMatch(/SVG MMA Academy head coach/);
+    expect(calm).toMatch(/SVG founder and head coach/);
     expect(hard).toMatch(/Intensity: intense/);
     expect(hard).toMatch(/Drill-sergeant/);
     expect(intensitySpeech("hype")).toMatch(/Quicker pace/);
