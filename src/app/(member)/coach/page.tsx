@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { canUseCoachChat } from "@/lib/entitlements";
+import { canUseCoachChat } from "@/lib/coach-access";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
 import { aiRemainingLabel, getAiAllowance } from "@/lib/ai-usage";

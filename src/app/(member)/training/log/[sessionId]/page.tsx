@@ -32,7 +32,7 @@ import {
 } from "@/lib/exercise-swap";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { resolveAiCoach } from "@/lib/coaches";
-import { canUseCoachChat } from "@/lib/entitlements";
+import { canUseCoachChat } from "@/lib/coach-access";
 import { getTrialState } from "@/lib/trial";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 

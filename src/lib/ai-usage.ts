@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { isDashboardAdmin } from "@/lib/admin-access";
 import { AppError } from "@/lib/errors";
-import { COACH_CHAT_LOCKED, getEffectivePlanId, tierForPlan, type AppTier } from "@/lib/entitlements";
+import { getEffectivePlanId, tierForPlan, type AppTier } from "@/lib/entitlements";
+import { COACH_CHAT_LOCKED } from "@/lib/coach-access";
 import {
   ACADEMY_AI_MESSAGES_PER_WEEK,
   PRO_AI_MESSAGES_PER_DAY,

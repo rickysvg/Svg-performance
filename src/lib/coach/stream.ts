@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, AuthError } from "@/lib/errors";
 import { AiCapError, consumeAiUse } from "@/lib/ai-usage";
-import { canUseCoachChat, COACH_CHAT_LOCKED } from "@/lib/entitlements";
+import { canUseCoachChat, COACH_CHAT_LOCKED } from "@/lib/coach-access";
 import { detectSafetyRefusal, logCoachRefusal } from "@/lib/coach/safety";
 import { loadMemberContext } from "@/lib/coach/member-context";
 import {

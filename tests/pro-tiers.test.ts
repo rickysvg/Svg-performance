@@ -1,7 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { AiCapError, consumeAiUse, getAiAllowance } from "@/lib/ai-usage";
-import { canUseCoachChat, getAppTier, getEffectivePlanId } from "@/lib/entitlements";
+import { getAppTier, getEffectivePlanId } from "@/lib/entitlements";
+import { canUseCoachChat } from "@/lib/coach-access";
 import { coachStreamForTest } from "@/app/api/coach/stream/route";
 import { coachStreamResponse } from "@/lib/coach/stream";
 import { PLAN_CATALOG } from "@/lib/plans";

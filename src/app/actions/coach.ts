@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { consumeAiUse, AiCapError } from "@/lib/ai-usage";
-import { canUseCoachChat, COACH_CHAT_LOCKED } from "@/lib/entitlements";
+import { canUseCoachChat, COACH_CHAT_LOCKED } from "@/lib/coach-access";
 import { sendCoachMessage } from "@/lib/coach/chat";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { publicErrorMessage } from "@/lib/errors";
