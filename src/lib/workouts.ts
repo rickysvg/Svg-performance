@@ -4,7 +4,7 @@ import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
-import { sessionCivilDay } from "@/lib/performed-at";
+import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
@@ -285,20 +285,29 @@ export async function completedProgramDayIdsOnDay(
       status: "complete",
       programDayId: { in: ids },
       performedAt: {
-        gte: startOfZonedDay(day, timeZone),
-        lt: endOfZonedDay(day, timeZone),
+        gte: new Date(startOfZonedDay(day, timeZone).getTime() - DAY_PAD_MS),
+        lt: new Date(endOfZonedDay(day, timeZone).getTime() + DAY_PAD_MS),
       },
       sets: loggedSetSome,
     },
-    select: { programDayId: true },
+    select: { programDayId: true, performedAt: true },
   });
-  return [...new Set(rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)))];
+  const key = dayKey(day, timeZone);
+  return [
+    ...new Set(
+      rows
+        .filter((row) => row.programDayId && sessionCompletionDay(row, timeZone) === key)
+        .map((row) => row.programDayId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
 }
 
+const DAY_PAD_MS = 36 * 60 * 60 * 1000;
+
 /**
- * Program days finished on any of these civil days.
- * Train and Calendar both use this, so an early Thursday lift still counts
- * on Thursday, and a Monday log is not "missed" on one screen only.
+ * Program days whose completion date, in the member zone, is one of these
+ * civil days. The same day the week strip checks.
  */
 export async function completedProgramDayIdsOnDays(
   userId: string,
@@ -318,19 +327,17 @@ export async function completedProgramDayIdsOnDays(
       status: "complete",
       programDayId: { not: null },
       sets: loggedSetSome,
-      OR: [
-        { performedAt: { gte: from, lte: to } },
-        { createdAt: { gte: from, lte: to } },
-      ],
+      performedAt: {
+        gte: new Date(from.getTime() - DAY_PAD_MS),
+        lte: new Date(to.getTime() + DAY_PAD_MS),
+      },
     },
-    select: { programDayId: true, performedAt: true, createdAt: true },
+    select: { programDayId: true, performedAt: true },
   });
   const ids = new Set<string>();
   for (const row of rows) {
     if (!row.programDayId) continue;
-    const civil = sessionCivilDay(row, timeZone);
-    const performed = dayKey(row.performedAt, timeZone);
-    if (keySet.has(civil) || keySet.has(performed)) ids.add(row.programDayId);
+    if (keySet.has(sessionCompletionDay(row, timeZone))) ids.add(row.programDayId);
   }
   return [...ids];
 }
@@ -342,16 +349,27 @@ export async function completedLocalDayKeys(
   to: Date,
   timeZone: string,
 ) {
+  const fromKey = dayKey(from, timeZone);
+  const endKey = dayKey(to, timeZone);
   const rows = await prisma.workoutSession.findMany({
     where: {
       userId,
       status: "complete",
       sets: loggedSetSome,
-      performedAt: { gte: from, lt: to },
+      performedAt: {
+        gte: new Date(from.getTime() - DAY_PAD_MS),
+        lt: new Date(to.getTime() + DAY_PAD_MS),
+      },
     },
-    select: { performedAt: true, createdAt: true },
+    select: { performedAt: true },
   });
-  return [...new Set(rows.map((row) => sessionCivilDay(row, timeZone)))];
+  return [
+    ...new Set(
+      rows
+        .map((row) => sessionCompletionDay(row, timeZone))
+        .filter((key) => key >= fromKey && key < endKey),
+    ),
+  ];
 }
 
 const WORKOUT_DETAIL_INCLUDE = {

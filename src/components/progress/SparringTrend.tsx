@@ -52,6 +52,7 @@ export function SparringTrend({ logs }: { logs: SparringLog[] }) {
             description="Session and body, 1 to 5"
             unit="score"
             yDomain={{ min: 1, max: 5 }}
+            compact
             empty="Log sparring with a session rating and a body rating to see the trend."
             series={[
               {
@@ -79,7 +80,7 @@ export function SparringTrend({ logs }: { logs: SparringLog[] }) {
         </div>
       )}
       {rated.length === 0 ? null : (
-        <ol className="mt-4 space-y-3">
+        <ol className="mt-2 space-y-2">
           {rated.map((log) => (
             <li key={log.dateKey} className="border-t border-line pt-3 first:border-0 first:pt-0">
               <p className="text-sm font-semibold">

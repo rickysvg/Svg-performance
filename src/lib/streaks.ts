@@ -145,6 +145,14 @@ export function weekStreakDots(
   });
 }
 
+/** Share of the streak ring to paint. A current streak that is also the best fills the ring. */
+export function streakRingRatio(current: number, longest: number) {
+  const safeCurrent = Number.isFinite(current) ? Math.max(0, current) : 0;
+  const safeLongest = Number.isFinite(longest) ? Math.max(0, longest) : 0;
+  const target = Math.max(safeLongest, safeCurrent, 1);
+  return Math.min(1, safeCurrent / target);
+}
+
 const STREAK_TARGETS = [7, 30, 100];
 
 export function nextStreakTarget(current: number) {

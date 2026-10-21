@@ -48,11 +48,19 @@ export function civilDayInstant(date: Date, timeZone: string): Date {
  * A date-only UTC midnight stamp stays the day it names.
  * A session that was started one day and saved the next morning stays on the start day.
  */
+/**
+ * Civil day Progress shows for a finished session: the completion stamp in the
+ * member's zone. A UTC-midnight date stamp stays the day it names.
+ */
+export function sessionCompletionDay(session: { performedAt: Date }, timeZone: string): string {
+  return dayKey(civilDayInstant(session.performedAt, timeZone), timeZone);
+}
+
 export function sessionCivilDay(
   session: { performedAt: Date; createdAt?: Date | null },
   timeZone: string,
 ): string {
-  const performed = dayKey(civilDayInstant(session.performedAt, timeZone), timeZone);
+  const performed = sessionCompletionDay(session, timeZone);
   const createdAt = session.createdAt;
   if (!createdAt || Number.isNaN(createdAt.getTime())) return performed;
   const gap = session.performedAt.getTime() - createdAt.getTime();

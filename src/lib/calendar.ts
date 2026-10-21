@@ -5,14 +5,10 @@ import { easePlanForUser } from "@/lib/recovery-ease";
 import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
-import {
-  completedProgramDayIdsOnDays,
-  finalizePastLoggedDrafts,
-  listWorkoutSessionsForUser,
-} from "@/lib/workouts";
+import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { memberFacingTitle } from "@/lib/member-copy";
-import { sessionCivilDay } from "@/lib/performed-at";
+import { sessionCompletionDay } from "@/lib/performed-at";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
@@ -256,11 +252,8 @@ type LoggedPlanSession = {
   programDay: { dayNumber: number; program: { slug: string } } | null;
 };
 
-function performedDayKey(
-  session: { performedAt: Date; createdAt?: Date | null },
-  timeZone: string,
-) {
-  return sessionCivilDay(session, timeZone);
+function performedDayKey(session: { performedAt: Date }, timeZone: string) {
+  return sessionCompletionDay(session, timeZone);
 }
 
 function titlesMatch(loggedTitle: string, plannedTitle: string) {
@@ -354,13 +347,6 @@ export async function getCalendarSchedule(
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
   const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
   const todayKey = formatDayParam(now, tz);
-  const doneProgramDayIds = new Set(
-    await completedProgramDayIdsOnDays(
-      userId,
-      dates.map((date) => formatDayParam(date, tz)),
-      tz,
-    ),
-  );
   const days: CalendarDay[] = dates.map((date) => ({
     date,
     heading: formatCalendarHeading(date, now, tz),
@@ -388,6 +374,7 @@ export async function getCalendarSchedule(
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
     const dayLogs = loggedSessions.filter((session) => performedDayKey(session, tz) === dayKey);
+    const matchedLogIds = new Set<string>();
     const calendarWeekday = weekdayName(day.date, tz);
     if (plan.outside?.kind === "sparring") {
       const timeLabel = plan.outside.label.replace(/^Sparring\s*·\s*/, "");
@@ -402,13 +389,15 @@ export async function getCalendarSchedule(
       if (session.kind === "rest") continue;
       const href = session.href ?? (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
-      const matched = dayLogs.find((log) => logMatchesPlanned(log, session, resolved));
+      const matched = dayLogs.find(
+        (log) => !matchedLogIds.has(log.id) && logMatchesPlanned(log, session, resolved),
+      );
+      if (matched) matchedLogIds.add(matched.id);
       if (matched && session.dayId && matched.programDayId !== session.dayId) {
         linkRepairs.push({ id: matched.id, programDayId: session.dayId });
         matched.programDayId = session.dayId;
       }
-      const sessionDone =
-        Boolean(matched) || Boolean(session.dayId && doneProgramDayIds.has(session.dayId));
+      const sessionDone = Boolean(matched);
       const missed = past && !sessionDone;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
@@ -432,6 +421,19 @@ export async function getCalendarSchedule(
         sessionKey: session.sessionKey,
         weekday: calendarWeekday,
         heavy: Boolean(session.heavy),
+      });
+    }
+    for (const log of dayLogs) {
+      if (matchedLogIds.has(log.id) || !log.programDayId) continue;
+      const title = memberFacingTitle(log.title) || log.title;
+      day.activities.push({
+        kind: "workout",
+        title,
+        subtitle: `Logged this day. ${title}`,
+        href: log.programDayId ? `/training/${log.programDayId}` : "/training/history",
+        status: "complete",
+        programDayId: log.programDayId ?? undefined,
+        weekday: calendarWeekday,
       });
     }
   }

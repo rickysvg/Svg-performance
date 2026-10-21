@@ -57,13 +57,13 @@ export function HomeSideStats({
   const showCaption = !(fatEmpty && typed);
 
   const labelClass =
-    "line-clamp-2 block min-h-[1.35rem] font-telemetry text-[8px] uppercase leading-tight tracking-[0.08em] text-signal";
+    "block whitespace-nowrap font-telemetry text-[7px] uppercase leading-none tracking-normal text-signal";
 
   return (
-    <div className="flex w-full min-w-0 items-stretch" data-home-side-stats>
-      <label className="min-w-0 flex-1 text-left">
+    <div className="flex w-full min-w-0 items-start" data-home-side-stats>
+      <label className="min-w-0 shrink text-left">
         <span className={labelClass}>Body fat</span>
-        <span className="mt-0.5 flex items-baseline gap-0.5">
+        <span className="flex items-baseline gap-0.5">
           <input
             name="bodyFatPercent"
             inputMode="decimal"
@@ -77,24 +77,24 @@ export function HomeSideStats({
             size={Math.max(fatDraft.length, 1)}
             onChange={(event) => onFatDraft(event.target.value)}
             style={{ fieldSizing: "content" }}
-            className="block w-auto min-w-[1ch] border-0 bg-transparent p-0 font-display text-lg leading-none tracking-normal text-[#CBF805] outline-none placeholder:text-white/45"
+            className="box-border block h-[18px] w-auto min-w-[1ch] appearance-none border-0 bg-transparent p-0 font-display text-lg leading-none tracking-normal text-[#CBF805] outline-none placeholder:text-white/45"
           />
           <span className="font-telemetry text-[9px] leading-none text-[#CBF805]">%</span>
         </span>
         {showCaption ? (
           <span
             data-body-fat-caption
-            className={`mt-0.5 block font-telemetry text-[8px] uppercase leading-tight tracking-[0.04em] ${
+            className={`block whitespace-nowrap font-telemetry text-[7px] uppercase leading-none tracking-normal ${
               fatEmpty ? "text-[#CBF805]" : deltaClass(bodyFat.direction)
             }`}
           >
             {fatDelta}
           </span>
         ) : (
-          <span className="mt-0.5 block min-h-[0.7rem]" data-body-fat-caption="hidden" />
+          <span className="mt-0.5 block h-2" data-body-fat-caption="hidden" />
         )}
       </label>
-      <div className="mx-1.5 w-px shrink-0 self-stretch bg-white/30" aria-hidden />
+      <div className="mx-1 w-px shrink-0 self-stretch bg-white/30" aria-hidden />
       <Link
         href="/progress"
         data-home-training={training.mode}
@@ -102,10 +102,10 @@ export function HomeSideStats({
         className="min-w-0 flex-1"
       >
         <span className={labelClass}>{fight ? "Days to fight" : "Streak"}</span>
-        <span className="mt-0.5 block font-display text-lg leading-none tracking-normal text-[#CBF805]">
+        <span className="block font-display text-lg leading-none tracking-normal text-[#CBF805]">
           {training.days}
         </span>
-        <span className="mt-0.5 block font-telemetry text-[8px] uppercase leading-none tracking-[0.08em] text-white/55">
+        <span className="block whitespace-nowrap font-telemetry text-[7px] uppercase leading-none tracking-normal text-white/55">
           {trainingUnit}
         </span>
       </Link>
