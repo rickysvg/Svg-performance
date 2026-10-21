@@ -20,8 +20,7 @@ import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
-import { planIsPro } from "@/lib/plans";
-import { isDashboardAdmin } from "@/lib/admin-access";
+import { getCoachChatAccess } from "@/lib/coach-access";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentBodyFatForUser, getRecentWeightsForUser } from "@/lib/body-metrics";
 import { bodyFatReadout, homeTrainingReadout } from "@/lib/home-side-stats";
@@ -46,6 +45,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
+  const coachChat = await getCoachChatAccess(user);
   const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, recentFat, sparringRating, telemetry, camp] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
@@ -144,9 +144,7 @@ export default async function HomePage({
         imagery={profile?.athleteImagery}
         sparringRating={sparringRating}
         locked={[
-          ...(!planIsPro(planId) && !isDashboardAdmin(user)
-            ? [{ href: "/coach", kind: "coach" as const }]
-            : []),
+          ...(!coachChat.allowed ? [{ href: "/coach", kind: "coach" as const }] : []),
           ...(planId === "member_access"
             ? [{ href: "/nutrition", kind: "fuel" as const }]
             : []),

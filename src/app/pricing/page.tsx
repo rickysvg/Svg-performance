@@ -71,8 +71,8 @@ export default async function PricingPage() {
           <h2 className="text-lg text-foreground">Pricing FAQ</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground">
             <li>Nonmembers get a 7-day Pro trial with no card. After it ends, Pro ($9.99/mo or $72.99/yr, save 39%) keeps the app open. You can always view and export your past data.</li>
-            <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed. AI coach chat is not part of the academy tier.</li>
-            <li>AI coach chat is included with Pro, VIP Coaching, and an active Pro trial.</li>
+            <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed. AI coach chat is not part of the academy tier after the first week.</li>
+            <li>AI coach chat is free for your first week, no card. After that it stays open on Pro, VIP Coaching, and an active 7-day Pro trial.</li>
             <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
             <li>Pro fair use: {PRO_AI_MESSAGES_PER_DAY} AI messages a day.</li>
             <li>VIP Coaching is $249/month and includes Pro. Limited spots. Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30. Ricky replies within 48 hours.</li>

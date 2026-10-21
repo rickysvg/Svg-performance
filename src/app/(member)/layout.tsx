@@ -15,6 +15,7 @@ import { getAppTier } from "@/lib/entitlements";
 import { ensureMemberProMonth } from "@/lib/trial";
 import { isOpenWhenLocked, isResumeLoggerPath, PATH_HEADER } from "@/lib/locked-paths";
 import { isDashboardAdmin } from "@/lib/admin-access";
+import { getCoachChatAccess } from "@/lib/coach-access";
 
 export default async function MemberLayout({
   children,
@@ -41,6 +42,7 @@ export default async function MemberLayout({
     Boolean(graceUntil) &&
     graceUntil!.getTime() > nowMs;
   const coach = resolveAiCoach(profile?.aiCoachId);
+  const coachChat = await getCoachChatAccess(user);
 
   return (
     <>
@@ -52,7 +54,7 @@ export default async function MemberLayout({
         graceEndsOn={showGrace && graceUntil ? formatGraceDate(graceUntil) : null}
         coachName={coach.name}
         coachThumb={coach.circle}
-        coachChatLocked={tier !== "pro" && !dashboardAdmin}
+        coachChatLocked={!coachChat.allowed}
       >
         {profile?.gymMembershipVerified &&
         profile.memberProStartedAt &&

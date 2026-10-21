@@ -134,7 +134,9 @@ export function PricingLadder({
             ))}
           </tbody>
         </table>
-        <p className="px-1 pt-2 text-[10px] leading-snug text-white/70">Limited spots. VIP replies within 48 hours.</p>
+        <p className="px-1 pt-2 text-[10px] leading-snug text-white/70">
+          AI coach chat free for your first week. Limited spots. VIP replies within 48 hours.
+        </p>
       </div>
     </section>
   );

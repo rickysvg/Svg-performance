@@ -17,7 +17,7 @@ const BLURBS: Record<string, { title: string; body: string }> = {
   },
   coach: {
     title: "SVG Coach chat is in Pro",
-    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Chat is included with Pro, VIP Coaching, and an active Pro trial.",
+    body: "Your free week of AI coach chat has ended. SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Chat stays open on Pro and VIP Coaching.",
   },
   ai_limit: {
     title: "You used this week's 3 AI messages",

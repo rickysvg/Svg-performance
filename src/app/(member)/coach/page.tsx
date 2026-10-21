@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
-import { canUseCoachChat } from "@/lib/coach-access";
+import { freeCoachChatLabel, getCoachChatAccess } from "@/lib/coach-access";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
 import { aiRemainingLabel, getAiAllowance } from "@/lib/ai-usage";
@@ -15,7 +15,8 @@ import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 
 export default async function CoachPage() {
   const user = await requireUser();
-  const chatAllowed = await canUseCoachChat(user);
+  const coachChat = await getCoachChatAccess(user);
+  const chatAllowed = coachChat.allowed;
   const profile = await getProfileForUser(user.id);
   const coach = resolveAiCoach(profile?.aiCoachId);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
@@ -76,6 +77,14 @@ export default async function CoachPage() {
           VIP Coaching
         </Link>
       </header>
+      {coachChat.freeDaysLeft != null && coachChat.freeDaysLeft > 0 ? (
+        <p
+          data-free-coach-chat
+          className="shrink-0 border-b border-white/10 bg-black px-3 py-1.5 text-[11px] font-medium text-[#CBF805]"
+        >
+          {freeCoachChatLabel(coachChat.freeDaysLeft)}
+        </p>
+      ) : null}
       {recovery ? (
         <div className="shrink-0 px-3 pt-2">
           <RecoveryNotice

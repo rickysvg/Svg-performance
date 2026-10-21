@@ -442,6 +442,7 @@ describe("VIP Coaching rules", () => {
     const ladder = read("src/components/pricing/PricingLadder.tsx");
     expect(ladder).toContain('data-pricing-ladder="1"');
     expect(ladder).toContain("sticky top-14");
+    expect(ladder).toContain("AI coach chat free for your first week");
     expect(ladder).toContain("data-ladder-apply");
     expect(ladder).toContain(': "Apply"');
     expect(ladder).not.toMatch(/overflow-x-auto|min-w-\[/);
