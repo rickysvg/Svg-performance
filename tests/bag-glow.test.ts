@@ -77,7 +77,7 @@ describe("bag round glows", () => {
     const glow = fs.readFileSync(path.join(process.cwd(), "src/lib/bag-glow.ts"), "utf8");
     expect(glow).toContain('"#CBF805"');
     expect(source).toContain('loading="eager"');
-    expect(source).toContain("saturate(0.55) brightness(0.78) contrast(1.12)");
+    expect(source).toContain("saturate(0.35) brightness(0.7)");
     expect(source).toContain("from-black/85 via-black/25 to-transparent");
     expect(source.indexOf("data-athlete")).toBeLessThan(source.indexOf("data-athlete-shade"));
     expect(source).toContain('maskMode: "alpha"');

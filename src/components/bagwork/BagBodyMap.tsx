@@ -69,7 +69,7 @@ export function BagBodyMap({
             loading="eager"
             fetchPriority="high"
             className="relative z-[1] block h-auto w-full"
-            style={{ filter: "saturate(0.55) brightness(0.78) contrast(1.12)" }}
+            style={{ filter: "saturate(0.35) brightness(0.7)" }}
           />
           <span
             aria-hidden
