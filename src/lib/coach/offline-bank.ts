@@ -115,7 +115,7 @@ const STRENGTH_SC = [
 ].join(" ");
 
 const SCHEDULE_WEEK = [
-  "Use the week already on your plan. Lift days stay lift days. Sparring day stays sparring. Bag work is its own session, not a strength day. Do not stack a max lift on the sparring day.",
+  "Use the week already on your plan. Lift days stay lift days. Conditioning stays on its days. Each train session keeps a short mobility warm-up and cooldown. Full recovery stays on the Mobility tile. Sparring day stays sparring. Bag work is its own session, not a strength day. Do not stack a max lift on the sparring day.",
   "The day before sparring or class stays lighter. Main lifts stop at 4 sets. Accessories stop at 3. Loads in lbs, effort in RIR.",
   "A missed day is not a punishment day. Hit the next session that is already written.",
 ].join(" ");

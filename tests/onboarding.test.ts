@@ -214,7 +214,7 @@ describe("onboarding gate and persistence", () => {
     const today = await getHomeToday(user.id, when);
     expect(today.suggestedDay?.title).toMatch(/Full body/i);
     expect(today.plannedSessions.map((session) => session.kind)).toEqual(["strength"]);
-    expect(today.suggestionCopy).toMatch(/Core week plan \(strength and conditioning\)/i);
+    expect(today.suggestionCopy).toMatch(/Core week plan \(weights, conditioning, and mobility\)/i);
     expect(today.suggestionCopy).not.toMatch(/DEMO Core week plan/i);
     expect(today.suggestionCopy).toMatch(/Not a custom Elite/i);
     expect(today.incompleteLesson?.topic).toBe("boxing");

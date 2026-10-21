@@ -47,10 +47,10 @@ describe("DEMO combat skill chooser", () => {
 
   it("describes bag + strength without claiming a custom camp", () => {
     expect(demoSuggestionCopy({ primaryFocus: "mma", goalKey: "stronger-for-class" })).toMatch(
-      /Core week plan \(strength and conditioning\)/,
+      /Core week plan \(weights, conditioning, and mobility\)/,
     );
     expect(demoSuggestionCopy({ primaryFocus: "general-fitness" })).toMatch(
-      /Core week plan \(strength and conditioning\)/,
+      /Core week plan \(weights, conditioning, and mobility\)/,
     );
     expect(demoSuggestionCopy({ primaryFocus: "muay-thai" })).toMatch(/Not a custom Elite/);
   });

@@ -743,7 +743,7 @@ export function moveDayChoices(
 export function corePlanCopy(prefs: { goalKey?: string; primaryFocus?: string }) {
   const focus = prefs.primaryFocus;
   if (focus && focus !== "general-fitness") {
-    return "Core week plan from your intake — strength and bikes on set weekdays. Bag work is separate. Not Elite or fight-camp coaching.";
+    return "Core week plan from your intake — weights, conditioning, and mobility on set weekdays. Each train session keeps a short warm-up and cooldown. Bag work is separate. Not Elite or fight-camp coaching.";
   }
-  return "Core week plan — strength and conditioning on set weekdays. Bag work is separate. Not Elite or fight-camp coaching.";
+  return "Core week plan — weights, conditioning, and mobility on set weekdays. Each train session keeps a short warm-up and cooldown. Bag work is separate. Not Elite or fight-camp coaching.";
 }

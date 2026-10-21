@@ -17,6 +17,7 @@ import {
 import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { prisma } from "@/lib/prisma";
 import { buildProgressSummary } from "@/lib/progress";
+import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { coreSkeletonSessions } from "@/lib/week-plan";
 import { makeUser, resetDatabase } from "./helpers";
 
@@ -152,6 +153,45 @@ describe("bagwork catalog", () => {
     ]);
     expect(coreSkeletonSessions("Friday", "mma")[0]?.label).toBe("Conditioning");
     expect(coreSkeletonSessions("Saturday", "mma")).toEqual([]);
+  });
+
+  it("keeps a short warm-up and cooldown on every weights and conditioning session", () => {
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+    const sessions = days.flatMap((day) => coreSkeletonSessions(day, "mma"));
+    const work = sessions.filter((session) => session.kind === "strength" || session.kind === "conditioning");
+    const recovery = sessions.filter((session) => session.kind === "mobility");
+    expect(work.map((session) => session.kind)).toEqual([
+      "strength",
+      "strength",
+      "conditioning",
+      "strength",
+      "conditioning",
+      "conditioning",
+    ]);
+    expect(recovery.map((session) => session.label)).toEqual([
+      "Mobility — shoulders and hips",
+      "Mobility — easy hips",
+      "Mobility — easy hips",
+    ]);
+    for (const session of work) {
+      const bookend = mobilityBookendsForSession({
+        kind: session.kind,
+        title: session.title ?? session.label,
+        subtitle: session.detail,
+        label: session.label,
+      });
+      expect(bookend?.activate.id).toBeTruthy();
+      expect(bookend?.recover.id).toBeTruthy();
+    }
+    for (const session of recovery) {
+      expect(
+        mobilityBookendsForSession({
+          kind: session.kind,
+          title: session.title ?? session.label,
+          label: session.label,
+        }),
+      ).toBeNull();
+    }
   });
 });
 

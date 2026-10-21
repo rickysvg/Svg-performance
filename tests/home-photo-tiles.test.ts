@@ -129,6 +129,9 @@ describe("Home photo tiles", () => {
     expect(source).toContain("tileSrc");
     expect(source).toContain("imagery");
     expect(source).toContain("/tiles/train.webp");
+    expect(source).toContain("Athlete deadlifting a barbell beside an athlete on an assault bike");
+    expect(source).toContain('href: "/mobility"');
+    expect(source).toContain("Hips and holds");
     expect(source).toContain("/tiles/mobility.webp");
     expect(source).toContain("/tiles/timer.webp");
     expect(source).toContain("/tiles/form-check.webp");
