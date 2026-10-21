@@ -19,6 +19,7 @@ import {
 import { PLAN_CATALOG } from "@/lib/plans";
 import { startTrialAction } from "@/app/actions/trial";
 import type { VipPricingPhase } from "@/lib/vip-store";
+import { PricingLadder } from "@/components/pricing/PricingLadder";
 
 function PlanCheckoutButton({
   canStartTrial,
@@ -161,6 +162,7 @@ export function PricingCatalog({
 
   return (
     <div className="space-y-4" data-pricing-plans="3">
+      <PricingLadder vipPhase={vipPhase} userLoggedIn={userLoggedIn} />
       <article data-plan-card="academy" className="rounded-2xl border border-line bg-card p-5 text-foreground">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">SVG Academy</p>
         <h2 className="mt-2 text-xl text-foreground">SVG Academy gym member</h2>

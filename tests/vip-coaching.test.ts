@@ -32,6 +32,7 @@ import {
   type VipUpsellSignals,
 } from "@/lib/vip-coaching";
 import { coachingSpotsLine } from "@/lib/pricing";
+import { PRICING_LADDER_COLUMNS, PRICING_LADDER_ROWS } from "@/lib/pricing-ladder";
 import {
   getVipCheckoutView,
   presentVipUpsell,
@@ -398,6 +399,48 @@ describe("VIP Coaching rules", () => {
     });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value.fightDate).toBe("2026-12-01");
+  });
+
+  it("compares Academy, Pro, and VIP on a phone ladder without voice", () => {
+    expect(PRICING_LADDER_COLUMNS.map((column) => column.label)).toEqual([
+      "Academy member",
+      "SVG Pro",
+      "VIP Coaching",
+    ]);
+    expect(PRICING_LADDER_COLUMNS[1]?.prices.join(" ")).toMatch(/\$9\.99\/mo/);
+    expect(PRICING_LADDER_COLUMNS[1]?.prices.join(" ")).toMatch(/\$72\.99\/yr/);
+    expect(PRICING_LADDER_COLUMNS[2]?.prices.join(" ")).toMatch(/\$249\/mo/);
+    expect(PRICING_LADDER_COLUMNS[2]?.prices.join(" ")).toMatch(/\$149 first month/);
+    expect(PRICING_LADDER_ROWS.map((row) => row.id)).toEqual([
+      "workouts",
+      "logger",
+      "ai_chat",
+      "checkins",
+      "form_checks",
+      "program",
+      "camp",
+      "weekly",
+      "messages",
+      "assessment",
+      "priority",
+    ]);
+    const formChecks = PRICING_LADDER_ROWS.find((row) => row.id === "form_checks");
+    expect(formChecks?.cells.pro.note).toBe("AI/self");
+    expect(formChecks?.cells.vip.note).toBe("Timestamped notes from Ricky");
+    expect(formChecks?.cells.academy.mark).toBe("no");
+    expect(PRICING_LADDER_ROWS.find((row) => row.id === "checkins")?.cells.pro.adds).toBe(true);
+    expect(PRICING_LADDER_ROWS.find((row) => row.id === "program")?.cells.vip.adds).toBe(true);
+    expect(PRICING_LADDER_ROWS.find((row) => row.id === "messages")?.cells.pro.mark).toBe("no");
+    const blob = JSON.stringify({ columns: PRICING_LADDER_COLUMNS, rows: PRICING_LADDER_ROWS });
+    expect(blob.toLowerCase()).not.toMatch(/voice|read-aloud|read aloud/);
+    const ladder = read("src/components/pricing/PricingLadder.tsx");
+    expect(ladder).toContain('data-pricing-ladder="1"');
+    expect(ladder).toContain("sticky top-14");
+    expect(ladder).toContain("data-ladder-apply");
+    expect(ladder).toContain(': "Apply"');
+    expect(ladder).not.toMatch(/overflow-x-auto|min-w-\[/);
+    expect(ladder).toContain("#CBF805");
+    expect(read("src/components/pricing/PricingCatalog.tsx")).toContain("<PricingLadder");
   });
 
   it("keeps spot counts off the public pricing copy", () => {
