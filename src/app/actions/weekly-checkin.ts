@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { optionalBodyFatPercent } from "@/lib/body-metrics";
 import { publicErrorMessage } from "@/lib/errors";
 import {
   isWeeklyCheckInCoach,
@@ -19,6 +20,7 @@ export type CheckInActionState = { error?: string; success?: string };
 function refresh() {
   revalidatePath("/checkin");
   revalidatePath("/home");
+  revalidatePath("/progress");
   revalidatePath("/coach/checkins");
 }
 
@@ -55,6 +57,7 @@ export async function submitWeeklyCheckInAction(
       sorenessNotes: String(formData.get("sorenessNotes") ?? ""),
       wins: String(formData.get("wins") ?? ""),
       struggles: String(formData.get("struggles") ?? ""),
+      bodyFatPercent: optionalBodyFatPercent(formData.get("bodyFatPercent")),
       video,
     });
     refresh();

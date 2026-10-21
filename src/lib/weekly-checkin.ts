@@ -11,6 +11,7 @@ import {
   validateFormCheckBytes,
   writeFormCheckMedia,
 } from "@/lib/form-check-storage";
+import { createBodyMetricForUser, validateBodyMetricInput } from "@/lib/body-metrics";
 import { loggedSetSome } from "@/lib/logged-work";
 import { sparringLogsForWeek, type SparringLog } from "@/lib/outside-log";
 import { addZonedDays, mondayOfZoned } from "@/lib/timezone";
@@ -197,6 +198,7 @@ export type CheckInSubmitInput = {
   sorenessNotes: string;
   wins: string;
   struggles: string;
+  bodyFatPercent?: number | null;
   video?: {
     bytes: Uint8Array;
     claimedType?: string;
@@ -220,6 +222,14 @@ export async function submitWeeklyCheckIn(input: CheckInSubmitInput) {
   const sorenessNotes = input.sorenessNotes.trim().slice(0, 400);
   const wins = input.wins.trim().slice(0, 600);
   const struggles = input.struggles.trim().slice(0, 600);
+  const bodyFatPercent =
+    input.bodyFatPercent == null
+      ? null
+      : validateBodyMetricInput({
+          kind: "bodyFat",
+          value: input.bodyFatPercent,
+          unit: "percent",
+        }).value;
   const weekKey = await weekKeyForUser(input.userId, input.now, input.timeZone);
   const snapshot = await weekTrainingSnapshot(input.userId, input.now, input.timeZone);
 
@@ -272,6 +282,21 @@ export async function submitWeeklyCheckIn(input: CheckInSubmitInput) {
       throw new AppError("CHECKIN", "This week's check-in is already in.");
     }
     throw error;
+  }
+
+  if (bodyFatPercent != null) {
+    try {
+      await createBodyMetricForUser(input.userId, {
+        kind: "bodyFat",
+        value: bodyFatPercent,
+        unit: "percent",
+        recordedAt: input.now,
+        notes: "Weekly check-in",
+      });
+    } catch (error) {
+      await prisma.weeklyCheckIn.delete({ where: { id: row.id } }).catch(() => undefined);
+      throw error;
+    }
   }
 
   if (input.video && mime) {

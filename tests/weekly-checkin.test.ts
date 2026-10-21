@@ -427,6 +427,48 @@ describe("weekly check-in access, submit, and reminders", () => {
     ).rejects.toMatchObject({ code: "CHECKIN" });
   });
 
+  it("stores optional body fat from a check-in next to the weight log", async () => {
+    const user = await coachingUser("fat-checkin@example.com");
+    await submitWeeklyCheckIn({
+      userId: user.id,
+      now: NOW,
+      timeZone: "America/Denver",
+      bodyweightLb: 176,
+      bodyFatPercent: 14.4,
+      sleepQuality: 4,
+      energy: 4,
+      stress: 2,
+      regions: [],
+      sorenessNotes: "",
+      wins: "",
+      struggles: "",
+    });
+    const fat = await prisma.bodyMetric.findFirst({
+      where: { userId: user.id, kind: "bodyFat" },
+    });
+    expect(fat?.value).toBe(14.4);
+    expect(fat?.unit).toBe("percent");
+    expect(fat?.recordedAt.toISOString()).toBe(NOW.toISOString());
+
+    await expect(
+      submitWeeklyCheckIn({
+        userId: user.id,
+        now: NOW,
+        timeZone: "America/Denver",
+        bodyweightLb: 176,
+        bodyFatPercent: 90,
+        sleepQuality: 4,
+        energy: 4,
+        stress: 2,
+        regions: [],
+        sorenessNotes: "",
+        wins: "",
+        struggles: "",
+      }),
+    ).rejects.toMatchObject({ code: "BODY_METRIC" });
+    expect(await prisma.bodyMetric.count({ where: { userId: user.id, kind: "bodyFat" } })).toBe(1);
+  });
+
   it("lists flagged clients first and sends the reply", async () => {
     const coach = await makeUser("coach-ricky@example.com", false, "admin");
     const calm = await coachingUser("calm@example.com");

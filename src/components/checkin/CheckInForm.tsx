@@ -99,6 +99,20 @@ export function CheckInForm({
           className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
         />
       </label>
+      <label className="block text-sm font-semibold">
+        Body fat % (optional)
+        <input
+          name="bodyFatPercent"
+          type="number"
+          inputMode="decimal"
+          min={0.1}
+          max={70}
+          step="0.1"
+          placeholder="—"
+          aria-label="Body fat percent, optional"
+          className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
+        />
+      </label>
 
       <ScorePicker name="sleepQuality" label="Sleep" hint="1 rough · 5 great" value={sleep} onChange={setSleep} />
       <ScorePicker name="energy" label="Energy" hint="1 flat · 5 ready" value={energy} onChange={setEnergy} />

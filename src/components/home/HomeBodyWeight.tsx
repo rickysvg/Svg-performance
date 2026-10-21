@@ -3,8 +3,10 @@
 import { useActionState, useState } from "react";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
+import { HomeSideStats } from "@/components/home/HomeSideStats";
 import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
 import { massSpeedoClass, massUnitClass } from "@/components/home/mass-fonts";
+import type { BodyFatReadout, HomeTrainingReadout } from "@/lib/home-side-stats";
 import type { MassGauge as MassGaugeScale } from "@/lib/mass-caption";
 
 function unitLabel(unit: string) {
@@ -18,12 +20,17 @@ export function HomeBodyWeight({
   caption,
   carbon = true,
   gauge = { t: 0, goalT: null },
+  side = null,
 }: {
   value: number | null;
   unit: string;
   caption: string;
   carbon?: boolean;
   gauge?: MassGaugeScale;
+  side?: {
+    bodyFat: BodyFatReadout;
+    training: HomeTrainingReadout;
+  } | null;
 }) {
   const [state, action, pending] = useActionState(
     saveBodyMetricAction,
@@ -32,18 +39,39 @@ export function HomeBodyWeight({
   const recordedAt = new Date().toISOString();
   const initial = value == null ? "" : String(value);
   const [draft, setDraft] = useState(initial);
+  const showSide = side != null;
+
+  const saveButton = (
+    <button
+      type="submit"
+      disabled={pending}
+      className="touch-target mb-0.5 shrink-0 rounded-full bg-accent px-3 text-sm font-semibold text-black disabled:opacity-60"
+    >
+      {pending ? "Saving…" : "Save"}
+    </button>
+  );
+
+  const captionLine = (
+    <p className="min-w-0 flex-1 text-center font-telemetry text-[10px] uppercase leading-tight tracking-[0.16em] text-[#CBF805]/85">
+      {caption.startsWith("▼") ? <span className="text-signal">{caption.slice(0, 1)}</span> : null}
+      {caption.startsWith("▼") ? caption.slice(1) : caption}
+    </p>
+  );
 
   return (
     <form action={action} data-mass-box className={carbon ? "hc-panel hc-carbon px-3 py-2" : "px-0 py-1"}>
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
+      <div className={`flex items-end ${showSide ? "gap-1.5" : "gap-2"}`}>
+        <div
+          className={showSide ? "min-w-0" : "min-w-0 flex-1"}
+          style={showSide ? { flex: "1 1 auto", maxWidth: MASS_DIAL.width } : undefined}
+        >
           <span className="mb-1 block font-telemetry text-[10px] uppercase leading-none tracking-[0.22em] text-signal">
             Current Weight
           </span>
           <div
             className="relative max-w-full shrink-0"
             style={{
-              width: MASS_DIAL.width,
+              width: showSide ? "100%" : MASS_DIAL.width,
               aspectRatio: `${MASS_DIAL.width} / ${MASS_DIAL.height}`,
             }}
           >
@@ -81,22 +109,35 @@ export function HomeBodyWeight({
             </label>
           </div>
         </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="touch-target mb-0.5 shrink-0 rounded-full bg-accent px-3 text-sm font-semibold text-black disabled:opacity-60"
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
+        {side ? <HomeSideStats bodyFat={side.bodyFat} training={side.training} /> : saveButton}
       </div>
       <input type="hidden" name="kind" value="weight" />
       <input type="hidden" name="unit" value={unit === "kg" ? "lb" : unit || "lb"} />
       <input type="hidden" name="recordedAt" value={recordedAt} />
       <input type="hidden" name="notes" value="" />
-      <p className="mt-0.5 text-center font-telemetry text-[10px] uppercase leading-tight tracking-[0.16em] text-[#CBF805]/85">
-        {caption.startsWith("▼") ? <span className="text-signal">{caption.slice(0, 1)}</span> : null}
-        {caption.startsWith("▼") ? caption.slice(1) : caption}
-      </p>
+      {showSide ? (
+        <div className="mt-0.5 flex items-center gap-2">
+          {captionLine}
+          {saveButton}
+        </div>
+      ) : (
+        <div className="mt-0.5">{captionLine}</div>
+      )}
+      <label className="mt-1 flex items-center justify-between gap-2 border-t border-white/10 pt-1.5">
+        <span className="font-telemetry text-[10px] uppercase tracking-[0.14em] text-muted">
+          Body fat % <span className="tracking-normal normal-case text-white/45">optional</span>
+        </span>
+        <input
+          name="bodyFatPercent"
+          inputMode="decimal"
+          min={0.1}
+          max={70}
+          step="0.1"
+          placeholder="—"
+          aria-label="Body fat percent, optional"
+          className="w-16 border-0 border-b border-white/25 bg-transparent p-0 text-right font-telemetry text-sm text-[#CBF805] outline-none placeholder:text-white/35"
+        />
+      </label>
       <StatusBanner error={state.error} success={state.success} />
     </form>
   );

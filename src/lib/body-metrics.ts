@@ -114,6 +114,54 @@ export async function createBodyMetricForUser(
   });
 }
 
+/** Blank is optional. A typed value uses the body-fat rules (percent, above 0, at most 70). */
+export function optionalBodyFatPercent(raw: unknown): number | null {
+  const text = String(raw ?? "").trim();
+  if (!text) return null;
+  return validateBodyMetricInput({
+    kind: "bodyFat",
+    value: Number(text),
+    unit: "percent",
+  }).value;
+}
+
+/**
+ * Weight row plus an optional body-fat row at the same time.
+ * Body fat already lives as kind `bodyFat`, so a weigh-in can store it alongside.
+ */
+export async function recordWeightEntryForUser(
+  userId: string,
+  input: {
+    value: number;
+    unit: string;
+    recordedAt: Date;
+    notes?: string;
+    bodyFatPercent?: number | null;
+  },
+) {
+  const weight = await createBodyMetricForUser(userId, {
+    kind: "weight",
+    value: input.value,
+    unit: input.unit,
+    recordedAt: input.recordedAt,
+    notes: input.notes,
+  });
+  if (input.bodyFatPercent == null) return weight;
+  try {
+    await createBodyMetricForUser(userId, {
+      kind: "bodyFat",
+      value: input.bodyFatPercent,
+      unit: "percent",
+      recordedAt: input.recordedAt,
+      notes: input.notes,
+    });
+  } catch (error) {
+    await prisma.bodyMetric.delete({ where: { id: weight.id } }).catch(() => undefined);
+    throw error;
+  }
+  return weight;
+}
+
 export async function listBodyMetricsForUser(userId: string, kind?: BodyMetricKind) {
   return prisma.bodyMetric.findMany({
     where: { userId, ...(kind ? { kind } : {}) },
@@ -157,6 +205,15 @@ export async function getRecentWeightsForUser(userId: string, take = 2) {
     take,
   });
   return rows.map((row) => displayBodyMetric(row));
+}
+
+/** Newest first. Previous entry is the one before the latest, for the home delta. */
+export async function getRecentBodyFatForUser(userId: string, take = 2) {
+  return prisma.bodyMetric.findMany({
+    where: { userId, kind: "bodyFat" },
+    orderBy: { recordedAt: "desc" },
+    take,
+  });
 }
 
 export async function getLatestBodyMetricsForUser(userId: string) {
