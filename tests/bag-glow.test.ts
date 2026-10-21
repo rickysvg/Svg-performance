@@ -17,14 +17,7 @@ function ids(slug: string) {
 describe("bag round glows", () => {
   it("backlights both full arms for hooks", () => {
     const hooks = glows("all-hooks");
-    expect(hooks.map((spot) => spot.id)).toEqual([
-      "rear-arm",
-      "lead-arm",
-      "rear-oblique",
-      "lead-oblique",
-      "rear-hip",
-      "lead-hip",
-    ]);
+    expect(hooks.map((spot) => spot.id)).toEqual(["rear-arm", "lead-arm"]);
     for (const id of ["rear-arm", "lead-arm"]) {
       const arm = hooks.find((spot) => spot.id === id);
       if (!arm) throw new Error(id);
@@ -36,33 +29,45 @@ describe("bag round glows", () => {
       expect(arm.right - arm.left).toBeGreaterThan(40);
       expect(arm.right - arm.left).toBeLessThan(400);
     }
-    expect(glowCaption(hooks)).toBe("Arms, Obliques, Hips");
+    expect(glowCaption(hooks)).toBe("Arms");
   });
 
   it("backlights the lead arm for the jab round", () => {
     expect(ids("all-straight-punches")).toEqual(["lead-arm"]);
-    expect(glowCaption(glows("all-straight-punches"))).toBe("Lead shoulder and arm");
-    expect(ids("touch-and-rip")).toEqual(["lead-arm"]);
+    expect(glowCaption(glows("all-straight-punches"))).toBe("Lead arm");
     const arm = glows("all-straight-punches")[0];
     if (!arm) throw new Error("lead arm");
     expect(armSpan(arm).bottom).toBeGreaterThan(640);
   });
 
-  it("backlights the core and lats for body work", () => {
-    expect(ids("all-body-shots")).toEqual(["core", "rear-lat", "lead-lat"]);
-    expect(ids("all-body-shots")).not.toContain("lead-arm");
+  it("backlights the arms throwing body shots, not the core", () => {
+    expect(ids("all-body-shots")).toEqual(["rear-arm", "lead-arm"]);
+    expect(ids("all-body-shots")).not.toContain("core");
+    expect(ids("all-body-shots")).not.toContain("lead-lat");
   });
 
-  it("lights hips and quads for level changes, and hips and shins for kicks", () => {
-    expect(ids("level-change")).toEqual(["rear-hip", "lead-hip", "rear-quad", "lead-quad"]);
-    expect(ids("all-low-kicks")).toEqual(["rear-hip", "lead-hip", "rear-shin", "lead-shin"]);
+  it("lights the striking limb for level changes, kicks, knees, and elbows", () => {
+    expect(ids("level-change")).toEqual(["lead-arm", "rear-arm"]);
+    expect(ids("all-low-kicks")).toEqual(["lead-shin", "rear-shin"]);
+    expect(ids("clinch-to-knee")).toEqual(["lead-knee", "rear-knee"]);
+    expect(ids("clinch-to-elbow-band")).toEqual(["lead-elbow", "rear-elbow"]);
+    expect(ids("all-teeps")).toEqual(["lead-foot", "rear-foot"]);
   });
 
   it("keeps a one-side round on that side of the figure", () => {
     const right = ids("right-side-only");
-    expect(right).toContain("rear-arm");
-    expect(right).not.toContain("lead-arm");
-    expect(right).toContain("core");
+    expect(right).toEqual(["rear-arm"]);
+    expect(glowCaption(glows("right-side-only"))).toBe("Rear arm");
+    expect(ids("left-side-only")).toEqual(["lead-arm"]);
+  });
+
+  it("never lights a muscle group on a catalog round", () => {
+    const muscle = ["core", "oblique", "lat", "hip", "glute", "flexor", "trap", "quad", "chest", "neck"];
+    for (const workout of BAG_WORKOUTS) {
+      for (const id of ids(workout.slug)) {
+        expect(muscle.some((part) => id.includes(part)), `${workout.slug} ${id}`).toBe(false);
+      }
+    }
   });
 
   it("paints a soft limb halo behind the cutout", async () => {

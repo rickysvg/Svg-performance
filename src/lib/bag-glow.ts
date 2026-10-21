@@ -43,6 +43,8 @@ const SHAPES: readonly BodyGlow[] = [
   { id: "lead-lat", label: "Lats", region: "lats", side: "left", top: 440, bottom: 599, left: 414, right: 482 },
   { id: "rear-arm", label: "Arms", region: "arms", side: "right", top: 242, bottom: 720, left: 156, right: 338 },
   { id: "lead-arm", label: "Arms", region: "arms", side: "left", top: 242, bottom: 705, left: 399, right: 562 },
+  { id: "rear-elbow", label: "Elbows", region: null, side: "right", top: 433, bottom: 677, left: 118, right: 267 },
+  { id: "lead-elbow", label: "Elbows", region: null, side: "left", top: 433, bottom: 677, left: 452, right: 601 },
   { id: "rear-oblique", label: "Obliques", region: "obliques", side: "right", top: 540, bottom: 699, left: 200, right: 289 },
   { id: "lead-oblique", label: "Obliques", region: "obliques", side: "left", top: 540, bottom: 699, left: 424, right: 557 },
   { id: "rear-hip", label: "Hips", region: "hips", side: "right", top: 680, bottom: 829, left: 201, right: 396 },
@@ -93,51 +95,57 @@ const TAPS: readonly BodyTap[] = [
 
 const BY_ID = new Map(SHAPES.map((shape) => [shape.id, shape]));
 
+/**
+ * Only the surface that hits the bag. Muscle groups (core, hips, lats, obliques)
+ * stay off the figure even when a workout lists them as the engine of the shot.
+ */
 const REGION_SHAPES: Record<BagRegion, readonly string[]> = {
-  neck: ["neck"],
-  traps: ["rear-trap", "lead-trap"],
+  neck: [],
+  traps: [],
   shoulders: ["rear-arm", "lead-arm"],
-  chest: ["chest"],
+  chest: [],
   arms: ["rear-arm", "lead-arm"],
-  core: ["core"],
-  obliques: ["rear-oblique", "lead-oblique"],
-  lats: ["rear-lat", "lead-lat"],
-  hips: ["rear-hip", "lead-hip"],
-  "hip-flexors": ["rear-flexor", "lead-flexor"],
-  glutes: ["rear-glute", "lead-glute"],
-  legs: ["rear-quad", "lead-quad"],
+  core: [],
+  obliques: [],
+  lats: [],
+  hips: [],
+  "hip-flexors": [],
+  glutes: [],
+  legs: ["rear-shin", "lead-shin"],
   knees: ["rear-knee", "lead-knee"],
   shins: ["rear-shin", "lead-shin"],
   feet: ["rear-foot", "lead-foot"],
 };
 
-/** Per-workout focus. Each id is a soft rim rendered behind the figure. */
+/** Striking surfaces only. Each id is a soft rim rendered behind the figure. */
 const ROUND_FOCUS: Record<string, readonly string[]> = {
-  "all-hooks": ["rear-arm", "lead-arm", "rear-oblique", "lead-oblique", "rear-hip", "lead-hip"],
-  "all-overhands": ["rear-arm", "lead-arm", "rear-oblique", "lead-oblique", "rear-hip", "lead-hip"],
-  "punch-to-elbow": ["rear-arm", "lead-arm", "rear-oblique", "lead-oblique"],
-  "clinch-to-elbow-band": ["rear-arm", "lead-arm", "neck", "rear-lat", "lead-lat"],
-  "all-straight-punches": ["lead-arm"],
-  "touch-and-rip": ["lead-arm"],
+  "all-hooks": ["rear-arm", "lead-arm"],
+  "all-overhands": ["rear-arm", "lead-arm"],
+  "all-uppercuts": ["rear-arm", "lead-arm"],
+  "all-power-punches": ["rear-arm", "lead-arm"],
+  "all-body-shots": ["rear-arm", "lead-arm"],
   "boxing-combos": ["lead-arm", "rear-arm"],
-  "all-body-shots": ["core", "rear-lat", "lead-lat"],
-  "level-change": ["rear-hip", "lead-hip", "rear-quad", "lead-quad"],
-  "all-low-kicks": ["rear-hip", "lead-hip", "rear-shin", "lead-shin"],
-  "all-body-kicks": ["rear-hip", "lead-hip", "rear-shin", "lead-shin", "rear-oblique", "lead-oblique"],
-  "all-head-kicks": ["rear-hip", "lead-hip", "rear-shin", "lead-shin"],
-  "punch-to-low-kick": ["lead-arm", "rear-hip", "lead-hip", "rear-shin", "lead-shin"],
-  "punch-to-body-kick": ["lead-arm", "rear-hip", "lead-hip", "rear-shin", "lead-shin", "core"],
-  "all-teeps": ["lead-flexor", "rear-flexor", "core", "lead-quad"],
-  "all-japanese-teeps": ["lead-flexor", "rear-flexor", "rear-hip", "lead-hip", "lead-quad"],
-  "all-uppercuts": ["rear-arm", "lead-arm", "core", "rear-quad", "lead-quad"],
-  "all-power-punches": ["rear-arm", "lead-arm", "rear-oblique", "lead-oblique", "rear-hip", "lead-hip"],
-  "punch-to-knee": ["lead-arm", "rear-hip", "lead-hip", "rear-knee", "lead-knee"],
-  "clinch-to-knee": ["neck", "rear-trap", "lead-trap", "rear-lat", "lead-lat", "rear-arm", "lead-arm", "rear-hip", "lead-hip", "rear-knee", "lead-knee"],
-  "clinch-to-knee-band": ["neck", "rear-trap", "lead-trap", "rear-lat", "lead-lat", "rear-arm", "lead-arm", "rear-hip", "lead-hip", "rear-knee", "lead-knee"],
-  "strike-to-bodylock": ["rear-arm", "lead-arm", "core", "rear-lat", "lead-lat", "rear-hip", "lead-hip"],
-  "full-muay-thai": ["lead-arm", "rear-hip", "lead-hip", "lead-shin", "lead-knee", "core"],
-  "full-mma": ["lead-arm", "rear-hip", "lead-hip", "rear-quad", "lead-quad", "core"],
-  "straight-1-2s-and-teeps": ["lead-arm", "lead-flexor", "lead-quad"],
+  "touch-and-rip": ["lead-arm", "rear-arm"],
+  "all-straight-punches": ["lead-arm"],
+  "level-change": ["lead-arm", "rear-arm"],
+  "punch-to-elbow": ["lead-arm", "rear-arm", "lead-elbow", "rear-elbow"],
+  "clinch-to-elbow-band": ["lead-elbow", "rear-elbow"],
+  "punch-to-knee": ["lead-arm", "rear-arm", "lead-knee", "rear-knee"],
+  "clinch-to-knee": ["lead-knee", "rear-knee"],
+  "clinch-to-knee-band": ["lead-knee", "rear-knee"],
+  "punch-to-low-kick": ["lead-arm", "rear-arm", "lead-shin", "rear-shin"],
+  "punch-to-body-kick": ["lead-arm", "rear-arm", "lead-shin", "rear-shin"],
+  "all-low-kicks": ["lead-shin", "rear-shin"],
+  "all-body-kicks": ["lead-shin", "rear-shin"],
+  "all-head-kicks": ["lead-shin", "rear-shin"],
+  "all-teeps": ["lead-foot", "rear-foot"],
+  "all-japanese-teeps": ["lead-foot", "rear-foot"],
+  "straight-1-2s-and-teeps": ["lead-arm", "rear-arm", "lead-foot"],
+  "strike-to-bodylock": ["lead-arm", "rear-arm"],
+  "full-muay-thai": ["lead-arm", "rear-arm", "lead-elbow", "rear-elbow", "lead-knee", "rear-knee", "lead-shin", "rear-shin"],
+  "full-mma": ["lead-arm", "rear-arm", "lead-shin", "rear-shin"],
+  "right-side-only": ["rear-arm"],
+  "left-side-only": ["lead-arm"],
 };
 
 function allows(side: "left" | "right" | "mid", filter: BagSide) {
@@ -159,7 +167,8 @@ function labelForRound(glows: BodyGlow[]) {
   const ids = new Set(glows.map((shape) => shape.id));
   const bothArms = ids.has("lead-arm") && ids.has("rear-arm");
   return glows.map((shape) => {
-    if (shape.id === "lead-arm" && !bothArms) return { ...shape, label: "Lead shoulder and arm" };
+    if (shape.id === "lead-arm" && !bothArms) return { ...shape, label: "Lead arm" };
+    if (shape.id === "rear-arm" && !bothArms) return { ...shape, label: "Rear arm" };
     return shape;
   });
 }
