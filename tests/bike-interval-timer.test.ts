@@ -183,6 +183,28 @@ describe("bike interval timer", () => {
     expect(viewAtElapsed(spec, 5 * 60)).toMatchObject({ phase: "rest", phaseLabel: "REST", round: 0, remainingSeconds: 120 });
   });
 
+  it("repeats a binary workout and labels the outer round separately from the sprint", () => {
+    const spec = {
+      workSeconds: 20,
+      restSeconds: 10,
+      roundsPerSet: 8,
+      repeatRounds: 3,
+      restBetweenRoundsSeconds: 60,
+    };
+    expect(bikeSetDurationSeconds(spec)).toBe(240 * 3 + 120);
+    expect(viewAtElapsed(spec, 0)).toMatchObject({
+      repeatRound: 1,
+      repeatTotal: 3,
+      sprint: 1,
+      sprintTotal: 8,
+      phase: "work",
+    });
+    expect(viewAtElapsed(spec, 20)).toMatchObject({ phase: "rest", sprint: 1, repeatRound: 1 });
+    expect(viewAtElapsed(spec, 240)).toMatchObject({ phase: "rest", sprint: 0, repeatRound: 1 });
+    expect(viewAtElapsed(spec, 300)).toMatchObject({ phase: "work", sprint: 1, repeatRound: 2 });
+    expect(viewAtElapsed(spec, 240 * 3 + 120).phase).toBe("done");
+  });
+
   it("climbs and descends a sprint ladder", () => {
     const ladder = [
       { workSeconds: 10, restSeconds: 50 },

@@ -189,7 +189,7 @@ function isSingleClockBlock(reps: string) {
 
 /** Hide the machine tag that keeps a chosen bike workout with a saved session. */
 function visibleBikeReps(reps: string) {
-  return reps.replace(/\s*·\s*bw\s+[a-z0-9-]+\s*$/i, "").trim();
+  return reps.replace(/\s*·\s*bw\s+[a-z0-9.-]+\s*$/i, "").replace(/^\s*bw\s+[a-z0-9.-]+\s*$/i, "").trim();
 }
 
 export function plannedSetLine(input: {

@@ -35,6 +35,8 @@ function specFromSession(session: BikeSession): BikeIntervalSpec {
     cooldownSeconds: session.cooldownSeconds,
     blocks: session.blocks,
     restBetweenBlocksSeconds: session.restBetweenBlocksSeconds,
+    repeatRounds: session.repeatRounds,
+    restBetweenRoundsSeconds: session.restBetweenRoundsSeconds,
     pattern: session.pattern,
     ladder: session.ladder,
   };
@@ -141,8 +143,12 @@ export function BikeSetTimer({
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
-  const running = clock.phase === "work" || clock.phase === "rest";
-  const longClock = isLongBikeClock(session);
+  const running =
+    clock.phase === "work" ||
+    clock.phase === "rest" ||
+    clock.phase === "warmup" ||
+    clock.phase === "cooldown" ||
+    clock.phase === "moderate";
 
   useEffect(() => {
     completeRef.current = onSetComplete;
@@ -215,6 +221,10 @@ export function BikeSetTimer({
   const warn = workPhase && clock.remainingSeconds > 0 && clock.remainingSeconds <= 3;
   const word = phaseWord(clock.phase, clock.phaseLabel);
   const roundTotal = clock.roundTotal ?? session.roundsPerSet;
+  const repeatRound = Math.max(1, clock.repeatRound ?? 1);
+  const repeatTotal = Math.max(1, clock.repeatTotal ?? session.repeatRounds ?? 1);
+  const sprint = clock.sprint ?? (clock.round > 0 ? clock.round : 0);
+  const sprintTotal = clock.sprintTotal ?? roundTotal;
 
   return (
     <div data-bike-set-timer>
@@ -228,16 +238,16 @@ export function BikeSetTimer({
             data-bike-interval-round
             className="font-display text-xs uppercase tracking-[0.06em] text-white/80"
           >
-            {clock.round > 0
-              ? `Round ${clock.round}/${roundTotal}`
-              : word === "WARM-UP"
-                ? "Get ready"
-                : word === "COOL-DOWN"
-                  ? "Easy spin"
-                  : longClock
-                    ? "Work block"
-                    : "Bike"}
+            {`Round ${repeatRound}/${repeatTotal}`}
           </p>
+          {sprint > 0 ? (
+            <p
+              data-bike-interval-sprint
+              className="font-display mt-1 text-sm uppercase tracking-[0.08em] text-[#CBF805]"
+            >
+              {`Sprint ${sprint}/${sprintTotal}`}
+            </p>
+          ) : null}
           <p
             data-bike-interval-word
             className={`font-display mt-2 text-lg uppercase ${

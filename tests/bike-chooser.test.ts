@@ -3,11 +3,15 @@ import { bikeSessionForLogger, DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions"
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { exercisesFromLoggerGroups } from "@/lib/my-workout-plan";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
+import { viewAtElapsed } from "@/lib/bike-interval-timer";
 import {
   BIKE_CHOICES,
   bikeChoiceById,
   bikeChoiceFromKey,
   bikeChoiceMinutes,
+  bikeChoiceWithRounds,
+  bikeHistoryFromSessions,
+  compactBikeReps,
   customBikeChoice,
   formatBikeRecipe,
   parseBikeRecipe,
@@ -56,8 +60,130 @@ describe("bike workout chooser", () => {
     expect(bikeSetDurationSeconds(custom!.spec)).toBe(60 + 10 * 60 + 90);
     expect(parseBikeRecipe(formatBikeRecipe(custom!))?.spec.warmupSeconds).toBe(60);
     expect(customBikeChoice({ workSeconds: 0, restSeconds: 10, rounds: 4 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 15, restSeconds: -1, rounds: 4 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 41 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 4, restSeconds: 10, rounds: 4 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 20, restSeconds: 10, rounds: 8, warmupSeconds: 660 })).toBeNull();
+  });
+
+  it("repeats any workout for N rounds and keeps that on the prescription key", () => {
+    const triple = bikeChoiceWithRounds(bikeChoiceById("tabata")!, 3, 60);
+    expect(triple?.name).toContain("3 rounds");
+    expect(triple?.spec.repeatRounds).toBe(3);
+    expect(triple?.spec.restBetweenRoundsSeconds).toBe(60);
+    expect(bikeSetDurationSeconds(triple!.spec)).toBe(240 * 3 + 60 * 2);
+    expect(viewAtElapsed(triple!.spec, 0)).toMatchObject({
+      phase: "work",
+      repeatRound: 1,
+      repeatTotal: 3,
+      sprint: 1,
+      sprintTotal: 8,
+    });
+    expect(viewAtElapsed(triple!.spec, 240)).toMatchObject({
+      phase: "rest",
+      repeatRound: 1,
+      sprint: 0,
+    });
+    expect(viewAtElapsed(triple!.spec, 300)).toMatchObject({
+      phase: "work",
+      repeatRound: 2,
+      sprint: 1,
+      sprintTotal: 8,
+    });
+    const key = prescriptionWithBikeChoice("demo|assault bike intervals::15swork/15srest×8", "Assault bike intervals", triple!);
+    expect(key.length).toBeLessThanOrEqual(160);
+    expect(bikeChoiceFromKey(key)?.spec).toMatchObject({ repeatRounds: 3, restBetweenRoundsSeconds: 60 });
+    expect(parseBikeRecipe(formatBikeRecipe(triple!))?.spec.repeatRounds).toBe(3);
+
+    const custom = customBikeChoice({
+      workSeconds: 20,
+      restSeconds: 10,
+      rounds: 8,
+      warmupSeconds: 60,
+      cooldownSeconds: 120,
+      repeatRounds: 2,
+      restBetweenRoundsSeconds: 45,
+    });
+    expect(bikeSetDurationSeconds(custom!.spec)).toBe(60 + 8 * 30 * 2 + 45 + 120);
+    const added = prescriptionWithBikeChoice("added|old", "Assault bike intervals", custom!).slice(0, 160);
+    expect(bikeChoiceFromKey(added)?.spec).toMatchObject({
+      repeatRounds: 2,
+      restBetweenRoundsSeconds: 45,
+      warmupSeconds: 60,
+      cooldownSeconds: 120,
+    });
+    const longest = customBikeChoice({
+      workSeconds: 120,
+      restSeconds: 180,
+      rounds: 30,
+      warmupSeconds: 600,
+      cooldownSeconds: 600,
+      repeatRounds: 10,
+      restBetweenRoundsSeconds: 300,
+    })!;
+    const packed = prescriptionWithBikeChoice("added|old", "Assault bike intervals", longest).slice(0, 160);
+    expect(bikeChoiceFromKey(packed)?.spec.repeatRounds).toBe(10);
+    expect(compactBikeReps(formatBikeRecipe(longest)).startsWith("bw c.")).toBe(true);
+  });
+
+  it("reads past bike sessions from logged sets", () => {
+    const triple = bikeChoiceWithRounds(bikeChoiceById("tabata")!, 3, 60)!;
+    const rows = bikeHistoryFromSessions([
+      {
+        id: "chosen",
+        title: "Day 4 — Assault bike",
+        performedAt: "2026-10-20T15:00:00.000Z",
+        sets: [
+          {
+            exerciseName: "Assault bike intervals",
+            completed: true,
+            durationSeconds: 840,
+            prescriptionKey: prescriptionWithBikeChoice("day|assault bike intervals::15swork/15srest×8", "Assault bike intervals", triple),
+          },
+          {
+            exerciseName: "Squat",
+            completed: true,
+            prescriptionKey: "squat",
+          },
+        ],
+      },
+      {
+        id: "programmed",
+        title: "Day 4 — Assault bike",
+        performedAt: "2026-10-18T15:00:00.000Z",
+        sets: [
+          {
+            exerciseName: "Assault bike intervals",
+            completed: true,
+            prescriptionKey: "demo:4|assault bike intervals::15swork/15srest×8",
+          },
+          {
+            exerciseName: "Assault bike intervals",
+            completed: false,
+            prescriptionKey: "demo:4|assault bike intervals::15swork/15srest×8",
+          },
+        ],
+      },
+    ]);
+    expect(rows.map((row) => row.sessionId)).toEqual(["chosen", "programmed"]);
+    expect(rows[0]).toMatchObject({
+      workoutName: triple.name,
+      workSeconds: 20,
+      restSeconds: 10,
+      sprints: 8,
+      rounds: 3,
+      restBetweenRoundsSeconds: 60,
+      completed: true,
+    });
+    expect(rows[1]).toMatchObject({
+      workSeconds: 15,
+      restSeconds: 15,
+      sprints: 8,
+      rounds: 2,
+      completed: false,
+      doneSets: 1,
+      totalSets: 2,
+    });
   });
 
   it("stores the choice on the prescription key and collapses today's open bike sets to one", () => {

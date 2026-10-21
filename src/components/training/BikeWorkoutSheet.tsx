@@ -2,20 +2,68 @@
 
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import {
+  BIKE_BETWEEN_SECONDS,
   BIKE_CHOICES,
   BIKE_GOAL_LABEL,
   BIKE_LEVEL_LABEL,
+  BIKE_PREP_MINUTES,
+  BIKE_REST_SECONDS,
+  BIKE_ROUND_COUNTS,
+  BIKE_SPRINT_COUNTS,
+  BIKE_SPRINT_SECONDS,
   bikeChoiceMinutes,
+  bikeChoiceWithRounds,
   customBikeChoice,
   type BikeChoice,
   type BikeGoal,
 } from "@/lib/bike-chooser";
 
+type PickerField = "sprint" | "rest" | "sprints" | "rounds" | "between" | "warmup" | "cooldown";
+
+const FIELD_TITLE: Record<PickerField, string> = {
+  sprint: "Sprint seconds",
+  rest: "Rest seconds",
+  sprints: "Sprints",
+  rounds: "Rounds",
+  between: "Rest between rounds",
+  warmup: "Warm-up",
+  cooldown: "Cool-down",
+};
+
 function goalClass(goal: BikeGoal) {
   if (goal === "anaerobic") return "text-signal";
   if (goal === "aerobic") return "text-white/75";
   return "text-accent";
+}
+
+function stepsFor(field: PickerField, current: number) {
+  const base =
+    field === "sprint"
+      ? [...BIKE_SPRINT_SECONDS]
+      : field === "rest"
+        ? [...BIKE_REST_SECONDS]
+        : field === "sprints"
+          ? [...BIKE_SPRINT_COUNTS]
+          : field === "rounds"
+            ? [...BIKE_ROUND_COUNTS]
+            : field === "between"
+              ? [...BIKE_BETWEEN_SECONDS]
+              : [...BIKE_PREP_MINUTES];
+  if (!base.includes(current)) base.push(current);
+  return base.sort((a, b) => a - b);
+}
+
+function valueLabel(field: PickerField, value: number) {
+  if (field === "warmup" || field === "cooldown") return value === 0 ? "Off" : `${value} min`;
+  if (field === "between") {
+    if (value === 0) return "Off";
+    if (value % 60 === 0) return `${value / 60} min`;
+    return `${value}s`;
+  }
+  if (field === "sprints" || field === "rounds") return String(value);
+  return `${value}s`;
 }
 
 function SheetFrame({
@@ -66,32 +114,112 @@ function SheetFrame({
   return createPortal(sheet, document.body);
 }
 
-function NumberField({
+function PickerSheet({
+  field,
+  value,
+  onSelect,
+  onClose,
+}: {
+  field: PickerField;
+  value: number;
+  onSelect: (value: number) => void;
+  onClose: () => void;
+}) {
+  const titleId = useId();
+  const options = stepsFor(field, value);
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    }
+    window.addEventListener("keydown", onKey, true);
+    const selected = document.querySelector(`[data-bike-picker-option="${value}"]`);
+    selected?.scrollIntoView({ block: "center" });
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [onClose, value]);
+
+  const sheet = (
+    <div
+      className="fixed inset-0 z-[80] flex items-end bg-black/80"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        data-bike-picker
+        data-bike-picker-field={field}
+        className="max-h-[78dvh] w-full rounded-t-3xl bg-background px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 text-foreground"
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
+        <div className="flex items-center justify-between gap-3">
+          <p id={titleId} className="font-display text-xl uppercase tracking-wide">
+            {FIELD_TITLE[field]}
+          </p>
+          <button type="button" onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close picker">
+            ×
+          </button>
+        </div>
+        <div className="mt-3 max-h-[56dvh] overflow-y-auto rounded-2xl border border-line bg-card">
+          {options.map((option) => {
+            const selected = option === value;
+            return (
+              <button
+                key={option}
+                type="button"
+                data-bike-picker-option={option}
+                aria-pressed={selected}
+                onClick={() => onSelect(option)}
+                className={`flex min-h-14 w-full items-center justify-center border-b border-line font-display text-2xl uppercase tracking-wide last:border-b-0 ${
+                  selected ? "bg-black text-accent" : "text-foreground"
+                }`}
+              >
+                {valueLabel(field, option)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (typeof document === "undefined") return sheet;
+  return createPortal(sheet, document.body);
+}
+
+function PickButton({
+  field,
   label,
   value,
-  min,
-  max,
-  onChange,
+  onOpen,
 }: {
+  field: PickerField;
   label: string;
-  value: string;
-  min: number;
-  max: number;
-  onChange: (value: string) => void;
+  value: number;
+  onOpen: (field: PickerField) => void;
 }) {
   return (
-    <label className="block text-center text-xs uppercase tracking-wide text-muted">
-      {label}
-      <input
-        type="number"
-        inputMode="numeric"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-2xl border border-line bg-background px-2 py-3 text-center text-lg text-foreground"
-      />
-    </label>
+    <button
+      type="button"
+      data-bike-pick={field}
+      aria-haspopup="dialog"
+      onClick={() => onOpen(field)}
+      className="flex min-h-16 w-full flex-col items-center justify-center rounded-2xl border border-line bg-card px-2 py-2"
+    >
+      <span className="text-[10px] uppercase leading-tight tracking-wide text-muted">{label}</span>
+      <span className="font-display mt-1 text-xl leading-none text-accent">{valueLabel(field, value)}</span>
+    </button>
   );
 }
 
@@ -105,17 +233,25 @@ export function BikeWorkoutChooser({
   const [open, setOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [error, setError] = useState("");
+  const [picker, setPicker] = useState<PickerField | null>(null);
   const titleId = useId();
-  const spec = choice?.id === "custom" ? choice.spec : null;
-  const [sprint, setSprint] = useState(spec ? String(spec.workSeconds) : "20");
-  const [rest, setRest] = useState(spec ? String(spec.restSeconds) : "40");
-  const [rounds, setRounds] = useState(spec ? String(spec.roundsPerSet) : "8");
-  const [warmup, setWarmup] = useState(spec ? String(spec.warmupSeconds ?? 0) : "");
-  const [cooldown, setCooldown] = useState(spec ? String(spec.cooldownSeconds ?? 0) : "");
+  const custom = choice?.id === "custom" ? choice.spec : null;
+  const [sprint, setSprint] = useState(custom?.workSeconds ?? 20);
+  const [rest, setRest] = useState(custom?.restSeconds ?? 40);
+  const [sprints, setSprints] = useState(custom?.roundsPerSet ?? 8);
+  const [rounds, setRounds] = useState(choice?.spec.repeatRounds ?? 1);
+  const [between, setBetween] = useState(
+    choice?.spec.restBetweenRoundsSeconds && choice.spec.restBetweenRoundsSeconds > 0
+      ? choice.spec.restBetweenRoundsSeconds
+      : 60,
+  );
+  const [warmup, setWarmup] = useState(custom ? Math.round((custom.warmupSeconds ?? 0) / 60) : 0);
+  const [cooldown, setCooldown] = useState(custom ? Math.round((custom.cooldownSeconds ?? 0) / 60) : 0);
 
   function close() {
     setOpen(false);
     setCustomOpen(false);
+    setPicker(null);
     setError("");
   }
 
@@ -124,20 +260,55 @@ export function BikeWorkoutChooser({
     close();
   }
 
+  function applyCatalog(workout: BikeChoice) {
+    const next = bikeChoiceWithRounds(workout, rounds, between);
+    if (!next) return;
+    apply(next);
+  }
+
   function applyCustom() {
     const next = customBikeChoice({
-      workSeconds: Number(sprint),
-      restSeconds: Number(rest),
-      rounds: Number(rounds),
-      warmupSeconds: warmup.trim() === "" ? 0 : Number(warmup),
-      cooldownSeconds: cooldown.trim() === "" ? 0 : Number(cooldown),
+      workSeconds: sprint,
+      restSeconds: rest,
+      rounds: sprints,
+      warmupSeconds: warmup * 60,
+      cooldownSeconds: cooldown * 60,
+      repeatRounds: rounds,
+      restBetweenRoundsSeconds: between,
     });
     if (!next) {
-      setError("Sprint is 1–600s, rest 0–600s, sprints 1–40. Warm-up and cool-down are 0–900s.");
+      setError("Pick a sprint, rest, and count from the lists.");
       return;
     }
     apply(next);
   }
+
+  function selectPicker(value: number) {
+    if (picker === "sprint") setSprint(value);
+    if (picker === "rest") setRest(value);
+    if (picker === "sprints") setSprints(value);
+    if (picker === "rounds") setRounds(value);
+    if (picker === "between") setBetween(value);
+    if (picker === "warmup") setWarmup(value);
+    if (picker === "cooldown") setCooldown(value);
+    setPicker(null);
+    setError("");
+  }
+
+  const pickerValue =
+    picker === "sprint"
+      ? sprint
+      : picker === "rest"
+        ? rest
+        : picker === "sprints"
+          ? sprints
+          : picker === "rounds"
+            ? rounds
+            : picker === "between"
+              ? between
+              : picker === "warmup"
+                ? warmup
+                : cooldown;
 
   return (
     <>
@@ -148,16 +319,25 @@ export function BikeWorkoutChooser({
             <p className="mt-1 text-sm text-muted">{choice.description}</p>
           </div>
         ) : null}
-        <button
-          type="button"
-          data-change-bike-workout
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          onClick={() => setOpen(true)}
-          className="font-display mt-2 inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm uppercase tracking-wide"
-        >
-          Change workout
-        </button>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-change-bike-workout
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className="font-display inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm uppercase tracking-wide"
+          >
+            Change workout
+          </button>
+          <Link
+            href="/training/history/bike"
+            data-bike-history-link
+            className="font-display inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm uppercase tracking-wide"
+          >
+            History
+          </Link>
+        </div>
       </div>
       {open ? (
         <SheetFrame titleId={titleId} onClose={close}>
@@ -169,27 +349,42 @@ export function BikeWorkoutChooser({
               </p>
               <p className="mt-1 text-sm text-muted">
                 {customOpen
-                  ? "The interval clock uses these seconds."
-                  : "Pick a proven bike. It replaces today’s session."}
+                  ? "Tap a value, then scroll to the one you want."
+                  : "Tap a workout to replace today’s session."}
               </p>
             </div>
-            <button type="button" onClick={close} className="touch-target text-2xl leading-none" aria-label="Close">
-              ×
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/training/history/bike"
+                data-bike-history-link
+                className="font-display inline-flex min-h-10 items-center rounded-full border border-line px-3 text-xs uppercase tracking-wide"
+              >
+                History
+              </Link>
+              <button type="button" onClick={close} className="touch-target text-2xl leading-none" aria-label="Close">
+                ×
+              </button>
+            </div>
           </div>
 
           {customOpen ? (
             <div className="mt-4 space-y-3" data-bike-custom-form>
               <div className="grid grid-cols-3 gap-2">
-                <NumberField label="Sprint sec" value={sprint} min={1} max={600} onChange={setSprint} />
-                <NumberField label="Rest sec" value={rest} min={0} max={600} onChange={setRest} />
-                <NumberField label="Sprints" value={rounds} min={1} max={40} onChange={setRounds} />
+                <PickButton field="sprint" label="Sprint sec" value={sprint} onOpen={setPicker} />
+                <PickButton field="rest" label="Rest sec" value={rest} onOpen={setPicker} />
+                <PickButton field="sprints" label="Sprints" value={sprints} onOpen={setPicker} />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <NumberField label="Warm-up sec" value={warmup} min={0} max={900} onChange={setWarmup} />
-                <NumberField label="Cool-down sec" value={cooldown} min={0} max={900} onChange={setCooldown} />
+                <PickButton field="rounds" label="Rounds" value={rounds} onOpen={setPicker} />
+                <PickButton field="between" label="Rest between" value={between} onOpen={setPicker} />
               </div>
-              <p className="text-xs text-muted">Warm-up and cool-down are optional. Leave them blank to skip.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <PickButton field="warmup" label="Warm-up" value={warmup} onOpen={setPicker} />
+                <PickButton field="cooldown" label="Cool-down" value={cooldown} onOpen={setPicker} />
+              </div>
+              <p className="text-xs text-muted">
+                Rounds repeat the whole block. Rest between rounds is used when you pick more than one.
+              </p>
               {error ? (
                 <p className="text-sm text-signal" role="alert">
                   {error}
@@ -216,6 +411,11 @@ export function BikeWorkoutChooser({
             </div>
           ) : (
             <div className="mt-4 space-y-2" data-bike-workout-list>
+              <div className="grid grid-cols-2 gap-2" data-bike-round-picks>
+                <PickButton field="rounds" label="Rounds" value={rounds} onOpen={setPicker} />
+                <PickButton field="between" label="Rest between" value={between} onOpen={setPicker} />
+              </div>
+              <p className="text-xs text-muted">Rounds repeat whichever workout you tap. One round runs it once.</p>
               {BIKE_CHOICES.map((workout) => {
                 const selected = choice?.id === workout.id;
                 return (
@@ -224,7 +424,7 @@ export function BikeWorkoutChooser({
                     type="button"
                     data-bike-workout={workout.id}
                     aria-pressed={selected}
-                    onClick={() => apply(workout)}
+                    onClick={() => applyCatalog(workout)}
                     className={`block w-full rounded-2xl border px-4 py-3 text-left ${
                       selected ? "border-accent bg-card" : "border-line bg-card"
                     }`}
@@ -252,12 +452,20 @@ export function BikeWorkoutChooser({
               >
                 <span className="font-display block text-lg uppercase leading-tight tracking-wide">Custom</span>
                 <span className="mt-1 block text-sm text-muted">
-                  Set sprint seconds, rest seconds, and how many sprints.
+                  Set sprint, rest, sprints, and how many rounds.
                 </span>
               </button>
             </div>
           )}
         </SheetFrame>
+      ) : null}
+      {picker ? (
+        <PickerSheet
+          field={picker}
+          value={pickerValue}
+          onSelect={selectPicker}
+          onClose={() => setPicker(null)}
+        />
       ) : null}
     </>
   );

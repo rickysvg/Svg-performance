@@ -1417,7 +1417,7 @@ export function WorkoutLogForm({
                   ) : null}
                   {bikeSession ? (
                     <BikeSetTimer
-                      key={`${name}-${bikeChoice?.id ?? "plan"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}-${bikeSession.blocks ?? 1}-${bikeSession.warmupSeconds ?? 0}-${bikeSession.cooldownSeconds ?? 0}`}
+                      key={`${name}-${bikeChoice?.id ?? "plan"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}-${bikeSession.blocks ?? 1}-${bikeSession.warmupSeconds ?? 0}-${bikeSession.cooldownSeconds ?? 0}-${bikeSession.repeatRounds ?? 1}-${bikeSession.restBetweenRoundsSeconds ?? 0}`}
                       session={bikeSession}
                       canStart={group.some((set) => !set.completed)}
                       onSetComplete={() => {

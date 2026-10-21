@@ -46,6 +46,8 @@ export type BikeSession = {
   cooldownSeconds?: number;
   blocks?: number;
   restBetweenBlocksSeconds?: number;
+  repeatRounds?: number;
+  restBetweenRoundsSeconds?: number;
   pattern?: BikeIntervalPattern;
   ladder?: readonly BikeIntervalStep[];
   chooserLabel?: string;

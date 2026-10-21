@@ -4,9 +4,14 @@
  * session is saved, on the exercise rep string. No schema change.
  */
 
-import type { BikeSession } from "@/lib/bike-sessions";
+import {
+  isBikeIntervalName,
+  parseBikeIntervalReps,
+  type BikeSession,
+} from "@/lib/bike-sessions";
 import {
   bikeSetDurationSeconds,
+  sprintCountForSpec,
   type BikeIntervalSpec,
 } from "@/lib/bike-interval-timer";
 import { addedPrescriptionKey, parseAddedPlan } from "@/lib/logger-insert";
@@ -222,26 +227,76 @@ function clampInt(value: number, min: number, max: number) {
   return rounded;
 }
 
+/** Picker steps. Sprint and rest stay on sensible jumps. Prep is whole minutes. */
+export const BIKE_SPRINT_SECONDS = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120] as const;
+export const BIKE_REST_SECONDS = [5, 10, 15, 20, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180] as const;
+export const BIKE_SPRINT_COUNTS = Array.from({ length: 30 }, (_, index) => index + 1);
+export const BIKE_ROUND_COUNTS = Array.from({ length: 10 }, (_, index) => index + 1);
+export const BIKE_BETWEEN_SECONDS = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300] as const;
+export const BIKE_PREP_MINUTES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+const REPEAT_SUFFIX = / · \d+ rounds(?: · \d+s between)?$/;
+
+export function bikeChoiceWithRounds(
+  choice: BikeChoice,
+  repeatRounds: number,
+  restBetweenRoundsSeconds: number,
+): BikeChoice | null {
+  const rounds = clampInt(repeatRounds, 1, 10);
+  const between = clampInt(restBetweenRoundsSeconds, 0, 600);
+  if (rounds == null || between == null) return null;
+  const basePlain = choice.plain.replace(REPEAT_SUFFIX, "");
+  const baseName = choice.name.replace(/ · \d+ rounds$/, "");
+  if (rounds <= 1) {
+    return {
+      ...choice,
+      name: baseName,
+      plain: basePlain,
+      spec: { ...choice.spec, repeatRounds: 1, restBetweenRoundsSeconds: 0 },
+    };
+  }
+  return {
+    ...choice,
+    name: `${baseName} · ${rounds} rounds`,
+    plain: `${basePlain} · ${rounds} rounds · ${between}s between`,
+    spec: { ...choice.spec, repeatRounds: rounds, restBetweenRoundsSeconds: between },
+  };
+}
+
 export function customBikeChoice(input: {
   workSeconds: number;
   restSeconds: number;
   rounds: number;
   warmupSeconds?: number;
   cooldownSeconds?: number;
+  repeatRounds?: number;
+  restBetweenRoundsSeconds?: number;
 }): BikeChoice | null {
-  const workSeconds = clampInt(input.workSeconds, 1, 600);
-  const restSeconds = clampInt(input.restSeconds, 0, 600);
-  const rounds = clampInt(input.rounds, 1, 40);
-  const warmupSeconds = clampInt(input.warmupSeconds ?? 0, 0, 900);
-  const cooldownSeconds = clampInt(input.cooldownSeconds ?? 0, 0, 900);
-  if (workSeconds == null || restSeconds == null || rounds == null || warmupSeconds == null || cooldownSeconds == null) {
+  const workSeconds = clampInt(input.workSeconds, 5, 120);
+  const restSeconds = clampInt(input.restSeconds, 5, 180);
+  const rounds = clampInt(input.rounds, 1, 30);
+  const warmupSeconds = clampInt(input.warmupSeconds ?? 0, 0, 600);
+  const cooldownSeconds = clampInt(input.cooldownSeconds ?? 0, 0, 600);
+  const repeatRounds = input.repeatRounds == null ? 1 : clampInt(input.repeatRounds, 1, 10);
+  const between = input.restBetweenRoundsSeconds == null ? 0 : clampInt(input.restBetweenRoundsSeconds, 0, 600);
+  if (
+    workSeconds == null ||
+    restSeconds == null ||
+    rounds == null ||
+    warmupSeconds == null ||
+    cooldownSeconds == null ||
+    repeatRounds == null ||
+    between == null
+  ) {
     return null;
   }
-  const plain = `${workSeconds}s work / ${restSeconds}s rest × ${rounds} · wu ${warmupSeconds} · cd ${cooldownSeconds}`;
+  const shownBetween = repeatRounds > 1 ? between : 0;
+  const basePlain = `${workSeconds}s work / ${restSeconds}s rest × ${rounds} · wu ${warmupSeconds} · cd ${cooldownSeconds}`;
+  const plain = repeatRounds > 1 ? `${basePlain} · ${repeatRounds} rounds · ${shownBetween}s between` : basePlain;
   return {
     id: "custom",
-    name: "Custom sprints",
-    description: "Your sprint, rest, and count. Warm-up and cool-down are optional.",
+    name: repeatRounds > 1 ? `Custom sprints · ${repeatRounds} rounds` : "Custom sprints",
+    description: "Your sprint, rest, and count. Repeat the block for extra rounds.",
     goal: "anaerobic",
     level: "intermediate",
     plain,
@@ -251,59 +306,86 @@ export function customBikeChoice(input: {
       roundsPerSet: rounds,
       warmupSeconds,
       cooldownSeconds,
+      repeatRounds,
+      restBetweenRoundsSeconds: shownBetween,
     },
   };
 }
 
 export function formatBikeRecipe(choice: BikeChoice) {
-  if (choice.id === "custom") return `${choice.plain} · bw custom`;
-  return `${choice.plain} · bw ${choice.id}`;
+  return `${choice.plain} · bw ${choiceToken(choice)}`;
+}
+
+/** Short reps string that still parses after the 160-character prescription key cut. */
+export function compactBikeReps(reps: string) {
+  const choice = parseBikeRecipe(reps);
+  if (!choice) return reps;
+  return `bw ${choiceToken(choice)}`;
 }
 
 export function plainBikeReps(reps: string) {
-  return reps.replace(/\s*·\s*bw\s+[a-z0-9-]+\s*$/i, "").trim();
+  return reps.replace(/\s*·\s*bw\s+[a-z0-9.-]+\s*$/i, "").replace(/^\s*bw\s+[a-z0-9.-]+\s*$/i, "").trim();
+}
+
+function legacyCustomRecipe(reps: string): BikeChoice | null {
+  const interval = reps.match(/(\d+)\s*s\s*work\s*\/\s*(\d+)\s*s\s*rest\s*[×x]\s*(\d+)/i);
+  if (!interval) return null;
+  const warmup = reps.match(/·\s*wu\s*(\d+)/i);
+  const cooldown = reps.match(/·\s*cd\s*(\d+)/i);
+  const repeat = reps.match(/(\d+)\s*rounds/i);
+  const between = reps.match(/(\d+)\s*s\s*between/i);
+  return customBikeChoice({
+    workSeconds: Number(interval[1]),
+    restSeconds: Number(interval[2]),
+    rounds: Number(interval[3]),
+    warmupSeconds: warmup ? Number(warmup[1]) : 0,
+    cooldownSeconds: cooldown ? Number(cooldown[1]) : 0,
+    repeatRounds: repeat ? Number(repeat[1]) : 1,
+    restBetweenRoundsSeconds: between ? Number(between[1]) : 0,
+  });
 }
 
 export function parseBikeRecipe(reps: string): BikeChoice | null {
-  const tag = reps.match(/·\s*bw\s+([a-z0-9-]+)\s*$/i);
+  const tag = reps.match(/(?:^|\s)bw\s+([a-z0-9.-]+)\s*$/i);
   if (!tag) return null;
-  const id = tag[1]!.toLowerCase();
-  if (id === "custom") {
-    const interval = reps.match(/(\d+)\s*s\s*work\s*\/\s*(\d+)\s*s\s*rest\s*[×x]\s*(\d+)/i);
-    if (!interval) return null;
-    const warmup = reps.match(/·\s*wu\s*(\d+)/i);
-    const cooldown = reps.match(/·\s*cd\s*(\d+)/i);
-    return customBikeChoice({
-      workSeconds: Number(interval[1]),
-      restSeconds: Number(interval[2]),
-      rounds: Number(interval[3]),
-      warmupSeconds: warmup ? Number(warmup[1]) : 0,
-      cooldownSeconds: cooldown ? Number(cooldown[1]) : 0,
-    });
-  }
-  return bikeChoiceById(id);
+  const token = tag[1]!.toLowerCase();
+  if (token === "custom") return legacyCustomRecipe(reps);
+  return choiceFromToken(token);
 }
 
 const MARK = "#bw:";
 
 export function choiceToken(choice: BikeChoice) {
-  if (choice.id !== "custom") return choice.id;
   const spec = choice.spec;
-  return `c.${spec.workSeconds}.${spec.restSeconds}.${spec.roundsPerSet}.${spec.warmupSeconds ?? 0}.${spec.cooldownSeconds ?? 0}`;
+  const rounds = spec.repeatRounds ?? 1;
+  const between = spec.restBetweenRoundsSeconds ?? 0;
+  if (choice.id === "custom") {
+    const core = `c.${spec.workSeconds}.${spec.restSeconds}.${spec.roundsPerSet}.${spec.warmupSeconds ?? 0}.${spec.cooldownSeconds ?? 0}`;
+    if (rounds <= 1 && between <= 0) return core;
+    return `${core}.${rounds}.${between}`;
+  }
+  if (rounds <= 1) return choice.id;
+  return `${choice.id}.${rounds}.${between}`;
 }
 
 export function choiceFromToken(token: string): BikeChoice | null {
   if (token.startsWith("c.")) {
-    const [work, rest, rounds, warmup, cooldown] = token.slice(2).split(".").map(Number);
+    const [work, rest, rounds, warmup, cooldown, repeat, between] = token.slice(2).split(".").map(Number);
     return customBikeChoice({
       workSeconds: work ?? Number.NaN,
       restSeconds: rest ?? Number.NaN,
       rounds: rounds ?? Number.NaN,
       warmupSeconds: warmup,
       cooldownSeconds: cooldown,
+      repeatRounds: Number.isFinite(repeat) ? repeat : undefined,
+      restBetweenRoundsSeconds: Number.isFinite(between) ? between : undefined,
     });
   }
-  return bikeChoiceById(token);
+  const [id, roundsRaw, betweenRaw] = token.split(".");
+  const base = bikeChoiceById(id ?? "");
+  if (!base) return null;
+  if (roundsRaw == null || roundsRaw === "") return base;
+  return bikeChoiceWithRounds(base, Number(roundsRaw), betweenRaw == null ? 0 : Number(betweenRaw));
 }
 
 export function attachBikeChoice(prescriptionKey: string, token: string) {
@@ -335,7 +417,7 @@ export function prescriptionWithBikeChoice(
     const plan = parseAddedPlan(prescriptionKey);
     return addedPrescriptionKey({
       exerciseName,
-      reps: formatBikeRecipe(choice),
+      reps: `bw ${choiceToken(choice)}`,
       restSeconds: 0,
       loadText: plan?.loadText ?? "",
       notes: "",
@@ -357,6 +439,8 @@ export function sessionWithChoice(base: BikeSession, choice: BikeChoice): BikeSe
     cooldownSeconds: spec.cooldownSeconds ?? 0,
     blocks: spec.blocks ?? 1,
     restBetweenBlocksSeconds: spec.restBetweenBlocksSeconds ?? 0,
+    repeatRounds: spec.repeatRounds ?? 1,
+    restBetweenRoundsSeconds: spec.restBetweenRoundsSeconds ?? 0,
     pattern: spec.pattern ?? "binary",
     ladder: spec.ladder,
     chooserLabel: choice.plain,
@@ -398,4 +482,107 @@ export function retainBikeChoiceSets<
   const before = sets.slice(0, first).filter((set) => set.exerciseName !== exerciseName);
   const after = sets.slice(first).filter((set) => set.exerciseName !== exerciseName);
   return [...before, ...renumbered, ...after];
+}
+
+export type BikeHistorySet = {
+  exerciseName: string;
+  completed: boolean;
+  durationSeconds?: number | null;
+  prescriptionKey?: string | null;
+};
+
+export type BikeHistorySession = {
+  id: string;
+  title: string;
+  performedAt: Date | string;
+  sets: readonly BikeHistorySet[];
+};
+
+export type BikeHistoryRow = {
+  id: string;
+  sessionId: string;
+  performedAt: Date;
+  title: string;
+  workoutName: string;
+  recipe: string;
+  workSeconds: number | null;
+  restSeconds: number | null;
+  sprints: number | null;
+  rounds: number | null;
+  restBetweenRoundsSeconds: number;
+  completed: boolean;
+  doneSets: number;
+  totalSets: number;
+};
+
+function intervalFromProgramKey(key: string) {
+  const cut = key.indexOf(MARK);
+  const base = cut === -1 ? key : key.slice(0, cut);
+  if (base.startsWith("added|")) return null;
+  const scheme = base.split("|").pop() ?? "";
+  const raw = scheme.includes("::") ? scheme.split("::").slice(1).join("::") : "";
+  if (!raw) return null;
+  const spaced = raw.replace(/(\d+)swork/gi, "$1s work").replace(/(\d+)srest/gi, "$1s rest");
+  const parsed = parseBikeIntervalReps(spaced);
+  if (!parsed) return null;
+  const recipe =
+    parsed.restSeconds > 0
+      ? `${parsed.workSeconds}s work / ${parsed.restSeconds}s rest × ${parsed.roundsPerSet}`
+      : `${parsed.workSeconds}s work × ${parsed.roundsPerSet}`;
+  return { ...parsed, recipe };
+}
+
+export function bikeHistoryFromSessions(sessions: readonly BikeHistorySession[]): BikeHistoryRow[] {
+  const rows: BikeHistoryRow[] = [];
+  for (const session of sessions) {
+    const groups = new Map<string, BikeHistorySet[]>();
+    for (const set of session.sets) {
+      const name = set.exerciseName.trim();
+      if (!name) continue;
+      const list = groups.get(name) ?? [];
+      list.push(set);
+      groups.set(name, list);
+    }
+    for (const [exerciseName, sets] of groups) {
+      const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
+      if (!choice && !isBikeIntervalName(exerciseName)) continue;
+      const programmed = choice ? null : intervalFromProgramKey(sets[0]?.prescriptionKey ?? "");
+      const spec = choice?.spec;
+      const doneSets = sets.filter((set) => set.completed).length;
+      rows.push({
+        id: `${session.id}:${exerciseName}`,
+        sessionId: session.id,
+        performedAt: new Date(session.performedAt),
+        title: session.title,
+        workoutName: choice?.name ?? exerciseName,
+        recipe: choice?.plain ?? programmed?.recipe ?? exerciseName,
+        workSeconds: spec?.workSeconds ?? programmed?.workSeconds ?? null,
+        restSeconds: spec?.restSeconds ?? programmed?.restSeconds ?? null,
+        sprints: spec ? sprintCountForSpec(spec) : programmed?.roundsPerSet ?? null,
+        rounds: spec ? Math.max(1, spec.repeatRounds ?? 1) : sets.length,
+        restBetweenRoundsSeconds: spec?.restBetweenRoundsSeconds ?? 0,
+        completed: sets.length > 0 && doneSets === sets.length,
+        doneSets,
+        totalSets: sets.length,
+      });
+    }
+  }
+  return rows;
+}
+
+export function bikeHistoryLine(session: BikeHistorySession) {
+  const rows = bikeHistoryFromSessions([session]);
+  if (rows.length === 0) return null;
+  return rows
+    .map((row) => {
+      const parts = [row.workoutName];
+      if (row.workSeconds != null && row.restSeconds != null) {
+        parts.push(`${row.workSeconds}s/${row.restSeconds}s`);
+      }
+      if (row.sprints != null) parts.push(`${row.sprints} sprints`);
+      if (row.rounds != null) parts.push(`${row.rounds} ${row.rounds === 1 ? "round" : "rounds"}`);
+      parts.push(row.completed ? "completed" : "open");
+      return parts.join(" · ");
+    })
+    .join(" · ");
 }
