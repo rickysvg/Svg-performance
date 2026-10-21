@@ -596,7 +596,7 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
-  /// True when this subscription holds a founding seat ($59/yr, first 40).
+  /// Unused. Kept so existing rows stay in place. App code does not read or write this flag.
   founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")

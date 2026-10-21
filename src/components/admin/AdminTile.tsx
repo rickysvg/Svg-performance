@@ -3,14 +3,9 @@ import Link from "next/link";
 import type { DeskTone } from "@/lib/admin-desk-status";
 import { DeskCheck } from "@/components/admin/DeskStatus";
 
-export type AdminTileIcon = "founding" | "revenue" | "feedback" | "announce";
+export type AdminTileIcon = "revenue" | "feedback" | "announce";
 
 function Glyph({ icon }: { icon: AdminTileIcon }) {
-  if (icon === "founding") {
-    return (
-      <span className="font-display text-5xl leading-none tracking-wide text-[#CBF805]">40</span>
-    );
-  }
   if (icon === "revenue") {
     return (
       <svg viewBox="0 0 48 48" width="52" height="52" aria-hidden>

@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   coachingDesk,
   formatAdminWhen,
-  foundingDeal,
-  FOUNDING_DEAL_CAP,
   memberMatchesQuery,
   memberPlanSnapshot,
   revenueSnapshot,
@@ -14,7 +12,6 @@ import {
   COACHING_NEAR_SEATS,
   coachingCapacityTone,
   deskTone,
-  foundingDealTone,
   isFailedPaymentStatus,
   memberListTone,
   queueItemTone,
@@ -43,27 +40,19 @@ describe("coach desk access and counters", () => {
     }
   });
 
-  it("counts founding seats against 40 and coaching against 20", () => {
-    expect(FOUNDING_DEAL_CAP).toBe(40);
-    expect(foundingDeal(0)).toEqual({ claimed: 0, cap: 40, remaining: 40 });
-    expect(foundingDeal(12)).toEqual({ claimed: 12, cap: 40, remaining: 28 });
-    expect(foundingDeal(40).remaining).toBe(0);
-    expect(foundingDeal(41).remaining).toBe(0);
+  it("counts coaching seats against 20", () => {
     expect(coachingDesk(7)).toMatchObject({ used: 7, cap: 20, remaining: 13, full: false });
     expect(coachingDesk(20).full).toBe(true);
   });
 
-  it("keeps the founding counter off public pricing", () => {
+  it("keeps seat caps off public pricing", () => {
     const pricing = read("src/components/pricing/PricingCatalog.tsx");
     const page = read("src/app/pricing/page.tsx");
-    expect(pricing).toContain("FoundingOfferHighlight");
     expect(pricing).not.toMatch(/of 40/);
-    expect(pricing).not.toContain("FOUNDING_DEAL_CAP");
-    expect(pricing).not.toContain("foundingSeatCountLine");
-    expect(page).not.toContain("FOUNDING_DEAL_CAP");
+    expect(pricing).not.toMatch(/founding/i);
     expect(page).not.toContain("/admin/founding");
-    expect(page).not.toMatch(/of 40 left/);
-    expect(read("src/lib/pricing.ts")).toContain("Limited spots.");
+    expect(page).not.toMatch(/founding/i);
+    expect(page).toContain("$9.99/month or $72.99/year");
   });
 
   it("labels plan, trial, and academy from the same rules as access", () => {
@@ -158,7 +147,7 @@ describe("coach desk access and counters", () => {
     expect(desk).toContain("Check-ins");
     expect(desk).toContain("Members");
     expect(desk).toContain("Coaching");
-    expect(desk).toContain("Founding");
+    expect(desk).not.toMatch(/founding/i);
     expect(desk).toContain("Revenue");
     expect(desk).toContain("Feedback");
     expect(desk).toContain("Content");
@@ -189,13 +178,11 @@ describe("coach desk access and counters", () => {
     expect(queueItemTone(true)).toBe("clear");
   });
 
-  it("flags coaching when the cap is near or full, and founding only when the deal is filled", () => {
+  it("flags coaching when the cap is near or full", () => {
     expect(COACHING_NEAR_SEATS).toBe(2);
     expect(coachingCapacityTone(17, 20)).toBe("idle");
     expect(coachingCapacityTone(18, 20)).toBe("attention");
     expect(coachingCapacityTone(20, 20)).toBe("attention");
-    expect(foundingDealTone(12, 40)).toBe("idle");
-    expect(foundingDealTone(40, 40)).toBe("clear");
     expect(isFailedPaymentStatus("past_due")).toBe(true);
     expect(isFailedPaymentStatus("unpaid")).toBe(true);
     expect(isFailedPaymentStatus("active")).toBe(false);

@@ -9,8 +9,6 @@ import { needsCoachChoicePrompt, resolveAiCoach } from "@/lib/coaches";
 import { CoachChoicePrompt } from "@/components/coach/CoachChoicePrompt";
 import { PrimeCoachAudio } from "@/components/coach/PrimeCoachAudio";
 import { headers } from "next/headers";
-import { FoundingOfferProvider } from "@/components/pricing/FoundingOfferHighlight";
-import { loadFoundingOffer } from "@/lib/founding-offer";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 import { MemberProReminderBanner } from "@/components/upgrade/MemberProReminderBanner";
 import { getAppTier } from "@/lib/entitlements";
@@ -43,11 +41,9 @@ export default async function MemberLayout({
     Boolean(graceUntil) &&
     graceUntil!.getTime() > nowMs;
   const coach = resolveAiCoach(profile?.aiCoachId);
-  const founding = await loadFoundingOffer();
 
   return (
-    <FoundingOfferProvider line={founding?.line ?? null}>
-      <>
+    <>
       <MemberFrame
         email={user.email}
         role={user.role}
@@ -77,7 +73,6 @@ export default async function MemberLayout({
         <BadgeUnlockOverlay />
       </Suspense>
       <PrimeCoachAudio />
-      </>
-    </FoundingOfferProvider>
+    </>
   );
 }

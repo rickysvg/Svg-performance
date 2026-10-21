@@ -17,18 +17,6 @@ import { civilDayInstant } from "@/lib/performed-at";
 import { APP_TIMEZONE, addZonedDays, isValidTimeZone, mondayOfZoned } from "@/lib/timezone";
 import { isFailedPaymentStatus } from "@/lib/admin-desk-status";
 
-/** Admin-only counter. Never render this on a public page. */
-export const FOUNDING_DEAL_CAP = 40;
-
-export function foundingDeal(claimed: number) {
-  const seats = Number.isFinite(claimed) ? Math.max(0, Math.floor(claimed)) : 0;
-  return {
-    claimed: seats,
-    cap: FOUNDING_DEAL_CAP,
-    remaining: Math.max(0, FOUNDING_DEAL_CAP - seats),
-  };
-}
-
 export function coachingDesk(used: number) {
   const seats = Number.isFinite(used) ? Math.max(0, Math.floor(used)) : 0;
   return {
@@ -305,24 +293,6 @@ export async function listCoachingRoster(now = new Date()) {
   return { ...coachingDesk(rows.length), rows };
 }
 
-export async function getFoundingDeal() {
-  const rows = await prisma.subscription.findMany({
-    where: { status: "active", founding: true },
-    include: {
-      user: { select: { email: true, profile: { select: { displayName: true } } } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  return {
-    ...foundingDeal(rows.length),
-    rows: rows.map((row) => ({
-      email: row.user.email,
-      name: row.user.profile?.displayName?.trim() || row.user.email,
-      plan: normalizePlanId(row.plan),
-    })),
-  };
-}
-
 export async function getRevenueDesk(now = new Date()) {
   const [subscriptions, profiles] = await Promise.all([
     prisma.subscription.findMany({
@@ -514,7 +484,6 @@ export async function getAdminDeskCounts(now = new Date()) {
         plan: true,
         status: true,
         currentPeriodEnd: true,
-        founding: true,
       },
     }),
     prisma.subscription.count({ where: { status: { in: ["past_due", "unpaid"] } } }),
@@ -544,16 +513,13 @@ export async function getAdminDeskCounts(now = new Date()) {
 
   const coachingUsers = new Set<string>();
   const paidUsers = new Set<string>();
-  let foundingClaimed = 0;
   for (const sub of subs) {
-    if (sub.founding) foundingClaimed += 1;
     if (!liveSub(sub, now)) continue;
     const planId = normalizePlanId(sub.plan);
     if (planId === "coaching") coachingUsers.add(sub.userId);
     if (planId !== "member_access" && planId !== "academy") paidUsers.add(sub.userId);
   }
   const coaching = coachingDesk(coachingUsers.size);
-  const founding = foundingDeal(foundingClaimed);
   const revenue = revenueSnapshot({ now, subscriptions: subs, profiles });
   const checkInFlags = checkInRows.filter((row) => parseFlagsJson(row.aiFlagsJson).length > 0).length;
   const byUser = new Map<string, { difficultyRating: string; performedAt: Date }[]>();
@@ -583,9 +549,6 @@ export async function getAdminDeskCounts(now = new Date()) {
     coachingUsed: coaching.used,
     coachingCap: coaching.cap,
     coachingFull: coaching.full,
-    foundingClaimed: founding.claimed,
-    foundingCap: founding.cap,
-    foundingRemaining: founding.remaining,
     activePro: revenue.activePro,
     trials: revenue.trials,
     conversions: revenue.conversions,

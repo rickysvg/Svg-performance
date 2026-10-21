@@ -29,13 +29,6 @@ export function coachingCapacityTone(used: number, cap: number): DeskTone {
   return "idle";
 }
 
-/** A filled founding deal is finished. Open seats are not a task. */
-export function foundingDealTone(claimed: number, cap: number): DeskTone {
-  const limit = count(cap);
-  if (limit > 0 && count(claimed) >= limit) return "clear";
-  return "idle";
-}
-
 export function isFailedPaymentStatus(status: string) {
   return FAILED_PAYMENT.has(status);
 }
