@@ -616,7 +616,7 @@ export const COACH_EVAL_CASES: CoachEvalCase[] = [
       "Coach avatar: Ricky",
       "Intensity: calm",
       "softer volume",
-      "SVG MMA Academy head coach",
+      "SVG founder and head coach",
     ],
     rubric:
       "Ricky stays the head coach. The push is calm: what is working, then one step. Technique sections stay. No shame.",

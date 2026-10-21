@@ -79,6 +79,7 @@ model User {
   savedWorkouts            SavedWorkout[]
   dayWorkoutPlans          DayWorkoutPlan[]
   customBagWorkouts        CustomBagWorkout[]
+  coachAutoNotes           CoachAutoNote[]
 }
 
 model Session {
@@ -571,6 +572,21 @@ model ChatThread {
 
   @@index([userId])
   @@index([userId, topic, art])
+}
+
+/** One coach template note per dedupe key. Recaps and proactive notes do not share a key. */
+model CoachAutoNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** recap:YYYY-MM-DD or day:YYYY-MM-DD in the member's zone. */
+  dedupeKey String
+  /** recap | workout | sparring | fight */
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
 }
 
 model ChatMessage {

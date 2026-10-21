@@ -26,6 +26,7 @@ import { getAppTier } from "@/lib/entitlements";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { createWorkoutHrForUser } from "@/lib/heart";
+import { noteAfterWorkout } from "@/lib/coach/auto-notes";
 import {
   detectNewPrsForSession,
   detectUnseenBadgeUnlocksForSession,
@@ -178,7 +179,11 @@ export async function saveWorkoutAction(
     revalidatePath(`/training/log/${savedId}`);
     revalidatePath(`/training/log/${workoutId}/done`);
     revalidatePath(`/training/log/${savedId}/done`);
+    revalidatePath("/coach");
     if (intent === "complete") {
+      await noteAfterWorkout(user.id, workoutId).catch(() => {
+        console.warn("[coach] workout note skipped");
+      });
       const celebrate = newPrs[0] ? "pr" : alreadyActive ? "workout" : "streak";
       const prQuery = newPrs[0]
         ? `&pr=${encodeURIComponent(newPrs[0].headline)}&prDetail=${encodeURIComponent(newPrs[0].detail)}`

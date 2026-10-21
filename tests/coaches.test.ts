@@ -55,7 +55,7 @@ describe("AI coach avatars", () => {
     const voices = AI_COACHES.map((coach) => coach.voice);
     expect(new Set(voices).size).toBe(AI_COACHES.length);
     const ricky = AI_COACHES.find((coach) => coach.id === "ricky");
-    expect(ricky?.vibe).toBe("SVG MMA Academy head coach");
+    expect(ricky?.vibe).toBe("Ricky Maynez, SVG founder and head coach.");
     expect(ricky?.image).toBe("/coaches/ricky.webp");
     expect(ricky?.circle).toBe("/coaches/ricky-face.webp");
     expect(ricky?.thumb).toBe("/coaches/ricky-thumb.webp");
@@ -127,7 +127,7 @@ describe("AI coach avatars", () => {
     expect(coachingStyleVoice("hype", "Cole")).toMatch(/No emojis/);
     expect(coachingStyleVoice(undefined, undefined)).toMatch(/Skye/);
     expect(coachingStyleVoice(undefined, undefined)).toMatch(/Supportive/);
-    expect(coachingStyleVoice("tough", "Ricky")).toMatch(/SVG MMA Academy head coach/);
+    expect(coachingStyleVoice("tough", "Ricky")).toMatch(/SVG founder and head coach/);
     expect(coachingStyleVoice("tough", "Ricky")).toMatch(/No fluff/);
     expect(coachingStyleVoice("tough", "Ricky")).not.toMatch(/Coach Savage/);
   });

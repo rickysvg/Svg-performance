@@ -127,7 +127,7 @@ export function buildCoachHref(query: { topic?: string; art?: string }) {
 
 export function coachTopicContext(topic?: string, art?: string) {
   if (!isCoachTopic(topic)) {
-    return "No topic is selected. Stay practical. If the question is broad, answer the best version of it and ask which lane they want.";
+    return "No topic was picked. Detect the question type from the message and answer that type: technique, rules, strength and conditioning, nutrition, mindset, or injury. Do not ask them to pick a topic. No weight cuts and no medical plans. Injuries go to a coach or doctor.";
   }
   if (topic === "martial_art") {
     const artLabel = isCoachArt(art) ? COACH_ART_LABELS[art] : "general striking / grappling";

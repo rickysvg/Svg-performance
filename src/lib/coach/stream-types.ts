@@ -11,6 +11,7 @@ export type CoachStreamRequest = {
   message?: string;
   topic?: string;
   art?: string;
+  threadId?: string;
   mentionedUserId?: string;
   exerciseName?: string;
   programDayId?: string;

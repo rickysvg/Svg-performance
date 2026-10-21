@@ -56,9 +56,20 @@ describe("QA-approved access and surface fixes", () => {
     expect(page).toContain('redirect(status.planChoiceAt ? "/home" : "/onboarding/plan")');
   });
 
-  it("hints after Martial art and never leaves Coach empty", () => {
+  it("opens Coach as a messenger and never leaves it empty", () => {
     const coach = read("src/app/(member)/coach/page.tsx");
-    expect(coach).toContain("Pick your art to start chatting.");
+    const thread = read("src/components/coach/CoachLiveThread.tsx");
+    const welcome = read("src/lib/coach/welcome.ts");
+    expect(coach).not.toContain("Pick a topic");
+    expect(coach).not.toContain("Pick your art to start chatting.");
+    expect(coach).toContain("1-on-1 clips");
+    expect(coach).toContain("getMemberCoachThread");
+    expect(thread).toContain("COACH_WELCOME");
+    expect(thread).toContain("data-coach-suggestions");
+    expect(thread).toContain("bg-[#CBF805]");
+    expect(thread).toContain("bg-[#101216]");
+    expect(welcome).toContain("For pain or injuries, talk to a coach or doctor.");
+    expect(welcome).toContain("Fix my jab");
   });
 
   it("uses REST DAY copy instead of No DEMO day loaded", () => {
