@@ -558,7 +558,7 @@ BEGIN
 END $$;
 
 
--- Founding seat flag on Subscription. Additive, idempotent.
+-- Subscription.founding stays in place. Additive, idempotent. The app does not read or write it.
 DO $$
 BEGIN
   IF to_regclass('public."Subscription"') IS NULL THEN

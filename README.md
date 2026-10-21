@@ -85,11 +85,10 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym monthly ($19) |
 | `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for SVG Performance nonmember monthly ($29) |
 | `STRIPE_PRICE_PERFORMANCE_MONTHLY` / `_YEAR` | Optional. TEST price ids for SVG Pro ($9.99/mo, $72.99/yr). Checkout stays off until billing is approved |
-| `STRIPE_PRICE_PERFORMANCE_FOUNDING` | Optional. TEST price id for founding Pro at $59/yr, first 40 signups, academy members included. Create this price in the Stripe Dashboard and paste the id. The app does not create it. Leave empty until the price exists |
 | `STRIPE_PRICE_COACHING_MONTHLY` | Optional. TEST price id for 1-on-1 coaching ($249/mo) |
 | `STRIPE_PRICE_PERFORMANCE_ANNUAL_*` | Optional. Inactive prepaid annual stubs ($72.99/yr) |
 | `STRIPE_PRICE_CONDITIONING_GYM` / `_NON` | Optional. Fighter Conditioning monthly $49 / $59 |
-| `STRIPE_PRICE_CONDITIONING_CAMP_*` / `_ANNUAL_*` / `_FOUNDING_*` | Optional. Inactive 12-Week Fight Camp / annual / founding stubs |
+| `STRIPE_PRICE_CONDITIONING_CAMP_*` / `_ANNUAL_*` | Optional. Inactive 12-Week Fight Camp / annual stubs |
 | `STRIPE_PRICE_DEVELOPMENT_GYM` / `_NON` | Optional. Fighter Development monthly $149 / $179 |
 | `STRIPE_PRICE_DEVELOPMENT_3MO_*` / `_6MO_*` | Optional. Inactive prepaid coaching stubs |
 | `STRIPE_PRICE_ELITE_GYM` / `_NON` | Optional. Elite Online monthly $299 / $349 (cap ~6) |
@@ -165,7 +164,7 @@ Do this only with **test** keys. Do not turn on live billing.
 
 1. Create a Stripe account and stay in **Test mode** (toggle in the Stripe dashboard).
 2. Copy the **secret key** that starts with `sk_test_` into `STRIPE_SECRET_KEY`.
-3. In Stripe, create monthly recurring TEST prices for the plans you want to try. At minimum put ids in `STRIPE_PRICE_GYM` ($19) and `STRIPE_PRICE_STANDALONE` ($29). For the $59/yr founding Pro annual (first 40 signups), create that price in the Dashboard and put its id in `STRIPE_PRICE_PERFORMANCE_FOUNDING`. The app reads the id and does not create the price. Leave that variable empty until the price exists. Prepaid / 3-month / 6-month env names exist as inactive stubs. Gym-member prices still need an admin verify. Buy buttons stay **Coming soon** until live billing is approved.
+3. In Stripe, create monthly recurring TEST prices for the plans you want to try. At minimum put ids in `STRIPE_PRICE_GYM` ($19) and `STRIPE_PRICE_STANDALONE` ($29). Pro is $9.99/mo (`STRIPE_PRICE_PERFORMANCE_MONTHLY`) or $72.99/yr (`STRIPE_PRICE_PERFORMANCE_YEAR`). Prepaid / 3-month / 6-month env names exist as inactive stubs. Gym-member prices still need an admin verify. Buy buttons stay **Coming soon** until live billing is approved.
 4. On your laptop, install the Stripe CLI, then forward webhooks:
 
    ```bash

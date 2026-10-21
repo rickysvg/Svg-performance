@@ -6,7 +6,6 @@ import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
-import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 
 export default async function PlanPage() {
@@ -50,7 +49,6 @@ export default async function PlanPage() {
                 }`
               : "Your trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data."}
         </p>
-        <FoundingOfferHighlight />
         {!configured ? (
           <p className="mt-3 text-sm text-muted">
             Paid plans coming soon.{" "}

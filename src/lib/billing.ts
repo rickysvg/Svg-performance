@@ -4,14 +4,10 @@ import { getProfileForUser } from "@/lib/profile";
 import { isStripeConfigured } from "@/lib/access";
 import { ensureCreditsForPlan } from "@/lib/credits";
 import { isPlanAtCap } from "@/lib/waitlist";
-import { isFoundingDealOpen } from "@/lib/pricing";
 import {
   CHECKOUT_SKUS,
   type CheckoutSkuId,
-  foundingPriceIds,
   isCheckoutSkuId,
-  isFoundingPriceId,
-  isFoundingSku,
   normalizePlanId,
   PLAN_CATALOG,
   PLANS,
@@ -27,12 +23,6 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
   const sku = CHECKOUT_SKUS[plan];
   if (!sku.checkoutEnabled) {
     throw new AppError("BILLING", "Paid plans coming soon.");
-  }
-  if (isFoundingSku(plan)) {
-    const seats = await countFoundingSeats();
-    if (!isFoundingDealOpen(seats)) {
-      throw new AppError("BILLING", "The founding price is full.");
-    }
   }
   if (sku.requiresGymVerify) {
     const profile = await getProfileForUser(userId);
@@ -69,7 +59,6 @@ export async function upsertSubscriptionFromWebhook(input: {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   stripePriceId?: string;
-  founding?: boolean;
   currentPeriodEnd?: Date | null;
   source?: string;
 }) {
@@ -82,14 +71,9 @@ export async function upsertSubscriptionFromWebhook(input: {
         orderBy: { updatedAt: "desc" },
       });
 
-  // Keep Stripe ids and the founding flag when a later event (payment failed, cancel) omits them.
+  // Keep Stripe ids when a later event (payment failed, cancel) omits them.
+  // Leave the unused seat column as stored. Do not set or clear it.
   const stripePriceId = input.stripePriceId || existing?.stripePriceId || "";
-  // A fresh Stripe price id wins when STRIPE_PRICE_PERFORMANCE_FOUNDING is set.
-  // Otherwise use the checkout SKU flag, then whatever was stored before.
-  const founding =
-    input.stripePriceId && foundingPriceIds().length > 0
-      ? isFoundingPriceId(input.stripePriceId)
-      : (input.founding ?? existing?.founding ?? false);
 
   const data = {
     userId: input.userId,
@@ -98,7 +82,6 @@ export async function upsertSubscriptionFromWebhook(input: {
     stripeCustomerId: input.stripeCustomerId || existing?.stripeCustomerId || "",
     stripeSubscriptionId: input.stripeSubscriptionId || existing?.stripeSubscriptionId || "",
     stripePriceId,
-    founding,
     currentPeriodEnd: input.currentPeriodEnd ?? null,
     source: input.source ?? "webhook",
   };
@@ -107,20 +90,6 @@ export async function upsertSubscriptionFromWebhook(input: {
     return prisma.subscription.update({ where: { id: existing.id }, data });
   }
   return prisma.subscription.create({ data });
-}
-
-/** Active founding seats: stored founding flag, or the configured founding Stripe price id. */
-export async function countFoundingSeats() {
-  const priceIds = foundingPriceIds();
-  return prisma.subscription.count({
-    where: {
-      status: "active",
-      OR: [
-        { founding: true },
-        ...(priceIds.length > 0 ? [{ stripePriceId: { in: priceIds } }] : []),
-      ],
-    },
-  });
 }
 
 type StripeLikeObject = {
@@ -173,7 +142,6 @@ export async function applyStripeEvent(event: {
     ? CHECKOUT_SKUS[planRaw].catalogId
     : normalizePlanId(planRaw);
   const stripePriceId = object.items?.data?.[0]?.price?.id;
-  const founding = isFoundingSku(planRaw);
 
   if (!userId) {
     throw new AppError("BILLING", "Webhook event is missing the member id.");
@@ -228,7 +196,6 @@ export async function applyStripeEvent(event: {
           ? object.subscription
           : object.id,
       stripePriceId,
-      founding,
       currentPeriodEnd: periodEnd,
     });
     if (result.status === "active") {
@@ -263,7 +230,6 @@ export async function applyStripeEvent(event: {
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId: object.id,
       stripePriceId,
-      founding,
       currentPeriodEnd: periodEnd,
     });
     if (result.status === "active") {

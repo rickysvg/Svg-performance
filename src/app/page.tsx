@@ -2,8 +2,6 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/session";
-import { FoundingOfferHighlight } from "@/components/pricing/FoundingOfferHighlight";
-import { loadFoundingOffer } from "@/lib/founding-offer";
 import { MEMBER_PRO_DAYS } from "@/lib/pricing";
 
 export default async function MarketingPage({
@@ -12,7 +10,6 @@ export default async function MarketingPage({
   searchParams: Promise<{ deleted?: string }>;
 }) {
   const user = await getCurrentUser();
-  const founding = await loadFoundingOffer();
   const query = await searchParams;
   const deleted = query.deleted === "1";
 
@@ -105,7 +102,6 @@ export default async function MarketingPage({
               Pro is $9.99/mo or $72.99/yr after a 7-day trial with no card. Verified SVG
               Academy members get the core app with their dues and Pro free for {MEMBER_PRO_DAYS} days.
               Checkout is coming soon.
-              <FoundingOfferHighlight line={founding?.line ?? null} className="mt-2" />
             </li>
             <li>SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Weight-cut services are not sold here.</li>
           </ul>

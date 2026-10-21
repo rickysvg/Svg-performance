@@ -1,11 +1,7 @@
 import { getProfileForUser } from "@/lib/profile";
 import { requireDashboardAdmin } from "@/lib/admin-access";
 import { getAdminDeskCounts } from "@/lib/admin-dashboard";
-import {
-  coachingCapacityTone,
-  deskTone,
-  foundingDealTone,
-} from "@/lib/admin-desk-status";
+import { coachingCapacityTone, deskTone } from "@/lib/admin-desk-status";
 import { AdminTile } from "@/components/admin/AdminTile";
 
 export default async function AdminPage() {
@@ -20,7 +16,6 @@ export default async function AdminPage() {
   const formTone = deskTone(counts.formChecks, counts.formChecksReviewed);
   const checkTone = deskTone(counts.checkIns, counts.checkInsAnswered);
   const coachTone = coachingCapacityTone(counts.coachingUsed, counts.coachingCap);
-  const dealTone = foundingDealTone(counts.foundingClaimed, counts.foundingCap);
   const revenueTone = deskTone(counts.failedPayments, counts.paidCurrent);
   const feedbackTone = deskTone(feedbackWaiting, counts.recentRatings + counts.feedbackClosed);
   const contentTone = deskTone(contentWaiting, counts.contentReady);
@@ -95,17 +90,6 @@ export default async function AdminPage() {
           alt="Coach holding mitts in a dark gym"
           badge={counts.coachingCap - counts.coachingUsed <= 0 ? counts.coachingUsed : counts.coachingCap - counts.coachingUsed}
           tone={coachTone}
-        />
-        <AdminTile
-          href="/admin/founding"
-          label="Founding"
-          hint={
-            dealTone === "clear"
-              ? `All ${counts.foundingCap} claimed`
-              : `${counts.foundingRemaining} left of ${counts.foundingCap}`
-          }
-          icon="founding"
-          tone={dealTone}
         />
         <AdminTile
           href="/admin/revenue"
