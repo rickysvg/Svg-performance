@@ -407,8 +407,8 @@ export default async function ProgressPage() {
       <div>
         <h2 className="text-lg">Workout history</h2>
         <p className="mt-1 text-sm text-muted">
-          Built only from workouts you logged. Volume is reps × load, converted
-          to your preferred unit ({units}).
+          Built only from workouts you logged. Lifting volume is reps × load in {units}.
+          Bagwork adds rounds × minutes × RPE.
         </p>
       </div>
 

@@ -143,8 +143,9 @@ describe("calendar schedule loader", () => {
       ),
     ).toBe(true);
     expect(workouts.some((row) => /bag|clinch|ground-and-pound|sprawl/i.test(row.title))).toBe(
-      true,
+      false,
     );
+    expect(workouts.some((row) => /full body|circuit|bike|mobility/i.test(row.title))).toBe(true);
     expect(workouts.some((row) => program.days.some((day) => row.href === `/training/${day.id}`))).toBe(
       true,
     );
@@ -239,19 +240,18 @@ describe("calendar schedule loader", () => {
     expect(schedule.days[0]?.isToday).toBe(false);
     const mondayWorkouts =
       schedule.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(mondayWorkouts.length).toBeGreaterThan(1);
+    expect(mondayWorkouts).toHaveLength(1);
     const logged = mondayWorkouts.filter((row) => row.programDayId === loggedDayId);
-    expect(logged.length).toBeGreaterThan(0);
+    expect(logged).toHaveLength(1);
     expect(logged.every((row) => row.status === "complete")).toBe(true);
     expect(logged[0]?.subtitle).toContain("Logged this day");
-    const open = mondayWorkouts.filter((row) => row.programDayId !== loggedDayId);
-    expect(open.length).toBeGreaterThan(0);
-    expect(open.every((row) => row.status === "scheduled")).toBe(true);
-    expect(open[0]?.subtitle).toContain("Missed");
+    expect(mondayWorkouts.some((row) => row.status === "scheduled")).toBe(false);
 
     const tuesdayRow = schedule.days[1];
     const tuesdayWorkouts = tuesdayRow?.activities.filter((row) => row.kind === "workout") ?? [];
     expect(tuesdayWorkouts.length).toBeGreaterThan(0);
+    expect(tuesdayWorkouts.every((row) => row.status === "scheduled")).toBe(true);
+    expect(tuesdayWorkouts[0]?.subtitle).toContain("Missed");
     const workouts = schedule.days.flatMap((day) => day.activities.filter((row) => row.kind === "workout"));
     expect(workouts.some((row) => row.subtitle.includes("Core week plan."))).toBe(true);
     expect(workouts.some((row) => row.subtitle.includes("DEMO"))).toBe(false);

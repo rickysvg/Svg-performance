@@ -26,9 +26,9 @@ describe("v2 week for every profile", () => {
     expect(roles.Monday.lift).toBeTruthy();
     expect(roles.Tuesday.lift).toBeTruthy();
     expect(roles.Thursday.lift).toBeTruthy();
-    expect(roles.Monday.bag).toBeTruthy();
-    expect(roles.Tuesday.bag).toBeTruthy();
-    expect(roles.Thursday.bag).toBeTruthy();
+    expect(roles.Monday.bag).toBeNull();
+    expect(roles.Tuesday.bag).toBeNull();
+    expect(roles.Thursday.bag).toBeNull();
     expect(roles.Wednesday.outside).toBeNull();
     expect(roles.Wednesday.cardio).toBe("hard-bike");
     expect(roles.Sunday.cardio).toBe("hard-bike");
@@ -43,9 +43,9 @@ describe("v2 week for every profile", () => {
       sessionsPerWeek: 3,
       outsideTraining: [{ weekday: "Wednesday", kind: "sparring" }, { weekday: "Saturday", kind: "sparring" }],
     });
-    expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Tuesday.summary).toBe("Bag+Lift");
-    expect(week.Thursday.summary).toBe("Bag+Lift");
+    expect(week.Monday.summary).toBe("Lift");
+    expect(week.Tuesday.summary).toBe("Lift");
+    expect(week.Thursday.summary).toBe("Lift");
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Sunday.summary).toBe("Cardio+Mobility");
     expect(week.Saturday.summary).toBe("Sparring");

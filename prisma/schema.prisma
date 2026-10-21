@@ -74,6 +74,7 @@ model User {
   memberProReminders       MemberProReminderLog[]
   savedWorkouts            SavedWorkout[]
   dayWorkoutPlans          DayWorkoutPlan[]
+  customBagWorkouts        CustomBagWorkout[]
 }
 
 model Session {
@@ -313,6 +314,8 @@ model WorkoutSession {
   notes        String      @default("")
   status       String      @default("draft")
   difficultyRating String  @default("")
+  /** 1–10 session RPE for a bagwork log. Null when the member skipped it. */
+  sessionRpe       Int?
   /** Exercise whose between-set rest is running. Empty when rest is idle. */
   restExerciseName String   @default("")
   /** Absolute end time so a reload can resume the countdown. */
@@ -1360,4 +1363,19 @@ model MemberProReminderLog {
   sentAt  DateTime @default(now())
 
   @@unique([userId, stage])
+}
+
+/** A member-made bag workout. Catalog workouts stay in code. */
+model CustomBagWorkout {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  /** Comma-separated body region ids. */
+  regions     String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }

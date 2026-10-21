@@ -46,7 +46,7 @@ describe("hard class days and sparring-only ease", () => {
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Wednesday.sessions.some((session) => session.kind === "strength")).toBe(false);
     expect(week.Wednesday.sessions.every((session) => session.heavy !== true)).toBe(true);
-    expect(week.Thursday.summary).toBe("Bag+Lift");
+    expect(week.Thursday.summary).toBe("Lift");
     expect(week.Thursday.easeNote).toBeUndefined();
   });
 
@@ -108,7 +108,7 @@ describe("week strip ease follows logged ratings only", () => {
     expect(eased.map((day) => `${day.weekday}:${day.summary}`)).toEqual(
       strip.map((day) => `${day.weekday}:${day.summary}`),
     );
-    expect(eased.find((day) => day.weekday === "Thursday")?.summary).toBe("Bag+Lift");
+    expect(eased.find((day) => day.weekday === "Thursday")?.summary).toBe("Lift");
     expect(eased.find((day) => day.weekday === "Wednesday")?.summary).toBe("Cardio+Mobility");
   });
 
@@ -146,7 +146,7 @@ describe("week strip ease follows logged ratings only", () => {
     };
     const strip = weekStrip(prefs, WEEK, APP_TIMEZONE);
     const ignored = await easeWeekStripDays(user.id, prefs, strip, APP_TIMEZONE);
-    expect(ignored.find((day) => day.weekday === "Thursday")?.summary).toBe("Bag+Lift");
+    expect(ignored.find((day) => day.weekday === "Thursday")?.summary).toBe("Lift");
 
     await prisma.outsideSessionLog.update({
       where: { userId_dateKey: { userId: user.id, dateKey: "2026-10-21" } },

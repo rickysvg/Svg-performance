@@ -4,6 +4,7 @@ import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
+import { bagworkHistoryLine } from "@/lib/bagwork";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
@@ -55,8 +56,9 @@ export default async function HistoryPage() {
             const finished = session.status === "complete" && sessionHasLoggedWork(session.sets);
             const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
             const names = exerciseNamesInOrder(session.sets);
+            const bagLine = bagworkHistoryLine(session);
             return (
-            <li key={session.id} className="space-y-2">
+            <li key={session.id} className="space-y-2" {...(bagLine ? { "data-bagwork-session": "" } : {})}>
             <div className="flex items-stretch gap-2">
               <Link
                 href={`/training/log/${session.id}`}
@@ -71,14 +73,15 @@ export default async function HistoryPage() {
                   </p>
                 ) : null}
                 <p className="mt-1 text-sm text-muted">
-                  {new Date(session.performedAt).toLocaleString()} · {label} ·{" "}
-                  {session.sets.length} sets
+                  {new Date(session.performedAt).toLocaleString()} · {label}
+                  {bagLine ? ` · ${bagLine}` : ` · ${session.sets.length} sets`}
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
-                    : finished
+                    : finished && !bagLine
                       ? " · rate how it felt"
                       : ""}
                 </p>
+                {session.notes ? <p className="mt-1 text-sm">{session.notes}</p> : null}
               </Link>
               {finished ? (
                 <Link

@@ -7,6 +7,7 @@ import { sparringTileHint } from "@/lib/sparring-tile";
 
 const TILES = [
   "train.webp",
+  "bagwork.webp",
   "mobility.webp",
   "coach.webp",
   "form-check.webp",
@@ -93,6 +94,10 @@ describe("Home photo tiles", () => {
     expect(source).not.toContain("TEXT_ACTIONS");
     expect(source).not.toContain("min-h-[5.5rem]");
     expect(source).not.toContain("label.slice(0, 1)");
+    expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/bagwork"'));
+    expect(source.indexOf('href: "/bagwork"')).toBeLessThan(source.indexOf('href: "/mobility"'));
+    expect(source).toContain("/tiles/bagwork.webp");
+    expect(source).toContain("Bagwork");
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/mobility"'));
     expect(source.indexOf('href: "/mobility"')).toBeLessThan(source.indexOf('href: "/coach"'));
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/coach"'));

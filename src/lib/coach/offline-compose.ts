@@ -60,9 +60,12 @@ function campActions(message: string, facts?: OfflineMemberFacts | null) {
   const bags = dayList(facts?.bagDays, "your bag days");
   const spar = dayList(facts?.sparringDays, "the sparring day already on your week");
   const unknown = /\bwinner of|main event|cfc|whoever wins|unknown opponent/i.test(message);
+  const bagCue = facts?.bagDays?.length
+    ? `Bag work on ${bags}. Build the jab, the level change, and getting off the fence. Themed rounds, then stop.`
+    : "Bag work is separate from the strength week. Build the jab, the level change, and getting off the fence. Themed rounds, then stop.";
   const lines = [
     `Lift on ${lifts}. Stay on the written reps at the written RIR. Main lifts stop at 4 sets. Accessories stop at 3.`,
-    `Bag work on ${bags}. Build the jab, the level change, and getting off the fence. Themed rounds, then stop.`,
+    bagCue,
     `Sparring stays on ${spar}. Early rounds stay technical. A coach runs anything hard.`,
     "Sleep and eat normal meals. If weight has to move, do it slowly from food, about 1% a week. No water cut.",
   ];
@@ -258,18 +261,21 @@ function scheduleAnswer(input: ComposeInput) {
   const lifts = dayList(input.facts?.liftDays, "your lift days");
   const bags = dayList(input.facts?.bagDays, "your bag days");
   const spar = dayList(input.facts?.sparringDays, "your sparring day");
+  const bagSentence = input.facts?.bagDays?.length
+    ? `Bag work on ${bags}.`
+    : "Bag work is separate from the strength week.";
   const bank = matchOfflineBank(input.message, "programming");
   return listBlock(
     "Do this",
     [
-      `Lift on ${lifts}. Bag work on ${bags}.`,
+      `Lift on ${lifts}. ${bagSentence}`,
       `Keep sparring on ${spar}. Do not add a max lift that day.`,
       "The day before sparring or class stays lighter.",
       "Missed a day: take the next session that is already written. No punishment volume.",
     ],
     "Which day is sparring, and which days are you actually free?",
     bank ??
-      "Use the week already on your plan. Lift days stay lift days. Bag days stay bag days. A missed day is not a makeup day.",
+      "Use the week already on your plan. Lift days stay lift days. Bag work is not a strength day. A missed day is not a makeup day.",
   );
 }
 

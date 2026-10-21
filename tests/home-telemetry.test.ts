@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWeekTelemetry, formatTelemetryNumber } from "@/lib/home-telemetry";
+import { buildWeekTelemetry, formatTelemetryNumber, trainingLoadForDay } from "@/lib/home-telemetry";
 
 describe("home telemetry buckets", () => {
   const weekKeys = [
@@ -31,7 +31,7 @@ describe("home telemetry buckets", () => {
     });
 
     expect(result.days.map((day) => day.label)).toEqual(["M", "T", "W", "T", "F", "S", "S"]);
-    expect(result.days[0]).toMatchObject({ load: 1250, sessions: 2, rounds: 0, name: "Monday" });
+    expect(result.days[0]).toMatchObject({ load: 1250, bagLoad: 0, sessions: 2, rounds: 0, name: "Monday" });
     expect(result.days[2]).toMatchObject({ load: 400, rounds: 8, sessions: 1 });
     expect(result.days[6]).toMatchObject({ rounds: 4, sessions: 0 });
     expect(result.weekLoad).toBe(1650);
@@ -39,6 +39,23 @@ describe("home telemetry buckets", () => {
     expect(result.weekSessions).toBe(3);
     expect(result.streakCurrent).toBe(3);
     expect(result.streakLongest).toBe(9);
+  });
+
+  it("adds bagwork load beside lifting volume without folding it into weekLoad", () => {
+    const result = buildWeekTelemetry({
+      weekKeys,
+      sessions: [
+        { dayKey: "2026-10-12", volume: 1000 },
+        { dayKey: "2026-10-12", volume: 0, bagLoad: 84 },
+      ],
+      rounds: [],
+      streakCurrent: 1,
+      streakLongest: 1,
+    });
+    expect(result.days[0]?.load).toBe(1000);
+    expect(result.days[0]?.bagLoad).toBe(84);
+    expect(result.weekLoad).toBe(1000);
+    expect(trainingLoadForDay(result.days[0]!)).toBe(1084);
   });
 
   it("compacts large loads for the dash readout", () => {

@@ -172,6 +172,14 @@ function nextLabelFor(timeline: TimelineSlot[], index: number) {
   return `Round ${next.round}`;
 }
 
+/** Finished work rounds. The round in progress does not count until its work block ends. */
+export function completedWorkRounds(phase: TimerPhase, round: number, totalRounds: number) {
+  if (phase === "done") return totalRounds;
+  if (phase === "rest") return round;
+  if (phase === "work") return Math.max(0, round - 1);
+  return 0;
+}
+
 export function shouldPlayWarningBeep(prevRemaining: number, remaining: number) {
   return prevRemaining > 10 && remaining <= 10 && remaining > 0;
 }

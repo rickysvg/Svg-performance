@@ -214,17 +214,17 @@ describe("assault bike catalog", () => {
 
   it("keeps cardio on the open days and mobility twice, without a lift every day", () => {
     const week = buildCoreWeekPlan(MMA_MON_WED_FRI);
-    expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Tuesday.summary).toBe("Bag+Lift");
+    expect(week.Monday.summary).toBe("Lift");
+    expect(week.Tuesday.summary).toBe("Lift");
     expect(week.Tuesday.active).toBe(true);
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
-    expect(week.Thursday.summary).toBe("Bag+Lift");
+    expect(week.Thursday.summary).toBe("Lift");
     expect(week.Friday.summary).toBe("Conditioning+Mobility");
     expect(week.Saturday.summary).toBe("Sparring");
     expect(week.Sunday.summary).toBe("Cardio+Mobility");
 
     const open = buildCoreWeekPlan({ primaryFocus: "mma", weeklyAvailability: [...WEEKDAYS] });
-    expect(open.Thursday.summary).toBe("Bag+Lift");
+    expect(open.Thursday.summary).toBe("Lift");
     expect(open.Wednesday.summary).toBe("Cardio+Mobility");
     expect(open.Sunday.summary).toBe("Cardio+Mobility");
     expect(open.Wednesday.sessions.some((session) => session.kind === "conditioning")).toBe(true);
@@ -238,16 +238,16 @@ describe("assault bike catalog", () => {
 
     const tue = planForDate(MMA_MON_WED_FRI, tuesday);
     expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bag+Lift");
+    expect(tue.summary).toBe("Lift");
     const mon = planForDate(MMA_MON_WED_FRI, monday);
-    expect(mon.summary).toBe("Bag+Lift");
+    expect(mon.summary).toBe("Lift");
 
     const strip = weekStrip(MMA_MON_WED_FRI, monday);
     expect(strip.map((day) => day.summary)).toEqual([
-      "Bag+Lift",
-      "Bag+Lift",
+      "Lift",
+      "Lift",
       "Cardio+Mobility",
-      "Bag+Lift",
+      "Lift",
       "Conditioning+Mobility",
       "Sparring",
       "Cardio+Mobility",

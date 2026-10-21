@@ -14,6 +14,13 @@ const PHOTO_ACTIONS = [
     alt: "Athlete deadlifting a barbell beside an athlete on an assault bike",
   },
   {
+    href: "/bagwork",
+    label: "Bagwork",
+    hint: "Heavy bag rounds",
+    src: "/tiles/bagwork.webp",
+    alt: "Athlete hitting a heavy bag in a dark gym",
+  },
+  {
     href: "/mobility",
     label: "Mobility",
     hint: "Hips and holds",

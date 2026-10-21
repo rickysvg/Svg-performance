@@ -1,4 +1,3 @@
-import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessions";
 import { bikeWeekIndex, memberWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
 import {
   FRIDAY_CONDITIONING_LABEL,
@@ -178,17 +177,6 @@ function bikeSlot(weekday: "Wednesday" | "Sunday", weekIndex = 0): PlanSessionSl
   };
 }
 
-function bagSlot(weekday: BagWeekday, weekIndex = 0): PlanSessionSlot {
-  const bag = bagFocusFor(weekday, mesoBlockForWeekIndex(weekIndex));
-  return {
-    kind: "skill",
-    label: bag.label,
-    programSlug: DEMO_SKILL_PROGRAM_SLUG,
-    dayNumber: bag.dayNumber,
-    optional: weekday === "Saturday",
-  };
-}
-
 function strengthSlot(dayNumber: number, label: string, kind: PlanSessionKind = "strength"): PlanSessionSlot {
   return {
     kind,
@@ -261,19 +249,6 @@ function liftSlot(kind: LiftKind, weekIndex: number): PlanSessionSlot {
 function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number): PlanSessionSlot[] {
   if (role.outside?.kind === "sparring") return [];
   const sessions: PlanSessionSlot[] = [];
-  if (role.bag && weekday !== "Sunday") {
-    const bag = bagSlot(weekday as BagWeekday, weekIndex);
-    const minutes = bagMinutesForBand("intermediate");
-    sessions.push({
-      ...bag,
-      optional: false,
-      heavy: role.bag === "hard",
-      detail:
-        role.bag === "moderate"
-          ? `Moderate pace · est. ${minutes} min. Not a max-effort interval day.`
-          : `Est. ${minutes} min. Warm-up, themed rounds, then a short cooldown.`,
-    });
-  }
   if (role.lift) sessions.push({ ...liftSlot(role.lift, weekIndex), heavy: true });
   if (role.gpp) {
     const circuit = strengthDaysForWeek(weekIndex).friday;
@@ -312,7 +287,6 @@ function summaryForRole(role: DayRole, active: boolean) {
   if (role.outside?.kind === "sparring") return "Sparring";
   if (!active) return "Off";
   const parts: string[] = [];
-  if (role.bag) parts.push("Bag");
   if (role.lift) parts.push("Lift");
   if (role.gpp) parts.push(FRIDAY_CONDITIONING_LABEL);
   if (role.cardio) parts.push("Cardio");
@@ -399,7 +373,7 @@ export function resolveTrainingDays(prefs: PlannerPrefs): Set<PlanWeekday> {
 
 function dayIsActive(role: DayRole) {
   if (role.outside) return true;
-  return Boolean(role.lift || role.bag || role.cardio || role.mobility);
+  return Boolean(role.lift || role.cardio || role.mobility);
 }
 
 function outsideNote(role: DayRole) {
@@ -769,7 +743,7 @@ export function moveDayChoices(
 export function corePlanCopy(prefs: { goalKey?: string; primaryFocus?: string }) {
   const focus = prefs.primaryFocus;
   if (focus && focus !== "general-fitness") {
-    return "Core week plan from your intake — bag, strength, and bikes on set weekdays. Not Elite or fight-camp coaching.";
+    return "Core week plan from your intake — strength and bikes on set weekdays. Bag work is separate. Not Elite or fight-camp coaching.";
   }
-  return "Core week plan — bag, strength, and conditioning on set weekdays. Not Elite or fight-camp coaching.";
+  return "Core week plan — strength and conditioning on set weekdays. Bag work is separate. Not Elite or fight-camp coaching.";
 }

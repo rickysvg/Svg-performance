@@ -4,6 +4,7 @@ import { sessionCivilDay } from "@/lib/performed-at";
 import { getProfileForUser } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
 import { addZonedDays, dayKey, mondayOfZoned, zonedCivilToUtc, APP_TIMEZONE } from "@/lib/timezone";
+import { bagworkTrainingLoadFromSession } from "@/lib/bagwork";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -22,9 +23,15 @@ export type TelemetryDay = {
   label: (typeof DAY_LABELS)[number];
   name: (typeof DAY_NAMES)[number];
   load: number;
+  /** Bagwork session load: rounds × minutes × RPE. */
+  bagLoad: number;
   rounds: number;
   sessions: number;
 };
+
+export function trainingLoadForDay(day: Pick<TelemetryDay, "load" | "bagLoad">) {
+  return day.load + day.bagLoad;
+}
 
 export type HomeTelemetrySnapshot = {
   days: TelemetryDay[];
@@ -49,7 +56,7 @@ export function formatTelemetryNumber(value: number) {
 
 export function buildWeekTelemetry(input: {
   weekKeys: string[];
-  sessions: Array<{ dayKey: string; volume: number }>;
+  sessions: Array<{ dayKey: string; volume: number; bagLoad?: number }>;
   rounds: Array<{ dayKey: string; rounds: number }>;
   streakCurrent: number;
   streakLongest: number;
@@ -59,6 +66,7 @@ export function buildWeekTelemetry(input: {
     label: DAY_LABELS[index] ?? "M",
     name: DAY_NAMES[index] ?? "Monday",
     load: 0,
+    bagLoad: 0,
     rounds: 0,
     sessions: 0,
   }));
@@ -67,6 +75,7 @@ export function buildWeekTelemetry(input: {
     const day = byKey.get(session.dayKey);
     if (!day) continue;
     day.load += session.volume;
+    day.bagLoad += session.bagLoad ?? 0;
     day.sessions += 1;
   }
   for (const row of input.rounds) {
@@ -76,6 +85,7 @@ export function buildWeekTelemetry(input: {
   }
   for (const day of days) {
     day.load = Math.round(day.load);
+    day.bagLoad = Math.round(day.bagLoad);
   }
   return {
     days,
@@ -132,7 +142,17 @@ export async function getHomeTelemetry(input: {
       select: {
         performedAt: true,
         createdAt: true,
-        sets: { select: { reps: true, loadValue: true, loadUnit: true } },
+        sessionRpe: true,
+        sets: {
+          select: {
+            reps: true,
+            loadValue: true,
+            loadUnit: true,
+            prescriptionKey: true,
+            durationSeconds: true,
+            completed: true,
+          },
+        },
       },
     }),
     prisma.outsideSessionLog.findMany({
@@ -152,7 +172,7 @@ export async function getHomeTelemetry(input: {
         sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit),
       0,
     );
-    return { dayKey: key, volume };
+    return { dayKey: key, volume, bagLoad: bagworkTrainingLoadFromSession(session) };
   });
   const streak = buildTrainingStreak({
     completedDates: completed.map((row) => {
