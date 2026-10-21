@@ -4,6 +4,7 @@ import { getProfileForUser } from "@/lib/profile";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie, zonedParts } from "@/lib/timezone";
 import { getSparringLog, sparringDateError } from "@/lib/outside-log";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { resolveAiCoach } from "@/lib/coaches";
 
 function weekdayForDateKey(dateKey: string) {
@@ -31,12 +32,15 @@ export default async function SparringPage({
 
   return (
     <main className="space-y-4" data-sparring-page>
-      <div>
-        <p className="font-display text-xs uppercase tracking-wide text-accent">Sparring</p>
-        <h1 className="mt-1 text-2xl">Log sparring</h1>
-        <p className="mt-2 text-sm text-muted">
-          Any day. Session rating, body rating, sore spots, and notes. Future dates stay closed.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-xs uppercase tracking-wide text-accent">Sparring</p>
+          <h1 className="mt-1 text-2xl">Log sparring</h1>
+          <p className="mt-2 text-sm text-muted">
+            Any day. Session rating, body rating, sore spots, and notes. Future dates stay closed.
+          </p>
+        </div>
+        <RoundTimerButton />
       </div>
       <form method="get" className="flex items-end gap-2">
         <label className="block min-w-0 flex-1 text-sm">

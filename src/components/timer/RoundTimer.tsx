@@ -62,7 +62,15 @@ export type RoundTimerLaunch = {
   backHref: string;
 };
 
-export function RoundTimer({ launch = null }: { launch?: RoundTimerLaunch | null }) {
+export function RoundTimer({
+  launch = null,
+  onClose,
+  titleId,
+}: {
+  launch?: RoundTimerLaunch | null;
+  onClose?: () => void;
+  titleId?: string;
+}) {
   const launchConfig = launch
     ? sanitizeTimerConfig({
         rounds: launch.rounds,
@@ -276,15 +284,28 @@ export function RoundTimer({ launch = null }: { launch?: RoundTimerLaunch | null
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center justify-between gap-3">
-        <Link
-          href={launch?.backHref ?? "/training"}
-          className="touch-target inline-flex items-center justify-center text-2xl leading-none"
-          aria-label={launch ? "Back to workout" : "Back to Train"}
-        >
-          ‹
-        </Link>
-        <h1 className="text-xl" data-timer-title>
+      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-3 bg-background px-4 py-2">
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            autoFocus
+            data-round-timer-close
+            className="touch-target inline-flex items-center justify-center text-2xl leading-none"
+            aria-label="Close timer"
+          >
+            ‹
+          </button>
+        ) : (
+          <Link
+            href={launch?.backHref ?? "/training"}
+            className="touch-target inline-flex items-center justify-center text-2xl leading-none"
+            aria-label={launch ? "Back to workout" : "Back to Train"}
+          >
+            ‹
+          </Link>
+        )}
+        <h1 className="text-xl" id={titleId} data-timer-title>
           {launch ? launch.name : "Round timer"}
         </h1>
         <span className="w-8" aria-hidden />
@@ -329,7 +350,7 @@ export function RoundTimer({ launch = null }: { launch?: RoundTimerLaunch | null
         </div>
       ) : null}
 
-      {launch ? null : (<>
+      {launch ? null : (
       <div className="grid grid-cols-4 gap-1 rounded-full bg-card p-1">
         {TIMER_MODES.map((mode) => (
           <button
@@ -344,7 +365,9 @@ export function RoundTimer({ launch = null }: { launch?: RoundTimerLaunch | null
           </button>
         ))}
       </div>
+      )}
 
+      {launch || onClose ? null : (
       <form action={startRoundLogAction} data-round-log="">
         <input type="hidden" name="mode" value={prefs.mode} />
         <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
@@ -360,7 +383,7 @@ export function RoundTimer({ launch = null }: { launch?: RoundTimerLaunch | null
           Log {configForPreset(prefs.preset, customDraft).rounds} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
         </button>
       </form>
-      </>)}
+      )}
 
       {launch ? null : (
       <div className="grid grid-cols-3 gap-2">

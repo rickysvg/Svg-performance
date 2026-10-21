@@ -10,6 +10,7 @@ import { FormClipPlayer } from "@/components/training/FormClipPlayer";
 import { IgDrillCard } from "@/components/mobility/IgDrillCard";
 import { IG_DRILLS } from "@/lib/ig-drills";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 
 export default async function MobilityRoutinePage({
   params,
@@ -34,12 +35,15 @@ export default async function MobilityRoutinePage({
       <Link href="/mobility" className="text-sm font-semibold text-accent">
         All routines
       </Link>
-      <div>
-        <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">
-          {routine.minutesLabel} · {routine.when}
-        </p>
-        <h1 className="mt-1 text-3xl">{routine.title}</h1>
-        <p className="mt-2 text-sm text-muted">{routine.summary}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">
+            {routine.minutesLabel} · {routine.when}
+          </p>
+          <h1 className="mt-1 text-3xl">{routine.title}</h1>
+          <p className="mt-2 text-sm text-muted">{routine.summary}</p>
+        </div>
+        <RoundTimerButton />
       </div>
       {query.saved ? (
         <p className="rounded-full bg-accent px-4 py-2 text-center text-sm text-black">Session saved.</p>

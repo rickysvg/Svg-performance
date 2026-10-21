@@ -69,13 +69,6 @@ const PHOTO_ACTIONS = [
     src: "/tiles/calendar.webp",
     alt: "Athlete checking off training days on a whiteboard",
   },
-  {
-    href: "/timer",
-    label: "Timer",
-    hint: "Rounds",
-    src: "/tiles/timer.webp",
-    alt: "Athlete beside an assault bike in a dark gym",
-  },
 ] as const;
 
 function ActionTile({

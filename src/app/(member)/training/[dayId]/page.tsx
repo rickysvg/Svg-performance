@@ -44,6 +44,7 @@ import { applySwapsToExercises, swapSlotsFor, trainingBlockKey } from "@/lib/exe
 import { omitRemovedSlots } from "@/lib/exercise-removal";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 
 export default async function TrainingDayPage({
   params,
@@ -142,7 +143,7 @@ export default async function TrainingDayPage({
         <p className="min-w-0 flex-1 truncate text-center text-sm text-muted">
           {memberFacingTitle(day.program.title)}
         </p>
-        <span className="inline-flex w-11 justify-end" />
+        <RoundTimerButton />
       </header>
 
       <section className="space-y-4 px-4 pb-4 pt-3" data-session-phase="first">

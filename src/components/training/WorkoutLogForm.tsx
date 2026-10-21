@@ -7,6 +7,7 @@ import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
@@ -1025,6 +1026,7 @@ export function WorkoutLogForm({
               ) : null}
               <SessionTimer startedAtMs={new Date(session.createdAt).getTime()} />
             </div>
+            <RoundTimerButton />
             <div className="flex flex-col items-end">
               {COACH_WORKOUT_MOTIVATION_ENABLED ? (
                 <WorkoutCoachCues

@@ -26,6 +26,14 @@ export function BagWorkoutDetail({ view }: { view: BagworkView }) {
         {view.recommendation}
       </p>
 
+      <BagRoundSetup
+        workoutKey={view.key}
+        workoutName={view.name}
+        rounds={view.suggested.rounds}
+        workMinutes={workMinutes}
+        restMinutes={restMinutes}
+      />
+
       {view.description ? <p className="text-sm">{view.description}</p> : null}
 
       <ul className="space-y-2" data-bag-cues>
@@ -37,13 +45,6 @@ export function BagWorkoutDetail({ view }: { view: BagworkView }) {
       </ul>
 
       <BagBodyMap regions={view.regions} side={view.side} />
-
-      <BagRoundSetup
-        workoutKey={view.key}
-        rounds={view.suggested.rounds}
-        workMinutes={workMinutes}
-        restMinutes={restMinutes}
-      />
 
       {view.custom ? (
         <Link href={`/bagwork/saved/${view.key.slice("saved:".length)}/edit`} className="inline-flex text-sm text-accent underline">

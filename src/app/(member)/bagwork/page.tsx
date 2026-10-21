@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { requireUser } from "@/lib/session";
 import { BAG_WORKOUTS } from "@/lib/bagwork";
 import { listCustomBagWorkouts } from "@/lib/bagwork-store";
@@ -19,6 +20,8 @@ export default async function BagworkPage() {
           Pick a bag workout. Rounds are yours to set. This is separate from the strength week.
         </p>
       </div>
+
+      <RoundTimerButton label="Start rounds" />
 
       <section className="space-y-2" data-bagwork-picker>
         {BAG_WORKOUTS.map((workout) => (
