@@ -198,7 +198,7 @@ html[data-splash="done"] .app-splash {
   position: fixed;
   z-index: 30;
   right: max(0.75rem, env(safe-area-inset-right, 0px));
-  /* Above the dock and the undo toast (toast sits at 5.5rem). */
+  /* Above the account dock. Toasts sit one button-height above this. */
   bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   width: 48px;
@@ -229,7 +229,7 @@ html:not([data-splash="done"]) [data-coach-fab] {
 
 /*
   Confirmation toasts clear the account dock and the 48px coach button.
-  Home coach sits at 5.75rem; logger screens raise it to 6.75rem.
+  Home coach sits at 9.25rem; logger screens raise it to 10.25rem.
   48px is the button, 0.75rem is the gap under the toast.
 */
 .app-toast {
@@ -239,11 +239,11 @@ html:not([data-splash="done"]) [data-coach-fab] {
   right: 1rem;
   margin-inline: auto;
   max-width: 28rem;
-  bottom: calc(5.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(9.25rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 html:has([data-coach-fab-raised]) .app-toast:not(.app-toast-top) {
-  bottom: calc(6.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(10.25rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 .app-toast.app-toast-top {
