@@ -17,7 +17,7 @@ const BLURBS: Record<string, { title: string; body: string }> = {
   },
   coach: {
     title: "SVG Coach chat is in Pro",
-    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Academy members get 3 messages a week. Pro opens daily chat.",
+    body: "Your free week of AI coach chat has ended. SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Chat stays open on Pro and VIP Coaching.",
   },
   ai_limit: {
     title: "You used this week's 3 AI messages",
@@ -77,30 +77,52 @@ export function UpgradePreview({
   framed?: boolean;
 }) {
   const copy = BLURBS[kind];
+  const carbon = kind === "coach";
   return (
-    <section className={framed ? "rounded-2xl border border-line bg-white p-5" : "bg-white"}>
-      <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
+    <section
+      className={
+        carbon
+          ? "hc-panel hc-carbon relative p-5 text-white"
+          : framed
+            ? "rounded-2xl border border-line bg-white p-5"
+            : "bg-white"
+      }
+    >
+      <p
+        className={`font-display text-xs uppercase tracking-[0.06em] ${carbon ? "text-[#CBF805]" : "text-black"}`}
+      >
         SVG Pro
       </p>
-      <h2 className="font-display mt-2 text-2xl uppercase tracking-wide text-black">
+      <h2
+        className={`font-display mt-2 text-2xl uppercase tracking-wide ${carbon ? "text-white" : "text-black"}`}
+      >
         {copy.title}
       </h2>
-      <p className="mt-2 text-sm text-muted">{copy.body}</p>
+      <p className={`mt-2 text-sm ${carbon ? "text-white/80" : "text-muted"}`}>{copy.body}</p>
       <div className="mt-4 space-y-3">
-        <UpgradeCtas canStartTrial={canStartTrial} trialDays={trialDays} next={next} />
+        <UpgradeCtas
+          canStartTrial={canStartTrial}
+          trialDays={trialDays}
+          next={next}
+          trialLabel={kind === "coach" ? "Start 7-day trial" : undefined}
+          upgradeLabel={kind === "coach" ? "Upgrade" : undefined}
+        />
         {onDismiss ? (
           <button
             type="button"
             onClick={onDismiss}
-            className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
+            className={
+              carbon
+                ? "touch-target w-full rounded-full border border-[#CBF805]/50 bg-transparent font-semibold text-[#CBF805]"
+                : "touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
+            }
           >
             Not now
           </button>
         ) : null}
       </div>
-      <p className="mt-3 text-xs text-muted">
-        Pro is $9.99/mo or $72.99/yr, save 39%, for everyone. Paid plans coming soon. You can
-        look at pricing anytime from Profile.
+      <p className={`mt-3 text-xs ${carbon ? "text-white/60" : "text-muted"}`}>
+        Pro is $9.99/mo or $72.99/yr, save 39%.
       </p>
     </section>
   );

@@ -783,3 +783,88 @@ BEGIN
     ALTER TABLE "WorkoutSession" ADD COLUMN "timerStartedAt" TIMESTAMP(3);
   END IF;
 END $$;
+
+-- VIP Coaching. Additive only: applications, checkout grants, upsell events, 72h waitlist holds.
+-- Idempotent. No DROP. No-ops until User exists. Spot counts are not stored here.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."PlanWaitlist"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'PlanWaitlist' AND column_name = 'holdUntil'
+  ) THEN
+    ALTER TABLE "PlanWaitlist" ADD COLUMN "holdUntil" TIMESTAMP(3);
+  END IF;
+
+  IF to_regclass('public."PlanWaitlist"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'PlanWaitlist' AND column_name = 'offeredAt'
+  ) THEN
+    ALTER TABLE "PlanWaitlist" ADD COLUMN "offeredAt" TIMESTAMP(3);
+  END IF;
+
+  IF to_regclass('public."VipApplication"') IS NULL THEN
+    CREATE TABLE "VipApplication" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "goals" TEXT NOT NULL,
+      "experience" TEXT NOT NULL,
+      "fightDate" TEXT NOT NULL DEFAULT '',
+      "injuries" TEXT NOT NULL,
+      "availability" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "reviewerId" TEXT NOT NULL DEFAULT '',
+      "reviewedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL,
+      CONSTRAINT "VipApplication_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "VipApplication_userId_createdAt_idx" ON "VipApplication"("userId", "createdAt");
+    CREATE INDEX "VipApplication_status_createdAt_idx" ON "VipApplication"("status", "createdAt");
+    ALTER TABLE "VipApplication"
+      ADD CONSTRAINT "VipApplication_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."VipCheckoutGrant"') IS NULL THEN
+    CREATE TABLE "VipCheckoutGrant" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "applicationId" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'open',
+      "introApplied" BOOLEAN NOT NULL DEFAULT false,
+      "creditCents" INTEGER NOT NULL DEFAULT 0,
+      "uncappedCents" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "consumedAt" TIMESTAMP(3),
+      CONSTRAINT "VipCheckoutGrant_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "VipCheckoutGrant_applicationId_key" ON "VipCheckoutGrant"("applicationId");
+    CREATE INDEX "VipCheckoutGrant_userId_status_idx" ON "VipCheckoutGrant"("userId", "status");
+    ALTER TABLE "VipCheckoutGrant"
+      ADD CONSTRAINT "VipCheckoutGrant_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    ALTER TABLE "VipCheckoutGrant"
+      ADD CONSTRAINT "VipCheckoutGrant_applicationId_fkey"
+      FOREIGN KEY ("applicationId") REFERENCES "VipApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."VipUpsellEvent"') IS NULL THEN
+    CREATE TABLE "VipUpsellEvent" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "trigger" TEXT NOT NULL,
+      "action" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "VipUpsellEvent_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "VipUpsellEvent_userId_trigger_createdAt_idx" ON "VipUpsellEvent"("userId", "trigger", "createdAt");
+    CREATE INDEX "VipUpsellEvent_userId_createdAt_idx" ON "VipUpsellEvent"("userId", "createdAt");
+    ALTER TABLE "VipUpsellEvent"
+      ADD CONSTRAINT "VipUpsellEvent_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

@@ -6,7 +6,6 @@ import {
   COACHING_ADDS,
   COACHING_EXPECT,
   COACHING_MONTHLY,
-  coachingSpotsLine,
   MEMBER_PRO_DAYS,
   NONMEMBER_TRIAL_DAYS,
   PERFORMANCE_MONTHLY,
@@ -19,6 +18,8 @@ import {
 } from "@/lib/pricing";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { startTrialAction } from "@/app/actions/trial";
+import type { VipPricingPhase } from "@/lib/vip-store";
+import { PricingLadder } from "@/components/pricing/PricingLadder";
 
 function PlanCheckoutButton({
   canStartTrial,
@@ -89,17 +90,70 @@ function TierList({
   );
 }
 
+function VipPlanButton({
+  phase,
+  userLoggedIn,
+}: {
+  phase: VipPricingPhase;
+  userLoggedIn: boolean;
+}) {
+  if (phase === "member") {
+    return <p className="text-sm text-white">You&apos;re on VIP Coaching.</p>;
+  }
+  if (phase === "pending") {
+    return (
+      <p className="text-sm text-white">
+        Application in. Ricky replies within 48 hours. Checkout stays locked until he approves you.
+      </p>
+    );
+  }
+  if (phase === "checkout") {
+    return (
+      <Link
+        href="/vip/checkout"
+        className="touch-target flex w-full items-center justify-center rounded-full bg-[#CBF805] font-semibold text-black"
+      >
+        Checkout
+      </Link>
+    );
+  }
+  if (phase === "waitlist") {
+    if (!userLoggedIn) {
+      return <p className="text-sm text-white">Log in to join the waitlist.</p>;
+    }
+    return <WaitlistButton plan="coaching" />;
+  }
+  if (!userLoggedIn) {
+    return (
+      <Link
+        href="/login"
+        data-vip-apply
+        className="touch-target flex w-full items-center justify-center rounded-full bg-[#CBF805] font-semibold text-black"
+      >
+        Log in to apply
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/vip/apply"
+      data-vip-apply
+      className="touch-target flex w-full items-center justify-center rounded-full bg-[#CBF805] font-semibold text-black"
+    >
+      Apply
+    </Link>
+  );
+}
+
 export function PricingCatalog({
   verified,
-  coachingSpotsLeft,
-  coachingAtCap,
+  vipPhase = "apply",
   userLoggedIn,
   canStartTrial = false,
   checkoutLive = false,
 }: {
   verified: boolean;
-  coachingSpotsLeft: number | null;
-  coachingAtCap: boolean;
+  vipPhase?: VipPricingPhase;
   userLoggedIn: boolean;
   canStartTrial?: boolean;
   checkoutLive?: boolean;
@@ -108,6 +162,7 @@ export function PricingCatalog({
 
   return (
     <div className="space-y-4" data-pricing-plans="3">
+      <PricingLadder vipPhase={vipPhase} userLoggedIn={userLoggedIn} />
       <article data-plan-card="academy" className="rounded-2xl border border-line bg-card p-5 text-foreground">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">SVG Academy</p>
         <h2 className="mt-2 text-xl text-foreground">SVG Academy gym member</h2>
@@ -154,27 +209,37 @@ export function PricingCatalog({
         </div>
       </article>
 
-      <article data-plan-card="coaching" className="rounded-2xl border border-line bg-card p-5 text-foreground">
-        <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">Coaching</p>
-        <h2 className="mt-2 text-xl text-foreground">{coaching.label}</h2>
-        <p className="font-display stat-display mt-3 text-3xl text-accent">{usd(COACHING_MONTHLY)}/mo</p>
-        <p className="mt-1 text-sm text-foreground" data-coaching-spots>
-          {coachingSpotsLine(coachingSpotsLeft)}
+      <article
+        data-plan-card="coaching"
+        data-vip-card="1"
+        className="rounded-2xl border border-[#CBF805] bg-black p-5 text-white"
+      >
+        <p className="font-display text-xs uppercase tracking-[0.06em] text-[#CBF805]">1-on-1</p>
+        <h2 className="mt-2 text-xl text-white">{coaching.label}</h2>
+        <p className="font-display stat-display mt-3 text-3xl text-[#CBF805]">
+          {verified ? "$149 first month" : `${usd(COACHING_MONTHLY)}/mo`}
         </p>
-        <p className="mt-3 text-sm font-medium text-foreground" data-plan-expect>
+        <p className="mt-1 text-sm text-white/80">
+          {verified
+            ? `Then ${usd(COACHING_MONTHLY)}/mo. Verified academy price for the first month.`
+            : `Verified SVG Academy members: $149 the first month, then ${usd(COACHING_MONTHLY)}/mo.`}
+        </p>
+        <p className="mt-1 text-sm text-white/80">
+          Pro subscribers who upgrade can get a one-time credit of up to $30 for unused Pro time. The
+          academy first month stands on its own.
+        </p>
+        <p className="mt-1 text-sm text-white" data-coaching-spots>
+          Limited spots
+        </p>
+        <p className="mt-3 text-sm font-medium text-white" data-plan-expect>
           {COACHING_EXPECT}
         </p>
         <TierList items={COACHING_ADDS} tone="add" />
+        <p className="mt-3 text-sm text-white/80" data-vip-promise>
+          Replies to messages, form checks, and check-ins within 48 hours.
+        </p>
         <div className="mt-5">
-          {coachingAtCap ? (
-            userLoggedIn ? (
-              <WaitlistButton plan="coaching" />
-            ) : (
-              <p className="text-sm text-foreground">Log in to join the waitlist.</p>
-            )
-          ) : (
-            <PlanCheckoutButton canStartTrial={false} checkoutLive={checkoutLive} />
-          )}
+          <VipPlanButton phase={vipPhase} userLoggedIn={userLoggedIn} />
         </div>
       </article>
 

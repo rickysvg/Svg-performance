@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { isDashboardAdmin } from "@/lib/admin-access";
 import { AppError } from "@/lib/errors";
 import { getEffectivePlanId, tierForPlan, type AppTier } from "@/lib/entitlements";
+import { COACH_CHAT_LOCKED, getCoachChatAccess } from "@/lib/coach-access";
 import {
   ACADEMY_AI_MESSAGES_PER_WEEK,
   PRO_AI_MESSAGES_PER_DAY,
@@ -101,13 +103,34 @@ export async function consumeAiUse(input: {
   const now = input.now ?? new Date();
   const units = Math.max(1, Math.round(input.units ?? 1));
   const allowance = await getAiAllowance(input.userId, now);
+  const chatSurface = input.kind === "message" && input.surface === "chat";
+  const staffChat = chatSurface && allowance.tier !== "pro" && (await staffMayChat(input.userId));
+  let freeChat = false;
+  if (chatSurface && !staffChat) {
+    const access = await getCoachChatAccess(
+      { id: input.userId, role: "member", email: "" },
+      now,
+    );
+    if (!access.allowed) {
+      throw new AiCapError("locked", COACH_CHAT_LOCKED);
+    }
+    freeChat = access.freeDaysLeft != null && access.freeDaysLeft > 0 && allowance.tier !== "pro";
+  }
 
-  if (allowance.tier === "locked") {
+  if (allowance.tier === "locked" && !staffChat && !freeChat) {
     throw new AiCapError("locked", "Your trial ended. Subscribe to Pro to keep using SVG Coach.");
   }
 
-  if (input.kind === "message") {
-    if (allowance.messagesLeft < 1) {
+  if (input.kind === "message" && !staffChat) {
+    if (freeChat) {
+      const today = await used(input.userId, "message", since(now, DAY_MS));
+      if (today >= PRO_AI_MESSAGES_PER_DAY) {
+        throw new AiCapError(
+          "ai_daily_cap",
+          `You used today's ${PRO_AI_MESSAGES_PER_DAY} AI messages. It resets tomorrow.`,
+        );
+      }
+    } else if (allowance.messagesLeft < 1) {
       throw allowance.tier === "pro"
         ? new AiCapError(
             "ai_daily_cap",
@@ -144,6 +167,14 @@ export async function consumeAiUse(input: {
     data: { userId: input.userId, kind: input.kind, surface: input.surface, units, createdAt: now },
   });
   return allowance;
+}
+
+async function staffMayChat(userId: string) {
+  const account = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true },
+  });
+  return Boolean(account && isDashboardAdmin(account));
 }
 
 /** Shown near coach chat. Pro only when 5 or fewer remain today. Academy always shows the week. */

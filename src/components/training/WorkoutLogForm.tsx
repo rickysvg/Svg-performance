@@ -7,6 +7,7 @@ import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
+import { UpgradePreviewSheet } from "@/components/upgrade/UpgradePreviewSheet";
 import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
@@ -369,6 +370,9 @@ export function WorkoutLogForm({
   swap,
   coachId = "skye",
   coachMotivation = true,
+  coachChatLocked = false,
+  canStartTrial = false,
+  trialDays = 7,
   timeZone = APP_TIMEZONE,
 }: {
   session: Session;
@@ -376,6 +380,9 @@ export function WorkoutLogForm({
   notes?: Record<string, ExerciseNoteView>;
   coachId?: string;
   coachMotivation?: boolean;
+  coachChatLocked?: boolean;
+  canStartTrial?: boolean;
+  trialDays?: number;
   timeZone?: string;
   swap?: {
     programSlug: string;
@@ -1867,9 +1874,22 @@ export function WorkoutLogForm({
               ))}
             </div>
           </div>
-          <Link href="/coach" className="block text-sm font-semibold text-accent">
-            Ask Coach
-          </Link>
+          {coachChatLocked ? (
+            <UpgradePreviewSheet
+              kind="coach"
+              canStartTrial={canStartTrial}
+              trialDays={trialDays}
+              next="/coach"
+            >
+              <span data-ask-coach-locked className="block text-sm font-semibold text-muted">
+                Ask Coach · Pro
+              </span>
+            </UpgradePreviewSheet>
+          ) : (
+            <Link href="/coach" className="block text-sm font-semibold text-accent">
+              Ask Coach
+            </Link>
+          )}
         </div>
       ) : null}
       {pickerIndex != null && session.status !== "complete" ? (

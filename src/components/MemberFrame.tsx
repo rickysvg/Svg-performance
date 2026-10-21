@@ -17,6 +17,7 @@ export function MemberFrame({
   graceEndsOn,
   coachName,
   coachThumb,
+  coachChatLocked = false,
   children,
 }: {
   email: string;
@@ -26,6 +27,7 @@ export function MemberFrame({
   graceEndsOn?: string | null;
   coachName: string;
   coachThumb: string;
+  coachChatLocked?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -35,7 +37,7 @@ export function MemberFrame({
   return (
     <div className="flex min-h-dvh flex-col">
       <TimeZoneSync savedTimeZone={timeZone} />
-      {hidePrimaryNav ? null : <PrimaryNav />}
+      {hidePrimaryNav ? null : <PrimaryNav coachLocked={coachChatLocked} />}
       <div
         className={
           immersive
@@ -51,6 +53,7 @@ export function MemberFrame({
           name={coachName}
           thumb={coachThumb}
           raised={coachFabClearsBottomBar(pathname)}
+          locked={coachChatLocked}
         />
       ) : null}
       {immersive ? null : (

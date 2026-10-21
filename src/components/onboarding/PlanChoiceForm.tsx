@@ -21,8 +21,9 @@ export function PlanChoiceForm({
           <p className="mt-3 text-sm text-muted">
             Verified SVG Academy members get the core app with their dues: rounds, mobility and
             form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, and Fuel
-            logging. Your first {trialDays} days are full Pro, no card. On day {trialDays + 1} you
-            go back to the included tier. You are never auto-billed.
+            logging. AI coach chat is free for your first week, then it is on Pro. Your first {trialDays} days
+            are full Pro, no card. On day {trialDays + 1} you go back to the included tier. You
+            are never auto-billed.
           </p>
         </div>
         <form action={canStartTrial ? startTrialAction : continueFreePlanAction}>

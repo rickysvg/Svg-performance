@@ -17,6 +17,7 @@ import { ProPill } from "@/components/pro/ProPill";
 import { PageBackLink } from "@/components/fight-camp/PageBackLink";
 import { FightCampForm } from "@/components/fight-camp/FightCampForm";
 import { CancelCampForm } from "@/components/fight-camp/CancelCampForm";
+import { VipUpsellSlot } from "@/components/vip/VipUpsellSlot";
 
 export default async function FightCampPage({
   searchParams,
@@ -104,6 +105,8 @@ export default async function FightCampPage({
         <h1 className="text-2xl">Fight camp</h1>
         <ProPill />
       </div>
+
+      <VipUpsellSlot userId={user.id} />
 
       <section className="rounded-[1.75rem] bg-black px-5 py-6 text-white">
         {camp.phase === "complete" ? (

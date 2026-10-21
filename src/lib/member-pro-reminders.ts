@@ -70,7 +70,7 @@ export function memberProCopy(stage: MemberProStage, recap: MemberProRecap) {
   }
   return {
     title: "Your free Pro ended",
-    body: `You're on the core app included with your dues: rounds, mobility and form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, Fuel logging, 30 days of history, and 3 AI messages a week. ${recapLine(recap).replace(" so far.", " during free Pro.")}`,
+    body: `You're on the core app included with your dues: rounds, mobility and form libraries, standard SVG blocks, calendar, sparring log, weekly check-in, Fuel logging, and 30 days of history. AI coach chat stays on Pro. ${recapLine(recap).replace(" so far.", " during free Pro.")}`,
     cta: `Upgrade to Pro · ${usd(PERFORMANCE_MONTHLY)}/mo`,
   };
 }

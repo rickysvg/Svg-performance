@@ -105,7 +105,7 @@ export default async function CheckInPage({
 
       {params.sent === "1" ? (
         <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">
-          {reviewed ? "Sent. Ricky will reply in the app." : "Saved. Your check-in is in your history."}
+          {reviewed ? "Sent. Ricky replies within 48 hours." : "Saved. Your check-in is in your history."}
         </p>
       ) : null}
 
@@ -199,7 +199,7 @@ function SubmittedCheckIn({
       <p className="text-xs uppercase tracking-wide text-muted">This week</p>
       <h2 className="text-2xl">Check-in sent</h2>
       {waiting ? (
-        <p className="text-sm text-muted">Ricky reviews this once. The reply shows up here.</p>
+        <p className="text-sm text-muted">Ricky replies within 48 hours.</p>
       ) : null}
       {summary ? (
         <div data-coach-take className="rounded-2xl bg-black/5 p-3">

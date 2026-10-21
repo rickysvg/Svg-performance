@@ -1,7 +1,7 @@
 export const FORM_CHECK_MONTHLY_LIMIT = 2;
 export const FORM_CHECK_MAX_BYTES = 24 * 1024 * 1024;
 export const FORM_CHECK_MAX_SECONDS = 60;
-export const FORM_CHECK_TURNAROUND = "Expect feedback within 2–3 days.";
+export const FORM_CHECK_TURNAROUND = "Expect a reply within 48 hours.";
 export const FORM_CHECK_SIGNATURE = "SVG Coach";
 
 export const FORM_CHECK_TYPES = ["video/mp4", "video/webm", "video/quicktime"] as const;

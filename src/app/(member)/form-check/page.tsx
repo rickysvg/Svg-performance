@@ -16,6 +16,7 @@ import { ProPill } from "@/components/pro/ProPill";
 import { PageBackLink } from "@/components/fight-camp/PageBackLink";
 import { FormCheckUploadForm } from "@/components/form-check/FormCheckUploadForm";
 import { FormCheckSeenMarker } from "@/components/form-check/FormCheckSeenMarker";
+import { VipUpsellSlot } from "@/components/vip/VipUpsellSlot";
 
 export default async function FormCheckPage() {
   const user = await requireUser();
@@ -60,6 +61,7 @@ export default async function FormCheckPage() {
       <p className="text-sm text-muted">
         {usage.remaining} of {FORM_CHECK_MONTHLY_LIMIT} checks left this month. {FORM_CHECK_TURNAROUND}
       </p>
+      <VipUpsellSlot userId={user.id} />
       <FormCheckUploadForm
         remaining={usage.remaining}
         limit={FORM_CHECK_MONTHLY_LIMIT}

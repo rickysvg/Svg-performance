@@ -1,10 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, AuthError } from "@/lib/errors";
-import { canUseMemberTools } from "@/lib/access";
 import { AiCapError, consumeAiUse } from "@/lib/ai-usage";
+import { canUseCoachChat, COACH_CHAT_LOCKED } from "@/lib/coach-access";
 import { detectSafetyRefusal, logCoachRefusal } from "@/lib/coach/safety";
 import { loadMemberContext } from "@/lib/coach/member-context";
-import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
 import {
   getMemberCoachThread,
   getOrCreateThread,
@@ -199,12 +198,8 @@ export async function runCoachChatStream(input: {
   if (!user) {
     throw new AuthError("Sign in to talk to SVG Coach.");
   }
-  const access = await canUseMemberTools(user.id);
-  if (!access.allowed) {
-    throw new AppError(
-      "PAYWALL",
-      `${COACH_PUBLIC_NAME} is locked until your plan includes it.`,
-    );
+  if (!(await canUseCoachChat(user))) {
+    throw new AiCapError("locked", COACH_CHAT_LOCKED);
   }
   const message = String(input.body.message ?? "").trim().slice(0, 2000);
   if (!message) {
@@ -544,11 +539,18 @@ export async function handleCoachStreamRequest(input: {
   return runCoachChatStream(input);
 }
 
-export function coachStreamResponse(
+export async function coachStreamResponse(
   user: PublicUser | null,
   body: CoachStreamRequest,
   signal?: AbortSignal,
 ) {
+  if (!user) {
+    return Response.json({ error: "Sign in to talk to SVG Coach." }, { status: 401 });
+  }
+  const kind = body.kind === "note" ? "note" : "chat";
+  if (kind === "chat" && !(await canUseCoachChat(user))) {
+    return Response.json({ error: COACH_CHAT_LOCKED, paywall: "locked" }, { status: 402 });
+  }
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -587,7 +589,7 @@ export function coachStreamResponse(
     },
   });
   return new Response(stream, {
-    status: user ? 200 : 401,
+    status: 200,
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-store",

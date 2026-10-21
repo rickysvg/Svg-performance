@@ -29,8 +29,9 @@ export async function hasWebhookGrantedAccess(userId: string) {
 }
 
 /**
- * Fuel / SVG Coach need the academy tier (verified member) or Pro
+ * Fuel needs the academy tier (verified member) or Pro
  * (subscription, 7-day trial, or the member Pro grant).
+ * SVG Coach chat is separate: Pro, VIP Coaching, an active Pro trial, or an admin.
  * A nonmember whose trial ended gets the paywall. Missing Stripe keys do not unlock those tools.
  */
 export async function canUseMemberTools(userId: string): Promise<{

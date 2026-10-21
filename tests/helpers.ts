@@ -37,6 +37,9 @@ export async function resetDatabase() {
   await prisma.pathEnrollment.deleteMany();
   await prisma.progressPhoto.deleteMany();
   await prisma.bookingRequest.deleteMany();
+  await prisma.vipUpsellEvent.deleteMany();
+  await prisma.vipCheckoutGrant.deleteMany();
+  await prisma.vipApplication.deleteMany();
   await prisma.planWaitlist.deleteMany();
   await prisma.coachingCredit.deleteMany();
   await prisma.bodyPhotoPlaceholder.deleteMany();

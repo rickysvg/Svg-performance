@@ -25,6 +25,7 @@ const PROTECTED = [
   "/sparring",
   "/checkin",
   "/fuel",
+  "/vip",
 ];
 
 const PUBLIC_FILE = /\.(webp|png|jpe?g|gif|svg|ico|mp4|webm|woff2?)$/i;
@@ -89,5 +90,7 @@ export const config = {
     "/form-check/:path*",
     "/fight-camp",
     "/form-check",
+    "/vip/:path*",
+    "/vip",
   ],
 };

@@ -26,7 +26,10 @@ describe("QA-approved access and surface fixes", () => {
     expect(billing).toContain("Paid plans coming soon.");
     const history = read("src/components/upgrade/UpgradePreview.tsx");
     const chart = read("src/components/progress/ExerciseChart.tsx");
-    expect(history).toContain("Paid plans coming soon");
+    expect(history).toContain("Pro is $9.99/mo or $72.99/yr, save 39%.");
+    expect(history).not.toContain("for everyone");
+    expect(history).not.toContain("Paid plans coming soon");
+    expect(history).not.toContain("look at pricing anytime from Profile");
     expect(history).toContain("Older history is in Pro");
     expect(chart).toContain('kind="history"');
   });

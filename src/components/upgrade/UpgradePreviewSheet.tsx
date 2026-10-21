@@ -31,7 +31,13 @@ export function UpgradePreviewSheet({
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-md rounded-t-3xl bg-white px-5 pt-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] shadow-xl sm:rounded-3xl sm:pb-6">
+          <div
+            className={
+              kind === "coach"
+                ? "relative z-10 w-full max-w-md rounded-t-3xl bg-[#0b0c0e] px-5 pt-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] shadow-xl sm:rounded-3xl sm:pb-6"
+                : "relative z-10 w-full max-w-md rounded-t-3xl bg-white px-5 pt-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] shadow-xl sm:rounded-3xl sm:pb-6"
+            }
+          >
             <UpgradePreview
               kind={kind}
               canStartTrial={canStartTrial}

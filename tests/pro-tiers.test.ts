@@ -2,7 +2,10 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { AiCapError, consumeAiUse, getAiAllowance } from "@/lib/ai-usage";
 import { getAppTier, getEffectivePlanId } from "@/lib/entitlements";
+import { canUseCoachChat, freeCoachChatLabel, getCoachChatAccess } from "@/lib/coach-access";
 import { coachStreamForTest } from "@/app/api/coach/stream/route";
+import { coachStreamResponse } from "@/lib/coach/stream";
+import { PLAN_CATALOG } from "@/lib/plans";
 import { ensureMemberProMonth, getTrialState, memberProDay, startTrialForUser } from "@/lib/trial";
 import { memberProCopy, memberProStage, runMemberProReminderCron } from "@/lib/member-pro-reminders";
 import { isOpenWhenLocked } from "@/lib/locked-paths";
@@ -44,8 +47,11 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(await getAppTier(guest.id, new Date(now.getTime() + 8 * DAY))).toBe("locked");
     expect(isOpenWhenLocked("/progress")).toBe(true);
     expect(isOpenWhenLocked("/profile")).toBe(true);
+    expect(isOpenWhenLocked("/vip/apply")).toBe(true);
+    expect(isOpenWhenLocked("/vip/checkout")).toBe(true);
     expect(isOpenWhenLocked("/home")).toBe(false);
     expect(isOpenWhenLocked("/training")).toBe(false);
+    expect(isOpenWhenLocked("/coach")).toBe(true);
   });
 
   it("gives verified members Pro for 14 days, then the included academy tier", async () => {
@@ -73,6 +79,8 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(memberProCopy("day29", recap).title).toMatch(/Last day/);
     expect(memberProCopy("day31", recap).cta).toMatch(/Upgrade to Pro/);
     expect(memberProCopy("day31", recap).body).toMatch(/30 days of history/);
+    expect(memberProCopy("day31", recap).body).toMatch(/AI coach chat stays on Pro/);
+    expect(memberProCopy("day31", recap).body).not.toMatch(/AI messages a week/);
     expect(memberProCopy("day31", recap).body).not.toMatch(/auto-bill/i);
   });
 
@@ -119,7 +127,7 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(logs.map((row) => row.stage).sort()).toEqual(["day25", "day31"]);
   });
 
-  it("caps academy AI at 3 messages a week, shared by chat and the logger note path", async () => {
+  it("blocks academy coach chat and caps logger notes at 3 a week", async () => {
     const member = await makeUser("cap-member@example.com");
     await verify(member.id);
     // Month already used up: academy tier.
@@ -127,12 +135,21 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
       where: { userId: member.id },
       data: { memberProStartedAt: new Date(Date.now() - 40 * DAY), trialEndsAt: new Date(Date.now() - 10 * DAY) },
     });
+    await prisma.user.update({
+      where: { id: member.id },
+      data: { createdAt: new Date(Date.now() - 40 * DAY) },
+    });
     expect(await getAppTier(member.id)).toBe("academy");
-    for (let i = 0; i < ACADEMY_AI_MESSAGES_PER_WEEK; i += 1) {
-      await consumeAiUse({ userId: member.id, kind: "message", surface: i === 0 ? "note" : "chat" });
-    }
+    expect(PLAN_CATALOG.academy.features).not.toContain("ai");
+    expect(PLAN_CATALOG.academy.includes.join(" ")).not.toMatch(/AI coach/i);
     await expect(
       consumeAiUse({ userId: member.id, kind: "message", surface: "chat" }),
+    ).rejects.toMatchObject({ reason: "locked", status: 402 });
+    for (let i = 0; i < ACADEMY_AI_MESSAGES_PER_WEEK; i += 1) {
+      await consumeAiUse({ userId: member.id, kind: "message", surface: "note" });
+    }
+    await expect(
+      consumeAiUse({ userId: member.id, kind: "message", surface: "note" }),
     ).rejects.toMatchObject({ reason: "ai_limit", status: 402 });
     await expect(
       consumeAiUse({ userId: member.id, kind: "voice", surface: "speak", units: 10 }),
@@ -150,7 +167,7 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
       data: { memberProStartedAt: new Date(Date.now() - 40 * DAY), trialEndsAt: new Date(Date.now() - 10 * DAY) },
     });
     for (let i = 0; i < ACADEMY_AI_MESSAGES_PER_WEEK; i += 1) {
-      await consumeAiUse({ userId: member.id, kind: "message", surface: "chat" });
+      await consumeAiUse({ userId: member.id, kind: "message", surface: "note" });
     }
     const user = { id: member.id, email: member.email, role: "member" as const };
     const result = (await coachStreamForTest(user, {
@@ -193,5 +210,126 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     await expect(
       consumeAiUse({ userId: pro.id, kind: "voice", surface: "speak", units: 5 }),
     ).rejects.toMatchObject({ reason: "ai_daily_cap" });
+  });
+
+  it("returns 402 for academy and free coach chat, and lets Pro, VIP, and admins through", async () => {
+    const academy = await makeUser("chat-academy@example.com");
+    await verify(academy.id);
+    await prisma.profile.update({
+      where: { userId: academy.id },
+      data: { memberProStartedAt: new Date(Date.now() - 40 * DAY), trialEndsAt: new Date(Date.now() - DAY) },
+    });
+    await prisma.user.update({
+      where: { id: academy.id },
+      data: { createdAt: new Date(Date.now() - 20 * DAY) },
+    });
+    const academyUser = { id: academy.id, email: academy.email, role: "member" as const };
+    expect(await canUseCoachChat(academyUser)).toBe(false);
+    const denied = await coachStreamForTest(academyUser, { kind: "chat", message: "How is my jab?" });
+    expect(denied).toMatchObject({ status: 402, paywall: "locked" });
+    const httpDenied = await coachStreamResponse(academyUser, { kind: "chat", message: "How is my jab?" });
+    expect(httpDenied.status).toBe(402);
+    expect(await httpDenied.json()).toMatchObject({ paywall: "locked" });
+    expect(await prisma.chatMessage.count()).toBe(0);
+
+    const free = await makeUser("chat-free@example.com");
+    await prisma.user.update({
+      where: { id: free.id },
+      data: { createdAt: new Date(Date.now() - 20 * DAY) },
+    });
+    const freeUser = { id: free.id, email: free.email, role: "member" as const };
+    expect(await canUseCoachChat(freeUser)).toBe(false);
+    const freeDenied = await coachStreamResponse(freeUser, { kind: "chat", message: "Hello" });
+    expect(freeDenied.status).toBe(402);
+
+    const trial = await makeUser("chat-trial@example.com");
+    await startTrialForUser(trial.id);
+    const trialUser = { id: trial.id, email: trial.email, role: "member" as const };
+    expect(await canUseCoachChat(trialUser)).toBe(true);
+    expect(await coachStreamForTest(trialUser, { kind: "chat", message: "Hello" })).toMatchObject({
+      status: 200,
+    });
+
+    const vip = await makeUser("chat-vip@example.com");
+    await prisma.subscription.create({
+      data: {
+        userId: vip.id,
+        plan: "coaching",
+        status: "active",
+        currentPeriodEnd: new Date(Date.now() + 30 * DAY),
+      },
+    });
+    const vipUser = { id: vip.id, email: vip.email, role: "member" as const };
+    expect(await canUseCoachChat(vipUser)).toBe(true);
+    expect(await coachStreamForTest(vipUser, { kind: "chat", message: "Hello coach" })).toMatchObject({
+      status: 200,
+    });
+
+    const admin = await makeUser("chat-admin@example.com", false, "admin");
+    const adminUser = { id: admin.id, email: admin.email, role: "admin" as const };
+    expect(await canUseCoachChat(adminUser)).toBe(true);
+    expect(await coachStreamForTest(adminUser, { kind: "chat", message: "Hello from admin" })).toMatchObject({
+      status: 200,
+    });
+    await consumeAiUse({ userId: admin.id, kind: "message", surface: "chat" });
+  });
+
+  it("gives every new account a week of coach chat, then locks it", async () => {
+    const fresh = await makeUser("week-fresh@example.com");
+    const freshAccess = await getCoachChatAccess({
+      id: fresh.id,
+      email: fresh.email,
+      role: "member",
+    });
+    expect(freshAccess.allowed).toBe(true);
+    expect(freshAccess.freeDaysLeft).toBe(7);
+    expect(freeCoachChatLabel(freshAccess.freeDaysLeft ?? 0)).toBe("7 days of free coach chat left");
+    await consumeAiUse({ userId: fresh.id, kind: "message", surface: "chat" });
+
+    const one = await makeUser("week-one@example.com");
+    await prisma.user.update({
+      where: { id: one.id },
+      data: { createdAt: new Date(Date.now() - 6 * DAY - 60 * 60 * 1000) },
+    });
+    const oneAccess = await getCoachChatAccess({ id: one.id, email: one.email, role: "member" });
+    expect(oneAccess.freeDaysLeft).toBe(1);
+    expect(freeCoachChatLabel(1)).toBe("1 day of free coach chat left");
+
+    const academy = await makeUser("week-academy@example.com");
+    await verify(academy.id);
+    const started = new Date(Date.now() - 8 * DAY);
+    await prisma.user.update({ where: { id: academy.id }, data: { createdAt: started } });
+    await prisma.profile.update({
+      where: { userId: academy.id },
+      data: {
+        memberProStartedAt: started,
+        memberProDays: 14,
+        trialStartedAt: started,
+        trialEndsAt: new Date(Date.now() + 6 * DAY),
+      },
+    });
+    expect(await getAppTier(academy.id)).toBe("pro");
+    expect(
+      await canUseCoachChat({ id: academy.id, email: academy.email, role: "member" }),
+    ).toBe(false);
+
+    const early = await makeUser("week-early-academy@example.com");
+    await verify(early.id);
+    await prisma.profile.update({
+      where: { userId: early.id },
+      data: {
+        memberProStartedAt: new Date(),
+        memberProDays: 14,
+        trialStartedAt: new Date(),
+        trialEndsAt: new Date(Date.now() + 14 * DAY),
+      },
+    });
+    const earlyAccess = await getCoachChatAccess({
+      id: early.id,
+      email: early.email,
+      role: "member",
+    });
+    expect(earlyAccess.allowed).toBe(true);
+    expect(earlyAccess.freeDaysLeft).toBe(7);
   });
 });

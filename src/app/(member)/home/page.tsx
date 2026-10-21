@@ -20,6 +20,7 @@ import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
+import { getCoachChatAccess } from "@/lib/coach-access";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentBodyFatForUser, getRecentWeightsForUser } from "@/lib/body-metrics";
 import { bodyFatReadout, homeTrainingReadout } from "@/lib/home-side-stats";
@@ -30,6 +31,7 @@ import { telemetryGraphTitle } from "@/lib/telemetry-title";
 import { latestSparringSessionRating } from "@/lib/outside-log";
 import { CheckInHomeBanner } from "@/components/checkin/CheckInHomeBanner";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
+import { VipUpsellSlot } from "@/components/vip/VipUpsellSlot";
 
 export default async function HomePage({
   searchParams,
@@ -43,6 +45,7 @@ export default async function HomePage({
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, new Date(), tz);
   const planId = await getEffectivePlanId(user.id);
+  const coachChat = await getCoachChatAccess(user);
   const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, recentFat, sparringRating, telemetry, camp] =
     await Promise.all([
       homeLoad("today", getHomeToday(user.id, selected, tz), emptyHomeToday(selected, tz)),
@@ -123,6 +126,8 @@ export default async function HomePage({
 
       {trialEnded ? <TrialEndedPaywall /> : null}
 
+      <VipUpsellSlot userId={user.id} />
+
       <CheckInHomeBanner userId={user.id} now={new Date()} timeZone={tz} />
 
       <TodaySummaryButton name={coach.name} circle={coach.circle} coachId={coach.id} />
@@ -138,14 +143,12 @@ export default async function HomePage({
       <HomeQuickActions
         imagery={profile?.athleteImagery}
         sparringRating={sparringRating}
-        locked={
-          planId === "member_access"
-            ? [
-                { href: "/coach", kind: "coach" as const },
-                { href: "/nutrition", kind: "fuel" as const },
-              ]
-            : []
-        }
+        locked={[
+          ...(!coachChat.allowed ? [{ href: "/coach", kind: "coach" as const }] : []),
+          ...(planId === "member_access"
+            ? [{ href: "/nutrition", kind: "fuel" as const }]
+            : []),
+        ]}
         canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
       />
