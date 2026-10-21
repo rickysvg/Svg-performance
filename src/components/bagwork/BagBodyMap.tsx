@@ -1,26 +1,41 @@
 "use client";
 
-import Image from "next/image";
+import { useId } from "react";
 import { BAG_REGION_LABELS, formatBagRegions, type BagRegion, type BagSide } from "@/lib/bag-body";
 import { focusGlows, glowCaption, regionTapSpots, type BodyGlow } from "@/lib/bag-glow";
 
 const ATHLETE = "/bagwork/athlete-front.webp";
 
-function Glow({ spot }: { spot: BodyGlow }) {
+function BehindGlow({ glows }: { glows: readonly BodyGlow[] }) {
+  const filterId = `body-rim-${useId().replace(/:/g, "")}`;
   return (
-    <span
+    <svg
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+      viewBox="0 0 720 1280"
+      preserveAspectRatio="none"
       aria-hidden
-      data-body-glow={spot.id}
-      className="pointer-events-none absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full"
-      style={{
-        left: `${spot.x}%`,
-        top: `${spot.y}%`,
-        width: `${spot.size}%`,
-        background:
-          "radial-gradient(circle, rgba(203,248,5,0.92) 0%, rgba(203,248,5,0.48) 32%, rgba(203,248,5,0.16) 58%, rgba(203,248,5,0) 74%)",
-        mixBlendMode: "screen",
-      }}
-    />
+      data-body-glows
+      data-glow-layer="behind"
+    >
+      <defs>
+        <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="14" />
+        </filter>
+      </defs>
+      {glows.map((glow) => (
+        <polyline
+          key={glow.id}
+          data-body-glow={glow.id}
+          points={glow.points.map(([x, y]) => `${x},${y}`).join(" ")}
+          fill="none"
+          stroke="#CBF805"
+          strokeWidth={glow.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter={`url(#${filterId})`}
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -49,34 +64,29 @@ export function BagBodyMap({
     <figure className="space-y-3" data-body-map data-body-side={side} data-body-round={workoutKey ?? ""}>
       <div className="overflow-hidden rounded-2xl bg-[#0c0e11]">
         <div className="relative">
-          <Image
+          <BehindGlow glows={glows} />
+          {/* The cutout has to stay transparent so the rim stays behind the limbs. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={ATHLETE}
             alt={caption ? `Athlete facing forward. ${emphasis}` : "Athlete facing forward on a black background."}
             width={720}
             height={1280}
-            className="block h-auto w-full"
-            sizes="(max-width: 390px) 92vw, 420px"
+            className="relative z-[1] block h-auto w-full"
           />
-          <div className="pointer-events-none absolute inset-0" data-body-glows>
-            {glows.map((spot) => (
-              <Glow key={spot.id} spot={spot} />
-            ))}
-          </div>
           {interactive
             ? regionTapSpots(side).map((spot) => {
-                const region = spot.region;
-                if (!region) return null;
-                const lit = regions.includes(region);
+                const lit = regions.includes(spot.region);
                 return (
                   <button
                     key={spot.id}
                     type="button"
-                    data-region={region}
+                    data-region={spot.region}
                     data-lit={lit ? "true" : "false"}
                     aria-pressed={lit}
-                    aria-label={BAG_REGION_LABELS[region]}
-                    onClick={() => onToggle?.(region)}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    aria-label={BAG_REGION_LABELS[spot.region]}
+                    onClick={() => onToggle?.(spot.region)}
+                    className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 rounded-full"
                     style={{
                       left: `${spot.x}%`,
                       top: `${spot.y}%`,
