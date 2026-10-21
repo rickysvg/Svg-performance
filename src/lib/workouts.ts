@@ -847,6 +847,9 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       performedAt: true,
       createdAt: true,
       updatedAt: true,
+      finishedAt: true,
+      elapsedSeconds: true,
+      timerStartedAt: true,
       sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -864,6 +867,11 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
   const ids = drafts
     .filter((row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today)
     .filter((row) => {
+      // Resume starts a live segment today. Do not close it out from under the member.
+      if (row.timerStartedAt && dayKey(row.timerStartedAt, timeZone) >= today) return false;
+      return true;
+    })
+    .filter((row) => {
       if (!row.programDayId) return true;
       const key = `${row.programDayId}:${sessionCivilDay(row, timeZone)}`;
       if (alreadyLogged.has(key) || claimed.has(key)) return false;
@@ -879,8 +887,11 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       where: { id: row.id, userId, status: "draft" },
       data: {
         status: "complete",
-        finishedAt: row.updatedAt,
-        elapsedSeconds: cappedElapsedSeconds(row.createdAt, row.updatedAt),
+        finishedAt: row.finishedAt ?? row.updatedAt,
+        elapsedSeconds:
+          row.elapsedSeconds != null
+            ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(row.elapsedSeconds)))
+            : cappedElapsedSeconds(row.createdAt, row.updatedAt),
         timerStartedAt: null,
       },
     });

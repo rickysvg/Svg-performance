@@ -667,4 +667,44 @@ describe("a workout is complete only after a logged save", () => {
     expect(view.ticking).toBe(false);
     expect(view.label).toBe("1:10:00");
   });
+
+  it("leaves a workout resumed today ticking and keeps the saved duration", async () => {
+    const user = await makeUser("resume-today@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const performed = new Date("2026-10-19T16:00:00.000Z");
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: "Lift 2 — Full body",
+      performedAt: performed,
+      notes: "",
+      status: "complete",
+      elapsedSeconds: 70 * 60 + 25,
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    const resumed = await reopenCompletedWorkoutForUser(user.id, session.id);
+    expect(resumed.status).toBe("draft");
+    expect(await finalizePastLoggedDrafts(user.id, new Date(), APP_TIMEZONE)).toBe(0);
+    const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    expect(row.status).toBe("draft");
+    expect(row.elapsedSeconds).toBe(70 * 60 + 25);
+    expect(row.finishedAt).toBeNull();
+    const ticking = resolveSessionElapsed(row, new Date(row.timerStartedAt!.getTime() + 5_000));
+    expect(ticking.ticking).toBe(true);
+    expect(ticking.label).toBe("1:10:30");
+  });
 });
