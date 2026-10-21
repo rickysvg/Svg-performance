@@ -90,8 +90,10 @@ export function SparringTrend({ logs }: { logs: SparringLog[] }) {
                 <span className="font-normal text-muted">
                   {" "}
                   · {log.rounds} × {log.minutesPerRound} min ({sparringMinutes(log)} min)
+                  {log.partner ? ` · ${log.partner}` : ""}
                 </span>
               </p>
+              {log.notes ? <p className="mt-1 text-sm text-muted">{log.notes}</p> : null}
               <div className="mt-2 grid grid-cols-2 gap-3">
                 <Pips value={log.sessionRating} label="Session" />
                 <Pips value={log.bodyRating} label="Body" />

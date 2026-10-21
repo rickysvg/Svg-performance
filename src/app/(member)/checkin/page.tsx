@@ -140,6 +140,7 @@ export default async function CheckInPage({
       ) : (
         <CheckInForm
           suggestedWeight={snapshot.suggestedWeightLb}
+          suggestedBodyFat={snapshot.suggestedBodyFatPercent}
           sessionsCompleted={snapshot.sessionsCompleted}
           sessionsPlanned={snapshot.sessionsPlanned}
           sessionTitles={snapshot.sessionTitles}

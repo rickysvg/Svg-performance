@@ -66,7 +66,7 @@ export function ExerciseLibrarySheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex flex-col overflow-hidden bg-background text-foreground"
+      className="fixed inset-0 z-[80] flex w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground"
       {...(variant === "swap"
         ? { "data-swap-sheet": sheetName ?? "" }
         : { "data-add-sheet": "true" })}
@@ -127,7 +127,7 @@ export function ExerciseLibrarySheet({
           ))}
         </div>
       </div>
-      <ul className="min-h-0 flex-1 overflow-y-auto">
+      <ul className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         {results.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted">No exercises match that search.</li>
         ) : (
@@ -139,18 +139,18 @@ export function ExerciseLibrarySheet({
                   type="button"
                   data-library-choice={exercise.name}
                   onClick={() => setPicked(exercise.name)}
-                  className={`flex w-full items-start justify-between gap-3 px-4 py-3 text-left ${
+                  className={`flex w-full min-w-0 items-start justify-between gap-3 px-4 py-3 text-left ${
                     selected ? "bg-accent text-black" : ""
                   }`}
                 >
-                  <span>
+                  <span className="min-w-0">
                     <span className="block font-semibold">{exercise.name}</span>
                     <span className={`mt-0.5 block text-xs ${selected ? "text-black/70" : "text-muted"}`}>
                       {categoryLabel(exercise.category)}
                       {exercise.equipment === "none" ? " · No weights" : exercise.equipment === "both" ? " · Gym or floor" : " · Gym"}
                     </span>
                   </span>
-                  <span className={`shrink-0 text-xs ${selected ? "text-black/80" : "text-muted"}`}>
+                  <span className={`max-w-[46%] shrink text-right text-xs whitespace-normal ${selected ? "text-black/80" : "text-muted"}`}>
                     {plannedSetLine({
                       sets: exercise.sets,
                       reps: exercise.reps,

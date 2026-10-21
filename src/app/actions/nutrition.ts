@@ -14,7 +14,7 @@ import {
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { publicErrorMessage } from "@/lib/errors";
 
-export type NutritionActionState = { error?: string; success?: string };
+export type NutritionActionState = { error?: string; success?: string; savedAt?: number };
 
 async function requireNutritionUser() {
   const user = await requireUserOrThrow();
@@ -67,7 +67,7 @@ export async function saveNutritionEntryAction(
   if (celebrateStreak) {
     redirect("/nutrition?celebrate=streak");
   }
-  return { success: "Food log saved. These numbers are your manual estimates." };
+  return { success: "Food log saved. These numbers are your manual estimates.", savedAt: Date.now() };
 }
 
 export async function deleteNutritionEntryAction(formData: FormData) {

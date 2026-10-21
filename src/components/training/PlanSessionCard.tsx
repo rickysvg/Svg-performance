@@ -184,6 +184,11 @@ export function PlanSessionCard({
           />
         </div>
       ) : null}
+      {completed ? (
+        <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+          Done
+        </p>
+      ) : null}
       {cta ? (
         <div
           data-session-actions

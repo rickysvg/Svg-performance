@@ -112,8 +112,8 @@ function planRow(
 }
 
 /**
- * A later workout pulled onto today, or onto a day already past.
- * Monday’s missed session can still move forward onto Tuesday.
+ * A later workout pulled onto a day already past.
+ * Today stays selectable. Monday’s missed session can still move forward.
  */
 export function futureWorkoutPulledBack(
   sessionKey: string,
@@ -126,7 +126,7 @@ export function futureWorkoutPulledBack(
   const toIndex = WEEKDAYS.indexOf(toDay);
   const homeIndex = WEEKDAYS.indexOf(home);
   const todayIndex = WEEKDAYS.indexOf(today);
-  return toIndex < homeIndex && toIndex <= todayIndex;
+  return toIndex < homeIndex && toIndex < todayIndex;
 }
 
 /**

@@ -196,7 +196,7 @@ export function WorkoutMoveProvider({
     >
       {children}
       {target ? (
-        <div className="fixed inset-0 z-50 flex items-end" data-workout-move-sheet>
+        <div className="fixed inset-0 z-50 flex items-end overflow-x-hidden" data-workout-move-sheet>
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
@@ -206,7 +206,7 @@ export function WorkoutMoveProvider({
           <div
             role="dialog"
             aria-label={`Move ${target.title}`}
-            className="relative max-h-[85vh] w-full overflow-y-auto rounded-t-3xl bg-card px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground"
+            className="relative max-h-[85vh] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-t-3xl bg-card px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground"
           >
             <p className="font-display text-xs uppercase tracking-wide text-accent">This session</p>
             <h2 className="mt-1 text-lg leading-tight">{target.title}</h2>
@@ -296,9 +296,9 @@ export function WorkoutMoveProvider({
               {mode === "move"
                 ? days.map((day) => {
                     const current = day.weekday === target.fromWeekday;
+                    const pastDay = day.isPast && !day.isToday;
                     const blocked =
-                      (day.isPast && !day.isToday) ||
-                      futureWorkoutPulledBack(target.sessionKey, day.weekday, todayName);
+                      pastDay || futureWorkoutPulledBack(target.sessionKey, day.weekday, todayName);
                     const disabled = pending || current || blocked;
                     return (
                       <li key={day.weekday}>
@@ -314,7 +314,7 @@ export function WorkoutMoveProvider({
                             <span className="block truncate text-sm text-muted">{day.detail}</span>
                           </span>
                           <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
-                            {current ? "Here" : blocked ? "Past" : "Move"}
+                            {current ? "Here" : pastDay ? "Past" : "Move"}
                           </span>
                         </button>
                       </li>

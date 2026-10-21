@@ -6,7 +6,7 @@ import {
   type NutritionActionState,
 } from "@/app/actions/nutrition";
 import { StatusBanner } from "@/components/StatusBanner";
-import { MEAL_TYPES } from "@/lib/nutrition";
+import { MEAL_TYPES, mealTypeForTime } from "@/lib/nutrition";
 import { searchFoodOptions, type SearchableMeal } from "@/lib/foods";
 
 type Saved = {
@@ -38,8 +38,11 @@ function toDateInput(value?: Date | string) {
 export function NutritionEntryForm({
   savedMeals,
   entry,
+  defaultMeal,
 }: {
   savedMeals: Saved[];
+  /** Meal for the member's clock, computed on the server so SSR matches. */
+  defaultMeal?: string;
   entry?: {
     id: string;
     name: string;
@@ -72,6 +75,17 @@ export function NutritionEntryForm({
       : null,
   );
   const [formKey, setFormKey] = useState(0);
+  const [mealType, setMealType] = useState(
+    entry?.mealType ?? defaultMeal ?? mealTypeForTime(new Date()),
+  );
+  const [clearedFor, setClearedFor] = useState<number | undefined>();
+  if (!entry && state.savedAt && clearedFor !== state.savedAt) {
+    setClearedFor(state.savedAt);
+    setPrefill(null);
+    setQuery("");
+    setMealType(defaultMeal ?? mealTypeForTime(new Date()));
+    setFormKey((value) => value + 1);
+  }
 
   const matches = useMemo(
     () => searchFoodOptions(query, savedMeals).slice(0, 8),
@@ -169,14 +183,13 @@ export function NutritionEntryForm({
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
       </label>
-      <details className="rounded-xl border border-line px-3 py-3">
-        <summary className="cursor-pointer text-sm font-semibold">More</summary>
-        <div className="mt-3 space-y-4">
       <label className="block text-sm">
         Meal
         <select
           name="mealType"
-          defaultValue={entry?.mealType ?? "lunch"}
+          value={mealType}
+          onChange={(event) => setMealType(event.target.value)}
+          data-meal-type
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           {MEAL_TYPES.map((type) => (
@@ -186,6 +199,9 @@ export function NutritionEntryForm({
           ))}
         </select>
       </label>
+      <details className="rounded-xl border border-line px-3 py-3">
+        <summary className="cursor-pointer text-sm font-semibold">More</summary>
+        <div className="mt-3 space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">
           Servings

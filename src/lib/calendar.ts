@@ -5,7 +5,11 @@ import { easePlanForUser } from "@/lib/recovery-ease";
 import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
-import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
+import {
+  completedProgramDayIdsOnDays,
+  finalizePastLoggedDrafts,
+  listWorkoutSessionsForUser,
+} from "@/lib/workouts";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCivilDay } from "@/lib/performed-at";
@@ -350,6 +354,13 @@ export async function getCalendarSchedule(
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
   const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
   const todayKey = formatDayParam(now, tz);
+  const doneProgramDayIds = new Set(
+    await completedProgramDayIdsOnDays(
+      userId,
+      dates.map((date) => formatDayParam(date, tz)),
+      tz,
+    ),
+  );
   const days: CalendarDay[] = dates.map((date) => ({
     date,
     heading: formatCalendarHeading(date, now, tz),
@@ -396,7 +407,8 @@ export async function getCalendarSchedule(
         linkRepairs.push({ id: matched.id, programDayId: session.dayId });
         matched.programDayId = session.dayId;
       }
-      const sessionDone = Boolean(matched);
+      const sessionDone =
+        Boolean(matched) || Boolean(session.dayId && doneProgramDayIds.has(session.dayId));
       const missed = past && !sessionDone;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday

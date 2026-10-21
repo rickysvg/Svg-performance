@@ -227,7 +227,7 @@ describe("workout logger media and previous loads", () => {
     }
   });
 
-  it("does not save an empty lift as completed or as zero", async () => {
+  it("keeps a checked set checked when reps are still blank", async () => {
     const user = await makeUser("empty-complete@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -259,7 +259,7 @@ describe("workout logger media and previous loads", () => {
     expect(saved.sets[0]?.reps).toBeNull();
     expect(saved.sets[0]?.loadValue).toBeNull();
     expect(saved.sets[0]?.durationSeconds).toBeNull();
-    expect(saved.sets[0]?.completed).toBe(false);
+    expect(saved.sets[0]?.completed).toBe(true);
   });
 
   it("starts farmer carry as load_timed with seconds + keeps lbs on save", async () => {

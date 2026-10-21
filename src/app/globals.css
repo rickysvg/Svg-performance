@@ -197,7 +197,7 @@ html[data-splash="done"] .app-splash {
 .coach-fab {
   position: fixed;
   z-index: 30;
-  left: max(0.75rem, env(safe-area-inset-left, 0px));
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
   bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   width: 48px;
@@ -226,12 +226,16 @@ html:not([data-splash="done"]) [data-coach-fab] {
   pointer-events: none;
 }
 
-/* On a phone, keep left-edge controls out of the floating coach's column. */
+/* On a phone, keep the floating coach off section titles and the save row. */
 @media (max-width: 48rem) {
   [data-logger-save],
-  [data-add-set],
-  [data-coach-clear] {
-    padding-left: calc(3.75rem + env(safe-area-inset-left, 0px));
+  [data-add-set] {
+    padding-right: calc(3.75rem + env(safe-area-inset-right, 0px));
+  }
+
+  [data-coach-header] {
+    padding-right: calc(3.75rem + env(safe-area-inset-right, 0px));
+    scroll-margin-bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
   }
 
   [data-coach-clear] {

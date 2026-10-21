@@ -92,7 +92,7 @@ export function TelemetryChart({
 
   return (
     <figure className="min-w-0">
-      <figcaption className="mb-2 flex items-end justify-between gap-3">
+      <figcaption className="mb-2 flex items-end justify-between gap-3" data-coach-header>
         <span>
           <span className="block font-display text-sm uppercase tracking-wide">{title}</span>
           {description ? <span className="mt-0.5 block text-xs text-muted">{description}</span> : null}
@@ -195,9 +195,16 @@ export function TelemetryChart({
       {labels.length > 0 ? (
         <div className="mt-1 flex justify-between gap-1 px-1" aria-hidden>
           {labels.map((point, index) => {
-            const show = labels.length <= 6 || index === 0 || index === labels.length - 1 || index === Math.floor(labels.length / 2);
+            const show =
+              labels.length <= 8 ||
+              index === 0 ||
+              index === labels.length - 1 ||
+              index === Math.floor(labels.length / 2);
             return (
-              <span key={`${point.label}-${index}`} className="font-telemetry text-[10px] text-muted">
+              <span
+                key={`${point.label}-${index}`}
+                className="min-w-0 flex-1 text-center font-telemetry text-[10px] text-muted"
+              >
                 {show ? point.label : ""}
               </span>
             );

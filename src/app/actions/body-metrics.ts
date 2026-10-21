@@ -18,7 +18,7 @@ import {
   updateProgressPhotoForUser,
 } from "@/lib/progress-photos";
 
-export type BodyMetricActionState = { error?: string; success?: string };
+export type BodyMetricActionState = { error?: string; success?: string; savedAt?: number };
 
 function parseRecordedAt(raw: string) {
   const trimmed = raw.trim();
@@ -59,7 +59,11 @@ export async function saveBodyMetricAction(
     }
     revalidatePath("/progress");
     revalidatePath("/home");
-    return { success: "Metric saved. This is a number you typed — not a watch or wearable." };
+    revalidatePath("/checkin");
+    return {
+      success: "Metric saved. This is a number you typed — not a watch or wearable.",
+      savedAt: Date.now(),
+    };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

@@ -167,7 +167,7 @@ describe("AI coach avatars", () => {
     expect(css).toContain("[data-coach-fab]");
     expect(css).toContain('html:not([data-splash="done"]) [data-coach-fab]');
     expect(css).toContain("safe-area-inset-bottom");
-    expect(css).toContain("safe-area-inset-left");
+    expect(css).toContain("safe-area-inset-right");
     expect(css).toContain("[data-logger-save]");
     expect(css).toContain("width: 48px");
     expect(css).toContain("#cbf805");
