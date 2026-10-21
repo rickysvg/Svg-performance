@@ -57,7 +57,8 @@ export function BagBodyMap({
       <div className="overflow-hidden rounded-2xl bg-[#0c0e11]">
         <div className="relative">
           <BehindGlow ids={glows.map((glow) => glow.id)} />
-          {/* The cutout stays transparent so the rim stays behind the limbs. */}
+          {/* Same grade as the Home tiles: desaturate the photo, then the black ramp. */}
+          {/* The ramp is masked to the cutout so the lime rim outside the body stays #CBF805. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={ATHLETE}
@@ -68,6 +69,21 @@ export function BagBodyMap({
             loading="eager"
             fetchPriority="high"
             className="relative z-[1] block h-auto w-full"
+            style={{ filter: "saturate(0.55) brightness(0.78) contrast(1.12)" }}
+          />
+          <span
+            aria-hidden
+            data-athlete-shade
+            className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/85 via-black/25 to-transparent"
+            style={{
+              maskImage: `url(${ATHLETE})`,
+              WebkitMaskImage: `url(${ATHLETE})`,
+              maskSize: "100% 100%",
+              WebkitMaskSize: "100% 100%",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+              maskMode: "alpha",
+            }}
           />
           {interactive
             ? regionTapSpots(side).map((spot) => {
