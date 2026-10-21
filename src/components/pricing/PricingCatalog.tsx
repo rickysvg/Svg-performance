@@ -24,9 +24,11 @@ import { PricingLadder } from "@/components/pricing/PricingLadder";
 function PlanCheckoutButton({
   canStartTrial,
   checkoutLive,
+  verified,
 }: {
   canStartTrial: boolean;
   checkoutLive: boolean;
+  verified: boolean;
 }) {
   if (checkoutLive) {
     return (
@@ -48,7 +50,7 @@ function PlanCheckoutButton({
           data-plan-action="trial"
           className="touch-target w-full rounded-full bg-accent text-black"
         >
-          Start 7-day free trial
+          {verified ? `Start ${MEMBER_PRO_DAYS} days of free Pro` : "Start 7-day free trial"}
         </button>
       </form>
     );
@@ -196,16 +198,21 @@ export function PricingCatalog({
           {PRO_EXPECT}
         </p>
         <p className="mt-2 text-sm text-foreground">
-          Same price for athletes anywhere, academy members included. New here? Start with a{" "}
-          {NONMEMBER_TRIAL_DAYS}-day Pro trial, no card. After the trial, Pro keeps the app
-          open. Your past data stays viewable and exportable.
+          Same price for athletes anywhere, academy members included.{" "}
+          {verified
+            ? `Your dues include the core app, and Pro is free for your first ${MEMBER_PRO_DAYS} days, no card, never auto-billed.`
+            : `New here? Start with a ${NONMEMBER_TRIAL_DAYS}-day Pro trial, no card. After the trial, Pro keeps the app open. Your past data stays viewable and exportable.`}
         </p>
         <TierList items={PRO_ADDS} tone="add" />
         <p className="mt-3 text-xs text-foreground" data-fair-use>
           {PRO_FAIR_USE_LINE}
         </p>
         <div className="mt-5">
-          <PlanCheckoutButton canStartTrial={canStartTrial} checkoutLive={checkoutLive} />
+          <PlanCheckoutButton
+            canStartTrial={canStartTrial}
+            checkoutLive={checkoutLive}
+            verified={verified}
+          />
         </div>
       </article>
 

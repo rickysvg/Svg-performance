@@ -56,7 +56,11 @@ export default async function CheckInPage({
             See plans
           </Link>
           {trial.canStartTrial ? (
-            <p className="mt-3 text-xs text-muted">Start the 7-day Pro trial from Plan. No card.</p>
+            <p className="mt-3 text-xs text-muted">
+              {trial.verified
+                ? `Start your ${trial.trialLengthDays} days of free Pro from Plan. No card. You are never auto-billed.`
+                : `Start the ${trial.trialLengthDays}-day Pro trial from Plan. No card.`}
+            </p>
           ) : null}
         </section>
       </main>

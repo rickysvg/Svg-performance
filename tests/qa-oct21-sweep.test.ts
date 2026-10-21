@@ -15,6 +15,7 @@ import {
 import { sessionSetCount } from "@/lib/share-card";
 import { freeCoachChatDaysRemaining } from "@/lib/coach-access";
 import { currentPlanLine } from "@/lib/trial";
+import { MEMBER_PRO_DAYS, NONMEMBER_TRIAL_DAYS, proAccessSummary } from "@/lib/pricing";
 import { memberProCopy } from "@/lib/member-pro-reminders";
 import { getCalendarSchedule } from "@/lib/calendar";
 import { formatDayParam } from "@/lib/home";
@@ -131,6 +132,18 @@ describe("trial copy uses the real clocks", () => {
         memberProStartedAt: null,
       }),
     ).toBe(5);
+  });
+
+  it("keeps the landing on the nonmember trial and the 14-day academy grant", () => {
+    expect(NONMEMBER_TRIAL_DAYS).toBe(7);
+    expect(MEMBER_PRO_DAYS).toBe(14);
+    expect(proAccessSummary()).toBe(
+      "Athletes who are not SVG Academy members get a 7-day Pro trial, no card. Verified SVG Academy members get the core app with their dues and Pro free for 14 days, no card, never auto-billed.",
+    );
+    const landing = readFileSync("src/app/page.tsx", "utf8");
+    expect(landing).toContain("proAccessSummary()");
+    expect(landing).not.toContain("after a 7-day trial");
+    expect(landing).toContain("The academy Pro grant does not extend chat");
   });
 
   it("names the 7-day trial and the member grant separately from days left", () => {

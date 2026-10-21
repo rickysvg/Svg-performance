@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  NONMEMBER_TRIAL_DAYS,
   PERFORMANCE_ANNUAL,
   PERFORMANCE_ANNUAL_SAVE,
   PERFORMANCE_MONTHLY,
@@ -16,12 +17,12 @@ export function TrialEndedPaywall() {
     >
       <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Pro</p>
       <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
-        Your 7-day trial ended
+        Your {NONMEMBER_TRIAL_DAYS}-day trial ended
       </h1>
       <p className="mt-3 text-sm text-muted">
         Subscribe to Pro to keep training. Logging, timers, and class programming stay open
-        for academy members and Pro subscribers. After the 7-day trial, past data stays
-        viewable and exportable.
+        for academy members and Pro subscribers. After the {NONMEMBER_TRIAL_DAYS}-day trial,
+        past data stays viewable and exportable.
       </p>
       <p className="font-display stat-display mt-4 text-3xl text-black">
         {usd(PERFORMANCE_MONTHLY)}/mo
