@@ -104,7 +104,19 @@ export function BikeClockScreen({
         />
       ) : null}
 
-      <BikeWorkoutChooser choice={active} onApply={rememberBikeChoice} />
+      <BikeWorkoutChooser
+        choice={active}
+        seed={
+          running
+            ? {
+                workSeconds: running.workSeconds,
+                restSeconds: running.restSeconds,
+                roundsPerSet: running.roundsPerSet,
+              }
+            : null
+        }
+        onApply={rememberBikeChoice}
+      />
 
       {dayId ? (
         <form action={startSessionAction}>

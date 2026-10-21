@@ -226,27 +226,33 @@ function PickButton({
 export function BikeWorkoutChooser({
   choice,
   onApply,
+  seed = null,
 }: {
   choice: BikeChoice | null;
   onApply: (choice: BikeChoice) => void;
+  /** Programmed dose, used when no chooser workout is selected yet. */
+  seed?: { workSeconds: number; restSeconds: number; roundsPerSet: number } | null;
 }) {
   const [open, setOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [error, setError] = useState("");
   const [picker, setPicker] = useState<PickerField | null>(null);
   const titleId = useId();
-  const custom = choice?.id === "custom" ? choice.spec : null;
-  const [sprint, setSprint] = useState(custom?.workSeconds ?? 20);
-  const [rest, setRest] = useState(custom?.restSeconds ?? 40);
-  const [sprints, setSprints] = useState(custom?.roundsPerSet ?? 8);
+  const spec = choice?.spec ?? seed;
+  const [sprint, setSprint] = useState(spec?.workSeconds ?? 20);
+  const [rest, setRest] = useState(spec?.restSeconds ?? 40);
+  const [sprints, setSprints] = useState(spec?.roundsPerSet ?? 8);
   const [rounds, setRounds] = useState(choice?.spec.repeatRounds ?? 1);
   const [between, setBetween] = useState(
     choice?.spec.restBetweenRoundsSeconds && choice.spec.restBetweenRoundsSeconds > 0
       ? choice.spec.restBetweenRoundsSeconds
       : 60,
   );
-  const [warmup, setWarmup] = useState(custom ? Math.round((custom.warmupSeconds ?? 0) / 60) : 0);
-  const [cooldown, setCooldown] = useState(custom ? Math.round((custom.cooldownSeconds ?? 0) / 60) : 0);
+  const customSpec = choice?.id === "custom" ? choice.spec : null;
+  const [warmup, setWarmup] = useState(customSpec ? Math.round((customSpec.warmupSeconds ?? 0) / 60) : 0);
+  const [cooldown, setCooldown] = useState(
+    customSpec ? Math.round((customSpec.cooldownSeconds ?? 0) / 60) : 0,
+  );
 
   function close() {
     setOpen(false);
@@ -258,6 +264,17 @@ export function BikeWorkoutChooser({
   function apply(next: BikeChoice) {
     onApply(next);
     close();
+  }
+
+  function openCustom() {
+    const next = choice?.spec ?? seed;
+    if (next && choice?.id !== "custom") {
+      setSprint(next.workSeconds);
+      setRest(next.restSeconds);
+      setSprints(next.roundsPerSet);
+    }
+    setCustomOpen(true);
+    setError("");
   }
 
   function applyCatalog(workout: BikeChoice) {
@@ -445,7 +462,7 @@ export function BikeWorkoutChooser({
               <button
                 type="button"
                 data-bike-custom-open
-                onClick={() => setCustomOpen(true)}
+                onClick={openCustom}
                 className={`block w-full rounded-2xl border px-4 py-3 text-left ${
                   choice?.id === "custom" ? "border-accent bg-card" : "border-line bg-card"
                 }`}

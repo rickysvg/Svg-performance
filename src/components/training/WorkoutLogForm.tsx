@@ -13,7 +13,12 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { BikeWorkoutChooser } from "@/components/training/BikeWorkoutSheet";
-import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
+import {
+  bikeIntervalReps,
+  bikeSessionForLogger,
+  DEFAULT_BIKE_SESSION,
+  isBikeIntervalName,
+} from "@/lib/bike-sessions";
 import {
   bikeChoiceFromKey,
   choiceToken,
@@ -72,7 +77,7 @@ import {
 import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import { resolveSessionElapsed, sessionElapsedState } from "@/lib/session-elapsed";
-import { timerEntryModeFromText } from "@/lib/timer-session";
+import { textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
@@ -507,25 +512,35 @@ export function WorkoutLogForm({
   const headerTimer = useMemo(() => {
     const names = grouped.map(([name]) => name);
     const bikeName = names.find((name) => isBikeIntervalName(name)) ?? null;
-    if (bikeName) {
-      const group = grouped.find(([name]) => name === bikeName)?.[1] ?? [];
+    const titleBike = textIsBikeWorkout(`${session.title} ${names.join(" ")}`);
+    if (bikeName || titleBike) {
+      const name = bikeName ?? names[0] ?? "Assault bike intervals";
+      const group = grouped.find(([row]) => row === name)?.[1] ?? grouped[0]?.[1] ?? [];
       const planned = session.programDay?.exercises.find(
-        (row) => gymExerciseKey(row.name) === gymExerciseKey(bikeName),
+        (row) => gymExerciseKey(row.name) === gymExerciseKey(name),
       );
       const stored = parseAddedPlan(group[0]?.prescriptionKey);
       const choice =
         bikeChoiceFromKey(group[0]?.prescriptionKey) ??
         parseBikeRecipe(stored?.reps || "") ??
         parseBikeRecipe(planned?.reps || "");
-      const base = bikeSessionForLogger(
-        bikeName,
-        planned ? { reps: planned.reps, restSeconds: planned.restSeconds } : null,
-      );
-      return {
-        bikeSession: base && choice ? sessionWithChoice(base, choice) : base,
-        bikeToken: choice ? choiceToken(choice) : null,
-        mode: null,
-      };
+      const lookup = bikeName ?? "Assault bike intervals";
+      const base =
+        bikeSessionForLogger(
+          lookup,
+          choice
+            ? { reps: "", restSeconds: 0 }
+            : planned
+              ? { reps: planned.reps, restSeconds: planned.restSeconds }
+              : null,
+        ) ?? (titleBike ? DEFAULT_BIKE_SESSION : null);
+      if (base) {
+        return {
+          bikeSession: choice ? sessionWithChoice(base, choice) : base,
+          bikeToken: choice ? choiceToken(choice) : null,
+          mode: null,
+        };
+      }
     }
     const mode = timerEntryModeFromText(`${session.title} ${names.join(" ")}`);
     return {
@@ -883,6 +898,28 @@ export function WorkoutLogForm({
     commitSets(next);
   }
 
+  function bikeDurationFor(exerciseName: string, prescriptionKey: string | null | undefined) {
+    const planned = session.programDay?.exercises.find(
+      (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
+    );
+    const stored = parseAddedPlan(prescriptionKey);
+    const choice =
+      bikeChoiceFromKey(prescriptionKey) ??
+      parseBikeRecipe(stored?.reps || "") ??
+      parseBikeRecipe(planned?.reps || "");
+    const base = bikeSessionForLogger(
+      isBikeIntervalName(exerciseName) ? exerciseName : "Assault bike intervals",
+      choice
+        ? { reps: "", restSeconds: 0 }
+        : planned
+          ? { reps: planned.reps, restSeconds: planned.restSeconds }
+          : null,
+    );
+    const active = base && choice ? sessionWithChoice(base, choice) : base;
+    if (!active) return 1;
+    return Math.max(1, bikeSetDurationSeconds(active));
+  }
+
   function markDone(
     setId: string,
     exerciseName: string,
@@ -891,7 +928,9 @@ export function WorkoutLogForm({
   ) {
     const target = sets.find((set) => set.id === setId);
     const mode = resolveLogMode({ logMode: target?.logMode, name: exerciseName });
+    const bike = isBikeIntervalName(exerciseName);
     if (
+      !bike &&
       !timedRoundMarkAllowed({
         mode,
         markingDone: completed,
@@ -900,8 +939,18 @@ export function WorkoutLogForm({
     ) {
       return;
     }
+    const durationSeconds =
+      bike && completed
+        ? target?.durationSeconds && target.durationSeconds > 0
+          ? target.durationSeconds
+          : bikeDurationFor(exerciseName, target?.prescriptionKey)
+        : undefined;
     setActiveName(exerciseName);
-    const nextSets = sets.map((set) => (set.id === setId ? { ...set, completed } : set));
+    const nextSets = sets.map((set) =>
+      set.id === setId
+        ? { ...set, completed, ...(durationSeconds != null ? { durationSeconds } : {}) }
+        : set,
+    );
     setSets(nextSets);
     let nextRest = restTimer;
     if (completed) {
@@ -1394,6 +1443,14 @@ export function WorkoutLogForm({
             ? bikeSessionForLogger(name, bikeChoice ? { reps: "", restSeconds: 0 } : planned)
             : null;
           const bikeSession = bikeBase && bikeChoice ? sessionWithChoice(bikeBase, bikeChoice) : bikeBase;
+          const doseReps = bikeChoice
+            ? bikeChoice.plain
+            : bikeSession
+              ? bikeIntervalReps(bikeSession)
+              : planned?.reps ?? "";
+          const coachingNotes = bikeChoice
+            ? bikeSession?.notes || ""
+            : planned?.notes || bikeSession?.notes || "";
           const timed = isDurationMode(mode) && !bike;
           const restSeconds = bikeChoice ? 0 : restForName(name, planned?.restSeconds, mode);
           const layout = loggerRowLayout(mode, name);
@@ -1449,26 +1506,28 @@ export function WorkoutLogForm({
                   ) : null}
                   <h2>{title}</h2>
                   <p className="mt-0.5 text-sm text-muted" data-logger-prescription>
-                    {planned
+                    {planned || doseReps
                       ? loggerCardLine({
-                          sets: bikeChoice ? Math.max(1, group.length) : added ? group.length : planned.sets,
-                          reps: bikeChoice ? bikeChoice.plain : planned.reps,
-                          restSeconds: added ? restSeconds : planned.restSeconds,
+                          sets: bikeChoice ? Math.max(1, group.length) : added ? group.length : planned?.sets ?? group.length,
+                          reps: doseReps,
+                          restSeconds: added ? restSeconds : planned?.restSeconds,
                           logMode: mode,
                           name: title,
-                          loadText: planned.loadText,
+                          loadText: planned?.loadText,
                         })
                       : countLabel(group.length, mode === "timed_round" ? "round" : "set")}
                   </p>
                   {name === firstRirName ? <RirHint /> : null}
-                  {hint || (planned?.notes && !bagFocusLines(planned.notes)) || creditForExercise(title) ? (
+                  {hint || (coachingNotes && !bagFocusLines(coachingNotes)) || creditForExercise(title) ? (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-sm font-semibold">Coaching</summary>
                       <div className="mt-2 space-y-1">
                         <CoachCredit name={title} />
                         {hint ? <p className="text-xs text-muted">{hint}</p> : null}
-                        {planned?.notes && !bagFocusLines(planned.notes) ? (
-                          <p className="text-sm text-muted">{planned.notes}</p>
+                        {coachingNotes && !bagFocusLines(coachingNotes) ? (
+                          <p className="text-sm text-muted" data-bike-coaching={bike ? coachingNotes : undefined}>
+                            {coachingNotes}
+                          </p>
                         ) : null}
                       </div>
                     </details>
@@ -1480,6 +1539,15 @@ export function WorkoutLogForm({
                   {bike && session.status !== "complete" ? (
                     <BikeWorkoutChooser
                       choice={bikeChoice}
+                      seed={
+                        bikeSession
+                          ? {
+                              workSeconds: bikeSession.workSeconds,
+                              restSeconds: bikeSession.restSeconds,
+                              roundsPerSet: bikeSession.roundsPerSet,
+                            }
+                          : null
+                      }
                       onApply={(next) => applyBikeWorkout(name, next)}
                     />
                   ) : null}
@@ -1489,31 +1557,37 @@ export function WorkoutLogForm({
                       session={bikeSession}
                       canStart={group.some((set) => !set.completed)}
                       onSetComplete={() => {
-                        const nextOpen = group.find((set) => !set.completed);
+                        const current = setsRef.current;
+                        const nextOpen = current.find(
+                          (set) => set.exerciseName === name && !set.completed,
+                        );
                         if (!nextOpen) return;
-                        const loggedSeconds = bikeChoice
-                          ? Math.max(1, bikeSetDurationSeconds(bikeSession))
-                          : Math.max(
-                              1,
-                              (bikeSession?.workSeconds ?? 1) * Math.max(1, bikeSession?.roundsPerSet ?? 1),
-                            );
-                        updateSet(nextOpen.id, {
-                          completed: true,
-                          durationSeconds:
-                            nextOpen.durationSeconds && nextOpen.durationSeconds > 0
-                              ? nextOpen.durationSeconds
-                              : loggedSeconds,
-                        });
+                        const loggedSeconds =
+                          nextOpen.durationSeconds && nextOpen.durationSeconds > 0
+                            ? nextOpen.durationSeconds
+                            : Math.max(1, bikeSetDurationSeconds(bikeSession));
+                        const nextSets = current.map((set) =>
+                          set.id === nextOpen.id
+                            ? { ...set, completed: true, durationSeconds: loggedSeconds }
+                            : set,
+                        );
+                        setsRef.current = nextSets;
+                        setSets(nextSets);
+                        setActiveName(name);
                         const effects = bikeIntervalCompletionEffects({
                           exerciseName: name,
                           restBetweenSetsSeconds: restSeconds,
                         });
+                        let nextRest = restTimer;
                         if (effects.rest) {
+                          nextRest = effects.rest;
                           setRestGo(false);
                           setNowMs(clockNow());
                           engageRestRoute();
                           setRestTimer(effects.rest);
                         }
+                        remember(nextSets, nextRest);
+                        syncDraft(nextSets, nextRest);
                       }}
                     />
                   ) : null}
@@ -1622,14 +1696,14 @@ export function WorkoutLogForm({
                     workoutId={session.id}
                     logMode={mode}
                     plannedLine={
-                      planned
+                      planned || doseReps
                         ? plannedSetLine({
-                            sets: planned.sets,
-                            reps: planned.reps,
-                            restSeconds: planned.restSeconds,
+                            sets: bikeChoice ? Math.max(1, group.length) : planned?.sets ?? group.length,
+                            reps: doseReps || planned?.reps || "",
+                            restSeconds: bikeChoice ? 0 : planned?.restSeconds ?? 0,
                             logMode: mode,
                             name,
-                            loadText: planned.loadText,
+                            loadText: planned?.loadText,
                           })
                         : ""
                     }
@@ -1768,11 +1842,7 @@ export function WorkoutLogForm({
                               ? String(
                                   set.durationSeconds && set.durationSeconds > 0
                                     ? set.durationSeconds
-                                    : Math.max(
-                                        1,
-                                        (bikeSession?.workSeconds ?? 1) *
-                                          Math.max(1, bikeSession?.roundsPerSet ?? 1),
-                                      ),
+                                    : Math.max(1, bikeSession ? bikeSetDurationSeconds(bikeSession) : 1),
                                 )
                               : ""
                           }
@@ -1851,6 +1921,7 @@ export function WorkoutLogForm({
                           name={`sets.${index}.completed`}
                           data-set-field={primaryField ? undefined : set.id}
                           data-round-needs-seconds={
+                            !bike &&
                             mode === "timed_round" &&
                             !(set.durationSeconds != null && set.durationSeconds > 0)
                               ? "1"
@@ -1859,6 +1930,7 @@ export function WorkoutLogForm({
                           type="checkbox"
                           checked={set.completed}
                           title={
+                            !bike &&
                             mode === "timed_round" &&
                             !(set.durationSeconds != null && set.durationSeconds > 0)
                               ? "Enter seconds before marking this round done."
@@ -1912,16 +1984,18 @@ export function WorkoutLogForm({
               className="rounded-xl border border-danger bg-card px-3 py-3 text-sm"
             >
               <p>{state.error}</p>
-              <button
-                type="button"
-                data-save-retry
-                onClick={() =>
-                  formRef.current?.querySelector<HTMLButtonElement>("[data-save-workout]")?.click()
-                }
-                className="mt-2 font-semibold underline-offset-4 hover:underline"
-              >
-                Retry save
-              </button>
+              {/log at least one set/i.test(state.error) ? null : (
+                <button
+                  type="button"
+                  data-save-retry
+                  onClick={() =>
+                    formRef.current?.querySelector<HTMLButtonElement>("[data-save-workout]")?.click()
+                  }
+                  className="mt-2 font-semibold underline-offset-4 hover:underline"
+                >
+                  Retry save
+                </button>
+              )}
             </div>
           ) : null}
           {saveExercises.length > 0 ? (

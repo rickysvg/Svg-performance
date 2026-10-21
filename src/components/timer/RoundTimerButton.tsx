@@ -113,6 +113,7 @@ export function RoundTimerButton({
         ref={buttonRef}
         type="button"
         data-round-timer-button
+        data-header-timer={bikeSession || bikeToken ? "bike" : "rounds"}
         aria-label={named ? undefined : "Start rounds"}
         aria-haspopup="dialog"
         aria-expanded={sheet}

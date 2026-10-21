@@ -307,7 +307,8 @@ export function planBikeDose(
     restBetweenSetsSeconds: scale.restBetweenSetsSeconds,
     sets: scale.sets,
     loadText: scale.loadText,
-    notes: notes ?? session.notes,
+    notes: alignBikeRestPhrase(notes ?? session.notes, scale.workSeconds, scale.restSeconds),
+    focus: alignBikeRestPhrase(session.focus, scale.workSeconds, scale.restSeconds),
   });
 
   if (phase === "taper") {
@@ -405,6 +406,19 @@ export function formatBikeClock(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+/**
+ * A catalog line can still say "50s easy" after the dose rest moved to 40s.
+ * Replace that leftover rest when the nearby word is easy, rest, or spin.
+ */
+export function alignBikeRestPhrase(text: string, workSeconds: number, restSeconds: number) {
+  if (!text || restSeconds < 0) return text;
+  return text.replace(/(\d+)\s*s(?=\s*(?:easy|rest|spin)\b)/gi, (match, raw: string) => {
+    const seconds = Number(raw);
+    if (seconds === workSeconds || seconds === restSeconds) return match;
+    return `${restSeconds}s`;
+  });
+}
+
 export function bikeIntervalReps(session: BikeSession = DEFAULT_BIKE_SESSION) {
   if (session.restSeconds <= 0 && session.roundsPerSet === 1) {
     return formatBikeClock(session.workSeconds);
@@ -454,10 +468,14 @@ export function bikeSessionForLogger(
   const base = bikeSessionForName(name);
   if (!base) return null;
   const parsed = planned?.reps ? parseBikeIntervalReps(planned.reps) : null;
+  const workSeconds = parsed?.workSeconds ?? base.workSeconds;
+  const restSeconds = parsed?.restSeconds ?? base.restSeconds;
   return {
     ...base,
     ...(parsed ?? {}),
     restBetweenSetsSeconds: planned?.restSeconds ?? base.restBetweenSetsSeconds,
+    focus: alignBikeRestPhrase(base.focus, workSeconds, restSeconds),
+    notes: alignBikeRestPhrase(base.notes, workSeconds, restSeconds),
   };
 }
 

@@ -46,7 +46,7 @@ import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
-import { timerEntryModeFromText, type TimerEntryMode } from "@/lib/timer-session";
+import { textIsBikeWorkout, timerEntryModeFromText, type TimerEntryMode } from "@/lib/timer-session";
 
 export default async function TrainingDayPage({
   params,
@@ -131,12 +131,20 @@ export default async function TrainingDayPage({
     label: day.title,
   });
   const bikeExercise = exercises.find((exercise) => isBikeIntervalName(exercise.name));
+  const bikeCopy = textIsBikeWorkout(
+    `${day.title} ${day.focus} ${exercises.map((exercise) => exercise.name).join(" ")}`,
+  );
   const bikeSession = bikeExercise
     ? bikeSessionForLogger(bikeExercise.name, {
         reps: bikeExercise.reps,
         restSeconds: bikeExercise.restSeconds,
       })
-    : null;
+    : bikeCopy
+      ? bikeSessionForLogger("Assault bike intervals", {
+          reps: exercises[0]?.reps,
+          restSeconds: exercises[0]?.restSeconds,
+        })
+      : null;
   const entryMode: TimerEntryMode | null = bikeSession
     ? "bike"
     : timerEntryModeFromText(`${day.title} ${day.focus} ${exercises.map((exercise) => exercise.name).join(" ")}`);

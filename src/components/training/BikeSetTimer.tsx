@@ -143,6 +143,7 @@ export function BikeSetTimer({
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
+  const pendingComplete = useRef(false);
   const running =
     clock.phase === "work" ||
     clock.phase === "rest" ||
@@ -155,13 +156,19 @@ export function BikeSetTimer({
   }, [onSetComplete]);
 
   useEffect(() => {
+    if (!pendingComplete.current) return;
+    pendingComplete.current = false;
+    completeRef.current();
+  }, [clock]);
+
+  useEffect(() => {
     if (!running || clock.paused) return;
     const id = window.setInterval(() => {
       setClock((current) => {
         const { snapshot, cue } = tickBikeInterval(current);
         if (cue !== "none") signalBikeIntervalCue(cue);
         if (snapshot.phase === "done") {
-          completeRef.current();
+          pendingComplete.current = true;
           releaseSetWakeLock(wakeLock.current);
           wakeLock.current = null;
           routeRelease.current?.();

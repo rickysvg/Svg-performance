@@ -62,4 +62,31 @@ describe("timer session routing", () => {
     expect(picks).toContain("formatDurationPick");
     expect(picks).toContain("data-timer-picker-option");
   });
+
+  it("opens the header stopwatch on the bike clock and lets a bike set be marked done", () => {
+    const button = fs.readFileSync(
+      path.join(process.cwd(), "src/components/timer/RoundTimerButton.tsx"),
+      "utf8",
+    );
+    const form = fs.readFileSync(
+      path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"),
+      "utf8",
+    );
+    const clock = fs.readFileSync(
+      path.join(process.cwd(), "src/components/training/BikeSetTimer.tsx"),
+      "utf8",
+    );
+    const day = fs.readFileSync(
+      path.join(process.cwd(), "src/app/(member)/training/[dayId]/page.tsx"),
+      "utf8",
+    );
+    expect(button).toContain('data-header-timer={bikeSession || bikeToken ? "bike" : "rounds"}');
+    expect(button).toContain("BikeClockScreen");
+    expect(form).toContain("textIsBikeWorkout");
+    expect(form).toContain("bikeDurationFor");
+    expect(form).toMatch(/log at least one set/i);
+    expect(clock).toContain("pendingComplete");
+    expect(clock).not.toMatch(/phase === "done"\) \{\s*completeRef\.current\(\)/);
+    expect(day).toContain("textIsBikeWorkout");
+  });
 });

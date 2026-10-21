@@ -5,7 +5,9 @@ import {
   BIKE_PROGRAM_DAY_NUMBER,
   BIKE_SESSIONS,
   DEFAULT_BIKE_SESSION,
+  alignBikeRestPhrase,
   bikeIntervalReps,
+  bikeSessionForLogger,
   bikeSetsForBand,
   bikeWeekIndex,
   bikeWorkSecondsPerSet,
@@ -13,6 +15,7 @@ import {
   parseBikeIntervalReps,
   pickBikeSession,
   pickBikeSessionForPlan,
+  planBikeDose,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
 import { creditForExercise } from "@/lib/coach-credits";
@@ -65,6 +68,50 @@ describe("assault bike catalog", () => {
     expect(creditForExercise("Daru alactic power bike")?.line).toMatch(/Phil Daru/);
     expect(creditForExercise("Jamieson tempo bike")?.url).toMatch(/LhvPU8vhyq0/);
     expect(creditForExercise("Leon Edwards 10/20 bike finisher")?.url).toMatch(/7Jf_JutBJlo/);
+  });
+
+  it("keeps rest copy on the dose that is actually running", () => {
+    const alactic = BIKE_SESSIONS.find((row) => row.id === "daru-alactic")!;
+    const week1 = planBikeDose(alactic, "intermediate", 0);
+    const week2 = planBikeDose(alactic, "intermediate", 1);
+    expect(week1.focus).toMatch(/50s easy/);
+    expect(week1.restSeconds).toBe(50);
+    expect(week2.restSeconds).toBe(40);
+    expect(week2.focus).toMatch(/40s easy/);
+    expect(week2.focus).not.toMatch(/50s/);
+    expect(week2.notes).toMatch(/40s easy/);
+    expect(week2.notes).not.toMatch(/50s/);
+
+    const logged = bikeSessionForLogger(alactic.name, { reps: "10s work / 40s rest × 8", restSeconds: 0 });
+    expect(logged?.restSeconds).toBe(40);
+    expect(logged?.focus).toMatch(/40s easy/);
+    expect(logged?.focus).not.toMatch(/50s/);
+    expect(logged?.notes).not.toMatch(/50s/);
+    expect(alignBikeRestPhrase("10s all-out / 50s easy", 10, 40)).toBe("10s all-out / 40s easy");
+    expect(alignBikeRestPhrase("10s work / 40s rest", 10, 40)).toBe("10s work / 40s rest");
+
+    const scaled = scaleProgramDay(
+      {
+        dayNumber: 5,
+        title: alactic.title,
+        focus: alactic.focus,
+        exercises: [
+          {
+            name: alactic.name,
+            sets: 1,
+            reps: bikeIntervalReps(alactic),
+            loadText: alactic.loadText,
+            restSeconds: 0,
+            logMode: "timed_round",
+            notes: alactic.notes,
+          },
+        ],
+      },
+      { band: "intermediate", programSlug: "demo-strength-base", weekIndex: 1 },
+    );
+    expect(scaled.exercises[0]?.reps).toBe("10s work / 40s rest × 8");
+    expect(scaled.focus).toMatch(/40s easy/);
+    expect(scaled.focus).not.toMatch(/50s/);
   });
 
   it("keeps Wednesday alactic and rotates the Sunday aerobic bike", () => {
