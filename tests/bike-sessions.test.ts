@@ -219,7 +219,7 @@ describe("assault bike catalog", () => {
     expect(week.Tuesday.active).toBe(true);
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Thursday.summary).toBe("Bag+Lift");
-    expect(week.Friday.summary).toBe("Circuit+Mobility");
+    expect(week.Friday.summary).toBe("Conditioning+Mobility");
     expect(week.Saturday.summary).toBe("Sparring");
     expect(week.Sunday.summary).toBe("Cardio+Mobility");
 
@@ -248,7 +248,7 @@ describe("assault bike catalog", () => {
       "Bag+Lift",
       "Cardio+Mobility",
       "Bag+Lift",
-      "Circuit+Mobility",
+      "Conditioning+Mobility",
       "Sparring",
       "Cardio+Mobility",
     ]);

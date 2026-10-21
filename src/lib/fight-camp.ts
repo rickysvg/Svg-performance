@@ -5,6 +5,7 @@ import { AppError } from "@/lib/errors";
 import { canUseFeature } from "@/lib/entitlements";
 import { DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { dayKey } from "@/lib/timezone";
+import { FRIDAY_CONDITIONING_LABEL, isGppStrengthDay } from "@/lib/mesocycle";
 import { planWeekIndex, type DayPlan, type PlanSessionSlot } from "@/lib/week-plan";
 import {
   disciplineLabel,
@@ -369,7 +370,15 @@ export function campBikeBand(phase: CampPhase, band: "beginner" | "intermediate"
 }
 
 function isFridayCircuit(session: PlanSessionSlot) {
-  return session.label === "Friday circuit" || session.title === "Friday circuit";
+  if (
+    session.label === FRIDAY_CONDITIONING_LABEL ||
+    session.title === FRIDAY_CONDITIONING_LABEL ||
+    session.label === "Friday circuit" ||
+    session.title === "Friday circuit"
+  ) {
+    return true;
+  }
+  return session.kind === "conditioning" && session.dayNumber != null && isGppStrengthDay(session.dayNumber);
 }
 
 function fridayTechnicalBag(day: DayPlan): PlanSessionSlot {
@@ -380,7 +389,7 @@ function fridayTechnicalBag(day: DayPlan): PlanSessionSlot {
     programSlug: DEMO_SKILL_PROGRAM_SLUG,
     dayNumber: bag.dayNumber,
     heavy: false,
-    detail: "Technical bag. The Friday circuit comes back after camp.",
+    detail: "Technical bag. Conditioning comes back after camp.",
   };
 }
 

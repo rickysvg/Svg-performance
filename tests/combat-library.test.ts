@@ -168,11 +168,11 @@ describe("combat swap library", () => {
       optionalDay: false,
       deload: false,
       testingWeek: false,
-      summary: "Circuit+Mobility",
+      summary: "Conditioning+Mobility",
       mesoBlock: "A",
       mesoLabel: "Block A",
       sessions: [
-        { kind: "conditioning", label: "Friday circuit", dayNumber: 10 },
+        { kind: "conditioning", label: "Conditioning", dayNumber: 10 },
         { kind: "mobility", label: "Mobility — easy hips" },
       ],
     };

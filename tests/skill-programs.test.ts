@@ -87,7 +87,7 @@ describe("seeded DEMO combat skills", () => {
       1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 20, 21, 22,
     ]);
     expect(strength.days.find((day) => day.dayNumber === 4)?.title).toMatch(/assault bike/i);
-    expect(strength.days.find((day) => day.dayNumber === 10)?.title).toMatch(/Friday circuit/);
+    expect(strength.days.find((day) => day.dayNumber === 10)?.title).toMatch(/Conditioning/);
     expect(strength.days.find((day) => day.dayNumber === 11)?.title).toMatch(/Light full body/i);
 
     const user = await makeUser("muay@example.com");

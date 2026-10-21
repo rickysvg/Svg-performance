@@ -6,7 +6,12 @@
 import { DARU_EXERCISES } from "@/lib/daru-exercises";
 import { formatStoredTags, tagsForExercise } from "@/lib/exercise-tags";
 import { formVideoFieldsFor } from "@/lib/form-videos";
-import { STRENGTH_DAY_BY_BLOCK, mesoBlockLabel, type MesoBlock } from "@/lib/mesocycle";
+import {
+  FRIDAY_CONDITIONING_LABEL,
+  STRENGTH_DAY_BY_BLOCK,
+  mesoBlockLabel,
+  type MesoBlock,
+} from "@/lib/mesocycle";
 import { effortLoadText } from "@/lib/rir";
 import {
   encodeWeekNotes,
@@ -502,7 +507,7 @@ function friday(block: MesoBlock) {
   const days = STRENGTH_DAY_BY_BLOCK[block];
   return {
     dayNumber: days.friday,
-    title: "Friday circuit",
+    title: FRIDAY_CONDITIONING_LABEL,
     focus: `General prep. 2–3 RIR, nothing to failure. Off-season. ${mesoBlockLabel(block)}`,
     exercises: {
       create: [

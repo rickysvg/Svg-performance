@@ -8,6 +8,7 @@ import {
   swapCalendarDaysAction,
 } from "@/app/actions/week-plan";
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
+import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number];
@@ -18,7 +19,16 @@ export type WeekChipActivity = {
 };
 
 const WORD_LABELS = new Set(["Off", "Rest", "Recover"]);
-const ICON_ACTIVITIES = new Set(["Bag", "Lift", "Cardio", "Mobility", "Sparring", "Bike", "GPP"]);
+const ICON_ACTIVITIES = new Set([
+  "Bag",
+  "Lift",
+  "Cardio",
+  "Mobility",
+  "Sparring",
+  "Bike",
+  "GPP",
+  FRIDAY_CONDITIONING_LABEL,
+]);
 
 const ACTIVITY_NAME: Record<string, string> = {
   GPP: "Cardio",
@@ -27,12 +37,29 @@ const ACTIVITY_NAME: Record<string, string> = {
   Cardio: "Cardio",
   Mobility: "Mobility",
   Sparring: "Sparring",
+  Circuit: FRIDAY_CONDITIONING_LABEL,
+  [FRIDAY_CONDITIONING_CHIP_WORD]: FRIDAY_CONDITIONING_LABEL,
+  [FRIDAY_CONDITIONING_LABEL]: FRIDAY_CONDITIONING_LABEL,
 };
 
 function chipId(part: string) {
   if (part === "Bike" || part === "GPP") return "Cardio";
   if (part === "Recover") return "Mobility";
+  if (
+    part === "Circuit" ||
+    part === FRIDAY_CONDITIONING_CHIP_WORD ||
+    part === FRIDAY_CONDITIONING_LABEL
+  ) {
+    return FRIDAY_CONDITIONING_LABEL;
+  }
   return part;
+}
+
+function iconTileClass(id: string, selected: boolean) {
+  if (id === "Bag") return "rounded-full bg-accent text-black";
+  // Lime bolt on carbon. Same tile on a selected day so it does not flip to white.
+  if (id === FRIDAY_CONDITIONING_LABEL) return "rounded-[3px] bg-carbon text-accent";
+  return selected ? "text-white" : "text-foreground";
 }
 
 export function activityChipName(id: string) {
@@ -98,6 +125,12 @@ function ActivityIcon({ id }: { id: string }) {
           <path d="M.7 8.2h3.2L5.4 4.2l2.8 7.6 1.6-3.6H15.3" />
         </svg>
       );
+    case FRIDAY_CONDITIONING_LABEL:
+      return (
+        <svg {...common} fill="currentColor">
+          <path d="M9.15.9 3.2 8.7h3.7l-1 6.4 6.9-8.6H8.9L9.15.9z" />
+        </svg>
+      );
     case "Mobility":
       return (
         <svg
@@ -108,8 +141,7 @@ function ActivityIcon({ id }: { id: string }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <circle cx="8" cy="2.6" r="1.3" />
-          <path d="M3.2 7.2c1.4-.8 2.8-1 4.8-1s3.4.2 4.8 1M8 6.2v3.2M5.2 13.6 8 9.4l2.8 4.2" />
+          <path d="M1.3 8.6c1.6-3 3-3 4.5 0s2.9 3 4.5 0 2.9-3 4.5 0" />
         </svg>
       );
     case "Sparring":
@@ -144,13 +176,7 @@ function ActivityMarks({
           key={activity.id}
           title={activity.label}
           data-week-activity={activity.id}
-          className={`inline-flex aspect-square min-w-0 items-center justify-center ${
-            activity.id === "Bag"
-              ? "rounded-full bg-accent text-black"
-              : selected
-                ? "text-white"
-                : "text-foreground"
-          }`}
+          className={`inline-flex aspect-square min-w-0 items-center justify-center ${iconTileClass(activity.id, selected)}`}
           style={{ width: box, flex: "0 0 auto" }}
         >
           <span className="sr-only">{activity.label}</span>
@@ -169,7 +195,9 @@ function ActivityMarks({
 
 function legendIds(days: Item[]) {
   const parts = new Set(days.flatMap((day) => day.summary.split("+").map(chipId)));
-  const shown = ["Lift", "Cardio", "Mobility"].filter((id) => parts.has(id));
+  const shown = ["Lift", "Cardio", FRIDAY_CONDITIONING_LABEL, "Mobility"].filter((id) =>
+    parts.has(id),
+  );
   if (parts.has("Bag")) shown.push("Bag");
   if (parts.has("Sparring")) shown.push("Sparring");
   return shown.length > 0 ? shown : ["Lift", "Cardio", "Mobility"];
@@ -181,7 +209,7 @@ function WeekLegend({ days }: { days: Item[] }) {
     <ul
       data-week-legend
       aria-label="Activity key"
-      className="mt-2 flex flex-nowrap items-center justify-center gap-x-2.5 gap-y-1"
+      className="mt-2 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1"
     >
       {ids.map((id) => (
         <li
@@ -190,9 +218,7 @@ function WeekLegend({ days }: { days: Item[] }) {
         >
           <span
             aria-hidden
-            className={`inline-flex h-4 w-4 shrink-0 items-center justify-center ${
-              id === "Bag" ? "rounded-full bg-accent text-black" : "text-foreground"
-            }`}
+            className={`inline-flex h-4 w-4 shrink-0 items-center justify-center ${iconTileClass(id, false)}`}
           >
             <ActivityIcon id={id} />
           </span>
