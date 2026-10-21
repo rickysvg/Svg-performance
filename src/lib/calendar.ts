@@ -14,6 +14,8 @@ import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
+import { listDayPlansForUser } from "@/lib/my-workouts";
+import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { timeZoneForUser } from "@/lib/profile";
@@ -53,6 +55,9 @@ export type CalendarActivity = {
   weekday?: string;
   /** Lift, hard bag, or hard conditioning. */
   heavy?: boolean;
+  /** A saved workout applied to this day. It is not a program session, so it cannot be moved. */
+  customPlan?: boolean;
+  customPlanId?: string;
 };
 
 export type CalendarDay = {
@@ -72,6 +77,8 @@ export type CalendarDay = {
   summary: string;
   active: boolean;
   movedFrom?: string;
+  /** Set when this civil day has a saved workout applied. */
+  revertKey?: string;
 };
 
 export type ProgramDaySummary = {
@@ -453,6 +460,25 @@ export async function getCalendarSchedule(
       }),
     ),
   );
+
+  const applied = await listDayPlansForUser(
+    userId,
+    days.map((day) => formatDayParam(day.date, tz)),
+  );
+  const appliedByDay = new Map<string, typeof applied>();
+  for (const plan of applied) {
+    const list = appliedByDay.get(plan.dayKey) ?? [];
+    list.push(plan);
+    appliedByDay.set(plan.dayKey, list);
+  }
+  for (const day of days) {
+    const key = formatDayParam(day.date, tz);
+    const plans = appliedByDay.get(key) ?? [];
+    if (plans.length === 0) continue;
+    day.activities = withDayPlans(day.activities, plans);
+    day.summary = summaryAfterDayPlans(day.summary, plans);
+    day.revertKey = key;
+  }
 
   const titles = [skill?.title, strength?.title].filter((title): title is string => Boolean(title));
 

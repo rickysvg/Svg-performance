@@ -111,26 +111,44 @@ export function draftsForLibraryExercise(
   }));
 }
 
-/** Rest and the library rep string travel with the set. No schema change. */
+/** Rest, reps, and optional load notes travel with the set. No schema change. */
 export function addedPrescriptionKey(input: {
   exerciseName: string;
   reps: string;
   restSeconds: number;
+  loadText?: string;
+  notes?: string;
 }) {
   const rest = Math.max(0, Math.round(input.restSeconds) || 0);
-  return `added|${encodeURIComponent(input.exerciseName.trim())}|${encodeURIComponent(input.reps.trim())}|${rest}`.slice(
-    0,
-    160,
-  );
+  const base = `added|${encodeURIComponent(input.exerciseName.trim())}|${encodeURIComponent(input.reps.trim())}|${rest}`;
+  const loadText = input.loadText?.trim() ?? "";
+  const notes = input.notes?.trim() ?? "";
+  const extra = loadText || notes ? `|${encodeURIComponent(loadText)}|${encodeURIComponent(notes)}` : "";
+  return `${base}${extra}`.slice(0, 240);
 }
 
-export function parseAddedPlan(key: string | null | undefined): { reps: string; restSeconds: number } | null {
+function decodePlanPart(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+export function parseAddedPlan(
+  key: string | null | undefined,
+): { reps: string; restSeconds: number; loadText?: string; notes?: string } | null {
   const raw = String(key ?? "");
   if (!raw.startsWith("added|")) return null;
   const parts = raw.split("|");
   if (parts.length < 4) return null;
-  const reps = decodeURIComponent(parts[2] ?? "");
+  const reps = decodePlanPart(parts[2] ?? "");
   const restSeconds = Number(parts[3]);
   if (!Number.isFinite(restSeconds)) return null;
-  return { reps, restSeconds: Math.max(0, restSeconds) };
+  const base = { reps, restSeconds: Math.max(0, restSeconds) };
+  if (parts.length < 5) return base;
+  const loadText = decodePlanPart(parts[4] ?? "");
+  const notes = decodePlanPart(parts[5] ?? "");
+  if (!loadText && !notes) return base;
+  return { ...base, loadText, notes };
 }

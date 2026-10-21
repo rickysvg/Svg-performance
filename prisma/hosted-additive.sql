@@ -649,3 +649,83 @@ BEGIN
     ALTER TABLE "Profile" ADD COLUMN "memberProDays" INTEGER;
   END IF;
 END $$;
+
+-- Saved workouts. Additive, idempotent. No drops and no backfill.
+DO $$
+BEGIN
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."SavedWorkout"') IS NULL THEN
+    CREATE TABLE "SavedWorkout" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "lastUsedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "SavedWorkout_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "SavedWorkout_userId_updatedAt_idx" ON "SavedWorkout"("userId", "updatedAt");
+    ALTER TABLE "SavedWorkout"
+      ADD CONSTRAINT "SavedWorkout_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."SavedWorkoutExercise"') IS NULL THEN
+    CREATE TABLE "SavedWorkoutExercise" (
+      "id" TEXT NOT NULL,
+      "savedWorkoutId" TEXT NOT NULL,
+      "sortOrder" INTEGER NOT NULL,
+      "name" TEXT NOT NULL,
+      "sets" INTEGER NOT NULL,
+      "reps" TEXT NOT NULL,
+      "loadText" TEXT NOT NULL DEFAULT '',
+      "restSeconds" INTEGER NOT NULL DEFAULT 60,
+      "rir" TEXT NOT NULL DEFAULT '',
+      "logMode" TEXT NOT NULL DEFAULT 'load_reps',
+      "notes" TEXT NOT NULL DEFAULT '',
+      CONSTRAINT "SavedWorkoutExercise_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "SavedWorkoutExercise_savedWorkoutId_idx" ON "SavedWorkoutExercise"("savedWorkoutId");
+    ALTER TABLE "SavedWorkoutExercise"
+      ADD CONSTRAINT "SavedWorkoutExercise_savedWorkoutId_fkey"
+      FOREIGN KEY ("savedWorkoutId") REFERENCES "SavedWorkout"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."DayWorkoutPlan"') IS NULL THEN
+    CREATE TABLE "DayWorkoutPlan" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "dayKey" TEXT NOT NULL,
+      "mode" TEXT NOT NULL,
+      "savedWorkoutId" TEXT,
+      "name" TEXT NOT NULL,
+      "exercisesJson" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "DayWorkoutPlan_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "DayWorkoutPlan_userId_dayKey_idx" ON "DayWorkoutPlan"("userId", "dayKey");
+    ALTER TABLE "DayWorkoutPlan"
+      ADD CONSTRAINT "DayWorkoutPlan_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    ALTER TABLE "DayWorkoutPlan"
+      ADD CONSTRAINT "DayWorkoutPlan_savedWorkoutId_fkey"
+      FOREIGN KEY ("savedWorkoutId") REFERENCES "SavedWorkout"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."WorkoutSession"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'savedWorkoutId'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "savedWorkoutId" TEXT;
+  END IF;
+
+  IF to_regclass('public."WorkoutSession"') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'dayPlanId'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "dayPlanId" TEXT;
+  END IF;
+END $$;

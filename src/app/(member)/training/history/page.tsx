@@ -6,10 +6,15 @@ import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
+import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { exerciseNamesInOrder } from "@/lib/logger-insert";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 
 export default async function HistoryPage() {
   const user = await requireUser();
+  const profile = await getProfileForUser(user.id);
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sessions = await listWorkoutSessionsForUser(user.id);
 
   return (
@@ -18,7 +23,16 @@ export default async function HistoryPage() {
         <Link href="/training" className="text-sm text-accent underline-offset-4 hover:underline">
           Back to Training
         </Link>
-        <h1 className="mt-2 text-2xl">Workout history</h1>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <h1 className="text-2xl">Workout history</h1>
+          <Link
+            href="/training/my-workouts"
+            data-my-workouts-link
+            className="touch-target inline-flex shrink-0 items-center rounded-full border border-line bg-card px-4 text-sm font-semibold"
+          >
+            My Workouts
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-muted">
           Logged sessions persist after refresh. Open any row to correct a mistake.
         </p>
@@ -42,7 +56,8 @@ export default async function HistoryPage() {
             const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
             const names = exerciseNamesInOrder(session.sets);
             return (
-            <li key={session.id} className="flex items-stretch gap-2">
+            <li key={session.id} className="space-y-2">
+            <div className="flex items-stretch gap-2">
               <Link
                 href={`/training/log/${session.id}`}
                 className="block min-w-0 flex-1 rounded-2xl border border-line bg-card p-4 hover:border-accent"
@@ -74,6 +89,15 @@ export default async function HistoryPage() {
                 </Link>
               ) : null}
               <DeleteWorkoutButton workoutId={session.id} compact />
+            </div>
+            <SaveWorkoutButton
+              workoutId={session.id}
+              defaultName={defaultSavedWorkoutName({
+                title: session.title,
+                date: new Date(session.performedAt),
+                timeZone,
+              })}
+            />
             </li>
             );
           })}
