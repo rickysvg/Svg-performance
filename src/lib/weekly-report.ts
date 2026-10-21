@@ -122,7 +122,7 @@ export async function upsertWeeklyCoachComment(input: {
   if (!planHasCoachReview(planId)) {
     throw new AppError(
       "COACHING",
-      "Coach comments are on 1-on-1 Coaching with Ricky. Do not invent a Ricky note for other plans.",
+      "Coach comments are on VIP Coaching. Do not invent a Ricky note for other plans.",
     );
   }
   const body = input.body.trim().slice(0, 2000);

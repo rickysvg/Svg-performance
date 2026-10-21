@@ -14,7 +14,7 @@ export function CheckInOverrideForm({
     <section className="rounded-3xl border border-line bg-card px-4 py-4">
       <h2 className="text-xl">Testing access</h2>
       <p className="mt-1 text-sm text-muted">
-        Weekly check-ins are on 1-on-1 Coaching with Ricky. Older coaching plans still count.
+        Weekly check-ins are on VIP Coaching. Older coaching plans still count.
         Turn one account on here when you need to test.
       </p>
       <div className="mt-3">

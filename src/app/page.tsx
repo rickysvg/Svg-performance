@@ -99,7 +99,8 @@ export default async function MarketingPage({
               separately.
             </li>
             <li>
-              Pro is $9.99/mo or $72.99/yr after a 7-day trial with no card. Verified SVG
+              Pro is $9.99/mo or $72.99/yr after a 7-day trial with no card. VIP Coaching
+              is $249/mo, includes Pro, and is limited to 20 athletes. Verified SVG
               Academy members get the core app with their dues and Pro free for {MEMBER_PRO_DAYS} days.
               Checkout is coming soon.
             </li>

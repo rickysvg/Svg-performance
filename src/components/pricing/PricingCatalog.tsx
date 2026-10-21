@@ -179,7 +179,7 @@ export function PricingCatalog({
       </article>
 
       <p className="text-sm text-foreground">
-        VIP is by application. In-person intensives and VIP: apply through{" "}
+        In-person VIP is by application. In-person intensives and VIP: apply through{" "}
         <Link href="/book" className="text-accent underline">
           Book with Ricky
         </Link>

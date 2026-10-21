@@ -56,7 +56,7 @@ export default async function BookPage() {
           <p className="mt-3 text-sm text-muted">
             This plan has no monthly coaching credits.{" "}
             <Link href="/pricing" className="text-accent underline">
-              See 1-on-1 Coaching
+              See VIP Coaching
             </Link>
           </p>
         )}

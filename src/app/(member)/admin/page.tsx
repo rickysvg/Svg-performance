@@ -78,7 +78,7 @@ export default async function AdminPage() {
         />
         <AdminTile
           href="/admin/coaching"
-          label="Coaching"
+          label="VIP Coaching"
           hint={
             coachTone === "attention"
               ? counts.coachingUsed >= counts.coachingCap

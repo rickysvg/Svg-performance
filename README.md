@@ -85,7 +85,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym monthly ($19) |
 | `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for SVG Performance nonmember monthly ($29) |
 | `STRIPE_PRICE_PERFORMANCE_MONTHLY` / `_YEAR` | Optional. TEST price ids for SVG Pro ($9.99/mo, $72.99/yr). Checkout stays off until billing is approved |
-| `STRIPE_PRICE_COACHING_MONTHLY` | Optional. TEST price id for 1-on-1 coaching ($249/mo) |
+| `STRIPE_PRICE_COACHING_MONTHLY` | Optional. TEST price id for VIP Coaching ($249/mo). The env name stays; the member-facing name is VIP Coaching |
 | `STRIPE_PRICE_PERFORMANCE_ANNUAL_*` | Optional. Inactive prepaid annual stubs ($72.99/yr) |
 | `STRIPE_PRICE_CONDITIONING_GYM` / `_NON` | Optional. Fighter Conditioning monthly $49 / $59 |
 | `STRIPE_PRICE_CONDITIONING_CAMP_*` / `_ANNUAL_*` | Optional. Inactive 12-Week Fight Camp / annual stubs |
@@ -109,7 +109,7 @@ If Polar keys are missing: Heart rate still works with Apple Health import, manu
 
 ## Weekly check-ins
 
-1-on-1 Coaching with Ricky (`coaching` and `coaching_*` checkout rows, $249/mo) gets a weekly form at `/checkin`. Existing Fighter Development, Elite, VIP, and Platinum subscriptions keep that access. SVG Performance does not. Admins, including emails in `ADMIN_EMAILS`, review check-ins at `/coach/checkins`. An admin can turn the form on for one account from that page when testing.
+VIP Coaching (`coaching` and `coaching_*` checkout rows, $249/mo) gets a weekly form at `/checkin`. Existing Fighter Development, Elite, VIP, and Platinum subscriptions keep that access. SVG Performance does not. Admins, including emails in `ADMIN_EMAILS`, review check-ins at `/coach/checkins`. An admin can turn the form on for one account from that page when testing.
 
 Reminders:
 

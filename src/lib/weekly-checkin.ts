@@ -76,7 +76,7 @@ function plannedCount(profile: {
 
 /**
  * The weekly check-in form is in the academy tier and Pro. Ricky only reviews check-ins
- * from 1-on-1 coaching members (or accounts an admin turned on); see weeklyCheckInReviewed.
+ * from VIP Coaching members (or accounts an admin turned on); see weeklyCheckInReviewed.
  */
 export async function weeklyCheckInAllowed(userId: string, now = new Date()) {
   if (await weeklyCheckInReviewed(userId, now)) return true;
@@ -84,7 +84,7 @@ export async function weeklyCheckInAllowed(userId: string, now = new Date()) {
   return tier === "academy" || tier === "pro";
 }
 
-/** 1-on-1 coaching (or an admin override): Ricky reviews and replies. */
+/** VIP Coaching (or an admin override): Ricky reviews and replies. */
 export async function weeklyCheckInReviewed(userId: string, now = new Date()) {
   const [subscription, profile] = await Promise.all([
     getLatestSubscription(userId),
@@ -419,7 +419,7 @@ function presentFlags(raw: string): CheckInFlag[] {
 
 export async function listCheckInsForCoach() {
   const rows = await prisma.weeklyCheckIn.findMany({
-    // Ricky's queue: 1-on-1 coaching members and admin-enabled accounts only.
+    // Ricky's queue: VIP Coaching members and admin-enabled accounts only.
     where: {
       OR: [
         { user: { profile: { weeklyCheckInOverride: "force_on" } } },

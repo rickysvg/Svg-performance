@@ -43,7 +43,7 @@ export function JournalForm() {
           required
           rows={4}
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
-          placeholder="Your words. A coach can add feedback later on coaching tiers."
+          placeholder="Your words. A coach can add feedback later on VIP Coaching."
         />
       </label>
       <button

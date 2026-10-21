@@ -159,11 +159,11 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
   coaching: {
     id: "coaching",
     section: "coaching",
-    label: "1-on-1 Coaching with Ricky",
+    label: "VIP Coaching",
     gymPriceLabel: "$249/mo",
     nonmemberPriceLabel: "$249/mo",
     summary:
-      "Custom programming with Ricky. Limited to 20 athletes. Includes Pro. VIP is by application.",
+      "Custom programming with Ricky. Limited to 20 athletes. Includes Pro. In-person VIP is by application.",
     includes: [...COACHING_INCLUDES],
     rank: 7,
     features: [
