@@ -58,6 +58,7 @@ import {
 } from "@/lib/rest-timer";
 import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
+import { resolveSessionElapsed, sessionElapsedState } from "@/lib/session-elapsed";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
@@ -313,9 +314,29 @@ function serverRest(session: { restExerciseName: string; restEndsAt: Date | null
   );
 }
 
-function SessionTimer({ startedAtMs }: { startedAtMs: number }) {
+function SessionTimer({
+  status,
+  createdAt,
+  updatedAt,
+  finishedAt,
+  elapsedSeconds,
+  timerStartedAt,
+}: {
+  status: string;
+  createdAt: Date | string;
+  updatedAt?: Date | string | null;
+  finishedAt?: Date | string | null;
+  elapsedSeconds?: number | null;
+  timerStartedAt?: Date | string | null;
+}) {
   const [now, setNow] = useState(() => Date.now());
+  const view = resolveSessionElapsed(
+    { status, createdAt, updatedAt, finishedAt, elapsedSeconds, timerStartedAt },
+    now,
+  );
+  const ticking = view.ticking;
   useEffect(() => {
+    if (!ticking) return;
     const tick = () => setNow(Date.now());
     const timer = window.setInterval(tick, 1000);
     const onWake = () => tick();
@@ -326,12 +347,18 @@ function SessionTimer({ startedAtMs }: { startedAtMs: number }) {
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("focus", onWake);
     };
-  }, []);
-  const seconds = Math.max(0, Math.floor((now - startedAtMs) / 1000));
+  }, [ticking]);
   return (
-    <span className="tabular-nums text-sm text-muted" data-session-elapsed={seconds}>
-      {formatRestClock(seconds)}
-    </span>
+    <>
+      <span
+        className="tabular-nums text-sm text-muted"
+        data-session-elapsed={view.seconds}
+        data-session-elapsed-state={sessionElapsedState(view, status)}
+      >
+        {view.label}
+      </span>
+      <input type="hidden" name="elapsedSeconds" value={view.seconds} />
+    </>
   );
 }
 
@@ -1024,7 +1051,14 @@ export function WorkoutLogForm({
                   </span>
                 </p>
               ) : null}
-              <SessionTimer startedAtMs={new Date(session.createdAt).getTime()} />
+              <SessionTimer
+                status={session.status}
+                createdAt={session.createdAt}
+                updatedAt={session.updatedAt}
+                finishedAt={session.finishedAt}
+                elapsedSeconds={session.elapsedSeconds}
+                timerStartedAt={session.timerStartedAt}
+              />
             </div>
             <RoundTimerButton />
             <div className="flex flex-col items-end">

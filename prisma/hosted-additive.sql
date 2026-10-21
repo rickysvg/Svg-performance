@@ -754,3 +754,32 @@ BEGIN
       FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;
+
+-- Header timer freeze. Nullable columns only; existing workouts keep their rows.
+DO $$
+BEGIN
+  IF to_regclass('public."WorkoutSession"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'finishedAt'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "finishedAt" TIMESTAMP(3);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'elapsedSeconds'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "elapsedSeconds" INTEGER;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'timerStartedAt'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "timerStartedAt" TIMESTAMP(3);
+  END IF;
+END $$;

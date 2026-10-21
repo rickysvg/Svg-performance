@@ -35,6 +35,18 @@ import {
   sessionHasLoggedWork,
   setHasLoggedWork,
 } from "@/lib/logged-work";
+import {
+  cappedElapsedSeconds,
+  freezeElapsedOnSave,
+  legacyFrozenSeconds,
+  SESSION_DURATION_CAP_SECONDS,
+} from "@/lib/session-elapsed";
+import {
+  attachWorkoutTimer,
+  readDraftTimerFields,
+  readWorkoutTimerFields,
+  workoutTimerColumnsAvailable,
+} from "@/lib/workout-timer-columns";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -383,7 +395,7 @@ export async function getOwnWorkoutSessionOrNull(workoutId: string, userId: stri
     include: WORKOUT_DETAIL_INCLUDE,
   });
   if (!session || session.userId !== userId) return null;
-  return session;
+  return attachWorkoutTimer(session, prisma);
 }
 
 export async function getWorkoutSessionForUser(
@@ -394,7 +406,7 @@ export async function getWorkoutSessionForUser(
     where: { id: workoutId },
     include: WORKOUT_DETAIL_INCLUDE,
   });
-  return assertOwnSession(session, userId);
+  return attachWorkoutTimer(assertOwnSession(session, userId), prisma);
 }
 
 const ROUND_LOG_NAMES = {
@@ -669,6 +681,8 @@ export async function updateWorkoutSessionForUser(input: {
    */
   baseUpdatedAt?: string | Date | null;
   timeZone?: string;
+  /** Header seconds the logger was showing when Save was pressed. */
+  elapsedSeconds?: number | null;
 }) {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -691,7 +705,7 @@ export async function updateWorkoutSessionForUser(input: {
       canonical.status === "complete" &&
       sessionHasLoggedWork(canonical.sets)
     ) {
-      return canonical;
+      return attachWorkoutTimer(canonical, prisma);
     }
   }
   const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
@@ -709,6 +723,7 @@ export async function updateWorkoutSessionForUser(input: {
     throw new AppError("WORKOUT", "Enter a valid date.");
   }
 
+  const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const updated = await prisma.$transaction(async (tx) => {
     const databaseUrl = process.env.DATABASE_URL ?? "";
     if (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://")) {
@@ -756,6 +771,13 @@ export async function updateWorkoutSessionForUser(input: {
       if (saved?.status === "complete" && input.status === "draft") return saved;
       throw new StaleDraftError();
     }
+    const storedTimer = timerColumns
+      ? await readWorkoutTimerFields(current.id, tx)
+      : { finishedAt: null, elapsedSeconds: null, timerStartedAt: null };
+    const timer =
+      input.status === "complete"
+        ? freezeElapsedOnSave({ ...current, ...storedTimer }, new Date(), input.elapsedSeconds)
+        : null;
     await tx.workoutSet.deleteMany({
       where: { workoutSessionId: input.workoutId },
     });
@@ -777,6 +799,13 @@ export async function updateWorkoutSessionForUser(input: {
                 input.rest && Number.isFinite(input.rest.endsAtMs)
                   ? new Date(input.rest.endsAtMs)
                   : null,
+            }
+          : {}),
+        ...(timerColumns && timer
+          ? {
+              finishedAt: timer.finishedAt,
+              elapsedSeconds: timer.elapsedSeconds,
+              timerStartedAt: timer.timerStartedAt,
             }
           : {}),
         sets: {
@@ -810,7 +839,7 @@ export async function updateWorkoutSessionForUser(input: {
   if (input.status === "complete" && existing.status !== "complete") {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }
-  return updated;
+  return attachWorkoutTimer(updated, prisma);
 }
 
 /**
@@ -822,17 +851,25 @@ export async function updateWorkoutSessionForUser(input: {
  */
 export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZone: string) {
   const today = dayKey(now, timeZone);
-  const drafts = await prisma.workoutSession.findMany({
-    where: { userId, status: "draft" },
-    select: {
-      id: true,
-      programDayId: true,
-      performedAt: true,
-      createdAt: true,
-      sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+  const timerColumns = await workoutTimerColumnsAvailable(prisma);
+  const timers = await readDraftTimerFields(userId, prisma);
+  const drafts = (
+    await prisma.workoutSession.findMany({
+      where: { userId, status: "draft" },
+      select: {
+        id: true,
+        programDayId: true,
+        performedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    })
+  ).map((row) => ({
+    ...row,
+    ...(timers.get(row.id) ?? { finishedAt: null, elapsedSeconds: null, timerStartedAt: null }),
+  }));
   const completes = await prisma.workoutSession.findMany({
     where: { userId, status: "complete", sets: loggedSetSome },
     select: { id: true, programDayId: true, performedAt: true, createdAt: true },
@@ -846,6 +883,11 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
   const ids = drafts
     .filter((row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today)
     .filter((row) => {
+      // Resume starts a live segment today. Do not close it out from under the member.
+      if (row.timerStartedAt && dayKey(row.timerStartedAt, timeZone) >= today) return false;
+      return true;
+    })
+    .filter((row) => {
       if (!row.programDayId) return true;
       const key = `${row.programDayId}:${sessionCivilDay(row, timeZone)}`;
       if (alreadyLogged.has(key) || claimed.has(key)) return false;
@@ -854,11 +896,28 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
     })
     .map((row) => row.id);
   if (ids.length === 0) return 0;
-  const result = await prisma.workoutSession.updateMany({
-    where: { id: { in: ids }, userId, status: "draft" },
-    data: { status: "complete" },
-  });
-  return result.count;
+  let count = 0;
+  for (const row of drafts) {
+    if (!ids.includes(row.id)) continue;
+    const result = await prisma.workoutSession.updateMany({
+      where: { id: row.id, userId, status: "draft" },
+      data: {
+        status: "complete",
+        ...(timerColumns
+          ? {
+              finishedAt: row.finishedAt ?? row.updatedAt,
+              elapsedSeconds:
+                row.elapsedSeconds != null
+                  ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(row.elapsedSeconds)))
+                  : cappedElapsedSeconds(row.createdAt, row.updatedAt),
+              timerStartedAt: null,
+            }
+          : {}),
+      },
+    });
+    count += result.count;
+  }
+  return count;
 }
 
 /**
@@ -869,11 +928,19 @@ export async function reopenEmptyCompletion<
   T extends { id: string; status: string; sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[] },
 >(session: T): Promise<T> {
   if (session.status !== "complete" || sessionHasLoggedWork(session.sets)) return session;
+  const timerColumns = await workoutTimerColumnsAvailable(prisma);
   await prisma.workoutSession.update({
     where: { id: session.id },
-    data: { status: "draft" },
+    data: {
+      status: "draft",
+      ...(timerColumns ? { finishedAt: null, elapsedSeconds: null, timerStartedAt: null } : {}),
+    },
   });
-  return { ...session, status: "draft" };
+  return {
+    ...session,
+    status: "draft",
+    ...(timerColumns ? { finishedAt: null, elapsedSeconds: null, timerStartedAt: null } : {}),
+  };
 }
 
 /**
@@ -888,12 +955,24 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
     }),
     userId,
   );
-  if (existing.status !== "complete") return existing;
-  return prisma.workoutSession.update({
+  if (existing.status !== "complete") return attachWorkoutTimer(existing, prisma);
+  const timerColumns = await workoutTimerColumnsAvailable(prisma);
+  const stored = await readWorkoutTimerFields(existing.id, prisma);
+  const elapsed =
+    stored.elapsedSeconds != null && Number.isFinite(stored.elapsedSeconds)
+      ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(stored.elapsedSeconds)))
+      : legacyFrozenSeconds({ ...existing, ...stored });
+  const timerStartedAt = new Date();
+  const updated = await prisma.workoutSession.update({
     where: { id: existing.id },
-    data: { status: "draft" },
+    data: {
+      status: "draft",
+      ...(timerColumns ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt } : {}),
+    },
     include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
   });
+  if (!timerColumns) return attachWorkoutTimer(updated, prisma);
+  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt };
 }
 
 /** Delete a draft the member left without logging. Never deletes a set they typed. */
