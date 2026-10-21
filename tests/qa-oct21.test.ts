@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
@@ -13,6 +14,8 @@ import { mergeReplacementSets } from "@/lib/exercise-swap-store";
 import { getCalendarSchedule, weekSessionTally } from "@/lib/calendar";
 import { formatDayParam } from "@/lib/home";
 import { getDemoProgram } from "@/lib/programs";
+import { sessionCompletionDay } from "@/lib/performed-at";
+import { streakRingRatio } from "@/lib/streaks";
 import { completedLocalDayKeys, completedProgramDayIdsOnDays, startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
 import { addZonedDays, mondayOfZoned } from "@/lib/timezone";
 
@@ -30,6 +33,15 @@ describe("QA Oct 21 rules", () => {
     expect(mealTypeForZonedNow(new Date("2026-10-21T18:05:00.000Z"), "America/Denver")).toBe("lunch");
     expect(futureWorkoutPulledBack("Thursday:lift", "Wednesday", "Wednesday")).toBe(false);
     expect(futureWorkoutPulledBack("Thursday:lift", "Tuesday", "Wednesday")).toBe(true);
+    const finished = new Date("2026-10-22T03:30:00.000Z");
+    expect(sessionCompletionDay({ performedAt: finished }, "America/Denver")).toBe("2026-10-21");
+    expect(streakRingRatio(3, 3)).toBe(1);
+    expect(streakRingRatio(3, 9)).toBeCloseTo(1 / 3);
+    expect(streakRingRatio(0, 3)).toBe(0);
+    const progress = readFileSync("src/app/(member)/progress/page.tsx", "utf8");
+    expect(progress).toContain("data-sparring-week");
+    expect(progress).not.toContain("data-coach-clear");
+    expect(readFileSync("src/components/progress/SparringTrend.tsx", "utf8")).toContain("compact");
   });
 
   it("keeps a done set with blank reps done when that exercise is swapped", () => {
@@ -94,7 +106,7 @@ describe("QA Oct 21 saved logs", () => {
     expect(snapshot.suggestedWeightLb).toBe(180);
   });
 
-  it("marks Thursday's lift done on the calendar when it was finished earlier in the week", async () => {
+  it("files a finished lift on the completion day, matching the week strip", async () => {
     const user = await makeUser("qa-oct21-early@example.com");
     await prisma.profile.update({
       where: { userId: user.id },
@@ -125,11 +137,12 @@ describe("QA Oct 21 saved logs", () => {
       preferredUnits: "lb",
       timeZone: "America/Denver",
     });
+    const finishedAt = new Date("2026-10-22T03:30:00.000Z");
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
       title: session.title,
-      performedAt: wednesday,
+      performedAt: finishedAt,
       notes: "",
       status: "complete",
       sets: [
@@ -146,10 +159,21 @@ describe("QA Oct 21 saved logs", () => {
     });
 
     const after = await getCalendarSchedule(user.id, wednesday, wednesday);
-    const thursdayAfter = after.days.find((day) => day.heading.includes("Thursday"));
-    const finished = thursdayAfter?.activities.find((item) => item.programDayId === lift?.programDayId);
-    expect(finished?.status).toBe("complete");
-    expect(finished?.subtitle.startsWith("Missed")).toBe(false);
+    const onDay = (key: string) =>
+      after.days.find((day) => formatDayParam(day.date, "America/Denver") === key);
+    const wednesdayCard = onDay("2026-10-21")?.activities.find(
+      (item) => item.programDayId === lift?.programDayId,
+    );
+    const thursdayCard = onDay("2026-10-22")?.activities.find(
+      (item) => item.programDayId === lift?.programDayId,
+    );
+    const mondayLift = onDay("2026-10-19")?.activities.find(
+      (item) => item.kind === "workout" && /lift 1/i.test(item.title),
+    );
+    expect(wednesdayCard?.status).toBe("complete");
+    expect(wednesdayCard?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(thursdayCard?.status).not.toBe("complete");
+    expect(mondayLift?.subtitle.startsWith("Missed")).toBe(true);
     const monday = mondayOfZoned(wednesday, "America/Denver");
     const logged = await completedLocalDayKeys(
       user.id,
@@ -157,14 +181,20 @@ describe("QA Oct 21 saved logs", () => {
       addZonedDays(monday, 8, "America/Denver"),
       "America/Denver",
     );
-    const doneIds = await completedProgramDayIdsOnDays(
+    const doneOnWednesday = await completedProgramDayIdsOnDays(
       user.id,
-      after.days.map((day) => formatDayParam(day.date, "America/Denver")),
+      ["2026-10-21"],
       "America/Denver",
     );
-    expect(doneIds).toContain(lift?.programDayId);
-    expect(logged.length).toBeGreaterThan(0);
-    expect(weekSessionTally(after.days).done).toBeGreaterThan(0);
+    const doneOnThursday = await completedProgramDayIdsOnDays(
+      user.id,
+      ["2026-10-22"],
+      "America/Denver",
+    );
+    expect(logged).toEqual(["2026-10-21"]);
+    expect(doneOnWednesday).toContain(lift?.programDayId);
+    expect(doneOnThursday).not.toContain(lift?.programDayId);
+    expect(weekSessionTally(after.days).done).toBe(1);
   });
 
   it("keeps a blank done set checked after a later save", async () => {

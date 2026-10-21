@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { loggedSetSome } from "@/lib/logged-work";
-import { sessionCivilDay } from "@/lib/performed-at";
+import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { getProfileForUser } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
 import { addZonedDays, dayKey, mondayOfZoned, zonedCivilToUtc, APP_TIMEZONE } from "@/lib/timezone";
@@ -156,7 +156,7 @@ export async function getHomeTelemetry(input: {
   });
   const streak = buildTrainingStreak({
     completedDates: completed.map((row) => {
-      const key = sessionCivilDay(row, timeZone);
+      const key = sessionCompletionDay(row, timeZone);
       const [year, month, day] = key.split("-").map(Number);
       return zonedCivilToUtc(year!, month!, day!, timeZone);
     }),

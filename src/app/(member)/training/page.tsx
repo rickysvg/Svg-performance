@@ -200,11 +200,7 @@ export default async function TrainingPage({
     ),
   );
   const doneOnView = new Set(
-    await completedProgramDayIdsOnDays(
-      user.id,
-      strip.map((day) => day.dayParam),
-      tz,
-    ),
+    await completedProgramDayIdsOnDays(user.id, [dayParam], tz),
   );
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({

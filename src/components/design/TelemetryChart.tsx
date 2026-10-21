@@ -59,6 +59,7 @@ export function TelemetryChart({
   variant = "line",
   empty,
   yDomain,
+  compact = false,
 }: {
   title: string;
   description?: string;
@@ -67,9 +68,11 @@ export function TelemetryChart({
   variant?: "line" | "bar";
   empty: string;
   yDomain?: { min: number; max: number };
+  /** Shorter plot so a ratings chart does not leave a tall empty band. */
+  compact?: boolean;
 }) {
   const width = 320;
-  const height = 132;
+  const height = compact ? 72 : 132;
   const padL = 8;
   const padR = 8;
   const padT = 12;
@@ -103,7 +106,7 @@ export function TelemetryChart({
       </figcaption>
       {hasValue ? (
         <div className="hc-plot hc-scan px-1 pt-1">
-          <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full" aria-hidden>
+          <svg viewBox={`0 0 ${width} ${height}`} className={`${compact ? "h-16" : "h-32"} w-full`} aria-hidden>
             {grid.map((line) => (
               <line
                 key={line.y}
@@ -188,7 +191,7 @@ export function TelemetryChart({
           </svg>
         </div>
       ) : (
-        <div className="hc-plot flex h-32 items-center px-4" role="status">
+        <div className={`hc-plot flex items-center px-4 ${compact ? "h-16" : "h-32"}`} role="status">
           <p className="text-sm text-muted">{empty}</p>
         </div>
       )}

@@ -3,6 +3,7 @@ import {
   formatTelemetryNumber,
   type HomeTelemetrySnapshot,
 } from "@/lib/home-telemetry";
+import { streakRingRatio } from "@/lib/streaks";
 
 function Stat({
   label,
@@ -35,11 +36,9 @@ function StreakGauge({
   longest: number;
   compact?: boolean;
 }) {
-  const target = Math.max(longest, current, 1);
-  const ratio = Math.min(1, current / target);
+  const ratio = streakRingRatio(current, longest);
   const radius = 28;
-  const circ = 2 * Math.PI * radius;
-  const dash = circ * ratio;
+  const full = ratio >= 1;
   return (
     <article
       className={`flex items-center border border-[#cbf805]/25 bg-black/45 ${compact ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2"}`}
@@ -53,8 +52,11 @@ function StreakGauge({
           fill="none"
           stroke="#CBF805"
           strokeWidth="4"
-          strokeDasharray={`${dash} ${circ - dash}`}
+          pathLength={100}
+          strokeLinecap="round"
+          strokeDasharray={full ? undefined : `${ratio * 100} ${100 - ratio * 100}`}
           transform="rotate(-90 36 36)"
+          data-streak-ring={full ? "full" : ratio > 0 ? "partial" : "empty"}
         />
       </svg>
       <div className="min-w-0">

@@ -213,7 +213,7 @@ export default async function ProgressPage() {
 
       <HomeTelemetry data={telemetry} title={telemetryTitle} compact />
 
-      <section className="hc-panel px-2.5 py-2" data-coach-clear>
+      <section className="hc-panel px-2.5 py-2" data-sparring-week>
         <p className="hc-kicker">Sparring</p>
         <h2 className="mt-0.5 text-base">This week</h2>
         <p className="font-telemetry mt-1 text-2xl leading-none text-[#CBF805]">
