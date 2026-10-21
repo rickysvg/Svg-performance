@@ -77,15 +77,28 @@ export function UpgradePreview({
   framed?: boolean;
 }) {
   const copy = BLURBS[kind];
+  const carbon = kind === "coach";
   return (
-    <section className={framed ? "rounded-2xl border border-line bg-white p-5" : "bg-white"}>
-      <p className="font-display text-xs uppercase tracking-[0.06em] text-black">
+    <section
+      className={
+        carbon
+          ? "hc-panel hc-carbon relative p-5 text-white"
+          : framed
+            ? "rounded-2xl border border-line bg-white p-5"
+            : "bg-white"
+      }
+    >
+      <p
+        className={`font-display text-xs uppercase tracking-[0.06em] ${carbon ? "text-[#CBF805]" : "text-black"}`}
+      >
         SVG Pro
       </p>
-      <h2 className="font-display mt-2 text-2xl uppercase tracking-wide text-black">
+      <h2
+        className={`font-display mt-2 text-2xl uppercase tracking-wide ${carbon ? "text-white" : "text-black"}`}
+      >
         {copy.title}
       </h2>
-      <p className="mt-2 text-sm text-muted">{copy.body}</p>
+      <p className={`mt-2 text-sm ${carbon ? "text-white/80" : "text-muted"}`}>{copy.body}</p>
       <div className="mt-4 space-y-3">
         <UpgradeCtas
           canStartTrial={canStartTrial}
@@ -98,13 +111,17 @@ export function UpgradePreview({
           <button
             type="button"
             onClick={onDismiss}
-            className="touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
+            className={
+              carbon
+                ? "touch-target w-full rounded-full border border-[#CBF805]/50 bg-transparent font-semibold text-[#CBF805]"
+                : "touch-target w-full rounded-full border border-black bg-white font-semibold text-black"
+            }
           >
             Not now
           </button>
         ) : null}
       </div>
-      <p className="mt-3 text-xs text-muted">
+      <p className={`mt-3 text-xs ${carbon ? "text-white/60" : "text-muted"}`}>
         Pro is $9.99/mo or $72.99/yr, save 39%, for everyone. Paid plans coming soon. You can
         look at pricing anytime from Profile.
       </p>
