@@ -1,41 +1,33 @@
 "use client";
 
-import { useId } from "react";
 import { BAG_REGION_LABELS, formatBagRegions, type BagRegion, type BagSide } from "@/lib/bag-body";
-import { focusGlows, glowCaption, regionTapSpots, type BodyGlow } from "@/lib/bag-glow";
+import { focusGlows, GLOW_COLOR, glowCaption, glowSrc, regionTapSpots } from "@/lib/bag-glow";
 
 const ATHLETE = "/bagwork/athlete-front.webp";
 
-function BehindGlow({ glows }: { glows: readonly BodyGlow[] }) {
-  const filterId = `body-rim-${useId().replace(/:/g, "")}`;
+function BehindGlow({ ids }: { ids: readonly string[] }) {
+  if (!ids.length) return null;
   return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full"
-      viewBox="0 0 720 1280"
-      preserveAspectRatio="none"
-      aria-hidden
-      data-body-glows
+    <div
+      className="pointer-events-none absolute inset-0 z-0"
       data-glow-layer="behind"
+      data-glow-color={GLOW_COLOR}
+      aria-hidden
     >
-      <defs>
-        <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="14" />
-        </filter>
-      </defs>
-      {glows.map((glow) => (
-        <polyline
-          key={glow.id}
-          data-body-glow={glow.id}
-          points={glow.points.map(([x, y]) => `${x},${y}`).join(" ")}
-          fill="none"
-          stroke="#CBF805"
-          strokeWidth={glow.width}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          filter={`url(#${filterId})`}
+      {ids.map((id) => (
+        // The layer is a blurred dilation of the limb mask. Straight alpha has to survive.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={id}
+          src={glowSrc(id)}
+          alt=""
+          width={720}
+          height={1280}
+          data-body-glow={id}
+          className="absolute inset-0 h-full w-full"
         />
       ))}
-    </svg>
+    </div>
   );
 }
 
@@ -64,14 +56,17 @@ export function BagBodyMap({
     <figure className="space-y-3" data-body-map data-body-side={side} data-body-round={workoutKey ?? ""}>
       <div className="overflow-hidden rounded-2xl bg-[#0c0e11]">
         <div className="relative">
-          <BehindGlow glows={glows} />
-          {/* The cutout has to stay transparent so the rim stays behind the limbs. */}
+          <BehindGlow ids={glows.map((glow) => glow.id)} />
+          {/* The cutout stays transparent so the rim stays behind the limbs. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={ATHLETE}
+            data-athlete
             alt={caption ? `Athlete facing forward. ${emphasis}` : "Athlete facing forward on a black background."}
             width={720}
             height={1280}
+            loading="eager"
+            fetchPriority="high"
             className="relative z-[1] block h-auto w-full"
           />
           {interactive

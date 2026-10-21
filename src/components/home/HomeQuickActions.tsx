@@ -88,6 +88,7 @@ function ActionTile({
         src={action.src}
         alt={action.alt}
         fill
+        priority={action.href === "/training"}
         sizes="(max-width: 390px) 50vw, (max-width: 640px) 45vw, 320px"
         className="object-cover object-center"
       />

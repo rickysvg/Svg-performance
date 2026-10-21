@@ -2,18 +2,27 @@ import type { BagRegion, BagSide } from "@/lib/bag-body";
 
 /**
  * Backlit halos on the forward-facing athlete cutout (720×1280).
- * Points are photo pixels. The stroke sits behind the silhouette, so the
- * body covers the middle and the neon reads as a rim.
+ * Each id is a pre-rendered #CBF805 layer: a blurred, dilated copy of that
+ * body region's alpha, drawn behind the cutout so only the rim shows.
  * Anatomical left is the viewer's right (orthodox lead side).
+ * Bounds are photo pixels of the masked region.
  */
+export const GLOW_COLOR = "#CBF805";
+
 export type BodyGlow = {
   id: string;
   label: string;
   region: BagRegion | null;
   side: "left" | "right" | "mid";
-  points: readonly (readonly [number, number])[];
-  width: number;
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 };
+
+export function glowSrc(id: string) {
+  return `/bagwork/glow/${id}.webp`;
+}
 
 export type BodyTap = {
   id: string;
@@ -25,45 +34,31 @@ export type BodyTap = {
 };
 
 const SHAPES: readonly BodyGlow[] = [
-  { id: "neck", label: "Neck", region: "neck", side: "mid", width: 54, points: [[360, 200], [360, 250]] },
-  { id: "rear-trap", label: "Traps", region: "traps", side: "right", width: 50, points: [[300, 250], [330, 290]] },
-  { id: "lead-trap", label: "Traps", region: "traps", side: "left", width: 50, points: [[420, 250], [390, 290]] },
-  { id: "chest", label: "Chest", region: "chest", side: "mid", width: 120, points: [[360, 340], [360, 430]] },
-  { id: "core", label: "Core", region: "core", side: "mid", width: 130, points: [[360, 430], [360, 620]] },
-  { id: "rear-lat", label: "Lats", region: "lats", side: "right", width: 72, points: [[300, 440], [312, 580]] },
-  { id: "lead-lat", label: "Lats", region: "lats", side: "left", width: 72, points: [[420, 440], [408, 580]] },
-  {
-    id: "rear-arm",
-    label: "Arms",
-    region: "arms",
-    side: "right",
-    width: 100,
-    points: [[238, 294], [209, 384], [194, 461], [185, 538], [179, 614], [184, 670]],
-  },
-  {
-    id: "lead-arm",
-    label: "Arms",
-    region: "arms",
-    side: "left",
-    width: 100,
-    points: [[482, 294], [512, 384], [529, 461], [540, 538], [540, 614], [526, 670]],
-  },
-  { id: "rear-oblique", label: "Obliques", region: "obliques", side: "right", width: 70, points: [[292, 560], [304, 680]] },
-  { id: "lead-oblique", label: "Obliques", region: "obliques", side: "left", width: 70, points: [[428, 560], [416, 680]] },
-  { id: "rear-hip", label: "Hips", region: "hips", side: "right", width: 78, points: [[276, 700], [292, 790]] },
-  { id: "lead-hip", label: "Hips", region: "hips", side: "left", width: 78, points: [[444, 700], [428, 790]] },
-  { id: "rear-flexor", label: "Hip flexors", region: "hip-flexors", side: "right", width: 56, points: [[320, 720], [330, 800]] },
-  { id: "lead-flexor", label: "Hip flexors", region: "hip-flexors", side: "left", width: 56, points: [[400, 720], [390, 800]] },
-  { id: "rear-glute", label: "Glutes", region: "glutes", side: "right", width: 70, points: [[270, 740], [290, 820]] },
-  { id: "lead-glute", label: "Glutes", region: "glutes", side: "left", width: 70, points: [[450, 740], [430, 820]] },
-  { id: "rear-quad", label: "Quads", region: "legs", side: "right", width: 72, points: [[268, 830], [250, 960]] },
-  { id: "lead-quad", label: "Quads", region: "legs", side: "left", width: 72, points: [[460, 830], [478, 960]] },
-  { id: "rear-knee", label: "Knees", region: "knees", side: "right", width: 52, points: [[248, 940], [244, 1000]] },
-  { id: "lead-knee", label: "Knees", region: "knees", side: "left", width: 52, points: [[470, 940], [478, 1000]] },
-  { id: "rear-shin", label: "Shins", region: "shins", side: "right", width: 48, points: [[240, 1000], [230, 1120]] },
-  { id: "lead-shin", label: "Shins", region: "shins", side: "left", width: 48, points: [[480, 1000], [492, 1120]] },
-  { id: "rear-foot", label: "Feet", region: "feet", side: "right", width: 56, points: [[210, 1140], [230, 1180]] },
-  { id: "lead-foot", label: "Feet", region: "feet", side: "left", width: 56, points: [[500, 1140], [530, 1180]] },
+  { id: "neck", label: "Neck", region: "neck", side: "mid", top: 180, bottom: 259, left: 288, right: 431 },
+  { id: "rear-trap", label: "Traps", region: "traps", side: "right", top: 220, bottom: 309, left: 197, right: 345 },
+  { id: "lead-trap", label: "Traps", region: "traps", side: "left", top: 220, bottom: 309, left: 375, right: 525 },
+  { id: "chest", label: "Chest", region: "chest", side: "mid", top: 300, bottom: 429, left: 288, right: 431 },
+  { id: "core", label: "Core", region: "core", side: "mid", top: 420, bottom: 689, left: 202, right: 559 },
+  { id: "rear-lat", label: "Lats", region: "lats", side: "right", top: 440, bottom: 599, left: 235, right: 298 },
+  { id: "lead-lat", label: "Lats", region: "lats", side: "left", top: 440, bottom: 599, left: 421, right: 479 },
+  { id: "rear-arm", label: "Arms", region: "arms", side: "right", top: 241, bottom: 720, left: 157, right: 342 },
+  { id: "lead-arm", label: "Arms", region: "arms", side: "left", top: 241, bottom: 704, left: 401, right: 562 },
+  { id: "rear-oblique", label: "Obliques", region: "obliques", side: "right", top: 540, bottom: 699, left: 202, right: 290 },
+  { id: "lead-oblique", label: "Obliques", region: "obliques", side: "left", top: 540, bottom: 699, left: 426, right: 559 },
+  { id: "rear-hip", label: "Hips", region: "hips", side: "right", top: 680, bottom: 829, left: 203, right: 397 },
+  { id: "lead-hip", label: "Hips", region: "hips", side: "left", top: 680, bottom: 829, left: 452, right: 529 },
+  { id: "rear-flexor", label: "Hip flexors", region: "hip-flexors", side: "right", top: 720, bottom: 879, left: 255, right: 349 },
+  { id: "lead-flexor", label: "Hip flexors", region: "hip-flexors", side: "left", top: 720, bottom: 879, left: 362, right: 457 },
+  { id: "rear-glute", label: "Glutes", region: "glutes", side: "right", top: 700, bottom: 839, left: 192, right: 262 },
+  { id: "lead-glute", label: "Glutes", region: "glutes", side: "left", top: 700, bottom: 839, left: 452, right: 525 },
+  { id: "rear-quad", label: "Quads", region: "legs", side: "right", top: 800, bottom: 999, left: 207, right: 312 },
+  { id: "lead-quad", label: "Quads", region: "legs", side: "left", top: 800, bottom: 999, left: 400, right: 508 },
+  { id: "rear-knee", label: "Knees", region: "knees", side: "right", top: 930, bottom: 1039, left: 207, right: 285 },
+  { id: "lead-knee", label: "Knees", region: "knees", side: "left", top: 930, bottom: 1039, left: 430, right: 508 },
+  { id: "rear-shin", label: "Shins", region: "shins", side: "right", top: 1000, bottom: 1159, left: 171, right: 269 },
+  { id: "lead-shin", label: "Shins", region: "shins", side: "left", top: 1000, bottom: 1159, left: 445, right: 536 },
+  { id: "rear-foot", label: "Feet", region: "feet", side: "right", top: 1120, bottom: 1191, left: 159, right: 256 },
+  { id: "lead-foot", label: "Feet", region: "feet", side: "left", top: 1120, bottom: 1194, left: 458, right: 547 },
 ];
 
 const TAPS: readonly BodyTap[] = [
@@ -116,7 +111,7 @@ const REGION_SHAPES: Record<BagRegion, readonly string[]> = {
   feet: ["rear-foot", "lead-foot"],
 };
 
-/** Per-workout focus. Strokes run the length of the area and render behind the figure. */
+/** Per-workout focus. Each id is a soft rim rendered behind the figure. */
 const ROUND_FOCUS: Record<string, readonly string[]> = {
   "all-hooks": ["rear-arm", "lead-arm", "rear-oblique", "lead-oblique", "rear-hip", "lead-hip"],
   "all-overhands": ["rear-arm", "lead-arm", "rear-oblique", "lead-oblique", "rear-hip", "lead-hip"],
@@ -194,6 +189,6 @@ export function regionTapSpots(side: BagSide = "both") {
 
 /** Shoulder-to-hand span. A hook round lights the whole arm, not an elbow dot. */
 export function armSpan(glow: BodyGlow) {
-  const ys = glow.points.map((point) => point[1]);
-  return { top: Math.min(...ys), bottom: Math.max(...ys), points: glow.points.length };
+  const reach = glow.bottom - glow.top;
+  return { top: glow.top, bottom: glow.bottom, points: reach > 360 ? 6 : 2 };
 }
