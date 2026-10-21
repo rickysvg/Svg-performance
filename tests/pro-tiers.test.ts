@@ -44,6 +44,8 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(await getAppTier(guest.id, new Date(now.getTime() + 8 * DAY))).toBe("locked");
     expect(isOpenWhenLocked("/progress")).toBe(true);
     expect(isOpenWhenLocked("/profile")).toBe(true);
+    expect(isOpenWhenLocked("/vip/apply")).toBe(true);
+    expect(isOpenWhenLocked("/vip/checkout")).toBe(true);
     expect(isOpenWhenLocked("/home")).toBe(false);
     expect(isOpenWhenLocked("/training")).toBe(false);
   });

@@ -421,6 +421,8 @@ describe("VIP Coaching rules", () => {
     expect(read("src/lib/pricing.ts")).toContain("A program Ricky writes");
     expect(read("src/lib/pricing.ts")).toContain("Direct messages with Ricky");
     expect(read("src/lib/pricing.ts")).toContain("Monthly assessment");
+    expect(read("src/proxy.ts")).toContain('"/vip"');
+    expect(read("src/lib/locked-paths.ts")).toContain('"/vip"');
     expect(read("src/app/(member)/admin/page.tsx")).toContain('label="VIP Coaching"');
     expect(read("src/app/(member)/admin/vip/page.tsx")).toContain("data-vip-queue");
     expect(read("src/components/vip/VipReviewButtons.tsx")).toContain("Approve");
