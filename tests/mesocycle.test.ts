@@ -41,23 +41,21 @@ describe("3-week mesocycle", () => {
     const monB = coreSkeletonSessions("Monday", "mma", 3);
     const monC = coreSkeletonSessions("Monday", "mma", 6);
 
-    expect(monA.map((session) => session.kind)).toEqual(["skill", "strength"]);
-    expect(monA[0]?.dayNumber).toBe(bagFocusFor("Monday", "A").dayNumber);
+    expect(monA.map((session) => session.kind)).toEqual(["strength"]);
+    expect(monA[0]?.dayNumber).toBe(strengthDaysForWeek(0).monday);
     expect(wedA.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
     expect(wedA.some((session) => session.kind === "skill")).toBe(false);
     expect(monStillA[0]?.dayNumber).toBe(monA[0]?.dayNumber);
-    expect(monStillA[1]?.dayNumber).toBe(monA[1]?.dayNumber);
-    expect(monB[0]?.dayNumber).toBe(bagFocusFor("Monday", "B").dayNumber);
-    expect(monB[0]?.dayNumber).toBe(7);
-    expect(monC[0]?.dayNumber).toBe(bagFocusFor("Monday", "C").dayNumber);
-    expect(monB[1]?.dayNumber).toBe(strengthDaysForWeek(3).monday);
-    expect(monB[1]?.dayNumber).not.toBe(monA[1]?.dayNumber);
+    expect(monB[0]?.dayNumber).toBe(strengthDaysForWeek(3).monday);
+    expect(monB[0]?.dayNumber).toBe(12);
+    expect(monC[0]?.dayNumber).toBe(strengthDaysForWeek(6).monday);
+    expect(monB[0]?.dayNumber).not.toBe(monA[0]?.dayNumber);
 
     const tue = coreSkeletonSessions("Tuesday", "mma", 1);
     const thu = coreSkeletonSessions("Thursday", "mma", 1);
-    expect(tue.map((session) => session.kind)).toEqual(["skill", "strength"]);
-    expect(thu.map((session) => session.kind)).toEqual(["skill", "strength"]);
-    expect(thu[1]?.label).toMatch(/light/i);
+    expect(tue.map((session) => session.kind)).toEqual(["strength"]);
+    expect(thu.map((session) => session.kind)).toEqual(["strength"]);
+    expect(thu[0]?.label).toMatch(/light/i);
     const friday = coreSkeletonSessions("Friday", "mma", 2);
     expect(friday.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
     expect(friday[0]?.label).toBe("Conditioning");

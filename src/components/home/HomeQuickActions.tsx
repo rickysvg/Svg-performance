@@ -14,6 +14,13 @@ const PHOTO_ACTIONS = [
     alt: "Athlete deadlifting a barbell beside an athlete on an assault bike",
   },
   {
+    href: "/bagwork",
+    label: "Bagwork",
+    hint: "Heavy bag rounds",
+    src: "/tiles/bagwork.webp",
+    alt: "Athlete hitting a heavy bag in a dark gym",
+  },
+  {
     href: "/mobility",
     label: "Mobility",
     hint: "Hips and holds",
@@ -62,13 +69,6 @@ const PHOTO_ACTIONS = [
     src: "/tiles/calendar.webp",
     alt: "Athlete checking off training days on a whiteboard",
   },
-  {
-    href: "/timer",
-    label: "Timer",
-    hint: "Rounds",
-    src: "/tiles/timer.webp",
-    alt: "Athlete beside an assault bike in a dark gym",
-  },
 ] as const;
 
 function ActionTile({
@@ -88,6 +88,7 @@ function ActionTile({
         src={action.src}
         alt={action.alt}
         fill
+        priority={action.href === "/training"}
         sizes="(max-width: 390px) 50vw, (max-width: 640px) 45vw, 320px"
         className="object-cover object-center"
       />

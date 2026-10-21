@@ -5,6 +5,7 @@ import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { expandPlaySteps, getMobilityRoutine, routineIsPro } from "@/lib/mobility";
 import { MobilityPlayer } from "@/components/mobility/MobilityPlayer";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { CreditList } from "@/components/mobility/CreditList";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 
@@ -43,9 +44,12 @@ export default async function MobilityPlayPage({
       <Link href={`/mobility/${routine.id}`} className="text-sm font-semibold text-accent">
         Back
       </Link>
-      <div>
-        <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">Follow along</p>
-        <h1 className="mt-1 text-3xl">{routine.title}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">Follow along</p>
+          <h1 className="mt-1 text-3xl">{routine.title}</h1>
+        </div>
+        <RoundTimerButton />
       </div>
       <MobilityPlayer steps={steps} logHref={`/mobility/${routine.id}/log`} />
       <CreditList credits={routine.credits} />

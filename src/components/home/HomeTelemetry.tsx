@@ -1,6 +1,7 @@
 import { TelemetryChart } from "@/components/design/TelemetryChart";
 import {
   formatTelemetryNumber,
+  trainingLoadForDay,
   type HomeTelemetrySnapshot,
 } from "@/lib/home-telemetry";
 
@@ -80,6 +81,8 @@ export function HomeTelemetry({
   /** Tighter padding for the Progress page. Home keeps the roomier layout. */
   compact?: boolean;
 }) {
+  const trainingLoad = data.days.reduce((sum, day) => sum + trainingLoadForDay(day), 0);
+  const hasBagLoad = data.days.some((day) => day.bagLoad > 0);
   return (
     <section
       className={`hc-panel hc-carbon ${compact ? "px-2.5 py-2" : "px-4 py-4"}`}
@@ -99,7 +102,12 @@ export function HomeTelemetry({
       </div>
 
       <div className={`grid grid-cols-2 ${compact ? "mt-2 gap-1.5" : "mt-4 gap-2"}`}>
-        <Stat compact={compact} label="Load" value={formatTelemetryNumber(data.weekLoad)} unit="lb volume" />
+        <Stat
+          compact={compact}
+          label="Load"
+          value={formatTelemetryNumber(trainingLoad)}
+          unit={hasBagLoad ? "lb + bag load" : "lb volume"}
+        />
         <Stat compact={compact} label="Rounds" value={String(data.weekRounds)} unit="sparring" />
         <Stat compact={compact} label="Sessions" value={String(data.weekSessions)} unit="logged" />
         <Stat
@@ -113,8 +121,8 @@ export function HomeTelemetry({
       <div className={compact ? "mt-2 space-y-2" : "mt-4 space-y-4"}>
         <TelemetryChart
           title="Training load"
-          description="Reps times load, by day"
-          unit="lb"
+          description="Reps times load, plus bagwork rounds × minutes × RPE"
+          unit={hasBagLoad ? "load" : "lb"}
           variant="bar"
           empty="No training load logged this week. Finish a workout to light this up."
           series={[
@@ -125,7 +133,7 @@ export function HomeTelemetry({
               points: data.days.map((day) => ({
                 label: day.label,
                 detail: day.name,
-                value: day.load,
+                value: trainingLoadForDay(day),
               })),
             },
           ]}

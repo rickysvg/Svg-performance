@@ -7,6 +7,7 @@ import { sparringTileHint } from "@/lib/sparring-tile";
 
 const TILES = [
   "train.webp",
+  "bagwork.webp",
   "mobility.webp",
   "coach.webp",
   "form-check.webp",
@@ -14,7 +15,6 @@ const TILES = [
   "progress.webp",
   "fuel.webp",
   "calendar.webp",
-  "timer.webp",
   "sparring.webp",
 ] as const;
 
@@ -79,7 +79,7 @@ describe("Home photo tiles", () => {
     expect(tileSrc("/tiles/form-check.webp", "female")).toBe("/tiles/form-check-female.webp");
   });
 
-  it("keeps the Home grid even, with Sparring Log beside Timer", () => {
+  it("keeps the Home grid even, with Sparring Log beside Calendar", () => {
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/HomeQuickActions.tsx"),
       "utf8",
@@ -93,6 +93,10 @@ describe("Home photo tiles", () => {
     expect(source).not.toContain("TEXT_ACTIONS");
     expect(source).not.toContain("min-h-[5.5rem]");
     expect(source).not.toContain("label.slice(0, 1)");
+    expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/bagwork"'));
+    expect(source.indexOf('href: "/bagwork"')).toBeLessThan(source.indexOf('href: "/mobility"'));
+    expect(source).toContain("/tiles/bagwork.webp");
+    expect(source).toContain("Bagwork");
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/mobility"'));
     expect(source.indexOf('href: "/mobility"')).toBeLessThan(source.indexOf('href: "/coach"'));
     expect(source.indexOf('href: "/training"')).toBeLessThan(source.indexOf('href: "/coach"'));
@@ -104,8 +108,10 @@ describe("Home photo tiles", () => {
     expect(source.indexOf('href: "/nutrition"')).toBeLessThan(
       source.indexOf('href: "/training/calendar"'),
     );
-    expect(source.indexOf('href: "/training/calendar"')).toBeLessThan(source.indexOf('href: "/timer"'));
-    expect(source.indexOf('href: "/timer"')).toBeLessThan(source.indexOf("<SparringLogTile"));
+    expect(source.indexOf('href: "/training/calendar"')).toBeLessThan(source.indexOf("<SparringLogTile"));
+    expect(source).not.toContain('href: "/timer"');
+    expect(source).not.toContain("/tiles/timer.webp");
+    expect(source.match(/href: "\//g)).toHaveLength(9);
     expect(source).toContain("grid-cols-2");
     const tile = fs.readFileSync(path.join(process.cwd(), "src/components/home/SparringLogTile.tsx"), "utf8");
     expect(tile).toContain('href="/sparring"');
@@ -124,8 +130,10 @@ describe("Home photo tiles", () => {
     expect(source).toContain("tileSrc");
     expect(source).toContain("imagery");
     expect(source).toContain("/tiles/train.webp");
+    expect(source).toContain("Athlete deadlifting a barbell beside an athlete on an assault bike");
+    expect(source).toContain('href: "/mobility"');
+    expect(source).toContain("Hips and holds");
     expect(source).toContain("/tiles/mobility.webp");
-    expect(source).toContain("/tiles/timer.webp");
     expect(source).toContain("/tiles/form-check.webp");
     expect(source).toContain("Send a clip");
     expect(source).toContain("Athlete filming a form check in a dark gym");

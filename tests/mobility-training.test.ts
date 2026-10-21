@@ -79,8 +79,8 @@ describe("deload and testing weeks", () => {
     expect(readinessIsLow(low)).toBe(true);
     expect(readinessSuggestion(low)).toMatch(/does not change|stays as it is/i);
     const before = planForDate(prefs, mondayAfterEpoch(1), "America/Denver");
-    expect(before.summary).toBe("Bag+Lift");
-    expect(before.sessions).toHaveLength(2);
+    expect(before.summary).toBe("Lift");
+    expect(before.sessions).toHaveLength(1);
     expect(readinessSuggestion({ sleep: 5, soreness: 5, energy: 4 })).toBeNull();
   });
 });

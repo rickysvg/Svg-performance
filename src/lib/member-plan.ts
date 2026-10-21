@@ -40,11 +40,6 @@ export type DayRole = {
 
 const ORDER = WEEKDAYS;
 
-function prevWeekday(day: TrainingWeekday): TrainingWeekday {
-  const index = ORDER.indexOf(day);
-  return ORDER[(index + ORDER.length - 1) % ORDER.length];
-}
-
 export function isScOnly(trainingFocus?: string | null) {
   return trainingFocus === TRAINING_FOCUS_SC;
 }
@@ -229,7 +224,8 @@ export function v2OutsideDays(
 /**
  * Full-week roles. Every profile gets three full-body lifts (Mon / Tue / Thu),
  * bikes on Wednesday and Sunday, and Saturday sparring for martial weeks.
- * A saved lift-day count does not drop Thursday. Sparring and class still block that weekday.
+ * Bag work is not on this week. A saved lift-day count does not drop Thursday.
+ * Sparring and class still block that weekday.
  */
 export function assignWeek(input: {
   trainingFocus?: string | null;
@@ -246,10 +242,6 @@ export function assignWeek(input: {
     outside.filter((day) => day.kind === "class" && day.hard === true).map((day) => day.weekday),
   );
   const blocked = new Set<TrainingWeekday>([...sparring, ...classDays]);
-  const preClass = new Set<TrainingWeekday>();
-  for (const day of outside) {
-    if (day.kind === "class") preClass.add(prevWeekday(day.weekday));
-  }
 
   const roles = {} as Record<TrainingWeekday, DayRole>;
   for (const day of ORDER) {
@@ -291,18 +283,6 @@ export function assignWeek(input: {
     if (sparring.has(day)) return;
     roles[day].mobility = index === 0 ? "primary" : "secondary";
   });
-
-  if (!isScOnly(input.trainingFocus)) {
-    const bagPlan: Array<[TrainingWeekday, BagIntensity]> = [
-      ["Monday", "hard"],
-      ["Tuesday", "moderate"],
-      ["Thursday", "hard"],
-    ];
-    for (const [day, intensity] of bagPlan) {
-      if (sparring.has(day) || classDays.has(day) || preClass.has(day)) continue;
-      roles[day].bag = intensity;
-    }
-  }
 
   if (!blocked.has("Friday")) roles.Friday.gpp = true;
 

@@ -6,9 +6,7 @@ import { findSkillProgram, getDemoProgram } from "@/lib/programs";
 import { filterSkillDaysForFocus, skillEquipmentNote } from "@/lib/skill-programs";
 import { getHomeToday } from "@/lib/home";
 import { bagFocusFor, type BagWeekday } from "@/lib/bag-sessions";
-import { bikeWeekIndex } from "@/lib/bike-sessions";
-import { MESO_BLOCKS, mesoBlockForWeekIndex } from "@/lib/mesocycle";
-import { APP_TIMEZONE } from "@/lib/timezone";
+import { MESO_BLOCKS } from "@/lib/mesocycle";
 import { makeUser, resetDatabase } from "./helpers";
 
 const skillDays = [
@@ -49,10 +47,10 @@ describe("DEMO combat skill chooser", () => {
 
   it("describes bag + strength without claiming a custom camp", () => {
     expect(demoSuggestionCopy({ primaryFocus: "mma", goalKey: "stronger-for-class" })).toMatch(
-      /Core week plan \(bag \+ strength\)/,
+      /Core week plan \(weights, conditioning, and mobility\)/,
     );
     expect(demoSuggestionCopy({ primaryFocus: "general-fitness" })).toMatch(
-      /Core week plan \(bag \+ strength\)/,
+      /Core week plan \(weights, conditioning, and mobility\)/,
     );
     expect(demoSuggestionCopy({ primaryFocus: "muay-thai" })).toMatch(/Not a custom Elite/);
   });
@@ -111,10 +109,9 @@ describe("seeded DEMO combat skills", () => {
     });
     const when = new Date(2026, 8, 21, 10, 0, 0);
     const today = await getHomeToday(user.id, when);
-    expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
-    expect(today.suggestedDay?.title).toBe(
-      bagFocusFor("Monday", mesoBlockForWeekIndex(bikeWeekIndex(when, APP_TIMEZONE))).label,
-    );
+    expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(1);
+    expect(today.plannedSessions.some((session) => session.kind === "skill")).toBe(false);
+    expect(today.suggestedDay?.title).toMatch(/Full body/i);
     expect(today.suggestionCopy).toMatch(/Muay Thai/);
     expect(today.suggestionCopy).not.toMatch(/custom fight camp|Ricky wrote/i);
   });

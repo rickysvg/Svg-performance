@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildTimerTimeline,
+  completedWorkRounds,
   configForPreset,
   formatTimerClock,
   parseStoredCustom,
@@ -155,6 +156,11 @@ describe("round timer phase math", () => {
     expect(prefs.warningBeep).toBe(false);
     expect(prefs.bell).toBe(true);
     expect(prefs.custom.rounds).toBe(4);
+    expect(completedWorkRounds("idle", 1, 4)).toBe(0);
+    expect(completedWorkRounds("work", 1, 4)).toBe(0);
+    expect(completedWorkRounds("work", 3, 4)).toBe(2);
+    expect(completedWorkRounds("rest", 2, 4)).toBe(2);
+    expect(completedWorkRounds("done", 4, 4)).toBe(4);
 
     const files = [
       "src/lib/round-timer.ts",

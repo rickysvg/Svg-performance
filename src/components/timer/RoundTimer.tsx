@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { logBagworkSessionAction } from "@/app/actions/bagwork";
 import { startRoundLogAction } from "@/app/actions/workouts";
 import {
   DEFAULT_CUSTOM,
@@ -13,11 +14,13 @@ import {
   type TimerMode,
   type TimerPhase,
   type TimerPreset,
+  completedWorkRounds,
   configForPreset,
   formatTimerClock,
   parseStoredCustom,
   parseStoredTimerPrefs,
   resolveTimer,
+  sanitizeTimerConfig,
   shouldPlayPhaseBell,
   shouldPlayWarningBeep,
 } from "@/lib/round-timer";
@@ -50,19 +53,67 @@ async function requestWakeLock() {
   }
 }
 
-export function RoundTimer() {
-  const [prefs, setPrefs] = useState(DEFAULT_TIMER_PREFS);
+export type RoundTimerLaunch = {
+  key: string;
+  name: string;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  backHref: string;
+};
+
+export function RoundTimer({
+  launch = null,
+  onClose,
+  titleId,
+}: {
+  launch?: RoundTimerLaunch | null;
+  onClose?: () => void;
+  titleId?: string;
+}) {
+  const launchConfig = launch
+    ? sanitizeTimerConfig({
+        rounds: launch.rounds,
+        workSeconds: launch.workSeconds,
+        restSeconds: launch.restSeconds,
+      })
+    : null;
+  const [prefs, setPrefs] = useState(
+    launchConfig
+      ? { ...DEFAULT_TIMER_PREFS, mode: "bag" as const, preset: "custom" as const, custom: launchConfig }
+      : DEFAULT_TIMER_PREFS,
+  );
   const [hydrated, setHydrated] = useState(false);
   const [startedAtMs, setStartedAtMs] = useState<number | null>(null);
   const [pausedAtMs, setPausedAtMs] = useState<number | null>(null);
   const [pauseAccumulatedMs, setPauseAccumulatedMs] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [customDraft, setCustomDraft] = useState(DEFAULT_CUSTOM);
+  const [customDraft, setCustomDraft] = useState(launchConfig ?? DEFAULT_CUSTOM);
+  const [notes, setNotes] = useState("");
+  const [rpe, setRpe] = useState("");
+  const [logState, setLogState] = useState<{ ok: true; sessionId: string } | { ok: false; error: string } | null>(
+    null,
+  );
+  const [logHint, setLogHint] = useState("");
+  const logged = useRef(false);
+  const notesRef = useRef("");
+  const rpeRef = useRef("");
+  notesRef.current = notes;
+  rpeRef.current = rpe;
   const prev = useRef<{ remaining: number; phase: TimerPhase }>({ remaining: 0, phase: "idle" });
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    if (launch) {
+      const stamp = Date.now();
+      setStartedAtMs(stamp);
+      setPausedAtMs(null);
+      setPauseAccumulatedMs(0);
+      setNowMs(stamp);
+      setHydrated(true);
+      return;
+    }
     const id = window.setTimeout(() => {
       const stored = parseStoredTimerPrefs(window.localStorage.getItem(TIMER_PREFS_STORAGE_KEY));
       const custom = parseStoredCustom(window.localStorage.getItem(TIMER_CUSTOM_STORAGE_KEY));
@@ -71,13 +122,13 @@ export function RoundTimer() {
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
-  }, []);
+  }, [launch]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || launch) return;
     window.localStorage.setItem(TIMER_PREFS_STORAGE_KEY, JSON.stringify(prefs));
     window.localStorage.setItem(TIMER_CUSTOM_STORAGE_KEY, JSON.stringify(prefs.custom));
-  }, [hydrated, prefs]);
+  }, [hydrated, launch, prefs]);
 
   const config = useMemo(
     () => configForPreset(prefs.preset, prefs.preset === "custom" ? customDraft : prefs.custom),
@@ -91,6 +142,27 @@ export function RoundTimer() {
     pauseAccumulatedMs,
     nowMs,
   });
+
+  const writeLog = useCallback(
+    (roundsDone: number) => {
+      if (!launch || roundsDone < 1 || logged.current) return;
+      logged.current = true;
+      const parsedRpe = Number(rpeRef.current);
+      void logBagworkSessionAction({
+        workoutKey: launch.key,
+        rounds: roundsDone,
+        workSeconds: config.workSeconds,
+        notes: notesRef.current,
+        rpe: Number.isInteger(parsedRpe) ? parsedRpe : null,
+      }).then((result) => setLogState(result));
+    },
+    [config.workSeconds, launch],
+  );
+
+  useEffect(() => {
+    if (!launch || resolved.phase !== "done") return;
+    writeLog(resolved.totalRounds);
+  }, [launch, resolved.phase, resolved.totalRounds, writeLog]);
 
   useEffect(() => {
     if (!running) return;
@@ -212,18 +284,73 @@ export function RoundTimer() {
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/training"
-          className="touch-target inline-flex items-center justify-center text-2xl leading-none"
-          aria-label="Back to Train"
-        >
-          ‹
-        </Link>
-        <h1 className="text-xl">Round timer</h1>
+      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-3 bg-background px-4 py-2">
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            autoFocus
+            data-round-timer-close
+            className="touch-target inline-flex items-center justify-center text-2xl leading-none"
+            aria-label="Close timer"
+          >
+            ‹
+          </button>
+        ) : (
+          <Link
+            href={launch?.backHref ?? "/training"}
+            className="touch-target inline-flex items-center justify-center text-2xl leading-none"
+            aria-label={launch ? "Back to workout" : "Back to Train"}
+          >
+            ‹
+          </Link>
+        )}
+        <h1 className="text-xl" id={titleId} data-timer-title>
+          {launch ? launch.name : "Round timer"}
+        </h1>
         <span className="w-8" aria-hidden />
       </div>
 
+      {launch ? (
+        <div className="space-y-3" data-bagwork-timer={running ? "running" : resolved.phase}>
+          <p className="text-sm text-muted">
+            {launch.name}. Finished rounds log themselves when the timer ends.
+          </p>
+          <label className="block text-sm">
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="Optional"
+              className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+            />
+          </label>
+          <label className="block text-sm">
+            RPE
+            <input
+              value={rpe}
+              onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+              inputMode="numeric"
+              placeholder="1–10, optional"
+              className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+            />
+          </label>
+          {logHint ? <p className="text-sm text-signal">{logHint}</p> : null}
+          {logState?.ok ? (
+            <p className="text-sm" data-bagwork-logged>
+              Logged {launch.name}.{" "}
+              <Link href="/training/history" className="text-accent underline">
+                Open history
+              </Link>
+            </p>
+          ) : null}
+          {logState && !logState.ok ? <p className="text-sm text-signal">{logState.error}</p> : null}
+        </div>
+      ) : null}
+
+      {launch ? null : (
       <div className="grid grid-cols-4 gap-1 rounded-full bg-card p-1">
         {TIMER_MODES.map((mode) => (
           <button
@@ -238,8 +365,10 @@ export function RoundTimer() {
           </button>
         ))}
       </div>
+      )}
 
-      <form action={startRoundLogAction} data-round-log>
+      {launch || onClose ? null : (
+      <form action={startRoundLogAction} data-round-log="">
         <input type="hidden" name="mode" value={prefs.mode} />
         <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
         <input
@@ -254,7 +383,9 @@ export function RoundTimer() {
           Log {configForPreset(prefs.preset, customDraft).rounds} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
         </button>
       </form>
+      )}
 
+      {launch ? null : (
       <div className="grid grid-cols-3 gap-2">
         {(
           [
@@ -279,8 +410,9 @@ export function RoundTimer() {
           </button>
         ))}
       </div>
+      )}
 
-      {prefs.preset === "custom" ? (
+      {launch || prefs.preset === "custom" ? (
         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-card p-3">
           <Stepper
             label="Rounds"
@@ -307,6 +439,8 @@ export function RoundTimer() {
       ) : null}
 
       <section
+        data-round-clock
+        data-timer-phase={resolved.phase}
         className={`rounded-[2rem] px-5 py-6 text-center ${
           workTheme ? "bg-accent text-black" : "bg-black text-highlighter"
         }`}
@@ -374,9 +508,31 @@ export function RoundTimer() {
           </span>
           Reset
         </button>
+        {launch ? (
+          <button
+            type="button"
+            onClick={() => {
+              const done = completedWorkRounds(resolved.phase, resolved.round, resolved.totalRounds);
+              if (done < 1) {
+                setLogHint("Finish a round before logging.");
+                return;
+              }
+              setLogHint("");
+              writeLog(done);
+              reset();
+            }}
+            className="flex flex-col items-center gap-2 text-xs uppercase tracking-wide text-signal"
+          >
+            <span className="flex h-16 w-16 items-center justify-center rounded-full border border-signal text-sm">
+              End
+            </span>
+            Log rounds
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={startOrPause}
+          data-timer-start={primaryLabel.toLowerCase()}
           className="flex flex-col items-center gap-2 text-xs uppercase tracking-wide"
         >
           <span

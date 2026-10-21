@@ -1,3 +1,4 @@
+import { bagworkTrainingLoadFromSession } from "@/lib/bagwork";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
@@ -29,12 +30,13 @@ export function buildProgressSummary(
   const points: ProgressPoint[] = [...completed]
     .sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime())
     .map((session) => {
-      const volume = session.sets.reduce(
+      const lifting = session.sets.reduce(
         (sum, set) =>
           sum +
           volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit),
         0,
       );
+      const volume = lifting + bagworkTrainingLoadFromSession(session);
       return {
         id: session.id,
         label: session.title,

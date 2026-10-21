@@ -33,8 +33,8 @@ describe("member week", () => {
     const bags = ALL_DAYS.filter((day) => roles[day].bag);
     const mobility = ALL_DAYS.filter((day) => roles[day].mobility);
     expect(lifts).toHaveLength(3);
-    expect(bags.length).toBeGreaterThanOrEqual(2);
-    expect(bags.length).toBeLessThanOrEqual(3);
+    expect(bags).toEqual([]);
+    expect(ALL_DAYS.every((day) => roles[day].bag == null)).toBe(true);
     expect(mobility).toEqual(["Wednesday", "Friday", "Sunday"]);
     expect(roles.Wednesday.lift).toBeNull();
     expect(roles.Wednesday.bag).toBeNull();

@@ -10,7 +10,6 @@ import { prisma } from "@/lib/prisma";
 import { completeOnboardingForUser } from "@/lib/onboarding";
 import { formatDayParam, getHomeToday, parseDayParam } from "@/lib/home";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { BAG_FOCUS, bagFocusFor } from "@/lib/bag-sessions";
 import { bikeWeekIndex } from "@/lib/bike-sessions";
 import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { APP_TIMEZONE } from "@/lib/timezone";
@@ -70,18 +69,15 @@ describe("Core weekday planner", () => {
     ).toBe("Saturday");
   });
 
-  it("gives Monday and Wednesday a distinct bag plus a lift, and does not lift every day", () => {
+  it("gives Monday a lift and Wednesday the bike, and does not lift every day", () => {
     const mon = coreSkeletonSessions("Monday", "mma");
+    expect(mon).toHaveLength(1);
     expect(mon[0]).toMatchObject({
-      kind: "skill",
-      programSlug: "demo-combat-skills",
-      dayNumber: BAG_FOCUS.Monday.dayNumber,
-    });
-    expect(mon[1]).toMatchObject({
       kind: "strength",
       programSlug: "demo-strength-base",
       dayNumber: 1,
     });
+    expect(mon.some((session) => session.kind === "skill")).toBe(false);
 
     const wed = coreSkeletonSessions("Wednesday", "mma");
     expect(wed.map((session) => session.kind)).toEqual(["conditioning", "mobility"]);
@@ -89,19 +85,21 @@ describe("Core weekday planner", () => {
     expect(wed.some((session) => session.kind === "strength")).toBe(false);
 
     const boxingMon = coreSkeletonSessions("Monday", "boxing");
-    expect(boxingMon[0]?.dayNumber).toBe(BAG_FOCUS.Monday.dayNumber);
+    expect(boxingMon[0]?.kind).toBe("strength");
+    expect(boxingMon[0]?.dayNumber).toBe(1);
+    expect(boxingMon.some((session) => session.kind === "skill")).toBe(false);
   });
 
-  it("puts bag on general-fitness training days too", () => {
+  it("keeps general-fitness training days on the lift, with no bag session", () => {
     const sessions = coreSkeletonSessions("Monday", "general-fitness");
-    expect(sessions.some((session) => session.kind === "skill")).toBe(true);
+    expect(sessions.some((session) => session.kind === "skill")).toBe(false);
     expect(sessions.some((session) => session.kind === "strength")).toBe(true);
   });
 
   it("keeps Tuesday as a lift and Friday as the circuit plus mobility, not a daily lift", () => {
     const tue = coreSkeletonSessions("Tuesday", "mma");
-    expect(tue.map((session) => session.kind)).toEqual(["skill", "strength"]);
-    expect(tue[1]).toMatchObject({ kind: "strength", dayNumber: 2 });
+    expect(tue.map((session) => session.kind)).toEqual(["strength"]);
+    expect(tue[0]).toMatchObject({ kind: "strength", dayNumber: 2 });
 
     const fri = coreSkeletonSessions("Friday", "mma");
     expect(fri[0]?.label).toBe("Conditioning");
@@ -129,7 +127,7 @@ describe("Core weekday planner", () => {
       tuesday,
     );
     expect(tue.active).toBe(true);
-    expect(tue.summary).toBe("Bag+Lift");
+    expect(tue.summary).toBe("Lift");
 
     const wed = planForDate(
       {
@@ -159,8 +157,8 @@ describe("Core weekday planner", () => {
       weeklyAvailability: ["Monday", "Wednesday", "Friday"],
     });
     expect(week.Monday.active).toBe(true);
-    expect(week.Monday.summary).toBe("Bag+Lift");
-    expect(week.Monday.sessions).toHaveLength(2);
+    expect(week.Monday.summary).toBe("Lift");
+    expect(week.Monday.sessions).toHaveLength(1);
     expect(week.Wednesday.summary).toBe("Cardio+Mobility");
     expect(week.Wednesday.sessions[0]?.kind).toBe("conditioning");
     expect(week.Wednesday.sessions[0]?.dayNumber).not.toBe(week.Monday.sessions[0]?.dayNumber);
@@ -276,7 +274,7 @@ describe("Core weekday planner", () => {
     const ontoSunday = swapWeekdays([], start, "Monday", "Sunday");
     const sunday = new Date(2026, 8, 27, 10, 0, 0);
     expect(planForDate(prefs, monday, APP_TIMEZONE, ontoSunday).summary).toBe("Cardio+Mobility");
-    expect(planForDate(prefs, sunday, APP_TIMEZONE, ontoSunday).summary).toBe("Bag+Lift");
+    expect(planForDate(prefs, sunday, APP_TIMEZONE, ontoSunday).summary).toBe("Lift");
     expect(planForDate(prefs, monday, APP_TIMEZONE, ontoSunday).active).toBe(true);
     expect(planForDate(prefs, sunday, APP_TIMEZONE, ontoSunday).active).toBe(true);
   });
@@ -296,7 +294,8 @@ describe("Core weekday planner", () => {
     const mondayAfter = planForDate(prefs, monday, APP_TIMEZONE, moved);
     const wednesdayAfter = planForDate(prefs, wednesday, APP_TIMEZONE, moved);
     expect(mondayAfter.sessions.map((session) => session.sessionKey)).not.toContain(bagKey);
-    expect(mondayAfter.sessions).toHaveLength(plainMonday.sessions.length - 1);
+    expect(mondayAfter.sessions.map((session) => session.kind)).toEqual(["rest"]);
+    expect(mondayAfter.summary).toBe("Off");
     expect(wednesdayAfter.sessions.map((session) => session.sessionKey)).toContain(bagKey);
     expect(wednesdayAfter.sessions).toHaveLength(plainWednesday.sessions.length + 1);
     expect(parseWeekPlanSwaps(JSON.stringify(moved))).toEqual(moved);
@@ -319,24 +318,28 @@ describe("Core weekday planner", () => {
       weeklyAvailability: ["Monday", "Wednesday", "Friday"],
     };
     const start = weekStartKey(monday, APP_TIMEZONE);
-    const plainMonday = planForDate(prefs, monday, APP_TIMEZONE);
+    const friday = new Date(2026, 8, 25, 10, 0, 0);
+    const plainFriday = planForDate(prefs, friday, APP_TIMEZONE);
     const plainWednesday = planForDate(prefs, wednesday, APP_TIMEZONE);
-    const bagKey = plainMonday.sessions[0]?.sessionKey ?? "";
-    const mondayLift = plainMonday.sessions[1]?.sessionKey ?? "";
+    const fridayCircuit = plainFriday.sessions.find((session) => session.kind === "conditioning")?.sessionKey ?? "";
+    const fridayMobility = plainFriday.sessions.find((session) => session.kind === "mobility")?.sessionKey ?? "";
     const wednesdayBike = plainWednesday.sessions.find((session) => session.kind === "conditioning")?.sessionKey ?? "";
-    expect(bagKey).not.toBe(wednesdayBike);
+    const wednesdayMobility = plainWednesday.sessions.find((session) => session.kind === "mobility")?.sessionKey ?? "";
+    expect(fridayCircuit).not.toBe(wednesdayBike);
+    expect(fridayMobility.startsWith("Friday:")).toBe(true);
     expect(wednesdayBike.startsWith("Wednesday:")).toBe(true);
 
-    const swapped = swapSessionsOnPlan([], start, bagKey, wednesdayBike);
-    const mondayAfter = planForDate(prefs, monday, APP_TIMEZONE, swapped);
+    const swapped = swapSessionsOnPlan([], start, fridayCircuit, wednesdayBike);
+    const fridayAfter = planForDate(prefs, friday, APP_TIMEZONE, swapped);
     const wednesdayAfter = planForDate(prefs, wednesday, APP_TIMEZONE, swapped);
-    expect(mondayAfter.sessions.map((session) => session.sessionKey)).toContain(wednesdayBike);
-    expect(mondayAfter.sessions.map((session) => session.sessionKey)).toContain(mondayLift);
-    expect(mondayAfter.sessions.map((session) => session.sessionKey)).not.toContain(bagKey);
-    expect(wednesdayAfter.sessions.map((session) => session.sessionKey)).toContain(bagKey);
+    expect(fridayAfter.sessions.map((session) => session.sessionKey)).toContain(wednesdayBike);
+    expect(fridayAfter.sessions.map((session) => session.sessionKey)).toContain(fridayMobility);
+    expect(fridayAfter.sessions.map((session) => session.sessionKey)).not.toContain(fridayCircuit);
+    expect(wednesdayAfter.sessions.map((session) => session.sessionKey)).toContain(fridayCircuit);
+    expect(wednesdayAfter.sessions.map((session) => session.sessionKey)).toContain(wednesdayMobility);
     expect(wednesdayAfter.sessions.map((session) => session.sessionKey)).not.toContain(wednesdayBike);
-    expect(swapSessionsOnPlan(swapped, start, bagKey, wednesdayBike)).toEqual([]);
-    expect(swapSessionsOnPlan([], start, bagKey, bagKey)).toEqual([]);
+    expect(swapSessionsOnPlan(swapped, start, fridayCircuit, wednesdayBike)).toEqual([]);
+    expect(swapSessionsOnPlan([], start, fridayCircuit, fridayCircuit)).toEqual([]);
   });
 
   it("warns gently for a heavy session on class, sparring, or the day before sparring", () => {
@@ -368,7 +371,7 @@ describe("Core weekday planner", () => {
     };
     const week = buildCoreWeekPlan(prefs);
     expect(week.Monday.sessions.find((session) => session.kind === "strength")?.heavy).toBe(true);
-    expect(week.Monday.sessions.find((session) => session.kind === "skill")?.heavy).toBe(true);
+    expect(week.Monday.sessions.find((session) => session.kind === "skill")).toBeUndefined();
     expect(week.Friday.sessions.find((session) => session.kind === "skill")).toBeUndefined();
     expect(week.Friday.sessions.find((session) => session.label === "Conditioning")?.heavy).toBe(false);
     expect(week.Wednesday.sessions.every((session) => session.heavy !== true)).toBe(true);
@@ -412,7 +415,7 @@ describe("Core planner on Home", () => {
     await prisma.$disconnect();
   });
 
-  it("resolves Monday MMA into two catalog sessions on Home", async () => {
+  it("resolves Monday MMA into the lift on Home", async () => {
     const user = await makeUser("mma-monday@example.com");
     await completeOnboardingForUser(user.id, {
       displayName: "MMA",
@@ -431,30 +434,30 @@ describe("Core planner on Home", () => {
     await startedWithProgram(user.id);
     const catalog = await findDemoTrainingCatalog();
     const today = await getHomeToday(user.id, monday);
-    expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(2);
+    expect(today.plannedSessions.filter((session) => session.href)).toHaveLength(1);
+    expect(today.plannedSessions.some((session) => session.kind === "skill")).toBe(false);
     const block = mesoBlockForWeekIndex(bikeWeekIndex(monday, APP_TIMEZONE));
     expect(today.mesoLabel).toBe(mesoBlockLabel(block));
-    expect(today.plannedSessions[0]?.title).toBe(bagFocusFor("Monday", block).label);
-    expect(today.plannedSessions[1]?.title).toMatch(/Full body/i);
-    expect(today.suggestedDay?.title).toBe(bagFocusFor("Monday", block).label);
-    expect(today.planSummary).toBe("Bag+Lift");
+    expect(today.plannedSessions[0]?.title).toMatch(/Full body/i);
+    expect(today.suggestedDay?.title).toMatch(/Full body/i);
+    expect(today.planSummary).toBe("Lift");
     expect(today.weekStrip).toHaveLength(7);
 
     const resolved = resolvePlanSessions(
       planForDate({ primaryFocus: "mma", weeklyAvailability: ["Monday"] }, monday),
       catalog,
     );
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0]?.kind).toBe("strength");
     expect(resolved[0]?.dayId).toBeTruthy();
-    expect(resolved[1]?.dayId).toBeTruthy();
 
     const wedResolved = resolvePlanSessions(
       planForDate({ primaryFocus: "mma", weeklyAvailability: ["Wednesday"] }, wednesday),
       catalog,
     );
-    const wedBlock = mesoBlockForWeekIndex(bikeWeekIndex(wednesday, APP_TIMEZONE));
     expect(wedResolved[0]?.title).toBe("Cardio — bike");
     expect(wedResolved[0]?.day?.title).toMatch(/Alactic|Daru/i);
-    expect(wedResolved[0]?.title).not.toBe(bagFocusFor("Monday", wedBlock).label);
+    expect(wedResolved[0]?.kind).not.toBe("skill");
     expect(wedResolved[0]?.dayId).not.toBe(resolved[0]?.dayId);
   });
 
@@ -478,7 +481,6 @@ describe("Core planner on Home", () => {
     const start = weekStartKey(monday, APP_TIMEZONE);
     await swapWeekPlanForUser(user.id, start, "Monday", "Wednesday");
 
-    const block = mesoBlockForWeekIndex(bikeWeekIndex(monday, APP_TIMEZONE));
     const today = await getHomeToday(user.id, monday);
     expect(today.plannedSessions[0]?.title).toBe("Cardio — bike");
     expect(today.plannedSessions[1]?.title).toMatch(/Mobility/i);
@@ -487,18 +489,18 @@ describe("Core planner on Home", () => {
     const schedule = await getCalendarSchedule(user.id, tuesday);
     const wed = schedule.days.find((day) => day.heading.startsWith("Tomorrow"));
     const wedWorkouts = wed?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(wedWorkouts.some((row) => row.title === bagFocusFor("Monday", block).label)).toBe(true);
+    expect(wedWorkouts.some((row) => row.kind === "workout" && /bag/i.test(row.title))).toBe(false);
     expect(wedWorkouts.some((row) => /Full body/i.test(row.title))).toBe(true);
     expect(wedWorkouts.some((row) => row.subtitle.includes("Monday’s workout"))).toBe(true);
 
     const nextMonday = new Date(2026, 8, 28, 10, 0, 0);
-    const nextBlock = mesoBlockForWeekIndex(bikeWeekIndex(nextMonday, APP_TIMEZONE));
     const nextWeek = await getHomeToday(user.id, nextMonday);
-    expect(nextWeek.plannedSessions[0]?.title).toBe(bagFocusFor("Monday", nextBlock).label);
+    expect(nextWeek.plannedSessions[0]?.title).toMatch(/Full body/i);
+    expect(nextWeek.plannedSessions.some((session) => session.kind === "skill")).toBe(false);
 
     await clearCurrentWeekPlanForUser(user.id, monday);
     const restored = await getHomeToday(user.id, monday);
-    expect(restored.plannedSessions[0]?.title).toBe(bagFocusFor("Monday", block).label);
+    expect(restored.plannedSessions[0]?.title).toMatch(/Full body/i);
     expect(restored.weekStrip.find((day) => day.weekday === "Monday")?.movedFrom).toBeUndefined();
   });
 
@@ -526,29 +528,33 @@ describe("Core planner on Home", () => {
       sessionsPerWeek: 4,
     };
     const plainMonday = planForDate(prefs, monday);
-    const bagKey = plainMonday.sessions[0]?.sessionKey ?? "";
-    const bagTitle = plainMonday.sessions[0] ? bagFocusFor("Monday", mesoBlockForWeekIndex(bikeWeekIndex(monday, APP_TIMEZONE))).label : "";
+    const liftKey = plainMonday.sessions[0]?.sessionKey ?? "";
+    expect(plainMonday.sessions).toHaveLength(1);
 
-    await expect(moveWorkoutForUser(user.id, bagKey, "Monday", start, wednesday)).rejects.toThrow(
+    const before = await getCalendarSchedule(user.id, wednesday, monday);
+    const mondayBefore = before.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(mondayBefore.some((row) => row.sessionKey === liftKey)).toBe(true);
+    expect(mondayBefore[0]?.subtitle).toBe("Missed. Tap Move to do it another day.");
+
+    await expect(moveWorkoutForUser(user.id, liftKey, "Monday", start, wednesday)).rejects.toThrow(
       /today or a later day/,
     );
 
-    await moveWorkoutForUser(user.id, bagKey, "Wednesday", start, wednesday);
+    await moveWorkoutForUser(user.id, liftKey, "Wednesday", start, wednesday);
     const schedule = await getCalendarSchedule(user.id, wednesday, monday);
     const mondayWork = schedule.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
     const wednesdayWork = schedule.days[2]?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(mondayWork.some((row) => row.sessionKey === bagKey)).toBe(false);
-    expect(mondayWork.length).toBeGreaterThan(0);
-    expect(mondayWork[0]?.subtitle).toBe("Missed. Tap Move to do it another day.");
-    expect(wednesdayWork.some((row) => row.sessionKey === bagKey)).toBe(true);
+    expect(mondayWork.some((row) => row.sessionKey === liftKey)).toBe(false);
+    expect(mondayWork).toHaveLength(0);
+    expect(wednesdayWork.some((row) => row.sessionKey === liftKey)).toBe(true);
 
     const today = await getHomeToday(user.id, wednesday);
-    expect(today.plannedSessions.some((session) => session.title === bagTitle)).toBe(true);
+    expect(today.plannedSessions.some((session) => session.sessionKey === liftKey)).toBe(true);
 
     await restoreWeekPlanForUser(user.id, JSON.stringify([]), wednesday);
     const back = await getCalendarSchedule(user.id, wednesday, monday);
     const mondayAgain = back.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
-    expect(mondayAgain.some((row) => row.sessionKey === bagKey)).toBe(true);
+    expect(mondayAgain.some((row) => row.sessionKey === liftKey)).toBe(true);
   });
 
   it("keeps a finished session in place and still moves the other session that day", async () => {
@@ -575,60 +581,70 @@ describe("Core planner on Home", () => {
       experienceLevel: "intermediate",
     };
     const catalog = await findDemoTrainingCatalog();
-    const resolved = resolvePlanSessions(planForDate(prefs, monday), catalog);
-    const lift = resolved.find((session) => session.kind === "strength");
-    const bag = resolved.find((session) => session.kind === "skill");
-    expect(lift?.dayId).toBeTruthy();
-    expect(lift?.sessionKey).toBeTruthy();
-    expect(bag?.sessionKey).toBeTruthy();
+    const resolved = resolvePlanSessions(planForDate(prefs, wednesday), catalog);
+    const bike = resolved.find((session) => session.kind === "conditioning");
+    const mobility = resolved.find((session) => session.kind === "mobility");
+    expect(bike?.dayId).toBeTruthy();
+    expect(bike?.sessionKey).toBeTruthy();
+    expect(mobility?.sessionKey).toBeTruthy();
 
     const logged = await startWorkoutFromDay({
       userId: user.id,
-      programDayId: lift?.dayId ?? "",
+      programDayId: bike?.dayId ?? "",
       preferredUnits: "lb",
     });
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: logged.id,
       title: logged.title,
-      performedAt: monday,
+      performedAt: wednesday,
       notes: "",
       status: "complete",
       sets: [
         {
-          exerciseName: "Goblet squat",
+          exerciseName: "Assault bike intervals",
           setNumber: 1,
-          reps: 8,
-          loadValue: 40,
+          reps: null,
+          loadValue: null,
           loadUnit: "lb",
+          durationSeconds: 180,
           completed: true,
         },
       ],
     });
 
+    const friday = new Date(2026, 8, 25, 10, 0, 0);
     const start = weekStartKey(monday, APP_TIMEZONE);
     await expect(
-      moveWorkoutForUser(user.id, lift?.sessionKey ?? "", "Wednesday", start, monday),
+      moveWorkoutForUser(user.id, bike?.sessionKey ?? "", "Friday", start, wednesday),
     ).rejects.toThrow(/already done/);
 
-    await moveWorkoutForUser(user.id, bag?.sessionKey ?? "", "Wednesday", start, monday);
-    const today = await getHomeToday(user.id, wednesday);
-    expect(today.plannedSessions.some((session) => session.sessionKey === bag?.sessionKey)).toBe(true);
-    expect(today.plannedSessions.some((session) => session.sessionKey === lift?.sessionKey)).toBe(false);
+    await moveWorkoutForUser(user.id, mobility?.sessionKey ?? "", "Friday", start, wednesday);
+    const fridayHome = await getHomeToday(user.id, friday);
+    expect(fridayHome.plannedSessions.some((session) => session.sessionKey === mobility?.sessionKey)).toBe(true);
+    expect(fridayHome.plannedSessions.some((session) => session.sessionKey === bike?.sessionKey)).toBe(false);
 
-    const mondayHome = await getHomeToday(user.id, monday);
-    expect(mondayHome.plannedSessions.some((session) => session.sessionKey === lift?.sessionKey)).toBe(true);
-
-    const wedBike = resolvePlanSessions(planForDate(prefs, wednesday), catalog).find(
-      (session) => session.kind === "conditioning",
-    );
-    await restoreWeekPlanForUser(user.id, JSON.stringify([]), monday);
-    await swapWorkoutForUser(user.id, bag?.sessionKey ?? "", wedBike?.sessionKey ?? "", start, monday);
-    const afterSwap = await getHomeToday(user.id, monday);
-    expect(afterSwap.plannedSessions.some((session) => session.sessionKey === bag?.sessionKey)).toBe(false);
-    expect(afterSwap.plannedSessions.some((session) => session.sessionKey === wedBike?.sessionKey)).toBe(true);
     const wednesdayHome = await getHomeToday(user.id, wednesday);
-    expect(wednesdayHome.plannedSessions.some((session) => session.sessionKey === bag?.sessionKey)).toBe(true);
+    expect(wednesdayHome.plannedSessions.some((session) => session.sessionKey === bike?.sessionKey)).toBe(true);
+
+    const fridayConditioning = resolvePlanSessions(planForDate(prefs, friday), catalog).find(
+      (session) => session.label === "Conditioning",
+    );
+    await restoreWeekPlanForUser(user.id, JSON.stringify([]), wednesday);
+    await swapWorkoutForUser(
+      user.id,
+      mobility?.sessionKey ?? "",
+      fridayConditioning?.sessionKey ?? "",
+      start,
+      wednesday,
+    );
+    const afterSwap = await getHomeToday(user.id, wednesday);
+    expect(afterSwap.plannedSessions.some((session) => session.sessionKey === fridayConditioning?.sessionKey)).toBe(
+      true,
+    );
+    expect(afterSwap.plannedSessions.some((session) => session.sessionKey === mobility?.sessionKey)).toBe(false);
+    const fridayAfter = await getHomeToday(user.id, friday);
+    expect(fridayAfter.plannedSessions.some((session) => session.sessionKey === mobility?.sessionKey)).toBe(true);
   });
 
   it("sends an auto-moved future workout home and still lets today take a later workout", async () => {

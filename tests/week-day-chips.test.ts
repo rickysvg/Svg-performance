@@ -89,13 +89,16 @@ describe("Train / Calendar day chips", () => {
     expect(strip).toContain("FRIDAY_CONDITIONING_LABEL");
   });
 
-  it("keeps Monday and Tuesday bag day numbers distinct, and Wednesday is the bike", () => {
+  it("keeps Monday and Tuesday as lifts, and Wednesday is the bike", () => {
     const mon = coreSkeletonSessions("Monday", "mma");
     const tue = coreSkeletonSessions("Tuesday", "mma");
     const wed = coreSkeletonSessions("Wednesday", "mma");
-    expect(mon[0]?.dayNumber).toBe(BAG_FOCUS.Monday.dayNumber);
-    expect(tue[0]?.dayNumber).toBe(BAG_FOCUS.Tuesday.dayNumber);
+    expect(mon[0]?.kind).toBe("strength");
+    expect(tue[0]?.kind).toBe("strength");
+    expect(mon.some((session) => session.kind === "skill")).toBe(false);
+    expect(tue.some((session) => session.kind === "skill")).toBe(false);
     expect(mon[0]?.dayNumber).not.toBe(tue[0]?.dayNumber);
+    expect(BAG_FOCUS.Monday.dayNumber).not.toBe(BAG_FOCUS.Tuesday.dayNumber);
     expect(wed[0]?.kind).toBe("conditioning");
     expect(wed.some((session) => session.kind === "skill")).toBe(false);
   });

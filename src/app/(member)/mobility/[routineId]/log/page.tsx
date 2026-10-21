@@ -8,6 +8,7 @@ import { getMobilityRoutine, logRowsFor, routineIsPro } from "@/lib/mobility";
 import { previousMobilityLogs } from "@/lib/mobility-store";
 import { lengthUnitForLoad } from "@/lib/length-units";
 import { MobilityLogForm, type PreviousCell } from "@/components/mobility/MobilityLogForm";
+import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 
 export default async function MobilityLogPage({
@@ -55,9 +56,12 @@ export default async function MobilityLogPage({
       <Link href={`/mobility/${routine.id}`} className="text-sm font-semibold text-accent">
         Back
       </Link>
-      <div>
-        <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">Log</p>
-        <h1 className="mt-1 text-3xl">{routine.title}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-xs uppercase tracking-[0.12em] text-accent">Log</p>
+          <h1 className="mt-1 text-3xl">{routine.title}</h1>
+        </div>
+        <RoundTimerButton />
       </div>
       <MobilityLogForm
         routineId={routine.id}

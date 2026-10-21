@@ -32,14 +32,18 @@ function polar(r: number, deg: number) {
   return { x: CX + r * Math.cos(a), y: CY - r * Math.sin(a) };
 }
 
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
 function outwardTick(deg: number, length: number) {
   const rim = polar(R + STROKE, deg);
   const a = (deg * Math.PI) / 180;
   return {
-    x1: rim.x,
-    y1: rim.y,
-    x2: rim.x + Math.cos(a) * length,
-    y2: rim.y - Math.sin(a) * length,
+    x1: round2(rim.x),
+    y1: round2(rim.y),
+    x2: round2(rim.x + Math.cos(a) * length),
+    y2: round2(rim.y - Math.sin(a) * length),
   };
 }
 
