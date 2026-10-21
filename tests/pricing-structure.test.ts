@@ -53,9 +53,10 @@ describe("owner-approved three-plan pricing", () => {
     expect(ACADEMY_EXPECT).toMatch(/SVG Academy dues/);
     expect(PRO_EXPECT).toBe("Everything in the academy tier, plus…");
     expect(COACHING_EXPECT).toBe("Everything in Pro, plus…");
-    expect(coachingSpotsLine(12)).toBe("12 coaching spots open");
-    expect(coachingSpotsLine(0)).toBe("Sold out");
-    expect(coachingSpotsLine(null)).toBe("Limited to 20 athletes");
+    expect(coachingSpotsLine(12)).toBe("Limited spots");
+    expect(coachingSpotsLine(0)).toBe("Limited spots");
+    expect(coachingSpotsLine(null)).toBe("Limited spots");
+    expect(coachingSpotsLine(20)).not.toMatch(/\d/);
     expect(PLAN_CATALOG.member_access.label).toBe("Trial ended");
     expect(PLAN_CATALOG.academy.gymPriceLabel).toBe("Included in dues");
     expect(PLAN_CATALOG.academy.includes).toEqual(

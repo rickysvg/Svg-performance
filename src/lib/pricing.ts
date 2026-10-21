@@ -50,11 +50,9 @@ export function performanceAnnualLine() {
   return `or ${usd(PERFORMANCE_ANNUAL)}/yr, ${PERFORMANCE_ANNUAL_SAVE}`;
 }
 
-export function coachingSpotsLine(spotsLeft: number | null) {
-  if (spotsLeft == null) return `Limited to ${COACHING_CAP} athletes`;
-  const left = Math.max(0, Math.min(COACHING_CAP, spotsLeft));
-  if (left === 0) return "Sold out";
-  return `${left} coaching spots open`;
+/** Public copy. The cap stays internal; the page never prints a remaining count. */
+export function coachingSpotsLine(_spotsLeft: number | null) {
+  return "Limited spots";
 }
 
 export const ACADEMY_EXPECT =

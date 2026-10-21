@@ -206,8 +206,8 @@ describe("AI cap and remaining count", () => {
 
 describe("pricing spots and logger resume", () => {
   it("uses natural spot copy and keeps an in-progress logger open", () => {
-    expect(coachingSpotsLine(20)).toBe("20 coaching spots open");
-    expect(coachingSpotsLine(0)).toBe("Sold out");
+    expect(coachingSpotsLine(20)).toBe("Limited spots");
+    expect(coachingSpotsLine(0)).toBe("Limited spots");
     expect(isResumeLoggerPath("/training/log/abc")).toBe(true);
     expect(isResumeLoggerPath("/training")).toBe(false);
     expect(firstSpokenChunk("Ricky here. Monday is bag work. Then you lift.")).toBe("Ricky here.");

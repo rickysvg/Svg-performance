@@ -82,7 +82,7 @@ export default async function PricingPage() {
             <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed.</li>
             <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
             <li>Pro fair use: {PRO_AI_MESSAGES_PER_DAY} AI messages a day.</li>
-            <li>VIP Coaching is $249/month, includes Pro, and is limited to 20 athletes. In-person VIP is by application.</li>
+            <li>VIP Coaching is $249/month and includes Pro. Limited spots. In-person VIP is by application.</li>
             <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the 7-day trial, then subscribe to Pro to keep training. Past data stays viewable and exportable.</li>
             <li>Academy Gymdesk dues are billed by the gym and are not changed here.</li>
             <li>Weight-cut services are not sold here.</li>
