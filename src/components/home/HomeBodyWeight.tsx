@@ -128,11 +128,15 @@ export function HomeBodyWeight({
       className={carbon ? "hc-panel hc-carbon px-2.5 pt-1 pb-1.5" : "px-0 py-0.5"}
     >
       {showSide && side ? (
-        <div data-mass-row className="flex items-start gap-1.5">
-          <div className="shrink-0" style={{ width: MASS_DIAL.width }}>
-            {label}
+        <div data-mass-row className="flex items-stretch gap-1.5">
+          <div
+            data-mass-dial-col
+            className="flex shrink-0 flex-col items-center justify-center"
+            style={{ width: MASS_DIAL.width }}
+          >
+            <div className="w-full text-center">{label}</div>
             {dial}
-            <div className="-mt-2">{captionLine}</div>
+            <div className="-mt-2 w-full">{captionLine}</div>
           </div>
           {/* Block stack sized to the dial. A nested flex column lets Safari
               clip Save; a tall button leaves a hole under the weight. */}
