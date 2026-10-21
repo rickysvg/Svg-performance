@@ -77,7 +77,7 @@ export function HomeSideStats({
             size={Math.max(fatDraft.length, 1)}
             onChange={(event) => onFatDraft(event.target.value)}
             style={{ fieldSizing: "content" }}
-            className="block w-auto min-w-[1ch] border-0 bg-transparent p-0 font-display text-lg leading-none tracking-normal text-[#CBF805] outline-none placeholder:text-white/45"
+            className="box-border block h-6 w-auto min-w-[1ch] appearance-none border-0 bg-transparent p-0 font-display text-lg leading-none tracking-normal text-[#CBF805] outline-none placeholder:text-white/45"
           />
           <span className="font-telemetry text-[9px] leading-none text-[#CBF805]">%</span>
         </span>
