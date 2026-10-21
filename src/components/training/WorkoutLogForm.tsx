@@ -340,12 +340,24 @@ function SessionTimer({
   elapsedSeconds?: number | null;
   timerStartedAt?: Date | string | null;
 }) {
-  const [now, setNow] = useState(() => Date.now());
+  const anchorMs = (() => {
+    const started = timerStartedAt ? new Date(timerStartedAt).getTime() : Number.NaN;
+    if (Number.isFinite(started)) return started;
+    const created = new Date(createdAt).getTime();
+    return Number.isFinite(created) ? created : 0;
+  })();
+  // Wall clock stays unset until mount so the server and the first client render match.
+  const [now, setNow] = useState<number | null>(null);
   const view = resolveSessionElapsed(
     { status, createdAt, updatedAt, finishedAt, elapsedSeconds, timerStartedAt },
-    now,
+    now ?? anchorMs,
   );
-  const ticking = view.ticking;
+  const ticking = now != null && view.ticking;
+
+  useEffect(() => {
+    setNow(Date.now());
+  }, []);
+
   useEffect(() => {
     if (!ticking) return;
     const tick = () => setNow(Date.now());
@@ -359,12 +371,13 @@ function SessionTimer({
       window.removeEventListener("focus", onWake);
     };
   }, [ticking]);
+
   return (
     <>
       <span
         className="tabular-nums text-sm text-muted"
         data-session-elapsed={view.seconds}
-        data-session-elapsed-state={sessionElapsedState(view, status)}
+        data-session-elapsed-state={now == null ? "pending" : sessionElapsedState(view, status)}
       >
         {view.label}
       </span>
