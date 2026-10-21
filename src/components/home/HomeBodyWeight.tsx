@@ -61,7 +61,7 @@ export function HomeBodyWeight({
       type="button"
       data-weigh-in-open
       onClick={() => setSheet(true)}
-      className="box-border h-11 w-full shrink-0 appearance-none rounded-full bg-accent px-3 py-0 text-[11px] uppercase leading-none tracking-wide text-black"
+      className="box-border h-9 w-full shrink-0 appearance-none rounded-full bg-accent px-2.5 py-0 text-[10px] uppercase leading-none tracking-wide text-black"
     >
       Save
     </button>
@@ -125,25 +125,25 @@ export function HomeBodyWeight({
       id={formId}
       action={action}
       data-mass-box
-      className={carbon ? "hc-panel hc-carbon px-2.5 pt-1 pb-2.5" : "px-0 py-0.5"}
+      className={carbon ? "hc-panel hc-carbon px-2.5 pt-1 pb-1.5" : "px-0 py-0.5"}
     >
       {showSide && side ? (
-        <div data-mass-row className="flex items-start gap-2">
+        <div data-mass-row className="flex items-start gap-1.5">
           <div className="shrink-0" style={{ width: MASS_DIAL.width }}>
             {label}
             {dial}
             <div className="-mt-2">{captionLine}</div>
           </div>
-          {/* Block stack, not a nested flex column. Safari sizes a stretched
-              flex column to the dial and clips Save on the carbon overflow. */}
-          <div className="min-w-0 flex-1 border-l border-white/15 pl-2">
+          {/* Block stack sized to the dial. A nested flex column lets Safari
+              clip Save; a tall button leaves a hole under the weight. */}
+          <div className="min-w-0 flex-1 border-l border-white/15 pl-1.5">
             <HomeSideStats
               bodyFat={side.bodyFat}
               training={side.training}
               fatDraft={fatDraft}
               onFatDraft={setFatDraft}
             />
-            <div className="mt-2">{saveButton}</div>
+            <div className="mt-0.5">{saveButton}</div>
           </div>
         </div>
       ) : (
