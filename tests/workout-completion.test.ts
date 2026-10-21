@@ -5,6 +5,7 @@ import { getDemoProgram } from "@/lib/programs";
 import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 import { resolveSessionElapsed } from "@/lib/session-elapsed";
+import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
   completedProgramDayIdsOnDay,
   discardEmptyWorkoutDraft,
@@ -660,10 +661,11 @@ describe("a workout is complete only after a logged save", () => {
     });
     expect(await finalizePastLoggedDrafts(user.id, new Date("2026-10-21T18:00:00.000Z"), APP_TIMEZONE)).toBe(1);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    const timer = await readWorkoutTimerFields(session.id, prisma);
     expect(row.status).toBe("complete");
-    expect(row.elapsedSeconds).toBe(70 * 60);
-    expect(row.finishedAt?.toISOString()).toBe(lastEdit.toISOString());
-    const view = resolveSessionElapsed(row, new Date("2026-10-21T18:00:00.000Z"));
+    expect(timer.elapsedSeconds).toBe(70 * 60);
+    expect(timer.finishedAt?.toISOString()).toBe(lastEdit.toISOString());
+    const view = resolveSessionElapsed({ ...row, ...timer }, new Date("2026-10-21T18:00:00.000Z"));
     expect(view.ticking).toBe(false);
     expect(view.label).toBe("1:10:00");
   });
@@ -700,10 +702,11 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.status).toBe("draft");
     expect(await finalizePastLoggedDrafts(user.id, new Date(), APP_TIMEZONE)).toBe(0);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    const timer = await readWorkoutTimerFields(session.id, prisma);
     expect(row.status).toBe("draft");
-    expect(row.elapsedSeconds).toBe(70 * 60 + 25);
-    expect(row.finishedAt).toBeNull();
-    const ticking = resolveSessionElapsed(row, new Date(row.timerStartedAt!.getTime() + 5_000));
+    expect(timer.elapsedSeconds).toBe(70 * 60 + 25);
+    expect(timer.finishedAt).toBeNull();
+    const ticking = resolveSessionElapsed({ ...row, ...timer }, new Date(timer.timerStartedAt!.getTime() + 5_000));
     expect(ticking.ticking).toBe(true);
     expect(ticking.label).toBe("1:10:30");
   });
