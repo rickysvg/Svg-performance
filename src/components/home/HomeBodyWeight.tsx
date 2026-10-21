@@ -137,7 +137,7 @@ export function HomeBodyWeight({
       className={carbon ? "hc-panel hc-carbon px-2.5 pt-1 pb-1.5" : "px-0 py-0.5"}
     >
       {showSide && side ? (
-        <div data-mass-row className="flex items-stretch gap-1.5">
+        <div data-mass-row className="flex items-stretch gap-1">
           <div
             data-mass-dial-col
             className="flex shrink-0 flex-col items-center justify-center"
@@ -149,7 +149,7 @@ export function HomeBodyWeight({
           </div>
           {/* Block stack sized to the dial. A nested flex column lets Safari
               clip Save; a tall button leaves a hole under the weight. */}
-          <div className="min-w-0 flex-1 border-l border-white/15 pl-1.5">
+          <div className="min-w-0 flex-1 border-l border-white/15 pl-1">
             <HomeSideStats
               bodyFat={side.bodyFat}
               training={side.training}

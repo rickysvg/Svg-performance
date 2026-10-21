@@ -806,6 +806,25 @@ body:has(.app-splash.is-visible) {
   caret-color: #cbf805;
 }
 
+/*
+  The weigh card clips (overflow:hidden). Anton paints about 1px above its
+  em box, and an 18px input (overflow:clip) slices that off — which also
+  covers the 7px labels sitting on the card edge. Padding keeps the ink
+  inside the field without opening the card up.
+*/
+[data-home-side-stats] .side-stat-label {
+  line-height: 9px;
+}
+
+[data-home-side-stats] .side-stat-value {
+  box-sizing: border-box;
+  display: block;
+  height: 20px;
+  overflow: hidden;
+  line-height: 18px;
+  padding: 2px 0 0;
+}
+
 .hc-panel {
   position: relative;
   border: 1px solid rgba(203, 248, 5, 0.35);
