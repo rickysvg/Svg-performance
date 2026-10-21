@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { submitVipApplicationAction, type VipActionState } from "@/app/actions/vip";
 import { StatusBanner } from "@/components/StatusBanner";
 import { VIP_REPLY_PROMISE } from "@/lib/vip-coaching";
 
 export function VipApplyForm() {
   const [state, action, pending] = useActionState(submitVipApplicationAction, {} as VipActionState);
+  const [noFight, setNoFight] = useState(false);
+  const [fightDate, setFightDate] = useState("");
   return (
     <form action={action} className="space-y-4" data-vip-form="1">
       <StatusBanner error={state.error} />
@@ -35,11 +37,24 @@ export function VipApplyForm() {
         <input
           name="fightDate"
           type="date"
-          className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
+          value={noFight ? "" : fightDate}
+          disabled={noFight}
+          onChange={(event) => setFightDate(event.target.value)}
+          className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3 disabled:opacity-50"
         />
       </label>
       <label className="flex items-center gap-2 text-sm">
-        <input name="noFight" type="checkbox" className="h-4 w-4 accent-[#CBF805]" />
+        <input
+          name="noFight"
+          type="checkbox"
+          checked={noFight}
+          onChange={(event) => {
+            const checked = event.target.checked;
+            setNoFight(checked);
+            if (checked) setFightDate("");
+          }}
+          className="h-4 w-4 accent-[#CBF805]"
+        />
         No fight on the calendar
       </label>
       <label className="block">

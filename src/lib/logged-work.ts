@@ -1,4 +1,4 @@
-import { loggedExerciseName } from "@/lib/gym-exercise";
+import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 
 /**
  * A workout counts as done only after Save, and only when the member
@@ -27,6 +27,40 @@ export function setHasLoggedWork(set: LoggedWorkSet) {
 
 export function sessionHasLoggedWork(sets: LoggedWorkSet[]) {
   return sets.some(setHasLoggedWork);
+}
+
+export type TickedSet = LoggedWorkSet & {
+  completed?: boolean | null;
+  exerciseName?: string | null;
+};
+
+/** A ticked set is one the member checked off and actually logged. */
+export function setIsTicked(set: TickedSet) {
+  return Boolean(set.completed) && setHasLoggedWork(set);
+}
+
+export function tickedSetCount(sets: TickedSet[]) {
+  return sets.filter(setIsTicked).length;
+}
+
+export function tickedExerciseKeys(sets: TickedSet[]) {
+  return sets.filter(setIsTicked).map((set) => gymExerciseKey(set.exerciseName ?? ""));
+}
+
+/**
+ * A planned session is done only when it was saved complete and a ticked set
+ * belongs to that session. A push-up logged on a bike day does not finish the bike.
+ */
+export function sessionCountsAsPlannedCompletion(
+  session: { status: string; sets: TickedSet[] },
+  plannedExerciseNames: string[],
+) {
+  if (session.status !== "complete") return false;
+  const ticked = tickedExerciseKeys(session.sets);
+  if (ticked.length === 0) return false;
+  if (plannedExerciseNames.length === 0) return true;
+  const planned = new Set(plannedExerciseNames.map((name) => gymExerciseKey(name)));
+  return ticked.some((name) => planned.has(name));
 }
 
 /** Prisma filter: a saved set with a number the member entered. */

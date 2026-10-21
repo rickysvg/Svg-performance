@@ -5,18 +5,26 @@ import { planHasCoachReview } from "@/lib/plans";
 import { listTrainingClipsForUser, formatTimestamp } from "@/lib/clips";
 import { ClipUploadForm } from "@/components/clips/ClipUploadForm";
 import { EmptyState } from "@/components/EmptyState";
-import { PaywallNotice } from "@/components/PaywallNotice";
 
 export default async function ClipsPage() {
   const user = await requireOnboardedUser();
   const planId = await getEffectivePlanId(user.id);
   if (!planHasCoachReview(planId)) {
     return (
-      <main className="space-y-4">
-        <PaywallNotice feature="Timestamped video feedback" />
-        <p className="text-sm text-muted">
-          This is on VIP Coaching. We do not fake a live stream.
-        </p>
+      <main className="space-y-4" data-clips-paywall="vip">
+        <section className="rounded-2xl border border-accent/40 bg-card p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-accent">VIP Coaching</p>
+          <h1 className="mt-2 text-2xl">Timestamped video feedback</h1>
+          <p className="mt-2 text-sm text-muted">
+            This is on VIP Coaching. We do not fake a live stream.
+          </p>
+          <Link
+            href="/vip/apply"
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
+          >
+            Apply for VIP Coaching
+          </Link>
+        </section>
       </main>
     );
   }
@@ -25,7 +33,8 @@ export default async function ClipsPage() {
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl">Training clips</h1>
+        <p className="text-xs font-bold uppercase tracking-wide text-accent">VIP Coaching</p>
+        <h1 className="mt-2 text-2xl">Training clips</h1>
         <p className="mt-1 text-sm text-muted">
           Private uploads. An assigned coach can add mm:ss notes and a drill. Files stay
           on this server (S3 later — names only in README).

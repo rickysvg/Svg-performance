@@ -60,7 +60,7 @@ export function HomeSideStats({
     "block whitespace-nowrap font-telemetry text-[7px] uppercase leading-none tracking-normal text-signal";
 
   return (
-    <div className="flex w-full min-w-0 items-start" data-home-side-stats>
+    <div className="flex w-full min-w-0 items-start gap-2" data-home-side-stats>
       <label className="min-w-0 shrink text-left">
         <span className={labelClass}>Body fat</span>
         <span className="flex items-baseline gap-0.5">
@@ -94,7 +94,7 @@ export function HomeSideStats({
           <span className="mt-0.5 block h-2" data-body-fat-caption="hidden" />
         )}
       </label>
-      <div className="mx-1 w-px shrink-0 self-stretch bg-white/30" aria-hidden />
+      <div className="mx-1.5 w-px shrink-0 self-stretch bg-white/30" aria-hidden />
       <Link
         href="/progress"
         data-home-training={training.mode}

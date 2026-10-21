@@ -16,7 +16,9 @@ export async function MemberProReminderBanner({
   tier: AppTier;
   userId?: string;
 }) {
-  const stage = memberProStage(memberProDay(memberProStartedAt), memberProGrantDays(memberProDays));
+  const grantDays = memberProGrantDays(memberProDays);
+  const day = memberProDay(memberProStartedAt);
+  const stage = memberProStage(day, grantDays);
   if (!stage) return null;
   // Already paying for Pro after the free month: no reminder.
   if (stage === "day31" && tier === "pro") return null;
@@ -27,7 +29,8 @@ export async function MemberProReminderBanner({
   });
   if (sub) return null;
   const recap = await memberProRecap(userId, memberProStartedAt);
-  const copy = memberProCopy(stage, recap);
+  const daysLeft = day == null ? 0 : Math.max(0, grantDays - day);
+  const copy = memberProCopy(stage, recap, daysLeft);
   return (
     <section
       data-member-pro-reminder={stage}

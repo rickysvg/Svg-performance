@@ -40,6 +40,46 @@ export function isBodyMetricKind(value: string): value is BodyMetricKind {
   return (BODY_METRIC_KINDS as readonly string[]).includes(value);
 }
 
+/** One decimal place, half-up. 181.2 stays 181.2; 181 stays 181.0 when formatted. */
+export function roundOneDecimal(value: number) {
+  if (!Number.isFinite(value)) return Number.NaN;
+  return Math.round(value * 10) / 10;
+}
+
+/** Display a stored weight with its tenth so 181.2 never renders as 181 or "181.". */
+export function formatOneDecimal(value: number) {
+  const rounded = roundOneDecimal(value);
+  if (!Number.isFinite(rounded)) return "";
+  return rounded.toFixed(1);
+}
+
+/**
+ * Parse a typed weight. Keeps a single tenth from the raw text so "181.2"
+ * is not truncated to 181 by an integer cast. A trailing dot ("181.") is 181.0.
+ */
+export function parseOneDecimal(raw: unknown): number {
+  const text = String(raw ?? "")
+    .trim()
+    .replace(",", ".");
+  if (!text) return Number.NaN;
+  const match = /^(\d{1,4})(?:\.(\d*))?$/.exec(text);
+  if (!match) return Number.NaN;
+  const whole = Number(match[1]);
+  const tenth = (match[2] ?? "").slice(0, 1);
+  const tenths = whole * 10 + (tenth ? Number(tenth) : 0);
+  return tenths / 10;
+}
+
+/** Keep at most one decimal while the member is typing a weigh-in. */
+export function clampOneDecimalDraft(raw: string) {
+  const cleaned = raw.replace(/[^\d.]/g, "");
+  const dot = cleaned.indexOf(".");
+  if (dot < 0) return cleaned.slice(0, 4);
+  const whole = cleaned.slice(0, dot).slice(0, 4);
+  const tenth = cleaned.slice(dot + 1).replace(/\./g, "").slice(0, 1);
+  return `${whole}.${tenth}`;
+}
+
 export function isPhotoSlot(value: string): value is PhotoSlot {
   return (PHOTO_SLOTS as readonly string[]).includes(value);
 }
@@ -86,7 +126,7 @@ export function validateBodyMetricInput(input: {
   }
   return {
     kind: input.kind,
-    value: Math.round(input.value * 10) / 10,
+    value: roundOneDecimal(input.value),
     unit,
     notes: (input.notes ?? "").trim().slice(0, 200),
   };
@@ -195,6 +235,9 @@ export function weightSeriesPoints(
 export function displayBodyMetric<T extends { kind: string; value: number; unit: string }>(row: T): T {
   if ((row.kind === "weight" || row.kind === "leanMass") && row.unit === "kg") {
     return { ...row, value: kgToWholeLb(row.value), unit: "lb" };
+  }
+  if (row.kind === "weight" || row.kind === "leanMass" || row.kind === "bodyFat") {
+    return { ...row, value: roundOneDecimal(row.value) };
   }
   return row;
 }

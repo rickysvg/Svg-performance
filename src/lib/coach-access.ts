@@ -2,7 +2,7 @@ import { getLatestSubscription } from "@/lib/access";
 import { isDashboardAdmin } from "@/lib/admin-access";
 import { normalizePlanId, planIsPro } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
-import { trialDaysLeft } from "@/lib/trial";
+import { isTrialActive, trialDaysLeft } from "@/lib/trial";
 
 /** First week of AI coach chat. No card. */
 export const FREE_COACH_CHAT_DAYS = 7;
@@ -19,18 +19,17 @@ export function freeCoachChatLabel(daysLeft: number) {
 }
 
 /**
- * Days left in the free chat week.
- * An opt-in 7-day Pro trial is that window once it has been started.
- * The academy Pro grant is 14 days and does not extend chat past the first week.
+ * Days left in the free chat week, counted from account signup.
+ * A 7-day Pro trial does not move this clock. The 14-day academy Pro grant
+ * does not extend chat past the first week.
  */
 export function freeCoachChatDaysRemaining(input: {
   now: Date;
   createdAt: Date;
-  trialEndsAt: Date | null;
-  memberProStartedAt: Date | null;
+  trialEndsAt?: Date | null;
+  memberProStartedAt?: Date | null;
 }) {
-  const fromAccount = new Date(input.createdAt.getTime() + FREE_COACH_CHAT_DAYS * DAY_MS);
-  const end = !input.memberProStartedAt && input.trialEndsAt ? input.trialEndsAt : fromAccount;
+  const end = new Date(input.createdAt.getTime() + FREE_COACH_CHAT_DAYS * DAY_MS);
   return trialDaysLeft(end, input.now);
 }
 
@@ -70,6 +69,11 @@ export async function getCoachChatAccess(
     trialEndsAt: profile?.trialEndsAt ?? null,
     memberProStartedAt: profile?.memberProStartedAt ?? null,
   });
+  const trialIncludesChat =
+    !profile?.memberProStartedAt && isTrialActive(profile?.trialEndsAt ?? null, now);
+  if (trialIncludesChat) {
+    return { allowed: true, freeDaysLeft: freeDaysLeft > 0 ? freeDaysLeft : null };
+  }
   return { allowed: freeDaysLeft > 0, freeDaysLeft };
 }
 

@@ -32,6 +32,7 @@ import { bindPendingRemovals, listRemovalsForDay } from "@/lib/exercise-removal-
 import {
   loggedSetSome,
   prepareSetsForPersist,
+  sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   setHasLoggedWork,
 } from "@/lib/logged-work";
@@ -302,17 +303,50 @@ export async function completedProgramDayIdsOnDay(
       },
       sets: loggedSetSome,
     },
-    select: { programDayId: true, performedAt: true },
+    select: {
+      status: true,
+      programDayId: true,
+      performedAt: true,
+      sets: {
+        select: {
+          exerciseName: true,
+          completed: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+        },
+      },
+    },
   });
+  const namesByDay = await plannedExerciseNamesByDay(ids);
   const key = dayKey(day, timeZone);
   return [
     ...new Set(
       rows
-        .filter((row) => row.programDayId && sessionCompletionDay(row, timeZone) === key)
+        .filter(
+          (row) =>
+            row.programDayId &&
+            sessionCompletionDay(row, timeZone) === key &&
+            sessionCountsAsPlannedCompletion(row, namesByDay.get(row.programDayId) ?? []),
+        )
         .map((row) => row.programDayId)
         .filter((id): id is string => Boolean(id)),
     ),
   ];
+}
+
+async function plannedExerciseNamesByDay(dayIds: string[]) {
+  const exercises = await prisma.programExercise.findMany({
+    where: { programDayId: { in: dayIds } },
+    select: { programDayId: true, name: true },
+  });
+  const names = new Map<string, string[]>();
+  for (const exercise of exercises) {
+    const list = names.get(exercise.programDayId) ?? [];
+    list.push(exercise.name);
+    names.set(exercise.programDayId, list);
+  }
+  return names;
 }
 
 const DAY_PAD_MS = 36 * 60 * 60 * 1000;
@@ -344,12 +378,30 @@ export async function completedProgramDayIdsOnDays(
         lte: new Date(to.getTime() + DAY_PAD_MS),
       },
     },
-    select: { programDayId: true, performedAt: true },
+    select: {
+      status: true,
+      programDayId: true,
+      performedAt: true,
+      sets: {
+        select: {
+          exerciseName: true,
+          completed: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+        },
+      },
+    },
   });
+  const namesByDay = await plannedExerciseNamesByDay(
+    rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)),
+  );
   const ids = new Set<string>();
   for (const row of rows) {
     if (!row.programDayId) continue;
-    if (keySet.has(sessionCompletionDay(row, timeZone))) ids.add(row.programDayId);
+    if (!keySet.has(sessionCompletionDay(row, timeZone))) continue;
+    if (!sessionCountsAsPlannedCompletion(row, namesByDay.get(row.programDayId) ?? [])) continue;
+    ids.add(row.programDayId);
   }
   return [...ids];
 }

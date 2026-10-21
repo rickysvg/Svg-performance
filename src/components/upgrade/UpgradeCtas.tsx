@@ -3,6 +3,7 @@ import { startTrialAction } from "@/app/actions/trial";
 
 export function UpgradeCtas({
   canStartTrial,
+  trialDays,
   next = "/home",
   trialLabel,
   upgradeLabel = "Subscribe",
@@ -21,7 +22,7 @@ export function UpgradeCtas({
           type="submit"
           className="touch-target w-full rounded-full bg-accent text-black"
         >
-          {trialLabel ?? "Start 7-day free trial"}
+          {trialLabel ?? `Start ${trialDays && trialDays > 0 ? trialDays : 7}-day free trial`}
         </button>
       </form>
     );

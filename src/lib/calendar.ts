@@ -6,7 +6,7 @@ import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
-import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
@@ -248,7 +248,13 @@ type LoggedPlanSession = {
   programDayId: string | null;
   performedAt: Date;
   createdAt?: Date | null;
-  sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[];
+  sets: {
+    exerciseName?: string | null;
+    completed?: boolean | null;
+    reps: number | null;
+    loadValue: number | null;
+    durationSeconds: number | null;
+  }[];
   programDay: { dayNumber: number; program: { slug: string } } | null;
 };
 
@@ -281,9 +287,17 @@ function dayNumberMatch(
 /** A saved log belongs to this planned session even if a reseed replaced the day id. */
 function logMatchesPlanned(
   log: LoggedPlanSession,
-  planned: { dayId?: string; dayNumber?: number; programSlug?: string; title: string },
+  planned: {
+    dayId?: string;
+    dayNumber?: number;
+    programSlug?: string;
+    title: string;
+    day?: { exercises?: { name: string }[] } | null;
+  },
   plannedToday: { dayId?: string; dayNumber?: number; programSlug?: string; title: string }[],
 ) {
+  const plannedNames = (planned.day?.exercises ?? []).map((exercise) => exercise.name);
+  if (!sessionCountsAsPlannedCompletion(log, plannedNames)) return false;
   if (idMatch(log, planned) || dayNumberMatch(log, planned)) return true;
   if (!titlesMatch(log.title, planned.title)) return false;
   const sameTitle = plannedToday.filter((row) => titlesMatch(log.title, row.title));
@@ -319,8 +333,8 @@ export async function getCalendarSchedule(
     weekIndex: campWeek ?? planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
     campPhase: camp && camp.phase !== "complete" ? camp.phase : null,
   });
-  const loggedSessions = sessions.filter(
-    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
+  const loggedSessions = sessions.filter((session) =>
+    sessionCountsAsPlannedCompletion(session, []),
   );
   const loggedTitles = new Map<string, string[]>();
   for (const session of loggedSessions) {
@@ -425,6 +439,7 @@ export async function getCalendarSchedule(
     }
     for (const log of dayLogs) {
       if (matchedLogIds.has(log.id) || !log.programDayId) continue;
+      if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
       const title = memberFacingTitle(log.title) || log.title;
       day.activities.push({
         kind: "workout",

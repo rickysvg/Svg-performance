@@ -56,6 +56,8 @@ export default async function ProfilePage() {
             {currentPlanLine({
               trialActive: trial.trialActive,
               trialDaysLeft: trial.trialDaysLeft,
+              trialLengthDays: trial.trialLengthDays,
+              verified: trial.verified,
               planLabel: PLAN_CATALOG[planId].label,
             })}
           </strong>

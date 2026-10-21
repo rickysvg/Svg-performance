@@ -138,6 +138,7 @@ describe("QA Oct 21 saved logs", () => {
       timeZone: "America/Denver",
     });
     const finishedAt = new Date("2026-10-22T03:30:00.000Z");
+    const planned = session.sets.find((set) => set.logMode === "load_reps") ?? session.sets[0];
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
@@ -147,11 +148,12 @@ describe("QA Oct 21 saved logs", () => {
       status: "complete",
       sets: [
         {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: 8,
-          loadValue: 40,
+          exerciseName: planned?.exerciseName || "Goblet squat",
+          setNumber: planned?.setNumber || 1,
+          reps: planned?.logMode === "load_reps" ? 8 : null,
+          loadValue: planned?.logMode === "load_reps" ? 40 : null,
           loadUnit: "lb",
+          durationSeconds: planned?.logMode === "load_reps" ? null : 60,
           completed: true,
         },
       ],

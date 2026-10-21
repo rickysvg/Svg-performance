@@ -7,7 +7,13 @@ import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
 import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
-import { displayBodyMetric, getLatestBodyMetricsForUser, listBodyMetricsForUser, weightSeriesPoints } from "@/lib/body-metrics";
+import {
+  displayBodyMetric,
+  formatOneDecimal,
+  getLatestBodyMetricsForUser,
+  listBodyMetricsForUser,
+  weightSeriesPoints,
+} from "@/lib/body-metrics";
 import { massCaption, massGaugeScale } from "@/lib/mass-caption";
 import { BodyWeightChart } from "@/components/progress/BodyWeightChart";
 import { HomeTelemetry } from "@/components/home/HomeTelemetry";
@@ -168,7 +174,7 @@ export default async function ProgressPage() {
         <div>
           <p className="hc-kicker">Mass</p>
           <p className="font-telemetry mt-1 text-3xl leading-none text-[#CBF805]">
-            {weight ? `${weight.value}` : "—"}
+            {weight ? formatOneDecimal(weight.value) : "—"}
             {weight ? <span className="ml-2 text-base text-muted">{weight.unit}</span> : null}
           </p>
           <p className="mt-1 font-telemetry text-sm text-[#CBF805]" data-progress-body-fat>
@@ -361,7 +367,7 @@ export default async function ProgressPage() {
         />
         <MetricTile
           title="Body Weight"
-          value={weight ? `${weight.value} ${weight.unit}` : "—"}
+          value={weight ? `${formatOneDecimal(weight.value)} ${weight.unit}` : "—"}
           hint={weight ? "Manual scale log" : "Log a weigh-in below. No scale pairing."}
         />
         <MetricTile

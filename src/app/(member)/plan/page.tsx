@@ -27,6 +27,8 @@ export default async function PlanPage() {
           {currentPlanLine({
             trialActive: trial.trialActive,
             trialDaysLeft: trial.trialDaysLeft,
+            trialLengthDays: trial.trialLengthDays,
+            verified: trial.verified,
             planLabel: plan.label,
           })}
         </h1>

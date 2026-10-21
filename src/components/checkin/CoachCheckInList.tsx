@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { coachCheckInAction, type CheckInActionState } from "@/app/actions/weekly-checkin";
 import { StatusBanner } from "@/components/StatusBanner";
+import { formatOneDecimal } from "@/lib/body-metrics";
 import { regionLabel, type CheckInFlag } from "@/lib/weekly-checkin-shared";
 import { DeskBadge } from "@/components/admin/DeskStatus";
 import { deskSurfaceClass, queueItemTone } from "@/lib/admin-desk-status";
@@ -91,7 +92,10 @@ function CoachCard({ card }: { card: CoachCheckInCard }) {
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <Stat label="Weight" value={card.bodyweightLb != null ? `${card.bodyweightLb} lb` : "—"} />
+        <Stat
+          label="Weight"
+          value={card.bodyweightLb != null ? `${formatOneDecimal(card.bodyweightLb)} lb` : "—"}
+        />
         <Stat label="Sleep" value={`${card.sleepQuality}/5`} />
         <Stat label="Energy" value={`${card.energy}/5`} />
         <Stat label="Stress" value={`${card.stress}/5`} />

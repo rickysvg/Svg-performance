@@ -82,7 +82,7 @@ export default async function CoachPage() {
           data-free-coach-chat
           className="shrink-0 border-b border-white/10 bg-black px-3 py-1.5 text-[11px] font-medium text-[#CBF805]"
         >
-          {freeCoachChatLabel(coachChat.freeDaysLeft)}
+          {freeCoachChatLabel(coachChat.freeDaysLeft)}. Counted from signup.
         </p>
       ) : null}
       {recovery ? (

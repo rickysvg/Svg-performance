@@ -198,7 +198,8 @@ html[data-splash="done"] .app-splash {
   position: fixed;
   z-index: 30;
   right: max(0.75rem, env(safe-area-inset-right, 0px));
-  bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  /* Above the dock and the undo toast (toast sits at 5.5rem). */
+  bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   width: 48px;
   height: 48px;
@@ -211,7 +212,7 @@ html[data-splash="done"] .app-splash {
 }
 
 .coach-fab[data-coach-fab-raised] {
-  bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(10.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 .coach-fab-photo {
@@ -264,6 +265,10 @@ html:has([data-coach-fab-raised]) .app-toast:not(.app-toast-top) {
 
   [data-coach-clear] {
     padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  [data-coach-page] {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -756,6 +761,8 @@ body:has(.app-splash.is-visible) {
   font-weight: 600;
   font-synthesis: none;
   letter-spacing: 0.02em;
+  overflow: visible;
+  padding-right: 0.35em;
   text-shadow:
     0 0 1px #07080a,
     0 0 2px #07080a,

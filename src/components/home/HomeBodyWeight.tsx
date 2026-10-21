@@ -8,6 +8,7 @@ import { Toast } from "@/components/Toast";
 import { HomeSideStats } from "@/components/home/HomeSideStats";
 import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
 import { massSpeedoClass, massUnitClass } from "@/components/home/mass-fonts";
+import { clampOneDecimalDraft, formatOneDecimal } from "@/lib/body-metrics";
 import type { BodyFatReadout, HomeTrainingReadout } from "@/lib/home-side-stats";
 import type { MassGauge as MassGaugeScale } from "@/lib/mass-caption";
 
@@ -43,7 +44,7 @@ export function HomeBodyWeight({
     {} as BodyMetricActionState,
   );
   const recordedAt = new Date().toISOString();
-  const initial = value == null ? "" : String(value);
+  const initial = value == null ? "" : formatOneDecimal(value);
   const savedFat = side?.bodyFat.value ?? bodyFatValue ?? null;
   const savedFatText = savedFat == null ? "" : savedFat.toFixed(1);
   const [draft, setDraft] = useState(initial);
@@ -103,9 +104,12 @@ export function HomeBodyWeight({
           value={draft}
           placeholder="—"
           aria-label="Body weight in pounds"
-          onChange={(event) => setDraft(event.target.value)}
+          data-weight-value={draft}
+          onChange={(event) => setDraft(clampOneDecimalDraft(event.target.value))}
           style={{ fieldSizing: "content", gridArea: "1 / 1", justifySelf: "center" }}
-          className={`block w-auto min-w-[1ch] border-0 bg-transparent p-0 text-center text-3xl leading-none text-[#CBF805] outline-none tabular-nums ${massSpeedoClass}`}
+          className={`mass-weight-input block w-auto min-w-[4.5ch] overflow-visible border-0 bg-transparent p-0 text-center leading-none text-[#CBF805] outline-none tabular-nums ${
+            draft.length >= 5 ? "text-[1.65rem]" : "text-3xl"
+          } ${massSpeedoClass}`}
         />
         <span
           data-mass-unit

@@ -5,7 +5,7 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
-import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { sessionHasLoggedWork, tickedSetCount } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { exerciseNamesInOrder } from "@/lib/logger-insert";
@@ -54,6 +54,7 @@ export default async function HistoryPage() {
         <ul className="space-y-3">
           {sessions.map((session) => {
             const finished = session.status === "complete" && sessionHasLoggedWork(session.sets);
+            const setCount = tickedSetCount(session.sets);
             const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
             const names = exerciseNamesInOrder(session.sets);
             const bagLine = bagworkHistoryLine(session);
@@ -74,7 +75,7 @@ export default async function HistoryPage() {
                 ) : null}
                 <p className="mt-1 text-sm text-muted">
                   {new Date(session.performedAt).toLocaleString()} · {label}
-                  {bagLine ? ` · ${bagLine}` : ` · ${session.sets.length} sets`}
+                  {bagLine ? ` · ${bagLine}` : ` · ${setCount} set${setCount === 1 ? "" : "s"}`}
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
                     : finished && !bagLine
