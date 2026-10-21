@@ -50,6 +50,24 @@ export function isBikeTimerHref(href?: string | null) {
   return /(?:\?|&)mode=bike(?:&|$)/.test(href);
 }
 
+/** Opens the workout logger for a program day. Bike tiles use this, not the timer. */
+export function bikeLoggerHref(dayId: string) {
+  return `/training/${dayId}/start`;
+}
+
+export function isBikeLoggerHref(href?: string | null) {
+  return typeof href === "string" && /^\/training\/[^/]+\/start$/.test(href);
+}
+
+/** A bike tap opens the logger. A finished session stays on its day page. */
+export function sessionOpenHref(
+  session: { href?: string; logHref?: string },
+  done = false,
+) {
+  if (!done && session.logHref) return session.logHref;
+  return session.href;
+}
+
 /**
  * Round-timer mode for a session, or bike when the session is an assault-bike workout.
  * Null means the generic timer may keep the member's last mode.

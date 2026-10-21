@@ -11,7 +11,7 @@ import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import type { weekStrip } from "@/lib/week-plan";
 
-type Item = ReturnType<typeof weekStrip>[number];
+type Item = ReturnType<typeof weekStrip>[number] & { logHref?: string };
 
 export type WeekChipActivity = {
   id: string;
@@ -336,7 +336,7 @@ export function WeekStrip({
     <div>
       <ol data-week-strip className="grid grid-cols-7 gap-1">
       {days.map((day) => {
-        const href = `${basePath}?day=${day.dayParam}`;
+        const href = day.logHref ?? `${basePath}?day=${day.dayParam}`;
         const selected = day.isSelected;
         const activities = weekChipActivities(day.summary);
         const word =
@@ -360,6 +360,7 @@ export function WeekStrip({
             <Link
               href={href}
               data-week-chip={day.short}
+              data-open-bike-logger={day.logHref ? "chip" : undefined}
               data-moved-from={day.movedFrom || undefined}
               data-move-source={held ? "true" : undefined}
               data-week-past={day.isPast ? "true" : undefined}

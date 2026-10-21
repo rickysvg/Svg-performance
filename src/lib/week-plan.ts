@@ -1,5 +1,5 @@
 import { bikeWeekIndex, memberWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
-import { bikeTimerHref, isBikePlanSession } from "@/lib/timer-session";
+import { bikeLoggerHref, isBikePlanSession } from "@/lib/timer-session";
 import {
   FRIDAY_CONDITIONING_LABEL,
   isGppStrengthDay,
@@ -125,6 +125,8 @@ export type ResolvedPlanSession = {
   dayNumber?: number;
   dayId?: string;
   href?: string;
+  /** Bike sessions: start the logger. Other sessions leave this empty. */
+  logHref?: string;
   day?: CatalogDayLike | null;
   sessionKey?: string;
   sourceWeekday?: PlanWeekday;
@@ -226,13 +228,15 @@ function moderateCardioSlot(): PlanSessionSlot {
   };
 }
 
-function hardClassBikeSlot(): PlanSessionSlot {
+function hardClassBikeSlot(weekIndex = 0): PlanSessionSlot {
+  const session = pickBikeSessionForPlan("Wednesday", weekIndex);
   return {
     kind: "conditioning",
     label: "Cardio — bike",
     title: "Cardio — bike",
     detail: "Light-to-moderate bike or steady conditioning. No sprints and no heavy lifting.",
-    href: bikeTimerHref(),
+    programSlug: DEMO_PROGRAM_SLUG,
+    dayNumber: session.programDayNumber,
     heavy: false,
   };
 }
@@ -277,7 +281,7 @@ function sessionsForRole(weekday: PlanWeekday, role: DayRole, weekIndex: number)
     sessions.push({ ...easyCardioSlot(), heavy: false });
   } else if (role.cardio === "moderate") {
     sessions.push(
-      role.outside?.hard ? hardClassBikeSlot() : { ...moderateCardioSlot(), heavy: false },
+      role.outside?.hard ? hardClassBikeSlot(weekIndex) : { ...moderateCardioSlot(), heavy: false },
     );
   }
   if (role.mobility) sessions.push({ ...mobilitySlot(role.mobility), heavy: false });
@@ -637,7 +641,7 @@ export function resolvePlanSessions(
     const slotLetter = (["A", "B", "C"] as const)[Math.min(resolved.length, 2)];
     const title = session.title ?? (day?.title ? memberCopy(day.title) : session.label);
     const subtitle = session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label);
-    const bike = isBikePlanSession({ title, label: session.label, day });
+    const bike = Boolean(day?.id) && isBikePlanSession({ title, label: session.label, day });
     resolved.push({
       slot: slotLetter,
       kind: session.kind,
@@ -648,7 +652,8 @@ export function resolvePlanSessions(
       programSlug: session.programSlug,
       dayNumber: session.dayNumber,
       dayId: day?.id,
-      href: bike ? bikeTimerHref(day?.id) : day?.id ? `/training/${day.id}` : session.href,
+      href: day?.id ? `/training/${day.id}` : session.href,
+      logHref: bike && day?.id ? bikeLoggerHref(day.id) : undefined,
       day,
       sessionKey: session.sessionKey,
       sourceWeekday: session.sourceWeekday,
@@ -656,6 +661,37 @@ export function resolvePlanSessions(
     });
   }
   return resolved;
+}
+
+/** Week chip target when the day's work is one bike session (mobility may sit beside it). */
+export function bikeChipLogHref(
+  dayPlan: DayPlan,
+  catalog: {
+    strength?: { days: CatalogDayLike[] } | null;
+    skill?: { days: CatalogDayLike[] } | null;
+  },
+): string | null {
+  const sessions = resolvePlanSessions(dayPlan, catalog).filter((session) => session.kind !== "rest");
+  const work = sessions.filter((session) => session.kind !== "mobility");
+  if (work.length !== 1) return null;
+  return work[0]?.logHref ?? null;
+}
+
+export function withBikeChipLogHrefs<T extends { date: Date; summary: string }>(
+  days: T[],
+  prefs: PlannerPrefs,
+  catalog: {
+    strength?: { days: CatalogDayLike[] } | null;
+    skill?: { days: CatalogDayLike[] } | null;
+  },
+  timeZone = APP_TIMEZONE,
+  swaps: WeekPlanSwap[] = [],
+): Array<T & { logHref?: string }> {
+  return days.map((day) => {
+    const plan = planForDate(prefs, day.date, timeZone, swaps);
+    if (plan.summary !== day.summary) return { ...day, logHref: undefined };
+    return { ...day, logHref: bikeChipLogHref(plan, catalog) ?? undefined };
+  });
 }
 
 export type MoveSessionChoice = {

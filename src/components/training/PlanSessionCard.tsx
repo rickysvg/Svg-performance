@@ -8,7 +8,6 @@ import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media
 import { plannedSetLine } from "@/lib/exercise-log-mode";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
-import { isBikeTimerHref } from "@/lib/timer-session";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 
@@ -56,9 +55,8 @@ export function PlanSessionCard({
   const structure = planStructureLine(groups);
   const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const count = exercises.length;
-  const bikeClock = !draftId && session.href && isBikeTimerHref(session.href) ? session.href : null;
   const href = draftId ? `/training/log/${draftId}` : session.href;
-  const cta = draftId ? "Resume" : bikeClock || session.dayId ? "Start" : session.href ? "Open session" : null;
+  const cta = draftId ? "Resume" : session.dayId ? "Start" : session.href ? "Open session" : null;
   const bookend = mobilityBookendsForSession({
     kind: session.kind,
     title: session.title,
@@ -204,17 +202,12 @@ export function PlanSessionCard({
             >
               Resume
             </Link>
-          ) : bikeClock ? (
-            <Link
-              href={bikeClock}
-              data-open-bike-clock
-              data-prime-coach-audio
-              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
-            >
-              Start
-            </Link>
           ) : session.dayId ? (
-            <form action={startSessionAction} data-prime-coach-audio>
+            <form
+              action={startSessionAction}
+              data-open-bike-logger={session.logHref ? "train" : undefined}
+              data-prime-coach-audio
+            >
               <input type="hidden" name="programDayId" value={session.dayId} />
               <StartSubmit
                 label="Start"
@@ -231,7 +224,7 @@ export function PlanSessionCard({
               {cta}
             </Link>
           ) : null}
-          {session.href && (draftId || session.dayId) && !bikeClock ? (
+          {session.href && (draftId || session.dayId) ? (
             <Link
               href={session.href}
               className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
