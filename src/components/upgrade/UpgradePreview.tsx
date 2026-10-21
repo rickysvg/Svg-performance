@@ -17,22 +17,22 @@ const BLURBS: Record<string, { title: string; body: string }> = {
   },
   coach: {
     title: "SVG Coach chat is in Pro",
-    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Academy members get 3 messages a week. Pro opens daily chat with voices.",
+    body: "SVG Coach is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Academy members get 3 messages a week. Pro opens daily chat.",
   },
   ai_limit: {
     title: "You used this week's 3 AI messages",
-    body: "Your next message opens on Pro: daily AI coach chat with voices, AI feedback on check-ins and meals, and full history. Logging workouts, timers, and class programming stay open.",
+    body: "Your next message opens on Pro: daily AI coach chat, AI feedback on check-ins and meals, and full history. Logging workouts, timers, and class programming stay open.",
   },
   ai_daily_cap: {
     title: "That's today's AI fair-use limit",
-    body: "Pro includes 30 AI messages, 20 minutes of voice, and 1 read-aloud a day. It resets tomorrow. Logging and timers stay open.",
+    body: "Pro includes 30 AI messages a day. It resets tomorrow. Logging and timers stay open.",
   },
   voice: {
     title: "Coach voices are in Pro",
     body: "Hear your coach out loud with Pro. Up to 20 minutes of voice a day.",
   },
   read_aloud: {
-    title: "Today's Summary read-aloud is in Pro",
+    title: "Hearing today's summary is in Pro",
     body: "Pro reads your day out loud once a day. The written summary stays on Home.",
   },
   coach_take: {

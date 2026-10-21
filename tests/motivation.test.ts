@@ -220,7 +220,9 @@ describe("workout motivation cues", () => {
       path.join(process.cwd(), "src/app/api/coach/motivation/route.ts"),
       "utf8",
     );
-    expect(route).toContain("if (!COACH_WORKOUT_MOTIVATION_ENABLED) return motivationOffResponse()");
+    expect(route).toContain(
+      "if (!COACH_WORKOUT_MOTIVATION_ENABLED || !coachVoiceEnabled()) return motivationOffResponse()",
+    );
     const summary = fs.readFileSync(
       path.join(process.cwd(), "src/components/home/SummaryReader.tsx"),
       "utf8",

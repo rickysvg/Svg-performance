@@ -19,6 +19,7 @@ import {
   coachingSpotsLine,
   performanceAnnualLine,
   performancePriceLine,
+  PRO_FAIR_USE_LINE,
   usd,
 } from "@/lib/pricing";
 
@@ -63,10 +64,11 @@ describe("owner-approved three-plan pricing", () => {
     expect(PLAN_CATALOG.performance.label).toBe("SVG Pro");
     expect(PLAN_CATALOG.performance.gymPriceLabel).toBe("$9.99/mo");
     expect(PLAN_CATALOG.performance.nonmemberPriceLabel).toBe("$9.99/mo");
+    expect(PRO_FAIR_USE_LINE).toBe("Fair use: 30 AI messages a day.");
+    expect(PLAN_CATALOG.performance.includes.join(" ")).not.toMatch(/voice|read-aloud/i);
     expect(PLAN_CATALOG.performance.includes).toEqual(
       expect.arrayContaining([
-        "AI coach chat with voices",
-        "Today's Summary read-aloud",
+        "AI coach chat",
         "RIR auto-adjust after sparring or low readiness",
         "AI feedback on check-ins and meals",
         "Sparring trends",
