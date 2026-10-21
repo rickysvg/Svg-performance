@@ -178,22 +178,24 @@ export function HomeBodyWeight({
                     {unitLabel(unit)}
                   </span>
                 </p>
-                <label className="mt-4 block text-sm">
-                  <span className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-signal">
-                    Body fat % <span className="tracking-normal text-white/45">optional</span>
-                  </span>
-                  <input
-                    form={formId}
-                    name="bodyFatPercent"
-                    inputMode="decimal"
-                    min={0.1}
-                    max={70}
-                    step="0.1"
-                    placeholder="—"
-                    aria-label="Body fat percent, optional"
-                    className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base text-black outline-none"
-                  />
-                </label>
+                {showSide ? null : (
+                  <label className="mt-4 block text-sm">
+                    <span className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-signal">
+                      Body fat % <span className="tracking-normal text-white/45">optional</span>
+                    </span>
+                    <input
+                      form={formId}
+                      name="bodyFatPercent"
+                      inputMode="decimal"
+                      min={0.1}
+                      max={70}
+                      step="0.1"
+                      placeholder="—"
+                      aria-label="Body fat percent, optional"
+                      className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base text-black outline-none"
+                    />
+                  </label>
+                )}
                 <div className="mt-4">
                   <StatusBanner error={state.error} success={state.success} />
                 </div>

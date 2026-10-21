@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { kgToWholeLb } from "@/lib/units";
+import { dayKey } from "@/lib/timezone";
 import type { WeightSeriesPoint } from "@/lib/weight-series";
 
 export type { WeightRange, WeightSeriesPoint } from "@/lib/weight-series";
@@ -205,6 +206,48 @@ export async function getRecentWeightsForUser(userId: string, take = 2) {
     take,
   });
   return rows.map((row) => displayBodyMetric(row));
+}
+
+/**
+ * Body fat logged from the Home stat. It shares the timestamp of today's
+ * weigh-in so the percent sits with that weight entry. A later save the same
+ * day is ordered after the previous body-fat row.
+ */
+export async function recordBodyFatAlongsideTodayWeight(
+  userId: string,
+  input: { value: number; timeZone: string; now?: Date },
+) {
+  const value = validateBodyMetricInput({
+    kind: "bodyFat",
+    value: input.value,
+    unit: "percent",
+  }).value;
+  const now = input.now ?? new Date();
+  const today = dayKey(now, input.timeZone);
+  const weights = await prisma.bodyMetric.findMany({
+    where: { userId, kind: "weight" },
+    orderBy: { recordedAt: "desc" },
+    take: 40,
+  });
+  const todayWeight = weights.find((row) => dayKey(row.recordedAt, input.timeZone) === today);
+  if (!todayWeight) {
+    throw new AppError("BODY_METRIC", "Log today's weight first, then add body fat.");
+  }
+  const latestFat = await prisma.bodyMetric.findFirst({
+    where: { userId, kind: "bodyFat" },
+    orderBy: { recordedAt: "desc" },
+  });
+  let recordedAt = todayWeight.recordedAt;
+  if (latestFat && latestFat.recordedAt.getTime() >= recordedAt.getTime()) {
+    recordedAt = new Date(latestFat.recordedAt.getTime() + 1000);
+  }
+  return createBodyMetricForUser(userId, {
+    kind: "bodyFat",
+    value,
+    unit: "percent",
+    recordedAt,
+    notes: "",
+  });
 }
 
 /** Newest first. Previous entry is the one before the latest, for the home delta. */

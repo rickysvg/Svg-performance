@@ -22,7 +22,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
   const [kind, setKind] = useState("weight");
 
   return (
-    <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-5">
+    <form action={action} className="space-y-2 rounded-2xl border border-line bg-card p-3">
       <h2 className="text-lg">Log a body metric</h2>
       <p className="text-sm text-muted">
         Type a number yourself. Apple Health import and Polar live on Heart rate. Sleep /
@@ -35,7 +35,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
           name="kind"
           value={kind}
           onChange={(event) => setKind(event.target.value)}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
         >
           <option value="weight">Body weight</option>
           <option value="sleepHours">Sleep (hours, last night)</option>
@@ -44,7 +44,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
           <option value="bodyFat">Body fat %</option>
         </select>
       </label>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm">
           Value
           <input
@@ -53,7 +53,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
             min={0.1}
             step="0.1"
             required
-            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
           />
         </label>
         <label className="block text-sm">
@@ -61,7 +61,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
           <select
             name="unit"
             defaultValue="lb"
-            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
           >
             <option value="lb">lb (weight / lean mass)</option>
             <option value="hours">hours (sleep)</option>
@@ -82,7 +82,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
             step="0.1"
             placeholder="—"
             aria-label="Body fat percent, optional"
-            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
           />
         </label>
       ) : null}
@@ -92,7 +92,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
           name="recordedAt"
           type="datetime-local"
           defaultValue={todayInputValue()}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
         />
       </label>
       <label className="block text-sm">
@@ -100,13 +100,13 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
         <input
           name="notes"
           maxLength={200}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
         />
       </label>
       <button
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
+        className="h-9 w-full rounded-full bg-accent text-sm text-black disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save metric"}
       </button>

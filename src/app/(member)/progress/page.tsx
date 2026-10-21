@@ -45,10 +45,10 @@ function MetricTile({
   hint: string;
 }) {
   return (
-    <article className="rounded-2xl border border-line bg-card p-4">
-      <p className="text-sm text-muted">{title}</p>
-      <p className="font-telemetry mt-3 text-2xl text-[#CBF805]">{value}</p>
-      <p className="mt-2 text-xs text-muted">{hint}</p>
+    <article className="rounded-xl border border-line bg-card px-2.5 py-2">
+      <p className="text-xs text-muted">{title}</p>
+      <p className="font-telemetry mt-1 text-xl leading-none text-[#CBF805]">{value}</p>
+      <p className="mt-1 text-[11px] leading-snug text-muted">{hint}</p>
     </article>
   );
 }
@@ -109,10 +109,10 @@ export default async function ProgressPage() {
   const daysWithFood = foodWeek.filter((day) => day.entryCount > 0).length;
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-3xl uppercase tracking-wide">Progress</h1>
-        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter">
+        <h1 className="font-display text-2xl uppercase tracking-wide">Progress</h1>
+        <p className="font-display rounded-full bg-black px-2.5 py-0.5 text-xs uppercase tracking-wide text-highlighter">
           {badgeCounts.earned}/{badgeCounts.total} earned
         </p>
       </div>
@@ -120,20 +120,20 @@ export default async function ProgressPage() {
       <div className="flex flex-wrap gap-2">
         <Link
           href="/heart"
-          className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
+          className="inline-flex h-8 items-center rounded-full border border-accent px-3 text-sm"
         >
           Heart rate
         </Link>
         <Link
           href="/profile"
-          className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
+          className="inline-flex h-8 items-center rounded-full border border-line px-3 text-sm"
           aria-label="Progress settings (profile)"
         >
           Settings
         </Link>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-1.5">
         <div className="flex items-end justify-between gap-3">
           <h2 className="text-lg">Streak</h2>
           <Link href="/progress/streaks" className="text-sm text-accent underline">
@@ -143,9 +143,9 @@ export default async function ProgressPage() {
         <StreakHero streak={companion.streak} />
       </section>
 
-      <section className="hc-panel p-4">
+      <section className="hc-panel px-3 py-2">
         <p className="hc-kicker">Last session</p>
-        <p className="mt-1 text-lg font-semibold">
+        <p className="mt-0.5 text-base font-semibold">
           {summary.sessionCount === 0 ? "None yet" : lastTitle}
           {lastWhen ? (
             <span data-last-session-date className="mt-1 block text-sm font-medium text-muted">
@@ -156,18 +156,18 @@ export default async function ProgressPage() {
         {lastComplete ? (
           <Link
             href={`/training/log/${lastComplete.id}/done`}
-            className="mt-2 inline-flex min-h-11 items-center text-sm text-accent underline"
+            className="mt-1 inline-flex items-center text-sm text-accent underline"
           >
             Open
           </Link>
         ) : null}
       </section>
 
-      <div data-progress-charts className="space-y-6">
-      <section className="hc-panel hc-carbon space-y-4 p-4">
+      <div data-progress-charts className="space-y-3">
+      <section className="hc-panel hc-carbon space-y-2 px-2.5 py-2">
         <div>
           <p className="hc-kicker">Mass</p>
-          <p className="font-telemetry mt-2 text-4xl text-[#CBF805]">
+          <p className="font-telemetry mt-1 text-3xl leading-none text-[#CBF805]">
             {weight ? `${weight.value}` : "—"}
             {weight ? <span className="ml-2 text-base text-muted">{weight.unit}</span> : null}
           </p>
@@ -183,7 +183,7 @@ export default async function ProgressPage() {
         {weight ? (
           <details id="log-body-fat" className="scroll-mt-4" {...(fat ? {} : { open: true })}>
             <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
-            <div className="mt-3">
+            <div className="mt-2">
               <HomeBodyWeight
                 carbon={false}
                 value={weight.value}
@@ -206,19 +206,19 @@ export default async function ProgressPage() {
         )}
       </section>
 
-      <HomeTelemetry data={telemetry} title={telemetryTitle} />
+      <HomeTelemetry data={telemetry} title={telemetryTitle} compact />
 
-      <section className="hc-panel p-4" data-coach-clear>
+      <section className="hc-panel px-2.5 py-2" data-coach-clear>
         <p className="hc-kicker">Sparring</p>
-        <h2 className="mt-2 text-lg">This week</h2>
-        <p className="font-telemetry mt-2 text-3xl text-[#CBF805]">
+        <h2 className="mt-0.5 text-base">This week</h2>
+        <p className="font-telemetry mt-1 text-2xl leading-none text-[#CBF805]">
           {sparringWeek.rounds} rounds · {sparringWeek.minutes} min
         </p>
         <p className="mt-1 text-xs text-muted">
           Saved sparring logs only. Class and drilling days are not counted.
         </p>
         {sparringWeek.logs.length > 0 ? (
-          <ul className="mt-3 space-y-1 text-sm">
+          <ul className="mt-2 space-y-0.5 text-sm">
             {sparringWeek.logs.map((log) => (
               <li key={log.dateKey}>
                 {log.weekday || log.dateKey}: {log.rounds} × {log.minutesPerRound} min
@@ -260,7 +260,7 @@ export default async function ProgressPage() {
 
       <Link
         href="/progress/photos"
-        className="hc-panel flex min-h-14 items-center justify-between gap-3 px-4"
+        className="hc-panel flex items-center justify-between gap-3 px-3 py-2"
       >
         <span>
           <span className="block font-semibold">Progress photos</span>
@@ -275,23 +275,23 @@ export default async function ProgressPage() {
         </span>
       </Link>
 
-      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+      <details className="rounded-2xl border border-line bg-card px-3 py-2">
         <summary className="cursor-pointer font-semibold">Badges</summary>
-        <div className="mt-3 space-y-4">
+        <div className="mt-2 space-y-2">
           <nav className="flex items-center gap-2" aria-label="Progress sections">
             <Link
               href="/progress/records"
-              className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
+              className="progress-tab inline-flex h-8 items-center rounded-full border border-line px-3 text-sm"
             >
               Records
             </Link>
             <Link
               href="/progress/streaks"
-              className="progress-tab inline-flex h-11 items-center rounded-full border border-line px-3 text-sm"
+              className="progress-tab inline-flex h-8 items-center rounded-full border border-line px-3 text-sm"
             >
               Streaks
             </Link>
-            <span className="progress-tab inline-flex h-11 items-center rounded-full bg-black px-3 text-sm text-highlighter">
+            <span className="progress-tab inline-flex h-8 items-center rounded-full bg-black px-3 text-sm text-highlighter">
               Badges
             </span>
           </nav>
@@ -305,11 +305,11 @@ export default async function ProgressPage() {
         </div>
       </details>
 
-      <details className="rounded-2xl border border-line bg-card px-4 py-3">
+      <details className="rounded-2xl border border-line bg-card px-3 py-2">
         <summary className="cursor-pointer font-semibold">More</summary>
-        <div className="mt-4 space-y-6">
+        <div className="mt-2 space-y-3">
 
-      <section className="space-y-3">
+      <section className="space-y-1.5">
         <div className="flex items-end justify-between gap-3">
           <h2 className="text-lg">Personal records</h2>
           <Link href="/progress/records" className="text-sm text-accent underline">
@@ -319,7 +319,7 @@ export default async function ProgressPage() {
         <RecordsList records={companion.records.slice(0, 4)} />
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
+      <section className="grid grid-cols-2 gap-2">
         <MetricTile
           title="Resting Heart Rate"
           value={heartTiles.rhr?.value ?? (typedHr ? `${typedHr.value} ${typedHr.unit}` : "—")}
@@ -372,9 +372,9 @@ export default async function ProgressPage() {
       <BodyMetricForm preferredUnits={units} />
 
       {latestMetrics.size > 0 ? (
-        <section className="rounded-2xl border border-line bg-card p-5">
+        <section className="rounded-2xl border border-line bg-card p-3">
           <h2>Latest typed metrics</h2>
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-2 space-y-1 text-sm">
             {[...latestMetrics.values()].map((row) => (
               <li key={row.id} className="flex items-center justify-between gap-3 border-b border-line/60 py-2 last:border-0">
                 <span>
@@ -418,12 +418,12 @@ export default async function ProgressPage() {
         </EmptyState>
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3">
-            <article className="rounded-2xl border border-line bg-card p-4">
+          <section className="grid grid-cols-2 gap-2">
+            <article className="rounded-xl border border-line bg-card px-2.5 py-2">
               <p className="text-xs uppercase text-muted">Sessions</p>
-              <p className="mt-1 text-2xl font-semibold">{summary.sessionCount}</p>
+              <p className="mt-0.5 text-xl font-semibold leading-none">{summary.sessionCount}</p>
             </article>
-            <article className="rounded-2xl border border-line bg-card p-4">
+            <article className="rounded-xl border border-line bg-card px-2.5 py-2">
               <p className="text-xs uppercase text-muted">Last session</p>
               <p className="mt-1 text-sm font-semibold">
                 {lastTitle}
@@ -434,7 +434,7 @@ export default async function ProgressPage() {
               {lastComplete ? (
                 <Link
                   href={`/training/log/${lastComplete.id}/done`}
-                  className="touch-target mt-3 inline-flex items-center text-sm text-accent underline-offset-4 hover:underline"
+                  className="mt-1 inline-flex items-center text-sm text-accent underline-offset-4 hover:underline"
                 >
                   Share card
                 </Link>
@@ -442,7 +442,7 @@ export default async function ProgressPage() {
             </article>
           </section>
 
-          <section className="rounded-2xl border border-line bg-card p-5">
+          <section className="rounded-2xl border border-line bg-card p-3">
             <h2>Session volume ({units})</h2>
             {showCharts ? (
               <ProgressBars points={summary.points} timeZone={tz} />
