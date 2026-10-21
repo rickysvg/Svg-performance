@@ -219,11 +219,13 @@ describe("onboarding and swap copy", () => {
     const form = fs.readFileSync(path.join(process.cwd(), "src/components/onboarding/OnboardingForm.tsx"), "utf8");
     const plan = fs.readFileSync(path.join(process.cwd(), "src/app/onboarding/plan/page.tsx"), "utf8");
     const menu = fs.readFileSync(path.join(process.cwd(), "src/components/training/ExerciseCardMenu.tsx"), "utf8");
+    const sheet = fs.readFileSync(path.join(process.cwd(), "src/components/training/ExerciseLibrarySheet.tsx"), "utf8");
     expect(form).toContain('type="hidden" name="weeklyAvailability"');
     expect(form).toContain("if (days.length > 0) return;");
     expect(plan).not.toMatch(/confirm your email/i);
     expect(menu).not.toContain("will be cleared");
-    expect(menu).toContain("data-swap-sheet");
-    expect(menu).toContain('if (event.key === "Enter") event.preventDefault()');
+    expect(menu).toContain("ExerciseLibrarySheet");
+    expect(sheet).toContain("data-swap-sheet");
+    expect(sheet).toContain('if (event.key === "Enter") event.preventDefault()');
   });
 });
