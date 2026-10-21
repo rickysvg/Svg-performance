@@ -12,7 +12,17 @@ import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
+import { BikeWorkoutChooser } from "@/components/training/BikeWorkoutSheet";
 import { bikeSessionForLogger, isBikeIntervalName } from "@/lib/bike-sessions";
+import {
+  bikeChoiceFromKey,
+  formatBikeRecipe,
+  parseBikeRecipe,
+  retainBikeChoiceSets,
+  sessionWithChoice,
+  type BikeChoice,
+} from "@/lib/bike-chooser";
+import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { creditForExercise } from "@/lib/coach-credits";
 import { BagFocusList } from "@/components/training/BagFocusList";
@@ -950,6 +960,17 @@ export function WorkoutLogForm({
     commitSets(removeExerciseSets(setsRef.current, name));
   }
 
+  function applyBikeWorkout(exerciseName: string, choice: BikeChoice) {
+    setRestByName((current) => ({ ...current, [exerciseName]: 0 }));
+    const nextRest = restTimer?.exerciseName === exerciseName ? null : restTimer;
+    if (nextRest !== restTimer) setRestTimer(nextRest);
+    const next = retainBikeChoiceSets(setsRef.current, exerciseName, choice);
+    setsRef.current = next;
+    setSets(next);
+    remember(next, nextRest);
+    syncDraft(next, nextRest);
+  }
+
   function setAddedRest(name: string, raw: number) {
     const rest = Math.max(0, Math.min(600, Number.isFinite(raw) ? Math.round(raw) : 0));
     setRestByName((current) => ({ ...current, [name]: rest }));
@@ -977,22 +998,32 @@ export function WorkoutLogForm({
       const planned = session.programDay?.exercises.find(
         (row) => gymExerciseKey(row.name) === gymExerciseKey(name),
       );
+      const storedChoice =
+        bikeChoiceFromKey(group[0]?.prescriptionKey) ??
+        parseBikeRecipe(stored?.reps || "") ??
+        parseBikeRecipe(planned?.reps || "");
       const mode = resolveLogMode({
         logMode: group[0]?.logMode ?? overlay?.logMode ?? planned?.logMode,
         name,
-        reps: overlay?.reps || stored?.reps || planned?.reps,
+        reps: storedChoice ? formatBikeRecipe(storedChoice) : overlay?.reps || stored?.reps || planned?.reps,
       });
       return {
         name,
-        restSeconds: restForName(
-          name,
-          overlay?.restSeconds ?? stored?.restSeconds ?? planned?.restSeconds,
-          mode,
-        ),
+        restSeconds: storedChoice
+          ? 0
+          : restForName(
+              name,
+              overlay?.restSeconds ?? stored?.restSeconds ?? planned?.restSeconds,
+              mode,
+            ),
         planned: {
-          reps: overlay?.reps || stored?.reps || planned?.reps || "",
+          reps: storedChoice
+            ? formatBikeRecipe(storedChoice)
+            : overlay?.reps || stored?.reps || planned?.reps || "",
           loadText: overlay?.loadText || stored?.loadText || planned?.loadText || "",
-          notes: overlay?.notes || stored?.notes || planned?.notes || "",
+          notes: storedChoice
+            ? storedChoice.description
+            : overlay?.notes || stored?.notes || planned?.notes || "",
           logMode: mode,
         },
         sets: group.map((set) => ({
@@ -1288,9 +1319,15 @@ export function WorkoutLogForm({
             reps: planned?.reps,
           });
           const bike = isBikeIntervalName(name);
-          const bikeSession = bike ? bikeSessionForLogger(name, planned) : null;
+          const bikeChoice =
+            bikeChoiceFromKey(group[0]?.prescriptionKey) ??
+            (storedPlan?.reps ? parseBikeRecipe(storedPlan.reps) : null);
+          const bikeBase = bike
+            ? bikeSessionForLogger(name, bikeChoice ? { reps: "", restSeconds: 0 } : planned)
+            : null;
+          const bikeSession = bikeBase && bikeChoice ? sessionWithChoice(bikeBase, bikeChoice) : bikeBase;
           const timed = isDurationMode(mode) && !bike;
-          const restSeconds = restForName(name, planned?.restSeconds, mode);
+          const restSeconds = bikeChoice ? 0 : restForName(name, planned?.restSeconds, mode);
           const layout = loggerRowLayout(mode, name);
           const columns =
             layout === "bag"
@@ -1346,8 +1383,8 @@ export function WorkoutLogForm({
                   <p className="mt-0.5 text-sm text-muted" data-logger-prescription>
                     {planned
                       ? loggerCardLine({
-                          sets: added ? group.length : planned.sets,
-                          reps: planned.reps,
+                          sets: bikeChoice ? Math.max(1, group.length) : added ? group.length : planned.sets,
+                          reps: bikeChoice ? bikeChoice.plain : planned.reps,
                           restSeconds: added ? restSeconds : planned.restSeconds,
                           logMode: mode,
                           name: title,
@@ -1372,18 +1409,26 @@ export function WorkoutLogForm({
                     notes={planned?.notes}
                     activeRound={current && layout === "bag" ? cursor.setIndex : undefined}
                   />
+                  {bike && session.status !== "complete" ? (
+                    <BikeWorkoutChooser
+                      choice={bikeChoice}
+                      onApply={(next) => applyBikeWorkout(name, next)}
+                    />
+                  ) : null}
                   {bikeSession ? (
                     <BikeSetTimer
-                      key={`${name}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}`}
+                      key={`${name}-${bikeChoice?.id ?? "plan"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}-${bikeSession.blocks ?? 1}-${bikeSession.warmupSeconds ?? 0}-${bikeSession.cooldownSeconds ?? 0}`}
                       session={bikeSession}
                       canStart={group.some((set) => !set.completed)}
                       onSetComplete={() => {
                         const nextOpen = group.find((set) => !set.completed);
                         if (!nextOpen) return;
-                        const loggedSeconds = Math.max(
-                          1,
-                          (bikeSession?.workSeconds ?? 1) * Math.max(1, bikeSession?.roundsPerSet ?? 1),
-                        );
+                        const loggedSeconds = bikeChoice
+                          ? Math.max(1, bikeSetDurationSeconds(bikeSession))
+                          : Math.max(
+                              1,
+                              (bikeSession?.workSeconds ?? 1) * Math.max(1, bikeSession?.roundsPerSet ?? 1),
+                            );
                         updateSet(nextOpen.id, {
                           completed: true,
                           durationSeconds:

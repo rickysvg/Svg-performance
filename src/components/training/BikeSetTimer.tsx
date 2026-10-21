@@ -7,6 +7,7 @@ import {
   type BikeSession,
 } from "@/lib/bike-sessions";
 import {
+  bikeSetDurationSeconds,
   idleBikeInterval,
   pauseBikeInterval,
   resumeBikeInterval,
@@ -15,6 +16,7 @@ import {
   tickBikeInterval,
   type BikeIntervalPhase,
   type BikeIntervalSnapshot,
+  type BikeIntervalSpec,
 } from "@/lib/bike-interval-timer";
 import {
   releaseSetWakeLock,
@@ -23,6 +25,30 @@ import {
 } from "@/lib/bike-interval-signals";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { formatRestClock } from "@/lib/rest-timer";
+
+function specFromSession(session: BikeSession): BikeIntervalSpec {
+  return {
+    workSeconds: session.workSeconds,
+    restSeconds: session.restSeconds,
+    roundsPerSet: session.roundsPerSet,
+    warmupSeconds: session.warmupSeconds,
+    cooldownSeconds: session.cooldownSeconds,
+    blocks: session.blocks,
+    restBetweenBlocksSeconds: session.restBetweenBlocksSeconds,
+    pattern: session.pattern,
+    ladder: session.ladder,
+  };
+}
+
+function phaseWord(phase: BikeIntervalPhase, label?: string) {
+  if (label) return label;
+  if (phase === "work") return "WORK";
+  if (phase === "warmup") return "WARM-UP";
+  if (phase === "cooldown") return "COOL-DOWN";
+  if (phase === "moderate") return "MODERATE";
+  if (phase === "rest") return "REST";
+  return "";
+}
 
 function BikeIntervalStrip({
   session,
@@ -39,9 +65,15 @@ function BikeIntervalStrip({
   return (
     <div className="mt-3 rounded-xl border border-line bg-background p-3" data-bike-intervals>
       <p className="font-display text-xs uppercase tracking-wide text-highlighter">
-        {bikeIntervalChrome(session)}
+        {session.chooserLabel || bikeIntervalChrome(session)}
       </p>
-      {longClock ? (
+      {session.chooserLabel ? (
+        <p className="mt-2 text-xs text-muted">
+          {bikeSetDurationSeconds(specFromSession(session)) >= 60
+            ? "Start set runs this whole workout, including the easy spins."
+            : "Start set runs this workout."}
+        </p>
+      ) : longClock ? (
         <div
           data-bike-tile={1}
           data-bike-tile-active={phase === "work" || phase === "rest" ? phase : undefined}
@@ -104,11 +136,7 @@ export function BikeSetTimer({
   canStart: boolean;
   onSetComplete: () => void;
 }) {
-  const spec = {
-    workSeconds: session.workSeconds,
-    restSeconds: session.restSeconds,
-    roundsPerSet: session.roundsPerSet,
-  };
+  const spec = specFromSession(session);
   const [clock, setClock] = useState<BikeIntervalSnapshot>(() => idleBikeInterval(spec));
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
@@ -184,6 +212,9 @@ export function BikeSetTimer({
   }
 
   const workPhase = clock.phase === "work";
+  const warn = workPhase && clock.remainingSeconds > 0 && clock.remainingSeconds <= 3;
+  const word = phaseWord(clock.phase, clock.phaseLabel);
+  const roundTotal = clock.roundTotal ?? session.roundsPerSet;
 
   return (
     <div data-bike-set-timer>
@@ -191,29 +222,34 @@ export function BikeSetTimer({
         <div
           data-bike-interval-board
           data-bike-interval-phase={clock.phase}
-          className={`mt-3 rounded-2xl px-4 py-5 text-center ${
-            workPhase ? "bg-black text-[#CBF805]" : "bg-black text-white"
-          }`}
+          className="mt-3 rounded-2xl bg-black px-4 py-5 text-center text-white"
         >
           <p
             data-bike-interval-round
             className="font-display text-xs uppercase tracking-[0.06em] text-white/80"
           >
-            {longClock
-              ? "Work block"
-              : `Round ${clock.round}/${session.roundsPerSet}`}
+            {clock.round > 0
+              ? `Round ${clock.round}/${roundTotal}`
+              : word === "WARM-UP"
+                ? "Get ready"
+                : word === "COOL-DOWN"
+                  ? "Easy spin"
+                  : longClock
+                    ? "Work block"
+                    : "Bike"}
           </p>
           <p
+            data-bike-interval-word
             className={`font-display mt-2 text-lg uppercase ${
-              workPhase ? "text-[#CBF805]" : "text-white"
+              warn ? "text-signal" : workPhase ? "text-[#CBF805]" : "text-white"
             }`}
           >
-            {workPhase ? "WORK" : "REST"}
+            {word}
           </p>
           <p
             data-bike-interval-clock
             className={`stat-display mt-3 text-6xl leading-none ${
-              workPhase ? "text-[#CBF805]" : "text-white"
+              warn ? "text-signal" : workPhase ? "text-[#CBF805]" : "text-white"
             }`}
           >
             {formatRestClock(clock.remainingSeconds)}

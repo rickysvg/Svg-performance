@@ -217,6 +217,16 @@ export function restoreLoggerSets<T extends RestorableSet>(
     const prescription = prescriptionByKey.get(key);
     const target = prescription ? prescribedSetTarget(prescription.sets) : 0;
     const name = prescription?.name ?? [...map.values()][0]!.exerciseName;
+    const bikeChoice = [...map.values()].some((row) => String(row.prescriptionKey ?? "").includes("#bw:"));
+    if (bikeChoice) {
+      const chosen = [...map.values()]
+        .filter((row) => String(row.prescriptionKey ?? "").includes("#bw:"))
+        .sort((a, b) => a.setNumber - b.setNumber);
+      chosen.forEach((row, index) => {
+        result.push({ ...row, exerciseName: name, setNumber: index + 1 });
+      });
+      continue;
+    }
     if (target <= 0) {
       for (const setNumber of [...map.keys()].sort((a, b) => a - b)) {
         const row = map.get(setNumber)!;

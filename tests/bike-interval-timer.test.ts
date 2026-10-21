@@ -145,6 +145,63 @@ describe("bike interval timer", () => {
     expect(viewAtElapsed(workOnly, 30).phase).toBe("done");
   });
 
+  it("runs warm-up, sprints, and cool-down on one clock", () => {
+    const custom = {
+      workSeconds: 10,
+      restSeconds: 10,
+      roundsPerSet: 2,
+      warmupSeconds: 5,
+      cooldownSeconds: 4,
+    };
+    expect(bikeSetDurationSeconds(custom)).toBe(5 + 2 * 20 + 4);
+    expect(viewAtElapsed(custom, 0)).toMatchObject({ phase: "warmup", phaseLabel: "WARM-UP", remainingSeconds: 5 });
+    expect(viewAtElapsed(custom, 5)).toMatchObject({
+      phase: "work",
+      phaseLabel: "WORK",
+      round: 1,
+      remainingSeconds: 10,
+    });
+    expect(viewAtElapsed(custom, 5 + 20)).toMatchObject({ phase: "work", round: 2, remainingSeconds: 10 });
+    expect(viewAtElapsed(custom, 5 + 40)).toMatchObject({ phase: "cooldown", phaseLabel: "COOL-DOWN", remainingSeconds: 4 });
+    expect(viewAtElapsed(custom, 5 + 40 + 4).phase).toBe("done");
+  });
+
+  it("plays 10-20-30 as easy, moderate, then sprint, with rest only between blocks", () => {
+    const spec = {
+      workSeconds: 10,
+      restSeconds: 50,
+      roundsPerSet: 5,
+      blocks: 3,
+      restBetweenBlocksSeconds: 120,
+      pattern: "ten-twenty-thirty" as const,
+    };
+    expect(bikeSetDurationSeconds(spec)).toBe(3 * 5 * 60 + 2 * 120);
+    expect(viewAtElapsed(spec, 0)).toMatchObject({ phase: "rest", phaseLabel: "EASY", round: 1, remainingSeconds: 30 });
+    expect(viewAtElapsed(spec, 30)).toMatchObject({ phase: "moderate", phaseLabel: "MODERATE", remainingSeconds: 20 });
+    expect(viewAtElapsed(spec, 50)).toMatchObject({ phase: "work", phaseLabel: "SPRINT", round: 1, remainingSeconds: 10 });
+    expect(viewAtElapsed(spec, 60)).toMatchObject({ phase: "rest", phaseLabel: "EASY", round: 2 });
+    expect(viewAtElapsed(spec, 5 * 60)).toMatchObject({ phase: "rest", phaseLabel: "REST", round: 0, remainingSeconds: 120 });
+  });
+
+  it("climbs and descends a sprint ladder", () => {
+    const ladder = [
+      { workSeconds: 10, restSeconds: 50 },
+      { workSeconds: 20, restSeconds: 40 },
+      { workSeconds: 10, restSeconds: 50 },
+    ];
+    const spec = {
+      workSeconds: 10,
+      restSeconds: 50,
+      roundsPerSet: 3,
+      pattern: "ladder" as const,
+      ladder,
+    };
+    expect(bikeSetDurationSeconds(spec)).toBe(180);
+    expect(viewAtElapsed(spec, 0)).toMatchObject({ phase: "work", phaseLabel: "SPRINT", round: 1, remainingSeconds: 10 });
+    expect(viewAtElapsed(spec, 10)).toMatchObject({ phase: "rest", round: 1, remainingSeconds: 50 });
+    expect(viewAtElapsed(spec, 60)).toMatchObject({ phase: "work", round: 2, remainingSeconds: 20 });
+  });
+
   it("completion marks the set done and starts the 60s between-set rest", () => {
     const { snapshot, lastCue } = runTicks(fifteen, 240);
     expect(snapshot.phase).toBe("done");

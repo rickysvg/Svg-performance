@@ -4,6 +4,7 @@
  * pickBikeSessionForPlan(weekday, weekIndex) is the planner hook.
  */
 
+import type { BikeIntervalPattern, BikeIntervalStep } from "@/lib/bike-interval-timer";
 import { APP_TIMEZONE, mondayOfZoned, zonedCivilToUtc } from "@/lib/timezone";
 
 export const BIKE_PROGRAM_DAY_NUMBER = 4;
@@ -40,6 +41,14 @@ export type BikeSession = {
   notes: string;
   svgScaling: boolean;
   scale: Record<ScaleBand, BikeScale>;
+  /** Set when a member replaces today's bike with a chooser workout. */
+  warmupSeconds?: number;
+  cooldownSeconds?: number;
+  blocks?: number;
+  restBetweenBlocksSeconds?: number;
+  pattern?: BikeIntervalPattern;
+  ladder?: readonly BikeIntervalStep[];
+  chooserLabel?: string;
 };
 
 const SPRINT_NO_LBS = "All-out sprint / easy — no lbs";
