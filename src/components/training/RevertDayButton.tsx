@@ -6,7 +6,7 @@ export function RevertDayButton({ dayKey, next }: { dayKey: string; next: string
       <input type="hidden" name="dayKey" value={dayKey} />
       <input type="hidden" name="next" value={next} />
       <button type="submit" className="text-sm font-semibold text-accent underline-offset-4 hover:underline">
-        Use the program workout
+        Revert to default
       </button>
     </form>
   );

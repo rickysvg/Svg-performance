@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
@@ -52,6 +53,12 @@ describe("saved workout names and day overlay", () => {
     expect(applyPlansToProgramCards(cards, [{ mode: "extra" }]).cards).toEqual(cards);
     expect(summaryAfterDayPlans("Lift + bag", [{ mode: "replace", name: "Camp arms" }])).toBe("Camp arms");
     expect(summaryAfterDayPlans("Lift + bag", [{ mode: "extra", name: "Camp arms" }])).toBe("Lift + bag");
+  });
+
+  it("names the restore control Revert to default", () => {
+    const source = fs.readFileSync("src/components/training/RevertDayButton.tsx", "utf8");
+    expect(source).toContain("Revert to default");
+    expect(source).not.toContain("Use the program workout");
   });
 
   it("adds the saved workout on the calendar without moving other workouts when it is extra", () => {
