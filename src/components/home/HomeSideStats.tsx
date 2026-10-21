@@ -49,7 +49,7 @@ export function HomeSideStats({
     fatEmpty ? "Tap to add" : bodyFat.delta == null ? "Logged" : formatBodyFatDelta(bodyFat.delta);
 
   return (
-    <div className="flex min-w-0 flex-col justify-center" data-home-side-stats>
+    <div className="flex min-h-0 min-w-0 flex-col" data-home-side-stats>
       <Link
         href={fatEmpty ? "/progress#log-body-fat" : "/progress"}
         data-home-body-fat={fatEmpty ? "empty" : "filled"}
@@ -59,9 +59,9 @@ export function HomeSideStats({
         <span className="block font-telemetry text-[9px] uppercase leading-none tracking-[0.18em] text-signal">
           Body fat
         </span>
-        <span className="mt-0.5 flex items-baseline gap-1.5">
+        <span className="flex items-baseline gap-1">
           <span
-            className={`font-display text-xl leading-none tracking-normal ${fatEmpty ? "text-white/75" : "text-[#CBF805]"}`}
+            className={`font-display text-sm leading-none tracking-normal ${fatEmpty ? "text-white/75" : "text-[#CBF805]"}`}
           >
             {fatEmpty ? "—" : bodyFat.value!.toFixed(1)}
           </span>
@@ -77,7 +77,7 @@ export function HomeSideStats({
           </span>
         </span>
       </Link>
-      <div className="my-1.5 h-px bg-[#CBF805]/35" aria-hidden />
+      <div className="my-px h-px bg-[#CBF805]/35" aria-hidden />
       <Link
         href="/progress"
         data-home-training={training.mode}
@@ -87,8 +87,8 @@ export function HomeSideStats({
         <span className="block whitespace-nowrap font-telemetry text-[9px] uppercase leading-none tracking-[0.16em] text-signal">
           {fight ? "Days to fight" : "Streak"}
         </span>
-        <span className="mt-0.5 flex items-baseline gap-1.5">
-          <span className="font-display text-xl leading-none tracking-normal text-[#CBF805]">
+        <span className="flex items-baseline gap-1">
+          <span className="font-display text-sm leading-none tracking-normal text-[#CBF805]">
             {training.days}
           </span>
           <span className="font-telemetry text-[9px] uppercase leading-none tracking-[0.08em] text-white/55">

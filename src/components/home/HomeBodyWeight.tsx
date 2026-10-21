@@ -53,7 +53,7 @@ export function HomeBodyWeight({
       type="button"
       data-weigh-in-open
       onClick={() => setSheet(true)}
-      className="h-7 w-full rounded-full bg-accent px-3 text-xs uppercase tracking-wide text-black"
+      className="h-5 w-full rounded-full bg-accent px-3 text-[11px] uppercase leading-none tracking-wide text-black"
     >
       Save
     </button>
@@ -107,7 +107,7 @@ export function HomeBodyWeight({
   );
 
   const label = (
-    <span className="-mb-0.5 block font-telemetry text-[10px] uppercase leading-none tracking-[0.22em] text-signal">
+    <span className="-mb-1 block font-telemetry text-[10px] uppercase leading-none tracking-[0.22em] text-signal">
       Current Weight
     </span>
   );
@@ -120,23 +120,18 @@ export function HomeBodyWeight({
       className={carbon ? "hc-panel hc-carbon px-2.5 pt-1 pb-1" : "px-0 py-0.5"}
     >
       {showSide && side ? (
-        <div
-          className="grid items-end gap-x-2"
-          style={{ gridTemplateColumns: `${MASS_DIAL.width}px minmax(0, 1fr)` }}
-        >
-          <div style={{ gridColumn: 1, gridRow: 1 }}>{label}</div>
+        <div className="relative">
+          <div className="shrink-0" style={{ width: MASS_DIAL.width }}>
+            {label}
+            {dial}
+            <div className="-mt-2">{captionLine}</div>
+          </div>
           <div
-            className="flex items-center self-stretch border-l border-white/15 pl-2"
-            style={{ gridColumn: 2, gridRow: "1 / span 2" }}
+            className="absolute inset-y-0 flex flex-col border-l border-white/15 pl-2"
+            style={{ left: MASS_DIAL.width + 8, right: 0 }}
           >
             <HomeSideStats bodyFat={side.bodyFat} training={side.training} />
-          </div>
-          <div style={{ gridColumn: 1, gridRow: 2 }}>{dial}</div>
-          <div className="-mt-1.5 self-start" style={{ gridColumn: 1, gridRow: 3 }}>
-            {captionLine}
-          </div>
-          <div className="self-end border-l border-white/15 pl-2" style={{ gridColumn: 2, gridRow: 3 }}>
-            {saveButton}
+            <div className="mt-auto shrink-0">{saveButton}</div>
           </div>
         </div>
       ) : (
@@ -146,7 +141,7 @@ export function HomeBodyWeight({
             {dial}
             <div className="mb-1 w-24 shrink-0">{saveButton}</div>
           </div>
-          <div className="-mt-1.5" style={{ width: MASS_DIAL.width }}>
+          <div className="-mt-2" style={{ width: MASS_DIAL.width }}>
             {captionLine}
           </div>
         </div>
