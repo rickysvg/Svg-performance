@@ -35,6 +35,12 @@ import {
   sessionHasLoggedWork,
   setHasLoggedWork,
 } from "@/lib/logged-work";
+import {
+  cappedElapsedSeconds,
+  freezeElapsedOnSave,
+  legacyFrozenSeconds,
+  SESSION_DURATION_CAP_SECONDS,
+} from "@/lib/session-elapsed";
 
 export type WorkoutSetInput = {
   id?: string;
@@ -669,6 +675,8 @@ export async function updateWorkoutSessionForUser(input: {
    */
   baseUpdatedAt?: string | Date | null;
   timeZone?: string;
+  /** Header seconds the logger was showing when Save was pressed. */
+  elapsedSeconds?: number | null;
 }) {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -756,6 +764,8 @@ export async function updateWorkoutSessionForUser(input: {
       if (saved?.status === "complete" && input.status === "draft") return saved;
       throw new StaleDraftError();
     }
+    const timer =
+      input.status === "complete" ? freezeElapsedOnSave(current, new Date(), input.elapsedSeconds) : null;
     await tx.workoutSet.deleteMany({
       where: { workoutSessionId: input.workoutId },
     });
@@ -777,6 +787,13 @@ export async function updateWorkoutSessionForUser(input: {
                 input.rest && Number.isFinite(input.rest.endsAtMs)
                   ? new Date(input.rest.endsAtMs)
                   : null,
+            }
+          : {}),
+        ...(timer
+          ? {
+              finishedAt: timer.finishedAt,
+              elapsedSeconds: timer.elapsedSeconds,
+              timerStartedAt: timer.timerStartedAt,
             }
           : {}),
         sets: {
@@ -829,6 +846,7 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       programDayId: true,
       performedAt: true,
       createdAt: true,
+      updatedAt: true,
       sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -854,11 +872,21 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
     })
     .map((row) => row.id);
   if (ids.length === 0) return 0;
-  const result = await prisma.workoutSession.updateMany({
-    where: { id: { in: ids }, userId, status: "draft" },
-    data: { status: "complete" },
-  });
-  return result.count;
+  let count = 0;
+  for (const row of drafts) {
+    if (!ids.includes(row.id)) continue;
+    const result = await prisma.workoutSession.updateMany({
+      where: { id: row.id, userId, status: "draft" },
+      data: {
+        status: "complete",
+        finishedAt: row.updatedAt,
+        elapsedSeconds: cappedElapsedSeconds(row.createdAt, row.updatedAt),
+        timerStartedAt: null,
+      },
+    });
+    count += result.count;
+  }
+  return count;
 }
 
 /**
@@ -871,7 +899,12 @@ export async function reopenEmptyCompletion<
   if (session.status !== "complete" || sessionHasLoggedWork(session.sets)) return session;
   await prisma.workoutSession.update({
     where: { id: session.id },
-    data: { status: "draft" },
+    data: {
+      status: "draft",
+      finishedAt: null,
+      elapsedSeconds: null,
+      timerStartedAt: null,
+    },
   });
   return { ...session, status: "draft" };
 }
@@ -889,9 +922,18 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
     userId,
   );
   if (existing.status !== "complete") return existing;
+  const elapsed =
+    existing.elapsedSeconds != null && Number.isFinite(existing.elapsedSeconds)
+      ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(existing.elapsedSeconds)))
+      : legacyFrozenSeconds(existing);
   return prisma.workoutSession.update({
     where: { id: existing.id },
-    data: { status: "draft" },
+    data: {
+      status: "draft",
+      finishedAt: null,
+      elapsedSeconds: elapsed,
+      timerStartedAt: new Date(),
+    },
     include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
   });
 }

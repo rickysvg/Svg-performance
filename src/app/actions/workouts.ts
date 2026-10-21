@@ -139,6 +139,8 @@ export async function saveWorkoutAction(
       : now;
     const alreadyActive =
       intent === "complete" ? await hasActivityOnLocalDay(user.id, performedAt, timeZone) : true;
+    const elapsedRaw = String(formData.get("elapsedSeconds") ?? "").trim();
+    const reportedElapsed = elapsedRaw === "" ? null : Number(elapsedRaw);
     const saved = await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId,
@@ -149,6 +151,7 @@ export async function saveWorkoutAction(
       sets: parseSets(formData),
       rest: intent === "complete" ? null : undefined,
       timeZone,
+      elapsedSeconds: Number.isFinite(reportedElapsed) ? reportedElapsed : null,
     });
     const savedId = saved.id;
     const units: LoadUnit = profile?.preferredUnits ?? "lb";

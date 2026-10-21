@@ -35,6 +35,8 @@ export type ShareSessionLike = {
   createdAt?: Date;
   updatedAt?: Date;
   status: string;
+  /** Frozen header duration from Save. Preferred over updatedAt when the session is complete. */
+  elapsedSeconds?: number | null;
   sets: ShareSetLike[];
 };
 
@@ -95,6 +97,14 @@ export function formatShareDuration(totalSeconds: number) {
 }
 
 export function sessionDurationSeconds(session: ShareSessionLike) {
+  if (
+    session.status === "complete" &&
+    typeof session.elapsedSeconds === "number" &&
+    Number.isFinite(session.elapsedSeconds) &&
+    session.elapsedSeconds >= 0
+  ) {
+    return Math.min(SESSION_DURATION_CAP_SECONDS, Math.round(session.elapsedSeconds));
+  }
   const logged = loggedSets(session.sets).reduce(
     (sum, set) => sum + (set.durationSeconds && set.durationSeconds > 0 ? set.durationSeconds : 0),
     0,
