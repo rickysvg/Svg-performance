@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { nocookieEmbedSrc, youtubeThumbSrcs, youtubeVideoId } from "@/lib/form-videos";
+import { formClipWindow, nocookieEmbedSrc, youtubeThumbSrcs, youtubeVideoId } from "@/lib/form-videos";
 
 type YTPlayer = {
   destroy?: () => void;
@@ -50,6 +50,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
   const [failed, setFailed] = useState(false);
   const playerRef = useRef<YTPlayer | null>(null);
   const src = nocookieEmbedSrc(url);
+  const clip = formClipWindow(url);
   const still = youtubeThumbSrcs(url)[0] ?? "";
 
   useEffect(() => {
@@ -68,6 +69,15 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
         const host = document.getElementById(hostId);
         if (!host) return;
         playerRef.current = new window.YT.Player(host, {
+          videoId: youtubeVideoId(url) ?? undefined,
+          playerVars: {
+            start: clip.start ?? 0,
+            ...(clip.end != null ? { end: clip.end } : {}),
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1,
+            enablejsapi: 1,
+          },
           events: {
             onReady: () => {
               ready = true;
@@ -90,7 +100,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       playerRef.current?.destroy?.();
       playerRef.current = null;
     };
-  }, [hostId, src, url]);
+  }, [clip.end, clip.start, hostId, src, url]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {

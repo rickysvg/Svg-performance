@@ -80,6 +80,20 @@ export function sessionRoundCount(sets: ShareSetLike[]) {
   }).length;
 }
 
+/** Wall-clock cap for a session left open. Longer than this is not training time. */
+export const SESSION_DURATION_CAP_SECONDS = 4 * 60 * 60;
+
+export function formatShareDuration(totalSeconds: number) {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return formatClock(safe);
+}
+
 export function sessionDurationSeconds(session: ShareSessionLike) {
   const logged = loggedSets(session.sets).reduce(
     (sum, set) => sum + (set.durationSeconds && set.durationSeconds > 0 ? set.durationSeconds : 0),
@@ -88,8 +102,10 @@ export function sessionDurationSeconds(session: ShareSessionLike) {
   const start = session.createdAt ?? session.performedAt;
   if (loggedSets(session.sets).length > 0 && session.updatedAt && start) {
     const elapsed = Math.round((session.updatedAt.getTime() - start.getTime()) / 1000);
-    if (elapsed >= 1 && elapsed <= 4 * 60 * 60) {
-      return elapsed;
+    if (elapsed >= 1 && elapsed <= SESSION_DURATION_CAP_SECONDS) return elapsed;
+    if (elapsed > SESSION_DURATION_CAP_SECONDS) {
+      if (logged > 0 && logged <= SESSION_DURATION_CAP_SECONDS) return logged;
+      return SESSION_DURATION_CAP_SECONDS;
     }
   }
   return logged > 0 ? logged : 0;

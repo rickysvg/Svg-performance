@@ -7,6 +7,7 @@ import { lookupFormVideo } from "@/lib/form-videos";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
+import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 
@@ -28,6 +29,7 @@ type DayExercise = {
   logMode?: string;
   formVideoUrl: string;
   formVideoPending: boolean;
+  planSlot?: string | null;
 };
 
 export function PlanSessionCard({
@@ -49,6 +51,8 @@ export function PlanSessionCard({
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
+  const groups = planStructureGroups(exercises);
+  const structure = planStructureLine(groups);
   const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const count = exercises.length;
   const href = draftId ? `/training/log/${draftId}` : session.href;
@@ -75,7 +79,7 @@ export function PlanSessionCard({
           highlight ? "text-highlighter" : "text-accent"
         }`}
       >
-        Session {session.slot} · {kind}
+        {structure || `Session ${session.slot} · ${kind}`}
         {session.optional ? " · optional" : ""}
         {minutes > 0 ? ` · est. ${minutes} min` : ""}
       </p>
@@ -84,7 +88,56 @@ export function PlanSessionCard({
         {session.subtitle}
         {count > 0 ? ` · ${exerciseCountLabel(count)}` : ""}
       </p>
-      {!compact && exercises.length > 0 ? (
+      {groups.length > 0 ? (
+        <div className="mt-3 space-y-3" data-plan-structure={structure}>
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p
+                className={`font-display text-[11px] uppercase tracking-wide ${
+                  highlight ? "text-highlighter" : "text-accent"
+                }`}
+              >
+                {group.label}
+              </p>
+              <ul className="space-y-2 text-sm">
+                {group.exercises.map((exercise, index) => {
+                  const form = lookupFormVideo(exercise.name, exercises);
+                  return (
+                    <li
+                      key={exercise.id ?? `${exercise.name}-${index}`}
+                      className={`flex items-center justify-between gap-3 border-b py-2 last:border-0 ${
+                        highlight ? "border-white/15" : "border-line/60"
+                      }`}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <ExerciseThumb
+                          name={exercise.name}
+                          formVideoUrl={form.url}
+                          formVideoPending={form.pending}
+                          size={48}
+                        />
+                        <span>
+                          <span className="font-medium">{exercise.name}</span>
+                          <span className={`block ${highlight ? "text-white/60" : "text-muted"}`}>
+                            {plannedSetLine({
+                              sets: exercise.sets,
+                              reps: exercise.reps,
+                              restSeconds: exercise.restSeconds,
+                              logMode: exercise.logMode,
+                              name: exercise.name,
+                              loadText: exercise.loadText,
+                            })}
+                          </span>
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : !compact && exercises.length > 0 ? (
         <ul className="mt-3 space-y-2 text-sm">
           {exercises.map((exercise, index) => {
             const form = lookupFormVideo(exercise.name, exercises);

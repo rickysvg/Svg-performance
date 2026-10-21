@@ -8,7 +8,8 @@ import { getProfileForUser } from "@/lib/profile";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { memberFacingTitle } from "@/lib/member-copy";
-import { civilDayInstant } from "@/lib/performed-at";
+import { sessionCivilDay } from "@/lib/performed-at";
+import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
@@ -67,6 +68,10 @@ export type CalendarDay = {
   } | null;
   easeNote?: string | null;
   coachCheckIn?: { name: string; image: string; message: string } | null;
+  /** Same summary the day list was built from, including recovery ease and camp. */
+  summary: string;
+  active: boolean;
+  movedFrom?: string;
 };
 
 export type ProgramDaySummary = {
@@ -160,6 +165,8 @@ export function buildCalendarDays(input: {
     heading: formatCalendarHeading(date, input.now, timeZone),
     isToday: sameLocalDay(date, input.now, timeZone),
     activities: [],
+    summary: "",
+    active: false,
   }));
 
   if (programDays.length > 0) {
@@ -233,12 +240,16 @@ type LoggedPlanSession = {
   status: string;
   programDayId: string | null;
   performedAt: Date;
+  createdAt?: Date | null;
   sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[];
   programDay: { dayNumber: number; program: { slug: string } } | null;
 };
 
-function performedDayKey(performedAt: Date, timeZone: string) {
-  return formatDayParam(civilDayInstant(performedAt, timeZone), timeZone);
+function performedDayKey(
+  session: { performedAt: Date; createdAt?: Date | null },
+  timeZone: string,
+) {
+  return sessionCivilDay(session, timeZone);
 }
 
 function titlesMatch(loggedTitle: string, plannedTitle: string) {
@@ -295,18 +306,21 @@ export async function getCalendarSchedule(
   await finalizePastLoggedDrafts(userId, now, tz);
   const sessions = await listWorkoutSessionsForUser(userId);
   const challenge = await getChallengeProgressForUser(userId, tz);
+  const camp = await getActiveCampSnapshot(userId, now, tz);
+  const campWeek = campPlanWeekIndex(camp);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
-    weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
+    weekIndex: campWeek ?? planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
+    campPhase: camp && camp.phase !== "complete" ? camp.phase : null,
   });
   const loggedSessions = sessions.filter(
     (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
   );
   const loggedTitles = new Map<string, string[]>();
   for (const session of loggedSessions) {
-    const key = performedDayKey(session.performedAt, tz);
+    const key = performedDayKey(session, tz);
     const titles = loggedTitles.get(key) ?? [];
     const title = session.title.trim();
     if (title && !titles.includes(title)) titles.push(title);
@@ -323,6 +337,7 @@ export async function getCalendarSchedule(
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
+    forcedWeekIndex: campWeek,
   };
   const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
@@ -333,19 +348,28 @@ export async function getCalendarSchedule(
     heading: formatCalendarHeading(date, now, tz),
     isToday: sameLocalDay(date, now, tz),
     activities: [],
+    summary: "",
+    active: false,
   }));
 
   for (const day of days) {
     const built = planForDate(prefs, day.date, tz, swaps);
-    const eased = await easePlanForUser(userId, day.date, tz, built);
+    const shaped =
+      camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
+        ? shapeDayPlan(built, camp.phase)
+        : built;
+    const eased = await easePlanForUser(userId, day.date, tz, shaped);
     const plan = eased.plan;
+    day.summary = plan.summary;
+    day.active = plan.active;
+    day.movedFrom = plan.movedFrom;
     day.easeNote = plan.easeNote ?? null;
     day.coachCheckIn = eased.checkIn;
     const resolved = resolvePlanSessions(plan, { strength, skill });
     const dayKey = formatDayParam(day.date, tz);
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
-    const dayLogs = loggedSessions.filter((session) => performedDayKey(session.performedAt, tz) === dayKey);
+    const dayLogs = loggedSessions.filter((session) => performedDayKey(session, tz) === dayKey);
     const calendarWeekday = weekdayName(day.date, tz);
     if (plan.outside?.kind === "sparring") {
       const timeLabel = plan.outside.label.replace(/^Sparring\s*·\s*/, "");

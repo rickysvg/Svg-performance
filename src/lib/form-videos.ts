@@ -67,7 +67,7 @@ export function skipsFormVideo(name: string) {
 }
 
 const goblet = ready({
-  url: "https://www.youtube.com/watch?v=nfX7IFK9UNI",
+  url: "https://www.youtube.com/watch?v=nfX7IFK9UNI&t=0&end=29",
   seconds: 29,
   channel: "National Academy of Sports Medicine (NASM)",
   title: "How to do a Goblet Squat | Proper Form & Technique | NASM",
@@ -840,6 +840,11 @@ export function mobilityVideoUrl(name: string) {
   return MOBILITY_FORM_VIDEOS[name]?.url ?? "";
 }
 
+/** "Goblet squat · 2" is still the Goblet squat clip. */
+export function catalogExerciseName(name: string) {
+  return name.replace(/\s+·\s+\d+$/g, "").trim();
+}
+
 export function formVideoFieldsFor(name: string): {
   formVideoUrl: string;
   formVideoPending: boolean;
@@ -847,7 +852,7 @@ export function formVideoFieldsFor(name: string): {
   if (skipsFormVideo(name)) {
     return { formVideoUrl: "", formVideoPending: false };
   }
-  const entry = DEMO_FORM_VIDEOS[name];
+  const entry = DEMO_FORM_VIDEOS[name] ?? DEMO_FORM_VIDEOS[catalogExerciseName(name)];
   if (entry?.omit) {
     return { formVideoUrl: "", formVideoPending: false };
   }
@@ -926,6 +931,38 @@ export function youtubeEndSeconds(url: string): number | null {
   return Number(raw);
 }
 
+/**
+ * Start and end the player should use. A verified short clip with no trim
+ * still gets start=0 and end at its length so the embed does not buffer the
+ * whole upload.
+ */
+export function formClipWindow(url: string): { start: number | null; end: number | null } {
+  const start = youtubeStartSeconds(url);
+  const end = youtubeEndSeconds(url);
+  if (start != null || end != null) return { start, end };
+  const id = youtubeVideoId(url);
+  const seconds = id ? verifiedShortFormSeconds(id) : null;
+  if (seconds != null && seconds <= FORM_VIDEO_SHORT_MAX_SECONDS) {
+    return { start: 0, end: seconds };
+  }
+  return { start: null, end: null };
+}
+
+/** Put `t` and `end` on a watch URL when this catalog knows the window. */
+export function ensureFormTrim(url: string): string {
+  const clip = formClipWindow(url);
+  if (clip.start == null && clip.end == null) return url;
+  const parsed = parsedYoutubeUrl(url);
+  if (!parsed) return url;
+  if (youtubeStartSeconds(url) == null && clip.start != null) {
+    parsed.searchParams.set("t", String(clip.start));
+  }
+  if (youtubeEndSeconds(url) == null && clip.end != null) {
+    parsed.searchParams.set("end", String(clip.end));
+  }
+  return parsed.toString();
+}
+
 /** In-app player. Does not open youtube.com. */
 export function nocookieEmbedSrc(url: string): string | null {
   const id = youtubeVideoId(url);
@@ -936,10 +973,9 @@ export function nocookieEmbedSrc(url: string): string | null {
     modestbranding: "1",
     enablejsapi: "1",
   });
-  const start = youtubeStartSeconds(url);
-  const end = youtubeEndSeconds(url);
-  if (start != null) params.set("start", String(start));
-  if (end != null) params.set("end", String(end));
+  const clip = formClipWindow(url);
+  if (clip.start != null) params.set("start", String(clip.start));
+  if (clip.end != null) params.set("end", String(clip.end));
   return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
 }
 
@@ -990,18 +1026,31 @@ export function lookupFormVideo(
   if (skipsFormVideo(name)) {
     return { url: "", pending: false, omit: true };
   }
-  const fromDay = exercises?.find((row) => row.name === name);
+  const fromDay =
+    exercises?.find((row) => row.name === name) ??
+    exercises?.find((row) => catalogExerciseName(row.name) === catalogExerciseName(name));
   if (
     fromDay?.formVideoUrl &&
     !fromDay.formVideoPending &&
     isYoutubeFormUrl(fromDay.formVideoUrl)
   ) {
-    return { url: fromDay.formVideoUrl, pending: false, omit: false };
+    const seeded = formVideoFieldsFor(name);
+    const sameClip =
+      seeded.formVideoUrl &&
+      youtubeVideoId(seeded.formVideoUrl) === youtubeVideoId(fromDay.formVideoUrl);
+    const seedHasEnd = Boolean(seeded.formVideoUrl && youtubeEndSeconds(seeded.formVideoUrl) != null);
+    const storedHasEnd = youtubeEndSeconds(fromDay.formVideoUrl) != null;
+    const url = sameClip && seedHasEnd && !storedHasEnd ? seeded.formVideoUrl : fromDay.formVideoUrl;
+    return { url: ensureFormTrim(url), pending: false, omit: false };
   }
   const seeded = formVideoFieldsFor(name);
-  const entry = DEMO_FORM_VIDEOS[name];
+  const entry = DEMO_FORM_VIDEOS[name] ?? DEMO_FORM_VIDEOS[catalogExerciseName(name)];
   if (entry?.omit) {
     return { url: "", pending: false, omit: true };
   }
-  return { url: seeded.formVideoUrl, pending: seeded.formVideoPending, omit: false };
+  return {
+    url: seeded.formVideoUrl ? ensureFormTrim(seeded.formVideoUrl) : "",
+    pending: seeded.formVideoPending,
+    omit: false,
+  };
 }

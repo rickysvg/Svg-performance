@@ -16,6 +16,7 @@ import {
 import { scaleBandFromPrefs, type ScaleBand } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
+import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 
@@ -48,6 +49,8 @@ export default async function TrainingCalendarPage({
   });
   const band = levelOverride ?? profileBand;
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
+  const camp = await getActiveCampSnapshot(user.id, selected, tz);
+  const campWeekIndex = campPlanWeekIndex(camp);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -58,8 +61,13 @@ export default async function TrainingCalendarPage({
     email: user.email,
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
+    forcedWeekIndex: campWeekIndex,
   };
-  const dayPlan = planForDate(prefs, selected, tz, swaps);
+  const corePlan = planForDate(prefs, selected, tz, swaps);
+  const dayPlan =
+    camp && camp.weightClass.trim() && camp.phase !== "complete" && camp.phase !== "pre-camp"
+      ? shapeDayPlan(corePlan, camp.phase)
+      : corePlan;
   const strip = await easeWeekStripDays(
     user.id,
     prefs,
@@ -86,7 +94,8 @@ export default async function TrainingCalendarPage({
   const selectedSummary = schedule.days
     .find((day) => formatDayParam(day.date, tz) === dayParam)
     ?.activities.find((item) => item.kind === "workout" && item.status === "complete")?.subtitle;
-  const selectedMissed = selectedPast && dayPlan.active && !selectedLogged;
+  const selectedRow = schedule.days.find((day) => formatDayParam(day.date, tz) === dayParam);
+  const selectedMissed = selectedPast && (selectedRow?.active ?? dayPlan.active) && !selectedLogged;
   const missedWorkouts = schedule.days.reduce(
     (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
     0,
@@ -188,10 +197,12 @@ export default async function TrainingCalendarPage({
           {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
           {dayPlan.mesoLabel ? ` · ${dayPlan.mesoLabel}` : ""}
         </p>
-        <h2 className="text-lg">{dayPlan.summary}</h2>
-        {dayPlan.movedFrom ? (
+        <h2 className="text-lg" data-calendar-day-summary>
+          {selectedRow?.summary || dayPlan.summary}
+        </h2>
+        {(selectedRow?.movedFrom || dayPlan.movedFrom) ? (
           <p className="text-sm text-muted" data-moved-workout>
-            {dayPlan.movedFrom}’s workout, on {dayPlan.weekday} this week.
+            {(selectedRow?.movedFrom || dayPlan.movedFrom)}’s workout, on {dayPlan.weekday} this week.
           </p>
         ) : null}
         {selectedSummary ? (

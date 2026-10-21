@@ -166,9 +166,15 @@ export function restoreLoggerSets<T extends RestorableSet>(
     }
     return key;
   };
+  // Saved order wins, so an exercise inserted between two others stays there
+  // after a reload. A draft on this phone is newer than the server copy.
+  // The program order only fills a name that is not already in either list.
+  const primary = draft?.sets.length ? draft.sets : serverSets;
+  for (const set of primary) if (set.exerciseName) touch(set.exerciseName);
+  if (draft?.sets.length) {
+    for (const set of serverSets) if (set.exerciseName) touch(set.exerciseName);
+  }
   for (const prescription of prescriptions) touch(prescription.name);
-  for (const set of serverSets) if (set.exerciseName) touch(set.exerciseName);
-  for (const set of draft?.sets ?? []) if (set.exerciseName) touch(set.exerciseName);
 
   const slots = new Map<string, Map<number, T>>();
   const slotMap = (key: string) => {

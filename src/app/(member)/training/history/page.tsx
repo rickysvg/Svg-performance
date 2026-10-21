@@ -5,6 +5,8 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
+import { exerciseNamesInOrder } from "@/lib/logger-insert";
 
 export default async function HistoryPage() {
   const user = await requireUser();
@@ -38,6 +40,7 @@ export default async function HistoryPage() {
           {sessions.map((session) => {
             const finished = session.status === "complete" && sessionHasLoggedWork(session.sets);
             const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
+            const names = exerciseNamesInOrder(session.sets);
             return (
             <li key={session.id} className="flex items-stretch gap-2">
               <Link
@@ -47,6 +50,11 @@ export default async function HistoryPage() {
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold">{memberFacingTitle(session.title)}</p>
                 </div>
+                {names.length > 0 ? (
+                  <p className="mt-1 text-sm" data-history-exercises>
+                    {names.join(" · ")}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-sm text-muted">
                   {new Date(session.performedAt).toLocaleString()} · {label} ·{" "}
                   {session.sets.length} sets
@@ -65,6 +73,7 @@ export default async function HistoryPage() {
                   Share
                 </Link>
               ) : null}
+              <DeleteWorkoutButton workoutId={session.id} compact />
             </li>
             );
           })}

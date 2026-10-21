@@ -1,5 +1,5 @@
-import { formatClock } from "@/lib/exercise-log-mode";
 import {
+  formatShareDuration,
   formatShareVolume,
   sessionDurationSeconds,
   sessionRoundCount,
@@ -47,7 +47,7 @@ export function workoutCompleteTiles(input: {
   const volume = sessionVolume(input.session.sets, input.displayUnit);
   const setsRounds = rounds > 0 && rounds !== sets ? `${sets} / ${rounds}` : String(Math.max(sets, rounds));
   return [
-    { key: "time", label: "Time", value: seconds > 0 ? formatClock(seconds) : "0:00" },
+    { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
     { key: "setsRounds", label: "Sets / Rounds", value: setsRounds },
     {
       key: "volume",

@@ -283,11 +283,19 @@ describe("assault bike seeded days", () => {
       preferredUnits: "lb",
       scale: { experienceLevel: "beginner" },
     });
+    await prisma.workoutSession.update({
+      where: { id: beginner.id },
+      data: { performedAt: new Date("2026-09-01T18:00:00.000Z") },
+    });
     const intermediate = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day!.id,
       preferredUnits: "lb",
       scale: { experienceLevel: "intermediate" },
+    });
+    await prisma.workoutSession.update({
+      where: { id: intermediate.id },
+      data: { performedAt: new Date("2026-09-08T18:00:00.000Z") },
     });
     const advanced = await startWorkoutFromDay({
       userId: user.id,

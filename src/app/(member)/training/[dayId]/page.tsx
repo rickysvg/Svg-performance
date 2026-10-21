@@ -6,8 +6,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listDraftSessionsForUser } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
-import { planWeekIndex } from "@/lib/week-plan";
-import { getActiveCampSnapshot } from "@/lib/fight-camp";
+import { activePlanWeekIndex, campPlanWeekIndex } from "@/lib/fight-camp";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
 import { isPlyoStrengthDay } from "@/lib/mesocycle";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
@@ -59,8 +58,11 @@ export default async function TrainingDayPage({
     competitionStatus: profile?.competitionStatus,
   });
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const weekIndex = planWeekIndex(new Date(), tz, profile?.onboardingCompletedAt ?? null);
-  const camp = await getActiveCampSnapshot(user.id, new Date(), tz);
+  const now = new Date();
+  const planned = await activePlanWeekIndex(user.id, now, tz, profile?.onboardingCompletedAt ?? null);
+  const weekIndex = planned.weekIndex;
+  const camp = planned.camp;
+  const campWeek = camp && camp.weightClass.trim() ? campPlanWeekIndex(camp) : null;
   let day;
   try {
     const raw = await getProgramDayById(dayId);
@@ -85,7 +87,7 @@ export default async function TrainingDayPage({
   });
   const swapped = applySwapsToExercises(day.exercises, swaps, {
     sessionId: draft?.id,
-    blockKey: trainingBlockKey(new Date(), tz, profile?.onboardingCompletedAt ?? null),
+    blockKey: trainingBlockKey(now, tz, profile?.onboardingCompletedAt ?? null, weekIndex),
     includePending: !draft,
   });
   const removals = await listRemovalsForDay({
@@ -103,7 +105,7 @@ export default async function TrainingDayPage({
   const minutes = estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = draft ? "Continue" : "Start Now";
-  const deload = isDeloadWeekIndex(planWeekIndex(new Date(), tz, profile?.onboardingCompletedAt));
+  const deload = campWeek == null && isDeloadWeekIndex(weekIndex);
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);

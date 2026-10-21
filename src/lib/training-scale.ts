@@ -66,6 +66,8 @@ export type ScaleableExercise = {
   formVideoPending?: boolean;
   /** Week 1–3 dose is already applied. Skip Daru, set caps, and rest shrink. */
   lockWeek?: boolean;
+  /** Warm-up, power, strength, or conditioning. Kept after the week trailer is stripped. */
+  planSlot?: string | null;
 };
 
 /**
@@ -452,7 +454,8 @@ function applyCampDose(
   input: { band: ScaleBand; campPhase?: CampPhase | null },
 ): ScaleableExercise {
   const phase = input.campPhase;
-  if (!phase || phase === "pre-camp" || phase === "complete") return exercise;
+  // Base uses the same 3-week wave as the off-season plan. Build, peak, and taper adjust it.
+  if (!phase || phase === "pre-camp" || phase === "complete" || phase === "base") return exercise;
   if (!meta.slot && !meta.main && !meta.lift3) return exercise;
 
   if (phase === "taper") {
@@ -514,7 +517,7 @@ function scaleNamedExercise(
   },
 ): ScaleableExercise {
   const meta = catalogMeta(exercise.notes);
-  exercise = withWeekDose(exercise, input.weekIndex);
+  exercise = { ...withWeekDose(exercise, input.weekIndex), planSlot: meta.slot };
   const mode = resolveLogMode(exercise);
   const slug = input.programSlug ?? "";
   const dayNumber = input.dayNumber ?? 1;
@@ -964,7 +967,7 @@ export function scaleExercises<T extends ScaleableExercise>(
     weekIndex?: number | null;
     campPhase?: CampPhase | null;
   },
-): T[] {
+): Array<T & { planSlot?: string | null }> {
   const seen = new Set<string>();
   return exercises
     .filter((exercise) => keepForLevel(exercise, input.band, input.campPhase))
@@ -981,7 +984,8 @@ function keepForLevel(
   const slot = catalogSlot(exercise.notes);
   if (slot === "contrast" && band === "beginner") return false;
   if (slot === "french") {
-    const offseason = !campPhase || campPhase === "pre-camp" || campPhase === "complete";
+    const offseason =
+      !campPhase || campPhase === "pre-camp" || campPhase === "complete" || campPhase === "base";
     if (band !== "advanced" || !offseason) return false;
   }
   return true;

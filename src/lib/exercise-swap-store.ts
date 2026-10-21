@@ -1,4 +1,4 @@
-import { memberWeekIndex } from "@/lib/bike-sessions";
+import { activePlanWeekIndex } from "@/lib/fight-camp";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode";
@@ -6,6 +6,7 @@ import { libraryExercise } from "@/lib/exercise-library";
 import {
   applySwapsToExercises,
   cleanSwapName,
+  distinctExerciseName,
   replacementForSlot,
   sensiblePrescription,
   swapAlreadyInWorkoutMessage,
@@ -147,28 +148,34 @@ export function mergeReplacementSets(
     rir: planRir || copy?.rir || "",
   });
   if (targetAlready) {
-    const loggedSource = prior.filter((set) => setHasLoggedWork(set));
-    const targetSets = existing.filter((set) => cleanSwapName(set.exerciseName) === name);
-    const maxNumber = targetSets.reduce((max, set) => Math.max(max, set.setNumber), 0);
-    const targetKey = targetSets.find((set) => set.prescriptionKey)?.prescriptionKey ?? "";
-    const extras = loggedSource.map((copy, index) => ({
-      ...slot(maxNumber + index + 1, copy),
-      prescriptionKey: targetKey || slot(maxNumber + index + 1, copy).prescriptionKey,
-      rir: planRir || copy.rir || "",
-    }));
+    const kept = existing.filter((set) => !from.has(cleanSwapName(set.exerciseName)));
+    const distinct = distinctExerciseName(
+      kept.map((set) => set.exerciseName),
+      name,
+    );
+    const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
+      const previous = prior[index];
+      const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
+      return { ...slot(index, copy), exerciseName: distinct };
+    });
+    for (let index = replacement.sets; index < prior.length; index += 1) {
+      const previous = prior[index];
+      if (!previous || !setHasLoggedWork(previous)) continue;
+      created.push({ ...slot(created.length, previous), exerciseName: distinct });
+    }
     const next: WorkoutSetInput[] = [];
     let inserted = false;
     for (const set of existing) {
       if (from.has(cleanSwapName(set.exerciseName))) {
         if (!inserted) {
-          next.push(...extras);
+          next.push(...created);
           inserted = true;
         }
         continue;
       }
-      next.push({ ...set, exerciseName: cleanSwapName(set.exerciseName) });
+      next.push(set);
     }
-    if (!inserted) next.push(...extras);
+    if (!inserted) next.push(...created);
     return next;
   }
   const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
@@ -476,13 +483,15 @@ export async function alignWorkoutWithSwaps<
     dayNumber: session.programDay.dayNumber,
   });
   if (swaps.length === 0) return session;
-  const blockKey = trainingBlockKey(new Date(), timeZone, planAnchor);
+  const now = new Date();
+  const planned = await activePlanWeekIndex(session.userId, now, timeZone, planAnchor);
+  const blockKey = trainingBlockKey(now, timeZone, planAnchor, planned.weekIndex);
   const scaled = scaleProgramDay(session.programDay, {
     band: scaleBandFromPrefs(prefs),
     programSlug: slug,
     weightAccess: prefs?.weightAccess,
-    weekIndex: memberWeekIndex(new Date(), planAnchor ?? new Date(), timeZone),
-    campPhase: prefs?.campPhase,
+    weekIndex: planned.weekIndex,
+    campPhase: planned.camp?.phase ?? prefs?.campPhase,
   });
   const names = new Set(session.sets.map((set) => set.exerciseName));
   let changed = false;

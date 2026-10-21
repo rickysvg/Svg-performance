@@ -1,12 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  deleteWorkoutAction,
-  saveWorkoutAction,
-  type WorkoutActionState,
-} from "@/app/actions/workouts";
+import { Fragment, useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
@@ -84,7 +80,19 @@ import type { PreviousSetLookup } from "@/lib/workouts";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 import { ExerciseNotepad } from "@/components/training/ExerciseNotepad";
 import { ExerciseCardMenu } from "@/components/training/ExerciseCardMenu";
+import { ExerciseLibrarySheet } from "@/components/training/ExerciseLibrarySheet";
 import { RemoveToast } from "@/components/training/RemoveToast";
+import { libraryExercise, type LibraryExercise } from "@/lib/exercise-library";
+import {
+  addedPrescriptionKey,
+  draftsForLibraryExercise,
+  insertSetsAtExercise,
+  libraryBaseName,
+  moveExercise,
+  parseAddedPlan,
+  removeExerciseSets,
+} from "@/lib/logger-insert";
+import { rirFromLoadText } from "@/lib/rir";
 import type { ExerciseNoteView } from "@/lib/exercise-notes";
 import type { SwapSlot } from "@/lib/exercise-swap";
 import { convertLoad, roundLoadForInput } from "@/lib/units";
@@ -369,7 +377,8 @@ export function WorkoutLogForm({
   );
   const [sets, setSets] = useState(() => setsForLogger(session));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
-  const [insertName, setInsertName] = useState("");
+  const [pickerIndex, setPickerIndex] = useState<number | null>(null);
+  const [addedNames, setAddedNames] = useState<Set<string>>(() => new Set());
   const [moreOpen, setMoreOpen] = useState(false);
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const [restGo, setRestGo] = useState(false);
@@ -734,26 +743,35 @@ export function WorkoutLogForm({
     );
   }
 
+  function commitSets(next: WorkoutSet[]) {
+    setsRef.current = next;
+    setSets(next);
+    remember(next, restTimer);
+    syncDraft(next, restTimer);
+  }
+
   function addSet(exerciseName: string) {
-    setSets((current) => {
-      const group = current.filter((set) => set.exerciseName === exerciseName);
-      const unit = group[0]?.loadUnit ?? defaultUnit;
-      const planned = session.programDay?.exercises.find((row) => row.name === exerciseName);
-      const mode = resolveLogMode({
-        logMode: group[0]?.logMode ?? planned?.logMode,
-        name: exerciseName,
-        reps: planned?.reps,
-      });
-      return [
-        ...current,
-        {
-          ...newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
-          prescriptionKey:
-            group[0]?.prescriptionKey || prescriptionSlotKey({ exerciseName, reps: planned?.reps }),
-          rir: group[0]?.rir ?? "",
-        },
-      ];
+    const current = setsRef.current;
+    const group = current.filter((set) => set.exerciseName === exerciseName);
+    const unit = group[0]?.loadUnit ?? defaultUnit;
+    const planned = session.programDay?.exercises.find((row) => row.name === exerciseName);
+    const mode = resolveLogMode({
+      logMode: group[0]?.logMode ?? planned?.logMode,
+      name: exerciseName,
+      reps: planned?.reps,
     });
+    const created = {
+      ...newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
+      prescriptionKey:
+        group[0]?.prescriptionKey || prescriptionSlotKey({ exerciseName, reps: planned?.reps }),
+      rir: group[0]?.rir ?? "",
+    };
+    const last = current.findLastIndex((set) => set.exerciseName === exerciseName);
+    const next =
+      last < 0
+        ? [...current, created]
+        : [...current.slice(0, last + 1), created, ...current.slice(last + 1)];
+    commitSets(next);
   }
 
   function markDone(
@@ -833,15 +851,84 @@ export function WorkoutLogForm({
     syncDraft(sets, next);
   }
 
-  function insertExercise() {
-    const name = insertName.trim().slice(0, 80);
-    if (!name) return;
-    const mode = resolveLogMode({ name });
-    setSets((current) => [
+  function addFromLibrary(exercise: LibraryExercise) {
+    const index = pickerIndex ?? grouped.length;
+    const drafts = draftsForLibraryExercise(
+      setsRef.current.map((set) => set.exerciseName),
+      exercise,
+    );
+    if (drafts.length === 0) return;
+    const incoming = drafts.map((draft) => ({
+      ...newClientSet(
+        session.id,
+        draft.exerciseName,
+        draft.setNumber,
+        defaultUnit,
+        resolveLogMode({ logMode: draft.logMode, name: draft.exerciseName, reps: draft.prescriptionReps }),
+        draft.durationSeconds,
+      ),
+      reps: draft.reps,
+      prescriptionKey: addedPrescriptionKey({
+        exerciseName: draft.exerciseName,
+        reps: draft.prescriptionReps,
+        restSeconds: draft.restSeconds,
+      }),
+      rir: rirFromLoadText(exercise.loadText) ?? "",
+    }));
+    const name = drafts[0]!.exerciseName;
+    setAddedNames((current) => new Set(current).add(name));
+    setRestByName((current) => ({ ...current, [name]: drafts[0]!.restSeconds }));
+    setSwapOverlay((current) => ({
       ...current,
-      newClientSet(session.id, name, 1, defaultUnit, mode),
-    ]);
-    setInsertName("");
+      [name]: {
+        sets: drafts.length,
+        reps: exercise.reps,
+        loadText: exercise.loadText,
+        restSeconds: drafts[0]!.restSeconds,
+        logMode: drafts[0]!.logMode,
+        notes: exercise.notes,
+      },
+    }));
+    setPickerIndex(null);
+    setActiveName(name);
+    commitSets(insertSetsAtExercise(setsRef.current, index, incoming));
+    requestAnimationFrame(() => {
+      const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(name) : name;
+      formRef.current
+        ?.querySelector<HTMLElement>(`[data-exercise-block="${escaped}"]`)
+        ?.scrollIntoView({ block: "center" });
+    });
+  }
+
+  function moveLoggedExercise(name: string, direction: "up" | "down") {
+    commitSets(moveExercise(setsRef.current, name, direction));
+  }
+
+  function removeAddedExercise(name: string) {
+    setAddedNames((current) => {
+      const next = new Set(current);
+      next.delete(name);
+      return next;
+    });
+    commitSets(removeExerciseSets(setsRef.current, name));
+  }
+
+  function setAddedRest(name: string, raw: number) {
+    const rest = Math.max(0, Math.min(600, Number.isFinite(raw) ? Math.round(raw) : 0));
+    setRestByName((current) => ({ ...current, [name]: rest }));
+    const next = setsRef.current.map((set) => {
+      if (set.exerciseName !== name) return set;
+      const plan = parseAddedPlan(set.prescriptionKey);
+      return {
+        ...set,
+        prescriptionKey: addedPrescriptionKey({
+          exerciseName: name,
+          reps: plan?.reps ?? "",
+          restSeconds: rest,
+        }),
+      };
+    });
+    commitSets(next);
   }
 
   return (
@@ -1065,11 +1152,31 @@ export function WorkoutLogForm({
           </>
         )}
 
-        {grouped.map(([name, group]) => {
+        {grouped.map(([name, group], exerciseIndex) => {
           const form = lookupFormVideo(name, session.programDay?.exercises);
           const overlay = swapOverlay[name];
+          const storedPlan = parseAddedPlan(group[0]?.prescriptionKey);
+          const library =
+            libraryExercise(name) ?? libraryExercise(libraryBaseName(name));
+          const addedRest = restByName[name] ?? storedPlan?.restSeconds;
+          const nameKey = gymExerciseKey(name);
+          const added = addedNames.has(name) || Boolean(storedPlan);
+          const addedPlan =
+            added && (library || storedPlan)
+              ? {
+                  name,
+                  sets: group.length,
+                  reps: overlay?.reps || storedPlan?.reps || library?.reps || "",
+                  loadText: overlay?.loadText || library?.loadText || "",
+                  restSeconds: addedRest ?? library?.restSeconds ?? 60,
+                  logMode: overlay?.logMode || group[0]?.logMode || library?.logMode || "",
+                  notes: overlay?.notes || library?.notes || "",
+                  formVideoUrl: "",
+                  formVideoPending: false,
+                }
+              : undefined;
           const plannedMatch = session.programDay?.exercises.find(
-            (row) => gymExerciseKey(row.name) === gymExerciseKey(name),
+            (row) => gymExerciseKey(row.name) === nameKey,
           );
           const planned = plannedMatch ?? (overlay
             ? {
@@ -1083,7 +1190,7 @@ export function WorkoutLogForm({
                 formVideoUrl: "",
                 formVideoPending: false,
               }
-            : undefined);
+            : addedPlan);
           const title = planned?.name ?? name;
           const mode = resolveLogMode({
             logMode: group[0]?.logMode ?? planned?.logMode,
@@ -1109,8 +1216,23 @@ export function WorkoutLogForm({
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);
           return (
+            <Fragment key={name}>
+            {session.status !== "complete" ? (
+              <div className="flex items-center gap-3" data-insert-at={exerciseIndex}>
+                <div className="h-px flex-1 bg-line" />
+                <button
+                  type="button"
+                  data-insert-exercise={exerciseIndex}
+                  aria-label={`Add exercise above ${title}`}
+                  onClick={() => setPickerIndex(exerciseIndex)}
+                  className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-line text-sm leading-none"
+                >
+                  +
+                </button>
+                <div className="h-px flex-1 bg-line" />
+              </div>
+            ) : null}
             <section
-              key={name}
               data-exercise-block={name}
               data-log-row={layout}
               data-current-exercise={current ? "true" : undefined}
@@ -1134,9 +1256,9 @@ export function WorkoutLogForm({
                   <p className="mt-0.5 text-sm text-muted" data-logger-prescription>
                     {planned
                       ? loggerCardLine({
-                          sets: planned.sets,
+                          sets: added ? group.length : planned.sets,
                           reps: planned.reps,
-                          restSeconds: planned.restSeconds,
+                          restSeconds: added ? restSeconds : planned.restSeconds,
                           logMode: mode,
                           name: title,
                           loadText: planned.loadText,
@@ -1194,6 +1316,40 @@ export function WorkoutLogForm({
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                     {session.status !== "complete" ? (
+                      <>
+                        <button
+                          type="button"
+                          data-move-up={name}
+                          aria-label={`Move ${title} up`}
+                          disabled={exerciseIndex === 0}
+                          onClick={() => moveLoggedExercise(name, "up")}
+                          className="inline-flex min-h-8 items-center rounded-full border border-line px-2.5 text-xs font-semibold disabled:text-muted"
+                        >
+                          Up
+                        </button>
+                        <button
+                          type="button"
+                          data-move-down={name}
+                          aria-label={`Move ${title} down`}
+                          disabled={exerciseIndex === grouped.length - 1}
+                          onClick={() => moveLoggedExercise(name, "down")}
+                          className="inline-flex min-h-8 items-center rounded-full border border-line px-2.5 text-xs font-semibold disabled:text-muted"
+                        >
+                          Down
+                        </button>
+                        {added ? (
+                          <button
+                            type="button"
+                            data-remove-added={name}
+                            onClick={() => removeAddedExercise(name)}
+                            className="inline-flex min-h-8 items-center text-xs font-semibold text-danger"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {session.status !== "complete" && !added ? (
                       <ExerciseCardMenu
                         programSlug={swap?.programSlug ?? ""}
                         dayNumber={swap?.dayNumber ?? 0}
@@ -1279,7 +1435,29 @@ export function WorkoutLogForm({
                 </div>
               </div>
 
-              {restSeconds > 0 ? (
+              {added ? (
+                <label
+                  className="mt-3 flex items-center justify-between gap-3 text-sm"
+                  data-added-rest={name}
+                >
+                  <span>Rest between each set</span>
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={600}
+                      inputMode="numeric"
+                      aria-label={`Rest for ${title}`}
+                      value={restSeconds}
+                      onChange={(event) =>
+                        setAddedRest(name, event.target.value === "" ? 0 : Number(event.target.value))
+                      }
+                      className="h-11 w-20 rounded-lg border border-line bg-background text-center text-base"
+                    />
+                    <span className="text-muted">sec</span>
+                  </span>
+                </label>
+              ) : restSeconds > 0 ? (
                 <p
                   className="mt-3 flex items-center justify-between gap-3 text-sm text-muted"
                   data-prescribed-rest={restSeconds}
@@ -1504,8 +1682,20 @@ export function WorkoutLogForm({
                 {bike || mode !== "timed_round" ? "+ Add new set" : "+ Add round"}
               </button>
             </section>
+            </Fragment>
           );
         })}
+
+        {session.status !== "complete" ? (
+          <button
+            type="button"
+            data-add-exercise
+            onClick={() => setPickerIndex(grouped.length)}
+            className="touch-target w-full rounded-2xl border border-dashed border-line text-sm font-semibold"
+          >
+            + Add exercise
+          </button>
+        ) : null}
 
         <div
           data-logger-save
@@ -1561,15 +1751,7 @@ export function WorkoutLogForm({
         >
           <p className="font-display text-sm uppercase tracking-wide">More</p>
           <div data-round-insert className="space-y-3">
-            <label className="block text-sm">
-              <span className="font-medium">Insert exercise</span>
-              <input
-                value={insertName}
-                onChange={(event) => setInsertName(event.target.value)}
-                placeholder="Exercise name"
-                className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
-              />
-            </label>
+            <p className="text-sm font-medium">Add rounds</p>
             <div className="flex flex-wrap gap-2">
               {["Sparring rounds", "Grappling rounds", "Pad rounds", "Heavy bag rounds"].map((chip) => (
                 <button
@@ -1577,12 +1759,16 @@ export function WorkoutLogForm({
                   type="button"
                   data-insert-chip={chip}
                   onClick={() => {
-                    setInsertName(chip);
                     const mode = resolveLogMode({ name: chip });
-                    setSets((current) => [
-                      ...current,
-                      newClientSet(session.id, chip, 1, defaultUnit, mode, 180),
-                    ]);
+                    const current = setsRef.current;
+                    const count = current.filter((set) => set.exerciseName === chip).length;
+                    const created = newClientSet(session.id, chip, count + 1, defaultUnit, mode, 180);
+                    const last = current.findLastIndex((set) => set.exerciseName === chip);
+                    const next =
+                      last < 0
+                        ? [...current, created]
+                        : [...current.slice(0, last + 1), created, ...current.slice(last + 1)];
+                    commitSets(next);
                   }}
                   className="rounded-full border border-line px-3 py-2 text-xs"
                 >
@@ -1590,27 +1776,30 @@ export function WorkoutLogForm({
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={insertExercise}
-              className="touch-target text-sm font-medium underline-offset-4 hover:underline"
-            >
-              Insert exercise
-            </button>
           </div>
           <Link href="/coach" className="block text-sm font-semibold text-accent">
             Ask Coach
           </Link>
-          <form action={deleteWorkoutAction}>
-            <input type="hidden" name="workoutId" value={session.id} />
-            <button
-              type="submit"
-              className="touch-target text-sm text-danger underline-offset-4 hover:underline"
-            >
-              Delete this session
-            </button>
-          </form>
         </div>
+      ) : null}
+      {pickerIndex != null && session.status !== "complete" ? (
+        <ExerciseLibrarySheet
+          variant="add"
+          title="Add exercise"
+          subtitle="Live clips"
+          weightAccess={swap?.weightAccess ?? "gym"}
+          onClose={() => setPickerIndex(null)}
+          footer={(choice) => (
+            <button
+              type="button"
+              data-add-library={choice.name}
+              onClick={() => addFromLibrary(choice)}
+              className="touch-target w-full rounded-full bg-accent text-sm font-semibold text-black"
+            >
+              Add {choice.name}
+            </button>
+          )}
+        />
       ) : null}
     </div>
   );

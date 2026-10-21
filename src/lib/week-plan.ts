@@ -88,11 +88,20 @@ export type PlannerPrefs = {
   outsideTraining?: OutsideDay[] | null;
   /** Member start. Week 0 is their first week, so a new member is not dropped onto Day 17. */
   planAnchor?: Date | null;
+  /** Fight camp week. When set, this picks the 3-week block instead of the join date. */
+  forcedWeekIndex?: number | null;
 };
 
 export function planWeekIndex(date: Date, timeZone: string, anchor?: Date | null) {
   if (anchor && !Number.isNaN(anchor.getTime())) return memberWeekIndex(date, anchor, timeZone);
   return bikeWeekIndex(date, timeZone);
+}
+
+export function weekIndexFor(prefs: PlannerPrefs, date: Date, timeZone: string) {
+  if (typeof prefs.forcedWeekIndex === "number" && Number.isFinite(prefs.forcedWeekIndex)) {
+    return Math.max(0, Math.floor(prefs.forcedWeekIndex));
+  }
+  return planWeekIndex(date, timeZone, prefs.planAnchor);
 }
 
 export type CatalogDayLike = {
@@ -530,7 +539,7 @@ export function planForDate(
   swaps: WeekPlanSwap[] = [],
 ): DayPlan {
   const calendarWeekday = weekdayInAppZone(date, timeZone);
-  const built = buildCoreWeekPlan(prefs, planWeekIndex(date, timeZone, prefs.planAnchor));
+  const built = buildCoreWeekPlan(prefs, weekIndexFor(prefs, date, timeZone));
   return arrangeCalendarDay(built, calendarWeekday, weekStartKey(date, timeZone), swaps);
 }
 
@@ -573,7 +582,7 @@ export function weekStrip(
   const anchor = weekAnchor ?? now;
   const monday = mondayOfZoned(anchor, timeZone);
   const weekStart = weekStartKey(anchor, timeZone);
-  const built = buildCoreWeekPlan(prefs, planWeekIndex(anchor, timeZone, prefs.planAnchor));
+  const built = buildCoreWeekPlan(prefs, weekIndexFor(prefs, anchor, timeZone));
   return WEEKDAYS.map((weekday, index) => {
     const date = addZonedDays(monday, index, timeZone);
     const plan = arrangeCalendarDay(built, weekday, weekStart, swaps);

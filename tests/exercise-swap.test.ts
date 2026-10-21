@@ -160,7 +160,7 @@ describe("swapped logging and progress", () => {
       userId: user.id,
       workoutId: first.id,
       title: first.title,
-      performedAt: new Date(),
+      performedAt: new Date("2026-09-01T18:00:00.000Z"),
       notes: "",
       status: "complete",
       sets: first.sets.map((set) => ({
@@ -271,7 +271,7 @@ describe("swapped logging and progress", () => {
       userId: user.id,
       workoutId: earlier.id,
       title: earlier.title,
-      performedAt: new Date(Date.now() - 60_000),
+      performedAt: new Date("2026-09-08T18:00:00.000Z"),
       notes: "",
       status: "complete",
       sets: earlier.sets.map((set) => ({

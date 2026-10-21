@@ -158,12 +158,13 @@ describe("exercise swap keeps the session", () => {
       { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
     );
     const swapped = merged.find((set) => set.reps === 8);
-    expect(swapped?.exerciseName).toBe("Goblet squat");
+    expect(swapped?.exerciseName).toBe("Goblet squat · 2");
     expect(swapped?.exerciseName).not.toMatch(/\(2\)/);
     expect(swapped?.completed).toBe(true);
     expect(merged.some((set) => set.exerciseName === "Goblet squat" && set.loadValue === 25)).toBe(
       true,
     );
+    expect(new Set(merged.map((set) => set.exerciseName)).size).toBe(2);
     expect(merged.some((set) => set.exerciseName === "Sit-to-stand")).toBe(false);
   });
 });
