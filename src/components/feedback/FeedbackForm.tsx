@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState, type ChangeEvent } from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
 import { submitFeedbackAction, type FeedbackActionState } from "@/app/actions/feedback";
 import { StatusBanner } from "@/components/StatusBanner";
+import { Toast } from "@/components/Toast";
 import {
   FEEDBACK_SCREENSHOT_MAX_BYTES,
   FEEDBACK_TYPE_LABEL,
@@ -18,23 +19,16 @@ function FeedbackToast({ token }: { token?: number }) {
     setOpen(Boolean(token));
   }
 
-  useEffect(() => {
-    if (!open || !token) return;
-    const id = window.setTimeout(() => setOpen(false), 4500);
-    return () => window.clearTimeout(id);
-  }, [open, token]);
-
   if (!open) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
-      <p
-        role="status"
-        data-feedback-toast="1"
-        className="w-full max-w-sm rounded-full border border-[#cbf805] bg-black px-4 py-3 text-center text-sm text-[#cbf805] shadow-lg"
-      >
-        Thanks. We got your feedback.
-      </p>
-    </div>
+    <Toast
+      key={token}
+      message="Thanks. We got your feedback."
+      tone="outline"
+      placement="top"
+      onDismiss={() => setOpen(false)}
+      attrs={{ "data-feedback-toast": "1" }}
+    />
   );
 }
 
