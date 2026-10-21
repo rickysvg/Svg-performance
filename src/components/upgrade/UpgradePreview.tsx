@@ -122,8 +122,7 @@ export function UpgradePreview({
         ) : null}
       </div>
       <p className={`mt-3 text-xs ${carbon ? "text-white/60" : "text-muted"}`}>
-        Pro is $9.99/mo or $72.99/yr, save 39%, for everyone. Paid plans coming soon. You can
-        look at pricing anytime from Profile.
+        Pro is $9.99/mo or $72.99/yr, save 39%.
       </p>
     </section>
   );
