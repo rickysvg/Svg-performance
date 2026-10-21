@@ -48,52 +48,49 @@ export function HomeSideStats({
   const fatDelta =
     fatEmpty ? "Tap to add" : bodyFat.delta == null ? "Logged" : formatBodyFatDelta(bodyFat.delta);
 
+  const labelClass =
+    "line-clamp-2 block min-h-[1.35rem] font-telemetry text-[8px] uppercase leading-tight tracking-[0.08em] text-signal";
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-col" data-home-side-stats>
+    <div className="flex w-full min-w-0 items-stretch" data-home-side-stats>
       <Link
         href={fatEmpty ? "/progress#log-body-fat" : "/progress"}
         data-home-body-fat={fatEmpty ? "empty" : "filled"}
         aria-label={fatLabel(bodyFat)}
-        className="block min-w-0"
+        className="min-w-0 flex-1"
       >
-        <span className="block font-telemetry text-[9px] uppercase leading-none tracking-[0.18em] text-signal">
-          Body fat
-        </span>
-        <span className="flex items-baseline gap-1">
+        <span className={labelClass}>Body fat</span>
+        <span className="mt-0.5 flex items-baseline gap-0.5">
           <span
-            className={`font-display text-sm leading-none tracking-normal ${fatEmpty ? "text-white/75" : "text-[#CBF805]"}`}
+            className={`font-display text-lg leading-none tracking-normal ${fatEmpty ? "text-white/75" : "text-[#CBF805]"}`}
           >
             {fatEmpty ? "—" : bodyFat.value!.toFixed(1)}
           </span>
           {fatEmpty ? null : (
-            <span className="font-telemetry text-[10px] leading-none text-[#CBF805]">%</span>
+            <span className="font-telemetry text-[9px] leading-none text-[#CBF805]">%</span>
           )}
-          <span
-            className={`font-telemetry text-[9px] uppercase leading-none tracking-[0.04em] ${
-              fatEmpty ? "text-[#CBF805]" : deltaClass(bodyFat.direction)
-            }`}
-          >
-            {fatDelta}
-          </span>
+        </span>
+        <span
+          className={`mt-0.5 block font-telemetry text-[8px] uppercase leading-tight tracking-[0.04em] ${
+            fatEmpty ? "text-[#CBF805]" : deltaClass(bodyFat.direction)
+          }`}
+        >
+          {fatDelta}
         </span>
       </Link>
-      <div className="my-px h-px bg-[#CBF805]/35" aria-hidden />
+      <div className="mx-1.5 w-px shrink-0 self-stretch bg-white/30" aria-hidden />
       <Link
         href="/progress"
         data-home-training={training.mode}
         aria-label={trainingLabel(training)}
-        className="block min-w-0"
+        className="min-w-0 flex-1"
       >
-        <span className="block whitespace-nowrap font-telemetry text-[9px] uppercase leading-none tracking-[0.16em] text-signal">
-          {fight ? "Days to fight" : "Streak"}
+        <span className={labelClass}>{fight ? "Days to fight" : "Streak"}</span>
+        <span className="mt-0.5 block font-display text-lg leading-none tracking-normal text-[#CBF805]">
+          {training.days}
         </span>
-        <span className="flex items-baseline gap-1">
-          <span className="font-display text-sm leading-none tracking-normal text-[#CBF805]">
-            {training.days}
-          </span>
-          <span className="font-telemetry text-[9px] uppercase leading-none tracking-[0.08em] text-white/55">
-            {trainingUnit}
-          </span>
+        <span className="mt-0.5 block font-telemetry text-[8px] uppercase leading-none tracking-[0.08em] text-white/55">
+          {trainingUnit}
         </span>
       </Link>
     </div>
