@@ -406,7 +406,10 @@ export async function completedProgramDayIdsOnDays(
   return [...ids];
 }
 
-/** Local days in [from, to) that have a finished session. Same day key as Calendar. */
+/**
+ * Local days in [from, to) that have a finished session. Same day key as Calendar.
+ * A programmed session counts only when a ticked set belongs to that plan.
+ */
 export async function completedLocalDayKeys(
   userId: string,
   from: Date,
@@ -425,11 +428,33 @@ export async function completedLocalDayKeys(
         lt: new Date(to.getTime() + DAY_PAD_MS),
       },
     },
-    select: { performedAt: true },
+    select: {
+      status: true,
+      programDayId: true,
+      performedAt: true,
+      sets: {
+        select: {
+          exerciseName: true,
+          completed: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+        },
+      },
+    },
   });
+  const namesByDay = await plannedExerciseNamesByDay(
+    rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)),
+  );
   return [
     ...new Set(
       rows
+        .filter((row) =>
+          sessionCountsAsPlannedCompletion(
+            row,
+            row.programDayId ? (namesByDay.get(row.programDayId) ?? []) : [],
+          ),
+        )
         .map((row) => sessionCompletionDay(row, timeZone))
         .filter((key) => key >= fromKey && key < endKey),
     ),
