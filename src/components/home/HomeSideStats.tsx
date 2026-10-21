@@ -5,9 +5,6 @@ import {
   type HomeTrainingReadout,
 } from "@/lib/home-side-stats";
 
-const chip =
-  "touch-target flex min-h-11 w-[6.35rem] min-w-0 shrink-0 flex-col justify-center rounded-md border border-white/10 bg-black/70 px-1.5 py-1 leading-none";
-
 function fatLabel(bodyFat: BodyFatReadout) {
   if (bodyFat.value == null) {
     return "Body fat not logged. Tap to add. Opens Progress.";
@@ -48,50 +45,55 @@ export function HomeSideStats({
   const fight = training.mode === "fight";
   const trainingUnit =
     fight && training.days === 0 ? "today" : training.days === 1 ? "day" : "days";
+  const fatDelta =
+    fatEmpty ? "Tap to add" : bodyFat.delta == null ? "Logged" : formatBodyFatDelta(bodyFat.delta);
 
   return (
-    <div className="flex shrink-0 flex-col gap-1" data-home-side-stats>
+    <div className="flex min-w-0 flex-col justify-center" data-home-side-stats>
       <Link
         href={fatEmpty ? "/progress#log-body-fat" : "/progress"}
         data-home-body-fat={fatEmpty ? "empty" : "filled"}
         aria-label={fatLabel(bodyFat)}
-        className={chip}
+        className="block min-w-0"
       >
-        <span className="block max-w-full font-telemetry text-[9px] uppercase leading-tight tracking-[0.12em] text-white/60">
+        <span className="block font-telemetry text-[9px] uppercase leading-none tracking-[0.18em] text-signal">
           Body fat
         </span>
-        <span
-          className={`mt-1 block max-w-full font-telemetry text-lg leading-none ${fatEmpty ? "text-white/80" : "text-[#CBF805]"}`}
-        >
-          {fatEmpty ? (
-            "—"
-          ) : (
-            <>
-              {bodyFat.value!.toFixed(1)}
-              <span className="ml-0.5 text-[10px] tracking-normal">%</span>
-            </>
+        <span className="mt-0.5 flex items-baseline gap-1.5">
+          <span
+            className={`font-display text-xl leading-none tracking-normal ${fatEmpty ? "text-white/75" : "text-[#CBF805]"}`}
+          >
+            {fatEmpty ? "—" : bodyFat.value!.toFixed(1)}
+          </span>
+          {fatEmpty ? null : (
+            <span className="font-telemetry text-[10px] leading-none text-[#CBF805]">%</span>
           )}
-        </span>
-        <span
-          className={`mt-1 block max-w-full whitespace-normal font-telemetry text-[9px] uppercase leading-tight tracking-[0.04em] ${
-            fatEmpty ? "text-[#CBF805]" : deltaClass(bodyFat.direction)
-          }`}
-        >
-          {fatEmpty ? "Tap to add" : bodyFat.delta == null ? "Logged" : formatBodyFatDelta(bodyFat.delta)}
+          <span
+            className={`font-telemetry text-[9px] uppercase leading-none tracking-[0.04em] ${
+              fatEmpty ? "text-[#CBF805]" : deltaClass(bodyFat.direction)
+            }`}
+          >
+            {fatDelta}
+          </span>
         </span>
       </Link>
+      <div className="my-1.5 h-px bg-[#CBF805]/35" aria-hidden />
       <Link
         href="/progress"
         data-home-training={training.mode}
         aria-label={trainingLabel(training)}
-        className={chip}
+        className="block min-w-0"
       >
-        <span className="block max-w-full whitespace-normal font-telemetry text-[9px] uppercase leading-tight tracking-[0.08em] text-white/60">
+        <span className="block whitespace-nowrap font-telemetry text-[9px] uppercase leading-none tracking-[0.16em] text-signal">
           {fight ? "Days to fight" : "Streak"}
         </span>
-        <span className="mt-1 block font-telemetry text-lg leading-none text-[#CBF805]">{training.days}</span>
-        <span className="mt-1 block font-telemetry text-[9px] uppercase leading-none tracking-[0.06em] text-white/55">
-          {trainingUnit}
+        <span className="mt-0.5 flex items-baseline gap-1.5">
+          <span className="font-display text-xl leading-none tracking-normal text-[#CBF805]">
+            {training.days}
+          </span>
+          <span className="font-telemetry text-[9px] uppercase leading-none tracking-[0.08em] text-white/55">
+            {trainingUnit}
+          </span>
         </span>
       </Link>
     </div>
