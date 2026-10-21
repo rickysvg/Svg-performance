@@ -90,15 +90,21 @@ export function Toast({
         onClick={onDismiss}
         className="touch-target inline-flex h-11 w-11 shrink-0 items-center justify-center"
       >
-        <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden className="block">
-          <path
-            d="M5 5 L15 15 M15 5 L5 15"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.25"
-            strokeLinecap="round"
-          />
-        </svg>
+        <span
+          className={`flex h-8 w-8 items-center justify-center rounded-full ${
+            tone === "dark" || tone === "outline" ? "bg-white text-black" : "bg-black text-white"
+          }`}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden className="block">
+            <path
+              d="M6 6 L18 18 M18 6 L6 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.75"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
       </button>
     </div>,
     document.body,
