@@ -11,8 +11,8 @@ export default async function AdminCoachingPage() {
 
   return (
     <AdminScreen
-      kicker="1-on-1"
-      title="Coaching"
+      kicker="VIP"
+      title="VIP Coaching"
       hint={`Cap ${roster.cap}. Spots used and who is on the roster.`}
     >
       <section className="grid grid-cols-3 gap-2">

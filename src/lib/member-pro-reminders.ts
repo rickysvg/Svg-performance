@@ -64,7 +64,7 @@ export function memberProCopy(stage: MemberProStage, recap: MemberProRecap) {
   if (stage === "day29") {
     return {
       title: "Last day of free Pro",
-      body: `Tomorrow you go back to the core app included with your dues. Keep AI coach chat with voices, Today's Summary, and full history for ${PRICE}.`,
+      body: `Tomorrow you go back to the core app included with your dues. Keep AI coach chat, Today's Summary, and full history for ${PRICE}.`,
       cta: "Keep Pro",
     };
   }

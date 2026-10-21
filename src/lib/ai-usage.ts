@@ -130,7 +130,7 @@ export async function consumeAiUse(input: {
     }
   } else if (input.kind === "read_aloud") {
     if (allowance.tier !== "pro") {
-      throw new AiCapError("read_aloud", "Today's Summary read-aloud is in Pro.");
+      throw new AiCapError("read_aloud", "Hearing today's summary is in Pro.");
     }
     if (allowance.readAloudsLeft < 1) {
       throw new AiCapError(

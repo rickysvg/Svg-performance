@@ -1,4 +1,5 @@
 import type { PlannedCue } from "@/lib/coach/motivation";
+import { coachVoiceEnabled } from "@/lib/coach/config";
 
 const COACH_AUDIO_MIME = "audio/mpeg";
 
@@ -43,6 +44,7 @@ export function resetCueClipCacheForTests() {
 }
 
 async function fetchCueFromNetwork(cue: PlannedCue): Promise<CueClip | null> {
+  if (!coachVoiceEnabled()) return null;
   const params = new URLSearchParams();
   params.set("moment", cue.moment);
   if (cue.exerciseName) params.set("exerciseName", cue.exerciseName);

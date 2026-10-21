@@ -14,13 +14,23 @@ import {
   COACH_AUDIO_FAILED,
 } from "@/lib/coach/spoken-audio";
 import { firstSpokenChunk, summaryReadAction } from "@/lib/coach/browser-speech";
+import { coachVoiceEnabled } from "@/lib/coach/config";
 
 type Phase = "idle" | "loading" | "playing" | "paused";
 
 const SPEECH_MISSING =
   "This browser can't read the summary aloud. The plan above is still yours to use.";
 
-export function SummaryReader({
+export function SummaryReader(props: {
+  script: string;
+  coachId: string;
+  readAloudsLeft?: number;
+}) {
+  if (!coachVoiceEnabled()) return null;
+  return <SummaryReaderLive {...props} />;
+}
+
+function SummaryReaderLive({
   script,
   coachId,
   readAloudsLeft = 1,

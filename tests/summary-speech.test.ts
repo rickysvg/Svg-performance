@@ -35,25 +35,42 @@ const facts: DaySummaryFacts = {
   ],
 };
 
+function summaryHtml() {
+  return renderToStaticMarkup(
+    createElement(TodaySummaryView, {
+      facts,
+      script: "Ricky here. Friday. You have bag work and a lift.",
+      circle: "/coaches/ricky-face.webp",
+      when: "Friday · Oct 16",
+    }),
+  );
+}
+
 describe("today summary page", () => {
-  it("renders the regimen and a read-aloud control", () => {
-    const html = renderToStaticMarkup(
-      createElement(TodaySummaryView, {
-        facts,
-        script: "Ricky here. Friday. You have bag work and a lift.",
-        circle: "/coaches/ricky-face.webp",
-        when: "Friday · Oct 16",
-      }),
-    );
+  it("renders the written regimen without a read-aloud control while coach voice is off", () => {
+    delete process.env.NEXT_PUBLIC_COACH_VOICE;
+    const html = summaryHtml();
     expect(html).toContain("Friday · Oct 16");
     expect(html).toContain("Coach Ricky");
     expect(html).toContain("Today&#x27;s summary");
     expect(html).toContain("intelligent jab");
     expect(html).toContain("0-2 RIR");
     expect(html).toContain("Hips and t-spine");
-    expect(html).toContain("Read it to me");
-    expect(html).toContain("data-summary-read");
+    expect(html).not.toContain("Read it to me");
+    expect(html).not.toContain("data-summary-read");
     expect(html).not.toMatch(/no_key|OPENAI|API key/i);
+  });
+
+  it("keeps the read-aloud control when coach voice is on", () => {
+    process.env.NEXT_PUBLIC_COACH_VOICE = "1";
+    try {
+      const html = summaryHtml();
+      expect(html).toContain("Read it to me");
+      expect(html).toContain("data-summary-read");
+      expect(html).toContain("intelligent jab");
+    } finally {
+      delete process.env.NEXT_PUBLIC_COACH_VOICE;
+    }
   });
 });
 

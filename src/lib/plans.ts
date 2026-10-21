@@ -56,7 +56,7 @@ export type FeatureId =
   | "fight_camp"
   | "form_check"
   | "progress_history"
-  /** Pro only: AI coach voices, Today's Summary read-aloud, AI feedback, sparring trends, RIR auto-adjust. */
+  /** Pro only: coach speech (flagged off), AI feedback, sparring trends, RIR auto-adjust. */
   | "ai_voice"
   | "read_aloud"
   | "ai_feedback"
@@ -159,11 +159,11 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
   coaching: {
     id: "coaching",
     section: "coaching",
-    label: "1-on-1 Coaching with Ricky",
+    label: "VIP Coaching",
     gymPriceLabel: "$249/mo",
     nonmemberPriceLabel: "$249/mo",
     summary:
-      "Custom programming with Ricky. Limited to 20 athletes. Includes Pro. VIP is by application.",
+      "Custom programming with Ricky. Limited spots. Includes Pro. In-person VIP is by application.",
     includes: [...COACHING_INCLUDES],
     rank: 7,
     features: [

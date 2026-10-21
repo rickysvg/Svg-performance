@@ -26,7 +26,7 @@ export default async function JournalPage({
         <p className="mt-1 text-sm text-muted">
           Goals, notes, questions, and lessons learned. Owner-only unless an assigned coach
           writes feedback
-          {coaching ? " (your plan includes that slot)." : " — coaching tiers unlock coach replies."}
+          {coaching ? " (your plan includes that slot)." : " — VIP Coaching unlocks coach replies."}
         </p>
       </div>
 

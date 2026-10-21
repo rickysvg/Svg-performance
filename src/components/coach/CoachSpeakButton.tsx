@@ -10,8 +10,18 @@ import {
   unlockCoachAudio,
   COACH_AUDIO_FAILED,
 } from "@/lib/coach/spoken-audio";
+import { coachVoiceEnabled } from "@/lib/coach/config";
 
-export function CoachSpeakButton({
+export function CoachSpeakButton(props: {
+  text: string;
+  coachId: string;
+  audioRef: RefObject<HTMLAudioElement | null>;
+}) {
+  if (!coachVoiceEnabled()) return null;
+  return <CoachSpeakButtonLive {...props} />;
+}
+
+function CoachSpeakButtonLive({
   text,
   coachId,
   audioRef,

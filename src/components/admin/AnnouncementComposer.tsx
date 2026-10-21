@@ -11,7 +11,7 @@ const AUDIENCES = [
   { value: "members", label: "All members" },
   { value: "academy", label: "Academy members" },
   { value: "pro", label: "Active Pro" },
-  { value: "coaching", label: "Coaching clients" },
+  { value: "coaching", label: "VIP Coaching clients" },
 ] as const;
 
 const CHANNELS = [

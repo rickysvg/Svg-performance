@@ -83,7 +83,7 @@ const HEAD_PATTERN =
   /\b(head|concussion|knocked out|knockout|ko'd|eye poke|hard spar(?:ring)?|head kick|head shot)\b/i;
 
 /**
- * Catalog id for 1-on-1 Coaching with Ricky ($249/mo).
+ * Catalog id for VIP Coaching ($249/mo). Display name only; the id stays `coaching`.
  * The simplified pricing catalog adds this id. Until that lands, checkout
  * rows may already store `coaching` or `coaching_*`.
  */

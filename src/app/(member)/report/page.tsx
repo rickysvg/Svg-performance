@@ -49,7 +49,7 @@ export default async function WeeklyReportPage() {
           )
         ) : (
           <p className="mt-2 text-sm text-muted">
-            Personal comments start on 1-on-1 Coaching with Ricky.{" "}
+            Personal comments start on VIP Coaching.{" "}
             <Link href="/pricing" className="text-accent underline">
               See pricing
             </Link>

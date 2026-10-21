@@ -220,7 +220,8 @@ describe("M5 entitlements, caps, and booking credits", () => {
   it("keeps the SVG Coach AI disclaimer", () => {
     expect(AI_DISCLAIMER).toMatch(/AI coach trained on/i);
     expect(AI_DISCLAIMER).not.toMatch(/not Ricky/i);
-    expect(PLAN_CATALOG.performance.includes).toContain("AI coach chat with voices");
+    expect(PLAN_CATALOG.performance.includes).toContain("AI coach chat");
+    expect(PLAN_CATALOG.performance.includes.join(" ")).not.toMatch(/voice|read-aloud/i);
     expect(PLAN_CATALOG.vip.includes.join(" ")).toMatch(/1 month of Fighter Development/i);
     expect(PLAN_CATALOG.platinum.includes.join(" ")).toMatch(/1 month of Elite Online/i);
   });

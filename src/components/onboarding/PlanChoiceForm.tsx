@@ -35,7 +35,7 @@ export function PlanChoiceForm({
           </button>
         </form>
         <p className="text-sm text-muted">
-          Pro is $9.99/mo or $72.99/yr. Want 1-on-1 with Ricky?{" "}
+          Pro is $9.99/mo or $72.99/yr. Want VIP Coaching?{" "}
           <Link href="/pricing" className="text-accent underline">
             See pricing
           </Link>

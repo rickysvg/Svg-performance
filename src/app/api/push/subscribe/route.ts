@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
   if (!(await weeklyCheckInAllowed(user.id))) {
     return NextResponse.json(
-      { error: "Weekly check-ins are on 1-on-1 Coaching with Ricky." },
+      { error: "Weekly check-ins are on VIP Coaching." },
       { status: 403 },
     );
   }

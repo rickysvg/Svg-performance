@@ -73,7 +73,7 @@ export default async function CoachPage() {
           href="/clips"
           className="shrink-0 rounded-full border border-[#cbf805]/50 px-2.5 py-1 text-[11px] font-medium text-[#CBF805]"
         >
-          1-on-1 clips
+          VIP Coaching
         </Link>
       </header>
       {recovery ? (

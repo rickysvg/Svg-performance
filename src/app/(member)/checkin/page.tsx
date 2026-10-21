@@ -46,7 +46,7 @@ export default async function CheckInPage({
           <h2 className="mt-2 text-2xl">The weekly check-in is in Pro</h2>
           <p className="mt-2 text-sm text-muted">
             Verified SVG Academy members get the weekly check-in form with their dues. Pro adds
-            AI feedback on every check-in. 1-on-1 Coaching with Ricky adds his review.
+            AI feedback on every check-in. VIP Coaching adds his review.
           </p>
           <Link
             href="/plan"

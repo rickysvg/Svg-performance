@@ -88,7 +88,7 @@ export default async function CoachCheckInsPage({
       }
     >
       {cards.length === 0 ? (
-        <p className="text-sm text-muted">No check-ins yet. Coaching members send one from Check-in.</p>
+        <p className="text-sm text-muted">No check-ins yet. VIP Coaching members send one from Check-in.</p>
       ) : (
         <>
           {open.length === 0 ? <p className="text-sm text-muted">No check-ins waiting.</p> : <CheckInQueue rows={open} />}

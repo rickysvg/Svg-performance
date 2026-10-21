@@ -3,12 +3,21 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { synthesizeCoachSpeech } from "@/lib/coach/tts";
+import { coachVoiceEnabled } from "@/lib/coach/config";
 import { AiCapError, consumeAiUse, estimateSpeechSeconds } from "@/lib/ai-usage";
 
 export const dynamic = "force-dynamic";
 
 /** Spoken coach reply. Uses the signed-in member's coach and intensity. */
+function voiceOffResponse() {
+  return NextResponse.json(
+    { speak: false, muted: true },
+    { status: 200, headers: { "Cache-Control": "private, no-store" } },
+  );
+}
+
 export async function POST(request: Request) {
+  if (!coachVoiceEnabled()) return voiceOffResponse();
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in to hear your coach." }, { status: 401 });

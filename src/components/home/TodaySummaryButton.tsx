@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { coachVoiceEnabled } from "@/lib/coach/config";
 
 function PlayIcon() {
   return (
@@ -34,9 +35,11 @@ export function TodaySummaryButton({
       <span className="min-w-0 flex-1 whitespace-nowrap text-xs font-semibold leading-none tracking-tighter">
         Coach {name} – Today&apos;s Summary
       </span>
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-foreground">
-        <PlayIcon />
-      </span>
+      {coachVoiceEnabled() ? (
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-foreground">
+          <PlayIcon />
+        </span>
+      ) : null}
     </Link>
   );
 }
