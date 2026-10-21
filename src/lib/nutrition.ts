@@ -14,6 +14,31 @@ import {
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
 
+/** Clock hour. Before 11 is breakfast, before 16 lunch, before 21 dinner. */
+export function mealTypeForHour(hour: number): MealType {
+  const clock = hour === 24 ? 0 : hour;
+  if (clock < 11) return "breakfast";
+  if (clock < 16) return "lunch";
+  if (clock < 21) return "dinner";
+  return "snack";
+}
+
+/** Runtime-local clock. 7:28 AM is breakfast. */
+export function mealTypeForTime(date: Date): MealType {
+  return mealTypeForHour(date.getHours());
+}
+
+/** Member timezone. Server UTC must not turn 7:28 AM into lunch. */
+export function mealTypeForZonedNow(now: Date, timeZone: string): MealType {
+  const hour = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const value = Number(hour.find((part) => part.type === "hour")?.value ?? "0");
+  return mealTypeForHour(Number.isFinite(value) ? value : 0);
+}
+
 export const NUTRITION_SOURCE = "manual_estimate";
 
 function assertOwn<T extends { userId: string }>(row: T | null, userId: string): T {

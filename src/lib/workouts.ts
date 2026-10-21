@@ -5,11 +5,11 @@ import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUni
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
 import { sessionCivilDay } from "@/lib/performed-at";
-import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
+import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
-import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
+import { memberWeekIndex } from "@/lib/bike-sessions";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import {
   hidesLoad,
@@ -295,6 +295,46 @@ export async function completedProgramDayIdsOnDay(
   return [...new Set(rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)))];
 }
 
+/**
+ * Program days finished on any of these civil days.
+ * Train and Calendar both use this, so an early Thursday lift still counts
+ * on Thursday, and a Monday log is not "missed" on one screen only.
+ */
+export async function completedProgramDayIdsOnDays(
+  userId: string,
+  dayKeys: string[],
+  timeZone: string,
+) {
+  const keys = [...new Set(dayKeys.filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)))].sort();
+  if (keys.length === 0) return [] as string[];
+  const [startYear, startMonth, startDay] = keys[0]!.split("-").map(Number);
+  const [endYear, endMonth, endDay] = keys[keys.length - 1]!.split("-").map(Number);
+  const from = zonedCivilToUtc(startYear!, startMonth!, startDay!, timeZone);
+  const to = endOfZonedDay(zonedCivilToUtc(endYear!, endMonth!, endDay!, timeZone), timeZone);
+  const keySet = new Set(keys);
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId,
+      status: "complete",
+      programDayId: { not: null },
+      sets: loggedSetSome,
+      OR: [
+        { performedAt: { gte: from, lte: to } },
+        { createdAt: { gte: from, lte: to } },
+      ],
+    },
+    select: { programDayId: true, performedAt: true, createdAt: true },
+  });
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (!row.programDayId) continue;
+    const civil = sessionCivilDay(row, timeZone);
+    const performed = dayKey(row.performedAt, timeZone);
+    if (keySet.has(civil) || keySet.has(performed)) ids.add(row.programDayId);
+  }
+  return [...ids];
+}
+
 /** Local days in [from, to) that have a finished session. Same day key as Calendar. */
 export async function completedLocalDayKeys(
   userId: string,
@@ -545,14 +585,6 @@ export async function startWorkoutFromDay(input: {
   return created;
 }
 
-function setHasAthleteLog(set: WorkoutSetInput, mode: LogMode) {
-  if (isBikeIntervalName(set.exerciseName)) return true;
-  if (isDurationMode(mode)) {
-    return set.durationSeconds != null || set.loadValue != null;
-  }
-  return set.reps != null || set.loadValue != null;
-}
-
 function validateSets(sets: WorkoutSetInput[]) {
   if (sets.length === 0) {
     throw new AppError("WORKOUT", "Add at least one set before saving.");
@@ -745,7 +777,7 @@ export async function updateWorkoutSessionForUser(input: {
               loadUnit: set.loadUnit,
               logMode: mode,
               durationSeconds: timed ? set.durationSeconds ?? null : null,
-              completed: set.completed && setHasAthleteLog(set, mode),
+              completed: Boolean(set.completed),
               notes: (set.notes ?? "").slice(0, 200),
               prescriptionKey: (set.prescriptionKey ?? "").trim().slice(0, 160),
               rir: (set.rir ?? "").trim().slice(0, 40),

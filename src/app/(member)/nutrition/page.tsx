@@ -3,11 +3,12 @@ import { requireUser } from "@/lib/session";
 import { canUseMemberTools } from "@/lib/access";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { getTrialState } from "@/lib/trial";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
   getTodayNutritionSummary,
   listNutritionEntriesForUser,
   listSavedMealsForUser,
+  mealTypeForZonedNow,
 } from "@/lib/nutrition";
 import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
 import { SavedMealForm } from "@/components/nutrition/SavedMealForm";
@@ -31,12 +32,14 @@ export default async function NutritionPage() {
     );
   }
 
-  const [profile, entries, saved, today] = await Promise.all([
+  const [profile, entries, saved, today, timeZone] = await Promise.all([
     getProfileForUser(user.id),
     listNutritionEntriesForUser(user.id),
     listSavedMealsForUser(user.id),
     getTodayNutritionSummary(user.id),
+    timeZoneForUser(user.id),
   ]);
+  const defaultMeal = mealTypeForZonedNow(new Date(), timeZone);
 
   return (
     <main className="space-y-6">
@@ -61,7 +64,7 @@ export default async function NutritionPage() {
         </p>
       </section>
 
-      <NutritionEntryForm savedMeals={saved} />
+      <NutritionEntryForm savedMeals={saved} defaultMeal={defaultMeal} />
       <details className="rounded-2xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer font-semibold">More</summary>
         <div className="mt-4 space-y-4">

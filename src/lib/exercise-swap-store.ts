@@ -137,7 +137,7 @@ export function mergeReplacementSets(
     loadUnit: place.loadUnit,
     logMode: replacement.logMode,
     durationSeconds: copy?.durationSeconds ?? null,
-    completed: Boolean(copy?.completed) && Boolean(copy && setHasLoggedWork(copy)),
+    completed: Boolean(copy?.completed),
     notes: copy?.notes ?? "",
     prescriptionKey: prescriptionSlotKey({
       exerciseName: name,
@@ -155,7 +155,7 @@ export function mergeReplacementSets(
     );
     const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
       const previous = prior[index];
-      const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
+      const copy = previous && (setHasLoggedWork(previous) || previous.completed) ? previous : undefined;
       return { ...slot(index, copy), exerciseName: distinct };
     });
     for (let index = replacement.sets; index < prior.length; index += 1) {
@@ -180,7 +180,7 @@ export function mergeReplacementSets(
   }
   const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
     const previous = prior[index];
-    const copy = previous && setHasLoggedWork(previous) ? previous : undefined;
+    const copy = previous && (setHasLoggedWork(previous) || previous.completed) ? previous : undefined;
     return slot(index, copy);
   });
   // A shorter plan must not throw away a set the member already logged.

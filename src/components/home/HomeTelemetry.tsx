@@ -45,7 +45,7 @@ function StreakGauge({
       className={`flex items-center border border-[#cbf805]/25 bg-black/45 ${compact ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2"}`}
     >
       <svg viewBox="0 0 72 72" className={`shrink-0 ${compact ? "h-12 w-12" : "h-16 w-16"}`} aria-hidden>
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="#243024" strokeWidth="4" />
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="rgba(203,248,5,0.35)" strokeWidth="4" />
         <circle
           cx="36"
           cy="36"
@@ -86,7 +86,7 @@ export function HomeTelemetry({
       data-home-telemetry
       aria-labelledby="home-telemetry-kicker home-telemetry-title"
     >
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-end justify-between gap-3" data-coach-header>
         <div className="min-w-0">
           <p id="home-telemetry-kicker" className="hc-kicker">
             {title}

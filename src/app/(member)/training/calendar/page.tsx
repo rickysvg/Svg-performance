@@ -19,6 +19,7 @@ import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { addZonedDays, mondayOfZoned, zonedParts } from "@/lib/timezone";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
+import { completedLocalDayKeys } from "@/lib/workouts";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -84,11 +85,18 @@ export default async function TrainingCalendarPage({
   const nextMonday = addZonedDays(viewedMonday, 7, tz);
   const canPrev = weekStartInRange(weekStartKey(previousMonday, tz), currentWeek);
   const canNext = weekStartInRange(weekStartKey(nextMonday, tz), currentWeek);
-  const completedDays = schedule.days
+  const activityDays = schedule.days
     .filter((day) =>
       day.activities.some((item) => item.kind === "workout" && item.status === "complete"),
     )
     .map((day) => formatDayParam(day.date, tz));
+  const loggedDays = await completedLocalDayKeys(
+    user.id,
+    addZonedDays(viewedMonday, -1, tz),
+    addZonedDays(viewedMonday, 8, tz),
+    tz,
+  );
+  const completedDays = [...new Set([...activityDays, ...loggedDays])];
   const selectedLogged = completedDays.includes(dayParam);
   const selectedPast = dayParam < formatDayParam(now, tz);
   const selectedSummary = schedule.days

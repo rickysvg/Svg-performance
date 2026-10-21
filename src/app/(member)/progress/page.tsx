@@ -171,6 +171,9 @@ export default async function ProgressPage() {
             {weight ? `${weight.value}` : "—"}
             {weight ? <span className="ml-2 text-base text-muted">{weight.unit}</span> : null}
           </p>
+          <p className="mt-1 font-telemetry text-sm text-[#CBF805]" data-progress-body-fat>
+            Body fat {fat ? `${fat.value}%` : "—"}
+          </p>
           <p className="mt-1 text-xs text-muted">
             {weight ? "Typed by you. The line is every weigh-in." : "Log a weigh-in below."}
           </p>
@@ -190,6 +193,7 @@ export default async function ProgressPage() {
                 unit={units === "kg" ? "lb" : units || "lb"}
                 caption={massLine}
                 gauge={massGauge}
+                bodyFatValue={fat?.value ?? null}
               />
             </div>
           </details>
@@ -201,6 +205,7 @@ export default async function ProgressPage() {
               unit={units === "kg" ? "lb" : units || "lb"}
               caption={massLine}
               gauge={massGauge}
+              bodyFatValue={fat?.value ?? null}
             />
           </div>
         )}
@@ -223,8 +228,10 @@ export default async function ProgressPage() {
               <li key={log.dateKey}>
                 {log.weekday || log.dateKey}: {log.rounds} × {log.minutesPerRound} min
                 {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
+                {log.partner ? ` · ${log.partner}` : ""}
                 {log.sessionRating ? ` · session ${log.sessionRating}/5` : ""}
                 {log.bodyRating ? ` · body ${log.bodyRating}/5` : ""}
+                {log.notes ? <span className="mt-0.5 block text-muted">{log.notes}</span> : null}
               </li>
             ))}
           </ul>

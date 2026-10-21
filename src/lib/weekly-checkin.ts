@@ -139,7 +139,7 @@ export async function saveCheckInPrefs(userId: string, weekday: number, minuteOf
 export async function weekTrainingSnapshot(userId: string, now: Date, timeZone: string) {
   const start = mondayOfZoned(now, timeZone);
   const end = addZonedDays(start, 7, timeZone);
-  const [sessions, sparring, profile, latestWeight, previous] = await Promise.all([
+  const [sessions, sparring, profile, latestWeight, latestFat, previous] = await Promise.all([
     prisma.workoutSession.findMany({
       where: {
         userId,
@@ -165,6 +165,11 @@ export async function weekTrainingSnapshot(userId: string, now: Date, timeZone: 
       orderBy: { recordedAt: "desc" },
       select: { value: true },
     }),
+    prisma.bodyMetric.findFirst({
+      where: { userId, kind: "bodyFat", recordedAt: { lte: now } },
+      orderBy: { recordedAt: "desc" },
+      select: { value: true },
+    }),
     prisma.weeklyCheckIn.findFirst({
       where: { userId, weekKey: { not: await weekKeyForUser(userId, now, timeZone) } },
       orderBy: { submittedAt: "desc" },
@@ -181,6 +186,7 @@ export async function weekTrainingSnapshot(userId: string, now: Date, timeZone: 
     sparringRounds: sparring.rounds,
     displayName: profile?.displayName ?? "",
     suggestedWeightLb: latestWeight?.value ?? profile?.currentWeight ?? null,
+    suggestedBodyFatPercent: latestFat?.value ?? null,
     previousWeightLb,
     previousEnergy: previous?.energy ?? null,
   };

@@ -10,6 +10,7 @@ import type { BodyRegionId } from "@/lib/weekly-checkin-shared";
 
 export function CheckInForm({
   suggestedWeight,
+  suggestedBodyFat,
   sessionsCompleted,
   sessionsPlanned,
   sessionTitles,
@@ -17,6 +18,7 @@ export function CheckInForm({
   storageNotice,
 }: {
   suggestedWeight: number | null;
+  suggestedBodyFat?: number | null;
   sessionsCompleted: number;
   sessionsPlanned: number;
   sessionTitles: string[];
@@ -110,6 +112,8 @@ export function CheckInForm({
           step="0.1"
           placeholder="—"
           aria-label="Body fat percent, optional"
+          defaultValue={suggestedBodyFat ?? ""}
+          data-checkin-body-fat
           className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
         />
       </label>

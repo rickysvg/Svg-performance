@@ -303,7 +303,7 @@ export function ExerciseCardMenu({
                   keeps a prescription that fits it. Same kind of work holds onto today&apos;s sets, RIR, and rest.
                 </span>
               </p>
-              <div className="flex gap-2" data-swap-confirm>
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row" data-swap-confirm>
                 <button
                   type="button"
                   disabled={pending}

@@ -4,6 +4,7 @@ import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   completedLocalDayKeys,
   completedProgramDayIdsOnDay,
+  completedProgramDayIdsOnDays,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
   listDraftSessionsForUser,
@@ -43,7 +44,6 @@ import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
 import { addZonedDays, dayKey, memberDayTimeZone, mondayOfZoned, readTimeZoneCookie } from "@/lib/timezone";
-import { sessionCivilDay } from "@/lib/performed-at";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -195,16 +195,13 @@ export default async function TrainingPage({
       tz,
     ),
   );
-  const doneOnView = isToday
-    ? doneToday
-    : new Set(
-        await completedProgramDayIdsOnDay(
-          user.id,
-          planned.flatMap((session) => (session.dayId ? [session.dayId] : [])),
-          selected,
-          tz,
-        ),
-      );
+  const doneOnView = new Set(
+    await completedProgramDayIdsOnDays(
+      user.id,
+      strip.map((day) => day.dayParam),
+      tz,
+    ),
+  );
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -218,14 +215,7 @@ export default async function TrainingPage({
     })),
     (dayId) => draftsByDay.get(dayId),
   );
-  const todayKey = formatDayParam(now, tz);
-  const todayDayIds = new Set(
-    todaySessions.flatMap((session) => (session.dayId ? [session.dayId] : [])),
-  );
-  const resumeDraft =
-    drafts.find((draft) =>
-      draft.programDayId ? todayDayIds.has(draft.programDayId) : sessionCivilDay(draft, tz) === todayKey,
-    ) ?? null;
+  const liveDraft = drafts[0] ?? null;
   const weekMonday = mondayOfZoned(now, tz);
   const completedDays = await completedLocalDayKeys(
     user.id,
@@ -301,9 +291,9 @@ export default async function TrainingPage({
         </Link>
       ) : null}
 
-      {isToday && resumeDraft ? (
+      {liveDraft && todayAction?.draftId !== liveDraft.id ? (
         <Link
-          href={`/training/log/${resumeDraft.id}`}
+          href={`/training/log/${liveDraft.id}`}
           data-resume-workout
           data-prime-coach-audio
           className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"

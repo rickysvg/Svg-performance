@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
@@ -22,6 +22,7 @@ export function HomeBodyWeight({
   carbon = true,
   gauge = { t: 0, goalT: null },
   side = null,
+  bodyFatValue,
 }: {
   value: number | null;
   unit: string;
@@ -32,6 +33,8 @@ export function HomeBodyWeight({
     bodyFat: BodyFatReadout;
     training: HomeTrainingReadout;
   } | null;
+  /** Latest saved body fat. Progress passes this so the weigh-in form can show and edit it. */
+  bodyFatValue?: number | null;
 }) {
   const formId = useId();
   const [state, action, pending] = useActionState(
@@ -40,20 +43,25 @@ export function HomeBodyWeight({
   );
   const recordedAt = new Date().toISOString();
   const initial = value == null ? "" : String(value);
+  const savedFat = side?.bodyFat.value ?? bodyFatValue ?? null;
+  const savedFatText = savedFat == null ? "" : savedFat.toFixed(1);
   const [draft, setDraft] = useState(initial);
+  const [fatDraft, setFatDraft] = useState(savedFatText);
   const [sheet, setSheet] = useState(false);
+  const [closedFor, setClosedFor] = useState<number | undefined>();
   const showSide = side != null;
-
-  useEffect(() => {
-    if (state.success) setSheet(false);
-  }, [state.success]);
+  const showFatField = bodyFatValue !== undefined && !showSide;
+  if (state.savedAt && sheet && closedFor !== state.savedAt) {
+    setClosedFor(state.savedAt);
+    setSheet(false);
+  }
 
   const saveButton = (
     <button
       type="button"
       data-weigh-in-open
       onClick={() => setSheet(true)}
-      className="h-5 w-full rounded-full bg-accent px-3 text-[11px] uppercase leading-none tracking-wide text-black"
+      className="min-h-10 w-full rounded-full bg-accent px-3 text-[11px] uppercase leading-none tracking-wide text-black"
     >
       Save
     </button>
@@ -120,18 +128,20 @@ export function HomeBodyWeight({
       className={carbon ? "hc-panel hc-carbon px-2.5 pt-1 pb-1" : "px-0 py-0.5"}
     >
       {showSide && side ? (
-        <div className="relative">
+        <div className="flex items-stretch gap-2">
           <div className="shrink-0" style={{ width: MASS_DIAL.width }}>
             {label}
             {dial}
             <div className="-mt-2">{captionLine}</div>
           </div>
-          <div
-            className="absolute inset-y-0 flex flex-col border-l border-white/15 pl-2"
-            style={{ left: MASS_DIAL.width + 8, right: 0 }}
-          >
-            <HomeSideStats bodyFat={side.bodyFat} training={side.training} />
-            <div className="mt-auto shrink-0">{saveButton}</div>
+          <div className="flex min-w-0 flex-1 flex-col justify-between border-l border-white/15 pl-2">
+            <HomeSideStats
+              bodyFat={side.bodyFat}
+              training={side.training}
+              fatDraft={fatDraft}
+              onFatDraft={setFatDraft}
+            />
+            <div className="mt-2 shrink-0">{saveButton}</div>
           </div>
         </div>
       ) : (
@@ -144,6 +154,26 @@ export function HomeBodyWeight({
           <div className="-mt-2" style={{ width: MASS_DIAL.width }}>
             {captionLine}
           </div>
+          {showFatField ? (
+            <label className="mt-2 block text-sm">
+              <span className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-signal">
+                Body fat % <span className="tracking-normal text-white/45">optional</span>
+              </span>
+              <input
+                name="bodyFatPercent"
+                inputMode="decimal"
+                min={0.1}
+                max={70}
+                step="0.1"
+                value={fatDraft}
+                placeholder="—"
+                aria-label="Body fat percent, optional"
+                data-progress-body-fat-field
+                onChange={(event) => setFatDraft(event.target.value)}
+                className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base text-black outline-none"
+              />
+            </label>
+          ) : null}
         </div>
       )}
       <input type="hidden" name="kind" value="weight" />
@@ -178,24 +208,10 @@ export function HomeBodyWeight({
                     {unitLabel(unit)}
                   </span>
                 </p>
-                {showSide ? null : (
-                  <label className="mt-4 block text-sm">
-                    <span className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-signal">
-                      Body fat % <span className="tracking-normal text-white/45">optional</span>
-                    </span>
-                    <input
-                      form={formId}
-                      name="bodyFatPercent"
-                      inputMode="decimal"
-                      min={0.1}
-                      max={70}
-                      step="0.1"
-                      placeholder="—"
-                      aria-label="Body fat percent, optional"
-                      className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base text-black outline-none"
-                    />
-                  </label>
-                )}
+                <p className="mt-2 font-display text-2xl leading-none text-[#CBF805]" data-weigh-sheet-fat>
+                  {fatDraft.trim() ? fatDraft.trim() : "—"}
+                  <span className="ml-2 font-telemetry text-sm tracking-normal text-signal">body fat %</span>
+                </p>
                 <div className="mt-4">
                   <StatusBanner error={state.error} success={state.success} />
                 </div>
@@ -222,11 +238,18 @@ export function HomeBodyWeight({
             document.body,
           )
         : null}
-      {!sheet && (state.error || state.success) ? (
-        <div className="mt-2">
-          <StatusBanner error={state.error} success={state.success} />
-        </div>
-      ) : null}
+      {!sheet && (state.error || state.success) && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              data-weigh-toast
+              className="fixed inset-x-4 z-40"
+              style={{ bottom: "calc(6.75rem + env(safe-area-inset-bottom))" }}
+            >
+              <StatusBanner error={state.error} success={state.success} />
+            </div>,
+            document.body,
+          )
+        : null}
     </form>
   );
 }
