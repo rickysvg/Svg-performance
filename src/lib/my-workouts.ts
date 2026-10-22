@@ -474,6 +474,9 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
             reps: true,
             loadValue: true,
             durationSeconds: true,
+            notes: true,
+            prescriptionKey: true,
+            logMode: true,
           },
         },
       },
@@ -488,6 +491,8 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
   const partial = new Set<string>();
   for (const row of done) {
     if (!row.dayPlanId) continue;
+    if (row.status !== "complete" && row.status !== "partial" && row.status !== "draft") continue;
+    if (row.status === "draft" && !draftHasResumeWork(row.sets)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
     if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
     else partial.add(row.dayPlanId);

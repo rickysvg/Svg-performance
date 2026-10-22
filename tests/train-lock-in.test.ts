@@ -22,9 +22,12 @@ import {
   startDayPlanForUser,
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
-import { getCalendarSchedule, sessionStatusLine } from "@/lib/calendar";
+import { getCalendarSchedule, sessionStatusLine, subtitleCountsAsMissed } from "@/lib/calendar";
+import { chipMarkForDay } from "@/lib/chip-mark";
+import { offPlanMarksByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { deleteWorkoutSessionForUser } from "@/lib/workouts";
 import { formatDayParam } from "@/lib/home";
-import { APP_TIMEZONE } from "@/lib/timezone";
+import { APP_TIMEZONE, dayKey } from "@/lib/timezone";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
@@ -195,7 +198,8 @@ describe("train page lock-in", () => {
       offPlan: {},
     });
     expect(partialMoved.partialDays).toContain("2026-10-20");
-    expect(partialMoved.partialDays).not.toContain("2026-10-19");
+    // The lift follows Thursday's chip, and the day it was logged stays partly logged.
+    expect(partialMoved.partialDays).toContain("2026-10-19");
     expect(partialMoved.loggedDays).not.toContain("2026-10-19");
 
     const partialStayed = chipMarksAfterPlans({
@@ -207,6 +211,143 @@ describe("train page lock-in", () => {
       offPlan: { "2026-10-19": { done: false, partial: true } },
     });
     expect(partialStayed.partialDays).toContain("2026-10-19");
+
+    // Mobility+Cardio is the plan. Lift 3 was logged partial on that civil day
+    // and is shown on the lift chip. The plan card stays Missed. The chip does not.
+    const loggedInstead = chipMarksAfterPlans({
+      days: [
+        { dayParam: "2026-10-20", weekStart: "2026-10-19", sessionIds: ["mobility", "cardio"] },
+        { dayParam: "2026-10-22", weekStart: "2026-10-19", sessionIds: ["lift-3"] },
+      ],
+      completedByDay: {},
+      partialDays: ["2026-10-20"],
+      partialByDay: { "2026-10-20": ["lift-3"] },
+      plansByDay: {},
+      offPlan: {},
+    });
+    expect(loggedInstead.partialDays).toContain("2026-10-20");
+    expect(loggedInstead.partialDays).toContain("2026-10-22");
+    expect(loggedInstead.loggedDays).not.toContain("2026-10-20");
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["mobility", "cardio"],
+        completedSessionIds: [],
+        dayLogged: false,
+        partial: loggedInstead.partialDays.includes("2026-10-20"),
+      }),
+    ).toBe("partial");
+    expect(
+      subtitleCountsAsMissed(
+        "Not done — you logged Lift 3 instead. Tap Move to reschedule.",
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores an untouched draft and a deleted session on the week chip", async () => {
+    await resetDatabase();
+    const user = await makeUser("chip-drafts@example.com");
+    const performedAt = new Date("2026-10-22T18:00:00.000Z");
+    const day = dayKey(performedAt, APP_TIMEZONE);
+    const from = new Date("2026-10-21T12:00:00.000Z");
+    const to = new Date("2026-10-24T12:00:00.000Z");
+    const prefillKey = addedPrescriptionKey({
+      exerciseName: "Push-up",
+      reps: "10",
+      restSeconds: 60,
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "draft",
+        title: "Push-up",
+        performedAt,
+        sets: {
+          create: [
+            {
+              exerciseName: "Push-up",
+              setNumber: 1,
+              reps: 10,
+              completed: false,
+              prescriptionKey: prefillKey,
+              logMode: "reps_only",
+            },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "deleted",
+        title: "Deleted lift",
+        performedAt,
+        sets: {
+          create: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 8,
+              loadValue: 40,
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(draftHasResumeWork([{ completed: false, reps: 10, prescriptionKey: prefillKey, logMode: "reps_only" }])).toBe(
+      false,
+    );
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect((await offPlanMarksByLocalDay(user.id, from, to, APP_TIMEZONE))[day]).toBeUndefined();
+
+    const resumed = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "draft",
+        title: "Lift 3",
+        performedAt,
+        plannedSetCount: 34,
+        sets: {
+          create: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 5,
+              loadValue: 35,
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
+    await deleteWorkoutSessionForUser(resumed.id, user.id);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+
+    const worked = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "partial",
+        title: "Lift 3",
+        performedAt,
+        plannedSetCount: 34,
+        sets: {
+          create: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 8,
+              loadValue: 40,
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
+    await deleteWorkoutSessionForUser(worked.id, user.id);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect(await prisma.workoutSession.findUnique({ where: { id: worked.id } })).toBeNull();
   });
 
   it("renames the saved workout, the day plan, and the session, and rejects the same name", async () => {

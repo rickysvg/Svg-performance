@@ -1,7 +1,10 @@
 /**
  * Chip marks after swaps and My Workouts day plans.
  * A lime check still means every session planned on that chip is done.
- * A moved workout follows the chip that shows it. A replace plan is the plan.
+ * A moved workout also marks the chip that shows it.
+ * Real work logged on a civil day keeps that chip partly logged, even when
+ * the planned card says the plan was missed ("you logged X instead").
+ * A replace plan is the plan.
  * An off-plan log is Done or Partial, never a missed day.
  */
 
@@ -67,7 +70,8 @@ export function chipMarksAfterPlans(input: {
   /**
    * Program-day ids that are partial on the civil day they were logged.
    * The dose check that decided "partial" stays in chip-completion (#147).
-   * This only moves the mark onto the chip that now shows the session.
+   * The id still follows onto the chip that shows the session. The civil day
+   * stays partly logged as well: work was logged there.
    */
   partialByDay?: Readonly<Record<string, readonly string[]>>;
   plansByDay: Readonly<Record<string, readonly ChipPlanMark[]>>;
@@ -114,6 +118,12 @@ export function chipMarksAfterPlans(input: {
       partial.add(day.dayParam);
     }
     if (done.size > 0 && !allDone) partial.add(day.dayParam);
+    // Logged on this civil day, including a session this chip does not show.
+    const partialLoggedHere = (input.partialByDay?.[day.dayParam] ?? []).length > 0;
+    const otherCompleteHere = (input.completedByDay[day.dayParam] ?? []).some(
+      (id) => !sessionIds.includes(id),
+    );
+    if (!allDone && (partialLoggedHere || otherCompleteHere)) partial.add(day.dayParam);
     if (allDone || noPlanDone) partial.delete(day.dayParam);
     if (plans.some((plan) => plan.partial)) {
       partial.add(day.dayParam);
