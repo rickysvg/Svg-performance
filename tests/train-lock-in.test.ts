@@ -403,7 +403,7 @@ describe("train page lock-in", () => {
       now,
     });
     await prisma.workoutSet.updateMany({
-      where: { sessionId: worked.id },
+      where: { workoutSessionId: worked.id },
       data: { reps: 8, completed: true },
     });
     await expect(
@@ -434,7 +434,7 @@ describe("train page lock-in", () => {
       now,
     });
     await prisma.workoutSet.updateMany({
-      where: { sessionId: edited.id },
+      where: { workoutSessionId: edited.id },
       data: { reps: 4, completed: false },
     });
     await expect(
