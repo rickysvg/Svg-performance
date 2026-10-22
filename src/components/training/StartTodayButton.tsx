@@ -22,7 +22,7 @@ export function StartTodayButton({
     return (
       <ContinueWorkoutButton
         workoutId={action.draftId}
-        label={label}
+        label={text}
         className={buttonClass}
         testId="home-start-today"
         startToday
