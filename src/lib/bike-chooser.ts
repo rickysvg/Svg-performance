@@ -216,6 +216,17 @@ export function bikeChoiceById(id: string): BikeChoice | null {
   return BY_ID.get(id) ?? null;
 }
 
+/**
+ * Rounds the Assault Bike timer logs.
+ * A fight sim counts its rounds (5), not every surge inside the round.
+ */
+export function bikeTimerRoundCount(choice: BikeChoice) {
+  const blocks = Math.max(1, Math.round(choice.spec.blocks ?? 1));
+  if (choice.spec.pattern === "surge" && blocks > 1) return blocks;
+  const repeats = Math.max(1, Math.round(choice.spec.repeatRounds ?? 1));
+  return repeats * Math.max(1, Math.round(choice.spec.roundsPerSet));
+}
+
 export function bikeChoiceMinutes(choice: BikeChoice) {
   return Math.max(1, Math.round(bikeSetDurationSeconds(choice.spec) / 60));
 }

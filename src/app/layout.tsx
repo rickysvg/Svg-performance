@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import { Anton, Geist } from "next/font/google";
 import Script from "next/script";
 import { AppSplash } from "@/components/AppSplash";
@@ -38,7 +39,7 @@ export const viewport: Viewport = {
   themeColor: "#07080a",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"

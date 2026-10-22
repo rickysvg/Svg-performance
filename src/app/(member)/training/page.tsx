@@ -8,6 +8,7 @@ import {
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
   listDraftSessionsForUser,
+  matchingDraftId,
 } from "@/lib/workouts";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -174,14 +175,12 @@ export default async function TrainingPage({
   const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
   const sparringFuture =
     dayPlan.outside?.kind === "sparring" ? sparringDateError(dayParam, now, memberTz) : null;
-  const draftsByDay = new Map(
-    drafts
-      .filter((session) => session.programDayId)
-      .map((session) => [session.programDayId as string, session.id]),
-  );
-  const nextAction = dayPlan.active
-    ? nextTrainAction(planned, (dayId) => draftsByDay.get(dayId))
-    : null;
+  const draftIdFor = (
+    sessions: { dayId?: string; day?: { title?: string | null; focus?: string | null; exercises?: { name?: string | null }[] } | null }[],
+  ) => (dayId: string) => {
+    const session = sessions.find((row) => row.dayId === dayId);
+    return matchingDraftId(drafts, { dayId, day: session?.day ?? null });
+  };
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
@@ -207,6 +206,13 @@ export default async function TrainingPage({
   const doneOnView = new Set(
     await completedProgramDayIdsOnDays(user.id, [dayParam], tz),
   );
+  const nextAction = dayPlan.active
+    ? nextTrainAction(
+        planned,
+        draftIdFor(planned),
+        (dayId) => doneOnView.has(dayId),
+      )
+    : null;
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -216,10 +222,11 @@ export default async function TrainingPage({
       dayId: session.dayId,
       href: session.href,
       logHref: session.logHref,
+      startHref: session.startHref,
       minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
       completed: session.dayId ? doneToday.has(session.dayId) : false,
     })),
-    (dayId) => draftsByDay.get(dayId),
+    draftIdFor(todaySessions),
   );
   const liveDraft = drafts[0] ?? null;
   const weekMonday = mondayOfZoned(now, tz);
@@ -399,7 +406,7 @@ export default async function TrainingPage({
               compact
               calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && planned.length > 1}
-              draftId={session.dayId ? draftsByDay.get(session.dayId) : undefined}
+              draftId={session.dayId ? matchingDraftId(drafts, session) : undefined}
               completed={session.dayId ? doneOnView.has(session.dayId) : false}
             />
           </div>

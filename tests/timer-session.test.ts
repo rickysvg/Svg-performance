@@ -56,8 +56,10 @@ describe("timer session routing", () => {
     expect(clock).toContain("data-timer-title");
     expect(clock).toContain(">Bike<");
     expect(clock).not.toContain("Sparring");
-    expect(timer).toContain("TimerDurationFields");
+    expect(timer).toContain("TimerDurationSteppers");
+    expect(timer).toContain("data-timer-modes");
     expect(timer).not.toContain("Work min");
+    expect(timer).not.toContain("WORK MIN");
     expect(picks).toContain("data-timer-pick={field}");
     expect(picks).toContain("formatDurationPick");
     expect(picks).toContain("data-timer-picker-option");

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { startSessionAction } from "@/app/actions/workouts";
+import { bikeLoggerHref } from "@/lib/timer-session";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { BikeWorkoutChooser } from "@/components/training/BikeWorkoutSheet";
 import {
@@ -120,12 +120,14 @@ export function BikeClockScreen({
       />
 
       {dayId ? (
-        <form data-testid="chrome-form-3" action={startSessionAction}>
-          <input type="hidden" name="programDayId" value={dayId} />
-          <button type="submit" className="text-sm font-semibold text-muted underline">
-            Log this session
-          </button>
-        </form>
+        <Link
+          href={bikeLoggerHref(dayId)}
+          prefetch={false}
+          data-testid="chrome-form-3"
+          className="text-sm font-semibold text-muted underline"
+        >
+          Log this session
+        </Link>
       ) : null}
     </div>
   );

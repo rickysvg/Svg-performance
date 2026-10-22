@@ -1,4 +1,10 @@
-import { bikeWeekIndex, memberWeekIndex, pickBikeSessionForPlan } from "@/lib/bike-sessions";
+import {
+  bikeWeekIndex,
+  easyBikeProgramDayNumber,
+  memberWeekIndex,
+  moderateBikeProgramDayNumber,
+  pickBikeSessionForPlan,
+} from "@/lib/bike-sessions";
 import { bikeLoggerHref, isBikePlanSession } from "@/lib/timer-session";
 import {
   FRIDAY_CONDITIONING_LABEL,
@@ -58,6 +64,8 @@ export type PlanSessionSlot = {
   title?: string;
   detail?: string;
   href?: string;
+  /** Recovery ease cut this session in half. The logger opens that shorter prescription. */
+  halved?: boolean;
 };
 
 export type DayPlan = {
@@ -127,6 +135,9 @@ export type ResolvedPlanSession = {
   href?: string;
   /** Bike sessions: start the logger. Other sessions leave this empty. */
   logHref?: string;
+  /** Plain link that opens the logger, including a halved recovery-ease day. */
+  startHref?: string;
+  halved?: boolean;
   day?: CatalogDayLike | null;
   sessionKey?: string;
   sourceWeekday?: PlanWeekday;
@@ -208,23 +219,27 @@ function mobilitySlot(which: "primary" | "secondary"): PlanSessionSlot {
   };
 }
 
-function easyCardioSlot(): PlanSessionSlot {
+export function easyCardioSlot(): PlanSessionSlot {
   return {
     kind: "conditioning",
     label: "Easy cardio",
     title: "Easy cardio",
     detail: "Walk, easy bike, or easy jump rope. No sprints and no hard intervals.",
-    href: "/timer",
+    programSlug: DEMO_PROGRAM_SLUG,
+    dayNumber: easyBikeProgramDayNumber(),
+    heavy: false,
   };
 }
 
-function moderateCardioSlot(): PlanSessionSlot {
+export function moderateCardioSlot(): PlanSessionSlot {
   return {
     kind: "conditioning",
     label: "Cardio — moderate",
     title: "Cardio — moderate",
     detail: "Steady work. No max-intensity intervals and no heavy legs.",
-    href: "/timer",
+    programSlug: DEMO_PROGRAM_SLUG,
+    dayNumber: moderateBikeProgramDayNumber(),
+    heavy: false,
   };
 }
 
@@ -573,9 +588,7 @@ export function weekStrip(
   /** When set, the strip is that date’s Monday–Sunday, not the week of `now`. */
   weekAnchor?: Date,
 ) {
-  const today = weekdayInAppZone(now, timeZone);
   const todayKey = formatDayParam(now, timeZone);
-  const selectedWeekday = selected ? weekdayInAppZone(selected, timeZone) : today;
   const selectedKey = selected ? formatDayParam(selected, timeZone) : todayKey;
   const anchor = weekAnchor ?? now;
   const monday = mondayOfZoned(anchor, timeZone);
@@ -642,6 +655,8 @@ export function resolvePlanSessions(
     const title = session.title ?? (day?.title ? memberCopy(day.title) : session.label);
     const subtitle = session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label);
     const bike = Boolean(day?.id) && isBikePlanSession({ title, label: session.label, day });
+    const half = session.halved ? "?half=1" : "";
+    const startHref = day?.id ? `${bikeLoggerHref(day.id)}${half}` : undefined;
     resolved.push({
       slot: slotLetter,
       kind: session.kind,
@@ -652,8 +667,10 @@ export function resolvePlanSessions(
       programSlug: session.programSlug,
       dayNumber: session.dayNumber,
       dayId: day?.id,
-      href: day?.id ? `/training/${day.id}` : session.href,
-      logHref: bike && day?.id ? bikeLoggerHref(day.id) : undefined,
+      href: day?.id ? `/training/${day.id}${half}` : session.href,
+      logHref: bike && startHref ? startHref : undefined,
+      startHref,
+      halved: Boolean(session.halved),
       day,
       sessionKey: session.sessionKey,
       sourceWeekday: session.sourceWeekday,

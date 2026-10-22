@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { startSessionAction } from "@/app/actions/workouts";
-import { StartSubmit } from "@/components/training/StartTodayButton";
+import { bikeLoggerHref } from "@/lib/timer-session";
 import type { NextTrainAction } from "@/lib/train-next";
 
 const buttonClass =
@@ -27,10 +26,16 @@ export function NextSessionCta({ action }: { action: NextTrainAction }) {
 
   if (action.dayId) {
     return (
-      <form data-testid="training-next-session" action={startSessionAction} data-next-session data-prime-coach-audio className={stickyClass}>
-        <input type="hidden" name="programDayId" value={action.dayId} />
-        <StartSubmit label={label} className={buttonClass} />
-      </form>
+      <Link
+        href={action.startHref ?? bikeLoggerHref(action.dayId)}
+        prefetch={false}
+        data-testid="training-next-session"
+        data-next-session
+        data-prime-coach-audio
+        className={`${buttonClass} ${stickyClass}`}
+      >
+        {label}
+      </Link>
     );
   }
 

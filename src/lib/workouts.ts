@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { bikeTimerLogSets, bikeTimerSessionSeconds, scheduledBikeProgramDayId } from "@/lib/bike-timer-log";
+import type { BikeChoice } from "@/lib/bike-chooser";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
@@ -7,9 +9,12 @@ import { rirFromLoadText } from "@/lib/rir";
 import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
-import { memberWeekIndex } from "@/lib/bike-sessions";
+import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
+import { halvedSetCount } from "@/lib/recovery-ease";
+import { gymExerciseKey } from "@/lib/gym-exercise";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import {
   hidesLoad,
@@ -48,6 +53,7 @@ import {
   readDraftTimerFields,
   readWorkoutTimerFields,
   workoutTimerColumnsAvailable,
+  type WorkoutTimerFields,
 } from "@/lib/workout-timer-columns";
 
 export type WorkoutSetInput = {
@@ -556,14 +562,135 @@ export async function startRoundWorkoutForUser(input: {
   });
 }
 
+/**
+ * A real Assault Bike timer save. Completes today's scheduled bike day when
+ * the plan has one, through the same session update lifts use. A draft is not
+ * enough to mark the day done.
+ */
+export async function logBikeRoundsForUser(input: {
+  userId: string;
+  choice: BikeChoice;
+  now?: Date;
+  roundsCompleted: number;
+}) {
+  const roundsCompleted = Math.round(input.roundsCompleted);
+  if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1) {
+    throw new AppError("WORKOUT", "Finish a round before logging.");
+  }
+  const profile = await getProfileForUser(input.userId);
+  const timeZone = await timeZoneForUser(input.userId, profile?.timeZone ?? null);
+  const units: LoadUnit = profile?.preferredUnits ?? "lb";
+  const now = input.now ?? new Date();
+  const programDayId = await scheduledBikeProgramDayId(input.userId, now);
+  const sets = bikeTimerLogSets(input.choice, units, roundsCompleted);
+  if (sets.length < 1) {
+    throw new AppError("WORKOUT", "Finish a round before logging.");
+  }
+  let workoutId: string | null = null;
+  if (programDayId) {
+    const from = new Date(now.getTime() - 36 * 60 * 60 * 1000);
+    const to = new Date(now.getTime() + 36 * 60 * 60 * 1000);
+    const today = dayKey(now, timeZone);
+    const drafts = await prisma.workoutSession.findMany({
+      where: {
+        userId: input.userId,
+        programDayId,
+        status: "draft",
+        performedAt: { gte: from, lte: to },
+      },
+      orderBy: { performedAt: "desc" },
+      include: { sets: { select: { exerciseName: true } } },
+    });
+    const existing = drafts.find(
+      (row) =>
+        row.sets.length > 0 &&
+        sessionCompletionDay({ performedAt: row.performedAt }, timeZone) === today &&
+        sessionMatchesPlannedDay(row, {
+          title: input.choice.name,
+          exercises: sets.map((set) => ({ name: set.exerciseName })),
+        }),
+    );
+    if (existing) workoutId = existing.id;
+  }
+  if (!workoutId) {
+    const created = await prisma.workoutSession.create({
+      data: {
+        userId: input.userId,
+        programDayId,
+        title: input.choice.name,
+        performedAt: now,
+        status: "draft",
+        plannedSetCount: sets.length,
+      },
+    });
+    workoutId = created.id;
+  }
+  return updateWorkoutSessionForUser({
+    userId: input.userId,
+    workoutId,
+    title: input.choice.name,
+    performedAt: now,
+    notes: "",
+    status: "complete",
+    sets,
+    rest: null,
+    timeZone,
+    elapsedSeconds: bikeTimerSessionSeconds(input.choice, sets.length),
+  });
+}
+
 const SAME_DAY_SETS = {
   sets: { orderBy: [{ sortOrder: "asc" as const }, { setNumber: "asc" as const }] },
 };
 
+type PlannedDayShape = {
+  title?: string | null;
+  focus?: string | null;
+  exercises?: { name?: string | null }[] | null;
+};
+
 /**
- * One log per programmed session per civil day.
- * Start, a second Start, and resume used to insert another row. Autosave then
- * filled it, and the past-draft finish marked both complete.
+ * A same-day row only continues this plan when it is the same kind of work.
+ * A strength log must not open when the member starts the bike, or the reverse.
+ */
+export function sessionMatchesPlannedDay(
+  session: { title?: string | null; sets: { exerciseName?: string | null }[] },
+  day: PlannedDayShape,
+) {
+  const plannedNames = (day.exercises ?? [])
+    .map((exercise) => (exercise.name ?? "").trim())
+    .filter(Boolean);
+  const loggedNames = session.sets.map((set) => (set.exerciseName ?? "").trim()).filter(Boolean);
+  const plannedBike = plannedNames.some((name) => isBikeIntervalName(name));
+  const loggedBike = loggedNames.filter((name) => isBikeIntervalName(name));
+  const loggedOther = loggedNames.filter((name) => !isBikeIntervalName(name));
+  if (loggedNames.length === 0) return false;
+  if (plannedBike) return loggedBike.length > 0 && loggedOther.length === 0;
+  if (plannedNames.length === 0) return loggedOther.length > 0;
+  // A strength or bag day still counts when the only logged work is its bike finisher.
+  return true;
+}
+
+export function matchingDraftId(
+  drafts: {
+    id: string;
+    programDayId: string | null;
+    title?: string | null;
+    sets: { exerciseName: string }[];
+  }[],
+  planned: { dayId?: string; day?: PlannedDayShape | null },
+) {
+  const draft = drafts.find((row) => row.programDayId && row.programDayId === planned.dayId);
+  if (!draft) return undefined;
+  if (planned.day && !sessionMatchesPlannedDay(draft, planned.day)) return undefined;
+  return draft.id;
+}
+
+/**
+ * One open log per programmed session per civil day.
+ * A saved session used to win this lookup, so START reopened a finished
+ * strength log on the bike day. Only an open draft whose sets still belong
+ * to this day's exercises is reused. Anything else gets a new session.
  */
 async function findSameDayProgramSession(
   db: Prisma.TransactionClient | typeof prisma,
@@ -571,14 +698,17 @@ async function findSameDayProgramSession(
   programDayId: string,
   now: Date,
   timeZone: string,
+  plannedNames: string[] = [],
 ) {
   const from = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
   const to = new Date(now.getTime() + 36 * 60 * 60 * 1000);
   const today = dayKey(now, timeZone);
+  const planned = new Set(plannedNames.map((name) => gymExerciseKey(name)));
   const rows = await db.workoutSession.findMany({
     where: {
       userId,
       programDayId,
+      status: "draft",
       OR: [
         { performedAt: { gte: from, lte: to } },
         { createdAt: { gte: from, lte: to } },
@@ -587,18 +717,53 @@ async function findSameDayProgramSession(
     include: SAME_DAY_SETS,
     orderBy: { createdAt: "asc" },
   });
-  const same = rows.filter((row) => sessionCivilDay(row, timeZone) === today);
+  const same = rows.filter((row) => {
+    if (sessionCivilDay(row, timeZone) !== today) return false;
+    if (row.sets.length === 0) return false;
+    if (planned.size === 0) return true;
+    return row.sets.some((set) => planned.has(gymExerciseKey(set.exerciseName)));
+  });
   same.sort((left, right) => {
-    const rank = (row: (typeof same)[number]) => {
-      const logged = sessionHasLoggedWork(row.sets);
-      if (row.status === "complete" && logged) return 0;
-      if (row.status === "draft" && logged) return 1;
-      if (row.status === "draft") return 2;
-      return 3;
-    };
+    const rank = (row: (typeof same)[number]) => (sessionHasLoggedWork(row.sets) ? 0 : 1);
     return rank(left) - rank(right) || left.createdAt.getTime() - right.createdAt.getTime();
   });
   return same[0] ?? null;
+}
+
+/**
+ * A second Save on the same day folds into the finished row when the work
+ * is the same. A different kind of session (bike vs strength) stays its own log.
+ */
+async function findCompletedSameDaySession(
+  db: Prisma.TransactionClient | typeof prisma,
+  userId: string,
+  programDayId: string,
+  performedAt: Date,
+  timeZone: string,
+  exerciseNames: string[],
+) {
+  const from = new Date(performedAt.getTime() - 36 * 60 * 60 * 1000);
+  const to = new Date(performedAt.getTime() + 36 * 60 * 60 * 1000);
+  const day = dayKey(performedAt, timeZone);
+  const wanted = new Set(exerciseNames.map((name) => gymExerciseKey(name)));
+  if (wanted.size === 0) return null;
+  const rows = await db.workoutSession.findMany({
+    where: {
+      userId,
+      programDayId,
+      status: "complete",
+      performedAt: { gte: from, lte: to },
+    },
+    include: SAME_DAY_SETS,
+    orderBy: { createdAt: "asc" },
+  });
+  return (
+    rows.find((row) => {
+      if (sessionCompletionDay(row, timeZone) !== day) return false;
+      if (row.sets.length === 0) return false;
+      return row.sets.some((set) => wanted.has(gymExerciseKey(set.exerciseName)));
+    }) ?? null
+  );
 }
 
 export async function startWorkoutFromDay(input: {
@@ -607,12 +772,15 @@ export async function startWorkoutFromDay(input: {
   preferredUnits: LoadUnit;
   scale?: ScalePrefs | null;
   deload?: boolean;
+  /** Recovery ease: open half the printed sets. */
+  half?: boolean;
   timeZone?: string;
   planAnchor?: Date | null;
+  now?: Date;
 }) {
   const rawDay = await getProgramDayById(input.programDayId);
   const band = scaleBandFromPrefs(input.scale);
-  const now = new Date();
+  const now = input.now ?? new Date();
   const zone = input.timeZone || APP_TIMEZONE;
   const weekIndex =
     input.scale?.weekIndex ??
@@ -634,7 +802,7 @@ export async function startWorkoutFromDay(input: {
       campPhase: input.scale?.campPhase ?? camp?.phase ?? null,
     },
   );
-  const blockKey = trainingBlockKey(new Date(), input.timeZone || APP_TIMEZONE, input.planAnchor);
+  const blockKey = trainingBlockKey(now, input.timeZone || APP_TIMEZONE, input.planAnchor);
   const swaps = await listSwapsForDay({
     userId: input.userId,
     programSlug: rawDay.program.slug,
@@ -655,14 +823,22 @@ export async function startWorkoutFromDay(input: {
   const visible = omitRemovedSlots(day.exercises, swapped, removals, {
     includePending: true,
   }).shown;
-  const sameDay = await findSameDayProgramSession(prisma, input.userId, rawDay.id, now, zone);
+  const sameDay = await findSameDayProgramSession(
+    prisma,
+    input.userId,
+    rawDay.id,
+    now,
+    zone,
+    visible.map((exercise) => exercise.name),
+  );
   if (sameDay) return sameDay;
 
   const sets = visible.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
     // Match the set count printed on the logger card. Deload week used to
     // store ~60% of that count (4 → 2) while the card still said 4 sets.
-    const prescribed = Math.max(0, Math.round(exercise.sets));
+    const printed = Math.max(0, Math.round(exercise.sets));
+    const prescribed = input.half ? halvedSetCount(printed) : printed;
     return Array.from({ length: prescribed }, (_, index) => ({
       exerciseName: exercise.name,
       setNumber: index + 1,
@@ -689,15 +865,22 @@ export async function startWorkoutFromDay(input: {
       where: { id: input.userId },
       data: { updatedAt: new Date() },
     });
-    const again = await findSameDayProgramSession(tx, input.userId, rawDay.id, now, zone);
+    const again = await findSameDayProgramSession(
+      tx,
+      input.userId,
+      rawDay.id,
+      now,
+      zone,
+      visible.map((exercise) => exercise.name),
+    );
     if (again) return again;
     fresh = true;
     return tx.workoutSession.create({
       data: {
         userId: input.userId,
         programDayId: day.id,
-        title: `${memberFacingTitle(day.title)}${input.deload ? " · Deload" : ""}`,
-        performedAt: new Date(),
+        title: `${memberFacingTitle(day.title)}${input.half ? " · Light" : ""}${input.deload ? " · Deload" : ""}`,
+        performedAt: now,
         notes: input.deload ? DELOAD_LABEL : "",
         status: "draft",
         plannedSetCount: sets.length,
@@ -772,6 +955,11 @@ function setsAsLb(sets: WorkoutSetInput[]): WorkoutSetInput[] {
   });
 }
 
+type SavedWorkoutSession = Prisma.WorkoutSessionGetPayload<{
+  include: { sets: true };
+}> &
+  WorkoutTimerFields;
+
 export async function updateWorkoutSessionForUser(input: {
   userId: string;
   workoutId: string;
@@ -791,7 +979,7 @@ export async function updateWorkoutSessionForUser(input: {
   timeZone?: string;
   /** Header seconds the logger was showing when Save was pressed. */
   elapsedSeconds?: number | null;
-}) {
+}): Promise<SavedWorkoutSession> {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
       where: { id: input.workoutId },
@@ -799,23 +987,6 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  if (input.status === "complete" && existing.programDayId) {
-    const canonical = await findSameDayProgramSession(
-      prisma,
-      input.userId,
-      existing.programDayId,
-      input.performedAt,
-      input.timeZone || APP_TIMEZONE,
-    );
-    if (
-      canonical &&
-      canonical.id !== existing.id &&
-      canonical.status === "complete" &&
-      sessionHasLoggedWork(canonical.sets)
-    ) {
-      return attachWorkoutTimer(canonical, prisma);
-    }
-  }
   const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
   if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
     throw new AppError(
@@ -829,6 +1000,34 @@ export async function updateWorkoutSessionForUser(input: {
   const notes = input.notes.trim().slice(0, 1000);
   if (Number.isNaN(input.performedAt.getTime())) {
     throw new AppError("WORKOUT", "Enter a valid date.");
+  }
+  if (input.status === "complete" && existing.programDayId) {
+    const canonical = await findCompletedSameDaySession(
+      prisma,
+      input.userId,
+      existing.programDayId,
+      input.performedAt,
+      input.timeZone || APP_TIMEZONE,
+      sets.map((set) => set.exerciseName),
+    );
+    if (canonical && canonical.id !== existing.id) {
+      const saved = await updateWorkoutSessionForUser({ ...input, workoutId: canonical.id });
+      // The folded draft still has logged sets. Leaving it open lets a later
+      // pass mark that same day done a second time. Swaps and removals store
+      // the session id as a plain string, so they have to be removed with it.
+      if (existing.status === "draft") {
+        await prisma.$transaction([
+          prisma.exerciseSwap.deleteMany({
+            where: { userId: input.userId, workoutSessionId: existing.id },
+          }),
+          prisma.exerciseRemoval.deleteMany({
+            where: { userId: input.userId, workoutSessionId: existing.id },
+          }),
+          prisma.workoutSession.delete({ where: { id: existing.id } }),
+        ]);
+      }
+      return saved;
+    }
   }
 
   const timerColumns = await workoutTimerColumnsAvailable(prisma);

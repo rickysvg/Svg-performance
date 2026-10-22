@@ -9,19 +9,21 @@ import {
   getOwnWorkoutSessionOrNull,
   rateWorkoutSessionForUser,
   reopenCompletedWorkoutForUser,
+  logBikeRoundsForUser,
   startRoundWorkoutForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
   type WorkoutSetInput,
 } from "@/lib/workouts";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
+import { choiceFromToken } from "@/lib/bike-chooser";
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { resolveLoggedPerformedAt } from "@/lib/performed-at";
 import { parseDateTimeLocal } from "@/lib/timezone";
 import { isDeloadWeekIndex } from "@/lib/training-cycle";
 import { planWeekIndex } from "@/lib/week-plan";
-import { publicErrorMessage, StaleDraftError } from "@/lib/errors";
+import { AppError, publicErrorMessage, StaleDraftError } from "@/lib/errors";
 import { getAppTier } from "@/lib/entitlements";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
@@ -62,7 +64,27 @@ export async function startRoundLogAction(formData: FormData) {
   redirect(`/training/log/${session.id}`);
 }
 
-export async function startProgramDayLog(userId: string, programDayId: string) {
+export async function logBikeTimerAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const tier = await getAppTier(user.id);
+  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
+    redirect("/home");
+  }
+  const choice = choiceFromToken(String(formData.get("workout") ?? ""));
+  if (!choice) {
+    throw new AppError("WORKOUT", "Pick a bike workout before logging.");
+  }
+  const roundsCompleted = Number(formData.get("rounds"));
+  const session = await logBikeRoundsForUser({ userId: user.id, choice, roundsCompleted });
+  revalidatePath("/home");
+  revalidatePath("/training");
+  revalidatePath("/training/calendar");
+  revalidatePath("/training/history");
+  revalidatePath("/training/history/bike");
+  redirect(`/training/log/${session.id}/done?celebrate=workout`);
+}
+
+export async function startProgramDayLog(userId: string, programDayId: string, half = false) {
   const profile = await getProfileForUser(userId);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
@@ -79,6 +101,7 @@ export async function startProgramDayLog(userId: string, programDayId: string) {
     deload: isDeloadWeekIndex(planWeekIndex(now, timeZone, profile?.onboardingCompletedAt)),
     timeZone,
     planAnchor: profile?.onboardingCompletedAt ?? null,
+    half,
   });
 }
 

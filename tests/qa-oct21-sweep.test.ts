@@ -141,6 +141,59 @@ describe("completion counts ticked sets on the planned session", () => {
         bike,
       ),
     ).toBe(true);
+    const intervals = { ...bikeSet, exerciseName: "Assault bike intervals" };
+    expect(
+      sessionCountsAsPlannedCompletion(
+        { status: "complete", sets: [intervals] },
+        bike,
+      ),
+    ).toBe(true);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        { status: "complete", sets: [intervals] },
+        ["Goblet squat"],
+      ),
+    ).toBe(false);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        { status: "complete", sets: [intervals] },
+        bike,
+        4,
+      ),
+    ).toBe(false);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        {
+          status: "complete",
+          sets: [intervals, { ...intervals }, { ...intervals }, { ...intervals }],
+        },
+        bike,
+        4,
+      ),
+    ).toBe(true);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        { status: "complete", plannedSetCount: 4, sets: [intervals] },
+        bike,
+        1,
+      ),
+    ).toBe(false);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        { status: "complete", plannedSetCount: 1, sets: [intervals] },
+        ["Assault bike", "Goblet squat"],
+      ),
+    ).toBe(true);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        {
+          status: "complete",
+          plannedSetCount: 1,
+          sets: [intervals, { ...empty, exerciseName: "Goblet squat" }],
+        },
+        ["Assault bike", "Goblet squat"],
+      ),
+    ).toBe(false);
     expect(
       sessionCountsAsPlannedCompletion({ status: "partial", plannedSetCount: 4, sets: [bikeSet] }, bike),
     ).toBe(false);

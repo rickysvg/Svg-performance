@@ -5,6 +5,8 @@ import { saveSparringLog, sparringNeedsEase, sparringTrend } from "@/lib/outside
 import { easeDayPlan, recoveryEaseReason, writeRecoveryCheckIn } from "@/lib/recovery-ease";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import type { DayPlan } from "@/lib/week-plan";
+import { easyBikeProgramDayNumber } from "@/lib/bike-sessions";
+import { DEMO_PROGRAM_SLUG } from "@/lib/programs";
 import { APP_TIMEZONE, zonedCivilToUtc } from "@/lib/timezone";
 
 function heavyDay(): DayPlan {
@@ -77,7 +79,12 @@ describe("sparring session and body ratings", () => {
     expect(eased.plan.easeNote).toMatch(/body rating 2/);
     expect(eased.plan.easeNote).toMatch(/head marked sore/);
     expect(eased.checkIn?.message).toMatch(/Maya:/);
-    expect(eased.plan.sessions.every((session) => !session.programSlug)).toBe(true);
+    expect(eased.plan.sessions[0]?.programSlug).toBeUndefined();
+    expect(eased.plan.sessions[1]).toMatchObject({
+      title: "Easy cardio",
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: easyBikeProgramDayNumber(),
+    });
   });
 
   it("leaves the next day alone when the body is fine and the head is clear", async () => {

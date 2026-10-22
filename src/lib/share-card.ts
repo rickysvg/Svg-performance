@@ -28,6 +28,7 @@ export type ShareSetLike = {
   logMode?: string | null;
   durationSeconds?: number | null;
   completed: boolean;
+  prescriptionKey?: string | null;
 };
 
 export type ShareSessionLike = {

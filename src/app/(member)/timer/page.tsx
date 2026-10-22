@@ -36,7 +36,7 @@ export default async function TimerPage({
 }) {
   const user = await requireUser();
   const query = await searchParams;
-  if (query.mode === "bike") {
+  if (query.mode === "bike" && query.day) {
     const plan = await bikePlanFromDay(query.day);
     return (
       <main>
@@ -45,7 +45,7 @@ export default async function TimerPage({
     );
   }
   const launch = await resolveBagworkLaunch(user.id, query);
-  const mode = isTimerMode(query.mode) ? query.mode : null;
+  const mode = query.mode === "bike" ? "bike" : isTimerMode(query.mode) ? query.mode : null;
   return (
     <main>
       {query.bagwork && !launch ? (

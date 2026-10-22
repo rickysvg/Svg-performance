@@ -6,6 +6,7 @@ export type TodayStartSession = {
   dayId?: string;
   href?: string;
   logHref?: string;
+  startHref?: string;
   minutes: number;
   completed?: boolean;
 };
@@ -19,6 +20,7 @@ export type TodayStartAction = {
   draftId?: string;
   href?: string;
   logHref?: string;
+  startHref?: string;
 };
 
 const MODALITY: Record<string, string> = {
@@ -77,5 +79,6 @@ export function todayStartAction(
     draftId,
     href: target.href,
     logHref: target.logHref,
+    startHref: target.startHref,
   };
 }

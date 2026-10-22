@@ -316,7 +316,7 @@ describe("a workout is complete only after a logged save", () => {
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
   });
 
-  it("does not open a second log after that session is already complete today", async () => {
+  it("opens a new draft after that session is already complete today", async () => {
     const user = await makeUser("already-logged@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -351,9 +351,11 @@ describe("a workout is complete only after a logged save", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(again.id).toBe(first.id);
-    expect(again.status).toBe("complete");
-    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+    expect(again.id).not.toBe(first.id);
+    expect(again.status).toBe("draft");
+    const saved = await prisma.workoutSession.findUniqueOrThrow({ where: { id: first.id } });
+    expect(saved.status).toBe("complete");
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
   });
 
   it("starts a new row when that session is logged on a later day", async () => {
@@ -494,6 +496,42 @@ describe("a workout is complete only after a logged save", () => {
         },
       },
     });
+    await prisma.exerciseSwap.create({
+      data: {
+        userId: user.id,
+        originalName: "Goblet squat",
+        replacementName: "Box squat",
+        scope: "session",
+        workoutSessionId: extra.id,
+        sets: 3,
+        reps: "8",
+        loadText: "25 lb",
+        restSeconds: 60,
+        logMode: "load_reps",
+      },
+    });
+    await prisma.exerciseRemoval.create({
+      data: {
+        userId: user.id,
+        originalName: "Front plank",
+        exerciseName: "Front plank",
+        workoutSessionId: extra.id,
+      },
+    });
+    const keptSwap = await prisma.exerciseSwap.create({
+      data: {
+        userId: user.id,
+        originalName: "Push-up",
+        replacementName: "Knee push-up",
+        scope: "block",
+        workoutSessionId: kept.id,
+        sets: 3,
+        reps: "8",
+        loadText: "",
+        restSeconds: 60,
+        logMode: "load_reps",
+      },
+    });
     const saved = await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: extra.id,
@@ -514,8 +552,18 @@ describe("a workout is complete only after a logged save", () => {
       ],
     });
     expect(saved.id).toBe(kept.id);
-    const extraRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: extra.id } });
-    expect(extraRow.status).toBe("draft");
+    const keptRow = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: kept.id },
+      include: { sets: true },
+    });
+    expect(keptRow.status).toBe("complete");
+    expect(keptRow.sets.map((set) => set.reps)).toEqual([5]);
+    expect(keptRow.sets.map((set) => set.loadValue)).toEqual([25]);
+    const extraRow = await prisma.workoutSession.findUnique({ where: { id: extra.id } });
+    expect(extraRow).toBeNull();
+    expect(await prisma.exerciseSwap.count({ where: { workoutSessionId: extra.id } })).toBe(0);
+    expect(await prisma.exerciseRemoval.count({ where: { workoutSessionId: extra.id } })).toBe(0);
+    expect(await prisma.exerciseSwap.findUnique({ where: { id: keptSwap.id } })).not.toBeNull();
     expect(await prisma.workoutSession.count({ where: { userId: user.id, status: "complete" } })).toBe(1);
   });
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addZonedDays,
   dayKey,
+  formatMemberDate,
   formatZonedDate,
   getUserToday,
   mondayOfZoned,
@@ -105,6 +106,12 @@ describe("planner weekdays use the athlete zone", () => {
     expect(weekdayInAppZone(fridayUtc, DENVER)).toBe("Friday");
     expect(weekdayInAppZone(fridayUtc, LONDON)).toBe("Friday");
     expect(weekdayInAppZone(fridayUtc, LA)).toBe("Friday");
+  });
+
+  it("formats a Wednesday night in Denver as Wednesday, even when UTC is Thursday", () => {
+    const ninePmDenver = new Date("2026-10-22T03:00:00.000Z");
+    expect(formatMemberDate(ninePmDenver, DENVER)).toBe("Wed, Oct 21, 2026");
+    expect(formatMemberDate(ninePmDenver, "UTC")).toBe("Thu, Oct 22, 2026");
   });
 
   it("prints an early UTC instant on the previous Denver day", () => {

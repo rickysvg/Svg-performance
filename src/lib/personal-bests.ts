@@ -1,3 +1,4 @@
+import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { isHoldName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { convertLoad, formatLoad, isLoadUnit, type LoadUnit } from "@/lib/units";
 import { APP_TIMEZONE } from "@/lib/timezone";
@@ -102,9 +103,10 @@ function isIsometricHold(set: SetLike) {
   return mode === "timed" || mode === "load_timed";
 }
 
-/** Bike / bag interval work — most completed rounds in a session, never hold time. */
+/** Bag and pad rounds — most completed rounds in a session, never hold time. Bike intervals are cardio, not a PR. */
 function isIntervalRoundWork(set: SetLike) {
   if (isHoldName(set.exerciseName)) return false;
+  if (isBikeIntervalName(set.exerciseName)) return false;
   return modeOf(set) === "timed_round";
 }
 

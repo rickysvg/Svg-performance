@@ -10,11 +10,11 @@ import {
   formatSetProgress,
   prescribedSetTotal,
   resolvedPlannedSetCount,
+  loggedNameMatchesPlanned,
   sessionCountsAsPlannedCompletion,
-  tickedExerciseKeys,
+  setIsTicked,
   tickedSetCount,
 } from "@/lib/logged-work";
-import { gymExerciseKey } from "@/lib/gym-exercise";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
@@ -279,11 +279,12 @@ function prescribedSetCount(exercises: { sets?: number | null }[] | null | undef
 }
 
 function namesOverlap(log: LoggedPlanSession, plannedNames: string[]) {
-  const ticked = tickedExerciseKeys(log.sets);
+  const ticked = log.sets.filter((set) => setIsTicked(set));
   if (ticked.length === 0) return false;
   if (plannedNames.length === 0) return true;
-  const planned = new Set(plannedNames.map((name) => gymExerciseKey(name)));
-  return ticked.some((name) => planned.has(name));
+  return plannedNames.some((planned) =>
+    ticked.some((set) => loggedNameMatchesPlanned(planned, set.exerciseName ?? "")),
+  );
 }
 
 function performedDayKey(session: { performedAt: Date }, timeZone: string) {

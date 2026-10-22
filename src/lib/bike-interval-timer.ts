@@ -250,15 +250,73 @@ function viewTimeline(spec: BikeIntervalSpec, elapsedSeconds: number): BikeInter
   };
 }
 
-export function bikeSetDurationSeconds(spec: BikeIntervalSpec) {
+/** Prescribed session length and the hard-work portion of it. */
+export function bikeEffortSeconds(spec: BikeIntervalSpec): { totalSeconds: number; workSeconds: number } {
   if (usesBikeTimeline(spec)) {
-    return buildTimeline(spec).reduce((sum, seg) => sum + seg.seconds, 0);
+    const segs = buildTimeline(spec);
+    return {
+      totalSeconds: segs.reduce((sum, seg) => sum + seg.seconds, 0),
+      workSeconds: segs.reduce((sum, seg) => sum + (seg.phase === "work" ? seg.seconds : 0), 0),
+    };
   }
   const work = Math.max(0, spec.workSeconds);
   const rest = Math.max(0, spec.restSeconds);
   const rounds = Math.max(1, spec.roundsPerSet);
-  if (rest <= 0) return rounds * work;
-  return rounds * (work + rest);
+  const workSeconds = rounds * work;
+  const totalSeconds = rest <= 0 ? workSeconds : rounds * (work + rest);
+  return { totalSeconds, workSeconds };
+}
+
+export function bikeSetDurationSeconds(spec: BikeIntervalSpec) {
+  return bikeEffortSeconds(spec).totalSeconds;
+}
+
+/** Rounds a bike clock is allowed to log. Fight sims count blocks, not every surge. */
+export function bikeLogRoundTotal(spec: BikeIntervalSpec) {
+  const blocks = Math.max(1, Math.round(spec.blocks ?? 1));
+  if ((spec.pattern ?? "binary") === "surge" && blocks > 1) return blocks;
+  const repeats = Math.max(1, Math.round(spec.repeatRounds ?? 1));
+  return repeats * Math.max(1, Math.round(spec.roundsPerSet));
+}
+
+/**
+ * Work rounds whose interval has fully elapsed. Idle, and the first second of
+ * a round, count as zero so a log cannot be saved before anyone rides.
+ */
+export function completedBikeLogRounds(snapshot: BikeIntervalSnapshot) {
+  const spec = snapshot.spec;
+  const total = bikeLogRoundTotal(spec);
+  if (snapshot.phase === "idle") return 0;
+  if (snapshot.phase === "done") return total;
+  const elapsed = Math.max(0, snapshot.elapsedSeconds);
+  if (elapsed <= 0) return 0;
+
+  if (!usesBikeTimeline(spec)) {
+    const work = Math.max(0, spec.workSeconds);
+    const rest = Math.max(0, spec.restSeconds);
+    if (work <= 0) return 0;
+    if (rest <= 0) return Math.min(total, Math.floor(elapsed / work));
+    const cycle = work + rest;
+    const index = Math.floor(elapsed / cycle);
+    const into = elapsed - index * cycle;
+    const finished = into >= work ? index + 1 : index;
+    return Math.min(total, finished);
+  }
+
+  const blocks = Math.max(1, Math.round(spec.blocks ?? 1));
+  const surge = (spec.pattern ?? "binary") === "surge" && blocks > 1;
+  const perBlock = Math.max(1, Math.round(spec.roundsPerSet));
+  const segs = buildTimeline(spec);
+  let cursor = 0;
+  const ends: number[] = [];
+  for (const seg of segs) {
+    const end = cursor + seg.seconds;
+    if (seg.phase === "work" && seg.round > 0) {
+      if (!surge || seg.round % perBlock === 0) ends.push(end);
+    }
+    cursor = end;
+  }
+  return Math.min(total, ends.filter((end) => elapsed >= end).length);
 }
 
 function singleRepeat(round: number, rounds: number) {

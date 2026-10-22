@@ -245,13 +245,14 @@ export function coachingStyleVoice(style?: string | null, coachName?: string | n
 }
 
 /**
- * Floating coach on signed-in screens. Hidden on the coach thread, the logger,
- * Train, and forms, where it covers checkboxes and fields. Other pages keep
- * it and hide it while the page is scrolling.
+ * Floating coach on signed-in screens. Hidden on the coach thread, the round
+ * timer, the logger, Train, and forms, where it covers Start, Save, and
+ * fields. Other pages keep it and hide it while the page is scrolling.
  */
 export function shouldShowCoachFab(pathname: string) {
   const path = pathname.split("?")[0] || "/";
   if (path.startsWith("/coach")) return false;
+  if (path === "/timer" || path.startsWith("/timer/")) return false;
   if (path === "/training" || path.startsWith("/training/log")) return false;
   if (/^\/training\/[^/]+\/start\/?$/.test(path)) return false;
   if (isImmersiveTrainingPath(path)) return false;

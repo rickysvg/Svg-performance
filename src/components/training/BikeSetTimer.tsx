@@ -8,6 +8,7 @@ import {
 } from "@/lib/bike-sessions";
 import {
   bikeSetDurationSeconds,
+  completedBikeLogRounds,
   idleBikeInterval,
   pauseBikeInterval,
   resumeBikeInterval,
@@ -25,6 +26,9 @@ import {
 } from "@/lib/bike-interval-signals";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { formatRestClock } from "@/lib/rest-timer";
+import { CountdownFace } from "@/components/timer/CountdownFace";
+import { useGoCountdown } from "@/components/timer/useGoCountdown";
+import { TIMER_PREFS_STORAGE_KEY, parseStoredTimerPrefs } from "@/lib/round-timer";
 
 function specFromSession(session: BikeSession): BikeIntervalSpec {
   return {
@@ -133,17 +137,27 @@ export function BikeSetTimer({
   session,
   canStart,
   onSetComplete,
+  onFinishedRounds,
+  bell,
+  vibrate,
 }: {
   session: BikeSession;
   canStart: boolean;
   onSetComplete: () => void;
+  /** Called with the number of work rounds that have fully elapsed. */
+  onFinishedRounds?: (count: number) => void;
+  bell?: boolean;
+  vibrate?: boolean;
 }) {
   const spec = specFromSession(session);
   const [clock, setClock] = useState<BikeIntervalSnapshot>(() => idleBikeInterval(spec));
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
+  const finishedRef = useRef(onFinishedRounds);
+  const pendingRounds = useRef(0);
   const pendingComplete = useRef(false);
+  const countdown = useGoCountdown();
   const running =
     clock.phase === "work" ||
     clock.phase === "rest" ||
@@ -154,6 +168,15 @@ export function BikeSetTimer({
   useEffect(() => {
     completeRef.current = onSetComplete;
   }, [onSetComplete]);
+
+  useEffect(() => {
+    finishedRef.current = onFinishedRounds;
+  }, [onFinishedRounds]);
+
+  useEffect(() => {
+    const count = Math.max(completedBikeLogRounds(clock), pendingRounds.current);
+    if (count > 0) finishedRef.current?.(count);
+  }, [clock]);
 
   useEffect(() => {
     if (!pendingComplete.current) return;
@@ -169,6 +192,7 @@ export function BikeSetTimer({
         if (cue !== "none") signalBikeIntervalCue(cue);
         if (snapshot.phase === "done") {
           pendingComplete.current = true;
+          pendingRounds.current = completedBikeLogRounds(snapshot);
           releaseSetWakeLock(wakeLock.current);
           wakeLock.current = null;
           routeRelease.current?.();
@@ -195,14 +219,26 @@ export function BikeSetTimer({
     wakeLock.current = await requestSetWakeLock();
   }
 
+  function soundPrefs() {
+    if (typeof bell === "boolean" || typeof vibrate === "boolean") {
+      return { bell: bell !== false, vibrate: vibrate !== false };
+    }
+    const stored = parseStoredTimerPrefs(window.localStorage.getItem(TIMER_PREFS_STORAGE_KEY));
+    return { bell: stored.bell, vibrate: stored.vibrate };
+  }
+
   function handleStart() {
-    if (!canStart || running) return;
+    if (!canStart || running || countdown.active) return;
     primeMediaOutput();
     routeRelease.current?.();
     routeRelease.current = holdMediaRoute();
-    signalBikeIntervalCue("phase");
-    setClock(startBikeInterval(spec));
-    void holdAwake();
+    countdown.begin({
+      ...soundPrefs(),
+      onGo: () => {
+        setClock(startBikeInterval(spec));
+        void holdAwake();
+      },
+    });
   }
 
   function handlePause() {
@@ -212,11 +248,19 @@ export function BikeSetTimer({
   }
 
   function handleResume() {
-    setClock((current) => resumeBikeInterval(current));
-    void holdAwake();
+    if (countdown.active) return;
+    primeMediaOutput();
+    countdown.begin({
+      ...soundPrefs(),
+      onGo: () => {
+        setClock((current) => resumeBikeInterval(current));
+        void holdAwake();
+      },
+    });
   }
 
   function handleStop() {
+    countdown.cancel();
     setClock((current) => stopBikeInterval(current));
     releaseSetWakeLock(wakeLock.current);
     wakeLock.current = null;
@@ -235,7 +279,12 @@ export function BikeSetTimer({
 
   return (
     <div data-bike-set-timer>
-      {running ? (
+      {countdown.active && countdown.digit ? (
+        <div className="mt-3 rounded-2xl bg-black px-4 py-5" data-bike-countdown>
+          <CountdownFace digit={countdown.digit} />
+        </div>
+      ) : null}
+      {running && !countdown.active ? (
         <div
           data-bike-interval-board
           data-bike-interval-phase={clock.phase}
@@ -281,7 +330,16 @@ export function BikeSetTimer({
       />
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {!running ? (
+        {countdown.active ? (
+          <button
+            type="button"
+            data-bike-stop
+            onClick={handleStop}
+            className="font-display inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm uppercase tracking-wide"
+          >
+            Reset
+          </button>
+        ) : !running ? (
           <button
             type="button"
             data-bike-start-set
@@ -310,7 +368,7 @@ export function BikeSetTimer({
             Pause
           </button>
         )}
-        {running ? (
+        {running && !countdown.active ? (
           <button
             type="button"
             data-bike-stop

@@ -45,14 +45,21 @@ export async function getDemoProgram() {
   return program;
 }
 
+const programDayInclude = {
+  program: true,
+  exercises: { orderBy: { sortOrder: "asc" as const } },
+};
+
 export async function getProgramDayById(dayId: string) {
+  const existing = await prisma.programDay.findUnique({
+    where: { id: dayId },
+    include: programDayInclude,
+  });
+  if (existing) return existing;
   await ensureDemoCatalog();
   const day = await prisma.programDay.findUnique({
     where: { id: dayId },
-    include: {
-      program: true,
-      exercises: { orderBy: { sortOrder: "asc" } },
-    },
+    include: programDayInclude,
   });
   if (!day) {
     throw new NotFoundError("That training day was not found.");
