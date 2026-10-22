@@ -13,7 +13,7 @@ import {
 } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
-import { exerciseNamesInOrder } from "@/lib/logger-insert";
+import { loggedExerciseNamesInOrder } from "@/lib/logger-insert";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 
@@ -70,7 +70,7 @@ export default async function HistoryPage() {
             const finished = sessionCountsAsPlannedCompletion(session, []);
             const setCount = tickedSetCount(session.sets);
             const label = completionListLabel(session);
-            const names = exerciseNamesInOrder(session.sets);
+            const names = loggedExerciseNamesInOrder(session.sets);
             const bagLine = bagworkHistoryLine(session);
             const bikeLine = bikeHistoryLine(session);
             return (

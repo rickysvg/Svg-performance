@@ -10,11 +10,12 @@ import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { calendarPlanDoses, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
 import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
 import { halvedSetCount } from "@/lib/recovery-ease";
-import { gymExerciseKey } from "@/lib/gym-exercise";
+import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import {
   hidesLoad,
@@ -41,12 +42,14 @@ import {
 } from "@/lib/exercise-removal-store";
 import {
   loggedSetSome,
+  offPlanSessionDone,
   prepareSetsForPersist,
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   setHasLoggedWork,
   tickedSetCount,
+  withTickedPlanWork,
 } from "@/lib/logged-work";
 import {
   freezeElapsedOnSave,
@@ -446,13 +449,25 @@ export async function completedProgramDayIdsOnDays(
 
 /**
  * Local days in [from, to) that have a finished session. Same day key as Calendar.
- * A programmed session counts only when a ticked set belongs to that plan.
+ * The dose is the session's own week, not `now`. A programmed session counts
+ * only when a ticked set belongs to that plan.
  */
-export async function completedLocalDayKeys(
+export function completedLocalDayKeys(
   userId: string,
   from: Date,
   to: Date,
   timeZone: string,
+  now = new Date(),
+) {
+  return withCalendarScaleMemory(() => completedLocalDayKeysNow(userId, from, to, timeZone, now));
+}
+
+async function completedLocalDayKeysNow(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  now = new Date(),
 ) {
   const fromKey = dayKey(from, timeZone);
   const endKey = dayKey(to, timeZone);
@@ -482,23 +497,30 @@ export async function completedLocalDayKeys(
       },
     },
   });
-  const targets = await plannedTargetsByDay(
-    rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)),
+  const ids = rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id));
+  const targets = await plannedTargetsByDay(ids);
+  const finished = await Promise.all(
+    rows.map(async (row) => {
+      const at = row.performedAt ?? now;
+      const plan = row.programDayId ? (await calendarPlanDoses(userId, at)).get(row.programDayId) : undefined;
+      const names =
+        plan && plan.names.length > 0
+          ? [...plan.names]
+          : row.programDayId
+            ? (targets.names.get(row.programDayId) ?? [])
+            : [];
+      const dose =
+        plan && plan.dose > 0
+          ? plan.dose
+          : row.programDayId
+            ? (targets.doses.get(row.programDayId) ?? null)
+            : null;
+      if (!offPlanSessionDone(row, dose ?? 0, names)) return null;
+      const key = sessionCompletionDay(row, timeZone);
+      return key >= fromKey && key < endKey ? key : null;
+    }),
   );
-  return [
-    ...new Set(
-      rows
-        .filter((row) =>
-          sessionCountsAsPlannedCompletion(
-            row,
-            row.programDayId ? (targets.names.get(row.programDayId) ?? []) : [],
-            row.programDayId ? (targets.doses.get(row.programDayId) ?? null) : null,
-          ),
-        )
-        .map((row) => sessionCompletionDay(row, timeZone))
-        .filter((key) => key >= fromKey && key < endKey),
-    ),
-  ];
+  return [...new Set(finished.filter((key): key is string => key != null))];
 }
 
 const WORKOUT_DETAIL_INCLUDE = {
@@ -946,6 +968,93 @@ function validateSets(sets: WorkoutSetInput[]) {
   }
 }
 
+function planSlotKey(set: { exerciseName: string; setNumber: number }) {
+  const name = loggedExerciseName(set.exerciseName).toLowerCase();
+  const number = Number.isFinite(set.setNumber) ? Math.max(1, Math.round(set.setNumber)) : 1;
+  return `${name}\u0000${number}`;
+}
+
+function planNameKey(set: { exerciseName: string }) {
+  return loggedExerciseName(set.exerciseName).toLowerCase();
+}
+
+function addedPrescription(set: { prescriptionKey?: string | null }) {
+  return String(set.prescriptionKey ?? "").startsWith("added|");
+}
+
+function toSavedSet(set: {
+  exerciseName: string;
+  setNumber: number;
+  reps: number | null;
+  loadValue: number | null;
+  loadUnit: string;
+  logMode: string;
+  durationSeconds: number | null;
+  completed: boolean;
+  notes: string;
+  prescriptionKey: string;
+  rir: string;
+}): WorkoutSetInput {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: "lb",
+    logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  };
+}
+
+/**
+ * A partial Save used to persist only the rows with numbers, so the logger
+ * reopened as 1 of 1. Keep every planned row already on the session, and any
+ * planned exercise the form still has, without putting bloated empty copies back.
+ */
+function keepPlannedSets(
+  logged: WorkoutSetInput[],
+  submitted: WorkoutSetInput[],
+  existing: Parameters<typeof toSavedSet>[0][],
+  removals: Parameters<typeof setsKeepingRemovals>[1],
+): WorkoutSetInput[] {
+  const loggedByKey = new Map(logged.map((set) => [planSlotKey(set), set]));
+  const submittedVisible = setsKeepingRemovals(submitted, removals);
+  const prior = setsKeepingRemovals(existing.map((set) => toSavedSet(set)), removals);
+  const priorKeys = new Set(prior.map((set) => planSlotKey(set)));
+  const priorNames = new Set(prior.map((set) => planNameKey(set)));
+  const merged: WorkoutSetInput[] = [];
+  const seen = new Set<string>();
+  // The form's order wins, including empty planned rows it still shows.
+  for (const set of submittedVisible) {
+    const key = planSlotKey(set);
+    if (seen.has(key)) continue;
+    if (!setHasLoggedWork(set) && priorNames.has(planNameKey(set)) && !priorKeys.has(key)) continue;
+    merged.push(loggedByKey.get(key) ?? set);
+    seen.add(key);
+  }
+  // A short payload from another tab omitted planned rows. Put those back.
+  // An added exercise the form left out, while still sending the plan, stays removed.
+  const omittedPlanned = prior.some((row) => !addedPrescription(row) && !seen.has(planSlotKey(row)));
+  for (const row of prior) {
+    const key = planSlotKey(row);
+    if (seen.has(key)) continue;
+    if (addedPrescription(row) && !omittedPlanned) continue;
+    merged.push(loggedByKey.get(key) ?? row);
+    seen.add(key);
+  }
+  for (const set of logged) {
+    const key = planSlotKey(set);
+    if (seen.has(key)) continue;
+    merged.push(set);
+    seen.add(key);
+  }
+  return merged;
+}
+
 function setsAsLb(sets: WorkoutSetInput[]): WorkoutSetInput[] {
   return sets.map((set) => {
     if (set.loadUnit !== "kg") {
@@ -992,11 +1101,17 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
+  const normalized = setsAsLb(input.sets).map((set) => withTickedPlanWork(set));
+  const sets = prepareSetsForPersist(normalized, input.status);
+  const submitted =
+    input.status === "complete" ? prepareSetsForPersist(normalized, "draft") : sets;
   if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
+    const ticked = normalized.some((set) => set.completed);
     throw new AppError(
       "WORKOUT",
-      "Log at least one set, then tap Save. Nothing was marked finished.",
+      ticked
+        ? "Enter the reps, load, or time on the set you checked. An empty check cannot be saved."
+        : "Log at least one set, then tap Save. Nothing was marked finished.",
     );
   }
   validateSets(sets);
@@ -1073,6 +1188,9 @@ export async function updateWorkoutSessionForUser(input: {
     }
     const removals = await activeRemovalsForSession(input.userId, input.workoutId);
     let writing = setsKeepingRemovals(sets, removals);
+    if (input.status === "complete") {
+      writing = keepPlannedSets(writing, submitted, current.sets, removals);
+    }
     if (writing.length === 0 && sets.length > 0) {
       const keptCurrent = setsKeepingRemovals(
         current.sets.map((set) => ({

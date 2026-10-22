@@ -9,6 +9,7 @@ import {
   draftsForLibraryExercise,
   exerciseNamesInOrder,
   insertSetsAtExercise,
+  loggedExerciseNamesInOrder,
   moveExercise,
   parseAddedPlan,
   removeExerciseSets,
@@ -211,7 +212,12 @@ describe("an added exercise saves, shows in history, and counts toward volume", 
       }),
     });
 
-    expect(exerciseNamesInOrder(saved.sets)).toEqual([first, "Goblet squat", second]);
+    expect(exerciseNamesInOrder(saved.sets)).toEqual([first, "Goblet squat", ...names.slice(1)]);
+    const emptyRows = saved.sets.filter(
+      (set) => !set.completed && set.reps == null && set.loadValue == null && (set.durationSeconds ?? 0) <= 0,
+    );
+    expect(emptyRows.length).toBeGreaterThan(0);
+    expect(sessionVolume(emptyRows, "lb")).toBe(0);
     const gobletVolume = sessionVolume(
       saved.sets.filter((set) => set.exerciseName === "Goblet squat"),
       "lb",
@@ -224,9 +230,14 @@ describe("an added exercise saves, shows in history, and counts toward volume", 
     ));
 
     const history = await listWorkoutSessionsForUser(user.id);
-    expect(exerciseNamesInOrder(history[0]!.sets)).toEqual([first, "Goblet squat", second]);
+    const shown = loggedExerciseNamesInOrder(history[0]!.sets);
+    expect(shown).toEqual([first, "Goblet squat", second]);
+    const storedOnlyEmpty = exerciseNamesInOrder(emptyRows).filter((name) => !shown.includes(name));
+    expect(storedOnlyEmpty.length).toBeGreaterThan(0);
+    expect(exerciseNamesInOrder(history[0]!.sets).length).toBeGreaterThan(3);
     const progress = buildProgressSummary(history, "lb");
     expect(progress.points[0]?.volume).toBe(total);
+    expect(progress.points[0]?.setCount).toBeLessThan(history[0]!.sets.length);
     expect(progress.exerciseBests.some((best) => best.exerciseName === "Goblet squat")).toBe(true);
 
     const without = removeExerciseSets(saved.sets, "Goblet squat");
@@ -250,7 +261,7 @@ describe("an added exercise saves, shows in history, and counts toward volume", 
         rir: set.rir,
       })),
     });
-    expect(exerciseNamesInOrder(trimmed.sets)).toEqual([first, second]);
+    expect(exerciseNamesInOrder(trimmed.sets)).toEqual(names);
     expect(sessionVolume(trimmed.sets, "lb")).toBe(total - gobletVolume);
   });
 });

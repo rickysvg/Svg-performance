@@ -35,6 +35,7 @@ import {
   calendarPlanDoses,
   calendarScaledCatalog,
   getCalendarSchedule,
+  subtitleCountsAsMissed,
 } from "@/lib/calendar";
 import { prescribedSetTotal, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { findDemoTrainingCatalog } from "@/lib/programs";
@@ -641,6 +642,7 @@ describe("week day carousel", () => {
     ).toBe(" · Logged");
     const page = read("src/app/(member)/training/calendar/page.tsx");
     expect(page).toContain("calendarFocusStatusSuffix(");
+    expect(page).toContain("subtitleCountsAsMissed(");
     expect(page).not.toContain("· Missed");
     expect(page).toContain("calendarPlanDoses");
     expect(read("src/app/(member)/training/page.tsx")).toContain("calendarPlanDoses");
@@ -699,7 +701,7 @@ describe("week day carousel", () => {
     ).toBe("none");
   });
 
-  it("gives no half ring to a log with no program day", async () => {
+  it("gives a partial mark to a short log with no program day", async () => {
     await resetDatabase();
     const user = await makeUser("chip-no-program-day@example.com");
     const anchor = new Date(2026, 9, 22, 10, 0, 0);
@@ -725,8 +727,8 @@ describe("week day carousel", () => {
     const partialCards = schedule.days
       .flatMap((item) => item.activities)
       .filter((item) => item.subtitle.startsWith("Partial"));
-    expect(partials.includes(day)).toBe(false);
-    expect(partialCards).toEqual([]);
+    expect(partials.includes(day)).toBe(true);
+    expect(partialCards.map((card) => card.subtitle)).toContain("Partial · 1/4 sets");
     expect(
       chipMarkForDay({
         plannedSessionIds: [],
@@ -734,7 +736,62 @@ describe("week day carousel", () => {
         dayLogged: false,
         partial: partials.includes(day),
       }),
-    ).toBe("none");
+    ).toBe("partial");
+  });
+
+  it("keeps a planned past day off Missed when an ad hoc log is partial", async () => {
+    await resetDatabase();
+    const user = await makeUser("past-adhoc-partial@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const thursday = new Date(2026, 9, 22, 15, 0, 0);
+    const monday = new Date(2026, 9, 19, 11, 0, 0);
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: null,
+        title: "Off plan",
+        performedAt: monday,
+        status: "complete",
+        plannedSetCount: 3,
+        sets: {
+          create: [
+            { exerciseName: "Push-up", setNumber: 1, reps: 10, completed: true },
+            { exerciseName: "Push-up", setNumber: 2, reps: null, completed: false },
+            { exerciseName: "Push-up", setNumber: 3, reps: null, completed: false },
+          ],
+        },
+      },
+    });
+    const schedule = await getCalendarSchedule(user.id, thursday, monday);
+    const mondayKey = dayKey(monday, APP_TIMEZONE);
+    const mondayPlan = schedule.days.find((day) => dayKey(day.date, APP_TIMEZONE) === mondayKey);
+    const workouts = mondayPlan?.activities.filter((item) => item.kind === "workout") ?? [];
+    const notDone = "Not done — you logged Off plan instead. Tap Move to reschedule.";
+    expect(workouts.some((item) => item.subtitle.startsWith("Missed"))).toBe(false);
+    expect(workouts.some((item) => item.subtitle === notDone)).toBe(true);
+    expect(workouts.some((item) => item.subtitle.includes("Core week plan."))).toBe(false);
+    expect(workouts.filter((item) => subtitleCountsAsMissed(item.subtitle)).map((item) => item.subtitle)).toEqual([
+      notDone,
+    ]);
+    expect(workouts.some((item) => item.subtitle === "Partial · 1/3 sets")).toBe(true);
+    expect(
+      calendarFocusStatusSuffix({
+        workouts,
+        past: true,
+        active: Boolean(mondayPlan?.active),
+      }),
+    ).toBe(" · Partial");
+    const from = addZonedDays(monday, -1, APP_TIMEZONE);
+    const to = addZonedDays(monday, 2, APP_TIMEZONE);
+    const partials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    expect(partials.includes(mondayKey)).toBe(true);
   });
 
   it("uses the calendar scaled dose when a short log has no stored count", async () => {

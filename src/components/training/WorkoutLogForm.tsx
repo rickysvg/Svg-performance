@@ -81,7 +81,7 @@ import { textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { planWorkFromText, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
 import {
   applyPreviousToSet,
   copyPreviousOntoExercise,
@@ -979,10 +979,33 @@ export function WorkoutLogForm({
           ? target.durationSeconds
           : bikeDurationFor(exerciseName, target?.prescriptionKey)
         : undefined;
+    const planned = session.programDay?.exercises.find(
+      (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
+    );
+    const fromPlan = planWorkFromText(planned?.reps);
+    const fromKey = planWorkFromText(repsTextFromPrescriptionKey(target?.prescriptionKey));
+    const planWork = fromPlan.reps != null || fromPlan.seconds != null ? fromPlan : fromKey;
+    const timedFill = isDurationMode(mode) || bike;
+    const emptyTick =
+      completed &&
+      !setHasLoggedWork({
+        reps: target?.reps,
+        loadValue: target?.loadValue,
+        durationSeconds: durationSeconds ?? target?.durationSeconds,
+      });
+    const fillReps = emptyTick && !timedFill && planWork.reps != null;
+    const fillSeconds = planWork.seconds ?? (timedFill ? planWork.reps : null);
+    const fillTime = emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
     setActiveName(exerciseName);
     const nextSets = sets.map((set) =>
       set.id === setId
-        ? { ...set, completed, ...(durationSeconds != null ? { durationSeconds } : {}) }
+        ? {
+            ...set,
+            completed,
+            ...(durationSeconds != null ? { durationSeconds } : {}),
+            ...(fillReps ? { reps: planWork.reps } : {}),
+            ...(fillTime ? { durationSeconds: fillSeconds } : {}),
+          }
         : set,
     );
     setSets(nextSets);

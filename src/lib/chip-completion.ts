@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import {
   loggedSetSome,
+  offPlanSessionDone,
   prescribedSetTotal,
-  sessionCountsAsPlannedCompletion,
   tickedSetCount,
   type TickedSet,
 } from "@/lib/logged-work";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { dayKey } from "@/lib/timezone";
+import { calendarPlanDoses, withCalendarScaleMemory, type ScaledDayPlan } from "@/lib/plan-doses";
+export { scaledPlanByProgramDay, type ScaledDayPlan } from "@/lib/plan-doses";
 
 const DAY_PAD_MS = 36 * 60 * 60 * 1000;
 
@@ -51,10 +53,10 @@ export function completedProgramDayIdsForChip(
   for (const row of rows) {
     if (row.day !== day || !row.programDayId) continue;
     if (
-      !sessionCountsAsPlannedCompletion(
+      !offPlanSessionDone(
         row,
-        [...(namesByDay.get(row.programDayId) ?? [])],
-        row.prescribedCount,
+        row.prescribedCount ?? 0,
+        namesByDay.get(`${row.day}\0${row.programDayId}`) ?? namesByDay.get(row.programDayId) ?? [],
       )
     ) {
       continue;
@@ -66,15 +68,28 @@ export function completedProgramDayIdsForChip(
 
 /**
  * Program days completed on each civil day in [from, to).
- * Uses `sessionCountsAsPlannedCompletion` with the prescribed set count,
- * the same gate as `completedLocalDayKeys`. It does not define a second
- * "done" rule. A null `plannedSetCount` still has to cover the program dose.
+ * Uses `offPlanSessionDone`, which calls `sessionCountsAsPlannedCompletion`
+ * with the calendar's scaled dose. Same gate as `completedLocalDayKeys`.
+ * A null `plannedSetCount` still has to cover that dose, including a swapped log.
  */
-export async function completedSessionIdsByLocalDay(
+export function completedSessionIdsByLocalDay(
   userId: string,
   from: Date,
   to: Date,
   timeZone: string,
+  now = new Date(),
+) {
+  return withCalendarScaleMemory(() =>
+    completedSessionIdsByLocalDayNow(userId, from, to, timeZone, now),
+  );
+}
+
+async function completedSessionIdsByLocalDayNow(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  now = new Date(),
 ) {
   const fromKey = dayKey(from, timeZone);
   const endKey = dayKey(to, timeZone);
@@ -90,26 +105,36 @@ export async function completedSessionIdsByLocalDay(
     },
     select: CHIP_SESSION_SELECT,
   });
-  const tagged = rows.flatMap((row) => {
-    if (!row.programDayId) return [];
-    const key = sessionCompletionDay(row, timeZone);
-    if (key < fromKey || key >= endKey) return [];
-    const exercises = row.programDay?.exercises ?? [];
-    return [
-      {
-        status: row.status,
-        programDayId: row.programDayId,
-        plannedSetCount: row.plannedSetCount,
-        prescribedCount: prescribedSetTotal(exercises),
-        sets: row.sets,
-        day: key,
-        names: exercises.map((exercise) => exercise.name),
-      },
-    ];
-  });
+  const tagged = (
+    await Promise.all(
+      rows.map(async (row) => {
+        if (!row.programDayId) return null;
+        const key = sessionCompletionDay(row, timeZone);
+        if (key < fromKey || key >= endKey) return null;
+        const exercises = row.programDay?.exercises ?? [];
+        const weekPlan = (await calendarPlanDoses(userId, row.performedAt ?? now)).get(row.programDayId);
+        const catalogDose = prescribedSetTotal(exercises);
+        const dose = weekPlan && weekPlan.dose > 0 ? weekPlan.dose : catalogDose;
+        const names =
+          weekPlan && weekPlan.names.length > 0
+            ? [...weekPlan.names]
+            : exercises.map((exercise) => exercise.name);
+        return {
+          status: row.status,
+          programDayId: row.programDayId,
+          plannedSetCount: row.plannedSetCount,
+          prescribedCount: dose,
+          sets: row.sets,
+          day: key,
+          names,
+        };
+      }),
+    )
+  ).filter((row): row is NonNullable<typeof row> => row != null);
   const namesByDay = new Map<string, string[]>();
   for (const row of tagged) {
-    if (!namesByDay.has(row.programDayId)) namesByDay.set(row.programDayId, row.names);
+    const key = `${row.day}\0${row.programDayId}`;
+    if (!namesByDay.has(key)) namesByDay.set(key, row.names);
   }
   const byDay = new Map<string, string[]>();
   for (const key of new Set(tagged.map((row) => row.day))) {
@@ -119,42 +144,26 @@ export async function completedSessionIdsByLocalDay(
   return Object.fromEntries(byDay);
 }
 
-export type ScaledDayPlan = {
-  dose: number;
-  names: readonly string[];
-};
-
-/**
- * Set totals on the scaled catalog the calendar renders.
- * Program day ids are unchanged by scaling; the dose is not.
- */
-export function scaledPlanByProgramDay(catalog: {
-  strength?: { days: { id?: string; exercises?: { name?: string | null; sets?: number | null }[] }[] } | null;
-  skill?: { days: { id?: string; exercises?: { name?: string | null; sets?: number | null }[] }[] } | null;
-}) {
-  const plans = new Map<string, ScaledDayPlan>();
-  for (const program of [catalog.strength, catalog.skill]) {
-    for (const day of program?.days ?? []) {
-      if (!day.id) continue;
-      const dose = prescribedSetTotal(day.exercises);
-      if (dose <= 0) continue;
-      const names = (day.exercises ?? [])
-        .map((exercise) => (exercise.name ?? "").trim())
-        .filter((name) => name.length > 0);
-      plans.set(day.id, { dose, names });
-    }
-  }
-  return plans;
-}
-
 /**
  * Civil days in [from, to) that have ticked work which does not finish the
- * prescription. `planByDay` is the scaled plan the calendar uses for its dose.
- * A log with no program day is skipped, matching the calendar.
+ * prescription. Each row uses the dose for its own week. `planByDay` only
+ * fills a program day the week scale does not list.
+ * A short log with no program day still marks the day partial, so an ad hoc
+ * session does not read as missed. The dose is the session's own week.
  * Drafts and saved-short rows count. A day that passes the full rule is not included.
  * Unticked drafts stay out, even when the logger has prefilled numbers.
  */
-export async function partialLocalDayKeys(
+export function partialLocalDayKeys(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  planByDay?: ReadonlyMap<string, ScaledDayPlan>,
+) {
+  return withCalendarScaleMemory(() => partialLocalDayKeysNow(userId, from, to, timeZone, planByDay));
+}
+
+async function partialLocalDayKeysNow(
   userId: string,
   from: Date,
   to: Date,
@@ -179,20 +188,23 @@ export async function partialLocalDayKeys(
   for (const row of rows) {
     const key = sessionCompletionDay(row, timeZone);
     if (key < fromKey || key >= endKey) continue;
-    if (!row.programDayId) continue;
     if (tickedSetCount(row.sets) === 0) continue;
     const exercises = row.programDay?.exercises ?? [];
-    const plan = planByDay?.get(row.programDayId);
-    const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetTotal(exercises);
-    const names =
-      plan && plan.dose > 0
+    const weekPlan = row.programDayId
+      ? (await calendarPlanDoses(userId, row.performedAt)).get(row.programDayId)
+      : undefined;
+    const plan = weekPlan ?? (row.programDayId ? planByDay?.get(row.programDayId) : undefined);
+    const dose = row.programDayId
+      ? plan && plan.dose > 0
+        ? plan.dose
+        : prescribedSetTotal(exercises)
+      : 0;
+    const names = row.programDayId
+      ? plan && plan.dose > 0
         ? [...plan.names]
-        : exercises.map((exercise) => exercise.name);
-    const judged = {
-      ...row,
-      plannedSetCount: row.plannedSetCount ?? (dose > 0 ? dose : null),
-    };
-    if (sessionCountsAsPlannedCompletion(judged, names)) continue;
+        : exercises.map((exercise) => exercise.name)
+      : [];
+    if (offPlanSessionDone(row, dose, names)) continue;
     days.add(key);
   }
   return [...days];

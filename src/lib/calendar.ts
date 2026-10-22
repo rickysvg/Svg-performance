@@ -1,39 +1,30 @@
 import { prisma } from "@/lib/prisma";
-import { findDemoTrainingCatalog } from "@/lib/programs";
 import { sparringLogsForWeek } from "@/lib/outside-log";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
-import { getProfileForUser } from "@/lib/profile";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import {
   formatSetProgress,
   prescribedSetTotal,
   resolvedPlannedSetCount,
   loggedNameMatchesPlanned,
-  sessionCountsAsPlannedCompletion,
+  offPlanSessionDone,
   setIsTicked,
   tickedSetCount,
 } from "@/lib/logged-work";
+import { calendarScaleContext, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import {
-  campPlanWeekIndex,
-  getActiveCampSnapshot,
-  shapeDayPlan,
-  type CampPhase,
-} from "@/lib/fight-camp";
-import { scaledPlanByProgramDay } from "@/lib/chip-completion";
+import { shapeDayPlan } from "@/lib/fight-camp";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
-import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
+import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { scaleDemoCatalog } from "@/lib/training-scale";
-import { timeZoneForUser } from "@/lib/profile";
 import {
   APP_TIMEZONE,
   addZonedDays,
@@ -41,6 +32,8 @@ import {
   weekdayInZone,
   zonedParts,
 } from "@/lib/timezone";
+
+export { calendarPlanDoses, calendarScaledCatalog } from "@/lib/plan-doses";
 
 export const DEFAULT_TRAINING_WEEKDAYS = ["Monday", "Wednesday", "Friday"] as const;
 
@@ -297,6 +290,18 @@ function performedDayKey(session: { performedAt: Date }, timeZone: string) {
   return sessionCompletionDay(session, timeZone);
 }
 
+/** Ticked work that does not finish its own dose. A past plan card must not say Missed beside it. */
+function logIsOpenPartial(
+  log: LoggedPlanSession,
+  planByDay: ReadonlyMap<string, { dose: number; names: readonly string[] }>,
+) {
+  if (tickedSetCount(log.sets) === 0) return false;
+  if (!log.programDayId) return !offPlanSessionDone(log, 0, []);
+  const plan = planByDay.get(log.programDayId);
+  const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
+  return !offPlanSessionDone(log, dose, plan?.names ?? []);
+}
+
 function titlesMatch(loggedTitle: string, plannedTitle: string) {
   const logged = memberFacingTitle(loggedTitle);
   const planned = memberFacingTitle(plannedTitle);
@@ -319,50 +324,15 @@ function dayNumberMatch(
   );
 }
 
-type CalendarScaleInput = {
-  experienceLevel?: string | null;
-  competitionStatus?: string | null;
-  weightAccess?: string | null;
-  onboardingCompletedAt?: Date | null;
-  now: Date;
-  timeZone: string;
-  camp: { weekNumber: number | null; phase: CampPhase } | null;
-};
-
-/** Same scale inputs the calendar schedule uses for set counts. */
-export function calendarScaledCatalog<T extends Parameters<typeof scaleDemoCatalog>[0]>(
-  catalog: T,
-  input: CalendarScaleInput,
-) {
-  const campWeek = campPlanWeekIndex(input.camp);
-  return scaleDemoCatalog(catalog, {
-    experienceLevel: input.experienceLevel,
-    competitionStatus: input.competitionStatus,
-    weightAccess: input.weightAccess,
-    weekIndex: campWeek ?? planWeekIndex(input.now, input.timeZone, input.onboardingCompletedAt ?? null),
-    campPhase: input.camp && input.camp.phase !== "complete" ? input.camp.phase : null,
-  });
+/** "Missed a workout?" counts a plan that was not done, including one replaced by other partial work. */
+export function subtitleCountsAsMissed(subtitle: string) {
+  return subtitle.startsWith("Missed") || subtitle.startsWith("Not done — you logged ");
 }
 
-/** Scaled dose for each program day, using the calendar's scale. */
-export async function calendarPlanDoses(userId: string, now = new Date()) {
-  const [catalog, profile] = await Promise.all([
-    findDemoTrainingCatalog(),
-    getProfileForUser(userId),
-  ]);
-  const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
-  const camp = await getActiveCampSnapshot(userId, now, timeZone);
-  return scaledPlanByProgramDay(
-    calendarScaledCatalog(catalog, {
-      experienceLevel: profile?.experienceLevel,
-      competitionStatus: profile?.competitionStatus,
-      weightAccess: profile?.weightAccess,
-      onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
-      now,
-      timeZone,
-      camp,
-    }),
-  );
+function loggedInsteadName(names: readonly string[]) {
+  if (names.length <= 1) return names[0] || "another workout";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }
 
 /**
@@ -397,8 +367,14 @@ function logMatchesPlanned(
   const plannedNames = (planned.day?.exercises ?? [])
     .map((exercise) => (exercise.name ?? "").trim())
     .filter((name) => name.length > 0);
+  // Same program day. A 1-set save whose name is off the scaled list (a swap,
+  // or a rename from calendarPlanDoses) still belongs on this card. Completion
+  // uses offPlanSessionDone, so a swap that covers the dose is logged and a
+  // short one stays partial. A push-up does not finish a bike.
+  // The today/upcoming subtitle is only the fallback when nothing matched.
+  if (idMatch(log, planned) && tickedSetCount(log.sets) > 0) return true;
   if (!namesOverlap(log, plannedNames)) return false;
-  if (idMatch(log, planned) || dayNumberMatch(log, planned)) return true;
+  if (dayNumberMatch(log, planned)) return true;
   if (!titlesMatch(log.title, planned.title)) return false;
   const sameTitle = plannedToday.filter((row) => titlesMatch(log.title, row.title));
   if (sameTitle.length !== 1) return false;
@@ -408,35 +384,30 @@ function logMatchesPlanned(
   return !owned;
 }
 
-export async function getCalendarSchedule(
+export function getCalendarSchedule(
   userId: string,
   now = new Date(),
   /** When set, the list is that Monday–Sunday, including days already past. */
   weekAnchor?: Date,
 ) {
-  const [catalog, profile, swaps, account] = await Promise.all([
-    findDemoTrainingCatalog(),
-    getProfileForUser(userId),
+  // Hold the week scale until every civil day in this list has been read.
+  return withCalendarScaleMemory(() => loadCalendarSchedule(userId, now, weekAnchor));
+}
+
+async function loadCalendarSchedule(
+  userId: string,
+  now = new Date(),
+  weekAnchor?: Date,
+) {
+  const [scale, swaps, account] = await Promise.all([
+    calendarScaleContext(userId, weekAnchor ?? now),
     getWeekPlanSwapsForUser(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
-  const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
+  const { profile, tz, strength, skill } = scale;
   await finalizePastLoggedDrafts(userId, now, tz);
   const sessions = await listWorkoutSessionsForUser(userId);
   const challenge = await getChallengeProgressForUser(userId, tz);
-  const camp = await getActiveCampSnapshot(userId, now, tz);
-  const campWeek = campPlanWeekIndex(camp);
-  const scaled = calendarScaledCatalog(catalog, {
-    experienceLevel: profile?.experienceLevel,
-    competitionStatus: profile?.competitionStatus,
-    weightAccess: profile?.weightAccess,
-    onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
-    now,
-    timeZone: tz,
-    camp,
-  });
-  const { strength, skill } = scaled;
-  const planByDay = scaledPlanByProgramDay(scaled);
   const loggedSessions = sessions.filter(
     (session) =>
       (session.status === "complete" || session.status === "partial" || session.status === "draft") &&
@@ -461,7 +432,6 @@ export async function getCalendarSchedule(
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
-    forcedWeekIndex: campWeek,
   };
   const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
@@ -477,7 +447,11 @@ export async function getCalendarSchedule(
   }));
 
   for (const day of days) {
-    const built = planForDate(prefs, day.date, tz, swaps);
+    // Each civil day uses the dose for its own week. The default 8-day list
+    // crosses a Monday, so it cannot reuse today's scale for every row.
+    const dayScale = await calendarScaleContext(userId, day.date);
+    const { camp, planByDay } = dayScale;
+    const built = planForDate({ ...prefs, forcedWeekIndex: dayScale.campWeek }, day.date, tz, swaps);
     const shaped =
       camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
         ? shapeDayPlan(built, camp.phase)
@@ -489,7 +463,10 @@ export async function getCalendarSchedule(
     day.movedFrom = plan.movedFrom;
     day.easeNote = plan.easeNote ?? null;
     day.coachCheckIn = eased.checkIn;
-    const resolved = resolvePlanSessions(plan, { strength, skill });
+    const resolved = resolvePlanSessions(plan, {
+      strength: dayScale.strength,
+      skill: dayScale.skill,
+    });
     const dayKey = formatDayParam(day.date, tz);
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
@@ -530,21 +507,24 @@ export async function getCalendarSchedule(
           : ticked > 0
             ? formatSetProgress(ticked, 0)
             : "";
-      const sessionDone = matched
-        ? sessionCountsAsPlannedCompletion(
-            {
-              ...matched,
-              plannedSetCount: matched.plannedSetCount ?? (dose > 0 ? dose : null),
-            },
-            plannedNames,
-          )
-        : false;
+      const sessionDone = matched ? offPlanSessionDone(matched, dose, plannedNames) : false;
       const partial = Boolean(matched) && !sessionDone && ticked > 0;
+      const dayHasPartialWork = dayLogs.some((log) => logIsOpenPartial(log, planByDay));
       const href =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
-      const missed = past && !sessionDone && !partial;
+      const missed = past && !sessionDone && !partial && !dayHasPartialWork;
+      // Other partial work must not leave this plan sounding like it is still ahead.
+      const notDoneInstead = past && !sessionDone && !partial && dayHasPartialWork;
+      const insteadNames = [
+        ...new Set(
+          dayLogs
+            .filter((log) => log.id !== matched?.id && logIsOpenPartial(log, planByDay))
+            .map((log) => memberFacingTitle(log.title).trim() || log.title.trim())
+            .filter((name) => name.length > 0),
+        ),
+      ];
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
@@ -560,9 +540,11 @@ export async function getCalendarSchedule(
             ? `Partial · ${setCountLabel}`
             : missed
               ? "Missed. Tap Move to do it another day."
-              : origin
-                ? `${session.label} — ${origin}’s workout, this week.`
-                : `${session.label} — Core week plan.`,
+              : notDoneInstead
+                ? `Not done — you logged ${loggedInsteadName(insteadNames)} instead. Tap Move to reschedule.`
+                : origin
+                  ? `${session.label} — ${origin}’s workout, this week.`
+                  : `${session.label} — Core week plan.`,
         href,
         status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,
@@ -573,21 +555,18 @@ export async function getCalendarSchedule(
       });
     }
     for (const log of dayLogs) {
-      if (matchedLogIds.has(log.id) || !log.programDayId) continue;
-      if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
+      if (matchedLogIds.has(log.id)) continue;
+      if (log.programDayId && resolved.some((session) => session.dayId && session.dayId === log.programDayId)) {
+        continue;
+      }
       const title = memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
-      const plan = planByDay.get(log.programDayId);
-      const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
-      const planned = resolvedPlannedSetCount(log, dose);
+      const plan = log.programDayId ? planByDay.get(log.programDayId) : undefined;
+      const dose =
+        plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
+      const planned = resolvedPlannedSetCount(log, log.programDayId ? dose : 0);
       const setCountLabel = formatSetProgress(ticked, planned);
-      const done = sessionCountsAsPlannedCompletion(
-        {
-          ...log,
-          plannedSetCount: log.plannedSetCount ?? (dose > 0 ? dose : null),
-        },
-        plan ? [...plan.names] : [],
-      );
+      const done = offPlanSessionDone(log, log.programDayId ? dose : 0, plan?.names ?? []);
       day.activities.push({
         kind: "workout",
         title,

@@ -25,9 +25,12 @@ function isolateCoachKey() {
 
 isolateGymdeskEnv();
 isolateCoachKey();
-beforeEach(() => {
+beforeEach(async () => {
   isolateGymdeskEnv();
   isolateCoachKey();
+  // Dynamic on purpose. A static import loads Prisma before DATABASE_URL is set.
+  const { clearCalendarScaleCache } = await import("@/lib/plan-doses");
+  clearCalendarScaleCache();
 });
 
 const dbPath = path.resolve(process.cwd(), "prisma/test.db");

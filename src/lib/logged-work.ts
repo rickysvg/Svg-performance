@@ -104,6 +104,121 @@ export function sessionCountsAsPlannedCompletion(
   return missing.every((name) => !present.has(name)) && planned.some((name) => ticked.includes(name));
 }
 
+/**
+ * An off-plan log whose exercises were swapped is done when every logged
+ * set is ticked and the count covers the dose. A stored planned count wins.
+ * With no stored count, the swap still has to meet the scaled day dose:
+ * two ticked sets on a 30-set day stay partial. A short log of the original
+ * exercises stays partial too.
+ */
+export function offPlanSessionDone(
+  session: { status: string; sets: TickedSet[]; plannedSetCount?: number | null },
+  dose: number,
+  planNames: readonly string[],
+) {
+  const stored =
+    typeof session.plannedSetCount === "number" && session.plannedSetCount > 0
+      ? session.plannedSetCount
+      : null;
+  const required = stored ?? (dose > 0 ? dose : null);
+  const stamped = { ...session, plannedSetCount: required };
+  if (sessionCountsAsPlannedCompletion(stamped, [...planNames])) return true;
+  if (session.status !== "complete") return false;
+  if (session.sets.length === 0 || !session.sets.every((set) => setIsTicked(set))) return false;
+  const replaced = session.sets.some((set) => {
+    const name = (set.exerciseName ?? "").trim();
+    if (!name) return false;
+    return !planNames.some((planned) => loggedNameMatchesPlanned(planned, name));
+  });
+  if (!replaced) return false;
+  if (required != null && required > 0) return tickedSetCount(session.sets) >= required;
+  return true;
+}
+
+/** First positive integer in a plan rep string, capped at 200. */
+export function leadingPlanCount(text: string | null | undefined) {
+  const match = String(text ?? "").match(/\d+/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.min(200, Math.round(value));
+}
+
+const PLAN_TIME_UNIT = "(minutes|minute|mins|min|seconds|second|secs|sec)";
+
+function secondsForUnit(count: number, unit: string) {
+  const safe = Math.min(200, count);
+  const seconds = unit.toLowerCase().startsWith("min") ? safe * 60 : safe;
+  return Math.max(1, Math.round(seconds));
+}
+
+/**
+ * Reps or seconds from a plan string.
+ * "6 / side" is 6 reps. "3x5" and "3×5" are 5 reps, not 3.
+ * "3:00" is 180 seconds. "1.5 min" is 90. "2 x 30 sec" is 30 seconds per set.
+ * "1 min" is 60 seconds. A range such as "30–40 sec" uses the low end.
+ */
+export function planWorkFromText(text: string | null | undefined): {
+  reps: number | null;
+  seconds: number | null;
+} {
+  const raw = String(text ?? "").trim();
+  if (!raw) return { reps: null, seconds: null };
+  const clock = raw.match(/(\d{1,3}):([0-5]\d)/);
+  if (clock) {
+    const total = Number(clock[1]) * 60 + Number(clock[2]);
+    if (total > 0) return { reps: null, seconds: Math.min(200 * 60, total) };
+  }
+  const range = raw.match(
+    new RegExp(`(\\d+(?:\\.\\d+)?)\\s*[-–—]\\s*\\d+(?:\\.\\d+)?\\s*${PLAN_TIME_UNIT}\\b`, "i"),
+  );
+  if (range) {
+    const count = Number(range[1]);
+    if (Number.isFinite(count) && count > 0) {
+      return { reps: null, seconds: secondsForUnit(count, range[2] ?? "") };
+    }
+  }
+  const timed = raw.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${PLAN_TIME_UNIT}\\b`, "i"));
+  if (timed) {
+    const count = Number(timed[1]);
+    if (Number.isFinite(count) && count > 0) {
+      return { reps: null, seconds: secondsForUnit(count, timed[2] ?? "") };
+    }
+  }
+  const setsByReps = raw.match(/(\d+)\s*[x×]\s*(\d+)/i);
+  if (setsByReps) {
+    const reps = leadingPlanCount(setsByReps[2]);
+    return { reps, seconds: null };
+  }
+  return { reps: leadingPlanCount(raw), seconds: null };
+}
+
+/** Rep scheme stored on a programmed set, after the exercise name. */
+export function repsTextFromPrescriptionKey(key: string | null | undefined) {
+  const raw = String(key ?? "").trim();
+  if (!raw || raw.startsWith("added|")) return "";
+  const scheme = raw.includes("|") ? (raw.split("|").pop() ?? "") : raw;
+  const parts = scheme.split("::");
+  return parts.length > 1 ? parts.slice(1).join("::") : "";
+}
+
+/**
+ * A checked set with an empty load still counts when the plan already
+ * named the reps. Bodyweight and "no pounds typed" stay savable.
+ */
+export function withTickedPlanWork<T extends PersistSet>(set: T): T {
+  if (!set.completed || setHasLoggedWork(set)) return set;
+  const work = planWorkFromText(repsTextFromPrescriptionKey(set.prescriptionKey));
+  const timed = set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed";
+  if (timed) {
+    const seconds = work.seconds ?? work.reps;
+    if (seconds == null) return set;
+    return { ...set, durationSeconds: seconds };
+  }
+  if (work.reps == null) return set;
+  return { ...set, reps: work.reps };
+}
+
 /** Timer logs use a different bike label than the day card. Other names stay on their gym key. */
 export function loggedNameMatchesPlanned(plannedName: string, loggedName: string) {
   if (gymExerciseKey(plannedName) === gymExerciseKey(loggedName)) return true;

@@ -213,7 +213,13 @@ export function restoreLoggerSets<T extends RestorableSet>(
   const result: T[] = [];
   for (const key of order) {
     const map = slots.get(key);
-    if (!map || map.size === 0) continue;
+    if (!map || map.size === 0) {
+      const missing = prescriptionByKey.get(key);
+      const missingTarget = missing ? prescribedSetTarget(missing.sets) : 0;
+      if (!missing || missingTarget <= 0) continue;
+      for (let n = 1; n <= missingTarget; n += 1) result.push(createSet(missing.name, n));
+      continue;
+    }
     const prescription = prescriptionByKey.get(key);
     const target = prescription ? prescribedSetTarget(prescription.sets) : 0;
     const name = prescription?.name ?? [...map.values()][0]!.exerciseName;

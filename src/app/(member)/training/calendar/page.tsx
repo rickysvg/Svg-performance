@@ -10,6 +10,7 @@ import {
   calendarPlanDoses,
   formatCalendarHeading,
   getCalendarSchedule,
+  subtitleCountsAsMissed,
   weekdayName,
 } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -117,8 +118,8 @@ export default async function TrainingCalendarPage({
   const loggedWindow = carouselLoggedRange(now, tz);
   const planByDay = await calendarPlanDoses(user.id, now);
   const [loggedDays, completedByDay, partialDays, weekSchedules] = await Promise.all([
-    completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz),
-    completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
+    completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, now),
+    completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, now),
     partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
     Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
   ]);
@@ -142,7 +143,7 @@ export default async function TrainingCalendarPage({
     });
     const focusSummary = workouts.find((item) => item.status === "complete")?.subtitle;
     const missedWorkouts = weekSchedule.days.reduce(
-      (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
+      (count, day) => count + day.activities.filter((item) => subtitleCountsAsMissed(item.subtitle)).length,
       0,
     );
     const titles: Partial<Record<(typeof week.days)[number]["weekday"], MoveListedSession[]>> = {};

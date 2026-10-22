@@ -15,6 +15,7 @@ import { isDurationMode, isLogMode, resolveLogMode } from "@/lib/exercise-log-mo
 import { ForbiddenError } from "@/lib/errors";
 import {
   applySavedWorkoutToDay,
+  createSavedWorkout,
   deleteSavedWorkoutForUser,
   getSavedWorkoutForUser,
   revertDayToProgram,
@@ -354,7 +355,13 @@ describe("my workouts", () => {
 
     await revertDayToProgram(user.id, today);
     const restored = await getCalendarSchedule(user.id, now);
-    expect(titles(today, restored)).toEqual(todayProgram);
+    // Every Camp arms set was ticked, so the log stays beside the program.
+    expect(titles(today, restored)).toEqual([...todayProgram, "Camp arms"]);
+    const kept = restored.days
+      .find((item) => formatDayParam(item.date, APP_TIMEZONE) === today)
+      ?.activities.find((item) => item.title === "Camp arms");
+    expect(kept?.status).toBe("complete");
+    expect(kept?.subtitle.startsWith("Logged this day")).toBe(true);
     expect(planForDate(prefs, neighborDate, APP_TIMEZONE).mesoBlock).toBe(neighborBefore.mesoBlock);
 
     const fresh = await startSavedWorkoutForUser({
@@ -369,5 +376,66 @@ describe("my workouts", () => {
     expect(fresh.savedWorkoutId).toBe(saved.id);
     expect(fresh.sets.length).toBeGreaterThan(0);
     expect(fresh.plannedSetCount).toBe(fresh.sets.length);
+  });
+
+  it("drops an untouched custom draft when the day reverts to the program", async () => {
+    const user = await makeUser("revert-empty-draft@example.com");
+    const saved = await createSavedWorkout({
+      userId: user.id,
+      name: "Camp arms",
+      exercises: [
+        {
+          name: "Push-up",
+          sets: 3,
+          reps: "8",
+          loadText: "",
+          restSeconds: 60,
+          rir: "",
+          logMode: "reps_only",
+          notes: "",
+        },
+      ],
+    });
+    const now = new Date(2026, 9, 22, 15, 0, 0);
+    const today = formatDayParam(now, APP_TIMEZONE);
+    const before = await getCalendarSchedule(user.id, now);
+    const titles = (schedule: typeof before) => {
+      const row = schedule.days.find((item) => formatDayParam(item.date, APP_TIMEZONE) === today);
+      return (row?.activities ?? []).filter((item) => item.kind === "workout").map((item) => item.title);
+    };
+    const todayProgram = titles(before);
+    expect(todayProgram).toEqual(["Lift 3 — Light full body"]);
+
+    await applySavedWorkoutToDay({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      dayKey: today,
+      mode: "replace",
+    });
+    const plans = await prisma.dayWorkoutPlan.findMany({
+      where: { userId: user.id, dayKey: today, mode: "replace" },
+    });
+    const started = await startDayPlanForUser({
+      userId: user.id,
+      planId: plans[0]!.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      now,
+    });
+    expect(started.sets.length).toBeGreaterThan(0);
+    expect(
+      started.sets.every(
+        (set) => set.reps == null && set.loadValue == null && set.durationSeconds == null && !set.completed,
+      ),
+    ).toBe(true);
+
+    await revertDayToProgram(user.id, today);
+    const restored = await getCalendarSchedule(user.id, now);
+    expect(titles(restored)).toEqual(todayProgram);
+    expect(titles(restored)).not.toContain("Camp arms");
+    expect(
+      await prisma.workoutSession.count({ where: { userId: user.id, id: started.id } }),
+    ).toBe(0);
+    expect(await prisma.dayWorkoutPlan.count({ where: { userId: user.id, dayKey: today } })).toBe(0);
   });
 });

@@ -233,6 +233,7 @@ export default async function WorkoutLogPage({
         )
       ) : null}
       <WorkoutLogForm
+        key={`${session.id}:${session.status}`}
         session={loggedSession}
         previousLoads={previousLoads}
         notes={notes}
