@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   applySavedWorkoutAction,
@@ -26,6 +26,9 @@ export function MyWorkoutCard({
   const [applyOpen, setApplyOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(name);
+  const [toast, setToast] = useState("");
+  const applyLock = useRef(false);
   const [rename, renameAction, renamePending] = useActionState(
     renameSavedWorkoutAction,
     {} as SavedWorkoutActionState,
@@ -34,18 +37,32 @@ export function MyWorkoutCard({
     applySavedWorkoutAction,
     {} as SavedWorkoutActionState,
   );
+  useEffect(() => {
+    setDisplayName(name);
+  }, [name]);
+  useEffect(() => {
+    if (!rename.renamed || !rename.name) return;
+    setDisplayName(rename.name);
+    setRenameOpen(false);
+    setToast(`Saved as “${rename.name}”.`);
+  }, [rename.renamed, rename.name]);
+  useEffect(() => {
+    if (!applyState.error) return;
+    applyLock.current = false;
+    setApplyOpen(true);
+  }, [applyState.error]);
   const count = `${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}`;
 
   return (
     <article data-my-workout={id} className="rounded-2xl border border-line bg-card p-4">
-      <h2 className="text-lg leading-tight" data-my-workout-name>
-        {name}
+      <h2 className="text-lg normal-case leading-tight" data-my-workout-name>
+        {displayName}
       </h2>
       <p className="mt-1 text-sm text-muted">
         {count} · Last used {lastUsedLabel}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <form data-testid="training-my-workouts-form" action={startSavedWorkoutAction}>
+        <form data-testid={`my-workout-${id}-start`} action={startSavedWorkoutAction}>
           <input type="hidden" name="savedWorkoutId" value={id} />
           <button
             type="submit"
@@ -87,8 +104,11 @@ export function MyWorkoutCard({
       >
         Delete
       </button>
-      {rename.renamed ? <p className="mt-2 text-sm text-muted">Name saved.</p> : null}
-      {rename.error ? <p className="mt-2 text-sm text-danger">{rename.error}</p> : null}
+      {toast ? (
+        <p className="mt-2 text-sm text-muted" data-rename-toast>
+          {toast}
+        </p>
+      ) : null}
 
       {renameOpen ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 px-4 pb-6">
@@ -100,13 +120,16 @@ export function MyWorkoutCard({
             <p className="font-display text-lg uppercase tracking-wide">Rename</p>
             <input type="hidden" name="savedWorkoutId" value={id} />
             <input
-              data-testid="training-my-workouts-name"
+              key={displayName}
+              data-testid={`my-workout-${id}-name`}
               name="name"
-              defaultValue={name}
+              defaultValue={displayName}
               maxLength={80}
               data-rename-name
-              className="w-full rounded-xl border border-line bg-background px-3 py-3"
+              className="w-full rounded-xl border border-line bg-background px-3 py-3 normal-case"
             />
+            <p className="text-sm text-muted">Stored as “{displayName}”.</p>
+            {rename.error ? <p className="text-sm text-danger">{rename.error}</p> : null}
             <button
               type="submit"
               disabled={renamePending}
@@ -136,12 +159,24 @@ export function MyWorkoutCard({
             <p className="mt-2 text-sm text-muted">
               Other days keep the 3-week block. This day uses your list.
             </p>
-            <form data-testid="training-my-workouts-form-2" action={applyAction} className="mt-4 space-y-2">
+            <form
+              data-testid={`my-workout-${id}-apply`}
+              action={applyAction}
+              className="mt-4 space-y-2"
+              onSubmit={(event) => {
+                if (applyLock.current || applyPending) {
+                  event.preventDefault();
+                  return;
+                }
+                applyLock.current = true;
+                setApplyOpen(false);
+              }}
+            >
               <input type="hidden" name="savedWorkoutId" value={id} />
               <label className="block text-sm">
                 <span className="font-medium">Date</span>
                 <input
-                  data-testid="training-my-workouts-day-key"
+                  data-testid={`my-workout-${id}-day`}
                   type="date"
                   name="dayKey"
                   data-apply-day-date
@@ -196,7 +231,7 @@ export function MyWorkoutCard({
               Delete this workout?
             </p>
             <p className="mt-2 text-sm text-muted">This can&apos;t be undone.</p>
-            <form data-testid="training-my-workouts-form-3" action={deleteSavedWorkoutAction} className="mt-5">
+            <form data-testid={`my-workout-${id}-delete`} action={deleteSavedWorkoutAction} className="mt-5">
               <input type="hidden" name="savedWorkoutId" value={id} />
               <button
                 type="submit"

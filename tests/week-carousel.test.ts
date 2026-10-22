@@ -173,7 +173,7 @@ describe("week day carousel", () => {
     expect(train).toContain("todayHref");
     expect(train).toContain("<WeekStrip");
     expect(train).toContain("dateLabel={planDateLabel}");
-    expect(train).toContain("completedLocalDayKeys");
+    expect(train).toContain("chipMarksAfterPlans");
     expect(train).toContain("completedSessionIdsByLocalDay");
     expect(train).toContain("<TrainWeekFollow");
     expect(train).toContain("data-train-panel");
@@ -193,7 +193,7 @@ describe("week day carousel", () => {
     expect(calendar).toContain("todayHref");
     expect(calendar).toContain("data-calendar-week-title");
     expect(calendar).toContain("weekLabel={week.label}");
-    expect(calendar).toContain("completedLocalDayKeys");
+    expect(calendar).toContain("chipMarksAfterPlans");
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain("history.replaceState");
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("week"');
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("day"');
@@ -601,7 +601,7 @@ describe("week day carousel", () => {
 
     const train = read("src/app/(member)/training/page.tsx");
     expect(train).toContain("partialLocalDayKeys");
-    expect(train).toContain("partialDays={partialDays}");
+    expect(train).toContain("partialDays={marks.partialDays}");
     expect(read("src/components/training/WeekStrip.tsx")).toContain("partial: partialDays.includes(day.dayParam)");
   });
 
@@ -906,6 +906,10 @@ describe("week day carousel", () => {
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
     expect(card?.subtitle.startsWith("Partial")).toBe(true);
     expect(partials.includes(day)).toBe(true);
+    const completedDays = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const completedIds = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
+    expect(completedDays.includes(day)).toBe(false);
+    expect(completedIds[day] ?? []).not.toContain(picked!.programDayId);
     expect(
       chipMarkForDay({
         plannedSessionIds: [picked!.programDayId],
@@ -914,6 +918,24 @@ describe("week day carousel", () => {
         partial: partials.includes(day),
       }),
     ).toBe("partial");
+
+    const scaledDose = plans.get(picked!.programDayId)?.dose ?? 0;
+    const rows = await prisma.workoutSet.findMany({
+      where: { workoutSessionId: picked!.sessionId },
+      orderBy: { setNumber: "asc" },
+    });
+    const stillOpen = rows.filter((set) => !set.completed).slice(0, Math.max(0, scaledDose - picked!.raw));
+    expect(picked!.raw + stillOpen.length).toBe(scaledDose);
+    await prisma.workoutSet.updateMany({
+      where: { id: { in: stillOpen.map((set) => set.id) } },
+      data: { completed: true, reps: 8, loadValue: 40 },
+    });
+    const partialsAfter = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE, doses);
+    const completedAfter = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const idsAfter = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
+    expect(partialsAfter.includes(day)).toBe(false);
+    expect(completedAfter.includes(day)).toBe(true);
+    expect(idsAfter[day] ?? []).toContain(picked!.programDayId);
   });
 
   it("says Partial in the header when a past day's card is Partial", async () => {
@@ -975,9 +997,9 @@ describe("week day carousel", () => {
     ).toBe(" · Partial");
   });
 
-  it("sends non-today chips to that date and keeps today's bike logger", () => {
+  it("sends every chip to that date, including today", () => {
     expect(weekChipHref({ isToday: true, dayParam: "2026-10-22", logHref: "/training/bike/start" }, "/training")).toBe(
-      "/training/bike/start",
+      "/training?day=2026-10-22",
     );
     expect(
       weekChipHref({ isToday: false, dayParam: "2026-10-07", logHref: "/training/bike/start" }, "/training/calendar"),

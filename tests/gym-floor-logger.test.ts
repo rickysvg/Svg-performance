@@ -380,11 +380,14 @@ describe("start today", () => {
     expect(todayStartAction([{ kind: "rest", label: "Rest", title: "Rest", subtitle: "Off", minutes: 0 }], () => undefined)).toBeNull();
   });
 
-  it("puts the start button above the week strip and keeps rest inside the logger", () => {
+  it("puts the one start control in the selected day and keeps rest inside the logger", () => {
     const page = read("src/app/(member)/training/page.tsx");
     const form = read("src/components/training/WorkoutLogForm.tsx");
-    expect(page.indexOf("<StartTodayButton")).toBeGreaterThan(-1);
-    expect(page.indexOf("<StartTodayButton")).toBeLessThan(page.indexOf("<WeekStrip"));
+    expect(page).toContain("data-primary-train-cta");
+    expect(page).toContain("<TodaySummary");
+    expect(page).not.toContain("<StartTodayButton");
+    expect(page.indexOf("data-primary-train-cta")).toBeGreaterThan(page.indexOf("<WeekStrip"));
+    expect(page.indexOf("data-train-panel")).toBeLessThan(page.indexOf("data-primary-train-cta"));
     expect(form).toContain("data-logger-prescription");
     expect(form).toContain("loggerCardLine");
     expect(form).toContain("<RirHint />");

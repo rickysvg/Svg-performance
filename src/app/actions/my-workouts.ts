@@ -23,6 +23,7 @@ export type SavedWorkoutActionState = {
   error?: string;
   saved?: boolean;
   renamed?: boolean;
+  name?: string;
 };
 
 function revalidateTraining() {
@@ -87,13 +88,13 @@ export async function renameSavedWorkoutAction(
 ): Promise<SavedWorkoutActionState> {
   try {
     const user = await requireUserOrThrow();
-    await renameSavedWorkout(
+    const saved = await renameSavedWorkout(
       user.id,
       String(formData.get("savedWorkoutId") ?? ""),
       String(formData.get("name") ?? ""),
     );
     revalidateTraining();
-    return { renamed: true };
+    return { renamed: true, name: saved.name };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
@@ -112,7 +113,7 @@ export async function updateSavedWorkoutAction(
     } catch {
       return { error: "Could not read that exercise list." };
     }
-    await updateSavedWorkoutExercises(user.id, id, String(formData.get("name") ?? ""), parsed);
+    await updateSavedWorkoutExercises(user.id, id, parsed);
     revalidateTraining();
     return { saved: true };
   } catch (error) {

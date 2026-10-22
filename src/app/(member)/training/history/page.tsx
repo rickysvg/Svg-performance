@@ -72,6 +72,8 @@ export default async function HistoryPage() {
             const setCount = tickedSetCount(session.sets);
             const label = completionListLabel(session);
             const names = loggedExerciseNamesInOrder(session.sets);
+            const liveName = session.savedWorkout?.name?.trim();
+            const title = liveName || memberFacingTitle(session.title);
             const bagLine = bagworkHistoryLine(session);
             const roundLine = bagLine ? null : roundHistoryLine(session);
             const bikeLine = bikeHistoryLine(session);
@@ -85,7 +87,7 @@ export default async function HistoryPage() {
                 className="block min-w-0 flex-1 rounded-2xl border border-line bg-card p-4 hover:border-accent"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold">{memberFacingTitle(session.title)}</p>
+                  <p className={`font-semibold${liveName ? " normal-case" : ""}`}>{title}</p>
                 </div>
                 {names.length > 0 ? (
                   <p className="mt-1 text-sm" data-history-exercises>

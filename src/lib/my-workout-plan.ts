@@ -253,6 +253,7 @@ type OverlayPlan = {
   mode: string;
   exerciseCount: number;
   complete: boolean;
+  partial?: boolean;
   exerciseNames?: string[];
 };
 
@@ -266,7 +267,13 @@ export function withDayPlans<T extends { kind: string }>(activities: T[], plans:
     return {
       kind: "workout",
       title: plan.name,
-      subtitle: plan.complete ? "Logged this day." : preview ? `${role} · ${count} · ${preview}` : `${role} · ${count}`,
+      subtitle: plan.complete
+      ? "Logged this day."
+      : plan.partial
+        ? `Partial · ${count}`
+        : preview
+          ? `${role} · ${count} · ${preview}`
+          : `${role} · ${count}`,
       href: `/training/my-workouts/day/${plan.id}`,
       status: plan.complete ? "complete" : "scheduled",
       customPlan: true,

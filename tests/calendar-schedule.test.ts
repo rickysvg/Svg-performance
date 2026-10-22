@@ -359,7 +359,7 @@ describe("calendar schedule loader", () => {
     expect(tuesdayWorkouts.every((row) => row.status === "scheduled")).toBe(true);
     expect(tuesdayWorkouts[0]?.subtitle).toContain("Missed");
     const workouts = schedule.days.flatMap((day) => day.activities.filter((row) => row.kind === "workout"));
-    expect(workouts.some((row) => row.subtitle.includes("Core week plan."))).toBe(true);
+    expect(workouts.some((row) => row.subtitle.includes("Core week plan."))).toBe(false);
     expect(workouts.some((row) => row.subtitle.includes("DEMO"))).toBe(false);
   });
 

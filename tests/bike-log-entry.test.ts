@@ -148,11 +148,12 @@ describe("bike log entry points", () => {
 
     const schedule = await getCalendarSchedule(user.id, wednesday, wednesday);
     const day = schedule.days.find((row) =>
-      row.activities.some((activity) => activity.href === bike?.logHref),
+      row.activities.some((activity) => activity.programDayId === bike?.dayId),
     );
-    const activity = day?.activities.find((row) => row.href === bike?.logHref);
+    const activity = day?.activities.find((row) => row.programDayId === bike?.dayId);
     expect(activity?.status).toBe("scheduled");
-    expect(activity?.href).toBe(bikeLoggerHref(bike!.dayId!));
+    expect(activity?.href).toBe(bike?.href);
+    expect(activity?.href).not.toBe(bikeLoggerHref(bike!.dayId!));
     expect(sessionOpenHref({ href: bike?.href, logHref: bike?.logHref }, true)).toBe(bike?.href);
   });
 
@@ -169,10 +170,11 @@ describe("bike log entry points", () => {
       expect(source).not.toContain("/timer?mode=bike");
     }
     expect(home).toContain('data-open-bike-logger={first.logHref ? "home"');
-    expect(train).toContain('data-open-bike-logger={session.logHref ? "train"');
+    expect(train).not.toContain("data-open-bike-logger");
+    expect(train).toContain("data-preview-session");
     expect(today).toContain('data-open-bike-logger={action.logHref ? "today"');
-    expect(chips).toContain("day.logHref");
-    expect(chips).toContain('data-open-bike-logger={day.isToday && day.logHref ? "chip"');
+    expect(chips).not.toContain("data-open-bike-logger");
+    expect(chips).toContain("weekChipHref");
     expect(calendar).toContain('data-open-bike-logger={isBikeLoggerHref(activity.href) ? "calendar"');
     expect(start).toContain("redirect(`/training/log/${session.id}`)");
     expect(read("src/app/(member)/training/page.tsx")).toContain("logHref: session.logHref");
@@ -274,8 +276,9 @@ describe("bike log entry points", () => {
     const schedule = await getCalendarSchedule(user.id, wednesday, wednesday);
     const activity = schedule.days
       .flatMap((day) => day.activities)
-      .find((row) => row.href === bikeLoggerHref(bike!.dayId!));
+      .find((row) => row.programDayId === bike!.dayId);
     expect(activity?.status).toBe("scheduled");
+    expect(activity?.href).toBe(`/training/${bike!.dayId}`);
     expect(activity?.href).not.toMatch(/\/timer/);
 
     const started = await startWorkoutFromDay({

@@ -151,7 +151,8 @@ describe("Timmy Oct 19 sparring and coach surfaces", () => {
     expect(checkIn?.easeNote).toMatch(/body rating 2/);
     expect(read("src/components/home/SparringLogTile.tsx")).toContain('href="/sparring"');
     expect(read("src/app/(member)/home/page.tsx")).toContain("<HomeQuickActions");
-    expect(read("src/app/(member)/training/page.tsx")).toContain("<SparringLogTile");
+    expect(read("src/components/home/HomeQuickActions.tsx")).toContain("<SparringLogTile");
+    expect(read("src/app/(member)/training/page.tsx")).not.toContain("<SparringLogTile");
     expect(read("src/app/(member)/home/page.tsx")).not.toContain("Log sparring");
     expect(read("src/app/(member)/training/page.tsx")).not.toContain("Log sparring");
     expect(read("src/app/(member)/fuel/page.tsx")).toContain('redirect("/nutrition")');

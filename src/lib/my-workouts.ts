@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { compactBikeReps } from "@/lib/bike-chooser";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { loggedSetSome, sessionCountsAsPlannedCompletion, setHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, sessionCountsAsPlannedCompletion, setHasLoggedWork, tickedSetCount } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import type { LoadUnit } from "@/lib/units";
@@ -161,16 +161,26 @@ export async function saveWorkoutFromSession(input: {
 export async function renameSavedWorkout(userId: string, savedWorkoutId: string, name: string) {
   const row = await ownSaved(userId, savedWorkoutId);
   const next = cleanSavedName(name, row.name);
-  return prisma.savedWorkout.update({
-    where: { id: row.id },
-    data: { name: next },
+  if (next === row.name) {
+    throw new AppError("WORKOUT", `That's already the name. Stored as "${row.name}".`);
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.savedWorkout.update({ where: { id: row.id }, data: { name: next } });
+    await tx.dayWorkoutPlan.updateMany({
+      where: { userId, savedWorkoutId: row.id },
+      data: { name: next },
+    });
+    await tx.workoutSession.updateMany({
+      where: { userId, savedWorkoutId: row.id },
+      data: { title: next },
+    });
   });
+  return { ...row, name: next };
 }
 
 export async function updateSavedWorkoutExercises(
   userId: string,
   savedWorkoutId: string,
-  name: string,
   exercises: unknown,
 ) {
   const row = await ownSaved(userId, savedWorkoutId);
@@ -178,7 +188,7 @@ export async function updateSavedWorkoutExercises(
   if (next.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");
   }
-  const cleaned = cleanSavedName(name, row.name);
+  const cleaned = row.name;
   await prisma.$transaction(async (tx) => {
     await tx.savedWorkoutExercise.deleteMany({ where: { savedWorkoutId: row.id } });
     await tx.savedWorkout.update({
@@ -259,8 +269,7 @@ export async function startSavedWorkoutForUser(input: {
   const saved = await ownSaved(input.userId, input.savedWorkoutId);
   const exercises = saved.exercises.map(toInput);
   const now = input.now ?? new Date();
-  const today = dayKey(now, input.timeZone);
-  const open = await prisma.workoutSession.findFirst({
+  const drafts = await prisma.workoutSession.findMany({
     where: {
       userId: input.userId,
       savedWorkoutId: saved.id,
@@ -269,13 +278,18 @@ export async function startSavedWorkoutForUser(input: {
       programDayId: null,
     },
     orderBy: { updatedAt: "desc" },
+    include: { sets: true },
   });
-  if (open && dayKey(open.performedAt, input.timeZone) === today) {
+  const open = drafts[0];
+  if (open) {
+    const emptyExtras = drafts.slice(1).filter((row) => tickedSetCount(row.sets) === 0);
+    if (emptyExtras.length > 0) {
+      await prisma.workoutSession.deleteMany({
+        where: { id: { in: emptyExtras.map((row) => row.id) } },
+      });
+    }
     await prisma.savedWorkout.update({ where: { id: saved.id }, data: { lastUsedAt: now } });
-    return prisma.workoutSession.findUniqueOrThrow({
-      where: { id: open.id },
-      include: { sets: true },
-    });
+    return open;
   }
   const setRows = setsForExercises(exercises, input.preferredUnits);
   const session = await prisma.workoutSession.create({
@@ -311,35 +325,40 @@ export async function applySavedWorkoutToDay(input: {
   if (exercises.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");
   }
-  if (input.mode === "replace") {
-    const previous = await prisma.dayWorkoutPlan.findMany({
-      where: { userId: input.userId, dayKey: input.dayKey, mode: "replace" },
-      select: { id: true },
-    });
-    const ids = previous.map((row) => row.id);
-    if (ids.length > 0) {
-      await prisma.workoutSession.updateMany({
-        where: { userId: input.userId, dayPlanId: { in: ids } },
-        data: { dayPlanId: null },
+  return prisma.$transaction(async (tx) => {
+    if (input.mode === "replace") {
+      const previous = await tx.dayWorkoutPlan.findMany({
+        where: { userId: input.userId, dayKey: input.dayKey, mode: "replace" },
+        select: { id: true },
       });
-      await prisma.dayWorkoutPlan.deleteMany({ where: { id: { in: ids } } });
+      const ids = previous.map((row) => row.id);
+      if (ids.length > 0) {
+        await tx.workoutSession.deleteMany({
+          where: { userId: input.userId, dayPlanId: { in: ids }, status: "draft" },
+        });
+        await tx.workoutSession.updateMany({
+          where: { userId: input.userId, dayPlanId: { in: ids } },
+          data: { dayPlanId: null },
+        });
+        await tx.dayWorkoutPlan.deleteMany({ where: { id: { in: ids } } });
+      }
     }
-  }
-  const plan = await prisma.dayWorkoutPlan.create({
-    data: {
-      userId: input.userId,
-      dayKey: input.dayKey,
-      mode: input.mode,
-      savedWorkoutId: saved.id,
-      name: saved.name,
-      exercisesJson: snapshot(exercises),
-    },
+    const plan = await tx.dayWorkoutPlan.create({
+      data: {
+        userId: input.userId,
+        dayKey: input.dayKey,
+        mode: input.mode,
+        savedWorkoutId: saved.id,
+        name: saved.name,
+        exercisesJson: snapshot(exercises),
+      },
+    });
+    await tx.savedWorkout.update({
+      where: { id: saved.id },
+      data: { lastUsedAt: new Date() },
+    });
+    return plan;
   });
-  await prisma.savedWorkout.update({
-    where: { id: saved.id },
-    data: { lastUsedAt: new Date() },
-  });
-  return plan;
 }
 
 function customSessionHasMemberWork(sets: {
@@ -391,6 +410,8 @@ export type DayPlanView = {
   exerciseNames: string[];
   exercises: SavedExercise[];
   complete: boolean;
+  /** Ticked work that does not finish this plan. */
+  partial: boolean;
   draftId: string | null;
 };
 
@@ -399,13 +420,19 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
   if (keys.length === 0) return [];
   const plans = await prisma.dayWorkoutPlan.findMany({
     where: { userId, dayKey: { in: keys } },
+    include: { savedWorkout: { select: { name: true } } },
     orderBy: { createdAt: "asc" },
   });
   if (plans.length === 0) return [];
   const ids = plans.map((plan) => plan.id);
   const [done, drafts] = await Promise.all([
     prisma.workoutSession.findMany({
-      where: { userId, dayPlanId: { in: ids }, status: "complete", sets: loggedSetSome },
+      where: {
+        userId,
+        dayPlanId: { in: ids },
+        status: { in: ["complete", "partial", "draft"] },
+        sets: loggedSetSome,
+      },
       select: {
         dayPlanId: true,
         status: true,
@@ -427,12 +454,15 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
       orderBy: { updatedAt: "desc" },
     }),
   ]);
-  const complete = new Set(
-    done
-      .filter((row) => row.dayPlanId && sessionCountsAsPlannedCompletion(row, []))
-      .map((row) => row.dayPlanId)
-      .filter((id): id is string => Boolean(id)),
-  );
+  const complete = new Set<string>();
+  const partial = new Set<string>();
+  for (const row of done) {
+    if (!row.dayPlanId) continue;
+    if (tickedSetCount(row.sets) === 0) continue;
+    if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
+    else partial.add(row.dayPlanId);
+  }
+  for (const id of complete) partial.delete(id);
   const draftByPlan = new Map<string, string>();
   for (const draft of drafts) {
     if (draft.dayPlanId && !draftByPlan.has(draft.dayPlanId)) draftByPlan.set(draft.dayPlanId, draft.id);
@@ -445,15 +475,26 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
         id: plan.id,
         dayKey: plan.dayKey,
         mode: plan.mode,
-        name: plan.name,
+        name: plan.savedWorkout?.name || plan.name,
         exerciseCount: exercises.length,
         exerciseNames: exercises.map((exercise) => exercise.name),
         exercises,
         complete: complete.has(plan.id),
+        partial: partial.has(plan.id),
         draftId: draftByPlan.get(plan.id) ?? null,
       },
     ];
   });
+}
+
+export async function getDayPlanForUser(userId: string, planId: string) {
+  const plan = await prisma.dayWorkoutPlan.findUnique({
+    where: { id: planId },
+    select: { id: true, userId: true, dayKey: true },
+  });
+  if (!plan || plan.userId !== userId) return null;
+  const views = await listDayPlansForUser(userId, [plan.dayKey]);
+  return views.find((view) => view.id === planId) ?? null;
 }
 
 export async function startDayPlanForUser(input: {

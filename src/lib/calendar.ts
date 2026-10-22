@@ -243,15 +243,17 @@ export function buildCalendarDays(input: {
 /** Planned workouts this week, counted by session rather than by calendar day. */
 export function weekSessionTally(days: CalendarDay[]) {
   let done = 0;
+  let partial = 0;
   let total = 0;
   for (const day of days) {
     for (const activity of day.activities) {
       if (activity.kind !== "workout") continue;
       total += 1;
       if (activity.status === "complete") done += 1;
+      else if (activity.subtitle.startsWith("Partial")) partial += 1;
     }
   }
-  return { done, total };
+  return { done, partial, total };
 }
 
 type LoggedPlanSession = {
@@ -259,9 +261,12 @@ type LoggedPlanSession = {
   title: string;
   status: string;
   programDayId: string | null;
+  savedWorkoutId?: string | null;
+  dayPlanId?: string | null;
   performedAt: Date;
   createdAt?: Date | null;
   plannedSetCount?: number | null;
+  savedWorkout?: { name: string } | null;
   sets: {
     exerciseName?: string | null;
     completed?: boolean | null;
@@ -367,6 +372,16 @@ function logMatchesPlanned(
   },
   plannedToday: { dayId?: string; dayNumber?: number; programSlug?: string; title: string }[],
 ) {
+  // Start now and My Workouts keep their own card. They are not the program session.
+  if (log.savedWorkoutId && !log.programDayId) return false;
+  if (
+    log.programDayId &&
+    planned.dayId &&
+    log.programDayId !== planned.dayId &&
+    !dayNumberMatch(log, planned)
+  ) {
+    return false;
+  }
   const plannedNames = (planned.day?.exercises ?? [])
     .map((exercise) => (exercise.name ?? "").trim())
     .filter((name) => name.length > 0);
@@ -538,7 +553,7 @@ async function loadCalendarSchedule(
           : plan.movedFrom;
       day.activities.push({
         kind: "workout",
-        title: session.title,
+        title: matched?.savedWorkout?.name?.trim() || session.title,
         subtitle: sessionDone
           ? loggedSummary
             ? `Logged this day. ${loggedSummary}`
@@ -551,7 +566,7 @@ async function loadCalendarSchedule(
                 ? `Not done — you logged ${loggedInsteadName(insteadNames)} instead. Tap Move to reschedule.`
                 : origin
                   ? `${session.label} — ${origin}’s workout, this week.`
-                  : `${session.label} — Core week plan.`,
+                  : session.label,
         href,
         status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,
@@ -563,25 +578,39 @@ async function loadCalendarSchedule(
       });
     }
     for (const log of dayLogs) {
-      if (matchedLogIds.has(log.id)) continue;
-      if (log.programDayId && resolved.some((session) => session.dayId && session.dayId === log.programDayId)) {
+      if (matchedLogIds.has(log.id) || log.dayPlanId) continue;
+      if (!log.programDayId) {
+        const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
+        const ticked = tickedSetCount(log.sets);
+        const planned = resolvedPlannedSetCount(log, 0);
+        const setCountLabel = formatSetProgress(ticked, planned);
+        const done = offPlanSessionDone(log, 0, []);
+        day.activities.push({
+          kind: "workout",
+          title,
+          subtitle: done ? `Logged this day. ${title}` : `Partial · ${setCountLabel}`,
+          href: `/training/log/${log.id}`,
+          status: done ? "complete" : "scheduled",
+          weekday: calendarWeekday,
+          setCountLabel,
+        });
         continue;
       }
-      const title = memberFacingTitle(log.title) || log.title;
+      if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
+      const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
-      const plan = log.programDayId ? planByDay.get(log.programDayId) : undefined;
-      const dose =
-        plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
-      const planned = resolvedPlannedSetCount(log, log.programDayId ? dose : 0);
+      const plan = planByDay.get(log.programDayId);
+      const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
+      const planned = resolvedPlannedSetCount(log, dose);
       const setCountLabel = formatSetProgress(ticked, planned);
-      const done = offPlanSessionDone(log, log.programDayId ? dose : 0, plan?.names ?? []);
+      const done = offPlanSessionDone(log, dose, plan?.names ?? []);
       day.activities.push({
         kind: "workout",
         title,
         subtitle: done ? `Logged this day. ${title}` : `Partial · ${setCountLabel}`,
-        href: log.programDayId ? `/training/${log.programDayId}` : "/training/history",
+        href: `/training/${log.programDayId}`,
         status: done ? "complete" : "scheduled",
-        programDayId: log.programDayId ?? undefined,
+        programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel,
         exercises: ticked > 0 ? exerciseSetProgress(log.programDay?.exercises ?? [], log.sets) : undefined,

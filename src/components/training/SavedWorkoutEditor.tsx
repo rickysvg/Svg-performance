@@ -29,7 +29,6 @@ export function SavedWorkoutEditor({
   weightAccess: "gym" | "none";
 }) {
   const [rows, setRows] = useState(exercises);
-  const [title, setTitle] = useState(name);
   const [insertAt, setInsertAt] = useState<number | null>(null);
   const [state, action, pending] = useActionState(updateSavedWorkoutAction, {} as SavedWorkoutActionState);
 
@@ -59,18 +58,8 @@ export function SavedWorkoutEditor({
     <form action={action} className="space-y-3" data-saved-editor>
       <input type="hidden" name="savedWorkoutId" value={id} />
       <input type="hidden" name="exercises" value={JSON.stringify(rows)} />
-      <label className="block text-sm">
-        <span className="font-medium">Name</span>
-        <input
-          name="name"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          maxLength={80}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
-        />
-      </label>
       <p className="text-sm text-muted">
-        Editing this list does not change a day you already applied. Apply it again to update that day.
+        {name} · Editing this list does not change the name or a day you already applied. Use Rename for the name.
       </p>
       {rows.map((row, index) => (
         <div key={`${row.name}-${index}`}>
@@ -202,7 +191,11 @@ export function SavedWorkoutEditor({
         + Add exercise
       </button>
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
-      {state.saved ? <p className="text-sm font-semibold">Saved.</p> : null}
+      {state.saved ? (
+        <p className="text-sm font-semibold" data-exercises-saved>
+          Exercises saved.
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={pending || rows.length === 0}

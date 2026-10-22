@@ -1,33 +1,59 @@
-import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { getAppTier } from "@/lib/entitlements";
-import { ForbiddenError } from "@/lib/errors";
-import { startDayPlanForUser } from "@/lib/my-workouts";
+import { getDayPlanForUser } from "@/lib/my-workouts";
+import { exerciseCountLabel } from "@/lib/my-workout-plan";
 
-export default async function StartDayPlanPage({
+/**
+ * Read-only look at an applied workout. Opening this page does not create
+ * a session, draft, or running timer. Start and Resume are the only controls
+ * that do.
+ */
+export default async function DayPlanPreviewPage({
   params,
 }: {
   params: Promise<{ planId: string }>;
 }) {
   const user = await requireUser();
-  const tier = await getAppTier(user.id);
-  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
-    redirect("/home");
-  }
   const { planId } = await params;
-  const profile = await getProfileForUser(user.id);
-  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  try {
-    const session = await startDayPlanForUser({
-      userId: user.id,
-      planId,
-      preferredUnits: profile?.preferredUnits ?? "lb",
-      timeZone,
-    });
-    redirect(`/training/log/${session.id}`);
-  } catch (error) {
-    if (error instanceof ForbiddenError) notFound();
-    throw error;
-  }
+  const plan = await getDayPlanForUser(user.id, planId);
+  if (!plan) notFound();
+  const startHref = plan.draftId
+    ? `/training/log/${plan.draftId}`
+    : `/training/my-workouts/day/${plan.id}/start`;
+  const verb = plan.draftId ? "Resume" : plan.complete ? "Start again" : "Start";
+
+  return (
+    <main className="space-y-4" data-day-plan-preview>
+      <Link href="/training" className="text-sm text-accent underline-offset-4 hover:underline">
+        Training
+      </Link>
+      <p className="font-display text-xs uppercase tracking-wide text-accent">
+        {plan.mode === "replace" ? "Your workout" : "Extra session"}
+        {plan.complete ? " · Done" : ""}
+      </p>
+      <h1 className="text-2xl normal-case">{plan.name}</h1>
+      <p className="text-sm text-muted">{exerciseCountLabel(plan.exerciseCount)}</p>
+      <ul className="space-y-2">
+        {plan.exercises.map((exercise, index) => (
+          <li key={`${exercise.name}-${index}`} className="rounded-2xl border border-line bg-card px-4 py-3">
+            <p className="font-medium">{exercise.name}</p>
+            <p className="text-sm text-muted">
+              {exercise.sets} × {exercise.reps}
+              {exercise.loadText ? ` · ${exercise.loadText}` : ""}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href={startHref}
+        prefetch={false}
+        data-start-custom
+        data-prime-coach-audio
+        className="touch-target flex w-full items-center justify-center rounded-full bg-accent font-semibold text-black"
+      >
+        {verb}
+      </Link>
+    </main>
+  );
 }

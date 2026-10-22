@@ -2,15 +2,17 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
-  completedLocalDayKeys,
   completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
-  isPastEmptyDraft,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
 } from "@/lib/workouts";
-import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
+import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
+import { sessionCompletionDay } from "@/lib/performed-at";
+import { draftHasResumeWork } from "@/lib/logged-work";
 import { calendarPlanDoses } from "@/lib/calendar";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -46,13 +48,11 @@ import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainWeekFollow } from "@/components/training/TrainWeekFollow";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
-import { NextSessionCta } from "@/components/training/NextSessionCta";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
-import { nextTrainAction } from "@/lib/train-next";
 import { openLogsByProgramDay, todayStartAction } from "@/lib/today-start";
-import { StartTodayButton } from "@/components/training/StartTodayButton";
+import { TodaySummary } from "@/components/training/TodaySummary";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
@@ -60,10 +60,7 @@ import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { getSparringLog, latestSparringSessionRating, sparringDateError } from "@/lib/outside-log";
-import { sparringTileHint } from "@/lib/sparring-tile";
-import { SparringLogTile } from "@/components/home/SparringLogTile";
-import { tileSrc } from "@/lib/athlete-imagery";
+import { getSparringLog, sparringDateError } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -88,13 +85,12 @@ export default async function TrainingPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [catalog, sessionCount, conditioning, profile, swaps, sparringRating] = await Promise.all([
+  const [catalog, sessionCount, conditioning, profile, swaps] = await Promise.all([
     findDemoTrainingCatalog(),
     countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
-    latestSparringSessionRating(user.id),
   ]);
   const tzEarly = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   await finalizePastLoggedDrafts(user.id, now, tzEarly);
@@ -192,26 +188,39 @@ export default async function TrainingPage({
     })),
     (dayId) => openToday.get(dayId),
   );
-  const liveDraft =
-    drafts.find(
-      (row) =>
-        !isPastEmptyDraft(row, formatDayParam(now, tz), tz) &&
-        (!row.programDayId || !doneToday.has(row.programDayId)),
+  const todayKey = dayKey(now, tz);
+  const draftsOn = (day: string) => drafts.filter((row) => sessionCompletionDay(row, tz) === day);
+  const todayDrafts = draftsOn(todayKey);
+  const resumeDraft =
+    todayDrafts.find(
+      (row) => draftHasResumeWork(row.sets) && (!row.programDayId || !doneToday.has(row.programDayId)),
     ) ?? null;
+  const resumeId =
+    todayAction?.verb === "Resume" && todayAction.draftId ? todayAction.draftId : resumeDraft?.id;
+  const inProgressDay = resumeDraft ? sessionCompletionDay(resumeDraft, tz) : undefined;
   const loggedRange = carouselLoggedRange(now, tz);
-  const [completedDays, completedByDay, partialDays] = await Promise.all([
-    completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, now),
+  const carouselKeys = weeks.flatMap((week) => week.days.map((day) => day.dayParam));
+  const [completedByDay, partialDays, offPlan, carouselPlans] = await Promise.all([
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
     partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
+    offPlanMarksByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
+    listDayPlansForUser(user.id, carouselKeys),
   ]);
+  const marks = chipMarksAfterPlans({
+    days: chipDayRefs(weeks),
+    completedByDay,
+    partialDays,
+    plansByDay: chipPlanMarksByDay(carouselPlans),
+    offPlan,
+  });
+  const markedWeeks = withOverlaySessionIds(weeks, marks.sessionIdsByDay);
   const selectedWeekday = weekdayInAppZone(selected, tz);
-  const focusDays = weeks.map((week) => {
+  const focusDays = markedWeeks.map((week) => {
     const day = week.days.find((item) => item.weekday === selectedWeekday) ?? week.days[0]!;
     return { weekStart: week.weekStart, day };
   });
-  const savedDayPlans = await listDayPlansForUser(
-    user.id,
-    focusDays.map((focus) => focus.day.dayParam),
+  const savedDayPlans = carouselPlans.filter((plan) =>
+    focusDays.some((focus) => focus.day.dayParam === plan.dayKey),
   );
   const focusModels = await Promise.all(
     focusDays.map(async (focus) => {
@@ -268,14 +277,7 @@ export default async function TrainingPage({
         replaced: overlay.replaced,
         dayPlans: focusDayPlans,
         openOnDay,
-        doneIds: new Set(completedByDay[focusParam] ?? []),
-        nextAction: focusPlan.active
-          ? nextTrainAction(
-              focusPlanned,
-              (dayId) => openOnDay.get(dayId),
-              (dayId) => (completedByDay[focusParam] ?? []).includes(dayId),
-            )
-          : null,
+        doneIds: new Set(marks.completedByDay[focusParam] ?? []),
         isToday: focus.day.isToday,
         deload: campWeekIndex == null && isDeloadWeekIndex(focusWeekIndex),
         testing: isTestingWeekIndex(focusWeekIndex),
@@ -370,31 +372,15 @@ export default async function TrainingPage({
         </Link>
       ) : null}
 
-      {liveDraft && todayAction?.draftId !== liveDraft.id ? (
-        <Link
-          href={`/training/log/${liveDraft.id}`}
-          data-resume-workout
-          data-prime-coach-audio
-          className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
-        >
-          Resume
-        </Link>
-      ) : null}
-      {todayAction ? <StartTodayButton action={todayAction} /> : null}
-      <SparringLogTile
-        hint={sparringTileHint(sparringRating)}
-        layout="row"
-        src={tileSrc("/tiles/sparring.webp", profile?.athleteImagery)}
-      />
-
       <TrainWeekFollow initialWeekStart={viewedWeek} level={levelOverride} moves={moves}>
       <WeekStrip
-        days={weeks.find((week) => week.offset === 0)?.days ?? []}
-        weeks={weeks}
+        days={markedWeeks.find((week) => week.offset === 0)?.days ?? []}
+        weeks={markedWeeks}
         basePath="/training"
-        completedDays={completedDays}
-        completedByDay={completedByDay}
-        partialDays={partialDays}
+        completedDays={marks.loggedDays}
+        completedByDay={marks.completedByDay}
+        partialDays={marks.partialDays}
+        inProgressDay={inProgressDay}
         focusOffset={focusOffset}
         todayHref={`/training?day=${formatDayParam(now, tz)}`}
       />
@@ -405,6 +391,18 @@ export default async function TrainingPage({
         const planDateLabel = focus.dateLabel;
         const dayPlan = focus.dayPlan;
         const visible = focus.weekStart === viewedWeek;
+        const replacement = focus.dayPlans.find((plan) => plan.mode === "replace");
+        const trainCta = focus.isToday
+          ? primaryTrainCta({
+              resumeHref: resumeId ? `/training/log/${resumeId}` : null,
+              startHref: explicitStartHref({
+                replaced: focus.replaced,
+                plans: focus.dayPlans,
+                action: todayAction,
+              }),
+            })
+          : null;
+        const cards = dayPlan.active ? focus.cards : focus.cards.filter((session) => session.kind !== "rest");
         return (
           <div
             key={focus.weekStart}
@@ -413,13 +411,41 @@ export default async function TrainingPage({
             inert={visible ? undefined : true}
             className="space-y-4"
           >
+      {focus.isToday ? (
+        <TodaySummary
+          modality={
+            replacement
+              ? replacement.name
+              : todayAction?.modality || (dayPlan.active ? "Session" : "Rest")
+          }
+          note={
+            replacement
+              ? replacement.exerciseNames.slice(0, 4).join(" · ")
+              : todayAction?.theme || dayPlan.skipReason || ""
+          }
+          minutes={replacement ? 0 : (todayAction?.minutes ?? 0)}
+        />
+      ) : null}
+      {trainCta ? (
+        <Link
+          href={trainCta.href}
+          prefetch={trainCta.verb === "Start" ? false : undefined}
+          data-primary-train-cta
+          data-resume-workout={trainCta.verb === "Resume" ? "true" : undefined}
+          data-start-today={trainCta.verb === "Start" ? "true" : undefined}
+          data-prime-coach-audio
+          className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
+        >
+          {trainCta.verb}
+        </Link>
+      ) : null}
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">
           <p className="font-display text-xs uppercase tracking-wide text-accent" data-day-heading>
             {planDateLabel}
             {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
           </p>
-          <h2 className="mt-1 text-lg">
+          <h2 className={`mt-1 text-lg${focus.replaced ? " normal-case" : ""}`}>
             {focus.replaced
               ? focus.dayPlans.map((plan) => plan.name).join(" · ")
               : dayPlan.active
@@ -448,7 +474,6 @@ export default async function TrainingPage({
           ) : null}
         </div>
 
-        {focus.nextAction && !focus.isToday ? <NextSessionCta action={focus.nextAction} /> : null}
         {focus.deload ? (
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
@@ -472,7 +497,7 @@ export default async function TrainingPage({
       ) : null}
 
       <section className="space-y-3" data-session-phase="next">
-        {focus.cards.map((session, index) => (
+        {cards.map((session, index) => (
           <div
             key={`${session.sessionKey ?? session.slot}-${session.dayId ?? session.label}`}
             {...(index === focus.bagIndex ? { "data-bag-session": "" } : {})}

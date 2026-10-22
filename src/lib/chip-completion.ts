@@ -209,3 +209,41 @@ async function partialLocalDayKeysNow(
   }
   return [...days];
 }
+
+/**
+ * Off-plan logs (no program day and no applied day plan), by civil day.
+ * Done vs partial uses the same gate as `partialLocalDayKeys`.
+ */
+export function offPlanMarksByLocalDay(userId: string, from: Date, to: Date, timeZone: string) {
+  return withCalendarScaleMemory(() => offPlanMarksByLocalDayNow(userId, from, to, timeZone));
+}
+
+async function offPlanMarksByLocalDayNow(userId: string, from: Date, to: Date, timeZone: string) {
+  const fromKey = dayKey(from, timeZone);
+  const endKey = dayKey(to, timeZone);
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId,
+      programDayId: null,
+      dayPlanId: null,
+      status: { in: ["complete", "partial", "draft"] },
+      sets: loggedSetSome,
+      performedAt: {
+        gte: new Date(from.getTime() - DAY_PAD_MS),
+        lt: new Date(to.getTime() + DAY_PAD_MS),
+      },
+    },
+    select: CHIP_SESSION_SELECT,
+  });
+  const marks = new Map<string, { done: boolean; partial: boolean }>();
+  for (const row of rows) {
+    const key = sessionCompletionDay(row, timeZone);
+    if (key < fromKey || key >= endKey) continue;
+    if (tickedSetCount(row.sets) === 0) continue;
+    const current = marks.get(key) ?? { done: false, partial: false };
+    if (offPlanSessionDone(row, 0, [])) current.done = true;
+    else current.partial = true;
+    marks.set(key, current);
+  }
+  return Object.fromEntries(marks);
+}

@@ -3,8 +3,6 @@ import { exerciseCountLabel } from "@/lib/my-workout-plan";
 import type { DayPlanView } from "@/lib/my-workouts";
 
 export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
-  const href = plan.draftId ? `/training/log/${plan.draftId}` : `/training/my-workouts/day/${plan.id}`;
-  const cta = plan.draftId ? "Resume" : plan.complete ? "Start again" : "Start";
   return (
     <article
       data-custom-session={plan.id}
@@ -15,18 +13,18 @@ export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
         {plan.mode === "replace" ? "Your workout" : "Extra session"}
         {plan.complete ? " · Done" : ""}
       </p>
-      <h3 className="mt-1 text-lg leading-tight">{plan.name}</h3>
+      <h3 className="mt-1 text-lg normal-case leading-tight">{plan.name}</h3>
       <p className="mt-1 text-sm text-muted">
         {exerciseCountLabel(plan.exerciseCount)}
         {plan.exerciseNames.length > 0 ? ` · ${plan.exerciseNames.slice(0, 3).join(" · ")}` : ""}
       </p>
       <Link
-        data-testid={`training-start-custom-${href.split("/").filter(Boolean).join("-")}`}
-        href={href}
-        data-start-custom
-        className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent font-semibold text-black"
+        data-testid={`training-view-custom-${plan.id}`}
+        href={`/training/my-workouts/day/${plan.id}`}
+        data-preview-custom
+        className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full border border-line text-sm font-semibold"
       >
-        {cta}
+        View
       </Link>
     </article>
   );
