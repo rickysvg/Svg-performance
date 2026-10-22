@@ -132,7 +132,6 @@ export function FightCampOptIn({
           <button
             data-testid="training-save-fight"
             type="submit"
-            data-testid="training-save-fight"
             className="touch-target w-full rounded-full bg-[#CBF805] text-black"
           >
             {savePending && !optimisticOn ? "Saving…" : "Save fight"}

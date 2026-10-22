@@ -86,7 +86,6 @@ export function SaveWorkoutButton({
                   <input
                     data-testid="training-history-name"
                     name="name"
-                    data-testid="training-history-name"
                     data-save-my-workout-name
                     value={name}
                     onChange={(event) => setName(event.target.value)}

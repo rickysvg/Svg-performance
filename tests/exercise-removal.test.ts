@@ -17,7 +17,15 @@ import { applyExerciseSwap } from "@/lib/exercise-swap-store";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { scaleProgramDay } from "@/lib/training-scale";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
-import { startWorkoutFromDay, updateWorkoutSessionForUser, type WorkoutSetInput } from "@/lib/workouts";
+import { bikeChoiceById } from "@/lib/bike-chooser";
+import { BIKE_TIMER_EXERCISE } from "@/lib/bike-timer-log";
+import {
+  logBikeRoundsForUser,
+  startRoundWorkoutForUser,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
+  type WorkoutSetInput,
+} from "@/lib/workouts";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
 const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
@@ -584,6 +592,109 @@ describe("persisted session removal", () => {
     });
     expect(undone.plannedSetCount).toBe(clampedFrom);
     expect(undone.sets.filter((set) => set.exerciseName === exerciseName)).toHaveLength(removedRows);
+  });
+
+  it("subtracts rows from a round log and a bike log using the session count", async () => {
+    const user = await makeUser("remove-logger@example.com");
+    const rounds = await startRoundWorkoutForUser({
+      userId: user.id,
+      mode: "bag",
+      rounds: 4,
+      workSeconds: 180,
+      preferredUnits: "lb",
+    });
+    expect(rounds.plannedSetCount).toBe(4);
+    expect(rounds.sets.every((set) => set.exerciseName === "Heavy bag rounds")).toBe(true);
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: rounds.id,
+      title: rounds.title,
+      performedAt: rounds.performedAt,
+      notes: rounds.notes,
+      status: "draft",
+      sets: [
+        ...ticked(rounds.sets, "none"),
+        {
+          exerciseName: "Shadow boxing",
+          setNumber: 1,
+          reps: 20,
+          loadValue: null,
+          loadUnit: "lb",
+          completed: false,
+        },
+      ],
+    });
+    const roundRemoval = await removeSessionExercise({
+      userId: user.id,
+      programSlug: "",
+      dayNumber: 0,
+      originalName: "Heavy bag rounds",
+      exerciseName: "Heavy bag rounds",
+      workoutSessionId: rounds.id,
+      blockKey,
+    });
+    const roundDropped = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: rounds.id },
+      include: { sets: true },
+    });
+    expect(roundDropped.plannedSetCount).toBe(0);
+    expect(roundDropped.sets.map((set) => set.exerciseName)).toEqual(["Shadow boxing"]);
+    const roundStored = await prisma.exerciseRemoval.findFirstOrThrow({ where: { id: roundRemoval.id } });
+    expect(JSON.parse(roundStored.snapshotJson).plannedSets).toBe(4);
+    await undoExerciseRemoval({ userId: user.id, removalId: roundRemoval.id });
+    const roundUndone = await prisma.workoutSession.findUniqueOrThrow({ where: { id: rounds.id } });
+    expect(roundUndone.plannedSetCount).toBe(4);
+
+    const choice = bikeChoiceById("tabata");
+    expect(choice).toBeTruthy();
+    const bike = await logBikeRoundsForUser({
+      userId: user.id,
+      choice: choice!,
+      roundsCompleted: 2,
+    });
+    const bikeRows = bike.sets.filter((set) => set.exerciseName === BIKE_TIMER_EXERCISE).length;
+    expect(bikeRows).toBeGreaterThan(0);
+    expect(bike.plannedSetCount).toBe(bikeRows);
+    await prisma.workoutSession.update({
+      where: { id: bike.id },
+      data: { status: "draft" },
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: bike.id,
+      title: bike.title,
+      performedAt: bike.performedAt,
+      notes: bike.notes,
+      status: "draft",
+      sets: [
+        ...ticked(bike.sets, "none"),
+        {
+          exerciseName: "Shadow boxing",
+          setNumber: 1,
+          reps: 20,
+          loadValue: null,
+          loadUnit: "lb",
+          completed: false,
+        },
+      ],
+    });
+    const bikeRemoval = await removeSessionExercise({
+      userId: user.id,
+      programSlug: "",
+      dayNumber: 0,
+      programDayId: bike.programDayId ?? undefined,
+      originalName: BIKE_TIMER_EXERCISE,
+      exerciseName: BIKE_TIMER_EXERCISE,
+      workoutSessionId: bike.id,
+      blockKey,
+    });
+    const bikeDropped = await prisma.workoutSession.findUniqueOrThrow({ where: { id: bike.id } });
+    expect(bikeDropped.plannedSetCount).toBe((bike.plannedSetCount ?? 0) - bikeRows);
+    const bikeStored = await prisma.exerciseRemoval.findFirstOrThrow({ where: { id: bikeRemoval.id } });
+    expect(JSON.parse(bikeStored.snapshotJson).plannedSets).toBe(bikeRows);
+    await undoExerciseRemoval({ userId: user.id, removalId: bikeRemoval.id });
+    const bikeUndone = await prisma.workoutSession.findUniqueOrThrow({ where: { id: bike.id } });
+    expect(bikeUndone.plannedSetCount).toBe(bike.plannedSetCount);
   });
 });
 
