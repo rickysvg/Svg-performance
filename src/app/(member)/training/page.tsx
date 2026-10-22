@@ -10,6 +10,7 @@ import {
   matchingDraftId,
 } from "@/lib/workouts";
 import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { calendarPlanDoses } from "@/lib/calendar";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
@@ -193,10 +194,11 @@ export default async function TrainingPage({
   );
   const liveDraft = drafts[0] ?? null;
   const loggedRange = carouselLoggedRange(now, tz);
+  const planByDay = await calendarPlanDoses(user.id, now);
   const [completedDays, completedByDay, partialDays] = await Promise.all([
     completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
-    partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
+    partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
   ]);
   const selectedWeekday = weekdayInAppZone(selected, tz);
   const focusDays = weeks.map((week) => {

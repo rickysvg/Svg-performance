@@ -5,7 +5,13 @@ import { CalendarWeekFollow, type CalendarMoveBundle } from "@/components/traini
 import type { WeekCarouselWeek } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { requireUser } from "@/lib/session";
-import { formatCalendarHeading, getCalendarSchedule, weekdayName } from "@/lib/calendar";
+import {
+  calendarFocusStatusSuffix,
+  calendarPlanDoses,
+  formatCalendarHeading,
+  getCalendarSchedule,
+  weekdayName,
+} from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { formatDayParam, parseDayParam } from "@/lib/home";
 import { findDemoTrainingCatalog } from "@/lib/programs";
@@ -109,10 +115,11 @@ export default async function TrainingCalendarPage({
   const currentWeek = weekStartKey(now, tz);
   const canEditWeek = weekStartInRange(viewedWeek, currentWeek);
   const loggedWindow = carouselLoggedRange(now, tz);
+  const planByDay = await calendarPlanDoses(user.id, now);
   const [loggedDays, completedByDay, partialDays, weekSchedules] = await Promise.all([
     completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz),
     completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
-    partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz),
+    partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
     Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
   ]);
   const selectedWeekday = weekdayName(selected, tz);
@@ -127,11 +134,12 @@ export default async function TrainingCalendarPage({
       weekSchedule.days[0];
     const focusPlan = focus ? planForDate(prefs, focus.date, tz, swaps) : dayPlan;
     const workouts = focus?.activities.filter((item) => item.kind === "workout") ?? [];
-    const workoutsDone = workouts.filter((item) => item.status === "complete").length;
     const focusKey = focus ? formatDayParam(focus.date, tz) : dayParam;
-    const focusLogged = workouts.length > 0 && workoutsDone === workouts.length;
-    const focusPartial = workoutsDone > 0 && !focusLogged;
-    const focusMissed = focusKey < todayKey && (focus?.active ?? focusPlan.active) && workoutsDone === 0;
+    const statusSuffix = calendarFocusStatusSuffix({
+      workouts,
+      past: focusKey < todayKey,
+      active: focus?.active ?? focusPlan.active,
+    });
     const focusSummary = workouts.find((item) => item.status === "complete")?.subtitle;
     const missedWorkouts = weekSchedule.days.reduce(
       (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
@@ -166,7 +174,7 @@ export default async function TrainingCalendarPage({
         <section data-selected-day-plan className="space-y-2">
           <p className="font-display text-xs uppercase tracking-wide text-accent">
             {focus ? formatCalendarHeading(focus.date, now, tz) : formatCalendarHeading(selected, now, tz)}
-            {focusLogged ? " · Logged" : focusPartial ? " · Partly logged" : focusMissed ? " · Missed" : ""}
+            {statusSuffix}
             {focus?.movedFrom || focusPlan.movedFrom
               ? ` · ${(focus?.movedFrom || focusPlan.movedFrom)}’s workout`
               : ""}
