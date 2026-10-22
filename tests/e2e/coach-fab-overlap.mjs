@@ -3,9 +3,12 @@
  * Viewport 390×727. Scrolls /training, /bagwork, /training/calendar, and /home.
  * The center of every button, link, and input must not hit [data-coach-fab].
  *
- *   NODE_PATH=/tmp/node_modules node tests/e2e/coach-fab-overlap.mjs
+ *   node tests/e2e/coach-fab-overlap.mjs
  */
-import { chromium } from "playwright-core";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { chromium } = require("/tmp/node_modules/playwright-core");
 
 const BASE = process.env.CAPTURE_BASE ?? "http://127.0.0.1:3000";
 const ROUTES = ["/training", "/bagwork", "/training/calendar", "/home"];

@@ -5,6 +5,8 @@ import { getProgressPhotoForUser, progressPhotoSrc } from "@/lib/progress-photos
 import { PhotoEditForm } from "@/components/progress/PhotoEditForm";
 import { deleteProgressPhotoAction } from "@/app/actions/body-metrics";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
+import { timeZoneForUser } from "@/lib/profile";
+import { formatZonedDate } from "@/lib/timezone";
 
 export default async function ProgressPhotoPage({
   params,
@@ -12,6 +14,7 @@ export default async function ProgressPhotoPage({
   params: Promise<{ photoId: string }>;
 }) {
   const user = await requireUser();
+  const timeZone = await timeZoneForUser(user.id);
   const { photoId } = await params;
   let photo;
   try {
@@ -41,8 +44,8 @@ export default async function ProgressPhotoPage({
         className="w-full rounded-2xl border border-line bg-card object-contain"
       />
       <p className="text-sm text-muted">
-        Taken {photo.recordedAt.toLocaleDateString()} · uploaded{" "}
-        {photo.createdAt.toLocaleDateString()}
+        Taken {formatZonedDate(photo.recordedAt, timeZone)} · uploaded{" "}
+        {formatZonedDate(photo.createdAt, timeZone)}
       </p>
       <PhotoEditForm
         photoId={photo.id}

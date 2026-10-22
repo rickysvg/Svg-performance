@@ -5,7 +5,12 @@ import { getHomeToday, getWeeklyActivity, weeklyActivityCopy } from "@/lib/home"
 import { getTodayGuide } from "@/lib/today";
 import { getPathProgress } from "@/lib/paths";
 import { createNutritionEntryForUser } from "@/lib/nutrition";
-import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
+import {
+  completedProgramDayIdsOnDay,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
+} from "@/lib/workouts";
+import { APP_TIMEZONE } from "@/lib/timezone";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import { listRuntimeKnowledgeFiles, loadKnowledgeBase } from "@/lib/coach/knowledge";
 
@@ -81,6 +86,75 @@ describe("home aggregation and weekly activity", () => {
     expect(today.incompleteLesson).toBeTruthy();
     expect(today.targets.calories).toBe(2200);
     expect(today.firstName).toBe("streak");
+  });
+
+  it("does not mark the selected day done for a one-set or partial log", async () => {
+    const user = await makeUser("partial-home@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    expect(session.plannedSetCount).toBeGreaterThan(1);
+    const now = new Date();
+    const one = session.sets[0];
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: now,
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: one?.exerciseName || "Goblet squat",
+          setNumber: one?.setNumber || 1,
+          reps: 8,
+          loadValue: 30,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    const partialSave = await getHomeToday(user.id, now);
+    expect(partialSave.loggedOnSelected).toBeNull();
+    expect(
+      await completedProgramDayIdsOnDay(user.id, [program.days[0].id], now, APP_TIMEZONE),
+    ).toEqual([]);
+
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { status: "partial" },
+    });
+    const markedPartial = await getHomeToday(user.id, now);
+    expect(markedPartial.loggedOnSelected).toBeNull();
+
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: now,
+      notes: "",
+      status: "complete",
+      sets: session.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "timed" || set.logMode === "timed_round" ? null : 8,
+        loadValue:
+          set.logMode === "reps_only" || set.logMode === "timed" || set.logMode === "timed_round"
+            ? null
+            : 40,
+        loadUnit: "lb" as const,
+        durationSeconds:
+          set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed"
+            ? 60
+            : null,
+        completed: true,
+      })),
+    });
+    const finished = await getHomeToday(user.id, now);
+    expect(finished.loggedOnSelected?.id).toBe(session.id);
   });
 
   it("keeps Home and Today usable when the DEMO program is not seeded", async () => {

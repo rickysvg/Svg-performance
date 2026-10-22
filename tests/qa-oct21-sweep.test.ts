@@ -9,7 +9,9 @@ import {
   getLatestBodyMetricsForUser,
 } from "@/lib/body-metrics";
 import {
+  completionListLabel,
   sessionCountsAsPlannedCompletion,
+  sessionHasLoggedWork,
   tickedSetCount,
 } from "@/lib/logged-work";
 import { sessionSetCount } from "@/lib/share-card";
@@ -130,6 +132,21 @@ describe("completion counts ticked sets on the planned session", () => {
     expect(
       sessionCountsAsPlannedCompletion({ status: "partial", plannedSetCount: 4, sets: [bikeSet] }, bike),
     ).toBe(false);
+    expect(sessionHasLoggedWork([bikeSet])).toBe(true);
+    expect(sessionHasLoggedWork(oneOfFour)).toBe(true);
+    expect(completionListLabel({ status: "complete", plannedSetCount: 4, sets: oneOfFour })).toBe(
+      "partial",
+    );
+    expect(completionListLabel({ status: "partial", plannedSetCount: 4, sets: [bikeSet] })).toBe(
+      "partial",
+    );
+    expect(
+      completionListLabel({
+        status: "complete",
+        plannedSetCount: 4,
+        sets: [bikeSet, { ...bikeSet }, { ...bikeSet }, { ...bikeSet }],
+      }),
+    ).toBe("complete");
   });
 
   it("counts ticked sets, not every planned row", () => {

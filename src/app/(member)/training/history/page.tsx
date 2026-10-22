@@ -6,7 +6,11 @@ import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
 import { bikeHistoryLine } from "@/lib/bike-chooser";
-import { sessionHasLoggedWork, tickedSetCount } from "@/lib/logged-work";
+import {
+  completionListLabel,
+  sessionCountsAsPlannedCompletion,
+  tickedSetCount,
+} from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { exerciseNamesInOrder } from "@/lib/logger-insert";
@@ -63,9 +67,9 @@ export default async function HistoryPage() {
       ) : (
         <ul className="space-y-3">
           {sessions.map((session) => {
-            const finished = session.status === "complete" && sessionHasLoggedWork(session.sets);
+            const finished = sessionCountsAsPlannedCompletion(session, []);
             const setCount = tickedSetCount(session.sets);
-            const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
+            const label = completionListLabel(session);
             const names = exerciseNamesInOrder(session.sets);
             const bagLine = bagworkHistoryLine(session);
             const bikeLine = bikeHistoryLine(session);

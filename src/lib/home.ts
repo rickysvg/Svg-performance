@@ -47,7 +47,7 @@ import {
 } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -286,8 +286,7 @@ export async function getHomeToday(
     null;
   const loggedOnSelected = sessions.find(
     (session) =>
-      session.status === "complete" &&
-      sessionHasLoggedWork(session.sets) &&
+      sessionCountsAsPlannedCompletion(session, []) &&
       sameLocalDay(session.performedAt, selected, tz),
   );
 

@@ -2,7 +2,13 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { getDemoProgram } from "@/lib/programs";
-import { startWorkoutFromDay, updateWorkoutSessionForUser, type WorkoutSetInput } from "@/lib/workouts";
+import {
+  completedProgramDayIdsOnDay,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
+  type WorkoutSetInput,
+} from "@/lib/workouts";
+import { APP_TIMEZONE, addZonedDays } from "@/lib/timezone";
 import {
   buildCalendarDays,
   formatCalendarHeading,
@@ -12,7 +18,6 @@ import {
   resolveTrainingWeekdays,
   weekSessionTally,
 } from "@/lib/calendar";
-import { addZonedDays } from "@/lib/timezone";
 
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
 
@@ -229,6 +234,62 @@ describe("calendar schedule loader", () => {
     const tally = weekSessionTally(after.days);
     expect(tally.done).toBe(1);
     expect(tally.total).toBeGreaterThan(1);
+  });
+
+  it("does not mark Done when only one planned set is saved", async () => {
+    const user = await makeUser("calendar-partial@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const schedule = await getCalendarSchedule(user.id, tuesday);
+    let picked: {
+      session: Awaited<ReturnType<typeof startWorkoutFromDay>>;
+      performedAt: Date;
+      programDayId: string;
+    } | null = null;
+    for (const day of schedule.days) {
+      for (const activity of day.activities) {
+        if (activity.kind !== "workout" || !activity.programDayId) continue;
+        const started = await startWorkoutFromDay({
+          userId: user.id,
+          programDayId: activity.programDayId,
+          preferredUnits: "lb",
+        });
+        if ((started.plannedSetCount ?? 0) > 1) {
+          picked = { session: started, performedAt: day.date, programDayId: activity.programDayId };
+          break;
+        }
+        await prisma.workoutSession.delete({ where: { id: started.id } });
+      }
+      if (picked) break;
+    }
+    expect(picked).toBeTruthy();
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: picked!.session.id,
+      title: picked!.session.title,
+      performedAt: picked!.performedAt,
+      notes: "",
+      status: "complete",
+      sets: [tickedPlannedSet(picked!.session)],
+    });
+
+    const after = await getCalendarSchedule(user.id, tuesday);
+    const logged = after.days
+      .flatMap((day) => day.activities)
+      .find((row) => row.kind === "workout" && row.programDayId === picked!.programDayId);
+    expect(logged?.status).toBe("scheduled");
+    expect(logged?.subtitle.startsWith("Partial")).toBe(true);
+    expect(logged?.subtitle).not.toContain("Logged this day");
+    expect(weekSessionTally(after.days).done).toBe(0);
+    expect(
+      await completedProgramDayIdsOnDay(user.id, [picked!.programDayId], picked!.performedAt, APP_TIMEZONE),
+    ).toEqual([]);
   });
 
   it("lists the whole week, including a logged past day and a missed day", async () => {

@@ -153,12 +153,17 @@ describe("AI coach avatars", () => {
     expect(shouldShowCoachFab("/training/log/abc")).toBe(false);
     expect(shouldShowCoachFab("/training/day/start")).toBe(false);
     expect(shouldShowCoachFab("/vip/apply")).toBe(false);
+    expect(shouldShowCoachFab("/vip/apply/extra")).toBe(false);
     expect(shouldShowCoachFab("/checkin")).toBe(false);
+    expect(shouldShowCoachFab("/checkin/weekly")).toBe(false);
     expect(shouldShowCoachFab("/onboarding")).toBe(false);
+    expect(shouldShowCoachFab("/onboarding/plan")).toBe(false);
+    expect(shouldShowCoachFab("/onboarding/deeper")).toBe(false);
     expect(shouldShowCoachFab("/training/calendar")).toBe(true);
     expect(shouldShowCoachFab("/bagwork")).toBe(true);
     expect(shouldShowCoachFab("/nutrition")).toBe(true);
     expect(shouldShowCoachFab("/profile")).toBe(false);
+    expect(shouldShowCoachFab("/profile/delete")).toBe(false);
     expect(shouldShowCoachFab("/learn")).toBe(true);
     expect(shouldShowCoachFab("/coach")).toBe(false);
     expect(shouldShowCoachFab("/coach?topic=mental")).toBe(false);

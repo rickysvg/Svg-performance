@@ -4,6 +4,7 @@ import { AppError, ForbiddenError } from "@/lib/errors";
 import { getDemoProgram } from "@/lib/programs";
 import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
+import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { resolveSessionElapsed } from "@/lib/session-elapsed";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
@@ -660,15 +661,65 @@ describe("a workout is complete only after a logged save", () => {
       data: { createdAt: start, updatedAt: lastEdit },
     });
     expect(await finalizePastLoggedDrafts(user.id, new Date("2026-10-21T18:00:00.000Z"), APP_TIMEZONE)).toBe(1);
-    const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    const row = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: session.id },
+      include: { sets: true },
+    });
     const timer = await readWorkoutTimerFields(session.id, prisma);
     expect(row.status).toBe("partial");
+    expect(sessionCountsAsPlannedCompletion(row, [])).toBe(false);
     expect(timer.elapsedSeconds).toBe(70 * 60);
     expect(timer.finishedAt).toBeNull();
     const view = resolveSessionElapsed({ ...row, ...timer }, new Date("2026-10-21T18:00:00.000Z"));
     expect(view.ticking).toBe(false);
     expect(view.label).toBe("Paused");
     expect(view.label).not.toBe("4:00:00");
+  });
+
+  it("finalizes a filled past draft as complete and leaves a short one partial", async () => {
+    const user = await makeUser("finalize-filled@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    expect(session.plannedSetCount).toBeGreaterThan(1);
+    const start = new Date("2026-10-19T16:00:00.000Z");
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: start,
+      notes: "",
+      status: "draft",
+      sets: session.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "timed" || set.logMode === "timed_round" ? null : 8,
+        loadValue:
+          set.logMode === "reps_only" || set.logMode === "timed" || set.logMode === "timed_round"
+            ? null
+            : 40,
+        loadUnit: "lb" as const,
+        durationSeconds:
+          set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed"
+            ? 60
+            : null,
+        completed: true,
+      })),
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { createdAt: start, updatedAt: new Date("2026-10-19T17:10:00.000Z") },
+    });
+    expect(await finalizePastLoggedDrafts(user.id, new Date("2026-10-21T18:00:00.000Z"), APP_TIMEZONE)).toBe(1);
+    const filled = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: session.id },
+      include: { sets: true },
+    });
+    expect(filled.status).toBe("complete");
+    expect(sessionCountsAsPlannedCompletion(filled, [])).toBe(true);
   });
 
   it("leaves a workout resumed today ticking and keeps the saved duration", async () => {

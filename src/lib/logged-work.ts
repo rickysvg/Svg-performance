@@ -1,9 +1,9 @@
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 
 /**
- * A workout counts as done only after Save, and only when the member
- * actually entered a set. Opening the page, an empty checkbox, and the
- * database default (`completed: true` with no numbers) do not count.
+ * Entered numbers mean the member did some work. They do not finish the day.
+ * Done is sessionCountsAsPlannedCompletion: saved complete, with every
+ * prescribed set ticked. One checked set stays partial.
  */
 
 export type LoggedWorkSet = {
@@ -25,6 +25,7 @@ export function setHasLoggedWork(set: LoggedWorkSet) {
   return false;
 }
 
+/** Any entered set. Not a Done check — one logged set is still a partial day. */
 export function sessionHasLoggedWork(sets: LoggedWorkSet[]) {
   return sets.some(setHasLoggedWork);
 }
@@ -78,6 +79,17 @@ export function sessionCountsAsPlannedCompletion(
   );
   const missing = planned.filter((name) => !ticked.includes(name));
   return missing.every((name) => !present.has(name)) && planned.some((name) => ticked.includes(name));
+}
+
+/** History label. A short save reads partial, never complete. */
+export function completionListLabel(session: {
+  status: string;
+  sets: TickedSet[];
+  plannedSetCount?: number | null;
+}) {
+  if (sessionCountsAsPlannedCompletion(session, [])) return "complete";
+  if (session.status === "complete") return "partial";
+  return session.status;
 }
 
 export function formatSetProgress(ticked: number, planned: number) {
