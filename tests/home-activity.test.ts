@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
-import { getHomeToday, getWeeklyActivity, weeklyActivityCopy } from "@/lib/home";
+import { getHomeToday, getWeeklyActivity, hasActivityOnLocalDay, weeklyActivityCopy } from "@/lib/home";
 import { getTodayGuide } from "@/lib/today";
 import { getPathProgress } from "@/lib/paths";
 import { createNutritionEntryForUser } from "@/lib/nutrition";
@@ -155,6 +155,75 @@ describe("home aggregation and weekly activity", () => {
     });
     const finished = await getHomeToday(user.id, now);
     expect(finished.loggedOnSelected?.id).toBe(session.id);
+  });
+
+  it("does not count a one-set save as a day of activity", async () => {
+    const user = await makeUser("partial-week@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    expect(session.plannedSetCount).toBeGreaterThan(1);
+    const now = new Date();
+    const one = session.sets[0];
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: now,
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: one?.exerciseName || "Goblet squat",
+          setNumber: one?.setNumber || 1,
+          reps: 8,
+          loadValue: 30,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { plannedSetCount: null },
+    });
+    const quiet = await getWeeklyActivity(user.id, now);
+    expect(quiet.daysActive).toBe(0);
+    expect(await hasActivityOnLocalDay(user.id, now, APP_TIMEZONE)).toBe(false);
+
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: now,
+      notes: "",
+      status: "complete",
+      sets: session.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "timed" || set.logMode === "timed_round" ? null : 8,
+        loadValue:
+          set.logMode === "reps_only" || set.logMode === "timed" || set.logMode === "timed_round"
+            ? null
+            : 40,
+        loadUnit: "lb" as const,
+        durationSeconds:
+          set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed"
+            ? 60
+            : null,
+        completed: true,
+      })),
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { plannedSetCount: session.plannedSetCount },
+    });
+    const active = await getWeeklyActivity(user.id, now);
+    expect(active.daysActive).toBe(1);
+    expect(await hasActivityOnLocalDay(user.id, now, APP_TIMEZONE)).toBe(true);
   });
 
   it("keeps Home and Today usable when the DEMO program is not seeded", async () => {

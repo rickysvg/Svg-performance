@@ -32,6 +32,7 @@ import { bindPendingRemovals, listRemovalsForDay } from "@/lib/exercise-removal-
 import {
   loggedSetSome,
   prepareSetsForPersist,
+  resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   setHasLoggedWork,
@@ -79,7 +80,7 @@ function assertOwnSession<T extends { userId: string }>(
 
 const WORKOUT_LIST_INCLUDE = {
   sets: { orderBy: [{ sortOrder: "asc" as const }, { setNumber: "asc" as const }] },
-  programDay: { include: { program: true } },
+  programDay: { include: { program: true, exercises: { select: { sets: true } } } },
 };
 
 export const RECENT_SESSION_TAKE = 20;
@@ -180,7 +181,7 @@ export async function getPreviousLoadsForUser(
   const sessions = await prisma.workoutSession.findMany({
     where: {
       userId,
-      status: "complete",
+      status: { in: ["complete", "partial"] },
       ...(excludeWorkoutId ? { id: { not: excludeWorkoutId } } : {}),
       sets: { some: { exerciseName: { in: unique } } },
     },
@@ -197,12 +198,12 @@ export async function getPreviousLoadsForUser(
   const result: PreviousSetLookup = {};
   for (const name of unique) {
     const session = sessions.find((row) =>
-      row.sets.some((set) => set.exerciseName === name),
+      row.sets.some((set) => set.exerciseName === name && setHasLoggedWork(set)),
     );
     if (!session) continue;
     result[name] = {};
     for (const set of session.sets) {
-      if (set.exerciseName !== name) continue;
+      if (set.exerciseName !== name || !setHasLoggedWork(set)) continue;
       result[name][set.setNumber] = toPreviousSet(set);
     }
   }
@@ -235,7 +236,7 @@ export async function getPreviousLoadsForSlots(
   const sessions = await prisma.workoutSession.findMany({
     where: {
       userId,
-      status: "complete",
+      status: { in: ["complete", "partial"] },
       ...(excludeWorkoutId ? { id: { not: excludeWorkoutId } } : {}),
       sets: {
         some: {
@@ -264,10 +265,19 @@ export async function getPreviousLoadsForSlots(
   const result: PreviousSetLookup = {};
   for (const slot of list) {
     const exact = slot.prescriptionKey
-      ? sessions.find((row) => row.sets.some((set) => set.prescriptionKey === slot.prescriptionKey))
+      ? sessions.find((row) =>
+          row.sets.some(
+            (set) => set.prescriptionKey === slot.prescriptionKey && setHasLoggedWork(set),
+          ),
+        )
       : undefined;
     const legacy = sessions.find((row) =>
-      row.sets.some((set) => set.exerciseName === slot.exerciseName && set.prescriptionKey === ""),
+      row.sets.some(
+        (set) =>
+          set.exerciseName === slot.exerciseName &&
+          set.prescriptionKey === "" &&
+          setHasLoggedWork(set),
+      ),
     );
     const chosen = exact ?? legacy;
     if (!chosen) continue;
@@ -277,7 +287,7 @@ export async function getPreviousLoadsForSlots(
       const matches = keyed
         ? set.prescriptionKey === slot.prescriptionKey
         : set.exerciseName === slot.exerciseName && !set.prescriptionKey;
-      if (!matches) continue;
+      if (!matches || !setHasLoggedWork(set)) continue;
       result[slot.exerciseName][set.setNumber] = toPreviousSet(set);
     }
   }
@@ -303,7 +313,7 @@ export async function completedProgramDayIdsOnDay(
       },
       sets: loggedSetSome,
     },
-      select: {
+    select: {
       status: true,
       programDayId: true,
       performedAt: true,
@@ -319,7 +329,7 @@ export async function completedProgramDayIdsOnDay(
       },
     },
   });
-  const namesByDay = await plannedExerciseNamesByDay(ids);
+  const targets = await plannedTargetsByDay(ids);
   const key = dayKey(day, timeZone);
   return [
     ...new Set(
@@ -328,7 +338,11 @@ export async function completedProgramDayIdsOnDay(
           (row) =>
             row.programDayId &&
             sessionCompletionDay(row, timeZone) === key &&
-            sessionCountsAsPlannedCompletion(row, namesByDay.get(row.programDayId) ?? []),
+            sessionCountsAsPlannedCompletion(
+              row,
+              targets.names.get(row.programDayId) ?? [],
+              targets.doses.get(row.programDayId) ?? null,
+            ),
         )
         .map((row) => row.programDayId)
         .filter((id): id is string => Boolean(id)),
@@ -336,18 +350,21 @@ export async function completedProgramDayIdsOnDay(
   ];
 }
 
-async function plannedExerciseNamesByDay(dayIds: string[]) {
+async function plannedTargetsByDay(dayIds: string[]) {
   const exercises = await prisma.programExercise.findMany({
     where: { programDayId: { in: dayIds } },
-    select: { programDayId: true, name: true },
+    select: { programDayId: true, name: true, sets: true },
   });
   const names = new Map<string, string[]>();
+  const doses = new Map<string, number>();
   for (const exercise of exercises) {
     const list = names.get(exercise.programDayId) ?? [];
     list.push(exercise.name);
     names.set(exercise.programDayId, list);
+    const count = Math.max(0, Math.round(exercise.sets ?? 0));
+    doses.set(exercise.programDayId, (doses.get(exercise.programDayId) ?? 0) + count);
   }
-  return names;
+  return { names, doses };
 }
 
 const DAY_PAD_MS = 36 * 60 * 60 * 1000;
@@ -395,14 +412,22 @@ export async function completedProgramDayIdsOnDays(
       },
     },
   });
-  const namesByDay = await plannedExerciseNamesByDay(
+  const targets = await plannedTargetsByDay(
     rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)),
   );
   const ids = new Set<string>();
   for (const row of rows) {
     if (!row.programDayId) continue;
     if (!keySet.has(sessionCompletionDay(row, timeZone))) continue;
-    if (!sessionCountsAsPlannedCompletion(row, namesByDay.get(row.programDayId) ?? [])) continue;
+    if (
+      !sessionCountsAsPlannedCompletion(
+        row,
+        targets.names.get(row.programDayId) ?? [],
+        targets.doses.get(row.programDayId) ?? null,
+      )
+    ) {
+      continue;
+    }
     ids.add(row.programDayId);
   }
   return [...ids];
@@ -446,7 +471,7 @@ export async function completedLocalDayKeys(
       },
     },
   });
-  const namesByDay = await plannedExerciseNamesByDay(
+  const targets = await plannedTargetsByDay(
     rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)),
   );
   return [
@@ -455,7 +480,8 @@ export async function completedLocalDayKeys(
         .filter((row) =>
           sessionCountsAsPlannedCompletion(
             row,
-            row.programDayId ? (namesByDay.get(row.programDayId) ?? []) : [],
+            row.programDayId ? (targets.names.get(row.programDayId) ?? []) : [],
+            row.programDayId ? (targets.doses.get(row.programDayId) ?? null) : null,
           ),
         )
         .map((row) => sessionCompletionDay(row, timeZone))
@@ -523,6 +549,7 @@ export async function startRoundWorkoutForUser(input: {
       title: name,
       performedAt: new Date(),
       status: "draft",
+      plannedSetCount: count,
       sets: { create: sets },
     },
     include: { sets: true },
@@ -983,7 +1010,7 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
   let count = 0;
   for (const row of drafts) {
     if (!ids.includes(row.id)) continue;
-    const planned = row.plannedSetCount ?? 0;
+    const planned = resolvedPlannedSetCount(row);
     const ticked = tickedSetCount(row.sets);
     const finished = planned > 0 && ticked >= planned;
     const elapsed =

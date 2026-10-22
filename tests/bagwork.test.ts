@@ -236,6 +236,8 @@ describe("saved bagwork", () => {
     });
     expect(session.title).toBe("All hooks");
     expect(session.status).toBe("complete");
+    expect(session.plannedSetCount).toBe(4);
+    expect(session.sets).toHaveLength(4);
     expect(session.sessionRpe).toBe(7);
     expect(session.sets).toHaveLength(4);
     expect(session.sets.every((set) => set.prescriptionKey === "bagwork" && set.durationSeconds === 180)).toBe(true);

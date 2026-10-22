@@ -8,6 +8,8 @@ import { getProfileForUser } from "@/lib/profile";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import {
   formatSetProgress,
+  prescribedSetTotal,
+  resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
   tickedExerciseKeys,
   tickedSetCount,
@@ -265,14 +267,15 @@ type LoggedPlanSession = {
     loadValue: number | null;
     durationSeconds: number | null;
   }[];
-  programDay: { dayNumber: number; program: { slug: string } } | null;
+  programDay: {
+    dayNumber: number;
+    program: { slug: string };
+    exercises?: { sets?: number | null }[];
+  } | null;
 };
 
 function prescribedSetCount(exercises: { sets?: number | null }[] | null | undefined) {
-  return (exercises ?? []).reduce(
-    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
-    0,
-  );
+  return prescribedSetTotal(exercises);
 }
 
 function namesOverlap(log: LoggedPlanSession, plannedNames: string[]) {
@@ -500,9 +503,10 @@ export async function getCalendarSchedule(
       if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
       const title = memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
-      const planned = log.plannedSetCount ?? 0;
+      const dose = prescribedSetCount(log.programDay?.exercises);
+      const planned = resolvedPlannedSetCount(log, dose);
       const setCountLabel = formatSetProgress(ticked, planned);
-      const done = sessionCountsAsPlannedCompletion(log, []);
+      const done = sessionCountsAsPlannedCompletion(log, [], dose);
       day.activities.push({
         kind: "workout",
         title,

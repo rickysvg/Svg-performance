@@ -290,6 +290,20 @@ describe("calendar schedule loader", () => {
     expect(
       await completedProgramDayIdsOnDay(user.id, [picked!.programDayId], picked!.performedAt, APP_TIMEZONE),
     ).toEqual([]);
+
+    await prisma.workoutSession.update({
+      where: { id: picked!.session.id },
+      data: { plannedSetCount: null },
+    });
+    const legacy = await getCalendarSchedule(user.id, tuesday);
+    const legacyRow = legacy.days
+      .flatMap((day) => day.activities)
+      .find((row) => row.kind === "workout" && row.programDayId === picked!.programDayId);
+    expect(legacyRow?.status).toBe("scheduled");
+    expect(legacyRow?.subtitle.startsWith("Partial")).toBe(true);
+    expect(
+      await completedProgramDayIdsOnDay(user.id, [picked!.programDayId], picked!.performedAt, APP_TIMEZONE),
+    ).toEqual([]);
   });
 
   it("lists the whole week, including a logged past day and a missed day", async () => {

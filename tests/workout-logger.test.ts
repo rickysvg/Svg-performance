@@ -207,6 +207,42 @@ describe("workout logger media and previous loads", () => {
     expect(stranger["Goblet squat"]?.[1]?.loadValue).not.toBe(40);
   });
 
+  it("keeps previous load from a partial session", async () => {
+    const user = await makeUser("partial-previous@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const named = session.sets.find((set) => !set.logMode || set.logMode === "load_reps") ?? session.sets[0];
+    expect(named?.exerciseName).toBeTruthy();
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: new Date(),
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: named!.exerciseName,
+          setNumber: named!.setNumber,
+          reps: 5,
+          loadValue: 55,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { status: "partial" },
+    });
+    const previous = await getPreviousLoadsForUser(user.id, [named!.exerciseName]);
+    expect(previous[named!.exerciseName]?.[named!.setNumber]?.loadValue).toBe(55);
+  });
+
   it("starts a new session with empty set values (null reps, load, duration)", async () => {
     const user = await makeUser("empty-sets@example.com");
     const program = await getDemoProgram();

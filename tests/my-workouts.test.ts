@@ -318,6 +318,8 @@ describe("my workouts", () => {
     });
     expect(started.programDayId).toBeNull();
     expect(started.dayPlanId).toBe(plans[0]!.id);
+    expect(started.plannedSetCount).toBe(started.sets.length);
+    expect(started.plannedSetCount).toBeGreaterThan(0);
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: started.id,
@@ -325,20 +327,24 @@ describe("my workouts", () => {
       performedAt: started.performedAt,
       notes: "",
       status: "complete",
-      sets: [
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: 6,
-          loadValue: 40,
-          loadUnit: "lb",
-          logMode: "load_reps",
-          durationSeconds: null,
-          completed: true,
-          prescriptionKey: "",
-          rir: "",
-        },
-      ],
+      sets: started.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "timed" || set.logMode === "timed_round" ? null : 6,
+        loadValue:
+          set.logMode === "reps_only" || set.logMode === "timed" || set.logMode === "timed_round"
+            ? null
+            : 40,
+        loadUnit: "lb" as const,
+        logMode: isLogMode(set.logMode) ? set.logMode : "load_reps",
+        durationSeconds:
+          set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed"
+            ? 60
+            : null,
+        completed: true,
+        prescriptionKey: set.prescriptionKey,
+        rir: "",
+      })),
     });
     const logged = await getCalendarSchedule(user.id, now);
     const done = logged.days
@@ -362,5 +368,6 @@ describe("my workouts", () => {
     expect(fresh.dayPlanId).toBeNull();
     expect(fresh.savedWorkoutId).toBe(saved.id);
     expect(fresh.sets.length).toBeGreaterThan(0);
+    expect(fresh.plannedSetCount).toBe(fresh.sets.length);
   });
 });

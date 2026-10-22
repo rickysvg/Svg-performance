@@ -111,7 +111,19 @@ describe("completion counts ticked sets on the planned session", () => {
         { status: "complete", sets: [bikeSet, empty, empty, empty] },
         bike,
       ),
+    ).toBe(false);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        {
+          status: "complete",
+          sets: [bikeSet, { ...bikeSet }, { ...bikeSet }, { ...bikeSet }],
+        },
+        bike,
+      ),
     ).toBe(true);
+    expect(
+      sessionCountsAsPlannedCompletion({ status: "complete", sets: [bikeSet] }, bike, 4),
+    ).toBe(false);
     const oneOfFour = [bikeSet, { ...bikeSet, completed: false }, empty, empty];
     expect(
       sessionCountsAsPlannedCompletion(

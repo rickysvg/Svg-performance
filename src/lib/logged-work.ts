@@ -48,6 +48,29 @@ export function tickedExerciseKeys(sets: TickedSet[]) {
   return sets.filter(setIsTicked).map((set) => gymExerciseKey(set.exerciseName ?? ""));
 }
 
+/** Catalog or saved-template dose. Missing rows count as zero. */
+export function prescribedSetTotal(exercises: { sets?: number | null }[] | null | undefined) {
+  return (exercises ?? []).reduce(
+    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+    0,
+  );
+}
+
+/**
+ * Stored count wins. Otherwise the prescribed dose, then the set rows still
+ * on the session. A null count must not treat one ticked row as the whole day.
+ */
+export function resolvedPlannedSetCount(
+  session: { plannedSetCount?: number | null; sets: readonly unknown[] },
+  prescribedCount?: number | null,
+) {
+  if (typeof session.plannedSetCount === "number" && session.plannedSetCount > 0) {
+    return session.plannedSetCount;
+  }
+  if (typeof prescribedCount === "number" && prescribedCount > 0) return prescribedCount;
+  return session.sets.length;
+}
+
 /**
  * A planned session is done only when it was saved complete, every planned
  * exercise has a ticked set, and the ticked count covers the sets prescribed
@@ -57,14 +80,13 @@ export function tickedExerciseKeys(sets: TickedSet[]) {
 export function sessionCountsAsPlannedCompletion(
   session: { status: string; sets: TickedSet[]; plannedSetCount?: number | null },
   plannedExerciseNames: string[],
+  prescribedCount?: number | null,
 ) {
   if (session.status !== "complete") return false;
   const tickedCount = tickedSetCount(session.sets);
   if (tickedCount === 0) return false;
-  const plannedCount = session.plannedSetCount;
-  if (typeof plannedCount === "number" && plannedCount > 0 && tickedCount < plannedCount) {
-    return false;
-  }
+  const plannedCount = resolvedPlannedSetCount(session, prescribedCount);
+  if (plannedCount > 0 && tickedCount < plannedCount) return false;
   const ticked = tickedExerciseKeys(session.sets);
   if (plannedExerciseNames.length === 0) return true;
   const planned = plannedExerciseNames.map((name) => gymExerciseKey(name));
@@ -72,7 +94,7 @@ export function sessionCountsAsPlannedCompletion(
   // Scaling can drop a catalog exercise the started session never contained.
   // A full prescription still finishes the day. A different exercise on that
   // day does not: the session has to share a planned name.
-  const filled = typeof plannedCount === "number" && plannedCount > 0 && tickedCount >= plannedCount;
+  const filled = plannedCount > 0 && tickedCount >= plannedCount;
   if (!filled) return false;
   const present = new Set(
     session.sets.map((set) => gymExerciseKey(set.exerciseName ?? "")),
@@ -86,8 +108,10 @@ export function completionListLabel(session: {
   status: string;
   sets: TickedSet[];
   plannedSetCount?: number | null;
+  programDay?: { exercises?: { sets?: number | null }[] } | null;
 }) {
-  if (sessionCountsAsPlannedCompletion(session, [])) return "complete";
+  const dose = prescribedSetTotal(session.programDay?.exercises);
+  if (sessionCountsAsPlannedCompletion(session, [], dose)) return "complete";
   if (session.status === "complete") return "partial";
   return session.status;
 }
