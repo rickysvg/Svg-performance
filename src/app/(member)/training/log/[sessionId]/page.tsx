@@ -207,10 +207,10 @@ export default async function WorkoutLogPage({
           >
             Share workout card
           </Link>
-          <DeleteWorkoutButton workoutId={session.id} />
+          <DeleteWorkoutButton workoutId={session.id} next="/training" />
         </div>
       ) : (
-        <DeleteWorkoutButton workoutId={session.id} />
+        <DeleteWorkoutButton workoutId={session.id} next="/training" />
       )}
       {promptRating ? (
         <DifficultyRatingForm

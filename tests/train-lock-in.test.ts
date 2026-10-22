@@ -19,6 +19,7 @@ import {
   listDayPlansForUser,
   renameSavedWorkout,
   revertDayToProgram,
+  sessionBlocksDayReplace,
   startDayPlanForUser,
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
@@ -350,6 +351,104 @@ describe("train page lock-in", () => {
     expect(await prisma.workoutSession.findUnique({ where: { id: worked.id } })).toBeNull();
   });
 
+  it("asks before replace when today has a ticked draft from another plan", async () => {
+    await resetDatabase();
+    const user = await makeUser("replace-lift-draft@example.com");
+    const saved = await createSavedWorkout({
+      userId: user.id,
+      name: "Daru Alactic Power",
+      exercises: [pushUp],
+    });
+    const day = "2026-10-22";
+    const draft = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Lift 3 — Light full body",
+        status: "draft",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        plannedSetCount: 34,
+        sets: {
+          create: [
+            { exerciseName: "Ankle circles", setNumber: 1, reps: 8, completed: true },
+            { exerciseName: "Goblet squat", setNumber: 1, completed: false },
+          ],
+        },
+      },
+    });
+    const prefill = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Untouched",
+        status: "draft",
+        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        sets: {
+          create: [
+            {
+              exerciseName: "Push-up",
+              setNumber: 1,
+              reps: 10,
+              completed: false,
+              logMode: "reps_only",
+              prescriptionKey: addedPrescriptionKey({
+                exerciseName: "Push-up",
+                reps: "10",
+                restSeconds: 60,
+              }),
+            },
+          ],
+        },
+      },
+    });
+    expect(
+      sessionBlocksDayReplace({
+        status: "draft",
+        sets: [{ exerciseName: "Ankle circles", reps: 8, completed: true }],
+      }),
+    ).toBe(true);
+    expect(
+      sessionBlocksDayReplace({
+        status: "draft",
+        sets: [{ completed: false, reps: null, notes: "" }],
+      }),
+    ).toBe(false);
+    await expect(
+      applySavedWorkoutToDay({
+        userId: user.id,
+        savedWorkoutId: saved.id,
+        dayKey: day,
+        mode: "replace",
+      }),
+    ).rejects.toThrow(REPLACE_LOGGED_CONFIRM);
+    expect(await prisma.dayWorkoutPlan.count({ where: { userId: user.id, dayKey: day } })).toBe(0);
+    expect((await prisma.workoutSession.findUnique({ where: { id: draft.id } }))?.title).toBe(
+      "Lift 3 — Light full body",
+    );
+
+    const applied = await applySavedWorkoutToDay({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      dayKey: day,
+      mode: "replace",
+      confirm: true,
+    });
+    expect(applied.name).toBe("Daru Alactic Power");
+    expect(await prisma.workoutSession.findUnique({ where: { id: draft.id } })).toBeTruthy();
+    expect(await prisma.workoutSession.findUnique({ where: { id: prefill.id } })).toBeTruthy();
+
+    const otherDay = await createSavedWorkout({
+      userId: user.id,
+      name: "Easy",
+      exercises: [pushUp],
+    });
+    const quiet = await applySavedWorkoutToDay({
+      userId: user.id,
+      savedWorkoutId: otherDay.id,
+      dayKey: "2026-10-21",
+      mode: "replace",
+    });
+    expect(quiet.dayKey).toBe("2026-10-21");
+  });
+
   it("renames the saved workout, the day plan, and the session, and rejects the same name", async () => {
     await resetDatabase();
     const user = await makeUser("rename-lock@example.com");
@@ -384,6 +483,10 @@ describe("train page lock-in", () => {
     expect(card).toContain("RENAME_TOAST_MS");
     expect(card).toContain("APPLY_TOAST_MS");
     expect(card).toContain("data-apply-replace-confirm");
+    expect(card).toContain("data-replace-logged-confirm");
+    const applySheet = card.slice(card.indexOf("data-apply-sheet"), card.indexOf("data-delete-confirm"));
+    expect(applySheet).toContain('type="button"');
+    expect(applySheet).toContain("Cancel");
     expect(card).toContain("data-apply-toast");
     expect(submit).not.toContain("setApplyOpen(false)");
     expect(submit).toContain("applyStarted.current = true");

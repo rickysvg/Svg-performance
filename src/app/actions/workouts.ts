@@ -464,5 +464,7 @@ export async function deleteWorkoutAction(formData: FormData) {
   revalidatePath("/progress");
   revalidatePath("/progress/records");
   revalidatePath("/progress/streaks");
-  redirect("/training/history");
+  const next = String(formData.get("next") ?? "");
+  const safe = next.startsWith("/") && !next.startsWith("//") ? next : "/training/history";
+  redirect(safe);
 }

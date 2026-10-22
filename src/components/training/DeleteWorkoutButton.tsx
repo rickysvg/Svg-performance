@@ -6,9 +6,12 @@ import { deleteWorkoutAction } from "@/app/actions/workouts";
 export function DeleteWorkoutButton({
   workoutId,
   compact = false,
+  next,
 }: {
   workoutId: string;
   compact?: boolean;
+  /** Where to go after delete. History stays on history when this is omitted. */
+  next?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -43,6 +46,7 @@ export function DeleteWorkoutButton({
             <div className="mt-5 flex flex-col gap-2">
               <form data-testid="training-history-form" action={deleteWorkoutAction}>
                 <input type="hidden" name="workoutId" value={workoutId} />
+                {next ? <input type="hidden" name="next" value={next} /> : null}
                 <button
                   type="submit"
                   data-delete-confirm-submit

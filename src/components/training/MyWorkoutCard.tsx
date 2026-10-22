@@ -211,7 +211,7 @@ export function MyWorkoutCard({
                   className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
                 />
               </label>
-              {applyState.error ? (
+              {applyState.error && applyState.error !== REPLACE_LOGGED_CONFIRM ? (
                 <p className="text-sm text-danger" data-apply-error>
                   {applyState.error}
                 </p>
@@ -227,16 +227,19 @@ export function MyWorkoutCard({
                 Replace that day&apos;s workout
               </button>
               {applyState.error === REPLACE_LOGGED_CONFIRM ? (
-                <button
-                  type="submit"
-                  name="confirm"
-                  value="replace"
-                  data-apply-replace-confirm
-                  disabled={applyPending}
-                  className="touch-target w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
-                >
-                  Replace anyway
-                </button>
+                <div data-replace-logged-confirm role="group" aria-label="Confirm replace">
+                  <p className="text-sm">{REPLACE_LOGGED_CONFIRM}</p>
+                  <button
+                    type="submit"
+                    name="confirm"
+                    value="replace"
+                    data-apply-replace-confirm
+                    disabled={applyPending}
+                    className="touch-target mt-2 w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
+                  >
+                    Replace anyway
+                  </button>
+                </div>
               ) : null}
               <button
                 type="submit"
