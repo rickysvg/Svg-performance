@@ -180,9 +180,15 @@ describe("a workout is complete only after a logged save", () => {
       })),
     });
 
-    expect(await discardEmptyWorkoutDraft(user.id, empty.id)).toEqual({ discarded: true });
+    expect(await discardEmptyWorkoutDraft(user.id, empty.id)).toEqual({ discarded: false });
+    expect(await prisma.workoutSession.findUnique({ where: { id: empty.id } })).not.toBeNull();
+    expect(await discardEmptyWorkoutDraft(user.id, empty.id, { explicit: true })).toEqual({
+      discarded: true,
+    });
     expect(await prisma.workoutSession.findUnique({ where: { id: empty.id } })).toBeNull();
-    expect(await discardEmptyWorkoutDraft(user.id, typed.id)).toEqual({ discarded: false });
+    expect(await discardEmptyWorkoutDraft(user.id, typed.id, { explicit: true })).toEqual({
+      discarded: false,
+    });
     const kept = await prisma.workoutSession.findUniqueOrThrow({
       where: { id: typed.id },
       include: { sets: true },
@@ -560,9 +566,9 @@ describe("a workout is complete only after a logged save", () => {
     expect(keptRow.sets.map((set) => set.reps)).toEqual([5]);
     expect(keptRow.sets.map((set) => set.loadValue)).toEqual([25]);
     const extraRow = await prisma.workoutSession.findUnique({ where: { id: extra.id } });
-    expect(extraRow).toBeNull();
-    expect(await prisma.exerciseSwap.count({ where: { workoutSessionId: extra.id } })).toBe(0);
-    expect(await prisma.exerciseRemoval.count({ where: { workoutSessionId: extra.id } })).toBe(0);
+    expect(extraRow?.status).toBe("draft");
+    expect(await prisma.exerciseSwap.count({ where: { workoutSessionId: extra.id } })).toBe(1);
+    expect(await prisma.exerciseRemoval.count({ where: { workoutSessionId: extra.id } })).toBe(1);
     expect(await prisma.exerciseSwap.findUnique({ where: { id: keptSwap.id } })).not.toBeNull();
     expect(await prisma.workoutSession.count({ where: { userId: user.id, status: "complete" } })).toBe(1);
   });
