@@ -431,8 +431,10 @@ describe("VIP Coaching rules", () => {
     expect(chat?.cells.vip.mark).toBe("yes");
     expect(chat?.cells.vip.adds).toBeUndefined();
     const formChecks = PRICING_LADDER_ROWS.find((row) => row.id === "form_checks");
-    expect(formChecks?.cells.pro.note).toBe("AI/self");
-    expect(formChecks?.cells.vip.note).toBe("Timestamped notes from Ricky");
+    expect(formChecks?.cells.pro.mark).toBe("no");
+    expect(formChecks?.cells.pro.note).toBeUndefined();
+    expect(formChecks?.cells.vip.note).toBe("Coach review, 48-hour reply");
+    expect(formChecks?.cells.vip.adds).toBe(true);
     expect(formChecks?.cells.academy.mark).toBe("no");
     expect(PRICING_LADDER_ROWS.find((row) => row.id === "checkins")?.cells.pro.adds).toBe(true);
     expect(PRICING_LADDER_ROWS.find((row) => row.id === "program")?.cells.vip.adds).toBe(true);

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { isFormCheckReviewer } from "@/lib/form-check-access";
+import { canUseFormCheck, isFormCheckReviewer } from "@/lib/form-check-access";
+import { FORM_CHECK_LOCKED_TITLE } from "@/lib/form-check-shared";
 import {
   createFormCheckForUser,
   markFormCheckFeedbackSeen,
@@ -22,12 +23,20 @@ function refreshFormCheck(checkId?: string) {
   if (checkId) revalidatePath(`/admin/form-checks`);
 }
 
+async function assertFormCheckMember() {
+  const user = await requireUserOrThrow();
+  if (!(await canUseFormCheck(user))) {
+    throw new ForbiddenError(FORM_CHECK_LOCKED_TITLE);
+  }
+  return user;
+}
+
 export async function uploadFormCheckAction(
   _prev: FormCheckActionState,
   formData: FormData,
 ): Promise<FormCheckActionState> {
   try {
-    const user = await requireUserOrThrow();
+    const user = await assertFormCheckMember();
     const file = formData.get("clip");
     if (!(file instanceof File) || file.size === 0) {
       return { error: "Choose an mp4, mov, or webm clip." };
@@ -48,13 +57,14 @@ export async function uploadFormCheckAction(
     });
     refreshFormCheck();
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     return { error: publicErrorMessage(error) };
   }
   redirect("/form-check");
 }
 
 export async function markFormCheckSeenAction() {
-  const user = await requireUserOrThrow();
+  const user = await assertFormCheckMember();
   await markFormCheckFeedbackSeen(user.id);
   revalidatePath("/home");
   revalidatePath("/form-check");
@@ -89,6 +99,7 @@ export async function saveFormCheckFeedbackAction(
     });
     refreshFormCheck(checkId);
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     return { error: publicErrorMessage(error) };
   }
   redirect("/admin/form-checks");

@@ -63,8 +63,8 @@ export const PRICING_LADDER_ROWS: readonly LadderRow[] = [
     label: "Form checks",
     cells: {
       academy: no,
-      pro: { mark: "yes", note: "AI/self", adds: true },
-      vip: { mark: "yes", note: "Timestamped notes from Ricky", adds: true },
+      pro: no,
+      vip: { mark: "yes", note: "Coach review, 48-hour reply", adds: true },
     },
   },
   {

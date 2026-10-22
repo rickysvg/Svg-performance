@@ -20,6 +20,7 @@ import { getReadinessForDay } from "@/lib/mobility-store";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { ThirdWorkoutCard } from "@/components/upgrade/ThirdWorkoutCard";
 import { getEffectivePlanId } from "@/lib/entitlements";
+import { formCheckLockedFor } from "@/lib/form-check-access";
 import { getCoachChatAccess } from "@/lib/coach-access";
 import { getTrialState, shouldShowThirdWorkoutCard } from "@/lib/trial";
 import { getRecentBodyFatForUser, getRecentWeightsForUser } from "@/lib/body-metrics";
@@ -151,6 +152,7 @@ export default async function HomePage({
         ]}
         canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
+        formCheckLocked={formCheckLockedFor({ role: user.role, planId })}
       />
 
       {reminderResult.due.length > 0 ? (

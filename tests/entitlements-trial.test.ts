@@ -61,7 +61,7 @@ describe("member free tier and Performance trial", () => {
     expect(await canUseFeature(member.id, "ai")).toBe(false);
     expect(await canUseFeature(member.id, "ai_voice")).toBe(false);
     expect(await canUseFeature(member.id, "sparring_trends")).toBe(false);
-    expect(await canUseFeature(member.id, "form_check")).toBe(true);
+    expect(await canUseFeature(member.id, "form_check")).toBe(false);
     expect(await canUseFeature(guest.id, "training")).toBe(false);
     expect(await canUseFeature(member.id, "coaching")).toBe(false);
     expect(await canUseFeature(guest.id, "nutrition")).toBe(false);

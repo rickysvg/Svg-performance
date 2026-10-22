@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/session";
-import { canUseFeature } from "@/lib/entitlements";
-import { getTrialState } from "@/lib/trial";
+import { canUseFormCheck } from "@/lib/form-check-access";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
   FORM_CHECK_MONTHLY_LIMIT,
@@ -11,31 +10,23 @@ import {
   unseenFormCheckCount,
 } from "@/lib/form-check";
 import { formCheckStorageNotice } from "@/lib/form-check-storage";
-import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
-import { ProPill } from "@/components/pro/ProPill";
 import { PageBackLink } from "@/components/fight-camp/PageBackLink";
 import { FormCheckUploadForm } from "@/components/form-check/FormCheckUploadForm";
 import { FormCheckSeenMarker } from "@/components/form-check/FormCheckSeenMarker";
+import { FormCheckLockedView } from "@/components/form-check/FormCheckLockedSheet";
 import { VipUpsellSlot } from "@/components/vip/VipUpsellSlot";
 
 export default async function FormCheckPage() {
   const user = await requireUser();
-  const allowed = await canUseFeature(user.id, "form_check");
+  const allowed = await canUseFormCheck(user);
   if (!allowed) {
-    const trial = await getTrialState(user.id);
     return (
-      <main className="space-y-6">
+      <main className="space-y-6" data-testid="form-check-locked">
         <div className="flex items-center gap-3">
           <PageBackLink />
           <h1 className="text-2xl">Form check</h1>
-          <ProPill />
         </div>
-        <UpgradePreview
-          kind="form_check"
-          canStartTrial={trial.canStartTrial}
-          trialDays={trial.trialLengthDays}
-          next="/form-check"
-        />
+        <FormCheckLockedView />
       </main>
     );
   }
@@ -51,12 +42,11 @@ export default async function FormCheckPage() {
   const checks = rows.map(presentFormCheckForAthlete);
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6" data-testid="form-check-open">
       <FormCheckSeenMarker unseen={unseen} />
       <div className="flex items-center gap-3">
         <PageBackLink />
         <h1 className="text-2xl">Form check</h1>
-        <ProPill />
       </div>
       <p className="text-sm text-muted">
         {usage.remaining} of {FORM_CHECK_MONTHLY_LIMIT} checks left this month. {FORM_CHECK_TURNAROUND}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FormCheckLockedTrigger } from "@/components/form-check/FormCheckLockedSheet";
 import { ProPill } from "@/components/pro/ProPill";
 import type { CampSnapshot } from "@/lib/fight-camp";
 
@@ -8,46 +9,61 @@ export function ProTools({
   formCheckLimit,
   unseenFormChecks,
   locked,
+  formCheckLocked = false,
 }: {
   camp: CampSnapshot | null;
   formChecksLeft: number;
   formCheckLimit: number;
   unseenFormChecks: number;
   locked: boolean;
+  formCheckLocked?: boolean;
 }) {
   return (
     <section className="space-y-3">
       <h2 className="font-display text-xs uppercase tracking-[0.08em] text-muted">Performance</h2>
       {camp && !locked ? <CampFocusCard camp={camp} /> : <FightCampTeaser locked={locked} />}
-      <Link
-        href="/form-check"
-        className="flex items-start justify-between gap-3 rounded-[1.5rem] border border-line bg-card px-4 py-4"
-      >
-        <span>
-          <span className="flex items-center gap-2">
+      {formCheckLocked ? (
+        <FormCheckLockedTrigger
+          testId="form-check-locked-trigger-tools"
+          lock="inline"
+          className="flex w-full items-center justify-between gap-3 rounded-[1.5rem] border border-line bg-card px-4 py-4 text-left font-inherit"
+        >
+          <span>
             <span className="font-display text-xl uppercase tracking-wide">Form check</span>
-            <ProPill />
-            {unseenFormChecks > 0 ? (
-              <span
-                className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold text-black"
-                aria-label={`${unseenFormChecks} new form check ${unseenFormChecks === 1 ? "note" : "notes"}`}
-              >
-                {unseenFormChecks}
-              </span>
-            ) : null}
+            <span className="mt-1 block text-sm text-muted">
+              Coach form checks with a 48-hour response. VIP Coaching members only.
+            </span>
           </span>
-          <span className="mt-1 block text-sm text-muted">
-            {locked
-              ? "Two clips a month. A real coach replies, signed SVG Coach."
-              : unseenFormChecks > 0
+        </FormCheckLockedTrigger>
+      ) : (
+        <Link
+          href="/form-check"
+          data-testid="form-check-open-tools"
+          className="flex items-start justify-between gap-3 rounded-[1.5rem] border border-line bg-card px-4 py-4"
+        >
+          <span>
+            <span className="flex items-center gap-2">
+              <span className="font-display text-xl uppercase tracking-wide">Form check</span>
+              {unseenFormChecks > 0 ? (
+                <span
+                  className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold text-black"
+                  aria-label={`${unseenFormChecks} new form check ${unseenFormChecks === 1 ? "note" : "notes"}`}
+                >
+                  {unseenFormChecks}
+                </span>
+              ) : null}
+            </span>
+            <span className="mt-1 block text-sm text-muted">
+              {unseenFormChecks > 0
                 ? "New feedback is in. Open it to read the note."
                 : `${formChecksLeft} of ${formCheckLimit} checks left this month.`}
+            </span>
           </span>
-        </span>
-        <span aria-hidden className="mt-1 text-lg text-black">
-          ›
-        </span>
-      </Link>
+          <span aria-hidden className="mt-1 text-lg text-black">
+            ›
+          </span>
+        </Link>
+      )}
     </section>
   );
 }

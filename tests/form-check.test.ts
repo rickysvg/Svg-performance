@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 import { canUseFeature } from "@/lib/entitlements";
-import { startTrialForUser } from "@/lib/trial";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
 import {
   createFormCheckForUser,
@@ -31,6 +30,18 @@ function tinyMp4() {
   bytes[10] = 0x6f;
   bytes[11] = 0x6d;
   return bytes;
+}
+
+async function grantVip(userId: string) {
+  await prisma.subscription.create({
+    data: {
+      userId,
+      plan: "coaching",
+      status: "active",
+      currentPeriodEnd: new Date("2027-12-01T00:00:00.000Z"),
+      source: "admin",
+    },
+  });
 }
 
 async function submit(
@@ -72,50 +83,28 @@ describe("form check gating, limit, and review", () => {
     await prisma.$disconnect();
   });
 
-  it("locks free members and opens form check on a trial or Performance plan", async () => {
+  it("stores a VIP Coaching clip and rejects everyone else with 403", async () => {
     expect(formCheckStorageMode()).toBe("local");
     const free = await makeUser("form-free@example.com");
     expect(await canUseFeature(free.id, "form_check")).toBe(false);
     await expect(submit(free.id, new Date("2026-09-10T12:00:00.000Z"), "UTC")).rejects.toMatchObject({
-      code: "PLAN",
-      message: expect.stringMatching(/Paid plans coming soon/),
+      status: 403,
+      code: "FORBIDDEN",
+      message: expect.stringMatching(/VIP Coaching/),
     });
     expect(await prisma.formCheck.count()).toBe(0);
 
-    const trial = await makeUser("form-trial@example.com");
-    await startTrialForUser(trial.id);
-    const created = await submit(trial.id, new Date("2026-09-10T12:00:00.000Z"), "UTC");
+    const vip = await makeUser("form-vip@example.com");
+    await grantVip(vip.id);
+    expect(await canUseFeature(vip.id, "form_check")).toBe(true);
+    const created = await submit(vip.id, new Date("2026-09-10T12:00:00.000Z"), "UTC");
     expect(created.status).toBe("submitted");
     expect(created.movement).toBe("Jab–cross");
-
-    const ended = await makeUser("form-ended@example.com");
-    await prisma.profile.update({
-      where: { userId: ended.id },
-      data: { trialEndsAt: new Date("2020-01-01T00:00:00.000Z") },
-    });
-    await expect(submit(ended.id, new Date("2026-09-10T12:00:00.000Z"), "UTC")).rejects.toMatchObject({
-      code: "PLAN",
-    });
-
-    const paid = await makeUser("form-pro@example.com");
-    await prisma.subscription.create({
-      data: {
-        userId: paid.id,
-        plan: "performance",
-        status: "active",
-        currentPeriodEnd: new Date("2026-12-01T00:00:00.000Z"),
-        source: "admin",
-      },
-    });
-    expect(await canUseFeature(paid.id, "form_check")).toBe(true);
-    await expect(submit(paid.id, new Date("2026-09-11T12:00:00.000Z"), "UTC")).resolves.toMatchObject({
-      status: "submitted",
-    });
   });
 
   it("allows two checks in the athlete's month and blocks the third", async () => {
     const user = await makeUser("form-limit@example.com");
-    await startTrialForUser(user.id);
+    await grantVip(user.id);
     const zone = "Pacific/Honolulu";
     await submit(user.id, new Date("2026-09-15T18:00:00.000Z"), zone);
     await submit(user.id, new Date("2026-09-20T18:00:00.000Z"), zone);
@@ -138,8 +127,8 @@ describe("form check gating, limit, and review", () => {
     const instant = new Date("2026-10-01T01:00:00.000Z");
     const honolulu = await makeUser("form-hnl@example.com");
     const tokyo = await makeUser("form-tyo@example.com");
-    await startTrialForUser(honolulu.id);
-    await startTrialForUser(tokyo.id);
+    await grantVip(honolulu.id);
+    await grantVip(tokyo.id);
     await submit(honolulu.id, new Date("2026-09-15T12:00:00.000Z"), "Pacific/Honolulu");
     await submit(honolulu.id, new Date("2026-09-20T12:00:00.000Z"), "Pacific/Honolulu");
 
@@ -164,7 +153,7 @@ describe("form check gating, limit, and review", () => {
     const coach = await makeUser("form-coach@example.com", false, "coach");
     const admin = await makeUser("form-admin@example.com", false, "admin");
     const ricky = await makeUser("ricky@svg.example");
-    await startTrialForUser(athlete.id);
+    await grantVip(athlete.id);
     process.env.ADMIN_EMAILS = "Ricky@SVG.example, other@nope.com";
     expect(isFormCheckReviewer(ricky)).toBe(true);
     expect(isFormCheckReviewer(coach)).toBe(false);
@@ -217,7 +206,7 @@ describe("form check gating, limit, and review", () => {
 
   it("rejects a clip longer than 60 seconds", async () => {
     const user = await makeUser("form-long@example.com");
-    await startTrialForUser(user.id);
+    await grantVip(user.id);
     await expect(
       createFormCheckForUser({
         userId: user.id,
