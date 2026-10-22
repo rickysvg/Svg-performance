@@ -467,6 +467,124 @@ describe("persisted session removal", () => {
     });
     expect(saved.sets).toHaveLength(0);
   });
+
+  it("subtracts the session's own rows when the profile level no longer matches the start", async () => {
+    const user = await makeUser("remove-level-mismatch@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { experienceLevel: "intermediate" },
+    });
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 1)!;
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      scale: { experienceLevel: "intermediate", weightAccess: "gym" },
+    });
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { experienceLevel: "beginner" },
+    });
+    const exerciseName = "One-arm row";
+    const originals = started.sets.filter((set) => set.exerciseName === exerciseName);
+    expect(originals.length).toBeGreaterThan(0);
+    const beginner = scaleProgramDay(day, {
+      band: "beginner",
+      programSlug: DEMO_PROGRAM_SLUG,
+      weightAccess: "gym",
+    });
+    const beginnerSets = beginner.exercises.find((exercise) => exercise.name === exerciseName)?.sets ?? 0;
+    const maxNumber = Math.max(...originals.map((set) => set.setNumber));
+    const template = originals[0]!;
+    const extras = [1, 2].map((offset) => ({
+      exerciseName,
+      setNumber: maxNumber + offset,
+      reps: template.reps,
+      loadValue: template.loadValue,
+      loadUnit: "lb" as const,
+      logMode: isLogMode(template.logMode) ? template.logMode : undefined,
+      durationSeconds: template.durationSeconds,
+      completed: template.completed,
+      notes: template.notes,
+      prescriptionKey: template.prescriptionKey,
+      rir: template.rir,
+    }));
+    const withExtras = [...ticked(started.sets, "none"), ...extras];
+    expect(withExtras.length - (started.sets.length - originals.length)).toBeGreaterThan(beginnerSets);
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: started.id,
+      title: started.title,
+      performedAt: started.performedAt,
+      notes: started.notes,
+      status: "draft",
+      sets: withExtras,
+    });
+    const removedRows = originals.length + extras.length;
+
+    await removeSessionExercise({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      programDayId: day.id,
+      originalName: exerciseName,
+      exerciseName,
+      workoutSessionId: started.id,
+      blockKey,
+    });
+    const dropped = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: started.id },
+      include: { sets: true },
+    });
+    expect(dropped.sets.some((set) => set.exerciseName === exerciseName)).toBe(false);
+    expect(dropped.plannedSetCount).toBe((started.plannedSetCount ?? 0) - removedRows);
+  });
+
+  it("restores the clamped delta on undo", async () => {
+    const user = await makeUser("remove-clamp-undo@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 1)!;
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      scale: { experienceLevel: "intermediate", weightAccess: "gym" },
+    });
+    const exerciseName = "One-arm row";
+    const removedRows = started.sets.filter((set) => set.exerciseName === exerciseName).length;
+    expect(removedRows).toBeGreaterThan(1);
+    const clampedFrom = 1;
+    await prisma.workoutSession.update({
+      where: { id: started.id },
+      data: { plannedSetCount: clampedFrom },
+    });
+
+    const removed = await removeSessionExercise({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      programDayId: day.id,
+      originalName: exerciseName,
+      exerciseName,
+      workoutSessionId: started.id,
+      blockKey,
+    });
+    const dropped = await prisma.workoutSession.findUniqueOrThrow({ where: { id: started.id } });
+    expect(dropped.plannedSetCount).toBe(0);
+    const stored = await prisma.exerciseRemoval.findFirstOrThrow({ where: { id: removed.id } });
+    expect(JSON.parse(stored.snapshotJson).plannedSets).toBe(clampedFrom);
+
+    await undoExerciseRemoval({ userId: user.id, removalId: removed.id });
+    const undone = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: started.id },
+      include: { sets: true },
+    });
+    expect(undone.plannedSetCount).toBe(clampedFrom);
+    expect(undone.sets.filter((set) => set.exerciseName === exerciseName)).toHaveLength(removedRows);
+  });
 });
 
 function ticked(

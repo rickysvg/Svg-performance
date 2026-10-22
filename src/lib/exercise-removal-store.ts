@@ -287,12 +287,12 @@ export async function removeSessionExercise(input: {
   });
   const stillShown = after?.shown.some((row) => row.name === exerciseName) ?? false;
   const nextSets = stillShown ? baseSets : withoutExerciseName(baseSets, exerciseName);
-  const slot = slotIndex >= 0 ? before?.shown[slotIndex] : undefined;
-  const prescribed =
-    slot && "sets" in slot && typeof slot.sets === "number" && Number.isFinite(slot.sets)
-      ? Math.max(0, Math.round(slot.sets))
-      : 0;
-  const plannedRemoved = session && !stillShown && slotIndex >= 0 ? prescribed : 0;
+  // The target was frozen from this session's rows at Start. A later profile
+  // or week scale must not decide how many of those sets come off.
+  const removedRows = Math.max(0, baseSets.length - nextSets.length);
+  const storedCount =
+    session && typeof session.plannedSetCount === "number" ? session.plannedSetCount : null;
+  const applied = storedCount == null ? 0 : Math.min(removedRows, Math.max(0, storedCount));
   const remaining = after
     ? visibleExerciseCount(after.shown, nextSets)
     : new Set(nextSets.map((set) => set.exerciseName)).size;
@@ -302,7 +302,7 @@ export async function removeSessionExercise(input: {
 
   const snapshot: RemovalSnapshot = stillShown
     ? { index: 0, sets: [], plannedSets: 0 }
-    : { ...snapshotRemovedSets(baseSets, exerciseName), plannedSets: plannedRemoved };
+    : { ...snapshotRemovedSets(baseSets, exerciseName), plannedSets: applied };
   // The row lands before the set write so a swap or draft still in flight
   // sees the removal and cannot put the exercise back.
   const row = await prisma.exerciseRemoval.create({
@@ -328,15 +328,10 @@ export async function removeSessionExercise(input: {
     await prisma.exerciseRemoval.delete({ where: { id: row.id } }).catch(() => undefined);
     throw error;
   }
-  if (
-    session &&
-    plannedRemoved > 0 &&
-    typeof session.plannedSetCount === "number" &&
-    session.plannedSetCount > 0
-  ) {
+  if (session && storedCount != null && applied > 0) {
     await prisma.workoutSession.update({
       where: { id: session.id },
-      data: { plannedSetCount: Math.max(0, session.plannedSetCount - plannedRemoved) },
+      data: { plannedSetCount: storedCount - applied },
     });
   }
   return { id: row.id, sets };
