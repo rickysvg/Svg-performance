@@ -1547,7 +1547,7 @@
     "kind": "form-submit",
     "file": "src/components/bagwork/CustomBagForm.tsx",
     "line": 31,
-    "label": "{id ? <input type=\"hidden\" name=\"id\" value={id}",
+    "label": "data-testid=\"bagwork-new-custom-bag-form\"",
     "expect": "submit -> server action action",
     "unsafe": false,
     "id": "BAGWOR-SAVED-ID-EDIT-002"
@@ -1556,7 +1556,7 @@
     "kind": "input",
     "file": "src/components/bagwork/CustomBagForm.tsx",
     "line": 36,
-    "label": "",
+    "label": "data-testid=\"bagwork-new-name\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "BAGWOR-SAVED-ID-EDIT-003"
@@ -1565,7 +1565,7 @@
     "kind": "input",
     "file": "src/components/bagwork/CustomBagForm.tsx",
     "line": 48,
-    "label": "",
+    "label": "data-testid=\"bagwork-new-description\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "BAGWOR-SAVED-ID-EDIT-004"
@@ -1574,7 +1574,7 @@
     "kind": "button",
     "file": "src/components/bagwork/CustomBagForm.tsx",
     "line": 59,
-    "label": "{pending ? \"Saving\" : \"Save workout\"}",
+    "label": "data-testid=\"bagwork-new-save-workout\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "BAGWOR-SAVED-ID-EDIT-005"
@@ -4455,7 +4455,7 @@
     "kind": "form-submit",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 110,
-    "label": "",
+    "label": "data-testid=\"nutrition-form\"",
     "expect": "submit -> server action action",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-004"
@@ -4464,7 +4464,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 128,
-    "label": "",
+    "label": "data-testid=\"nutrition-chicken-rice-yogurt\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-005"
@@ -4482,7 +4482,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 167,
-    "label": "",
+    "label": "data-testid=\"nutrition-name\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-007"
@@ -4491,7 +4491,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 176,
-    "label": "",
+    "label": "data-testid=\"nutrition-calories\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-008"
@@ -4500,7 +4500,7 @@
     "kind": "picker",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 188,
-    "label": "{MEAL_TYPES.map((type) => ( <option key={type}",
+    "label": "data-testid=\"nutrition-meal-type\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-009"
@@ -4509,7 +4509,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 208,
-    "label": "",
+    "label": "data-testid=\"nutrition-servings\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-010"
@@ -4518,7 +4518,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 219,
-    "label": "",
+    "label": "data-testid=\"nutrition-serving-label\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-011"
@@ -4527,7 +4527,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 229,
-    "label": "",
+    "label": "data-testid=\"nutrition-protein-g\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-012"
@@ -4536,7 +4536,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 240,
-    "label": "",
+    "label": "data-testid=\"nutrition-carbs-g\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-013"
@@ -4545,7 +4545,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 251,
-    "label": "",
+    "label": "data-testid=\"nutrition-fat-g\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-014"
@@ -4554,7 +4554,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 263,
-    "label": "",
+    "label": "data-testid=\"nutrition-eaten-at\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-015"
@@ -4563,7 +4563,7 @@
     "kind": "input",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 272,
-    "label": "",
+    "label": "data-testid=\"nutrition-notes\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-016"
@@ -4572,7 +4572,7 @@
     "kind": "button",
     "file": "src/components/nutrition/NutritionEntryForm.tsx",
     "line": 281,
-    "label": "",
+    "label": "data-testid=\"nutrition-save-estimate\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "NUTRIT-ENTRYI-017"
@@ -4861,7 +4861,7 @@
     "kind": "input",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 23,
-    "label": "",
+    "label": "data-testid^=\"profile-outside-weekday-\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "ONBOAR-025"
@@ -4870,7 +4870,7 @@
     "kind": "toggle",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 24,
-    "label": "",
+    "label": "data-testid^=\"profile-outside-weekday-\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "ONBOAR-026"
@@ -4879,7 +4879,7 @@
     "kind": "picker",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 35,
-    "label": "{option.label}",
+    "label": "data-testid^=\"profile-day-\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "ONBOAR-027"
@@ -4888,7 +4888,7 @@
     "kind": "input",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 49,
-    "label": "",
+    "label": "data-testid=\"profile-time\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "ONBOAR-028"
@@ -4897,7 +4897,7 @@
     "kind": "picker",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 50,
-    "label": "",
+    "label": "data-testid=\"profile-time\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "ONBOAR-029"
@@ -4906,7 +4906,7 @@
     "kind": "input",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 57,
-    "label": "",
+    "label": "data-testid=\"profile-checkbox\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "ONBOAR-030"
@@ -4915,7 +4915,7 @@
     "kind": "toggle",
     "file": "src/components/profile/OutsideTrainingFields.tsx",
     "line": 58,
-    "label": "",
+    "label": "data-testid=\"profile-checkbox\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "ONBOAR-031"
@@ -5223,7 +5223,7 @@
     "kind": "form-submit",
     "file": "src/components/paths/EnrollPathForm.tsx",
     "line": 16,
-    "label": "",
+    "label": "data-testid=\"paths-form\"",
     "expect": "submit -> server action action",
     "unsafe": true,
     "id": "PATHS-SLUG-005"
@@ -5232,7 +5232,7 @@
     "kind": "button",
     "file": "src/components/paths/EnrollPathForm.tsx",
     "line": 19,
-    "label": "{pending ? \"Saving…\" : label}",
+    "label": "data-testid=\"paths-button\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "PATHS-SLUG-006"
@@ -6969,7 +6969,7 @@
     "kind": "link",
     "file": "src/components/progress/RecordsList.tsx",
     "line": 30,
-    "label": "{row.exerciseName}",
+    "label": "data-testid^=\"progress-records-\"",
     "expect": "navigate to /progress/records/${row.slug}",
     "unsafe": false,
     "id": "PROGRE-RECORD-SLUG-004"
@@ -8314,7 +8314,7 @@
     "kind": "link",
     "file": "src/components/training/StartTodayButton.tsx",
     "line": 16,
-    "label": "{label}",
+    "label": "data-testid^=\"home-training-log-\"",
     "expect": "navigate to /training/log/${action.draftId}",
     "unsafe": false,
     "id": "TRAINI-DAYID-026"
@@ -8323,7 +8323,7 @@
     "kind": "form-submit",
     "file": "src/components/training/StartTodayButton.tsx",
     "line": 24,
-    "label": "",
+    "label": "data-testid=\"home-start-today\"",
     "expect": "submit -> server action startSessionAction",
     "unsafe": false,
     "id": "TRAINI-DAYID-027"
@@ -8332,7 +8332,7 @@
     "kind": "link",
     "file": "src/components/training/StartTodayButton.tsx",
     "line": 38,
-    "label": "{label}",
+    "label": "data-testid^=\"home-start-today-2-\"",
     "expect": "navigate to dynamic href {action.href}",
     "unsafe": false,
     "id": "TRAINI-DAYID-028"
@@ -8341,7 +8341,7 @@
     "kind": "button",
     "file": "src/components/training/StartTodayButton.tsx",
     "line": 50,
-    "label": "{pending ? \"Starting…\" : label}",
+    "label": "data-testid=\"home-start-pending\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "TRAINI-DAYID-029"
@@ -8350,7 +8350,7 @@
     "kind": "link",
     "file": "src/components/training/TrainDayMobility.tsx",
     "line": 16,
-    "label": "",
+    "label": "data-testid^=\"training-mobility-play-\"",
     "expect": "navigate to /mobility/${item.id}/play",
     "unsafe": false,
     "id": "TRAINI-DAYID-030"
@@ -8359,7 +8359,7 @@
     "kind": "form-submit",
     "file": "src/components/training/WeightAccessToggle.tsx",
     "line": 18,
-    "label": "",
+    "label": "data-testid^=\"training-form-3-\"",
     "expect": "submit -> server action setWeightAccessAction",
     "unsafe": false,
     "id": "TRAINI-DAYID-031"
@@ -8368,7 +8368,7 @@
     "kind": "button",
     "file": "src/components/training/WeightAccessToggle.tsx",
     "line": 21,
-    "label": "{option.label}",
+    "label": "data-testid^=\"training-weight-access-\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "TRAINI-DAYID-032"
@@ -8860,7 +8860,7 @@
     "kind": "input",
     "file": "src/components/heart/HrWorkoutForm.tsx",
     "line": 34,
-    "label": "",
+    "label": "data-testid=\"heart-avg-bpm\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-005"
@@ -8869,7 +8869,7 @@
     "kind": "input",
     "file": "src/components/heart/HrWorkoutForm.tsx",
     "line": 45,
-    "label": "",
+    "label": "data-testid=\"heart-max-bpm\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-006"
@@ -8878,7 +8878,7 @@
     "kind": "input",
     "file": "src/components/heart/HrWorkoutForm.tsx",
     "line": 57,
-    "label": "",
+    "label": "data-testid=\"heart-started-at\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-007"
@@ -8887,7 +8887,7 @@
     "kind": "input",
     "file": "src/components/heart/HrWorkoutForm.tsx",
     "line": 66,
-    "label": "",
+    "label": "data-testid=\"heart-ended-at\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-008"
@@ -8896,7 +8896,7 @@
     "kind": "input",
     "file": "src/components/heart/HrWorkoutForm.tsx",
     "line": 77,
-    "label": "",
+    "label": "data-testid^=\"heart-number-\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-009"
@@ -8905,7 +8905,7 @@
     "kind": "button",
     "file": "src/components/heart/HrWorkoutForm.tsx",
     "line": 87,
-    "label": "{pending ? \"Saving…\" : \"Save workout HR\"}",
+    "label": "data-testid=\"heart-save-workout-hr\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-010"
@@ -8914,7 +8914,7 @@
     "kind": "button",
     "file": "src/components/training/DeleteWorkoutButton.tsx",
     "line": 17,
-    "label": "",
+    "label": "data-testid=\"training-history-delete\"",
     "expect": "click -> setOpen(true)",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-011"
@@ -8932,7 +8932,7 @@
     "kind": "form-submit",
     "file": "src/components/training/DeleteWorkoutButton.tsx",
     "line": 43,
-    "label": "",
+    "label": "data-testid=\"training-history-form\"",
     "expect": "submit -> server action deleteWorkoutAction",
     "unsafe": true,
     "id": "TRAINI-LOG-SESSIO-013"
@@ -9148,7 +9148,7 @@
     "kind": "button",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 26,
-    "label": "{ setName(defaultName); setOpen(true); }",
+    "label": "data-testid=\"training-history-save-as-my-workout\"",
     "expect": "click -> { setName(defaultName); setOpen(true);",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-037"
@@ -9184,7 +9184,7 @@
     "kind": "form-submit",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 70,
-    "label": "",
+    "label": "data-testid=\"training-history-form-2\"",
     "expect": "submit -> server action action",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-041"
@@ -9193,7 +9193,7 @@
     "kind": "input",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 77,
-    "label": "",
+    "label": "data-testid=\"training-history-name\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-042"
@@ -9202,7 +9202,7 @@
     "kind": "button",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 91,
-    "label": "{pending ? \"Saving…\" : \"Save\"}",
+    "label": "data-testid=\"training-history-save\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-043"
@@ -9580,7 +9580,7 @@
     "kind": "button",
     "file": "src/components/upgrade/UpgradePreviewSheet.tsx",
     "line": 23,
-    "label": "{children}",
+    "label": "data-testid=\"home-sheet-open\"",
     "expect": "click -> setOpen(true)",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-085"
@@ -9607,7 +9607,7 @@
     "kind": "modal-close",
     "file": "src/components/upgrade/UpgradePreviewSheet.tsx",
     "line": 47,
-    "label": "",
+    "label": "data-testid=\"chrome-not-now\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-088"
@@ -9621,7 +9621,7 @@
     "kind": "button",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 26,
-    "label": "{ setName(defaultName); setOpen(true); }",
+    "label": "data-testid=\"training-history-save-as-my-workout\"",
     "expect": "click -> { setName(defaultName); setOpen(true);",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-DONE-001"
@@ -9657,7 +9657,7 @@
     "kind": "form-submit",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 70,
-    "label": "",
+    "label": "data-testid=\"training-history-form-2\"",
     "expect": "submit -> server action action",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-DONE-005"
@@ -9666,7 +9666,7 @@
     "kind": "input",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 77,
-    "label": "",
+    "label": "data-testid=\"training-history-name\"",
     "expect": "accepts input / validates",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-DONE-006"
@@ -9675,7 +9675,7 @@
     "kind": "button",
     "file": "src/components/training/SaveWorkoutButton.tsx",
     "line": 91,
-    "label": "{pending ? \"Saving…\" : \"Save\"}",
+    "label": "data-testid=\"training-history-save\"",
     "expect": "submits enclosing form",
     "unsafe": false,
     "id": "TRAINI-LOG-SESSIO-DONE-007"
