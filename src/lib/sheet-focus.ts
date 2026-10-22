@@ -6,6 +6,6 @@ export function cycleFocusIndex(current: number, count: number, backward: boolea
   return current === count - 1 ? 0 : current + 1;
 }
 
-export function isSheetBackdropTarget(target: EventTarget | null, current: EventTarget | null) {
+export function isSheetBackdropTarget(target: unknown, current: unknown) {
   return target !== null && target === current;
 }
