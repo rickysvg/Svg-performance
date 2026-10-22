@@ -230,11 +230,10 @@ describe("an added exercise saves, shows in history, and counts toward volume", 
     ));
 
     const history = await listWorkoutSessionsForUser(user.id);
-    expect(loggedExerciseNamesInOrder(history[0]!.sets)).toEqual([first, "Goblet squat", second]);
-    const historyPage = await import("node:fs").then((fs) =>
-      fs.readFileSync("src/app/(member)/training/history/page.tsx", "utf8"),
-    );
-    expect(historyPage).toContain("loggedExerciseNamesInOrder");
+    const shown = loggedExerciseNamesInOrder(history[0]!.sets);
+    expect(shown).toEqual([first, "Goblet squat", second]);
+    const storedOnlyEmpty = exerciseNamesInOrder(emptyRows).filter((name) => !shown.includes(name));
+    expect(storedOnlyEmpty.length).toBeGreaterThan(0);
     expect(exerciseNamesInOrder(history[0]!.sets).length).toBeGreaterThan(3);
     const progress = buildProgressSummary(history, "lb");
     expect(progress.points[0]?.volume).toBe(total);

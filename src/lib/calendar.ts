@@ -290,6 +290,18 @@ function performedDayKey(session: { performedAt: Date }, timeZone: string) {
   return sessionCompletionDay(session, timeZone);
 }
 
+/** Ticked work that does not finish its own dose. A past plan card must not say Missed beside it. */
+function logIsOpenPartial(
+  log: LoggedPlanSession,
+  planByDay: ReadonlyMap<string, { dose: number; names: readonly string[] }>,
+) {
+  if (tickedSetCount(log.sets) === 0) return false;
+  if (!log.programDayId) return !offPlanSessionDone(log, 0, []);
+  const plan = planByDay.get(log.programDayId);
+  const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
+  return !offPlanSessionDone(log, dose, plan?.names ?? []);
+}
+
 function titlesMatch(loggedTitle: string, plannedTitle: string) {
   const logged = memberFacingTitle(loggedTitle);
   const planned = memberFacingTitle(plannedTitle);
@@ -372,7 +384,7 @@ export async function getCalendarSchedule(
     getWeekPlanSwapsForUser(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
-  const { profile, tz, camp, campWeek, strength, skill, planByDay } = scale;
+  const { profile, tz, strength, skill } = scale;
   await finalizePastLoggedDrafts(userId, now, tz);
   const sessions = await listWorkoutSessionsForUser(userId);
   const challenge = await getChallengeProgressForUser(userId, tz);
@@ -400,7 +412,6 @@ export async function getCalendarSchedule(
     email: account?.email,
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
-    forcedWeekIndex: campWeek,
   };
   const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
@@ -416,7 +427,11 @@ export async function getCalendarSchedule(
   }));
 
   for (const day of days) {
-    const built = planForDate(prefs, day.date, tz, swaps);
+    // Each civil day uses the dose for its own week. The default 8-day list
+    // crosses a Monday, so it cannot reuse today's scale for every row.
+    const dayScale = await calendarScaleContext(userId, day.date);
+    const { camp, planByDay } = dayScale;
+    const built = planForDate({ ...prefs, forcedWeekIndex: dayScale.campWeek }, day.date, tz, swaps);
     const shaped =
       camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
         ? shapeDayPlan(built, camp.phase)
@@ -428,7 +443,10 @@ export async function getCalendarSchedule(
     day.movedFrom = plan.movedFrom;
     day.easeNote = plan.easeNote ?? null;
     day.coachCheckIn = eased.checkIn;
-    const resolved = resolvePlanSessions(plan, { strength, skill });
+    const resolved = resolvePlanSessions(plan, {
+      strength: dayScale.strength,
+      skill: dayScale.skill,
+    });
     const dayKey = formatDayParam(day.date, tz);
     const past = dayKey < todayKey;
     const loggedSummary = (loggedTitles.get(dayKey) ?? []).join(" · ");
@@ -471,11 +489,12 @@ export async function getCalendarSchedule(
             : "";
       const sessionDone = matched ? offPlanSessionDone(matched, dose, plannedNames) : false;
       const partial = Boolean(matched) && !sessionDone && ticked > 0;
+      const dayHasPartialWork = dayLogs.some((log) => logIsOpenPartial(log, planByDay));
       const href =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
-      const missed = past && !sessionDone && !partial;
+      const missed = past && !sessionDone && !partial && !dayHasPartialWork;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
@@ -504,15 +523,18 @@ export async function getCalendarSchedule(
       });
     }
     for (const log of dayLogs) {
-      if (matchedLogIds.has(log.id) || !log.programDayId) continue;
-      if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
+      if (matchedLogIds.has(log.id)) continue;
+      if (log.programDayId && resolved.some((session) => session.dayId && session.dayId === log.programDayId)) {
+        continue;
+      }
       const title = memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
-      const plan = planByDay.get(log.programDayId);
-      const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
-      const planned = resolvedPlannedSetCount(log, dose);
+      const plan = log.programDayId ? planByDay.get(log.programDayId) : undefined;
+      const dose =
+        plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
+      const planned = resolvedPlannedSetCount(log, log.programDayId ? dose : 0);
       const setCountLabel = formatSetProgress(ticked, planned);
-      const done = offPlanSessionDone(log, dose, plan?.names ?? []);
+      const done = offPlanSessionDone(log, log.programDayId ? dose : 0, plan?.names ?? []);
       day.activities.push({
         kind: "workout",
         title,

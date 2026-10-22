@@ -88,9 +88,27 @@ const bundleSlot = cache((userId: string) => {
 
 const bundleJoining = new Map<string, Promise<MemberScaleBundle>>();
 
+/**
+ * React `cache` keeps a slot for the request. Unit tests call through, so a
+ * settled map covers that case and `clearCalendarScaleCache` drops it.
+ * A real request does not write the map, so nothing sticks to the process.
+ */
+const memoryProbe = cache(() => ({ mark: true as const }));
+
+function requestCacheRemembers() {
+  return memoryProbe() === memoryProbe();
+}
+
+const settledBundles = new Map<string, Promise<MemberScaleBundle>>();
+
 function memberScaleBundle(userId: string) {
   const slot = bundleSlot(userId);
   if (slot.current) return slot.current;
+  const remembered = requestCacheRemembers();
+  if (!remembered) {
+    const saved = settledBundles.get(userId);
+    if (saved) return saved;
+  }
   const pendingJoin = bundleJoining.get(userId);
   if (pendingJoin) {
     slot.current = pendingJoin;
@@ -100,6 +118,7 @@ function memberScaleBundle(userId: string) {
     (value) => value,
     (error: unknown) => {
       if (slot.current === pending) slot.current = null;
+      if (settledBundles.get(userId) === pending) settledBundles.delete(userId);
       bundleJoining.delete(userId);
       throw error;
     },
@@ -113,6 +132,7 @@ function memberScaleBundle(userId: string) {
     },
   );
   slot.current = pending;
+  if (!remembered) settledBundles.set(userId, pending);
   bundleJoining.set(userId, pending);
   return pending;
 }
@@ -145,20 +165,23 @@ type CalendarScaleContext = Awaited<ReturnType<typeof loadCalendarScaleContext>>
 /**
  * Request-scoped slot, one per member per plan week. React `cache` remembers
  * the slot for this render and does not keep a failed load: the catch below
- * clears it. Outside a request (unit tests) `cache` calls through, so
- * `joining` only dedupes calls that are already in flight and drops the
- * entry when the load settles. The catalog itself loads once per member.
+ * clears it. Outside a request (unit tests) `cache` calls through, so a
+ * settled map keeps the week until `clearCalendarScaleCache`. A real request
+ * leaves that map empty.
  */
 const scaleSlot = cache((userId: string, weekKey: string) => {
   return { current: null as Promise<CalendarScaleContext> | null };
 });
 
 const joining = new Map<string, Promise<CalendarScaleContext>>();
+const settledWeeks = new Map<string, Promise<CalendarScaleContext>>();
 
 /** Drop an in-flight join. Tests call this between cases so a profile edit is visible. */
 export function clearCalendarScaleCache() {
   joining.clear();
   bundleJoining.clear();
+  settledWeeks.clear();
+  settledBundles.clear();
 }
 
 /**
@@ -172,6 +195,11 @@ export function calendarScaleContext(userId: string, now = new Date()) {
     const key = `${userId}:${weekKey}`;
     const slot = scaleSlot(userId, weekKey);
     if (slot.current) return slot.current;
+    const remembered = requestCacheRemembers();
+    if (!remembered) {
+      const saved = settledWeeks.get(key);
+      if (saved) return saved;
+    }
     const pendingJoin = joining.get(key);
     if (pendingJoin) {
       slot.current = pendingJoin;
@@ -181,6 +209,7 @@ export function calendarScaleContext(userId: string, now = new Date()) {
       (value) => value,
       (error: unknown) => {
         if (slot.current === pending) slot.current = null;
+        if (settledWeeks.get(key) === pending) settledWeeks.delete(key);
         joining.delete(key);
         throw error;
       },
@@ -194,6 +223,7 @@ export function calendarScaleContext(userId: string, now = new Date()) {
       },
     );
     slot.current = pending;
+    if (!remembered) settledWeeks.set(key, pending);
     joining.set(key, pending);
     return pending;
   });

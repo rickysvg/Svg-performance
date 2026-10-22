@@ -144,10 +144,19 @@ export function leadingPlanCount(text: string | null | undefined) {
   return Math.min(200, Math.round(value));
 }
 
+const PLAN_TIME_UNIT = "(minutes|minute|mins|min|seconds|second|secs|sec)";
+
+function secondsForUnit(count: number, unit: string) {
+  const safe = Math.min(200, count);
+  const seconds = unit.toLowerCase().startsWith("min") ? safe * 60 : safe;
+  return Math.max(1, Math.round(seconds));
+}
+
 /**
  * Reps or seconds from a plan string.
  * "6 / side" is 6 reps. "3x5" and "3×5" are 5 reps, not 3.
- * "1 min" is 60 seconds. "30–40 sec" and "5 sec × 4 directions" stay in seconds.
+ * "3:00" is 180 seconds. "1.5 min" is 90. "2 x 30 sec" is 30 seconds per set.
+ * "1 min" is 60 seconds. A range such as "30–40 sec" uses the low end.
  */
 export function planWorkFromText(text: string | null | undefined): {
   reps: number | null;
@@ -155,12 +164,26 @@ export function planWorkFromText(text: string | null | undefined): {
 } {
   const raw = String(text ?? "").trim();
   if (!raw) return { reps: null, seconds: null };
-  const unit = raw.match(/(minutes|minute|mins|min|seconds|second|secs|sec)\b/i);
-  if (unit) {
-    const count = leadingPlanCount(raw);
-    if (count == null) return { reps: null, seconds: null };
-    const seconds = unit[1].toLowerCase().startsWith("min") ? count * 60 : count;
-    return { reps: null, seconds };
+  const clock = raw.match(/(\d{1,3}):([0-5]\d)/);
+  if (clock) {
+    const total = Number(clock[1]) * 60 + Number(clock[2]);
+    if (total > 0) return { reps: null, seconds: Math.min(200 * 60, total) };
+  }
+  const range = raw.match(
+    new RegExp(`(\\d+(?:\\.\\d+)?)\\s*[-–—]\\s*\\d+(?:\\.\\d+)?\\s*${PLAN_TIME_UNIT}\\b`, "i"),
+  );
+  if (range) {
+    const count = Number(range[1]);
+    if (Number.isFinite(count) && count > 0) {
+      return { reps: null, seconds: secondsForUnit(count, range[2] ?? "") };
+    }
+  }
+  const timed = raw.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${PLAN_TIME_UNIT}\\b`, "i"));
+  if (timed) {
+    const count = Number(timed[1]);
+    if (Number.isFinite(count) && count > 0) {
+      return { reps: null, seconds: secondsForUnit(count, timed[2] ?? "") };
+    }
   }
   const setsByReps = raw.match(/(\d+)\s*[x×]\s*(\d+)/i);
   if (setsByReps) {

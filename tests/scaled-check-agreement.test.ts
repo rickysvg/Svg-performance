@@ -97,7 +97,8 @@ describe("scaled dose agreement", () => {
       calendarScaleContext(user.id, now),
       getCalendarSchedule(user.id, now),
     ]);
-    expect(calendarScaleLoadCount() - before).toBe(1);
+    // Thursday plus seven days crosses into the next week, so that week loads once too.
+    expect(calendarScaleLoadCount() - before).toBe(2);
     expect(doses).toBe(scale.planByDay);
     expect(doses.size).toBeGreaterThan(0);
   });
@@ -511,6 +512,83 @@ describe("scaled dose agreement", () => {
     expect((chips[day] ?? []).includes(plan.programDayId)).toBe(true);
     expect(partials.includes(day)).toBe(false);
     expect(currentDoses.get(plan.programDayId)?.dose).toBe(plan.currentDose);
+  });
+
+  it("scales the default 8-day list by the week of each day", async () => {
+    await resetDatabase();
+    const user = await makeUser("eight-day-week@example.com");
+    const now = new Date(2026, 9, 22, 10, 0, 0);
+    const joined = new Date(2026, 6, 6, 10, 0, 0);
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        experienceLevel: "advanced",
+        onboardingCompletedAt: joined,
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const upcoming = await getCalendarSchedule(user.id, now);
+    const nowDoses = await calendarPlanDoses(user.id, now);
+    const todayKey = dayKey(now, APP_TIMEZONE);
+    let picked: {
+      programDayId: string;
+      performedAt: Date;
+      dayDose: number;
+      nowDose: number;
+      names: string[];
+    } | null = null;
+    for (const day of upcoming.days) {
+      if (dayKey(day.date, APP_TIMEZONE) <= todayKey) continue;
+      const dayDoses = await calendarPlanDoses(user.id, day.date);
+      for (const activity of day.activities) {
+        if (activity.kind !== "workout" || !activity.programDayId) continue;
+        const here = dayDoses.get(activity.programDayId);
+        const today = nowDoses.get(activity.programDayId);
+        if (!here || !today || here.names.length === 0) continue;
+        if (here.dose <= today.dose || today.dose <= 0) continue;
+        picked = {
+          programDayId: activity.programDayId,
+          performedAt: day.date,
+          dayDose: here.dose,
+          nowDose: today.dose,
+          names: [...here.names],
+        };
+        break;
+      }
+      if (picked) break;
+    }
+    expect(picked).toBeTruthy();
+    const plan = picked!;
+    const rows: { exerciseName: string; setNumber: number; reps: number; loadValue: number; completed: boolean }[] = [];
+    while (rows.length < plan.nowDose) {
+      const name = plan.names[rows.length % plan.names.length]!;
+      rows.push({
+        exerciseName: name,
+        setNumber: (rows.length % 20) + 1,
+        reps: 8,
+        loadValue: 40,
+        completed: true,
+      });
+    }
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: plan.programDayId,
+        title: "Next week log",
+        performedAt: plan.performedAt,
+        status: "complete",
+        plannedSetCount: null,
+        sets: { create: rows },
+      },
+    });
+    const after = await getCalendarSchedule(user.id, now);
+    const card = after.days
+      .find((item) => dayKey(item.date, APP_TIMEZONE) === dayKey(plan.performedAt, APP_TIMEZONE))
+      ?.activities.find((item) => item.kind === "workout" && item.programDayId === plan.programDayId);
+    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.status).not.toBe("complete");
   });
 
   it("reads an old log as Logged when the ticked sets cover the scaled dose", async () => {

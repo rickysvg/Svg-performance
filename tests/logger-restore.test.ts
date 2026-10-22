@@ -134,6 +134,11 @@ describe("save payload", () => {
     expect(planWorkFromText("30–40 sec")).toEqual({ reps: null, seconds: 30 });
     expect(planWorkFromText("30-40sec")).toEqual({ reps: null, seconds: 30 });
     expect(planWorkFromText("5 sec × 4 directions")).toEqual({ reps: null, seconds: 5 });
+    expect(planWorkFromText("3:00")).toEqual({ reps: null, seconds: 180 });
+    expect(planWorkFromText("1.5 min")).toEqual({ reps: null, seconds: 90 });
+    expect(planWorkFromText("1.5min")).toEqual({ reps: null, seconds: 90 });
+    expect(planWorkFromText("2 x 30 sec")).toEqual({ reps: null, seconds: 30 });
+    expect(planWorkFromText("2x30sec")).toEqual({ reps: null, seconds: 30 });
     const minuteKey = prescriptionSlotKey({
       exerciseName: "Plank",
       reps: "1 min",
@@ -170,6 +175,60 @@ describe("save payload", () => {
         prescriptionKey: setsKey,
       }),
     ).toMatchObject({ reps: 5 });
+    const clockKey = prescriptionSlotKey({
+      exerciseName: "Shadowbox round 1 — empty hands",
+      reps: "3:00",
+      programSlug: "demo",
+      dayNumber: 2,
+    });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Shadowbox round 1 — empty hands",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "timed_round",
+        completed: true,
+        prescriptionKey: clockKey,
+      }),
+    ).toMatchObject({ durationSeconds: 180 });
+    const decimalKey = prescriptionSlotKey({
+      exerciseName: "Plank",
+      reps: "1.5 min",
+      programSlug: "demo",
+      dayNumber: 3,
+    });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Plank",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "timed",
+        completed: true,
+        prescriptionKey: decimalKey,
+      }),
+    ).toMatchObject({ durationSeconds: 90 });
+    const setsTimeKey = prescriptionSlotKey({
+      exerciseName: "Jump rope",
+      reps: "2 x 30 sec",
+      programSlug: "demo",
+      dayNumber: 4,
+    });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Jump rope",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "timed",
+        completed: true,
+        prescriptionKey: setsTimeKey,
+      }),
+    ).toMatchObject({ durationSeconds: 30 });
   });
 
   it("saves typed sets from a bloated logger and drops empty copies", () => {
