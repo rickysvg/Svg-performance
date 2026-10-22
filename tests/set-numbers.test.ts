@@ -128,8 +128,11 @@ describe("duplicate set slots", () => {
     insert.run("note-only", null, null, null, 0, "felt good");
     const cleanup = sql.slice(0, sql.indexOf("CREATE UNIQUE INDEX")).trim();
     db.exec(cleanup);
-    const kept = db.prepare(`SELECT "id" FROM "WorkoutSet" ORDER BY rowid`).all() as { id: string }[];
+    const kept = db.prepare(
+      `SELECT "id", "reps", "loadValue", "completed", "notes" FROM "WorkoutSet" ORDER BY rowid`,
+    ).all() as { id: string; reps: number; loadValue: number; completed: number; notes: string }[];
     expect(kept.map((row) => row.id)).toEqual(["ticked-later"]);
+    expect(kept[0]).toMatchObject({ reps: 8, loadValue: 25, completed: 1, notes: "hard\nfelt good" });
 
     const tie = db.prepare(
       `INSERT INTO "WorkoutSet" ("id", "workoutSessionId", "exerciseName", "setNumber", "reps", "loadValue", "durationSeconds", "completed", "notes")
@@ -142,6 +145,74 @@ describe("duplicate set slots", () => {
       id: string;
     }[];
     expect(oldest.map((row) => row.id)).toEqual(["low"]);
+    db.close();
+  });
+
+  it("keeps 5x100 when the other copy is only ticked, and marks that row done", () => {
+    const sql = fs.readFileSync("prisma/migrations/20261022170000_workout_set_slot/migration.sql", "utf8");
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE "WorkoutSet" (
+        "id" TEXT NOT NULL,
+        "workoutSessionId" TEXT NOT NULL,
+        "exerciseName" TEXT NOT NULL,
+        "setNumber" INTEGER NOT NULL,
+        "reps" INTEGER,
+        "loadValue" REAL,
+        "durationSeconds" INTEGER,
+        "completed" BOOLEAN NOT NULL DEFAULT false,
+        "notes" TEXT NOT NULL DEFAULT ''
+      );
+    `);
+    db.prepare(
+      `INSERT INTO "WorkoutSet" ("id", "workoutSessionId", "exerciseName", "setNumber", "reps", "loadValue", "durationSeconds", "completed", "notes")
+       VALUES (?, 'session', 'Squat', 1, ?, ?, NULL, ?, '')`,
+    ).run("ticked-empty", null, null, 1);
+    db.prepare(
+      `INSERT INTO "WorkoutSet" ("id", "workoutSessionId", "exerciseName", "setNumber", "reps", "loadValue", "durationSeconds", "completed", "notes")
+       VALUES (?, 'session', 'Squat', 1, ?, ?, NULL, ?, '')`,
+    ).run("five-by-hundred", 5, 100, 0);
+    db.exec(sql.slice(0, sql.indexOf("CREATE UNIQUE INDEX")).trim());
+    const kept = db.prepare(
+      `SELECT "id", "reps", "loadValue", "completed" FROM "WorkoutSet"`,
+    ).all() as { id: string; reps: number; loadValue: number; completed: number }[];
+    expect(kept).toEqual([{ id: "five-by-hundred", reps: 5, loadValue: 100, completed: 1 }]);
+    db.close();
+  });
+
+  it("joins distinct notes from the duplicate onto the kept row", () => {
+    const sql = fs.readFileSync("prisma/migrations/20261022170000_workout_set_slot/migration.sql", "utf8");
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE "WorkoutSet" (
+        "id" TEXT NOT NULL,
+        "workoutSessionId" TEXT NOT NULL,
+        "exerciseName" TEXT NOT NULL,
+        "setNumber" INTEGER NOT NULL,
+        "reps" INTEGER,
+        "loadValue" REAL,
+        "durationSeconds" INTEGER,
+        "completed" BOOLEAN NOT NULL DEFAULT false,
+        "notes" TEXT NOT NULL DEFAULT ''
+      );
+    `);
+    const insert = db.prepare(
+      `INSERT INTO "WorkoutSet" ("id", "workoutSessionId", "exerciseName", "setNumber", "reps", "loadValue", "durationSeconds", "completed", "notes")
+       VALUES (?, 'session', 'Hinge', 2, ?, NULL, NULL, ?, ?)`,
+    );
+    insert.run("logged", 8, 0, "hips tight");
+    insert.run("same-note", null, 1, "hips tight");
+    insert.run("other-note", null, 0, "watch the elbow");
+    db.exec(sql.slice(0, sql.indexOf("CREATE UNIQUE INDEX")).trim());
+    const kept = db.prepare(`SELECT "id", "reps", "completed", "notes" FROM "WorkoutSet"`).all() as {
+      id: string;
+      reps: number;
+      completed: number;
+      notes: string;
+    }[];
+    expect(kept).toEqual([
+      { id: "logged", reps: 8, completed: 1, notes: "hips tight\nwatch the elbow" },
+    ]);
     db.close();
   });
 });

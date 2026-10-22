@@ -7,7 +7,7 @@ import { useCoachStream } from "@/components/coach/useCoachStream";
 import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
-import { isAiCoachId, resolveAiCoach } from "@/lib/coaches";
+import { coachReplyLabel, isAiCoachId, resolveAiCoach } from "@/lib/coaches";
 import { COACH_SUGGESTIONS, COACH_WELCOME } from "@/lib/coach/welcome";
 import { CoachSpeakButton } from "@/components/coach/CoachSpeakButton";
 import { CoachMarkdown } from "@/components/coach/CoachMarkdown";
@@ -89,7 +89,7 @@ export function CoachBubble({
   const quick = speaker === "assistant" && Boolean(offline);
   const authored =
     speaker === "assistant" && coachId && isAiCoachId(coachId) ? resolveAiCoach(coachId) : null;
-  const label = speaker === "user" ? "You" : authored?.name || (speaker === "assistant" ? "Coach" : coachName);
+  const label = speaker === "user" ? "You" : coachReplyLabel(coachId);
   const thumb = authored?.thumb;
   const stamp = formatStamp(createdAt, timeZone);
   return (

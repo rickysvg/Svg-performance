@@ -908,7 +908,8 @@ BEGIN
 END $$;
 
 -- A second Resume cannot insert the same set slot.
--- Keep the ticked row, then a logged row, then notes, then the lowest id.
+-- Rank logged reps, load, or time first, then a tick, then notes, then the lowest id.
+-- Merge the other copies onto the kept row before deleting them.
 DO $$
 DECLARE
   removed integer;
@@ -918,15 +919,86 @@ BEGIN
   END IF;
 
   WITH ranked AS (
-    SELECT "id",
+    SELECT
+      "id",
+      "workoutSessionId",
+      "exerciseName",
+      "setNumber",
       ROW_NUMBER() OVER (
         PARTITION BY "workoutSessionId", "exerciseName", "setNumber"
         ORDER BY
-          CASE WHEN "completed" THEN 1 ELSE 0 END DESC,
           CASE
             WHEN "reps" IS NOT NULL OR "loadValue" IS NOT NULL OR COALESCE("durationSeconds", 0) > 0 THEN 1
             ELSE 0
           END DESC,
+          CASE WHEN "completed" THEN 1 ELSE 0 END DESC,
+          CASE WHEN btrim(COALESCE("notes", '')) <> '' THEN 1 ELSE 0 END DESC,
+          "id" ASC
+      ) AS keep_rank,
+      COUNT(*) OVER (PARTITION BY "workoutSessionId", "exerciseName", "setNumber") AS copies
+    FROM "WorkoutSet"
+  ),
+  keepers AS (
+    SELECT "id", "workoutSessionId", "exerciseName", "setNumber"
+    FROM ranked
+    WHERE keep_rank = 1 AND copies > 1
+  ),
+  merged AS (
+    SELECT
+      k."id" AS keep_id,
+      bool_or(s."completed") AS completed,
+      COALESCE(
+        (array_agg(s."reps" ORDER BY s."id") FILTER (WHERE s."id" = k."id" AND s."reps" IS NOT NULL))[1],
+        (array_agg(s."reps" ORDER BY s."id") FILTER (WHERE s."reps" IS NOT NULL))[1]
+      ) AS reps,
+      COALESCE(
+        (array_agg(s."loadValue" ORDER BY s."id") FILTER (WHERE s."id" = k."id" AND s."loadValue" IS NOT NULL))[1],
+        (array_agg(s."loadValue" ORDER BY s."id") FILTER (WHERE s."loadValue" IS NOT NULL))[1]
+      ) AS load_value,
+      COALESCE(
+        (array_agg(s."durationSeconds" ORDER BY s."id") FILTER (WHERE s."id" = k."id" AND COALESCE(s."durationSeconds", 0) > 0))[1],
+        (array_agg(s."durationSeconds" ORDER BY s."id") FILTER (WHERE COALESCE(s."durationSeconds", 0) > 0))[1]
+      ) AS duration_seconds,
+      COALESCE((
+        SELECT string_agg(n.note, E'\n' ORDER BY n.first_id)
+        FROM (
+          SELECT btrim(s2."notes") AS note, MIN(s2."id") AS first_id
+          FROM "WorkoutSet" s2
+          WHERE s2."workoutSessionId" = k."workoutSessionId"
+            AND s2."exerciseName" = k."exerciseName"
+            AND s2."setNumber" = k."setNumber"
+            AND btrim(COALESCE(s2."notes", '')) <> ''
+          GROUP BY btrim(s2."notes")
+        ) n
+      ), '') AS notes
+    FROM keepers k
+    JOIN "WorkoutSet" s
+      ON s."workoutSessionId" = k."workoutSessionId"
+     AND s."exerciseName" = k."exerciseName"
+     AND s."setNumber" = k."setNumber"
+    GROUP BY k."id", k."workoutSessionId", k."exerciseName", k."setNumber"
+  )
+  UPDATE "WorkoutSet" AS kept
+  SET
+    "completed" = merged.completed,
+    "reps" = merged.reps,
+    "loadValue" = merged.load_value,
+    "durationSeconds" = merged.duration_seconds,
+    "notes" = merged.notes
+  FROM merged
+  WHERE kept."id" = merged.keep_id;
+
+  WITH ranked AS (
+    SELECT
+      "id",
+      ROW_NUMBER() OVER (
+        PARTITION BY "workoutSessionId", "exerciseName", "setNumber"
+        ORDER BY
+          CASE
+            WHEN "reps" IS NOT NULL OR "loadValue" IS NOT NULL OR COALESCE("durationSeconds", 0) > 0 THEN 1
+            ELSE 0
+          END DESC,
+          CASE WHEN "completed" THEN 1 ELSE 0 END DESC,
           CASE WHEN btrim(COALESCE("notes", '')) <> '' THEN 1 ELSE 0 END DESC,
           "id" ASC
       ) AS keep_rank

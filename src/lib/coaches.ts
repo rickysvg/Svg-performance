@@ -162,24 +162,6 @@ export function coachReplyLabel(authorCoachId?: string | null) {
   return resolveAiCoach(authorCoachId).name;
 }
 
-/**
- * Coach id for a reply that already exists.
- * A switch means the current coach did not write the older replies, so they stay unlabeled.
- * When the coach never changed, replies after the first choice belong to that coach.
- */
-export function recordedCoachIdAt(input: {
-  messageAt: Date;
-  coachChoiceAt: Date | null;
-  aiCoachChangedAt?: Date | null;
-  aiCoachId?: string | null;
-}) {
-  if (input.aiCoachChangedAt) return null;
-  if (!input.coachChoiceAt || input.messageAt.getTime() < input.coachChoiceAt.getTime()) return null;
-  const id = input.aiCoachId?.trim();
-  if (!id || !isAiCoachId(id)) return null;
-  return id;
-}
-
 /** Timestamp to store when the portrait actually changes. Dismiss and a repeat pick leave it. */
 export function coachChangedAtOnSwitch(input: {
   previousId?: string | null;

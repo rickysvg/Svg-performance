@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { HomeToday } from "@/components/home/HomeToday";
-import { coachChangedAtOnSwitch, coachReplyLabel, recordedCoachIdAt } from "@/lib/coaches";
+import { coachChangedAtOnSwitch, coachReplyLabel } from "@/lib/coaches";
 import { isUniqueConstraintError } from "@/lib/errors";
 import { loggedSetVolume } from "@/lib/home-telemetry";
 import { partialSetsLine } from "@/lib/logged-work";
@@ -292,36 +292,6 @@ describe("Oct 22 member clock and chrome", () => {
 
   it("leaves a reply unlabeled when the coach changed", () => {
     const choice = new Date("2026-10-22T12:00:00.000Z");
-    const switched = new Date("2026-10-22T18:00:00.000Z");
-    expect(
-      recordedCoachIdAt({
-        messageAt: new Date("2026-10-21T12:00:00.000Z"),
-        coachChoiceAt: choice,
-        aiCoachId: "maya",
-      }),
-    ).toBeNull();
-    expect(
-      recordedCoachIdAt({
-        messageAt: new Date("2026-10-22T13:00:00.000Z"),
-        coachChoiceAt: choice,
-        aiCoachId: "maya",
-      }),
-    ).toBe("maya");
-    expect(
-      recordedCoachIdAt({
-        messageAt: new Date("2026-10-22T13:00:00.000Z"),
-        coachChoiceAt: choice,
-        aiCoachChangedAt: switched,
-        aiCoachId: "maya",
-      }),
-    ).toBeNull();
-    expect(
-      recordedCoachIdAt({
-        messageAt: new Date("2026-10-22T13:00:00.000Z"),
-        coachChoiceAt: null,
-        aiCoachId: "skye",
-      }),
-    ).toBeNull();
     expect(coachReplyLabel(null)).toBe("Coach");
     expect(coachReplyLabel("")).toBe("Coach");
     expect(coachReplyLabel("maya")).toBe("Maya");
