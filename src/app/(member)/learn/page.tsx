@@ -46,6 +46,7 @@ function Chip({
 }) {
   return (
     <Link
+      data-testid={`learn-link-${href.split("/").filter(Boolean).join("-")}`}
       href={href}
       className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm ${
         active ? "bg-accent text-black" : "border border-line text-foreground"
@@ -187,11 +188,12 @@ async function TechniqueLibrary({
         Shorter technique references by martial art and skill. Hosted on YouTube.
         {!fullLibrary ? " Intermediate and advanced lessons stay locked." : ""}
       </p>
-      <form action="/learn" className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <form data-testid="learn-form" action="/learn" className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input type="hidden" name="tab" value="library" />
         {topic ? <input type="hidden" name="topic" value={topic} /> : null}
         <input type="hidden" name="level" value={selectedLevel} />
         <input
+          data-testid="learn-q"
           name="q"
           defaultValue={q}
           placeholder="Search technique lessons"
@@ -300,12 +302,13 @@ function SeminarLibrary({
 
   return (
     <>
-      <form action="/learn" className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <form data-testid="learn-form-2" action="/learn" className="flex flex-col gap-2 sm:flex-row sm:items-center">
         {category !== "all" ? <input type="hidden" name="cat" value={category} /> : null}
         {level !== "all" ? <input type="hidden" name="level" value={level} /> : null}
         {view === "clips" ? <input type="hidden" name="view" value="clips" /> : null}
         {cage ? <input type="hidden" name="cage" value="1" /> : null}
         <input
+          data-testid="learn-q-2"
           name="q"
           defaultValue={q}
           placeholder="Search seminars, coaches, techniques"

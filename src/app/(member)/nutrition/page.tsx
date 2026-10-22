@@ -88,6 +88,7 @@ export default async function NutritionPage() {
             {entries.map((entry) => (
               <li key={entry.id}>
                 <Link
+                  data-testid={`nutrition-entry-${entry.id}`}
                   href={`/nutrition/${entry.id}`}
                   className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"
                 >

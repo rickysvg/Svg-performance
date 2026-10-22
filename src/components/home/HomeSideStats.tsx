@@ -65,6 +65,7 @@ export function HomeSideStats({
         <span className={labelClass}>Body fat</span>
         <span className="flex items-baseline gap-0.5">
           <input
+            data-testid="home-body-fat-percent"
             name="bodyFatPercent"
             inputMode="decimal"
             min={0.1}

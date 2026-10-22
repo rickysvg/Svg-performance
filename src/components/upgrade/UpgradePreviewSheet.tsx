@@ -20,7 +20,7 @@ export function UpgradePreviewSheet({
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="block w-full text-left">
+      <button data-testid="home-sheet-open" type="button" onClick={() => setOpen(true)} className="block w-full text-left">
         {children}
       </button>
       {open ? (

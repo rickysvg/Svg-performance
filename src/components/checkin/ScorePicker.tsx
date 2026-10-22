@@ -26,6 +26,7 @@ export function ScorePicker({
           const selected = value === score;
           return (
             <button
+              data-testid={`checkin-score-${score}`}
               key={score}
               type="button"
               aria-pressed={selected}

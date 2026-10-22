@@ -18,6 +18,7 @@ export function HeartImportForm() {
       <label className="block space-y-2 text-sm">
         <span>File</span>
         <input
+          data-testid="heart-file"
           name="file"
           type="file"
           accept=".csv,.json,.xml,text/csv,application/json,text/xml,text/plain"
@@ -27,6 +28,7 @@ export function HeartImportForm() {
       <label className="block space-y-2 text-sm">
         <span>Or paste JSON / CSV / XML</span>
         <textarea
+          data-testid="heart-csv"
           name="csv"
           rows={5}
           className="w-full rounded-xl border border-line bg-card px-3 py-3 font-mono text-xs"
@@ -34,6 +36,7 @@ export function HeartImportForm() {
         />
       </label>
       <button
+        data-testid="heart-import-apple-health-file"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

@@ -75,7 +75,7 @@ export function SeminarClipCard({
     );
   }
   return (
-    <Link href={href} className="block">
+    <Link data-testid={`learn-link-2-${href.split("/").filter(Boolean).join("-")}`} href={href} className="block">
       {body}
     </Link>
   );

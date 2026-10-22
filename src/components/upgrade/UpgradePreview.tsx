@@ -118,6 +118,7 @@ export function UpgradePreview({
         />
         {onDismiss ? (
           <button
+            data-testid="chrome-not-now"
             type="button"
             onClick={onDismiss}
             className={

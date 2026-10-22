@@ -21,6 +21,7 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
             <div key={day} className="rounded-xl border border-line px-3 py-3">
               <label className="flex items-center gap-3 text-sm">
                 <input
+                  data-testid={`profile-outside-weekday-${day}`}
                   type="checkbox"
                   name="outsideWeekday"
                   value={day}
@@ -33,6 +34,7 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
                 <label className="block text-xs text-muted">
                   Type
                   <select
+                    data-testid={`profile-day-${day}`}
                     name={`outsideKind-${day}`}
                     defaultValue={saved?.kind ?? "class"}
                     className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2 text-sm text-foreground"
@@ -47,6 +49,7 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
                 <label className="block text-xs text-muted">
                   Time (optional)
                   <input
+                    data-testid="profile-time"
                     type="time"
                     name={`outsideTime-${day}`}
                     defaultValue={saved?.time ?? ""}
@@ -55,6 +58,7 @@ export function OutsideTrainingFields({ days }: { days: OutsideDay[] }) {
                 </label>
                 <label className="flex items-center gap-3 text-sm text-foreground">
                   <input
+                    data-testid="profile-checkbox"
                     type="checkbox"
                     name={`outsideHard-${day}`}
                     data-hard-class={day}

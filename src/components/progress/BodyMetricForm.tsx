@@ -48,6 +48,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
         <label className="block text-sm">
           Value
           <input
+            data-testid="progress-value"
             name="value"
             type="number"
             min={0.1}
@@ -89,6 +90,7 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
       <label className="block text-sm">
         When
         <input
+          data-testid="progress-recorded-at"
           name="recordedAt"
           type="datetime-local"
           defaultValue={todayInputValue()}
@@ -98,12 +100,14 @@ export function BodyMetricForm({ preferredUnits }: { preferredUnits: LoadUnit })
       <label className="block text-sm">
         Notes (optional)
         <input
+          data-testid="progress-notes"
           name="notes"
           maxLength={200}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2"
         />
       </label>
       <button
+        data-testid="progress-save-metric"
         type="submit"
         disabled={pending}
         className="h-9 w-full rounded-full bg-accent text-sm text-black disabled:opacity-60"

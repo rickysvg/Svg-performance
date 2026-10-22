@@ -11,6 +11,7 @@ export function AdminBack({
 }) {
   return (
     <Link
+      data-testid={`chrome-link-2-${href.split("/").filter(Boolean).join("-")}`}
       href={href}
       className="inline-flex min-h-11 items-center gap-1.5 font-telemetry text-[11px] uppercase tracking-[0.18em] text-[#CBF805]"
     >
@@ -88,7 +89,7 @@ export function AdminToolkit({
       <ul className="space-y-2">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="hc-panel flex min-h-16 items-center justify-between gap-3 px-4 py-3">
+            <Link data-testid={`chrome-link-3-${link.href.split("/").filter(Boolean).join("-")}`} href={link.href} className="hc-panel flex min-h-16 items-center justify-between gap-3 px-4 py-3">
               <span>
                 <span className="font-display block text-lg uppercase leading-tight tracking-wide">
                   {link.label}

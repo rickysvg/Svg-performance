@@ -15,6 +15,7 @@ export function DeleteWorkoutButton({
   return (
     <>
       <button
+        data-testid="training-history-delete"
         type="button"
         data-delete-workout
         onClick={() => setOpen(true)}
@@ -40,7 +41,7 @@ export function DeleteWorkoutButton({
             </p>
             <p className="mt-2 text-sm text-muted">This can&apos;t be undone.</p>
             <div className="mt-5 flex flex-col gap-2">
-              <form action={deleteWorkoutAction}>
+              <form data-testid="training-history-form" action={deleteWorkoutAction}>
                 <input type="hidden" name="workoutId" value={workoutId} />
                 <button
                   type="submit"

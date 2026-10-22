@@ -45,7 +45,7 @@ export function MyWorkoutCard({
         {count} · Last used {lastUsedLabel}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <form action={startSavedWorkoutAction}>
+        <form data-testid="training-my-workouts-form" action={startSavedWorkoutAction}>
           <input type="hidden" name="savedWorkoutId" value={id} />
           <button
             type="submit"
@@ -100,6 +100,7 @@ export function MyWorkoutCard({
             <p className="font-display text-lg uppercase tracking-wide">Rename</p>
             <input type="hidden" name="savedWorkoutId" value={id} />
             <input
+              data-testid="training-my-workouts-name"
               name="name"
               defaultValue={name}
               maxLength={80}
@@ -135,11 +136,12 @@ export function MyWorkoutCard({
             <p className="mt-2 text-sm text-muted">
               Other days keep the 3-week block. This day uses your list.
             </p>
-            <form action={applyAction} className="mt-4 space-y-2">
+            <form data-testid="training-my-workouts-form-2" action={applyAction} className="mt-4 space-y-2">
               <input type="hidden" name="savedWorkoutId" value={id} />
               <label className="block text-sm">
                 <span className="font-medium">Date</span>
                 <input
+                  data-testid="training-my-workouts-day-key"
                   type="date"
                   name="dayKey"
                   data-apply-day-date
@@ -194,7 +196,7 @@ export function MyWorkoutCard({
               Delete this workout?
             </p>
             <p className="mt-2 text-sm text-muted">This can&apos;t be undone.</p>
-            <form action={deleteSavedWorkoutAction} className="mt-5">
+            <form data-testid="training-my-workouts-form-3" action={deleteSavedWorkoutAction} className="mt-5">
               <input type="hidden" name="savedWorkoutId" value={id} />
               <button
                 type="submit"

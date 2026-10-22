@@ -184,6 +184,7 @@ function SummaryReaderLive({
       <audio ref={audioRef} data-summary-audio playsInline preload="auto" className="hidden" />
       <div className="flex gap-2">
         <button
+          data-testid="home-summary-read"
           type="button"
           data-summary-read
           data-summary-state={phase}

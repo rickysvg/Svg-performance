@@ -7,9 +7,10 @@ import { StatusBanner } from "@/components/StatusBanner";
 export function VipCheckoutButton() {
   const [state, action, pending] = useActionState(startVipCheckoutAction, {} as VipActionState);
   return (
-    <form action={action} className="space-y-3" data-vip-checkout="1">
+    <form data-testid="vip-checkout-vip-checkout" action={action} className="space-y-3" data-vip-checkout="1">
       <StatusBanner error={state.error} success={state.message} />
       <button
+        data-testid="vip-checkout-continue-to-checkout"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-[#CBF805] font-semibold text-black disabled:opacity-60"

@@ -47,6 +47,7 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
       className="flex items-center gap-3 rounded-2xl border border-line bg-card py-3.5 pr-3 pl-4 shadow-sm"
     >
       <Link
+        data-testid={`training-calendar-open-bike-logger-${activity.href.split("/").filter(Boolean).join("-")}`}
         href={activity.href}
         data-open-bike-logger={isBikeLoggerHref(activity.href) ? "calendar" : undefined}
         className="flex min-w-0 flex-1 items-center gap-3"

@@ -20,6 +20,7 @@ export function HrRestingForm() {
       <label className="block space-y-2 text-sm">
         <span>BPM</span>
         <input
+          data-testid="heart-bpm"
           name="bpm"
           type="number"
           min={30}
@@ -31,6 +32,7 @@ export function HrRestingForm() {
       <label className="block space-y-2 text-sm">
         <span>When</span>
         <input
+          data-testid="heart-recorded-at"
           name="recordedAt"
           type="datetime-local"
           defaultValue={nowInput()}
@@ -38,6 +40,7 @@ export function HrRestingForm() {
         />
       </label>
       <button
+        data-testid="heart-save-resting-hr"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

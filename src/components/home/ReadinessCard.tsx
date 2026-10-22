@@ -38,6 +38,7 @@ export function ReadinessCard({
           <label key={name} className="block text-xs font-medium">
             {label}
             <input
+              data-testid="home-1-5"
               name={name}
               inputMode="numeric"
               required
@@ -53,6 +54,7 @@ export function ReadinessCard({
       <label className="block text-sm font-medium">
         Resting heart rate (optional)
         <input
+          data-testid="home-resting-hr"
           name="restingHr"
           inputMode="numeric"
           defaultValue={initial?.restingHr ?? ""}
@@ -60,6 +62,7 @@ export function ReadinessCard({
         />
       </label>
       <button
+        data-testid="home-save-readiness"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-black text-white"

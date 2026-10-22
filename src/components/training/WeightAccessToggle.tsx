@@ -15,10 +15,11 @@ export function WeightAccessToggle({
         {WEIGHT_ACCESS_OPTIONS.map((option) => {
           const active = option.value === access;
           return (
-            <form key={option.value} action={setWeightAccessAction}>
+            <form data-testid={`training-form-3-${option.value}`} key={option.value} action={setWeightAccessAction}>
               <input type="hidden" name="weightAccess" value={option.value} />
               <input type="hidden" name="next" value={nextPath} />
               <button
+                data-testid={`training-weight-access-${option.value}`}
                 type="submit"
                 aria-pressed={active}
                 className={`min-h-11 w-full rounded-full px-2 py-2 text-center text-sm font-semibold ${

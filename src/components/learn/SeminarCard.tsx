@@ -116,7 +116,7 @@ export function SeminarCard({
     );
   }
   return (
-    <Link href={`/learn/seminars/${seminar.slug}`} className="block">
+    <Link data-testid={`learn-seminars-${seminar.slug}`} href={`/learn/seminars/${seminar.slug}`} className="block">
       {body}
     </Link>
   );

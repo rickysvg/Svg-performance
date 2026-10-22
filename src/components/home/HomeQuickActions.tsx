@@ -151,7 +151,7 @@ export function HomeQuickActions({
             );
           }
           return (
-            <Link key={action.href} href={action.href} className={className}>
+            <Link data-testid={`home-link-${action.href.split("/").filter(Boolean).join("-")}`} key={action.href} href={action.href} className={className}>
               <ActionTile action={art} />
             </Link>
           );

@@ -1,0 +1,80 @@
+# Playwright interaction suite.
+#
+# Runs only on push to main and workflow_dispatch, against production
+# (https://svg-performance.vercel.app). Pull requests do not run this workflow:
+# Vercel previews are behind Deployment Protection and have no database or auth env.
+#
+# Repository secrets (Settings → Secrets and variables → Actions). Do not commit values.
+#   QA_TEST_EMAIL      dedicated test-member email. Never a real member.
+#   QA_TEST_PASSWORD   password for that test member.
+#
+# STRICT defaults on (STRICT=1). always-render test ids must be in the DOM.
+#
+# The upload step publishes reports and screenshots only. It does not upload
+# e2e/.auth, storageState, traces, or anything under results/artifacts.
+# Traces can contain cookies and typed credentials.
+#
+# UNSAFE actions (send, pay, delete, approve, message) are never submitted.
+# The job signs in only as the QA test account above.
+
+name: interaction-suite
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: e2e
+    env:
+      TEST_EMAIL: ${{ secrets.QA_TEST_EMAIL }}
+      TEST_PASSWORD: ${{ secrets.QA_TEST_PASSWORD }}
+      BASE_URL: https://svg-performance.vercel.app
+      STRICT: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install suite
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run interaction suite
+        run: npx playwright test
+
+      - name: Upload reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          if-no-files-found: ignore
+          include-hidden-files: false
+          retention-days: 14
+          path: |
+            e2e/results/report.json
+            e2e/results/html/**
+            e2e/results/shots/**
+            e2e/results/items/**
+            !e2e/.auth/**
+            !e2e/**/.auth/**
+            !e2e/**/member.json
+            !e2e/**/*storageState*
+            !e2e/**/*storage-state*
+            !e2e/results/artifacts/**
+            !e2e/results/**/*.zip
+            !**/*.zip

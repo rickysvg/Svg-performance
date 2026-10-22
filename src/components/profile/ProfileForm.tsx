@@ -40,6 +40,7 @@ export function ProfileForm({
 
   return (
     <form
+      data-testid="profile-form"
       action={action}
       className="space-y-4 rounded-2xl border border-line bg-card p-5"
       onSubmit={(event) => {
@@ -72,6 +73,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Display name</span>
         <input
+          data-testid="profile-display-name"
           name="displayName"
           defaultValue={profile.displayName}
           required
@@ -87,6 +89,7 @@ export function ProfileForm({
         <div className="mt-2 grid grid-cols-2 gap-2">
           <label className="flex items-center gap-3 text-sm">
             <input
+              data-testid="profile-athlete-imagery"
               type="radio"
               name="athleteImagery"
               value="male"
@@ -98,6 +101,7 @@ export function ProfileForm({
           </label>
           <label className="flex items-center gap-3 text-sm">
             <input
+              data-testid="profile-athlete-imagery-2"
               type="radio"
               name="athleteImagery"
               value="female"
@@ -113,6 +117,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Phone (optional)</span>
         <input
+          data-testid="profile-phone"
           name="phone"
           type="tel"
           autoComplete="tel"
@@ -128,6 +133,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Main goal</span>
         <select
+          data-testid="profile-goal-key"
           name="goalKey"
           defaultValue={profile.goalKey || "other"}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -142,6 +148,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">More about that goal (optional)</span>
         <textarea
+          data-testid="profile-goal-note"
           name="goalNote"
           defaultValue={
             profile.goalKey && profile.goals.startsWith(
@@ -158,6 +165,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Experience</span>
         <select
+          data-testid="profile-experience-level"
           name="experienceLevel"
           defaultValue={profile.experienceLevel}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -176,6 +184,7 @@ export function ProfileForm({
           {TRAINING_FOCUS_OPTIONS.map((option) => (
             <label key={option.value} className="flex items-center gap-3 text-sm">
               <input
+                data-testid={`profile-training-focus-${option.value}`}
                 type="radio"
                 name="trainingFocus"
                 value={option.value}
@@ -195,6 +204,7 @@ export function ProfileForm({
         <label className="block">
           <span className="text-sm font-medium">Primary martial art / focus</span>
           <select
+            data-testid="profile-primary-focus"
             name="primaryFocus"
             defaultValue={profile.primaryFocus || "mma"}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -211,6 +221,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Lift days per week</span>
         <select
+          data-testid="profile-lift-days-per-week"
           name="liftDaysPerWeek"
           defaultValue={String(profile.liftDaysPerWeek ?? defaultLiftDays(profile.experienceLevel, email))}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -227,6 +238,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Striker / grappler emphasis</span>
         <select
+          data-testid="profile-training-emphasis"
           name="trainingEmphasis"
           defaultValue={profile.trainingEmphasis || "balanced"}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -248,6 +260,7 @@ export function ProfileForm({
           {EQUIPMENT_OPTIONS.map((item) => (
             <label key={item} className="flex items-center gap-3 text-sm">
               <input
+                data-testid={`profile-equipment-${item}`}
                 type="checkbox"
                 name="equipment"
                 value={item}
@@ -274,6 +287,7 @@ export function ProfileForm({
           {WEEKDAYS.map((day) => (
             <label key={day} className="flex items-center gap-3 text-sm">
               <input
+                data-testid={`profile-weekly-availability-${day}`}
                 type="checkbox"
                 name="weeklyAvailability"
                 value={day}
@@ -289,6 +303,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Sessions per week (optional)</span>
         <input
+          data-testid="profile-sessions-per-week"
           name="sessionsPerWeek"
           type="number"
           min={1}
@@ -301,6 +316,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Hours per week (optional)</span>
         <input
+          data-testid="profile-hours-per-week"
           name="hoursPerWeek"
           type="number"
           min={0}
@@ -340,6 +356,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Training limitations (optional)</span>
         <textarea
+          data-testid="profile-training-limitations"
           name="trainingLimitations"
           defaultValue={profile.trainingLimitations}
           rows={2}
@@ -352,6 +369,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Food preferences</span>
         <textarea
+          data-testid="profile-food-preferences"
           name="foodPreferences"
           defaultValue={profile.foodPreferences}
           rows={2}
@@ -362,6 +380,7 @@ export function ProfileForm({
       <label className="block">
         <span className="text-sm font-medium">Allergies or foods to avoid</span>
         <textarea
+          data-testid="profile-allergies"
           name="allergies"
           defaultValue={profile.allergies}
           rows={2}
@@ -383,6 +402,7 @@ export function ProfileForm({
           <label className="block text-sm">
             Current weight (lb)
             <input
+              data-testid="profile-current-weight"
               name="currentWeight"
               type="number"
               step="0.1"
@@ -395,6 +415,7 @@ export function ProfileForm({
           <label className="block text-sm">
             Goal weight (lb)
             <input
+              data-testid="profile-goal-weight"
               name="goalWeight"
               type="number"
               step="0.1"
@@ -411,6 +432,7 @@ export function ProfileForm({
             {SESSION_LENGTH_OPTIONS.map((item) => (
               <label key={item.value} className="flex items-center gap-2 text-sm">
                 <input
+                  data-testid={`profile-session-length-min-${item.value}`}
                   type="radio"
                   name="sessionLengthMin"
                   value={item.value}
@@ -428,6 +450,7 @@ export function ProfileForm({
             {TRAINING_LOCATION_OPTIONS.map((item) => (
               <label key={item.value} className="flex items-center gap-2 text-sm">
                 <input
+                  data-testid={`profile-training-location-${item.value}`}
                   type="radio"
                   name="trainingLocation"
                   value={item.value}
@@ -445,6 +468,7 @@ export function ProfileForm({
             {COMPETITION_STATUS_OPTIONS.map((item) => (
               <label key={item.value} className="flex items-center gap-3 text-sm">
                 <input
+                  data-testid={`profile-competition-status-${item.value}`}
                   type="radio"
                   name="competitionStatus"
                   value={item.value}
@@ -459,6 +483,7 @@ export function ProfileForm({
         <label className="mt-3 block text-sm">
           Next fight date (optional)
           <input
+            data-testid="profile-next-fight-date"
             name="nextFightDate"
             type="date"
             defaultValue={
@@ -475,6 +500,7 @@ export function ProfileForm({
             {COACHING_TONE_OPTIONS.map((item) => (
               <label key={item.value} className="flex items-center gap-3 text-sm">
                 <input
+                  data-testid={`profile-coaching-tone-${item.value}`}
                   type="radio"
                   name="coachingTone"
                   value={item.value}
@@ -492,6 +518,7 @@ export function ProfileForm({
             {OBSTACLE_OPTIONS.map((item) => (
               <label key={item.value} className="flex items-center gap-3 text-sm">
                 <input
+                  data-testid={`profile-obstacles-${item.value}`}
                   type="checkbox"
                   name="obstacles"
                   value={item.value}
@@ -517,6 +544,7 @@ export function ProfileForm({
           <label className="block text-sm">
             Calories
             <input
+              data-testid="profile-calorie-target"
               name="calorieTarget"
               type="number"
               min={800}
@@ -528,6 +556,7 @@ export function ProfileForm({
           <label className="block text-sm">
             Protein (g)
             <input
+              data-testid="profile-protein-target-g"
               name="proteinTargetG"
               type="number"
               min={40}
@@ -539,6 +568,7 @@ export function ProfileForm({
           <label className="block text-sm">
             Carbs (g)
             <input
+              data-testid="profile-carbs-target-g"
               name="carbsTargetG"
               type="number"
               min={40}
@@ -550,6 +580,7 @@ export function ProfileForm({
           <label className="block text-sm">
             Fat (g)
             <input
+              data-testid="profile-fat-target-g"
               name="fatTargetG"
               type="number"
               min={20}
@@ -564,6 +595,7 @@ export function ProfileForm({
 
       <label className="flex items-start gap-3 rounded-xl border border-line p-3">
         <input
+          data-testid="profile-claims-gym-membership"
           type="checkbox"
           name="claimsGymMembership"
           defaultChecked={profile.claimsGymMembership}
@@ -582,6 +614,7 @@ export function ProfileForm({
       </div>
 
       <button
+        data-testid="profile-save-profile"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

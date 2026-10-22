@@ -77,6 +77,7 @@ function DockLink({
   const Icon = DOCK_ICONS[label];
   return (
     <Link
+      data-testid={`chrome-dock-link-${href.split("/").filter(Boolean).join("-")}`}
       href={href}
       data-dock-link={label}
       className={`flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 ${
@@ -145,6 +146,7 @@ export function AppHeader({
         ) : null}
         <div className="mx-auto flex max-w-3xl items-center gap-1 py-1.5 pl-2 pr-[4.75rem]">
           <Link
+            data-testid="chrome-link"
             href={homeHref ?? "/home"}
             className="flex shrink-0 items-center justify-center px-1"
           >
@@ -186,6 +188,7 @@ export function AppHeader({
     >
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-2">
         <Link
+          data-testid="chrome-svg-performance"
           href={homeHref ?? (email ? "/home" : "/")}
           className="flex min-w-0 shrink-0 items-center gap-2.5"
         >

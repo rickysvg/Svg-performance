@@ -46,6 +46,7 @@ export default async function SparringPage({
         <label className="block min-w-0 flex-1 text-sm">
           Day
           <input
+            data-testid="sparring-day"
             type="date"
             name="day"
             max={today}

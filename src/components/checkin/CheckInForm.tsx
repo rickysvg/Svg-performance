@@ -85,11 +85,12 @@ export function CheckInForm({
   const ready = sleep != null && energy != null && stress != null;
 
   return (
-    <form action={action} className="space-y-5">
+    <form data-testid="checkin-form" action={action} className="space-y-5">
       <StatusBanner error={localError || state.error} />
       <label className="block text-sm font-semibold">
         Bodyweight (lb)
         <input
+          data-testid="checkin-bodyweight-lb"
           name="bodyweightLb"
           type="number"
           inputMode="decimal"
@@ -127,6 +128,7 @@ export function CheckInForm({
       <label className="block text-sm font-semibold">
         Notes on soreness or injury
         <textarea
+          data-testid="checkin-soreness-notes"
           name="sorenessNotes"
           rows={2}
           maxLength={400}
@@ -161,6 +163,7 @@ export function CheckInForm({
       <label className="block text-sm font-semibold">
         Wins
         <textarea
+          data-testid="checkin-wins"
           name="wins"
           rows={2}
           maxLength={600}
@@ -171,6 +174,7 @@ export function CheckInForm({
       <label className="block text-sm font-semibold">
         Struggles
         <textarea
+          data-testid="checkin-struggles"
           name="struggles"
           rows={2}
           maxLength={600}
@@ -183,6 +187,7 @@ export function CheckInForm({
         <p className="text-sm font-semibold">Form video <span className="font-normal text-muted">(optional)</span></p>
         {storageNotice ? <p className="text-sm text-muted">{storageNotice}</p> : null}
         <input
+          data-testid="checkin-clip"
           name="clip"
           type="file"
           accept="video/mp4,video/webm,video/quicktime,.mp4,.mov,.webm"
@@ -195,6 +200,7 @@ export function CheckInForm({
       </div>
 
       <button
+        data-testid="checkin-send-check-in"
         type="submit"
         disabled={pending || !ready}
         className="touch-target w-full rounded-full bg-accent text-lg tracking-wide text-black disabled:opacity-60"

@@ -55,11 +55,13 @@ function RoundTimerSheet({
     <div
       className="fixed inset-0 z-[60] flex items-end bg-black/70"
       role="presentation"
+      data-testid="chrome-round-timer-sheet-dismiss"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
+        data-testid="chrome-round-timer-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

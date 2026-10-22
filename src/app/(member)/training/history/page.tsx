@@ -77,6 +77,7 @@ export default async function HistoryPage() {
             <li key={session.id} className="space-y-2" {...(bagLine ? { "data-bagwork-session": "" } : {})}>
             <div className="flex items-stretch gap-2">
               <Link
+                data-testid={`training-history-log-${session.id}`}
                 href={`/training/log/${session.id}`}
                 className="block min-w-0 flex-1 rounded-2xl border border-line bg-card p-4 hover:border-accent"
               >

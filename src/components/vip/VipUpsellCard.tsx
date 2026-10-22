@@ -30,7 +30,7 @@ export function VipUpsellCard({ card }: { card: Card }) {
         ) : (
           <p className="text-sm font-medium text-[#CBF805]">{card.cta}</p>
         )}
-        <form action={dismissVipUpsellAction}>
+        <form data-testid="fight-camp-form-3" action={dismissVipUpsellAction}>
           <input type="hidden" name="trigger" value={card.trigger} />
           <button type="submit" className="touch-target text-sm text-white/70 underline">
             Not now

@@ -15,9 +15,10 @@ export function MealPrepForm({
     {} as MealPrepActionState,
   );
   return (
-    <form action={action} className="space-y-4">
+    <form data-testid="nutrition-prep-form" action={action} className="space-y-4">
       <StatusBanner error={state.error} success={state.success} />
       <input
+        data-testid="nutrition-prep-title"
         name="title"
         placeholder="This week's grocery list"
         className="w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -32,6 +33,7 @@ export function MealPrepForm({
             <label className="text-xs">
               Portions
               <input
+                data-testid={`nutrition-prep-number-${meal.id}`}
                 name={`servings-${meal.id}`}
                 type="number"
                 min={0}
@@ -47,12 +49,13 @@ export function MealPrepForm({
         <legend className="text-sm font-semibold">Simple swaps</legend>
         {Object.entries(SIMPLE_SWAPS).map(([from, to]) => (
           <label key={from} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name={`swap:${from}`} className="h-5 w-5 accent-accent" />
+            <input data-testid="nutrition-prep-checkbox" type="checkbox" name={`swap:${from}`} className="h-5 w-5 accent-accent" />
             {from} → {to}
           </label>
         ))}
       </fieldset>
       <button
+        data-testid="nutrition-prep-generate-grocery-list"
         type="submit"
         disabled={pending || meals.length === 0}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

@@ -14,7 +14,7 @@ export function ChallengeJoinForm({
     {} as ChallengeActionState,
   );
   return (
-    <form action={action} className="space-y-3">
+    <form data-testid="challenges-form" action={action} className="space-y-3">
       <StatusBanner error={state.error} success={state.success} />
       <label className="block text-sm">
         Track
@@ -28,6 +28,7 @@ export function ChallengeJoinForm({
         </select>
       </label>
       <button
+        data-testid="challenges-opt-in"
         type="submit"
         disabled={pending}
         className="touch-target rounded-full bg-accent px-5 text-black disabled:opacity-60"

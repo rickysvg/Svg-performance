@@ -76,12 +76,13 @@ export function FightCampOptIn({
         />
       </div>
 
-      <form ref={cancelRef} action={cancelAction} className="hidden">
+      <form data-testid="training-form" ref={cancelRef} action={cancelAction} className="hidden">
         <input type="hidden" name="next" value="/training" />
       </form>
 
       {open && !enabled ? (
         <form
+          data-testid="training-form-2"
           action={saveAction}
           className={
             shown
@@ -103,6 +104,7 @@ export function FightCampOptIn({
           <label className="block text-sm">
             Fight date
             <input
+              data-testid="training-fight-date"
               name="fightDate"
               type="date"
               required
@@ -114,6 +116,7 @@ export function FightCampOptIn({
           <label className="block text-sm">
             Weight class
             <input
+              data-testid="training-weight-class"
               name="weightClass"
               required
               maxLength={40}
@@ -124,6 +127,7 @@ export function FightCampOptIn({
           </label>
           <p className="text-xs text-muted">Camp turns on as soon as this fight is saved.</p>
           <button
+            data-testid="training-save-fight"
             type="submit"
             className="touch-target w-full rounded-full bg-[#CBF805] text-black"
           >

@@ -358,6 +358,7 @@ export function WeekStrip({
         return (
           <li key={day.weekday} className="min-w-0">
             <Link
+              data-testid={`training-week-chip-${href.split("/").filter(Boolean).join("-")}`}
               href={href}
               data-week-chip={day.short}
               data-open-bike-logger={day.logHref ? "chip" : undefined}
@@ -465,6 +466,7 @@ export function WeekStrip({
           </p>
           {error ? <p className="mt-2 text-sm text-highlighter">{error}</p> : null}
           <button
+            data-testid="training-cancel"
             type="button"
             onClick={() => setSource(null)}
             disabled={pending}
@@ -489,6 +491,7 @@ export function WeekStrip({
           {error ? <p className="mt-2 text-sm text-highlighter">{error}</p> : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
+              data-testid="training-back-to-the-default-week"
               type="button"
               onClick={resetWeek}
               disabled={pending}

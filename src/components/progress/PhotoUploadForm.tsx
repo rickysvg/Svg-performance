@@ -20,11 +20,12 @@ export function PhotoUploadForm() {
   );
 
   return (
-    <form action={action} className="mt-4 space-y-3">
+    <form data-testid="progress-photos-form-3" action={action} className="mt-4 space-y-3">
       <StatusBanner error={state.error} success={state.success} />
       <label className="block text-sm">
         Photo
         <input
+          data-testid="progress-photos-file"
           name="file"
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -35,6 +36,7 @@ export function PhotoUploadForm() {
       <label className="block text-sm">
         Date taken
         <input
+          data-testid="progress-photos-recorded-at"
           name="recordedAt"
           type="date"
           defaultValue={todayDateValue()}
@@ -44,6 +46,7 @@ export function PhotoUploadForm() {
       <label className="block text-sm">
         Caption (optional)
         <input
+          data-testid="progress-photos-caption"
           name="caption"
           maxLength={120}
           placeholder="Example: week 1 check-in"
@@ -51,6 +54,7 @@ export function PhotoUploadForm() {
         />
       </label>
       <button
+        data-testid="progress-photos-upload-photo"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

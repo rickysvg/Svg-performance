@@ -17,11 +17,12 @@ export function DeleteAccountForm({ email }: { email: string }) {
   );
 
   return (
-    <form action={action} className="space-y-4" data-delete-confirm>
+    <form data-testid="profile-delete-confirm" action={action} className="space-y-4" data-delete-confirm>
       <StatusBanner error={state.error} />
       <label className="block">
         <span className="text-sm font-medium">Type DELETE or {email}</span>
         <input
+          data-testid="profile-delete-confirmation"
           name="confirmation"
           value={confirmation}
           onChange={(event) => setConfirmation(event.target.value)}
@@ -32,6 +33,7 @@ export function DeleteAccountForm({ email }: { email: string }) {
         />
       </label>
       <button
+        data-testid="profile-delete-permanently-delete-account"
         type="submit"
         disabled={!enabled || pending}
         className="touch-target w-full rounded-full bg-danger text-base font-semibold text-white disabled:opacity-40"

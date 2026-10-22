@@ -17,16 +17,16 @@ export function TestingForm({
 }) {
   const [state, action, pending] = useActionState(saveTestingAction, {} as MobilityActionState);
   return (
-    <form action={action} className="space-y-4">
+    <form data-testid="training-testing-form" action={action} className="space-y-4">
       <StatusBanner error={state.error} />
       <p className="text-sm text-muted">Boxes start empty. Loads are in lb.</p>
       <label className="block text-sm font-medium">
         Broad jump ({lengthUnit})
-        <input name="broadJumpValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
+        <input data-testid="training-testing-broad-jump-value" name="broadJumpValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
       </label>
       <label className="block text-sm font-medium">
         Strength lift
-        <select name="strengthExercise" defaultValue="Trap-bar deadlift" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3">
+        <select data-testid="training-testing-strength-exercise" name="strengthExercise" defaultValue="Trap-bar deadlift" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3">
           {STRENGTH_TEST_LIFTS.map((lift) => (
             <option key={lift} value={lift}>
               {lift}
@@ -37,18 +37,18 @@ export function TestingForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm font-medium">
           Load ({loadUnit})
-          <input name="strengthLoad" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
+          <input data-testid="training-testing-strength-load" name="strengthLoad" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
         </label>
         <label className="block text-sm font-medium">
           Reps
-          <input name="strengthReps" inputMode="numeric" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
+          <input data-testid="training-testing-strength-reps" name="strengthReps" inputMode="numeric" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
         </label>
       </div>
       <p className="text-xs text-muted">SVG estimates a max from that set. It is an estimate, not a tested max.</p>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm font-medium">
           10 s bike sprint
-          <input name="bikeSprintValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
+          <input data-testid="training-testing-bike-sprint-value" name="bikeSprintValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
         </label>
         <label className="block text-sm font-medium">
           Sprint unit
@@ -60,13 +60,13 @@ export function TestingForm({
       </div>
       <label className="block text-sm font-medium">
         5-minute bike distance ({distanceUnit})
-        <input name="bikeFiveMinValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
+        <input data-testid="training-testing-bike-five-min-value" name="bikeFiveMinValue" inputMode="decimal" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
       </label>
       <label className="block text-sm font-medium">
         Resting heart rate (optional)
-        <input name="restingHr" inputMode="numeric" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
+        <input data-testid="training-testing-resting-hr" name="restingHr" inputMode="numeric" defaultValue="" className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3" />
       </label>
-      <button type="submit" disabled={pending} className="touch-target w-full rounded-full bg-accent text-black">
+      <button data-testid="training-testing-save-testing-week" type="submit" disabled={pending} className="touch-target w-full rounded-full bg-accent text-black">
         {pending ? "Saving…" : "Save testing week"}
       </button>
     </form>

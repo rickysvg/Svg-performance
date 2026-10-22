@@ -20,11 +20,12 @@ export function BookingRequestForm({
     {} as BookingActionState,
   );
   return (
-    <form action={action} className="space-y-3">
+    <form data-testid="book-form" action={action} className="space-y-3">
       <StatusBanner error={state.error} success={state.success} />
       <label className="block space-y-2 text-sm">
         <span>Session</span>
         <select
+          data-testid="book-kind"
           name="kind"
           defaultValue={defaultKind}
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -39,6 +40,7 @@ export function BookingRequestForm({
       <label className="block space-y-2 text-sm">
         <span>Preferred days or times</span>
         <textarea
+          data-testid="book-preferred-times"
           name="preferredTimes"
           required
           rows={3}
@@ -49,6 +51,7 @@ export function BookingRequestForm({
       <label className="block space-y-2 text-sm">
         <span>Note</span>
         <textarea
+          data-testid="book-note"
           name="note"
           rows={3}
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -56,6 +59,7 @@ export function BookingRequestForm({
         />
       </label>
       <button
+        data-testid="book-send-request"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

@@ -68,6 +68,7 @@ export function BikeClockScreen({
           <button
             type="button"
             onClick={onClose}
+            data-testid="chrome-bike-timer-close"
             className="touch-target inline-flex items-center justify-center text-2xl leading-none"
             aria-label="Close timer"
           >
@@ -119,7 +120,7 @@ export function BikeClockScreen({
       />
 
       {dayId ? (
-        <form action={startSessionAction}>
+        <form data-testid="chrome-form-3" action={startSessionAction}>
           <input type="hidden" name="programDayId" value={dayId} />
           <button type="submit" className="text-sm font-semibold text-muted underline">
             Log this session

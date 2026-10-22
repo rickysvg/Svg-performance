@@ -46,6 +46,7 @@ export default async function BikeHistoryPage() {
           {rows.map((row) => (
             <li key={row.id}>
               <Link
+                data-testid={`training-history-bike-log-${row.sessionId}`}
                 href={`/training/log/${row.sessionId}`}
                 data-bike-history-row
                 className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"

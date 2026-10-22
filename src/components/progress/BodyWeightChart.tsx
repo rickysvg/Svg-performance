@@ -29,6 +29,7 @@ export function BodyWeightChart({
           const active = item.id === range;
           return (
             <button
+              data-testid={`progress-weight-chart-${item.id}`}
               key={item.id}
               type="button"
               aria-pressed={active}

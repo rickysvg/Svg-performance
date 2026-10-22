@@ -94,11 +94,13 @@ function SheetFrame({
     <div
       className="fixed inset-0 z-[70] flex items-end bg-black/70"
       role="presentation"
+      data-testid="chrome-bike-workout-sheet-dismiss"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
+        data-testid="chrome-bike-workout-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -155,6 +157,7 @@ function PickerSheet({
       }}
     >
       <div
+        data-testid="chrome-bike-picker"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -167,7 +170,7 @@ function PickerSheet({
           <p id={titleId} className="font-display text-xl uppercase tracking-wide">
             {FIELD_TITLE[field]}
           </p>
-          <button type="button" onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close picker">
+          <button type="button" onClick={onClose} data-testid="chrome-bike-picker-close" className="touch-target text-2xl leading-none" aria-label="Close picker">
             ×
           </button>
         </div>
@@ -176,6 +179,7 @@ function PickerSheet({
             const selected = option === value;
             return (
               <button
+                data-testid={`chrome-bike-picker-option-${option}`}
                 key={option}
                 type="button"
                 data-bike-picker-option={option}
@@ -211,6 +215,7 @@ function PickButton({
 }) {
   return (
     <button
+      data-testid="chrome-bike-pick"
       type="button"
       data-bike-pick={field}
       aria-haspopup="dialog"
@@ -437,6 +442,7 @@ export function BikeWorkoutChooser({
                 const selected = choice?.id === workout.id;
                 return (
                   <button
+                    data-testid={`chrome-bike-choice-${workout.id}`}
                     key={workout.id}
                     type="button"
                     data-bike-workout={workout.id}

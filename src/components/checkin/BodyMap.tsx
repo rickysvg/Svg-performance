@@ -41,6 +41,7 @@ export function BodyMap({
               const on = selected.includes(id);
               return (
                 <button
+                  data-testid={`checkin-region-${id}`}
                   key={id}
                   type="button"
                   aria-pressed={on}

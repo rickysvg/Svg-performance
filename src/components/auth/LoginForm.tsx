@@ -9,11 +9,12 @@ export function LoginForm({ notice }: { notice?: string }) {
   const [state, action, pending] = useActionState(loginAction, {} as ActionState);
 
   return (
-    <form action={action} className="mt-6 space-y-4">
+    <form data-testid="login-form" action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} success={notice} />
       <label className="block">
         <span className="text-sm font-medium">Email</span>
         <input
+          data-testid="login-email"
           name="email"
           type="email"
           autoComplete="email"
@@ -24,6 +25,7 @@ export function LoginForm({ notice }: { notice?: string }) {
       <label className="block">
         <span className="text-sm font-medium">Password</span>
         <input
+          data-testid="login-password"
           name="password"
           type="password"
           autoComplete="current-password"
@@ -32,6 +34,7 @@ export function LoginForm({ notice }: { notice?: string }) {
         />
       </label>
       <button
+        data-testid="login-log-in"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

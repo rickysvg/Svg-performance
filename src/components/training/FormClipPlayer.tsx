@@ -122,7 +122,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-sm font-semibold">{name}</p>
-          <button type="button" className="touch-target text-sm font-semibold text-accent" onClick={onClose}>
+          <button type="button" data-testid="chrome-form-clip-close" className="touch-target text-sm font-semibold text-accent" onClick={onClose}>
             Close
           </button>
         </div>

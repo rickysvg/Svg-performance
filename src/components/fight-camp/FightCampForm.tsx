@@ -21,11 +21,12 @@ export function FightCampForm({
   const [state, action, pending] = useActionState(saveFightCampAction, {} as CampActionState);
 
   return (
-    <form action={action} className="space-y-4">
+    <form data-testid="fight-camp-form-2" action={action} className="space-y-4">
       <StatusBanner error={state.error} />
       <label className="block text-sm">
         Fight date
         <input
+          data-testid="fight-camp-fight-date"
           name="fightDate"
           type="date"
           required
@@ -54,6 +55,7 @@ export function FightCampForm({
         Weight class
         <span className="mt-0.5 block text-xs text-muted">Optional. A class name, not a cut plan.</span>
         <input
+          data-testid="fight-camp-weight-class"
           name="weightClass"
           defaultValue={weightClass}
           maxLength={40}
@@ -62,6 +64,7 @@ export function FightCampForm({
         />
       </label>
       <button
+        data-testid="fight-camp-build-camp"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-lg text-black disabled:opacity-60"

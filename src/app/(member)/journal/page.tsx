@@ -30,8 +30,9 @@ export default async function JournalPage({
         </p>
       </div>
 
-      <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <form data-testid="journal-form" className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
+          data-testid="journal-q"
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Search your entries"
@@ -78,7 +79,7 @@ export default async function JournalPage({
                   No coach feedback yet. The slot stays empty until a human writes it.
                 </p>
               )}
-              <form action={deleteJournalEntryAction} className="mt-3">
+              <form data-testid="journal-form-2" action={deleteJournalEntryAction} className="mt-3">
                 <input type="hidden" name="entryId" value={entry.id} />
                 <button type="submit" className="text-xs text-danger underline">
                   Delete

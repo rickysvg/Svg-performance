@@ -29,6 +29,8 @@ export function Toast({
   placement = "above-chrome",
   action,
   attrs,
+  closeTestId,
+  actionTestId,
 }: {
   message: string;
   onDismiss: () => void;
@@ -37,6 +39,9 @@ export function Toast({
   placement?: "above-chrome" | "top";
   action?: ToastAction;
   attrs?: Record<string, string>;
+  closeTestId?: string;
+  /** Unique per toast. Prefix `chrome-toast-action-` so the suite can match one pattern. */
+  actionTestId?: string;
 }) {
   const dismiss = useEffectEvent(() => {
     onDismiss();
@@ -74,6 +79,7 @@ export function Toast({
         <button
           type="button"
           {...action.attrs}
+          data-testid={actionTestId}
           disabled={action.disabled}
           onClick={action.onClick}
           className={`inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold disabled:opacity-60 ${
@@ -86,6 +92,7 @@ export function Toast({
       <button
         type="button"
         data-toast-close
+        data-testid={closeTestId}
         aria-label="Close"
         onClick={onDismiss}
         className="touch-target inline-flex h-11 w-11 shrink-0 items-center justify-center"

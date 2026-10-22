@@ -34,6 +34,7 @@ function CoachMotivationToggleLive({ enabled }: { enabled: boolean }) {
         rest. On by default. Off stays silent.
       </p>
       <button
+        data-testid="profile-coach-motivation"
         type="button"
         data-coach-motivation={on ? "on" : "off"}
         aria-pressed={on}

@@ -39,6 +39,7 @@ export function TrainingLevelToggle({
           const href = `${basePath}?day=${dayParam}&level=${level.id}`;
           return (
             <Link
+              data-testid={`training-link-3-${level.id}`}
               key={level.id}
               href={href}
               className={`rounded-full px-2 py-2 text-center text-sm font-semibold ${

@@ -77,7 +77,7 @@ export function FormCheckUploadForm({
   }
 
   return (
-    <form action={action} className="space-y-4">
+    <form data-testid="form-check-form" action={action} className="space-y-4">
       <StatusBanner error={localError || state.error} />
       {storageNotice ? (
         <p className="rounded-2xl border border-line bg-card px-4 py-3 text-sm text-muted">{storageNotice}</p>
@@ -94,6 +94,7 @@ export function FormCheckUploadForm({
       <label className="block text-sm">
         Clip
         <input
+          data-testid="form-check-clip"
           name="clip"
           type="file"
           accept="video/mp4,video/webm,video/quicktime,.mp4,.mov,.webm"
@@ -126,6 +127,7 @@ export function FormCheckUploadForm({
         <label className="block text-sm">
           Movement name
           <input
+            data-testid="form-check-custom-movement"
             name="customMovement"
             required
             maxLength={80}
@@ -139,6 +141,7 @@ export function FormCheckUploadForm({
       <label className="block text-sm">
         Note for your coach
         <textarea
+          data-testid="form-check-note"
           name="note"
           rows={3}
           maxLength={500}
@@ -147,6 +150,7 @@ export function FormCheckUploadForm({
         />
       </label>
       <button
+        data-testid="form-check-send-for-review"
         type="submit"
         disabled={pending || !duration}
         className="touch-target w-full rounded-full bg-accent text-lg tracking-wide text-black disabled:opacity-60"
