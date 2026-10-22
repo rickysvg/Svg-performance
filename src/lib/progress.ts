@@ -1,4 +1,5 @@
-import { bagworkTrainingLoadFromSession } from "@/lib/bagwork";
+import { BAGWORK_PRESCRIPTION, bagworkTrainingLoadFromSession } from "@/lib/bagwork";
+import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
@@ -20,13 +21,34 @@ export type ExerciseBest = {
   date: string;
 };
 
+export function sessionAppearsOnProgress(session: {
+  status: string;
+  sets: {
+    prescriptionKey?: string | null;
+    exerciseName?: string | null;
+    reps?: number | null;
+    loadValue?: number | null;
+    durationSeconds?: number | null;
+  }[];
+}) {
+  if (!sessionHasLoggedWork(session.sets)) return false;
+  if (session.status === "complete") return true;
+  if (session.status !== "partial") return false;
+  return session.sets.some((set) => {
+    const key = set.prescriptionKey ?? "";
+    return (
+      key.startsWith("round:") ||
+      key === BAGWORK_PRESCRIPTION ||
+      isBikeIntervalName(set.exerciseName ?? "")
+    );
+  });
+}
+
 export function buildProgressSummary(
   sessions: SessionWithSets[],
   displayUnit: LoadUnit,
 ) {
-  const completed = sessions.filter(
-    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
-  );
+  const completed = sessions.filter((session) => sessionAppearsOnProgress(session));
   const points: ProgressPoint[] = [...completed]
     .sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime())
     .map((session) => {

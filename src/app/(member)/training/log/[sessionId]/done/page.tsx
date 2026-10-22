@@ -36,7 +36,7 @@ export default async function WorkoutDonePage({
   const [prs, completeIds, badges] = await Promise.all([
     detectNewPrsForSession(user.id, sessionId, unit),
     prisma.workoutSession.findMany({
-      where: { userId: user.id, status: "complete", sets: loggedSetSome },
+      where: { userId: user.id, status: { in: ["complete", "partial"] }, sets: loggedSetSome },
       select: { id: true },
       orderBy: { performedAt: "asc" },
     }),

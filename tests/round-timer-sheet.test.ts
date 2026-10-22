@@ -23,7 +23,9 @@ describe("round timer sheet", () => {
     expect(button).not.toContain("router.push");
     expect(timer).toContain('aria-label="Close timer"');
     expect(timer).toContain("startRoundLogAction");
-    expect(timer).toContain("launch || onClose");
+    expect(timer).toContain('name="configuredRounds"');
+    expect(timer).toContain('name="restSeconds"');
+    expect(timer).not.toContain("onClose || bikeMode");
   });
 
   it("places Start rounds on Bagwork and the stopwatch on Train, Mobility, and Sparring", () => {

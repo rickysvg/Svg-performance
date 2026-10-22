@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
 import { bikeHistoryLine } from "@/lib/bike-chooser";
+import { roundHistoryLine } from "@/lib/round-session";
 import {
   completionListLabel,
   sessionCountsAsPlannedCompletion,
@@ -72,7 +73,9 @@ export default async function HistoryPage() {
             const label = completionListLabel(session);
             const names = loggedExerciseNamesInOrder(session.sets);
             const bagLine = bagworkHistoryLine(session);
+            const roundLine = bagLine ? null : roundHistoryLine(session);
             const bikeLine = bikeHistoryLine(session);
+            const detailLine = bagLine ?? roundLine;
             return (
             <li key={session.id} className="space-y-2" {...(bagLine ? { "data-bagwork-session": "" } : {})}>
             <div className="flex items-stretch gap-2">
@@ -91,7 +94,7 @@ export default async function HistoryPage() {
                 ) : null}
                 <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
                   {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} · {label}
-                  {bagLine ? ` · ${bagLine}` : ` · ${setCount} set${setCount === 1 ? "" : "s"}`}
+                  {detailLine ? ` · ${detailLine}` : ` · ${setCount} set${setCount === 1 ? "" : "s"}`}
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
                     : finished && !bagLine

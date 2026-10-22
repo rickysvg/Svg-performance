@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { PROGRESS_SESSION_TAKE, listRecentSessionsForUser } from "@/lib/workouts";
-import { buildProgressSummary } from "@/lib/progress";
+import { buildProgressSummary, sessionAppearsOnProgress } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
@@ -31,7 +31,6 @@ import { getProgressHeartTiles } from "@/lib/heart";
 import { canUseFeature } from "@/lib/entitlements";
 import { getTrialState } from "@/lib/trial";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
-import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion";
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
@@ -100,9 +99,7 @@ export default async function ProgressPage() {
   const companion = await getCompanionProgress(user.id, units);
   const badgeCounts = summarizeBadges(companion.badges);
   const summary = buildProgressSummary(sessions, units);
-  const lastComplete = sessions.find(
-    (session) => session.status === "complete" && sessionHasLoggedWork(session.sets),
-  );
+  const lastComplete = sessions.find((session) => sessionAppearsOnProgress(session));
   const lastWhen = lastComplete
     ? formatWorkoutCompleteDate(civilDayInstant(lastComplete.performedAt, tz), tz)
     : null;

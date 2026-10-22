@@ -438,7 +438,7 @@ function mergePersist<T extends PersistSet>(current: T, incoming: T): T {
  */
 export function prepareSetsForPersist<T extends PersistSet>(
   sets: T[],
-  status: "draft" | "complete",
+  status: "draft" | "complete" | "partial",
 ): T[] {
   const order: string[] = [];
   const slots = new Map<string, T>();
@@ -465,7 +465,7 @@ export function prepareSetsForPersist<T extends PersistSet>(
   }
 
   let rows = order.map((key) => slots.get(key)!);
-  if (status === "complete") {
+  if (status !== "draft") {
     rows = rows.filter(setHasLoggedWork);
   } else if (rows.length > 80) {
     const logged = rows.filter(setHasLoggedWork);

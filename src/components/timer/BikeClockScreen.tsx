@@ -1,7 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { logBikeTimerAction } from "@/app/actions/workouts";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { BikeWorkoutChooser } from "@/components/training/BikeWorkoutSheet";
@@ -10,6 +11,7 @@ import {
   BIKE_CHOICE_STORAGE_KEY,
   bikeChoiceById,
   choiceFromToken,
+  choiceToken,
   rememberBikeChoice,
   sessionWithChoice,
 } from "@/lib/bike-chooser";
@@ -60,6 +62,9 @@ export function BikeClockScreen({
   const running = active ? sessionWithChoice(base, active) : session;
   const workoutLabel = active?.name ?? session?.focus ?? session?.title ?? "Bike workout";
   const ready = explicit != null || storedToken !== "" || !session;
+  const [finished, setFinished] = useState(0);
+  const [notes, setNotes] = useState("");
+  const [rpe, setRpe] = useState("");
 
   return (
     <div className="space-y-4 pb-8" data-bike-clock={ready ? "ready" : "plan"}>
@@ -102,6 +107,7 @@ export function BikeClockScreen({
           session={running}
           canStart
           onSetComplete={() => {}}
+          onFinishedRounds={setFinished}
         />
       ) : null}
 
@@ -118,6 +124,47 @@ export function BikeClockScreen({
         }
         onApply={rememberBikeChoice}
       />
+
+      {active && finished >= 1 ? (
+        <form action={logBikeTimerAction} data-bike-clock-log="">
+          <input type="hidden" name="workout" value={choiceToken(active)} />
+          <input type="hidden" name="rounds" value={finished} />
+          <input type="hidden" name="notes" value={notes} />
+          <input type="hidden" name="rpe" value={rpe} />
+          {dayId ? <input type="hidden" name="programDayId" value={dayId} /> : null}
+          <label className="block text-sm">
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="Optional"
+              className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+            />
+          </label>
+          <label className="mt-3 block text-sm">
+            RPE
+            <input
+              value={rpe}
+              onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+              inputMode="numeric"
+              placeholder="1–10, optional"
+              className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+            />
+          </label>
+          <button
+            type="submit"
+            className="touch-target mt-3 w-full rounded-full bg-accent text-sm uppercase tracking-wide text-black"
+          >
+            {`Log ${finished} bike rounds`}
+          </button>
+        </form>
+      ) : (
+        <p className="text-sm text-muted" data-bike-clock-log="waiting">
+          Finish a round before logging.
+        </p>
+      )}
 
       {dayId ? (
         <Link

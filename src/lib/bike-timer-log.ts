@@ -10,6 +10,11 @@ import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { highestSetNumber } from "@/lib/logger-insert";
 import type { LoadUnit } from "@/lib/units";
 import type { LogMode } from "@/lib/exercise-log-mode";
+import {
+  roundTargetFromExercises,
+  type RoundExercise,
+  type RoundSessionType,
+} from "@/lib/round-session";
 
 export const BIKE_TIMER_EXERCISE = "Assault bike intervals";
 
@@ -25,8 +30,8 @@ export type BikeTimerSet = {
   prescriptionKey: string;
 };
 
-/** Today's scheduled bike program day, when the plan has one. */
-export async function scheduledBikeProgramDayId(userId: string, now = new Date()) {
+/** Today's plan, scaled the same way Train and the bike logger read it. */
+export async function loadScheduledPlanSessions(userId: string, now = new Date()) {
   const [profile, swaps, catalog, account] = await Promise.all([
     getProfileForUser(userId),
     getWeekPlanSwapsForUser(userId),
@@ -53,8 +58,30 @@ export async function scheduledBikeProgramDayId(userId: string, now = new Date()
     weightAccess: profile?.weightAccess,
     weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
   });
-  const bike = resolvePlanSessions(eased.plan, scaled).find((session) => session.dayId && session.logHref);
+  return resolvePlanSessions(eased.plan, scaled);
+}
+
+/** Today's scheduled bike program day, when the plan has one. */
+export async function scheduledBikeProgramDayId(userId: string, now = new Date()) {
+  const sessions = await loadScheduledPlanSessions(userId, now);
+  const bike = sessions.find((session) => session.dayId && session.logHref);
   return bike?.dayId ?? null;
+}
+
+/** Today's bag, pads, sparring, grappling, or bike day, when the plan has one. */
+export async function scheduledRoundPlanTarget(
+  userId: string,
+  type: RoundSessionType,
+  now = new Date(),
+) {
+  const sessions = await loadScheduledPlanSessions(userId, now);
+  for (const session of sessions) {
+    if (!session.dayId || !session.day) continue;
+    const target = roundTargetFromExercises(session.day.exercises as RoundExercise[], type);
+    if (!target) continue;
+    return { programDayId: session.dayId, ...target };
+  }
+  return null;
 }
 
 /** Prescribed length of the ride, including easy spins between efforts. */
