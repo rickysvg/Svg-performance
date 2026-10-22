@@ -1,39 +1,31 @@
 import { prisma } from "@/lib/prisma";
-import { findDemoTrainingCatalog } from "@/lib/programs";
 import { sparringLogsForWeek } from "@/lib/outside-log";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
-import { getProfileForUser } from "@/lib/profile";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import {
   formatSetProgress,
   prescribedSetTotal,
   resolvedPlannedSetCount,
   loggedNameMatchesPlanned,
+  offPlanSessionDone,
   sessionCountsAsPlannedCompletion,
   setIsTicked,
   tickedSetCount,
 } from "@/lib/logged-work";
+import { calendarScaleContext } from "@/lib/plan-doses";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import {
-  campPlanWeekIndex,
-  getActiveCampSnapshot,
-  shapeDayPlan,
-  type CampPhase,
-} from "@/lib/fight-camp";
-import { scaledPlanByProgramDay } from "@/lib/chip-completion";
+import { shapeDayPlan } from "@/lib/fight-camp";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
-import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
+import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { scaleDemoCatalog } from "@/lib/training-scale";
-import { timeZoneForUser } from "@/lib/profile";
 import {
   APP_TIMEZONE,
   addZonedDays,
@@ -41,6 +33,8 @@ import {
   weekdayInZone,
   zonedParts,
 } from "@/lib/timezone";
+
+export { calendarPlanDoses, calendarScaledCatalog } from "@/lib/plan-doses";
 
 export const DEFAULT_TRAINING_WEEKDAYS = ["Monday", "Wednesday", "Friday"] as const;
 
@@ -319,52 +313,6 @@ function dayNumberMatch(
   );
 }
 
-type CalendarScaleInput = {
-  experienceLevel?: string | null;
-  competitionStatus?: string | null;
-  weightAccess?: string | null;
-  onboardingCompletedAt?: Date | null;
-  now: Date;
-  timeZone: string;
-  camp: { weekNumber: number | null; phase: CampPhase } | null;
-};
-
-/** Same scale inputs the calendar schedule uses for set counts. */
-export function calendarScaledCatalog<T extends Parameters<typeof scaleDemoCatalog>[0]>(
-  catalog: T,
-  input: CalendarScaleInput,
-) {
-  const campWeek = campPlanWeekIndex(input.camp);
-  return scaleDemoCatalog(catalog, {
-    experienceLevel: input.experienceLevel,
-    competitionStatus: input.competitionStatus,
-    weightAccess: input.weightAccess,
-    weekIndex: campWeek ?? planWeekIndex(input.now, input.timeZone, input.onboardingCompletedAt ?? null),
-    campPhase: input.camp && input.camp.phase !== "complete" ? input.camp.phase : null,
-  });
-}
-
-/** Scaled dose for each program day, using the calendar's scale. */
-export async function calendarPlanDoses(userId: string, now = new Date()) {
-  const [catalog, profile] = await Promise.all([
-    findDemoTrainingCatalog(),
-    getProfileForUser(userId),
-  ]);
-  const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
-  const camp = await getActiveCampSnapshot(userId, now, timeZone);
-  return scaledPlanByProgramDay(
-    calendarScaledCatalog(catalog, {
-      experienceLevel: profile?.experienceLevel,
-      competitionStatus: profile?.competitionStatus,
-      weightAccess: profile?.weightAccess,
-      onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
-      now,
-      timeZone,
-      camp,
-    }),
-  );
-}
-
 /**
  * Selected-day header. A card that says Partial stays Partial on a past day.
  * "Partly logged" is only a mix of finished and unfinished workouts with no Partial card.
@@ -414,29 +362,15 @@ export async function getCalendarSchedule(
   /** When set, the list is that Monday–Sunday, including days already past. */
   weekAnchor?: Date,
 ) {
-  const [catalog, profile, swaps, account] = await Promise.all([
-    findDemoTrainingCatalog(),
-    getProfileForUser(userId),
+  const [scale, swaps, account] = await Promise.all([
+    calendarScaleContext(userId, now),
     getWeekPlanSwapsForUser(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
-  const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
+  const { profile, tz, camp, campWeek, strength, skill, planByDay } = scale;
   await finalizePastLoggedDrafts(userId, now, tz);
   const sessions = await listWorkoutSessionsForUser(userId);
   const challenge = await getChallengeProgressForUser(userId, tz);
-  const camp = await getActiveCampSnapshot(userId, now, tz);
-  const campWeek = campPlanWeekIndex(camp);
-  const scaled = calendarScaledCatalog(catalog, {
-    experienceLevel: profile?.experienceLevel,
-    competitionStatus: profile?.competitionStatus,
-    weightAccess: profile?.weightAccess,
-    onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
-    now,
-    timeZone: tz,
-    camp,
-  });
-  const { strength, skill } = scaled;
-  const planByDay = scaledPlanByProgramDay(scaled);
   const loggedSessions = sessions.filter(
     (session) =>
       (session.status === "complete" || session.status === "partial" || session.status === "draft") &&
@@ -581,13 +515,7 @@ export async function getCalendarSchedule(
       const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
       const planned = resolvedPlannedSetCount(log, dose);
       const setCountLabel = formatSetProgress(ticked, planned);
-      const done = sessionCountsAsPlannedCompletion(
-        {
-          ...log,
-          plannedSetCount: log.plannedSetCount ?? (dose > 0 ? dose : null),
-        },
-        plan ? [...plan.names] : [],
-      );
+      const done = offPlanSessionDone(log, dose, plan?.names ?? []);
       day.activities.push({
         kind: "workout",
         title,

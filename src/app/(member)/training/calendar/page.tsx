@@ -117,8 +117,8 @@ export default async function TrainingCalendarPage({
   const loggedWindow = carouselLoggedRange(now, tz);
   const planByDay = await calendarPlanDoses(user.id, now);
   const [loggedDays, completedByDay, partialDays, weekSchedules] = await Promise.all([
-    completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz),
-    completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
+    completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, now),
+    completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, now),
     partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
     Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
   ]);

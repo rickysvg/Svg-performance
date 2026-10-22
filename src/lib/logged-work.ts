@@ -104,6 +104,35 @@ export function sessionCountsAsPlannedCompletion(
   return missing.every((name) => !present.has(name)) && planned.some((name) => ticked.includes(name));
 }
 
+/**
+ * An off-plan log whose exercises were swapped is done when every logged
+ * set is ticked. Catalog names and the original dose must not leave that
+ * finished log as Partial. A short log of the original exercises stays partial.
+ */
+export function offPlanSessionDone(
+  session: { status: string; sets: TickedSet[]; plannedSetCount?: number | null },
+  dose: number,
+  planNames: readonly string[],
+) {
+  const stamped = {
+    ...session,
+    plannedSetCount: session.plannedSetCount ?? (dose > 0 ? dose : null),
+  };
+  if (sessionCountsAsPlannedCompletion(stamped, [...planNames])) return true;
+  if (session.status !== "complete") return false;
+  if (session.sets.length === 0 || !session.sets.every((set) => setIsTicked(set))) return false;
+  const replaced = session.sets.some((set) => {
+    const name = (set.exerciseName ?? "").trim();
+    if (!name) return false;
+    return !planNames.some((planned) => loggedNameMatchesPlanned(planned, name));
+  });
+  if (!replaced) return false;
+  if (typeof session.plannedSetCount === "number" && session.plannedSetCount > 0) {
+    return tickedSetCount(session.sets) >= session.plannedSetCount;
+  }
+  return true;
+}
+
 /** Timer logs use a different bike label than the day card. Other names stay on their gym key. */
 export function loggedNameMatchesPlanned(plannedName: string, loggedName: string) {
   if (gymExerciseKey(plannedName) === gymExerciseKey(loggedName)) return true;

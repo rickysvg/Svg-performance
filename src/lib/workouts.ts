@@ -10,6 +10,7 @@ import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { calendarPlanDoses } from "@/lib/plan-doses";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
 import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
@@ -453,6 +454,7 @@ export async function completedLocalDayKeys(
   from: Date,
   to: Date,
   timeZone: string,
+  now = new Date(),
 ) {
   const fromKey = dayKey(from, timeZone);
   const endKey = dayKey(to, timeZone);
@@ -482,19 +484,30 @@ export async function completedLocalDayKeys(
       },
     },
   });
-  const targets = await plannedTargetsByDay(
-    rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id)),
-  );
+  const ids = rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id));
+  const [targets, planByDay] = await Promise.all([
+    plannedTargetsByDay(ids),
+    calendarPlanDoses(userId, now),
+  ]);
   return [
     ...new Set(
       rows
-        .filter((row) =>
-          sessionCountsAsPlannedCompletion(
-            row,
-            row.programDayId ? (targets.names.get(row.programDayId) ?? []) : [],
-            row.programDayId ? (targets.doses.get(row.programDayId) ?? null) : null,
-          ),
-        )
+        .filter((row) => {
+          const plan = row.programDayId ? planByDay.get(row.programDayId) : undefined;
+          const names =
+            plan && plan.names.length > 0
+              ? [...plan.names]
+              : row.programDayId
+                ? (targets.names.get(row.programDayId) ?? [])
+                : [];
+          const dose =
+            plan && plan.dose > 0
+              ? plan.dose
+              : row.programDayId
+                ? (targets.doses.get(row.programDayId) ?? null)
+                : null;
+          return sessionCountsAsPlannedCompletion(row, names, dose);
+        })
         .map((row) => sessionCompletionDay(row, timeZone))
         .filter((key) => key >= fromKey && key < endKey),
     ),

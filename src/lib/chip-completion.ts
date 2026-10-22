@@ -8,6 +8,8 @@ import {
 } from "@/lib/logged-work";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { dayKey } from "@/lib/timezone";
+import { calendarPlanDoses, type ScaledDayPlan } from "@/lib/plan-doses";
+export { scaledPlanByProgramDay, type ScaledDayPlan } from "@/lib/plan-doses";
 
 const DAY_PAD_MS = 36 * 60 * 60 * 1000;
 
@@ -66,18 +68,20 @@ export function completedProgramDayIdsForChip(
 
 /**
  * Program days completed on each civil day in [from, to).
- * Uses `sessionCountsAsPlannedCompletion` with the prescribed set count,
+ * Uses `sessionCountsAsPlannedCompletion` with the calendar's scaled dose,
  * the same gate as `completedLocalDayKeys`. It does not define a second
- * "done" rule. A null `plannedSetCount` still has to cover the program dose.
+ * "done" rule. A null `plannedSetCount` still has to cover that dose.
  */
 export async function completedSessionIdsByLocalDay(
   userId: string,
   from: Date,
   to: Date,
   timeZone: string,
+  now = new Date(),
 ) {
   const fromKey = dayKey(from, timeZone);
   const endKey = dayKey(to, timeZone);
+  const planByDay = await calendarPlanDoses(userId, now);
   const rows = await prisma.workoutSession.findMany({
     where: {
       userId,
@@ -95,15 +99,20 @@ export async function completedSessionIdsByLocalDay(
     const key = sessionCompletionDay(row, timeZone);
     if (key < fromKey || key >= endKey) return [];
     const exercises = row.programDay?.exercises ?? [];
+    const plan = planByDay.get(row.programDayId);
+    const catalogDose = prescribedSetTotal(exercises);
+    const dose = plan && plan.dose > 0 ? plan.dose : catalogDose;
+    const names =
+      plan && plan.names.length > 0 ? [...plan.names] : exercises.map((exercise) => exercise.name);
     return [
       {
         status: row.status,
         programDayId: row.programDayId,
         plannedSetCount: row.plannedSetCount,
-        prescribedCount: prescribedSetTotal(exercises),
+        prescribedCount: dose,
         sets: row.sets,
         day: key,
-        names: exercises.map((exercise) => exercise.name),
+        names,
       },
     ];
   });
@@ -117,34 +126,6 @@ export async function completedSessionIdsByLocalDay(
     if (ids.length > 0) byDay.set(key, ids);
   }
   return Object.fromEntries(byDay);
-}
-
-export type ScaledDayPlan = {
-  dose: number;
-  names: readonly string[];
-};
-
-/**
- * Set totals on the scaled catalog the calendar renders.
- * Program day ids are unchanged by scaling; the dose is not.
- */
-export function scaledPlanByProgramDay(catalog: {
-  strength?: { days: { id?: string; exercises?: { name?: string | null; sets?: number | null }[] }[] } | null;
-  skill?: { days: { id?: string; exercises?: { name?: string | null; sets?: number | null }[] }[] } | null;
-}) {
-  const plans = new Map<string, ScaledDayPlan>();
-  for (const program of [catalog.strength, catalog.skill]) {
-    for (const day of program?.days ?? []) {
-      if (!day.id) continue;
-      const dose = prescribedSetTotal(day.exercises);
-      if (dose <= 0) continue;
-      const names = (day.exercises ?? [])
-        .map((exercise) => (exercise.name ?? "").trim())
-        .filter((name) => name.length > 0);
-      plans.set(day.id, { dose, names });
-    }
-  }
-  return plans;
 }
 
 /**

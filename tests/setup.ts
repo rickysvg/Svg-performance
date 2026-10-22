@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeEach } from "vitest";
+import { clearCalendarScaleCache } from "@/lib/plan-doses";
 
 process.env.DATABASE_URL = "file:./test.db";
 process.env.AUTH_SECRET = "test-auth-secret-at-least-16";
@@ -28,6 +29,7 @@ isolateCoachKey();
 beforeEach(() => {
   isolateGymdeskEnv();
   isolateCoachKey();
+  clearCalendarScaleCache();
 });
 
 const dbPath = path.resolve(process.cwd(), "prisma/test.db");

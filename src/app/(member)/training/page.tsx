@@ -196,8 +196,8 @@ export default async function TrainingPage({
   const loggedRange = carouselLoggedRange(now, tz);
   const planByDay = await calendarPlanDoses(user.id, now);
   const [completedDays, completedByDay, partialDays] = await Promise.all([
-    completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
-    completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
+    completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, now),
+    completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
     partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
   ]);
   const selectedWeekday = weekdayInAppZone(selected, tz);
