@@ -129,14 +129,14 @@ export function BikeClockScreen({
         <form action={logBikeTimerAction} data-bike-clock-log="">
           <input type="hidden" name="workout" value={choiceToken(active)} />
           <input type="hidden" name="rounds" value={finished} />
-          <input type="hidden" name="notes" value={notes} />
-          <input type="hidden" name="rpe" value={rpe} />
           {dayId ? <input type="hidden" name="programDayId" value={dayId} /> : null}
           <label className="block text-sm">
             Notes
             <textarea
+              name="notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              onInput={(event) => setNotes(event.target.value)}
               maxLength={500}
               rows={2}
               placeholder="Optional"
@@ -146,8 +146,10 @@ export function BikeClockScreen({
           <label className="mt-3 block text-sm">
             RPE
             <input
+              name="rpe"
               value={rpe}
               onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+              onInput={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
               inputMode="numeric"
               placeholder="1–10, optional"
               className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"

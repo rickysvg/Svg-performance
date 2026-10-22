@@ -90,8 +90,10 @@ function RoundLogNotes({
         Notes
         <textarea
           data-testid="chrome-round-notes"
+          name="notes"
           value={notes}
           onChange={(event) => onNotes(event.target.value)}
+          onInput={(event) => onNotes(event.currentTarget.value)}
           maxLength={500}
           rows={2}
           placeholder="Optional"
@@ -102,8 +104,10 @@ function RoundLogNotes({
         RPE
         <input
           data-testid="chrome-round-rpe"
+          name="rpe"
           value={rpe}
           onChange={(event) => onRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+          onInput={(event) => onRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
           inputMode="numeric"
           placeholder="1–10, optional"
           className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
@@ -491,6 +495,7 @@ export function RoundTimer({
               data-testid="chrome-timer-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              onInput={(event) => setNotes(event.currentTarget.value)}
               maxLength={500}
               rows={2}
               placeholder="Optional"
@@ -503,6 +508,7 @@ export function RoundTimer({
               data-testid="chrome-timer-rpe"
               value={rpe}
               onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+              onInput={(event) => setRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
               inputMode="numeric"
               placeholder="1–10, optional"
               className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
@@ -529,8 +535,6 @@ export function RoundTimer({
       <form action={logBikeTimerAction} data-bike-round-log="">
         <input type="hidden" name="workout" value={choiceToken(bikeChoice)} />
         <input type="hidden" name="rounds" value={Math.min(bikeFinished, bikeRounds)} />
-        <input type="hidden" name="notes" value={notes} />
-        <input type="hidden" name="rpe" value={rpe} />
         <input type="hidden" name="programDayId" value={linkedProgramDayId} />
         <RoundLogNotes notes={notes} rpe={rpe} onNotes={setNotes} onRpe={setRpe} />
         <button type="submit" className="touch-target w-full rounded-full bg-accent text-sm uppercase tracking-wide text-black">
@@ -551,8 +555,6 @@ export function RoundTimer({
           value={config.workSeconds}
         />
         <input type="hidden" name="restSeconds" value={config.restSeconds} />
-        <input type="hidden" name="notes" value={notes} />
-        <input type="hidden" name="rpe" value={rpe} />
         <input type="hidden" name="programDayId" value={linkedProgramDayId} />
         <RoundLogNotes notes={notes} rpe={rpe} onNotes={setNotes} onRpe={setRpe} />
         <button
