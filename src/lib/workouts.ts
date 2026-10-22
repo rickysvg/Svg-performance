@@ -14,6 +14,9 @@ import {
   ROUND_SESSION_TITLES,
   sessionMatchesRoundType,
   setBelongsToRoundType,
+  setIsSavedRoundWork,
+  trimRoundSessionSeconds,
+  trimRoundSetSeconds,
   type RoundSessionType,
 } from "@/lib/round-session";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
@@ -27,7 +30,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { calendarPlanDoses, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
-import { BAGWORK_PRESCRIPTION, parseSessionRpe } from "@/lib/bagwork";
+import { parseSessionRpe } from "@/lib/bagwork";
 import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
 import { halvedSetCount } from "@/lib/recovery-ease";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
@@ -648,9 +651,11 @@ export async function startRoundWorkoutForUser(input: {
 }
 
 /**
- * One completed (or partial) log for a round-based save. A second save updates
- * that same row. Today's matching program day is linked when the plan has one.
- * Done still means every planned round is logged; fewer rounds stay Partial.
+ * One log for a round-based save. A second save updates that same row.
+ * Today's matching program day is linked when the plan has one.
+ * A mixed day stays partial so the logger can still finish the other work.
+ * Only a round-only day is complete, and only when its rounds are covered.
+ * The stored plan count is the level-scaled day, the same number Done uses.
  */
 export async function logRoundSessionForUser(input: {
   userId: string;
@@ -689,16 +694,13 @@ export async function logRoundSessionForUser(input: {
   const configured =
     input.configuredRounds == null ? null : Math.max(1, Math.round(input.configuredRounds));
   const plannedRounds = target?.plannedRounds ?? configured ?? roundsCompleted;
-  const status = roundSaveStatus({
-    roundsCompleted,
-    plannedRounds,
-    configuredRounds: configured,
-  });
-  const workSeconds = Math.max(1, Math.round(input.workSeconds) || target?.workSeconds || 180);
+  const workSeconds = trimRoundSetSeconds(
+    Math.max(1, Math.round(input.workSeconds) || target?.workSeconds || 180),
+  );
   const requestedRest = Number.isFinite(input.restSeconds) ? Math.round(input.restSeconds) : 0;
   const restSeconds =
     requestedRest > 0 ? requestedRest : Math.max(0, Math.round(target?.restSeconds ?? 0));
-  const roundSets =
+  const builtSets =
     input.sets ??
     roundLogSets({
       type: input.type,
@@ -708,12 +710,18 @@ export async function logRoundSessionForUser(input: {
       restSeconds,
       unit: units,
     });
+  const roundSets = builtSets.map((set) => ({
+    ...set,
+    durationSeconds:
+      set.durationSeconds == null ? set.durationSeconds : trimRoundSetSeconds(set.durationSeconds),
+  }));
   if (roundSets.length < 1) {
     throw new AppError("WORKOUT", "Finish a round before logging.");
   }
   const roundTitle = (input.title || target?.exerciseName || ROUND_SESSION_TITLES[input.type]).trim();
-  const elapsed =
-    input.elapsedSeconds ?? roundSessionDuration(roundsCompleted, workSeconds, restSeconds);
+  const elapsed = trimRoundSessionSeconds(
+    input.elapsedSeconds ?? roundSessionDuration(roundsCompleted, workSeconds, restSeconds),
+  );
   const workoutId = await reuseRoundSessionId({
     userId: input.userId,
     type: input.type,
@@ -757,10 +765,16 @@ export async function logRoundSessionForUser(input: {
   if (!replacedRounds) sets.push(...roundSets);
   const keptCount = sets.length - roundSets.length;
   const daySetCount = target && target.daySetCount > 0 ? target.daySetCount : null;
-  const plannedSetCount =
-    typeof existing.plannedSetCount === "number" && existing.plannedSetCount > 0
-      ? undefined
-      : (daySetCount ?? plannedRounds);
+  // One count: the level-scaled day. A free timer has no day, so the round plan is the count.
+  const plannedSetCount = daySetCount ?? plannedRounds;
+  const mixedDay = keptCount > 0 || (daySetCount != null && daySetCount > plannedRounds);
+  const status = mixedDay
+    ? ("partial" as const)
+    : roundSaveStatus({
+        roundsCompleted,
+        plannedRounds,
+        configuredRounds: configured,
+      });
   return updateWorkoutSessionForUser({
     userId: input.userId,
     workoutId,
@@ -927,7 +941,7 @@ async function findSameDayProgramSession(
     where: {
       userId,
       programDayId,
-      status: "draft",
+      status: { in: ["draft", "partial"] },
       OR: [
         { performedAt: { gte: from, lte: to } },
         { createdAt: { gte: from, lte: to } },
@@ -939,6 +953,9 @@ async function findSameDayProgramSession(
   const same = rows.filter((row) => {
     if (sessionCivilDay(row, timeZone) !== today) return false;
     if (row.sets.length === 0) return false;
+    // A partial round-only log is finished for the logger. A mixed partial
+    // still has Shadowbox or technique to tick, so Start reopens it.
+    if (row.status === "partial" && !row.sets.some((set) => !setIsSavedRoundWork(set))) return false;
     if (planned.size === 0) return true;
     return row.sets.some((set) => planned.has(gymExerciseKey(set.exerciseName)));
   });
@@ -1543,6 +1560,12 @@ export async function updateWorkoutSessionForUser(input: {
     ) {
       return current;
     }
+    const resumeMixedPartial =
+      input.status === "draft" &&
+      current.status === "partial" &&
+      current.sets.some((set) => setIsSavedRoundWork(set)) &&
+      current.sets.some((set) => !setIsSavedRoundWork(set));
+    const openStatus = resumeMixedPartial ? ("partial" as const) : ("draft" as const);
     if (input.baseUpdatedAt && input.status === "draft") {
       const base = new Date(input.baseUpdatedAt);
       if (Number.isNaN(base.getTime())) {
@@ -1552,7 +1575,7 @@ export async function updateWorkoutSessionForUser(input: {
         where: {
           id: input.workoutId,
           userId: input.userId,
-          status: "draft",
+          status: openStatus,
           updatedAt: base,
         },
         data: { title },
@@ -1563,7 +1586,7 @@ export async function updateWorkoutSessionForUser(input: {
       where: {
         id: input.workoutId,
         userId: input.userId,
-        ...(input.status === "draft" ? { status: "draft" as const } : {}),
+        ...(input.status === "draft" ? { status: openStatus } : {}),
       },
       data: { title },
     });
@@ -1683,16 +1706,11 @@ export async function updateWorkoutSessionForUser(input: {
 }
 
 function keepsFinishedRoundLog(
-  sets: { prescriptionKey?: string | null; exerciseName?: string | null }[],
+  sets: { prescriptionKey?: string | null; exerciseName?: string | null; logMode?: string | null }[],
 ) {
-  return sets.some((set) => {
-    const key = set.prescriptionKey ?? "";
-    return (
-      key.startsWith("round:") ||
-      key === BAGWORK_PRESCRIPTION ||
-      isBikeIntervalName(set.exerciseName ?? "")
-    );
-  });
+  if (!sets.some((set) => setIsSavedRoundWork(set))) return false;
+  // Mixed days stay editable. The logger has to tick the work that is not rounds.
+  return !sets.some((set) => !setIsSavedRoundWork(set));
 }
 
 /**

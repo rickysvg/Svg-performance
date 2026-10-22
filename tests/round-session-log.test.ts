@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { bikeChoiceById } from "@/lib/bike-chooser";
+import { isLogMode } from "@/lib/exercise-log-mode";
 import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
 import { getHomeToday } from "@/lib/home";
 import { buildProgressSummary } from "@/lib/progress";
@@ -9,9 +10,11 @@ import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   restSecondsFromRoundKey,
+  ROUND_SET_CAP_SECONDS,
   roundHistoryLine,
   roundSessionDuration,
   roundTargetForProgramDay,
+  SESSION_DURATION_CAP_SECONDS,
 } from "@/lib/round-session";
 import { formatTimerClock } from "@/lib/round-timer";
 import { getShareCardView } from "@/lib/share-card-data";
@@ -21,6 +24,8 @@ import {
   logBikeRoundsForUser,
   logRoundSessionForUser,
   rateWorkoutSessionForUser,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
 } from "@/lib/workouts";
 import { makeUser, resetDatabase } from "./helpers";
 
@@ -86,7 +91,7 @@ describe("round session logs", () => {
 
     expect(again.id).toBe(saved.id);
     expect(await prisma.workoutSession.count({ where: { userId: user.id, programDayId: dayId } })).toBe(1);
-    expect(saved.status).toBe("complete");
+    expect(saved.status).toBe("partial");
     expect(saved.programDayId).toBe(dayId);
     expect(saved.title).toBe(target.exerciseName);
     expect(saved.notes).toBe("Jab stayed long.");
@@ -169,7 +174,7 @@ describe("round session logs", () => {
       now,
     });
     expect(finished.id).toBe(saved.id);
-    expect(finished.status).toBe("complete");
+    expect(finished.status).toBe("partial");
     expect(finished.plannedSetCount).toBe(target.daySetCount);
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
     expect(await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
@@ -241,10 +246,47 @@ describe("round session logs", () => {
       now,
     });
     expect(saved.id).toBe(opened.id);
-    expect(saved.status).toBe("complete");
+    expect(saved.status).toBe("partial");
     expect(saved.title).toBe(day!.title);
-    expect(saved.plannedSetCount).toBe(13);
+    expect(target!.daySetCount).toBe(11);
+    expect(saved.plannedSetCount).toBe(target!.daySetCount);
     expect(saved.sets).toHaveLength(13);
+    const resumed = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day!.id,
+      preferredUnits: "lb",
+      scale: { experienceLevel: "intermediate" },
+      planAnchor: now,
+      timeZone: APP_TIMEZONE,
+      now,
+    });
+    expect(resumed.id).toBe(saved.id);
+    const shadow = saved.sets.find((set) => /shadowbox/i.test(set.exerciseName));
+    expect(shadow).toBeTruthy();
+    const continued = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: saved.id,
+      title: saved.title,
+      performedAt: now,
+      notes: saved.notes,
+      status: "draft",
+      sets: saved.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.reps,
+        loadValue: set.loadValue,
+        loadUnit: "lb" as const,
+        logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+        durationSeconds: set.id === shadow!.id ? 180 : set.durationSeconds,
+        completed: set.id === shadow!.id ? true : set.completed,
+        notes: set.notes,
+        prescriptionKey: set.prescriptionKey,
+        rir: set.rir,
+      })),
+      timeZone: APP_TIMEZONE,
+    });
+    expect(continued.status).toBe("draft");
+    expect(continued.sets.some((set) => /shadowbox/i.test(set.exerciseName) && set.completed)).toBe(true);
     expect(saved.sets.filter((set) => /bag rounds/i.test(set.exerciseName))).toHaveLength(
       target!.plannedRounds,
     );
@@ -287,6 +329,55 @@ describe("round session logs", () => {
       difficultyRating: "hard",
     });
     expect(rated.difficultyRating).toBe("hard");
+  });
+
+  it("trims round and bike efforts to 60 minutes and the session to 4 hours", async () => {
+    const user = await makeUser("round-duration-cap@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE },
+    });
+    const now = new Date();
+    const saved = await logRoundSessionForUser({
+      userId: user.id,
+      type: "grappling",
+      roundsCompleted: 2,
+      configuredRounds: 2,
+      workSeconds: 90 * 60,
+      restSeconds: 60,
+      elapsedSeconds: 5 * 60 * 60,
+      now,
+    });
+    expect(saved.status).toBe("complete");
+    expect(saved.sets.every((set) => set.durationSeconds === ROUND_SET_CAP_SECONDS)).toBe(true);
+    expect(saved.elapsedSeconds).toBe(SESSION_DURATION_CAP_SECONDS);
+
+    const bike = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bike",
+      roundsCompleted: 1,
+      configuredRounds: 1,
+      workSeconds: 20,
+      restSeconds: 10,
+      elapsedSeconds: 90 * 60,
+      sets: [
+        {
+          exerciseName: "Assault bike intervals",
+          setNumber: 1,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb",
+          logMode: "timed_round",
+          durationSeconds: 90 * 60,
+          completed: true,
+          prescriptionKey: "round:bike:10",
+        },
+      ],
+      now,
+    });
+    expect(bike.sets[0]?.durationSeconds).toBe(ROUND_SET_CAP_SECONDS);
+    expect(bike.elapsedSeconds).toBe(90 * 60);
+    expect(bike.elapsedSeconds).toBeLessThanOrEqual(SESSION_DURATION_CAP_SECONDS);
   });
 
   it("updates one free grappling log instead of inserting a second", async () => {

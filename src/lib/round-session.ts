@@ -1,11 +1,18 @@
+import { BAGWORK_PRESCRIPTION } from "@/lib/bagwork";
 import { isBikeIntervalName, memberWeekIndex, parseBikeIntervalReps } from "@/lib/bike-sessions";
 import { parseDurationSeconds } from "@/lib/exercise-log-mode";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { formatTimerClock } from "@/lib/round-timer";
+import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import type { LoadUnit } from "@/lib/units";
+
+/** One round or bike effort. Longer values are trimmed, not rejected. */
+export const ROUND_SET_CAP_SECONDS = 60 * 60;
+
+export { SESSION_DURATION_CAP_SECONDS };
 
 export const ROUND_SESSION_TYPES = ["bag", "pads", "sparring", "grappling", "bike"] as const;
 export type RoundSessionType = (typeof ROUND_SESSION_TYPES)[number];
@@ -111,6 +118,19 @@ export function roundSaveStatus(input: {
   return "partial" as const;
 }
 
+export function trimRoundSetSeconds(seconds: number) {
+  const rounded = Math.round(seconds);
+  if (!Number.isFinite(rounded)) return 1;
+  return Math.min(ROUND_SET_CAP_SECONDS, Math.max(1, rounded));
+}
+
+/** Session clock for a round or bike save. Matches the 4 hour training cap. */
+export function trimRoundSessionSeconds(seconds: number) {
+  const rounded = Math.round(seconds);
+  if (!Number.isFinite(rounded) || rounded < 1) return 0;
+  return Math.min(SESSION_DURATION_CAP_SECONDS, rounded);
+}
+
 export function roundLogSets(input: {
   type: RoundSessionType;
   exerciseName: string;
@@ -134,6 +154,20 @@ export function roundLogSets(input: {
     prescriptionKey: key,
     notes: `Rest ${Math.max(0, Math.round(input.restSeconds))}s`,
   }));
+}
+
+/** A saved round, bagwork, or bike set. Shadowbox and technique rows are not. */
+export function setIsSavedRoundWork(set: {
+  exerciseName?: string | null;
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+}) {
+  const key = set.prescriptionKey ?? "";
+  if (key.startsWith("round:") || key === BAGWORK_PRESCRIPTION) return true;
+  if (isBikeIntervalName(set.exerciseName ?? "")) return true;
+  return ROUND_SESSION_TYPES.some((type) =>
+    exerciseMatchesRoundType(set.exerciseName ?? "", set.logMode, type),
+  );
 }
 
 export function setBelongsToRoundType(
