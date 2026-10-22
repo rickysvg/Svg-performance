@@ -37,18 +37,20 @@ describe("round timer sheet", () => {
     const log = source("src/app/(member)/mobility/[routineId]/log/page.tsx");
     const sparring = source("src/app/(member)/sparring/page.tsx");
 
-    expect(bagwork).toContain('<RoundTimerButton label="Start rounds" />');
+    expect(bagwork).toContain('label="Start rounds"');
+    expect(bagwork).toContain('mode="bag"');
     expect(setup).toContain('label="Start rounds"');
     expect(setup).toContain("data-bag-round-setup");
+    expect(setup).toContain("TimerDurationFields");
     expect(setup).not.toContain('action="/timer"');
     expect(detail).toContain("workoutName={view.name}");
-    expect(day).toContain("<RoundTimerButton />");
-    expect(logger).toContain("<RoundTimerButton />");
+    expect(day).toContain("<RoundTimerButton");
+    expect(logger).toContain("<RoundTimerButton");
     expect(logger).toContain("data-logger-chrome");
     expect(play).toContain("<RoundTimerButton />");
     expect(routine).toContain("<RoundTimerButton />");
     expect(log).toContain("<RoundTimerButton />");
-    expect(sparring).toContain("<RoundTimerButton />");
+    expect(sparring).toContain('mode="sparring"');
     expect(sparring).toContain("data-sparring-page");
   });
 });

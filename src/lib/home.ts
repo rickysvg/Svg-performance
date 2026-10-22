@@ -41,6 +41,7 @@ import {
   resolvePlanSessions,
   weekdayInAppZone,
   weekStrip,
+  withBikeChipLogHrefs,
   type CatalogDayLike,
   type ResolvedPlanSession,
 } from "@/lib/week-plan";
@@ -321,10 +322,16 @@ export async function getHomeToday(
     plannedSessions,
     nextSession: nextSession as ResolvedPlanSession | null,
     nextSessionWeekday: nextPlan?.weekday ?? "",
-    weekStrip: await easeWeekStripDays(
-      userId,
+    weekStrip: withBikeChipLogHrefs(
+      await easeWeekStripDays(
+        userId,
+        prefs,
+        weekStrip(prefs, now, tz, selected, swaps, selected),
+        tz,
+        swaps,
+      ),
       prefs,
-      weekStrip(prefs, now, tz, selected, swaps, selected),
+      { strength, skill },
       tz,
       swaps,
     ),

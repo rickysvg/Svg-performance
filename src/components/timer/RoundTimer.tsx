@@ -25,6 +25,7 @@ import {
   shouldPlayWarningBeep,
 } from "@/lib/round-timer";
 import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
+import { TimerDurationFields } from "@/components/timer/TimerDurationFields";
 
 const MODE_LABEL: Record<TimerMode, string> = {
   bag: "Bag",
@@ -66,10 +67,13 @@ export function RoundTimer({
   launch = null,
   onClose,
   titleId,
+  mode = null,
 }: {
   launch?: RoundTimerLaunch | null;
   onClose?: () => void;
   titleId?: string;
+  /** Session type for this entry. Wins over the last mode saved on this phone. */
+  mode?: TimerMode | null;
 }) {
   const launchConfig = launch
     ? sanitizeTimerConfig({
@@ -81,7 +85,9 @@ export function RoundTimer({
   const [prefs, setPrefs] = useState(
     launchConfig
       ? { ...DEFAULT_TIMER_PREFS, mode: "bag" as const, preset: "custom" as const, custom: launchConfig }
-      : DEFAULT_TIMER_PREFS,
+      : mode
+        ? { ...DEFAULT_TIMER_PREFS, mode }
+        : DEFAULT_TIMER_PREFS,
   );
   const [hydrated, setHydrated] = useState(false);
   const [startedAtMs, setStartedAtMs] = useState<number | null>(null);
@@ -98,31 +104,35 @@ export function RoundTimer({
   const logged = useRef(false);
   const notesRef = useRef("");
   const rpeRef = useRef("");
-  notesRef.current = notes;
-  rpeRef.current = rpe;
+  useEffect(() => {
+    notesRef.current = notes;
+    rpeRef.current = rpe;
+  }, [notes, rpe]);
   const prev = useRef<{ remaining: number; phase: TimerPhase }>({ remaining: 0, phase: "idle" });
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (launch) {
-      const stamp = Date.now();
-      setStartedAtMs(stamp);
-      setPausedAtMs(null);
-      setPauseAccumulatedMs(0);
-      setNowMs(stamp);
-      setHydrated(true);
-      return;
+      const id = window.setTimeout(() => {
+        const stamp = Date.now();
+        setStartedAtMs(stamp);
+        setPausedAtMs(null);
+        setPauseAccumulatedMs(0);
+        setNowMs(stamp);
+        setHydrated(true);
+      }, 0);
+      return () => window.clearTimeout(id);
     }
     const id = window.setTimeout(() => {
       const stored = parseStoredTimerPrefs(window.localStorage.getItem(TIMER_PREFS_STORAGE_KEY));
       const custom = parseStoredCustom(window.localStorage.getItem(TIMER_CUSTOM_STORAGE_KEY));
-      setPrefs({ ...stored, custom });
+      setPrefs({ ...stored, custom, ...(mode ? { mode } : {}) });
       setCustomDraft(custom);
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
-  }, [launch]);
+  }, [launch, mode]);
 
   useEffect(() => {
     if (!hydrated || launch) return;
@@ -306,7 +316,7 @@ export function RoundTimer({
           </Link>
         )}
         <h1 className="text-xl" id={titleId} data-timer-title>
-          {launch ? launch.name : "Round timer"}
+          {launch ? launch.name : mode ? MODE_LABEL[prefs.mode] : "Round timer"}
         </h1>
         <span className="w-8" aria-hidden />
       </div>
@@ -413,27 +423,12 @@ export function RoundTimer({
       )}
 
       {launch || prefs.preset === "custom" ? (
-        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-card p-3">
-          <Stepper
-            label="Rounds"
-            value={customDraft.rounds}
-            onChange={(rounds) => persistCustom({ ...customDraft, rounds })}
-            min={1}
-            max={20}
-          />
-          <Stepper
-            label="Work min"
-            value={Math.round(customDraft.workSeconds / 60)}
-            onChange={(minutes) => persistCustom({ ...customDraft, workSeconds: minutes * 60 })}
-            min={1}
-            max={15}
-          />
-          <Stepper
-            label="Rest min"
-            value={Math.round(customDraft.restSeconds / 60)}
-            onChange={(minutes) => persistCustom({ ...customDraft, restSeconds: minutes * 60 })}
-            min={1}
-            max={10}
+        <div className="rounded-2xl border border-line bg-card p-3">
+          <TimerDurationFields
+            rounds={customDraft.rounds}
+            workSeconds={customDraft.workSeconds}
+            restSeconds={customDraft.restSeconds}
+            onChange={persistCustom}
           />
         </div>
       ) : null}
@@ -574,39 +569,3 @@ function Toggle({
   );
 }
 
-function Stepper({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min: number;
-  max: number;
-}) {
-  return (
-    <label className="block text-center text-xs uppercase tracking-wide text-muted">
-      {label}
-      <span className="mt-2 flex items-center justify-center gap-1">
-        <button
-          type="button"
-          className="touch-target inline-flex w-10 items-center justify-center rounded-full border border-line"
-          onClick={() => onChange(Math.max(min, value - 1))}
-        >
-          −
-        </button>
-        <span className="stat-display w-8 text-lg text-foreground">{value}</span>
-        <button
-          type="button"
-          className="touch-target inline-flex w-10 items-center justify-center rounded-full border border-line"
-          onClick={() => onChange(Math.min(max, value + 1))}
-        >
-          +
-        </button>
-      </span>
-    </label>
-  );
-}

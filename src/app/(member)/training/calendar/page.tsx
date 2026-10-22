@@ -7,13 +7,17 @@ import { requireUser } from "@/lib/session";
 import { formatCalendarHeading, getCalendarSchedule, weekdayName } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { formatDayParam, parseDayParam } from "@/lib/home";
+import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   moveDayChoices,
   planForDate,
+  planWeekIndex,
   weekStrip,
+  withBikeChipLogHrefs,
   type MoveListedSession,
 } from "@/lib/week-plan";
-import { scaleBandFromPrefs, type ScaleBand } from "@/lib/training-scale";
+import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
+import { normalizeWeightAccess } from "@/lib/weight-access";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
@@ -39,9 +43,10 @@ export default async function TrainingCalendarPage({
   const profile = await getProfileForUser(user.id);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, now, tz);
-  const [schedule, swaps] = await Promise.all([
+  const [schedule, swaps, catalog] = await Promise.all([
     getCalendarSchedule(user.id, now, selected),
     getWeekPlanSwapsForUser(user.id),
+    findDemoTrainingCatalog(),
   ]);
   const levelOverride = parseLevelParam(params.level);
   const profileBand = scaleBandFromPrefs({
@@ -69,10 +74,23 @@ export default async function TrainingCalendarPage({
     camp && camp.weightClass.trim() && camp.phase !== "complete" && camp.phase !== "pre-camp"
       ? shapeDayPlan(corePlan, camp.phase)
       : corePlan;
-  const strip = await easeWeekStripDays(
-    user.id,
+  const weekIndex = campWeekIndex ?? planWeekIndex(selected, tz, profile?.onboardingCompletedAt ?? null);
+  const scaledCatalog = scaleDemoCatalog(catalog, {
+    experienceLevel: band,
+    competitionStatus: levelOverride ? null : profile?.competitionStatus,
+    weightAccess: normalizeWeightAccess(profile?.weightAccess),
+    weekIndex,
+  });
+  const strip = withBikeChipLogHrefs(
+    await easeWeekStripDays(
+      user.id,
+      prefs,
+      weekStrip(prefs, now, tz, selected, swaps, selected),
+      tz,
+      swaps,
+    ),
     prefs,
-    weekStrip(prefs, now, tz, selected, swaps, selected),
+    scaledCatalog,
     tz,
     swaps,
   );

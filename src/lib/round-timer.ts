@@ -40,6 +40,26 @@ export function clampDurationSeconds(value: number) {
   return Math.min(60 * 30, Math.max(5, Math.round(value)));
 }
 
+/** Five-second steps for work and rest pickers. Includes the current value when it falls off the step. */
+export function secondSteps(min: number, max: number, current?: number, step = 5) {
+  const start = Math.max(step, Math.ceil(min / step) * step);
+  const end = Math.max(start, Math.floor(max / step) * step);
+  const values: number[] = [];
+  for (let value = start; value <= end; value += step) values.push(value);
+  if (current != null && Number.isFinite(current)) {
+    const extra = Math.round(current);
+    if (!values.includes(extra) && extra >= min && extra <= max) values.push(extra);
+  }
+  return values.sort((a, b) => a - b);
+}
+
+export function formatDurationPick(totalSeconds: number) {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function sanitizeTimerConfig(input: Partial<TimerConfig> | null | undefined): TimerConfig {
   return {
     rounds: clampRounds(Number(input?.rounds) || DEFAULT_CUSTOM.rounds),

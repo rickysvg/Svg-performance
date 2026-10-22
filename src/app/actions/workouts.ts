@@ -62,19 +62,14 @@ export async function startRoundLogAction(formData: FormData) {
   redirect(`/training/log/${session.id}`);
 }
 
-export async function startSessionAction(formData: FormData) {
-  const user = await requireUserOrThrow();
-  const tier = await getAppTier(user.id);
-  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
-    redirect("/home");
-  }
-  const profile = await getProfileForUser(user.id);
+export async function startProgramDayLog(userId: string, programDayId: string) {
+  const profile = await getProfileForUser(userId);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
-  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const now = new Date();
-  const session = await startWorkoutFromDay({
-    userId: user.id,
-    programDayId: String(formData.get("programDayId") ?? ""),
+  return startWorkoutFromDay({
+    userId,
+    programDayId,
     preferredUnits: units,
     scale: {
       experienceLevel: profile?.experienceLevel,
@@ -85,6 +80,15 @@ export async function startSessionAction(formData: FormData) {
     timeZone,
     planAnchor: profile?.onboardingCompletedAt ?? null,
   });
+}
+
+export async function startSessionAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const tier = await getAppTier(user.id);
+  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
+    redirect("/home");
+  }
+  const session = await startProgramDayLog(user.id, String(formData.get("programDayId") ?? ""));
   redirect(`/training/log/${session.id}`);
 }
 

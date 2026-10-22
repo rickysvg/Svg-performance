@@ -153,4 +153,31 @@ describe("save payload", () => {
       "complete",
     )).toEqual([]);
   });
+
+  it("keeps one bike row after a chosen workout instead of refilling the program count", () => {
+    const server = [
+      {
+        exerciseName: "Assault bike intervals",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        prescriptionKey: "demo:4|assault bike intervals::15s#bw:tabata",
+      },
+    ];
+    const restored = restoreLoggerSets(
+      server,
+      null,
+      [{ name: "Assault bike intervals", sets: 4 }],
+      (exerciseName, setNumber) => ({
+        exerciseName,
+        setNumber,
+        reps: null,
+        loadValue: null,
+        prescriptionKey: "",
+      }),
+      gymExerciseKey,
+    );
+    expect(restored).toHaveLength(1);
+    expect(restored[0]?.prescriptionKey).toContain("#bw:tabata");
+  });
 });

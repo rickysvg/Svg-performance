@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
+import { compactBikeReps } from "@/lib/bike-chooser";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
 import { loggedSetSome } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
@@ -232,7 +233,7 @@ function setsForExercises(exercises: SavedExercise[], preferredUnits: LoadUnit) 
       completed: false,
       prescriptionKey: addedPrescriptionKey({
         exerciseName: exercise.name,
-        reps: exercise.reps,
+        reps: compactBikeReps(exercise.reps),
         restSeconds: exercise.restSeconds,
         loadText: exercise.loadText,
         notes: exercise.notes,

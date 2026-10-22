@@ -5,6 +5,7 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
+import { bikeHistoryLine } from "@/lib/bike-chooser";
 import { sessionHasLoggedWork, tickedSetCount } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
@@ -26,13 +27,22 @@ export default async function HistoryPage() {
         </Link>
         <div className="mt-2 flex items-start justify-between gap-3">
           <h1 className="text-2xl">Workout history</h1>
-          <Link
-            href="/training/my-workouts"
-            data-my-workouts-link
-            className="touch-target inline-flex shrink-0 items-center rounded-full border border-line bg-card px-4 text-sm font-semibold"
-          >
-            My Workouts
-          </Link>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <Link
+              href="/training/history/bike"
+              data-bike-history-link
+              className="touch-target inline-flex items-center rounded-full border border-line bg-card px-4 text-sm font-semibold"
+            >
+              Bike history
+            </Link>
+            <Link
+              href="/training/my-workouts"
+              data-my-workouts-link
+              className="touch-target inline-flex items-center rounded-full border border-line bg-card px-4 text-sm font-semibold"
+            >
+              My Workouts
+            </Link>
+          </div>
         </div>
         <p className="mt-1 text-sm text-muted">
           Logged sessions persist after refresh. Open any row to correct a mistake.
@@ -58,6 +68,7 @@ export default async function HistoryPage() {
             const label = finished ? "complete" : session.status === "complete" ? "draft" : session.status;
             const names = exerciseNamesInOrder(session.sets);
             const bagLine = bagworkHistoryLine(session);
+            const bikeLine = bikeHistoryLine(session);
             return (
             <li key={session.id} className="space-y-2" {...(bagLine ? { "data-bagwork-session": "" } : {})}>
             <div className="flex items-stretch gap-2">
@@ -82,6 +93,11 @@ export default async function HistoryPage() {
                       ? " · rate how it felt"
                       : ""}
                 </p>
+                {bikeLine ? (
+                  <p className="mt-1 text-sm text-muted" data-bike-history-line>
+                    {bikeLine}
+                  </p>
+                ) : null}
                 {session.notes ? <p className="mt-1 text-sm">{session.notes}</p> : null}
               </Link>
               {finished ? (

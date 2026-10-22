@@ -21,7 +21,12 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.dayId) {
     return (
-      <form action={startSessionAction} data-start-today data-prime-coach-audio>
+      <form
+        action={startSessionAction}
+        data-start-today
+        data-open-bike-logger={action.logHref ? "today" : undefined}
+        data-prime-coach-audio
+      >
         <input type="hidden" name="programDayId" value={action.dayId} />
         <StartSubmit label={label} className={buttonClass} />
       </form>

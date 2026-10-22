@@ -41,13 +41,25 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
             Resume
           </Link>
         ) : next?.dayId ? (
-          <form action={startSessionAction} data-prime-coach-audio className="mt-4">
+          <form
+            action={startSessionAction}
+            data-prime-coach-audio
+            data-open-bike-logger={next.logHref ? "home" : undefined}
+            className="mt-4"
+          >
             <input type="hidden" name="programDayId" value={next.dayId} />
             <StartSubmit
               label="Start next session"
               className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
             />
           </form>
+        ) : next?.href ? (
+          <Link
+            href={next.href}
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+          >
+            Start next session
+          </Link>
         ) : (
           <Link
             href="/training"
@@ -91,13 +103,25 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Resume
         </Link>
       ) : first.dayId ? (
-        <form action={startSessionAction} data-prime-coach-audio className="mt-4">
+        <form
+          action={startSessionAction}
+          data-prime-coach-audio
+          data-open-bike-logger={first.logHref ? "home" : undefined}
+          className="mt-4"
+        >
           <input type="hidden" name="programDayId" value={first.dayId} />
           <StartSubmit
             label="Start"
             className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
           />
         </form>
+      ) : first.href ? (
+        <Link
+          href={first.href}
+          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+        >
+          Start
+        </Link>
       ) : (
         <Link
           href="/training"

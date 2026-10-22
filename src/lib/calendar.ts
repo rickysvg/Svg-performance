@@ -14,6 +14,7 @@ import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
+import { sessionOpenHref } from "@/lib/timer-session";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
@@ -403,8 +404,6 @@ export async function getCalendarSchedule(
     }
     for (const session of resolved) {
       if (session.kind === "rest") continue;
-      const href = session.href ?? (session.dayId ? `/training/${session.dayId}` : undefined);
-      if (!href) continue;
       const matched = dayLogs.find(
         (log) => !matchedLogIds.has(log.id) && logMatchesPlanned(log, session, resolved),
       );
@@ -414,6 +413,10 @@ export async function getCalendarSchedule(
         matched.programDayId = session.dayId;
       }
       const sessionDone = Boolean(matched);
+      const href =
+        sessionOpenHref(session, sessionDone) ??
+        (session.dayId ? `/training/${session.dayId}` : undefined);
+      if (!href) continue;
       const missed = past && !sessionDone;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday

@@ -40,7 +40,7 @@ export default async function SparringPage({
             Any day. Session rating, body rating, sore spots, and notes. Future dates stay closed.
           </p>
         </div>
-        <RoundTimerButton />
+        <RoundTimerButton mode="sparring" />
       </div>
       <form method="get" className="flex items-end gap-2">
         <label className="block min-w-0 flex-1 text-sm">

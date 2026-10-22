@@ -7,6 +7,7 @@ import {
   type BikeSession,
 } from "@/lib/bike-sessions";
 import {
+  bikeSetDurationSeconds,
   idleBikeInterval,
   pauseBikeInterval,
   resumeBikeInterval,
@@ -15,6 +16,7 @@ import {
   tickBikeInterval,
   type BikeIntervalPhase,
   type BikeIntervalSnapshot,
+  type BikeIntervalSpec,
 } from "@/lib/bike-interval-timer";
 import {
   releaseSetWakeLock,
@@ -23,6 +25,32 @@ import {
 } from "@/lib/bike-interval-signals";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { formatRestClock } from "@/lib/rest-timer";
+
+function specFromSession(session: BikeSession): BikeIntervalSpec {
+  return {
+    workSeconds: session.workSeconds,
+    restSeconds: session.restSeconds,
+    roundsPerSet: session.roundsPerSet,
+    warmupSeconds: session.warmupSeconds,
+    cooldownSeconds: session.cooldownSeconds,
+    blocks: session.blocks,
+    restBetweenBlocksSeconds: session.restBetweenBlocksSeconds,
+    repeatRounds: session.repeatRounds,
+    restBetweenRoundsSeconds: session.restBetweenRoundsSeconds,
+    pattern: session.pattern,
+    ladder: session.ladder,
+  };
+}
+
+function phaseWord(phase: BikeIntervalPhase, label?: string) {
+  if (label) return label;
+  if (phase === "work") return "WORK";
+  if (phase === "warmup") return "WARM-UP";
+  if (phase === "cooldown") return "COOL-DOWN";
+  if (phase === "moderate") return "MODERATE";
+  if (phase === "rest") return "REST";
+  return "";
+}
 
 function BikeIntervalStrip({
   session,
@@ -39,9 +67,15 @@ function BikeIntervalStrip({
   return (
     <div className="mt-3 rounded-xl border border-line bg-background p-3" data-bike-intervals>
       <p className="font-display text-xs uppercase tracking-wide text-highlighter">
-        {bikeIntervalChrome(session)}
+        {session.chooserLabel || bikeIntervalChrome(session)}
       </p>
-      {longClock ? (
+      {session.chooserLabel ? (
+        <p className="mt-2 text-xs text-muted">
+          {bikeSetDurationSeconds(specFromSession(session)) >= 60
+            ? "Start set runs this whole workout, including the easy spins."
+            : "Start set runs this workout."}
+        </p>
+      ) : longClock ? (
         <div
           data-bike-tile={1}
           data-bike-tile-active={phase === "work" || phase === "rest" ? phase : undefined}
@@ -104,21 +138,28 @@ export function BikeSetTimer({
   canStart: boolean;
   onSetComplete: () => void;
 }) {
-  const spec = {
-    workSeconds: session.workSeconds,
-    restSeconds: session.restSeconds,
-    roundsPerSet: session.roundsPerSet,
-  };
+  const spec = specFromSession(session);
   const [clock, setClock] = useState<BikeIntervalSnapshot>(() => idleBikeInterval(spec));
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
-  const running = clock.phase === "work" || clock.phase === "rest";
-  const longClock = isLongBikeClock(session);
+  const pendingComplete = useRef(false);
+  const running =
+    clock.phase === "work" ||
+    clock.phase === "rest" ||
+    clock.phase === "warmup" ||
+    clock.phase === "cooldown" ||
+    clock.phase === "moderate";
 
   useEffect(() => {
     completeRef.current = onSetComplete;
   }, [onSetComplete]);
+
+  useEffect(() => {
+    if (!pendingComplete.current) return;
+    pendingComplete.current = false;
+    completeRef.current();
+  }, [clock]);
 
   useEffect(() => {
     if (!running || clock.paused) return;
@@ -127,7 +168,7 @@ export function BikeSetTimer({
         const { snapshot, cue } = tickBikeInterval(current);
         if (cue !== "none") signalBikeIntervalCue(cue);
         if (snapshot.phase === "done") {
-          completeRef.current();
+          pendingComplete.current = true;
           releaseSetWakeLock(wakeLock.current);
           wakeLock.current = null;
           routeRelease.current?.();
@@ -184,6 +225,13 @@ export function BikeSetTimer({
   }
 
   const workPhase = clock.phase === "work";
+  const warn = workPhase && clock.remainingSeconds > 0 && clock.remainingSeconds <= 3;
+  const word = phaseWord(clock.phase, clock.phaseLabel);
+  const roundTotal = clock.roundTotal ?? session.roundsPerSet;
+  const repeatRound = Math.max(1, clock.repeatRound ?? 1);
+  const repeatTotal = Math.max(1, clock.repeatTotal ?? session.repeatRounds ?? 1);
+  const sprint = clock.sprint ?? (clock.round > 0 ? clock.round : 0);
+  const sprintTotal = clock.sprintTotal ?? roundTotal;
 
   return (
     <div data-bike-set-timer>
@@ -191,29 +239,34 @@ export function BikeSetTimer({
         <div
           data-bike-interval-board
           data-bike-interval-phase={clock.phase}
-          className={`mt-3 rounded-2xl px-4 py-5 text-center ${
-            workPhase ? "bg-black text-[#CBF805]" : "bg-black text-white"
-          }`}
+          className="mt-3 rounded-2xl bg-black px-4 py-5 text-center text-white"
         >
           <p
             data-bike-interval-round
             className="font-display text-xs uppercase tracking-[0.06em] text-white/80"
           >
-            {longClock
-              ? "Work block"
-              : `Round ${clock.round}/${session.roundsPerSet}`}
+            {`Round ${repeatRound}/${repeatTotal}`}
           </p>
+          {sprint > 0 ? (
+            <p
+              data-bike-interval-sprint
+              className="font-display mt-1 text-sm uppercase tracking-[0.08em] text-[#CBF805]"
+            >
+              {`Sprint ${sprint}/${sprintTotal}`}
+            </p>
+          ) : null}
           <p
+            data-bike-interval-word
             className={`font-display mt-2 text-lg uppercase ${
-              workPhase ? "text-[#CBF805]" : "text-white"
+              warn ? "text-signal" : workPhase ? "text-[#CBF805]" : "text-white"
             }`}
           >
-            {workPhase ? "WORK" : "REST"}
+            {word}
           </p>
           <p
             data-bike-interval-clock
             className={`stat-display mt-3 text-6xl leading-none ${
-              workPhase ? "text-[#CBF805]" : "text-white"
+              warn ? "text-signal" : workPhase ? "text-[#CBF805]" : "text-white"
             }`}
           >
             {formatRestClock(clock.remainingSeconds)}
