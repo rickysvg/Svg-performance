@@ -5,11 +5,13 @@ import { isLogMode } from "@/lib/exercise-log-mode";
 import { applySwapsToExercises } from "@/lib/exercise-swap";
 import { listSwapsForDay } from "@/lib/exercise-swap-store";
 import {
+  activeRemovals,
   omitRemovedSlots,
   parseRemovalSnapshot,
   restoreSnapshotSets,
   snapshotRemovedSets,
   withoutExerciseName,
+  withoutRemovedExercises,
   visibleExerciseCount,
   type RemovalRecord,
   type RemovalSnapshot,
@@ -93,6 +95,33 @@ export async function listRemovalsForSession(userId: string, workoutSessionId: s
     orderBy: { createdAt: "asc" },
   });
   return rows.map(toRecord);
+}
+
+/** Removals that apply to this session. Pending rows are already bound at start. */
+export async function activeRemovalsForSession(userId: string, workoutId: string) {
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: workoutId },
+    select: {
+      programDay: {
+        select: { dayNumber: true, program: { select: { slug: true } } },
+      },
+    },
+  });
+  const removals = session?.programDay
+    ? await listRemovalsForDay({
+        userId,
+        programSlug: session.programDay.program.slug,
+        dayNumber: session.programDay.dayNumber,
+      })
+    : await listRemovalsForSession(userId, workoutId);
+  return activeRemovals(removals, { sessionId: workoutId, includePending: false });
+}
+
+export function setsKeepingRemovals<T extends { exerciseName: string }>(
+  sets: T[],
+  removals: RemovalRecord[],
+) {
+  return withoutRemovedExercises(sets, removals);
 }
 
 export async function bindPendingRemovals(input: {
@@ -237,8 +266,15 @@ export async function removeSessionExercise(input: {
     throw new AppError("WORKOUT", "That exercise is not in this session.");
   }
 
+  // The logger renames the card before the page reloads, so the client often
+  // sends the swapped name as the programmed slot. Bind the removal to the
+  // slot that is actually showing that name.
+  const slotIndex = before?.shown.findIndex((row) => row.name === exerciseName) ?? -1;
+  const programmedName = slotIndex >= 0 ? before?.programmed[slotIndex]?.name : undefined;
+  const slotOriginal = programmedName || originalName;
+
   const proposed: RemovalRecord = {
-    originalName,
+    originalName: slotOriginal,
     exerciseName,
     workoutSessionId: sessionId,
   };
@@ -251,6 +287,12 @@ export async function removeSessionExercise(input: {
   });
   const stillShown = after?.shown.some((row) => row.name === exerciseName) ?? false;
   const nextSets = stillShown ? baseSets : withoutExerciseName(baseSets, exerciseName);
+  // The target was frozen from this session's rows at Start. A later profile
+  // or week scale must not decide how many of those sets come off.
+  const removedRows = Math.max(0, baseSets.length - nextSets.length);
+  const storedCount =
+    session && typeof session.plannedSetCount === "number" ? session.plannedSetCount : null;
+  const applied = storedCount == null ? 0 : Math.min(removedRows, Math.max(0, storedCount));
   const remaining = after
     ? visibleExerciseCount(after.shown, nextSets)
     : new Set(nextSets.map((set) => set.exerciseName)).size;
@@ -259,27 +301,39 @@ export async function removeSessionExercise(input: {
   }
 
   const snapshot: RemovalSnapshot = stillShown
-    ? { index: 0, sets: [] }
-    : snapshotRemovedSets(baseSets, exerciseName);
-  let sets: WorkoutSet[] | null = null;
-  if (session && nextSets.length !== baseSets.length) {
-    const updated = await saveSets(session, nextSets, session.restExerciseName === exerciseName);
-    sets = updated.sets;
-  } else if (session) {
-    sets = session.sets;
-  }
-
+    ? { index: 0, sets: [], plannedSets: 0 }
+    : { ...snapshotRemovedSets(baseSets, exerciseName), plannedSets: applied };
+  // The row lands before the set write so a swap or draft still in flight
+  // sees the removal and cannot put the exercise back.
   const row = await prisma.exerciseRemoval.create({
     data: {
       userId: input.userId,
       programSlug: input.programSlug,
       dayNumber: input.dayNumber,
-      originalName,
+      originalName: slotOriginal,
       exerciseName,
       workoutSessionId: sessionId,
       snapshotJson: JSON.stringify(snapshot),
     },
   });
+  let sets: WorkoutSet[] | null = null;
+  try {
+    if (session && nextSets.length !== baseSets.length) {
+      const updated = await saveSets(session, nextSets, session.restExerciseName === exerciseName);
+      sets = updated.sets;
+    } else if (session) {
+      sets = session.sets;
+    }
+  } catch (error) {
+    await prisma.exerciseRemoval.delete({ where: { id: row.id } }).catch(() => undefined);
+    throw error;
+  }
+  if (session && storedCount != null && applied > 0) {
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { plannedSetCount: storedCount - applied },
+    });
+  }
   return { id: row.id, sets };
 }
 
@@ -301,5 +355,12 @@ export async function undoExerciseRemoval(input: {
   const restored = restoreSnapshotSets(base, snapshot);
   if (restored.length === 0) return { sets: session.sets };
   const updated = await saveSets(session, restored, false);
+  const addBack = snapshot?.plannedSets ?? 0;
+  if (addBack > 0 && typeof session.plannedSetCount === "number") {
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { plannedSetCount: session.plannedSetCount + addBack },
+    });
+  }
   return { sets: updated.sets };
 }

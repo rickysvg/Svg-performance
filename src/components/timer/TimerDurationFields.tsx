@@ -84,7 +84,7 @@ function PickerSheet({
           <p id={titleId} className="font-display text-xl uppercase tracking-wide">
             {FIELD_TITLE[field]}
           </p>
-          <button type="button" onClick={onClose} data-testid="chrome-timer-picker-close" className="touch-target text-2xl leading-none" aria-label="Close picker">
+          <button type="button" onClick={onClose} data-testid="timer-duration-fields-sheet-close" className="touch-target text-2xl leading-none" aria-label="Close picker">
             ×
           </button>
         </div>

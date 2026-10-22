@@ -48,19 +48,22 @@ export function FightCampOptIn({
 
   return (
     <section className="space-y-3" data-fight-camp-opt-in={shown ? "on" : "off"}>
-      <div className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4 py-3">
-        <div className="min-w-0">
-          <p className="font-semibold">I have a fight coming up</p>
-          {shown && shownSummary ? <p className="mt-0.5 text-sm text-muted">{shownSummary}</p> : null}
-          {!shown ? (
-            <p className="mt-0.5 text-xs text-muted">
-              Turn this on, then save the fight. Camp starts once that fight is saved.
-            </p>
+      <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4 py-3">
+        <span className="min-w-0">
+          <span className="block font-semibold">I have a fight coming up</span>
+          {shown && shownSummary ? (
+            <span className="mt-0.5 block text-sm text-muted">{shownSummary}</span>
           ) : null}
-        </div>
+          {!shown ? (
+            <span className="mt-0.5 block text-xs text-muted">
+              Turn this on, then save the fight. Camp starts once that fight is saved.
+            </span>
+          ) : null}
+        </span>
         <input
           type="checkbox"
           role="switch"
+          data-testid="training-fight-camp"
           aria-label="I have a fight coming up"
           checked={open || shown}
           onChange={(event) => {
@@ -74,7 +77,7 @@ export function FightCampOptIn({
           }}
           className="h-7 w-7 shrink-0 accent-[#CBF805]"
         />
-      </div>
+      </label>
 
       <form data-testid="training-form" ref={cancelRef} action={cancelAction} className="hidden">
         <input type="hidden" name="next" value="/training" />

@@ -68,7 +68,7 @@ export function BikeClockScreen({
           <button
             type="button"
             onClick={onClose}
-            data-testid="chrome-bike-timer-close"
+            data-testid="round-timer-button-on-close-sheet-close"
             className="touch-target inline-flex items-center justify-center text-2xl leading-none"
             aria-label="Close timer"
           >

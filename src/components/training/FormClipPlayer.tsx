@@ -173,6 +173,7 @@ export function FormClipPlayer({
     <>
       <button
         type="button"
+        data-testid="chrome-watch-form"
         className={className ?? "relative shrink-0 text-left"}
         aria-label={`Watch form: ${name}`}
         onClick={() => setOpen(true)}

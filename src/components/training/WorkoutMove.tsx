@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/week-plan";
 import type { MoveDayChoice, MoveSessionChoice } from "@/lib/week-plan";
 import { Toast } from "@/components/Toast";
+import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
 import { REMOVE_TOAST_MS } from "@/components/training/RemoveToast";
 import { futureWorkoutPulledBack, sessionMoveCaution } from "@/lib/week-plan-swaps";
 
@@ -59,6 +60,10 @@ export function WorkoutMoveProvider({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const swapSessionTestId = pathname.startsWith("/training/calendar")
+    ? "workout-move-session-btn-2"
+    : "workout-move-session-btn";
   const [target, setTarget] = useState<OpenMove | null>(null);
   const [mode, setMode] = useState<"move" | "swap">("move");
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +79,7 @@ export function WorkoutMoveProvider({
     setCaution(null);
     setMode("move");
   }
+  const panelRef = useSheetBehavior(close, Boolean(target));
 
   function finish(message: string, undo?: string) {
     setTarget(null);
@@ -199,17 +205,19 @@ export function WorkoutMoveProvider({
     >
       {children}
       {target ? (
-        <div className="fixed inset-0 z-50 flex items-end overflow-x-hidden" data-workout-move-sheet>
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/50"
-            aria-label="Close move"
-            onClick={close}
-          />
+        <div
+          className="fixed inset-0 z-50 flex items-end overflow-x-hidden bg-black/50"
+          data-workout-move-sheet
+          data-testid="training-move-sheet"
+          onMouseDown={(event) => onSheetBackdropMouseDown(event, close)}
+        >
           <div
+            ref={panelRef}
             role="dialog"
+            aria-modal="true"
             aria-label={`Move ${target.title}`}
-            className="relative max-h-[85vh] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-t-3xl bg-card px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground"
+            tabIndex={-1}
+            className="relative max-h-[85vh] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-t-3xl bg-card px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground outline-none"
           >
             <p className="font-display text-xs uppercase tracking-wide text-accent">This session</p>
             <h2 className="mt-1 text-lg leading-tight">{target.title}</h2>
@@ -338,8 +346,8 @@ export function WorkoutMoveProvider({
                     return (
                       <li key={session.sessionKey}>
                         <button
-                          data-testid="training-swap-session"
                           type="button"
+                          data-testid={`${swapSessionTestId}-${session.sessionKey.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}`}
                           data-swap-session={session.sessionKey}
                           disabled={pending || blocked}
                           onClick={() => requestSessionSwap(session, day)}
@@ -362,8 +370,8 @@ export function WorkoutMoveProvider({
             ) : null}
             {error ? <p className="mt-3 text-sm text-muted">{error}</p> : null}
             <button
-              data-testid="training-cancel-2"
               type="button"
+              data-testid="workout-move-cancel"
               onClick={close}
               disabled={pending}
               className="mt-3 min-h-11 w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
@@ -376,7 +384,6 @@ export function WorkoutMoveProvider({
       {toast ? (
         <Toast
           closeTestId="training-move-toast-close"
-          actionTestId="chrome-toast-action-move"
           key={toast.id}
           message={toast.message}
           tone="dark"

@@ -30,6 +30,7 @@ export function SeminarChapters() {
               return (
                 <li key={clip.id}>
                   <button
+                    data-testid={`learn-seminars-clip-${clip.id}`}
                     type="button"
                     aria-current={active ? "true" : undefined}
                     onClick={() => playClip(clip)}
@@ -74,6 +75,7 @@ export function SeminarChapters() {
                 return (
                   <li key={`${chapter.startSeconds}-${chapter.label}`}>
                     <button
+                      data-testid={`learn-seminars-chapter-${chapter.startSeconds}`}
                       type="button"
                       aria-current={active ? "true" : undefined}
                       onClick={() => playChapter(chapter.startSeconds)}

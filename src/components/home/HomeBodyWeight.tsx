@@ -1,10 +1,12 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useActionState, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
 import { StatusBanner } from "@/components/StatusBanner";
 import { Toast } from "@/components/Toast";
+import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
 import { HomeSideStats } from "@/components/home/HomeSideStats";
 import { MASS_DIAL, MassGauge } from "@/components/home/MassGauge";
 import { massSpeedoClass, massUnitClass } from "@/components/home/mass-fonts";
@@ -50,6 +52,11 @@ export function HomeBodyWeight({
   const [draft, setDraft] = useState(initial);
   const [fatDraft, setFatDraft] = useState(savedFatText);
   const [sheet, setSheet] = useState(false);
+  const panelRef = useSheetBehavior(() => setSheet(false), sheet);
+  const pathname = usePathname() ?? "";
+  const closeTestId = pathname.startsWith("/progress")
+    ? "home-body-weight-sheet-close-2"
+    : "home-body-weight-sheet-close";
   const [closedFor, setClosedFor] = useState<number | undefined>();
   const [closedNotice, setClosedNotice] = useState<number | string | undefined>();
   const showSide = side != null;
@@ -198,20 +205,20 @@ export function HomeBodyWeight({
       <input type="hidden" name="notes" value="" />
       {sheet
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center">
-              <button
-                type="button"
-                aria-label="Close weigh-in"
-                className="absolute inset-0"
-                onClick={() => setSheet(false)}
-              />
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center"
+              data-testid="home-weigh-in-backdrop"
+              onMouseDown={(event) => onSheetBackdropMouseDown(event, () => setSheet(false))}
+            >
               <div
-                data-testid="home-weigh-in-sheet"
+                ref={panelRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={`${formId}-title`}
+                tabIndex={-1}
                 data-weigh-in-sheet
-                className="relative w-full max-w-sm rounded-3xl bg-card px-5 py-5"
+                data-testid="home-weigh-in-sheet"
+                className="relative w-full max-w-sm rounded-3xl bg-card px-5 py-5 outline-none"
               >
                 <p
                   id={`${formId}-title`}
@@ -245,6 +252,7 @@ export function HomeBodyWeight({
                   </button>
                   <button
                     type="button"
+                    data-testid={closeTestId}
                     onClick={() => setSheet(false)}
                     className="touch-target w-full rounded-full border border-line text-sm"
                   >

@@ -187,6 +187,7 @@ export function MobilityPlayer({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <button
+          data-testid="mobility-play-toggle"
           type="button"
           onClick={toggleRun}
           className="touch-target rounded-full bg-accent text-base text-black"

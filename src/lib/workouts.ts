@@ -33,7 +33,12 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { bindPendingSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
 import { omitRemovedSlots } from "@/lib/exercise-removal";
-import { bindPendingRemovals, listRemovalsForDay } from "@/lib/exercise-removal-store";
+import {
+  activeRemovalsForSession,
+  bindPendingRemovals,
+  listRemovalsForDay,
+  setsKeepingRemovals,
+} from "@/lib/exercise-removal-store";
 import {
   loggedSetSome,
   prepareSetsForPersist,
@@ -1078,6 +1083,29 @@ export async function updateWorkoutSessionForUser(input: {
       if (saved?.status === "complete" && input.status === "draft") return saved;
       throw new StaleDraftError();
     }
+    const removals = await activeRemovalsForSession(input.userId, input.workoutId);
+    let writing = setsKeepingRemovals(sets, removals);
+    if (writing.length === 0 && sets.length > 0) {
+      const keptCurrent = setsKeepingRemovals(
+        current.sets.map((set) => ({
+          exerciseName: set.exerciseName,
+          setNumber: set.setNumber,
+          reps: set.reps,
+          loadValue: set.loadValue,
+          loadUnit: "lb" as const,
+          logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+          durationSeconds: set.durationSeconds,
+          completed: set.completed,
+          notes: set.notes,
+          prescriptionKey: set.prescriptionKey,
+          rir: set.rir,
+        })),
+        removals,
+      );
+      if (keptCurrent.length > 0) writing = keptCurrent;
+    }
+    const clearedByRemovals = writing.length === 0 && sets.length > 0 && removals.length > 0;
+    if (writing.length === 0 && !clearedByRemovals) throw new StaleDraftError();
     const storedTimer = timerColumns
       ? await readWorkoutTimerFields(current.id, tx)
       : { finishedAt: null, elapsedSeconds: null, timerStartedAt: null };
@@ -1116,7 +1144,7 @@ export async function updateWorkoutSessionForUser(input: {
             }
           : {}),
         sets: {
-          create: sets.map((set, index) => {
+          create: writing.map((set, index) => {
             const mode = resolveLogMode({
               logMode: set.logMode,
               name: set.exerciseName,

@@ -455,6 +455,7 @@ export function SeminarPlayer() {
     <div className="relative aspect-video w-full bg-black">
       {mode === "facade" ? (
         <button
+          data-testid="learn-seminars-play"
           type="button"
           onClick={activate}
           className="absolute inset-0 block h-full w-full"
