@@ -67,6 +67,7 @@ import {
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
+  sessionOpensFinishScreen,
   setHasLoggedWork,
   tickedSetCount,
   withTickedPlanWork,
@@ -2019,7 +2020,7 @@ export async function rateWorkoutSessionForUser(input: {
     await prisma.workoutSession.findUnique({ where: { id: input.workoutId } }),
     input.userId,
   );
-  if (existing.status !== "complete" && existing.status !== "partial") {
+  if (!sessionOpensFinishScreen(existing)) {
     throw new AppError("WORKOUT", "Save the session first, then rate how it felt.");
   }
   const rating = parseDifficultyRating(input.difficultyRating);

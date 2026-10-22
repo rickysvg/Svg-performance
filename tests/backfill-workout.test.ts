@@ -11,7 +11,7 @@ import {
   updateBackfillWorkout,
 } from "@/lib/backfill-workout";
 import { completionListLabel } from "@/lib/logged-work";
-import { getCalendarSchedule } from "@/lib/calendar";
+import { getCalendarSchedule, subtitleShowsPartial } from "@/lib/calendar";
 import { completedLocalDayKeys, listWorkoutSessionsForUser } from "@/lib/workouts";
 import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
@@ -131,7 +131,7 @@ describe("log a past workout", () => {
     expect(completionListLabel(history[0]!)).toBe("partial");
     const schedule = await getCalendarSchedule(user.id, NOW, NOW);
     const wednesday = schedule.days.find((day) => formatDayParam(day.date, TZ) === "2026-10-21");
-    expect(wednesday?.activities.some((item) => item.subtitle.startsWith("Partial"))).toBe(true);
+    expect(wednesday?.activities.some((item) => subtitleShowsPartial(item.subtitle))).toBe(true);
     const chips = await completedLocalDayKeys(
       user.id,
       new Date("2026-10-18T00:00:00.000Z"),

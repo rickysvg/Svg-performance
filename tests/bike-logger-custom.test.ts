@@ -173,7 +173,7 @@ describe("custom bike logger", () => {
     });
     expect(saved.status).toBe("partial");
     expect(saved.plannedSetCount).toBe(8);
-    expect(await getShareCardView(user.id, saved.id)).toBeNull();
+    expect(await getShareCardView(user.id, saved.id)).not.toBeNull();
     const clock = await readWorkoutTimerFields(saved.id, prisma);
     expect(clock.finishedAt).toBeNull();
   });
