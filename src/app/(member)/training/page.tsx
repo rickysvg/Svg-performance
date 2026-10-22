@@ -10,6 +10,7 @@ import {
   listDraftSessionsForUser,
   matchingDraftId,
 } from "@/lib/workouts";
+import { completedSessionIdsByLocalDay } from "@/lib/chip-completion";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
@@ -28,6 +29,7 @@ import {
   planWeekIndex,
   resolvePlanSessions,
   withBikeChipLogHrefs,
+  withChipSessionIds,
 } from "@/lib/week-plan";
 import {
   carouselFocusOffset,
@@ -37,6 +39,7 @@ import {
 } from "@/lib/week-carousel";
 import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
+import { Suspense } from "react";
 import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
@@ -142,7 +145,10 @@ export default async function TrainingPage({
     tz,
     swaps,
   );
-  const weeks = packCarouselWeeks(builtWeeks.anchors, linkedWeeks);
+  const weeks = packCarouselWeeks(
+    builtWeeks.anchors,
+    withChipSessionIds(linkedWeeks, prefs, scaledCatalog, tz, swaps),
+  );
   const focusOffset = carouselFocusOffset(weeks);
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
   const deload = campWeekIndex == null && isDeloadWeekIndex(weekIndex);
@@ -232,7 +238,11 @@ export default async function TrainingPage({
   );
   const liveDraft = drafts[0] ?? null;
   const loggedRange = carouselLoggedRange(now, tz);
-  const completedDays = await completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz);
+  const [completedDays, completedByDay] = await Promise.all([
+    completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
+    completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
+  ]);
+  const planDateLabel = formatCalendarHeading(selected, now, tz);
   const bagIndex = planned.findIndex((session) => session.kind === "skill");
   const showDetails =
     dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
@@ -335,6 +345,7 @@ export default async function TrainingPage({
         weeks={weeks}
         basePath="/training"
         completedDays={completedDays}
+        completedByDay={completedByDay}
         focusOffset={focusOffset}
         todayHref={`/training?day=${formatDayParam(now, tz)}`}
       />
@@ -412,6 +423,7 @@ export default async function TrainingPage({
               highlight={session.slot === "A" && planned.length > 1}
               draftId={session.dayId ? matchingDraftId(drafts, session) : undefined}
               completed={session.dayId ? doneOnView.has(session.dayId) : false}
+              dateLabel={planDateLabel}
             />
           </div>
         ))}
@@ -476,12 +488,14 @@ export default async function TrainingPage({
       ) : null}
 
       {fromProfile ? null : (
-        <TrainingLevelToggle
-          band={band}
-          dayParam={dayParam}
-          fromProfile={fromProfile}
-          basePath="/training"
-        />
+        <Suspense fallback={null}>
+          <TrainingLevelToggle
+            band={band}
+            dayParam={dayParam}
+            fromProfile={fromProfile}
+            basePath="/training"
+          />
+        </Suspense>
       )}
 
       <details className="overflow-hidden rounded-2xl border border-line bg-card">

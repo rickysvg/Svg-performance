@@ -11,8 +11,10 @@ import {
   carouselWeekStrips,
   packCarouselWeeks,
   weekCarouselLabel,
+  weekChipHref,
   weekRangeLabel,
 } from "@/lib/week-carousel";
+import { chipMarkForDay } from "@/lib/chip-mark";
 import { mondayOfZoned } from "@/lib/timezone";
 
 function read(rel: string) {
@@ -130,6 +132,9 @@ describe("week day carousel", () => {
     expect(strip).toContain("data-week-today");
     expect(strip).toContain("data-week-missed");
     expect(strip).toContain("data-week-complete");
+    expect(strip).toContain("data-week-partial");
+    expect(strip).toContain("inert={index === activeIndex ? undefined : true}");
+    expect(strip).toContain("weekChipHref");
     expect(strip).toContain("data-week-legend");
     expect(strip).toContain("bg-signal");
     expect(css).toContain("scroll-snap-type: x mandatory");
@@ -142,6 +147,9 @@ describe("week day carousel", () => {
     expect(train).toContain("focusOffset");
     expect(train).toContain("todayHref");
     expect(train).toContain("<WeekStrip");
+    expect(train).toContain("dateLabel={planDateLabel}");
+    expect(train).toContain("completedLocalDayKeys");
+    expect(train).toContain("completedSessionIdsByLocalDay");
     expect(train).not.toContain("rearrange");
     expect(train).not.toContain("This week");
 
@@ -150,6 +158,14 @@ describe("week day carousel", () => {
     expect(calendar).toContain("rearrange");
     expect(calendar).toContain("focusOffset");
     expect(calendar).toContain("todayHref");
+    expect(calendar).toContain("data-calendar-week-title");
+    expect(calendar).toContain("weekLabel={week.label}");
+    expect(calendar).toContain("completedLocalDayKeys");
+    expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain("history.replaceState");
+    expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("week"');
+    expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("day"');
+    expect(read("src/lib/chip-completion.ts")).toContain("sessionCountsAsPlannedCompletion");
+    expect(read("src/lib/logged-work.ts")).not.toContain("chipMarkForDay");
     expect(calendar).not.toContain("data-week-nav");
 
     for (const file of [
@@ -160,5 +176,46 @@ describe("week day carousel", () => {
       expect(read(file)).not.toContain("data-week-carousel");
       expect(read(file)).not.toContain("carouselWeekStrips");
     }
+  });
+
+  it("checks a day only when every planned session is complete", () => {
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["bag", "lift"],
+        completedSessionIds: ["bag", "lift"],
+        dayLogged: true,
+      }),
+    ).toBe("complete");
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["bag", "lift"],
+        completedSessionIds: ["bag"],
+        dayLogged: true,
+      }),
+    ).toBe("partial");
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["bag"],
+        completedSessionIds: [],
+        dayLogged: false,
+      }),
+    ).toBe("none");
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["bike"],
+        completedSessionIds: ["bike"],
+        dayLogged: true,
+      }),
+    ).toBe("complete");
+  });
+
+  it("sends non-today chips to that date and keeps today's bike logger", () => {
+    expect(weekChipHref({ isToday: true, dayParam: "2026-10-22", logHref: "/training/bike/start" }, "/training")).toBe(
+      "/training/bike/start",
+    );
+    expect(
+      weekChipHref({ isToday: false, dayParam: "2026-10-07", logHref: "/training/bike/start" }, "/training/calendar"),
+    ).toBe("/training/calendar?day=2026-10-07");
+    expect(weekChipHref({ isToday: false, dayParam: "2026-10-07" }, "/training")).toBe("/training?day=2026-10-07");
   });
 });

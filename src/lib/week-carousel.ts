@@ -103,3 +103,15 @@ export function carouselFocusOffset(
 ) {
   return weeks.find((week) => week.days.some((day) => day.isSelected))?.offset ?? 0;
 }
+
+/**
+ * Today’s bike chip opens the logger. Any other day opens that date,
+ * so a past or future chip does not start today’s logger.
+ */
+export function weekChipHref(
+  day: { isToday: boolean; dayParam: string; logHref?: string },
+  basePath: string,
+) {
+  if (day.isToday && day.logHref) return day.logHref;
+  return `${basePath}?day=${day.dayParam}`;
+}

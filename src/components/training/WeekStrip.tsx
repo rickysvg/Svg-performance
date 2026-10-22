@@ -18,10 +18,22 @@ import {
   swapCalendarDaysAction,
 } from "@/app/actions/week-plan";
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
+import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
+import { weekChipHref } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
 
-type Item = ReturnType<typeof weekStrip>[number] & { logHref?: string };
+type Item = ReturnType<typeof weekStrip>[number] & {
+  logHref?: string;
+  sessionIds?: string[];
+};
+
+export type WeekChange = {
+  weekStart: string;
+  offset: number;
+  label: string;
+  dayParam: string;
+};
 
 export type WeekCarouselWeek = {
   offset: number;
@@ -415,6 +427,9 @@ function WeekChipList({
   rearrange,
   weekStart,
   completedDays,
+  completedByDay,
+  selectedDay,
+  interactive = true,
   source,
   pending,
   onPointerDown,
@@ -428,6 +443,9 @@ function WeekChipList({
   rearrange: boolean;
   weekStart?: string;
   completedDays: string[];
+  completedByDay: Record<string, string[]>;
+  selectedDay?: string;
+  interactive?: boolean;
   source: { weekStart: string; weekday: string } | null;
   pending: boolean;
   onPointerDown: (
@@ -454,18 +472,29 @@ function WeekChipList({
   return (
     <ol data-week-strip className="grid grid-cols-7 gap-1">
       {days.map((day) => {
-        const href = day.logHref ?? `${basePath}?day=${day.dayParam}`;
-        const selected = day.isSelected;
+        const href = weekChipHref(day, basePath);
+        const selected = selectedDay ? day.dayParam === selectedDay : day.isSelected;
         const activities = weekChipActivities(day.summary);
         const word =
           activities.length === 1 && WORD_LABELS.has(activities[0]!.id)
             ? activities[0]!.label
             : null;
         const held = source?.weekday === day.weekday && source.weekStart === (weekStart ?? "");
-        const logged = completedDays.includes(day.dayParam);
-        const missed = day.isPast && day.active && !logged;
+        const mark: ChipMark = chipMarkForDay({
+          plannedSessionIds: day.sessionIds ?? [],
+          completedSessionIds: completedByDay[day.dayParam] ?? [],
+          dayLogged: completedDays.includes(day.dayParam),
+        });
+        const missed = mark === "none" && day.isPast && day.active;
         const movedLabel = day.movedFrom ? `, showing ${day.movedFrom}’s workout` : "";
-        const historyLabel = logged ? ", logged" : missed ? ", missed" : "";
+        const historyLabel =
+          mark === "complete"
+            ? ", logged"
+            : mark === "partial"
+              ? ", partly logged"
+              : missed
+                ? ", missed"
+                : "";
         const swapping = source?.weekStart === (weekStart ?? "");
         const label = swapping
           ? held
@@ -479,7 +508,8 @@ function WeekChipList({
               prefetch={day.logHref ? false : undefined}
               data-testid={`week-chip-${day.dayParam}`}
               data-week-chip={day.short}
-              data-open-bike-logger={day.logHref ? "chip" : undefined}
+              data-open-bike-logger={day.isToday && day.logHref ? "chip" : undefined}
+              tabIndex={interactive === false ? -1 : undefined}
               data-moved-from={day.movedFrom || undefined}
               data-move-source={held ? "true" : undefined}
               data-week-past={day.isPast ? "true" : undefined}
@@ -535,7 +565,7 @@ function WeekChipList({
               ) : (
                 <ActivityMarks activities={activities} selected={false} />
               )}
-              {logged ? (
+              {mark === "complete" ? (
                 <span
                   data-week-complete
                   className="mt-1 inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full bg-accent text-black"
@@ -544,6 +574,14 @@ function WeekChipList({
                   <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke="currentColor" strokeWidth={2.4}>
                     <path d="M2.2 6.2 4.8 8.6 9.8 3.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
+                </span>
+              ) : mark === "partial" ? (
+                <span
+                  data-week-partial
+                  className="relative mt-1 inline-block h-3 w-3 shrink-0 rounded-full border-2 border-accent/35"
+                  aria-hidden
+                >
+                  <span className="absolute -inset-0.5 rounded-full border-2 border-accent [clip-path:inset(0_50%_0_0)]" />
                 </span>
               ) : missed ? (
                 <span
@@ -669,16 +707,20 @@ function WeekDayCarousel({
   weeks,
   basePath,
   completedDays,
+  completedByDay,
   focusOffset,
   todayHref,
   swapWeekStart,
+  onWeekChange,
 }: {
   weeks: WeekCarouselWeek[];
   basePath: string;
   completedDays: string[];
+  completedByDay: Record<string, string[]>;
   focusOffset: number;
   todayHref?: string;
   swapWeekStart?: string;
+  onWeekChange?: (week: WeekChange) => void;
 }) {
   const router = useRouter();
   const scrollerId = useId();
@@ -691,7 +733,18 @@ function WeekDayCarousel({
   );
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [ready, setReady] = useState(false);
+  const initialSelected =
+    weeks.flatMap((week) => week.days).find((day) => day.isSelected)?.dayParam ?? "";
+  const [selectedDay, setSelectedDay] = useState(initialSelected);
+  const selectedDayRef = useRef(initialSelected);
+  const skipUrl = useRef(true);
+  const pendingFocus = useRef<string | null>(null);
+  const weeksRef = useRef(weeks);
+  const onWeekChangeRef = useRef(onWeekChange);
+  weeksRef.current = weeks;
+  onWeekChangeRef.current = onWeekChange;
   indexRef.current = activeIndex;
+  selectedDayRef.current = selectedDay;
 
   function scrollToIndex(index: number, behavior: ScrollBehavior) {
     const el = scrollerRef.current;
@@ -723,20 +776,72 @@ function WeekDayCarousel({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!ready) return;
+    const week = weeksRef.current[activeIndex];
+    if (!week) return;
+    if (skipUrl.current) {
+      skipUrl.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const previous = weeksRef.current
+        .flatMap((item) => item.days)
+        .find((day) => day.dayParam === selectedDayRef.current);
+      const next =
+        week.days.find((day) => day.weekday === previous?.weekday) ?? week.days[0];
+      const dayParam = next?.dayParam ?? selectedDayRef.current;
+      selectedDayRef.current = dayParam;
+      setSelectedDay(dayParam);
+      onWeekChangeRef.current?.({
+        weekStart: week.weekStart,
+        offset: week.offset,
+        label: week.label,
+        dayParam,
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [activeIndex, ready]);
+
+  useEffect(() => {
+    const weekday = pendingFocus.current;
+    if (!weekday) return;
+    pendingFocus.current = null;
+    const panel = scrollerRef.current?.querySelector(
+      `[data-week-index="${activeIndex}"]`,
+    );
+    panel?.querySelector<HTMLElement>(`[data-week-chip="${weekday}"]`)?.focus();
+  }, [activeIndex]);
+
+  function rememberChipFocus() {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) return;
+    const chip = active.closest("[data-week-chip]");
+    if (chip instanceof HTMLElement && scrollerRef.current?.contains(chip)) {
+      pendingFocus.current = chip.getAttribute("data-week-chip");
+    }
+  }
+
   function syncFromScroll() {
     const el = scrollerRef.current;
     if (!el || el.clientWidth <= 0) return;
     swap.noteScrollerScroll();
     const index = Math.round(el.scrollLeft / el.clientWidth);
     const clamped = Math.max(0, Math.min(weeks.length - 1, index));
-    if (clamped !== indexRef.current) swap.setSource(null);
+    if (clamped !== indexRef.current) {
+      rememberChipFocus();
+      swap.setSource(null);
+    }
     indexRef.current = clamped;
     setActiveIndex(clamped);
   }
 
   function goTo(index: number) {
     const next = Math.max(0, Math.min(weeks.length - 1, index));
-    if (next !== indexRef.current) swap.setSource(null);
+    if (next !== indexRef.current) {
+      rememberChipFocus();
+      swap.setSource(null);
+    }
     indexRef.current = next;
     setActiveIndex(next);
     const reduce =
@@ -839,6 +944,7 @@ function WeekDayCarousel({
             data-week-focus={week.offset === focusOffset ? "true" : undefined}
             role="group"
             aria-label={`${week.label}, ${week.rangeLabel}`}
+            inert={index === activeIndex ? undefined : true}
           >
             <WeekChipList
               days={week.days}
@@ -846,6 +952,9 @@ function WeekDayCarousel({
               rearrange={Boolean(week.rearrange)}
               weekStart={week.weekStart}
               completedDays={completedDays}
+              completedByDay={completedByDay}
+              selectedDay={selectedDay}
+              interactive={index === activeIndex}
               source={swap.source}
               pending={swap.pending}
               onPointerDown={swap.onPointerDown}
@@ -880,12 +989,14 @@ function SingleWeekStrip({
   rearrange,
   weekStart,
   completedDays,
+  completedByDay,
 }: {
   days: Item[];
   basePath: string;
   rearrange: boolean;
   weekStart?: string;
   completedDays: string[];
+  completedByDay: Record<string, string[]>;
 }) {
   const swap = useWeekSwap(weekStart);
   return (
@@ -896,6 +1007,7 @@ function SingleWeekStrip({
         rearrange={rearrange}
         weekStart={weekStart}
         completedDays={completedDays}
+        completedByDay={completedByDay}
         source={swap.source}
         pending={swap.pending}
         onPointerDown={swap.onPointerDown}
@@ -928,9 +1040,11 @@ export function WeekStrip({
   rearrange = false,
   weekStart,
   completedDays = [],
+  completedByDay = {},
   focusOffset = 0,
   todayHref,
   swapWeekStart,
+  onWeekChange,
 }: {
   days: Item[];
   /** When set, Train and Calendar swipe across these weeks instead of one row. */
@@ -940,14 +1054,18 @@ export function WeekStrip({
   rearrange?: boolean;
   /** Monday YYYY-MM-DD of the week on screen. Past weeks included. */
   weekStart?: string;
-  /** Day params (YYYY-MM-DD) that already have a logged workout. */
+  /** Day params (YYYY-MM-DD) from `completedLocalDayKeys`. */
   completedDays?: string[];
+  /** Program days completed on each civil day. Same rule, per session. */
+  completedByDay?: Record<string, string[]>;
   /** Week offset to center on load. 0 is the current week. */
   focusOffset?: number;
   /** Where the Today button goes when the selected day is not today. */
   todayHref?: string;
   /** Provider week. Swaps on this week keep the Move undo toast. */
   swapWeekStart?: string;
+  /** Fired after the strip snaps to a week. Calendar uses this to follow. */
+  onWeekChange?: (week: WeekChange) => void;
 }) {
   if (weeks && weeks.length > 0) {
     return (
@@ -955,9 +1073,11 @@ export function WeekStrip({
         weeks={weeks}
         basePath={basePath}
         completedDays={completedDays}
+        completedByDay={completedByDay}
         focusOffset={focusOffset}
         todayHref={todayHref}
         swapWeekStart={swapWeekStart ?? weekStart}
+        onWeekChange={onWeekChange}
       />
     );
   }
@@ -968,6 +1088,7 @@ export function WeekStrip({
       rearrange={rearrange}
       weekStart={weekStart}
       completedDays={completedDays}
+      completedByDay={completedByDay}
     />
   );
 }

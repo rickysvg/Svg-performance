@@ -172,7 +172,7 @@ describe("bike log entry points", () => {
     expect(train).toContain('data-open-bike-logger={session.logHref ? "train"');
     expect(today).toContain('data-open-bike-logger={action.logHref ? "today"');
     expect(chips).toContain("day.logHref");
-    expect(chips).toContain('data-open-bike-logger={day.logHref ? "chip"');
+    expect(chips).toContain('data-open-bike-logger={day.isToday && day.logHref ? "chip"');
     expect(calendar).toContain('data-open-bike-logger={isBikeLoggerHref(activity.href) ? "calendar"');
     expect(start).toContain("redirect(`/training/log/${session.id}`)");
     expect(read("src/app/(member)/training/page.tsx")).toContain("logHref: session.logHref");
