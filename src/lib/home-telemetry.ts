@@ -33,6 +33,26 @@ export function trainingLoadForDay(day: Pick<TelemetryDay, "load" | "bagLoad">) 
   return day.load + day.bagLoad;
 }
 
+/** Sparring rounds logged on the round timer, counted beside outside-gym rounds. */
+export function sparringRoundsFromSets(
+  sets: Array<{
+    exerciseName?: string | null;
+    prescriptionKey?: string | null;
+    completed?: boolean | null;
+    durationSeconds?: number | null;
+  }>,
+) {
+  return sets.reduce((sum, set) => {
+    if (set.completed === false) return sum;
+    const key = set.prescriptionKey ?? "";
+    const name = set.exerciseName ?? "";
+    const sparring = key.startsWith("round:sparring:") || /\bspar/i.test(name);
+    if (!sparring) return sum;
+    if ((set.durationSeconds ?? 0) <= 0 && !key.startsWith("round:sparring:")) return sum;
+    return sum + 1;
+  }, 0);
+}
+
 /**
  * Volume from sets the member actually logged.
  * A weight with a blank rep count still counts as one rep so a partial lift
@@ -171,6 +191,7 @@ export async function getHomeTelemetry(input: {
             loadValue: true,
             loadUnit: true,
             prescriptionKey: true,
+            exerciseName: true,
             durationSeconds: true,
             completed: true,
           },
@@ -206,7 +227,14 @@ export async function getHomeTelemetry(input: {
   return buildWeekTelemetry({
     weekKeys,
     sessions,
-    rounds: roundRows.map((row) => ({ dayKey: row.dateKey, rounds: row.rounds })),
+    rounds: [
+      ...roundRows.map((row) => ({ dayKey: row.dateKey, rounds: row.rounds })),
+      ...weekSessions.flatMap((session) => {
+        const rounds = sparringRoundsFromSets(session.sets);
+        if (rounds < 1) return [];
+        return [{ dayKey: sessionCivilDay(session, timeZone), rounds }];
+      }),
+    ],
     streakCurrent: streak.current,
     streakLongest: streak.longest,
   });

@@ -9,34 +9,39 @@ function RatingRow({
   name,
   label,
   hint,
-  defaultValue,
+  value,
+  onChange,
 }: {
   name: string;
   label: string;
   hint: string;
-  defaultValue: number | null;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <fieldset>
       <legend className="text-sm font-medium">{label}</legend>
       <p className="text-xs text-muted">{hint}</p>
-      <div className="mt-2 grid grid-cols-5 gap-2">
-        {[1, 2, 3, 4, 5].map((score) => (
-          <label key={score} className="block">
-            <input
+      <input type="hidden" name={name} value={value} />
+      <div className="mt-2 grid grid-cols-5 gap-2" role="group" aria-label={label}>
+        {[1, 2, 3, 4, 5].map((score) => {
+          const selected = value === String(score);
+          return (
+            <button
+              key={score}
+              type="button"
               data-testid={`chrome-radio-${score}`}
-              type="radio"
-              name={name}
-              value={score}
-              required
-              defaultChecked={defaultValue === score}
-              className="peer sr-only"
-            />
-            <span className="touch-target flex items-center justify-center rounded-full border border-black bg-white text-sm font-semibold peer-checked:bg-accent">
+              aria-pressed={selected}
+              aria-label={`${label} ${score}`}
+              onClick={() => onChange(String(score))}
+              className={`touch-target flex items-center justify-center rounded-full border border-black text-sm font-semibold ${
+                selected ? "bg-accent" : "bg-white"
+              }`}
+            >
               {score}
-            </span>
-          </label>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -63,6 +68,11 @@ export function SparringLogForm({
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
   const [intensity, setIntensity] = useState(saved?.intensity ?? "");
   const [partner, setPartner] = useState(saved?.partner ?? "");
+  const [sessionRating, setSessionRating] = useState(
+    saved?.sessionRating == null ? "" : String(saved.sessionRating),
+  );
+  const [bodyRating, setBodyRating] = useState(saved?.bodyRating == null ? "" : String(saved.bodyRating));
+  const [ratingError, setRatingError] = useState("");
   useEffect(() => {
     if (!state.saved) return;
     if (typeof state.intensity === "string") setIntensity(state.intensity);
@@ -71,7 +81,19 @@ export function SparringLogForm({
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
 
   return (
-    <form action={action} className="space-y-3 rounded-2xl border border-line bg-card p-4" data-sparring-log>
+    <form
+      action={action}
+      className="space-y-3 rounded-2xl border border-line bg-card p-4"
+      data-sparring-log
+      onSubmit={(event) => {
+        if (sessionRating && bodyRating) {
+          setRatingError("");
+          return;
+        }
+        event.preventDefault();
+        setRatingError("Pick a session rating and a body rating.");
+      }}
+    >
       <div>
         <p className="font-display text-xs uppercase tracking-wide text-accent">Sparring</p>
         <h3 className="mt-1 text-lg">
@@ -132,14 +154,21 @@ export function SparringLogForm({
         name="sessionRating"
         label="Session rating"
         hint="How it went. 1 was rough, 5 went well."
-        defaultValue={saved?.sessionRating ?? null}
+        value={sessionRating}
+        onChange={setSessionRating}
       />
       <RatingRow
         name="bodyRating"
         label="Body rating"
         hint="How the body feels. 1 is wrecked, 5 feels fresh."
-        defaultValue={saved?.bodyRating ?? null}
+        value={bodyRating}
+        onChange={setBodyRating}
       />
+      {ratingError ? (
+        <p className="text-sm text-signal" role="alert">
+          {ratingError}
+        </p>
+      ) : null}
       <fieldset>
         <legend className="text-sm font-medium">Sore spots</legend>
         <p className="text-xs text-muted">Tap anywhere that is sore. Head eases the next day.</p>

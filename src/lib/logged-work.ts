@@ -319,10 +319,14 @@ export function progressTotals(rows: ExerciseSetProgress[]) {
   };
 }
 
-export function sessionProgressLabel(rows: ExerciseSetProgress[]) {
+export function sessionProgressLabel(
+  rows: ExerciseSetProgress[],
+  options?: { forcePartial?: boolean },
+) {
   const { ticked, planned } = progressTotals(rows);
   if (ticked <= 0) return null;
   const done =
+    !options?.forcePartial &&
     planned > 0 &&
     ticked >= planned &&
     rows.every((row) => row.state === "complete" || row.planned === 0);

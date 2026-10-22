@@ -18,7 +18,8 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
 import { rirFromLoadText } from "@/lib/rir";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
-import { exerciseSetProgress, sessionProgressLabel, type ExerciseSetProgress } from "@/lib/logged-work";
+import { sessionProgressLabel, type ExerciseSetProgress } from "@/lib/logged-work";
+import { roundFinishProgress } from "@/lib/round-session";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easePlanForUser } from "@/lib/recovery-ease";
@@ -652,6 +653,8 @@ async function loggedProgressForSummary(
           reps: true,
           loadValue: true,
           durationSeconds: true,
+          prescriptionKey: true,
+          logMode: true,
         },
       },
       programDay: {
@@ -661,10 +664,18 @@ async function loggedProgressForSummary(
       },
     },
   });
-  const rows = sessions
-    .filter((session) => sessionCompletionDay(session, timeZone) === dayKey)
-    .flatMap((session) => exerciseSetProgress(session.programDay?.exercises ?? [], session.sets));
-  const label = sessionProgressLabel(rows);
+  const today = sessions.filter((session) => sessionCompletionDay(session, timeZone) === dayKey);
+  const rows = today.flatMap((session) =>
+    roundFinishProgress({
+      plannedExercises: session.programDay?.exercises ?? [],
+      sets: session.sets,
+      plannedSetCount: session.plannedSetCount,
+      status: session.status,
+    }),
+  );
+  const label = sessionProgressLabel(rows, {
+    forcePartial: today.some((session) => session.status === "partial"),
+  });
   if (!label) return null;
   return { label, exercises: rows };
 }

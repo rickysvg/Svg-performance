@@ -11,6 +11,7 @@ import {
   formatCalendarHeading,
   getCalendarSchedule,
   subtitleCountsAsMissed,
+  subtitleShowsPartial,
   weekdayName,
 } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -163,7 +164,9 @@ export default async function TrainingCalendarPage({
       past: focusKey < todayKey,
       active: focus?.active ?? focusPlan.active,
     });
-    const focusSummary = workouts.find((item) => item.status === "complete")?.subtitle;
+    const loggedSessions = workouts.filter(
+      (item) => item.status === "complete" || subtitleShowsPartial(item.subtitle),
+    );
     const missedWorkouts = weekSchedule.days.reduce(
       (count, day) => count + day.activities.filter((item) => subtitleCountsAsMissed(item.subtitle)).length,
       0,
@@ -211,11 +214,16 @@ export default async function TrainingCalendarPage({
               {(focus?.movedFrom || focusPlan.movedFrom)}’s workout, on {focusPlan.weekday} this week.
             </p>
           ) : null}
-          {focusSummary ? (
-            <p className="text-sm text-muted" data-completed-summary>
-              {focusSummary}
+          {loggedSessions.map((item, index) => (
+            <p
+              key={`${item.title}-${item.subtitle}-${index}`}
+              className="text-sm text-muted"
+              data-completed-summary
+            >
+              {item.title} · {item.status === "complete" ? "Done" : "Partial"}
+              {item.subtitle ? ` · ${item.subtitle}` : ""}
             </p>
-          ) : null}
+          ))}
           {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (
             <p className="text-sm text-muted">{focusPlan.skipReason}</p>
           ) : null}

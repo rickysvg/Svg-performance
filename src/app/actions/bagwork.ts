@@ -61,6 +61,7 @@ export async function logBagworkSessionAction(input: {
   rpe: number | null;
   restSeconds?: number | null;
   configuredRounds?: number | null;
+  elapsedSeconds?: number | null;
 }): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> {
   try {
     const user = await requireBagworkUser();
@@ -73,6 +74,7 @@ export async function logBagworkSessionAction(input: {
       rpe: parseSessionRpe(input.rpe),
       restSeconds: input.restSeconds,
       configuredRounds: input.configuredRounds,
+      elapsedSeconds: input.elapsedSeconds,
     });
     revalidatePath("/training/history");
     revalidatePath("/training/history/bike");

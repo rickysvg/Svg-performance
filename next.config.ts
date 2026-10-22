@@ -12,7 +12,10 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["@prisma/client", "nodemailer", "web-push"],
   async redirects() {
-    return [{ source: "/history", destination: "/training/history", permanent: false }];
+    return [
+      { source: "/history", destination: "/training/history", permanent: false },
+      { source: "/train", destination: "/training", permanent: false },
+    ];
   },
   async headers() {
     return [

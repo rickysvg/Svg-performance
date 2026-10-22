@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, type MouseEvent, type PointerEvent } from "react";
 import { formatDurationPick, stepDurationSeconds } from "@/lib/round-timer";
 
 const WORK_MAX = 15 * 60;
@@ -15,6 +16,7 @@ export function TimerDurationSteppers({
   restLabel = "Rest",
   stepSeconds = 15,
   minSeconds = 15,
+  maxRounds = 20,
 }: {
   rounds: number;
   workSeconds: number;
@@ -25,6 +27,7 @@ export function TimerDurationSteppers({
   restLabel?: string;
   stepSeconds?: number;
   minSeconds?: number;
+  maxRounds?: number;
 }) {
   return (
     <div data-timer-settings className="grid grid-cols-3 gap-2">
@@ -33,7 +36,7 @@ export function TimerDurationSteppers({
         label={roundsLabel}
         value={String(rounds)}
         onDec={() => onChange({ rounds: Math.max(1, rounds - 1), workSeconds, restSeconds })}
-        onInc={() => onChange({ rounds: Math.min(20, rounds + 1), workSeconds, restSeconds })}
+        onInc={() => onChange({ rounds: Math.min(maxRounds, rounds + 1), workSeconds, restSeconds })}
       />
       <Stepper
         field="work"
@@ -90,6 +93,29 @@ function Stepper({
   onDec: () => void;
   onInc: () => void;
 }) {
+  const fromPointer = useRef(false);
+  function press(apply: () => void) {
+    return {
+      onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fromPointer.current = true;
+        apply();
+        window.setTimeout(() => {
+          fromPointer.current = false;
+        }, 0);
+      },
+      onClick: (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (fromPointer.current) {
+          fromPointer.current = false;
+          return;
+        }
+        apply();
+      },
+    };
+  }
   return (
     <div
       data-timer-step={field}
@@ -99,13 +125,13 @@ function Stepper({
       <span data-timer-step-value={field} className="font-display mt-1 text-xl leading-none text-accent">
         {value}
       </span>
-      <span className="mt-1 flex gap-1">
+      <span className="relative z-10 mt-1 flex gap-1">
         <button
           type="button"
           aria-label={`Decrease ${label}`}
           data-timer-step-dec={field}
-          onClick={onDec}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-lg leading-none"
+          {...press(onDec)}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           −
         </button>
@@ -113,8 +139,8 @@ function Stepper({
           type="button"
           aria-label={`Increase ${label}`}
           data-timer-step-inc={field}
-          onClick={onInc}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-lg leading-none"
+          {...press(onInc)}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           +
         </button>

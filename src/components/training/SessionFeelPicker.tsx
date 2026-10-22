@@ -52,13 +52,16 @@ export function SessionFeelPicker({
               value={item.value}
               disabled={pending}
               aria-pressed={on}
+              aria-label={item.label}
               data-difficulty={item.value}
               onClick={() => setPressed(item.value)}
               className={`flex min-h-14 w-full items-center justify-center rounded-2xl text-lg disabled:opacity-60 ${
                 on ? "bg-[#cbf805] text-black" : "bg-white/10 text-white"
               }`}
             >
-              <span className="font-display text-2xl leading-none">{item.score}</span>
+              <span className="font-display text-2xl leading-none" aria-hidden>
+                {item.score}
+              </span>
               <span className="sr-only">{item.label}</span>
             </button>
           );

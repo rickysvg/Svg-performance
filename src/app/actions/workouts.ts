@@ -18,6 +18,7 @@ import {
   type WorkoutSetInput,
 } from "@/lib/workouts";
 import { parseSessionRpe } from "@/lib/bagwork";
+import { resolveSubmittedRoundLog } from "@/lib/round-session";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { choiceFromToken } from "@/lib/bike-chooser";
 import { loggerChoiceFromSession } from "@/lib/bike-timer-log";
@@ -58,16 +59,29 @@ export async function startRoundLogAction(formData: FormData) {
     : "bag";
   const programDayId = String(formData.get("programDayId") ?? "").trim();
   const configuredRaw = String(formData.get("configuredRounds") ?? "").trim();
+  const configuredRounds = configuredRaw === "" ? null : Number(configuredRaw);
+  const elapsedRaw = String(formData.get("elapsedSeconds") ?? "").trim();
+  const clock = resolveSubmittedRoundLog({
+    rounds: Number(formData.get("rounds") ?? 0),
+    workSeconds: Number(formData.get("workSeconds") ?? 180),
+    restSeconds: Number(formData.get("restSeconds") ?? 0),
+    configuredRounds,
+    phase: String(formData.get("phase") ?? ""),
+    timerRound: Number(formData.get("timerRound") ?? 0),
+    phaseElapsedSeconds: Number(formData.get("phaseElapsed") ?? 0),
+    elapsedSeconds: elapsedRaw === "" ? null : Number(elapsedRaw),
+  });
   const session = await logRoundSessionForUser({
     userId: user.id,
     type: mode,
-    roundsCompleted: Number(formData.get("rounds") ?? 0),
+    roundsCompleted: clock.roundsCompleted,
     workSeconds: Number(formData.get("workSeconds") ?? 180),
-    restSeconds: Number(formData.get("restSeconds") ?? 0),
+    restSeconds: clock.restSeconds,
     notes: String(formData.get("notes") ?? ""),
     rpe: parseSessionRpe(formData.get("rpe")),
     programDayId: programDayId || null,
-    configuredRounds: configuredRaw === "" ? null : Number(configuredRaw),
+    configuredRounds,
+    elapsedSeconds: clock.elapsedSeconds,
   });
   revalidatePath("/home");
   revalidatePath("/training");

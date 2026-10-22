@@ -622,7 +622,6 @@ async function loadCalendarSchedule(
         });
         continue;
       }
-      if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
       const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
       const plan = planByDay.get(log.programDayId);

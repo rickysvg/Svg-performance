@@ -1,17 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { bikeChoiceById } from "@/lib/bike-chooser";
+import { attachBikeChoice, bikeChoiceById, choiceToken } from "@/lib/bike-chooser";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
 import { getHomeToday } from "@/lib/home";
+import { sparringRoundsFromSets } from "@/lib/home-telemetry";
+import { sessionProgressLabel } from "@/lib/logged-work";
 import { buildProgressSummary } from "@/lib/progress";
 import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
+  resolveSubmittedRoundLog,
   restSecondsFromRoundKey,
   ROUND_SET_CAP_SECONDS,
+  roundFinishProgress,
   roundHistoryLine,
+  roundLogFromClock,
   roundSessionDuration,
   roundTargetForProgramDay,
   SESSION_DURATION_CAP_SECONDS,
@@ -48,6 +53,107 @@ async function bagDayFor(userId: string, now: Date) {
   expect(target?.plannedRounds).toBeGreaterThan(1);
   return { dayId: day!.id, target: target! };
 }
+
+describe("mid-timer round saves", () => {
+  it("counts the finished round and the rest already elapsed", () => {
+    expect(
+      roundLogFromClock({
+        phase: "rest",
+        round: 1,
+        totalRounds: 2,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 15,
+      }),
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
+    expect(
+      resolveSubmittedRoundLog({
+        rounds: 2,
+        workSeconds: 15,
+        restSeconds: 0,
+        configuredRounds: 2,
+        phase: "rest",
+        timerRound: 1,
+        phaseElapsedSeconds: 15,
+      }),
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
+  });
+
+  it("keeps a 1-of-2 and 1-of-8 finish partial", () => {
+    const pads = roundFinishProgress({
+      plannedExercises: [],
+      sets: [
+        {
+          exerciseName: "Pad rounds",
+          completed: true,
+          durationSeconds: 180,
+          prescriptionKey: "round:pads:60",
+          logMode: "timed_round",
+        },
+      ],
+      plannedSetCount: 2,
+      status: "partial",
+    });
+    expect(pads).toEqual([
+      { name: "Pad rounds", ticked: 1, planned: 2, state: "partial" },
+    ]);
+
+    const bikeSets = [
+      {
+        exerciseName: "Assault bike intervals",
+        completed: true,
+        durationSeconds: 20,
+        prescriptionKey: attachBikeChoice("timer", choiceToken(bikeChoiceById("tabata")!)),
+        logMode: "timed_round",
+      },
+    ];
+    const bike = roundFinishProgress({
+      plannedExercises: Array.from({ length: 8 }, () => ({
+        name: "Assault bike intervals",
+        sets: 1,
+      })),
+      sets: bikeSets,
+      plannedSetCount: 8,
+      status: "partial",
+    });
+    expect(bike).toEqual([
+      { name: "Assault bike intervals", ticked: 1, planned: 8, state: "partial" },
+    ]);
+    const label = sessionProgressLabel(bike, { forcePartial: true });
+    expect(label).toContain("1/8");
+    expect(label).toContain("partial");
+    expect(label).not.toContain("8/8");
+    expect(label?.endsWith("complete")).toBe(false);
+    expect(roundHistoryLine({ elapsedSeconds: 20, sets: bikeSets })).toBe(
+      "1 round · 0:20 round · 0:10 rest · 0:20 total",
+    );
+  });
+
+  it("counts timer sparring rounds on the home rounds tile", () => {
+    expect(
+      sparringRoundsFromSets([
+        {
+          exerciseName: "Sparring rounds",
+          prescriptionKey: "round:sparring:60",
+          durationSeconds: 180,
+          completed: true,
+        },
+        {
+          exerciseName: "Sparring rounds",
+          prescriptionKey: "round:sparring:60",
+          durationSeconds: 180,
+          completed: true,
+        },
+        {
+          exerciseName: "Heavy bag rounds",
+          prescriptionKey: "round:bag:60",
+          durationSeconds: 180,
+          completed: true,
+        },
+      ]),
+    ).toBe(2);
+  });
+});
 
 describe("round session logs", () => {
   beforeEach(async () => {
@@ -125,6 +231,52 @@ describe("round session logs", () => {
     expect(progress.sessionCount).toBe(1);
     expect(progress.lastSessionTitle).toBe(target.exerciseName);
     expect(await getShareCardView(user.id, saved.id)).not.toBeNull();
+  });
+
+  it("saves a mid-rest bag log as one partial round and keeps the elapsed rest", async () => {
+    const user = await makeUser("bag-mid-rest@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE },
+    });
+    const now = new Date();
+    const clock = resolveSubmittedRoundLog({
+      rounds: 2,
+      workSeconds: 15,
+      restSeconds: 0,
+      configuredRounds: 2,
+      phase: "rest",
+      timerRound: 1,
+      phaseElapsedSeconds: 15,
+    });
+    const saved = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: clock.roundsCompleted,
+      configuredRounds: 2,
+      workSeconds: 15,
+      restSeconds: clock.restSeconds,
+      elapsedSeconds: clock.elapsedSeconds,
+      now,
+    });
+    expect(saved.status).toBe("partial");
+    expect(saved.sets).toHaveLength(1);
+    expect(saved.plannedSetCount).toBe(2);
+    expect(restSecondsFromRoundKey(saved.sets[0]?.prescriptionKey)).toBe(15);
+    expect(saved.elapsedSeconds).toBe(30);
+    const line = roundHistoryLine(saved);
+    expect(line).toContain("1 round");
+    expect(line).toContain("0:15 rest");
+    expect(line).toContain("0:30 total");
+    expect(line).not.toContain("2 rounds");
+    const finish = roundFinishProgress({
+      plannedExercises: [],
+      sets: saved.sets,
+      plannedSetCount: saved.plannedSetCount,
+      status: saved.status,
+    });
+    expect(finish[0]).toMatchObject({ ticked: 1, planned: 2, state: "partial" });
+    expect(`${finish[0]?.ticked}/${finish[0]?.planned}`).not.toBe("2/2");
   });
 
   it("keeps a short bag day partial until the planned rounds are logged", async () => {
@@ -517,7 +669,11 @@ describe("round session logs", () => {
     expect(today).toContain("text-accent");
     const timer = source("src/components/timer/RoundTimer.tsx");
     expect(timer).toContain("startRoundLogAction");
+    expect(timer).toContain("roundLogFromClock");
     expect(timer).toContain('name="programDayId"');
+    expect(timer).toContain('name="phase"');
+    expect(source("src/components/timer/TimerDurationSteppers.tsx")).toContain("onPointerDown");
+    expect(source("next.config.ts")).toContain('source: "/train"');
     expect(source("src/components/timer/BikeClockScreen.tsx")).toContain("logBikeTimerAction");
   });
 });
