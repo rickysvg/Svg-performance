@@ -126,7 +126,7 @@ describe("Home photo tiles", () => {
     const train = fs.readFileSync(path.join(process.cwd(), "src/app/(member)/training/page.tsx"), "utf8");
     expect(home).not.toContain("Log sparring");
     expect(train).not.toContain("Log sparring");
-    expect(train).toContain('layout="row"');
+    expect(train).not.toContain("<SparringLogTile");
     expect(source).toContain("tileSrc");
     expect(source).toContain("imagery");
     expect(source).toContain("/tiles/train.webp");
@@ -169,7 +169,10 @@ describe("Home photo tiles", () => {
     expect(profileForm).toContain('name="athleteImagery"');
     expect(profileForm).toContain("tailors the athlete imagery on your Home");
     expect(home).toContain("imagery={profile?.athleteImagery}");
-    expect(train).toContain('tileSrc("/tiles/sparring.webp"');
+    expect(train).not.toContain('tileSrc("/tiles/sparring.webp"');
+    expect(
+      fs.readFileSync(path.join(process.cwd(), "src/components/home/HomeQuickActions.tsx"), "utf8"),
+    ).toContain('tileSrc("/tiles/sparring.webp"');
   });
 
   it("shows the last sparring rating, or invites today's log", () => {

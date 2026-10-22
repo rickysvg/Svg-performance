@@ -8,14 +8,21 @@ import { todayStartLabel, type TodayStartAction } from "@/lib/today-start";
 const buttonClass =
   "touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black";
 
-export function StartTodayButton({ action }: { action: TodayStartAction }) {
-  const label = todayStartLabel(action);
+export function StartTodayButton({
+  action,
+  label,
+}: {
+  action: TodayStartAction;
+  /** Short control label. The long plan line belongs on TodaySummary, not this button. */
+  label?: string;
+}) {
+  const text = label ?? todayStartLabel(action);
 
   if (action.draftId && action.partial) {
     return (
       <ContinueWorkoutButton
         workoutId={action.draftId}
-        label={label}
+        label={text}
         className={buttonClass}
         testId="home-start-today"
         startToday
@@ -26,7 +33,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
   if (action.draftId) {
     return (
       <Link data-testid={`home-training-log-${action.draftId}`} href={`/training/log/${action.draftId}`} data-start-today data-prime-coach-audio className={buttonClass}>
-        {label}
+        {text}
       </Link>
     );
   }
@@ -42,7 +49,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
         data-prime-coach-audio
         className={buttonClass}
       >
-        {label}
+        {text}
       </Link>
     );
   }
@@ -50,7 +57,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
   if (action.href) {
     return (
       <Link data-testid={`home-start-today-2-${action.href.split("/").filter(Boolean).join("-")}`} href={action.href} data-start-today data-prime-coach-audio className={buttonClass}>
-        {label}
+        {text}
       </Link>
     );
   }

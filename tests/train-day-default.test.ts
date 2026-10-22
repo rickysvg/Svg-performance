@@ -16,7 +16,9 @@ describe("Train default is one day", () => {
     expect(page).toContain("<WeekStrip");
     expect(page).toContain("data-selected-day-plan");
     expect(page).toContain("mesoBlockLabel");
-    expect(page).toContain("<NextSessionCta");
+    expect(page).toContain("data-primary-train-cta");
+    expect(page).toContain("<TodaySummary");
+    expect(page).not.toContain("<NextSessionCta");
     expect(page).toContain("<SessionDetails");
     expect(read("src/components/training/SessionDetails.tsx")).toContain("data-session-details");
     expect(page).toContain('data-session-phase="first"');
@@ -25,11 +27,11 @@ describe("Train default is one day", () => {
     expect(page).toContain("data-bag-session");
     const chips = page.indexOf("<WeekStrip");
     const selected = page.indexOf("data-selected-day-plan");
-    const next = page.indexOf("<NextSessionCta");
+    const next = page.indexOf("data-primary-train-cta");
     const details = page.indexOf("<SessionDetails");
-    expect(selected).toBeGreaterThan(chips);
-    expect(next).toBeGreaterThan(selected);
-    expect(details).toBeGreaterThan(next);
+    expect(next).toBeGreaterThan(chips);
+    expect(selected).toBeGreaterThan(next);
+    expect(details).toBeGreaterThan(selected);
     expect(page).not.toContain("TrainWeekToggle");
     expect(page).not.toContain("This week");
     expect(page).not.toContain("RirExplainer");

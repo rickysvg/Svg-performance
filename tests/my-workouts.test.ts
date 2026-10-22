@@ -361,7 +361,7 @@ describe("my workouts", () => {
       .find((item) => formatDayParam(item.date, APP_TIMEZONE) === today)
       ?.activities.find((item) => item.title === "Camp arms");
     expect(kept?.status).toBe("complete");
-    expect(kept?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(kept?.subtitle).toBe("Camp arms · Done");
     expect(planForDate(prefs, neighborDate, APP_TIMEZONE).mesoBlock).toBe(neighborBefore.mesoBlock);
 
     const fresh = await startSavedWorkoutForUser({

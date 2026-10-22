@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { bikeLoggerHref } from "@/lib/timer-session";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { lookupFormVideo } from "@/lib/form-videos";
@@ -9,7 +8,6 @@ import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
-import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { OpenProgramLog } from "@/lib/today-start";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
@@ -62,16 +60,8 @@ export function PlanSessionCard({
   const structure = planStructureLine(groups);
   const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const count = exercises.length;
-  const openId = resume?.id ?? draftId;
   const partial = Boolean(resume?.partial);
-  const href = openId ? `/training/log/${openId}` : session.href;
-  const cta = openId
-    ? "Resume"
-    : session.dayId
-      ? "Start"
-      : session.href
-        ? "Open session"
-        : null;
+  const href = session.href;
   const bookend = mobilityBookendsForSession({
     kind: session.kind,
     title: session.title,
@@ -219,67 +209,33 @@ export function PlanSessionCard({
           Done
         </p>
       ) : null}
-      {cta ? (
+      {session.href && session.dayId ? (
         <div
           data-session-actions
+          data-session-draft={draftId || undefined}
           className="above-dock mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center"
         >
-          {completed ? null : partial && openId ? (
-            <ContinueWorkoutButton
-              workoutId={openId}
-              label="Resume"
-              className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent px-4 text-sm text-black sm:w-auto"
-            />
-          ) : openId ? (
-            <Link
-              href={`/training/log/${openId}`}
-              data-prime-coach-audio
-              data-session-continue="draft"
-              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
-            >
-              Resume
-            </Link>
-          ) : session.logHref ? (
-            <Link
-              href={session.logHref}
-              prefetch={false}
-              data-testid="training-open-bike-logger"
-              data-open-bike-logger={session.logHref ? "train" : undefined}
-              data-prime-coach-audio
-              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
-            >
-              Start
-            </Link>
-          ) : session.dayId ? (
-            <Link
-              href={session.startHref ?? bikeLoggerHref(session.dayId)}
-              prefetch={false}
-              data-prime-coach-audio
-              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
-            >
-              Start
-            </Link>
-          ) : href ? (
-            <Link
-              data-testid={`training-link-2-${href.split("/").filter(Boolean).join("-")}`}
-              href={href}
-              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
-                highlight ? "bg-accent text-black" : "border border-line"
-              }`}
-            >
-              {cta}
-            </Link>
-          ) : null}
-          {session.href && (openId || session.dayId) ? (
-            <Link
-              href={session.href}
-              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
-                highlight ? "border border-white/30 text-white" : "border border-line"
-              }`}
-            >
-              Preview
-            </Link>
-          ) : null}
+          <Link
+            href={session.href}
+            data-preview-session
+            className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
+              highlight ? "border border-white/30 text-white" : "border border-line"
+            }`}
+          >
+            Preview
+          </Link>
+        </div>
+      ) : href ? (
+        <div data-session-actions className="above-dock mt-4">
+          <Link
+            data-testid={`training-link-2-${href.split("/").filter(Boolean).join("-")}`}
+            href={href}
+            className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
+              highlight ? "bg-accent text-black" : "border border-line"
+            }`}
+          >
+            Open session
+          </Link>
         </div>
       ) : null}
       {bookend ? <TrainDayMobility bookend={bookend} inverted={Boolean(highlight)} /> : null}

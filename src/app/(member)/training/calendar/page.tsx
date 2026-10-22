@@ -36,8 +36,9 @@ import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
-import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
-import { completedLocalDayKeys } from "@/lib/workouts";
+import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
+import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
+import { listDayPlansForUser } from "@/lib/my-workouts";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -117,17 +118,29 @@ export default async function TrainingCalendarPage({
   const canEditWeek = weekStartInRange(viewedWeek, currentWeek);
   const loggedWindow = carouselLoggedRange(now, tz);
   const planByDay = await calendarPlanDoses(user.id, now);
-  const [loggedDays, completedByDay, partialDays, weekSchedules] = await Promise.all([
-    completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, now),
+  const carouselKeys = chipWeeks.flatMap((week) => week.days.map((day) => day.dayParam));
+  const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans, weekSchedules] = await Promise.all([
     completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, now),
     partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
+    partialProgramIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
+    offPlanMarksByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
+    listDayPlansForUser(user.id, carouselKeys),
     Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
   ]);
+  const marks = chipMarksAfterPlans({
+    days: chipDayRefs(chipWeeks),
+    completedByDay,
+    partialDays,
+    partialByDay,
+    plansByDay: chipPlanMarksByDay(carouselPlans),
+    offPlan,
+  });
+  const markedWeeks = withOverlaySessionIds(chipWeeks, marks.sessionIdsByDay);
   const selectedWeekday = weekdayName(selected, tz);
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
   const todayHref = `/training/calendar?day=${todayKey}${levelQuery}`;
   const moves: Record<string, CalendarMoveBundle> = {};
-  const panels = chipWeeks.map((week, index) => {
+  const panels = markedWeeks.map((week, index) => {
     const weekSchedule = weekSchedules[index];
     if (!weekSchedule) return null;
     const focus =
@@ -197,6 +210,7 @@ export default async function TrainingCalendarPage({
           {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (
             <p className="text-sm text-muted">{focusPlan.skipReason}</p>
           ) : null}
+          {/* #150 mounts LogPastWorkoutButton here (entry="calendar", label "Log a completed workout") when the day can take a past log. Keep that button. */}
         </section>
 
         {weekSchedule.days.every((day) => day.activities.every((item) => item.kind !== "workout")) ? (
@@ -244,18 +258,15 @@ export default async function TrainingCalendarPage({
         <div className="mt-2 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl">Calendar</h1>
-            <p className="mt-1 text-sm text-muted">
-              Tap Move on a session to do it today, move it, or swap it.
-            </p>
           </div>
         </div>
       </div>
 
       <CalendarWeekFollow
-        weeks={chipWeeks}
-        completedDays={loggedDays}
-        completedByDay={completedByDay}
-        partialDays={partialDays}
+        weeks={markedWeeks}
+        completedDays={marks.loggedDays}
+        completedByDay={marks.completedByDay}
+        partialDays={marks.partialDays}
         focusOffset={focusOffset}
         todayHref={todayHref}
         initialWeekStart={viewedWeek}

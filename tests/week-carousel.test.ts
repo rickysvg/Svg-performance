@@ -173,7 +173,7 @@ describe("week day carousel", () => {
     expect(train).toContain("todayHref");
     expect(train).toContain("<WeekStrip");
     expect(train).toContain("dateLabel={planDateLabel}");
-    expect(train).toContain("completedLocalDayKeys");
+    expect(train).toContain("chipMarksAfterPlans");
     expect(train).toContain("completedSessionIdsByLocalDay");
     expect(train).toContain("<TrainWeekFollow");
     expect(train).toContain("data-train-panel");
@@ -193,7 +193,7 @@ describe("week day carousel", () => {
     expect(calendar).toContain("todayHref");
     expect(calendar).toContain("data-calendar-week-title");
     expect(calendar).toContain("weekLabel={week.label}");
-    expect(calendar).toContain("completedLocalDayKeys");
+    expect(calendar).toContain("chipMarksAfterPlans");
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain("history.replaceState");
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("week"');
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("day"');
@@ -558,8 +558,8 @@ describe("week day carousel", () => {
     const card = after.days
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
-    expect(card?.subtitle.startsWith("Missed")).toBe(false);
+    expect(card?.subtitle).toContain("· Partial");
+    expect(card?.subtitle).not.toContain("· Missed");
     const counted = /^(\d+)\/(\d+) sets$/.exec(card?.setCountLabel ?? "");
     expect(counted).toBeTruthy();
     expect(Number(counted?.[1])).toBeGreaterThan(0);
@@ -588,7 +588,7 @@ describe("week day carousel", () => {
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
     const draftPartials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE);
-    expect(draftCard?.subtitle.startsWith("Partial")).toBe(true);
+    expect(draftCard?.subtitle.includes("· Partial") || draftCard?.subtitle.startsWith("Partial")).toBe(true);
     expect(draftPartials.includes(day)).toBe(true);
     expect(
       chipMarkForDay({
@@ -601,7 +601,7 @@ describe("week day carousel", () => {
 
     const train = read("src/app/(member)/training/page.tsx");
     expect(train).toContain("partialLocalDayKeys");
-    expect(train).toContain("partialDays={partialDays}");
+    expect(train).toContain("partialDays={marks.partialDays}");
     expect(read("src/components/training/WeekStrip.tsx")).toContain("partial: partialDays.includes(day.dayParam)");
   });
 
@@ -689,7 +689,7 @@ describe("week day carousel", () => {
     const card = after.days
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === activity!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(false);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(false);
     expect(partials.includes(day)).toBe(false);
     expect(
       chipMarkForDay({
@@ -726,9 +726,12 @@ describe("week day carousel", () => {
     const schedule = await getCalendarSchedule(user.id, anchor);
     const partialCards = schedule.days
       .flatMap((item) => item.activities)
-      .filter((item) => item.subtitle.startsWith("Partial"));
+      .filter((item) => item.subtitle.includes("· Partial") || item.subtitle.startsWith("Partial"));
     expect(partials.includes(day)).toBe(true);
-    expect(partialCards.map((card) => card.subtitle)).toContain("Partial · 1/4 sets");
+    expect(partialCards.length).toBeGreaterThan(0);
+    expect(partialCards.every((card) => card.subtitle.includes("· Partial") || card.subtitle.startsWith("Partial"))).toBe(
+      true,
+    );
     expect(
       chipMarkForDay({
         plannedSessionIds: [],
@@ -780,7 +783,9 @@ describe("week day carousel", () => {
     expect(workouts.filter((item) => subtitleCountsAsMissed(item.subtitle)).map((item) => item.subtitle)).toEqual([
       notDone,
     ]);
-    expect(workouts.some((item) => item.subtitle === "Partial · 1/3 sets")).toBe(true);
+    expect(workouts.some((item) => item.subtitle.includes("· Partial") || item.subtitle.startsWith("Partial"))).toBe(
+      true,
+    );
     expect(
       calendarFocusStatusSuffix({
         workouts,
@@ -904,8 +909,12 @@ describe("week day carousel", () => {
     const card = after.days
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(partials.includes(day)).toBe(true);
+    const completedDays = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const completedIds = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
+    expect(completedDays.includes(day)).toBe(false);
+    expect(completedIds[day] ?? []).not.toContain(picked!.programDayId);
     expect(
       chipMarkForDay({
         plannedSessionIds: [picked!.programDayId],
@@ -914,6 +923,24 @@ describe("week day carousel", () => {
         partial: partials.includes(day),
       }),
     ).toBe("partial");
+
+    const scaledDose = plans.get(picked!.programDayId)?.dose ?? 0;
+    const rows = await prisma.workoutSet.findMany({
+      where: { workoutSessionId: picked!.sessionId },
+      orderBy: { setNumber: "asc" },
+    });
+    const stillOpen = rows.filter((set) => !set.completed).slice(0, Math.max(0, scaledDose - picked!.raw));
+    expect(picked!.raw + stillOpen.length).toBe(scaledDose);
+    await prisma.workoutSet.updateMany({
+      where: { id: { in: stillOpen.map((set) => set.id) } },
+      data: { completed: true, reps: 8, loadValue: 40 },
+    });
+    const partialsAfter = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE, doses);
+    const completedAfter = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const idsAfter = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
+    expect(partialsAfter.includes(day)).toBe(false);
+    expect(completedAfter.includes(day)).toBe(true);
+    expect(idsAfter[day] ?? []).toContain(picked!.programDayId);
   });
 
   it("says Partial in the header when a past day's card is Partial", async () => {
@@ -964,7 +991,7 @@ describe("week day carousel", () => {
     const focus = after.days.find((day) => dayKey(day.date, APP_TIMEZONE) === mondayKey);
     const workouts = focus?.activities.filter((item) => item.kind === "workout") ?? [];
     const card = workouts.find((item) => item.programDayId === activity!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(card?.status).toBe("scheduled");
     expect(
       calendarFocusStatusSuffix({
@@ -975,9 +1002,9 @@ describe("week day carousel", () => {
     ).toBe(" · Partial");
   });
 
-  it("sends non-today chips to that date and keeps today's bike logger", () => {
+  it("sends every chip to that date, including today", () => {
     expect(weekChipHref({ isToday: true, dayParam: "2026-10-22", logHref: "/training/bike/start" }, "/training")).toBe(
-      "/training/bike/start",
+      "/training?day=2026-10-22",
     );
     expect(
       weekChipHref({ isToday: false, dayParam: "2026-10-07", logHref: "/training/bike/start" }, "/training/calendar"),

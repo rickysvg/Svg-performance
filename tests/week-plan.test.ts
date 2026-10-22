@@ -534,7 +534,7 @@ describe("Core planner on Home", () => {
     const before = await getCalendarSchedule(user.id, wednesday, monday);
     const mondayBefore = before.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
     expect(mondayBefore.some((row) => row.sessionKey === liftKey)).toBe(true);
-    expect(mondayBefore[0]?.subtitle).toBe("Missed. Tap Move to do it another day.");
+    expect(mondayBefore[0]?.subtitle).toBe("Lift · Missed");
 
     await expect(moveWorkoutForUser(user.id, liftKey, "Monday", start, wednesday)).rejects.toThrow(
       /today or a later day/,

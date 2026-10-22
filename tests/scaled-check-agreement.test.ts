@@ -591,7 +591,7 @@ describe("scaled dose agreement", () => {
     const card = after.days
       .find((item) => dayKey(item.date, APP_TIMEZONE) === dayKey(plan.performedAt, APP_TIMEZONE))
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === plan.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(card?.status).not.toBe("complete");
   });
 
@@ -737,7 +737,7 @@ describe("scaled dose agreement", () => {
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === lift!.programDayId);
     expect(card?.setCountLabel).toMatch(/^1\/\d+ sets$/);
     expect(card?.setCountLabel?.endsWith(" sets") && !card.setCountLabel.includes("/")).toBe(false);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(card?.status).not.toBe("complete");
     const day = dayKey(thursday, APP_TIMEZONE);
     const from = addZonedDays(thursday, -1, APP_TIMEZONE);

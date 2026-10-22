@@ -59,12 +59,14 @@ export function isBikeLoggerHref(href?: string | null) {
   return typeof href === "string" && /^\/training\/[^/]+\/start(?:\?.*)?$/.test(href);
 }
 
-/** A bike tap opens the logger. A finished session stays on its day page. */
+/**
+ * Calendar and other view rows open the read-only day page.
+ * The logger (`logHref` / Start) runs only from an explicit Start or Resume control.
+ */
 export function sessionOpenHref(
   session: { href?: string; logHref?: string },
-  done = false,
+  _done = false,
 ) {
-  if (!done && session.logHref) return session.logHref;
   return session.href;
 }
 

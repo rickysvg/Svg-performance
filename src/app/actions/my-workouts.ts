@@ -23,6 +23,8 @@ export type SavedWorkoutActionState = {
   error?: string;
   saved?: boolean;
   renamed?: boolean;
+  name?: string;
+  applied?: boolean;
 };
 
 function revalidateTraining() {
@@ -87,13 +89,13 @@ export async function renameSavedWorkoutAction(
 ): Promise<SavedWorkoutActionState> {
   try {
     const user = await requireUserOrThrow();
-    await renameSavedWorkout(
+    const saved = await renameSavedWorkout(
       user.id,
       String(formData.get("savedWorkoutId") ?? ""),
       String(formData.get("name") ?? ""),
     );
     revalidateTraining();
-    return { renamed: true };
+    return { renamed: true, name: saved.name };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
@@ -112,7 +114,7 @@ export async function updateSavedWorkoutAction(
     } catch {
       return { error: "Could not read that exercise list." };
     }
-    await updateSavedWorkoutExercises(user.id, id, String(formData.get("name") ?? ""), parsed);
+    await updateSavedWorkoutExercises(user.id, id, parsed);
     revalidateTraining();
     return { saved: true };
   } catch (error) {
@@ -147,19 +149,22 @@ export async function applySavedWorkoutAction(
 ): Promise<SavedWorkoutActionState> {
   const user = await requireUserOrThrow();
   const dayKey = String(formData.get("dayKey") ?? "");
-  const mode = String(formData.get("mode") ?? "");
+  const modeField = String(formData.get("mode") ?? "");
+  const confirmField = String(formData.get("confirm") ?? "");
+  const mode = modeField || (confirmField === "replace" ? "replace" : "");
   try {
     await applySavedWorkoutToDay({
       userId: user.id,
       savedWorkoutId: String(formData.get("savedWorkoutId") ?? ""),
       dayKey,
       mode,
+      confirm: confirmField === "replace" || confirmField === "1",
     });
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
   revalidateTraining();
-  redirect(`/training/calendar?day=${encodeURIComponent(dayKey)}`);
+  return { applied: true };
 }
 
 export async function revertDayAction(formData: FormData) {

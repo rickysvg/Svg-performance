@@ -113,7 +113,8 @@ function assertOwnSession<T extends { userId: string }>(
 
 const WORKOUT_LIST_INCLUDE = {
   sets: { orderBy: [{ sortOrder: "asc" as const }, { setNumber: "asc" as const }] },
-  programDay: { include: { program: true, exercises: { select: { sets: true } } } },
+  programDay: { include: { program: true, exercises: { select: { name: true, sets: true } } } },
+  savedWorkout: { select: { name: true } },
 };
 
 export const RECENT_SESSION_TAKE = 20;

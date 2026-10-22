@@ -125,6 +125,7 @@ export function CalendarList({
         <div>
           <p data-week-session-progress className="text-sm font-semibold">
             {weekLabel}: {tally.done} of {tally.total} sessions done
+            {tally.partial > 0 ? `, ${tally.partial} partial` : ""}
           </p>
           <p data-week-flexible className="mt-1 text-sm text-muted">
             Workouts are interchangeable through the week.

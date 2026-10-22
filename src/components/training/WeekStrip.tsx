@@ -436,6 +436,7 @@ function WeekChipList({
   completedDays,
   completedByDay,
   partialDays,
+  inProgressDay,
   selectedDay,
   interactive = true,
   source,
@@ -454,6 +455,7 @@ function WeekChipList({
   completedDays: string[];
   completedByDay: Record<string, string[]>;
   partialDays: string[];
+  inProgressDay?: string;
   selectedDay?: string;
   interactive?: boolean;
   source: { weekStart: string; weekday: string } | null;
@@ -517,10 +519,8 @@ function WeekChipList({
           <li key={day.dayParam} className="min-w-0">
             <Link
               href={href}
-              prefetch={day.logHref ? false : undefined}
               data-testid={`week-chip-${day.dayParam}`}
               data-week-chip={day.short}
-              data-open-bike-logger={day.isToday && day.logHref ? "chip" : undefined}
               tabIndex={interactive === false ? -1 : undefined}
               data-moved-from={day.movedFrom || undefined}
               data-move-source={held ? "true" : undefined}
@@ -570,6 +570,13 @@ function WeekChipList({
               >
                 {day.dateLabel}
               </span>
+              {inProgressDay && day.dayParam === inProgressDay ? (
+                <span
+                  data-week-draft
+                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                  aria-hidden
+                />
+              ) : null}
               {word ? (
                 <span
                   data-week-chip-label
@@ -691,7 +698,6 @@ function RearrangeChrome({
               {pending ? "Saving…" : "Back to the default week"}
             </button>
           </div>
-          <p className="mt-2 text-sm text-white/70">Tap Move on a session, or hold a day to swap the whole day again.</p>
         </div>
       ) : null}
       {!source && moved.length === 0 ? (
@@ -724,6 +730,7 @@ function WeekDayCarousel({
   completedDays,
   completedByDay,
   partialDays,
+  inProgressDay,
   focusOffset,
   todayHref,
   swapWeekStart,
@@ -734,6 +741,7 @@ function WeekDayCarousel({
   completedDays: string[];
   completedByDay: Record<string, string[]>;
   partialDays: string[];
+  inProgressDay?: string;
   focusOffset: number;
   todayHref?: string;
   swapWeekStart?: string;
@@ -1012,6 +1020,7 @@ function WeekDayCarousel({
               completedDays={completedDays}
               completedByDay={completedByDay}
               partialDays={partialDays}
+              inProgressDay={inProgressDay}
               selectedDay={selectedDay}
               interactive={index === activeIndex}
               source={swap.source}
@@ -1053,6 +1062,7 @@ function SingleWeekStrip({
   completedDays,
   completedByDay,
   partialDays,
+  inProgressDay,
 }: {
   days: Item[];
   basePath: string;
@@ -1061,6 +1071,7 @@ function SingleWeekStrip({
   completedDays: string[];
   completedByDay: Record<string, string[]>;
   partialDays: string[];
+  inProgressDay?: string;
 }) {
   const swap = useWeekSwap(weekStart);
   return (
@@ -1073,6 +1084,7 @@ function SingleWeekStrip({
         completedDays={completedDays}
         completedByDay={completedByDay}
         partialDays={partialDays}
+        inProgressDay={inProgressDay}
         source={swap.source}
         pending={swap.pending}
         onPointerDown={swap.onPointerDown}
@@ -1107,6 +1119,7 @@ export function WeekStrip({
   completedDays = [],
   completedByDay = {},
   partialDays = [],
+  inProgressDay,
   focusOffset = 0,
   todayHref,
   swapWeekStart,
@@ -1126,6 +1139,8 @@ export function WeekStrip({
   completedByDay?: Record<string, string[]>;
   /** Civil days with ticked work that does not finish the prescription. */
   partialDays?: string[];
+  /** Civil day of the open draft. That chip gets an in-progress dot. */
+  inProgressDay?: string;
   /** Week offset to center on load. 0 is the current week. */
   focusOffset?: number;
   /** Where the Today button goes when the selected day is not today. */
@@ -1143,6 +1158,7 @@ export function WeekStrip({
         completedDays={completedDays}
         completedByDay={completedByDay}
         partialDays={partialDays}
+        inProgressDay={inProgressDay}
         focusOffset={focusOffset}
         todayHref={todayHref}
         swapWeekStart={swapWeekStart ?? weekStart}
@@ -1159,6 +1175,7 @@ export function WeekStrip({
       completedDays={completedDays}
       completedByDay={completedByDay}
       partialDays={partialDays}
+      inProgressDay={inProgressDay}
     />
   );
 }

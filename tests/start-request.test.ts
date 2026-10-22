@@ -45,15 +45,21 @@ describe("start request writes", () => {
       "src/components/training/StartTodayButton.tsx": 1,
       "src/components/home/TodayGuide.tsx": 1,
       "src/components/training/NextSessionCta.tsx": 1,
-      "src/components/training/PlanSessionCard.tsx": 2,
+      "src/components/training/PlanSessionCard.tsx": 0,
       "src/app/(member)/training/[dayId]/page.tsx": 2,
+      "src/app/(member)/training/my-workouts/day/[planId]/page.tsx": 1,
       "src/components/timer/BikeClockScreen.tsx": 1,
     };
     for (const [file, count] of Object.entries(counts)) {
       expect(read(file).match(/prefetch=\{false\}/g) ?? [], file).toHaveLength(count);
     }
-    expect(read("src/components/training/WeekStrip.tsx")).toContain(
-      "prefetch={day.logHref ? false : undefined}",
+    expect(read("src/components/training/WeekStrip.tsx")).not.toContain("day.logHref");
+    const custom = read("src/app/(member)/training/my-workouts/day/[planId]/start/route.ts");
+    const customGate = custom.indexOf("startRequestCreatesSession");
+    expect(customGate).toBeGreaterThan(-1);
+    expect(customGate).toBeLessThan(custom.indexOf("requireUser("));
+    expect(read("src/app/(member)/training/my-workouts/day/[planId]/page.tsx")).not.toContain(
+      "startDayPlanForUser",
     );
     expect(read("src/components/training/CalendarList.tsx")).toContain(
       "prefetch={isBikeLoggerHref(activity.href) ? false : undefined}",

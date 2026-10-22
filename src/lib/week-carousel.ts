@@ -105,14 +105,13 @@ export function carouselFocusOffset(
 }
 
 /**
- * Today’s bike chip opens the logger. Any other day opens that date,
- * so a past or future chip does not start today’s logger.
+ * A day chip only selects that date. Start and Resume are the buttons
+ * that create a session and run the timer.
  */
 export function weekChipHref(
-  day: { isToday: boolean; dayParam: string; logHref?: string },
+  day: { isToday?: boolean; dayParam: string; logHref?: string },
   basePath: string,
 ) {
-  if (day.isToday && day.logHref) return day.logHref;
   return `${basePath}?day=${day.dayParam}`;
 }
 

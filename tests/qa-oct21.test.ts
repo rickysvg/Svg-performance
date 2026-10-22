@@ -189,7 +189,7 @@ describe("QA Oct 21 saved logs", () => {
     expect(wednesdayCard?.status).toBe("complete");
     expect(wednesdayCard?.subtitle.startsWith("Logged this day")).toBe(true);
     expect(thursdayCard?.status).not.toBe("complete");
-    expect(mondayLift?.subtitle.startsWith("Missed")).toBe(true);
+    expect(mondayLift?.subtitle).toContain("· Missed");
     const monday = mondayOfZoned(wednesday, "America/Denver");
     const logged = await completedLocalDayKeys(
       user.id,
