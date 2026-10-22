@@ -9,6 +9,8 @@ import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
+import type { OpenProgramLog } from "@/lib/today-start";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
   skill: "Skill",
@@ -36,6 +38,7 @@ export function PlanSessionCard({
   highlight,
   compact,
   draftId,
+  resume,
   calendarWeekday,
   completed = false,
   dateLabel,
@@ -44,6 +47,8 @@ export function PlanSessionCard({
   highlight?: boolean;
   compact?: boolean;
   draftId?: string;
+  /** Open log for this program day. A short save is partial, not a draft. */
+  resume?: OpenProgramLog;
   /** Calendar day this card is showing on. Swap uses this, not the skeleton day. */
   calendarWeekday?: string;
   /** A logged session stays on the day it was finished. */
@@ -57,8 +62,18 @@ export function PlanSessionCard({
   const structure = planStructureLine(groups);
   const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const count = exercises.length;
-  const href = draftId ? `/training/log/${draftId}` : session.href;
-  const cta = draftId ? "Resume" : session.dayId ? "Start" : session.href ? "Open session" : null;
+  const openId = resume?.id ?? draftId;
+  const partial = Boolean(resume?.partial);
+  const href = openId ? `/training/log/${openId}` : session.href;
+  const cta = openId
+    ? partial
+      ? "Continue"
+      : "Resume"
+    : session.dayId
+      ? "Start"
+      : session.href
+        ? "Open session"
+        : null;
   const bookend = mobilityBookendsForSession({
     kind: session.kind,
     title: session.title,
@@ -196,6 +211,11 @@ export function PlanSessionCard({
           />
         </div>
       ) : null}
+      {partial && resume?.progress ? (
+        <p data-session-progress className="mt-3 text-sm font-semibold text-accent">
+          {resume.progress}
+        </p>
+      ) : null}
       {completed ? (
         <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
           Done
@@ -206,10 +226,17 @@ export function PlanSessionCard({
           data-session-actions
           className="above-dock mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center"
         >
-          {completed ? null : draftId ? (
+          {completed ? null : partial && openId ? (
+            <ContinueWorkoutButton
+              workoutId={openId}
+              label="Continue"
+              className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent px-4 text-sm text-black sm:w-auto"
+            />
+          ) : openId ? (
             <Link
-              href={`/training/log/${draftId}`}
+              href={`/training/log/${openId}`}
               data-prime-coach-audio
+              data-session-continue="draft"
               className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
             >
               Resume
@@ -245,7 +272,7 @@ export function PlanSessionCard({
               {cta}
             </Link>
           ) : null}
-          {session.href && (draftId || session.dayId) ? (
+          {session.href && (openId || session.dayId) ? (
             <Link
               href={session.href}
               className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${

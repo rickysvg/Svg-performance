@@ -9,15 +9,18 @@ export const PRIMARY_NAV_LINKS = [
 export type PrimaryNavHref = (typeof PRIMARY_NAV_LINKS)[number]["href"];
 
 /**
- * Bottom dock. Home tiles already open Train, Fuel, Learn, Coach, Progress,
- * Calendar, and the timer, so those stay off this bar.
+ * Bottom dock. Home tiles already open Train, Fuel, Learn, and Coach.
+ * Progress stays on the bar so the log is one tap away.
  */
 export const BOTTOM_DOCK_LEFT = [
   { href: "/book", label: "Book" },
   { href: "/shop", label: "Shop" },
 ] as const;
 
-export const BOTTOM_DOCK_RIGHT = [{ href: "/profile", label: "Profile" }] as const;
+export const BOTTOM_DOCK_RIGHT = [
+  { href: "/progress", label: "Progress" },
+  { href: "/profile", label: "Profile" },
+] as const;
 
 export function isPrimaryNavActive(pathname: string, href: string) {
   if (href === "/home") return pathname === "/home";

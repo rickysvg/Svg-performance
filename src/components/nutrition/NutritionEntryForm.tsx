@@ -6,7 +6,7 @@ import {
   type NutritionActionState,
 } from "@/app/actions/nutrition";
 import { StatusBanner } from "@/components/StatusBanner";
-import { MEAL_TYPES, mealTypeForTime } from "@/lib/nutrition";
+import { MEAL_TYPES } from "@/lib/nutrition";
 import { searchFoodOptions, type SearchableMeal } from "@/lib/foods";
 
 type Saved = {
@@ -75,15 +75,13 @@ export function NutritionEntryForm({
       : null,
   );
   const [formKey, setFormKey] = useState(0);
-  const [mealType, setMealType] = useState(
-    entry?.mealType ?? defaultMeal ?? mealTypeForTime(new Date()),
-  );
+  const [mealType, setMealType] = useState(entry?.mealType ?? defaultMeal ?? "breakfast");
   const [clearedFor, setClearedFor] = useState<number | undefined>();
   if (!entry && state.savedAt && clearedFor !== state.savedAt) {
     setClearedFor(state.savedAt);
     setPrefill(null);
     setQuery("");
-    setMealType(defaultMeal ?? mealTypeForTime(new Date()));
+    setMealType(defaultMeal ?? "breakfast");
     setFormKey((value) => value + 1);
   }
 

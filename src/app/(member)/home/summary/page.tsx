@@ -24,6 +24,7 @@ export default async function TodaySummaryPage() {
       circle={coach.circle}
       when={summaryHeaderWhen(loaded.facts.weekday, loaded.dayKey)}
       readAloudsLeft={allowance.readAloudsLeft}
+      progress={loaded.progress}
     />
   );
 }

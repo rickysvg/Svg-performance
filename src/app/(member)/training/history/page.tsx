@@ -21,7 +21,9 @@ export default async function HistoryPage() {
   const user = await requireUser();
   const profile = await getProfileForUser(user.id);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const sessions = await listWorkoutSessionsForUser(user.id);
+  const sessions = (await listWorkoutSessionsForUser(user.id)).filter(
+    (session) => session.status !== "abandoned",
+  );
 
   return (
     <main className="space-y-6">
@@ -89,7 +91,7 @@ export default async function HistoryPage() {
                     {names.join(" · ")}
                   </p>
                 ) : null}
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
                   {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} · {label}
                   {bagLine ? ` · ${bagLine}` : ` · ${setCount} set${setCount === 1 ? "" : "s"}`}
                   {difficultyLabel(session.difficultyRating)

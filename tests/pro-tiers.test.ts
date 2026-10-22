@@ -330,6 +330,6 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
       role: "member",
     });
     expect(earlyAccess.allowed).toBe(true);
-    expect(earlyAccess.freeDaysLeft).toBe(7);
+    expect(earlyAccess.freeDaysLeft).toBe(null);
   });
 });

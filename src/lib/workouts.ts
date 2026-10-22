@@ -133,6 +133,40 @@ export async function listDraftSessionsForUser(
   });
 }
 
+/**
+ * Drafts, partials, and recent saves the member can open again. Newest first.
+ * A short save stays status complete until the prescription is finished, so
+ * those rows are included and the caller drops a planned completion.
+ */
+export async function listResumableSessionsForUser(userId: string, take = 40) {
+  return prisma.workoutSession.findMany({
+    where: {
+      userId,
+      sets: loggedSetSome,
+      status: { in: ["draft", "partial", "complete"] },
+    },
+    orderBy: { performedAt: "desc" },
+    take,
+    include: {
+      sets: {
+        select: {
+          exerciseName: true,
+          completed: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+        },
+      },
+      programDay: {
+        include: {
+          program: true,
+          exercises: { orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+}
+
 export async function countWorkoutSessionsForUser(userId: string) {
   return prisma.workoutSession.count({ where: { userId } });
 }
@@ -793,6 +827,157 @@ async function findCompletedSameDaySession(
   );
 }
 
+/**
+ * Reopen a short save and put the planned rows back on that same session.
+ * A planned completion stays finished. Removed and swapped-out names are not re-added.
+ * Call this from the Continue action only. Viewing a log must not run it.
+ */
+export async function continuePartialWorkoutForUser(input: {
+  userId: string;
+  workoutId: string;
+  preferredUnits: LoadUnit;
+  timeZone?: string;
+}) {
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: input.workoutId },
+    include: {
+      sets: true,
+      programDay: {
+        include: {
+          program: true,
+          exercises: { orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    throw new NotFoundError("Workout not found.");
+  }
+  if (!existing.programDay) return existing;
+
+  const profile = await getProfileForUser(input.userId);
+  const zone = input.timeZone || APP_TIMEZONE;
+  const now = existing.performedAt;
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
+  const weekIndex = memberWeekIndex(now, profile?.onboardingCompletedAt ?? now, zone);
+  const camp = await getActiveCampSnapshot(input.userId, now, zone);
+  const rawDay = existing.programDay;
+  const day = scaleProgramDay(
+    {
+      ...rawDay,
+      exercises: rawDay.exercises.map((exercise) => ({ ...exercise })),
+    },
+    {
+      band,
+      programSlug: rawDay.program.slug,
+      weightAccess: profile?.weightAccess,
+      weekIndex,
+      campPhase: camp?.phase ?? null,
+    },
+  );
+  const names = day.exercises.map((exercise) => exercise.name);
+  const dose = day.exercises.reduce(
+    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+    0,
+  );
+  if (existing.status === "complete" && sessionCountsAsPlannedCompletion(existing, names, dose)) {
+    return existing;
+  }
+
+  const swaps = await listSwapsForDay({
+    userId: input.userId,
+    programSlug: rawDay.program.slug,
+    dayNumber: rawDay.dayNumber,
+  });
+  const swapped = applySwapsToExercises(day.exercises, swaps, {
+    sessionId: existing.id,
+    blockKey: trainingBlockKey(now, zone, profile?.onboardingCompletedAt ?? null, weekIndex),
+    includePending: false,
+  });
+  const removals = await listRemovalsForDay({
+    userId: input.userId,
+    programSlug: rawDay.program.slug,
+    dayNumber: rawDay.dayNumber,
+  });
+  const visible = omitRemovedSlots(day.exercises, swapped, removals, {
+    sessionId: existing.id,
+    includePending: false,
+  }).shown;
+  const timerColumns = await workoutTimerColumnsAvailable(prisma);
+
+  return prisma.$transaction(async (tx) => {
+    const fresh = await tx.workoutSession.findUniqueOrThrow({
+      where: { id: existing.id },
+      include: { sets: true },
+    });
+    if (fresh.userId !== input.userId) {
+      throw new NotFoundError("Workout not found.");
+    }
+    if (fresh.status === "complete" && sessionCountsAsPlannedCompletion(fresh, names, dose)) {
+      return fresh;
+    }
+    if (fresh.status === "complete" || fresh.status === "partial") {
+      await tx.workoutSession.update({
+        where: { id: fresh.id },
+        data: {
+          status: "draft",
+          ...(timerColumns ? { finishedAt: null } : {}),
+        },
+      });
+    }
+    const counts = new Map<string, number>();
+    for (const set of fresh.sets) {
+      const key = gymExerciseKey(set.exerciseName);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const create: Prisma.WorkoutSetCreateManyInput[] = [];
+    let prescribedTotal = 0;
+    for (const exercise of visible) {
+      const prescribed = Math.max(0, Math.round(exercise.sets));
+      prescribedTotal += prescribed;
+      const have = counts.get(gymExerciseKey(exercise.name)) ?? 0;
+      const mode = resolveLogMode(exercise);
+      for (let index = have; index < prescribed; index += 1) {
+        create.push({
+          workoutSessionId: fresh.id,
+          exerciseName: exercise.name,
+          setNumber: index + 1,
+          sortOrder: (exercise.sortOrder ?? 0) * 10 + index,
+          reps: null,
+          loadValue: null,
+          loadUnit: input.preferredUnits,
+          logMode: mode,
+          durationSeconds: null,
+          completed: false,
+          prescriptionKey: prescriptionSlotKey({
+            exerciseName: exercise.name,
+            reps: exercise.reps,
+            programSlug: rawDay.program.slug,
+            dayNumber: rawDay.dayNumber,
+          }),
+          rir: rirFromLoadText(exercise.loadText) ?? "",
+        });
+      }
+    }
+    if (create.length > 0) {
+      await tx.workoutSet.createMany({ data: create });
+    }
+    if (prescribedTotal > 0) {
+      await tx.workoutSession.update({
+        where: { id: fresh.id },
+        data: { plannedSetCount: prescribedTotal },
+      });
+    }
+    return tx.workoutSession.findUniqueOrThrow({
+      where: { id: fresh.id },
+      include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+    });
+  });
+}
+
 export async function startWorkoutFromDay(input: {
   userId: string;
   programDayId: string;
@@ -1284,9 +1469,31 @@ export async function updateWorkoutSessionForUser(input: {
 }
 
 /**
+ * A draft with no reps, load, or time, dated before today, and not resumed today.
+ * Closing it is a status change. The row stays so a later pass cannot treat a
+ * deleted id as a missed session or a Resume target.
+ */
+export function isPastEmptyDraft(
+  session: {
+    status: string;
+    performedAt: Date;
+    createdAt?: Date | null;
+    timerStartedAt?: Date | null;
+    sets: { reps: number | null; loadValue: number | null; durationSeconds: number | null }[];
+  },
+  today: string,
+  timeZone: string,
+) {
+  if (session.status !== "draft" || sessionHasLoggedWork(session.sets)) return false;
+  if (session.timerStartedAt && dayKey(session.timerStartedAt, timeZone) >= today) return false;
+  return sessionCivilDay(session, timeZone) < today;
+}
+
+/**
  * A draft dated before today is no longer a live clock. A partial log becomes
  * "partial" and stays off the DONE tally. Only a draft that already has every
- * prescribed set ticked is marked complete. Do not invent sets, do not store a
+ * prescribed set ticked is marked complete. An empty draft from a past day is
+ * marked abandoned and left in place. Do not invent sets, do not store a
  * created-to-edit gap as training time, and do not close a draft the member
  * still has open today.
  */
@@ -1299,6 +1506,7 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       where: { userId, status: "draft" },
       select: {
         id: true,
+        status: true,
         programDayId: true,
         performedAt: true,
         createdAt: true,
@@ -1324,11 +1532,16 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       .map((row) => `${row.programDayId}:${sessionCivilDay(row, timeZone)}`),
   );
   const claimed = new Set<string>();
+  const stillOpenToday = (row: { timerStartedAt: Date | null }) =>
+    Boolean(row.timerStartedAt && dayKey(row.timerStartedAt, timeZone) >= today);
+  const emptyPastIds = drafts
+    .filter((row) => isPastEmptyDraft(row, today, timeZone))
+    .map((row) => row.id);
   const ids = drafts
     .filter((row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today)
     .filter((row) => {
       // Resume starts a live segment today. Do not close it out from under the member.
-      if (row.timerStartedAt && dayKey(row.timerStartedAt, timeZone) >= today) return false;
+      if (stillOpenToday(row)) return false;
       return true;
     })
     .filter((row) => {
@@ -1339,8 +1552,18 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       return true;
     })
     .map((row) => row.id);
-  if (ids.length === 0) return 0;
+  if (ids.length === 0 && emptyPastIds.length === 0) return 0;
   let count = 0;
+  for (const id of emptyPastIds) {
+    const result = await prisma.workoutSession.updateMany({
+      where: { id, userId, status: "draft" },
+      data: {
+        status: "abandoned",
+        ...(timerColumns ? { finishedAt: null, elapsedSeconds: null, timerStartedAt: null } : {}),
+      },
+    });
+    count += result.count;
+  }
   for (const row of drafts) {
     if (!ids.includes(row.id)) continue;
     const planned = resolvedPlannedSetCount(row);

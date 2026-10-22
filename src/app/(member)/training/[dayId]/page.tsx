@@ -4,7 +4,10 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
-import { listDraftSessionsForUser, sessionMatchesPlannedDay } from "@/lib/workouts";
+import { listResumableSessionsForUser, sessionMatchesPlannedDay } from "@/lib/workouts";
+import { openLogsByProgramDay } from "@/lib/today-start";
+import { dayKey } from "@/lib/timezone";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { activePlanWeekIndex, campPlanWeekIndex } from "@/lib/fight-camp";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
@@ -84,10 +87,12 @@ export default async function TrainingDayPage({
     notFound();
   }
 
-  const drafts = await listDraftSessionsForUser(user.id);
-  const draft = drafts.find(
-    (session) => session.programDayId === day.id && sessionMatchesPlannedDay(session, day),
-  );
+  const resumable = await listResumableSessionsForUser(user.id);
+  const open = openLogsByProgramDay(resumable, dayKey(now, tz), tz).get(day.id);
+  const openSession = open ? resumable.find((session) => session.id === open.id) : undefined;
+  const matched =
+    open && openSession && sessionMatchesPlannedDay(openSession, day) ? open : undefined;
+  const draft = matched ? openSession : undefined;
   const swaps = await listSwapsForDay({
     userId: user.id,
     programSlug: day.program.slug,
@@ -115,7 +120,7 @@ export default async function TrainingDayPage({
   const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
   const minutes = estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
-  const startLabel = draft ? "Continue" : "Start Now";
+  const startLabel = matched?.partial ? "Continue" : matched ? "Resume" : "Start Now";
   const deload = campWeek == null && isDeloadWeekIndex(weekIndex);
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
@@ -206,13 +211,27 @@ export default async function TrainingDayPage({
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
 
-        {draft ? (
+        {matched?.partial ? (
+          <div className="space-y-2">
+            {matched.progress ? (
+              <p data-session-progress className="text-sm font-semibold text-accent">
+                {matched.progress}
+              </p>
+            ) : null}
+            <ContinueWorkoutButton
+              workoutId={matched.id}
+              label="Continue"
+              className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
+            />
+          </div>
+        ) : draft ? (
           <Link
             href={`/training/log/${draft.id}`}
             data-prime-coach-audio
+            data-session-continue="draft"
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
           >
-            Continue
+            Resume
           </Link>
         ) : (
           <Link

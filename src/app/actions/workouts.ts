@@ -8,6 +8,7 @@ import {
   deleteWorkoutSessionForUser,
   getOwnWorkoutSessionOrNull,
   rateWorkoutSessionForUser,
+  continuePartialWorkoutForUser,
   reopenCompletedWorkoutForUser,
   logBikeRoundsForUser,
   startRoundWorkoutForUser,
@@ -318,6 +319,27 @@ export async function rateFinishedWorkoutAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+}
+
+/** Reopen a short save, restore its planned rows, and open that same logger. */
+export async function continuePartialWorkoutAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const workoutId = String(formData.get("workoutId") ?? "");
+  const profile = await getProfileForUser(user.id);
+  const units: LoadUnit = profile?.preferredUnits === "kg" ? "kg" : "lb";
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const session = await continuePartialWorkoutForUser({
+    userId: user.id,
+    workoutId,
+    preferredUnits: units,
+    timeZone,
+  });
+  revalidatePath("/home");
+  revalidatePath("/training");
+  revalidatePath("/training/history");
+  revalidatePath("/progress");
+  revalidatePath(`/training/log/${session.id}`);
+  redirect(`/training/log/${session.id}`);
 }
 
 /** Undo an accidental finish and return to the same logger, sets intact. */

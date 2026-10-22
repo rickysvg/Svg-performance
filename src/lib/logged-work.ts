@@ -247,6 +247,82 @@ export function completionListLabel(session: {
   return session.status;
 }
 
+export type ExerciseProgressState = "complete" | "partial" | "open";
+
+export type ExerciseSetProgress = {
+  name: string;
+  ticked: number;
+  planned: number;
+  state: ExerciseProgressState;
+};
+
+/** Per exercise: ticked sets against the prescription. */
+export function exerciseSetProgress(
+  planned: { name?: string | null; sets?: number | null }[],
+  logged: TickedSet[],
+): ExerciseSetProgress[] {
+  const byKey = new Map<string, { name: string; ticked: number; rows: number }>();
+  for (const set of logged) {
+    const name = (set.exerciseName ?? "").trim();
+    if (!name) continue;
+    const key = gymExerciseKey(name);
+    const row = byKey.get(key) ?? { name, ticked: 0, rows: 0 };
+    row.rows += 1;
+    if (setIsTicked(set)) row.ticked += 1;
+    byKey.set(key, row);
+  }
+  const used = new Set<string>();
+  const rows: ExerciseSetProgress[] = [];
+  for (const exercise of planned) {
+    const name = (exercise.name ?? "").trim();
+    if (!name) continue;
+    const key = gymExerciseKey(name);
+    used.add(key);
+    const loggedRow = byKey.get(key);
+    const plannedCount = Math.max(0, Math.round(exercise.sets ?? loggedRow?.rows ?? 0));
+    const ticked = loggedRow?.ticked ?? 0;
+    rows.push({
+      name,
+      ticked,
+      planned: plannedCount,
+      state:
+        ticked <= 0 ? "open" : plannedCount > 0 && ticked >= plannedCount ? "complete" : "partial",
+    });
+  }
+  for (const [key, row] of byKey) {
+    if (used.has(key)) continue;
+    rows.push({
+      name: row.name,
+      ticked: row.ticked,
+      planned: Math.max(row.rows, row.ticked),
+      state: row.ticked <= 0 ? "open" : row.ticked >= row.rows ? "complete" : "partial",
+    });
+  }
+  return rows;
+}
+
+export function progressTotals(rows: ExerciseSetProgress[]) {
+  return {
+    ticked: rows.reduce((sum, row) => sum + row.ticked, 0),
+    planned: rows.reduce((sum, row) => sum + row.planned, 0),
+  };
+}
+
+export function sessionProgressLabel(rows: ExerciseSetProgress[]) {
+  const { ticked, planned } = progressTotals(rows);
+  if (ticked <= 0) return null;
+  const done =
+    planned > 0 &&
+    ticked >= planned &&
+    rows.every((row) => row.state === "complete" || row.planned === 0);
+  return `${formatSetProgress(ticked, planned)} · ${done ? "complete" : "partial"}`;
+}
+
+/** Card and Today copy for a short save. A draft does not use this line. */
+export function partialSetsLine(ticked: number, planned: number) {
+  return `Partial · ${ticked}/${planned} sets`;
+}
+
 export function formatSetProgress(ticked: number, planned: number) {
   if (planned > 0) return `${ticked}/${planned} sets`;
   const count = Math.max(0, ticked);

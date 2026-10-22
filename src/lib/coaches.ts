@@ -1,6 +1,14 @@
 import { isImmersiveTrainingPath } from "@/lib/member-nav";
 
-const COACH_FAB_FORM_PREFIXES = ["/vip/apply", "/checkin", "/onboarding", "/profile"];
+const COACH_FAB_FORM_PREFIXES = [
+  "/vip/apply",
+  "/checkin",
+  "/onboarding",
+  "/profile",
+  "/nutrition",
+  "/book",
+  "/progress",
+];
 
 export const AI_COACHES = [
   {
@@ -254,6 +262,7 @@ export function shouldShowCoachFab(pathname: string) {
   if (path.startsWith("/coach")) return false;
   if (path === "/timer" || path.startsWith("/timer/")) return false;
   if (path === "/training" || path.startsWith("/training/log")) return false;
+  if (path === "/training/calendar" || path.startsWith("/training/calendar/")) return false;
   if (/^\/training\/[^/]+\/start\/?$/.test(path)) return false;
   if (isImmersiveTrainingPath(path)) return false;
   if (COACH_FAB_FORM_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {

@@ -37,6 +37,7 @@ export function WorkoutWinScreen({
   difficultyRating,
   summary,
   savedWorkoutName,
+  exerciseProgress = [],
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -49,6 +50,7 @@ export function WorkoutWinScreen({
   difficultyRating: string;
   summary?: SessionSummary | null;
   savedWorkoutName: string;
+  exerciseProgress?: { name: string; ticked: number; planned: number; state: string }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -151,6 +153,15 @@ export function WorkoutWinScreen({
         >
           Saved
         </p>
+        {exerciseProgress.length > 0 ? (
+          <ul data-exercise-progress className="mt-4 w-full space-y-1 text-left text-sm">
+            {exerciseProgress.map((exercise) => (
+              <li key={exercise.name}>
+                {exercise.name} · {exercise.ticked}/{exercise.planned} · {exercise.state}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <SessionFeelPicker workoutId={workoutId} current={difficultyRating} />
         <p className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm">
           {tiles.map((tile) => (

@@ -3,7 +3,11 @@ import { isScOnly } from "@/lib/member-plan";
 import { getSparringLog } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { listDraftSessionsForUser, listRecentSessionsForUser } from "@/lib/workouts";
+import {
+  isPastEmptyDraft,
+  listDraftSessionsForUser,
+  listRecentSessionsForUser,
+} from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import {
   APP_TIMEZONE,
@@ -294,7 +298,7 @@ export async function getHomeToday(
   });
   const hasCatalog = Boolean(strength || skill);
 
-  const draft = drafts[0] ?? sessions.find((session) => session.status === "draft");
+  const todayKey = zonedDayKey(now, tz);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -339,6 +343,19 @@ export async function getHomeToday(
         .map((session) => session.programDayId as string),
     ),
   ];
+  const finishedToday = new Set(completedDayIds);
+  const draft =
+    drafts.find(
+      (row) =>
+        !isPastEmptyDraft(row, todayKey, tz) &&
+        !(row.programDayId && finishedToday.has(row.programDayId)),
+    ) ??
+    sessions.find(
+      (row) =>
+        row.status === "draft" &&
+        !isPastEmptyDraft(row, todayKey, tz) &&
+        !(row.programDayId && finishedToday.has(row.programDayId)),
+    );
   const loggedOnSelected = sessions.find(
     (session) =>
       sessionCountsAsPlannedCompletion(

@@ -11,6 +11,7 @@ import {
   isOpenAiConfigured,
 } from "@/lib/coach/chat";
 import { timeZoneForUser } from "@/lib/profile";
+import { authoringCoachId } from "@/lib/coach/author";
 import { athleteLocalDayLine } from "@/lib/timezone";
 import { EMPTY_COACH_FALLBACK } from "@/lib/coach/offline";
 import { loadOfflineMemberFacts } from "@/lib/coach/member-facts";
@@ -219,6 +220,7 @@ export async function runCoachChatStream(input: {
     mentionedUserId: input.body.mentionedUserId,
   });
 
+  const coachId = await authoringCoachId(user.id, input.body.coachName);
   await prisma.chatMessage.create({
     data: { threadId: thread.id, role: "user", content: message },
   });
@@ -232,6 +234,7 @@ export async function runCoachChatStream(input: {
         threadId: thread.id,
         role: "assistant",
         content: refusal.message,
+        coachId,
         refused: true,
         refusalCode: refusal.code,
         offline: !isOpenAiConfigured(),
@@ -271,6 +274,7 @@ export async function runCoachChatStream(input: {
       threadId: thread.id,
       role: "assistant",
       content: "",
+      coachId,
       refused: false,
       offline: !isOpenAiConfigured(),
     },

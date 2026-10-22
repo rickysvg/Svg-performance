@@ -6,7 +6,6 @@ import { buildProgressSummary } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
 import { BodyMetricForm } from "@/components/progress/BodyMetricForm";
-import { deleteBodyMetricAction } from "@/app/actions/body-metrics";
 import {
   displayBodyMetric,
   formatOneDecimal,
@@ -22,6 +21,8 @@ import { getFightCampRow } from "@/lib/fight-camp";
 import { telemetryGraphTitle } from "@/lib/telemetry-title";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
+import { WeighInDisclosure } from "@/components/progress/WeighInDisclosure";
+import { DeleteBodyMetricButton } from "@/components/progress/DeleteBodyMetricButton";
 import { listProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
 import { getPersonalRecordsForUser } from "@/lib/records";
@@ -197,7 +198,7 @@ export default async function ProgressPage() {
           now={chartNow}
         />
         {weight ? (
-          <details id="log-body-fat" className="scroll-mt-4" {...(fat ? {} : { open: true })}>
+          <WeighInDisclosure startOpen={!fat}>
             <summary className="cursor-pointer text-sm font-semibold">Log another weigh-in</summary>
             <div className="mt-2">
               <HomeBodyWeight
@@ -209,7 +210,7 @@ export default async function ProgressPage() {
                 bodyFatValue={fat?.value ?? null}
               />
             </div>
-          </details>
+          </WeighInDisclosure>
         ) : (
           <div id="log-body-fat" className="scroll-mt-4">
             <HomeBodyWeight
@@ -403,12 +404,7 @@ export default async function ProgressPage() {
                     {row.recordedAt.toLocaleString()}
                   </span>
                 </span>
-                <form data-testid={`progress-form-${row.id}`} action={deleteBodyMetricAction}>
-                  <input type="hidden" name="metricId" value={row.id} />
-                  <button type="submit" className="text-xs text-danger underline">
-                    Delete
-                  </button>
-                </form>
+                <DeleteBodyMetricButton metricId={row.id} testId={`progress-form-${row.id}`} />
               </li>
             ))}
           </ul>

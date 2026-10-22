@@ -14,6 +14,9 @@ import {
   reopenCompletedWorkoutForUser,
   reopenEmptyCompletion,
   deleteWorkoutSessionForUser,
+  continuePartialWorkoutForUser,
+  listDraftSessionsForUser,
+  listResumableSessionsForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
 } from "@/lib/workouts";
@@ -302,6 +305,48 @@ describe("a workout is complete only after a logged save", () => {
     expect(openRow.status).toBe("draft");
   });
 
+  it("abandons a past empty draft and leaves today's fresh draft", async () => {
+    const user = await makeUser("empty-past@example.com");
+    const program = await getDemoProgram();
+    const monday = new Date(2026, 8, 21, 16, 0, 0);
+    const wednesday = new Date(2026, 8, 23, 16, 0, 0);
+    const past = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const today = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[1].id,
+      preferredUnits: "lb",
+    });
+    await prisma.workoutSession.update({
+      where: { id: past.id },
+      data: { performedAt: monday, createdAt: monday, timerStartedAt: wednesday },
+    });
+    expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(0);
+    expect(await prisma.workoutSession.findUnique({ where: { id: past.id } })).toMatchObject({
+      status: "draft",
+    });
+
+    await prisma.workoutSession.update({
+      where: { id: past.id },
+      data: { timerStartedAt: null },
+    });
+    expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(1);
+    const pastRow = await prisma.workoutSession.findUnique({ where: { id: past.id } });
+    expect(pastRow).not.toBeNull();
+    expect(pastRow?.status).toBe("abandoned");
+    expect(await prisma.workoutSession.findUnique({ where: { id: today.id } })).toMatchObject({
+      status: "draft",
+    });
+    const resumable = await listResumableSessionsForUser(user.id);
+    expect(resumable.map((row) => row.id)).not.toContain(past.id);
+    expect(resumable.map((row) => row.id)).not.toContain(today.id);
+    const drafts = await listDraftSessionsForUser(user.id);
+    expect(drafts.map((row) => row.id)).toEqual([today.id]);
+  });
+
   it("reuses one row when the same session is started twice in a day", async () => {
     const user = await makeUser("once-a-day@example.com");
     const program = await getDemoProgram();
@@ -322,7 +367,7 @@ describe("a workout is complete only after a logged save", () => {
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
   });
 
-  it("opens a new draft after that session is already complete today", async () => {
+  it("reopens a short save in place instead of starting a second session", async () => {
     const user = await makeUser("already-logged@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -331,6 +376,18 @@ describe("a workout is complete only after a logged save", () => {
       programDayId: day.id,
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
+    });
+    const removed = first.sets.find((set) => set.exerciseName !== "Goblet squat");
+    expect(removed).toBeTruthy();
+    await prisma.exerciseRemoval.create({
+      data: {
+        userId: user.id,
+        programSlug: program.slug,
+        dayNumber: day.dayNumber,
+        originalName: removed!.exerciseName,
+        exerciseName: removed!.exerciseName,
+        workoutSessionId: first.id,
+      },
     });
     await updateWorkoutSessionForUser({
       userId: user.id,
@@ -350,6 +407,60 @@ describe("a workout is complete only after a logged save", () => {
           completed: true,
         },
       ],
+    });
+    const again = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: first.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(again.id).toBe(first.id);
+    expect(again.status).toBe("draft");
+    expect(again.sets.length).toBeGreaterThan(1);
+    expect(again.sets.some((set) => set.exerciseName === removed!.exerciseName)).toBe(false);
+    const twice = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: first.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(twice.sets.length).toBe(again.sets.length);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it("opens a new draft after that session is already complete today", async () => {
+    const user = await makeUser("fully-logged@example.com");
+    const program = await getDemoProgram();
+    const day = program.days[0];
+    const first = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: first.id,
+      title: first.title,
+      performedAt: first.performedAt,
+      notes: "",
+      status: "complete",
+      timeZone: APP_TIMEZONE,
+      sets: first.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "timed" || set.logMode === "timed_round" ? null : 8,
+        loadValue:
+          set.logMode === "reps_only" || set.logMode === "timed" || set.logMode === "timed_round"
+            ? null
+            : 40,
+        loadUnit: "lb" as const,
+        durationSeconds:
+          set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed"
+            ? 60
+            : null,
+        completed: true,
+      })),
     });
     const again = await startWorkoutFromDay({
       userId: user.id,

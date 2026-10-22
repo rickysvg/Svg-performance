@@ -20,6 +20,9 @@ export default async function MobilityPage() {
         <p className="mt-2 text-sm text-muted">
           Six short routines. Holds, sets, and rounds — log what you actually did. Warm up before the long holds.
         </p>
+        <p className="mt-2 text-xs text-muted" data-mobility-legend>
+          Included is in every plan. Pro opens on a trial or Pro.
+        </p>
       </div>
 
       <Link href="/mobility/drills" className="block rounded-[1.5rem] bg-black px-4 py-4 text-white">
@@ -42,8 +45,13 @@ export default async function MobilityPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-xl">{routine.title}</h2>
-                  <span className="font-display text-xs uppercase tracking-wide text-accent">
-                    {locked ? "Performance" : routine.access === "free" ? "Free" : "Open"}
+                  <span
+                    data-mobility-access={locked ? "pro" : routine.access === "free" ? "included" : "pro-included"}
+                    className={`font-display shrink-0 rounded-full px-2 py-1 text-[11px] uppercase tracking-wide ${
+                      locked ? "bg-[#0c0e11] text-[#f3f4ef]" : "bg-[#CBF805] text-black"
+                    }`}
+                  >
+                    {locked ? "Pro" : routine.access === "free" ? "Included" : "Pro · included"}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-muted">

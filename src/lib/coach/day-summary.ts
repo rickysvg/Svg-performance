@@ -18,6 +18,8 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
 import { rirFromLoadText } from "@/lib/rir";
 import { dayKey as zonedDayKey } from "@/lib/timezone";
+import { exerciseSetProgress, sessionProgressLabel, type ExerciseSetProgress } from "@/lib/logged-work";
+import { sessionCompletionDay } from "@/lib/performed-at";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import {
@@ -41,6 +43,11 @@ export function summaryHeaderWhen(weekday: string, dayKey: string) {
 }
 
 export type SummarySessionKind = "lift" | "bag" | "cardio" | "mobility" | "sparring" | "rest";
+
+export type SummaryDayProgress = {
+  label: string;
+  exercises: ExerciseSetProgress[];
+};
 
 export type DaySummarySession = {
   kind: SummarySessionKind;
@@ -545,6 +552,7 @@ export function daySummaryFactsKey(facts: DaySummaryFacts) {
 export async function loadDaySummaryFacts(userId: string, now = new Date()): Promise<{
   facts: DaySummaryFacts;
   dayKey: string;
+  progress: SummaryDayProgress | null;
 }> {
   const profile = await getProfileForUser(userId);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
@@ -623,7 +631,42 @@ export async function loadDaySummaryFacts(userId: string, now = new Date()): Pro
     experienceLevel: profile?.experienceLevel,
     weekIndex: planWeekIndex(now, tz, profile?.onboardingCompletedAt),
   });
-  return { facts, dayKey: zonedDayKey(now, tz) };
+  const progress = await loggedProgressForSummary(userId, zonedDayKey(now, tz), tz);
+  return { facts, dayKey: zonedDayKey(now, tz), progress };
+}
+
+async function loggedProgressForSummary(
+  userId: string,
+  dayKey: string,
+  timeZone: string,
+): Promise<SummaryDayProgress | null> {
+  const sessions = await prisma.workoutSession.findMany({
+    where: { userId, status: { in: ["complete", "partial", "draft"] } },
+    orderBy: { performedAt: "desc" },
+    take: 30,
+    include: {
+      sets: {
+        select: {
+          exerciseName: true,
+          completed: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+        },
+      },
+      programDay: {
+        select: {
+          exercises: { select: { name: true, sets: true }, orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+  const rows = sessions
+    .filter((session) => sessionCompletionDay(session, timeZone) === dayKey)
+    .flatMap((session) => exerciseSetProgress(session.programDay?.exercises ?? [], session.sets));
+  const label = sessionProgressLabel(rows);
+  if (!label) return null;
+  return { label, exercises: rows };
 }
 
 export type TodayCoachSummary = {

@@ -7,6 +7,7 @@ import { useCoachStream } from "@/components/coach/useCoachStream";
 import type { UserRole } from "@/lib/auth";
 import type { FallbackReason } from "@/lib/coach/stream-types";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
+import { resolveAiCoach } from "@/lib/coaches";
 import { COACH_SUGGESTIONS, COACH_WELCOME } from "@/lib/coach/welcome";
 import { CoachSpeakButton } from "@/components/coach/CoachSpeakButton";
 import { CoachMarkdown } from "@/components/coach/CoachMarkdown";
@@ -20,7 +21,34 @@ type ChatBubble = {
   offline?: boolean;
   fallbackReason?: FallbackReason;
   live?: boolean;
+  authorCoachId?: string;
 };
+
+function civilDay(value: string | undefined, timeZone: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timeZone || undefined,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function dayHeading(value: string | undefined, timeZone: string) {
+  const key = civilDay(value, timeZone);
+  if (!key) return "";
+  const today = civilDay(new Date().toISOString(), timeZone);
+  const yesterday = civilDay(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), timeZone);
+  if (key === today) return "Today";
+  if (key === yesterday) return "Yesterday";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: timeZone || undefined,
+  }).format(new Date(value!));
+}
 
 function formatStamp(value: string | undefined, timeZone: string) {
   if (!value) return "";
@@ -60,19 +88,22 @@ export function CoachBubble({
 }) {
   const mine = speaker === "user";
   const quick = speaker === "assistant" && Boolean(offline);
-  const label = speaker === "user" ? "You" : coachName;
+  const authored = speaker === "assistant" && coachId ? resolveAiCoach(coachId) : null;
+  const label = speaker === "user" ? "You" : authored?.name || coachName;
+  const thumb = authored?.thumb || coachThumb;
   const stamp = formatStamp(createdAt, timeZone);
   return (
     <article
       className={`flex ${mine ? "justify-end" : "justify-start"}`}
       data-coach-speak={mine ? undefined : "reply"}
+      data-coach-name={mine ? undefined : label}
     >
       <div className={`flex max-w-[82%] items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-        {speaker === "assistant" && coachThumb ? (
+        {speaker === "assistant" && thumb ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={coachThumb}
+              src={thumb}
               alt=""
               width={96}
               height={96}
@@ -138,6 +169,7 @@ export function CoachLiveThread({
     createdAt: string;
     refused: boolean;
     offline: boolean;
+    authorCoachId?: string;
   }>;
   remainingLabel?: string | null;
 }) {
@@ -149,6 +181,7 @@ export function CoachLiveThread({
       createdAt: message.createdAt,
       refused: message.refused,
       offline: message.offline,
+      authorCoachId: message.authorCoachId,
     })),
   );
   const [draft, setDraft] = useState("");
@@ -182,6 +215,7 @@ export function CoachLiveThread({
           role: "assistant",
           content: reply,
           createdAt: new Date().toISOString(),
+          authorCoachId: coachId,
           offline: result.offline || offline,
           fallbackReason: result.fallbackReason || fallbackReason,
         },
@@ -207,23 +241,34 @@ export function CoachLiveThread({
             viewerRole={viewerRole}
           />
         ) : (
-          messages.map((message) => (
-            <CoachBubble
-              key={message.id}
-              speaker={message.role}
-              content={message.content}
-              createdAt={message.createdAt}
-              timeZone={timeZone}
-              refused={message.refused}
-              offline={message.offline}
-              fallbackReason={message.fallbackReason}
-              viewerRole={viewerRole}
-              coachName={coachName}
-              coachId={coachId}
-              coachThumb={coachThumb}
-              audioRef={audioRef}
-            />
-          ))
+          messages.map((message, index) => {
+            const day = civilDay(message.createdAt, timeZone);
+            const previous = civilDay(messages[index - 1]?.createdAt, timeZone);
+            const heading = day && day !== previous ? dayHeading(message.createdAt, timeZone) : "";
+            return (
+              <div key={message.id}>
+                {heading ? (
+                  <p data-chat-day={day} className="py-2 text-center text-[11px] uppercase tracking-wide text-white/45">
+                    {heading}
+                  </p>
+                ) : null}
+                <CoachBubble
+                  speaker={message.role}
+                  content={message.content}
+                  createdAt={message.createdAt}
+                  timeZone={timeZone}
+                  refused={message.refused}
+                  offline={message.offline}
+                  fallbackReason={message.fallbackReason}
+                  viewerRole={viewerRole}
+                  coachName={coachName}
+                  coachId={message.authorCoachId || coachId}
+                  coachThumb={coachThumb}
+                  audioRef={audioRef}
+                />
+              </div>
+            );
+          })
         )}
 
         {streaming ? (

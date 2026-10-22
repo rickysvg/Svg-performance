@@ -35,7 +35,7 @@ export function freeCoachChatDaysRemaining(input: {
 
 export type CoachChatAccess = {
   allowed: boolean;
-  /** Set during the free week. Null for a paid Pro or VIP plan, and for admins. */
+  /** Set during the free week on a free account. Null for Pro, an active trial, and admins. */
   freeDaysLeft: number | null;
 };
 
@@ -69,12 +69,12 @@ export async function getCoachChatAccess(
     trialEndsAt: profile?.trialEndsAt ?? null,
     memberProStartedAt: profile?.memberProStartedAt ?? null,
   });
-  const trialIncludesChat =
-    !profile?.memberProStartedAt && isTrialActive(profile?.trialEndsAt ?? null, now);
-  if (trialIncludesChat) {
-    return { allowed: true, freeDaysLeft: freeDaysLeft > 0 ? freeDaysLeft : null };
+  const trialActive = isTrialActive(profile?.trialEndsAt ?? null, now);
+  const trialIncludesChat = !profile?.memberProStartedAt && trialActive;
+  if (trialIncludesChat || trialActive) {
+    return { allowed: trialIncludesChat || freeDaysLeft > 0, freeDaysLeft: null };
   }
-  return { allowed: freeDaysLeft > 0, freeDaysLeft };
+  return { allowed: freeDaysLeft > 0, freeDaysLeft: freeDaysLeft > 0 ? freeDaysLeft : null };
 }
 
 export async function canUseCoachChat(

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SummaryReader } from "@/components/home/SummaryReader";
-import type { DaySummaryFacts, SummarySessionKind } from "@/lib/coach/day-summary";
+import type { DaySummaryFacts, SummaryDayProgress, SummarySessionKind } from "@/lib/coach/day-summary";
 
 const KIND_LABEL: Record<SummarySessionKind, string> = {
   lift: "Strength",
@@ -17,12 +17,14 @@ export function TodaySummaryView({
   circle,
   when,
   readAloudsLeft = 1,
+  progress = null,
 }: {
   facts: DaySummaryFacts;
   script: string;
   circle: string;
   when: string;
   readAloudsLeft?: number;
+  progress?: SummaryDayProgress | null;
 }) {
   return (
     <main className="space-y-5 pb-8" data-today-summary-page>
@@ -52,6 +54,15 @@ export function TodaySummaryView({
         </div>
       </header>
 
+      <p data-summary-script className="text-sm leading-relaxed">
+        {script}
+      </p>
+      {progress ? (
+        <section data-summary-progress className="rounded-2xl border border-line bg-card px-4 py-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Logged today</p>
+          <p className="mt-1 font-semibold">{progress.label}</p>
+        </section>
+      ) : null}
       <SummaryReader script={script} coachId={facts.coachId} readAloudsLeft={readAloudsLeft} />
 
       <section className="space-y-3">
@@ -63,26 +74,16 @@ export function TodaySummaryView({
           >
             <p className="text-xs uppercase tracking-wide text-muted">{KIND_LABEL[session.kind]}</p>
             <h2 className="mt-1 text-lg">{session.title}</h2>
-            <div className="relative mt-3">
-              <ul
-                data-summary-chips
-                className="flex gap-2 overflow-x-auto pb-1 pr-8"
-              >
-                {(session.lines.length ? session.lines : session.cues).map((line) => (
-                  <li
-                    key={line}
-                    className="shrink-0 rounded-full border border-line bg-background px-3 py-1 text-sm whitespace-nowrap"
-                  >
-                    {line}
-                  </li>
-                ))}
-              </ul>
-              <div
-                aria-hidden
-                data-chip-fade
-                className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card to-transparent"
-              />
-            </div>
+            <ul data-summary-chips className="mt-3 flex flex-wrap gap-2">
+              {(session.lines.length ? session.lines : session.cues).map((line) => (
+                <li
+                  key={line}
+                  className="rounded-full border border-line bg-background px-3 py-1 text-sm"
+                >
+                  {line}
+                </li>
+              ))}
+            </ul>
           </article>
         ))}
       </section>
