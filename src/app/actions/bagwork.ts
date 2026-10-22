@@ -75,9 +75,11 @@ export async function logBagworkSessionAction(input: {
       configuredRounds: input.configuredRounds,
     });
     revalidatePath("/training/history");
+    revalidatePath("/training/history/bike");
     revalidatePath("/training");
     revalidatePath("/training/calendar");
     revalidatePath("/progress");
+    revalidatePath("/progress/streaks");
     revalidatePath("/home");
     return { ok: true, sessionId: session.id };
   } catch (error) {

@@ -136,7 +136,7 @@ export function BikeClockScreen({
               name="notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              onInput={(event) => setNotes(event.target.value)}
+              onInput={(event) => setNotes(event.currentTarget.value)}
               maxLength={500}
               rows={2}
               placeholder="Optional"
@@ -149,7 +149,7 @@ export function BikeClockScreen({
               name="rpe"
               value={rpe}
               onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
-              onInput={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+              onInput={(event) => setRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
               inputMode="numeric"
               placeholder="1–10, optional"
               className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"

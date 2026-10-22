@@ -16,7 +16,12 @@ import {
 import { formatTimerClock } from "@/lib/round-timer";
 import { getShareCardView } from "@/lib/share-card-data";
 import { APP_TIMEZONE, addZonedDays, dayKey } from "@/lib/timezone";
-import { completedLocalDayKeys, logBikeRoundsForUser, logRoundSessionForUser } from "@/lib/workouts";
+import {
+  completedLocalDayKeys,
+  logBikeRoundsForUser,
+  logRoundSessionForUser,
+  rateWorkoutSessionForUser,
+} from "@/lib/workouts";
 import { makeUser, resetDatabase } from "./helpers";
 
 function source(rel: string) {
@@ -48,7 +53,7 @@ describe("round session logs", () => {
     await prisma.$disconnect();
   });
 
-  it("saves a full bag day once, shows it on history and progress, and marks the day done", async () => {
+  it("saves a full bag log once and keeps the skill day's planned count", async () => {
     const user = await makeUser("bag-rounds-done@example.com");
     await prisma.profile.update({
       where: { userId: user.id },
@@ -86,7 +91,8 @@ describe("round session logs", () => {
     expect(saved.title).toBe(target.exerciseName);
     expect(saved.notes).toBe("Jab stayed long.");
     expect(saved.sessionRpe).toBe(8);
-    expect(saved.plannedSetCount).toBe(target.plannedRounds);
+    expect(saved.plannedSetCount).toBe(target.daySetCount);
+    expect(saved.plannedSetCount).toBeGreaterThan(target.plannedRounds);
     expect(saved.sets).toHaveLength(target.plannedRounds);
     expect(saved.sets.every((set) => set.completed && set.durationSeconds === target.workSeconds)).toBe(true);
     expect(restSecondsFromRoundKey(saved.sets[0]?.prescriptionKey)).toBe(target.restSeconds);
@@ -100,13 +106,15 @@ describe("round session logs", () => {
     const from = addZonedDays(now, -1, APP_TIMEZONE);
     const to = addZonedDays(now, 2, APP_TIMEZONE);
     const day = dayKey(now, APP_TIMEZONE);
-    expect(await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
-    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
-    expect((await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE))[day] ?? []).toContain(dayId);
+    expect(await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
+    expect((await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE))[day] ?? []).not.toContain(
+      dayId,
+    );
 
     const home = await getHomeToday(user.id, now, APP_TIMEZONE);
-    expect(home.completedDayIds).toContain(dayId);
-    expect(home.partialDayIds).not.toContain(dayId);
+    expect(home.completedDayIds).not.toContain(dayId);
+    expect(home.partialDayIds).toContain(dayId);
 
     const progress = buildProgressSummary([saved], "lb");
     expect(progress.sessionCount).toBe(1);
@@ -133,7 +141,7 @@ describe("round session logs", () => {
       now,
     });
     expect(saved.status).toBe("partial");
-    expect(saved.plannedSetCount).toBe(target.plannedRounds);
+    expect(saved.plannedSetCount).toBe(target.daySetCount);
     expect(saved.sets).toHaveLength(1);
 
     const from = addZonedDays(now, -1, APP_TIMEZONE);
@@ -162,9 +170,123 @@ describe("round session logs", () => {
     });
     expect(finished.id).toBe(saved.id);
     expect(finished.status).toBe("complete");
+    expect(finished.plannedSetCount).toBe(target.daySetCount);
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
-    expect(await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
-    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect(await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
+  });
+
+  it("keeps Shadowbox and the skill day's 13 planned sets when bag rounds are saved", async () => {
+    const user = await makeUser("bag-keeps-shadow@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE, experienceLevel: "intermediate" },
+    });
+    const now = new Date();
+    const catalog = await findDemoTrainingCatalog();
+    const day = catalog.skill?.days.find((row) => /intelligent jab/i.test(row.title));
+    expect(day?.id).toBeTruthy();
+    const seeded = (day?.exercises ?? []).reduce(
+      (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+      0,
+    );
+    // Seed: shadow, shadow, jab x3, bag rounds x7, cool-down.
+    expect(seeded).toBe(13);
+    expect(day!.exercises.some((exercise) => /shadowbox/i.test(exercise.name))).toBe(true);
+    expect(day!.exercises.some((exercise) => exercise.sets === 3 && /jab/i.test(exercise.name))).toBe(true);
+    const target = await roundTargetForProgramDay({
+      userId: user.id,
+      programDayId: day!.id,
+      type: "bag",
+      now,
+    });
+    expect(target?.plannedRounds).toBe(7);
+    const planSets = day!.exercises.flatMap((exercise) =>
+      Array.from({ length: Math.max(0, Math.round(exercise.sets ?? 0)) }, (_, index) => ({
+        exerciseName: exercise.name,
+        setNumber: index + 1,
+        sortOrder: exercise.sortOrder * 10 + index,
+        loadUnit: "lb",
+        logMode: exercise.logMode || "timed",
+        completed: false,
+      })),
+    );
+    expect(planSets).toHaveLength(13);
+    const opened = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: day!.id,
+        title: day!.title,
+        performedAt: now,
+        status: "draft",
+        plannedSetCount: planSets.length,
+        sets: { create: planSets },
+      },
+      include: { sets: true },
+    });
+    expect(opened.plannedSetCount).toBe(13);
+    expect(opened.sets.some((set) => /shadowbox/i.test(set.exerciseName))).toBe(true);
+    const otherBefore = opened.sets
+      .filter((set) => !/bag rounds/i.test(set.exerciseName))
+      .map((set) => set.exerciseName)
+      .sort();
+
+    const saved = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      programDayId: day!.id,
+      roundsCompleted: target!.plannedRounds,
+      workSeconds: target!.workSeconds,
+      restSeconds: 0,
+      now,
+    });
+    expect(saved.id).toBe(opened.id);
+    expect(saved.status).toBe("complete");
+    expect(saved.title).toBe(day!.title);
+    expect(saved.plannedSetCount).toBe(13);
+    expect(saved.sets).toHaveLength(13);
+    expect(saved.sets.filter((set) => /bag rounds/i.test(set.exerciseName))).toHaveLength(
+      target!.plannedRounds,
+    );
+    expect(saved.sets.some((set) => /shadowbox/i.test(set.exerciseName))).toBe(true);
+    expect(
+      saved.sets
+        .filter((set) => !/bag rounds/i.test(set.exerciseName))
+        .map((set) => set.exerciseName)
+        .sort(),
+    ).toEqual(otherBefore);
+    expect(restSecondsFromRoundKey(saved.sets.find((set) => /bag rounds/i.test(set.exerciseName))?.prescriptionKey)).toBe(
+      target!.restSeconds,
+    );
+    const from = addZonedDays(now, -1, APP_TIMEZONE);
+    const to = addZonedDays(now, 2, APP_TIMEZONE);
+    const loggedDay = dayKey(now, APP_TIMEZONE);
+    expect(await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(loggedDay);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(loggedDay);
+  });
+
+  it("lets a partial round log take a difficulty rating", async () => {
+    const user = await makeUser("partial-round-rating@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE },
+    });
+    const saved = await logRoundSessionForUser({
+      userId: user.id,
+      type: "pads",
+      roundsCompleted: 1,
+      configuredRounds: 3,
+      workSeconds: 180,
+      restSeconds: 60,
+      now: new Date(),
+    });
+    expect(saved.status).toBe("partial");
+    const rated = await rateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: saved.id,
+      difficultyRating: "hard",
+    });
+    expect(rated.difficultyRating).toBe("hard");
   });
 
   it("updates one free grappling log instead of inserting a second", async () => {

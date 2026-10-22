@@ -439,6 +439,7 @@ function mergePersist<T extends PersistSet>(current: T, incoming: T): T {
 export function prepareSetsForPersist<T extends PersistSet>(
   sets: T[],
   status: "draft" | "complete" | "partial",
+  options?: { retainEmptySets?: boolean },
 ): T[] {
   const order: string[] = [];
   const slots = new Map<string, T>();
@@ -465,7 +466,9 @@ export function prepareSetsForPersist<T extends PersistSet>(
   }
 
   let rows = order.map((key) => slots.get(key)!);
-  if (status !== "draft") {
+  // A round save on a mixed day keeps the other exercises' rows, including
+  // ones the member has not ticked yet. Lift finishes still drop empty rows.
+  if (status !== "draft" && !options?.retainEmptySets) {
     rows = rows.filter(setHasLoggedWork);
   } else if (rows.length > 80) {
     const logged = rows.filter(setHasLoggedWork);

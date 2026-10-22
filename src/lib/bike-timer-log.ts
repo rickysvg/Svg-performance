@@ -77,9 +77,14 @@ export async function scheduledRoundPlanTarget(
   const sessions = await loadScheduledPlanSessions(userId, now);
   for (const session of sessions) {
     if (!session.dayId || !session.day) continue;
-    const target = roundTargetFromExercises(session.day.exercises as RoundExercise[], type);
+    const exercises = session.day.exercises as RoundExercise[];
+    const target = roundTargetFromExercises(exercises, type);
     if (!target) continue;
-    return { programDayId: session.dayId, ...target };
+    const daySetCount = exercises.reduce(
+      (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+      0,
+    );
+    return { programDayId: session.dayId, daySetCount, ...target };
   }
   return null;
 }

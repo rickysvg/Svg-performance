@@ -71,7 +71,9 @@ export async function startRoundLogAction(formData: FormData) {
   revalidatePath("/training");
   revalidatePath("/training/calendar");
   revalidatePath("/training/history");
+  revalidatePath("/training/history/bike");
   revalidatePath("/progress");
+  revalidatePath("/progress/streaks");
   redirect(`/training/log/${session.id}/done?celebrate=workout`);
 }
 
@@ -101,6 +103,7 @@ export async function logBikeTimerAction(formData: FormData) {
   revalidatePath("/training/history");
   revalidatePath("/training/history/bike");
   revalidatePath("/progress");
+  revalidatePath("/progress/streaks");
   redirect(`/training/log/${session.id}/done?celebrate=workout`);
 }
 

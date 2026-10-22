@@ -136,6 +136,15 @@ export function roundLogSets(input: {
   }));
 }
 
+export function setBelongsToRoundType(
+  set: { exerciseName?: string | null; logMode?: string | null; prescriptionKey?: string | null },
+  type: RoundSessionType,
+) {
+  if ((set.prescriptionKey ?? "").startsWith(`round:${type}:`)) return true;
+  if (type === "bike") return isBikeIntervalName(set.exerciseName ?? "");
+  return exerciseMatchesRoundType(set.exerciseName ?? "", set.logMode, type);
+}
+
 export function sessionMatchesRoundType(
   session: {
     title?: string | null;
@@ -216,5 +225,9 @@ export async function roundTargetForProgramDay(input: {
   });
   const target = roundTargetFromExercises(day.exercises, input.type);
   if (!target) return null;
-  return { programDayId: raw.id, ...target };
+  const daySetCount = day.exercises.reduce(
+    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+    0,
+  );
+  return { programDayId: raw.id, daySetCount, ...target };
 }

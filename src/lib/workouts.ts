@@ -13,6 +13,7 @@ import {
   roundTargetForProgramDay,
   ROUND_SESSION_TITLES,
   sessionMatchesRoundType,
+  setBelongsToRoundType,
   type RoundSessionType,
 } from "@/lib/round-session";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
@@ -694,8 +695,10 @@ export async function logRoundSessionForUser(input: {
     configuredRounds: configured,
   });
   const workSeconds = Math.max(1, Math.round(input.workSeconds) || target?.workSeconds || 180);
-  const restSeconds = Math.max(0, Math.round(input.restSeconds) || 0);
-  const sets =
+  const requestedRest = Number.isFinite(input.restSeconds) ? Math.round(input.restSeconds) : 0;
+  const restSeconds =
+    requestedRest > 0 ? requestedRest : Math.max(0, Math.round(target?.restSeconds ?? 0));
+  const roundSets =
     input.sets ??
     roundLogSets({
       type: input.type,
@@ -705,10 +708,10 @@ export async function logRoundSessionForUser(input: {
       restSeconds,
       unit: units,
     });
-  if (sets.length < 1) {
+  if (roundSets.length < 1) {
     throw new AppError("WORKOUT", "Finish a round before logging.");
   }
-  const title = (input.title || target?.exerciseName || ROUND_SESSION_TITLES[input.type]).trim();
+  const roundTitle = (input.title || target?.exerciseName || ROUND_SESSION_TITLES[input.type]).trim();
   const elapsed =
     input.elapsedSeconds ?? roundSessionDuration(roundsCompleted, workSeconds, restSeconds);
   const workoutId = await reuseRoundSessionId({
@@ -717,12 +720,51 @@ export async function logRoundSessionForUser(input: {
     programDayId,
     now,
     timeZone,
-    title,
+    title: roundTitle,
   });
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: workoutId },
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    throw new NotFoundError("Workout not found.");
+  }
+  const keptSet = (set: (typeof existing.sets)[number]): WorkoutSetInput => ({
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: isLoadUnit(set.loadUnit) ? set.loadUnit : ("lb" as const),
+    logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  });
+  const sets: WorkoutSetInput[] = [];
+  let replacedRounds = false;
+  for (const set of existing.sets) {
+    if (setBelongsToRoundType(set, input.type)) {
+      if (!replacedRounds) {
+        sets.push(...roundSets);
+        replacedRounds = true;
+      }
+      continue;
+    }
+    sets.push(keptSet(set));
+  }
+  if (!replacedRounds) sets.push(...roundSets);
+  const keptCount = sets.length - roundSets.length;
+  const daySetCount = target && target.daySetCount > 0 ? target.daySetCount : null;
+  const plannedSetCount =
+    typeof existing.plannedSetCount === "number" && existing.plannedSetCount > 0
+      ? undefined
+      : (daySetCount ?? plannedRounds);
   return updateWorkoutSessionForUser({
     userId: input.userId,
     workoutId,
-    title,
+    title: keptCount > 0 ? existing.title : roundTitle,
     performedAt: now,
     notes: input.notes ?? "",
     status,
@@ -730,8 +772,9 @@ export async function logRoundSessionForUser(input: {
     rest: null,
     timeZone,
     elapsedSeconds: elapsed,
-    plannedSetCount: plannedRounds,
+    plannedSetCount,
     sessionRpe: input.rpe === undefined ? undefined : input.rpe,
+    retainEmptySets: keptCount > 0,
   });
 }
 
@@ -1415,8 +1458,13 @@ export async function updateWorkoutSessionForUser(input: {
   difficultyRating?: string | null;
   /** undefined leaves a running rest alone. null clears it. */
   rest?: { exerciseName: string; endsAtMs: number } | null;
-  /** Round saves store the planned round count. Omit to leave a lift's count alone. */
+  /** Omit to leave the session's planned count alone. */
   plannedSetCount?: number;
+  /**
+   * Round saves on a mixed day keep unticked plan rows. Lift finishes still
+   * drop empty sets.
+   */
+  retainEmptySets?: boolean;
   /** undefined leaves session RPE alone. null clears it. */
   sessionRpe?: number | null;
   /**
@@ -1437,7 +1485,9 @@ export async function updateWorkoutSessionForUser(input: {
   );
   const normalized = setsAsLb(input.sets).map((set) => withTickedPlanWork(set));
   const finishing = input.status !== "draft";
-  const sets = prepareSetsForPersist(normalized, input.status);
+  const sets = prepareSetsForPersist(normalized, input.status, {
+    retainEmptySets: input.retainEmptySets,
+  });
   const submitted =
     input.status === "complete" ? prepareSetsForPersist(normalized, "draft") : sets;
   if (finishing && !sets.some(setHasLoggedWork)) {
@@ -1847,7 +1897,7 @@ export async function rateWorkoutSessionForUser(input: {
     await prisma.workoutSession.findUnique({ where: { id: input.workoutId } }),
     input.userId,
   );
-  if (existing.status !== "complete") {
+  if (existing.status !== "complete" && existing.status !== "partial") {
     throw new AppError("WORKOUT", "Save the session first, then rate how it felt.");
   }
   const rating = parseDifficultyRating(input.difficultyRating);
