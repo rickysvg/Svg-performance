@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { WeekStrip, type WeekChange } from "@/components/training/WeekStrip";
+import { TrainWeekChangeContext, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
 import { trainDayHref } from "@/lib/week-carousel";
@@ -66,11 +66,6 @@ export function TrainWeekFollow({
 
   const panels = Children.map(children, (child) => {
     if (!isValidElement(child)) return child;
-    if (child.type === WeekStrip) {
-      return cloneElement(child as ReactElement<{ onWeekChange?: (week: WeekChange) => void }>, {
-        onWeekChange,
-      });
-    }
     const panel = panelWeek(child);
     if (!panel) return child;
     const visible = panel === weekStart;
@@ -81,12 +76,14 @@ export function TrainWeekFollow({
   });
 
   return (
-    <WorkoutMoveProvider
-      editable={Boolean(move?.editable)}
-      weekStart={weekStart}
-      days={move?.days ?? []}
-    >
-      {panels}
-    </WorkoutMoveProvider>
+    <TrainWeekChangeContext.Provider value={onWeekChange}>
+      <WorkoutMoveProvider
+        editable={Boolean(move?.editable)}
+        weekStart={weekStart}
+        days={move?.days ?? []}
+      >
+        {panels}
+      </WorkoutMoveProvider>
+    </TrainWeekChangeContext.Provider>
   );
 }

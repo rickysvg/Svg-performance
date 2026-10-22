@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  createContext,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -34,6 +36,9 @@ export type WeekChange = {
   label: string;
   dayParam: string;
 };
+
+/** Train passes the snap callback through context. The strip is a server child, so a prop added later does not arrive. */
+export const TrainWeekChangeContext = createContext<((week: WeekChange) => void) | null>(null);
 
 export type WeekCarouselWeek = {
   offset: number;
@@ -728,6 +733,7 @@ function WeekDayCarousel({
   onWeekChange?: (week: WeekChange) => void;
 }) {
   const router = useRouter();
+  const trainWeekChange = useContext(TrainWeekChangeContext);
   const scrollerId = useId();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const indexRef = useRef(0);
@@ -746,9 +752,9 @@ function WeekDayCarousel({
   const jumpingToToday = useRef(false);
   const pendingFocus = useRef<string | null>(null);
   const weeksRef = useRef(weeks);
-  const onWeekChangeRef = useRef(onWeekChange);
+  const onWeekChangeRef = useRef(onWeekChange ?? trainWeekChange ?? undefined);
   weeksRef.current = weeks;
-  onWeekChangeRef.current = onWeekChange;
+  onWeekChangeRef.current = onWeekChange ?? trainWeekChange ?? undefined;
   indexRef.current = activeIndex;
   selectedDayRef.current = selectedDay;
 
@@ -1112,7 +1118,7 @@ export function WeekStrip({
   todayHref?: string;
   /** Provider week. Swaps on this week keep the Move undo toast. */
   swapWeekStart?: string;
-  /** Fired after the strip snaps to a week. Calendar uses this to follow. */
+  /** Fired after the strip snaps to a week. Calendar passes this directly. Train uses context. */
   onWeekChange?: (week: WeekChange) => void;
 }) {
   if (weeks && weeks.length > 0) {
