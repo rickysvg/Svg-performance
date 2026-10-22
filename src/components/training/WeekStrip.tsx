@@ -35,6 +35,8 @@ export type WeekChange = {
   offset: number;
   label: string;
   dayParam: string;
+  /** Today already wrote ?day= with router.push. Move the panel without replaceState. */
+  preserveUrl?: boolean;
 };
 
 /** Train passes the snap callback through context. The strip is a server child, so a prop added later does not arrive. */
@@ -836,12 +838,12 @@ function WeekDayCarousel({
       });
       jumpingToToday.current = false;
       applySelected(dayParam);
-      if (jumping) return;
       onWeekChangeRef.current?.({
         weekStart: week.weekStart,
         offset: week.offset,
         label: week.label,
         dayParam,
+        preserveUrl: jumping,
       });
     }, 120);
     return () => window.clearTimeout(timer);

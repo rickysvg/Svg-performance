@@ -16,13 +16,20 @@ import {
   weekChipHref,
   weekRangeLabel,
 } from "@/lib/week-carousel";
-import { Prisma } from "@prisma/client";
 import { chipMarkForDay } from "@/lib/chip-mark";
 import {
   completedProgramDayIdsForChip,
-  completionSessionSelect,
+  completedSessionIdsByLocalDay,
 } from "@/lib/chip-completion";
-import { mondayOfZoned } from "@/lib/timezone";
+import { prisma } from "@/lib/prisma";
+import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned } from "@/lib/timezone";
+import {
+  completedLocalDayKeys,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
+} from "@/lib/workouts";
+import { getCalendarSchedule } from "@/lib/calendar";
+import { makeUser, resetDatabase } from "./helpers";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
@@ -180,8 +187,13 @@ describe("week day carousel", () => {
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("week"');
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("day"');
     expect(read("src/lib/chip-completion.ts")).toContain("sessionCountsAsPlannedCompletion");
-    expect(read("src/lib/chip-completion.ts")).toContain("plannedSetCount");
-    expect(read("src/lib/chip-completion.ts")).toContain("completionSessionSelect");
+    expect(read("src/lib/chip-completion.ts")).toContain("plannedSetCount: true");
+    expect(read("src/lib/chip-completion.ts")).toContain("prescribedSetTotal");
+    expect(read("src/lib/chip-completion.ts")).toContain(
+      "exercises: { select: { name: true, sets: true } }",
+    );
+    expect(read("src/lib/chip-completion.ts")).not.toContain("completionSessionSelect");
+    expect(read("src/lib/chip-completion.ts")).not.toContain("WorkoutSessionScalarFieldEnum");
     expect(read("src/lib/logged-work.ts")).not.toContain("chipMarkForDay");
     expect(calendar).not.toContain("data-week-nav");
 
@@ -326,53 +338,139 @@ describe("week day carousel", () => {
     expect(strip).toContain("clip-path:inset(0_50%_0_0)");
   });
 
-  it("selects plannedSetCount when the workout session has that column", () => {
-    const select = completionSessionSelect();
-    expect(select).toMatchObject({ status: true, programDayId: true, performedAt: true });
-    const fields = Prisma.WorkoutSessionScalarFieldEnum as Record<string, string>;
-    const source = read("src/lib/chip-completion.ts");
-    expect(source).toContain("plannedSetCount");
-    expect(source).toContain("sessionCountsAsPlannedCompletion");
-    if ("plannedSetCount" in fields) {
-      expect(select).toMatchObject({ plannedSetCount: true });
-      const names = new Map<string, string[]>([
-        ["lift", ["Back squat"]],
-        ["bag", ["Jab"]],
-      ]);
-      const ids = completedProgramDayIdsForChip(
-        [
-          {
-            status: "complete",
-            programDayId: "lift",
-            plannedSetCount: 4,
-            day: "2026-10-22",
-            sets: [1, 2, 3, 4].map(() => ({
-              completed: true,
-              reps: 5,
-              exerciseName: "Back squat",
-            })),
-          },
-          {
-            status: "complete",
-            programDayId: "bag",
-            plannedSetCount: 4,
-            day: "2026-10-22",
-            sets: [{ completed: true, reps: 5, exerciseName: "Jab" }],
-          },
-        ],
-        names,
-        "2026-10-22",
-      );
-      expect(
-        chipMarkForDay({
-          plannedSessionIds: ["lift", "bag"],
-          completedSessionIds: ids,
-          dayLogged: ids.length > 0,
-        }),
-      ).toBe("partial");
-    } else {
-      expect(select).not.toHaveProperty("plannedSetCount");
+  it("leaves a short legacy row off the chip when the stored count is missing", () => {
+    const names = new Map<string, string[]>([["bag", ["Jab"]]]);
+    const ids = completedProgramDayIdsForChip(
+      [
+        {
+          status: "complete",
+          programDayId: "bag",
+          plannedSetCount: null,
+          prescribedCount: 4,
+          day: "2026-10-22",
+          sets: [1, 2].map(() => ({
+            completed: true,
+            reps: 5,
+            exerciseName: "Jab",
+          })),
+        },
+      ],
+      names,
+      "2026-10-22",
+    );
+    expect(ids).toEqual([]);
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["bag"],
+        completedSessionIds: ids,
+        dayLogged: false,
+      }),
+    ).not.toBe("complete");
+  });
+
+  it("follows Today into the visible week without rewriting the day URL", () => {
+    const calendar = read("src/components/training/CalendarWeekFollow.tsx");
+    const train = read("src/components/training/TrainWeekFollow.tsx");
+    const strip = read("src/components/training/WeekStrip.tsx");
+    for (const source of [calendar, train]) {
+      expect(source).toContain("useEffect");
+      expect(source).toContain("setWeekStart(initialWeekStart)");
+      expect(source).toContain("if (week.preserveUrl) return;");
     }
+    expect(strip).toContain("preserveUrl: jumping");
+    expect(strip).not.toContain("if (jumping) return;");
+  });
+
+  it("agrees with completedLocalDayKeys on a short legacy row", async () => {
+    await resetDatabase();
+    const user = await makeUser("chip-legacy-short@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const anchor = new Date(2026, 8, 22, 10, 0, 0);
+    const schedule = await getCalendarSchedule(user.id, anchor);
+    let picked: {
+      session: Awaited<ReturnType<typeof startWorkoutFromDay>>;
+      performedAt: Date;
+      programDayId: string;
+    } | null = null;
+    for (const day of schedule.days) {
+      for (const activity of day.activities) {
+        if (activity.kind !== "workout" || !activity.programDayId) continue;
+        const started = await startWorkoutFromDay({
+          userId: user.id,
+          programDayId: activity.programDayId,
+          preferredUnits: "lb",
+        });
+        if ((started.plannedSetCount ?? 0) > 2) {
+          picked = {
+            session: started,
+            performedAt: day.date,
+            programDayId: activity.programDayId,
+          };
+          break;
+        }
+        await prisma.workoutSession.delete({ where: { id: started.id } });
+      }
+      if (picked) break;
+    }
+    expect(picked).toBeTruthy();
+    const planned = picked!.session.sets.filter((set) => set.logMode === "load_reps").slice(0, 2);
+    const sets =
+      planned.length === 2
+        ? planned
+        : picked!.session.sets.slice(0, 2);
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: picked!.session.id,
+      title: picked!.session.title,
+      performedAt: picked!.performedAt,
+      notes: "",
+      status: "complete",
+      sets: sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "load_reps" || !set.logMode ? 8 : null,
+        loadValue: set.logMode === "load_reps" || !set.logMode ? 40 : null,
+        loadUnit: "lb" as const,
+        durationSeconds: set.logMode === "load_reps" || !set.logMode ? null : 60,
+        completed: true,
+      })),
+    });
+    await prisma.workoutSession.update({
+      where: { id: picked!.session.id },
+      data: { plannedSetCount: null },
+    });
+    const stored = await prisma.workoutSession.findUnique({
+      where: { id: picked!.session.id },
+      select: {
+        plannedSetCount: true,
+        sets: { select: { completed: true } },
+        programDay: { select: { exercises: { select: { sets: true } } } },
+      },
+    });
+    const dose = (stored?.programDay?.exercises ?? []).reduce(
+      (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+      0,
+    );
+    const ticked = stored?.sets.filter((set) => set.completed).length ?? 0;
+    expect(stored?.plannedSetCount).toBeNull();
+    expect(dose).toBeGreaterThan(ticked);
+
+    const day = dayKey(picked!.performedAt, APP_TIMEZONE);
+    const from = addZonedDays(picked!.performedAt, -1, APP_TIMEZONE);
+    const to = addZonedDays(picked!.performedAt, 2, APP_TIMEZONE);
+    const keys = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const chips = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
+    const chipHasDay = (chips[day] ?? []).includes(picked!.programDayId);
+    expect(keys.includes(day)).toBe(false);
+    expect(chipHasDay).toBe(false);
+    expect(keys.includes(day)).toBe(chipHasDay);
   });
 
   it("sends non-today chips to that date and keeps today's bike logger", () => {

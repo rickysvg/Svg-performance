@@ -4,6 +4,7 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  useEffect,
   useState,
   type ReactElement,
   type ReactNode,
@@ -59,8 +60,13 @@ export function TrainWeekFollow({
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const move = moves[weekStart];
 
+  useEffect(() => {
+    setWeekStart(initialWeekStart);
+  }, [initialWeekStart]);
+
   function onWeekChange(week: WeekChange) {
     setWeekStart(week.weekStart);
+    if (week.preserveUrl) return;
     replaceTrainSearch(pathname, week.dayParam, level);
   }
 

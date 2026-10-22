@@ -4,6 +4,7 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  useEffect,
   useState,
   type ReactElement,
   type ReactNode,
@@ -73,8 +74,13 @@ export function CalendarWeekFollow({
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const move = moves[weekStart];
 
+  useEffect(() => {
+    setWeekStart(initialWeekStart);
+  }, [initialWeekStart]);
+
   function onWeekChange(week: WeekChange) {
     setWeekStart(week.weekStart);
+    if (week.preserveUrl) return;
     replaceCalendarSearch(pathname, week, level);
   }
 
