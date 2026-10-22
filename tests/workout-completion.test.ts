@@ -5,6 +5,7 @@ import { getDemoProgram } from "@/lib/programs";
 import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
+import { addedPrescriptionKey } from "@/lib/logger-insert";
 import { resolveSessionElapsed } from "@/lib/session-elapsed";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
@@ -345,6 +346,49 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumable.map((row) => row.id)).not.toContain(today.id);
     const drafts = await listDraftSessionsForUser(user.id);
     expect(drafts.map((row) => row.id)).toEqual(expect.arrayContaining([past.id, today.id]));
+  });
+
+  it("does not Resume a draft whose only numbers are an unticked prefill", async () => {
+    const user = await makeUser("prefill-resume@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    await prisma.workoutSet.create({
+      data: {
+        workoutSessionId: session.id,
+        exerciseName: "Curl",
+        setNumber: 1,
+        reps: 8,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "load_reps",
+        durationSeconds: null,
+        completed: false,
+        prescriptionKey: addedPrescriptionKey({
+          exerciseName: "Curl",
+          reps: "8",
+          restSeconds: 60,
+        }),
+      },
+    });
+    const ids = async () =>
+      (await listResumableSessionsForUser(user.id)).map((row) => row.id);
+    expect(await ids()).not.toContain(session.id);
+
+    await prisma.workoutSet.updateMany({
+      where: { workoutSessionId: session.id, exerciseName: "Curl" },
+      data: { reps: 10 },
+    });
+    expect(await ids()).toContain(session.id);
+
+    await prisma.workoutSet.updateMany({
+      where: { workoutSessionId: session.id, exerciseName: "Curl" },
+      data: { reps: 8, completed: true },
+    });
+    expect(await ids()).toContain(session.id);
   });
 
   it("reuses one row when the same session is started twice in a day", async () => {

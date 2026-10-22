@@ -5,7 +5,7 @@ import {
   prescribedSetTotal,
   progressTotals,
   sessionCountsAsPlannedCompletion,
-  sessionHasLoggedWork,
+  draftHasResumeWork,
   type TickedSet,
 } from "@/lib/logged-work";
 
@@ -39,8 +39,9 @@ export type PlanDose = {
 /**
  * Newest session on this civil day that is still open: a draft, a partial,
  * or a short save that did not finish the prescription. A finished day is omitted.
- * Sessions must be newest first. An empty draft never claims the day, so a
- * real partial save still shows when a second tab started a newer blank draft.
+ * Sessions must be newest first. An empty draft, and a draft whose only numbers
+ * are an unticked library prefill, never claim the day. A real partial save
+ * still shows when a second tab started a newer blank draft.
  * `planByDay` is the scaled dose from `calendarPlanDoses`.
  */
 export function openLogsByProgramDay(
@@ -55,8 +56,8 @@ export function openLogsByProgramDay(
     if (!session.programDayId) continue;
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
     if (session.status === "abandoned") continue;
-    const emptyDraft = session.status === "draft" && !sessionHasLoggedWork(session.sets);
-    if (emptyDraft) continue;
+    const untouchedDraft = session.status === "draft" && !draftHasResumeWork(session.sets);
+    if (untouchedDraft) continue;
     const exercises = session.programDay?.exercises ?? [];
     const plan = planByDay?.get(session.programDayId);
     const names =

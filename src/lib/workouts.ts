@@ -41,6 +41,7 @@ import {
   setsKeepingRemovals,
 } from "@/lib/exercise-removal-store";
 import {
+  draftHasResumeWork,
   loggedSetSome,
   offPlanSessionDone,
   prepareSetsForPersist,
@@ -137,16 +138,18 @@ export async function listDraftSessionsForUser(
  * Drafts, partials, and recent saves the member can open again. Newest first.
  * A short save stays status complete until the prescription is finished, so
  * those rows are included and the caller drops a planned completion.
+ * A draft counts only when a set was ticked or the member edited one.
+ * Unticked library prefills stay out.
  */
 export async function listResumableSessionsForUser(userId: string, take = 40) {
-  return prisma.workoutSession.findMany({
+  const rows = await prisma.workoutSession.findMany({
     where: {
       userId,
       sets: loggedSetSome,
       status: { in: ["draft", "partial", "complete"] },
     },
     orderBy: { performedAt: "desc" },
-    take,
+    take: Math.max(take * 5, take),
     include: {
       sets: {
         select: {
@@ -155,6 +158,9 @@ export async function listResumableSessionsForUser(userId: string, take = 40) {
           reps: true,
           loadValue: true,
           durationSeconds: true,
+          notes: true,
+          prescriptionKey: true,
+          logMode: true,
         },
       },
       programDay: {
@@ -165,6 +171,9 @@ export async function listResumableSessionsForUser(userId: string, take = 40) {
       },
     },
   });
+  return rows
+    .filter((row) => row.status !== "draft" || draftHasResumeWork(row.sets))
+    .slice(0, take);
 }
 
 export async function countWorkoutSessionsForUser(userId: string) {

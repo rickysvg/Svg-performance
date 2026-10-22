@@ -1,5 +1,7 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
+import { defaultLoggedReps, parseAddedPlan } from "@/lib/logger-insert";
 
 /**
  * Entered numbers mean the member did some work. They do not finish the day.
@@ -339,6 +341,45 @@ export const loggedSetSome = {
     ],
   },
 };
+
+type ResumeSet = TickedSet & {
+  notes?: string | null;
+  prescriptionKey?: string | null;
+  logMode?: string | null;
+};
+
+/**
+ * A library add writes the prescription into the row before the member touches it.
+ * Those numbers are not a resume. A tick, a different number, a load, or a note is.
+ */
+export function setIsUntickedPrefill(set: ResumeSet) {
+  if (set.completed) return false;
+  const plan = parseAddedPlan(set.prescriptionKey);
+  if (!plan) return false;
+  const mode = resolveLogMode({
+    logMode: set.logMode,
+    name: set.exerciseName ?? "",
+    reps: plan.reps,
+  });
+  const timed = isDurationMode(mode);
+  const reps = timed ? null : defaultLoggedReps(plan.reps);
+  const duration = timed ? parseDurationSeconds(plan.reps) : null;
+  return (
+    (set.reps ?? null) === reps &&
+    (set.durationSeconds ?? null) === duration &&
+    set.loadValue == null &&
+    (set.notes ?? "").trim().length === 0
+  );
+}
+
+/** A draft can Resume when a set was ticked or the member changed one. */
+export function draftHasResumeWork(sets: ResumeSet[]) {
+  return sets.some((set) => {
+    if (setIsTicked(set)) return true;
+    if (setIsUntickedPrefill(set)) return false;
+    return setHasLoggedWork(set) || (set.notes ?? "").trim().length > 0;
+  });
+}
 
 type PersistSet = {
   exerciseName: string;
