@@ -99,7 +99,14 @@ describe("home aggregation and weekly activity", () => {
     expect(session.plannedSetCount).toBeGreaterThan(1);
     const now = new Date();
     const one = session.sets[0];
-    const mode = one?.logMode || "load_reps";
+    const mode =
+      one?.logMode === "timed" ||
+      one?.logMode === "timed_round" ||
+      one?.logMode === "load_timed" ||
+      one?.logMode === "reps_only" ||
+      one?.logMode === "load_reps"
+        ? one.logMode
+        : "load_reps";
     const timed = mode === "timed" || mode === "timed_round" || mode === "load_timed";
     await updateWorkoutSessionForUser({
       userId: user.id,
