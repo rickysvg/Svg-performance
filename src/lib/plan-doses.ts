@@ -90,8 +90,9 @@ const bundleJoining = new Map<string, Promise<MemberScaleBundle>>();
 
 /**
  * React `cache` keeps a slot for the request. Unit tests call through, so a
- * settled map covers that case and `clearCalendarScaleCache` drops it.
- * A real request does not write the map, so nothing sticks to the process.
+ * settled map covers overlapping reads in that case. `withCalendarScaleMemory`
+ * drops the map when the outermost read finishes, and `clearCalendarScaleCache`
+ * drops it between tests. A real request does not write the map.
  */
 const memoryProbe = cache(() => ({ mark: true as const }));
 
@@ -100,6 +101,35 @@ function requestCacheRemembers() {
 }
 
 const settledBundles = new Map<string, Promise<MemberScaleBundle>>();
+let scaleMemoryDepth = 0;
+
+function clearSettledScaleMemory() {
+  settledWeeks.clear();
+  settledBundles.clear();
+}
+
+/**
+ * Share one catalog load across nested or overlapping reads, then drop it.
+ * Outside a request the settled maps would otherwise live for the process
+ * and serve a stale profile to the next action. A real request uses React
+ * `cache` and does not touch the maps.
+ */
+export function withCalendarScaleMemory<T>(fn: () => Promise<T>): Promise<T> {
+  if (requestCacheRemembers()) return fn();
+  scaleMemoryDepth += 1;
+  let result: Promise<T>;
+  try {
+    result = fn();
+  } catch (error) {
+    scaleMemoryDepth -= 1;
+    if (scaleMemoryDepth === 0) clearSettledScaleMemory();
+    throw error;
+  }
+  return result.finally(() => {
+    scaleMemoryDepth -= 1;
+    if (scaleMemoryDepth === 0) clearSettledScaleMemory();
+  });
+}
 
 function memberScaleBundle(userId: string) {
   const slot = bundleSlot(userId);
@@ -166,8 +196,8 @@ type CalendarScaleContext = Awaited<ReturnType<typeof loadCalendarScaleContext>>
  * Request-scoped slot, one per member per plan week. React `cache` remembers
  * the slot for this render and does not keep a failed load: the catch below
  * clears it. Outside a request (unit tests) `cache` calls through, so a
- * settled map keeps the week until `clearCalendarScaleCache`. A real request
- * leaves that map empty.
+ * settled map shares the week only while `withCalendarScaleMemory` is active.
+ * A real request leaves that map empty.
  */
 const scaleSlot = cache((userId: string, weekKey: string) => {
   return { current: null as Promise<CalendarScaleContext> | null };
@@ -180,8 +210,8 @@ const settledWeeks = new Map<string, Promise<CalendarScaleContext>>();
 export function clearCalendarScaleCache() {
   joining.clear();
   bundleJoining.clear();
-  settledWeeks.clear();
-  settledBundles.clear();
+  clearSettledScaleMemory();
+  scaleMemoryDepth = 0;
 }
 
 /**
@@ -190,43 +220,45 @@ export function clearCalendarScaleCache() {
  * Callers in the same week share one load.
  */
 export function calendarScaleContext(userId: string, now = new Date()) {
-  return memberScaleBundle(userId).then((bundle) => {
-    const weekKey = dayKey(mondayOfZoned(now, bundle.tz), bundle.tz);
-    const key = `${userId}:${weekKey}`;
-    const slot = scaleSlot(userId, weekKey);
-    if (slot.current) return slot.current;
-    const remembered = requestCacheRemembers();
-    if (!remembered) {
-      const saved = settledWeeks.get(key);
-      if (saved) return saved;
-    }
-    const pendingJoin = joining.get(key);
-    if (pendingJoin) {
-      slot.current = pendingJoin;
-      return pendingJoin;
-    }
-    const pending = loadCalendarScaleContext(userId, now, bundle).then(
-      (value) => value,
-      (error: unknown) => {
-        if (slot.current === pending) slot.current = null;
-        if (settledWeeks.get(key) === pending) settledWeeks.delete(key);
-        joining.delete(key);
-        throw error;
-      },
-    );
-    void pending.then(
-      () => {
-        joining.delete(key);
-      },
-      () => {
-        joining.delete(key);
-      },
-    );
-    slot.current = pending;
-    if (!remembered) settledWeeks.set(key, pending);
-    joining.set(key, pending);
-    return pending;
-  });
+  return withCalendarScaleMemory(() =>
+    memberScaleBundle(userId).then((bundle) => {
+      const weekKey = dayKey(mondayOfZoned(now, bundle.tz), bundle.tz);
+      const key = `${userId}:${weekKey}`;
+      const slot = scaleSlot(userId, weekKey);
+      if (slot.current) return slot.current;
+      const remembered = requestCacheRemembers();
+      if (!remembered) {
+        const saved = settledWeeks.get(key);
+        if (saved) return saved;
+      }
+      const pendingJoin = joining.get(key);
+      if (pendingJoin) {
+        slot.current = pendingJoin;
+        return pendingJoin;
+      }
+      const pending = loadCalendarScaleContext(userId, now, bundle).then(
+        (value) => value,
+        (error: unknown) => {
+          if (slot.current === pending) slot.current = null;
+          if (settledWeeks.get(key) === pending) settledWeeks.delete(key);
+          joining.delete(key);
+          throw error;
+        },
+      );
+      void pending.then(
+        () => {
+          joining.delete(key);
+        },
+        () => {
+          joining.delete(key);
+        },
+      );
+      slot.current = pending;
+      if (!remembered) settledWeeks.set(key, pending);
+      joining.set(key, pending);
+      return pending;
+    }),
+  );
 }
 
 /** Scaled dose for each program day, using the calendar's scale. */

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { compactBikeReps } from "@/lib/bike-chooser";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { loggedSetSome, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
+import { loggedSetSome, sessionCountsAsPlannedCompletion, setHasLoggedWork } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import type { LoadUnit } from "@/lib/units";
@@ -342,6 +342,15 @@ export async function applySavedWorkoutToDay(input: {
   return plan;
 }
 
+function customSessionHasMemberWork(sets: {
+  completed?: boolean | null;
+  reps?: number | null;
+  loadValue?: number | null;
+  durationSeconds?: number | null;
+}[]) {
+  return sets.some((set) => Boolean(set.completed) || setHasLoggedWork(set));
+}
+
 export async function revertDayToProgram(userId: string, day: string) {
   if (!isDayKey(day)) throw new AppError("WORKOUT", "Pick a date.");
   const plans = await prisma.dayWorkoutPlan.findMany({
@@ -350,10 +359,26 @@ export async function revertDayToProgram(userId: string, day: string) {
   });
   const ids = plans.map((row) => row.id);
   if (ids.length === 0) return;
-  await prisma.workoutSession.updateMany({
+  const sessions = await prisma.workoutSession.findMany({
     where: { userId, dayPlanId: { in: ids } },
-    data: { dayPlanId: null },
+    select: {
+      id: true,
+      sets: { select: { completed: true, reps: true, loadValue: true, durationSeconds: true } },
+    },
   });
+  // A draft the member never ticked or edited is the applied plan, not a log.
+  // Real ticked or entered work stays, unlinked, so the calendar can show it.
+  const dropIds = sessions.filter((session) => !customSessionHasMemberWork(session.sets)).map((session) => session.id);
+  const keepIds = sessions.filter((session) => customSessionHasMemberWork(session.sets)).map((session) => session.id);
+  if (dropIds.length > 0) {
+    await prisma.workoutSession.deleteMany({ where: { userId, id: { in: dropIds } } });
+  }
+  if (keepIds.length > 0) {
+    await prisma.workoutSession.updateMany({
+      where: { userId, id: { in: keepIds } },
+      data: { dayPlanId: null },
+    });
+  }
   await prisma.dayWorkoutPlan.deleteMany({ where: { userId, dayKey: day } });
 }
 

@@ -10,7 +10,7 @@ import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc } from "@/lib/timezone";
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { calendarPlanDoses } from "@/lib/plan-doses";
+import { calendarPlanDoses, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
 import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
@@ -452,7 +452,17 @@ export async function completedProgramDayIdsOnDays(
  * The dose is the session's own week, not `now`. A programmed session counts
  * only when a ticked set belongs to that plan.
  */
-export async function completedLocalDayKeys(
+export function completedLocalDayKeys(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  now = new Date(),
+) {
+  return withCalendarScaleMemory(() => completedLocalDayKeysNow(userId, from, to, timeZone, now));
+}
+
+async function completedLocalDayKeysNow(
   userId: string,
   from: Date,
   to: Date,

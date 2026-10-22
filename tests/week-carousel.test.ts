@@ -35,6 +35,7 @@ import {
   calendarPlanDoses,
   calendarScaledCatalog,
   getCalendarSchedule,
+  subtitleCountsAsMissed,
 } from "@/lib/calendar";
 import { prescribedSetTotal, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { findDemoTrainingCatalog } from "@/lib/programs";
@@ -641,6 +642,7 @@ describe("week day carousel", () => {
     ).toBe(" · Logged");
     const page = read("src/app/(member)/training/calendar/page.tsx");
     expect(page).toContain("calendarFocusStatusSuffix(");
+    expect(page).toContain("subtitleCountsAsMissed(");
     expect(page).not.toContain("· Missed");
     expect(page).toContain("calendarPlanDoses");
     expect(read("src/app/(member)/training/page.tsx")).toContain("calendarPlanDoses");
@@ -771,7 +773,13 @@ describe("week day carousel", () => {
     const mondayKey = dayKey(monday, APP_TIMEZONE);
     const mondayPlan = schedule.days.find((day) => dayKey(day.date, APP_TIMEZONE) === mondayKey);
     const workouts = mondayPlan?.activities.filter((item) => item.kind === "workout") ?? [];
+    const notDone = "Not done — you logged Off plan instead. Tap Move to reschedule.";
     expect(workouts.some((item) => item.subtitle.startsWith("Missed"))).toBe(false);
+    expect(workouts.some((item) => item.subtitle === notDone)).toBe(true);
+    expect(workouts.some((item) => item.subtitle.includes("Core week plan."))).toBe(false);
+    expect(workouts.filter((item) => subtitleCountsAsMissed(item.subtitle)).map((item) => item.subtitle)).toEqual([
+      notDone,
+    ]);
     expect(workouts.some((item) => item.subtitle === "Partial · 1/3 sets")).toBe(true);
     expect(
       calendarFocusStatusSuffix({

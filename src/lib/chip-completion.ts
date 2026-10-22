@@ -8,7 +8,7 @@ import {
 } from "@/lib/logged-work";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { dayKey } from "@/lib/timezone";
-import { calendarPlanDoses, type ScaledDayPlan } from "@/lib/plan-doses";
+import { calendarPlanDoses, withCalendarScaleMemory, type ScaledDayPlan } from "@/lib/plan-doses";
 export { scaledPlanByProgramDay, type ScaledDayPlan } from "@/lib/plan-doses";
 
 const DAY_PAD_MS = 36 * 60 * 60 * 1000;
@@ -72,7 +72,19 @@ export function completedProgramDayIdsForChip(
  * with the calendar's scaled dose. Same gate as `completedLocalDayKeys`.
  * A null `plannedSetCount` still has to cover that dose, including a swapped log.
  */
-export async function completedSessionIdsByLocalDay(
+export function completedSessionIdsByLocalDay(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  now = new Date(),
+) {
+  return withCalendarScaleMemory(() =>
+    completedSessionIdsByLocalDayNow(userId, from, to, timeZone, now),
+  );
+}
+
+async function completedSessionIdsByLocalDayNow(
   userId: string,
   from: Date,
   to: Date,
@@ -141,7 +153,17 @@ export async function completedSessionIdsByLocalDay(
  * Drafts and saved-short rows count. A day that passes the full rule is not included.
  * Unticked drafts stay out, even when the logger has prefilled numbers.
  */
-export async function partialLocalDayKeys(
+export function partialLocalDayKeys(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  planByDay?: ReadonlyMap<string, ScaledDayPlan>,
+) {
+  return withCalendarScaleMemory(() => partialLocalDayKeysNow(userId, from, to, timeZone, planByDay));
+}
+
+async function partialLocalDayKeysNow(
   userId: string,
   from: Date,
   to: Date,

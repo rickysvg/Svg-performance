@@ -13,7 +13,7 @@ import {
   setIsTicked,
   tickedSetCount,
 } from "@/lib/logged-work";
-import { calendarScaleContext } from "@/lib/plan-doses";
+import { calendarScaleContext, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { shapeDayPlan } from "@/lib/fight-camp";
@@ -324,6 +324,17 @@ function dayNumberMatch(
   );
 }
 
+/** "Missed a workout?" counts a plan that was not done, including one replaced by other partial work. */
+export function subtitleCountsAsMissed(subtitle: string) {
+  return subtitle.startsWith("Missed") || subtitle.startsWith("Not done — you logged ");
+}
+
+function loggedInsteadName(names: readonly string[]) {
+  if (names.length <= 1) return names[0] || "another workout";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
 /**
  * Selected-day header. A card that says Partial stays Partial on a past day.
  * "Partly logged" is only a mix of finished and unfinished workouts with no Partial card.
@@ -373,10 +384,19 @@ function logMatchesPlanned(
   return !owned;
 }
 
-export async function getCalendarSchedule(
+export function getCalendarSchedule(
   userId: string,
   now = new Date(),
   /** When set, the list is that Monday–Sunday, including days already past. */
+  weekAnchor?: Date,
+) {
+  // Hold the week scale until every civil day in this list has been read.
+  return withCalendarScaleMemory(() => loadCalendarSchedule(userId, now, weekAnchor));
+}
+
+async function loadCalendarSchedule(
+  userId: string,
+  now = new Date(),
   weekAnchor?: Date,
 ) {
   const [scale, swaps, account] = await Promise.all([
@@ -495,6 +515,16 @@ export async function getCalendarSchedule(
         (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
       const missed = past && !sessionDone && !partial && !dayHasPartialWork;
+      // Other partial work must not leave this plan sounding like it is still ahead.
+      const notDoneInstead = past && !sessionDone && !partial && dayHasPartialWork;
+      const insteadNames = [
+        ...new Set(
+          dayLogs
+            .filter((log) => log.id !== matched?.id && logIsOpenPartial(log, planByDay))
+            .map((log) => memberFacingTitle(log.title).trim() || log.title.trim())
+            .filter((name) => name.length > 0),
+        ),
+      ];
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
@@ -510,9 +540,11 @@ export async function getCalendarSchedule(
             ? `Partial · ${setCountLabel}`
             : missed
               ? "Missed. Tap Move to do it another day."
-              : origin
-                ? `${session.label} — ${origin}’s workout, this week.`
-                : `${session.label} — Core week plan.`,
+              : notDoneInstead
+                ? `Not done — you logged ${loggedInsteadName(insteadNames)} instead. Tap Move to reschedule.`
+                : origin
+                  ? `${session.label} — ${origin}’s workout, this week.`
+                  : `${session.label} — Core week plan.`,
         href,
         status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,

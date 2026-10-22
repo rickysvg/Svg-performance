@@ -10,6 +10,7 @@ import {
   calendarPlanDoses,
   formatCalendarHeading,
   getCalendarSchedule,
+  subtitleCountsAsMissed,
   weekdayName,
 } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -142,7 +143,7 @@ export default async function TrainingCalendarPage({
     });
     const focusSummary = workouts.find((item) => item.status === "complete")?.subtitle;
     const missedWorkouts = weekSchedule.days.reduce(
-      (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
+      (count, day) => count + day.activities.filter((item) => subtitleCountsAsMissed(item.subtitle)).length,
       0,
     );
     const titles: Partial<Record<(typeof week.days)[number]["weekday"], MoveListedSession[]>> = {};

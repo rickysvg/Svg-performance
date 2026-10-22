@@ -99,6 +99,10 @@ describe("scaled dose agreement", () => {
     ]);
     // Thursday plus seven days crosses into the next week, so that week loads once too.
     expect(calendarScaleLoadCount() - before).toBe(2);
+    // The settled maps drop when that read finishes, so the next call loads again.
+    const afterShare = calendarScaleLoadCount();
+    await calendarScaleContext(user.id, now);
+    expect(calendarScaleLoadCount() - afterShare).toBe(1);
     expect(doses).toBe(scale.planByDay);
     expect(doses.size).toBeGreaterThan(0);
   });
