@@ -1086,7 +1086,7 @@ export async function updateWorkoutSessionForUser(input: {
     const removals = await activeRemovalsForSession(input.userId, input.workoutId);
     let writing = setsKeepingRemovals(sets, removals);
     if (writing.length === 0 && sets.length > 0) {
-      writing = setsKeepingRemovals(
+      const keptCurrent = setsKeepingRemovals(
         current.sets.map((set) => ({
           exerciseName: set.exerciseName,
           setNumber: set.setNumber,
@@ -1102,8 +1102,10 @@ export async function updateWorkoutSessionForUser(input: {
         })),
         removals,
       );
+      if (keptCurrent.length > 0) writing = keptCurrent;
     }
-    if (writing.length === 0) throw new StaleDraftError();
+    const clearedByRemovals = writing.length === 0 && sets.length > 0 && removals.length > 0;
+    if (writing.length === 0 && !clearedByRemovals) throw new StaleDraftError();
     const storedTimer = timerColumns
       ? await readWorkoutTimerFields(current.id, tx)
       : { finishedAt: null, elapsedSeconds: null, timerStartedAt: null };

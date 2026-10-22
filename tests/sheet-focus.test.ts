@@ -26,7 +26,6 @@ describe("sheet focus", () => {
     expect(hook).toContain("previously.focus()");
     for (const file of [
       "src/components/training/WorkoutMove.tsx",
-      "src/components/training/ExerciseLibrarySheet.tsx",
       "src/components/training/SaveWorkoutButton.tsx",
       "src/components/home/HomeBodyWeight.tsx",
     ]) {
@@ -34,6 +33,9 @@ describe("sheet focus", () => {
       expect(source).toContain("useSheetBehavior");
       expect(source).toContain("onSheetBackdropMouseDown");
     }
+    const library = readFileSync("src/components/training/ExerciseLibrarySheet.tsx", "utf8");
+    expect(library).toContain("useSheetBehavior");
+    expect(library).not.toContain("onSheetBackdropMouseDown");
     const fight = readFileSync("src/components/training/FightCampOptIn.tsx", "utf8");
     expect(fight).toContain("<label");
     expect(fight).toContain("I have a fight coming up");

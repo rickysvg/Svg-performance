@@ -14,6 +14,8 @@ export type RemovalRecord = {
 export type RemovalSnapshot = {
   index: number;
   sets: WorkoutSetInput[];
+  /** Planned sets subtracted from the session target. Undo adds this back. */
+  plannedSets?: number;
 };
 
 export function activeRemovals(
@@ -53,15 +55,12 @@ export function omitRemovedSlots<T extends { name: string }>(
   return { programmed: nextProgrammed, shown: nextShown };
 }
 
-/** Names a local logger draft must not resurrect. */
+/** Names a local logger draft must not resurrect. The programmed original stays addable. */
 export function hiddenNamesForRemovals(removals: RemovalRecord[], keptNames: string[]) {
   const kept = new Set(keptNames);
   const names = new Set<string>();
   for (const row of removals) {
-    if (!kept.has(row.exerciseName)) names.add(row.exerciseName);
-    if (row.originalName !== row.exerciseName && !kept.has(row.originalName)) {
-      names.add(row.originalName);
-    }
+    if (row.exerciseName && !kept.has(row.exerciseName)) names.add(row.exerciseName);
   }
   return [...names];
 }
@@ -92,12 +91,11 @@ export function withoutExerciseName<T extends { exerciseName: string }>(
   return sets.filter((set) => set.exerciseName !== exerciseName);
 }
 
-/** Names a removal hides: the card that was removed and the programmed slot it came from. */
+/** Names a removal hides. Only the card that was removed — a swapped-in name must not block re-adding the original. */
 export function removedExerciseNames(removals: RemovalRecord[]) {
   const names = new Set<string>();
   for (const row of removals) {
     if (row.exerciseName) names.add(row.exerciseName);
-    if (row.originalName) names.add(row.originalName);
   }
   return names;
 }
@@ -145,9 +143,14 @@ export function parseRemovalSnapshot(raw: string): RemovalSnapshot | null {
         typeof set === "object" &&
         typeof (set as WorkoutSetInput).exerciseName === "string",
     );
+    const plannedSets =
+      typeof parsed.plannedSets === "number" && parsed.plannedSets > 0
+        ? Math.round(parsed.plannedSets)
+        : undefined;
     return {
       index: typeof parsed.index === "number" && parsed.index >= 0 ? parsed.index : 0,
       sets,
+      ...(plannedSets ? { plannedSets } : {}),
     };
   } catch {
     return null;

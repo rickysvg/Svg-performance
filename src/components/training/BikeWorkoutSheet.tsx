@@ -170,7 +170,7 @@ function PickerSheet({
           <p id={titleId} className="font-display text-xl uppercase tracking-wide">
             {FIELD_TITLE[field]}
           </p>
-          <button type="button" onClick={onClose} data-testid="chrome-bike-picker-close" className="touch-target text-2xl leading-none" aria-label="Close picker">
+          <button type="button" onClick={onClose} data-testid="bike-workout-sheet-sheet-close-2" className="touch-target text-2xl leading-none" aria-label="Close picker">
             ×
           </button>
         </div>
@@ -383,7 +383,7 @@ export function BikeWorkoutChooser({
               >
                 History
               </Link>
-              <button type="button" onClick={close} data-testid="chrome-bike-workout-close" className="touch-target text-2xl leading-none" aria-label="Close">
+              <button type="button" onClick={close} data-testid="bike-workout-sheet-sheet-close" className="touch-target text-2xl leading-none" aria-label="Close">
                 ×
               </button>
             </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
+import { useSheetBehavior } from "@/components/useSheetBehavior";
 import {
   CATEGORY_FILTERS,
   categoryLabel,
@@ -27,6 +27,7 @@ export function ExerciseLibrarySheet({
   pending = false,
   error = "",
   onClose,
+  closeTestId = "training-library-close",
   footer,
 }: {
   variant: "swap" | "add";
@@ -39,6 +40,7 @@ export function ExerciseLibrarySheet({
   pending?: boolean;
   error?: string;
   onClose: () => void;
+  closeTestId?: string;
   footer: (choice: LibraryExercise) => ReactNode;
 }) {
   const confirmRef = useRef<HTMLDivElement>(null);
@@ -75,13 +77,12 @@ export function ExerciseLibrarySheet({
       tabIndex={-1}
       data-testid={variant === "swap" ? "training-swap-sheet" : "training-add-sheet"}
       className="fixed inset-0 z-[80] flex w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground outline-none"
-      onMouseDown={(event) => onSheetBackdropMouseDown(event, onClose)}
       {...(variant === "swap"
         ? { "data-swap-sheet": sheetName ?? "" }
         : { "data-add-sheet": "true" })}
     >
       <header className="flex items-center gap-2 border-b border-line px-4 py-3">
-        <button type="button" data-testid="training-library-close" onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close">
+        <button type="button" data-testid={closeTestId} onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close">
           ×
         </button>
         <div className="min-w-0 flex-1">

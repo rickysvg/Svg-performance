@@ -215,6 +215,7 @@ export function SavedWorkoutEditor({
           variant="add"
           title="Add exercise"
           weightAccess={weightAccess}
+          closeTestId="saved-workout-editor-sheet-close"
           onClose={() => setInsertAt(null)}
           footer={(choice) => (
             <button

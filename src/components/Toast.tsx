@@ -30,7 +30,7 @@ export function Toast({
   action,
   attrs,
   closeTestId = "chrome-toast-close",
-  actionTestId = "chrome-toast-action",
+  actionTestId = "toast-action-btn",
 }: {
   message: string;
   onDismiss: () => void;

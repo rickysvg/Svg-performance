@@ -76,6 +76,7 @@ export function UpgradePreview({
   trialDays,
   next = "/home",
   onDismiss,
+  dismissTestId = "chrome-not-now",
   framed = true,
 }: {
   kind: keyof typeof BLURBS;
@@ -83,6 +84,7 @@ export function UpgradePreview({
   trialDays: number;
   next?: string;
   onDismiss?: () => void;
+  dismissTestId?: string;
   framed?: boolean;
 }) {
   const copy = BLURBS[kind];
@@ -118,7 +120,7 @@ export function UpgradePreview({
         />
         {onDismiss ? (
           <button
-            data-testid="chrome-not-now"
+            data-testid={dismissTestId}
             type="button"
             onClick={onDismiss}
             className={

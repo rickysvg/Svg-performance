@@ -1882,7 +1882,7 @@ export function WorkoutLogForm({
                       )}
                       {bike ? (
                         <input
-                          data-testid={`training-log-duration-${set.id}`}
+                          data-testid="workout-log-form-input-4"
                           type="hidden"
                           name={`sets.${index}.durationSeconds`}
                           value={
@@ -1945,7 +1945,7 @@ export function WorkoutLogForm({
                         <label className="block">
                           <span className="sr-only">{loadHeader}</span>
                           <input
-                            data-testid={`training-log-load-${set.id}`}
+                            data-testid="workout-log-form-input-5"
                             name={`sets.${index}.loadValue`}
                             type="number"
                             min={0}
@@ -2140,6 +2140,7 @@ export function WorkoutLogForm({
           title="Add exercise"
           subtitle="Live clips"
           weightAccess={swap?.weightAccess ?? "gym"}
+          closeTestId="workout-log-form-sheet-close"
           onClose={() => setPickerIndex(null)}
           footer={(choice) => (
             <button

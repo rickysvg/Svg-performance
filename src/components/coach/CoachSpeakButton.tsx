@@ -84,6 +84,7 @@ function CoachSpeakButtonLive({
         <div className="mt-2 w-full basis-full">
           <AiPaywallPrompt
             reason={paywall}
+            dismissTestId="coach-speak-button-sheet-close"
             onDismiss={() => setPaywall(null)}
           />
         </div>

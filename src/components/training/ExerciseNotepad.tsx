@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { saveExerciseNoteAction, type ExerciseNoteState } from "@/app/actions/exercise-notes";
 import { StatusBanner } from "@/components/StatusBanner";
@@ -41,6 +42,10 @@ export function ExerciseNotepad({
 }) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState(note?.body ?? "");
+  const pathname = usePathname() ?? "";
+  const dismissTestId = pathname.includes("/training/log")
+    ? "exercise-notepad-sheet-close-2"
+    : "exercise-notepad-sheet-close";
   const [saveState, saveAction, saving] = useActionState(
     saveExerciseNoteAction,
     {} as ExerciseNoteState,
@@ -93,7 +98,11 @@ export function ExerciseNotepad({
             success={error || saveState.error ? undefined : saveState.success}
           />
           {paywall ? (
-            <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} />
+            <AiPaywallPrompt
+              reason={paywall}
+              dismissTestId={dismissTestId}
+              onDismiss={() => setPaywall(null)}
+            />
           ) : null}
           <label className="block">
             <span className="text-xs font-medium text-muted">Note or question</span>

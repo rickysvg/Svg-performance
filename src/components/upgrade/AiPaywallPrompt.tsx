@@ -15,11 +15,13 @@ const KIND: Record<PaywallReason, "ai_limit" | "ai_daily_cap" | "voice" | "read_
 export function AiPaywallPrompt({
   reason,
   onDismiss,
+  dismissTestId = "ai-paywall-prompt-sheet-close",
   canStartTrial = false,
   trialDays = 7,
 }: {
   reason: PaywallReason;
   onDismiss?: () => void;
+  dismissTestId?: string;
   canStartTrial?: boolean;
   trialDays?: number;
 }) {
@@ -30,6 +32,7 @@ export function AiPaywallPrompt({
         canStartTrial={canStartTrial}
         trialDays={trialDays}
         onDismiss={onDismiss}
+        dismissTestId={dismissTestId}
       />
     </div>
   );

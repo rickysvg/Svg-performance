@@ -16,7 +16,8 @@ import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { applyExerciseSwap } from "@/lib/exercise-swap-store";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { scaleProgramDay } from "@/lib/training-scale";
-import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
+import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
+import { startWorkoutFromDay, updateWorkoutSessionForUser, type WorkoutSetInput } from "@/lib/workouts";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
 const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
@@ -69,6 +70,10 @@ describe("exercise removal", () => {
       [{ originalName: "One-arm row", exerciseName: "One-arm row", workoutSessionId: "s1" }],
       after.map((group) => group.name),
     )).toEqual(["One-arm row"]);
+    expect(hiddenNamesForRemovals(
+      [{ originalName: "One-arm row", exerciseName: "Goblet squat · 2", workoutSessionId: "s1" }],
+      ["Goblet squat", "Face pull"],
+    )).toEqual(["Goblet squat · 2"]);
   });
 
   it("puts a removed block of sets back where it was", () => {
@@ -329,5 +334,170 @@ describe("persisted session removal", () => {
     expect(omitted.shown.some((row) => row.name === swappedName || row.name === "One-arm row")).toBe(false);
     expect(reloaded.sets.some((set) => set.exerciseName === swappedName)).toBe(false);
     expect(reloaded.status).toBe("draft");
+
+    const withOriginal = [
+      ...beforeRemove.filter((set) => set.exerciseName !== swappedName),
+      {
+        ...beforeRemove[0]!,
+        exerciseName: "One-arm row",
+        setNumber: 1,
+        reps: 8,
+        completed: true,
+      },
+    ];
+    const readded = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: started.id,
+      title: started.title,
+      performedAt: started.performedAt,
+      notes: started.notes,
+      status: "draft",
+      sets: withOriginal,
+    });
+    expect(readded.sets.some((set) => set.exerciseName === "One-arm row")).toBe(true);
+    expect(readded.sets.some((set) => set.exerciseName === swappedName)).toBe(false);
+  });
+
+  it("lowers the completion target when an exercise is removed and still requires every remaining set", async () => {
+    const user = await makeUser("remove-completion@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 1)!;
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      scale: { experienceLevel: "intermediate", weightAccess: "gym" },
+    });
+    expect(started.plannedSetCount).toBe(started.sets.length);
+    const removedRows = started.sets.filter((set) => set.exerciseName === "One-arm row").length;
+    expect(removedRows).toBeGreaterThan(0);
+
+    await removeSessionExercise({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      programDayId: day.id,
+      originalName: "One-arm row",
+      exerciseName: "One-arm row",
+      workoutSessionId: started.id,
+      blockKey,
+    });
+    const dropped = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: started.id },
+      include: { sets: true },
+    });
+    expect(dropped.plannedSetCount).toBe((started.plannedSetCount ?? 0) - removedRows);
+    expect(dropped.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
+
+    await undoExerciseRemoval({ userId: user.id, removalId: (await prisma.exerciseRemoval.findFirstOrThrow({ where: { userId: user.id } })).id });
+    const undone = await prisma.workoutSession.findUniqueOrThrow({ where: { id: started.id } });
+    expect(undone.plannedSetCount).toBe(started.plannedSetCount);
+
+    await removeSessionExercise({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      programDayId: day.id,
+      originalName: "One-arm row",
+      exerciseName: "One-arm row",
+      workoutSessionId: started.id,
+      blockKey,
+    });
+    const session = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: started.id },
+      include: { sets: true },
+    });
+    const names = [...new Set(started.sets.map((set) => set.exerciseName))];
+    const one = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: started.id,
+      title: started.title,
+      performedAt: started.performedAt,
+      notes: started.notes,
+      status: "complete",
+      sets: ticked(session.sets, "one"),
+    });
+    expect(sessionCountsAsPlannedCompletion(one, names)).toBe(false);
+
+    const done = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: started.id,
+      title: started.title,
+      performedAt: started.performedAt,
+      notes: started.notes,
+      status: "complete",
+      sets: ticked(session.sets, "all"),
+    });
+    expect(done.plannedSetCount).toBe((started.plannedSetCount ?? 0) - removedRows);
+    expect(sessionCountsAsPlannedCompletion(done, names)).toBe(true);
+    expect(done.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
+  });
+
+  it("saves an empty set list when every exercise has been removed", async () => {
+    const user = await makeUser("remove-all@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 1)!;
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      scale: { experienceLevel: "intermediate", weightAccess: "gym" },
+    });
+    const names = [...new Set(started.sets.map((set) => set.exerciseName))];
+    await prisma.exerciseRemoval.createMany({
+      data: names.map((name) => ({
+        userId: user.id,
+        programSlug: DEMO_PROGRAM_SLUG,
+        dayNumber: day.dayNumber,
+        originalName: name,
+        exerciseName: name,
+        workoutSessionId: started.id,
+      })),
+    });
+    const saved = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: started.id,
+      title: started.title,
+      performedAt: started.performedAt,
+      notes: started.notes,
+      status: "draft",
+      sets: ticked(started.sets, "none"),
+    });
+    expect(saved.sets).toHaveLength(0);
   });
 });
+
+function ticked(
+  sets: {
+    exerciseName: string;
+    setNumber: number;
+    reps: number | null;
+    loadValue: number | null;
+    logMode: string | null;
+    durationSeconds: number | null;
+    notes: string;
+    prescriptionKey: string;
+    rir: string;
+  }[],
+  mode: "all" | "one" | "none",
+): WorkoutSetInput[] {
+  return sets.map((set, index) => {
+    const completed = mode === "all" || (mode === "one" && index === 0);
+    const duration = set.durationSeconds != null && set.durationSeconds > 0 ? set.durationSeconds : null;
+    return {
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      reps: completed && set.reps == null && duration == null ? 8 : set.reps,
+      loadValue: set.loadValue,
+      loadUnit: "lb",
+      logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+      durationSeconds: completed && set.reps == null && set.loadValue == null ? duration ?? 30 : set.durationSeconds,
+      completed,
+      notes: set.notes,
+      prescriptionKey: set.prescriptionKey,
+      rir: set.rir,
+    };
+  });
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
@@ -19,16 +20,27 @@ export function UpgradePreviewSheet({
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useSheetBehavior(() => setOpen(false), open);
+  const pathname = usePathname() ?? "";
+  const routeSuffix = pathname.startsWith("/learn")
+    ? "-2"
+    : pathname.includes("/training/log")
+      ? "-3"
+      : "";
 
   return (
     <>
-      <button type="button" data-testid="home-sheet-open" onClick={() => setOpen(true)} className="block w-full text-left">
+      <button
+        type="button"
+        data-testid={`upgrade-preview-sheet-children-btn${routeSuffix}`}
+        onClick={() => setOpen(true)}
+        className="block w-full text-left"
+      >
         {children}
       </button>
       {open ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-          data-testid="home-upgrade-sheet"
+          data-testid={`upgrade-preview-sheet-sheet-close${routeSuffix}`}
           onMouseDown={(event) => onSheetBackdropMouseDown(event, () => setOpen(false))}
         >
           <div

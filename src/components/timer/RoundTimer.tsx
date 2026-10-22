@@ -379,7 +379,7 @@ export function RoundTimer({
             type="button"
             onClick={onClose}
             autoFocus
-            data-testid="chrome-round-timer-close"
+            data-testid="round-timer-button-on-close-sheet-close-2"
             data-round-timer-close
             className="touch-target inline-flex items-center justify-center text-2xl leading-none"
             aria-label="Close timer"
@@ -637,19 +637,19 @@ export function RoundTimer({
 
       <div className="flex flex-wrap gap-2">
         <Toggle
-          testId="chrome-timer-toggle-warning-beep"
+          testId="round-timer-set-prefs-toggle"
           label="10-second warning beep"
           on={prefs.warningBeep}
           onClick={() => setPrefs((current) => ({ ...current, warningBeep: !current.warningBeep }))}
         />
         <Toggle
-          testId="chrome-timer-toggle-bell"
+          testId="round-timer-set-prefs-toggle-2"
           label="Bell start/end"
           on={prefs.bell}
           onClick={() => setPrefs((current) => ({ ...current, bell: !current.bell }))}
         />
         <Toggle
-          testId="chrome-timer-toggle-vibrate"
+          testId="round-timer-set-prefs-toggle-3"
           label="Vibrate"
           on={prefs.vibrate}
           onClick={() => setPrefs((current) => ({ ...current, vibrate: !current.vibrate }))}

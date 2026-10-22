@@ -287,6 +287,12 @@ export async function removeSessionExercise(input: {
   });
   const stillShown = after?.shown.some((row) => row.name === exerciseName) ?? false;
   const nextSets = stillShown ? baseSets : withoutExerciseName(baseSets, exerciseName);
+  const slot = slotIndex >= 0 ? before?.shown[slotIndex] : undefined;
+  const prescribed =
+    slot && "sets" in slot && typeof slot.sets === "number" && Number.isFinite(slot.sets)
+      ? Math.max(0, Math.round(slot.sets))
+      : 0;
+  const plannedRemoved = session && !stillShown && slotIndex >= 0 ? prescribed : 0;
   const remaining = after
     ? visibleExerciseCount(after.shown, nextSets)
     : new Set(nextSets.map((set) => set.exerciseName)).size;
@@ -295,8 +301,8 @@ export async function removeSessionExercise(input: {
   }
 
   const snapshot: RemovalSnapshot = stillShown
-    ? { index: 0, sets: [] }
-    : snapshotRemovedSets(baseSets, exerciseName);
+    ? { index: 0, sets: [], plannedSets: 0 }
+    : { ...snapshotRemovedSets(baseSets, exerciseName), plannedSets: plannedRemoved };
   // The row lands before the set write so a swap or draft still in flight
   // sees the removal and cannot put the exercise back.
   const row = await prisma.exerciseRemoval.create({
@@ -322,6 +328,17 @@ export async function removeSessionExercise(input: {
     await prisma.exerciseRemoval.delete({ where: { id: row.id } }).catch(() => undefined);
     throw error;
   }
+  if (
+    session &&
+    plannedRemoved > 0 &&
+    typeof session.plannedSetCount === "number" &&
+    session.plannedSetCount > 0
+  ) {
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { plannedSetCount: Math.max(0, session.plannedSetCount - plannedRemoved) },
+    });
+  }
   return { id: row.id, sets };
 }
 
@@ -343,5 +360,12 @@ export async function undoExerciseRemoval(input: {
   const restored = restoreSnapshotSets(base, snapshot);
   if (restored.length === 0) return { sets: session.sets };
   const updated = await saveSets(session, restored, false);
+  const addBack = snapshot?.plannedSets ?? 0;
+  if (addBack > 0 && typeof session.plannedSetCount === "number") {
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { plannedSetCount: session.plannedSetCount + addBack },
+    });
+  }
   return { sets: updated.sets };
 }

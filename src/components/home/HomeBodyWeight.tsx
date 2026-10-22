@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useActionState, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { saveBodyMetricAction, type BodyMetricActionState } from "@/app/actions/body-metrics";
@@ -52,6 +53,10 @@ export function HomeBodyWeight({
   const [fatDraft, setFatDraft] = useState(savedFatText);
   const [sheet, setSheet] = useState(false);
   const panelRef = useSheetBehavior(() => setSheet(false), sheet);
+  const pathname = usePathname() ?? "";
+  const closeTestId = pathname.startsWith("/progress")
+    ? "home-body-weight-sheet-close-2"
+    : "home-body-weight-sheet-close";
   const [closedFor, setClosedFor] = useState<number | undefined>();
   const [closedNotice, setClosedNotice] = useState<number | string | undefined>();
   const showSide = side != null;
@@ -247,6 +252,7 @@ export function HomeBodyWeight({
                   </button>
                   <button
                     type="button"
+                    data-testid={closeTestId}
                     onClick={() => setSheet(false)}
                     className="touch-target w-full rounded-full border border-line text-sm"
                   >

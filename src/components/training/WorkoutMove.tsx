@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -60,6 +60,10 @@ export function WorkoutMoveProvider({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const swapSessionTestId = pathname.startsWith("/training/calendar")
+    ? "workout-move-session-btn-2"
+    : "workout-move-session-btn";
   const [target, setTarget] = useState<OpenMove | null>(null);
   const [mode, setMode] = useState<"move" | "swap">("move");
   const [error, setError] = useState<string | null>(null);
@@ -342,8 +346,8 @@ export function WorkoutMoveProvider({
                     return (
                       <li key={session.sessionKey}>
                         <button
-                          data-testid="training-swap-session"
                           type="button"
+                          data-testid={`${swapSessionTestId}-${session.sessionKey.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}`}
                           data-swap-session={session.sessionKey}
                           disabled={pending || blocked}
                           onClick={() => requestSessionSwap(session, day)}
@@ -366,8 +370,8 @@ export function WorkoutMoveProvider({
             ) : null}
             {error ? <p className="mt-3 text-sm text-muted">{error}</p> : null}
             <button
-              data-testid="training-cancel-2"
               type="button"
+              data-testid="workout-move-cancel"
               onClick={close}
               disabled={pending}
               className="mt-3 min-h-11 w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
@@ -380,7 +384,6 @@ export function WorkoutMoveProvider({
       {toast ? (
         <Toast
           closeTestId="training-move-toast-close"
-          actionTestId="chrome-toast-action-move"
           key={toast.id}
           message={toast.message}
           tone="dark"
