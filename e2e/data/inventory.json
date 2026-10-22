@@ -10691,7 +10691,7 @@
     "kind": "button",
     "file": "src/components/Toast.tsx",
     "line": 74,
-    "label": "data-testid=\"chrome-toast-action\"",
+    "label": "data-testid^=\"chrome-toast-action-\"",
     "expect": "click -> action",
     "unsafe": false,
     "id": "SHARED-016"

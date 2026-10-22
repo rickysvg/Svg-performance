@@ -30,6 +30,7 @@ export function Toast({
   action,
   attrs,
   closeTestId,
+  actionTestId,
 }: {
   message: string;
   onDismiss: () => void;
@@ -39,6 +40,8 @@ export function Toast({
   action?: ToastAction;
   attrs?: Record<string, string>;
   closeTestId?: string;
+  /** Unique per toast. Prefix `chrome-toast-action-` so the suite can match one pattern. */
+  actionTestId?: string;
 }) {
   const dismiss = useEffectEvent(() => {
     onDismiss();
@@ -74,9 +77,9 @@ export function Toast({
       <p className="min-w-0 flex-1 py-3 pl-4 text-sm leading-snug">{message}</p>
       {action ? (
         <button
-          data-testid="chrome-toast-action"
           type="button"
           {...action.attrs}
+          data-testid={actionTestId}
           disabled={action.disabled}
           onClick={action.onClick}
           className={`inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold disabled:opacity-60 ${

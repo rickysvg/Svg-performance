@@ -376,6 +376,7 @@ export function WorkoutMoveProvider({
       {toast ? (
         <Toast
           closeTestId="training-move-toast-close"
+          actionTestId="chrome-toast-action-move"
           key={toast.id}
           message={toast.message}
           tone="dark"

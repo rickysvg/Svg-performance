@@ -46,6 +46,7 @@ export function RemoveToast() {
   return (
     <Toast
       closeTestId="chrome-remove-toast-close"
+      actionTestId="chrome-toast-action-remove"
       key={toast.id}
       message={toast.message}
       tone="dark"
