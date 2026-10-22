@@ -896,12 +896,19 @@ export async function continuePartialWorkoutForUser(input: {
       campPhase: camp?.phase ?? null,
     },
   );
-  const names = day.exercises.map((exercise) => exercise.name);
-  const dose = day.exercises.reduce(
-    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
-    0,
-  );
-  if (existing.status === "complete" && sessionCountsAsPlannedCompletion(existing, names, dose)) {
+  const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
+  const names =
+    calendar && calendar.names.length > 0
+      ? [...calendar.names]
+      : day.exercises.map((exercise) => exercise.name);
+  const dose =
+    calendar && calendar.dose > 0
+      ? calendar.dose
+      : day.exercises.reduce(
+          (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+          0,
+        );
+  if (existing.status === "complete" && offPlanSessionDone(existing, dose, names)) {
     return existing;
   }
 
@@ -934,7 +941,7 @@ export async function continuePartialWorkoutForUser(input: {
     if (fresh.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
-    if (fresh.status === "complete" && sessionCountsAsPlannedCompletion(fresh, names, dose)) {
+    if (fresh.status === "complete" && offPlanSessionDone(fresh, dose, names)) {
       return fresh;
     }
     await tx.workoutSession.update({
@@ -956,9 +963,16 @@ export async function continuePartialWorkoutForUser(input: {
       counts.set(key, (counts.get(key) ?? 0) + 1);
       taken.add(`${key}:${set.setNumber}`);
     }
+    const storedPlan =
+      typeof fresh.plannedSetCount === "number" && fresh.plannedSetCount > 0
+        ? fresh.plannedSetCount
+        : null;
+    // The short save already holds the rows it was started with. Filling from
+    // the profile scale on top of those rows stacks a second catalog.
+    const alreadyHeld = storedPlan != null && lockedSets.length >= storedPlan;
     const create: Prisma.WorkoutSetCreateManyInput[] = [];
     let prescribedTotal = 0;
-    for (const exercise of visible) {
+    for (const exercise of alreadyHeld ? [] : visible) {
       const prescribed = Math.max(0, Math.round(exercise.sets));
       prescribedTotal += prescribed;
       const key = gymExerciseKey(exercise.name);
