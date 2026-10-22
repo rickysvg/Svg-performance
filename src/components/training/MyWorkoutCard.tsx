@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/my-workouts";
 import {
   APPLY_TOAST,
+  APPLY_TOAST_MS,
   REPLACE_LOGGED_CONFIRM,
   RENAME_TOAST_MS,
   applySheetSettle,
@@ -69,7 +70,7 @@ export function MyWorkoutCard({
     setApplyOpen(settled.open);
     if (!settled.toast) return;
     setToast(settled.toast);
-    const timer = window.setTimeout(() => setToast(""), RENAME_TOAST_MS);
+    const timer = window.setTimeout(() => setToast(""), APPLY_TOAST_MS);
     return () => window.clearTimeout(timer);
   }, [applyPending, applyState]);
   const count = `${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}`;

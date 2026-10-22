@@ -270,7 +270,7 @@ export function withDayPlans<T extends { kind: string }>(activities: T[], plans:
       subtitle: plan.complete
       ? "Logged this day."
       : plan.partial
-        ? `Partial · ${count}`
+        ? `${plan.name} · Partial`
         : preview
           ? `${role} · ${count} · ${preview}`
           : `${role} · ${count}`,

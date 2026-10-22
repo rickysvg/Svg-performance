@@ -6,7 +6,6 @@ import {
   draftHasResumeWork,
   loggedSetSome,
   sessionCountsAsPlannedCompletion,
-  setHasLoggedWork,
   tickedSetCount,
 } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
@@ -391,15 +390,6 @@ export async function applySavedWorkoutToDay(input: {
   });
 }
 
-function customSessionHasMemberWork(sets: {
-  completed?: boolean | null;
-  reps?: number | null;
-  loadValue?: number | null;
-  durationSeconds?: number | null;
-}[]) {
-  return sets.some((set) => Boolean(set.completed) || setHasLoggedWork(set));
-}
-
 export async function revertDayToProgram(userId: string, day: string) {
   if (!isDayKey(day)) throw new AppError("WORKOUT", "Pick a date.");
   const plans = await prisma.dayWorkoutPlan.findMany({
@@ -408,27 +398,37 @@ export async function revertDayToProgram(userId: string, day: string) {
   });
   const ids = plans.map((row) => row.id);
   if (ids.length === 0) return;
-  const sessions = await prisma.workoutSession.findMany({
-    where: { userId, dayPlanId: { in: ids } },
-    select: {
-      id: true,
-      sets: { select: { completed: true, reps: true, loadValue: true, durationSeconds: true } },
-    },
-  });
-  // A draft the member never ticked or edited is the applied plan, not a log.
-  // Real ticked or entered work stays, unlinked, so the calendar can show it.
-  const dropIds = sessions.filter((session) => !customSessionHasMemberWork(session.sets)).map((session) => session.id);
-  const keepIds = sessions.filter((session) => customSessionHasMemberWork(session.sets)).map((session) => session.id);
-  if (dropIds.length > 0) {
-    await prisma.workoutSession.deleteMany({ where: { userId, id: { in: dropIds } } });
-  }
-  if (keepIds.length > 0) {
-    await prisma.workoutSession.updateMany({
-      where: { userId, id: { in: keepIds } },
+  await prisma.$transaction(async (tx) => {
+    const drafts = await tx.workoutSession.findMany({
+      where: { userId, dayPlanId: { in: ids }, status: "draft" },
+      select: {
+        id: true,
+        sets: {
+          select: {
+            exerciseName: true,
+            completed: true,
+            reps: true,
+            loadValue: true,
+            durationSeconds: true,
+            notes: true,
+            prescriptionKey: true,
+            logMode: true,
+          },
+        },
+      },
+    });
+    const untouched = drafts.filter((row) => !draftHasResumeWork(row.sets));
+    if (untouched.length > 0) {
+      await tx.workoutSession.deleteMany({
+        where: { id: { in: untouched.map((row) => row.id) } },
+      });
+    }
+    await tx.workoutSession.updateMany({
+      where: { userId, dayPlanId: { in: ids } },
       data: { dayPlanId: null },
     });
-  }
-  await prisma.dayWorkoutPlan.deleteMany({ where: { userId, dayKey: day } });
+    await tx.dayWorkoutPlan.deleteMany({ where: { userId, dayKey: day } });
+  });
 }
 
 export type DayPlanView = {

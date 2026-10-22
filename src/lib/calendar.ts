@@ -250,7 +250,7 @@ export function weekSessionTally(days: CalendarDay[]) {
       if (activity.kind !== "workout") continue;
       total += 1;
       if (activity.status === "complete") done += 1;
-      else if (activity.subtitle.startsWith("Partial")) partial += 1;
+      else if (subtitleShowsPartial(activity.subtitle)) partial += 1;
     }
   }
   return { done, partial, total };
@@ -334,7 +334,11 @@ function dayNumberMatch(
 
 /** "Missed a workout?" counts a plan that was not done, including one replaced by other partial work. */
 export function subtitleCountsAsMissed(subtitle: string) {
-  return subtitle.startsWith("Missed") || subtitle.startsWith("Not done — you logged ");
+  return (
+    subtitle.startsWith("Missed") ||
+    subtitle.includes("· Missed") ||
+    subtitle.startsWith("Not done — you logged ")
+  );
 }
 
 function loggedInsteadName(names: readonly string[]) {
@@ -354,10 +358,31 @@ export function calendarFocusStatusSuffix(input: {
 }) {
   const done = input.workouts.filter((item) => item.status === "complete").length;
   if (input.workouts.length > 0 && done === input.workouts.length) return " · Logged";
-  if (input.workouts.some((item) => item.subtitle.startsWith("Partial"))) return " · Partial";
+  if (input.workouts.some((item) => subtitleShowsPartial(item.subtitle))) return " · Partial";
   if (done > 0) return " · Partly logged";
   if (input.past && input.active) return " · Missed";
   return "";
+}
+
+/** A card line for one session. The chip still rolls the day up. */
+export function sessionStatusLine(name: string, state: "Missed" | "Partial" | "Done") {
+  return `${name} · ${state}`;
+}
+
+export function subtitleShowsPartial(subtitle: string) {
+  return subtitle.startsWith("Partial") || subtitle.includes("· Partial");
+}
+
+export function subtitleShowsMissed(subtitle: string) {
+  return subtitle.startsWith("Missed") || subtitle.includes("· Missed");
+}
+
+function workoutStatusName(kind: string) {
+  if (kind === "strength") return "Lift";
+  if (kind === "skill") return "Bag";
+  if (kind === "conditioning") return "Bike";
+  if (kind === "mobility") return "Mobility";
+  return "Session";
 }
 
 /** A saved log belongs to this planned session even if a reseed replaced the day id. */
@@ -551,6 +576,7 @@ async function loadCalendarSchedule(
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
           : plan.movedFrom;
+      const statusName = workoutStatusName(session.kind);
       day.activities.push({
         kind: "workout",
         title: matched?.savedWorkout?.name?.trim() || session.title,
@@ -559,9 +585,9 @@ async function loadCalendarSchedule(
             ? `Logged this day. ${loggedSummary}`
             : "Logged this day. Open to review or run a session again."
           : partial
-            ? `Partial · ${setCountLabel}`
+            ? sessionStatusLine(statusName, "Partial")
             : missed
-              ? "Missed. Tap Move to do it another day."
+              ? sessionStatusLine(statusName, "Missed")
               : notDoneInstead
                 ? `Not done — you logged ${loggedInsteadName(insteadNames)} instead. Tap Move to reschedule.`
                 : origin
@@ -588,7 +614,7 @@ async function loadCalendarSchedule(
         day.activities.push({
           kind: "workout",
           title,
-          subtitle: done ? `Logged this day. ${title}` : `Partial · ${setCountLabel}`,
+          subtitle: done ? sessionStatusLine(title, "Done") : sessionStatusLine(title, "Partial"),
           href: `/training/log/${log.id}`,
           status: done ? "complete" : "scheduled",
           weekday: calendarWeekday,

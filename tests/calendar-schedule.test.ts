@@ -284,7 +284,7 @@ describe("calendar schedule loader", () => {
       .flatMap((day) => day.activities)
       .find((row) => row.kind === "workout" && row.programDayId === picked!.programDayId);
     expect(logged?.status).toBe("scheduled");
-    expect(logged?.subtitle.startsWith("Partial")).toBe(true);
+    expect(logged?.subtitle.includes("· Partial") || logged?.subtitle.startsWith("Partial")).toBe(true);
     expect(logged?.subtitle).not.toContain("Logged this day");
     expect(weekSessionTally(after.days).done).toBe(0);
     expect(
@@ -300,7 +300,7 @@ describe("calendar schedule loader", () => {
       .flatMap((day) => day.activities)
       .find((row) => row.kind === "workout" && row.programDayId === picked!.programDayId);
     expect(legacyRow?.status).toBe("scheduled");
-    expect(legacyRow?.subtitle.startsWith("Partial")).toBe(true);
+    expect(legacyRow?.subtitle.includes("· Partial") || legacyRow?.subtitle.startsWith("Partial")).toBe(true);
     expect(
       await completedProgramDayIdsOnDay(user.id, [picked!.programDayId], picked!.performedAt, APP_TIMEZONE),
     ).toEqual([]);
@@ -404,7 +404,7 @@ describe("calendar schedule loader", () => {
     const logged = mondayWorkouts.filter((row) => row.programDayId === loggedDayId);
     expect(logged.length).toBeGreaterThan(0);
     expect(logged.every((row) => row.status === "complete")).toBe(false);
-    expect(logged.some((row) => row.subtitle.startsWith("Partial"))).toBe(true);
+    expect(logged.some((row) => row.subtitle.includes("· Partial") || row.subtitle.startsWith("Partial"))).toBe(true);
     expect(logged.some((row) => row.setCountLabel?.startsWith("1/"))).toBe(true);
     const tally = weekSessionTally(schedule.days);
     expect(tally.done).toBe(0);

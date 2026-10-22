@@ -6,6 +6,8 @@ export const APPLY_TOAST = "Applied.";
 
 export const RENAME_TOAST_MS = 3000;
 
+export const APPLY_TOAST_MS = 3000;
+
 export function renameToast(name: string) {
   return `Saved as “${name}”.`;
 }

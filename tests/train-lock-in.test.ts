@@ -11,16 +11,19 @@ import {
 import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
 import { draftHasResumeWork } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { APPLY_TOAST, REPLACE_LOGGED_CONFIRM, RENAME_TOAST_MS, applySheetSettle, renameSheetSettle, renameToast } from "@/lib/workout-sheet";
+import { APPLY_TOAST, APPLY_TOAST_MS, REPLACE_LOGGED_CONFIRM, RENAME_TOAST_MS, applySheetSettle, renameSheetSettle, renameToast } from "@/lib/workout-sheet";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import {
   applySavedWorkoutToDay,
   createSavedWorkout,
   listDayPlansForUser,
   renameSavedWorkout,
+  revertDayToProgram,
   startDayPlanForUser,
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
+import { getCalendarSchedule, sessionStatusLine } from "@/lib/calendar";
+import { formatDayParam } from "@/lib/home";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
 function read(rel: string) {
@@ -238,6 +241,7 @@ describe("train page lock-in", () => {
     expect(card).toContain("renameSheetSettle");
     expect(card).toContain("applySheetSettle");
     expect(card).toContain("RENAME_TOAST_MS");
+    expect(card).toContain("APPLY_TOAST_MS");
     expect(card).toContain("data-apply-replace-confirm");
     expect(card).toContain("data-apply-toast");
     expect(submit).not.toContain("setApplyOpen(false)");
@@ -248,6 +252,9 @@ describe("train page lock-in", () => {
       toast: "Saved as “Daru two”.",
     });
     expect(RENAME_TOAST_MS).toBe(3000);
+    expect(APPLY_TOAST_MS).toBe(3000);
+    expect(sessionStatusLine("Lift", "Missed")).toBe("Lift · Missed");
+    expect(sessionStatusLine("Bag", "Partial")).toBe("Bag · Partial");
     expect(read("src/components/training/SavedWorkoutEditor.tsx")).toContain("Exercises saved.");
     expect(read("src/components/training/SavedWorkoutEditor.tsx")).not.toContain('name="name"');
   });
@@ -446,5 +453,101 @@ describe("train page lock-in", () => {
       }),
     ).rejects.toThrow(/Replace anyway/);
     expect((await prisma.workoutSession.findUnique({ where: { id: edited.id } }))?.dayPlanId).toBe(replaced.id);
+  });
+
+  it("keeps a note-only draft on revert and deletes a prefill-only draft", async () => {
+    await resetDatabase();
+    const user = await makeUser("revert-drafts@example.com");
+    const saved = await createSavedWorkout({
+      userId: user.id,
+      name: "Daru",
+      exercises: [pushUp],
+    });
+    const plan = await applySavedWorkoutToDay({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      dayKey: "2026-10-21",
+      mode: "replace",
+    });
+    const noted = await startDayPlanForUser({
+      userId: user.id,
+      planId: plan.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    await prisma.workoutSet.updateMany({
+      where: { workoutSessionId: noted.id },
+      data: { notes: "sore", completed: false },
+    });
+    const prefill = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        dayPlanId: plan.id,
+        status: "draft",
+        title: "Daru",
+        performedAt: new Date("2026-10-21T16:00:00.000Z"),
+        sets: {
+          create: [
+            {
+              exerciseName: "Push-up",
+              setNumber: 1,
+              reps: 10,
+              completed: false,
+              prescriptionKey: addedPrescriptionKey({
+                exerciseName: "Push-up",
+                reps: "10",
+                restSeconds: 60,
+              }),
+            },
+          ],
+        },
+      },
+    });
+    expect(draftHasResumeWork([{ notes: "sore", completed: false, reps: null, loadValue: null, durationSeconds: null }])).toBe(true);
+    await revertDayToProgram(user.id, "2026-10-21");
+    expect(await prisma.dayWorkoutPlan.findUnique({ where: { id: plan.id } })).toBeNull();
+    expect((await prisma.workoutSession.findUnique({ where: { id: noted.id } }))?.dayPlanId).toBeNull();
+    expect(await prisma.workoutSession.findUnique({ where: { id: prefill.id } })).toBeNull();
+  });
+
+  it("counts a finished Start now session as Done on its own card", async () => {
+    await resetDatabase();
+    const user = await makeUser("daru-own-done@example.com");
+    const saved = await createSavedWorkout({
+      userId: user.id,
+      name: "Daru",
+      exercises: [pushUp],
+    });
+    const loggedAt = new Date("2026-10-21T18:00:00.000Z");
+    const now = new Date("2026-10-22T18:00:00.000Z");
+    const started = await startSavedWorkoutForUser({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      now: loggedAt,
+    });
+    await prisma.workoutSession.update({
+      where: { id: started.id },
+      data: { status: "complete", plannedSetCount: started.sets.length, performedAt: loggedAt },
+    });
+    await prisma.workoutSet.updateMany({
+      where: { workoutSessionId: started.id },
+      data: { reps: 10, completed: true },
+    });
+    const schedule = await getCalendarSchedule(user.id, now, new Date("2026-10-19T16:00:00.000Z"));
+    const day = formatDayParam(loggedAt, APP_TIMEZONE);
+    const cards =
+      schedule.days.find((item) => formatDayParam(item.date, APP_TIMEZONE) === day)?.activities ?? [];
+    const daru = cards.find((item) => item.title === "Daru");
+    expect(daru?.status).toBe("complete");
+    expect(daru?.subtitle).toBe(sessionStatusLine("Daru", "Done"));
+    expect(daru?.programDayId).toBeUndefined();
+    const program = cards.filter((item) => item.programDayId);
+    expect(program.length).toBeGreaterThan(0);
+    expect(program.every((item) => item.status !== "complete")).toBe(true);
+    expect(program.every((item) => item.subtitle.endsWith("· Missed") || item.subtitle.endsWith("· Partial"))).toBe(
+      true,
+    );
   });
 });

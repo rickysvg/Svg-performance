@@ -558,8 +558,8 @@ describe("week day carousel", () => {
     const card = after.days
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
-    expect(card?.subtitle.startsWith("Missed")).toBe(false);
+    expect(card?.subtitle).toContain("· Partial");
+    expect(card?.subtitle).not.toContain("· Missed");
     const counted = /^(\d+)\/(\d+) sets$/.exec(card?.setCountLabel ?? "");
     expect(counted).toBeTruthy();
     expect(Number(counted?.[1])).toBeGreaterThan(0);
@@ -588,7 +588,7 @@ describe("week day carousel", () => {
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
     const draftPartials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE);
-    expect(draftCard?.subtitle.startsWith("Partial")).toBe(true);
+    expect(draftCard?.subtitle.includes("· Partial") || draftCard?.subtitle.startsWith("Partial")).toBe(true);
     expect(draftPartials.includes(day)).toBe(true);
     expect(
       chipMarkForDay({
@@ -689,7 +689,7 @@ describe("week day carousel", () => {
     const card = after.days
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === activity!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(false);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(false);
     expect(partials.includes(day)).toBe(false);
     expect(
       chipMarkForDay({
@@ -726,9 +726,12 @@ describe("week day carousel", () => {
     const schedule = await getCalendarSchedule(user.id, anchor);
     const partialCards = schedule.days
       .flatMap((item) => item.activities)
-      .filter((item) => item.subtitle.startsWith("Partial"));
+      .filter((item) => item.subtitle.includes("· Partial") || item.subtitle.startsWith("Partial"));
     expect(partials.includes(day)).toBe(true);
-    expect(partialCards.map((card) => card.subtitle)).toContain("Partial · 1/4 sets");
+    expect(partialCards.length).toBeGreaterThan(0);
+    expect(partialCards.every((card) => card.subtitle.includes("· Partial") || card.subtitle.startsWith("Partial"))).toBe(
+      true,
+    );
     expect(
       chipMarkForDay({
         plannedSessionIds: [],
@@ -780,7 +783,9 @@ describe("week day carousel", () => {
     expect(workouts.filter((item) => subtitleCountsAsMissed(item.subtitle)).map((item) => item.subtitle)).toEqual([
       notDone,
     ]);
-    expect(workouts.some((item) => item.subtitle === "Partial · 1/3 sets")).toBe(true);
+    expect(workouts.some((item) => item.subtitle.includes("· Partial") || item.subtitle.startsWith("Partial"))).toBe(
+      true,
+    );
     expect(
       calendarFocusStatusSuffix({
         workouts,
@@ -904,7 +909,7 @@ describe("week day carousel", () => {
     const card = after.days
       .flatMap((item) => item.activities)
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(partials.includes(day)).toBe(true);
     const completedDays = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
     const completedIds = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
@@ -986,7 +991,7 @@ describe("week day carousel", () => {
     const focus = after.days.find((day) => dayKey(day.date, APP_TIMEZONE) === mondayKey);
     const workouts = focus?.activities.filter((item) => item.kind === "workout") ?? [];
     const card = workouts.find((item) => item.programDayId === activity!.programDayId);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(card?.status).toBe("scheduled");
     expect(
       calendarFocusStatusSuffix({
