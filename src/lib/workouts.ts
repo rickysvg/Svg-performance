@@ -830,7 +830,7 @@ async function findCompletedSameDaySession(
 /**
  * Reopen a short save and put the planned rows back on that same session.
  * A planned completion stays finished. Removed and swapped-out names are not re-added.
- * Call this from the Continue action only. Viewing a log must not run it.
+ * Call this from the Resume action only. Viewing a log must not run it.
  */
 export async function continuePartialWorkoutForUser(input: {
   userId: string;
@@ -919,17 +919,20 @@ export async function continuePartialWorkoutForUser(input: {
     if (fresh.status === "complete" && sessionCountsAsPlannedCompletion(fresh, names, dose)) {
       return fresh;
     }
-    if (fresh.status === "complete" || fresh.status === "partial") {
-      await tx.workoutSession.update({
-        where: { id: fresh.id },
-        data: {
-          status: "draft",
-          ...(timerColumns ? { finishedAt: null } : {}),
-        },
-      });
-    }
+    await tx.workoutSession.update({
+      where: { id: fresh.id },
+      data: {
+        status: "draft",
+        ...(timerColumns && (fresh.status === "complete" || fresh.status === "partial")
+          ? { finishedAt: null }
+          : {}),
+      },
+    });
+    const lockedSets = await tx.workoutSet.findMany({
+      where: { workoutSessionId: fresh.id },
+    });
     const counts = new Map<string, number>();
-    for (const set of fresh.sets) {
+    for (const set of lockedSets) {
       const key = gymExerciseKey(set.exerciseName);
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
@@ -963,7 +966,7 @@ export async function continuePartialWorkoutForUser(input: {
       }
     }
     if (create.length > 0) {
-      await tx.workoutSet.createMany({ data: create });
+      await tx.workoutSet.createMany({ data: create, skipDuplicates: true });
     }
     if (prescribedTotal > 0) {
       await tx.workoutSession.update({
@@ -1469,9 +1472,8 @@ export async function updateWorkoutSessionForUser(input: {
 }
 
 /**
- * A draft with no reps, load, or time, dated before today, and not resumed today.
- * Closing it is a status change. The row stays so a later pass cannot treat a
- * deleted id as a missed session or a Resume target.
+ * A blank draft from before today. Resume and Today skip it.
+ * The row stays a draft until the member taps Cancel or Delete.
  */
 export function isPastEmptyDraft(
   session: {
@@ -1492,10 +1494,9 @@ export function isPastEmptyDraft(
 /**
  * A draft dated before today is no longer a live clock. A partial log becomes
  * "partial" and stays off the DONE tally. Only a draft that already has every
- * prescribed set ticked is marked complete. An empty draft from a past day is
- * marked abandoned and left in place. Do not invent sets, do not store a
- * created-to-edit gap as training time, and do not close a draft the member
- * still has open today.
+ * prescribed set ticked is marked complete. An empty draft is left alone.
+ * Do not invent sets, do not store a created-to-edit gap as training time,
+ * and do not close a draft the member still has open today.
  */
 export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZone: string) {
   const today = dayKey(now, timeZone);
@@ -1534,9 +1535,6 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
   const claimed = new Set<string>();
   const stillOpenToday = (row: { timerStartedAt: Date | null }) =>
     Boolean(row.timerStartedAt && dayKey(row.timerStartedAt, timeZone) >= today);
-  const emptyPastIds = drafts
-    .filter((row) => isPastEmptyDraft(row, today, timeZone))
-    .map((row) => row.id);
   const ids = drafts
     .filter((row) => sessionHasLoggedWork(row.sets) && sessionCivilDay(row, timeZone) < today)
     .filter((row) => {
@@ -1552,18 +1550,8 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
       return true;
     })
     .map((row) => row.id);
-  if (ids.length === 0 && emptyPastIds.length === 0) return 0;
+  if (ids.length === 0) return 0;
   let count = 0;
-  for (const id of emptyPastIds) {
-    const result = await prisma.workoutSession.updateMany({
-      where: { id, userId, status: "draft" },
-      data: {
-        status: "abandoned",
-        ...(timerColumns ? { finishedAt: null, elapsedSeconds: null, timerStartedAt: null } : {}),
-      },
-    });
-    count += result.count;
-  }
   for (const row of drafts) {
     if (!ids.includes(row.id)) continue;
     const planned = resolvedPlannedSetCount(row);

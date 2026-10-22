@@ -1,12 +1,26 @@
 -- AlterTable
-ALTER TABLE "ChatMessage" ADD COLUMN "coachId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "ChatMessage" ADD COLUMN "coachId" TEXT;
 
--- Existing assistant replies keep the coach the member had when this ships.
+-- Stamp a reply only when the member had already chosen that coach.
+-- Older replies stay null so a later switch cannot relabel them.
 UPDATE "ChatMessage"
-SET "coachId" = COALESCE((
+SET "coachId" = (
   SELECT "Profile"."aiCoachId"
   FROM "ChatThread"
   JOIN "Profile" ON "Profile"."userId" = "ChatThread"."userId"
   WHERE "ChatThread"."id" = "ChatMessage"."threadId"
-), '')
-WHERE "role" = 'assistant' AND "coachId" = '';
+    AND "Profile"."coachChoiceAt" IS NOT NULL
+    AND "ChatMessage"."createdAt" >= "Profile"."coachChoiceAt"
+    AND "Profile"."aiCoachId" <> ''
+)
+WHERE "role" = 'assistant'
+  AND "coachId" IS NULL
+  AND EXISTS (
+    SELECT 1
+    FROM "ChatThread"
+    JOIN "Profile" ON "Profile"."userId" = "ChatThread"."userId"
+    WHERE "ChatThread"."id" = "ChatMessage"."threadId"
+      AND "Profile"."coachChoiceAt" IS NOT NULL
+      AND "ChatMessage"."createdAt" >= "Profile"."coachChoiceAt"
+      AND "Profile"."aiCoachId" <> ''
+  );

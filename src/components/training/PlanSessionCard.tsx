@@ -66,9 +66,7 @@ export function PlanSessionCard({
   const partial = Boolean(resume?.partial);
   const href = openId ? `/training/log/${openId}` : session.href;
   const cta = openId
-    ? partial
-      ? "Continue"
-      : "Resume"
+    ? "Resume"
     : session.dayId
       ? "Start"
       : session.href
@@ -229,7 +227,7 @@ export function PlanSessionCard({
           {completed ? null : partial && openId ? (
             <ContinueWorkoutButton
               workoutId={openId}
-              label="Continue"
+              label="Resume"
               className="touch-target inline-flex w-full items-center justify-center rounded-full bg-accent px-4 text-sm text-black sm:w-auto"
             />
           ) : openId ? (

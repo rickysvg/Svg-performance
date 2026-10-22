@@ -109,7 +109,7 @@ export default async function CoachPage() {
           createdAt: message.createdAt.toISOString(),
           refused: message.refused,
           offline: message.offline,
-          authorCoachId: message.coachId,
+          authorCoachId: message.coachId || undefined,
         }))}
       />
     </CoachMessengerShell>

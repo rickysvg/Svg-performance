@@ -430,6 +430,7 @@ model WorkoutSet {
   /** Stored effort cue from the prescription, when the set had one. */
   rir              String         @default("")
 
+  @@unique([workoutSessionId, exerciseName, setNumber])
   @@index([workoutSessionId])
 }
 
@@ -612,8 +613,8 @@ model ChatMessage {
   thread         ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   role           String
   content        String
-  /// Coach who wrote an assistant reply. Empty on member rows and legacy replies.
-  coachId        String     @default("")
+  /// Coach who wrote an assistant reply. Null when that coach cannot be derived.
+  coachId        String?
   refused        Boolean    @default(false)
   refusalCode    String     @default("")
   offline        Boolean    @default(false)

@@ -102,7 +102,7 @@ export type TodayStartSession = {
 };
 
 export type TodayStartAction = {
-  verb: "Start today" | "Resume" | "Continue";
+  verb: "Start today" | "Resume";
   modality: string;
   theme: string;
   minutes: number;
@@ -170,7 +170,7 @@ function openLog(value: OpenLogRef) {
 }
 
 /**
- * One button for today. A draft is Resume. A short save is Continue.
+ * One button for today. A draft or a short save is Resume.
  * Otherwise the first session not already finished today is Start today.
  */
 export function todayStartAction(
@@ -189,7 +189,7 @@ export function todayStartAction(
   if (!target) return null;
   const open = target.dayId ? openLog(draftIdForDay(target.dayId)) : undefined;
   return {
-    verb: open ? (open.partial ? "Continue" : "Resume") : "Start today",
+    verb: open ? "Resume" : "Start today",
     modality: sessionModality(target.kind),
     theme: sessionTheme(target.subtitle, target.label || target.title),
     minutes: Math.max(0, Math.round(target.minutes)),

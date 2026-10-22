@@ -6,6 +6,7 @@ import {
   completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
+  isPastEmptyDraft,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
 } from "@/lib/workouts";
@@ -192,7 +193,11 @@ export default async function TrainingPage({
     (dayId) => openToday.get(dayId),
   );
   const liveDraft =
-    drafts.find((row) => !row.programDayId || !doneToday.has(row.programDayId)) ?? null;
+    drafts.find(
+      (row) =>
+        !isPastEmptyDraft(row, formatDayParam(now, tz), tz) &&
+        (!row.programDayId || !doneToday.has(row.programDayId)),
+    ) ?? null;
   const loggedRange = carouselLoggedRange(now, tz);
   const [completedDays, completedByDay, partialDays] = await Promise.all([
     completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, now),

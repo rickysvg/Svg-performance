@@ -875,3 +875,60 @@ BEGIN
       FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;
+
+-- Assistant replies store the coach who wrote them. Unknown history stays null.
+DO $$
+BEGIN
+  IF to_regclass('public."ChatMessage"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ChatMessage' AND column_name = 'coachId'
+  ) THEN
+    ALTER TABLE "ChatMessage" ADD COLUMN "coachId" TEXT;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF to_regclass('public."ChatMessage"') IS NULL OR to_regclass('public."Profile"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  UPDATE "ChatMessage"
+  SET "coachId" = "Profile"."aiCoachId"
+  FROM "ChatThread", "Profile"
+  WHERE "ChatMessage"."threadId" = "ChatThread"."id"
+    AND "Profile"."userId" = "ChatThread"."userId"
+    AND "ChatMessage"."role" = 'assistant'
+    AND "ChatMessage"."coachId" IS NULL
+    AND "Profile"."coachChoiceAt" IS NOT NULL
+    AND "ChatMessage"."createdAt" >= "Profile"."coachChoiceAt"
+    AND "Profile"."aiCoachId" <> '';
+END $$;
+
+-- A second Resume cannot insert the same set slot.
+DO $$
+BEGIN
+  IF to_regclass('public."WorkoutSet"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  DELETE FROM "WorkoutSet" AS extra
+  USING "WorkoutSet" AS kept
+  WHERE extra."workoutSessionId" = kept."workoutSessionId"
+    AND extra."exerciseName" = kept."exerciseName"
+    AND extra."setNumber" = kept."setNumber"
+    AND extra."id" > kept."id";
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND indexname = 'WorkoutSet_workoutSessionId_exerciseName_setNumber_key'
+  ) THEN
+    CREATE UNIQUE INDEX "WorkoutSet_workoutSessionId_exerciseName_setNumber_key"
+      ON "WorkoutSet"("workoutSessionId", "exerciseName", "setNumber");
+  END IF;
+END $$;

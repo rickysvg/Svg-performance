@@ -124,7 +124,7 @@ export default async function TrainingDayPage({
   const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
   const minutes = estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
-  const startLabel = matched?.partial ? "Continue" : matched ? "Resume" : "Start Now";
+  const startLabel = matched ? "Resume" : "Start Now";
   const deload = campWeek == null && isDeloadWeekIndex(weekIndex);
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
@@ -224,7 +224,7 @@ export default async function TrainingDayPage({
             ) : null}
             <ContinueWorkoutButton
               workoutId={matched.id}
-              label="Continue"
+              label="Resume"
               className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
             />
           </div>
@@ -354,7 +354,18 @@ export default async function TrainingDayPage({
         </Link>
       </section>
 
-      {draft ? (
+      {matched?.partial ? (
+        <div
+          data-start-bar
+          className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
+        >
+          <ContinueWorkoutButton
+            workoutId={matched.id}
+            label="Resume"
+            className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
+          />
+        </div>
+      ) : draft ? (
         <div
           data-start-bar
           className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
@@ -364,7 +375,7 @@ export default async function TrainingDayPage({
             data-prime-coach-audio
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
           >
-            Continue
+            Resume
           </Link>
         </div>
       ) : (

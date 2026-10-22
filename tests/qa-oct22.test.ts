@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
+import { coachReplyLabel, recordedCoachIdAt } from "@/lib/coaches";
 import { loggedSetVolume } from "@/lib/home-telemetry";
 import { partialSetsLine } from "@/lib/logged-work";
 import { mealTypeForZonedNow } from "@/lib/nutrition";
@@ -59,7 +61,7 @@ describe("Oct 22 partial saves", () => {
     expect(partialSetsLine(1, 7)).toBe("Partial · 1/7 sets");
   });
 
-  it("makes Today and the next action Continue for a partial and Resume for a draft", () => {
+  it("makes Today and the next action Resume for a partial and a draft", () => {
     const logs = openLogsByProgramDay(sessions, "2026-10-22", zone);
     const today = todayStartAction(
       [
@@ -82,8 +84,9 @@ describe("Oct 22 partial saves", () => {
       ],
       (dayId) => logs.get(dayId),
     );
-    expect(today).toMatchObject({ verb: "Continue", draftId: "short", partial: true, ticked: 1, planned: 7 });
-    expect(todayStartLabel(today!)).toContain("Continue");
+    expect(today).toMatchObject({ verb: "Resume", draftId: "short", partial: true, ticked: 1, planned: 7 });
+    expect(todayStartLabel(today!)).toContain("Resume");
+    expect(todayStartLabel(today!)).not.toContain("Continue");
     expect(todayStartLabel(today!)).toContain("Partial · 1/7 sets");
 
     const next = nextTrainAction(
@@ -94,7 +97,7 @@ describe("Oct 22 partial saves", () => {
       (dayId) => logs.get(dayId),
       (dayId) => dayId === "done",
     );
-    expect(next).toMatchObject({ verb: "Continue", draftId: "short", progress: "Partial · 1/7 sets" });
+    expect(next).toMatchObject({ verb: "Resume", draftId: "short", progress: "Partial · 1/7 sets" });
   });
 
   it("does not Resume a finished day because a second tab left a draft", () => {
@@ -206,7 +209,7 @@ describe("Oct 22 partial saves", () => {
       ],
       (dayId) => open.get(dayId),
     );
-    expect(today).toMatchObject({ verb: "Continue", draftId: "partial-older", planned: 3 });
+    expect(today).toMatchObject({ verb: "Resume", draftId: "partial-older", planned: 3 });
   });
 
   it("drops a leftover draft on a day that already has a planned completion", () => {
@@ -281,6 +284,40 @@ describe("Oct 22 member clock and chrome", () => {
     expect(
       shouldCollapseWeighIn({ key: "Escape", defaultPrevented: false, open: false, inside: true }),
     ).toBe(false);
+  });
+
+  it("leaves a reply unlabeled unless the coach was already chosen", () => {
+    const choice = new Date("2026-10-22T12:00:00.000Z");
+    expect(
+      recordedCoachIdAt({
+        messageAt: new Date("2026-10-21T12:00:00.000Z"),
+        coachChoiceAt: choice,
+        aiCoachId: "maya",
+      }),
+    ).toBeNull();
+    expect(
+      recordedCoachIdAt({
+        messageAt: new Date("2026-10-22T13:00:00.000Z"),
+        coachChoiceAt: choice,
+        aiCoachId: "maya",
+      }),
+    ).toBe("maya");
+    expect(
+      recordedCoachIdAt({
+        messageAt: new Date("2026-10-22T13:00:00.000Z"),
+        coachChoiceAt: null,
+        aiCoachId: "skye",
+      }),
+    ).toBeNull();
+    expect(coachReplyLabel(null)).toBe("Coach");
+    expect(coachReplyLabel("")).toBe("Coach");
+    expect(coachReplyLabel("maya")).toBe("Maya");
+    const sql = fs.readFileSync(
+      "prisma/migrations/20261022160000_chat_message_coach/migration.sql",
+      "utf8",
+    );
+    expect(sql).toContain("coachChoiceAt");
+    expect(sql).not.toContain("COALESCE");
   });
 
   it("shows local when the deploy has no commit sha", () => {

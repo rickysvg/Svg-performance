@@ -7,7 +7,10 @@ import {
   isPastEmptyDraft,
   listDraftSessionsForUser,
   listRecentSessionsForUser,
+  listResumableSessionsForUser,
 } from "@/lib/workouts";
+import { openLogsByProgramDay } from "@/lib/today-start";
+import { calendarPlanDoses } from "@/lib/calendar";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import {
   APP_TIMEZONE,
@@ -241,6 +244,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     suggestionCopy:
       "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
+    resumeByDay: {} as Record<string, { id: string; partial: boolean }>,
     completedDayIds: [] as string[],
     loggedOnSelected: null,
     foodToday: { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
@@ -277,11 +281,13 @@ export async function getHomeToday(
     (await timeZoneForUser(userId, profileForZone?.timeZone ?? null));
   const selected = startOfLocalDay(selectedDay, tz);
   const now = new Date();
-  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile, swaps, account] =
+  const [catalog, sessions, drafts, resumable, planByDay, foodToday, allLessons, progress, activity, profile, swaps, account] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
       listDraftSessionsForUser(userId),
+      listResumableSessionsForUser(userId),
+      calendarPlanDoses(userId, now),
       getNutritionSummaryForDay(userId, selected, tz),
       listPublishedLessons(),
       listLessonProgressForUser(userId),
@@ -344,6 +350,13 @@ export async function getHomeToday(
     ),
   ];
   const finishedToday = new Set(completedDayIds);
+  const resumeByDay: Record<string, { id: string; partial: boolean }> = {};
+  if (sameLocalDay(selected, now, tz)) {
+    for (const [dayId, log] of openLogsByProgramDay(resumable, todayKey, tz, planByDay)) {
+      if (finishedToday.has(dayId)) continue;
+      resumeByDay[dayId] = { id: log.id, partial: log.partial };
+    }
+  }
   const draft =
     drafts.find(
       (row) =>
@@ -426,6 +439,7 @@ export async function getHomeToday(
         })
       : "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: sameLocalDay(selected, now, tz) ? draft : undefined,
+    resumeByDay,
     completedDayIds,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,

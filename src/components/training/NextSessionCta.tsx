@@ -11,7 +11,7 @@ const stickyClass = "sticky top-0 z-30 md:top-14";
 export function NextSessionCta({ action }: { action: NextTrainAction }) {
   const label = `Next: ${action.verb} ${action.title}${action.progress ? ` · ${action.progress}` : ""}`;
 
-  if (action.draftId && action.verb === "Continue") {
+  if (action.draftId && action.partial) {
     return (
       <ContinueWorkoutButton
         workoutId={action.draftId}

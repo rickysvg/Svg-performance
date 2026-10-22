@@ -9,7 +9,7 @@ export type TrainActionSession = {
 };
 
 export type NextTrainAction = {
-  verb: "Start" | "Resume" | "Continue" | "Open";
+  verb: "Start" | "Resume" | "Open";
   title: string;
   dayId?: string;
   draftId?: string;
@@ -37,7 +37,7 @@ function openLog(value: OpenLogRef) {
 
 /**
  * First real session on the selected day.
- * A short save is Continue. A draft is Resume. A finished day is skipped.
+ * A short save and a draft are both Resume. A finished day is skipped.
  */
 export function nextTrainAction(
   sessions: TrainActionSession[],
@@ -55,7 +55,7 @@ export function nextTrainAction(
   const open = target.dayId ? openLog(draftIdForDay(target.dayId)) : undefined;
   if (open) {
     return {
-      verb: open.partial ? "Continue" : "Resume",
+      verb: "Resume",
       title: target.title,
       dayId: target.dayId,
       draftId: open.id,

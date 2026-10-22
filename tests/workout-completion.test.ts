@@ -305,7 +305,7 @@ describe("a workout is complete only after a logged save", () => {
     expect(openRow.status).toBe("draft");
   });
 
-  it("abandons a past empty draft and leaves today's fresh draft", async () => {
+  it("leaves a past empty draft in place and keeps it off Resume", async () => {
     const user = await makeUser("empty-past@example.com");
     const program = await getDemoProgram();
     const monday = new Date(2026, 8, 21, 16, 0, 0);
@@ -333,10 +333,10 @@ describe("a workout is complete only after a logged save", () => {
       where: { id: past.id },
       data: { timerStartedAt: null },
     });
-    expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(1);
+    expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(0);
     const pastRow = await prisma.workoutSession.findUnique({ where: { id: past.id } });
     expect(pastRow).not.toBeNull();
-    expect(pastRow?.status).toBe("abandoned");
+    expect(pastRow?.status).toBe("draft");
     expect(await prisma.workoutSession.findUnique({ where: { id: today.id } })).toMatchObject({
       status: "draft",
     });
@@ -344,7 +344,7 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumable.map((row) => row.id)).not.toContain(past.id);
     expect(resumable.map((row) => row.id)).not.toContain(today.id);
     const drafts = await listDraftSessionsForUser(user.id);
-    expect(drafts.map((row) => row.id)).toEqual([today.id]);
+    expect(drafts.map((row) => row.id)).toEqual(expect.arrayContaining([past.id, today.id]));
   });
 
   it("reuses one row when the same session is started twice in a day", async () => {
@@ -365,6 +365,31 @@ describe("a workout is complete only after a logged save", () => {
     });
     expect(second.id).toBe(first.id);
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it("rejects a second row for the same set slot", async () => {
+    const user = await makeUser("set-slot@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const set = session.sets[0];
+    expect(set).toBeTruthy();
+    await expect(
+      prisma.workoutSet.create({
+        data: {
+          workoutSessionId: session.id,
+          exerciseName: set!.exerciseName,
+          setNumber: set!.setNumber,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb",
+          completed: false,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "P2002" });
   });
 
   it("reopens a short save in place instead of starting a second session", async () => {

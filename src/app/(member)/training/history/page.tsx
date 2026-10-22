@@ -21,9 +21,7 @@ export default async function HistoryPage() {
   const user = await requireUser();
   const profile = await getProfileForUser(user.id);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const sessions = (await listWorkoutSessionsForUser(user.id)).filter(
-    (session) => session.status !== "abandoned",
-  );
+  const sessions = await listWorkoutSessionsForUser(user.id);
 
   return (
     <main className="space-y-6">

@@ -11,7 +11,7 @@ const buttonClass =
 export function StartTodayButton({ action }: { action: TodayStartAction }) {
   const label = todayStartLabel(action);
 
-  if (action.draftId && action.verb === "Continue") {
+  if (action.draftId && action.partial) {
     return (
       <ContinueWorkoutButton
         workoutId={action.draftId}

@@ -156,6 +156,27 @@ export function resolveAiCoach(id?: string | null): AiCoach {
   return AI_COACHES.find((coach) => coach.id === id) ?? AI_COACHES[0];
 }
 
+/** Name on an old reply. Unknown authors stay "Coach" instead of the current coach. */
+export function coachReplyLabel(authorCoachId?: string | null) {
+  if (!authorCoachId || !isAiCoachId(authorCoachId)) return "Coach";
+  return resolveAiCoach(authorCoachId).name;
+}
+
+/**
+ * Coach id to store on a reply that already exists.
+ * Only messages written after the member's recorded choice belong to that coach.
+ */
+export function recordedCoachIdAt(input: {
+  messageAt: Date;
+  coachChoiceAt: Date | null;
+  aiCoachId?: string | null;
+}) {
+  if (!input.coachChoiceAt || input.messageAt.getTime() < input.coachChoiceAt.getTime()) return null;
+  const id = input.aiCoachId?.trim();
+  if (!id || !isAiCoachId(id)) return null;
+  return id;
+}
+
 export function resolveAiCoachByName(name?: string | null): AiCoach {
   const trimmed = name?.trim().toLowerCase();
   if (!trimmed) return resolveAiCoach();
