@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getMemberCoachThread } from "@/lib/coach/chat";
+import { authoringCoachId } from "@/lib/coach/author";
 import {
   daysBetweenDayKeys,
   fightReminderNote,
@@ -111,6 +112,7 @@ async function deliver(userId: string, content: string) {
       threadId: thread.id,
       role: "assistant",
       content,
+      coachId: await authoringCoachId(userId),
       refused: false,
       offline: false,
     },

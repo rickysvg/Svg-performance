@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { bikeLoggerHref } from "@/lib/timer-session";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import { todayStartLabel, type TodayStartAction } from "@/lib/today-start";
 
 const buttonClass =
@@ -9,6 +10,18 @@ const buttonClass =
 
 export function StartTodayButton({ action }: { action: TodayStartAction }) {
   const label = todayStartLabel(action);
+
+  if (action.draftId && action.partial) {
+    return (
+      <ContinueWorkoutButton
+        workoutId={action.draftId}
+        label={label}
+        className={buttonClass}
+        testId="home-start-today"
+        startToday
+      />
+    );
+  }
 
   if (action.draftId) {
     return (

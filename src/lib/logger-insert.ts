@@ -105,12 +105,29 @@ export type AddedSetDraft = {
   prescriptionReps: string;
 };
 
+/** Highest set number already stored for this exercise. New rows start one past it. */
+export function highestSetNumber(
+  sets: Iterable<{ exerciseName?: string | null; setNumber?: number | null }>,
+  exerciseName: string,
+) {
+  const key = exerciseName.trim();
+  let max = 0;
+  for (const set of sets) {
+    if ((set.exerciseName ?? "").trim() !== key) continue;
+    const n = Number(set.setNumber);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max;
+}
+
 /** One row per library set. A name already in the workout stays its own exercise. */
 export function draftsForLibraryExercise(
   used: Iterable<string>,
   exercise: Pick<LibraryExercise, "name" | "sets" | "reps" | "logMode" | "restSeconds">,
+  occupied: Iterable<{ exerciseName?: string | null; setNumber?: number | null }> = [],
 ): AddedSetDraft[] {
   const exerciseName = distinctExerciseName(used, exercise.name);
+  const start = highestSetNumber(occupied, exerciseName);
   const logMode = resolveLogMode({
     logMode: exercise.logMode,
     name: exerciseName,
@@ -123,7 +140,7 @@ export function draftsForLibraryExercise(
   const restSeconds = Math.max(0, Math.round(exercise.restSeconds) || 0);
   return Array.from({ length: count }, (_, index) => ({
     exerciseName,
-    setNumber: index + 1,
+    setNumber: start + index + 1,
     reps,
     durationSeconds,
     logMode,

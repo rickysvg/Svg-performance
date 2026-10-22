@@ -18,7 +18,7 @@ import {
   toProfileRecord,
   type ProfileRecord,
 } from "@/lib/profile";
-import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
+import { coachChangedAtOnSwitch, isAiCoachId, isCoachingStyle } from "@/lib/coaches";
 import { parseAthleteImagery } from "@/lib/athlete-imagery";
 import {
   isScOnly,
@@ -251,6 +251,11 @@ export async function completeOnboardingForUser(userId: string, input: Onboardin
             aiCoachId: data.aiCoachId,
             coachingStyle: data.coachingStyle,
             coachChoiceAt: existing.coachChoiceAt ?? new Date(),
+            aiCoachChangedAt: coachChangedAtOnSwitch({
+              previousId: existing.aiCoachId,
+              nextId: data.aiCoachId,
+              previousChangedAt: existing.aiCoachChangedAt,
+            }),
           }
         : {}),
     },

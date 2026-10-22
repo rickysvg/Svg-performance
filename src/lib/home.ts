@@ -3,7 +3,14 @@ import { isScOnly } from "@/lib/member-plan";
 import { getSparringLog } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { listDraftSessionsForUser, listRecentSessionsForUser } from "@/lib/workouts";
+import {
+  isPastEmptyDraft,
+  listDraftSessionsForUser,
+  listRecentSessionsForUser,
+  listResumableSessionsForUser,
+} from "@/lib/workouts";
+import { CUSTOM_HOME_RESUME, openCustomLog, openLogsByProgramDay } from "@/lib/today-start";
+import { calendarPlanDoses } from "@/lib/calendar";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import {
   APP_TIMEZONE,
@@ -237,6 +244,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     suggestionCopy:
       "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
+    resumeByDay: {} as Record<string, { id: string; partial: boolean }>,
     completedDayIds: [] as string[],
     loggedOnSelected: null,
     foodToday: { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
@@ -273,11 +281,13 @@ export async function getHomeToday(
     (await timeZoneForUser(userId, profileForZone?.timeZone ?? null));
   const selected = startOfLocalDay(selectedDay, tz);
   const now = new Date();
-  const [catalog, sessions, drafts, foodToday, allLessons, progress, activity, profile, swaps, account] =
+  const [catalog, sessions, drafts, resumable, planByDay, foodToday, allLessons, progress, activity, profile, swaps, account] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
       listDraftSessionsForUser(userId),
+      listResumableSessionsForUser(userId),
+      calendarPlanDoses(userId, now),
       getNutritionSummaryForDay(userId, selected, tz),
       listPublishedLessons(),
       listLessonProgressForUser(userId),
@@ -294,7 +304,7 @@ export async function getHomeToday(
   });
   const hasCatalog = Boolean(strength || skill);
 
-  const draft = drafts[0] ?? sessions.find((session) => session.status === "draft");
+  const todayKey = zonedDayKey(now, tz);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -339,6 +349,28 @@ export async function getHomeToday(
         .map((session) => session.programDayId as string),
     ),
   ];
+  const finishedToday = new Set(completedDayIds);
+  const resumeByDay: Record<string, { id: string; partial: boolean }> = {};
+  if (sameLocalDay(selected, now, tz)) {
+    for (const [dayId, log] of openLogsByProgramDay(resumable, todayKey, tz, planByDay)) {
+      if (finishedToday.has(dayId)) continue;
+      resumeByDay[dayId] = { id: log.id, partial: log.partial };
+    }
+    const custom = openCustomLog(resumable, todayKey, tz);
+    if (custom) resumeByDay[CUSTOM_HOME_RESUME] = { id: custom.id, partial: custom.partial };
+  }
+  const draft =
+    drafts.find(
+      (row) =>
+        !isPastEmptyDraft(row, todayKey, tz) &&
+        !(row.programDayId && finishedToday.has(row.programDayId)),
+    ) ??
+    sessions.find(
+      (row) =>
+        row.status === "draft" &&
+        !isPastEmptyDraft(row, todayKey, tz) &&
+        !(row.programDayId && finishedToday.has(row.programDayId)),
+    );
   const loggedOnSelected = sessions.find(
     (session) =>
       sessionCountsAsPlannedCompletion(
@@ -409,6 +441,7 @@ export async function getHomeToday(
         })
       : "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: sameLocalDay(selected, now, tz) ? draft : undefined,
+    resumeByDay,
     completedDayIds,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,

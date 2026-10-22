@@ -6,8 +6,9 @@ import {
   completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
+  isPastEmptyDraft,
   listDraftSessionsForUser,
-  matchingDraftId,
+  listResumableSessionsForUser,
 } from "@/lib/workouts";
 import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
 import { calendarPlanDoses } from "@/lib/calendar";
@@ -50,7 +51,7 @@ import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
 import { nextTrainAction } from "@/lib/train-next";
-import { todayStartAction } from "@/lib/today-start";
+import { openLogsByProgramDay, todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
@@ -97,7 +98,10 @@ export default async function TrainingPage({
   ]);
   const tzEarly = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   await finalizePastLoggedDrafts(user.id, now, tzEarly);
-  const drafts = await listDraftSessionsForUser(user.id);
+  const [drafts, resumable] = await Promise.all([
+    listDraftSessionsForUser(user.id),
+    listResumableSessionsForUser(user.id),
+  ]);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
     weeklyAvailability: profile?.weeklyAvailability ?? [],
@@ -149,12 +153,8 @@ export default async function TrainingPage({
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const dayParam = formatDayParam(selected, tz);
   const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
-  const draftIdFor = (
-    sessions: { dayId?: string; day?: { title?: string | null; focus?: string | null; exercises?: { name?: string | null }[] } | null }[],
-  ) => (dayId: string) => {
-    const session = sessions.find((row) => row.dayId === dayId);
-    return matchingDraftId(drafts, { dayId, day: session?.day ?? null });
-  };
+  const planByDay = await calendarPlanDoses(user.id, now);
+  const openToday = openLogsByProgramDay(resumable, formatDayParam(now, tz), tz, planByDay);
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
@@ -190,11 +190,15 @@ export default async function TrainingPage({
       minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
       completed: session.dayId ? doneToday.has(session.dayId) : false,
     })),
-    draftIdFor(todaySessions),
+    (dayId) => openToday.get(dayId),
   );
-  const liveDraft = drafts[0] ?? null;
+  const liveDraft =
+    drafts.find(
+      (row) =>
+        !isPastEmptyDraft(row, formatDayParam(now, tz), tz) &&
+        (!row.programDayId || !doneToday.has(row.programDayId)),
+    ) ?? null;
   const loggedRange = carouselLoggedRange(now, tz);
-  const planByDay = await calendarPlanDoses(user.id, now);
   const [completedDays, completedByDay, partialDays] = await Promise.all([
     completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, now),
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
@@ -230,6 +234,7 @@ export default async function TrainingPage({
       const focusPlanned = resolvePlanSessions(focusPlan, focusCatalog);
       const focusDayPlans = savedDayPlans.filter((plan) => plan.dayKey === focusParam);
       const overlay = applyPlansToProgramCards(focusPlanned, focusDayPlans);
+      const openOnDay = openLogsByProgramDay(resumable, focusParam, tz, planByDay);
       const plyo =
         focusPlanned.some((session) => session.kind === "strength") && focusPlan.active
           ? profile?.experienceLevel === "beginner"
@@ -262,11 +267,12 @@ export default async function TrainingPage({
         cards: overlay.cards,
         replaced: overlay.replaced,
         dayPlans: focusDayPlans,
+        openOnDay,
         doneIds: new Set(completedByDay[focusParam] ?? []),
         nextAction: focusPlan.active
           ? nextTrainAction(
               focusPlanned,
-              draftIdFor(focusPlanned),
+              (dayId) => openOnDay.get(dayId),
               (dayId) => (completedByDay[focusParam] ?? []).includes(dayId),
             )
           : null,
@@ -476,7 +482,7 @@ export default async function TrainingPage({
               compact
               calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && focus.plannedCount > 1}
-              draftId={session.dayId ? matchingDraftId(drafts, session) : undefined}
+              resume={session.dayId ? focus.openOnDay.get(session.dayId) : undefined}
               completed={session.dayId ? focus.doneIds.has(session.dayId) : false}
               dateLabel={planDateLabel}
             />

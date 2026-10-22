@@ -15,6 +15,7 @@ import {
 } from "@/lib/coach/llm";
 import { timeZoneForUser } from "@/lib/profile";
 import { athleteLocalDayLine } from "@/lib/timezone";
+import { authoringCoachId } from "@/lib/coach/author";
 
 export { offlineReply } from "@/lib/coach/offline";
 export { isOpenAiConfigured } from "@/lib/coach/llm";
@@ -166,6 +167,7 @@ export async function sendCoachMessage(input: {
         threadId: thread.id,
         role: "assistant",
         content: refusal.message,
+        coachId: await authoringCoachId(input.userId, input.coachName),
         refused: true,
         refusalCode: refusal.code,
         offline: !isOpenAiConfigured(),
@@ -195,6 +197,7 @@ export async function sendCoachMessage(input: {
       threadId: thread.id,
       role: "assistant",
       content: reply.content,
+      coachId: await authoringCoachId(input.userId, input.coachName),
       refused: false,
       offline: reply.offline,
     },

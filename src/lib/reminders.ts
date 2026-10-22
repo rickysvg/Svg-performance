@@ -390,13 +390,18 @@ export async function processDueRemindersForUser(
   let emailed = false;
   if (isSmtpReminderDeliveryEnabled()) {
     const mail = buildReminderEmail(due);
-    const result = await sendMail({
-      to: email,
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html,
-    });
-    emailed = result.sent;
+    // SMTP can sit on the socket timeout. Home waits on this call, including
+    // the first weigh-in save, which refreshes Home before "Saving…" clears.
+    const result = await Promise.race([
+      sendMail({
+        to: email,
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+    ]);
+    emailed = result?.sent ?? false;
   }
 
   await markRemindersShown(

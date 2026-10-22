@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { loggedSetSome } from "@/lib/logged-work";
+import { loggedSetSome, setHasLoggedWork } from "@/lib/logged-work";
 import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { getProfileForUser } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
@@ -31,6 +31,28 @@ export type TelemetryDay = {
 
 export function trainingLoadForDay(day: Pick<TelemetryDay, "load" | "bagLoad">) {
   return day.load + day.bagLoad;
+}
+
+/**
+ * Volume from sets the member actually logged.
+ * A weight with a blank rep count still counts as one rep so a partial lift
+ * does not show up as a session with zero load.
+ */
+export function loggedSetVolume(
+  sets: Array<{
+    reps?: number | null;
+    loadValue?: number | null;
+    loadUnit?: string | null;
+    durationSeconds?: number | null;
+  }>,
+  displayUnit: LoadUnit,
+) {
+  return sets.reduce((sum, set) => {
+    if (!setHasLoggedWork(set)) return sum;
+    if (set.loadValue == null) return sum;
+    const reps = set.reps != null && set.reps > 0 ? set.reps : 1;
+    return sum + volumeInUnit(reps, set.loadValue, set.loadUnit || displayUnit, displayUnit);
+  }, 0);
 }
 
 export type HomeTelemetrySnapshot = {
@@ -135,7 +157,7 @@ export async function getHomeTelemetry(input: {
     prisma.workoutSession.findMany({
       where: {
         userId: input.userId,
-        status: "complete",
+        status: { in: ["complete", "partial", "draft"] },
         sets: loggedSetSome,
         performedAt: { gte: from, lt: to },
       },
@@ -167,11 +189,7 @@ export async function getHomeTelemetry(input: {
 
   const sessions = weekSessions.map((session) => {
     const key = sessionCivilDay(session, timeZone);
-    const volume = session.sets.reduce(
-      (sum, set) =>
-        sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit),
-      0,
-    );
+    const volume = loggedSetVolume(session.sets, displayUnit);
     return { dayKey: key, volume, bagLoad: bagworkTrainingLoadFromSession(session) };
   });
   const streak = buildTrainingStreak({

@@ -47,9 +47,9 @@ describe("member chrome swap", () => {
     expect(isAccountNavActive("/home", "/progress")).toBe(false);
   });
 
-  it("puts Book, Shop, and Profile on the bottom dock", () => {
+  it("puts Book, Shop, Progress, and Profile on the bottom dock", () => {
     expect(BOTTOM_DOCK_LEFT.map((link) => link.label)).toEqual(["Book", "Shop"]);
-    expect(BOTTOM_DOCK_RIGHT.map((link) => link.label)).toEqual(["Profile"]);
+    expect(BOTTOM_DOCK_RIGHT.map((link) => link.label)).toEqual(["Progress", "Profile"]);
     const header = fs.readFileSync(
       path.join(process.cwd(), "src/components/AppHeader.tsx"),
       "utf8",
@@ -60,7 +60,7 @@ describe("member chrome swap", () => {
     );
     expect(header).toContain("data-bottom-dock");
     expect(header).toContain("fixed inset-x-0 bottom-0");
-    expect(header).toContain("grid-cols-3");
+    expect(header).toContain("grid-cols-4");
     expect(header).toContain("data-dock-link");
     expect(header).not.toContain("centerAction");
     expect(profile).toContain("logoutAction");

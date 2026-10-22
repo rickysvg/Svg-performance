@@ -1,4 +1,5 @@
 import { AppError } from "@/lib/errors";
+import { highestSetNumber } from "@/lib/logger-insert";
 import { prisma } from "@/lib/prisma";
 import { BAGWORK_PRESCRIPTION, bagWorkoutBySlug, bagworkTimerConfig, customIdFromKey, parseBagRegions, parseSessionRpe, viewFromCatalog, viewFromCustom, type BagworkQuery, type BagworkView } from "@/lib/bagwork";
 import { clampDurationSeconds, clampRounds } from "@/lib/round-timer";
@@ -82,6 +83,28 @@ export async function deleteCustomBagWorkoutForUser(userId: string, id: string) 
   await prisma.customBagWorkout.delete({ where: { id: existing.id } });
 }
 
+/** Rounds already in the session keep their numbers. New rounds follow the highest one. */
+export function bagworkRoundSets(input: {
+  exerciseName: string;
+  rounds: number;
+  workSeconds: number;
+  existing?: { exerciseName?: string | null; setNumber?: number | null }[];
+}) {
+  const start = highestSetNumber(input.existing ?? [], input.exerciseName);
+  return Array.from({ length: input.rounds }, (_, index) => ({
+    exerciseName: input.exerciseName,
+    setNumber: start + index + 1,
+    sortOrder: start + index,
+    reps: null,
+    loadValue: null,
+    loadUnit: "lb" as const,
+    logMode: "timed_round" as const,
+    durationSeconds: input.workSeconds,
+    completed: true,
+    prescriptionKey: BAGWORK_PRESCRIPTION,
+  }));
+}
+
 export async function logBagworkSessionForUser(input: {
   userId: string;
   workoutKey: string;
@@ -97,18 +120,11 @@ export async function logBagworkSessionForUser(input: {
   const workSeconds = clampDurationSeconds(input.workSeconds);
   const notes = input.notes.trim().slice(0, DESCRIPTION_MAX);
   const rpe = parseSessionRpe(input.rpe);
-  const sets = Array.from({ length: rounds }, (_, index) => ({
+  const sets = bagworkRoundSets({
     exerciseName: view.name,
-    setNumber: index + 1,
-    sortOrder: index,
-    reps: null,
-    loadValue: null,
-    loadUnit: "lb",
-    logMode: "timed_round" as const,
-    durationSeconds: workSeconds,
-    completed: true,
-    prescriptionKey: BAGWORK_PRESCRIPTION,
-  }));
+    rounds,
+    workSeconds,
+  });
   return prisma.workoutSession.create({
     data: {
       userId: input.userId,

@@ -843,16 +843,16 @@ body:has(.app-splash.is-visible) {
 
 [data-mass-box] input[name="value"]:focus,
 [data-mass-box] input[name="value"]:focus-visible,
-[data-mass-box] input[name="bodyFatPercent"]:focus,
-[data-mass-box] input[name="bodyFatPercent"]:focus-visible {
+[data-mass-box] input[name="bodyFatPercent"]:not([data-progress-body-fat-field]):focus,
+[data-mass-box] input[name="bodyFatPercent"]:not([data-progress-body-fat-field]):focus-visible {
   outline: none;
   outline-offset: 0;
   box-shadow: none;
   border: 0;
 }
 
-/* Body fat on the Home card is type, same as the weight figure. */
-[data-mass-box] input[name="bodyFatPercent"] {
+/* Body fat on the Home card is type, same as the weight figure. Progress keeps a real field. */
+[data-mass-box] input[name="bodyFatPercent"]:not([data-progress-body-fat-field]) {
   appearance: none;
   -webkit-appearance: none;
   background: transparent;

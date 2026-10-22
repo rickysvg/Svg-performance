@@ -154,7 +154,7 @@ export function AppHeader({
           </Link>
           <nav
             aria-label="Account"
-            className="grid min-w-0 flex-1 grid-cols-3 items-end"
+            className="grid min-w-0 flex-1 grid-cols-4 items-end"
           >
             {BOTTOM_DOCK_LEFT.map((link) => (
               <DockLink

@@ -14,6 +14,7 @@ import {
   type SwapRecord,
   type SwapScope,
 } from "@/lib/exercise-swap";
+import { highestSetNumber } from "@/lib/logger-insert";
 import { setHasLoggedWork } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
@@ -129,9 +130,17 @@ export function mergeReplacementSets(
     (set) => cleanSwapName(set.exerciseName) === name && !from.has(cleanSwapName(set.exerciseName)),
   );
   const planRir = rirFromLoadText(replacement.loadText) || "";
-  const slot = (index: number, copy: WorkoutSetInput | undefined): WorkoutSetInput => ({
-    exerciseName: name,
-    setNumber: index + 1,
+  const slotFor = (writtenName: string) => {
+    const start = highestSetNumber(
+      existing.filter(
+        (set) =>
+          cleanSwapName(set.exerciseName) === writtenName && !from.has(cleanSwapName(set.exerciseName)),
+      ),
+      writtenName,
+    );
+    return (index: number, copy: WorkoutSetInput | undefined): WorkoutSetInput => ({
+    exerciseName: writtenName,
+    setNumber: start + index + 1,
     reps: copy?.reps ?? null,
     loadValue: copy?.loadValue ?? null,
     loadUnit: place.loadUnit,
@@ -147,21 +156,23 @@ export function mergeReplacementSets(
     }),
     rir: planRir || copy?.rir || "",
   });
+  };
   if (targetAlready) {
     const kept = existing.filter((set) => !from.has(cleanSwapName(set.exerciseName)));
     const distinct = distinctExerciseName(
       kept.map((set) => set.exerciseName),
       name,
     );
+    const slot = slotFor(distinct);
     const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
       const previous = prior[index];
       const copy = previous && (setHasLoggedWork(previous) || previous.completed) ? previous : undefined;
-      return { ...slot(index, copy), exerciseName: distinct };
+      return slot(index, copy);
     });
     for (let index = replacement.sets; index < prior.length; index += 1) {
       const previous = prior[index];
       if (!previous || !setHasLoggedWork(previous)) continue;
-      created.push({ ...slot(created.length, previous), exerciseName: distinct });
+      created.push(slot(created.length, previous));
     }
     const next: WorkoutSetInput[] = [];
     let inserted = false;
@@ -178,6 +189,7 @@ export function mergeReplacementSets(
     if (!inserted) next.push(...created);
     return next;
   }
+  const slot = slotFor(name);
   const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
     const previous = prior[index];
     const copy = previous && (setHasLoggedWork(previous) || previous.completed) ? previous : undefined;

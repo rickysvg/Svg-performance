@@ -9,6 +9,12 @@ import {
 } from "@/app/actions/fight-camp";
 import { StatusBanner } from "@/components/StatusBanner";
 
+/** One click on the row, including the label, toggles the switch once. */
+export function toggleFightCampRow(input: { nextChecked: boolean; shown: boolean }) {
+  if (!input.nextChecked && input.shown) return { open: false, cancel: true };
+  return { open: input.nextChecked, cancel: false };
+}
+
 export function FightCampOptIn({
   enabled,
   todayKey,
@@ -46,9 +52,24 @@ export function FightCampOptIn({
     if (enabled) setOptimisticOn(false);
   }, [enabled]);
 
+  const checked = open || shown;
+  function applyToggle(nextChecked: boolean) {
+    const next = toggleFightCampRow({ nextChecked, shown });
+    if (!next.open) setOptimisticOn(false);
+    setOpen(next.open);
+    if (next.cancel) cancelRef.current?.requestSubmit();
+  }
+
   return (
     <section className="space-y-3" data-fight-camp-opt-in={shown ? "on" : "off"}>
-      <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4 py-3">
+      <label
+        data-fight-camp-row
+        className="flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4 py-3"
+        onClick={(event) => {
+          event.preventDefault();
+          applyToggle(!checked);
+        }}
+      >
         <span className="min-w-0">
           <span className="block font-semibold">I have a fight coming up</span>
           {shown && shownSummary ? (
@@ -60,23 +81,31 @@ export function FightCampOptIn({
             </span>
           ) : null}
         </span>
-        <input
-          type="checkbox"
-          role="switch"
-          data-testid="training-fight-camp"
-          aria-label="I have a fight coming up"
-          checked={open || shown}
-          onChange={(event) => {
-            if (!event.target.checked && shown) {
-              setOptimisticOn(false);
-              setOpen(false);
-              cancelRef.current?.requestSubmit();
-              return;
-            }
-            setOpen(event.target.checked);
-          }}
-          className="h-7 w-7 shrink-0 accent-[#CBF805]"
-        />
+        <span data-fight-camp-switch className="relative inline-flex h-8 w-14 shrink-0 items-center">
+          <input
+            type="checkbox"
+            role="switch"
+            data-testid="training-fight-camp"
+            aria-label="I have a fight coming up"
+            checked={checked}
+            readOnly
+            onKeyDown={(event) => {
+              if (event.key !== " " && event.key !== "Enter") return;
+              event.preventDefault();
+              event.stopPropagation();
+              applyToggle(!checked);
+            }}
+            className="peer sr-only"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full bg-[#0c0e11] ring-1 ring-[#2a3124] transition peer-checked:bg-[#CBF805]/25 peer-checked:ring-[#CBF805]"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-1 h-6 w-6 rounded-full bg-[#9aa392] transition peer-checked:translate-x-6 peer-checked:bg-[#CBF805]"
+          />
+        </span>
       </label>
 
       <form data-testid="training-form" ref={cancelRef} action={cancelAction} className="hidden">
@@ -113,7 +142,7 @@ export function FightCampOptIn({
               required
               min={todayKey}
               defaultValue={fightDate}
-              className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base"
+              className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] px-4 py-3 text-base text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805]"
             />
           </label>
           <label className="block text-sm">
@@ -125,7 +154,7 @@ export function FightCampOptIn({
               maxLength={40}
               defaultValue={weightClass}
               placeholder="170 lb class"
-              className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base"
+              className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] px-4 py-3 text-base text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805]"
             />
           </label>
           <p className="text-xs text-muted">Camp turns on as soon as this fight is saved.</p>

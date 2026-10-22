@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { bikeLoggerHref } from "@/lib/timer-session";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { NextTrainAction } from "@/lib/train-next";
 
 const buttonClass =
@@ -8,7 +9,19 @@ const buttonClass =
 const stickyClass = "sticky top-0 z-30 md:top-14";
 
 export function NextSessionCta({ action }: { action: NextTrainAction }) {
-  const label = `Next: ${action.verb} ${action.title}`;
+  const label = `Next: ${action.verb} ${action.title}${action.progress ? ` · ${action.progress}` : ""}`;
+
+  if (action.draftId && action.partial) {
+    return (
+      <ContinueWorkoutButton
+        workoutId={action.draftId}
+        label={label}
+        className={`${buttonClass} ${stickyClass}`}
+        testId="training-next-session"
+        nextSession
+      />
+    );
+  }
 
   if (action.draftId) {
     return (

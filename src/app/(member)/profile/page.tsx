@@ -23,6 +23,7 @@ import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
 import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggle";
 import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { prisma } from "@/lib/prisma";
+import { shortBuildSha } from "@/lib/build-info";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
 export default async function ProfilePage() {
@@ -277,6 +278,9 @@ export default async function ProfilePage() {
           <p>SVG writes its own sessions. These are public ideas, not their programs.</p>
         </div>
       </details>
+      <p className="text-xs text-muted" data-build-sha>
+        Build {shortBuildSha() || "local"}
+      </p>
     </main>
   );
 }

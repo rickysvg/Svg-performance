@@ -1,23 +1,50 @@
 import Link from "next/link";
+import { CUSTOM_HOME_RESUME } from "@/lib/today-start";
 import { bikeLoggerHref } from "@/lib/timer-session";
-import { sessionMatchesPlannedDay } from "@/lib/workouts";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { getTodayGuide } from "@/lib/today";
 
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
+
+const resumeClass =
+  "touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black";
+
+function ResumeButton({
+  log,
+  className,
+}: {
+  log: { id: string; partial: boolean };
+  className: string;
+}) {
+  if (log.partial) {
+    return <ContinueWorkoutButton workoutId={log.id} label="Resume" className={className} />;
+  }
+  return (
+    <Link
+      href={`/training/log/${log.id}`}
+      data-prime-coach-audio
+      data-resume-workout
+      className={className}
+    >
+      Resume
+    </Link>
+  );
+}
 
 export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: boolean }) {
   const planned = (guide.today.plannedSessions ?? []).filter((session) => session.kind !== "rest");
   const first = planned[0];
   const extra = Math.max(0, planned.length - 1);
   const next = guide.today.nextSession;
-  const draft = guide.today.draft;
-  const draftIsFirst = Boolean(
-    draft &&
-      first?.dayId &&
-      draft.programDayId === first.dayId &&
-      (!first.day || sessionMatchesPlannedDay(draft, first.day)),
-  );
+  const resume = first?.dayId ? guide.today.resumeByDay?.[first.dayId] : undefined;
+  const customResume = guide.today.resumeByDay?.[CUSTOM_HOME_RESUME];
+  const otherResume = Object.entries(guide.today.resumeByDay ?? {}).find(
+    ([dayId]) =>
+      dayId !== first?.dayId &&
+      dayId !== CUSTOM_HOME_RESUME &&
+      !guide.today.completedDayIds?.includes(dayId),
+  )?.[1];
   const firstDone = Boolean(first?.dayId && guide.today.completedDayIds?.includes(first.dayId));
   const nextDone = Boolean(next?.dayId && guide.today.completedDayIds?.includes(next.dayId));
 
@@ -38,15 +65,18 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           >
             Subscribe
           </a>
-        ) : draft ? (
-          <Link
-            href={`/training/log/${draft.id}`}
-            data-prime-coach-audio
-            data-resume-workout
-            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          >
-            Resume
-          </Link>
+        ) : customResume ? (
+          <>
+            <ResumeButton log={customResume} className={resumeClass} />
+            {otherResume ? (
+              <ResumeButton
+                log={otherResume}
+                className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+              />
+            ) : null}
+          </>
+        ) : otherResume ? (
+          <ResumeButton log={otherResume} className={resumeClass} />
         ) : nextDone ? (
           <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
             Done
@@ -106,15 +136,8 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
           Done
         </p>
-      ) : draftIsFirst && draft ? (
-        <Link
-          href={`/training/log/${draft.id}`}
-          data-prime-coach-audio
-          data-resume-workout
-          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        >
-          Resume
-        </Link>
+      ) : resume ? (
+        <ResumeButton log={resume} className={resumeClass} />
       ) : first.dayId ? (
         <Link
           href={first.startHref ?? first.logHref ?? bikeLoggerHref(first.dayId)}
@@ -141,15 +164,17 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Open Train
         </Link>
       )}
-      {draft && !draftIsFirst ? (
-        <Link
-          href={`/training/log/${draft.id}`}
-          data-prime-coach-audio
-          data-resume-workout
+      {customResume && customResume.id !== resume?.id ? (
+        <ResumeButton
+          log={customResume}
           className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-        >
-          Resume
-        </Link>
+        />
+      ) : null}
+      {otherResume && otherResume.id !== customResume?.id ? (
+        <ResumeButton
+          log={otherResume}
+          className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+        />
       ) : null}
       {extra > 0 ? (
         <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>

@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/session";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { getNutritionEntryForUser, listSavedMealsForUser } from "@/lib/nutrition";
 import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
-import { deleteNutritionEntryAction } from "@/app/actions/nutrition";
+import { DeleteNutritionButton } from "@/components/nutrition/DeleteNutritionButton";
 
 export default async function NutritionEntryPage({
   params,
@@ -30,12 +30,7 @@ export default async function NutritionEntryPage({
         Back to nutrition
       </Link>
       <NutritionEntryForm savedMeals={savedMeals} entry={entry} />
-      <form action={deleteNutritionEntryAction}>
-        <input type="hidden" name="entryId" value={entry.id} />
-        <button type="submit" className="text-sm text-danger underline-offset-4 hover:underline">
-          Delete this entry
-        </button>
-      </form>
+      <DeleteNutritionButton entryId={entry.id} />
     </main>
   );
 }

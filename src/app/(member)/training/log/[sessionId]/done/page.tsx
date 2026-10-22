@@ -15,7 +15,7 @@ import {
 } from "@/lib/workout-complete";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
 import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
-import { loggedSetSome } from "@/lib/logged-work";
+import { exerciseSetProgress, loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 
 export default async function WorkoutDonePage({
@@ -72,6 +72,10 @@ export default async function WorkoutDonePage({
           date: view.session.performedAt,
           timeZone: tz,
         })}
+        exerciseProgress={exerciseSetProgress(
+          view.session.programDay?.exercises ?? [],
+          view.session.sets,
+        ).filter((row) => row.ticked > 0 || row.planned > 0)}
         summary={buildSessionSummary({
           title: memberFacingTitle(view.session.title),
           programDayTitle: view.session.programDay?.title,

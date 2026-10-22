@@ -11,6 +11,8 @@ import {
   updateWorkoutSessionForUser,
 } from "@/lib/workouts";
 import { APP_TIMEZONE } from "@/lib/timezone";
+import { CUSTOM_HOME_RESUME } from "@/lib/today-start";
+import { addedPrescriptionKey } from "@/lib/logger-insert";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import { listRuntimeKnowledgeFiles, loadKnowledgeBase } from "@/lib/coach/knowledge";
 
@@ -99,6 +101,15 @@ describe("home aggregation and weekly activity", () => {
     expect(session.plannedSetCount).toBeGreaterThan(1);
     const now = new Date();
     const one = session.sets[0];
+    const mode =
+      one?.logMode === "timed" ||
+      one?.logMode === "timed_round" ||
+      one?.logMode === "load_timed" ||
+      one?.logMode === "reps_only" ||
+      one?.logMode === "load_reps"
+        ? one.logMode
+        : "load_reps";
+    const timed = mode === "timed" || mode === "timed_round" || mode === "load_timed";
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
@@ -110,15 +121,21 @@ describe("home aggregation and weekly activity", () => {
         {
           exerciseName: one?.exerciseName || "Goblet squat",
           setNumber: one?.setNumber || 1,
-          reps: 8,
-          loadValue: 30,
+          reps: timed && mode !== "load_timed" ? null : 8,
+          loadValue: mode === "reps_only" || mode === "timed" || mode === "timed_round" ? null : 30,
           loadUnit: "lb",
+          logMode: mode,
+          durationSeconds: timed ? 45 : null,
           completed: true,
         },
       ],
     });
     const partialSave = await getHomeToday(user.id, now);
     expect(partialSave.loggedOnSelected).toBeNull();
+    expect(partialSave.resumeByDay[program.days[0].id]).toMatchObject({
+      id: session.id,
+      partial: true,
+    });
     expect(
       await completedProgramDayIdsOnDay(user.id, [program.days[0].id], now, APP_TIMEZONE),
     ).toEqual([]);
@@ -286,6 +303,60 @@ describe("home aggregation and weekly activity", () => {
         });
       }
     }
+  });
+
+  it("resumes a ticked custom draft that has no planned day", async () => {
+    const user = await makeUser("custom-draft@example.com");
+    const now = new Date();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Garage finisher",
+        performedAt: now,
+        status: "draft",
+        sets: {
+          create: [
+            {
+              exerciseName: "Curl",
+              setNumber: 1,
+              reps: 10,
+              loadUnit: "lb",
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Untouched custom",
+        performedAt: new Date(now.getTime() + 1000),
+        status: "draft",
+        sets: {
+          create: [
+            {
+              exerciseName: "Curl",
+              setNumber: 1,
+              reps: 8,
+              loadUnit: "lb",
+              completed: false,
+              prescriptionKey: addedPrescriptionKey({
+                exerciseName: "Curl",
+                reps: "8",
+                restSeconds: 60,
+              }),
+              logMode: "load_reps",
+            },
+          ],
+        },
+      },
+    });
+    const today = await getHomeToday(user.id, now);
+    expect(today.resumeByDay[CUSTOM_HOME_RESUME]).toMatchObject({
+      id: session.id,
+      partial: false,
+    });
   });
 });
 

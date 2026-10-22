@@ -89,7 +89,7 @@ export default async function HistoryPage() {
                     {names.join(" · ")}
                   </p>
                 ) : null}
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
                   {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} · {label}
                   {bagLine ? ` · ${bagLine}` : ` · ${setCount} set${setCount === 1 ? "" : "s"}`}
                   {difficultyLabel(session.difficultyRating)

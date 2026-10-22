@@ -7,7 +7,11 @@ import { selectShareStats, workoutStreakDays } from "@/lib/share-card";
 
 export async function getShareCardView(userId: string, sessionId: string) {
   const session = await getOwnWorkoutSessionOrNull(sessionId, userId);
-  if (!session || session.status !== "complete" || !sessionHasLoggedWork(session.sets)) {
+  if (
+    !session ||
+    (session.status !== "complete" && session.status !== "partial") ||
+    !sessionHasLoggedWork(session.sets)
+  ) {
     return null;
   }
   const profile = await getProfileForUser(userId);

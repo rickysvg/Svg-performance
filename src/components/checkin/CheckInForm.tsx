@@ -100,7 +100,7 @@ export function CheckInForm({
           required
           defaultValue={suggestedWeight == null ? "" : formatOneDecimal(suggestedWeight)}
           placeholder="175"
-          className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
+          className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] px-4 py-4 text-base text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805]"
         />
       </label>
       <label className="block text-sm font-semibold">
@@ -116,7 +116,7 @@ export function CheckInForm({
           aria-label="Body fat percent, optional"
           defaultValue={suggestedBodyFat ?? ""}
           data-checkin-body-fat
-          className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
+          className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] px-4 py-4 text-base text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805]"
         />
       </label>
 
@@ -133,7 +133,7 @@ export function CheckInForm({
           rows={2}
           maxLength={400}
           placeholder="Optional. What happened, and what still hurts?"
-          className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base"
+          className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805] px-4 py-3 text-base"
         />
       </label>
 
@@ -168,7 +168,7 @@ export function CheckInForm({
           rows={2}
           maxLength={600}
           placeholder="What moved forward?"
-          className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base"
+          className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805] px-4 py-3 text-base"
         />
       </label>
       <label className="block text-sm font-semibold">
@@ -179,7 +179,7 @@ export function CheckInForm({
           rows={2}
           maxLength={600}
           placeholder="What got in the way?"
-          className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base"
+          className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805] px-4 py-3 text-base"
         />
       </label>
 
@@ -192,7 +192,7 @@ export function CheckInForm({
           type="file"
           accept="video/mp4,video/webm,video/quicktime,.mp4,.mov,.webm"
           onChange={onFileChange}
-          className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm"
+          className="w-full rounded-2xl border border-line bg-[#0c0e11] text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805] px-4 py-3 text-sm"
         />
         <input type="hidden" name="durationSeconds" value={duration} />
         {fileName ? <p className="text-xs text-muted">{fileName} · {duration}s</p> : null}

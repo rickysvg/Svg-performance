@@ -5,6 +5,7 @@ import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import {
+  exerciseSetProgress,
   formatSetProgress,
   prescribedSetTotal,
   resolvedPlannedSetCount,
@@ -65,6 +66,8 @@ export type CalendarActivity = {
   heavy?: boolean;
   /** "4 sets" or "1/4 sets". Empty when the plan has no prescribed sets. */
   setCountLabel?: string;
+  /** Per-exercise tick counts when a log is matched to this card. */
+  exercises?: { name: string; ticked: number; planned: number; state: "complete" | "partial" | "open" }[];
   /** A saved workout applied to this day. It is not a program session, so it cannot be moved. */
   customPlan?: boolean;
   customPlanId?: string;
@@ -508,6 +511,10 @@ async function loadCalendarSchedule(
             ? formatSetProgress(ticked, 0)
             : "";
       const sessionDone = matched ? offPlanSessionDone(matched, dose, plannedNames) : false;
+      const exerciseRows =
+        matched && ticked > 0
+          ? exerciseSetProgress(session.day?.exercises ?? [], matched.sets)
+          : [];
       const partial = Boolean(matched) && !sessionDone && ticked > 0;
       const dayHasPartialWork = dayLogs.some((log) => logIsOpenPartial(log, planByDay));
       const href =
@@ -552,6 +559,7 @@ async function loadCalendarSchedule(
         weekday: calendarWeekday,
         heavy: Boolean(session.heavy),
         setCountLabel,
+        exercises: exerciseRows.length > 0 ? exerciseRows : undefined,
       });
     }
     for (const log of dayLogs) {
@@ -576,6 +584,7 @@ async function loadCalendarSchedule(
         programDayId: log.programDayId ?? undefined,
         weekday: calendarWeekday,
         setCountLabel,
+        exercises: ticked > 0 ? exerciseSetProgress(log.programDay?.exercises ?? [], log.sets) : undefined,
       });
     }
   }

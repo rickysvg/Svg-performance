@@ -1,6 +1,14 @@
 import { isImmersiveTrainingPath } from "@/lib/member-nav";
 
-const COACH_FAB_FORM_PREFIXES = ["/vip/apply", "/checkin", "/onboarding", "/profile"];
+const COACH_FAB_FORM_PREFIXES = [
+  "/vip/apply",
+  "/checkin",
+  "/onboarding",
+  "/profile",
+  "/nutrition",
+  "/book",
+  "/progress",
+];
 
 export const AI_COACHES = [
   {
@@ -148,6 +156,27 @@ export function resolveAiCoach(id?: string | null): AiCoach {
   return AI_COACHES.find((coach) => coach.id === id) ?? AI_COACHES[0];
 }
 
+/** Name on an old reply. Unknown authors stay "Coach" instead of the current coach. */
+export function coachReplyLabel(authorCoachId?: string | null) {
+  if (!authorCoachId || !isAiCoachId(authorCoachId)) return "Coach";
+  return resolveAiCoach(authorCoachId).name;
+}
+
+/** Timestamp to store when the portrait actually changes. Dismiss and a repeat pick leave it. */
+export function coachChangedAtOnSwitch(input: {
+  previousId?: string | null;
+  nextId?: string | null;
+  previousChangedAt?: Date | null;
+  now?: Date;
+}) {
+  const next = input.nextId?.trim() ?? "";
+  const prev = input.previousId?.trim() ?? "";
+  if (!isAiCoachId(next) || !isAiCoachId(prev) || next === prev) {
+    return input.previousChangedAt ?? null;
+  }
+  return input.now ?? new Date();
+}
+
 export function resolveAiCoachByName(name?: string | null): AiCoach {
   const trimmed = name?.trim().toLowerCase();
   if (!trimmed) return resolveAiCoach();
@@ -254,6 +283,7 @@ export function shouldShowCoachFab(pathname: string) {
   if (path.startsWith("/coach")) return false;
   if (path === "/timer" || path.startsWith("/timer/")) return false;
   if (path === "/training" || path.startsWith("/training/log")) return false;
+  if (path === "/training/calendar" || path.startsWith("/training/calendar/")) return false;
   if (/^\/training\/[^/]+\/start\/?$/.test(path)) return false;
   if (isImmersiveTrainingPath(path)) return false;
   if (COACH_FAB_FORM_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {

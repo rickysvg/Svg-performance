@@ -137,14 +137,28 @@ describe("AI coach avatars", () => {
       createElement(CoachBubble, {
         speaker: "assistant",
         content: "Chin down.",
-        coachName: "Maya",
-        coachThumb: "/coaches/maya-thumb.webp",
+        coachName: "Skye",
+        coachThumb: "/coaches/skye-thumb.webp",
+        coachId: "maya",
       }),
     );
     expect(html).toContain("Maya");
     expect(html).toContain("/coaches/maya-thumb.webp");
     expect(html).toContain("ring-accent");
     expect(html).not.toContain(">SVG Coach<");
+    expect(html).not.toContain("skye-thumb");
+
+    const unlabeled = renderToStaticMarkup(
+      createElement(CoachBubble, {
+        speaker: "assistant",
+        content: "Chin down.",
+        coachName: "Maya",
+        coachThumb: "/coaches/maya-thumb.webp",
+      }),
+    );
+    expect(unlabeled).toContain("Coach");
+    expect(unlabeled).not.toContain("Maya");
+    expect(unlabeled).not.toContain("maya-thumb");
   });
 
   it("shows the floating coach on signed-in pages and hides it on the coach screen", () => {
@@ -159,9 +173,12 @@ describe("AI coach avatars", () => {
     expect(shouldShowCoachFab("/onboarding")).toBe(false);
     expect(shouldShowCoachFab("/onboarding/plan")).toBe(false);
     expect(shouldShowCoachFab("/onboarding/deeper")).toBe(false);
-    expect(shouldShowCoachFab("/training/calendar")).toBe(true);
+    expect(shouldShowCoachFab("/training/calendar")).toBe(false);
     expect(shouldShowCoachFab("/bagwork")).toBe(true);
-    expect(shouldShowCoachFab("/nutrition")).toBe(true);
+    expect(shouldShowCoachFab("/nutrition")).toBe(false);
+    expect(shouldShowCoachFab("/nutrition/abc")).toBe(false);
+    expect(shouldShowCoachFab("/book")).toBe(false);
+    expect(shouldShowCoachFab("/progress")).toBe(false);
     expect(shouldShowCoachFab("/profile")).toBe(false);
     expect(shouldShowCoachFab("/profile/delete")).toBe(false);
     expect(shouldShowCoachFab("/learn")).toBe(true);
@@ -253,6 +270,9 @@ describe("coach choice persistence", () => {
     const dismissed = await dismissCoachChoiceForUser(user.id);
     expect(dismissed.coachChoiceAt).toBeTruthy();
     expect(dismissed.aiCoachId).toBe("skye");
+    expect(
+      (await prisma.profile.findUnique({ where: { userId: user.id } }))?.aiCoachChangedAt,
+    ).toBeNull();
     expect(needsCoachChoicePrompt(dismissed)).toBe(false);
     expect(resolveAiCoach(dismissed.aiCoachId).id).toBe("skye");
 
@@ -262,6 +282,11 @@ describe("coach choice persistence", () => {
     });
     expect(chosen.aiCoachId).toBe("maya");
     expect(chosen.coachingStyle).toBe("technical");
+    const switched = await prisma.profile.findUnique({ where: { userId: user.id } });
+    expect(switched?.aiCoachChangedAt).toBeTruthy();
+    await saveCoachChoiceForUser(user.id, { aiCoachId: "maya", coachingStyle: "hype" });
+    const repeat = await prisma.profile.findUnique({ where: { userId: user.id } });
+    expect(repeat?.aiCoachChangedAt?.getTime()).toBe(switched?.aiCoachChangedAt?.getTime());
 
     const edited = await updateProfileForUser(user.id, {
       displayName: "Legacy",

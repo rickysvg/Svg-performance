@@ -1,3 +1,5 @@
+import type { OpenLogRef } from "@/lib/today-start";
+
 export type TrainActionSession = {
   title: string;
   kind: string;
@@ -11,30 +13,56 @@ export type NextTrainAction = {
   title: string;
   dayId?: string;
   draftId?: string;
+  partial?: boolean;
+  ticked?: number;
+  planned?: number;
+  progress?: string;
   href?: string;
   startHref?: string;
 };
 
-/** First real session on the selected day. A draft on that session is Resume. */
+function openLog(value: OpenLogRef) {
+  if (!value) return undefined;
+  if (typeof value === "string") {
+    return {
+      id: value,
+      partial: false,
+      ticked: 0,
+      planned: 0,
+      progress: undefined as string | undefined,
+    };
+  }
+  return value;
+}
+
+/**
+ * First real session on the selected day.
+ * A short save and a draft are both Resume. A finished day is skipped.
+ */
 export function nextTrainAction(
   sessions: TrainActionSession[],
-  draftIdForDay: (dayId: string) => string | undefined,
+  draftIdForDay: (dayId: string) => OpenLogRef,
   completedDay?: (dayId: string) => boolean,
 ): NextTrainAction | null {
-  const target = sessions.find(
-    (session) =>
-      session.kind !== "rest" &&
-      (session.dayId || session.href) &&
-      !(session.dayId && completedDay?.(session.dayId)),
-  );
+  const target = sessions.find((session) => {
+    if (session.kind === "rest" || !(session.dayId || session.href)) return false;
+    const open = session.dayId ? openLog(draftIdForDay(session.dayId)) : undefined;
+    if (open?.partial) return true;
+    if (session.dayId && completedDay?.(session.dayId)) return false;
+    return true;
+  });
   if (!target) return null;
-  const draftId = target.dayId ? draftIdForDay(target.dayId) : undefined;
-  if (draftId) {
+  const open = target.dayId ? openLog(draftIdForDay(target.dayId)) : undefined;
+  if (open) {
     return {
       verb: "Resume",
       title: target.title,
       dayId: target.dayId,
-      draftId,
+      draftId: open.id,
+      partial: open.partial,
+      ticked: open.ticked,
+      planned: open.planned,
+      progress: open.progress,
       href: target.href,
       startHref: target.startHref,
     };

@@ -314,7 +314,7 @@ describe("scaled dose agreement", () => {
         sets: {
           create: Array.from({ length: dose }, (_, index) => ({
             exerciseName: "Swap kettlebell swing",
-            setNumber: (index % 20) + 1,
+            setNumber: index + 1,
             reps: 10,
             loadValue: 35,
             completed: true,
@@ -372,7 +372,7 @@ describe("scaled dose agreement", () => {
         sets: {
           create: Array.from({ length: dose }, (_, index) => ({
             exerciseName: "Swap kettlebell swing",
-            setNumber: (index % 20) + 1,
+            setNumber: index + 1,
             reps: 10,
             loadValue: 35,
             completed: true,

@@ -68,6 +68,15 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
               {activity.setCountLabel}
             </span>
           ) : null}
+          {activity.exercises && activity.exercises.length > 0 ? (
+            <span className="mt-1 block space-y-0.5 text-xs text-muted" data-exercise-progress>
+              {activity.exercises.map((exercise) => (
+                <span key={exercise.name} className="block">
+                  {exercise.name} · {exercise.ticked}/{exercise.planned} · {exercise.state}
+                </span>
+              ))}
+            </span>
+          ) : null}
           <span className="mt-0.5 block text-sm text-muted">{activity.subtitle}</span>
         </span>
         <span className="text-lg text-muted" aria-hidden>

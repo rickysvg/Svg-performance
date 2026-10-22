@@ -26,13 +26,13 @@ export function LeaderboardOptInForm({ optedIn }: { optedIn: boolean }) {
         academy members only.
       </p>
       <StatusBanner error={state.error} success={state.success} />
-      <label className="flex items-start gap-3 rounded-xl border border-line bg-white p-3">
+      <label className="flex items-start gap-3 rounded-xl border border-line bg-[#0c0e11] p-3 text-[#f3f4ef]">
         <input
           data-testid="profile-leaderboard-opt-in"
           type="checkbox"
           name="leaderboardOptIn"
           defaultChecked={optedIn}
-          className="mt-1 h-5 w-5 accent-accent"
+          className="mt-1 h-5 w-5 accent-[#CBF805]"
         />
         <span className="text-sm">
           Show my display name on the monthly workout leaderboard.
