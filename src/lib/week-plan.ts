@@ -694,6 +694,35 @@ export function bikeChipLogHref(
   return work[0]?.logHref ?? null;
 }
 
+/** Program days on this chip, in plan order. Rest slots are not sessions. */
+export function plannedChipSessionIds(
+  dayPlan: DayPlan,
+  catalog: {
+    strength?: { days: CatalogDayLike[] } | null;
+    skill?: { days: CatalogDayLike[] } | null;
+  },
+) {
+  return resolvePlanSessions(dayPlan, catalog)
+    .filter((session) => session.kind !== "rest" && session.dayId)
+    .map((session) => session.dayId as string);
+}
+
+export function withChipSessionIds<T extends { date: Date }>(
+  days: T[],
+  prefs: PlannerPrefs,
+  catalog: {
+    strength?: { days: CatalogDayLike[] } | null;
+    skill?: { days: CatalogDayLike[] } | null;
+  },
+  timeZone = APP_TIMEZONE,
+  swaps: WeekPlanSwap[] = [],
+): Array<T & { sessionIds: string[] }> {
+  return days.map((day) => ({
+    ...day,
+    sessionIds: plannedChipSessionIds(planForDate(prefs, day.date, timeZone, swaps), catalog),
+  }));
+}
+
 export function withBikeChipLogHrefs<T extends { date: Date; summary: string }>(
   days: T[],
   prefs: PlannerPrefs,

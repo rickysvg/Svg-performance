@@ -38,6 +38,7 @@ export function PlanSessionCard({
   draftId,
   calendarWeekday,
   completed = false,
+  dateLabel,
 }: {
   session: ResolvedPlanSession;
   highlight?: boolean;
@@ -47,6 +48,8 @@ export function PlanSessionCard({
   calendarWeekday?: string;
   /** A logged session stays on the day it was finished. */
   completed?: boolean;
+  /** Civil date this card belongs to, so a swipe does not make it look like another week. */
+  dateLabel?: string;
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
@@ -73,10 +76,20 @@ export function PlanSessionCard({
           : "border border-line bg-card text-foreground"
       }`}
     >
+      {dateLabel ? (
+        <p
+          data-plan-date
+          className={`font-display text-xs uppercase tracking-wide ${
+            highlight ? "text-highlighter" : "text-accent"
+          }`}
+        >
+          {dateLabel}
+        </p>
+      ) : null}
       <p
         className={`font-display text-xs uppercase ${
           highlight ? "text-highlighter" : "text-accent"
-        }`}
+        } ${dateLabel ? "mt-2" : ""}`}
       >
         {structure || `Session ${session.slot} · ${kind}`}
         {session.optional ? " · optional" : ""}

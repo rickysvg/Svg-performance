@@ -101,10 +101,13 @@ export function CalendarList({
   days,
   coachName,
   coachImage,
+  weekLabel = "This week",
 }: {
   days: CalendarDay[];
   coachName?: string;
   coachImage?: string;
+  /** Carousel label for the week these rows belong to. */
+  weekLabel?: string;
 }) {
   const tally = weekSessionTally(days);
   return (
@@ -112,7 +115,7 @@ export function CalendarList({
       {tally.total > 0 ? (
         <div>
           <p data-week-session-progress className="text-sm font-semibold">
-            This week: {tally.done} of {tally.total} sessions done
+            {weekLabel}: {tally.done} of {tally.total} sessions done
           </p>
           <p data-week-flexible className="mt-1 text-sm text-muted">
             Workouts are interchangeable through the week.

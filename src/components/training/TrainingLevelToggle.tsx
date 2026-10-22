@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { ScaleBand } from "@/lib/training-scale";
 
 const LEVELS: { id: ScaleBand; label: string }[] = [
@@ -20,6 +21,8 @@ export function TrainingLevelToggle({
   fromProfile: boolean;
   basePath?: string;
 }) {
+  const search = useSearchParams();
+  const day = search.get("day") || dayParam;
   return (
     <section
       data-level-toggle
@@ -36,7 +39,7 @@ export function TrainingLevelToggle({
       <div className="mt-3 grid grid-cols-3 gap-2">
         {LEVELS.map((level) => {
           const active = level.id === band;
-          const href = `${basePath}?day=${dayParam}&level=${level.id}`;
+          const href = `${basePath}?day=${day}&level=${level.id}`;
           return (
             <Link
               data-testid={`training-link-3-${level.id}`}
