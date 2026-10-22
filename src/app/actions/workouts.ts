@@ -149,6 +149,8 @@ export async function finishBikeLoggerAction(formData: FormData) {
   revalidatePath("/training/calendar");
   revalidatePath("/training/history");
   revalidatePath("/training/history/bike");
+  revalidatePath("/progress");
+  revalidatePath("/progress/streaks");
   revalidatePath(`/training/log/${session.id}`);
   revalidatePath(`/training/log/${session.id}/done`);
   if (session.status === "complete") {

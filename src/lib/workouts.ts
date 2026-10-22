@@ -899,6 +899,9 @@ export async function completeBikeLoggerSession(input: {
     }),
     input.userId,
   );
+  if (existing.status !== "draft") {
+    throw new AppError("WORKOUT", "This workout is already saved.");
+  }
   const profile = await getProfileForUser(input.userId);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const prescribed = Math.max(1, bikeTimerRoundCount(input.choice));
@@ -950,6 +953,9 @@ export async function completeBikeLoggerSession(input: {
     BIKE_LOGGER_SESSION_CAP_SECONDS,
     Math.max(1, bikeTimerSessionSeconds(input.choice, done)),
   );
+  const timerReady = await workoutTimerColumnsAvailable(prisma);
+  const priorTimer = timerReady ? await readWorkoutTimerFields(existing.id, prisma) : null;
+  const finishedAt = priorTimer?.finishedAt ?? existing.performedAt;
   const [, updated] = await prisma.$transaction([
     prisma.workoutSet.deleteMany({ where: { workoutSessionId: existing.id } }),
     prisma.workoutSession.update({
@@ -959,16 +965,11 @@ export async function completeBikeLoggerSession(input: {
         plannedSetCount,
         title: existing.title.trim() || input.choice.name,
         sets: { create: sets },
+        ...(timerReady ? { elapsedSeconds: elapsed, finishedAt, timerStartedAt: null } : {}),
       },
       include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
     }),
   ]);
-  if (await workoutTimerColumnsAvailable(prisma)) {
-    await prisma.workoutSession.update({
-      where: { id: existing.id },
-      data: { elapsedSeconds: elapsed, finishedAt: new Date(), timerStartedAt: null },
-    });
-  }
   return { ...updated, elapsedSeconds: elapsed };
 }
 

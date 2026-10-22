@@ -1032,3 +1032,26 @@ BEGIN
       ON "WorkoutSet"("workoutSessionId", "exerciseName", "setNumber");
   END IF;
 END $$;
+
+-- Past-day workout logs. Own block so it stays additive beside other WorkoutSession alters.
+-- Idempotent. Empty source and backfilled=false keep older sessions as live logs.
+DO $$
+BEGIN
+  IF to_regclass('public."WorkoutSession"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'source'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "source" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'backfilled'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "backfilled" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+END $$;

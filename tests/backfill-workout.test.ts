@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 import {
+  clearBackfillWriteFault,
   createBackfillWorkout,
   deleteBackfillWorkout,
+  faultNextBackfillWrite,
   previewBackfillDay,
   updateBackfillWorkout,
 } from "@/lib/backfill-workout";
@@ -49,6 +51,7 @@ function freeLog(userId: string, day: string, title: string, now = NOW, resoluti
 
 describe("log a past workout", () => {
   beforeEach(async () => {
+    clearBackfillWriteFault();
     await resetDatabase();
   });
 
@@ -208,6 +211,48 @@ describe("log a past workout", () => {
     expect(left).toHaveLength(1);
     expect(left[0]?.title).toBe("Only");
     expect(left[0]?.id).not.toBe(first.sessionId);
+  });
+
+  it("keeps the day's session when a replace fails while saving", async () => {
+    const user = await makeUser("backfill-rollback@example.com");
+    await onboard(user.id);
+    const first = await freeLog(user.id, "2026-10-20", "First");
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    faultNextBackfillWrite(() => {
+      throw new Error("replace failed");
+    });
+    await expect(freeLog(user.id, "2026-10-20", "Only", NOW, "replace")).rejects.toThrow(/replace failed/);
+    const left = await prisma.workoutSession.findMany({ where: { userId: user.id } });
+    expect(left).toHaveLength(1);
+    expect(left[0]?.id).toBe(first.sessionId);
+    expect(left[0]?.title).toBe("First");
+
+    const extra = await freeLog(user.id, "2026-10-20", "Second", NOW, "extra");
+    expect(extra.ok).toBe(true);
+    faultNextBackfillWrite(() => {
+      throw new Error("edit failed");
+    });
+    await expect(
+      updateBackfillWorkout({
+        userId: user.id,
+        sessionId: first.sessionId,
+        dayKey: "2026-10-20",
+        title: "Renamed",
+        notes: "",
+        rpe: null,
+        exercises: [{ name: "Heavy bag rounds", sets: 3, done: 3, reps: "180", logMode: "timed_round" }],
+        confirmed: true,
+        resolution: "replace",
+        now: NOW,
+      }),
+    ).rejects.toThrow(/edit failed/);
+    const after = await prisma.workoutSession.findMany({
+      where: { userId: user.id },
+      orderBy: { title: "asc" },
+    });
+    expect(after.map((row) => row.title)).toEqual(["First", "Second"]);
+    expect(after.find((row) => row.id === first.sessionId)?.title).toBe("First");
   });
 
   it("edits and deletes a backfill only after confirm, and only for the owner", async () => {

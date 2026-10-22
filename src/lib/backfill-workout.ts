@@ -247,10 +247,35 @@ function toCreate(sets: BackfillSetDraft[]) {
   }));
 }
 
-async function writeElapsed(sessionId: string, seconds: number, performedAt: Date) {
-  if (!(await workoutTimerColumnsAvailable(prisma))) return;
+/**
+ * One-shot seam so a test can throw after the replace delete and before the
+ * write. Production leaves it unset. The throw has to happen inside the
+ * transaction or the delete would already be committed.
+ */
+let backfillWriteFault: (() => void) | null = null;
+
+export function faultNextBackfillWrite(fault: () => void) {
+  backfillWriteFault = fault;
+}
+
+export function clearBackfillWriteFault() {
+  backfillWriteFault = null;
+}
+
+function throwIfBackfillWriteFault() {
+  const fault = backfillWriteFault;
+  backfillWriteFault = null;
+  if (fault) fault();
+}
+
+async function writeElapsedOn(
+  db: { workoutSession: { update: typeof prisma.workoutSession.update } },
+  sessionId: string,
+  seconds: number,
+  performedAt: Date,
+) {
   const elapsedSeconds = Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(1, Math.round(seconds)));
-  await prisma.workoutSession.update({
+  await db.workoutSession.update({
     where: { id: sessionId },
     data: { elapsedSeconds, finishedAt: performedAt, timerStartedAt: null },
   });
@@ -282,36 +307,42 @@ async function persistBackfill(input: {
       })),
     };
   }
-  if (input.resolution === "replace" && existing.length > 0) {
-    await prisma.workoutSession.deleteMany({
-      where: { userId: input.userId, id: { in: existing.map((row) => row.id) } },
-    });
-  }
   const status = backfillCompletionStatus({
     sets: input.sets,
     plannedSetCount: input.plannedSetCount,
     plannedNames: input.plannedNames,
   });
   const performedAt = performedAtForDayKey(input.dayKey, input.timeZone);
-  const created = await prisma.workoutSession.create({
-    data: {
-      userId: input.userId,
-      programDayId: input.programDayId,
-      savedWorkoutId: input.savedWorkoutId,
-      title: input.title,
-      performedAt,
-      notes: input.notes,
-      status,
-      plannedSetCount: input.plannedSetCount,
-      sessionRpe: input.rpe,
-      source: BACKFILL_SOURCE,
-      backfilled: true,
-      sets: { create: toCreate(input.sets) },
-    },
+  const replacing = input.resolution === "replace" && existing.length > 0;
+  const timerReady = await workoutTimerColumnsAvailable(prisma);
+  const created = await prisma.$transaction(async (tx) => {
+    if (replacing) {
+      await tx.workoutSession.deleteMany({
+        where: { userId: input.userId, id: { in: existing.map((row) => row.id) } },
+      });
+      throwIfBackfillWriteFault();
+    }
+    const row = await tx.workoutSession.create({
+      data: {
+        userId: input.userId,
+        programDayId: input.programDayId,
+        savedWorkoutId: input.savedWorkoutId,
+        title: input.title,
+        performedAt,
+        notes: input.notes,
+        status,
+        plannedSetCount: input.plannedSetCount,
+        sessionRpe: input.rpe,
+        source: BACKFILL_SOURCE,
+        backfilled: true,
+        sets: { create: toCreate(input.sets) },
+      },
+    });
+    if (timerReady && input.elapsedSeconds && input.elapsedSeconds > 0) {
+      await writeElapsedOn(tx, row.id, input.elapsedSeconds, performedAt);
+    }
+    return row;
   });
-  if (input.elapsedSeconds && input.elapsedSeconds > 0) {
-    await writeElapsed(created.id, input.elapsedSeconds, performedAt);
-  }
   if (status === "complete") {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }
@@ -583,11 +614,7 @@ export async function updateBackfillWorkout(input: {
       })),
     };
   }
-  if (input.resolution === "replace" && others.length > 0) {
-    await prisma.workoutSession.deleteMany({
-      where: { userId: input.userId, id: { in: others.map((row) => row.id) } },
-    });
-  }
+  const replacing = input.resolution === "replace" && others.length > 0;
   const built = setsForBackfillExercises(input.exercises, units);
   const status = backfillCompletionStatus({
     sets: built.sets,
@@ -595,9 +622,15 @@ export async function updateBackfillWorkout(input: {
     plannedNames: built.plannedNames,
   });
   const performedAt = performedAtForDayKey(input.dayKey, timeZone);
-  await prisma.$transaction([
-    prisma.workoutSet.deleteMany({ where: { workoutSessionId: session.id } }),
-    prisma.workoutSession.update({
+  await prisma.$transaction(async (tx) => {
+    if (replacing) {
+      await tx.workoutSession.deleteMany({
+        where: { userId: input.userId, id: { in: others.map((row) => row.id) } },
+      });
+      throwIfBackfillWriteFault();
+    }
+    await tx.workoutSet.deleteMany({ where: { workoutSessionId: session.id } });
+    await tx.workoutSession.update({
       where: { id: session.id },
       data: {
         title: cleanTitle(input.title, session.title),
@@ -610,8 +643,8 @@ export async function updateBackfillWorkout(input: {
         backfilled: true,
         sets: { create: toCreate(built.sets) },
       },
-    }),
-  ]);
+    });
+  });
   return { ok: true, sessionId: session.id, status };
 }
 

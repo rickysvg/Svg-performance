@@ -7,6 +7,7 @@ import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { loggerChoiceFromSession } from "@/lib/bike-timer-log";
 import { exerciseUsesBikeLogger } from "@/lib/timer-session";
 import { completeBikeLoggerSession, updateWorkoutSessionForUser } from "@/lib/workouts";
+import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import { getShareCardView } from "@/lib/share-card-data";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
 import { APP_LOAD_UNIT } from "@/lib/units";
@@ -59,6 +60,8 @@ describe("custom bike logger", () => {
     expect(saved.status).toBe("complete");
     expect(saved.sets.every((set) => set.exerciseName === "Assault bike intervals")).toBe(true);
     expect(saved.sets.every((set) => (set.durationSeconds ?? 0) <= 3600)).toBe(true);
+    const clock = await readWorkoutTimerFields(saved.id, prisma);
+    expect(clock.finishedAt?.toISOString()).toBe(session.performedAt.toISOString());
     const view = await getShareCardView(user.id, saved.id);
     expect(view).not.toBeNull();
     const tiles = workoutCompleteTiles({
@@ -171,5 +174,64 @@ describe("custom bike logger", () => {
     expect(saved.status).toBe("partial");
     expect(saved.plannedSetCount).toBe(8);
     expect(await getShareCardView(user.id, saved.id)).toBeNull();
+  });
+
+  it("leaves a finished session and its clock untouched", async () => {
+    const user = await makeUser("finished-bike@example.com");
+    const performedAt = new Date("2026-10-20T18:00:00.000Z");
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Custom bike",
+        performedAt,
+        status: "complete",
+        plannedSetCount: 1,
+        sets: {
+          create: {
+            exerciseName: "Squat",
+            setNumber: 1,
+            sortOrder: 0,
+            logMode: "strength",
+            loadUnit: "lb",
+            reps: 5,
+            completed: true,
+          },
+        },
+      },
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { finishedAt: performedAt, elapsedSeconds: 600, timerStartedAt: null },
+    });
+    const choice = bikeChoiceById("tabata")!;
+    await expect(
+      completeBikeLoggerSession({
+        userId: user.id,
+        workoutId: session.id,
+        choice,
+        roundsCompleted: 8,
+      }),
+    ).rejects.toThrow(/already saved/i);
+
+    await prisma.workoutSession.update({ where: { id: session.id }, data: { status: "partial" } });
+    await expect(
+      completeBikeLoggerSession({
+        userId: user.id,
+        workoutId: session.id,
+        choice,
+        roundsCompleted: 8,
+      }),
+    ).rejects.toThrow(/already saved/i);
+
+    const row = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: session.id },
+      include: { sets: true },
+    });
+    expect(row.status).toBe("partial");
+    expect(row.performedAt.toISOString()).toBe(performedAt.toISOString());
+    expect(row.sets.map((set) => set.exerciseName)).toEqual(["Squat"]);
+    const clock = await readWorkoutTimerFields(session.id, prisma);
+    expect(clock.finishedAt?.toISOString()).toBe(performedAt.toISOString());
+    expect(clock.elapsedSeconds).toBe(600);
   });
 });
