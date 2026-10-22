@@ -267,6 +267,16 @@ export function memberWeekIndex(date: Date, anchor: Date, timeZone = APP_TIMEZON
   return delta > 0 ? delta : 0;
 }
 
+/** Steady aerobic bike. Easy-cardio rows open this logger, not the round timer. */
+export function easyBikeProgramDayNumber() {
+  return BIKE_SESSIONS.find((session) => session.id === "jamieson-cardiac")?.programDayNumber ?? 8;
+}
+
+/** Submax endurance bike. Moderate-cardio rows open this logger, not the round timer. */
+export function moderateBikeProgramDayNumber() {
+  return BIKE_SESSIONS.find((session) => session.id === "daru-75-endurance")?.programDayNumber ?? 7;
+}
+
 export function pickBikeSession(index = 0): BikeSession {
   return BIKE_SESSIONS[index % BIKE_SESSIONS.length] ?? DEFAULT_BIKE_SESSION;
 }

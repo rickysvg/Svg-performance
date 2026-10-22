@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { logBagworkSessionAction } from "@/app/actions/bagwork";
-import { startRoundLogAction } from "@/app/actions/workouts";
+import { logBikeTimerAction, startRoundLogAction } from "@/app/actions/workouts";
 import {
   DEFAULT_CUSTOM,
   DEFAULT_TIMER_PREFS,
   TIMER_CUSTOM_STORAGE_KEY,
   TIMER_PREFS_STORAGE_KEY,
-  TIMER_MODES,
+  TIMER_SURFACE_MODES,
   type TimerConfig,
-  type TimerMode,
   type TimerPhase,
   type TimerPreset,
+  type TimerSurfaceMode,
   completedWorkRounds,
   configForPreset,
   formatTimerClock,
@@ -24,15 +24,34 @@ import {
   shouldPlayPhaseBell,
   shouldPlayWarningBeep,
 } from "@/lib/round-timer";
+import {
+  bikeChoiceById,
+  bikeTimerRoundCount,
+  choiceToken,
+  customBikeChoice,
+  sessionWithChoice,
+} from "@/lib/bike-chooser";
+import { DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
 import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
-import { TimerDurationFields } from "@/components/timer/TimerDurationFields";
+import { TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
+import { CountdownFace } from "@/components/timer/CountdownFace";
+import { useGoCountdown } from "@/components/timer/useGoCountdown";
+import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 
-const MODE_LABEL: Record<TimerMode, string> = {
+const MODE_LABEL: Record<TimerSurfaceMode, string> = {
   bag: "Bag",
   pads: "Pads",
   sparring: "Sparring",
   grappling: "Grappling",
+  bike: "Assault Bike",
 };
+
+const BIKE_PRESETS = [
+  ["tabata", "Tabata", "8×20s/10s"],
+  ["alactic-10", "10×10s", "Sprints"],
+  ["fight-rounds", "Fight sim", "5 rounds"],
+  ["custom", "Custom", "Set your own"],
+] as const;
 
 function playBell() {
   playSynthCue(660, 0.12, 0.7);
@@ -73,7 +92,7 @@ export function RoundTimer({
   onClose?: () => void;
   titleId?: string;
   /** Session type for this entry. Wins over the last mode saved on this phone. */
-  mode?: TimerMode | null;
+  mode?: TimerSurfaceMode | null;
 }) {
   const launchConfig = launch
     ? sanitizeTimerConfig({
@@ -95,6 +114,9 @@ export function RoundTimer({
   const [pauseAccumulatedMs, setPauseAccumulatedMs] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [customDraft, setCustomDraft] = useState(launchConfig ?? DEFAULT_CUSTOM);
+  const [bikePreset, setBikePreset] = useState<(typeof BIKE_PRESETS)[number][0]>("tabata");
+  const [bikeCustom, setBikeCustom] = useState({ rounds: 8, workSeconds: 20, restSeconds: 10 });
+  const [bikeFinished, setBikeFinished] = useState(0);
   const [notes, setNotes] = useState("");
   const [rpe, setRpe] = useState("");
   const [logState, setLogState] = useState<{ ok: true; sessionId: string } | { ok: false; error: string } | null>(
@@ -102,6 +124,7 @@ export function RoundTimer({
   );
   const [logHint, setLogHint] = useState("");
   const logged = useRef(false);
+  const modesRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef("");
   const rpeRef = useRef("");
   useEffect(() => {
@@ -111,16 +134,28 @@ export function RoundTimer({
   const prev = useRef<{ remaining: number; phase: TimerPhase }>({ remaining: 0, phase: "idle" });
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
   const routeRelease = useRef<(() => void) | null>(null);
+  const {
+    active: countdownActive,
+    digit: countdownDigit,
+    begin: beginCountdown,
+    cancel: cancelCountdown,
+  } = useGoCountdown();
 
   useEffect(() => {
     if (launch) {
       const id = window.setTimeout(() => {
-        const stamp = Date.now();
-        setStartedAtMs(stamp);
-        setPausedAtMs(null);
-        setPauseAccumulatedMs(0);
-        setNowMs(stamp);
         setHydrated(true);
+        beginCountdown({
+          bell: true,
+          vibrate: true,
+          onGo: () => {
+            const stamp = Date.now();
+            setStartedAtMs(stamp);
+            setPausedAtMs(null);
+            setPauseAccumulatedMs(0);
+            setNowMs(stamp);
+          },
+        });
       }, 0);
       return () => window.clearTimeout(id);
     }
@@ -132,13 +167,25 @@ export function RoundTimer({
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
-  }, [launch, mode]);
+  }, [beginCountdown, launch, mode]);
 
   useEffect(() => {
     if (!hydrated || launch) return;
     window.localStorage.setItem(TIMER_PREFS_STORAGE_KEY, JSON.stringify(prefs));
     window.localStorage.setItem(TIMER_CUSTOM_STORAGE_KEY, JSON.stringify(prefs.custom));
   }, [hydrated, launch, prefs]);
+
+  useEffect(() => {
+    if (launch) return;
+    const row = modesRef.current;
+    const selected = row?.querySelector<HTMLElement>(`[data-timer-mode="${prefs.mode}"]`);
+    if (!row || !selected) return;
+    const pad = 4;
+    const left = selected.offsetLeft - pad;
+    const right = selected.offsetLeft + selected.offsetWidth + pad;
+    if (left < row.scrollLeft) row.scrollLeft = Math.max(0, left);
+    else if (right > row.scrollLeft + row.clientWidth) row.scrollLeft = right - row.clientWidth;
+  }, [launch, prefs.mode, hydrated]);
 
   const config = useMemo(
     () => configForPreset(prefs.preset, prefs.preset === "custom" ? customDraft : prefs.custom),
@@ -238,10 +285,14 @@ export function RoundTimer({
       if (prefs.warningBeep && shouldPlayWarningBeep(previous.remaining, resolved.remainingSeconds)) {
         playWarning();
       }
-      if (prefs.bell && shouldPlayPhaseBell(previous.phase, resolved.phase)) {
+      if (
+        prefs.bell &&
+        previous.phase !== "idle" &&
+        shouldPlayPhaseBell(previous.phase, resolved.phase)
+      ) {
         playBell();
       }
-      if (prefs.vibrate && previous.phase !== resolved.phase && resolved.phase !== "idle") {
+      if (prefs.vibrate && previous.phase !== "idle" && previous.phase !== resolved.phase && resolved.phase !== "idle") {
         try {
           navigator.vibrate?.(resolved.phase === "rest" ? [80, 40, 80] : 120);
         } catch {
@@ -252,15 +303,28 @@ export function RoundTimer({
     prev.current = { remaining: resolved.remainingSeconds, phase: resolved.phase };
   }, [prefs.bell, prefs.vibrate, prefs.warningBeep, resolved.phase, resolved.remainingSeconds, startedAtMs]);
 
+  function goLive(resume: boolean, pausedAt: number | null) {
+    const stamp = Date.now();
+    if (resume && pausedAt != null) {
+      setPauseAccumulatedMs((value) => value + (stamp - pausedAt));
+      setPausedAtMs(null);
+      setNowMs(stamp);
+      return;
+    }
+    setStartedAtMs(stamp);
+    setPausedAtMs(null);
+    setPauseAccumulatedMs(0);
+    setNowMs(stamp);
+  }
+
   const startOrPause = useCallback(() => {
+    if (countdownActive) return;
     primeMediaOutput();
     if (!routeRelease.current) routeRelease.current = holdMediaRoute();
     const stamp = Date.now();
+    const cues = { bell: prefs.bell, vibrate: prefs.vibrate };
     if (startedAtMs == null || resolved.phase === "done") {
-      setStartedAtMs(stamp);
-      setPausedAtMs(null);
-      setPauseAccumulatedMs(0);
-      setNowMs(stamp);
+      beginCountdown({ ...cues, onGo: () => goLive(false, null) });
       return;
     }
     if (pausedAtMs == null) {
@@ -268,12 +332,12 @@ export function RoundTimer({
       setNowMs(stamp);
       return;
     }
-    setPauseAccumulatedMs((value) => value + (stamp - pausedAtMs));
-    setPausedAtMs(null);
-    setNowMs(stamp);
-  }, [pausedAtMs, resolved.phase, startedAtMs]);
+    const paused = pausedAtMs;
+    beginCountdown({ ...cues, onGo: () => goLive(true, paused) });
+  }, [beginCountdown, countdownActive, pausedAtMs, prefs.bell, prefs.vibrate, resolved.phase, startedAtMs]);
 
   function reset() {
+    cancelCountdown();
     routeRelease.current?.();
     routeRelease.current = null;
     setStartedAtMs(null);
@@ -291,10 +355,25 @@ export function RoundTimer({
   const workTheme = resolved.phase !== "rest";
   const primaryLabel =
     startedAtMs == null || resolved.phase === "done" ? "Start" : pausedAtMs ? "Start" : "Pause";
+  const bikeMode = prefs.mode === "bike";
+  const bikeChoice =
+    bikePreset === "custom"
+      ? customBikeChoice({
+          workSeconds: bikeCustom.workSeconds,
+          restSeconds: bikeCustom.restSeconds,
+          rounds: bikeCustom.rounds,
+        }) ?? bikeChoiceById("tabata")
+      : bikeChoiceById(bikePreset);
+  const bikeSession = bikeChoice ? sessionWithChoice(DEFAULT_BIKE_SESSION, bikeChoice) : null;
+  const bikeRounds = bikeChoice ? bikeTimerRoundCount(bikeChoice) : 0;
+  const noteBikeRounds = useCallback((count: number) => {
+    setBikeFinished((current) => (count > current ? count : current));
+  }, []);
 
   return (
     <div className="space-y-4 pb-4">
-      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-3 bg-background px-4 py-2">
+      <div className="sticky top-0 z-20 -mx-4 space-y-3 bg-background px-4 pb-2 pt-1">
+      <div className="flex items-center justify-between gap-3">
         {onClose ? (
           <button
             type="button"
@@ -320,6 +399,27 @@ export function RoundTimer({
           {launch ? launch.name : mode ? MODE_LABEL[prefs.mode] : "Round timer"}
         </h1>
         <span className="w-8" aria-hidden />
+      </div>
+
+      {launch ? null : (
+      <div ref={modesRef} data-timer-modes className="flex gap-1 overflow-x-auto rounded-full bg-card p-1">
+        {TIMER_SURFACE_MODES.map((item) => (
+          <button
+            key={item}
+            type="button"
+            data-testid={`chrome-mode-${item}`}
+            data-timer-mode={item}
+            aria-pressed={prefs.mode === item}
+            onClick={() => setPrefs((current) => ({ ...current, mode: item }))}
+            className={`inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-[11px] leading-none ${
+              prefs.mode === item ? "bg-accent text-black" : "text-muted"
+            }`}
+          >
+            {MODE_LABEL[item]}
+          </button>
+        ))}
+      </div>
+      )}
       </div>
 
       {launch ? (
@@ -363,25 +463,21 @@ export function RoundTimer({
         </div>
       ) : null}
 
-      {launch ? null : (
-      <div className="grid grid-cols-4 gap-1 rounded-full bg-card p-1">
-        {TIMER_MODES.map((mode) => (
-          <button
-            data-testid={`chrome-mode-${mode}`}
-            key={mode}
-            type="button"
-            onClick={() => setPrefs((current) => ({ ...current, mode }))}
-            className={`touch-target rounded-full px-1 text-[11px] ${
-              prefs.mode === mode ? "bg-black text-white" : "text-muted"
-            }`}
-          >
-            {MODE_LABEL[mode]}
-          </button>
-        ))}
-      </div>
+      {launch || onClose || !bikeMode || !bikeChoice ? null : bikeFinished < 1 ? (
+      <p className="text-sm text-muted" data-bike-round-log="waiting">
+        Finish a round before logging.
+      </p>
+      ) : (
+      <form action={logBikeTimerAction} data-bike-round-log="">
+        <input type="hidden" name="workout" value={choiceToken(bikeChoice)} />
+        <input type="hidden" name="rounds" value={Math.min(bikeFinished, bikeRounds)} />
+        <button type="submit" className="touch-target w-full rounded-full bg-accent text-sm uppercase tracking-wide text-black">
+          {`LOG ${Math.min(bikeFinished, bikeRounds)} BIKE ROUNDS`}
+        </button>
+      </form>
       )}
 
-      {launch || onClose ? null : (
+      {launch || onClose || bikeMode ? null : (
       <form data-testid="chrome-round-log" action={startRoundLogAction} data-round-log="">
         <input type="hidden" name="mode" value={prefs.mode} />
         <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
@@ -401,7 +497,7 @@ export function RoundTimer({
       </form>
       )}
 
-      {launch ? null : (
+      {launch || bikeMode ? null : (
       <div className="grid grid-cols-3 gap-2">
         {(
           [
@@ -429,24 +525,79 @@ export function RoundTimer({
       </div>
       )}
 
-      {launch || prefs.preset === "custom" ? (
+      {bikeMode ? (
+        <div className="grid grid-cols-2 gap-2" data-bike-timer-presets>
+          {BIKE_PRESETS.map(([id, title, hint]) => (
+            <button
+              key={id}
+              type="button"
+              data-bike-preset={id}
+              onClick={() => {
+                setBikePreset(id);
+                setBikeFinished(0);
+              }}
+              className={`min-h-16 rounded-2xl px-2 py-3 text-center ${
+                bikePreset === id ? "bg-accent text-black" : "bg-card text-foreground"
+              }`}
+            >
+              <span className="block text-sm font-medium">{title}</span>
+              <span className="mt-1 block text-[11px] opacity-70">{hint}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {bikeMode && bikePreset === "custom" ? (
         <div className="rounded-2xl border border-line bg-card p-3">
-          <TimerDurationFields
-            rounds={customDraft.rounds}
-            workSeconds={customDraft.workSeconds}
-            restSeconds={customDraft.restSeconds}
+          <TimerDurationSteppers
+            rounds={bikeCustom.rounds}
+            workSeconds={bikeCustom.workSeconds}
+            restSeconds={bikeCustom.restSeconds}
+            roundsLabel="Sprints"
+            stepSeconds={5}
+            minSeconds={5}
+            onChange={(next) => {
+              setBikeCustom(next);
+              setBikeFinished(0);
+            }}
+          />
+        </div>
+      ) : null}
+
+      {!bikeMode && (launch || prefs.preset === "custom" || !launch) ? (
+        <div className="rounded-2xl border border-line bg-card p-3">
+          <TimerDurationSteppers
+            rounds={config.rounds}
+            workSeconds={config.workSeconds}
+            restSeconds={config.restSeconds}
             onChange={persistCustom}
           />
         </div>
       ) : null}
 
+      {bikeMode && bikeSession ? (
+        <BikeSetTimer
+          key={`${bikeChoice?.id ?? "bike"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}`}
+          session={bikeSession}
+          canStart
+          bell={prefs.bell}
+          vibrate={prefs.vibrate}
+          onSetComplete={() => {}}
+          onFinishedRounds={noteBikeRounds}
+        />
+      ) : null}
+
+      {bikeMode ? null : (
       <section
         data-round-clock
-        data-timer-phase={resolved.phase}
+        data-timer-phase={countdownActive ? "countdown" : resolved.phase}
         className={`rounded-[2rem] px-5 py-6 text-center ${
-          workTheme ? "bg-accent text-black" : "bg-black text-highlighter"
+          countdownActive ? "bg-black text-[#CBF805]" : workTheme ? "bg-accent text-black" : "bg-black text-highlighter"
         }`}
       >
+        {countdownActive && countdownDigit ? <CountdownFace digit={countdownDigit} /> : null}
+        {countdownActive ? null : (
+        <>
         <p className="font-display text-xs uppercase tracking-[0.12em]">
           Round {resolved.round} of {resolved.totalRounds}
         </p>
@@ -479,7 +630,10 @@ export function RoundTimer({
         <p className="mt-4 text-sm opacity-80">
           {resolved.phase === "done" ? resolved.nextLabel : `Next: ${resolved.nextLabel}`}
         </p>
+        </>
+        )}
       </section>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Toggle
@@ -502,10 +656,12 @@ export function RoundTimer({
         />
       </div>
 
+      {bikeMode ? null : (
       <div className="flex items-center justify-center gap-8">
         <button
           type="button"
           onClick={reset}
+          data-timer-reset
           className="flex flex-col items-center gap-2 text-xs uppercase tracking-wide"
         >
           <span className="flex h-16 w-16 items-center justify-center rounded-full border border-line text-xl">
@@ -552,6 +708,7 @@ export function RoundTimer({
           {primaryLabel}
         </button>
       </div>
+      )}
 
     </div>
   );

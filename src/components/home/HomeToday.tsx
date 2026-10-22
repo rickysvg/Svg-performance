@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { startSessionAction } from "@/app/actions/workouts";
-import { StartSubmit } from "@/components/training/StartTodayButton";
+import { bikeLoggerHref } from "@/lib/timer-session";
+import { sessionMatchesPlannedDay } from "@/lib/workouts";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import type { getTodayGuide } from "@/lib/today";
 
@@ -12,7 +12,14 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
   const extra = Math.max(0, planned.length - 1);
   const next = guide.today.nextSession;
   const draft = guide.today.draft;
-  const draftIsFirst = Boolean(draft && first && draft.programDayId === first.dayId);
+  const draftIsFirst = Boolean(
+    draft &&
+      first?.dayId &&
+      draft.programDayId === first.dayId &&
+      (!first.day || sessionMatchesPlannedDay(draft, first.day)),
+  );
+  const firstDone = Boolean(first?.dayId && guide.today.completedDayIds?.includes(first.dayId));
+  const nextDone = Boolean(next?.dayId && guide.today.completedDayIds?.includes(next.dayId));
 
   if (!first) {
     return (
@@ -40,20 +47,21 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           >
             Resume
           </Link>
+        ) : nextDone ? (
+          <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+            Done
+          </p>
         ) : next?.dayId ? (
-          <form
+          <Link
+            href={next.startHref ?? next.logHref ?? bikeLoggerHref(next.dayId)}
+            prefetch={false}
             data-testid="home-prime-coach-audio"
-            action={startSessionAction}
             data-prime-coach-audio
             data-open-bike-logger={next.logHref ? "home" : undefined}
-            className="mt-4"
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
           >
-            <input type="hidden" name="programDayId" value={next.dayId} />
-            <StartSubmit
-              label="Start next session"
-              className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-            />
-          </form>
+            Start next session
+          </Link>
         ) : next?.href ? (
           <Link
             href={next.href}
@@ -94,6 +102,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         >
           Subscribe
         </a>
+      ) : firstDone ? (
+        <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+          Done
+        </p>
       ) : draftIsFirst && draft ? (
         <Link
           href={`/training/log/${draft.id}`}
@@ -104,19 +116,16 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Resume
         </Link>
       ) : first.dayId ? (
-        <form
+        <Link
+          href={first.startHref ?? first.logHref ?? bikeLoggerHref(first.dayId)}
+          prefetch={false}
           data-testid="home-prime-coach-audio-2"
-          action={startSessionAction}
           data-prime-coach-audio
           data-open-bike-logger={first.logHref ? "home" : undefined}
-          className="mt-4"
+          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
         >
-          <input type="hidden" name="programDayId" value={first.dayId} />
-          <StartSubmit
-            label="Start"
-            className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          />
-        </form>
+          Start
+        </Link>
       ) : first.href ? (
         <Link
           href={first.href}

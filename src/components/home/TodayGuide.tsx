@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { getTodayGuide } from "@/lib/today";
-import { startSessionAction } from "@/app/actions/workouts";
-import { StartSubmit } from "@/components/training/StartTodayButton";
+import { bikeLoggerHref } from "@/lib/timer-session";
 import {
   estimateSessionMinutes,
   exerciseCountLabel,
@@ -23,11 +22,13 @@ const KIND_LABEL = {
 function SessionCta({
   dayId,
   draftId,
+  startHref,
   resumeLabel = "Resume",
   startLabel = "Start",
 }: {
   dayId?: string;
   draftId?: string;
+  startHref?: string;
   resumeLabel?: string;
   startLabel?: string;
 }) {
@@ -44,13 +45,14 @@ function SessionCta({
   }
   if (dayId) {
     return (
-      <form action={startSessionAction} data-prime-coach-audio className="mt-6">
-        <input type="hidden" name="programDayId" value={dayId} />
-        <StartSubmit
-          label={startLabel}
-          className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        />
-      </form>
+      <Link
+        href={startHref ?? bikeLoggerHref(dayId)}
+        prefetch={false}
+        data-prime-coach-audio
+        className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+      >
+        {startLabel}
+      </Link>
     );
   }
   return (
@@ -104,6 +106,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
           </p>
           <SessionCta
             dayId={next?.dayId}
+            startHref={next?.startHref}
             draftId={
               next?.dayId && today.draft?.programDayId === next.dayId
                 ? today.draft.id
@@ -135,6 +138,7 @@ export function TodayGuide({ guide }: { guide: Guide }) {
                 </p>
                 <SessionCta
                   dayId={session.dayId}
+                  startHref={session.startHref}
                   draftId={draft ? today.draft?.id : undefined}
                 />
               </article>

@@ -157,6 +157,17 @@ function pad2(value: number) {
   return String(value).padStart(2, "0");
 }
 
+/** Calendar date in the member's zone. Server UTC must not shift Wednesday night forward. */
+export function formatMemberDate(date: Date, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone,
+  }).format(date);
+}
+
 /** `datetime-local` value for an instant in the member's zone, not the server zone. */
 export function formatDateTimeLocal(date: Date, timeZone: string) {
   const parts = zonedParts(date, timeZone);

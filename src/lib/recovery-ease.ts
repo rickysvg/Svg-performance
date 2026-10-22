@@ -1,3 +1,4 @@
+import { easyBikeProgramDayNumber } from "@/lib/bike-sessions";
 import { canUseFeature } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { resolveAiCoach, type AiCoachId } from "@/lib/coaches";
@@ -6,6 +7,7 @@ import { sparringNeedsEase, type SparringLog } from "@/lib/outside-log";
 import { addZonedDays, dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import {
+  easyCardioSlot,
   planForDate,
   type DayPlan,
   type PlanSessionSlot,
@@ -29,15 +31,6 @@ const LIGHT_MOBILITY: PlanSessionSlot = {
   heavy: false,
 };
 
-const EASY_CARDIO: PlanSessionSlot = {
-  kind: "conditioning",
-  label: "Easy cardio",
-  title: "Easy cardio",
-  detail: "Walk, easy bike, or easy jump rope. Short and easy.",
-  href: "/timer",
-  heavy: false,
-};
-
 export function recoveryEaseReason(log: {
   bodyRating: number | null;
   soreSpots: readonly string[];
@@ -56,18 +49,41 @@ function isHeavy(session: PlanSessionSlot) {
   return Boolean(session.heavy) || session.kind === "strength";
 }
 
+/** Half the printed set count. One set stays one set. */
+export function halvedSetCount(sets: number) {
+  const safe = Number.isFinite(sets) ? Math.max(0, Math.round(sets)) : 0;
+  if (safe <= 1) return safe;
+  return Math.max(1, Math.round(safe / 2));
+}
+
 function lighten(session: PlanSessionSlot): PlanSessionSlot {
   if (session.kind === "rest" || session.kind === "mobility") return session;
   const title = session.title ?? session.label;
+  const keepsDay = Boolean(session.programSlug && session.dayNumber != null);
   return {
-    kind: session.kind === "conditioning" ? "conditioning" : session.kind,
+    kind: session.kind,
     label: `Light · ${session.label}`,
     title: title.startsWith("Light") ? title : `Light · ${title}`,
     detail: "Cut the work in half. Easy pace. No max efforts.",
-    href: "/timer",
+    ...(keepsDay
+      ? { programSlug: session.programSlug, dayNumber: session.dayNumber, halved: true }
+      : { href: "/timer" }),
     heavy: false,
     optional: true,
   };
+}
+
+/** Easy cardiac and a plain timer row are already light. A programmed bike day stays a logger. */
+function isAlreadyLight(session: PlanSessionSlot) {
+  if (session.kind === "mobility" || session.kind === "rest") return true;
+  if (
+    !session.heavy &&
+    session.programSlug &&
+    session.dayNumber === easyBikeProgramDayNumber()
+  ) {
+    return true;
+  }
+  return session.href === "/timer" && !session.programSlug;
 }
 
 /**
@@ -103,16 +119,14 @@ export function easeDayPlan(plan: DayPlan, reason: string): { plan: DayPlan; eas
         ...plan,
         active: true,
         summary: "Mobility+Cardio",
-        sessions: [LIGHT_MOBILITY, EASY_CARDIO],
+        sessions: [LIGHT_MOBILITY, easyCardioSlot()],
         skipReason: undefined,
       },
       "mobility",
     );
   }
 
-  const alreadyEasy = trainable.every(
-    (session) => session.kind === "mobility" || session.href === "/timer",
-  );
+  const alreadyEasy = trainable.every(isAlreadyLight);
   if (alreadyEasy && trainable.every((session) => !session.heavy)) {
     return noted(plan, "already-light");
   }

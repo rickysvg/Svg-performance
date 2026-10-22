@@ -56,7 +56,7 @@ export function bikeLoggerHref(dayId: string) {
 }
 
 export function isBikeLoggerHref(href?: string | null) {
-  return typeof href === "string" && /^\/training\/[^/]+\/start$/.test(href);
+  return typeof href === "string" && /^\/training\/[^/]+\/start(?:\?.*)?$/.test(href);
 }
 
 /** A bike tap opens the logger. A finished session stays on its day page. */

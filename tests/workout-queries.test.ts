@@ -1,13 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { getDemoProgram } from "@/lib/programs";
+import { prisma } from "@/lib/prisma";
 import {
   DRAFT_SESSION_TAKE,
   RECENT_SESSION_TAKE,
   countWorkoutSessionsForUser,
   listDraftSessionsForUser,
   listRecentSessionsForUser,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
 } from "@/lib/workouts";
 
 describe("narrow workout session queries", () => {
@@ -26,30 +28,41 @@ describe("narrow workout session queries", () => {
     const user = await makeUser("queries@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
+    const otherDay = program.days[1];
 
-    for (let index = 0; index < 5; index += 1) {
-      await prisma.workoutSession.create({
-        data: {
-          userId: user.id,
-          programDayId: day.id,
-          title: day.title,
-          performedAt: new Date(Date.now() - index * 86_400_000),
-          status: index < 3 ? "complete" : "draft",
-          sets: {
-            create: [
-              {
-                exerciseName: "Goblet squat",
-                setNumber: 1,
-                reps: 8,
-                loadValue: 30,
-                loadUnit: "lb",
-                completed: true,
-              },
-            ],
-          },
-        },
+    for (let index = 0; index < 4; index += 1) {
+      const session = await startWorkoutFromDay({
+        userId: user.id,
+        programDayId: day.id,
+        preferredUnits: "lb",
       });
+      if (index < 3) {
+        await updateWorkoutSessionForUser({
+          userId: user.id,
+          workoutId: session.id,
+          title: session.title,
+          performedAt: new Date(Date.now() - index * 86_400_000),
+          notes: "",
+          status: "complete",
+          sets: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 8,
+              loadValue: 30,
+              loadUnit: "lb",
+              completed: true,
+            },
+          ],
+        });
+      }
     }
+    // A second open log has to be a different programmed day. The same day reuses its draft.
+    await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: otherDay.id,
+      preferredUnits: "lb",
+    });
 
     const recentTwo = await listRecentSessionsForUser(user.id, 2);
     expect(recentTwo).toHaveLength(2);

@@ -4,7 +4,7 @@ import { memberFacingTitle } from "@/lib/member-copy";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
-import { listDraftSessionsForUser } from "@/lib/workouts";
+import { listDraftSessionsForUser, sessionMatchesPlannedDay } from "@/lib/workouts";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { activePlanWeekIndex, campPlanWeekIndex } from "@/lib/fight-camp";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
@@ -13,8 +13,7 @@ import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { DaySessionMeta } from "@/components/training/DaySessionMeta";
 import { SessionDetails } from "@/components/training/SessionDetails";
-import { startSessionAction } from "@/app/actions/workouts";
-import { StartSubmit } from "@/components/training/StartTodayButton";
+import { halvedSetCount } from "@/lib/recovery-ease";
 import {
   equipmentForExercises,
   estimateSessionMinutes,
@@ -50,12 +49,16 @@ import { textIsBikeWorkout, timerEntryModeFromText, type TimerEntryMode } from "
 
 export default async function TrainingDayPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ dayId: string }>;
+  searchParams: Promise<{ half?: string }>;
 }) {
   const user = await requireUser();
   const profile = await getProfileForUser(user.id);
   const { dayId } = await params;
+  const { half } = await searchParams;
+  const easedHalf = half === "1";
   const band = scaleBandFromPrefs({
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
@@ -82,7 +85,9 @@ export default async function TrainingDayPage({
   }
 
   const drafts = await listDraftSessionsForUser(user.id);
-  const draft = drafts.find((session) => session.programDayId === day.id);
+  const draft = drafts.find(
+    (session) => session.programDayId === day.id && sessionMatchesPlannedDay(session, day),
+  );
   const swaps = await listSwapsForDay({
     userId: user.id,
     programSlug: day.program.slug,
@@ -102,7 +107,10 @@ export default async function TrainingDayPage({
     sessionId: draft?.id,
     includePending: !draft,
   });
-  const exercises = omitted.shown;
+  const exercises = easedHalf
+    ? omitted.shown.map((exercise) => ({ ...exercise, sets: halvedSetCount(exercise.sets) }))
+    : omitted.shown;
+  const startHref = `/training/${day.id}/start${easedHalf ? "?half=1" : ""}`;
   const slots = swapSlotsFor(omitted.programmed, omitted.shown);
   const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
   const minutes = estimateSessionMinutes(exercises);
@@ -207,13 +215,14 @@ export default async function TrainingDayPage({
             Continue
           </Link>
         ) : (
-          <form action={startSessionAction} data-prime-coach-audio>
-            <input type="hidden" name="programDayId" value={day.id} />
-            <StartSubmit
-              label={startLabel}
-              className="touch-target w-full rounded-full bg-accent text-base text-black"
-            />
-          </form>
+          <Link
+            href={startHref}
+            prefetch={false}
+            data-prime-coach-audio
+            className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
+          >
+            {startLabel}
+          </Link>
         )}
 
         <SessionDetails>
@@ -336,17 +345,19 @@ export default async function TrainingDayPage({
           </Link>
         </div>
       ) : (
-        <form
-          action={startSessionAction}
+        <div
           data-start-bar
           className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
         >
-          <input type="hidden" name="programDayId" value={day.id} />
-          <StartSubmit
-            label={startLabel}
-            className="touch-target w-full rounded-full bg-accent text-base text-black"
-          />
-        </form>
+          <Link
+            href={startHref}
+            prefetch={false}
+            data-prime-coach-audio
+            className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
+          >
+            {startLabel}
+          </Link>
+        </div>
       )}
     </main>
   );

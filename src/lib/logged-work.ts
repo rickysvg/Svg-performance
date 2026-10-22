@@ -1,3 +1,4 @@
+import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 
 /**
@@ -85,22 +86,37 @@ export function sessionCountsAsPlannedCompletion(
   if (session.status !== "complete") return false;
   const tickedCount = tickedSetCount(session.sets);
   if (tickedCount === 0) return false;
+  // Null plannedSetCount falls through stored count, then dose, then rows.
   const plannedCount = resolvedPlannedSetCount(session, prescribedCount);
   if (plannedCount > 0 && tickedCount < plannedCount) return false;
-  const ticked = tickedExerciseKeys(session.sets);
+  const ticked = tickedExerciseKeysForPlan(session.sets);
   if (plannedExerciseNames.length === 0) return true;
-  const planned = plannedExerciseNames.map((name) => gymExerciseKey(name));
+  const planned = plannedExerciseNames.map((name) => exerciseCompletionKey(name));
+  // "Assault bike intervals" (the timer log) satisfies a card that says "Assault bike".
   if (planned.every((name) => ticked.includes(name))) return true;
   // Scaling can drop a catalog exercise the started session never contained.
   // A full prescription still finishes the day. A different exercise on that
   // day does not: the session has to share a planned name.
   const filled = plannedCount > 0 && tickedCount >= plannedCount;
   if (!filled) return false;
-  const present = new Set(
-    session.sets.map((set) => gymExerciseKey(set.exerciseName ?? "")),
-  );
+  const present = new Set(session.sets.map((set) => exerciseCompletionKey(set.exerciseName ?? "")));
   const missing = planned.filter((name) => !ticked.includes(name));
   return missing.every((name) => !present.has(name)) && planned.some((name) => ticked.includes(name));
+}
+
+/** Timer logs use a different bike label than the day card. Other names stay on their gym key. */
+export function loggedNameMatchesPlanned(plannedName: string, loggedName: string) {
+  if (gymExerciseKey(plannedName) === gymExerciseKey(loggedName)) return true;
+  return isBikeIntervalName(plannedName) && isBikeIntervalName(loggedName);
+}
+
+function exerciseCompletionKey(name: string) {
+  if (isBikeIntervalName(name)) return "\0bike-interval";
+  return gymExerciseKey(name);
+}
+
+function tickedExerciseKeysForPlan(sets: readonly TickedSet[]) {
+  return sets.filter(setIsTicked).map((set) => exerciseCompletionKey(set.exerciseName ?? ""));
 }
 
 /** History label. A short save reads partial, never complete. */

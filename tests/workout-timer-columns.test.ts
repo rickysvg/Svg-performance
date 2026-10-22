@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +9,8 @@ import {
   isMissingTimerColumnError,
   readWorkoutTimerFields,
 } from "@/lib/workout-timer-columns";
+
+const hasSqlite3 = spawnSync("sqlite3", ["-version"]).status === 0;
 
 describe("missing workout timer columns", () => {
   it("recognizes a database that has not been altered yet", () => {
@@ -23,7 +25,8 @@ describe("missing workout timer columns", () => {
     expect(isMissingTimerColumnError(new Error("elapsedSeconds must be a number"))).toBe(false);
   });
 
-  it("loads and saves a workout when the three columns are absent and falls back to a capped duration", async () => {
+  // The copy step shells out to the sqlite3 CLI. CI installs it. Skip when the image does not have it.
+  it.skipIf(!hasSqlite3)("loads and saves a workout when the three columns are absent and falls back to a capped duration", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "timer-columns-"));
     const dbPath = path.join(dir, "missing.db");
     execSync(`sqlite3 ${JSON.stringify(path.resolve("prisma/test.db"))} ".backup ${dbPath}"`, {

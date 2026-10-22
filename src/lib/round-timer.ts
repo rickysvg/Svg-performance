@@ -1,6 +1,10 @@
 export const TIMER_MODES = ["bag", "pads", "sparring", "grappling"] as const;
 export type TimerMode = (typeof TIMER_MODES)[number];
 
+/** Round-timer tabs. Bike is a surface on /timer, not a bag/pads/sparring log. */
+export const TIMER_SURFACE_MODES = [...TIMER_MODES, "bike"] as const;
+export type TimerSurfaceMode = (typeof TIMER_SURFACE_MODES)[number];
+
 export const TIMER_PRESETS = ["3x3", "5x5", "custom"] as const;
 export type TimerPreset = (typeof TIMER_PRESETS)[number];
 
@@ -38,6 +42,27 @@ export function clampRounds(value: number) {
 
 export function clampDurationSeconds(value: number) {
   return Math.min(60 * 30, Math.max(5, Math.round(value)));
+}
+
+/** m:ss steppers move work and rest in 15-second jumps. */
+export const DURATION_STEP_SECONDS = 15;
+
+export function stepDurationSeconds(
+  current: number,
+  direction: -1 | 1,
+  step = DURATION_STEP_SECONDS,
+  min = DURATION_STEP_SECONDS,
+  max = 15 * 60,
+) {
+  const safeStep = Math.max(1, Math.round(step));
+  const base =
+    Math.round(current / safeStep) * safeStep === current
+      ? current
+      : direction > 0
+        ? Math.ceil(current / safeStep) * safeStep
+        : Math.floor(current / safeStep) * safeStep;
+  const next = base === current ? current + direction * safeStep : base;
+  return Math.min(max, Math.max(min, next));
 }
 
 /** Five-second steps for work and rest pickers. Includes the current value when it falls off the step. */
@@ -210,7 +235,7 @@ export function shouldPlayPhaseBell(prev: TimerPhase, next: TimerPhase) {
 }
 
 export type StoredTimerPrefs = {
-  mode: TimerMode;
+  mode: TimerSurfaceMode;
   preset: TimerPreset;
   warningBeep: boolean;
   bell: boolean;
@@ -232,7 +257,9 @@ export function parseStoredTimerPrefs(raw: string | null): StoredTimerPrefs {
   try {
     const parsed = JSON.parse(raw) as Partial<StoredTimerPrefs>;
     return {
-      mode: TIMER_MODES.includes(parsed.mode as TimerMode) ? (parsed.mode as TimerMode) : "bag",
+      mode: TIMER_SURFACE_MODES.includes(parsed.mode as TimerSurfaceMode)
+        ? (parsed.mode as TimerSurfaceMode)
+        : "bag",
       preset: TIMER_PRESETS.includes(parsed.preset as TimerPreset)
         ? (parsed.preset as TimerPreset)
         : "3x3",

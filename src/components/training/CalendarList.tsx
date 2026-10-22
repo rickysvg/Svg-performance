@@ -49,6 +49,7 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
       <Link
         data-testid={`training-calendar-open-bike-logger-${activity.href.split("/").filter(Boolean).join("-")}`}
         href={activity.href}
+        prefetch={isBikeLoggerHref(activity.href) ? false : undefined}
         data-open-bike-logger={isBikeLoggerHref(activity.href) ? "calendar" : undefined}
         className="flex min-w-0 flex-1 items-center gap-3"
       >

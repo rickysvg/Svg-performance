@@ -360,6 +360,7 @@ export function WeekStrip({
             <Link
               data-testid={`training-week-chip-${href.split("/").filter(Boolean).join("-")}`}
               href={href}
+              prefetch={day.logHref ? false : undefined}
               data-week-chip={day.short}
               data-open-bike-logger={day.logHref ? "chip" : undefined}
               data-moved-from={day.movedFrom || undefined}

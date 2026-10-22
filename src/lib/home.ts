@@ -3,10 +3,7 @@ import { isScOnly } from "@/lib/member-plan";
 import { getSparringLog } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import {
-  listDraftSessionsForUser,
-  listRecentSessionsForUser,
-} from "@/lib/workouts";
+import { listDraftSessionsForUser, listRecentSessionsForUser } from "@/lib/workouts";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import {
   APP_TIMEZONE,
@@ -240,6 +237,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     suggestionCopy:
       "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
+    completedDayIds: [] as string[],
     loggedOnSelected: null,
     foodToday: { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     foodNudge: "No food logged this day yet. A rough estimate is enough.",
@@ -324,6 +322,23 @@ export async function getHomeToday(
     nextSession?.day ??
     plannedSessions[0]?.day ??
     null;
+  const completedDayIds = [
+    ...new Set(
+      sessions
+        .filter((session) => {
+          if (!session.programDayId || !sameLocalDay(session.performedAt, selected, tz)) {
+            return false;
+          }
+          const planned = plannedSessions.find((row) => row.dayId === session.programDayId);
+          const names = (planned?.day?.exercises ?? [])
+            .map((exercise) => (exercise.name ?? "").trim())
+            .filter((name) => name.length > 0);
+          const dose = prescribedSetTotal(planned?.day?.exercises ?? session.programDay?.exercises);
+          return sessionCountsAsPlannedCompletion(session, names, dose);
+        })
+        .map((session) => session.programDayId as string),
+    ),
+  ];
   const loggedOnSelected = sessions.find(
     (session) =>
       sessionCountsAsPlannedCompletion(
@@ -394,6 +409,7 @@ export async function getHomeToday(
         })
       : "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: sameLocalDay(selected, now, tz) ? draft : undefined,
+    completedDayIds,
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,
     foodNudge:

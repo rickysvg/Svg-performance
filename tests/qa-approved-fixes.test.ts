@@ -83,7 +83,9 @@ describe("QA-approved access and surface fixes", () => {
     expect(guide).toContain("REST DAY");
     expect(guide).toContain("Recover today. Next session:");
     expect(guide).not.toMatch(/No DEMO day loaded/i);
-    expect(read("src/components/MemberFrame.tsx")).toContain("pb-36");
+    expect(read("src/components/MemberFrame.tsx")).toContain(
+      "pb-[calc(13rem+env(safe-area-inset-bottom))]",
+    );
   });
 
   it("gives the 404 page header chrome and a Home link", () => {
@@ -92,10 +94,11 @@ describe("QA-approved access and surface fixes", () => {
     expect(page).toContain("Home");
   });
 
-  it("keeps Progress chips at least 44px tall", () => {
+  it("keeps Progress chips as compact links", () => {
     const progress = read("src/app/(member)/progress/page.tsx");
-    expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Heart rate/);
-    expect(progress).toMatch(/touch-target[\s\S]*min-h-11[\s\S]*Settings/);
+    expect(progress).toMatch(/inline-flex min-h-11 items-center[\s\S]*Heart rate/);
+    expect(progress).toMatch(/inline-flex h-8 items-center[\s\S]*Bike history/);
+    expect(progress).toMatch(/inline-flex min-h-11 items-center[\s\S]*Settings/);
   });
 
   it("does not seed fake leaderboard people into production", () => {

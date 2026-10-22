@@ -15,8 +15,20 @@ function isolateGymdeskEnv() {
   delete process.env.GYMDESK_SYNC_ENABLED;
 }
 
+function isolateCoachKey() {
+  // Offline coach tests assert the canned reply. An ambient API key calls the
+  // model instead, and that reply misses the "missed class" wording. A test
+  // that needs the key sets it after this hook. Live eval opts in explicitly.
+  if (process.env.COACH_LIVE_EVAL === "1") return;
+  delete process.env.OPENAI_API_KEY;
+}
+
 isolateGymdeskEnv();
-beforeEach(isolateGymdeskEnv);
+isolateCoachKey();
+beforeEach(() => {
+  isolateGymdeskEnv();
+  isolateCoachKey();
+});
 
 const dbPath = path.resolve(process.cwd(), "prisma/test.db");
 // Prisma SQLite URLs are relative to the prisma/ folder, so file:./test.db

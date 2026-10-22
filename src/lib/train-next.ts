@@ -3,6 +3,7 @@ export type TrainActionSession = {
   kind: string;
   dayId?: string;
   href?: string;
+  startHref?: string;
 };
 
 export type NextTrainAction = {
@@ -11,15 +12,20 @@ export type NextTrainAction = {
   dayId?: string;
   draftId?: string;
   href?: string;
+  startHref?: string;
 };
 
 /** First real session on the selected day. A draft on that session is Resume. */
 export function nextTrainAction(
   sessions: TrainActionSession[],
   draftIdForDay: (dayId: string) => string | undefined,
+  completedDay?: (dayId: string) => boolean,
 ): NextTrainAction | null {
   const target = sessions.find(
-    (session) => session.kind !== "rest" && (session.dayId || session.href),
+    (session) =>
+      session.kind !== "rest" &&
+      (session.dayId || session.href) &&
+      !(session.dayId && completedDay?.(session.dayId)),
   );
   if (!target) return null;
   const draftId = target.dayId ? draftIdForDay(target.dayId) : undefined;
@@ -30,10 +36,17 @@ export function nextTrainAction(
       dayId: target.dayId,
       draftId,
       href: target.href,
+      startHref: target.startHref,
     };
   }
   if (target.dayId) {
-    return { verb: "Start", title: target.title, dayId: target.dayId, href: target.href };
+    return {
+      verb: "Start",
+      title: target.title,
+      dayId: target.dayId,
+      href: target.href,
+      startHref: target.startHref,
+    };
   }
   if (target.href) {
     return { verb: "Open", title: target.title, href: target.href };

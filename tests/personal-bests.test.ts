@@ -89,7 +89,7 @@ describe("personal record detection", () => {
     expect(prs.find((row) => row.kind === "longest")?.headline).toBe("2:40");
   });
 
-  it("tracks most rounds for bike intervals and never calls them a hold", () => {
+  it("does not count bike intervals as a personal record or a hold", () => {
     const prior = [
       interval("Assault bike 15/15", 15, "2026-09-01T12:00:00Z"),
       interval("Assault bike 15/15", 15, "2026-09-01T12:00:00Z"),
@@ -103,9 +103,8 @@ describe("personal record detection", () => {
     ];
     const prs = detectNewPrs(prior, next, "lb");
     expect(prs.some((row) => row.kind === "longest")).toBe(false);
-    const rounds = prs.find((row) => row.kind === "most_rounds");
-    expect(rounds?.value).toBe(4);
-    expect(rounds?.headline).toBe("4 rounds");
+    expect(prs.some((row) => row.kind === "most_rounds")).toBe(false);
+    expect(prs).toEqual([]);
   });
 
   it("does not treat bag interval work as a longest hold", () => {

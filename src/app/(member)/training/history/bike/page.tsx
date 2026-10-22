@@ -3,18 +3,13 @@ import { requireUser } from "@/lib/session";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { bikeHistoryFromSessions } from "@/lib/bike-chooser";
 import { EmptyState } from "@/components/EmptyState";
-
-function when(date: Date) {
-  return date.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { formatMemberDate } from "@/lib/timezone";
 
 export default async function BikeHistoryPage() {
   const user = await requireUser();
+  const profile = await getProfileForUser(user.id);
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sessions = await listWorkoutSessionsForUser(user.id);
   const rows = bikeHistoryFromSessions(sessions);
 
@@ -51,7 +46,7 @@ export default async function BikeHistoryPage() {
                 data-bike-history-row
                 className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"
               >
-                <p className="text-sm text-muted">{when(row.performedAt)}</p>
+                <p className="text-sm text-muted">{formatMemberDate(row.performedAt, timeZone)}</p>
                 <p className="font-display mt-1 text-lg uppercase leading-tight tracking-wide">{row.workoutName}</p>
                 <p className="mt-1 text-sm">{row.recipe}</p>
                 <p className="mt-2 text-sm text-muted">

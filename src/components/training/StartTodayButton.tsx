@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useFormStatus } from "react-dom";
-import { startSessionAction } from "@/app/actions/workouts";
+import { bikeLoggerHref } from "@/lib/timer-session";
 import { todayStartLabel, type TodayStartAction } from "@/lib/today-start";
 
 const buttonClass =
@@ -21,16 +20,17 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.dayId) {
     return (
-      <form
+      <Link
+        href={action.startHref ?? action.logHref ?? bikeLoggerHref(action.dayId)}
+        prefetch={false}
         data-testid="home-start-today"
-        action={startSessionAction}
         data-start-today
         data-open-bike-logger={action.logHref ? "today" : undefined}
         data-prime-coach-audio
+        className={buttonClass}
       >
-        <input type="hidden" name="programDayId" value={action.dayId} />
-        <StartSubmit label={label} className={buttonClass} />
-      </form>
+        {label}
+      </Link>
     );
   }
 
@@ -43,20 +43,4 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
   }
 
   return null;
-}
-
-export function StartSubmit({ label, className }: { label: string; className: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      data-testid="home-start-pending"
-      type="submit"
-      disabled={pending}
-      aria-busy={pending}
-      data-start-pending={pending ? "" : undefined}
-      className={className}
-    >
-      {pending ? "Starting…" : label}
-    </button>
-  );
 }

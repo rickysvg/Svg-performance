@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { startSessionAction } from "@/app/actions/workouts";
-import { StartSubmit } from "@/components/training/StartTodayButton";
+import { bikeLoggerHref } from "@/lib/timer-session";
 import { ExerciseThumb } from "@/components/training/ExerciseThumb";
 import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { lookupFormVideo } from "@/lib/form-videos";
@@ -194,7 +193,7 @@ export function PlanSessionCard({
           data-session-actions
           className="above-dock mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center"
         >
-          {draftId ? (
+          {completed ? null : draftId ? (
             <Link
               href={`/training/log/${draftId}`}
               data-prime-coach-audio
@@ -202,19 +201,26 @@ export function PlanSessionCard({
             >
               Resume
             </Link>
-          ) : session.dayId ? (
-            <form
+          ) : session.logHref ? (
+            <Link
+              href={session.logHref}
+              prefetch={false}
               data-testid="training-open-bike-logger"
-              action={startSessionAction}
               data-open-bike-logger={session.logHref ? "train" : undefined}
               data-prime-coach-audio
+              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
             >
-              <input type="hidden" name="programDayId" value={session.dayId} />
-              <StartSubmit
-                label="Start"
-                className="touch-target rounded-full bg-accent px-4 text-sm text-black"
-              />
-            </form>
+              Start
+            </Link>
+          ) : session.dayId ? (
+            <Link
+              href={session.startHref ?? bikeLoggerHref(session.dayId)}
+              prefetch={false}
+              data-prime-coach-audio
+              className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
+            >
+              Start
+            </Link>
           ) : href ? (
             <Link
               data-testid={`training-link-2-${href.split("/").filter(Boolean).join("-")}`}
