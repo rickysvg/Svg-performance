@@ -2,7 +2,7 @@ import { AuthError } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import { discardEmptyWorkoutDraft } from "@/lib/workouts";
 
-/** Drop a draft the member left without logging. A typed set is never deleted. */
+/** Drop a draft only when the member hits Cancel. A typed set is never deleted. */
 export async function POST(request: Request) {
   try {
     const user = await requireUserOrThrow();
