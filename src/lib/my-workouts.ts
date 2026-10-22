@@ -2,8 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { compactBikeReps } from "@/lib/bike-chooser";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { loggedSetSome, sessionCountsAsPlannedCompletion, setHasLoggedWork, tickedSetCount } from "@/lib/logged-work";
+import {
+  draftHasResumeWork,
+  loggedSetSome,
+  sessionCountsAsPlannedCompletion,
+  setHasLoggedWork,
+  tickedSetCount,
+} from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
+import { sessionCompletionDay } from "@/lib/performed-at";
+import { REPLACE_LOGGED_CONFIRM } from "@/lib/workout-sheet";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import type { LoadUnit } from "@/lib/units";
 import {
@@ -280,14 +288,9 @@ export async function startSavedWorkoutForUser(input: {
     orderBy: { updatedAt: "desc" },
     include: { sets: true },
   });
-  const open = drafts[0];
+  const today = dayKey(now, input.timeZone);
+  const open = drafts.find((row) => sessionCompletionDay(row, input.timeZone) === today);
   if (open) {
-    const emptyExtras = drafts.slice(1).filter((row) => tickedSetCount(row.sets) === 0);
-    if (emptyExtras.length > 0) {
-      await prisma.workoutSession.deleteMany({
-        where: { id: { in: emptyExtras.map((row) => row.id) } },
-      });
-    }
     await prisma.savedWorkout.update({ where: { id: saved.id }, data: { lastUsedAt: now } });
     return open;
   }
@@ -313,6 +316,8 @@ export async function applySavedWorkoutToDay(input: {
   savedWorkoutId: string;
   dayKey: string;
   mode: string;
+  /** Set after the member confirms replacing a day that already has logged sets. */
+  confirm?: boolean;
 }) {
   if (!isDayKey(input.dayKey)) {
     throw new AppError("WORKOUT", "Pick a date.");
@@ -333,9 +338,34 @@ export async function applySavedWorkoutToDay(input: {
       });
       const ids = previous.map((row) => row.id);
       if (ids.length > 0) {
-        await tx.workoutSession.deleteMany({
+        const drafts = await tx.workoutSession.findMany({
           where: { userId: input.userId, dayPlanId: { in: ids }, status: "draft" },
+          select: {
+            id: true,
+            sets: {
+              select: {
+                exerciseName: true,
+                completed: true,
+                reps: true,
+                loadValue: true,
+                durationSeconds: true,
+                notes: true,
+                prescriptionKey: true,
+                logMode: true,
+              },
+            },
+          },
         });
+        const worked = drafts.filter((row) => draftHasResumeWork(row.sets));
+        const untouched = drafts.filter((row) => !draftHasResumeWork(row.sets));
+        if (worked.length > 0 && !input.confirm) {
+          throw new AppError("WORKOUT", REPLACE_LOGGED_CONFIRM);
+        }
+        if (untouched.length > 0) {
+          await tx.workoutSession.deleteMany({
+            where: { id: { in: untouched.map((row) => row.id) } },
+          });
+        }
         await tx.workoutSession.updateMany({
           where: { userId: input.userId, dayPlanId: { in: ids } },
           data: { dayPlanId: null },
@@ -506,23 +536,20 @@ export async function startDayPlanForUser(input: {
 }) {
   const plan = await prisma.dayWorkoutPlan.findUnique({ where: { id: input.planId } });
   if (!plan || plan.userId !== input.userId) throw new ForbiddenError();
-  const draft = await prisma.workoutSession.findFirst({
+  const now = input.now ?? new Date();
+  const drafts = await prisma.workoutSession.findMany({
     where: { userId: input.userId, dayPlanId: plan.id, status: "draft" },
     orderBy: { updatedAt: "desc" },
+    include: { sets: true },
   });
-  const now = input.now ?? new Date();
+  const draft = drafts.find((row) => sessionCompletionDay(row, input.timeZone) === plan.dayKey);
   if (plan.savedWorkoutId) {
     await prisma.savedWorkout.updateMany({
       where: { id: plan.savedWorkoutId, userId: input.userId },
       data: { lastUsedAt: now },
     });
   }
-  if (draft) {
-    return prisma.workoutSession.findUniqueOrThrow({
-      where: { id: draft.id },
-      include: { sets: true },
-    });
-  }
+  if (draft) return draft;
   const exercises = readSnapshot(plan.exercisesJson);
   if (exercises.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");

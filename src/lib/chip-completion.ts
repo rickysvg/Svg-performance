@@ -152,23 +152,17 @@ async function completedSessionIdsByLocalDayNow(
  * session does not read as missed. The dose is the session's own week.
  * Drafts and saved-short rows count. A day that passes the full rule is not included.
  * Unticked drafts stay out, even when the logger has prefilled numbers.
+ *
+ * Callers that need a partial mark to follow a swap use `partialProgramIdsByLocalDay`
+ * and realign in chip-days. The done check stays `offPlanSessionDone`.
  */
-export function partialLocalDayKeys(
+async function visitPartialSessions(
   userId: string,
   from: Date,
   to: Date,
   timeZone: string,
-  planByDay?: ReadonlyMap<string, ScaledDayPlan>,
-) {
-  return withCalendarScaleMemory(() => partialLocalDayKeysNow(userId, from, to, timeZone, planByDay));
-}
-
-async function partialLocalDayKeysNow(
-  userId: string,
-  from: Date,
-  to: Date,
-  timeZone: string,
-  planByDay?: ReadonlyMap<string, ScaledDayPlan>,
+  planByDay: ReadonlyMap<string, ScaledDayPlan> | undefined,
+  visit: (row: { programDayId: string | null }, key: string) => void,
 ) {
   const fromKey = dayKey(from, timeZone);
   const endKey = dayKey(to, timeZone);
@@ -184,7 +178,6 @@ async function partialLocalDayKeysNow(
     },
     select: CHIP_SESSION_SELECT,
   });
-  const days = new Set<string>();
   for (const row of rows) {
     const key = sessionCompletionDay(row, timeZone);
     if (key < fromKey || key >= endKey) continue;
@@ -205,9 +198,44 @@ async function partialLocalDayKeysNow(
         : exercises.map((exercise) => exercise.name)
       : [];
     if (offPlanSessionDone(row, dose, names)) continue;
-    days.add(key);
+    visit(row, key);
   }
-  return [...days];
+}
+
+export function partialLocalDayKeys(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  planByDay?: ReadonlyMap<string, ScaledDayPlan>,
+) {
+  return withCalendarScaleMemory(async () => {
+    const days = new Set<string>();
+    await visitPartialSessions(userId, from, to, timeZone, planByDay, (_row, key) => {
+      days.add(key);
+    });
+    return [...days];
+  });
+}
+
+/** Partial program-day ids keyed by the civil day they were logged. */
+export function partialProgramIdsByLocalDay(
+  userId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+  planByDay?: ReadonlyMap<string, ScaledDayPlan>,
+) {
+  return withCalendarScaleMemory(async () => {
+    const byDay: Record<string, string[]> = {};
+    await visitPartialSessions(userId, from, to, timeZone, planByDay, (row, key) => {
+      if (!row.programDayId) return;
+      const list = byDay[key] ?? [];
+      if (!list.includes(row.programDayId)) list.push(row.programDayId);
+      byDay[key] = list;
+    });
+    return byDay;
+  });
 }
 
 /**

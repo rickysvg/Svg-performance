@@ -36,7 +36,7 @@ import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
-import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 
@@ -119,9 +119,10 @@ export default async function TrainingCalendarPage({
   const loggedWindow = carouselLoggedRange(now, tz);
   const planByDay = await calendarPlanDoses(user.id, now);
   const carouselKeys = chipWeeks.flatMap((week) => week.days.map((day) => day.dayParam));
-  const [completedByDay, partialDays, offPlan, carouselPlans, weekSchedules] = await Promise.all([
+  const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans, weekSchedules] = await Promise.all([
     completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, now),
     partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
+    partialProgramIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
     offPlanMarksByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
     listDayPlansForUser(user.id, carouselKeys),
     Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
@@ -130,6 +131,7 @@ export default async function TrainingCalendarPage({
     days: chipDayRefs(chipWeeks),
     completedByDay,
     partialDays,
+    partialByDay,
     plansByDay: chipPlanMarksByDay(carouselPlans),
     offPlan,
   });
@@ -208,6 +210,7 @@ export default async function TrainingCalendarPage({
           {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (
             <p className="text-sm text-muted">{focusPlan.skipReason}</p>
           ) : null}
+          {/* #150 mounts LogPastWorkoutButton here (entry="calendar", label "Log a completed workout") when the day can take a past log. Keep that button. */}
         </section>
 
         {weekSchedule.days.every((day) => day.activities.every((item) => item.kind !== "workout")) ? (

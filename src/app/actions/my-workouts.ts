@@ -24,6 +24,7 @@ export type SavedWorkoutActionState = {
   saved?: boolean;
   renamed?: boolean;
   name?: string;
+  applied?: boolean;
 };
 
 function revalidateTraining() {
@@ -148,19 +149,22 @@ export async function applySavedWorkoutAction(
 ): Promise<SavedWorkoutActionState> {
   const user = await requireUserOrThrow();
   const dayKey = String(formData.get("dayKey") ?? "");
-  const mode = String(formData.get("mode") ?? "");
+  const modeField = String(formData.get("mode") ?? "");
+  const confirmField = String(formData.get("confirm") ?? "");
+  const mode = modeField || (confirmField === "replace" ? "replace" : "");
   try {
     await applySavedWorkoutToDay({
       userId: user.id,
       savedWorkoutId: String(formData.get("savedWorkoutId") ?? ""),
       dayKey,
       mode,
+      confirm: confirmField === "replace" || confirmField === "1",
     });
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
   revalidateTraining();
-  redirect(`/training/calendar?day=${encodeURIComponent(dayKey)}`);
+  return { applied: true };
 }
 
 export async function revertDayAction(formData: FormData) {

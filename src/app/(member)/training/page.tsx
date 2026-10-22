@@ -8,7 +8,7 @@ import {
   listDraftSessionsForUser,
   listResumableSessionsForUser,
 } from "@/lib/workouts";
-import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
 import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
 import { sessionCompletionDay } from "@/lib/performed-at";
@@ -200,9 +200,10 @@ export default async function TrainingPage({
   const inProgressDay = resumeDraft ? sessionCompletionDay(resumeDraft, tz) : undefined;
   const loggedRange = carouselLoggedRange(now, tz);
   const carouselKeys = weeks.flatMap((week) => week.days.map((day) => day.dayParam));
-  const [completedByDay, partialDays, offPlan, carouselPlans] = await Promise.all([
+  const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans] = await Promise.all([
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
     partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
+    partialProgramIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
     offPlanMarksByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
     listDayPlansForUser(user.id, carouselKeys),
   ]);
@@ -210,6 +211,7 @@ export default async function TrainingPage({
     days: chipDayRefs(weeks),
     completedByDay,
     partialDays,
+    partialByDay,
     plansByDay: chipPlanMarksByDay(carouselPlans),
     offPlan,
   });
@@ -508,6 +510,7 @@ export default async function TrainingPage({
               calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && focus.plannedCount > 1}
               resume={session.dayId ? focus.openOnDay.get(session.dayId) : undefined}
+              draftId={session.dayId ? draftsOn(focus.dayParam).find((row) => row.programDayId === session.dayId)?.id : undefined}
               completed={session.dayId ? focus.doneIds.has(session.dayId) : false}
               dateLabel={planDateLabel}
             />

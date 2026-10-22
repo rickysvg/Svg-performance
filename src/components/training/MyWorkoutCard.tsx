@@ -9,6 +9,13 @@ import {
   startSavedWorkoutAction,
   type SavedWorkoutActionState,
 } from "@/app/actions/my-workouts";
+import {
+  APPLY_TOAST,
+  REPLACE_LOGGED_CONFIRM,
+  RENAME_TOAST_MS,
+  applySheetSettle,
+  renameSheetSettle,
+} from "@/lib/workout-sheet";
 
 export function MyWorkoutCard({
   id,
@@ -29,6 +36,7 @@ export function MyWorkoutCard({
   const [displayName, setDisplayName] = useState(name);
   const [toast, setToast] = useState("");
   const applyLock = useRef(false);
+  const applyStarted = useRef(false);
   const [rename, renameAction, renamePending] = useActionState(
     renameSavedWorkoutAction,
     {} as SavedWorkoutActionState,
@@ -41,16 +49,29 @@ export function MyWorkoutCard({
     setDisplayName(name);
   }, [name]);
   useEffect(() => {
-    if (!rename.renamed || !rename.name) return;
-    setDisplayName(rename.name);
+    const settled = renameSheetSettle({ renamed: Boolean(rename.renamed), name: rename.name });
+    if (!settled.close || !settled.toast) return;
+    setDisplayName(rename.name ?? "");
     setRenameOpen(false);
-    setToast(`Saved as “${rename.name}”.`);
+    setToast(settled.toast);
+    const timer = window.setTimeout(() => setToast(""), RENAME_TOAST_MS);
+    return () => window.clearTimeout(timer);
   }, [rename.renamed, rename.name]);
   useEffect(() => {
-    if (!applyState.error) return;
-    applyLock.current = false;
-    setApplyOpen(true);
-  }, [applyState.error]);
+    const settled = applySheetSettle({
+      pending: applyPending,
+      started: applyStarted.current,
+      applied: Boolean(applyState.applied),
+    });
+    if (settled.open === null) return;
+    applyLock.current = settled.locked;
+    applyStarted.current = false;
+    setApplyOpen(settled.open);
+    if (!settled.toast) return;
+    setToast(settled.toast);
+    const timer = window.setTimeout(() => setToast(""), RENAME_TOAST_MS);
+    return () => window.clearTimeout(timer);
+  }, [applyPending, applyState]);
   const count = `${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}`;
 
   return (
@@ -105,7 +126,11 @@ export function MyWorkoutCard({
         Delete
       </button>
       {toast ? (
-        <p className="mt-2 text-sm text-muted" data-rename-toast>
+        <p
+          className="mt-2 text-sm text-muted"
+          data-rename-toast={toast === APPLY_TOAST ? undefined : ""}
+          data-apply-toast={toast === APPLY_TOAST ? "" : undefined}
+        >
           {toast}
         </p>
       ) : null}
@@ -169,7 +194,7 @@ export function MyWorkoutCard({
                   return;
                 }
                 applyLock.current = true;
-                setApplyOpen(false);
+                applyStarted.current = true;
               }}
             >
               <input type="hidden" name="savedWorkoutId" value={id} />
@@ -185,7 +210,11 @@ export function MyWorkoutCard({
                   className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
                 />
               </label>
-              {applyState.error ? <p className="text-sm text-danger">{applyState.error}</p> : null}
+              {applyState.error ? (
+                <p className="text-sm text-danger" data-apply-error>
+                  {applyState.error}
+                </p>
+              ) : null}
               <button
                 type="submit"
                 name="mode"
@@ -196,6 +225,18 @@ export function MyWorkoutCard({
               >
                 Replace that day&apos;s workout
               </button>
+              {applyState.error === REPLACE_LOGGED_CONFIRM ? (
+                <button
+                  type="submit"
+                  name="confirm"
+                  value="replace"
+                  data-apply-replace-confirm
+                  disabled={applyPending}
+                  className="touch-target w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
+                >
+                  Replace anyway
+                </button>
+              ) : null}
               <button
                 type="submit"
                 name="mode"
@@ -209,7 +250,11 @@ export function MyWorkoutCard({
             </form>
             <button
               type="button"
-              onClick={() => setApplyOpen(false)}
+              onClick={() => {
+                applyLock.current = false;
+                applyStarted.current = false;
+                setApplyOpen(false);
+              }}
               className="touch-target mt-2 w-full text-sm"
             >
               Cancel

@@ -64,11 +64,23 @@ export function chipMarksAfterPlans(input: {
   days: readonly ChipDayRef[];
   completedByDay: Readonly<Record<string, readonly string[]>>;
   partialDays: readonly string[];
+  /**
+   * Program-day ids that are partial on the civil day they were logged.
+   * The dose check that decided "partial" stays in chip-completion (#147).
+   * This only moves the mark onto the chip that now shows the session.
+   */
+  partialByDay?: Readonly<Record<string, readonly string[]>>;
   plansByDay: Readonly<Record<string, readonly ChipPlanMark[]>>;
   offPlan: Readonly<Record<string, OffPlanMark>>;
 }) {
   const aligned = realignProgramCompletions(input.days, input.completedByDay);
+  const alignedPartial = realignProgramCompletions(input.days, input.partialByDay ?? {});
   const partialProgramDays = new Set(input.partialDays);
+  const explained = new Set(
+    Object.entries(input.partialByDay ?? {})
+      .filter(([, ids]) => ids.length > 0)
+      .map(([day]) => day),
+  );
   const sessionIdsByDay: Record<string, string[]> = {};
   const completedByDay: Record<string, string[]> = {};
   const partial = new Set<string>();
@@ -96,7 +108,11 @@ export function chipMarksAfterPlans(input: {
     if (allDone || noPlanDone) logged.add(day.dayParam);
     if (off?.partial) partial.add(day.dayParam);
     if (off?.done && sessionIds.length > 0 && !allDone) partial.add(day.dayParam);
-    if (!replaced && partialProgramDays.has(day.dayParam) && !allDone) partial.add(day.dayParam);
+    const followed = (alignedPartial[day.dayParam] ?? []).filter((id) => sessionIds.includes(id));
+    if (!replaced && followed.length > 0 && !allDone) partial.add(day.dayParam);
+    if (!replaced && !explained.has(day.dayParam) && partialProgramDays.has(day.dayParam) && !allDone) {
+      partial.add(day.dayParam);
+    }
     if (done.size > 0 && !allDone) partial.add(day.dayParam);
     if (allDone || noPlanDone) partial.delete(day.dayParam);
     if (plans.some((plan) => plan.partial)) {

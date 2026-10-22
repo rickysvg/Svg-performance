@@ -43,12 +43,13 @@ export function explicitStartHref(input: {
   } | null;
 }) {
   if (input.replaced) {
-    const next = input.plans.find((plan) => !plan.complete && !plan.draftId);
+    const next = input.plans.find((plan) => !plan.complete);
     return next ? `/training/my-workouts/day/${next.id}/start` : null;
   }
   const action = input.action;
-  if (!action || action.draftId) return null;
+  if (!action) return null;
+  if (action.draftId) return `/training/log/${action.draftId}`;
   if (action.startHref) return action.startHref;
   if (action.dayId) return `/training/${action.dayId}/start`;
-  return action.href || action.logHref || null;
+  return null;
 }
