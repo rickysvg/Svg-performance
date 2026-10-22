@@ -12,10 +12,15 @@ import {
   moveDayChoices,
   planForDate,
   planWeekIndex,
-  weekStrip,
   withBikeChipLogHrefs,
   type MoveListedSession,
 } from "@/lib/week-plan";
+import {
+  carouselFocusOffset,
+  carouselLoggedRange,
+  carouselWeekStrips,
+  packCarouselWeeks,
+} from "@/lib/week-carousel";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
@@ -81,37 +86,36 @@ export default async function TrainingCalendarPage({
     weightAccess: normalizeWeightAccess(profile?.weightAccess),
     weekIndex,
   });
-  const strip = withBikeChipLogHrefs(
-    await easeWeekStripDays(
-      user.id,
-      prefs,
-      weekStrip(prefs, now, tz, selected, swaps, selected),
-      tz,
-      swaps,
-    ),
+  const builtWeeks = carouselWeekStrips(prefs, now, tz, selected, swaps);
+  const linkedWeeks = withBikeChipLogHrefs(
+    await easeWeekStripDays(user.id, prefs, builtWeeks.days, tz, swaps),
     prefs,
     scaledCatalog,
     tz,
     swaps,
   );
+  const weeks = packCarouselWeeks(builtWeeks.anchors, linkedWeeks).map((week) => ({
+    ...week,
+    rearrange: weekStartInRange(week.weekStart, weekStartKey(now, tz)),
+  }));
+  const focusOffset = carouselFocusOffset(weeks);
   const dayParam = formatDayParam(selected, tz);
   const viewedMonday = mondayOfZoned(selected, tz);
   const viewedWeek = weekStartKey(selected, tz);
   const currentWeek = weekStartKey(now, tz);
   const canEditWeek = weekStartInRange(viewedWeek, currentWeek);
-  const previousMonday = addZonedDays(viewedMonday, -7, tz);
-  const nextMonday = addZonedDays(viewedMonday, 7, tz);
-  const canPrev = weekStartInRange(weekStartKey(previousMonday, tz), currentWeek);
-  const canNext = weekStartInRange(weekStartKey(nextMonday, tz), currentWeek);
   const activityDays = schedule.days
     .filter((day) =>
       day.activities.some((item) => item.kind === "workout" && item.status === "complete"),
     )
     .map((day) => formatDayParam(day.date, tz));
+  const loggedWindow = carouselLoggedRange(now, tz);
+  const viewedFrom = addZonedDays(viewedMonday, -1, tz);
+  const viewedTo = addZonedDays(viewedMonday, 8, tz);
   const loggedDays = await completedLocalDayKeys(
     user.id,
-    addZonedDays(viewedMonday, -1, tz),
-    addZonedDays(viewedMonday, 8, tz),
+    loggedWindow.from < viewedFrom ? loggedWindow.from : viewedFrom,
+    loggedWindow.to > viewedTo ? loggedWindow.to : viewedTo,
     tz,
   );
   const completedDays = [...new Set([...activityDays, ...loggedDays])];
@@ -126,11 +130,11 @@ export default async function TrainingCalendarPage({
     (count, day) => count + day.activities.filter((item) => item.subtitle.startsWith("Missed")).length,
     0,
   );
-  const weekTitle =
-    viewedWeek === currentWeek
-      ? "This week"
-      : `Week of ${viewedMonday.toLocaleDateString("en-US", { month: "short", timeZone: tz })} ${zonedParts(viewedMonday, tz).day}`;
-  const titles: Partial<Record<(typeof strip)[number]["weekday"], MoveListedSession[]>> = {};
+  const viewedCarousel = weeks.find((week) => week.weekStart === viewedWeek);
+  const weekTitle = viewedCarousel
+    ? viewedCarousel.label
+    : `Week of ${viewedMonday.toLocaleDateString("en-US", { month: "short", timeZone: tz })} ${zonedParts(viewedMonday, tz).day}`;
+  const titles: Partial<Record<(typeof weeks)[number]["days"][number]["weekday"], MoveListedSession[]>> = {};
   for (const day of schedule.days) {
     const name = weekdayName(day.date, tz);
     if (!isPlanWeekday(name)) continue;
@@ -145,8 +149,7 @@ export default async function TrainingCalendarPage({
   }
   const moveDays = moveDayChoices(prefs, now, tz, selected, swaps, titles);
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
-  const weekHref = (date: Date) =>
-    `/training/calendar?day=${formatDayParam(date, tz)}${levelQuery}`;
+  const todayHref = `/training/calendar?day=${formatDayParam(now, tz)}${levelQuery}`;
 
   return (
     <WorkoutMoveProvider
@@ -154,7 +157,7 @@ export default async function TrainingCalendarPage({
       weekStart={viewedWeek}
       days={moveDays}
     >
-    <main className="space-y-6" data-coach-page>
+    <main className="min-w-0 space-y-6" data-coach-page>
       <div>
         <Link href="/training" className="text-sm text-accent underline-offset-4 hover:underline">
           Back to Training
@@ -169,43 +172,17 @@ export default async function TrainingCalendarPage({
         </div>
       </div>
 
-      <div className="space-y-3">
-      <nav aria-label="Week" data-week-nav className="flex items-center justify-between gap-2">
-        {canPrev ? (
-          <Link
-            href={weekHref(previousMonday)}
-            data-week-prev
-            className="inline-flex min-h-11 items-center rounded-full border border-line bg-card px-3 text-sm font-semibold"
-          >
-            Previous
-          </Link>
-        ) : (
-          <span className="inline-flex min-h-11 items-center px-3 text-sm text-muted">Previous</span>
-        )}
-        <p className="text-center text-sm font-semibold" data-week-label>
-          {weekTitle}
-        </p>
-        {canNext ? (
-          <Link
-            href={weekHref(nextMonday)}
-            data-week-next
-            className="inline-flex min-h-11 items-center rounded-full border border-line bg-card px-3 text-sm font-semibold"
-          >
-            Next
-          </Link>
-        ) : (
-          <span className="inline-flex min-h-11 items-center px-3 text-sm text-muted">Next</span>
-        )}
-      </nav>
-
       <WeekStrip
-        days={strip}
+        days={weeks.find((week) => week.offset === 0)?.days ?? []}
+        weeks={weeks}
         basePath="/training/calendar"
         rearrange={canEditWeek}
         weekStart={viewedWeek}
         completedDays={completedDays}
+        focusOffset={focusOffset}
+        todayHref={todayHref}
+        swapWeekStart={viewedWeek}
       />
-      </div>
 
       {fromProfile ? null : (
         <TrainingLevelToggle

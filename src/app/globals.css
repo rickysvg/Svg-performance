@@ -98,6 +98,48 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/*
+  Day-chip carousel. One week per snap. The scroller owns horizontal overflow
+  so a 375px page does not scroll sideways. Native pan keeps momentum.
+*/
+[data-week-carousel] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+[data-week-scroller] {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding-block: 0.4rem;
+}
+
+[data-week-scroller]:not([data-week-ready]) {
+  visibility: hidden;
+}
+
+[data-week-scroller]::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+
+[data-week-scroller] > [data-week-panel] {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+}
+
 .touch-target {
   min-height: 44px;
   min-width: 44px;

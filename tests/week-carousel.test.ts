@@ -1,0 +1,163 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { formatDayParam } from "@/lib/home";
+import {
+  WEEK_CAROUSEL_FUTURE_WEEKS,
+  WEEK_CAROUSEL_PAST_WEEKS,
+  carouselFocusOffset,
+  carouselLoggedRange,
+  carouselWeekAnchors,
+  carouselWeekStrips,
+  packCarouselWeeks,
+  weekCarouselLabel,
+  weekRangeLabel,
+} from "@/lib/week-carousel";
+import { mondayOfZoned } from "@/lib/timezone";
+
+function read(rel: string) {
+  return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
+}
+
+const prefs = { primaryFocus: "mma" as const, weeklyAvailability: ["Monday", "Wednesday", "Friday"] };
+
+describe("week day carousel", () => {
+  it("labels two weeks back through two weeks ahead in the member zone", () => {
+    expect(WEEK_CAROUSEL_PAST_WEEKS).toBe(2);
+    expect(WEEK_CAROUSEL_FUTURE_WEEKS).toBe(2);
+    expect(weekCarouselLabel(-2)).toBe("2 weeks ago");
+    expect(weekCarouselLabel(-1)).toBe("Last week");
+    expect(weekCarouselLabel(0)).toBe("This week");
+    expect(weekCarouselLabel(1)).toBe("Next week");
+    expect(weekCarouselLabel(2)).toBe("In 2 weeks");
+
+    const now = new Date("2026-10-20T06:24:00.000Z");
+    const zone = "America/Denver";
+    const anchors = carouselWeekAnchors(now, zone);
+    expect(anchors.map((anchor) => anchor.offset)).toEqual([-2, -1, 0, 1, 2]);
+    expect(anchors.map((anchor) => anchor.label)).toEqual([
+      "2 weeks ago",
+      "Last week",
+      "This week",
+      "Next week",
+      "In 2 weeks",
+    ]);
+    expect(anchors.map((anchor) => anchor.weekStart)).toEqual([
+      "2026-10-05",
+      "2026-10-12",
+      "2026-10-19",
+      "2026-10-26",
+      "2026-11-02",
+    ]);
+    expect(anchors.map((anchor) => anchor.rangeLabel)).toEqual([
+      "Oct 5 – 11",
+      "Oct 12 – 18",
+      "Oct 19 – 25",
+      "Oct 26 – Nov 1",
+      "Nov 2 – 8",
+    ]);
+    expect(weekRangeLabel(mondayOfZoned(now, zone), zone)).toBe("Oct 19 – 25");
+  });
+
+  it("uses the member timezone when the UTC date is already the next day", () => {
+    const instant = new Date("2026-10-19T06:00:00.000Z");
+    expect(carouselWeekAnchors(instant, "America/Denver")[2]?.weekStart).toBe("2026-10-19");
+    expect(carouselWeekAnchors(instant, "America/Los_Angeles")[2]?.weekStart).toBe("2026-10-12");
+    expect(carouselWeekAnchors(instant, "Pacific/Auckland")[2]?.weekStart).toBe("2026-10-19");
+  });
+
+  it("marks today once, past days as past, and future days with a planned summary", () => {
+    const now = new Date("2026-10-20T06:24:00.000Z");
+    const zone = "America/Denver";
+    const built = carouselWeekStrips(prefs, now, zone, now, []);
+    expect(built.days).toHaveLength(35);
+    expect(built.days.filter((day) => day.isToday)).toHaveLength(1);
+    expect(built.days.find((day) => day.isToday)?.dayParam).toBe("2026-10-20");
+    expect(built.days.filter((day) => day.dayParam < "2026-10-20").every((day) => day.isPast)).toBe(
+      true,
+    );
+    expect(
+      built.days
+        .filter((day) => day.dayParam > "2026-10-20")
+        .every((day) => !day.isPast && !day.isToday),
+    ).toBe(true);
+    expect(
+      built.days
+        .filter((day) => day.dayParam > "2026-10-20" && day.active)
+        .every((day) => day.summary.length > 0),
+    ).toBe(true);
+
+    const weeks = packCarouselWeeks(built.anchors, built.days);
+    expect(weeks).toHaveLength(5);
+    expect(weeks.every((week) => week.days.length === 7)).toBe(true);
+    expect(carouselFocusOffset(weeks)).toBe(0);
+
+    const later = carouselWeekStrips(
+      prefs,
+      now,
+      zone,
+      new Date("2026-11-02T18:00:00.000Z"),
+      [],
+    );
+    expect(carouselFocusOffset(packCarouselWeeks(later.anchors, later.days))).toBe(2);
+    expect(later.days.find((day) => day.isSelected)?.dayParam).toBe("2026-11-02");
+    expect(later.days.find((day) => day.isToday)?.dayParam).toBe("2026-10-20");
+  });
+
+  it("covers the logged-day window from the oldest Monday through the Monday after the last week", () => {
+    const now = new Date("2026-10-20T06:24:00.000Z");
+    const zone = "America/Denver";
+    const range = carouselLoggedRange(now, zone);
+    expect(formatDayParam(range.from, zone)).toBe("2026-10-05");
+    expect(formatDayParam(range.to, zone)).toBe("2026-11-09");
+  });
+
+  it("snaps the existing chips on Train and Calendar without touching completion logic", () => {
+    const strip = read("src/components/training/WeekStrip.tsx");
+    const css = read("src/app/globals.css");
+    const train = read("src/app/(member)/training/page.tsx");
+    const calendar = read("src/app/(member)/training/calendar/page.tsx");
+
+    expect(strip).toContain("data-week-carousel");
+    expect(strip).toContain("data-week-scroller");
+    expect(strip).toContain('data-testid={`week-chip-${day.dayParam}`}');
+    expect(strip).toContain('aria-label="Previous week"');
+    expect(strip).toContain('aria-label="Next week"');
+    expect(strip).toContain('aria-label="Jump to today"');
+    expect(strip).toContain('data-testid="jump-today"');
+    expect(strip).toContain('event.key === "ArrowLeft"');
+    expect(strip).toContain('event.key === "ArrowRight"');
+    expect(strip).toContain("data-week-today");
+    expect(strip).toContain("data-week-missed");
+    expect(strip).toContain("data-week-complete");
+    expect(strip).toContain("data-week-legend");
+    expect(strip).toContain("bg-signal");
+    expect(css).toContain("scroll-snap-type: x mandatory");
+    expect(css).toContain("overscroll-behavior-x: contain");
+    expect(css).toContain("[data-week-carousel]");
+
+    expect(train).toContain("carouselWeekStrips");
+    expect(train).toContain("carouselLoggedRange");
+    expect(train).toContain("focusOffset");
+    expect(train).toContain("todayHref");
+    expect(train).toContain("<WeekStrip");
+    expect(train).not.toContain("rearrange");
+    expect(train).not.toContain("This week");
+
+    expect(calendar).toContain("carouselWeekStrips");
+    expect(calendar).toContain("withBikeChipLogHrefs");
+    expect(calendar).toContain("rearrange");
+    expect(calendar).toContain("focusOffset");
+    expect(calendar).toContain("todayHref");
+    expect(calendar).not.toContain("data-week-nav");
+
+    for (const file of [
+      "src/lib/calendar.ts",
+      "src/lib/logged-work.ts",
+      "src/lib/workouts.ts",
+    ]) {
+      expect(read(file)).not.toContain("data-week-carousel");
+      expect(read(file)).not.toContain("carouselWeekStrips");
+    }
+  });
+});

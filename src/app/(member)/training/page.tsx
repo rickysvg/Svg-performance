@@ -27,9 +27,14 @@ import {
   planForDate,
   planWeekIndex,
   resolvePlanSessions,
-  weekStrip,
   withBikeChipLogHrefs,
 } from "@/lib/week-plan";
+import {
+  carouselFocusOffset,
+  carouselLoggedRange,
+  carouselWeekStrips,
+  packCarouselWeeks,
+} from "@/lib/week-carousel";
 import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { WeekStrip } from "@/components/training/WeekStrip";
@@ -45,7 +50,7 @@ import { todayStartAction } from "@/lib/today-start";
 import { StartTodayButton } from "@/components/training/StartTodayButton";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
-import { addZonedDays, dayKey, memberDayTimeZone, mondayOfZoned, readTimeZoneCookie } from "@/lib/timezone";
+import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
@@ -129,19 +134,16 @@ export default async function TrainingPage({
     campPhase: campOn && camp ? camp.phase : null,
   });
   const planned = resolvePlanSessions(dayPlan, scaledCatalog);
-  const strip = withBikeChipLogHrefs(
-    await easeWeekStripDays(
-      user.id,
-      prefs,
-      weekStrip(prefs, now, tz, selected, swaps),
-      tz,
-      swaps,
-    ),
+  const builtWeeks = carouselWeekStrips(prefs, now, tz, selected, swaps);
+  const linkedWeeks = withBikeChipLogHrefs(
+    await easeWeekStripDays(user.id, prefs, builtWeeks.days, tz, swaps),
     prefs,
     scaledCatalog,
     tz,
     swaps,
   );
+  const weeks = packCarouselWeeks(builtWeeks.anchors, linkedWeeks);
+  const focusOffset = carouselFocusOffset(weeks);
   const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
   const deload = campWeekIndex == null && isDeloadWeekIndex(weekIndex);
   const testing = isTestingWeekIndex(weekIndex);
@@ -229,13 +231,8 @@ export default async function TrainingPage({
     draftIdFor(todaySessions),
   );
   const liveDraft = drafts[0] ?? null;
-  const weekMonday = mondayOfZoned(now, tz);
-  const completedDays = await completedLocalDayKeys(
-    user.id,
-    addZonedDays(weekMonday, -1, tz),
-    addZonedDays(weekMonday, 8, tz),
-    tz,
-  );
+  const loggedRange = carouselLoggedRange(now, tz);
+  const completedDays = await completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz);
   const bagIndex = planned.findIndex((session) => session.kind === "skill");
   const showDetails =
     dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
@@ -269,7 +266,7 @@ export default async function TrainingPage({
       weekStart={viewedWeek}
       days={moveDays}
     >
-    <main className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
+    <main className="min-w-0 space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl">Training</h1>
@@ -333,7 +330,14 @@ export default async function TrainingPage({
         src={tileSrc("/tiles/sparring.webp", profile?.athleteImagery)}
       />
 
-      <WeekStrip days={strip} basePath="/training" completedDays={completedDays} />
+      <WeekStrip
+        days={weeks.find((week) => week.offset === 0)?.days ?? []}
+        weeks={weeks}
+        basePath="/training"
+        completedDays={completedDays}
+        focusOffset={focusOffset}
+        todayHref={`/training?day=${formatDayParam(now, tz)}`}
+      />
 
       <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
 
