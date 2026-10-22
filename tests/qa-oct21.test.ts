@@ -16,7 +16,7 @@ import { formatDayParam } from "@/lib/home";
 import { getDemoProgram } from "@/lib/programs";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { streakRingRatio } from "@/lib/streaks";
-import { completedLocalDayKeys, completedProgramDayIdsOnDays, startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
+import { completedLocalDayKeys, completedProgramDayIdsOnDays, startWorkoutFromDay, updateWorkoutSessionForUser, type WorkoutSetInput } from "@/lib/workouts";
 import { addZonedDays, mondayOfZoned } from "@/lib/timezone";
 
 const wednesday = new Date("2026-10-21T16:00:00.000Z");
@@ -138,7 +138,6 @@ describe("QA Oct 21 saved logs", () => {
       timeZone: "America/Denver",
     });
     const finishedAt = new Date("2026-10-22T03:30:00.000Z");
-    const planned = session.sets.find((set) => set.logMode === "load_reps") ?? session.sets[0];
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
@@ -146,17 +145,32 @@ describe("QA Oct 21 saved logs", () => {
       performedAt: finishedAt,
       notes: "",
       status: "complete",
-      sets: [
-        {
-          exerciseName: planned?.exerciseName || "Goblet squat",
-          setNumber: planned?.setNumber || 1,
-          reps: planned?.logMode === "load_reps" ? 8 : null,
-          loadValue: planned?.logMode === "load_reps" ? 40 : null,
-          loadUnit: "lb",
-          durationSeconds: planned?.logMode === "load_reps" ? null : 60,
+      sets: session.sets.map((set) => {
+        const mode = set.logMode || "load_reps";
+        const timed = mode === "timed" || mode === "timed_round" || mode === "load_timed";
+        return {
+          exerciseName: set.exerciseName,
+          setNumber: set.setNumber,
+          reps: timed ? null : 8,
+          loadValue: mode === "reps_only" || timed ? null : 40,
+          loadUnit: "lb" as const,
+          logMode: ((): WorkoutSetInput["logMode"] => {
+            const value = set.logMode;
+            if (
+              value === "load_reps" ||
+              value === "load_timed" ||
+              value === "reps_only" ||
+              value === "timed" ||
+              value === "timed_round"
+            ) {
+              return value;
+            }
+            return "load_reps";
+          })(),
+          durationSeconds: timed ? 60 : null,
           completed: true,
-        },
-      ],
+        };
+      }),
       timeZone: "America/Denver",
     });
 

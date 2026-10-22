@@ -48,19 +48,32 @@ export function tickedExerciseKeys(sets: TickedSet[]) {
 }
 
 /**
- * A planned session is done only when it was saved complete and a ticked set
- * belongs to that session. A push-up logged on a bike day does not finish the bike.
+ * A planned session is done only when it was saved complete, every planned
+ * exercise has a ticked set, and the ticked count covers the sets prescribed
+ * at start. One checked set, a draft, and status "partial" do not finish the day.
+ * A push-up logged on a bike day does not finish the bike.
  */
 export function sessionCountsAsPlannedCompletion(
-  session: { status: string; sets: TickedSet[] },
+  session: { status: string; sets: TickedSet[]; plannedSetCount?: number | null },
   plannedExerciseNames: string[],
 ) {
   if (session.status !== "complete") return false;
+  const tickedCount = tickedSetCount(session.sets);
+  if (tickedCount === 0) return false;
+  const plannedCount = session.plannedSetCount;
+  if (typeof plannedCount === "number" && plannedCount > 0 && tickedCount < plannedCount) {
+    return false;
+  }
   const ticked = tickedExerciseKeys(session.sets);
-  if (ticked.length === 0) return false;
   if (plannedExerciseNames.length === 0) return true;
   const planned = new Set(plannedExerciseNames.map((name) => gymExerciseKey(name)));
-  return ticked.some((name) => planned.has(name));
+  return [...planned].every((name) => ticked.includes(name));
+}
+
+export function formatSetProgress(ticked: number, planned: number) {
+  if (planned > 0) return `${ticked}/${planned} sets`;
+  const count = Math.max(0, ticked);
+  return `${count} set${count === 1 ? "" : "s"}`;
 }
 
 /** Prisma filter: a saved set with a number the member entered. */

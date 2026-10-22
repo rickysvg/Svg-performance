@@ -149,10 +149,16 @@ describe("AI coach avatars", () => {
 
   it("shows the floating coach on signed-in pages and hides it on the coach screen", () => {
     expect(shouldShowCoachFab("/home")).toBe(true);
-    expect(shouldShowCoachFab("/training")).toBe(true);
+    expect(shouldShowCoachFab("/training")).toBe(false);
+    expect(shouldShowCoachFab("/training/log/abc")).toBe(false);
+    expect(shouldShowCoachFab("/training/day/start")).toBe(false);
+    expect(shouldShowCoachFab("/vip/apply")).toBe(false);
+    expect(shouldShowCoachFab("/checkin")).toBe(false);
+    expect(shouldShowCoachFab("/onboarding")).toBe(false);
     expect(shouldShowCoachFab("/training/calendar")).toBe(true);
+    expect(shouldShowCoachFab("/bagwork")).toBe(true);
     expect(shouldShowCoachFab("/nutrition")).toBe(true);
-    expect(shouldShowCoachFab("/profile")).toBe(true);
+    expect(shouldShowCoachFab("/profile")).toBe(false);
     expect(shouldShowCoachFab("/learn")).toBe(true);
     expect(shouldShowCoachFab("/coach")).toBe(false);
     expect(shouldShowCoachFab("/coach?topic=mental")).toBe(false);
@@ -184,6 +190,15 @@ describe("AI coach avatars", () => {
     expect(welcome).toBeGreaterThan(-1);
     expect(summary).toBeGreaterThan(welcome);
     expect(home).toContain("Welcome");
+  });
+
+  it("shows the selected coach name on the messenger header", () => {
+    expect(resolveAiCoach("ricky").name).toBe("Ricky");
+    const page = fs.readFileSync(path.join(process.cwd(), "src/app/(member)/coach/page.tsx"), "utf8");
+    expect(page).toContain("VIP Coaching");
+    expect(page).not.toContain("1-on-1 clips");
+    expect(page).toContain("{coach.name}");
+    expect(page).toContain("resolveAiCoach(profile?.aiCoachId)");
   });
 });
 

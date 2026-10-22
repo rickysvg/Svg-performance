@@ -291,7 +291,7 @@ describe("a workout is complete only after a logged save", () => {
     expect(await finalizePastLoggedDrafts(user.id, wednesday, APP_TIMEZONE)).toBe(0);
     const pastRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: past.id } });
     const openRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: open.id } });
-    expect(pastRow.status).toBe("complete");
+    expect(pastRow.status).toBe("partial");
     expect(openRow.status).toBe("draft");
   });
 
@@ -662,12 +662,13 @@ describe("a workout is complete only after a logged save", () => {
     expect(await finalizePastLoggedDrafts(user.id, new Date("2026-10-21T18:00:00.000Z"), APP_TIMEZONE)).toBe(1);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
     const timer = await readWorkoutTimerFields(session.id, prisma);
-    expect(row.status).toBe("complete");
+    expect(row.status).toBe("partial");
     expect(timer.elapsedSeconds).toBe(70 * 60);
-    expect(timer.finishedAt?.toISOString()).toBe(lastEdit.toISOString());
+    expect(timer.finishedAt).toBeNull();
     const view = resolveSessionElapsed({ ...row, ...timer }, new Date("2026-10-21T18:00:00.000Z"));
     expect(view.ticking).toBe(false);
-    expect(view.label).toBe("1:10:00");
+    expect(view.label).toBe("Paused");
+    expect(view.label).not.toBe("4:00:00");
   });
 
   it("leaves a workout resumed today ticking and keeps the saved duration", async () => {
@@ -709,5 +710,24 @@ describe("a workout is complete only after a logged save", () => {
     const ticking = resolveSessionElapsed({ ...row, ...timer }, new Date(timer.timerStartedAt!.getTime() + 5_000));
     expect(ticking.ticking).toBe(true);
     expect(ticking.label).toBe("1:10:30");
+  });
+
+  it("does not store a multi-day gap when a finished workout is reopened", async () => {
+    const user = await makeUser("reopen-gap@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const created = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { status: "complete", createdAt: created, updatedAt: new Date() },
+    });
+    const resumed = await reopenCompletedWorkoutForUser(user.id, session.id);
+    expect(resumed.status).toBe("draft");
+    expect(resumed.elapsedSeconds == null || resumed.elapsedSeconds === 0).toBe(true);
+    expect(resumed.elapsedSeconds).not.toBe(4 * 60 * 60);
   });
 });

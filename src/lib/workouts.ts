@@ -35,12 +35,12 @@ import {
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   setHasLoggedWork,
+  tickedSetCount,
 } from "@/lib/logged-work";
 import {
-  cappedElapsedSeconds,
   freezeElapsedOnSave,
-  legacyFrozenSeconds,
-  SESSION_DURATION_CAP_SECONDS,
+  plausibleElapsed,
+  usableStoredElapsed,
 } from "@/lib/session-elapsed";
 import {
   attachWorkoutTimer,
@@ -303,10 +303,11 @@ export async function completedProgramDayIdsOnDay(
       },
       sets: loggedSetSome,
     },
-    select: {
+      select: {
       status: true,
       programDayId: true,
       performedAt: true,
+      plannedSetCount: true,
       sets: {
         select: {
           exerciseName: true,
@@ -382,6 +383,7 @@ export async function completedProgramDayIdsOnDays(
       status: true,
       programDayId: true,
       performedAt: true,
+      plannedSetCount: true,
       sets: {
         select: {
           exerciseName: true,
@@ -432,6 +434,7 @@ export async function completedLocalDayKeys(
       status: true,
       programDayId: true,
       performedAt: true,
+      plannedSetCount: true,
       sets: {
         select: {
           exerciseName: true,
@@ -670,6 +673,7 @@ export async function startWorkoutFromDay(input: {
         performedAt: new Date(),
         notes: input.deload ? DELOAD_LABEL : "",
         status: "draft",
+        plannedSetCount: sets.length,
         sets: { create: sets },
       },
       include: { sets: true },
@@ -920,11 +924,11 @@ export async function updateWorkoutSessionForUser(input: {
 }
 
 /**
- * A draft that already has logged sets, dated before today in the member zone,
- * is a finish that never stuck. Mark it complete. Do not invent sets, and do
- * not close a draft the member still has open today. One programmed session
- * per civil day is enough: a second past draft stays a draft when that slot
- * is already logged.
+ * A draft dated before today is no longer a live clock. A partial log becomes
+ * "partial" and stays off the DONE tally. Only a draft that already has every
+ * prescribed set ticked is marked complete. Do not invent sets, do not store a
+ * created-to-edit gap as training time, and do not close a draft the member
+ * still has open today.
  */
 export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZone: string) {
   const today = dayKey(now, timeZone);
@@ -939,7 +943,10 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
         performedAt: true,
         createdAt: true,
         updatedAt: true,
-        sets: { select: { reps: true, loadValue: true, durationSeconds: true } },
+        plannedSetCount: true,
+        sets: {
+          select: { completed: true, reps: true, loadValue: true, durationSeconds: true },
+        },
       },
       orderBy: { createdAt: "asc" },
     })
@@ -976,17 +983,20 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
   let count = 0;
   for (const row of drafts) {
     if (!ids.includes(row.id)) continue;
+    const planned = row.plannedSetCount ?? 0;
+    const ticked = tickedSetCount(row.sets);
+    const finished = planned > 0 && ticked >= planned;
+    const elapsed =
+      usableStoredElapsed(row.elapsedSeconds) ??
+      plausibleElapsed(row.createdAt, row.updatedAt);
     const result = await prisma.workoutSession.updateMany({
       where: { id: row.id, userId, status: "draft" },
       data: {
-        status: "complete",
+        status: finished ? "complete" : "partial",
         ...(timerColumns
           ? {
-              finishedAt: row.finishedAt ?? row.updatedAt,
-              elapsedSeconds:
-                row.elapsedSeconds != null
-                  ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(row.elapsedSeconds)))
-                  : cappedElapsedSeconds(row.createdAt, row.updatedAt),
+              finishedAt: finished ? (row.finishedAt ?? row.updatedAt) : null,
+              elapsedSeconds: elapsed,
               timerStartedAt: null,
             }
           : {}),
@@ -1035,10 +1045,8 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
   if (existing.status !== "complete") return attachWorkoutTimer(existing, prisma);
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
-  const elapsed =
-    stored.elapsedSeconds != null && Number.isFinite(stored.elapsedSeconds)
-      ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(stored.elapsedSeconds)))
-      : legacyFrozenSeconds({ ...existing, ...stored });
+  // Keep a real saved clock. A missing value or the 4 hour cap is not training time.
+  const elapsed = usableStoredElapsed(stored.elapsedSeconds);
   const timerStartedAt = new Date();
   const updated = await prisma.workoutSession.update({
     where: { id: existing.id },

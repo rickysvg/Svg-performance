@@ -8,8 +8,6 @@ import {
   countWorkoutSessionsForUser,
   listDraftSessionsForUser,
   listRecentSessionsForUser,
-  startWorkoutFromDay,
-  updateWorkoutSessionForUser,
 } from "@/lib/workouts";
 
 describe("narrow workout session queries", () => {
@@ -29,34 +27,28 @@ describe("narrow workout session queries", () => {
     const program = await getDemoProgram();
     const day = program.days[0];
 
-    const created = [];
     for (let index = 0; index < 5; index += 1) {
-      const session = await startWorkoutFromDay({
-        userId: user.id,
-        programDayId: day.id,
-        preferredUnits: "lb",
-      });
-      if (index < 3) {
-        await updateWorkoutSessionForUser({
+      await prisma.workoutSession.create({
+        data: {
           userId: user.id,
-          workoutId: session.id,
-          title: session.title,
+          programDayId: day.id,
+          title: day.title,
           performedAt: new Date(Date.now() - index * 86_400_000),
-          notes: "",
-          status: "complete",
-          sets: [
-            {
-              exerciseName: "Goblet squat",
-              setNumber: 1,
-              reps: 8,
-              loadValue: 30,
-              loadUnit: "lb",
-              completed: true,
-            },
-          ],
-        });
-      }
-      created.push(session);
+          status: index < 3 ? "complete" : "draft",
+          sets: {
+            create: [
+              {
+                exerciseName: "Goblet squat",
+                setNumber: 1,
+                reps: 8,
+                loadValue: 30,
+                loadUnit: "lb",
+                completed: true,
+              },
+            ],
+          },
+        },
+      });
     }
 
     const recentTwo = await listRecentSessionsForUser(user.id, 2);

@@ -61,6 +61,11 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
               </span>
             ) : null}
           </span>
+          {activity.setCountLabel ? (
+            <span data-set-count className="mt-0.5 block text-sm font-medium">
+              {activity.setCountLabel}
+            </span>
+          ) : null}
           <span className="mt-0.5 block text-sm text-muted">{activity.subtitle}</span>
         </span>
         <span className="text-lg text-muted" aria-hidden>

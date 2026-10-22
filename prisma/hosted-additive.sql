@@ -782,6 +782,13 @@ BEGIN
   ) THEN
     ALTER TABLE "WorkoutSession" ADD COLUMN "timerStartedAt" TIMESTAMP(3);
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'plannedSetCount'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "plannedSetCount" INTEGER;
+  END IF;
 END $$;
 
 -- VIP Coaching. Additive only: applications, checkout grants, upsell events, 72h waitlist holds.

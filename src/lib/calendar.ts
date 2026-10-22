@@ -6,7 +6,13 @@ import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { getProfileForUser } from "@/lib/profile";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
-import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
+import {
+  formatSetProgress,
+  sessionCountsAsPlannedCompletion,
+  tickedExerciseKeys,
+  tickedSetCount,
+} from "@/lib/logged-work";
+import { gymExerciseKey } from "@/lib/gym-exercise";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
@@ -56,6 +62,8 @@ export type CalendarActivity = {
   weekday?: string;
   /** Lift, hard bag, or hard conditioning. */
   heavy?: boolean;
+  /** "4 sets" or "1/4 sets". Empty when the plan has no prescribed sets. */
+  setCountLabel?: string;
   /** A saved workout applied to this day. It is not a program session, so it cannot be moved. */
   customPlan?: boolean;
   customPlanId?: string;
@@ -249,6 +257,7 @@ type LoggedPlanSession = {
   programDayId: string | null;
   performedAt: Date;
   createdAt?: Date | null;
+  plannedSetCount?: number | null;
   sets: {
     exerciseName?: string | null;
     completed?: boolean | null;
@@ -258,6 +267,21 @@ type LoggedPlanSession = {
   }[];
   programDay: { dayNumber: number; program: { slug: string } } | null;
 };
+
+function prescribedSetCount(exercises: { sets?: number | null }[] | null | undefined) {
+  return (exercises ?? []).reduce(
+    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+    0,
+  );
+}
+
+function namesOverlap(log: LoggedPlanSession, plannedNames: string[]) {
+  const ticked = tickedExerciseKeys(log.sets);
+  if (ticked.length === 0) return false;
+  if (plannedNames.length === 0) return true;
+  const planned = new Set(plannedNames.map((name) => gymExerciseKey(name)));
+  return ticked.some((name) => planned.has(name));
+}
 
 function performedDayKey(session: { performedAt: Date }, timeZone: string) {
   return sessionCompletionDay(session, timeZone);
@@ -300,7 +324,7 @@ function logMatchesPlanned(
   const plannedNames = (planned.day?.exercises ?? [])
     .map((exercise) => (exercise.name ?? "").trim())
     .filter((name) => name.length > 0);
-  if (!sessionCountsAsPlannedCompletion(log, plannedNames)) return false;
+  if (!namesOverlap(log, plannedNames)) return false;
   if (idMatch(log, planned) || dayNumberMatch(log, planned)) return true;
   if (!titlesMatch(log.title, planned.title)) return false;
   const sameTitle = plannedToday.filter((row) => titlesMatch(log.title, row.title));
@@ -336,8 +360,10 @@ export async function getCalendarSchedule(
     weekIndex: campWeek ?? planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
     campPhase: camp && camp.phase !== "complete" ? camp.phase : null,
   });
-  const loggedSessions = sessions.filter((session) =>
-    sessionCountsAsPlannedCompletion(session, []),
+  const loggedSessions = sessions.filter(
+    (session) =>
+      (session.status === "complete" || session.status === "partial" || session.status === "draft") &&
+      tickedSetCount(session.sets) > 0,
   );
   const loggedTitles = new Map<string, string[]>();
   for (const session of loggedSessions) {
@@ -412,12 +438,36 @@ export async function getCalendarSchedule(
         linkRepairs.push({ id: matched.id, programDayId: session.dayId });
         matched.programDayId = session.dayId;
       }
-      const sessionDone = Boolean(matched);
+      const plannedNames = (session.day?.exercises ?? [])
+        .map((exercise) => (exercise.name ?? "").trim())
+        .filter((name) => name.length > 0);
+      const dose = prescribedSetCount(session.day?.exercises);
+      const planned =
+        matched?.plannedSetCount && matched.plannedSetCount > 0 ? matched.plannedSetCount : dose;
+      const ticked = matched ? tickedSetCount(matched.sets) : 0;
+      const setCountLabel =
+        planned > 0
+          ? ticked > 0
+            ? formatSetProgress(ticked, planned)
+            : `${planned} sets`
+          : ticked > 0
+            ? formatSetProgress(ticked, 0)
+            : "";
+      const sessionDone = matched
+        ? sessionCountsAsPlannedCompletion(
+            {
+              ...matched,
+              plannedSetCount: matched.plannedSetCount ?? (dose > 0 ? dose : null),
+            },
+            plannedNames,
+          )
+        : false;
+      const partial = Boolean(matched) && !sessionDone && ticked > 0;
       const href =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
       if (!href) continue;
-      const missed = past && !sessionDone;
+      const missed = past && !sessionDone && !partial;
       const origin =
         session.sourceWeekday && session.sourceWeekday !== calendarWeekday
           ? session.sourceWeekday
@@ -429,31 +479,39 @@ export async function getCalendarSchedule(
           ? loggedSummary
             ? `Logged this day. ${loggedSummary}`
             : "Logged this day. Open to review or run a session again."
-          : missed
-            ? "Missed. Tap Move to do it another day."
-            : origin
-              ? `${session.label} — ${origin}’s workout, this week.`
-              : `${session.label} — Core week plan.`,
+          : partial
+            ? `Partial · ${setCountLabel}`
+            : missed
+              ? "Missed. Tap Move to do it another day."
+              : origin
+                ? `${session.label} — ${origin}’s workout, this week.`
+                : `${session.label} — Core week plan.`,
         href,
         status: sessionDone ? "complete" : "scheduled",
         programDayId: session.dayId,
         sessionKey: session.sessionKey,
         weekday: calendarWeekday,
         heavy: Boolean(session.heavy),
+        setCountLabel,
       });
     }
     for (const log of dayLogs) {
       if (matchedLogIds.has(log.id) || !log.programDayId) continue;
       if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
       const title = memberFacingTitle(log.title) || log.title;
+      const ticked = tickedSetCount(log.sets);
+      const planned = log.plannedSetCount ?? 0;
+      const setCountLabel = formatSetProgress(ticked, planned);
+      const done = sessionCountsAsPlannedCompletion(log, []);
       day.activities.push({
         kind: "workout",
         title,
-        subtitle: `Logged this day. ${title}`,
+        subtitle: done ? `Logged this day. ${title}` : `Partial · ${setCountLabel}`,
         href: log.programDayId ? `/training/${log.programDayId}` : "/training/history",
-        status: "complete",
+        status: done ? "complete" : "scheduled",
         programDayId: log.programDayId ?? undefined,
         weekday: calendarWeekday,
+        setCountLabel,
       });
     }
   }
