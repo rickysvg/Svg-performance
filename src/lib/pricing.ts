@@ -15,6 +15,14 @@ export const COACHING_CAP = 20;
 export const NONMEMBER_TRIAL_DAYS = 7;
 /** New verified academy claims: Pro free for 14 days, no card, never auto-billed. */
 export const MEMBER_PRO_DAYS = 14;
+
+/**
+ * Two clocks. Nonmembers get a Pro trial. Verified academy members get a
+ * Pro grant, then the core app that comes with dues. Do not call the grant a trial.
+ */
+export function proAccessSummary() {
+  return `Athletes who are not SVG Academy members get a ${NONMEMBER_TRIAL_DAYS}-day Pro trial, no card. Verified SVG Academy members get the core app with their dues and Pro free for ${MEMBER_PRO_DAYS} days, no card, never auto-billed.`;
+}
 /**
  * Grants that already started before the 14-day change.
  * A null Profile.memberProDays means this length. Do not shorten those periods.

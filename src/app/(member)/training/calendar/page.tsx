@@ -154,7 +154,7 @@ export default async function TrainingCalendarPage({
       weekStart={viewedWeek}
       days={moveDays}
     >
-    <main className="space-y-6">
+    <main className="space-y-6" data-coach-page>
       <div>
         <Link href="/training" className="text-sm text-accent underline-offset-4 hover:underline">
           Back to Training

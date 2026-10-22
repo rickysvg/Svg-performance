@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/session";
-import { MEMBER_PRO_DAYS } from "@/lib/pricing";
+import { NONMEMBER_TRIAL_DAYS, proAccessSummary } from "@/lib/pricing";
 
 export default async function MarketingPage({
   searchParams,
@@ -99,12 +99,16 @@ export default async function MarketingPage({
               separately.
             </li>
             <li>
-              Pro is $9.99/mo or $72.99/yr after a 7-day trial with no card. VIP Coaching
-              is $249/mo and includes Pro. Limited spots. Verified SVG
-              Academy members get the core app with their dues and Pro free for {MEMBER_PRO_DAYS} days.
-              Checkout is coming soon.
+              Pro is $9.99/mo or $72.99/yr. {proAccessSummary()} VIP Coaching is $249/mo and
+              includes Pro. Limited spots. Checkout is coming soon.
             </li>
-            <li>SVG Coach chat is free for your first week, no card. After that it stays on Pro, VIP Coaching, and an active 7-day Pro trial. It is an AI coach trained on striking, grappling, strength and conditioning, and fight mindset. Weight-cut services are not sold here.</li>
+            <li>
+              SVG Coach chat is free for your first week from signup, no card. After that week
+              it stays on Pro and VIP Coaching, and on an active {NONMEMBER_TRIAL_DAYS}-day Pro
+              trial. The academy Pro grant does not extend chat. It is an AI coach trained on
+              striking, grappling, strength and conditioning, and fight mindset. Weight-cut
+              services are not sold here.
+            </li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/pricing" className="text-sm text-accent underline-offset-4 hover:underline">

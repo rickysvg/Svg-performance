@@ -59,9 +59,19 @@ export function currentPlanLine(input: {
   trialActive: boolean;
   trialDaysLeft: number;
   planLabel: string;
+  /** Set when the caller knows which clock is running. */
+  trialLengthDays?: number;
+  verified?: boolean;
 }) {
   if (input.trialActive) {
     const unit = input.trialDaysLeft === 1 ? "day" : "days";
+    if (input.verified) {
+      const length = input.trialLengthDays ?? MEMBER_TRIAL_DAYS;
+      return `${length}-day free Pro, ${input.trialDaysLeft} ${unit} left`;
+    }
+    if (input.trialLengthDays) {
+      return `${input.trialLengthDays}-day Pro trial, ${input.trialDaysLeft} ${unit} left`;
+    }
     return `Pro trial, ${input.trialDaysLeft} ${unit} left`;
   }
   return input.planLabel;

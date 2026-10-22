@@ -2,14 +2,21 @@
 
 import { UpgradeCtas } from "@/components/upgrade/UpgradeCtas";
 
-const BLURBS: Record<string, { title: string; body: string }> = {
+function trialBlurb(trialDays: number, rest: string) {
+  const days = trialDays > 0 ? trialDays : 7;
+  return `${rest} Start the ${days}-day Pro trial — no card — or upgrade from Profile.`;
+}
+
+const BLURBS: Record<string, { title: string; body: string; trial?: boolean }> = {
   tutorial: {
     title: "This lesson is in Pro",
-    body: "Academy members get the rounds, mobility, and form libraries with their dues. Pro opens every lesson. Start the 7-day trial — no card — or upgrade from Profile.",
+    body: "Academy members get the rounds, mobility, and form libraries with their dues. Pro opens every lesson.",
+    trial: true,
   },
   seminar: {
     title: "This seminar is in Pro",
-    body: "Intermediate and advanced seminars, and their technique clips, open on Pro. Start the 7-day trial — no card — or upgrade from Profile.",
+    body: "Intermediate and advanced seminars, and their technique clips, open on Pro.",
+    trial: true,
   },
   fuel: {
     title: "AI meal feedback is in Pro",
@@ -45,11 +52,13 @@ const BLURBS: Record<string, { title: string; body: string }> = {
   },
   mobility: {
     title: "This mobility routine is in Pro",
-    body: "Academy members get the mobility library with their dues. Start the 7-day trial — no card — or upgrade from Profile.",
+    body: "Academy members get the mobility library with their dues.",
+    trial: true,
   },
   fight_camp: {
     title: "Fight camp is in Pro",
-    body: "Build a week-by-week camp from your fight date: base, build, peak / sharpen, and a fight-week taper. Start the 7-day trial — no card — or upgrade from Profile.",
+    body: "Build a week-by-week camp from your fight date: base, build, peak / sharpen, and a fight-week taper.",
+    trial: true,
   },
   form_check: {
     title: "Form check is in Pro",
@@ -77,6 +86,7 @@ export function UpgradePreview({
   framed?: boolean;
 }) {
   const copy = BLURBS[kind];
+  const body = copy.trial ? trialBlurb(trialDays, copy.body) : copy.body;
   const carbon = kind === "coach";
   return (
     <section
@@ -98,13 +108,12 @@ export function UpgradePreview({
       >
         {copy.title}
       </h2>
-      <p className={`mt-2 text-sm ${carbon ? "text-white/80" : "text-muted"}`}>{copy.body}</p>
+      <p className={`mt-2 text-sm ${carbon ? "text-white/80" : "text-muted"}`}>{body}</p>
       <div className="mt-4 space-y-3">
         <UpgradeCtas
           canStartTrial={canStartTrial}
           trialDays={trialDays}
           next={next}
-          trialLabel={kind === "coach" ? "Start 7-day trial" : undefined}
           upgradeLabel={kind === "coach" ? "Upgrade" : undefined}
         />
         {onDismiss ? (

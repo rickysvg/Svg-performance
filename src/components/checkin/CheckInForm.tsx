@@ -5,6 +5,7 @@ import { submitWeeklyCheckInAction, type CheckInActionState } from "@/app/action
 import { StatusBanner } from "@/components/StatusBanner";
 import { BodyMap } from "@/components/checkin/BodyMap";
 import { ScorePicker } from "@/components/checkin/ScorePicker";
+import { formatOneDecimal } from "@/lib/body-metrics";
 import { FORM_CHECK_MAX_BYTES, FORM_CHECK_MAX_SECONDS } from "@/lib/form-check-shared";
 import type { BodyRegionId } from "@/lib/weekly-checkin-shared";
 
@@ -96,7 +97,7 @@ export function CheckInForm({
           max={500}
           step="0.1"
           required
-          defaultValue={suggestedWeight ?? ""}
+          defaultValue={suggestedWeight == null ? "" : formatOneDecimal(suggestedWeight)}
           placeholder="175"
           className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-4 text-base"
         />

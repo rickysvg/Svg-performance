@@ -57,11 +57,11 @@ export function HomeSideStats({
   const showCaption = !(fatEmpty && typed);
 
   const labelClass =
-    "block whitespace-nowrap font-telemetry text-[7px] uppercase leading-none tracking-normal text-signal";
+    "side-stat-label block whitespace-nowrap font-telemetry text-[7px] uppercase tracking-normal text-signal";
 
   return (
-    <div className="flex w-full min-w-0 items-start" data-home-side-stats>
-      <label className="min-w-0 shrink text-left">
+    <div className="flex w-full min-w-0 items-start gap-2.5" data-home-side-stats>
+      <label className="shrink-0 text-left">
         <span className={labelClass}>Body fat</span>
         <span className="flex items-baseline gap-0.5">
           <input
@@ -77,7 +77,7 @@ export function HomeSideStats({
             size={Math.max(fatDraft.length, 1)}
             onChange={(event) => onFatDraft(event.target.value)}
             style={{ fieldSizing: "content" }}
-            className="box-border block h-[18px] w-auto min-w-[1ch] appearance-none border-0 bg-transparent p-0 font-display text-lg leading-none tracking-normal text-[#CBF805] outline-none placeholder:text-white/45"
+            className="side-stat-value box-border block w-auto min-w-[1ch] appearance-none border-0 bg-transparent p-0 font-display text-lg tracking-normal text-[#CBF805] outline-none placeholder:text-white/45"
           />
           <span className="font-telemetry text-[9px] leading-none text-[#CBF805]">%</span>
         </span>
@@ -99,10 +99,10 @@ export function HomeSideStats({
         href="/progress"
         data-home-training={training.mode}
         aria-label={trainingLabel(training)}
-        className="min-w-0 flex-1"
+        className="shrink-0"
       >
         <span className={labelClass}>{fight ? "Days to fight" : "Streak"}</span>
-        <span className="block font-display text-lg leading-none tracking-normal text-[#CBF805]">
+        <span className="side-stat-value font-display text-lg tracking-normal text-[#CBF805]">
           {training.days}
         </span>
         <span className="block whitespace-nowrap font-telemetry text-[7px] uppercase leading-none tracking-normal text-white/55">

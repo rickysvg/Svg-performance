@@ -9,7 +9,7 @@ export default async function BagworkPage() {
   const custom = await listCustomBagWorkouts(user.id);
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6" data-coach-page>
       <div>
         <div className="flex gap-1" aria-hidden>
           <span className="block h-0.5 w-6 rounded-full bg-accent" />

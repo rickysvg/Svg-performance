@@ -111,7 +111,7 @@ export type CatalogDayLike = {
   dayNumber: number;
   title: string;
   focus: string;
-  exercises: Array<{ sets: number; restSeconds: number }>;
+  exercises: Array<{ name?: string; sets: number; restSeconds: number }>;
 };
 
 export type ResolvedPlanSession = {

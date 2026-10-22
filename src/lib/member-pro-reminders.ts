@@ -53,10 +53,12 @@ function recapLine(recap: MemberProRecap) {
 
 const PRICE = `${usd(PERFORMANCE_MONTHLY)}/mo or ${usd(PERFORMANCE_ANNUAL)}/yr`;
 
-export function memberProCopy(stage: MemberProStage, recap: MemberProRecap) {
+export function memberProCopy(stage: MemberProStage, recap: MemberProRecap, daysLeft = 5) {
   if (stage === "day25") {
+    const left = Math.max(1, Math.round(daysLeft));
+    const unit = left === 1 ? "day" : "days";
     return {
-      title: "5 days left of free Pro",
+      title: `${left} ${unit} left of free Pro`,
       body: `${recapLine(recap)} Keep Pro for ${PRICE}, or stay on the core app with your dues. No card on file, never auto-billed.`,
       cta: "Keep Pro",
     };
@@ -110,8 +112,10 @@ export async function runMemberProReminderCron(now = new Date()): Promise<Member
       skipped += 1;
       continue;
     }
+    const day = memberProDay(profile.memberProStartedAt, now);
+    const daysLeft = day == null ? 0 : Math.max(0, grantDays - day);
     const recap = await memberProRecap(profile.userId, profile.memberProStartedAt!);
-    const copy = memberProCopy(stage, recap);
+    const copy = memberProCopy(stage, recap, daysLeft);
     await sendPushToUser(profile.userId, { title: copy.title, body: copy.body, url: "/pricing" });
     await prisma.memberProReminderLog.create({
       data: { userId: profile.userId, stage, channel: "push" },

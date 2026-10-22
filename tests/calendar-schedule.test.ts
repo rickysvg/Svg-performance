@@ -16,6 +16,23 @@ import { addZonedDays } from "@/lib/timezone";
 
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
 
+/** Log a set that belongs to the started plan. A mismatched name must not finish the day. */
+function tickedPlannedSet(session: {
+  sets: { exerciseName: string; setNumber: number; logMode?: string | null }[];
+}) {
+  const planned = session.sets.find((set) => set.logMode === "load_reps") ?? session.sets[0];
+  const weighted = !planned?.logMode || planned.logMode === "load_reps";
+  return {
+    exerciseName: planned?.exerciseName || "Goblet squat",
+    setNumber: planned?.setNumber || 1,
+    reps: weighted ? 8 : null,
+    loadValue: weighted ? 40 : null,
+    loadUnit: "lb" as const,
+    durationSeconds: weighted ? null : 60,
+    completed: true,
+  };
+}
+
 describe("calendar schedule list", () => {
   it("formats Today, Tomorrow, then weekday headings with ordinals", () => {
     expect(ordinalDay(22)).toBe("22nd");
@@ -167,16 +184,7 @@ describe("calendar schedule loader", () => {
       performedAt: new Date(2026, 8, 23, 12, 0, 0),
       notes: "",
       status: "complete",
-      sets: [
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: 8,
-          loadValue: 40,
-          loadUnit: "lb",
-          completed: true,
-        },
-      ],
+      sets: [tickedPlannedSet(session)],
     });
 
     const after = await getCalendarSchedule(user.id, tuesday);
@@ -222,16 +230,7 @@ describe("calendar schedule loader", () => {
       performedAt: monday,
       notes: "",
       status: "complete",
-      sets: [
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: 8,
-          loadValue: 40,
-          loadUnit: "lb",
-          completed: true,
-        },
-      ],
+      sets: [tickedPlannedSet(session)],
     });
 
     const schedule = await getCalendarSchedule(user.id, wednesday, monday);
@@ -286,16 +285,7 @@ describe("calendar schedule loader", () => {
       performedAt: new Date("2026-09-21T00:00:00.000Z"),
       notes: "",
       status: "draft",
-      sets: [
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: 8,
-          loadValue: 40,
-          loadUnit: "lb",
-          completed: true,
-        },
-      ],
+      sets: [tickedPlannedSet(session)],
     });
     await prisma.workoutSession.update({
       where: { id: session.id },

@@ -1,4 +1,10 @@
-import { ACADEMY_INCLUDES, COACHING_INCLUDES, MEMBER_PRO_DAYS, PRO_INCLUDES } from "@/lib/pricing";
+import {
+  ACADEMY_INCLUDES,
+  COACHING_INCLUDES,
+  MEMBER_PRO_DAYS,
+  NONMEMBER_TRIAL_DAYS,
+  PRO_INCLUDES,
+} from "@/lib/pricing";
 /** Matches Coach topics: martial art (striking/grappling), conditioning, mental. */
 export const COACH_AI_TRAINED_ON =
   "striking, grappling, strength and conditioning, and fight mindset";
@@ -88,7 +94,7 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     gymPriceLabel: "Pro required",
     nonmemberPriceLabel: "Pro required",
     summary:
-      "Your 7-day Pro trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data.",
+      `Your ${NONMEMBER_TRIAL_DAYS}-day Pro trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data.`,
     includes: ["View your past workouts", "Export your data"],
     rank: 0,
     features: ["progress", "shop"],

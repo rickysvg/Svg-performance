@@ -11,6 +11,7 @@ function LessonBody({
   bookmarked,
   completed,
   locked,
+  trialDays = 7,
 }: {
   lesson: {
     slug: string;
@@ -27,6 +28,7 @@ function LessonBody({
   bookmarked?: boolean;
   completed?: boolean;
   locked?: boolean;
+  trialDays?: number;
 }) {
   const video = resolveLessonVideo(lesson);
   const catalog = catalogEntryForSlug(lesson.slug);
@@ -61,7 +63,7 @@ function LessonBody({
         <p className="line-clamp-4 text-sm leading-snug text-muted">{lesson.technicalDescription}</p>
       ) : (
         <p className="text-sm text-muted">
-          Preview only. Start the 7-day trial or upgrade to Pro to watch.
+          Preview only. Start the {trialDays}-day Pro trial or upgrade to Pro to watch.
         </p>
       )}
       <p className="text-xs text-muted">
@@ -101,7 +103,13 @@ export function LearnLessonCard({
   trialDays?: number;
 }) {
   const body = (
-    <LessonBody lesson={lesson} bookmarked={bookmarked} completed={completed} locked={locked} />
+    <LessonBody
+      lesson={lesson}
+      bookmarked={bookmarked}
+      completed={completed}
+      locked={locked}
+      trialDays={trialDays ?? 7}
+    />
   );
 
   if (locked) {

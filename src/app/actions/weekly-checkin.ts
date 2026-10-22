@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { optionalBodyFatPercent } from "@/lib/body-metrics";
+import { optionalBodyFatPercent, parseOneDecimal } from "@/lib/body-metrics";
 import { publicErrorMessage } from "@/lib/errors";
 import {
   isWeeklyCheckInCoach,
@@ -49,7 +49,7 @@ export async function submitWeeklyCheckInAction(
       userId: user.id,
       now: new Date(),
       timeZone,
-      bodyweightLb: Number(formData.get("bodyweightLb") ?? ""),
+      bodyweightLb: parseOneDecimal(formData.get("bodyweightLb")),
       sleepQuality: Number(formData.get("sleepQuality") ?? ""),
       energy: Number(formData.get("energy") ?? ""),
       stress: Number(formData.get("stress") ?? ""),

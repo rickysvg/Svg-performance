@@ -40,10 +40,10 @@ describe("dismissible toasts", () => {
     expect(feedback).toContain("<Toast");
     expect(feedback).not.toContain("pointer-events-none");
     expect(action).not.toMatch(/watch or wearable/);
-    expect(css).toContain("bottom: calc(5.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));");
+    expect(css).toContain("bottom: calc(9.25rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));");
     expect(css).toContain(
       "html:has([data-coach-fab-raised]) .app-toast:not(.app-toast-top)",
     );
-    expect(css).toContain("bottom: calc(6.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));");
+    expect(css).toContain("bottom: calc(10.25rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));");
   });
 });

@@ -458,6 +458,20 @@ export function WorkoutLogForm({
     saveWorkoutWithNotice,
     {} as WorkoutActionState,
   );
+  const [draftNotice, setDraftNotice] = useState("");
+  const draftSavePending = useRef(false);
+  useEffect(() => {
+    if (pending) {
+      draftSavePending.current = true;
+      return;
+    }
+    if (!draftSavePending.current) return;
+    draftSavePending.current = false;
+    if (!state.success?.startsWith("Draft saved")) return;
+    setDraftNotice("Draft saved");
+    const timer = window.setTimeout(() => setDraftNotice(""), 2500);
+    return () => window.clearTimeout(timer);
+  }, [pending, state.success]);
   const [sets, setSets] = useState(() => setsForLogger(session));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [pickerIndex, setPickerIndex] = useState<number | null>(null);
@@ -607,9 +621,36 @@ export function WorkoutLogForm({
     });
   }
 
-  const currentRestSeconds = cursor.done
-    ? 0
-    : restForName(cursor.exerciseName, currentPlanned?.restSeconds, currentMode);
+  function exerciseRestSeconds(name: string) {
+    const group = grouped.find(([exerciseName]) => exerciseName === name)?.[1];
+    const overlay = swapOverlay[name];
+    const storedPlan = parseAddedPlan(group?.[0]?.prescriptionKey);
+    const nameKey = gymExerciseKey(name);
+    const plannedMatch = session.programDay?.exercises.find(
+      (row) => gymExerciseKey(row.name) === nameKey,
+    );
+    const bikeChoice =
+      bikeChoiceFromKey(group?.[0]?.prescriptionKey) ??
+      (storedPlan?.reps ? parseBikeRecipe(storedPlan.reps) : null) ??
+      (plannedMatch?.reps ? parseBikeRecipe(plannedMatch.reps) : null);
+    if (bikeChoice) return 0;
+    const library = libraryExercise(name) ?? libraryExercise(libraryBaseName(name));
+    const added = addedNames.has(name) || Boolean(storedPlan);
+    const addedRest = restByName[name] ?? storedPlan?.restSeconds;
+    const addedPlan =
+      added && (library || storedPlan)
+        ? { restSeconds: addedRest ?? library?.restSeconds ?? 60 }
+        : undefined;
+    const planned = plannedMatch ?? (overlay ? { restSeconds: overlay.restSeconds } : addedPlan);
+    const mode = resolveLogMode({
+      logMode: group?.[0]?.logMode ?? overlay?.logMode ?? plannedMatch?.logMode,
+      name,
+      reps: overlay?.reps || storedPlan?.reps || plannedMatch?.reps,
+    });
+    return restForName(name, planned?.restSeconds, mode);
+  }
+
+  const currentRestSeconds = cursor.done ? 0 : exerciseRestSeconds(cursor.exerciseName);
   const checkedCount = currentGroup?.filter((set) => set.completed).length ?? 0;
   const firstRirName = session.programDay?.exercises.find((row) => hasRirCue(row.loadText))?.name;
 
@@ -1121,13 +1162,7 @@ export function WorkoutLogForm({
       });
       return {
         name,
-        restSeconds: storedChoice
-          ? 0
-          : restForName(
-              name,
-              overlay?.restSeconds ?? stored?.restSeconds ?? planned?.restSeconds,
-              mode,
-            ),
+        restSeconds: exerciseRestSeconds(name),
         planned: {
           reps: storedChoice
             ? formatBikeRecipe(storedChoice)
@@ -1452,7 +1487,7 @@ export function WorkoutLogForm({
             ? bikeSession?.notes || ""
             : planned?.notes || bikeSession?.notes || "";
           const timed = isDurationMode(mode) && !bike;
-          const restSeconds = bikeChoice ? 0 : restForName(name, planned?.restSeconds, mode);
+          const restSeconds = exerciseRestSeconds(name);
           const layout = loggerRowLayout(mode, name);
           const columns =
             layout === "bag"
@@ -2020,11 +2055,17 @@ export function WorkoutLogForm({
             type="submit"
             name="intent"
             value="draft"
+            data-save-draft
             disabled={pending}
             className="touch-target w-full text-sm font-medium text-muted disabled:opacity-60"
           >
             Save draft
           </button>
+          {draftNotice ? (
+            <p role="status" data-draft-saved className="text-center text-sm font-semibold text-accent">
+              {draftNotice}
+            </p>
+          ) : null}
         </div>
       </form>
 

@@ -262,7 +262,7 @@ export default async function TrainingPage({
       weekStart={viewedWeek}
       days={moveDays}
     >
-    <main className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+    <main className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl">Training</h1>

@@ -1,4 +1,5 @@
 import { formatClock, resolveLogMode } from "@/lib/exercise-log-mode";
+import { setHasLoggedWork } from "@/lib/logged-work";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { currentConsecutiveDays, uniqueActiveDayKeys } from "@/lib/records";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
@@ -71,8 +72,9 @@ export function sessionVolume(sets: ShareSetLike[], displayUnit: LoadUnit) {
   );
 }
 
+/** Sets count is ticked sets with a logged number, not every planned row. */
 export function sessionSetCount(sets: ShareSetLike[]) {
-  return loggedSets(sets).length;
+  return sets.filter((set) => set.completed && setHasLoggedWork(set)).length;
 }
 
 export function sessionRoundCount(sets: ShareSetLike[]) {

@@ -9,6 +9,7 @@ import {
   deleteBodyMetricForUser,
   deletePhotoPlaceholderForUser,
   optionalBodyFatPercent,
+  parseOneDecimal,
   recordWeightEntryForUser,
   upsertPhotoPlaceholderForUser,
 } from "@/lib/body-metrics";
@@ -38,7 +39,11 @@ export async function saveBodyMetricAction(
     const kind = String(formData.get("kind") ?? "");
     const recordedAt = parseRecordedAt(String(formData.get("recordedAt") ?? ""));
     const notes = String(formData.get("notes") ?? "");
-    const value = Number(formData.get("value") ?? "");
+    const rawValue = String(formData.get("value") ?? "");
+    const value =
+      kind === "weight" || kind === "leanMass" || kind === "bodyFat"
+        ? parseOneDecimal(rawValue)
+        : Number(rawValue);
     const unit = String(formData.get("unit") ?? "");
     const bodyFatPercent =
       kind === "weight" ? optionalBodyFatPercent(formData.get("bodyFatPercent")) : null;

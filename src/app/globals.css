@@ -198,7 +198,8 @@ html[data-splash="done"] .app-splash {
   position: fixed;
   z-index: 30;
   right: max(0.75rem, env(safe-area-inset-right, 0px));
-  bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  /* Above the account dock. Toasts sit one button-height above this. */
+  bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   width: 48px;
   height: 48px;
@@ -211,7 +212,7 @@ html[data-splash="done"] .app-splash {
 }
 
 .coach-fab[data-coach-fab-raised] {
-  bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(10.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 .coach-fab-photo {
@@ -228,7 +229,7 @@ html:not([data-splash="done"]) [data-coach-fab] {
 
 /*
   Confirmation toasts clear the account dock and the 48px coach button.
-  Home coach sits at 5.75rem; logger screens raise it to 6.75rem.
+  Home coach sits at 9.25rem; logger screens raise it to 10.25rem.
   48px is the button, 0.75rem is the gap under the toast.
 */
 .app-toast {
@@ -238,11 +239,11 @@ html:not([data-splash="done"]) [data-coach-fab] {
   right: 1rem;
   margin-inline: auto;
   max-width: 28rem;
-  bottom: calc(5.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(9.25rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 html:has([data-coach-fab-raised]) .app-toast:not(.app-toast-top) {
-  bottom: calc(6.75rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(10.25rem + 48px + 0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 .app-toast.app-toast-top {
@@ -264,6 +265,10 @@ html:has([data-coach-fab-raised]) .app-toast:not(.app-toast-top) {
 
   [data-coach-clear] {
     padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  [data-coach-page] {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -756,6 +761,8 @@ body:has(.app-splash.is-visible) {
   font-weight: 600;
   font-synthesis: none;
   letter-spacing: 0.02em;
+  overflow: visible;
+  padding-right: 0.35em;
   text-shadow:
     0 0 1px #07080a,
     0 0 2px #07080a,
@@ -797,6 +804,25 @@ body:has(.app-splash.is-visible) {
   box-shadow: none;
   outline: none;
   caret-color: #cbf805;
+}
+
+/*
+  The weigh card clips (overflow:hidden). Anton paints about 1px above its
+  em box, and an 18px input (overflow:clip) slices that off — which also
+  covers the 7px labels sitting on the card edge. Padding keeps the ink
+  inside the field without opening the card up.
+*/
+[data-home-side-stats] .side-stat-label {
+  line-height: 9px;
+}
+
+[data-home-side-stats] .side-stat-value {
+  box-sizing: border-box;
+  display: block;
+  height: 20px;
+  overflow: hidden;
+  line-height: 18px;
+  padding: 2px 0 0;
 }
 
 .hc-panel {

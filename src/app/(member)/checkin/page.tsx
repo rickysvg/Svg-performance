@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { formatOneDecimal } from "@/lib/body-metrics";
 import { getTrialState } from "@/lib/trial";
 import { formCheckStorageNotice } from "@/lib/form-check-storage";
 import { PageBackLink } from "@/components/fight-camp/PageBackLink";
@@ -55,7 +56,11 @@ export default async function CheckInPage({
             See plans
           </Link>
           {trial.canStartTrial ? (
-            <p className="mt-3 text-xs text-muted">Start the 7-day Pro trial from Plan. No card.</p>
+            <p className="mt-3 text-xs text-muted">
+              {trial.verified
+                ? `Start your ${trial.trialLengthDays} days of free Pro from Plan. No card. You are never auto-billed.`
+                : `Start the ${trial.trialLengthDays}-day Pro trial from Plan. No card.`}
+            </p>
           ) : null}
         </section>
       </main>
@@ -229,7 +234,7 @@ function SubmittedCheckIn({
         </div>
       ) : null}
       <dl className="grid grid-cols-2 gap-2 text-sm">
-        <Item label="Weight" value={bodyweightLb != null ? `${bodyweightLb} lb` : "—"} />
+        <Item label="Weight" value={bodyweightLb != null ? `${formatOneDecimal(bodyweightLb)} lb` : "—"} />
         <Item label="Sleep" value={`${sleepQuality}/5`} />
         <Item label="Energy" value={`${energy}/5`} />
         <Item label="Stress" value={`${stress}/5`} />
