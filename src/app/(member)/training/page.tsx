@@ -9,7 +9,7 @@ import {
   listDraftSessionsForUser,
   matchingDraftId,
 } from "@/lib/workouts";
-import { completedSessionIdsByLocalDay } from "@/lib/chip-completion";
+import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { skillEquipmentNote } from "@/lib/skill-programs";
@@ -193,9 +193,10 @@ export default async function TrainingPage({
   );
   const liveDraft = drafts[0] ?? null;
   const loggedRange = carouselLoggedRange(now, tz);
-  const [completedDays, completedByDay] = await Promise.all([
+  const [completedDays, completedByDay, partialDays] = await Promise.all([
     completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
+    partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
   ]);
   const selectedWeekday = weekdayInAppZone(selected, tz);
   const focusDays = weeks.map((week) => {
@@ -385,6 +386,7 @@ export default async function TrainingPage({
         basePath="/training"
         completedDays={completedDays}
         completedByDay={completedByDay}
+        partialDays={partialDays}
         focusOffset={focusOffset}
         todayHref={`/training?day=${formatDayParam(now, tz)}`}
       />

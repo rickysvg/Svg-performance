@@ -435,6 +435,7 @@ function WeekChipList({
   weekStart,
   completedDays,
   completedByDay,
+  partialDays,
   selectedDay,
   interactive = true,
   source,
@@ -452,6 +453,7 @@ function WeekChipList({
   weekStart?: string;
   completedDays: string[];
   completedByDay: Record<string, string[]>;
+  partialDays: string[];
   selectedDay?: string;
   interactive?: boolean;
   source: { weekStart: string; weekday: string } | null;
@@ -493,6 +495,7 @@ function WeekChipList({
           plannedSessionIds: day.sessionIds ?? [],
           completedSessionIds: completedByDay[day.dayParam] ?? [],
           dayLogged: completedDays.includes(day.dayParam),
+          partial: partialDays.includes(day.dayParam),
         });
         const missed = mark === "none" && day.isPast && day.active;
         const movedLabel = day.movedFrom ? `, showing ${day.movedFrom}’s workout` : "";
@@ -720,6 +723,7 @@ function WeekDayCarousel({
   basePath,
   completedDays,
   completedByDay,
+  partialDays,
   focusOffset,
   todayHref,
   swapWeekStart,
@@ -729,6 +733,7 @@ function WeekDayCarousel({
   basePath: string;
   completedDays: string[];
   completedByDay: Record<string, string[]>;
+  partialDays: string[];
   focusOffset: number;
   todayHref?: string;
   swapWeekStart?: string;
@@ -1006,6 +1011,7 @@ function WeekDayCarousel({
               weekStart={week.weekStart}
               completedDays={completedDays}
               completedByDay={completedByDay}
+              partialDays={partialDays}
               selectedDay={selectedDay}
               interactive={index === activeIndex}
               source={swap.source}
@@ -1046,6 +1052,7 @@ function SingleWeekStrip({
   weekStart,
   completedDays,
   completedByDay,
+  partialDays,
 }: {
   days: Item[];
   basePath: string;
@@ -1053,6 +1060,7 @@ function SingleWeekStrip({
   weekStart?: string;
   completedDays: string[];
   completedByDay: Record<string, string[]>;
+  partialDays: string[];
 }) {
   const swap = useWeekSwap(weekStart);
   return (
@@ -1064,6 +1072,7 @@ function SingleWeekStrip({
         weekStart={weekStart}
         completedDays={completedDays}
         completedByDay={completedByDay}
+        partialDays={partialDays}
         source={swap.source}
         pending={swap.pending}
         onPointerDown={swap.onPointerDown}
@@ -1097,6 +1106,7 @@ export function WeekStrip({
   weekStart,
   completedDays = [],
   completedByDay = {},
+  partialDays = [],
   focusOffset = 0,
   todayHref,
   swapWeekStart,
@@ -1114,6 +1124,8 @@ export function WeekStrip({
   completedDays?: string[];
   /** Program days completed on each civil day. Same rule, per session. */
   completedByDay?: Record<string, string[]>;
+  /** Civil days with ticked work that does not finish the prescription. */
+  partialDays?: string[];
   /** Week offset to center on load. 0 is the current week. */
   focusOffset?: number;
   /** Where the Today button goes when the selected day is not today. */
@@ -1130,6 +1142,7 @@ export function WeekStrip({
         basePath={basePath}
         completedDays={completedDays}
         completedByDay={completedByDay}
+        partialDays={partialDays}
         focusOffset={focusOffset}
         todayHref={todayHref}
         swapWeekStart={swapWeekStart ?? weekStart}
@@ -1145,6 +1158,7 @@ export function WeekStrip({
       weekStart={weekStart}
       completedDays={completedDays}
       completedByDay={completedByDay}
+      partialDays={partialDays}
     />
   );
 }

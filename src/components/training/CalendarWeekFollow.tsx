@@ -50,6 +50,7 @@ export function CalendarWeekFollow({
   weeks,
   completedDays,
   completedByDay,
+  partialDays = [],
   focusOffset,
   todayHref,
   initialWeekStart,
@@ -61,6 +62,7 @@ export function CalendarWeekFollow({
   weeks: WeekCarouselWeek[];
   completedDays: string[];
   completedByDay: Record<string, string[]>;
+  partialDays?: string[];
   focusOffset: number;
   todayHref: string;
   initialWeekStart: string;
@@ -108,6 +110,7 @@ export function CalendarWeekFollow({
         weekStart={weekStart}
         completedDays={completedDays}
         completedByDay={completedByDay}
+        partialDays={partialDays}
         focusOffset={focusOffset}
         todayHref={todayHref}
         swapWeekStart={weekStart}

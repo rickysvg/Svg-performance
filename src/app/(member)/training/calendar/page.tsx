@@ -29,7 +29,7 @@ import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
-import { completedSessionIdsByLocalDay } from "@/lib/chip-completion";
+import { completedSessionIdsByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
 import { completedLocalDayKeys } from "@/lib/workouts";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
@@ -109,9 +109,10 @@ export default async function TrainingCalendarPage({
   const currentWeek = weekStartKey(now, tz);
   const canEditWeek = weekStartInRange(viewedWeek, currentWeek);
   const loggedWindow = carouselLoggedRange(now, tz);
-  const [loggedDays, completedByDay, weekSchedules] = await Promise.all([
+  const [loggedDays, completedByDay, partialDays, weekSchedules] = await Promise.all([
     completedLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz),
     completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
+    partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz),
     Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
   ]);
   const selectedWeekday = weekdayName(selected, tz);
@@ -245,6 +246,7 @@ export default async function TrainingCalendarPage({
         weeks={chipWeeks}
         completedDays={loggedDays}
         completedByDay={completedByDay}
+        partialDays={partialDays}
         focusOffset={focusOffset}
         todayHref={todayHref}
         initialWeekStart={viewedWeek}

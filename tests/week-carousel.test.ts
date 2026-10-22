@@ -20,6 +20,7 @@ import { chipMarkForDay } from "@/lib/chip-mark";
 import {
   completedProgramDayIdsForChip,
   completedSessionIdsByLocalDay,
+  partialLocalDayKeys,
 } from "@/lib/chip-completion";
 import { prisma } from "@/lib/prisma";
 import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned } from "@/lib/timezone";
@@ -229,6 +230,14 @@ describe("week day carousel", () => {
         dayLogged: false,
       }),
     ).toBe("none");
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["lift"],
+        completedSessionIds: [],
+        dayLogged: false,
+        partial: true,
+      }),
+    ).toBe("partial");
     expect(
       chipMarkForDay({
         plannedSessionIds: ["bike"],
@@ -471,6 +480,119 @@ describe("week day carousel", () => {
     expect(keys.includes(day)).toBe(false);
     expect(chipHasDay).toBe(false);
     expect(keys.includes(day)).toBe(chipHasDay);
+  });
+
+  it("gives the Train chip the same partial mark the calendar shows for a short log", async () => {
+    await resetDatabase();
+    const user = await makeUser("chip-partial-day@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const anchor = new Date(2026, 9, 22, 10, 0, 0);
+    const schedule = await getCalendarSchedule(user.id, anchor);
+    let picked: {
+      session: Awaited<ReturnType<typeof startWorkoutFromDay>>;
+      performedAt: Date;
+      programDayId: string;
+    } | null = null;
+    for (const day of schedule.days) {
+      for (const activity of day.activities) {
+        if (activity.kind !== "workout" || !activity.programDayId) continue;
+        const started = await startWorkoutFromDay({
+          userId: user.id,
+          programDayId: activity.programDayId,
+          preferredUnits: "lb",
+        });
+        if ((started.plannedSetCount ?? 0) > 3) {
+          picked = {
+            session: started,
+            performedAt: day.date,
+            programDayId: activity.programDayId,
+          };
+          break;
+        }
+        await prisma.workoutSession.delete({ where: { id: started.id } });
+      }
+      if (picked) break;
+    }
+    expect(picked).toBeTruthy();
+    const logged = picked!.session.sets.slice(0, 3);
+    expect(logged).toHaveLength(3);
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: picked!.session.id,
+      title: picked!.session.title,
+      performedAt: picked!.performedAt,
+      notes: "",
+      status: "complete",
+      sets: logged.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "load_reps" || !set.logMode ? 8 : null,
+        loadValue: set.logMode === "load_reps" || !set.logMode ? 40 : null,
+        loadUnit: "lb" as const,
+        durationSeconds: set.logMode === "load_reps" || !set.logMode ? null : 60,
+        completed: true,
+      })),
+    });
+
+    const day = dayKey(picked!.performedAt, APP_TIMEZONE);
+    const from = addZonedDays(picked!.performedAt, -1, APP_TIMEZONE);
+    const to = addZonedDays(picked!.performedAt, 2, APP_TIMEZONE);
+    const after = await getCalendarSchedule(user.id, picked!.performedAt);
+    const card = after.days
+      .flatMap((item) => item.activities)
+      .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
+    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.startsWith("Missed")).toBe(false);
+    const counted = /^(\d+)\/(\d+) sets$/.exec(card?.setCountLabel ?? "");
+    expect(counted).toBeTruthy();
+    expect(Number(counted?.[1])).toBeGreaterThan(0);
+    expect(Number(counted?.[1])).toBeLessThan(Number(counted?.[2]));
+
+    const keys = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const partials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    const chips = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE);
+    expect(keys.includes(day)).toBe(false);
+    expect(partials.includes(day)).toBe(true);
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: [picked!.programDayId],
+        completedSessionIds: chips[day] ?? [],
+        dayLogged: keys.includes(day),
+        partial: partials.includes(day),
+      }),
+    ).toBe("partial");
+
+    await prisma.workoutSession.update({
+      where: { id: picked!.session.id },
+      data: { status: "draft" },
+    });
+    const draftSchedule = await getCalendarSchedule(user.id, picked!.performedAt);
+    const draftCard = draftSchedule.days
+      .flatMap((item) => item.activities)
+      .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
+    const draftPartials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE);
+    expect(draftCard?.subtitle.startsWith("Partial")).toBe(true);
+    expect(draftPartials.includes(day)).toBe(true);
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: [picked!.programDayId],
+        completedSessionIds: [],
+        dayLogged: false,
+        partial: draftPartials.includes(day),
+      }),
+    ).toBe("partial");
+
+    const train = read("src/app/(member)/training/page.tsx");
+    expect(train).toContain("partialLocalDayKeys");
+    expect(train).toContain("partialDays={partialDays}");
+    expect(read("src/components/training/WeekStrip.tsx")).toContain("partial: partialDays.includes(day.dayParam)");
   });
 
   it("sends non-today chips to that date and keeps today's bike logger", () => {
