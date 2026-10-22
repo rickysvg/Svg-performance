@@ -1,3 +1,8 @@
+export const FORM_CHECK_LOCKED_TITLE = "Form Check is locked — VIP Coaching members only";
+export const FORM_CHECK_LOCKED_BODY =
+  "VIP Coaching includes coach form checks with a 48-hour response.";
+export const FORM_CHECK_APPLY_PATH = "/vip/apply";
+
 export const FORM_CHECK_MONTHLY_LIMIT = 2;
 export const FORM_CHECK_MAX_BYTES = 24 * 1024 * 1024;
 export const FORM_CHECK_MAX_SECONDS = 60;

@@ -15,6 +15,7 @@ const OPEN_WHEN_LOCKED = [
   "/feedback",
   "/vip",
   "/coach",
+  "/form-check",
 ];
 
 export function isOpenWhenLocked(pathname: string | null | undefined) {

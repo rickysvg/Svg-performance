@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { readFormCheckForActor } from "@/lib/form-check";
+import { canUseFormCheck, isFormCheckReviewer } from "@/lib/form-check-access";
+import { FORM_CHECK_LOCKED_TITLE } from "@/lib/form-check-shared";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 
 export async function GET(
@@ -10,6 +12,9 @@ export async function GET(
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
+  }
+  if (!(await canUseFormCheck(user)) && !isFormCheckReviewer(user)) {
+    return NextResponse.json({ error: FORM_CHECK_LOCKED_TITLE }, { status: 403 });
   }
   const { checkId } = await params;
   try {

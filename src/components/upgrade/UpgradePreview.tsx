@@ -60,10 +60,6 @@ const BLURBS: Record<string, { title: string; body: string; trial?: boolean }> =
     body: "Build a week-by-week camp from your fight date: base, build, peak / sharpen, and a fight-week taper.",
     trial: true,
   },
-  form_check: {
-    title: "Form check is in Pro",
-    body: "Send two short clips a month. A real coach writes the note, and it shows up signed SVG Coach.",
-  },
   history: {
     title: "Older history is in Pro",
     body: "Academy members see the last 30 days. Pro shows your full history. Your data is saved and you can export it anytime from Profile.",

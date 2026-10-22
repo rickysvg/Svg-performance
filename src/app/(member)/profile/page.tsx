@@ -9,7 +9,8 @@ import { YourDataSection } from "@/components/profile/YourDataSection";
 import { ReminderPrefsForm } from "@/components/reminders/ReminderPrefsForm";
 import { isAdmin, isStaff } from "@/lib/roles";
 import { isDashboardAdmin } from "@/lib/admin-access";
-import { isFormCheckReviewer } from "@/lib/form-check-access";
+import { formCheckLockedFor, isFormCheckReviewer } from "@/lib/form-check-access";
+import { FormCheckLockedTrigger } from "@/components/form-check/FormCheckLockedSheet";
 import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
@@ -168,9 +169,23 @@ export default async function ProfilePage() {
             </Link>
           </li>
           <li>
-            <Link href="/form-check" className="text-accent underline-offset-4 hover:underline">
-              Form check
-            </Link>
+            {formCheckLockedFor({ role: user.role, planId }) ? (
+              <FormCheckLockedTrigger
+                testId="form-check-locked-trigger-profile"
+                lock="inline"
+                className="inline-flex items-center gap-2 border-0 bg-transparent p-0 font-inherit text-accent underline-offset-4 hover:underline"
+              >
+                <span>Form check</span>
+              </FormCheckLockedTrigger>
+            ) : (
+              <Link
+                href="/form-check"
+                data-testid="profile-link-form-check"
+                className="text-accent underline-offset-4 hover:underline"
+              >
+                Form check
+              </Link>
+            )}
           </li>
           <li>
             <Link href="/progress" className="text-accent underline-offset-4 hover:underline">

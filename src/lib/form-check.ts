@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { canUseFeature } from "@/lib/entitlements";
+import { canUseFormCheck, isFormCheckReviewer } from "@/lib/form-check-access";
 import { zonedCivilToUtc, zonedParts } from "@/lib/timezone";
-import { isFormCheckReviewer } from "@/lib/form-check-access";
 import {
   assertClipDuration,
   readFormCheckMedia,
@@ -11,6 +10,7 @@ import {
   type FormCheckMime,
 } from "@/lib/form-check-storage";
 import {
+  FORM_CHECK_LOCKED_TITLE,
   FORM_CHECK_MONTHLY_LIMIT,
   FORM_CHECK_MOVEMENTS,
   FORM_CHECK_SIGNATURE,
@@ -68,12 +68,12 @@ export function resolveMovement(movementId: string, custom: string) {
 }
 
 async function assertFormCheckAccess(userId: string, now: Date) {
-  const allowed = await canUseFeature(userId, "form_check", now);
-  if (!allowed) {
-    throw new AppError(
-      "PLAN",
-      "Form check is on SVG Performance. Verified academy members get the app free. Paid plans coming soon.",
-    );
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true },
+  });
+  if (!user || !(await canUseFormCheck(user, now))) {
+    throw new ForbiddenError(FORM_CHECK_LOCKED_TITLE);
   }
 }
 

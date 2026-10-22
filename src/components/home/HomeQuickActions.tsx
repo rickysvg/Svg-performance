@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { FormCheckLockedTrigger } from "@/components/form-check/FormCheckLockedSheet";
 import { SparringLogTile } from "@/components/home/SparringLogTile";
 import { UpgradePreviewSheet } from "@/components/upgrade/UpgradePreviewSheet";
 import { tileSrc } from "@/lib/athlete-imagery";
@@ -116,12 +117,14 @@ export function HomeQuickActions({
   trialDays = 7,
   sparringRating = null,
   imagery = "",
+  formCheckLocked = false,
 }: {
   locked?: { href: string; kind: "fuel" | "coach" }[];
   canStartTrial?: boolean;
   trialDays?: number;
   sparringRating?: number | null;
   imagery?: string | null;
+  formCheckLocked?: boolean;
 }) {
   const lockedMap = new Map(locked.map((item) => [item.href, item.kind]));
   return (
@@ -132,6 +135,17 @@ export function HomeQuickActions({
           const kind = lockedMap.get(action.href);
           const className =
             "relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black ring-1 ring-[#cbf805]/40";
+          if (action.href === "/form-check" && formCheckLocked) {
+            return (
+              <FormCheckLockedTrigger
+                key={action.href}
+                testId="form-check-locked-trigger-home"
+                className={`${className} border-0 p-0 text-left font-inherit`}
+              >
+                <ActionTile action={art} />
+              </FormCheckLockedTrigger>
+            );
+          }
           if (kind) {
             return (
               <UpgradePreviewSheet
