@@ -106,18 +106,22 @@ export function sessionCountsAsPlannedCompletion(
 
 /**
  * An off-plan log whose exercises were swapped is done when every logged
- * set is ticked. Catalog names and the original dose must not leave that
- * finished log as Partial. A short log of the original exercises stays partial.
+ * set is ticked and the count covers the dose. A stored planned count wins.
+ * With no stored count, the swap still has to meet the scaled day dose:
+ * two ticked sets on a 30-set day stay partial. A short log of the original
+ * exercises stays partial too.
  */
 export function offPlanSessionDone(
   session: { status: string; sets: TickedSet[]; plannedSetCount?: number | null },
   dose: number,
   planNames: readonly string[],
 ) {
-  const stamped = {
-    ...session,
-    plannedSetCount: session.plannedSetCount ?? (dose > 0 ? dose : null),
-  };
+  const stored =
+    typeof session.plannedSetCount === "number" && session.plannedSetCount > 0
+      ? session.plannedSetCount
+      : null;
+  const required = stored ?? (dose > 0 ? dose : null);
+  const stamped = { ...session, plannedSetCount: required };
   if (sessionCountsAsPlannedCompletion(stamped, [...planNames])) return true;
   if (session.status !== "complete") return false;
   if (session.sets.length === 0 || !session.sets.every((set) => setIsTicked(set))) return false;
@@ -127,10 +131,40 @@ export function offPlanSessionDone(
     return !planNames.some((planned) => loggedNameMatchesPlanned(planned, name));
   });
   if (!replaced) return false;
-  if (typeof session.plannedSetCount === "number" && session.plannedSetCount > 0) {
-    return tickedSetCount(session.sets) >= session.plannedSetCount;
-  }
+  if (required != null && required > 0) return tickedSetCount(session.sets) >= required;
   return true;
+}
+
+/** First positive integer in a plan rep string. "6 / side" and "10 sec" both count. */
+export function leadingPlanCount(text: string | null | undefined) {
+  const match = String(text ?? "").match(/\d+/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.min(200, Math.round(value));
+}
+
+/** Rep scheme stored on a programmed set, after the exercise name. */
+export function repsTextFromPrescriptionKey(key: string | null | undefined) {
+  const raw = String(key ?? "").trim();
+  if (!raw || raw.startsWith("added|")) return "";
+  const scheme = raw.includes("|") ? (raw.split("|").pop() ?? "") : raw;
+  const parts = scheme.split("::");
+  return parts.length > 1 ? parts.slice(1).join("::") : "";
+}
+
+/**
+ * A checked set with an empty load still counts when the plan already
+ * named the reps. Bodyweight and "no pounds typed" stay savable.
+ */
+export function withTickedPlanWork<T extends PersistSet>(set: T): T {
+  if (!set.completed || setHasLoggedWork(set)) return set;
+  const count = leadingPlanCount(repsTextFromPrescriptionKey(set.prescriptionKey));
+  if (count == null) return set;
+  if (set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed") {
+    return { ...set, durationSeconds: count };
+  }
+  return { ...set, reps: count };
 }
 
 /** Timer logs use a different bike label than the day card. Other names stay on their gym key. */

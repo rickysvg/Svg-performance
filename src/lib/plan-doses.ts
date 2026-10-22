@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -66,12 +67,6 @@ export function calendarScaleLoadCount() {
   return scaleLoads;
 }
 
-const inflight = new Map<string, ReturnType<typeof loadCalendarScaleContext>>();
-
-function scaleKey(userId: string, now: Date) {
-  return `${userId}:${Math.floor(now.getTime() / 1000)}`;
-}
-
 async function loadCalendarScaleContext(userId: string, now: Date) {
   scaleLoads += 1;
   const [catalog, profile] = await Promise.all([
@@ -101,21 +96,57 @@ async function loadCalendarScaleContext(userId: string, now: Date) {
   };
 }
 
-/** Drop a cached catalog. Tests call this between cases so a profile edit is visible. */
+type CalendarScaleContext = Awaited<ReturnType<typeof loadCalendarScaleContext>>;
+
+/**
+ * Request-scoped slot. React `cache` remembers the slot for this render and
+ * does not keep a failed load: the catch below clears it. Outside a request
+ * (unit tests) `cache` calls through, so `joining` only dedupes calls that
+ * are already in flight and drops the entry when the load settles.
+ */
+const scaleSlot = cache((userId: string, bucket: number) => {
+  return { current: null as Promise<CalendarScaleContext> | null };
+});
+
+const joining = new Map<string, Promise<CalendarScaleContext>>();
+
+/** Drop an in-flight join. Tests call this between cases so a profile edit is visible. */
 export function clearCalendarScaleCache() {
-  inflight.clear();
+  joining.clear();
 }
 
 /**
- * One scaled catalog per member per second. Train, the calendar, and the
+ * One scaled catalog per member per request. Train, the calendar, and the
  * check-mark queries share it, so a page does not load the catalog again.
  */
 export function calendarScaleContext(userId: string, now = new Date()) {
-  const key = scaleKey(userId, now);
-  const existing = inflight.get(key);
-  if (existing) return existing;
-  const pending = loadCalendarScaleContext(userId, now);
-  inflight.set(key, pending);
+  const bucket = Math.floor(now.getTime() / 1000);
+  const key = `${userId}:${bucket}`;
+  const slot = scaleSlot(userId, bucket);
+  if (slot.current) return slot.current;
+  const pendingJoin = joining.get(key);
+  if (pendingJoin) {
+    slot.current = pendingJoin;
+    return pendingJoin;
+  }
+  const pending = loadCalendarScaleContext(userId, now).then(
+    (value) => value,
+    (error: unknown) => {
+      if (slot.current === pending) slot.current = null;
+      joining.delete(key);
+      throw error;
+    },
+  );
+  void pending.then(
+    () => {
+      joining.delete(key);
+    },
+    () => {
+      joining.delete(key);
+    },
+  );
+  slot.current = pending;
+  joining.set(key, pending);
   return pending;
 }
 

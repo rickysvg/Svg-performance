@@ -345,8 +345,13 @@ function logMatchesPlanned(
   const plannedNames = (planned.day?.exercises ?? [])
     .map((exercise) => (exercise.name ?? "").trim())
     .filter((name) => name.length > 0);
+  // Same program day. A 1-set save whose name is off the scaled list (a swap,
+  // or a rename from calendarPlanDoses) still belongs on this card. Completion
+  // below still requires the plan names, so a push-up does not finish a bike.
+  // The today/upcoming subtitle is only the fallback when nothing matched.
+  if (idMatch(log, planned) && tickedSetCount(log.sets) > 0) return true;
   if (!namesOverlap(log, plannedNames)) return false;
-  if (idMatch(log, planned) || dayNumberMatch(log, planned)) return true;
+  if (dayNumberMatch(log, planned)) return true;
   if (!titlesMatch(log.title, planned.title)) return false;
   const sameTitle = plannedToday.filter((row) => titlesMatch(log.title, row.title));
   if (sameTitle.length !== 1) return false;

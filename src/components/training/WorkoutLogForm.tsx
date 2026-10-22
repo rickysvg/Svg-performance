@@ -81,7 +81,7 @@ import { textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { leadingPlanCount, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
 import {
   applyPreviousToSet,
   copyPreviousOntoExercise,
@@ -979,10 +979,31 @@ export function WorkoutLogForm({
           ? target.durationSeconds
           : bikeDurationFor(exerciseName, target?.prescriptionKey)
         : undefined;
+    const planned = session.programDay?.exercises.find(
+      (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
+    );
+    const planCount =
+      leadingPlanCount(planned?.reps) ??
+      leadingPlanCount(repsTextFromPrescriptionKey(target?.prescriptionKey));
+    const emptyTick =
+      completed &&
+      !setHasLoggedWork({
+        reps: target?.reps,
+        loadValue: target?.loadValue,
+        durationSeconds: durationSeconds ?? target?.durationSeconds,
+      });
+    const fillReps = emptyTick && planCount != null && !isDurationMode(mode) && !bike;
+    const fillTime = emptyTick && planCount != null && (isDurationMode(mode) || bike) && durationSeconds == null;
     setActiveName(exerciseName);
     const nextSets = sets.map((set) =>
       set.id === setId
-        ? { ...set, completed, ...(durationSeconds != null ? { durationSeconds } : {}) }
+        ? {
+            ...set,
+            completed,
+            ...(durationSeconds != null ? { durationSeconds } : {}),
+            ...(fillReps ? { reps: planCount } : {}),
+            ...(fillTime ? { durationSeconds: planCount } : {}),
+          }
         : set,
     );
     setSets(nextSets);

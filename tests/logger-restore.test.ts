@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import { restoreLoggerSets } from "@/lib/logger-sets";
-import { prepareSetsForPersist } from "@/lib/logged-work";
+import { prepareSetsForPersist, withTickedPlanWork } from "@/lib/logged-work";
+import { prescriptionSlotKey } from "@/lib/prescription-slot";
 
 type Row = {
   exerciseName: string;
@@ -77,9 +78,57 @@ describe("logger restore", () => {
     expect(restored.filter((set) => gymExerciseKey(set.exerciseName) === gymExerciseKey("Cable woodchop"))).toHaveLength(4);
     expect(restored[0]).toMatchObject({ exerciseName: "Cable woodchop", reps: 8, loadValue: 20 });
   });
+
+  it("puts a missing planned exercise back when the save only stored one", () => {
+    const restored = restoreLoggerSets(
+      [row("Goblet squat", 1, 8, 40)],
+      null,
+      [
+        { name: "Goblet squat", sets: 3 },
+        { name: "Bench press", sets: 3 },
+      ],
+      create,
+    );
+    const goblet = restored.filter((set) => set.exerciseName === "Goblet squat");
+    const bench = restored.filter((set) => set.exerciseName === "Bench press");
+    expect(goblet).toHaveLength(3);
+    expect(bench).toHaveLength(3);
+    expect(goblet[0]).toMatchObject({ reps: 8, loadValue: 40 });
+    expect(bench.every((set) => set.reps == null)).toBe(true);
+  });
 });
 
 describe("save payload", () => {
+  it("counts a ticked set when the plan already named the reps", () => {
+    const key = prescriptionSlotKey({
+      exerciseName: "Goblet squat",
+      reps: "6 / side",
+      programSlug: "demo",
+      dayNumber: 3,
+    });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Goblet squat",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        completed: true,
+        prescriptionKey: key,
+      }),
+    ).toMatchObject({ reps: 6, loadValue: null, completed: true });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Goblet squat",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        completed: true,
+      }).reps,
+    ).toBeNull();
+  });
+
   it("saves typed sets from a bloated logger and drops empty copies", () => {
     const bloated = [
       ...[1, 2, 3, 4].flatMap((setNumber) => [

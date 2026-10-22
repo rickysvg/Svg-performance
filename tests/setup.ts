@@ -2,7 +2,6 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeEach } from "vitest";
-import { clearCalendarScaleCache } from "@/lib/plan-doses";
 
 process.env.DATABASE_URL = "file:./test.db";
 process.env.AUTH_SECRET = "test-auth-secret-at-least-16";
@@ -26,9 +25,11 @@ function isolateCoachKey() {
 
 isolateGymdeskEnv();
 isolateCoachKey();
-beforeEach(() => {
+beforeEach(async () => {
   isolateGymdeskEnv();
   isolateCoachKey();
+  // Dynamic on purpose. A static import loads Prisma before DATABASE_URL is set.
+  const { clearCalendarScaleCache } = await import("@/lib/plan-doses");
   clearCalendarScaleCache();
 });
 

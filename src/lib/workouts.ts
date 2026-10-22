@@ -15,7 +15,7 @@ import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
 import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
 import { halvedSetCount } from "@/lib/recovery-ease";
-import { gymExerciseKey } from "@/lib/gym-exercise";
+import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import {
   hidesLoad,
@@ -42,12 +42,14 @@ import {
 } from "@/lib/exercise-removal-store";
 import {
   loggedSetSome,
+  offPlanSessionDone,
   prepareSetsForPersist,
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   setHasLoggedWork,
   tickedSetCount,
+  withTickedPlanWork,
 } from "@/lib/logged-work";
 import {
   freezeElapsedOnSave,
@@ -506,7 +508,7 @@ export async function completedLocalDayKeys(
               : row.programDayId
                 ? (targets.doses.get(row.programDayId) ?? null)
                 : null;
-          return sessionCountsAsPlannedCompletion(row, names, dose);
+          return offPlanSessionDone(row, dose ?? 0, names);
         })
         .map((row) => sessionCompletionDay(row, timeZone))
         .filter((key) => key >= fromKey && key < endKey),
@@ -959,6 +961,86 @@ function validateSets(sets: WorkoutSetInput[]) {
   }
 }
 
+function planSlotKey(set: { exerciseName: string; setNumber: number }) {
+  const name = loggedExerciseName(set.exerciseName).toLowerCase();
+  const number = Number.isFinite(set.setNumber) ? Math.max(1, Math.round(set.setNumber)) : 1;
+  return `${name}\u0000${number}`;
+}
+
+function planNameKey(set: { exerciseName: string }) {
+  return loggedExerciseName(set.exerciseName).toLowerCase();
+}
+
+function toSavedSet(set: {
+  exerciseName: string;
+  setNumber: number;
+  reps: number | null;
+  loadValue: number | null;
+  loadUnit: string;
+  logMode: string;
+  durationSeconds: number | null;
+  completed: boolean;
+  notes: string;
+  prescriptionKey: string;
+  rir: string;
+}): WorkoutSetInput {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: "lb",
+    logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  };
+}
+
+/**
+ * A partial Save used to persist only the rows with numbers, so the logger
+ * reopened as 1 of 1. Keep every planned row already on the session, and any
+ * planned exercise the form still has, without putting bloated empty copies back.
+ */
+function keepPlannedSets(
+  logged: WorkoutSetInput[],
+  submitted: WorkoutSetInput[],
+  existing: Parameters<typeof toSavedSet>[0][],
+  removals: Parameters<typeof setsKeepingRemovals>[1],
+): WorkoutSetInput[] {
+  const loggedByKey = new Map(logged.map((set) => [planSlotKey(set), set]));
+  const submittedVisible = setsKeepingRemovals(submitted, removals);
+  const prior = setsKeepingRemovals(existing.map((set) => toSavedSet(set)), removals);
+  const priorKeys = new Set(prior.map((set) => planSlotKey(set)));
+  const priorNames = new Set(prior.map((set) => planNameKey(set)));
+  const merged: WorkoutSetInput[] = [];
+  const seen = new Set<string>();
+  // The form's order wins, including empty planned rows it still shows.
+  for (const set of submittedVisible) {
+    const key = planSlotKey(set);
+    if (seen.has(key)) continue;
+    if (!setHasLoggedWork(set) && priorNames.has(planNameKey(set)) && !priorKeys.has(key)) continue;
+    merged.push(loggedByKey.get(key) ?? set);
+    seen.add(key);
+  }
+  // A short payload from another tab omitted planned rows. Put those back.
+  for (const row of prior) {
+    const key = planSlotKey(row);
+    if (seen.has(key)) continue;
+    merged.push(loggedByKey.get(key) ?? row);
+    seen.add(key);
+  }
+  for (const set of logged) {
+    const key = planSlotKey(set);
+    if (seen.has(key)) continue;
+    merged.push(set);
+    seen.add(key);
+  }
+  return merged;
+}
+
 function setsAsLb(sets: WorkoutSetInput[]): WorkoutSetInput[] {
   return sets.map((set) => {
     if (set.loadUnit !== "kg") {
@@ -1005,11 +1087,17 @@ export async function updateWorkoutSessionForUser(input: {
     }),
     input.userId,
   );
-  const sets = prepareSetsForPersist(setsAsLb(input.sets), input.status);
+  const normalized = setsAsLb(input.sets).map((set) => withTickedPlanWork(set));
+  const sets = prepareSetsForPersist(normalized, input.status);
+  const submitted =
+    input.status === "complete" ? prepareSetsForPersist(normalized, "draft") : sets;
   if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
+    const ticked = normalized.some((set) => set.completed);
     throw new AppError(
       "WORKOUT",
-      "Log at least one set, then tap Save. Nothing was marked finished.",
+      ticked
+        ? "Enter the reps, load, or time on the set you checked. An empty check cannot be saved."
+        : "Log at least one set, then tap Save. Nothing was marked finished.",
     );
   }
   validateSets(sets);
@@ -1086,6 +1174,9 @@ export async function updateWorkoutSessionForUser(input: {
     }
     const removals = await activeRemovalsForSession(input.userId, input.workoutId);
     let writing = setsKeepingRemovals(sets, removals);
+    if (input.status === "complete") {
+      writing = keepPlannedSets(writing, submitted, current.sets, removals);
+    }
     if (writing.length === 0 && sets.length > 0) {
       const keptCurrent = setsKeepingRemovals(
         current.sets.map((set) => ({

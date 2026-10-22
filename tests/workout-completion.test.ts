@@ -563,8 +563,10 @@ describe("a workout is complete only after a logged save", () => {
       include: { sets: true },
     });
     expect(keptRow.status).toBe("complete");
-    expect(keptRow.sets.map((set) => set.reps)).toEqual([5]);
-    expect(keptRow.sets.map((set) => set.loadValue)).toEqual([25]);
+    const goblet = keptRow.sets.find((set) => set.exerciseName === "Goblet squat" && set.setNumber === 1);
+    expect(goblet?.reps).toBe(5);
+    expect(goblet?.loadValue).toBe(25);
+    expect(keptRow.sets.length).toBeGreaterThan(1);
     const extraRow = await prisma.workoutSession.findUnique({ where: { id: extra.id } });
     expect(extraRow?.status).toBe("draft");
     expect(await prisma.exerciseSwap.count({ where: { workoutSessionId: extra.id } })).toBe(1);

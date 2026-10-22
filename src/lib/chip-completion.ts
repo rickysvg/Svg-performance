@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import {
   loggedSetSome,
+  offPlanSessionDone,
   prescribedSetTotal,
-  sessionCountsAsPlannedCompletion,
   tickedSetCount,
   type TickedSet,
 } from "@/lib/logged-work";
@@ -53,10 +53,10 @@ export function completedProgramDayIdsForChip(
   for (const row of rows) {
     if (row.day !== day || !row.programDayId) continue;
     if (
-      !sessionCountsAsPlannedCompletion(
+      !offPlanSessionDone(
         row,
-        [...(namesByDay.get(row.programDayId) ?? [])],
-        row.prescribedCount,
+        row.prescribedCount ?? 0,
+        namesByDay.get(row.programDayId) ?? [],
       )
     ) {
       continue;
@@ -68,9 +68,9 @@ export function completedProgramDayIdsForChip(
 
 /**
  * Program days completed on each civil day in [from, to).
- * Uses `sessionCountsAsPlannedCompletion` with the calendar's scaled dose,
- * the same gate as `completedLocalDayKeys`. It does not define a second
- * "done" rule. A null `plannedSetCount` still has to cover that dose.
+ * Uses `offPlanSessionDone`, which calls `sessionCountsAsPlannedCompletion`
+ * with the calendar's scaled dose. Same gate as `completedLocalDayKeys`.
+ * A null `plannedSetCount` still has to cover that dose, including a swapped log.
  */
 export async function completedSessionIdsByLocalDay(
   userId: string,
@@ -169,11 +169,7 @@ export async function partialLocalDayKeys(
       plan && plan.dose > 0
         ? [...plan.names]
         : exercises.map((exercise) => exercise.name);
-    const judged = {
-      ...row,
-      plannedSetCount: row.plannedSetCount ?? (dose > 0 ? dose : null),
-    };
-    if (sessionCountsAsPlannedCompletion(judged, names)) continue;
+    if (offPlanSessionDone(row, dose, names)) continue;
     days.add(key);
   }
   return [...days];
