@@ -197,6 +197,7 @@ export function BadgeUnlockOverlay() {
 
   return (
     <div
+      data-testid="chrome-badge-unlock"
       className="badge-unlock-backdrop fixed inset-0 z-[90] overflow-x-hidden overflow-y-auto px-5 py-8"
       role="dialog"
       aria-modal="true"
@@ -232,6 +233,7 @@ export function BadgeUnlockOverlay() {
           {recap ? <SessionRecap summary={recap} /> : null}
           <div className="mt-6 flex w-full flex-col gap-2">
             <button
+              data-testid="chrome-share"
               type="button"
               onClick={() => void onShare()}
               disabled={sharing}

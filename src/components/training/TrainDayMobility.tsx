@@ -14,6 +14,7 @@ function EndLink({
 }) {
   return (
     <Link
+      data-testid={`training-mobility-play-${item.id}`}
       href={`/mobility/${item.id}/play`}
       data-mobility-role={role}
       data-mobility-routine={item.id}

@@ -403,7 +403,7 @@ export default async function ProgressPage() {
                     {row.recordedAt.toLocaleString()}
                   </span>
                 </span>
-                <form action={deleteBodyMetricAction}>
+                <form data-testid={`progress-form-${row.id}`} action={deleteBodyMetricAction}>
                   <input type="hidden" name="metricId" value={row.id} />
                   <button type="submit" className="text-xs text-danger underline">
                     Delete

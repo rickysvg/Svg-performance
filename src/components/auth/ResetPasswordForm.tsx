@@ -19,12 +19,13 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <form action={action} className="mt-6 space-y-4">
+    <form data-testid="reset-password-form" action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} />
       <input type="hidden" name="token" value={token} />
       <label className="block">
         <span className="text-sm font-medium">New password</span>
         <input
+          data-testid="reset-password"
           name="password"
           type="password"
           autoComplete="new-password"
@@ -36,6 +37,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <label className="block">
         <span className="text-sm font-medium">Confirm new password</span>
         <input
+          data-testid="reset-password-confirm-password"
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
@@ -45,6 +47,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         />
       </label>
       <button
+        data-testid="reset-password-update-password"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

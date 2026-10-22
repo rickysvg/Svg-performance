@@ -24,6 +24,7 @@ function RatingRow({
         {[1, 2, 3, 4, 5].map((score) => (
           <label key={score} className="block">
             <input
+              data-testid={`chrome-radio-${score}`}
               type="radio"
               name={name}
               value={score}
@@ -89,6 +90,7 @@ export function SparringLogForm({
         <label className="block text-sm">
           Rounds completed
           <input
+            data-testid="chrome-rounds"
             name="rounds"
             type="number"
             min={1}
@@ -101,6 +103,7 @@ export function SparringLogForm({
         <label className="block text-sm">
           Minutes per round
           <input
+            data-testid="chrome-minutes-per-round"
             name="minutesPerRound"
             type="number"
             min={1}
@@ -144,6 +147,7 @@ export function SparringLogForm({
           {SORE_SPOTS.map((spot) => (
             <label key={spot}>
               <input
+                data-testid={`chrome-sore-spots-${spot}`}
                 type="checkbox"
                 name="soreSpots"
                 value={spot}
@@ -160,6 +164,7 @@ export function SparringLogForm({
       <label className="block text-sm">
         Partner (optional)
         <input
+          data-testid="chrome-partner"
           name="partner"
           value={partner}
           onChange={(event) => setPartner(event.target.value)}
@@ -170,6 +175,7 @@ export function SparringLogForm({
       <label className="block text-sm">
         Notes (optional)
         <textarea
+          data-testid="chrome-notes"
           name="notes"
           rows={2}
           defaultValue={saved?.notes ?? ""}
@@ -187,6 +193,7 @@ export function SparringLogForm({
         />
       ) : null}
       <button
+        data-testid="chrome-save"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black"

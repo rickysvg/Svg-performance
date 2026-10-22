@@ -18,6 +18,7 @@ export function PrimaryNav({ coachLocked = false }: { coachLocked?: boolean }) {
           return (
             <li key={link.href} className="px-0.5 py-1.5">
               <Link
+                data-testid={`chrome-coach-nav-locked-${link.href.split("/").filter(Boolean).join("-")}`}
                 href={link.href}
                 data-coach-nav-locked={locked ? "1" : undefined}
                 className={`font-telemetry touch-target flex flex-col items-center justify-center border-b-2 px-1 text-[11px] uppercase leading-tight tracking-[0.16em] whitespace-nowrap ${

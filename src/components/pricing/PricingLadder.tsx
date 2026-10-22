@@ -62,6 +62,7 @@ function LadderApply({
   const label = phase === "checkout" ? "Checkout" : phase === "waitlist" ? "Waitlist" : "Apply";
   return (
     <Link
+      data-testid={`pricing-ladder-apply-${href.split("/").filter(Boolean).join("-")}`}
       href={href}
       data-ladder-apply
       className="mt-1 inline-flex min-h-11 items-center justify-center rounded-full bg-[#CBF805] px-2 text-[11px] font-semibold text-black"

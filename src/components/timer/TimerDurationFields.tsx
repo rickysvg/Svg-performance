@@ -71,6 +71,7 @@ function PickerSheet({
       }}
     >
       <div
+        data-testid="chrome-timer-picker"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -83,7 +84,7 @@ function PickerSheet({
           <p id={titleId} className="font-display text-xl uppercase tracking-wide">
             {FIELD_TITLE[field]}
           </p>
-          <button type="button" onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close picker">
+          <button type="button" onClick={onClose} data-testid="chrome-timer-picker-close" className="touch-target text-2xl leading-none" aria-label="Close picker">
             ×
           </button>
         </div>
@@ -92,6 +93,7 @@ function PickerSheet({
             const selected = option === value;
             return (
               <button
+                data-testid={`chrome-timer-picker-option-${option}`}
                 key={option}
                 type="button"
                 data-timer-picker-option={option}
@@ -166,6 +168,7 @@ function PickButton({
 }) {
   return (
     <button
+      data-testid="chrome-timer-pick"
       type="button"
       data-timer-pick={field}
       aria-haspopup="dialog"

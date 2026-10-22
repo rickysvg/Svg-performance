@@ -28,6 +28,7 @@ export function LeaderboardOptInForm({ optedIn }: { optedIn: boolean }) {
       <StatusBanner error={state.error} success={state.success} />
       <label className="flex items-start gap-3 rounded-xl border border-line bg-white p-3">
         <input
+          data-testid="profile-leaderboard-opt-in"
           type="checkbox"
           name="leaderboardOptIn"
           defaultChecked={optedIn}
@@ -38,6 +39,7 @@ export function LeaderboardOptInForm({ optedIn }: { optedIn: boolean }) {
         </span>
       </label>
       <button
+        data-testid="profile-save-leaderboard-preference"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

@@ -232,6 +232,7 @@ export function WorkoutMoveProvider({
                 </button>
               ) : null}
                 <button
+                data-testid="training-move-to-another-day"
                 type="button"
                 data-move-to
                 aria-pressed={mode === "move"}
@@ -246,6 +247,7 @@ export function WorkoutMoveProvider({
                 Move to another day
               </button>
                 <button
+                data-testid="training-swap-with-a-session"
                 type="button"
                 data-swap-with
                 aria-pressed={mode === "swap"}
@@ -265,6 +267,7 @@ export function WorkoutMoveProvider({
                 <p className="text-sm">{caution.message}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
+                    data-testid="training-move-anyway"
                     type="button"
                     data-move-anyway
                     disabled={pending}
@@ -306,6 +309,7 @@ export function WorkoutMoveProvider({
                     return (
                       <li key={day.weekday}>
                         <button
+                          data-testid={`training-move-day-${day.weekday}`}
                           type="button"
                           data-move-day={day.weekday}
                           disabled={disabled}
@@ -334,6 +338,7 @@ export function WorkoutMoveProvider({
                     return (
                       <li key={session.sessionKey}>
                         <button
+                          data-testid="training-swap-session"
                           type="button"
                           data-swap-session={session.sessionKey}
                           disabled={pending || blocked}
@@ -357,6 +362,7 @@ export function WorkoutMoveProvider({
             ) : null}
             {error ? <p className="mt-3 text-sm text-muted">{error}</p> : null}
             <button
+              data-testid="training-cancel-2"
               type="button"
               onClick={close}
               disabled={pending}
@@ -369,6 +375,7 @@ export function WorkoutMoveProvider({
       ) : null}
       {toast ? (
         <Toast
+          closeTestId="training-move-toast-close"
           key={toast.id}
           message={toast.message}
           tone="dark"
@@ -406,6 +413,7 @@ export function WorkoutMoveButton({
   if (!move || !move.editable) return null;
   return (
     <button
+      data-testid="training-move"
       type="button"
       data-move-workout
       data-session-menu
@@ -452,6 +460,7 @@ export function HoldToMove({
 
   return (
     <div
+      data-testid="training-hold-move"
       data-hold-move={sessionKey}
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
       onPointerDown={(event) => {

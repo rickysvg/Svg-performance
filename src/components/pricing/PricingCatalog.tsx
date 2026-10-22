@@ -43,9 +43,10 @@ function PlanCheckoutButton({
   }
   if (canStartTrial) {
     return (
-      <form action={startTrialAction}>
+      <form data-testid="pricing-form-2" action={startTrialAction}>
         <input type="hidden" name="next" value="/home" />
         <button
+          data-testid="pricing-plan-action"
           type="submit"
           data-plan-action="trial"
           className="touch-target w-full rounded-full bg-accent text-black"

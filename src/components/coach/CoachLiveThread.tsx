@@ -250,6 +250,7 @@ export function CoachLiveThread({
       </div>
 
       <form
+        data-testid="coach-form"
         onSubmit={onSend}
         className="shrink-0 border-t border-[#cbf805]/30 bg-[#0b0c0e] px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       >
@@ -257,6 +258,7 @@ export function CoachLiveThread({
           <div className="mb-2 flex gap-2 overflow-x-auto pb-1" data-coach-suggestions>
             {COACH_SUGGESTIONS.map((suggestion) => (
               <button
+                data-testid={`coach-suggestion-${suggestion}`}
                 key={suggestion}
                 type="button"
                 className="shrink-0 rounded-full border border-[#cbf805]/45 px-3 py-1.5 text-xs text-white"
@@ -279,6 +281,7 @@ export function CoachLiveThread({
             Message
           </label>
           <textarea
+            data-testid="coach-message"
             id="coach-message"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}

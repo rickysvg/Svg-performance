@@ -1,0 +1,11 @@
+{
+  "name": "svgp-interaction-suite",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:public": "playwright test --grep @public",
+    "test:member": "playwright test --grep @member",
+    "report": "playwright show-report"
+  },
+  "devDependencies": { "@playwright/test": "^1.48.0", "@types/node": "^20.0.0" }
+}

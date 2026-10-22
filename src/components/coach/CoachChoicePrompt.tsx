@@ -28,7 +28,7 @@ export function CoachChoicePrompt() {
           Until you choose, SVG Coach uses {coach.name} and a {style.label.toLowerCase()} style.
           You can change both later in Profile.
         </p>
-        <form action={saveCoachChoiceAction} className="mt-4 space-y-4">
+        <form data-testid="chrome-form" action={saveCoachChoiceAction} className="mt-4 space-y-4">
           <CoachPicker coachId={coach.id} coachingStyle={style.value} idPrefix="prompt-coach" />
           <button
             type="submit"
@@ -37,8 +37,9 @@ export function CoachChoicePrompt() {
             Save coach
           </button>
         </form>
-        <form action={dismissCoachChoiceAction} className="mt-2">
+        <form data-testid="chrome-form-2" action={dismissCoachChoiceAction} className="mt-2">
           <button
+            data-testid="chrome-keep"
             type="submit"
             className="touch-target w-full rounded-full border border-line text-sm font-semibold"
           >

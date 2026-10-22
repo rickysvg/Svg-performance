@@ -13,7 +13,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.draftId) {
     return (
-      <Link href={`/training/log/${action.draftId}`} data-start-today data-prime-coach-audio className={buttonClass}>
+      <Link data-testid={`home-training-log-${action.draftId}`} href={`/training/log/${action.draftId}`} data-start-today data-prime-coach-audio className={buttonClass}>
         {label}
       </Link>
     );
@@ -22,6 +22,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
   if (action.dayId) {
     return (
       <form
+        data-testid="home-start-today"
         action={startSessionAction}
         data-start-today
         data-open-bike-logger={action.logHref ? "today" : undefined}
@@ -35,7 +36,7 @@ export function StartTodayButton({ action }: { action: TodayStartAction }) {
 
   if (action.href) {
     return (
-      <Link href={action.href} data-start-today data-prime-coach-audio className={buttonClass}>
+      <Link data-testid={`home-start-today-2-${action.href.split("/").filter(Boolean).join("-")}`} href={action.href} data-start-today data-prime-coach-audio className={buttonClass}>
         {label}
       </Link>
     );
@@ -48,6 +49,7 @@ export function StartSubmit({ label, className }: { label: string; className: st
   const { pending } = useFormStatus();
   return (
     <button
+      data-testid="home-start-pending"
       type="submit"
       disabled={pending}
       aria-busy={pending}

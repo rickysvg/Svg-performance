@@ -1,0 +1,106 @@
+# Playwright interaction suite.
+#
+# Pull requests run against the Vercel preview deployment for the head SHA.
+# Pushes to main run against production (https://svg-performance.vercel.app).
+#
+# Repository secrets (Settings → Secrets and variables → Actions). Do not commit values.
+#   QA_TEST_EMAIL      dedicated test-member email. Never a real member.
+#   QA_TEST_PASSWORD   password for that test member.
+# Optional repository variable, used only when the preview URL cannot be resolved:
+#   QA_PREVIEW_BASE_URL
+#
+# UNSAFE actions (send, pay, delete, approve, message) are never submitted.
+# The job signs in only as the QA test account above.
+
+name: interaction-suite
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  deployments: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: e2e
+    env:
+      TEST_EMAIL: ${{ secrets.QA_TEST_EMAIL }}
+      TEST_PASSWORD: ${{ secrets.QA_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install suite
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Resolve target URL
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPO: ${{ github.repository }}
+          PREVIEW_FALLBACK: ${{ vars.QA_PREVIEW_BASE_URL }}
+        run: |
+          set -euo pipefail
+          prod="https://svg-performance.vercel.app"
+          if [ "$EVENT_NAME" = "push" ]; then
+            echo "base_url=${prod}" >> "$GITHUB_OUTPUT"
+            echo "Production ${prod}. Signed in as the QA test account. UNSAFE actions are not submitted."
+            exit 0
+          fi
+          url=""
+          for attempt in $(seq 1 30); do
+            ids="$(gh api "repos/${REPO}/deployments?sha=${HEAD_SHA}&per_page=20" --jq '.[] | select(.environment=="Preview") | .id' || true)"
+            for id in $ids; do
+              candidate="$(gh api "repos/${REPO}/deployments/${id}/statuses" --jq '[.[] | select(.environment_url != null and .environment_url != "")][0].environment_url' || true)"
+              if [ -n "$candidate" ] && [ "$candidate" != "null" ]; then
+                url="$candidate"
+                break
+              fi
+            done
+            if [ -n "$url" ]; then
+              break
+            fi
+            echo "Waiting for the Vercel preview deployment (${attempt}/30)..."
+            sleep 10
+          done
+          if [ -z "$url" ]; then
+            if [ -n "$PREVIEW_FALLBACK" ]; then
+              url="$PREVIEW_FALLBACK"
+              echo "Preview deployment URL was not reported. Using QA_PREVIEW_BASE_URL."
+            else
+              echo "::error::No Vercel preview URL for ${HEAD_SHA}. Wait for the Vercel GitHub integration, or set the QA_PREVIEW_BASE_URL repository variable."
+              exit 1
+            fi
+          fi
+          echo "base_url=${url}" >> "$GITHUB_OUTPUT"
+          echo "Preview ${url}. UNSAFE actions are not submitted."
+
+      - name: Run interaction suite
+        env:
+          BASE_URL: ${{ steps.target.outputs.base_url }}
+        run: npx playwright test
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: e2e/results
+          retention-days: 14

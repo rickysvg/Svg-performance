@@ -28,12 +28,13 @@ export function CustomBagForm({
   }
 
   return (
-    <form action={action} className="space-y-4" data-custom-bag-form>
+    <form data-testid="bagwork-new-custom-bag-form" action={action} className="space-y-4" data-custom-bag-form>
       {id ? <input type="hidden" name="id" value={id} /> : null}
       <input type="hidden" name="regions" value={selected.join(",")} />
       <label className="block text-sm">
         Name
         <input
+          data-testid="bagwork-new-name"
           name="name"
           required
           minLength={2}
@@ -46,6 +47,7 @@ export function CustomBagForm({
       <label className="block text-sm">
         Description
         <textarea
+          data-testid="bagwork-new-description"
           name="description"
           maxLength={500}
           rows={4}
@@ -57,6 +59,7 @@ export function CustomBagForm({
       <BagBodyMap regions={selected} interactive onToggle={toggle} />
       {state.error ? <p className="text-sm text-signal">{state.error}</p> : null}
       <button
+        data-testid="bagwork-new-save-workout"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent font-display text-sm uppercase tracking-wide text-black"

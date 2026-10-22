@@ -16,9 +16,10 @@ export function UpgradeCtas({
 }) {
   if (canStartTrial) {
     return (
-      <form action={startTrialAction}>
+      <form data-testid="chrome-form-4" action={startTrialAction}>
         <input type="hidden" name="next" value={next} />
         <button
+          data-testid="chrome-button"
           type="submit"
           className="touch-target w-full rounded-full bg-accent text-black"
         >

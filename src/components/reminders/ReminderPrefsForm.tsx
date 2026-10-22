@@ -46,6 +46,7 @@ export function ReminderPrefsForm({
       <input type="hidden" name="timezoneOffsetMinutes" value={offset} />
       <label className="flex items-center gap-3 text-sm">
         <input
+          data-testid="profile-workout-enabled"
           type="checkbox"
           name="workoutEnabled"
           defaultChecked={prefs.workoutEnabled}
@@ -54,6 +55,7 @@ export function ReminderPrefsForm({
       </label>
       <label className="flex items-center gap-3 text-sm">
         <input
+          data-testid="profile-food-enabled"
           type="checkbox"
           name="foodEnabled"
           defaultChecked={prefs.foodEnabled}
@@ -62,6 +64,7 @@ export function ReminderPrefsForm({
       </label>
       <label className="flex items-center gap-3 text-sm">
         <input
+          data-testid="profile-quote-enabled"
           type="checkbox"
           name="quoteEnabled"
           defaultChecked={prefs.quoteEnabled}
@@ -70,6 +73,7 @@ export function ReminderPrefsForm({
       </label>
       <label className="flex items-center gap-3 text-sm">
         <input
+          data-testid="profile-booking-enabled"
           type="checkbox"
           name="bookingEnabled"
           defaultChecked={prefs.bookingEnabled}
@@ -79,6 +83,7 @@ export function ReminderPrefsForm({
       <label className="block text-sm">
         Preferred local hour (0–23)
         <input
+          data-testid="profile-preferred-hour"
           type="number"
           name="preferredHour"
           min={0}
@@ -88,6 +93,7 @@ export function ReminderPrefsForm({
         />
       </label>
       <button
+        data-testid="profile-save-reminders"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

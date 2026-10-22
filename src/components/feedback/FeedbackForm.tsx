@@ -22,6 +22,7 @@ function FeedbackToast({ token }: { token?: number }) {
   if (!open) return null;
   return (
     <Toast
+      closeTestId="feedback-toast-close"
       key={token}
       message="Thanks. We got your feedback."
       tone="outline"
@@ -74,7 +75,7 @@ function FeedbackFields({
   }
 
   return (
-    <form action={action} className="space-y-4" data-feedback-form="1">
+    <form data-testid="feedback-form" action={action} className="space-y-4" data-feedback-form="1">
       <StatusBanner error={localError || serverError} />
       <input type="hidden" name="route" value={route} />
       <input type="hidden" name="workoutId" value={workoutId} />
@@ -99,6 +100,7 @@ function FeedbackFields({
       <label className="block text-sm">
         Message
         <textarea
+          data-testid="feedback-message"
           name="message"
           required
           minLength={4}
@@ -112,6 +114,7 @@ function FeedbackFields({
         Screenshot
         <span className="mt-0.5 block text-xs text-muted">Optional. jpeg, png, or webp, up to 5 MB.</span>
         <input
+          data-testid="feedback-screenshot"
           name="screenshot"
           type="file"
           accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
@@ -136,6 +139,7 @@ function FeedbackFields({
         {workoutId ? " · this workout" : ""} · app {appVersion} · your account.
       </p>
       <button
+        data-testid="feedback-send-feedback"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

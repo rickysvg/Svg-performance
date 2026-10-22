@@ -157,7 +157,7 @@ export default async function HeartPage({
                     {isAppleSource(row.source) ? " · import" : ""}
                   </span>
                 </span>
-                <form action={deleteRestingHrAction}>
+                <form data-testid={`heart-form-${row.id}`} action={deleteRestingHrAction}>
                   <input type="hidden" name="sampleId" value={row.id} />
                   <button type="submit" className="text-xs text-danger underline">
                     Delete
@@ -185,7 +185,7 @@ export default async function HeartPage({
                     {isAppleSource(row.source) ? " · import" : ""}
                   </span>
                 </span>
-                <form action={deleteWorkoutHrAction}>
+                <form data-testid={`heart-form-2-${row.id}`} action={deleteWorkoutHrAction}>
                   <input type="hidden" name="sessionId" value={row.id} />
                   <button type="submit" className="text-xs text-danger underline">
                     Delete

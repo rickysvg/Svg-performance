@@ -48,6 +48,7 @@ export default async function ClipsPage() {
           {clips.map((clip) => (
             <li key={clip.id}>
               <Link
+                data-testid={`clips-clip-${clip.id}`}
                 href={`/clips/${clip.id}`}
                 className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"
               >

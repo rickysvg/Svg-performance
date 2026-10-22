@@ -21,6 +21,7 @@ export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
         {plan.exerciseNames.length > 0 ? ` · ${plan.exerciseNames.slice(0, 3).join(" · ")}` : ""}
       </p>
       <Link
+        data-testid={`training-start-custom-${href.split("/").filter(Boolean).join("-")}`}
         href={href}
         data-start-custom
         className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent font-semibold text-black"

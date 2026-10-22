@@ -204,6 +204,7 @@ export function PlanSessionCard({
             </Link>
           ) : session.dayId ? (
             <form
+              data-testid="training-open-bike-logger"
               action={startSessionAction}
               data-open-bike-logger={session.logHref ? "train" : undefined}
               data-prime-coach-audio
@@ -216,6 +217,7 @@ export function PlanSessionCard({
             </form>
           ) : href ? (
             <Link
+              data-testid={`training-link-2-${href.split("/").filter(Boolean).join("-")}`}
               href={href}
               className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
                 highlight ? "bg-accent text-black" : "border border-line"

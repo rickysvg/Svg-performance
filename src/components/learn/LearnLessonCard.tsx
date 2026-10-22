@@ -129,7 +129,7 @@ export function LearnLessonCard({
 
   return (
     <li>
-      <Link href={`/learn/${lesson.slug}`} className="block">
+      <Link data-testid={`learn-lesson-${lesson.slug}`} href={`/learn/${lesson.slug}`} className="block">
         {body}
       </Link>
     </li>

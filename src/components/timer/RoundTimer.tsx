@@ -300,6 +300,7 @@ export function RoundTimer({
             type="button"
             onClick={onClose}
             autoFocus
+            data-testid="chrome-round-timer-close"
             data-round-timer-close
             className="touch-target inline-flex items-center justify-center text-2xl leading-none"
             aria-label="Close timer"
@@ -329,6 +330,7 @@ export function RoundTimer({
           <label className="block text-sm">
             Notes
             <textarea
+              data-testid="chrome-timer-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               maxLength={500}
@@ -340,6 +342,7 @@ export function RoundTimer({
           <label className="block text-sm">
             RPE
             <input
+              data-testid="chrome-timer-rpe"
               value={rpe}
               onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
               inputMode="numeric"
@@ -364,6 +367,7 @@ export function RoundTimer({
       <div className="grid grid-cols-4 gap-1 rounded-full bg-card p-1">
         {TIMER_MODES.map((mode) => (
           <button
+            data-testid={`chrome-mode-${mode}`}
             key={mode}
             type="button"
             onClick={() => setPrefs((current) => ({ ...current, mode }))}
@@ -378,15 +382,17 @@ export function RoundTimer({
       )}
 
       {launch || onClose ? null : (
-      <form action={startRoundLogAction} data-round-log="">
+      <form data-testid="chrome-round-log" action={startRoundLogAction} data-round-log="">
         <input type="hidden" name="mode" value={prefs.mode} />
         <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
         <input
+          data-testid="chrome-work-seconds"
           type="hidden"
           name="workSeconds"
           value={configForPreset(prefs.preset, customDraft).workSeconds}
         />
         <button
+          data-testid="chrome-log-rounds"
           type="submit"
           className="touch-target w-full rounded-full bg-accent text-black"
         >
@@ -405,6 +411,7 @@ export function RoundTimer({
           ] as const
         ).map(([id, title, hint]) => (
           <button
+            data-testid={`chrome-preset-${id}`}
             key={id}
             type="button"
             onClick={() => {
@@ -476,16 +483,19 @@ export function RoundTimer({
 
       <div className="flex flex-wrap gap-2">
         <Toggle
+          testId="chrome-timer-toggle-warning-beep"
           label="10-second warning beep"
           on={prefs.warningBeep}
           onClick={() => setPrefs((current) => ({ ...current, warningBeep: !current.warningBeep }))}
         />
         <Toggle
+          testId="chrome-timer-toggle-bell"
           label="Bell start/end"
           on={prefs.bell}
           onClick={() => setPrefs((current) => ({ ...current, bell: !current.bell }))}
         />
         <Toggle
+          testId="chrome-timer-toggle-vibrate"
           label="Vibrate"
           on={prefs.vibrate}
           onClick={() => setPrefs((current) => ({ ...current, vibrate: !current.vibrate }))}
@@ -505,6 +515,7 @@ export function RoundTimer({
         </button>
         {launch ? (
           <button
+            data-testid="chrome-end-log-rounds"
             type="button"
             onClick={() => {
               const done = completedWorkRounds(resolved.phase, resolved.round, resolved.totalRounds);
@@ -525,6 +536,7 @@ export function RoundTimer({
           </button>
         ) : null}
         <button
+          data-testid="chrome-timer-start"
           type="button"
           onClick={startOrPause}
           data-timer-start={primaryLabel.toLowerCase()}
@@ -549,14 +561,17 @@ function Toggle({
   label,
   on,
   onClick,
+  testId,
 }: {
   label: string;
   on: boolean;
   onClick: () => void;
+  testId?: string;
 }) {
   return (
     <button
       type="button"
+      data-testid={testId}
       aria-pressed={on}
       onClick={onClick}
       className={`touch-target inline-flex items-center rounded-full border px-3 text-sm ${

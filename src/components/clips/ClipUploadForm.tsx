@@ -17,19 +17,22 @@ export function ClipUploadForm() {
       </p>
       <StatusBanner error={state.error} success={state.success} />
       <input
+        data-testid="clips-title"
         name="title"
         required
         placeholder="What should the coach look at?"
         className="w-full rounded-xl border border-line bg-background px-3 py-3"
       />
       <textarea
+        data-testid="clips-member-note"
         name="memberNote"
         rows={3}
         placeholder="Context (optional)"
         className="w-full rounded-xl border border-line bg-background px-3 py-3"
       />
-      <input name="clip" type="file" accept="video/mp4,video/webm" required className="w-full text-sm" />
+      <input data-testid="clips-clip-2" name="clip" type="file" accept="video/mp4,video/webm" required className="w-full text-sm" />
       <button
+        data-testid="clips-upload-clip"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

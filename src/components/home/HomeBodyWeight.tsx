@@ -131,6 +131,7 @@ export function HomeBodyWeight({
 
   return (
     <form
+      data-testid="home-mass-box"
       id={formId}
       action={action}
       data-mass-box
@@ -205,6 +206,7 @@ export function HomeBodyWeight({
                 onClick={() => setSheet(false)}
               />
               <div
+                data-testid="home-weigh-in-sheet"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={`${formId}-title`}
@@ -232,6 +234,7 @@ export function HomeBodyWeight({
                 </div>
                 <div className="mt-4 flex flex-col gap-2">
                   <button
+                    data-testid="home-save-weigh-in"
                     form={formId}
                     type="submit"
                     disabled={pending}
@@ -255,6 +258,7 @@ export function HomeBodyWeight({
         : null}
       {showNotice && notice ? (
         <Toast
+          closeTestId="home-weigh-toast-close"
           key={String(noticeKey)}
           message={notice}
           tone={state.error ? "danger" : "lime"}

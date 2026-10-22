@@ -17,6 +17,7 @@ export function ChangePasswordForm() {
       <label className="block">
         <span className="text-sm font-medium">Current password</span>
         <input
+          data-testid="profile-current-password"
           name="currentPassword"
           type="password"
           autoComplete="current-password"
@@ -27,6 +28,7 @@ export function ChangePasswordForm() {
       <label className="block">
         <span className="text-sm font-medium">New password</span>
         <input
+          data-testid="profile-new-password"
           name="newPassword"
           type="password"
           autoComplete="new-password"
@@ -38,6 +40,7 @@ export function ChangePasswordForm() {
       <label className="block">
         <span className="text-sm font-medium">Confirm new password</span>
         <input
+          data-testid="profile-confirm-password"
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
@@ -47,6 +50,7 @@ export function ChangePasswordForm() {
         />
       </label>
       <button
+        data-testid="profile-update-password"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full border border-line font-medium disabled:opacity-60"

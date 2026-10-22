@@ -35,7 +35,7 @@ export function RegisterForm() {
       : "Creating account…";
 
   return (
-    <form action={action} className="mt-6 space-y-4">
+    <form data-testid="register-form" action={action} className="mt-6 space-y-4">
       <StatusBanner error={state.error} />
       {pending && phase === "timeout" ? (
         <StatusBanner error="This is taking too long. Refresh the page and try again." />
@@ -43,6 +43,7 @@ export function RegisterForm() {
       <label className="block">
         <span className="text-sm font-medium">Display name</span>
         <input
+          data-testid="register-display-name"
           name="displayName"
           type="text"
           autoComplete="name"
@@ -53,6 +54,7 @@ export function RegisterForm() {
       <label className="block">
         <span className="text-sm font-medium">Email</span>
         <input
+          data-testid="register-email"
           name="email"
           type="email"
           autoComplete="email"
@@ -63,6 +65,7 @@ export function RegisterForm() {
       <label className="block">
         <span className="text-sm font-medium">Phone (optional)</span>
         <input
+          data-testid="register-phone"
           name="phone"
           type="tel"
           autoComplete="tel"
@@ -76,6 +79,7 @@ export function RegisterForm() {
       <label className="block">
         <span className="text-sm font-medium">Password</span>
         <input
+          data-testid="register-password"
           name="password"
           type="password"
           autoComplete="new-password"
@@ -87,6 +91,7 @@ export function RegisterForm() {
       <label className="block">
         <span className="text-sm font-medium">Confirm password</span>
         <input
+          data-testid="register-confirm-password"
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
@@ -97,6 +102,7 @@ export function RegisterForm() {
       </label>
       <label className="flex items-start gap-3 rounded-xl border border-line bg-card p-4">
         <input
+          data-testid="register-is-adult-confirmed"
           name="isAdultConfirmed"
           type="checkbox"
           required
@@ -108,6 +114,7 @@ export function RegisterForm() {
       </label>
       <label className="flex items-start gap-3 rounded-xl border border-line bg-card p-4">
         <input
+          data-testid="register-claims-gym-membership"
           name="claimsGymMembership"
           type="checkbox"
           className="mt-1 h-5 w-5 accent-accent"
@@ -122,6 +129,7 @@ export function RegisterForm() {
         </span>
       </label>
       <button
+        data-testid="register-button"
         type="submit"
         disabled={pending}
         aria-busy={pending}

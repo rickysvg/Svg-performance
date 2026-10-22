@@ -24,6 +24,7 @@ export function SoundEffectsToggle() {
       </p>
       <label className="flex items-start gap-3 rounded-xl border border-line bg-white p-3">
         <input
+          data-testid="profile-checkbox-2"
           type="checkbox"
           checked={on}
           onChange={(event) => toggle(event.target.checked)}

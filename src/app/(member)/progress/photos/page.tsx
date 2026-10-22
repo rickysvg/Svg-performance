@@ -56,7 +56,7 @@ export default async function ProgressPhotosPage({
                     <span className="mt-0.5 block text-xs font-normal text-muted">{photo.caption}</span>
                   ) : null}
                 </figcaption>
-                <form action={deleteProgressPhotoAction}>
+                <form data-testid="progress-photos-form" action={deleteProgressPhotoAction}>
                   <input type="hidden" name="photoId" value={photo.id} />
                   <input type="hidden" name="next" value="/progress/photos" />
                   <button type="submit" className="min-h-11 w-full border-t border-line text-sm text-danger">

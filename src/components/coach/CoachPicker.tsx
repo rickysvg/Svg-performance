@@ -37,6 +37,7 @@ export function CoachPicker({
                 }`}
               >
                 <input
+                  data-testid={`chrome-ai-coach-id-${item.id}`}
                   type="radio"
                   name="aiCoachId"
                   value={item.id}
@@ -79,6 +80,7 @@ export function CoachPicker({
                 }`}
               >
                 <input
+                  data-testid={`chrome-coaching-style-${item.value}`}
                   type="radio"
                   name="coachingStyle"
                   value={item.value}

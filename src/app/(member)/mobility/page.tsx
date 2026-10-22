@@ -36,6 +36,7 @@ export default async function MobilityPage() {
           return (
             <li key={routine.id}>
               <Link
+                data-testid={`mobility-routine-${routine.id}`}
                 href={`/mobility/${routine.id}`}
                 className="block rounded-[1.5rem] border border-line bg-card px-4 py-4"
               >

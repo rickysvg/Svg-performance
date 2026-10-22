@@ -108,6 +108,7 @@ export function NutritionEntryForm({
 
   return (
     <form
+      data-testid="nutrition-form"
       key={formKey}
       action={action}
       className="space-y-4 rounded-2xl border border-line bg-card p-5"
@@ -126,6 +127,7 @@ export function NutritionEntryForm({
           <label className="block text-sm">
             Search saved meals or foods
             <input
+              data-testid="nutrition-chicken-rice-yogurt"
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -165,6 +167,7 @@ export function NutritionEntryForm({
       <label className="block text-sm">
         Name
         <input
+          data-testid="nutrition-name"
           name="name"
           required
           defaultValue={prefill?.name ?? entry?.name}
@@ -174,6 +177,7 @@ export function NutritionEntryForm({
       <label className="block text-sm">
         Calories (estimate)
         <input
+          data-testid="nutrition-calories"
           name="calories"
           type="number"
           min={0}
@@ -186,6 +190,7 @@ export function NutritionEntryForm({
       <label className="block text-sm">
         Meal
         <select
+          data-testid="nutrition-meal-type"
           name="mealType"
           value={mealType}
           onChange={(event) => setMealType(event.target.value)}
@@ -206,6 +211,7 @@ export function NutritionEntryForm({
         <label className="block text-sm">
           Servings
           <input
+            data-testid="nutrition-servings"
             name="servings"
             type="number"
             min={0.1}
@@ -217,6 +223,7 @@ export function NutritionEntryForm({
         <label className="block text-sm">
           Serving label
           <input
+            data-testid="nutrition-serving-label"
             name="servingLabel"
             defaultValue={prefill?.servingLabel ?? entry?.servingLabel ?? "serving"}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -227,6 +234,7 @@ export function NutritionEntryForm({
         <label className="block text-sm">
           Protein g
           <input
+            data-testid="nutrition-protein-g"
             name="proteinG"
             type="number"
             min={0}
@@ -238,6 +246,7 @@ export function NutritionEntryForm({
         <label className="block text-sm">
           Carbs g
           <input
+            data-testid="nutrition-carbs-g"
             name="carbsG"
             type="number"
             min={0}
@@ -249,6 +258,7 @@ export function NutritionEntryForm({
         <label className="block text-sm">
           Fat g
           <input
+            data-testid="nutrition-fat-g"
             name="fatG"
             type="number"
             min={0}
@@ -261,6 +271,7 @@ export function NutritionEntryForm({
       <label className="block text-sm">
         When
         <input
+          data-testid="nutrition-eaten-at"
           name="eatenAt"
           type="datetime-local"
           defaultValue={toDateInput(entry?.eatenAt)}
@@ -270,6 +281,7 @@ export function NutritionEntryForm({
       <label className="block text-sm">
         Notes
         <textarea
+          data-testid="nutrition-notes"
           name="notes"
           defaultValue={entry?.notes}
           rows={2}
@@ -279,6 +291,7 @@ export function NutritionEntryForm({
         </div>
       </details>
       <button
+        data-testid="nutrition-save-estimate"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

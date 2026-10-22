@@ -24,6 +24,7 @@ export function SaveWorkoutButton({
   return (
     <>
       <button
+        data-testid="training-history-save-as-my-workout"
         type="button"
         data-save-my-workout
         onClick={() => {
@@ -67,7 +68,7 @@ export function SaveWorkoutButton({
                 </button>
               </div>
             ) : (
-              <form action={action} className="mt-4 space-y-3">
+              <form data-testid="training-history-form-2" action={action} className="mt-4 space-y-3">
                 <input type="hidden" name="workoutId" value={workoutId} />
                 {exercises ? (
                   <input type="hidden" name="exercises" value={JSON.stringify(exercises)} />
@@ -75,6 +76,7 @@ export function SaveWorkoutButton({
                 <label className="block text-sm">
                   <span className="font-medium">Name</span>
                   <input
+                    data-testid="training-history-name"
                     name="name"
                     data-save-my-workout-name
                     value={name}
@@ -89,6 +91,7 @@ export function SaveWorkoutButton({
                   </p>
                 ) : null}
                 <button
+                  data-testid="training-history-save"
                   type="submit"
                   data-save-my-workout-submit
                   disabled={pending}

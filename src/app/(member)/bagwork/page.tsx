@@ -26,6 +26,7 @@ export default async function BagworkPage() {
       <section className="space-y-2" data-bagwork-picker>
         {BAG_WORKOUTS.map((workout) => (
           <Link
+            data-testid={`bagwork-workout-${workout.slug}`}
             key={workout.slug}
             href={`/bagwork/${workout.slug}`}
             className="block rounded-2xl border border-line bg-card px-4 py-3 hover:border-accent"
@@ -54,6 +55,7 @@ export default async function BagworkPage() {
             {custom.map((workout) => (
               <li key={workout.id}>
                 <Link
+                  data-testid={`bagwork-saved-${workout.id}`}
                   href={`/bagwork/saved/${workout.id}`}
                   className="block rounded-2xl border border-line bg-card px-4 py-3 hover:border-accent"
                 >

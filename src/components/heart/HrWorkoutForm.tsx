@@ -32,6 +32,7 @@ export function HrWorkoutForm({
         <label className="block space-y-2 text-sm">
           <span>Average bpm</span>
           <input
+            data-testid="heart-avg-bpm"
             name="avgBpm"
             type="number"
             min={30}
@@ -43,6 +44,7 @@ export function HrWorkoutForm({
         <label className="block space-y-2 text-sm">
           <span>Max bpm</span>
           <input
+            data-testid="heart-max-bpm"
             name="maxBpm"
             type="number"
             min={30}
@@ -55,6 +57,7 @@ export function HrWorkoutForm({
       <label className="block space-y-2 text-sm">
         <span>Started</span>
         <input
+          data-testid="heart-started-at"
           name="startedAt"
           type="datetime-local"
           defaultValue={defaultStartedAt || nowInput()}
@@ -64,6 +67,7 @@ export function HrWorkoutForm({
       <label className="block space-y-2 text-sm">
         <span>Ended (optional)</span>
         <input
+          data-testid="heart-ended-at"
           name="endedAt"
           type="datetime-local"
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -75,6 +79,7 @@ export function HrWorkoutForm({
           <label key={zone} className="block space-y-1 text-xs">
             <span>Z{zone}</span>
             <input
+              data-testid={`heart-number-${zone}`}
               name={`zone${zone}Seconds`}
               type="number"
               min={0}
@@ -85,6 +90,7 @@ export function HrWorkoutForm({
         ))}
       </fieldset>
       <button
+        data-testid="heart-save-workout-hr"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

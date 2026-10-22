@@ -128,6 +128,7 @@ export function CheckInReminderPrompt() {
             One push on your day and time. If you miss it, a follow-up lands the next day.
           </p>
           <button
+            data-testid="checkin-turn-on-check-in-reminders"
             type="button"
             onClick={() => void enable()}
             disabled={pending}

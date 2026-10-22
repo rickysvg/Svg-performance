@@ -44,6 +44,7 @@ export function PhotoTimeline({ photos }: { photos: TimelinePhoto[] }) {
           return (
             <li key={photo.id} className="overflow-hidden rounded-2xl border border-line bg-card">
               <button
+                data-testid={`progress-photos-photo-${photo.id}`}
                 type="button"
                 onClick={() => toggle(photo.id)}
                 aria-pressed={selected >= 0}
@@ -66,7 +67,7 @@ export function PhotoTimeline({ photos }: { photos: TimelinePhoto[] }) {
                   </span>
                 </span>
               </button>
-              <form action={deleteProgressPhotoAction}>
+              <form data-testid="progress-photos-form-2" action={deleteProgressPhotoAction}>
                 <input type="hidden" name="photoId" value={photo.id} />
                 <input type="hidden" name="next" value="/progress/photos" />
                 <button type="submit" className="min-h-11 w-full border-t border-line text-sm text-danger">

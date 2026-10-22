@@ -50,6 +50,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
           <label className="block">
             <span className="text-sm font-medium">Current body weight (lb)</span>
             <input
+              data-testid="onboarding-deeper-current-weight"
               name="currentWeight"
               type="number"
               step="0.1"
@@ -62,6 +63,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
           <label className="block">
             <span className="text-sm font-medium">Goal weight (lb, optional)</span>
             <input
+              data-testid="onboarding-deeper-goal-weight"
               name="goalWeight"
               type="number"
               step="0.1"
@@ -81,6 +83,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
               {SESSION_LENGTH_OPTIONS.map((item) => (
                 <label key={item.value} className="flex items-center gap-2 text-sm">
                   <input
+                    data-testid={`onboarding-deeper-session-length-min-${item.value}`}
                     type="radio"
                     name="sessionLengthMin"
                     value={item.value}
@@ -98,6 +101,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
               {TRAINING_LOCATION_OPTIONS.map((item) => (
                 <label key={item.value} className="flex items-center gap-2 text-sm">
                   <input
+                    data-testid={`onboarding-deeper-training-location-${item.value}`}
                     type="radio"
                     name="trainingLocation"
                     value={item.value}
@@ -122,6 +126,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
               {COMPETITION_STATUS_OPTIONS.map((item) => (
                 <label key={item.value} className="flex items-center gap-3 text-sm">
                   <input
+                    data-testid={`onboarding-deeper-competition-status-${item.value}`}
                     type="radio"
                     name="competitionStatus"
                     value={item.value}
@@ -136,6 +141,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
           <label className="block">
             <span className="text-sm font-medium">Next fight date (optional)</span>
             <input
+              data-testid="onboarding-deeper-next-fight-date"
               name="nextFightDate"
               type="date"
               defaultValue={dateInputValue(profile.nextFightDate)}
@@ -152,6 +158,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
               {COACHING_TONE_OPTIONS.map((item) => (
                 <label key={item.value} className="flex items-center gap-3 text-sm">
                   <input
+                    data-testid={`onboarding-deeper-coaching-tone-${item.value}`}
                     type="radio"
                     name="coachingTone"
                     value={item.value}
@@ -169,6 +176,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
               {OBSTACLE_OPTIONS.map((item) => (
                 <label key={item.value} className="flex items-center gap-3 text-sm">
                   <input
+                    data-testid={`onboarding-deeper-obstacles-${item.value}`}
                     type="checkbox"
                     name="obstacles"
                     value={item.value}
@@ -183,6 +191,7 @@ export function DeepOnboardingForm({ profile }: { profile: ProfileRecord }) {
         </section>
 
         <button
+          data-testid="onboarding-deeper-save-and-go-to-home"
           type="submit"
           disabled={pending}
           className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

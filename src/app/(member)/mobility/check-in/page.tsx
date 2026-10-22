@@ -94,6 +94,7 @@ export default async function MobilityCheckInPage({
               {recommendations.map((pick) => (
                 <li key={pick.id}>
                   <Link
+                    data-testid={`mobility-check-in-recommended-routine-${pick.id}`}
                     href={`/mobility/${pick.id}`}
                     data-recommended-routine={pick.id}
                     className="block rounded-2xl border border-white/20 px-3 py-3"

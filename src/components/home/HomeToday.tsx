@@ -42,6 +42,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           </Link>
         ) : next?.dayId ? (
           <form
+            data-testid="home-prime-coach-audio"
             action={startSessionAction}
             data-prime-coach-audio
             data-open-bike-logger={next.logHref ? "home" : undefined}
@@ -104,6 +105,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         </Link>
       ) : first.dayId ? (
         <form
+          data-testid="home-prime-coach-audio-2"
           action={startSessionAction}
           data-prime-coach-audio
           data-open-bike-logger={first.logHref ? "home" : undefined}

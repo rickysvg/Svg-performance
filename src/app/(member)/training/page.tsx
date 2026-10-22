@@ -479,7 +479,7 @@ export default async function TrainingPage({
           <ul className="divide-y divide-line border-t border-line">
             {moreLinks.map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
+                <Link data-testid={`training-link-${item.href.split("/").filter(Boolean).join("-")}`} href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
                   <span className="font-medium">{item.label}</span>
                   <span className="text-muted" aria-hidden>
                     ›

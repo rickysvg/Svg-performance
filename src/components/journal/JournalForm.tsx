@@ -17,6 +17,7 @@ export function JournalForm() {
       <label className="block space-y-2 text-sm">
         <span>Type</span>
         <select
+          data-testid="journal-kind"
           name="kind"
           defaultValue="note"
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -31,6 +32,7 @@ export function JournalForm() {
       <label className="block space-y-2 text-sm">
         <span>Title</span>
         <input
+          data-testid="journal-title"
           name="title"
           required
           className="w-full rounded-xl border border-line bg-background px-3 py-3"
@@ -39,6 +41,7 @@ export function JournalForm() {
       <label className="block space-y-2 text-sm">
         <span>Notes</span>
         <textarea
+          data-testid="journal-body"
           name="body"
           required
           rows={4}
@@ -47,6 +50,7 @@ export function JournalForm() {
         />
       </label>
       <button
+        data-testid="journal-save-entry"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"

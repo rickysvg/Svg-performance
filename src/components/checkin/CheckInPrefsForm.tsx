@@ -19,12 +19,13 @@ export function CheckInPrefsForm({
   const [state, action, pending] = useActionState(saveCheckInPrefsAction, {} as CheckInActionState);
   const current = `${weekday}:${minuteOfDay}`;
   return (
-    <form action={action} className="rounded-2xl border border-line bg-card px-4 py-4">
+    <form data-testid="checkin-form-2" action={action} className="rounded-2xl border border-line bg-card px-4 py-4">
       <StatusBanner error={state.error} success={state.success} />
       <label className="block text-sm font-semibold">
         Reminder day and time
         <span className="mt-0.5 block text-xs font-normal text-muted">{timeZone}</span>
         <select
+          data-testid="checkin-when"
           name="when"
           defaultValue={current}
           className="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base"
@@ -44,6 +45,7 @@ export function CheckInPrefsForm({
         </select>
       </label>
       <button
+        data-testid="checkin-save-reminder-time"
         type="submit"
         disabled={pending}
         className="touch-target mt-3 w-full rounded-full border border-black bg-white disabled:opacity-60"

@@ -11,10 +11,11 @@ export function WaitlistButton({ plan }: { plan: CatalogPlanId }) {
     {} as BillingActionState,
   );
   return (
-    <form action={action} className="space-y-2">
+    <form data-testid="pricing-form" action={action} className="space-y-2">
       <StatusBanner error={state.error} success={state.success} />
       <input type="hidden" name="plan" value={plan} />
       <button
+        data-testid="pricing-join-the-waitlist"
         type="submit"
         disabled={pending}
         className="touch-target w-full rounded-full border border-line font-medium disabled:opacity-60"
