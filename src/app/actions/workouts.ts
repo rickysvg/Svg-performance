@@ -24,7 +24,7 @@ import { resolveLoggedPerformedAt } from "@/lib/performed-at";
 import { parseDateTimeLocal } from "@/lib/timezone";
 import { isDeloadWeekIndex } from "@/lib/training-cycle";
 import { planWeekIndex } from "@/lib/week-plan";
-import { AppError, publicErrorMessage, StaleDraftError } from "@/lib/errors";
+import { AppError, isUniqueConstraintError, publicErrorMessage, StaleDraftError } from "@/lib/errors";
 import { getAppTier } from "@/lib/entitlements";
 import { isLoadUnit, type LoadUnit } from "@/lib/units";
 import { isLogMode } from "@/lib/exercise-log-mode";
@@ -328,18 +328,25 @@ export async function continuePartialWorkoutAction(formData: FormData) {
   const profile = await getProfileForUser(user.id);
   const units: LoadUnit = profile?.preferredUnits === "kg" ? "kg" : "lb";
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const session = await continuePartialWorkoutForUser({
-    userId: user.id,
-    workoutId,
-    preferredUnits: units,
-    timeZone,
-  });
+  let sessionId = workoutId;
+  try {
+    const session = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId,
+      preferredUnits: units,
+      timeZone,
+    });
+    sessionId = session.id;
+  } catch (error) {
+    // The other tap already filled this session. Open it instead of an error screen.
+    if (!isUniqueConstraintError(error)) throw error;
+  }
   revalidatePath("/home");
   revalidatePath("/training");
   revalidatePath("/training/history");
   revalidatePath("/progress");
-  revalidatePath(`/training/log/${session.id}`);
-  redirect(`/training/log/${session.id}`);
+  revalidatePath(`/training/log/${sessionId}`);
+  redirect(`/training/log/${sessionId}`);
 }
 
 /** Undo an accidental finish and return to the same logger, sets intact. */

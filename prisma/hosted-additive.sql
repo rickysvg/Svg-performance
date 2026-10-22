@@ -876,7 +876,9 @@ BEGIN
   END IF;
 END $$;
 
--- Assistant replies store the coach who wrote them. Unknown history stays null.
+-- Assistant replies store the coach who wrote them. Old rows stay null:
+-- coachChoiceAt is the first choice or a dismiss, not a switch, so the current
+-- coach is not copied onto history. A null coachId shows the generic Coach label.
 DO $$
 BEGIN
   IF to_regclass('public."ChatMessage"') IS NULL THEN
@@ -893,35 +895,47 @@ END $$;
 
 DO $$
 BEGIN
-  IF to_regclass('public."ChatMessage"') IS NULL OR to_regclass('public."Profile"') IS NULL THEN
+  IF to_regclass('public."Profile"') IS NULL THEN
     RETURN;
   END IF;
 
-  UPDATE "ChatMessage"
-  SET "coachId" = "Profile"."aiCoachId"
-  FROM "ChatThread", "Profile"
-  WHERE "ChatMessage"."threadId" = "ChatThread"."id"
-    AND "Profile"."userId" = "ChatThread"."userId"
-    AND "ChatMessage"."role" = 'assistant'
-    AND "ChatMessage"."coachId" IS NULL
-    AND "Profile"."coachChoiceAt" IS NOT NULL
-    AND "ChatMessage"."createdAt" >= "Profile"."coachChoiceAt"
-    AND "Profile"."aiCoachId" <> '';
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'aiCoachChangedAt'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "aiCoachChangedAt" TIMESTAMP(3);
+  END IF;
 END $$;
 
 -- A second Resume cannot insert the same set slot.
+-- Keep the ticked row, then a logged row, then notes, then the lowest id.
 DO $$
+DECLARE
+  removed integer;
 BEGIN
   IF to_regclass('public."WorkoutSet"') IS NULL THEN
     RETURN;
   END IF;
 
-  DELETE FROM "WorkoutSet" AS extra
-  USING "WorkoutSet" AS kept
-  WHERE extra."workoutSessionId" = kept."workoutSessionId"
-    AND extra."exerciseName" = kept."exerciseName"
-    AND extra."setNumber" = kept."setNumber"
-    AND extra."id" > kept."id";
+  WITH ranked AS (
+    SELECT "id",
+      ROW_NUMBER() OVER (
+        PARTITION BY "workoutSessionId", "exerciseName", "setNumber"
+        ORDER BY
+          CASE WHEN "completed" THEN 1 ELSE 0 END DESC,
+          CASE
+            WHEN "reps" IS NOT NULL OR "loadValue" IS NOT NULL OR COALESCE("durationSeconds", 0) > 0 THEN 1
+            ELSE 0
+          END DESC,
+          CASE WHEN btrim(COALESCE("notes", '')) <> '' THEN 1 ELSE 0 END DESC,
+          "id" ASC
+      ) AS keep_rank
+    FROM "WorkoutSet"
+  )
+  DELETE FROM "WorkoutSet"
+  WHERE "id" IN (SELECT "id" FROM ranked WHERE keep_rank > 1);
+  GET DIAGNOSTICS removed = ROW_COUNT;
+  RAISE NOTICE 'workout set duplicates removed: %', removed;
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes

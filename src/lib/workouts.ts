@@ -1,6 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { bikeTimerLogSets, bikeTimerSessionSeconds, scheduledBikeProgramDayId } from "@/lib/bike-timer-log";
+import {
+  BIKE_TIMER_EXERCISE,
+  bikeTimerLogSets,
+  bikeTimerSessionSeconds,
+  scheduledBikeProgramDayId,
+} from "@/lib/bike-timer-log";
 import type { BikeChoice } from "@/lib/bike-chooser";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
@@ -652,10 +657,7 @@ export async function logBikeRoundsForUser(input: {
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const now = input.now ?? new Date();
   const programDayId = await scheduledBikeProgramDayId(input.userId, now);
-  const sets = bikeTimerLogSets(input.choice, units, roundsCompleted);
-  if (sets.length < 1) {
-    throw new AppError("WORKOUT", "Finish a round before logging.");
-  }
+  let occupied: { exerciseName: string; setNumber: number }[] = [];
   let workoutId: string | null = null;
   if (programDayId) {
     const from = new Date(now.getTime() - 36 * 60 * 60 * 1000);
@@ -669,7 +671,7 @@ export async function logBikeRoundsForUser(input: {
         performedAt: { gte: from, lte: to },
       },
       orderBy: { performedAt: "desc" },
-      include: { sets: { select: { exerciseName: true } } },
+      include: { sets: { select: { exerciseName: true, setNumber: true } } },
     });
     const existing = drafts.find(
       (row) =>
@@ -677,10 +679,17 @@ export async function logBikeRoundsForUser(input: {
         sessionCompletionDay({ performedAt: row.performedAt }, timeZone) === today &&
         sessionMatchesPlannedDay(row, {
           title: input.choice.name,
-          exercises: sets.map((set) => ({ name: set.exerciseName })),
+          exercises: [{ name: BIKE_TIMER_EXERCISE }],
         }),
     );
-    if (existing) workoutId = existing.id;
+    if (existing) {
+      workoutId = existing.id;
+      occupied = existing.sets;
+    }
+  }
+  const sets = bikeTimerLogSets(input.choice, units, roundsCompleted, occupied);
+  if (sets.length < 1) {
+    throw new AppError("WORKOUT", "Finish a round before logging.");
   }
   if (!workoutId) {
     const created = await prisma.workoutSession.create({

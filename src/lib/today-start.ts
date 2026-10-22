@@ -89,6 +89,47 @@ export function openLogsByProgramDay(
   return map;
 }
 
+/** Home key for a free or custom log that is not tied to a planned day. */
+export const CUSTOM_HOME_RESUME = "custom";
+
+/**
+ * Newest custom or free session today that is ticked or edited.
+ * A blank draft and a finished custom workout do not take Resume.
+ * Sessions must be newest first.
+ */
+export function openCustomLog(
+  sessions: ResumableLog[],
+  onDay: string,
+  timeZone: string,
+): OpenProgramLog | null {
+  for (const session of sessions) {
+    if (session.programDayId) continue;
+    if (sessionCompletionDay(session, timeZone) !== onDay) continue;
+    if (session.status === "abandoned") continue;
+    if (session.status === "draft" && !draftHasResumeWork(session.sets)) continue;
+    if (
+      session.status === "complete" &&
+      sessionCountsAsPlannedCompletion(session, [], session.plannedSetCount)
+    ) {
+      continue;
+    }
+    const totals = progressTotals(exerciseSetProgress([], session.sets));
+    const planned =
+      session.plannedSetCount && session.plannedSetCount > 0
+        ? session.plannedSetCount
+        : totals.planned;
+    const partial = session.status !== "draft";
+    return {
+      id: session.id,
+      partial,
+      ticked: totals.ticked,
+      planned,
+      progress: partial ? partialSetsLine(totals.ticked, planned) : undefined,
+    };
+  }
+  return null;
+}
+
 export type TodayStartSession = {
   kind: string;
   label: string;

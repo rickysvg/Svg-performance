@@ -9,7 +9,7 @@ import {
   listRecentSessionsForUser,
   listResumableSessionsForUser,
 } from "@/lib/workouts";
-import { openLogsByProgramDay } from "@/lib/today-start";
+import { CUSTOM_HOME_RESUME, openCustomLog, openLogsByProgramDay } from "@/lib/today-start";
 import { calendarPlanDoses } from "@/lib/calendar";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import {
@@ -356,6 +356,8 @@ export async function getHomeToday(
       if (finishedToday.has(dayId)) continue;
       resumeByDay[dayId] = { id: log.id, partial: log.partial };
     }
+    const custom = openCustomLog(resumable, todayKey, tz);
+    if (custom) resumeByDay[CUSTOM_HOME_RESUME] = { id: custom.id, partial: custom.partial };
   }
   const draft =
     drafts.find(

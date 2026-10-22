@@ -38,6 +38,16 @@ export class NotFoundError extends AppError {
   }
 }
 
+/** Prisma P2002. The other request already wrote the row. */
+export function isUniqueConstraintError(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2002",
+  );
+}
+
 export function publicErrorMessage(error: unknown): string {
   if (error instanceof AppError) {
     return error.message;

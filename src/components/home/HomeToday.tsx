@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CUSTOM_HOME_RESUME } from "@/lib/today-start";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
@@ -37,8 +38,12 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
   const extra = Math.max(0, planned.length - 1);
   const next = guide.today.nextSession;
   const resume = first?.dayId ? guide.today.resumeByDay?.[first.dayId] : undefined;
+  const customResume = guide.today.resumeByDay?.[CUSTOM_HOME_RESUME];
   const otherResume = Object.entries(guide.today.resumeByDay ?? {}).find(
-    ([dayId]) => dayId !== first?.dayId && !guide.today.completedDayIds?.includes(dayId),
+    ([dayId]) =>
+      dayId !== first?.dayId &&
+      dayId !== CUSTOM_HOME_RESUME &&
+      !guide.today.completedDayIds?.includes(dayId),
   )?.[1];
   const firstDone = Boolean(first?.dayId && guide.today.completedDayIds?.includes(first.dayId));
   const nextDone = Boolean(next?.dayId && guide.today.completedDayIds?.includes(next.dayId));
@@ -60,6 +65,16 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           >
             Subscribe
           </a>
+        ) : customResume ? (
+          <>
+            <ResumeButton log={customResume} className={resumeClass} />
+            {otherResume ? (
+              <ResumeButton
+                log={otherResume}
+                className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+              />
+            ) : null}
+          </>
         ) : otherResume ? (
           <ResumeButton log={otherResume} className={resumeClass} />
         ) : nextDone ? (
@@ -149,7 +164,13 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Open Train
         </Link>
       )}
-      {otherResume ? (
+      {customResume && customResume.id !== resume?.id ? (
+        <ResumeButton
+          log={customResume}
+          className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+        />
+      ) : null}
+      {otherResume && otherResume.id !== customResume?.id ? (
         <ResumeButton
           log={otherResume}
           className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"

@@ -270,6 +270,9 @@ describe("coach choice persistence", () => {
     const dismissed = await dismissCoachChoiceForUser(user.id);
     expect(dismissed.coachChoiceAt).toBeTruthy();
     expect(dismissed.aiCoachId).toBe("skye");
+    expect(
+      (await prisma.profile.findUnique({ where: { userId: user.id } }))?.aiCoachChangedAt,
+    ).toBeNull();
     expect(needsCoachChoicePrompt(dismissed)).toBe(false);
     expect(resolveAiCoach(dismissed.aiCoachId).id).toBe("skye");
 
@@ -279,6 +282,11 @@ describe("coach choice persistence", () => {
     });
     expect(chosen.aiCoachId).toBe("maya");
     expect(chosen.coachingStyle).toBe("technical");
+    const switched = await prisma.profile.findUnique({ where: { userId: user.id } });
+    expect(switched?.aiCoachChangedAt).toBeTruthy();
+    await saveCoachChoiceForUser(user.id, { aiCoachId: "maya", coachingStyle: "hype" });
+    const repeat = await prisma.profile.findUnique({ where: { userId: user.id } });
+    expect(repeat?.aiCoachChangedAt?.getTime()).toBe(switched?.aiCoachChangedAt?.getTime());
 
     const edited = await updateProfileForUser(user.id, {
       displayName: "Legacy",

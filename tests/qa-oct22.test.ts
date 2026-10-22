@@ -1,6 +1,10 @@
 import fs from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { coachReplyLabel, recordedCoachIdAt } from "@/lib/coaches";
+import { HomeToday } from "@/components/home/HomeToday";
+import { coachChangedAtOnSwitch, coachReplyLabel, recordedCoachIdAt } from "@/lib/coaches";
+import { isUniqueConstraintError } from "@/lib/errors";
 import { loggedSetVolume } from "@/lib/home-telemetry";
 import { partialSetsLine } from "@/lib/logged-work";
 import { mealTypeForZonedNow } from "@/lib/nutrition";
@@ -286,8 +290,9 @@ describe("Oct 22 member clock and chrome", () => {
     ).toBe(false);
   });
 
-  it("leaves a reply unlabeled unless the coach was already chosen", () => {
+  it("leaves a reply unlabeled when the coach changed", () => {
     const choice = new Date("2026-10-22T12:00:00.000Z");
+    const switched = new Date("2026-10-22T18:00:00.000Z");
     expect(
       recordedCoachIdAt({
         messageAt: new Date("2026-10-21T12:00:00.000Z"),
@@ -305,6 +310,14 @@ describe("Oct 22 member clock and chrome", () => {
     expect(
       recordedCoachIdAt({
         messageAt: new Date("2026-10-22T13:00:00.000Z"),
+        coachChoiceAt: choice,
+        aiCoachChangedAt: switched,
+        aiCoachId: "maya",
+      }),
+    ).toBeNull();
+    expect(
+      recordedCoachIdAt({
+        messageAt: new Date("2026-10-22T13:00:00.000Z"),
         coachChoiceAt: null,
         aiCoachId: "skye",
       }),
@@ -312,12 +325,61 @@ describe("Oct 22 member clock and chrome", () => {
     expect(coachReplyLabel(null)).toBe("Coach");
     expect(coachReplyLabel("")).toBe("Coach");
     expect(coachReplyLabel("maya")).toBe("Maya");
-    const sql = fs.readFileSync(
-      "prisma/migrations/20261022160000_chat_message_coach/migration.sql",
+    const now = new Date("2026-10-22T18:00:00.000Z");
+    expect(
+      coachChangedAtOnSwitch({ previousId: "skye", nextId: "maya", now })?.toISOString(),
+    ).toBe(now.toISOString());
+    expect(
+      coachChangedAtOnSwitch({ previousId: "maya", nextId: "maya", previousChangedAt: choice }),
+    ).toBe(choice);
+    expect(coachChangedAtOnSwitch({ previousId: "skye", nextId: "skye" })).toBeNull();
+    const original = fs.readFileSync(
+      "prisma/migrations/20261022150000_chat_message_coach/migration.sql",
       "utf8",
     );
-    expect(sql).toContain("coachChoiceAt");
-    expect(sql).not.toContain("COALESCE");
+    expect(original).not.toContain("coachChoiceAt");
+    expect(original).not.toContain("COALESCE");
+    expect(fs.existsSync("prisma/migrations/20261022160000_chat_message_coach/migration.sql")).toBe(
+      false,
+    );
+    const changed = fs.readFileSync(
+      "prisma/migrations/20261022180000_ai_coach_changed_at/migration.sql",
+      "utf8",
+    );
+    expect(changed).toContain("aiCoachChangedAt");
+    expect(changed).not.toContain('SET "coachId"');
+    const hosted = fs.readFileSync("prisma/hosted-additive.sql", "utf8");
+    expect(hosted).toContain("aiCoachChangedAt");
+    expect(hosted).not.toContain('SET "coachId" = "Profile"."aiCoachId"');
+    const slot = fs.readFileSync(
+      "prisma/migrations/20261022170000_workout_set_slot/migration.sql",
+      "utf8",
+    );
+    expect(slot).toContain('"completed"');
+    expect(slot).toContain('"rowid" ASC');
+    expect(slot).not.toContain("MIN(\"rowid\")");
+    expect(isUniqueConstraintError({ code: "P2002" })).toBe(true);
+    expect(isUniqueConstraintError(new Error("miss"))).toBe(false);
+    const home = renderToStaticMarkup(
+      createElement(HomeToday, {
+        guide: {
+          today: {
+            plannedSessions: [
+              { kind: "strength", title: "Lift 1", label: "Strength", dayId: "day-1" },
+            ],
+            nextSession: null,
+            nextSessionWeekday: "",
+            completedDayIds: [],
+            resumeByDay: { custom: { id: "custom-1", partial: false } },
+          },
+        },
+      } as never),
+    );
+    expect(home).toContain("Start");
+    expect(home).toContain("/training/log/custom-1");
+    expect(home).toContain("Resume");
+    const action = fs.readFileSync("src/app/actions/workouts.ts", "utf8");
+    expect(action).toContain("isUniqueConstraintError");
   });
 
   it("shows local when the deploy has no commit sha", () => {

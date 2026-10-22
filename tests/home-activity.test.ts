@@ -11,6 +11,8 @@ import {
   updateWorkoutSessionForUser,
 } from "@/lib/workouts";
 import { APP_TIMEZONE } from "@/lib/timezone";
+import { CUSTOM_HOME_RESUME } from "@/lib/today-start";
+import { addedPrescriptionKey } from "@/lib/logger-insert";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import { listRuntimeKnowledgeFiles, loadKnowledgeBase } from "@/lib/coach/knowledge";
 
@@ -301,6 +303,60 @@ describe("home aggregation and weekly activity", () => {
         });
       }
     }
+  });
+
+  it("resumes a ticked custom draft that has no planned day", async () => {
+    const user = await makeUser("custom-draft@example.com");
+    const now = new Date();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Garage finisher",
+        performedAt: now,
+        status: "draft",
+        sets: {
+          create: [
+            {
+              exerciseName: "Curl",
+              setNumber: 1,
+              reps: 10,
+              loadUnit: "lb",
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Untouched custom",
+        performedAt: new Date(now.getTime() + 1000),
+        status: "draft",
+        sets: {
+          create: [
+            {
+              exerciseName: "Curl",
+              setNumber: 1,
+              reps: 8,
+              loadUnit: "lb",
+              completed: false,
+              prescriptionKey: addedPrescriptionKey({
+                exerciseName: "Curl",
+                reps: "8",
+                restSeconds: 60,
+              }),
+              logMode: "load_reps",
+            },
+          ],
+        },
+      },
+    });
+    const today = await getHomeToday(user.id, now);
+    expect(today.resumeByDay[CUSTOM_HOME_RESUME]).toMatchObject({
+      id: session.id,
+      partial: false,
+    });
   });
 });
 

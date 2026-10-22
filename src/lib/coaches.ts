@@ -163,18 +163,36 @@ export function coachReplyLabel(authorCoachId?: string | null) {
 }
 
 /**
- * Coach id to store on a reply that already exists.
- * Only messages written after the member's recorded choice belong to that coach.
+ * Coach id for a reply that already exists.
+ * A switch means the current coach did not write the older replies, so they stay unlabeled.
+ * When the coach never changed, replies after the first choice belong to that coach.
  */
 export function recordedCoachIdAt(input: {
   messageAt: Date;
   coachChoiceAt: Date | null;
+  aiCoachChangedAt?: Date | null;
   aiCoachId?: string | null;
 }) {
+  if (input.aiCoachChangedAt) return null;
   if (!input.coachChoiceAt || input.messageAt.getTime() < input.coachChoiceAt.getTime()) return null;
   const id = input.aiCoachId?.trim();
   if (!id || !isAiCoachId(id)) return null;
   return id;
+}
+
+/** Timestamp to store when the portrait actually changes. Dismiss and a repeat pick leave it. */
+export function coachChangedAtOnSwitch(input: {
+  previousId?: string | null;
+  nextId?: string | null;
+  previousChangedAt?: Date | null;
+  now?: Date;
+}) {
+  const next = input.nextId?.trim() ?? "";
+  const prev = input.previousId?.trim() ?? "";
+  if (!isAiCoachId(next) || !isAiCoachId(prev) || next === prev) {
+    return input.previousChangedAt ?? null;
+  }
+  return input.now ?? new Date();
 }
 
 export function resolveAiCoachByName(name?: string | null): AiCoach {

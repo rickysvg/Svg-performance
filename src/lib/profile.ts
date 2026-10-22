@@ -26,7 +26,7 @@ import {
   serializeOutsideTraining,
   type OutsideDay,
 } from "@/lib/member-plan";
-import { isAiCoachId, isCoachingStyle } from "@/lib/coaches";
+import { coachChangedAtOnSwitch, isAiCoachId, isCoachingStyle } from "@/lib/coaches";
 import { parseAthleteImagery } from "@/lib/athlete-imagery";
 
 export type ProfileRecord = {
@@ -540,6 +540,14 @@ export async function updateProfileForUser(
         isCoachingStyle(input.coachingStyle)
           ? (existing.coachChoiceAt ?? new Date())
           : existing.coachChoiceAt,
+      aiCoachChangedAt:
+        input.aiCoachId !== undefined && isAiCoachId(input.aiCoachId)
+          ? coachChangedAtOnSwitch({
+              previousId: existing.aiCoachId,
+              nextId: input.aiCoachId,
+              previousChangedAt: existing.aiCoachChangedAt,
+            })
+          : existing.aiCoachChangedAt,
       trainingEmphasis:
         input.trainingEmphasis === undefined
           ? existing.trainingEmphasis
@@ -651,6 +659,11 @@ export async function saveCoachChoiceForUser(
       aiCoachId: input.aiCoachId,
       coachingStyle: input.coachingStyle,
       coachChoiceAt: new Date(),
+      aiCoachChangedAt: coachChangedAtOnSwitch({
+        previousId: existing.aiCoachId,
+        nextId: input.aiCoachId,
+        previousChangedAt: existing.aiCoachChangedAt,
+      }),
     },
   });
   return toProfileRecord(row);

@@ -7,6 +7,7 @@ import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { attachBikeChoice, bikeTimerRoundCount, choiceToken, type BikeChoice } from "@/lib/bike-chooser";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
+import { highestSetNumber } from "@/lib/logger-insert";
 import type { LoadUnit } from "@/lib/units";
 import type { LogMode } from "@/lib/exercise-log-mode";
 
@@ -71,14 +72,16 @@ export function bikeTimerLogSets(
   choice: BikeChoice,
   unit: LoadUnit,
   roundsCompleted = bikeTimerRoundCount(choice),
+  existing: Iterable<{ exerciseName?: string | null; setNumber?: number | null }> = [],
 ): BikeTimerSet[] {
   const count = Math.min(bikeTimerRoundCount(choice), Math.max(0, Math.round(roundsCompleted)));
   if (count < 1) return [];
   const key = attachBikeChoice("timer", choiceToken(choice));
   const duration = Math.max(1, Math.round(choice.spec.workSeconds));
+  const start = highestSetNumber(existing, BIKE_TIMER_EXERCISE);
   return Array.from({ length: count }, (_, index) => ({
     exerciseName: BIKE_TIMER_EXERCISE,
-    setNumber: index + 1,
+    setNumber: start + index + 1,
     reps: null,
     loadValue: null,
     loadUnit: unit,

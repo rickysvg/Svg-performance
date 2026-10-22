@@ -1071,6 +1071,7 @@ export function WorkoutLogForm({
     const drafts = draftsForLibraryExercise(
       setsRef.current.map((set) => set.exerciseName),
       exercise,
+      setsRef.current,
     );
     if (drafts.length === 0) return;
     const incoming = drafts.map((draft) => ({

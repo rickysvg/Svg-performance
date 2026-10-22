@@ -177,8 +177,10 @@ model Profile {
   coachingStyle              String    @default("")
   /** Spoken cues during a logged workout. On until the member turns it off. */
   coachMotivation            Boolean   @default(true)
-  /** Set when the member picks a coach or dismisses the one-time prompt. */
+  /** Set when the member picks a coach or dismisses the one-time prompt. Not a switch log. */
   coachChoiceAt              DateTime?
+  /** Set when aiCoachId changes from one coach to another. Dismiss does not set this. */
+  aiCoachChangedAt           DateTime?
   /** balanced | striker | grappler — accessory emphasis, not a fight camp. */
   trainingEmphasis           String    @default("balanced")
   /** gym (default) | none — none swaps lift and bike days for a floor session. */
