@@ -17,7 +17,13 @@ import {
 } from "@/lib/logged-work";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
+import {
+  campPlanWeekIndex,
+  getActiveCampSnapshot,
+  shapeDayPlan,
+  type CampPhase,
+} from "@/lib/fight-camp";
+import { scaledPlanByProgramDay } from "@/lib/chip-completion";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
@@ -313,6 +319,69 @@ function dayNumberMatch(
   );
 }
 
+type CalendarScaleInput = {
+  experienceLevel?: string | null;
+  competitionStatus?: string | null;
+  weightAccess?: string | null;
+  onboardingCompletedAt?: Date | null;
+  now: Date;
+  timeZone: string;
+  camp: { weekNumber: number | null; phase: CampPhase } | null;
+};
+
+/** Same scale inputs the calendar schedule uses for set counts. */
+export function calendarScaledCatalog<T extends Parameters<typeof scaleDemoCatalog>[0]>(
+  catalog: T,
+  input: CalendarScaleInput,
+) {
+  const campWeek = campPlanWeekIndex(input.camp);
+  return scaleDemoCatalog(catalog, {
+    experienceLevel: input.experienceLevel,
+    competitionStatus: input.competitionStatus,
+    weightAccess: input.weightAccess,
+    weekIndex: campWeek ?? planWeekIndex(input.now, input.timeZone, input.onboardingCompletedAt ?? null),
+    campPhase: input.camp && input.camp.phase !== "complete" ? input.camp.phase : null,
+  });
+}
+
+/** Scaled dose for each program day, using the calendar's scale. */
+export async function calendarPlanDoses(userId: string, now = new Date()) {
+  const [catalog, profile] = await Promise.all([
+    findDemoTrainingCatalog(),
+    getProfileForUser(userId),
+  ]);
+  const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
+  const camp = await getActiveCampSnapshot(userId, now, timeZone);
+  return scaledPlanByProgramDay(
+    calendarScaledCatalog(catalog, {
+      experienceLevel: profile?.experienceLevel,
+      competitionStatus: profile?.competitionStatus,
+      weightAccess: profile?.weightAccess,
+      onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
+      now,
+      timeZone,
+      camp,
+    }),
+  );
+}
+
+/**
+ * Selected-day header. A card that says Partial stays Partial on a past day.
+ * "Partly logged" is only a mix of finished and unfinished workouts with no Partial card.
+ */
+export function calendarFocusStatusSuffix(input: {
+  workouts: readonly { status: string; subtitle: string }[];
+  past: boolean;
+  active: boolean;
+}) {
+  const done = input.workouts.filter((item) => item.status === "complete").length;
+  if (input.workouts.length > 0 && done === input.workouts.length) return " · Logged";
+  if (input.workouts.some((item) => item.subtitle.startsWith("Partial"))) return " · Partial";
+  if (done > 0) return " · Partly logged";
+  if (input.past && input.active) return " · Missed";
+  return "";
+}
+
 /** A saved log belongs to this planned session even if a reseed replaced the day id. */
 function logMatchesPlanned(
   log: LoggedPlanSession,
@@ -357,13 +426,17 @@ export async function getCalendarSchedule(
   const challenge = await getChallengeProgressForUser(userId, tz);
   const camp = await getActiveCampSnapshot(userId, now, tz);
   const campWeek = campPlanWeekIndex(camp);
-  const { strength, skill } = scaleDemoCatalog(catalog, {
+  const scaled = calendarScaledCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
-    weekIndex: campWeek ?? planWeekIndex(now, tz, profile?.onboardingCompletedAt ?? null),
-    campPhase: camp && camp.phase !== "complete" ? camp.phase : null,
+    onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
+    now,
+    timeZone: tz,
+    camp,
   });
+  const { strength, skill } = scaled;
+  const planByDay = scaledPlanByProgramDay(scaled);
   const loggedSessions = sessions.filter(
     (session) =>
       (session.status === "complete" || session.status === "partial" || session.status === "draft") &&
@@ -504,10 +577,17 @@ export async function getCalendarSchedule(
       if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
       const title = memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
-      const dose = prescribedSetCount(log.programDay?.exercises);
+      const plan = planByDay.get(log.programDayId);
+      const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
       const planned = resolvedPlannedSetCount(log, dose);
       const setCountLabel = formatSetProgress(ticked, planned);
-      const done = sessionCountsAsPlannedCompletion(log, [], dose);
+      const done = sessionCountsAsPlannedCompletion(
+        {
+          ...log,
+          plannedSetCount: log.plannedSetCount ?? (dose > 0 ? dose : null),
+        },
+        plan ? [...plan.names] : [],
+      );
       day.activities.push({
         kind: "workout",
         title,
