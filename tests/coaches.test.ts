@@ -137,14 +137,28 @@ describe("AI coach avatars", () => {
       createElement(CoachBubble, {
         speaker: "assistant",
         content: "Chin down.",
-        coachName: "Maya",
-        coachThumb: "/coaches/maya-thumb.webp",
+        coachName: "Skye",
+        coachThumb: "/coaches/skye-thumb.webp",
+        coachId: "maya",
       }),
     );
     expect(html).toContain("Maya");
     expect(html).toContain("/coaches/maya-thumb.webp");
     expect(html).toContain("ring-accent");
     expect(html).not.toContain(">SVG Coach<");
+    expect(html).not.toContain("skye-thumb");
+
+    const unlabeled = renderToStaticMarkup(
+      createElement(CoachBubble, {
+        speaker: "assistant",
+        content: "Chin down.",
+        coachName: "Maya",
+        coachThumb: "/coaches/maya-thumb.webp",
+      }),
+    );
+    expect(unlabeled).toContain("Coach");
+    expect(unlabeled).not.toContain("Maya");
+    expect(unlabeled).not.toContain("maya-thumb");
   });
 
   it("shows the floating coach on signed-in pages and hides it on the coach screen", () => {

@@ -932,41 +932,54 @@ export async function continuePartialWorkoutForUser(input: {
       where: { workoutSessionId: fresh.id },
     });
     const counts = new Map<string, number>();
+    const taken = new Set<string>();
     for (const set of lockedSets) {
       const key = gymExerciseKey(set.exerciseName);
       counts.set(key, (counts.get(key) ?? 0) + 1);
+      taken.add(`${key}:${set.setNumber}`);
     }
     const create: Prisma.WorkoutSetCreateManyInput[] = [];
     let prescribedTotal = 0;
     for (const exercise of visible) {
       const prescribed = Math.max(0, Math.round(exercise.sets));
       prescribedTotal += prescribed;
-      const have = counts.get(gymExerciseKey(exercise.name)) ?? 0;
+      const key = gymExerciseKey(exercise.name);
+      const have = counts.get(key) ?? 0;
       const mode = resolveLogMode(exercise);
-      for (let index = have; index < prescribed; index += 1) {
-        create.push({
-          workoutSessionId: fresh.id,
-          exerciseName: exercise.name,
-          setNumber: index + 1,
-          sortOrder: (exercise.sortOrder ?? 0) * 10 + index,
-          reps: null,
-          loadValue: null,
-          loadUnit: input.preferredUnits,
-          logMode: mode,
-          durationSeconds: null,
-          completed: false,
-          prescriptionKey: prescriptionSlotKey({
+      let slot = 1;
+      let added = 0;
+      const need = Math.max(0, prescribed - have);
+      while (added < need) {
+        const token = `${key}:${slot}`;
+        if (!taken.has(token)) {
+          taken.add(token);
+          create.push({
+            workoutSessionId: fresh.id,
             exerciseName: exercise.name,
-            reps: exercise.reps,
-            programSlug: rawDay.program.slug,
-            dayNumber: rawDay.dayNumber,
-          }),
-          rir: rirFromLoadText(exercise.loadText) ?? "",
-        });
+            setNumber: slot,
+            sortOrder: (exercise.sortOrder ?? 0) * 10 + slot - 1,
+            reps: null,
+            loadValue: null,
+            loadUnit: input.preferredUnits,
+            logMode: mode,
+            durationSeconds: null,
+            completed: false,
+            prescriptionKey: prescriptionSlotKey({
+              exerciseName: exercise.name,
+              reps: exercise.reps,
+              programSlug: rawDay.program.slug,
+              dayNumber: rawDay.dayNumber,
+            }),
+            rir: rirFromLoadText(exercise.loadText) ?? "",
+          });
+          added += 1;
+        }
+        slot += 1;
+        if (slot > prescribed + have + 8) break;
       }
     }
     if (create.length > 0) {
-      await tx.workoutSet.createMany({ data: create, skipDuplicates: true });
+      await tx.workoutSet.createMany({ data: create });
     }
     if (prescribedTotal > 0) {
       await tx.workoutSession.update({

@@ -392,6 +392,64 @@ describe("a workout is complete only after a logged save", () => {
     ).rejects.toMatchObject({ code: "P2002" });
   });
 
+  it("fills a short save once when Resume is clicked twice together", async () => {
+    const user = await makeUser("double-resume@example.com");
+    const program = await getDemoProgram();
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: program.days[0].id,
+      preferredUnits: "lb",
+    });
+    const started = session.sets.length;
+    const one = session.sets[0];
+    const mode = one?.logMode || "load_reps";
+    const timed = mode === "timed" || mode === "timed_round" || mode === "load_timed";
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: session.performedAt,
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: one?.exerciseName || "Squat",
+          setNumber: one?.setNumber || 1,
+          reps: timed && mode !== "load_timed" ? null : 8,
+          loadValue: mode === "reps_only" || mode === "timed" || mode === "timed_round" ? null : 30,
+          loadUnit: "lb",
+          logMode: mode,
+          durationSeconds: timed ? 45 : null,
+          completed: true,
+        },
+      ],
+    });
+    const results = await Promise.allSettled([
+      continuePartialWorkoutForUser({
+        userId: user.id,
+        workoutId: session.id,
+        preferredUnits: "lb",
+      }),
+      continuePartialWorkoutForUser({
+        userId: user.id,
+        workoutId: session.id,
+        preferredUnits: "lb",
+      }),
+    ]);
+    expect(results.some((result) => result.status === "fulfilled")).toBe(true);
+    const filled = await prisma.workoutSet.count({ where: { workoutSessionId: session.id } });
+    expect(filled).toBeGreaterThan(1);
+    expect(filled).toBeLessThanOrEqual(started);
+    await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: session.id,
+      preferredUnits: "lb",
+    });
+    expect(
+      await prisma.workoutSet.count({ where: { workoutSessionId: session.id } }),
+    ).toBe(filled);
+  });
+
   it("reopens a short save in place instead of starting a second session", async () => {
     const user = await makeUser("already-logged@example.com");
     const program = await getDemoProgram();

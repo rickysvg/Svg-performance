@@ -99,6 +99,8 @@ describe("home aggregation and weekly activity", () => {
     expect(session.plannedSetCount).toBeGreaterThan(1);
     const now = new Date();
     const one = session.sets[0];
+    const mode = one?.logMode || "load_reps";
+    const timed = mode === "timed" || mode === "timed_round" || mode === "load_timed";
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
@@ -110,9 +112,11 @@ describe("home aggregation and weekly activity", () => {
         {
           exerciseName: one?.exerciseName || "Goblet squat",
           setNumber: one?.setNumber || 1,
-          reps: 8,
-          loadValue: 30,
+          reps: timed && mode !== "load_timed" ? null : 8,
+          loadValue: mode === "reps_only" || mode === "timed" || mode === "timed_round" ? null : 30,
           loadUnit: "lb",
+          logMode: mode,
+          durationSeconds: timed ? 45 : null,
           completed: true,
         },
       ],
