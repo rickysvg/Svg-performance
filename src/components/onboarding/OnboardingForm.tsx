@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { completeOnboardingAction, type OnboardingActionState } from "@/app/actions/onboarding";
+import { earlierIntakeGap, intakeStepForProfile } from "@/lib/onboarding-intake";
 import { CoachPicker } from "@/components/coach/CoachPicker";
 import { StatusBanner } from "@/components/StatusBanner";
 import {
@@ -42,10 +43,27 @@ export function OnboardingForm({
   const [step, setStep] = useState<1 | 2>(1);
   const [dayError, setDayError] = useState("");
   const [days, setDays] = useState<string[]>(profile.weeklyAvailability ?? []);
+  const savedDays = (profile.weeklyAvailability ?? []).join("|");
   useLayoutEffect(() => {
     const stored = storedIntakeStep();
-    if (stored !== 1) setStep(stored);
-  }, []);
+    const next = intakeStepForProfile(
+      {
+        athleteImagery: profile.athleteImagery,
+        weeklyAvailability: savedDays ? savedDays.split("|") : [],
+      },
+      stored === 2 ? "2" : null,
+    );
+    if (next === 1) {
+      try {
+        window.sessionStorage.removeItem(INTAKE_STEP_KEY);
+      } catch {
+        // Ignore storage failures.
+      }
+      setStep(1);
+      return;
+    }
+    setStep(2);
+  }, [profile.athleteImagery, savedDays]);
   useEffect(() => {
     if (!state.error?.toLowerCase().includes("day you can train")) return;
     if (days.length > 0) return;
@@ -70,6 +88,22 @@ export function OnboardingForm({
     }
   }
 
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    const form = event.currentTarget;
+    const imagery =
+      form.querySelector<HTMLInputElement>('input[name="athleteImagery"]:checked')?.value ?? "";
+    const displayName = form.querySelector<HTMLInputElement>('input[name="displayName"]')?.value ?? "";
+    const gap = earlierIntakeGap({
+      athleteImagery: imagery,
+      dayCount: days.length,
+      displayName,
+    });
+    if (!gap) return;
+    event.preventDefault();
+    setDayError(gap);
+    rememberStep(1);
+  }
+
   function goToCoach() {
     const form = formRef.current;
     if (!form) return;
@@ -91,7 +125,7 @@ export function OnboardingForm({
   }
 
   return (
-    <form ref={formRef} action={action} className="space-y-6">
+    <form ref={formRef} action={action} className="space-y-6" onSubmit={onSubmit}>
       {days.map((day) => (
         <input key={day} type="hidden" name="weeklyAvailability" value={day} />
       ))}
@@ -119,7 +153,7 @@ export function OnboardingForm({
           <span className="text-sm font-medium">What should we call you?</span>
           <input
             name="displayName"
-            required
+            required={step === 1}
             defaultValue={profile.displayName}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           />
@@ -135,7 +169,7 @@ export function OnboardingForm({
                 type="radio"
                 name="athleteImagery"
                 value="male"
-                required
+                required={step === 1}
                 defaultChecked={profile.athleteImagery === "male"}
                 className="h-5 w-5 accent-accent"
               />
@@ -146,7 +180,7 @@ export function OnboardingForm({
                 type="radio"
                 name="athleteImagery"
                 value="female"
-                required
+                required={step === 1}
                 defaultChecked={profile.athleteImagery === "female"}
                 className="h-5 w-5 accent-accent"
               />

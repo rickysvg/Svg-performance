@@ -1,9 +1,9 @@
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 
 /**
- * A workout counts as done only after Save, and only when the member
- * actually entered a set. Opening the page, an empty checkbox, and the
- * database default (`completed: true` with no numbers) do not count.
+ * Entered numbers mean the member did some work. They do not finish the day.
+ * Done is sessionCountsAsPlannedCompletion: saved complete, with every
+ * prescribed set ticked. One checked set stays partial.
  */
 
 export type LoggedWorkSet = {
@@ -25,6 +25,7 @@ export function setHasLoggedWork(set: LoggedWorkSet) {
   return false;
 }
 
+/** Any entered set. Not a Done check — one logged set is still a partial day. */
 export function sessionHasLoggedWork(sets: LoggedWorkSet[]) {
   return sets.some(setHasLoggedWork);
 }
@@ -47,20 +48,78 @@ export function tickedExerciseKeys(sets: TickedSet[]) {
   return sets.filter(setIsTicked).map((set) => gymExerciseKey(set.exerciseName ?? ""));
 }
 
+/** Catalog or saved-template dose. Missing rows count as zero. */
+export function prescribedSetTotal(exercises: { sets?: number | null }[] | null | undefined) {
+  return (exercises ?? []).reduce(
+    (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
+    0,
+  );
+}
+
 /**
- * A planned session is done only when it was saved complete and a ticked set
- * belongs to that session. A push-up logged on a bike day does not finish the bike.
+ * Stored count wins. Otherwise the prescribed dose, then the set rows still
+ * on the session. A null count must not treat one ticked row as the whole day.
+ */
+export function resolvedPlannedSetCount(
+  session: { plannedSetCount?: number | null; sets: readonly unknown[] },
+  prescribedCount?: number | null,
+) {
+  if (typeof session.plannedSetCount === "number" && session.plannedSetCount > 0) {
+    return session.plannedSetCount;
+  }
+  if (typeof prescribedCount === "number" && prescribedCount > 0) return prescribedCount;
+  return session.sets.length;
+}
+
+/**
+ * A planned session is done only when it was saved complete, every planned
+ * exercise has a ticked set, and the ticked count covers the sets prescribed
+ * at start. One checked set, a draft, and status "partial" do not finish the day.
+ * A push-up logged on a bike day does not finish the bike.
  */
 export function sessionCountsAsPlannedCompletion(
-  session: { status: string; sets: TickedSet[] },
+  session: { status: string; sets: TickedSet[]; plannedSetCount?: number | null },
   plannedExerciseNames: string[],
+  prescribedCount?: number | null,
 ) {
   if (session.status !== "complete") return false;
+  const tickedCount = tickedSetCount(session.sets);
+  if (tickedCount === 0) return false;
+  const plannedCount = resolvedPlannedSetCount(session, prescribedCount);
+  if (plannedCount > 0 && tickedCount < plannedCount) return false;
   const ticked = tickedExerciseKeys(session.sets);
-  if (ticked.length === 0) return false;
   if (plannedExerciseNames.length === 0) return true;
-  const planned = new Set(plannedExerciseNames.map((name) => gymExerciseKey(name)));
-  return ticked.some((name) => planned.has(name));
+  const planned = plannedExerciseNames.map((name) => gymExerciseKey(name));
+  if (planned.every((name) => ticked.includes(name))) return true;
+  // Scaling can drop a catalog exercise the started session never contained.
+  // A full prescription still finishes the day. A different exercise on that
+  // day does not: the session has to share a planned name.
+  const filled = plannedCount > 0 && tickedCount >= plannedCount;
+  if (!filled) return false;
+  const present = new Set(
+    session.sets.map((set) => gymExerciseKey(set.exerciseName ?? "")),
+  );
+  const missing = planned.filter((name) => !ticked.includes(name));
+  return missing.every((name) => !present.has(name)) && planned.some((name) => ticked.includes(name));
+}
+
+/** History label. A short save reads partial, never complete. */
+export function completionListLabel(session: {
+  status: string;
+  sets: TickedSet[];
+  plannedSetCount?: number | null;
+  programDay?: { exercises?: { sets?: number | null }[] } | null;
+}) {
+  const dose = prescribedSetTotal(session.programDay?.exercises);
+  if (sessionCountsAsPlannedCompletion(session, [], dose)) return "complete";
+  if (session.status === "complete") return "partial";
+  return session.status;
+}
+
+export function formatSetProgress(ticked: number, planned: number) {
+  if (planned > 0) return `${ticked}/${planned} sets`;
+  const count = Math.max(0, ticked);
+  return `${count} set${count === 1 ? "" : "s"}`;
 }
 
 /** Prisma filter: a saved set with a number the member entered. */

@@ -3,9 +3,12 @@ import { AdminBack } from "@/components/admin/AdminChrome";
 import { listPilotInvites } from "@/lib/invites";
 import { InviteForm } from "@/components/admin/InviteForm";
 import { deleteInviteAction } from "@/app/actions/admin";
+import { timeZoneForUser } from "@/lib/profile";
+import { formatZonedDate } from "@/lib/timezone";
 
 export default async function AdminInvitesPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const timeZone = await timeZoneForUser(admin.id);
   const invites = await listPilotInvites();
 
   return (
@@ -29,7 +32,7 @@ export default async function AdminInvitesPage() {
                 <p className="font-semibold">{row.email}</p>
                 <p className="text-sm text-muted">
                   {row.status}
-                  {row.joinedAt ? ` · ${row.joinedAt.toLocaleDateString()}` : ""} · by{" "}
+                  {row.joinedAt ? ` · ${formatZonedDate(row.joinedAt, timeZone)}` : ""} · by{" "}
                   {row.invitedBy.email}
                 </p>
                 {row.note ? <p className="text-sm text-muted">{row.note}</p> : null}

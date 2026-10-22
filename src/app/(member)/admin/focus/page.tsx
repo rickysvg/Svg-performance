@@ -3,9 +3,12 @@ import { AdminBack } from "@/components/admin/AdminChrome";
 import { listFocusVideosForAdmin } from "@/lib/focus-videos";
 import { FocusVideoForm } from "@/components/admin/FocusVideoForm";
 import { memberFacingTitle } from "@/lib/member-copy";
+import { timeZoneForUser } from "@/lib/profile";
+import { formatZonedDate } from "@/lib/timezone";
 
 export default async function AdminFocusPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const timeZone = await timeZoneForUser(admin.id);
   const videos = await listFocusVideosForAdmin();
 
   return (
@@ -26,7 +29,7 @@ export default async function AdminFocusPage() {
               {memberFacingTitle(row.title)}
             </p>
             <p className="text-sm text-muted">
-              week {row.weekStart.toLocaleDateString()} · {row.status}
+              week {formatZonedDate(row.weekStart, timeZone)} · {row.status}
               {row.videoUrl ? " · URL" : ""}
               {row.storedName ? " · uploaded file" : ""}
             </p>

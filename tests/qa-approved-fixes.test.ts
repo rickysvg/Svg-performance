@@ -66,7 +66,9 @@ describe("QA-approved access and surface fixes", () => {
     expect(coach).not.toContain("Pick a topic");
     expect(coach).not.toContain("Pick your art to start chatting.");
     expect(coach).toContain("VIP Coaching");
+    expect(coach).not.toContain("1-on-1 clips");
     expect(coach).not.toContain("1-on-1");
+    expect(coach).toContain("{coach.name}");
     expect(coach).toContain("getMemberCoachThread");
     expect(thread).toContain("COACH_WELCOME");
     expect(thread).toContain("data-coach-suggestions");

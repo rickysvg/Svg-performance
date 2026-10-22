@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   addZonedDays,
   dayKey,
+  formatZonedDate,
   getUserToday,
   mondayOfZoned,
   resolveTimeZone,
@@ -103,6 +105,28 @@ describe("planner weekdays use the athlete zone", () => {
     expect(weekdayInAppZone(fridayUtc, DENVER)).toBe("Friday");
     expect(weekdayInAppZone(fridayUtc, LONDON)).toBe("Friday");
     expect(weekdayInAppZone(fridayUtc, LA)).toBe("Friday");
+  });
+
+  it("prints an early UTC instant on the previous Denver day", () => {
+    const instant = new Date("2026-10-22T03:00:00Z");
+    expect(formatZonedDate(instant, DENVER)).toBe("Oct 21, 2026");
+    expect(formatZonedDate(instant, "UTC")).toBe("Oct 22, 2026");
+  });
+
+  it("formats progress photos, invites, focus, and profile in the viewer zone", () => {
+    const pages = [
+      "src/app/(member)/progress/photos/page.tsx",
+      "src/app/(member)/progress/photos/[photoId]/page.tsx",
+      "src/app/(member)/admin/invites/page.tsx",
+      "src/app/(member)/admin/focus/page.tsx",
+      "src/app/(member)/profile/page.tsx",
+    ];
+    for (const page of pages) {
+      const source = readFileSync(page, "utf8");
+      expect(source).toContain("formatZonedDate");
+      expect(source).toContain("timeZoneForUser");
+      expect(source).not.toContain("toLocaleDateString");
+    }
   });
 
   it("keeps Monday-of-week in the athlete zone", () => {

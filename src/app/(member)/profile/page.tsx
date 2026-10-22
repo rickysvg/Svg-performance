@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/actions/auth";
 import { requireUser } from "@/lib/session";
-import { getProfileForUser } from "@/lib/profile";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { formatZonedDate } from "@/lib/timezone";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { YourDataSection } from "@/components/profile/YourDataSection";
@@ -35,6 +36,7 @@ export default async function ProfilePage() {
     }),
     getEffectivePlanId(user.id),
   ]);
+  const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   if (!profile) {
     return (
       <EmptyState title="Profile missing">
@@ -96,18 +98,14 @@ export default async function ProfilePage() {
           <p className="text-sm">
             {profile.gymMembershipSource === "admin"
               ? `Verified by an SVG admin on ${
-                  (verifiedEvent?.at ?? profile.gymdeskCheckedAt)?.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  }) ?? "this account"
+                  (verifiedEvent?.at ?? profile.gymdeskCheckedAt)
+                    ? formatZonedDate((verifiedEvent?.at ?? profile.gymdeskCheckedAt) as Date, timeZone)
+                    : "this account"
                 }.`
               : `Verified via SVG MMA Academy records on ${
-                  (verifiedEvent?.at ?? profile.gymdeskCheckedAt)?.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  }) ?? "this account"
+                  (verifiedEvent?.at ?? profile.gymdeskCheckedAt)
+                    ? formatZonedDate((verifiedEvent?.at ?? profile.gymdeskCheckedAt) as Date, timeZone)
+                    : "this account"
                 }.`}
           </p>
         ) : (

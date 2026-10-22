@@ -1,5 +1,7 @@
 import { isImmersiveTrainingPath } from "@/lib/member-nav";
 
+const COACH_FAB_FORM_PREFIXES = ["/vip/apply", "/checkin", "/onboarding", "/profile"];
+
 export const AI_COACHES = [
   {
     id: "skye",
@@ -243,13 +245,20 @@ export function coachingStyleVoice(style?: string | null, coachName?: string | n
 }
 
 /**
- * Floating coach on signed-in screens. It stays off the coach screen itself
- * (that page is where the button goes) and the splash CSS hides it during intro.
- * The button sits above the bottom dock. Logger screens raise it.
+ * Floating coach on signed-in screens. Hidden on the coach thread, the logger,
+ * Train, and forms, where it covers checkboxes and fields. Other pages keep
+ * it and hide it while the page is scrolling.
  */
 export function shouldShowCoachFab(pathname: string) {
   const path = pathname.split("?")[0] || "/";
-  return !path.startsWith("/coach");
+  if (path.startsWith("/coach")) return false;
+  if (path === "/training" || path.startsWith("/training/log")) return false;
+  if (/^\/training\/[^/]+\/start\/?$/.test(path)) return false;
+  if (isImmersiveTrainingPath(path)) return false;
+  if (COACH_FAB_FORM_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    return false;
+  }
+  return true;
 }
 
 /** Day and logger screens have a bottom Start or Save bar and no account dock. */

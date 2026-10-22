@@ -211,6 +211,11 @@ html[data-splash="done"] .app-splash {
   box-shadow: 0 8px 18px rgb(0 0 0 / 18%);
 }
 
+/* List pages sit the button in the account bar, clear of the right-hand dock link. */
+.coach-fab:not([data-coach-fab-raised]) {
+  bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+}
+
 .coach-fab[data-coach-fab-raised] {
   bottom: calc(10.25rem + env(safe-area-inset-bottom, 0px));
 }
@@ -224,6 +229,12 @@ html[data-splash="done"] .app-splash {
 
 html:not([data-splash="done"]) [data-coach-fab] {
   visibility: hidden;
+  pointer-events: none;
+}
+
+/* The button floats over whatever scrolls behind it. Hide it for that moment. */
+html[data-coach-scrolling="1"] [data-coach-fab] {
+  opacity: 0;
   pointer-events: none;
 }
 

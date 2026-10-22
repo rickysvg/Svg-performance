@@ -948,18 +948,32 @@ export function formClipWindow(url: string): { start: number | null; end: number
   return { start: null, end: null };
 }
 
-/** Put `t` and `end` on a watch URL when this catalog knows the window. */
+/**
+ * Trim the catalog already wrote onto this video. A short with no `t` or `end`
+ * in the catalog stays bare; the player still clips it through formClipWindow.
+ */
+function catalogDeclaredTrim(id: string): { start: number | null; end: number | null } | null {
+  for (const entry of Object.values(DEMO_FORM_VIDEOS)) {
+    if (!entry.url || youtubeVideoId(entry.url) !== id) continue;
+    const start = youtubeStartSeconds(entry.url);
+    const end = youtubeEndSeconds(entry.url);
+    if (start != null || end != null) return { start, end };
+  }
+  return null;
+}
+
+/** Put `t` and `end` on a URL only when the catalog URL for that video already has them. */
 export function ensureFormTrim(url: string): string {
-  const clip = formClipWindow(url);
-  if (clip.start == null && clip.end == null) return url;
+  const id = youtubeVideoId(url);
+  const declared = id ? catalogDeclaredTrim(id) : null;
+  if (!declared) return url;
+  const needsStart = youtubeStartSeconds(url) == null && declared.start != null;
+  const needsEnd = youtubeEndSeconds(url) == null && declared.end != null;
+  if (!needsStart && !needsEnd) return url;
   const parsed = parsedYoutubeUrl(url);
   if (!parsed) return url;
-  if (youtubeStartSeconds(url) == null && clip.start != null) {
-    parsed.searchParams.set("t", String(clip.start));
-  }
-  if (youtubeEndSeconds(url) == null && clip.end != null) {
-    parsed.searchParams.set("end", String(clip.end));
-  }
+  if (needsStart) parsed.searchParams.set("t", String(declared.start));
+  if (needsEnd) parsed.searchParams.set("end", String(declared.end));
   return parsed.toString();
 }
 

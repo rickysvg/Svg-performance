@@ -143,7 +143,7 @@ export function AppHeader({
             ) : null}
           </div>
         ) : null}
-        <div className="mx-auto flex max-w-3xl items-center gap-1 px-2 py-1.5">
+        <div className="mx-auto flex max-w-3xl items-center gap-1 py-1.5 pl-2 pr-[4.75rem]">
           <Link
             href={homeHref ?? "/home"}
             className="flex shrink-0 items-center justify-center px-1"

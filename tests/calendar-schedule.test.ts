@@ -2,7 +2,13 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { getDemoProgram } from "@/lib/programs";
-import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
+import {
+  completedProgramDayIdsOnDay,
+  startWorkoutFromDay,
+  updateWorkoutSessionForUser,
+  type WorkoutSetInput,
+} from "@/lib/workouts";
+import { APP_TIMEZONE, addZonedDays } from "@/lib/timezone";
 import {
   buildCalendarDays,
   formatCalendarHeading,
@@ -12,7 +18,6 @@ import {
   resolveTrainingWeekdays,
   weekSessionTally,
 } from "@/lib/calendar";
-import { addZonedDays } from "@/lib/timezone";
 
 const tuesday = new Date(2026, 8, 22, 10, 0, 0);
 
@@ -31,6 +36,38 @@ function tickedPlannedSet(session: {
     durationSeconds: weighted ? null : 60,
     completed: true,
   };
+}
+
+function knownLogMode(value: string | null | undefined): WorkoutSetInput["logMode"] {
+  if (
+    value === "load_reps" ||
+    value === "load_timed" ||
+    value === "reps_only" ||
+    value === "timed" ||
+    value === "timed_round"
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+function finishEverySet(session: {
+  sets: { exerciseName: string; setNumber: number; logMode?: string | null }[];
+}): WorkoutSetInput[] {
+  return session.sets.map((set) => {
+    const mode = set.logMode ?? "load_reps";
+    const timed = mode === "timed" || mode === "timed_round" || mode === "load_timed";
+    return {
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      reps: timed ? null : 8,
+      loadValue: mode === "reps_only" || mode === "timed" || mode === "timed_round" ? null : 40,
+      loadUnit: "lb" as const,
+      logMode: knownLogMode(set.logMode),
+      durationSeconds: timed ? 60 : null,
+      completed: true,
+    };
+  });
 }
 
 describe("calendar schedule list", () => {
@@ -184,7 +221,7 @@ describe("calendar schedule loader", () => {
       performedAt: new Date(2026, 8, 23, 12, 0, 0),
       notes: "",
       status: "complete",
-      sets: [tickedPlannedSet(session)],
+      sets: finishEverySet(session),
     });
 
     const after = await getCalendarSchedule(user.id, tuesday);
@@ -197,6 +234,76 @@ describe("calendar schedule loader", () => {
     const tally = weekSessionTally(after.days);
     expect(tally.done).toBe(1);
     expect(tally.total).toBeGreaterThan(1);
+  });
+
+  it("does not mark Done when only one planned set is saved", async () => {
+    const user = await makeUser("calendar-partial@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const schedule = await getCalendarSchedule(user.id, tuesday);
+    let picked: {
+      session: Awaited<ReturnType<typeof startWorkoutFromDay>>;
+      performedAt: Date;
+      programDayId: string;
+    } | null = null;
+    for (const day of schedule.days) {
+      for (const activity of day.activities) {
+        if (activity.kind !== "workout" || !activity.programDayId) continue;
+        const started = await startWorkoutFromDay({
+          userId: user.id,
+          programDayId: activity.programDayId,
+          preferredUnits: "lb",
+        });
+        if ((started.plannedSetCount ?? 0) > 1) {
+          picked = { session: started, performedAt: day.date, programDayId: activity.programDayId };
+          break;
+        }
+        await prisma.workoutSession.delete({ where: { id: started.id } });
+      }
+      if (picked) break;
+    }
+    expect(picked).toBeTruthy();
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: picked!.session.id,
+      title: picked!.session.title,
+      performedAt: picked!.performedAt,
+      notes: "",
+      status: "complete",
+      sets: [tickedPlannedSet(picked!.session)],
+    });
+
+    const after = await getCalendarSchedule(user.id, tuesday);
+    const logged = after.days
+      .flatMap((day) => day.activities)
+      .find((row) => row.kind === "workout" && row.programDayId === picked!.programDayId);
+    expect(logged?.status).toBe("scheduled");
+    expect(logged?.subtitle.startsWith("Partial")).toBe(true);
+    expect(logged?.subtitle).not.toContain("Logged this day");
+    expect(weekSessionTally(after.days).done).toBe(0);
+    expect(
+      await completedProgramDayIdsOnDay(user.id, [picked!.programDayId], picked!.performedAt, APP_TIMEZONE),
+    ).toEqual([]);
+
+    await prisma.workoutSession.update({
+      where: { id: picked!.session.id },
+      data: { plannedSetCount: null },
+    });
+    const legacy = await getCalendarSchedule(user.id, tuesday);
+    const legacyRow = legacy.days
+      .flatMap((day) => day.activities)
+      .find((row) => row.kind === "workout" && row.programDayId === picked!.programDayId);
+    expect(legacyRow?.status).toBe("scheduled");
+    expect(legacyRow?.subtitle.startsWith("Partial")).toBe(true);
+    expect(
+      await completedProgramDayIdsOnDay(user.id, [picked!.programDayId], picked!.performedAt, APP_TIMEZONE),
+    ).toEqual([]);
   });
 
   it("lists the whole week, including a logged past day and a missed day", async () => {
@@ -230,7 +337,7 @@ describe("calendar schedule loader", () => {
       performedAt: monday,
       notes: "",
       status: "complete",
-      sets: [tickedPlannedSet(session)],
+      sets: finishEverySet(session),
     });
 
     const schedule = await getCalendarSchedule(user.id, wednesday, monday);
@@ -296,11 +403,13 @@ describe("calendar schedule loader", () => {
     const mondayWorkouts = schedule.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
     const logged = mondayWorkouts.filter((row) => row.programDayId === loggedDayId);
     expect(logged.length).toBeGreaterThan(0);
-    expect(logged.every((row) => row.status === "complete")).toBe(true);
+    expect(logged.every((row) => row.status === "complete")).toBe(false);
+    expect(logged.some((row) => row.subtitle.startsWith("Partial"))).toBe(true);
+    expect(logged.some((row) => row.setCountLabel?.startsWith("1/"))).toBe(true);
     const tally = weekSessionTally(schedule.days);
-    expect(tally.done).toBeGreaterThan(0);
+    expect(tally.done).toBe(0);
     const linked = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
-    expect(linked.status).toBe("complete");
+    expect(linked.status).toBe("partial");
     expect(linked.programDayId).toBe(loggedDayId);
 
     const sundayWork = schedule.days[6]?.activities.filter((row) => row.kind === "workout") ?? [];

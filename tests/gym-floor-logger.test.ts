@@ -440,16 +440,21 @@ describe("today's finished program days", () => {
       performedAt: new Date("2026-10-03T18:00:00Z"),
       notes: "",
       status: "complete",
-      sets: [
-        {
-          exerciseName: "Goblet squat",
-          setNumber: 1,
-          reps: 5,
-          loadValue: 50,
-          loadUnit: "lb",
-          completed: true,
-        },
-      ],
+      sets: finished.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.logMode === "timed" || set.logMode === "timed_round" ? null : 5,
+        loadValue:
+          set.logMode === "reps_only" || set.logMode === "timed" || set.logMode === "timed_round"
+            ? null
+            : 50,
+        loadUnit: "lb" as const,
+        durationSeconds:
+          set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed"
+            ? 60
+            : null,
+        completed: true,
+      })),
     });
     const onDay = await completedProgramDayIdsOnDay(
       user.id,

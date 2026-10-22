@@ -5,13 +5,11 @@ import { PhotoUploadForm } from "@/components/progress/PhotoUploadForm";
 import { PhotoTimeline } from "@/components/progress/PhotoTimeline";
 import { deleteProgressPhotoAction } from "@/app/actions/body-metrics";
 import { EmptyState } from "@/components/EmptyState";
+import { timeZoneForUser } from "@/lib/profile";
+import { formatZonedDate } from "@/lib/timezone";
 
-function photoDateLabel(date: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
+function photoDateLabel(date: Date, timeZone: string) {
+  return formatZonedDate(date, timeZone);
 }
 
 export default async function ProgressPhotosPage({
@@ -21,6 +19,7 @@ export default async function ProgressPhotosPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
+  const timeZone = await timeZoneForUser(user.id);
   const photos = await listProgressPhotosForUser(user.id);
   const left = photos.find((photo) => photo.id === params.a);
   const right = photos.find((photo) => photo.id === params.b);
@@ -47,11 +46,11 @@ export default async function ProgressPhotosPage({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={progressPhotoSrc(photo.id)}
-                  alt={photo.caption || `Progress photo ${photoDateLabel(photo.recordedAt)}`}
+                  alt={photo.caption || `Progress photo ${photoDateLabel(photo.recordedAt, timeZone)}`}
                   className="aspect-[3/4] w-full object-cover"
                 />
                 <figcaption className="px-2 py-2 text-sm font-semibold">
-                  {photoDateLabel(photo.recordedAt)}
+                  {photoDateLabel(photo.recordedAt, timeZone)}
                   {photo.caption ? (
                     <span className="mt-0.5 block text-xs font-normal text-muted">{photo.caption}</span>
                   ) : null}
@@ -81,7 +80,7 @@ export default async function ProgressPhotosPage({
           photos={photos.map((photo) => ({
             id: photo.id,
             src: progressPhotoSrc(photo.id),
-            dateLabel: photoDateLabel(photo.recordedAt),
+            dateLabel: photoDateLabel(photo.recordedAt, timeZone),
             caption: photo.caption,
           }))}
         />

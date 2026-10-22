@@ -62,7 +62,7 @@ describe("badge ladders", () => {
   it("ships 43 logical rungs and 48 pack art files for lift unit variants", () => {
     expect(BADGE_IDS).toHaveLength(43);
     const packIds = JSON.parse(
-      fs.readFileSync("/tmp/badge-pack-v2/badge-app-pack-v2/manifest.json", "utf8"),
+      fs.readFileSync(path.join(process.cwd(), "public/badges/manifest.json"), "utf8"),
     ).badges as { id: string }[];
     expect(packIds).toHaveLength(48);
     for (const stem of ["lift_l1_lb", "lift_l5_kg", "pads_20", "first_session", "streak_3"]) {

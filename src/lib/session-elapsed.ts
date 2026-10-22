@@ -52,6 +52,37 @@ export function formatSessionElapsed(totalSeconds: number): string {
   return `${mm}:${ss}`;
 }
 
+/**
+ * Seconds that are safe to keep on a draft. The 4 hour cap and anything
+ * longer are a created-to-edit gap, not a clock the member ran.
+ */
+export function usableStoredElapsed(
+  value: number | null | undefined,
+  cap = SESSION_DURATION_CAP_SECONDS,
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const seconds = Math.floor(value);
+  if (seconds <= 0 || seconds >= cap) return null;
+  return seconds;
+}
+
+/**
+ * Wall-clock gap worth storing. Null when the gap is the cap or a stale draft
+ * left open, so finalize and resume do not write 4:00:00.
+ */
+export function plausibleElapsed(
+  start: Date | string | number | null | undefined,
+  end: Date | string | number | null | undefined,
+  cap = SESSION_DURATION_CAP_SECONDS,
+): number | null {
+  const from = toMs(start);
+  const to = toMs(end);
+  if (from == null || to == null) return null;
+  const gap = Math.max(0, Math.round((to - from) / 1000));
+  if (gap <= 0 || gap >= cap || gap > STALE_DRAFT_SECONDS) return null;
+  return gap;
+}
+
 export function cappedElapsedSeconds(
   start: Date | string | number | null | undefined,
   end: Date | string | number | null | undefined,
@@ -89,7 +120,8 @@ export function resolveSessionElapsed(
     };
   }
 
-  const base = stored ?? 0;
+  // A stored base at the cap is a wall-clock gap, not time the member trained.
+  const base = stored != null && stored < cap ? stored : 0;
   const anchor = toMs(session.timerStartedAt) ?? created;
   const segment = Math.max(0, Math.floor((nowMs - anchor) / 1000));
 

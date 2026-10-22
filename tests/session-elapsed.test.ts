@@ -90,6 +90,21 @@ describe("session header elapsed clock", () => {
     expect(view.label).not.toContain("1397");
   });
 
+  it("ignores a stored 4 hour cap and counts only the live segment", () => {
+    const view = resolveSessionElapsed(
+      {
+        status: "draft",
+        createdAt: new Date(NOW.getTime() - 3 * 24 * 60 * 60 * 1000),
+        elapsedSeconds: 14400,
+        timerStartedAt: new Date(NOW.getTime() - 10_000),
+      },
+      NOW,
+    );
+    expect(view.ticking).toBe(true);
+    expect(view.label).toBe("00:10");
+    expect(view.label).not.toBe("4:00:00");
+  });
+
   it("caps a long-but-not-abandoned draft instead of counting past four hours", () => {
     const view = resolveSessionElapsed(
       {

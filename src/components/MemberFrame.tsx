@@ -41,8 +41,8 @@ export function MemberFrame({
       <div
         className={
           immersive
-            ? "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-3 pb-[calc(13rem+env(safe-area-inset-bottom))]"
-            : "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 pb-[calc(13rem+env(safe-area-inset-bottom))]"
+            ? "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-3 pb-36 pb-[calc(13rem+env(safe-area-inset-bottom))]"
+            : "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 pb-36 pb-[calc(13rem+env(safe-area-inset-bottom))]"
         }
       >
         {graceEndsOn ? <GraceBanner endsOn={graceEndsOn} /> : null}

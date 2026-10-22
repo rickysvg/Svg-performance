@@ -337,6 +337,11 @@ model WorkoutSession {
   elapsedSeconds   Int?
   /** Start of the live segment after Resume. Null means the clock runs from createdAt. */
   timerStartedAt   DateTime?
+  /**
+   * Sets prescribed when the session was started. A later save may drop
+   * empty rows, so completion compares ticked sets to this count.
+   */
+  plannedSetCount  Int?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   /** Template this session was started from. Null when the template is deleted. */

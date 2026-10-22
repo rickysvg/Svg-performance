@@ -117,6 +117,7 @@ export async function logBagworkSessionForUser(input: {
       notes,
       status: "complete",
       sessionRpe: rpe,
+      plannedSetCount: sets.length,
       sets: { create: sets },
     },
     include: { sets: true },

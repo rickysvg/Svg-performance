@@ -45,11 +45,13 @@ async function completeSession(
   userId: string,
   rating?: string,
   performedAt = new Date(),
+  dayIndex = 0,
 ) {
   const program = await getDemoProgram();
+  const day = program.days[dayIndex % program.days.length];
   const session = await startWorkoutFromDay({
     userId,
-    programDayId: program.days[0].id,
+    programDayId: day.id,
     preferredUnits: "lb",
   });
   const saved = await updateWorkoutSessionForUser({
@@ -200,7 +202,7 @@ describe("daily quotes and difficulty ratings", () => {
     expect(rated.difficultyRating).toBe("just_right");
     expect(parseDifficultyRating("hard")).toBe("hard");
 
-    await completeSession(user.id, "hard", new Date("2026-09-21T12:00:00Z"));
+    await completeSession(user.id, "hard", new Date("2026-09-21T12:00:00Z"), 1);
     const rows = await prisma.workoutSession.findMany({ where: { userId: user.id } });
     const avg = recentDifficultyAverage(rows);
     expect(avg.count).toBe(2);
@@ -211,9 +213,9 @@ describe("daily quotes and difficulty ratings", () => {
   it("flags a too-easy streak for coaches without shame copy", async () => {
     const admin = await makeUser("diff-admin@example.com", false, "admin");
     const member = await makeUser("too-easy@example.com");
-    await completeSession(member.id, "too_easy", new Date("2026-09-20T12:00:00Z"));
-    await completeSession(member.id, "too_easy", new Date("2026-09-21T12:00:00Z"));
-    await completeSession(member.id, "too_easy", new Date("2026-09-22T12:00:00Z"));
+    await completeSession(member.id, "too_easy", new Date("2026-09-20T12:00:00Z"), 0);
+    await completeSession(member.id, "too_easy", new Date("2026-09-21T12:00:00Z"), 1);
+    await completeSession(member.id, "too_easy", new Date("2026-09-22T12:00:00Z"), 2);
     const rows = await prisma.workoutSession.findMany({ where: { userId: member.id } });
     expect(tooEasyStreak(rows)).toBe(3);
     expect(tooEasyCoachNote(3)).toMatch(/load check/i);

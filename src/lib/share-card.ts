@@ -90,9 +90,10 @@ export const SESSION_DURATION_CAP_SECONDS = 4 * 60 * 60;
 export function formatShareDuration(totalSeconds: number) {
   const safe = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(safe / 3600);
-  const minutes = Math.floor((safe % 3600) / 60);
-  const seconds = safe % 60;
-  if (hours > 0) {
+  // Under two hours the win screen uses the clock ("60:00"). The 4 hour cap stays "4:00:00".
+  if (hours >= 2) {
+    const minutes = Math.floor((safe % 3600) / 60);
+    const seconds = safe % 60;
     return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
   return formatClock(safe);

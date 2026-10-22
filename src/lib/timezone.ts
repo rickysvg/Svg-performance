@@ -253,6 +253,21 @@ export async function resolveRequestTimeZone(saved?: string | null) {
   return resolveSavedOrCookieTimeZone(saved, await readTimeZoneCookie());
 }
 
+/** Calendar date in the member's zone. Server UTC must not move an evening session to the next day. */
+export function formatZonedDate(
+  date: Date,
+  timeZone: string,
+  options: Intl.DateTimeFormatOptions = {},
+) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    ...options,
+    timeZone,
+  }).format(date);
+}
+
 export function athleteLocalDayLine(now: Date, timeZone: string) {
   const today = getUserToday(now, timeZone);
   return `Athlete local day: ${today.weekday} ${today.dayKey} (${today.timeZone}).`;

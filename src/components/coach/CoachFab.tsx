@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
 
 export function CoachFab({
   name,
@@ -11,6 +14,23 @@ export function CoachFab({
   raised?: boolean;
   locked?: boolean;
 }) {
+  useEffect(() => {
+    let timer = 0;
+    const onScroll = () => {
+      document.documentElement.dataset.coachScrolling = "1";
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        delete document.documentElement.dataset.coachScrolling;
+      }, 220);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      window.clearTimeout(timer);
+      delete document.documentElement.dataset.coachScrolling;
+    };
+  }, []);
+
   return (
     <Link
       href="/coach"

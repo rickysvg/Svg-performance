@@ -47,7 +47,11 @@ import {
 } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import {
+  loggedSetSome,
+  prescribedSetTotal,
+  sessionCountsAsPlannedCompletion,
+} from "@/lib/logged-work";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -83,7 +87,21 @@ export async function getWeeklyActivity(
         sets: loggedSetSome,
         performedAt: { gte: weekStart },
       },
-      select: { performedAt: true },
+      select: {
+        status: true,
+        plannedSetCount: true,
+        performedAt: true,
+        sets: {
+          select: {
+            exerciseName: true,
+            completed: true,
+            reps: true,
+            loadValue: true,
+            durationSeconds: true,
+          },
+        },
+        programDay: { select: { exercises: { select: { sets: true } } } },
+      },
     }),
     prisma.nutritionEntry.findMany({
       where: { userId, eatenAt: { gte: weekStart } },
@@ -91,7 +109,12 @@ export async function getWeeklyActivity(
     }),
   ]);
   const days = new Set<string>();
-  for (const row of workouts) days.add(zonedDayKey(row.performedAt, timeZone));
+  for (const row of workouts) {
+    if (!sessionCountsAsPlannedCompletion(row, [], prescribedSetTotal(row.programDay?.exercises))) {
+      continue;
+    }
+    days.add(zonedDayKey(row.performedAt, timeZone));
+  }
   for (const row of foods) days.add(zonedDayKey(row.eatenAt, timeZone));
   const daysActive = days.size;
   return {
@@ -151,19 +174,36 @@ export async function hasActivityOnLocalDay(
   const start = startOfLocalDay(day, timeZone);
   const end = endOfZonedDay(day, timeZone);
   const [workouts, foods] = await Promise.all([
-    prisma.workoutSession.count({
+    prisma.workoutSession.findMany({
       where: {
         userId,
         status: "complete",
         sets: loggedSetSome,
         performedAt: { gte: start, lt: end },
       },
+      select: {
+        status: true,
+        plannedSetCount: true,
+        sets: {
+          select: {
+            exerciseName: true,
+            completed: true,
+            reps: true,
+            loadValue: true,
+            durationSeconds: true,
+          },
+        },
+        programDay: { select: { exercises: { select: { sets: true } } } },
+      },
     }),
     prisma.nutritionEntry.count({
       where: { userId, eatenAt: { gte: start, lt: end } },
     }),
   ]);
-  return workouts + foods > 0;
+  const finished = workouts.filter((row) =>
+    sessionCountsAsPlannedCompletion(row, [], prescribedSetTotal(row.programDay?.exercises)),
+  ).length;
+  return finished + foods > 0;
 }
 
 export async function homeLoad<T>(
@@ -286,8 +326,11 @@ export async function getHomeToday(
     null;
   const loggedOnSelected = sessions.find(
     (session) =>
-      session.status === "complete" &&
-      sessionHasLoggedWork(session.sets) &&
+      sessionCountsAsPlannedCompletion(
+        session,
+        [],
+        prescribedSetTotal(session.programDay?.exercises),
+      ) &&
       sameLocalDay(session.performedAt, selected, tz),
   );
 

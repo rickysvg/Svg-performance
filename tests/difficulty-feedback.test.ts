@@ -57,6 +57,7 @@ async function finishBag(userId: string, performedAt: Date) {
     workSeconds: 180,
     preferredUnits: "lb",
   });
+  expect(session.plannedSetCount).toBe(3);
   return updateWorkoutSessionForUser({
     userId,
     workoutId: session.id,

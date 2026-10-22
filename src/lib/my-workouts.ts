@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { compactBikeReps } from "@/lib/bike-chooser";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { loggedSetSome } from "@/lib/logged-work";
+import { loggedSetSome, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import type { LoadUnit } from "@/lib/units";
@@ -277,6 +277,7 @@ export async function startSavedWorkoutForUser(input: {
       include: { sets: true },
     });
   }
+  const setRows = setsForExercises(exercises, input.preferredUnits);
   const session = await prisma.workoutSession.create({
     data: {
       userId: input.userId,
@@ -284,7 +285,8 @@ export async function startSavedWorkoutForUser(input: {
       performedAt: now,
       status: "draft",
       savedWorkoutId: saved.id,
-      sets: { create: setsForExercises(exercises, input.preferredUnits) },
+      plannedSetCount: setRows.length,
+      sets: { create: setRows },
     },
     include: { sets: true },
   });
@@ -379,7 +381,20 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
   const [done, drafts] = await Promise.all([
     prisma.workoutSession.findMany({
       where: { userId, dayPlanId: { in: ids }, status: "complete", sets: loggedSetSome },
-      select: { dayPlanId: true },
+      select: {
+        dayPlanId: true,
+        status: true,
+        plannedSetCount: true,
+        sets: {
+          select: {
+            exerciseName: true,
+            completed: true,
+            reps: true,
+            loadValue: true,
+            durationSeconds: true,
+          },
+        },
+      },
     }),
     prisma.workoutSession.findMany({
       where: { userId, dayPlanId: { in: ids }, status: "draft" },
@@ -387,7 +402,12 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
       orderBy: { updatedAt: "desc" },
     }),
   ]);
-  const complete = new Set(done.map((row) => row.dayPlanId).filter((id): id is string => Boolean(id)));
+  const complete = new Set(
+    done
+      .filter((row) => row.dayPlanId && sessionCountsAsPlannedCompletion(row, []))
+      .map((row) => row.dayPlanId)
+      .filter((id): id is string => Boolean(id)),
+  );
   const draftByPlan = new Map<string, string>();
   for (const draft of drafts) {
     if (draft.dayPlanId && !draftByPlan.has(draft.dayPlanId)) draftByPlan.set(draft.dayPlanId, draft.id);
@@ -431,12 +451,18 @@ export async function startDayPlanForUser(input: {
       data: { lastUsedAt: now },
     });
   }
-  if (draft) return draft;
+  if (draft) {
+    return prisma.workoutSession.findUniqueOrThrow({
+      where: { id: draft.id },
+      include: { sets: true },
+    });
+  }
   const exercises = readSnapshot(plan.exercisesJson);
   if (exercises.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");
   }
   const when = performedForDay(plan.dayKey, input.timeZone, now);
+  const setRows = setsForExercises(exercises, input.preferredUnits);
   return prisma.workoutSession.create({
     data: {
       userId: input.userId,
@@ -446,7 +472,8 @@ export async function startDayPlanForUser(input: {
       status: "draft",
       savedWorkoutId: plan.savedWorkoutId,
       dayPlanId: plan.id,
-      sets: { create: setsForExercises(exercises, input.preferredUnits) },
+      plannedSetCount: setRows.length,
+      sets: { create: setRows },
     },
     include: { sets: true },
   });

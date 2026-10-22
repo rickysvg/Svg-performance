@@ -118,7 +118,7 @@ export default async function ProgressPage() {
     <main className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-2xl uppercase tracking-wide">Progress</h1>
-        <p className="font-display rounded-full bg-black px-2.5 py-0.5 text-xs uppercase tracking-wide text-highlighter">
+        <p className="font-display rounded-full bg-black px-3 py-1 text-sm uppercase tracking-wide text-highlighter">
           {badgeCounts.earned}/{badgeCounts.total} earned
         </p>
       </div>
@@ -126,7 +126,7 @@ export default async function ProgressPage() {
       <div className="flex flex-wrap gap-2">
         <Link
           href="/heart"
-          className="inline-flex h-8 items-center rounded-full border border-accent px-3 text-sm"
+          className="touch-target inline-flex min-h-11 items-center rounded-full border border-accent px-3 text-sm"
         >
           Heart rate
         </Link>
@@ -139,7 +139,7 @@ export default async function ProgressPage() {
         </Link>
         <Link
           href="/profile"
-          className="inline-flex h-8 items-center rounded-full border border-line px-3 text-sm"
+          className="touch-target inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm"
           aria-label="Progress settings (profile)"
         >
           Settings

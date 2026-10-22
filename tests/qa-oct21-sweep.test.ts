@@ -9,7 +9,9 @@ import {
   getLatestBodyMetricsForUser,
 } from "@/lib/body-metrics";
 import {
+  completionListLabel,
   sessionCountsAsPlannedCompletion,
+  sessionHasLoggedWork,
   tickedSetCount,
 } from "@/lib/logged-work";
 import { sessionSetCount } from "@/lib/share-card";
@@ -109,7 +111,54 @@ describe("completion counts ticked sets on the planned session", () => {
         { status: "complete", sets: [bikeSet, empty, empty, empty] },
         bike,
       ),
+    ).toBe(false);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        {
+          status: "complete",
+          sets: [bikeSet, { ...bikeSet }, { ...bikeSet }, { ...bikeSet }],
+        },
+        bike,
+      ),
     ).toBe(true);
+    expect(
+      sessionCountsAsPlannedCompletion({ status: "complete", sets: [bikeSet] }, bike, 4),
+    ).toBe(false);
+    const oneOfFour = [bikeSet, { ...bikeSet, completed: false }, empty, empty];
+    expect(
+      sessionCountsAsPlannedCompletion(
+        { status: "complete", plannedSetCount: 4, sets: oneOfFour },
+        bike,
+      ),
+    ).toBe(false);
+    expect(
+      sessionCountsAsPlannedCompletion(
+        {
+          status: "complete",
+          plannedSetCount: 4,
+          sets: [bikeSet, { ...bikeSet }, { ...bikeSet }, { ...bikeSet }],
+        },
+        bike,
+      ),
+    ).toBe(true);
+    expect(
+      sessionCountsAsPlannedCompletion({ status: "partial", plannedSetCount: 4, sets: [bikeSet] }, bike),
+    ).toBe(false);
+    expect(sessionHasLoggedWork([bikeSet])).toBe(true);
+    expect(sessionHasLoggedWork(oneOfFour)).toBe(true);
+    expect(completionListLabel({ status: "complete", plannedSetCount: 4, sets: oneOfFour })).toBe(
+      "partial",
+    );
+    expect(completionListLabel({ status: "partial", plannedSetCount: 4, sets: [bikeSet] })).toBe(
+      "partial",
+    );
+    expect(
+      completionListLabel({
+        status: "complete",
+        plannedSetCount: 4,
+        sets: [bikeSet, { ...bikeSet }, { ...bikeSet }, { ...bikeSet }],
+      }),
+    ).toBe("complete");
   });
 
   it("counts ticked sets, not every planned row", () => {
