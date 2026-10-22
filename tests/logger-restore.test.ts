@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import { restoreLoggerSets } from "@/lib/logger-sets";
-import { prepareSetsForPersist, withTickedPlanWork } from "@/lib/logged-work";
+import { planWorkFromText, prepareSetsForPersist, withTickedPlanWork } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 
 type Row = {
@@ -127,6 +127,49 @@ describe("save payload", () => {
         completed: true,
       }).reps,
     ).toBeNull();
+    expect(planWorkFromText("3x5")).toEqual({ reps: 5, seconds: null });
+    expect(planWorkFromText("3×5")).toEqual({ reps: 5, seconds: null });
+    expect(planWorkFromText("1 min")).toEqual({ reps: null, seconds: 60 });
+    expect(planWorkFromText("1min")).toEqual({ reps: null, seconds: 60 });
+    expect(planWorkFromText("30–40 sec")).toEqual({ reps: null, seconds: 30 });
+    expect(planWorkFromText("30-40sec")).toEqual({ reps: null, seconds: 30 });
+    expect(planWorkFromText("5 sec × 4 directions")).toEqual({ reps: null, seconds: 5 });
+    const minuteKey = prescriptionSlotKey({
+      exerciseName: "Plank",
+      reps: "1 min",
+      programSlug: "demo",
+      dayNumber: 3,
+    });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Plank",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "timed",
+        completed: true,
+        prescriptionKey: minuteKey,
+      }),
+    ).toMatchObject({ reps: null, durationSeconds: 60 });
+    const setsKey = prescriptionSlotKey({
+      exerciseName: "Bench press",
+      reps: "3x5",
+      programSlug: "demo",
+      dayNumber: 1,
+    });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Bench press",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "load_reps",
+        completed: true,
+        prescriptionKey: setsKey,
+      }),
+    ).toMatchObject({ reps: 5 });
   });
 
   it("saves typed sets from a bloated logger and drops empty copies", () => {

@@ -449,7 +449,8 @@ export async function completedProgramDayIdsOnDays(
 
 /**
  * Local days in [from, to) that have a finished session. Same day key as Calendar.
- * A programmed session counts only when a ticked set belongs to that plan.
+ * The dose is the session's own week, not `now`. A programmed session counts
+ * only when a ticked set belongs to that plan.
  */
 export async function completedLocalDayKeys(
   userId: string,
@@ -487,33 +488,29 @@ export async function completedLocalDayKeys(
     },
   });
   const ids = rows.map((row) => row.programDayId).filter((id): id is string => Boolean(id));
-  const [targets, planByDay] = await Promise.all([
-    plannedTargetsByDay(ids),
-    calendarPlanDoses(userId, now),
-  ]);
-  return [
-    ...new Set(
-      rows
-        .filter((row) => {
-          const plan = row.programDayId ? planByDay.get(row.programDayId) : undefined;
-          const names =
-            plan && plan.names.length > 0
-              ? [...plan.names]
-              : row.programDayId
-                ? (targets.names.get(row.programDayId) ?? [])
-                : [];
-          const dose =
-            plan && plan.dose > 0
-              ? plan.dose
-              : row.programDayId
-                ? (targets.doses.get(row.programDayId) ?? null)
-                : null;
-          return offPlanSessionDone(row, dose ?? 0, names);
-        })
-        .map((row) => sessionCompletionDay(row, timeZone))
-        .filter((key) => key >= fromKey && key < endKey),
-    ),
-  ];
+  const targets = await plannedTargetsByDay(ids);
+  const finished = await Promise.all(
+    rows.map(async (row) => {
+      const at = row.performedAt ?? now;
+      const plan = row.programDayId ? (await calendarPlanDoses(userId, at)).get(row.programDayId) : undefined;
+      const names =
+        plan && plan.names.length > 0
+          ? [...plan.names]
+          : row.programDayId
+            ? (targets.names.get(row.programDayId) ?? [])
+            : [];
+      const dose =
+        plan && plan.dose > 0
+          ? plan.dose
+          : row.programDayId
+            ? (targets.doses.get(row.programDayId) ?? null)
+            : null;
+      if (!offPlanSessionDone(row, dose ?? 0, names)) return null;
+      const key = sessionCompletionDay(row, timeZone);
+      return key >= fromKey && key < endKey ? key : null;
+    }),
+  );
+  return [...new Set(finished.filter((key): key is string => key != null))];
 }
 
 const WORKOUT_DETAIL_INCLUDE = {
@@ -971,6 +968,10 @@ function planNameKey(set: { exerciseName: string }) {
   return loggedExerciseName(set.exerciseName).toLowerCase();
 }
 
+function addedPrescription(set: { prescriptionKey?: string | null }) {
+  return String(set.prescriptionKey ?? "").startsWith("added|");
+}
+
 function toSavedSet(set: {
   exerciseName: string;
   setNumber: number;
@@ -1026,9 +1027,12 @@ function keepPlannedSets(
     seen.add(key);
   }
   // A short payload from another tab omitted planned rows. Put those back.
+  // An added exercise the form left out, while still sending the plan, stays removed.
+  const omittedPlanned = prior.some((row) => !addedPrescription(row) && !seen.has(planSlotKey(row)));
   for (const row of prior) {
     const key = planSlotKey(row);
     if (seen.has(key)) continue;
+    if (addedPrescription(row) && !omittedPlanned) continue;
     merged.push(loggedByKey.get(key) ?? row);
     seen.add(key);
   }

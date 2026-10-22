@@ -135,13 +135,39 @@ export function offPlanSessionDone(
   return true;
 }
 
-/** First positive integer in a plan rep string. "6 / side" and "10 sec" both count. */
+/** First positive integer in a plan rep string, capped at 200. */
 export function leadingPlanCount(text: string | null | undefined) {
   const match = String(text ?? "").match(/\d+/);
   if (!match) return null;
   const value = Number(match[0]);
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.min(200, Math.round(value));
+}
+
+/**
+ * Reps or seconds from a plan string.
+ * "6 / side" is 6 reps. "3x5" and "3×5" are 5 reps, not 3.
+ * "1 min" is 60 seconds. "30–40 sec" and "5 sec × 4 directions" stay in seconds.
+ */
+export function planWorkFromText(text: string | null | undefined): {
+  reps: number | null;
+  seconds: number | null;
+} {
+  const raw = String(text ?? "").trim();
+  if (!raw) return { reps: null, seconds: null };
+  const unit = raw.match(/(minutes|minute|mins|min|seconds|second|secs|sec)\b/i);
+  if (unit) {
+    const count = leadingPlanCount(raw);
+    if (count == null) return { reps: null, seconds: null };
+    const seconds = unit[1].toLowerCase().startsWith("min") ? count * 60 : count;
+    return { reps: null, seconds };
+  }
+  const setsByReps = raw.match(/(\d+)\s*[x×]\s*(\d+)/i);
+  if (setsByReps) {
+    const reps = leadingPlanCount(setsByReps[2]);
+    return { reps, seconds: null };
+  }
+  return { reps: leadingPlanCount(raw), seconds: null };
 }
 
 /** Rep scheme stored on a programmed set, after the exercise name. */
@@ -159,12 +185,15 @@ export function repsTextFromPrescriptionKey(key: string | null | undefined) {
  */
 export function withTickedPlanWork<T extends PersistSet>(set: T): T {
   if (!set.completed || setHasLoggedWork(set)) return set;
-  const count = leadingPlanCount(repsTextFromPrescriptionKey(set.prescriptionKey));
-  if (count == null) return set;
-  if (set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed") {
-    return { ...set, durationSeconds: count };
+  const work = planWorkFromText(repsTextFromPrescriptionKey(set.prescriptionKey));
+  const timed = set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed";
+  if (timed) {
+    const seconds = work.seconds ?? work.reps;
+    if (seconds == null) return set;
+    return { ...set, durationSeconds: seconds };
   }
-  return { ...set, reps: count };
+  if (work.reps == null) return set;
+  return { ...set, reps: work.reps };
 }
 
 /** Timer logs use a different bike label than the day card. Other names stay on their gym key. */

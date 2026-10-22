@@ -10,7 +10,6 @@ import {
   resolvedPlannedSetCount,
   loggedNameMatchesPlanned,
   offPlanSessionDone,
-  sessionCountsAsPlannedCompletion,
   setIsTicked,
   tickedSetCount,
 } from "@/lib/logged-work";
@@ -347,7 +346,8 @@ function logMatchesPlanned(
     .filter((name) => name.length > 0);
   // Same program day. A 1-set save whose name is off the scaled list (a swap,
   // or a rename from calendarPlanDoses) still belongs on this card. Completion
-  // below still requires the plan names, so a push-up does not finish a bike.
+  // uses offPlanSessionDone, so a swap that covers the dose is logged and a
+  // short one stays partial. A push-up does not finish a bike.
   // The today/upcoming subtitle is only the fallback when nothing matched.
   if (idMatch(log, planned) && tickedSetCount(log.sets) > 0) return true;
   if (!namesOverlap(log, plannedNames)) return false;
@@ -368,7 +368,7 @@ export async function getCalendarSchedule(
   weekAnchor?: Date,
 ) {
   const [scale, swaps, account] = await Promise.all([
-    calendarScaleContext(userId, now),
+    calendarScaleContext(userId, weekAnchor ?? now),
     getWeekPlanSwapsForUser(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
@@ -469,15 +469,7 @@ export async function getCalendarSchedule(
           : ticked > 0
             ? formatSetProgress(ticked, 0)
             : "";
-      const sessionDone = matched
-        ? sessionCountsAsPlannedCompletion(
-            {
-              ...matched,
-              plannedSetCount: matched.plannedSetCount ?? (dose > 0 ? dose : null),
-            },
-            plannedNames,
-          )
-        : false;
+      const sessionDone = matched ? offPlanSessionDone(matched, dose, plannedNames) : false;
       const partial = Boolean(matched) && !sessionDone && ticked > 0;
       const href =
         sessionOpenHref(session, sessionDone) ??

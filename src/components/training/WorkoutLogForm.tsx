@@ -81,7 +81,7 @@ import { textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
-import { leadingPlanCount, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
+import { planWorkFromText, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
 import {
   applyPreviousToSet,
   copyPreviousOntoExercise,
@@ -982,9 +982,10 @@ export function WorkoutLogForm({
     const planned = session.programDay?.exercises.find(
       (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
     );
-    const planCount =
-      leadingPlanCount(planned?.reps) ??
-      leadingPlanCount(repsTextFromPrescriptionKey(target?.prescriptionKey));
+    const fromPlan = planWorkFromText(planned?.reps);
+    const fromKey = planWorkFromText(repsTextFromPrescriptionKey(target?.prescriptionKey));
+    const planWork = fromPlan.reps != null || fromPlan.seconds != null ? fromPlan : fromKey;
+    const timedFill = isDurationMode(mode) || bike;
     const emptyTick =
       completed &&
       !setHasLoggedWork({
@@ -992,8 +993,9 @@ export function WorkoutLogForm({
         loadValue: target?.loadValue,
         durationSeconds: durationSeconds ?? target?.durationSeconds,
       });
-    const fillReps = emptyTick && planCount != null && !isDurationMode(mode) && !bike;
-    const fillTime = emptyTick && planCount != null && (isDurationMode(mode) || bike) && durationSeconds == null;
+    const fillReps = emptyTick && !timedFill && planWork.reps != null;
+    const fillSeconds = planWork.seconds ?? (timedFill ? planWork.reps : null);
+    const fillTime = emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
     setActiveName(exerciseName);
     const nextSets = sets.map((set) =>
       set.id === setId
@@ -1001,8 +1003,8 @@ export function WorkoutLogForm({
             ...set,
             completed,
             ...(durationSeconds != null ? { durationSeconds } : {}),
-            ...(fillReps ? { reps: planCount } : {}),
-            ...(fillTime ? { durationSeconds: planCount } : {}),
+            ...(fillReps ? { reps: planWork.reps } : {}),
+            ...(fillTime ? { durationSeconds: fillSeconds } : {}),
           }
         : set,
     );

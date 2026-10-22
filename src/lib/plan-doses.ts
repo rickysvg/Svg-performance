@@ -1,11 +1,11 @@
 import { cache } from "react";
-import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { campPlanWeekIndex, getActiveCampSnapshot, type CampPhase } from "@/lib/fight-camp";
 import { planWeekIndex } from "@/lib/week-plan";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { prescribedSetTotal } from "@/lib/logged-work";
+import { dayKey, mondayOfZoned } from "@/lib/timezone";
 
 export type ScaledDayPlan = {
   dose: number;
@@ -67,29 +67,73 @@ export function calendarScaleLoadCount() {
   return scaleLoads;
 }
 
-async function loadCalendarScaleContext(userId: string, now: Date) {
-  scaleLoads += 1;
+type MemberScaleBundle = {
+  catalog: Awaited<ReturnType<typeof findDemoTrainingCatalog>>;
+  profile: Awaited<ReturnType<typeof getProfileForUser>>;
+  tz: string;
+};
+
+async function loadMemberScaleBundle(userId: string): Promise<MemberScaleBundle> {
   const [catalog, profile] = await Promise.all([
     findDemoTrainingCatalog(),
     getProfileForUser(userId),
   ]);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
-  const camp = await getActiveCampSnapshot(userId, now, tz);
-  const campWeek = campPlanWeekIndex(camp);
-  const scaled = calendarScaledCatalog(catalog, {
-    experienceLevel: profile?.experienceLevel,
-    competitionStatus: profile?.competitionStatus,
-    weightAccess: profile?.weightAccess,
-    onboardingCompletedAt: profile?.onboardingCompletedAt ?? null,
+  return { catalog, profile, tz };
+}
+
+const bundleSlot = cache((userId: string) => {
+  return { current: null as Promise<MemberScaleBundle> | null };
+});
+
+const bundleJoining = new Map<string, Promise<MemberScaleBundle>>();
+
+function memberScaleBundle(userId: string) {
+  const slot = bundleSlot(userId);
+  if (slot.current) return slot.current;
+  const pendingJoin = bundleJoining.get(userId);
+  if (pendingJoin) {
+    slot.current = pendingJoin;
+    return pendingJoin;
+  }
+  const pending = loadMemberScaleBundle(userId).then(
+    (value) => value,
+    (error: unknown) => {
+      if (slot.current === pending) slot.current = null;
+      bundleJoining.delete(userId);
+      throw error;
+    },
+  );
+  void pending.then(
+    () => {
+      bundleJoining.delete(userId);
+    },
+    () => {
+      bundleJoining.delete(userId);
+    },
+  );
+  slot.current = pending;
+  bundleJoining.set(userId, pending);
+  return pending;
+}
+
+async function loadCalendarScaleContext(userId: string, now: Date, bundle: MemberScaleBundle) {
+  scaleLoads += 1;
+  const camp = await getActiveCampSnapshot(userId, now, bundle.tz);
+  const scaled = calendarScaledCatalog(bundle.catalog, {
+    experienceLevel: bundle.profile?.experienceLevel,
+    competitionStatus: bundle.profile?.competitionStatus,
+    weightAccess: bundle.profile?.weightAccess,
+    onboardingCompletedAt: bundle.profile?.onboardingCompletedAt ?? null,
     now,
-    timeZone: tz,
+    timeZone: bundle.tz,
     camp,
   });
   return {
-    profile,
-    tz,
+    profile: bundle.profile,
+    tz: bundle.tz,
     camp,
-    campWeek,
+    campWeek: campPlanWeekIndex(camp),
     strength: scaled.strength,
     skill: scaled.skill,
     planByDay: scaledPlanByProgramDay(scaled),
@@ -99,12 +143,13 @@ async function loadCalendarScaleContext(userId: string, now: Date) {
 type CalendarScaleContext = Awaited<ReturnType<typeof loadCalendarScaleContext>>;
 
 /**
- * Request-scoped slot. React `cache` remembers the slot for this render and
- * does not keep a failed load: the catch below clears it. Outside a request
- * (unit tests) `cache` calls through, so `joining` only dedupes calls that
- * are already in flight and drops the entry when the load settles.
+ * Request-scoped slot, one per member per plan week. React `cache` remembers
+ * the slot for this render and does not keep a failed load: the catch below
+ * clears it. Outside a request (unit tests) `cache` calls through, so
+ * `joining` only dedupes calls that are already in flight and drops the
+ * entry when the load settles. The catalog itself loads once per member.
  */
-const scaleSlot = cache((userId: string, bucket: number) => {
+const scaleSlot = cache((userId: string, weekKey: string) => {
   return { current: null as Promise<CalendarScaleContext> | null };
 });
 
@@ -113,41 +158,45 @@ const joining = new Map<string, Promise<CalendarScaleContext>>();
 /** Drop an in-flight join. Tests call this between cases so a profile edit is visible. */
 export function clearCalendarScaleCache() {
   joining.clear();
+  bundleJoining.clear();
 }
 
 /**
- * One scaled catalog per member per request. Train, the calendar, and the
- * check-mark queries share it, so a page does not load the catalog again.
+ * Scaled catalog for the week that contains `now`. A past session passes its
+ * own performed date, so a deload or camp week is not judged on today.
+ * Callers in the same week share one load.
  */
 export function calendarScaleContext(userId: string, now = new Date()) {
-  const bucket = Math.floor(now.getTime() / 1000);
-  const key = `${userId}:${bucket}`;
-  const slot = scaleSlot(userId, bucket);
-  if (slot.current) return slot.current;
-  const pendingJoin = joining.get(key);
-  if (pendingJoin) {
-    slot.current = pendingJoin;
-    return pendingJoin;
-  }
-  const pending = loadCalendarScaleContext(userId, now).then(
-    (value) => value,
-    (error: unknown) => {
-      if (slot.current === pending) slot.current = null;
-      joining.delete(key);
-      throw error;
-    },
-  );
-  void pending.then(
-    () => {
-      joining.delete(key);
-    },
-    () => {
-      joining.delete(key);
-    },
-  );
-  slot.current = pending;
-  joining.set(key, pending);
-  return pending;
+  return memberScaleBundle(userId).then((bundle) => {
+    const weekKey = dayKey(mondayOfZoned(now, bundle.tz), bundle.tz);
+    const key = `${userId}:${weekKey}`;
+    const slot = scaleSlot(userId, weekKey);
+    if (slot.current) return slot.current;
+    const pendingJoin = joining.get(key);
+    if (pendingJoin) {
+      slot.current = pendingJoin;
+      return pendingJoin;
+    }
+    const pending = loadCalendarScaleContext(userId, now, bundle).then(
+      (value) => value,
+      (error: unknown) => {
+        if (slot.current === pending) slot.current = null;
+        joining.delete(key);
+        throw error;
+      },
+    );
+    void pending.then(
+      () => {
+        joining.delete(key);
+      },
+      () => {
+        joining.delete(key);
+      },
+    );
+    slot.current = pending;
+    joining.set(key, pending);
+    return pending;
+  });
 }
 
 /** Scaled dose for each program day, using the calendar's scale. */

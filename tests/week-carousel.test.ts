@@ -699,7 +699,7 @@ describe("week day carousel", () => {
     ).toBe("none");
   });
 
-  it("gives no half ring to a log with no program day", async () => {
+  it("gives a partial mark to a short log with no program day", async () => {
     await resetDatabase();
     const user = await makeUser("chip-no-program-day@example.com");
     const anchor = new Date(2026, 9, 22, 10, 0, 0);
@@ -725,7 +725,7 @@ describe("week day carousel", () => {
     const partialCards = schedule.days
       .flatMap((item) => item.activities)
       .filter((item) => item.subtitle.startsWith("Partial"));
-    expect(partials.includes(day)).toBe(false);
+    expect(partials.includes(day)).toBe(true);
     expect(partialCards).toEqual([]);
     expect(
       chipMarkForDay({
@@ -734,7 +734,7 @@ describe("week day carousel", () => {
         dayLogged: false,
         partial: partials.includes(day),
       }),
-    ).toBe("none");
+    ).toBe("partial");
   });
 
   it("uses the calendar scaled dose when a short log has no stored count", async () => {

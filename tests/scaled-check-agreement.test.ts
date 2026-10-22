@@ -23,7 +23,7 @@ import {
   sessionCountsAsPlannedCompletion,
 } from "@/lib/logged-work";
 import { planWeekIndex } from "@/lib/week-plan";
-import { APP_TIMEZONE, addZonedDays, dayKey } from "@/lib/timezone";
+import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned } from "@/lib/timezone";
 
 describe("scaled dose agreement", () => {
   afterAll(async () => {
@@ -333,6 +333,184 @@ describe("scaled dose agreement", () => {
     expect(keys.includes(tuesdayKey)).toBe(true);
     expect((chips[tuesdayKey] ?? []).includes(lift!.programDayId!)).toBe(true);
     expect(partials.includes(tuesdayKey)).toBe(false);
+  });
+
+  it("logs a same-day swap that covers the dose on the calendar and the chip", async () => {
+    await resetDatabase();
+    const user = await makeUser("same-day-swap@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    const thursday = new Date(2026, 9, 22, 15, 0, 0);
+    const mondayDate = new Date(2026, 9, 19, 11, 0, 0);
+    const before = await getCalendarSchedule(user.id, thursday, mondayDate);
+    const mondayKey = dayKey(mondayDate, APP_TIMEZONE);
+    const monday = before.days.find((day) => dayKey(day.date, APP_TIMEZONE) === mondayKey);
+    const lift = monday?.activities.find((item) => item.kind === "workout" && item.programDayId);
+    expect(lift?.programDayId).toBeTruthy();
+    const doses = await calendarPlanDoses(user.id, mondayDate);
+    const dose = doses.get(lift!.programDayId!)?.dose ?? 0;
+    expect(dose).toBeGreaterThan(2);
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: lift!.programDayId!,
+        title: "Swapped lift",
+        performedAt: mondayDate,
+        status: "complete",
+        plannedSetCount: null,
+        sets: {
+          create: Array.from({ length: dose }, (_, index) => ({
+            exerciseName: "Swap kettlebell swing",
+            setNumber: (index % 20) + 1,
+            reps: 10,
+            loadValue: 35,
+            completed: true,
+          })),
+        },
+      },
+    });
+    const after = await getCalendarSchedule(user.id, thursday, mondayDate);
+    const card = after.days
+      .find((day) => dayKey(day.date, APP_TIMEZONE) === mondayKey)
+      ?.activities.find((item) => item.kind === "workout" && item.programDayId === lift!.programDayId);
+    expect(card?.subtitle.startsWith("Partial")).toBe(false);
+    expect(card?.subtitle).not.toContain(`${dose}/${dose}`);
+    expect(card?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(card?.status).toBe("complete");
+    const from = addZonedDays(mondayDate, -1, APP_TIMEZONE);
+    const to = addZonedDays(mondayDate, 2, APP_TIMEZONE);
+    const planByDay = await calendarPlanDoses(user.id, thursday);
+    const keys = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE, thursday);
+    const chips = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE, thursday);
+    const partials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE, planByDay);
+    expect(keys.includes(mondayKey)).toBe(true);
+    expect((chips[mondayKey] ?? []).includes(lift!.programDayId!)).toBe(true);
+    expect(partials.includes(mondayKey)).toBe(false);
+  });
+
+  it("judges a past-week log on that week's dose, not the current week", async () => {
+    await resetDatabase();
+    const user = await makeUser("session-week-dose@example.com");
+    const now = new Date(2026, 9, 22, 10, 0, 0);
+    const joined = new Date(2026, 6, 6, 10, 0, 0);
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        experienceLevel: "advanced",
+        onboardingCompletedAt: joined,
+        weeklyAvailabilityJson: JSON.stringify(["Monday", "Wednesday", "Friday"]),
+        goalKey: "stronger-for-class",
+        primaryFocus: "mma",
+      },
+    });
+    let picked: {
+      programDayId: string;
+      performedAt: Date;
+      judgedAt: Date;
+      pastDose: number;
+      currentDose: number;
+      names: string[];
+    } | null = null;
+    for (const nowShift of [0, 1, 2]) {
+      const judgedAt = addZonedDays(now, 7 * nowShift, APP_TIMEZONE);
+      for (const weeksBack of [1, 2, 3]) {
+        const performedAt = addZonedDays(judgedAt, -7 * weeksBack, APP_TIMEZONE);
+        const pastPlans = await calendarPlanDoses(user.id, performedAt);
+        const currentPlans = await calendarPlanDoses(user.id, judgedAt);
+        const schedule = await getCalendarSchedule(
+          user.id,
+          performedAt,
+          mondayOfZoned(performedAt, APP_TIMEZONE),
+        );
+        for (const day of schedule.days) {
+          for (const activity of day.activities) {
+            if (activity.kind !== "workout" || !activity.programDayId) continue;
+            const past = pastPlans.get(activity.programDayId);
+            const current = currentPlans.get(activity.programDayId);
+            if (!past || !current || past.names.length === 0) continue;
+            if (past.dose <= 0 || past.dose >= current.dose) continue;
+            picked = {
+              programDayId: activity.programDayId,
+              performedAt: day.date,
+              judgedAt,
+              pastDose: past.dose,
+              currentDose: current.dose,
+              names: [...past.names],
+            };
+            break;
+          }
+          if (picked) break;
+        }
+        if (picked) break;
+      }
+      if (picked) break;
+    }
+    expect(picked).toBeTruthy();
+    const plan = picked!;
+    const perName = new Map<string, number>();
+    for (const name of plan.names) perName.set(name, (perName.get(name) ?? 0) + 1);
+    const rows: { exerciseName: string; setNumber: number; reps: number; loadValue: number; completed: boolean }[] = [];
+    for (const name of plan.names) {
+      const count = Math.max(1, perName.get(name) ?? 1);
+      for (let index = 0; index < count; index += 1) {
+        rows.push({
+          exerciseName: name,
+          setNumber: (rows.length % 20) + 1,
+          reps: 8,
+          loadValue: 40,
+          completed: true,
+        });
+      }
+    }
+    while (rows.length < plan.pastDose) {
+      const name = plan.names[rows.length % plan.names.length]!;
+      rows.push({
+        exerciseName: name,
+        setNumber: (rows.length % 20) + 1,
+        reps: 8,
+        loadValue: 40,
+        completed: true,
+      });
+    }
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: plan.programDayId,
+        title: "Past week log",
+        performedAt: plan.performedAt,
+        status: "complete",
+        plannedSetCount: null,
+        sets: { create: rows.slice(0, plan.pastDose) },
+      },
+    });
+    expect(plan.currentDose).toBeGreaterThan(plan.pastDose);
+    const day = dayKey(plan.performedAt, APP_TIMEZONE);
+    const from = addZonedDays(plan.performedAt, -1, APP_TIMEZONE);
+    const to = addZonedDays(plan.performedAt, 2, APP_TIMEZONE);
+    const schedule = await getCalendarSchedule(
+      user.id,
+      plan.judgedAt,
+      mondayOfZoned(plan.performedAt, APP_TIMEZONE),
+    );
+    const card = schedule.days
+      .find((item) => dayKey(item.date, APP_TIMEZONE) === day)
+      ?.activities.find((item) => item.kind === "workout" && item.programDayId === plan.programDayId);
+    expect(card?.status).toBe("complete");
+    expect(card?.subtitle.startsWith("Logged this day")).toBe(true);
+    const currentDoses = await calendarPlanDoses(user.id, plan.judgedAt);
+    const keys = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE, plan.judgedAt);
+    const chips = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE, plan.judgedAt);
+    const partials = await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE, currentDoses);
+    expect(keys.includes(day)).toBe(true);
+    expect((chips[day] ?? []).includes(plan.programDayId)).toBe(true);
+    expect(partials.includes(day)).toBe(false);
+    expect(currentDoses.get(plan.programDayId)?.dose).toBe(plan.currentDose);
   });
 
   it("reads an old log as Logged when the ticked sets cover the scaled dose", async () => {
