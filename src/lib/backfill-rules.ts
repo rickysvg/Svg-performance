@@ -168,6 +168,9 @@ export function setsForBackfillExercises(
   const sets: BackfillSetDraft[] = [];
   const plannedNames: string[] = [];
   let plannedSetCount = 0;
+  // Set numbers keep going across rows that share a name. A later unique
+  // slot on (session, exercise name, set number) rejects a second set 1.
+  const nextSetNumber = new Map<string, number>();
   for (const exercise of exercises) {
     const name = exercise.name.trim().replace(/\s+/g, " ").slice(0, 80);
     if (!name) continue;
@@ -184,11 +187,12 @@ export function setsForBackfillExercises(
     plannedNames.push(name);
     plannedSetCount += planned;
     const prescriptionKey = prescriptionKeyFor?.(exercise) ?? "";
-    for (let setNumber = 1; setNumber <= planned; setNumber += 1) {
-      const completed = setNumber <= done;
+    const first = nextSetNumber.get(name) ?? 1;
+    for (let offset = 0; offset < planned; offset += 1) {
+      const completed = offset < done;
       sets.push({
         exerciseName: name,
-        setNumber,
+        setNumber: first + offset,
         reps: completed ? reps : null,
         loadValue: null,
         loadUnit: unit,
@@ -199,6 +203,7 @@ export function setsForBackfillExercises(
         prescriptionKey,
       });
     }
+    nextSetNumber.set(name, first + planned);
   }
   if (plannedSetCount < 1 || sets.length < 1) {
     throw new AppError("WORKOUT", "Add at least one exercise.");

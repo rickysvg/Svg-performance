@@ -1033,8 +1033,9 @@ BEGIN
   END IF;
 END $$;
 
--- Past-day workout logs. Own block so it stays additive beside other WorkoutSession alters.
--- Idempotent. Empty source and backfilled=false keep older sessions as live logs.
+-- Past-day workout logs. This block stays as well as the WorkoutSession block above.
+-- Keep it beside any other block appended here. Idempotent, so running both is safe.
+-- Empty source and backfilled=false keep older sessions as live logs.
 DO $$
 BEGIN
   IF to_regclass('public."WorkoutSession"') IS NULL THEN

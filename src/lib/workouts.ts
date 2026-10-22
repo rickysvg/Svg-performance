@@ -955,7 +955,10 @@ export async function completeBikeLoggerSession(input: {
   );
   const timerReady = await workoutTimerColumnsAvailable(prisma);
   const priorTimer = timerReady ? await readWorkoutTimerFields(existing.id, prisma) : null;
-  const finishedAt = priorTimer?.finishedAt ?? existing.performedAt;
+  // An open draft has no finish time. Stamp the session's own start only once
+  // the ride is complete, never "now", and leave a short ride unfinished.
+  const finishedAt =
+    status === "complete" ? (priorTimer?.finishedAt ?? existing.performedAt) : null;
   const [, updated] = await prisma.$transaction([
     prisma.workoutSet.deleteMany({ where: { workoutSessionId: existing.id } }),
     prisma.workoutSession.update({

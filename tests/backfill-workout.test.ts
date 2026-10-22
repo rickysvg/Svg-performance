@@ -143,6 +143,45 @@ describe("log a past workout", () => {
     expect(home.streakCurrent).toBe(0);
   });
 
+  it("keeps set numbers going across rows that share a name", async () => {
+    const user = await makeUser("backfill-slots@example.com");
+    await onboard(user.id);
+    const saved = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-20",
+      kind: "custom",
+      resolution: "",
+      now: NOW,
+      title: "Bag and lifts",
+      notes: "",
+      rpe: null,
+      exercises: [
+        { name: "Heavy bag rounds", sets: 2, done: 2, reps: "180", logMode: "timed_round" },
+        { name: "Heavy bag rounds", sets: 2, done: 1, reps: "180", logMode: "timed_round" },
+        { name: "Back squat", sets: 1, done: 1, reps: "5", logMode: "load_reps" },
+        { name: "Back squat", sets: 1, done: 1, reps: "5", logMode: "load_reps" },
+      ],
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    const sets = await prisma.workoutSet.findMany({
+      where: { workoutSessionId: saved.sessionId },
+      orderBy: { sortOrder: "asc" },
+    });
+    const slots = sets.map((set) => `${set.exerciseName}#${set.setNumber}`);
+    expect(slots).toEqual([
+      "Heavy bag rounds#1",
+      "Heavy bag rounds#2",
+      "Heavy bag rounds#3",
+      "Heavy bag rounds#4",
+      "Back squat#1",
+      "Back squat#2",
+    ]);
+    expect(new Set(slots).size).toBe(slots.length);
+    const bag = sets.filter((set) => set.exerciseName === "Heavy bag rounds");
+    expect(bag.map((set) => set.completed)).toEqual([true, true, true, false]);
+  });
+
   it("keeps the civil day in the member zone", async () => {
     const la = await makeUser("backfill-la@example.com");
     await onboard(la.id, "America/Los_Angeles");

@@ -174,6 +174,8 @@ describe("custom bike logger", () => {
     expect(saved.status).toBe("partial");
     expect(saved.plannedSetCount).toBe(8);
     expect(await getShareCardView(user.id, saved.id)).toBeNull();
+    const clock = await readWorkoutTimerFields(saved.id, prisma);
+    expect(clock.finishedAt).toBeNull();
   });
 
   it("leaves a finished session and its clock untouched", async () => {
