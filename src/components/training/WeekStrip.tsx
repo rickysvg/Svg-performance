@@ -21,6 +21,7 @@ import {
 } from "@/app/actions/week-plan";
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import { nextSelectedDay, weekChipHref } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
@@ -735,6 +736,7 @@ function WeekDayCarousel({
   todayHref,
   swapWeekStart,
   onWeekChange,
+  logPastDayKeys = [],
 }: {
   weeks: WeekCarouselWeek[];
   basePath: string;
@@ -746,6 +748,7 @@ function WeekDayCarousel({
   todayHref?: string;
   swapWeekStart?: string;
   onWeekChange?: (week: WeekChange) => void;
+  logPastDayKeys?: string[];
 }) {
   const router = useRouter();
   const trainWeekChange = useContext(TrainWeekChangeContext);
@@ -989,6 +992,11 @@ function WeekDayCarousel({
           </button>
         </div>
       ) : null}
+      {selectedDay && logPastDayKeys.includes(selectedDay) ? (
+        <div className="mt-2 flex justify-center">
+          <LogPastWorkoutButton dayKey={selectedDay} entry="week" label="Log a past workout" compact />
+        </div>
+      ) : null}
       <div
         ref={scrollerRef}
         id={scrollerId}
@@ -1124,6 +1132,7 @@ export function WeekStrip({
   todayHref,
   swapWeekStart,
   onWeekChange,
+  logPastDayKeys = [],
 }: {
   days: Item[];
   /** When set, Train and Calendar swipe across these weeks instead of one row. */
@@ -1149,6 +1158,8 @@ export function WeekStrip({
   swapWeekStart?: string;
   /** Fired after the strip snaps to a week. Calendar passes this directly. Train uses context. */
   onWeekChange?: (week: WeekChange) => void;
+  /** Civil days that can take a past workout. The strip button follows the selected chip. */
+  logPastDayKeys?: string[];
 }) {
   if (weeks && weeks.length > 0) {
     return (
@@ -1163,6 +1174,7 @@ export function WeekStrip({
         todayHref={todayHref}
         swapWeekStart={swapWeekStart ?? weekStart}
         onWeekChange={onWeekChange}
+        logPastDayKeys={logPastDayKeys}
       />
     );
   }

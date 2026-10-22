@@ -1,3 +1,4 @@
+import { bikeChoiceFromKey, parseBikeRecipe } from "@/lib/bike-chooser";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 
@@ -7,6 +8,19 @@ type NamedExercise = { name?: string | null };
 
 export function isTimerMode(value: string | null | undefined): value is TimerMode {
   return typeof value === "string" && TIMER_MODES.includes(value as TimerMode);
+}
+
+/** Interval catalog names, a custom “bike” title, or a stored bike choice. */
+export function exerciseUsesBikeLogger(
+  name: string,
+  prescriptionKey?: string | null,
+  reps?: string | null,
+) {
+  if (isBikeIntervalName(name)) return true;
+  if (textIsBikeWorkout(name)) return true;
+  if (prescriptionKey && bikeChoiceFromKey(prescriptionKey)) return true;
+  if (reps && parseBikeRecipe(reps)) return true;
+  return false;
 }
 
 /** Easy-bike and jump-rope finishers stay off the assault-bike clock. */

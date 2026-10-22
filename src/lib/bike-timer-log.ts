@@ -18,6 +18,43 @@ import {
 
 export const BIKE_TIMER_EXERCISE = "Assault bike intervals";
 
+/** A clock spec the logger can save even when rest is 0. The chooser rejects that rest. */
+export function loggerChoiceFromSession(session: {
+  name?: string;
+  focus?: string;
+  workSeconds: number;
+  restSeconds: number;
+  roundsPerSet: number;
+  warmupSeconds?: number;
+  cooldownSeconds?: number;
+  repeatRounds?: number;
+  restBetweenRoundsSeconds?: number;
+  blocks?: number;
+}): BikeChoice {
+  const workSeconds = Math.min(3600, Math.max(1, Math.round(session.workSeconds) || 15));
+  const restSeconds = Math.min(3600, Math.max(0, Math.round(session.restSeconds) || 0));
+  const roundsPerSet = Math.min(50, Math.max(1, Math.round(session.roundsPerSet) || 1));
+  const repeatRounds = Math.min(20, Math.max(1, Math.round(session.repeatRounds ?? 1) || 1));
+  return {
+    id: "custom",
+    name: (session.name || BIKE_TIMER_EXERCISE).slice(0, 80),
+    description: session.focus || "Bike",
+    goal: "anaerobic",
+    level: "intermediate",
+    plain: `${workSeconds}s work / ${restSeconds}s rest × ${roundsPerSet}`,
+    spec: {
+      workSeconds,
+      restSeconds,
+      roundsPerSet,
+      warmupSeconds: session.warmupSeconds,
+      cooldownSeconds: session.cooldownSeconds,
+      repeatRounds,
+      restBetweenRoundsSeconds: session.restBetweenRoundsSeconds,
+      blocks: session.blocks,
+    },
+  };
+}
+
 export type BikeTimerSet = {
   exerciseName: string;
   setNumber: number;

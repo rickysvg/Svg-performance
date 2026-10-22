@@ -77,7 +77,7 @@ import {
 import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import { resolveSessionElapsed, sessionElapsedState } from "@/lib/session-elapsed";
-import { textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
+import { exerciseUsesBikeLogger, textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
@@ -951,7 +951,7 @@ export function WorkoutLogForm({
     );
     const active = base && choice ? sessionWithChoice(base, choice) : base;
     if (!active) return 1;
-    return Math.max(1, bikeSetDurationSeconds(active));
+    return Math.min(3600, Math.max(1, bikeSetDurationSeconds(active)));
   }
 
   function markDone(
@@ -962,7 +962,7 @@ export function WorkoutLogForm({
   ) {
     const target = sets.find((set) => set.id === setId);
     const mode = resolveLogMode({ logMode: target?.logMode, name: exerciseName });
-    const bike = isBikeIntervalName(exerciseName);
+    const bike = exerciseUsesBikeLogger(exerciseName, target?.prescriptionKey);
     if (
       !bike &&
       !timedRoundMarkAllowed({
@@ -973,12 +973,13 @@ export function WorkoutLogForm({
     ) {
       return;
     }
-    const durationSeconds =
+    const rawDuration =
       bike && completed
         ? target?.durationSeconds && target.durationSeconds > 0
           ? target.durationSeconds
           : bikeDurationFor(exerciseName, target?.prescriptionKey)
         : undefined;
+    const durationSeconds = rawDuration == null ? undefined : Math.min(3600, Math.max(1, rawDuration));
     const planned = session.programDay?.exercises.find(
       (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
     );
@@ -1267,6 +1268,7 @@ export function WorkoutLogForm({
               bikeSession={headerTimer.bikeSession}
               bikeToken={headerTimer.bikeToken}
               bikeDayId={headerTimer.bikeSession ? session.programDayId : null}
+              workoutSessionId={headerTimer.bikeSession ? session.id : null}
             />
             <div className="flex flex-col items-end">
               {COACH_WORKOUT_MOTIVATION_ENABLED ? (
@@ -1487,12 +1489,15 @@ export function WorkoutLogForm({
             name,
             reps: planned?.reps,
           });
-          const bike = isBikeIntervalName(name);
+          const bike = exerciseUsesBikeLogger(name, group[0]?.prescriptionKey, planned?.reps);
           const bikeChoice =
             bikeChoiceFromKey(group[0]?.prescriptionKey) ??
             (storedPlan?.reps ? parseBikeRecipe(storedPlan.reps) : null);
           const bikeBase = bike
-            ? bikeSessionForLogger(name, bikeChoice ? { reps: "", restSeconds: 0 } : planned)
+            ? (bikeSessionForLogger(
+                isBikeIntervalName(name) ? name : "Assault bike intervals",
+                bikeChoice ? { reps: "", restSeconds: 0 } : planned,
+              ) ?? DEFAULT_BIKE_SESSION)
             : null;
           const bikeSession = bikeBase && bikeChoice ? sessionWithChoice(bikeBase, bikeChoice) : bikeBase;
           const doseReps = bikeChoice
@@ -1614,10 +1619,12 @@ export function WorkoutLogForm({
                           (set) => set.exerciseName === name && !set.completed,
                         );
                         if (!nextOpen) return;
-                        const loggedSeconds =
+                        const loggedSeconds = Math.min(
+                          3600,
                           nextOpen.durationSeconds && nextOpen.durationSeconds > 0
                             ? nextOpen.durationSeconds
-                            : Math.max(1, bikeSetDurationSeconds(bikeSession));
+                            : Math.max(1, bikeSetDurationSeconds(bikeSession)),
+                        );
                         const nextSets = current.map((set) =>
                           set.id === nextOpen.id
                             ? { ...set, completed: true, durationSeconds: loggedSeconds }

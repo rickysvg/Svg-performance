@@ -69,6 +69,8 @@ import { listDayPlansForUser } from "@/lib/my-workouts";
 import { applyPlansToProgramCards } from "@/lib/my-workout-plan";
 import { CustomWorkoutCard } from "@/components/training/CustomWorkoutCard";
 import { RevertDayButton } from "@/components/training/RevertDayButton";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { backfillDayState } from "@/lib/backfill-rules";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -325,6 +327,13 @@ export default async function TrainingPage({
 
   const viewedWeek = weekStartKey(selected, tz);
   const coach = resolveAiCoach(profile?.aiCoachId);
+  const logPastDayKeys = [
+    ...new Set(
+      weeks
+        .flatMap((week) => week.days.map((day) => day.dayParam))
+        .filter((key) => backfillDayState(key, now, tz) === "ok"),
+    ),
+  ];
 
   return (
     <main className="min-w-0 space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
@@ -385,6 +394,7 @@ export default async function TrainingPage({
         inProgressDay={inProgressDay}
         focusOffset={focusOffset}
         todayHref={`/training?day=${formatDayParam(now, tz)}`}
+        logPastDayKeys={logPastDayKeys}
       />
 
       <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
@@ -463,6 +473,11 @@ export default async function TrainingPage({
           ) : null}
           {dayPlan.skipReason && !dayPlan.active ? (
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
+          ) : null}
+          {backfillDayState(focus.dayParam, now, tz) === "ok" ? (
+            <div className="pt-2">
+              <LogPastWorkoutButton dayKey={focus.dayParam} entry="train" label="Log a past workout" />
+            </div>
           ) : null}
           {dayPlan.easeNote || focus.checkIn ? (
             <div className="mt-3">

@@ -236,6 +236,12 @@ function tickedExerciseKeysForPlan(sets: readonly TickedSet[]) {
   return sets.filter(setIsTicked).map((set) => exerciseCompletionKey(set.exerciseName ?? ""));
 }
 
+/** The finish screen opens for a full save, and for a past log the member still needs to rate. */
+export function sessionOpensFinishScreen(session: { status: string; backfilled?: boolean | null }) {
+  if (session.status === "complete") return true;
+  return session.status === "partial" && Boolean(session.backfilled);
+}
+
 /** History label. A short save reads partial, never complete. */
 export function completionListLabel(session: {
   status: string;

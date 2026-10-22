@@ -39,6 +39,8 @@ import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-s
 import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
 import { listDayPlansForUser } from "@/lib/my-workouts";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { backfillDayState } from "@/lib/backfill-rules";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -139,6 +141,13 @@ export default async function TrainingCalendarPage({
   const selectedWeekday = weekdayName(selected, tz);
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
   const todayHref = `/training/calendar?day=${todayKey}${levelQuery}`;
+  const logPastDayKeys = [
+    ...new Set(
+      chipWeeks
+        .flatMap((week) => week.days.map((day) => day.dayParam))
+        .filter((key) => backfillDayState(key, now, tz) === "ok"),
+    ),
+  ];
   const moves: Record<string, CalendarMoveBundle> = {};
   const panels = markedWeeks.map((week, index) => {
     const weekSchedule = weekSchedules[index];
@@ -210,7 +219,9 @@ export default async function TrainingCalendarPage({
           {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (
             <p className="text-sm text-muted">{focusPlan.skipReason}</p>
           ) : null}
-          {/* #150 mounts LogPastWorkoutButton here (entry="calendar", label "Log a completed workout") when the day can take a past log. Keep that button. */}
+          {backfillDayState(focusKey, now, tz) === "ok" ? (
+            <LogPastWorkoutButton dayKey={focusKey} entry="calendar" label="Log a completed workout" />
+          ) : null}
         </section>
 
         {weekSchedule.days.every((day) => day.activities.every((item) => item.kind !== "workout")) ? (
@@ -270,6 +281,7 @@ export default async function TrainingCalendarPage({
         focusOffset={focusOffset}
         todayHref={todayHref}
         initialWeekStart={viewedWeek}
+        logPastDayKeys={logPastDayKeys}
         level={levelOverride}
         moves={moves}
         rearrange={canEditWeek}

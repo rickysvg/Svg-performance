@@ -10,6 +10,7 @@ import {
   rateWorkoutSessionForUser,
   continuePartialWorkoutForUser,
   reopenCompletedWorkoutForUser,
+  completeBikeLoggerSession,
   logBikeRoundsForUser,
   logRoundSessionForUser,
   startWorkoutFromDay,
@@ -19,6 +20,7 @@ import {
 import { parseSessionRpe } from "@/lib/bagwork";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { choiceFromToken } from "@/lib/bike-chooser";
+import { loggerChoiceFromSession } from "@/lib/bike-timer-log";
 import { hasActivityOnLocalDay } from "@/lib/home";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { resolveLoggedPerformedAt } from "@/lib/performed-at";
@@ -105,6 +107,54 @@ export async function logBikeTimerAction(formData: FormData) {
   revalidatePath("/progress");
   revalidatePath("/progress/streaks");
   redirect(`/training/log/${session.id}/done?celebrate=workout`);
+}
+
+function choiceFromBikeLoggerForm(formData: FormData) {
+  const token = String(formData.get("workout") ?? "");
+  const fromToken = token ? choiceFromToken(token) : null;
+  if (fromToken) return fromToken;
+  const workSeconds = Number(formData.get("workSeconds"));
+  const restSeconds = Number(formData.get("restSeconds"));
+  const roundsPerSet = Number(formData.get("roundsPerSet"));
+  if (!Number.isFinite(workSeconds) || workSeconds < 1) return null;
+  return loggerChoiceFromSession({
+    name: String(formData.get("bikeName") ?? ""),
+    focus: String(formData.get("bikeName") ?? ""),
+    workSeconds,
+    restSeconds: Number.isFinite(restSeconds) ? restSeconds : 0,
+    roundsPerSet,
+    repeatRounds: Number(formData.get("repeatRounds") ?? 1),
+  });
+}
+
+/** Log the open workout when the bike clock finishes, including a custom session with no program day. */
+export async function finishBikeLoggerAction(formData: FormData) {
+  const user = await requireUserOrThrow();
+  const tier = await getAppTier(user.id);
+  if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
+    redirect("/home");
+  }
+  const choice = choiceFromBikeLoggerForm(formData);
+  if (!choice) {
+    throw new AppError("WORKOUT", "Pick a bike workout before logging.");
+  }
+  const session = await completeBikeLoggerSession({
+    userId: user.id,
+    workoutId: String(formData.get("workoutId") ?? ""),
+    choice,
+    roundsCompleted: Number(formData.get("rounds")),
+  });
+  revalidatePath("/home");
+  revalidatePath("/training");
+  revalidatePath("/training/calendar");
+  revalidatePath("/training/history");
+  revalidatePath("/training/history/bike");
+  revalidatePath(`/training/log/${session.id}`);
+  revalidatePath(`/training/log/${session.id}/done`);
+  if (session.status === "complete") {
+    redirect(`/training/log/${session.id}/done?celebrate=workout`);
+  }
+  redirect(`/training/log/${session.id}`);
 }
 
 export async function startProgramDayLog(userId: string, programDayId: string, half = false) {

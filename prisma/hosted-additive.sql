@@ -789,6 +789,20 @@ BEGIN
   ) THEN
     ALTER TABLE "WorkoutSession" ADD COLUMN "plannedSetCount" INTEGER;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'source'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "source" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'backfilled'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "backfilled" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
 END $$;
 
 -- VIP Coaching. Additive only: applications, checkout grants, upsell events, 72h waitlist holds.
