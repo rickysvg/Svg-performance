@@ -1016,22 +1016,10 @@ export async function updateWorkoutSessionForUser(input: {
       sets.map((set) => set.exerciseName),
     );
     if (canonical && canonical.id !== existing.id) {
-      const saved = await updateWorkoutSessionForUser({ ...input, workoutId: canonical.id });
-      // The folded draft still has logged sets. Leaving it open lets a later
-      // pass mark that same day done a second time. Swaps and removals store
-      // the session id as a plain string, so they have to be removed with it.
-      if (existing.status === "draft") {
-        await prisma.$transaction([
-          prisma.exerciseSwap.deleteMany({
-            where: { userId: input.userId, workoutSessionId: existing.id },
-          }),
-          prisma.exerciseRemoval.deleteMany({
-            where: { userId: input.userId, workoutSessionId: existing.id },
-          }),
-          prisma.workoutSession.delete({ where: { id: existing.id } }),
-        ]);
-      }
-      return saved;
+      // The numbers land on the finished row. The open draft stays so the
+      // logger the member is in does not 404. A later pass skips a day that
+      // already has a completed session, and only Cancel or Delete removes it.
+      return updateWorkoutSessionForUser({ ...input, workoutId: canonical.id });
     }
   }
 
@@ -1314,8 +1302,17 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
   return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt };
 }
 
-/** Delete a draft the member left without logging. Never deletes a set they typed. */
-export async function discardEmptyWorkoutDraft(userId: string, workoutId: string) {
+/**
+ * Delete a draft the member explicitly left without logging.
+ * Page hide, prefetch, and a second tab must not call this: a fresh Start
+ * has no reps yet, and those signals were removing the logger out from under them.
+ */
+export async function discardEmptyWorkoutDraft(
+  userId: string,
+  workoutId: string,
+  options?: { explicit?: boolean },
+) {
+  if (!options?.explicit) return { discarded: false };
   const session = await prisma.workoutSession.findUnique({
     where: { id: workoutId },
     include: { sets: true },

@@ -771,7 +771,7 @@ export function WorkoutLogForm({
     const stored = readLoggerDraft(session.id);
     if (stored?.sets.some(setHasLoggedWork)) return;
     clearLoggerDraft(session.id);
-    const body = JSON.stringify({ workoutId: session.id });
+    const body = JSON.stringify({ workoutId: session.id, explicit: true });
     void fetch("/api/workouts/discard-empty", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -779,14 +779,6 @@ export function WorkoutLogForm({
       keepalive: true,
     }).catch(() => undefined);
   }
-
-  useEffect(() => {
-    const onHide = () => discardIfEmpty();
-    window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
-    // discardIfEmpty reads the latest refs. session id is the discard target.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.id, session.status]);
 
   useEffect(() => {
     if (appliedPhase !== "client") return;
