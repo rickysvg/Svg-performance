@@ -55,6 +55,7 @@ import {
   loggedSetSome,
   prescribedSetTotal,
   sessionCountsAsPlannedCompletion,
+  tickedSetCount,
 } from "@/lib/logged-work";
 
 export type WeeklyActivity = {
@@ -246,6 +247,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     draft: undefined,
     resumeByDay: {} as Record<string, { id: string; partial: boolean }>,
     completedDayIds: [] as string[],
+    partialDayIds: [] as string[],
     loggedOnSelected: null,
     foodToday: { entryCount: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     foodNudge: "No food logged this day yet. A rough estimate is enough.",
@@ -266,6 +268,52 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     locationHint: "",
     competitionNote: "",
   };
+}
+
+function partialProgramDayIds(
+  sessions: {
+    status: string;
+    programDayId: string | null;
+    performedAt: Date;
+    plannedSetCount?: number | null;
+    sets: {
+      completed?: boolean | null;
+      reps?: number | null;
+      loadValue?: number | null;
+      durationSeconds?: number | null;
+      exerciseName?: string | null;
+    }[];
+    programDay?: { exercises?: { sets?: number | null; name?: string | null }[] } | null;
+  }[],
+  selected: Date,
+  tz: string,
+  plannedSessions: { dayId?: string | null; day?: { exercises?: { name?: string | null; sets?: number | null }[] } | null }[],
+  completedDayIds: string[],
+) {
+  return [
+    ...new Set(
+      sessions
+        .filter((session) => {
+          if (!session.programDayId || !sameLocalDay(session.performedAt, selected, tz)) return false;
+          if (completedDayIds.includes(session.programDayId)) return false;
+          if (tickedSetCount(session.sets) === 0) return false;
+          const planned = plannedSessions.find((row) => row.dayId === session.programDayId);
+          const names = (planned?.day?.exercises ?? [])
+            .map((exercise) => (exercise.name ?? "").trim())
+            .filter((name) => name.length > 0);
+          const dose = prescribedSetTotal(planned?.day?.exercises ?? session.programDay?.exercises);
+          return !sessionCountsAsPlannedCompletion(
+            {
+              ...session,
+              plannedSetCount: session.plannedSetCount ?? (dose > 0 ? dose : null),
+            },
+            names,
+            dose,
+          );
+        })
+        .map((session) => session.programDayId as string),
+    ),
+  ];
 }
 
 export async function getHomeToday(
@@ -443,6 +491,7 @@ export async function getHomeToday(
     draft: sameLocalDay(selected, now, tz) ? draft : undefined,
     resumeByDay,
     completedDayIds,
+    partialDayIds: partialProgramDayIds(sessions, selected, tz, plannedSessions, completedDayIds),
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,
     foodNudge:

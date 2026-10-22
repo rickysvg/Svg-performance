@@ -17,7 +17,7 @@ import { applyExerciseSwap } from "@/lib/exercise-swap-store";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { scaleProgramDay } from "@/lib/training-scale";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
-import { bikeChoiceById } from "@/lib/bike-chooser";
+import { bikeChoiceById, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { BIKE_TIMER_EXERCISE } from "@/lib/bike-timer-log";
 import {
   logBikeRoundsForUser,
@@ -654,7 +654,9 @@ describe("persisted session removal", () => {
     });
     const bikeRows = bike.sets.filter((set) => set.exerciseName === BIKE_TIMER_EXERCISE).length;
     expect(bikeRows).toBeGreaterThan(0);
-    expect(bike.plannedSetCount).toBe(bikeRows);
+    // A free timer stores the round plan. Removal still subtracts the logged rows.
+    expect(bike.plannedSetCount).toBe(bikeTimerRoundCount(choice!));
+    expect(bike.plannedSetCount).toBeGreaterThan(bikeRows);
     await prisma.workoutSession.update({
       where: { id: bike.id },
       data: { status: "draft" },

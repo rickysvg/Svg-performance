@@ -1,12 +1,24 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  BIKE_TIMER_EXERCISE,
   bikeTimerLogSets,
   bikeTimerSessionSeconds,
-  scheduledBikeProgramDayId,
+  scheduledRoundPlanTarget,
 } from "@/lib/bike-timer-log";
-import type { BikeChoice } from "@/lib/bike-chooser";
+import { bikeTimerRoundCount, type BikeChoice } from "@/lib/bike-chooser";
+import {
+  roundLogSets,
+  roundSaveStatus,
+  roundSessionDuration,
+  roundTargetForProgramDay,
+  ROUND_SESSION_TITLES,
+  sessionMatchesRoundType,
+  setBelongsToRoundType,
+  setIsSavedRoundWork,
+  trimRoundSessionSeconds,
+  trimRoundSetSeconds,
+  type RoundSessionType,
+} from "@/lib/round-session";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
@@ -18,6 +30,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { calendarPlanDoses, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
+import { parseSessionRpe } from "@/lib/bagwork";
 import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
 import { halvedSetCount } from "@/lib/recovery-ease";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
@@ -638,15 +651,26 @@ export async function startRoundWorkoutForUser(input: {
 }
 
 /**
- * A real Assault Bike timer save. Completes today's scheduled bike day when
- * the plan has one, through the same session update lifts use. A draft is not
- * enough to mark the day done.
+ * One log for a round-based save. A second save updates that same row.
+ * Today's matching program day is linked when the plan has one.
+ * A mixed day stays partial so the logger can still finish the other work.
+ * Only a round-only day is complete, and only when its rounds are covered.
+ * The stored plan count is the level-scaled day, the same number Done uses.
  */
-export async function logBikeRoundsForUser(input: {
+export async function logRoundSessionForUser(input: {
   userId: string;
-  choice: BikeChoice;
-  now?: Date;
+  type: RoundSessionType;
   roundsCompleted: number;
+  workSeconds: number;
+  restSeconds: number;
+  notes?: string;
+  rpe?: number | null;
+  programDayId?: string | null;
+  now?: Date;
+  configuredRounds?: number | null;
+  title?: string;
+  sets?: WorkoutSetInput[];
+  elapsedSeconds?: number | null;
 }) {
   const roundsCompleted = Math.round(input.roundsCompleted);
   if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1) {
@@ -656,64 +680,194 @@ export async function logBikeRoundsForUser(input: {
   const timeZone = await timeZoneForUser(input.userId, profile?.timeZone ?? null);
   const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const now = input.now ?? new Date();
-  const programDayId = await scheduledBikeProgramDayId(input.userId, now);
-  let occupied: { exerciseName: string; setNumber: number }[] = [];
-  let workoutId: string | null = null;
-  if (programDayId) {
-    const from = new Date(now.getTime() - 36 * 60 * 60 * 1000);
-    const to = new Date(now.getTime() + 36 * 60 * 60 * 1000);
-    const today = dayKey(now, timeZone);
-    const drafts = await prisma.workoutSession.findMany({
-      where: {
+  const explicit = input.programDayId
+    ? await roundTargetForProgramDay({
         userId: input.userId,
-        programDayId,
-        status: "draft",
-        performedAt: { gte: from, lte: to },
-      },
-      orderBy: { performedAt: "desc" },
-      include: { sets: { select: { exerciseName: true, setNumber: true } } },
+        programDayId: input.programDayId,
+        type: input.type,
+        now,
+      })
+    : null;
+  const scheduled = explicit ? null : await scheduledRoundPlanTarget(input.userId, input.type, now);
+  const target = explicit ?? scheduled;
+  const programDayId = target?.programDayId ?? null;
+  const configured =
+    input.configuredRounds == null ? null : Math.max(1, Math.round(input.configuredRounds));
+  const plannedRounds = target?.plannedRounds ?? configured ?? roundsCompleted;
+  const workSeconds = trimRoundSetSeconds(
+    Math.max(1, Math.round(input.workSeconds) || target?.workSeconds || 180),
+  );
+  const requestedRest = Number.isFinite(input.restSeconds) ? Math.round(input.restSeconds) : 0;
+  const restSeconds =
+    requestedRest > 0 ? requestedRest : Math.max(0, Math.round(target?.restSeconds ?? 0));
+  const builtSets =
+    input.sets ??
+    roundLogSets({
+      type: input.type,
+      exerciseName: target?.exerciseName || ROUND_SESSION_TITLES[input.type],
+      rounds: roundsCompleted,
+      workSeconds,
+      restSeconds,
+      unit: units,
     });
-    const existing = drafts.find(
-      (row) =>
-        row.sets.length > 0 &&
-        sessionCompletionDay({ performedAt: row.performedAt }, timeZone) === today &&
-        sessionMatchesPlannedDay(row, {
-          title: input.choice.name,
-          exercises: [{ name: BIKE_TIMER_EXERCISE }],
-        }),
-    );
-    if (existing) {
-      workoutId = existing.id;
-      occupied = existing.sets;
-    }
-  }
-  const sets = bikeTimerLogSets(input.choice, units, roundsCompleted, occupied);
-  if (sets.length < 1) {
+  const roundSets = builtSets.map((set) => ({
+    ...set,
+    durationSeconds:
+      set.durationSeconds == null ? set.durationSeconds : trimRoundSetSeconds(set.durationSeconds),
+  }));
+  if (roundSets.length < 1) {
     throw new AppError("WORKOUT", "Finish a round before logging.");
   }
-  if (!workoutId) {
-    const created = await prisma.workoutSession.create({
-      data: {
-        userId: input.userId,
-        programDayId,
-        title: input.choice.name,
-        performedAt: now,
-        status: "draft",
-        plannedSetCount: sets.length,
-      },
-    });
-    workoutId = created.id;
+  const roundTitle = (input.title || target?.exerciseName || ROUND_SESSION_TITLES[input.type]).trim();
+  const elapsed = trimRoundSessionSeconds(
+    input.elapsedSeconds ?? roundSessionDuration(roundsCompleted, workSeconds, restSeconds),
+  );
+  const workoutId = await reuseRoundSessionId({
+    userId: input.userId,
+    type: input.type,
+    programDayId,
+    now,
+    timeZone,
+    title: roundTitle,
+  });
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: workoutId },
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    throw new NotFoundError("Workout not found.");
   }
+  const keptSet = (set: (typeof existing.sets)[number]): WorkoutSetInput => ({
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: isLoadUnit(set.loadUnit) ? set.loadUnit : ("lb" as const),
+    logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey,
+    rir: set.rir,
+  });
+  const sets: WorkoutSetInput[] = [];
+  let replacedRounds = false;
+  for (const set of existing.sets) {
+    if (setBelongsToRoundType(set, input.type)) {
+      if (!replacedRounds) {
+        sets.push(...roundSets);
+        replacedRounds = true;
+      }
+      continue;
+    }
+    sets.push(keptSet(set));
+  }
+  if (!replacedRounds) sets.push(...roundSets);
+  const keptCount = sets.length - roundSets.length;
+  const daySetCount = target && target.daySetCount > 0 ? target.daySetCount : null;
+  // One count: the level-scaled day. A free timer has no day, so the round plan is the count.
+  const plannedSetCount = daySetCount ?? plannedRounds;
+  const mixedDay = keptCount > 0 || (daySetCount != null && daySetCount > plannedRounds);
+  const status = mixedDay
+    ? ("partial" as const)
+    : roundSaveStatus({
+        roundsCompleted,
+        plannedRounds,
+        configuredRounds: configured,
+      });
   return updateWorkoutSessionForUser({
     userId: input.userId,
     workoutId,
-    title: input.choice.name,
+    title: keptCount > 0 ? existing.title : roundTitle,
     performedAt: now,
-    notes: "",
-    status: "complete",
+    notes: input.notes ?? "",
+    status,
     sets,
     rest: null,
     timeZone,
+    elapsedSeconds: elapsed,
+    plannedSetCount,
+    sessionRpe: input.rpe === undefined ? undefined : input.rpe,
+    retainEmptySets: keptCount > 0,
+  });
+}
+
+async function reuseRoundSessionId(input: {
+  userId: string;
+  type: RoundSessionType;
+  programDayId: string | null;
+  now: Date;
+  timeZone: string;
+  title: string;
+}) {
+  const from = new Date(input.now.getTime() - 36 * 60 * 60 * 1000);
+  const to = new Date(input.now.getTime() + 36 * 60 * 60 * 1000);
+  const today = dayKey(input.now, input.timeZone);
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId: input.userId,
+      programDayId: input.programDayId,
+      status: { in: ["draft", "partial", "complete"] },
+      performedAt: { gte: from, lte: to },
+    },
+    include: { sets: { select: { exerciseName: true, logMode: true, prescriptionKey: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const matches = rows.filter(
+    (row) =>
+      sessionCompletionDay({ performedAt: row.performedAt }, input.timeZone) === today &&
+      sessionMatchesRoundType(row, input.type),
+  );
+  const saved = matches.find((row) => row.status === "complete" || row.status === "partial");
+  const draft = matches.find((row) => row.status === "draft");
+  if (saved) return saved.id;
+  if (draft) return draft.id;
+  const created = await prisma.workoutSession.create({
+    data: {
+      userId: input.userId,
+      programDayId: input.programDayId,
+      title: input.title,
+      performedAt: input.now,
+      status: "draft",
+    },
+  });
+  return created.id;
+}
+
+/**
+ * A real Assault Bike timer save. Completes today's scheduled bike day when
+ * the plan has one, through the same session update lifts use. A draft is not
+ * enough to mark the day done. Fewer rounds than the plan stay Partial.
+ */
+export async function logBikeRoundsForUser(input: {
+  userId: string;
+  choice: BikeChoice;
+  now?: Date;
+  roundsCompleted: number;
+  notes?: string;
+  rpe?: number | null;
+  programDayId?: string | null;
+}) {
+  const roundsCompleted = Math.round(input.roundsCompleted);
+  if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1) {
+    throw new AppError("WORKOUT", "Finish a round before logging.");
+  }
+  const profile = await getProfileForUser(input.userId);
+  const units: LoadUnit = profile?.preferredUnits ?? "lb";
+  const sets = bikeTimerLogSets(input.choice, units, roundsCompleted);
+  return logRoundSessionForUser({
+    userId: input.userId,
+    type: "bike",
+    roundsCompleted,
+    workSeconds: input.choice.spec.workSeconds,
+    restSeconds: input.choice.spec.restSeconds,
+    notes: input.notes,
+    rpe: input.rpe,
+    programDayId: input.programDayId,
+    now: input.now,
+    configuredRounds: bikeTimerRoundCount(input.choice),
+    title: input.choice.name,
+    sets,
     elapsedSeconds: bikeTimerSessionSeconds(input.choice, sets.length),
   });
 }
@@ -787,7 +941,7 @@ async function findSameDayProgramSession(
     where: {
       userId,
       programDayId,
-      status: "draft",
+      status: { in: ["draft", "partial"] },
       OR: [
         { performedAt: { gte: from, lte: to } },
         { createdAt: { gte: from, lte: to } },
@@ -799,6 +953,9 @@ async function findSameDayProgramSession(
   const same = rows.filter((row) => {
     if (sessionCivilDay(row, timeZone) !== today) return false;
     if (row.sets.length === 0) return false;
+    // A partial round-only log is finished for the logger. A mixed partial
+    // still has Shadowbox or technique to tick, so Start reopens it.
+    if (row.status === "partial" && !row.sets.some((set) => !setIsSavedRoundWork(set))) return false;
     if (planned.size === 0) return true;
     return row.sets.some((set) => planned.has(gymExerciseKey(set.exerciseName)));
   });
@@ -1313,11 +1470,20 @@ export async function updateWorkoutSessionForUser(input: {
   title: string;
   performedAt: Date;
   notes: string;
-  status: "draft" | "complete";
+  status: "draft" | "complete" | "partial";
   sets: WorkoutSetInput[];
   difficultyRating?: string | null;
   /** undefined leaves a running rest alone. null clears it. */
   rest?: { exerciseName: string; endsAtMs: number } | null;
+  /** Omit to leave the session's planned count alone. */
+  plannedSetCount?: number;
+  /**
+   * Round saves on a mixed day keep unticked plan rows. Lift finishes still
+   * drop empty sets.
+   */
+  retainEmptySets?: boolean;
+  /** undefined leaves session RPE alone. null clears it. */
+  sessionRpe?: number | null;
   /**
    * Autosave only. The write is skipped when the session changed after this
    * instant, so a swap that already landed is not overwritten by an older draft.
@@ -1335,10 +1501,13 @@ export async function updateWorkoutSessionForUser(input: {
     input.userId,
   );
   const normalized = setsAsLb(input.sets).map((set) => withTickedPlanWork(set));
-  const sets = prepareSetsForPersist(normalized, input.status);
+  const finishing = input.status !== "draft";
+  const sets = prepareSetsForPersist(normalized, input.status, {
+    retainEmptySets: input.retainEmptySets,
+  });
   const submitted =
     input.status === "complete" ? prepareSetsForPersist(normalized, "draft") : sets;
-  if (input.status === "complete" && !sets.some(setHasLoggedWork)) {
+  if (finishing && !sets.some(setHasLoggedWork)) {
     const ticked = normalized.some((set) => set.completed);
     throw new AppError(
       "WORKOUT",
@@ -1384,9 +1553,19 @@ export async function updateWorkoutSessionForUser(input: {
     if (!current || current.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
-    if (input.status === "draft" && current.status === "complete") {
+    if (
+      input.status === "draft" &&
+      (current.status === "complete" ||
+        (current.status === "partial" && keepsFinishedRoundLog(current.sets)))
+    ) {
       return current;
     }
+    const resumeMixedPartial =
+      input.status === "draft" &&
+      current.status === "partial" &&
+      current.sets.some((set) => setIsSavedRoundWork(set)) &&
+      current.sets.some((set) => !setIsSavedRoundWork(set));
+    const openStatus = resumeMixedPartial ? ("partial" as const) : ("draft" as const);
     if (input.baseUpdatedAt && input.status === "draft") {
       const base = new Date(input.baseUpdatedAt);
       if (Number.isNaN(base.getTime())) {
@@ -1396,7 +1575,7 @@ export async function updateWorkoutSessionForUser(input: {
         where: {
           id: input.workoutId,
           userId: input.userId,
-          status: "draft",
+          status: openStatus,
           updatedAt: base,
         },
         data: { title },
@@ -1407,7 +1586,7 @@ export async function updateWorkoutSessionForUser(input: {
       where: {
         id: input.workoutId,
         userId: input.userId,
-        ...(input.status === "draft" ? { status: "draft" as const } : {}),
+        ...(input.status === "draft" ? { status: openStatus } : {}),
       },
       data: { title },
     });
@@ -1416,7 +1595,14 @@ export async function updateWorkoutSessionForUser(input: {
         where: { id: input.workoutId },
         include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
       });
-      if (saved?.status === "complete" && input.status === "draft") return saved;
+      if (
+        saved &&
+        input.status === "draft" &&
+        (saved.status === "complete" ||
+          (saved.status === "partial" && keepsFinishedRoundLog(saved.sets)))
+      ) {
+        return saved;
+      }
       throw new StaleDraftError();
     }
     const removals = await activeRemovalsForSession(input.userId, input.workoutId);
@@ -1448,10 +1634,9 @@ export async function updateWorkoutSessionForUser(input: {
     const storedTimer = timerColumns
       ? await readWorkoutTimerFields(current.id, tx)
       : { finishedAt: null, elapsedSeconds: null, timerStartedAt: null };
-    const timer =
-      input.status === "complete"
-        ? freezeElapsedOnSave({ ...current, ...storedTimer }, new Date(), input.elapsedSeconds)
-        : null;
+    const timer = finishing
+      ? freezeElapsedOnSave({ ...current, ...storedTimer }, new Date(), input.elapsedSeconds)
+      : null;
     await tx.workoutSet.deleteMany({
       where: { workoutSessionId: input.workoutId },
     });
@@ -1462,6 +1647,10 @@ export async function updateWorkoutSessionForUser(input: {
         performedAt: input.performedAt,
         notes,
         status: input.status,
+        ...(typeof input.plannedSetCount === "number" && input.plannedSetCount > 0
+          ? { plannedSetCount: Math.round(input.plannedSetCount) }
+          : {}),
+        ...(input.sessionRpe !== undefined ? { sessionRpe: parseSessionRpe(input.sessionRpe) } : {}),
         difficultyRating:
           input.difficultyRating === undefined
             ? existing.difficultyRating
@@ -1510,10 +1699,18 @@ export async function updateWorkoutSessionForUser(input: {
     });
   });
   updated.sets.sort((left, right) => left.sortOrder - right.sortOrder || left.setNumber - right.setNumber);
-  if (input.status === "complete" && existing.status !== "complete") {
+  if (finishing && existing.status === "draft") {
     await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   }
   return attachWorkoutTimer(updated, prisma);
+}
+
+function keepsFinishedRoundLog(
+  sets: { prescriptionKey?: string | null; exerciseName?: string | null; logMode?: string | null }[],
+) {
+  if (!sets.some((set) => setIsSavedRoundWork(set))) return false;
+  // Mixed days stay editable. The logger has to tick the work that is not rounds.
+  return !sets.some((set) => !setIsSavedRoundWork(set));
 }
 
 /**
@@ -1718,7 +1915,7 @@ export async function rateWorkoutSessionForUser(input: {
     await prisma.workoutSession.findUnique({ where: { id: input.workoutId } }),
     input.userId,
   );
-  if (existing.status !== "complete") {
+  if (existing.status !== "complete" && existing.status !== "partial") {
     throw new AppError("WORKOUT", "Save the session first, then rate how it felt.");
   }
   const rating = parseDifficultyRating(input.difficultyRating);

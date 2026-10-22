@@ -11,11 +11,12 @@ import {
   continuePartialWorkoutForUser,
   reopenCompletedWorkoutForUser,
   logBikeRoundsForUser,
-  startRoundWorkoutForUser,
+  logRoundSessionForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
   type WorkoutSetInput,
 } from "@/lib/workouts";
+import { parseSessionRpe } from "@/lib/bagwork";
 import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { choiceFromToken } from "@/lib/bike-chooser";
 import { hasActivityOnLocalDay } from "@/lib/home";
@@ -49,20 +50,31 @@ export async function startRoundLogAction(formData: FormData) {
   if (tier === "locked" && user.role !== "admin" && user.role !== "coach") {
     redirect("/home");
   }
-  const profile = await getProfileForUser(user.id);
-  const units: LoadUnit = profile?.preferredUnits ?? "lb";
   const modeRaw = String(formData.get("mode") ?? "bag");
   const mode: TimerMode = TIMER_MODES.includes(modeRaw as TimerMode)
     ? (modeRaw as TimerMode)
     : "bag";
-  const session = await startRoundWorkoutForUser({
+  const programDayId = String(formData.get("programDayId") ?? "").trim();
+  const configuredRaw = String(formData.get("configuredRounds") ?? "").trim();
+  const session = await logRoundSessionForUser({
     userId: user.id,
-    mode,
-    rounds: Number(formData.get("rounds") ?? 3),
+    type: mode,
+    roundsCompleted: Number(formData.get("rounds") ?? 0),
     workSeconds: Number(formData.get("workSeconds") ?? 180),
-    preferredUnits: units,
+    restSeconds: Number(formData.get("restSeconds") ?? 0),
+    notes: String(formData.get("notes") ?? ""),
+    rpe: parseSessionRpe(formData.get("rpe")),
+    programDayId: programDayId || null,
+    configuredRounds: configuredRaw === "" ? null : Number(configuredRaw),
   });
-  redirect(`/training/log/${session.id}`);
+  revalidatePath("/home");
+  revalidatePath("/training");
+  revalidatePath("/training/calendar");
+  revalidatePath("/training/history");
+  revalidatePath("/training/history/bike");
+  revalidatePath("/progress");
+  revalidatePath("/progress/streaks");
+  redirect(`/training/log/${session.id}/done?celebrate=workout`);
 }
 
 export async function logBikeTimerAction(formData: FormData) {
@@ -76,12 +88,22 @@ export async function logBikeTimerAction(formData: FormData) {
     throw new AppError("WORKOUT", "Pick a bike workout before logging.");
   }
   const roundsCompleted = Number(formData.get("rounds"));
-  const session = await logBikeRoundsForUser({ userId: user.id, choice, roundsCompleted });
+  const programDayId = String(formData.get("programDayId") ?? "").trim();
+  const session = await logBikeRoundsForUser({
+    userId: user.id,
+    choice,
+    roundsCompleted,
+    notes: String(formData.get("notes") ?? ""),
+    rpe: parseSessionRpe(formData.get("rpe")),
+    programDayId: programDayId || null,
+  });
   revalidatePath("/home");
   revalidatePath("/training");
   revalidatePath("/training/calendar");
   revalidatePath("/training/history");
   revalidatePath("/training/history/bike");
+  revalidatePath("/progress");
+  revalidatePath("/progress/streaks");
   redirect(`/training/log/${session.id}/done?celebrate=workout`);
 }
 

@@ -2,7 +2,11 @@ import { AppError } from "@/lib/errors";
 import { highestSetNumber } from "@/lib/logger-insert";
 import { prisma } from "@/lib/prisma";
 import { BAGWORK_PRESCRIPTION, bagWorkoutBySlug, bagworkTimerConfig, customIdFromKey, parseBagRegions, parseSessionRpe, viewFromCatalog, viewFromCustom, type BagworkQuery, type BagworkView } from "@/lib/bagwork";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
+import { sessionCompletionDay } from "@/lib/performed-at";
 import { clampDurationSeconds, clampRounds } from "@/lib/round-timer";
+import { roundSaveStatus, roundSessionDuration } from "@/lib/round-session";
+import { updateWorkoutSessionForUser } from "@/lib/workouts";
 
 const NAME_MIN = 2;
 const NAME_MAX = 60;
@@ -112,6 +116,10 @@ export async function logBagworkSessionForUser(input: {
   workSeconds: number;
   notes: string;
   rpe: number | null;
+  restSeconds?: number | null;
+  configuredRounds?: number | null;
+  elapsedSeconds?: number | null;
+  now?: Date;
 }) {
   const view = await resolveBagworkView(input.userId, input.workoutKey);
   if (!view) throw new AppError("BAGWORK", "That bag workout is not on your list.");
@@ -120,22 +128,84 @@ export async function logBagworkSessionForUser(input: {
   const workSeconds = clampDurationSeconds(input.workSeconds);
   const notes = input.notes.trim().slice(0, DESCRIPTION_MAX);
   const rpe = parseSessionRpe(input.rpe);
+  const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
+  const configured =
+    input.configuredRounds == null ? rounds : Math.max(1, Math.round(input.configuredRounds));
+  const status = roundSaveStatus({
+    roundsCompleted: rounds,
+    plannedRounds: configured,
+    configuredRounds: configured,
+  });
+  const now = input.now ?? new Date();
   const sets = bagworkRoundSets({
     exerciseName: view.name,
     rounds,
     workSeconds,
+  }).map((set) => ({
+    ...set,
+    notes: restSeconds > 0 ? `Rest ${restSeconds}s` : "",
+  }));
+  const profile = await getProfileForUser(input.userId);
+  const timeZone = await timeZoneForUser(input.userId, profile?.timeZone ?? null);
+  const workoutId = await reuseBagworkSessionId({
+    userId: input.userId,
+    title: view.name,
+    now,
+    timeZone,
   });
-  return prisma.workoutSession.create({
+  return updateWorkoutSessionForUser({
+    userId: input.userId,
+    workoutId,
+    title: view.name,
+    performedAt: now,
+    notes,
+    status,
+    sets,
+    rest: null,
+    timeZone,
+    elapsedSeconds:
+      input.elapsedSeconds ?? roundSessionDuration(rounds, workSeconds, restSeconds),
+    plannedSetCount: configured,
+    sessionRpe: rpe,
+  });
+}
+
+async function reuseBagworkSessionId(input: {
+  userId: string;
+  title: string;
+  now: Date;
+  timeZone: string;
+}) {
+  const from = new Date(input.now.getTime() - 36 * 60 * 60 * 1000);
+  const to = new Date(input.now.getTime() + 36 * 60 * 60 * 1000);
+  const today = sessionCompletionDay({ performedAt: input.now }, input.timeZone);
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId: input.userId,
+      title: input.title,
+      status: { in: ["draft", "partial", "complete"] },
+      performedAt: { gte: from, lte: to },
+    },
+    include: { sets: { select: { prescriptionKey: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const matches = rows.filter(
+    (row) =>
+      sessionCompletionDay(row, input.timeZone) === today &&
+      (row.sets.length === 0 ||
+        row.sets.some((set) => set.prescriptionKey === BAGWORK_PRESCRIPTION)),
+  );
+  const saved = matches.find((row) => row.status === "complete" || row.status === "partial");
+  const draft = matches.find((row) => row.status === "draft");
+  if (saved) return saved.id;
+  if (draft) return draft.id;
+  const created = await prisma.workoutSession.create({
     data: {
       userId: input.userId,
-      title: view.name,
-      performedAt: new Date(),
-      notes,
-      status: "complete",
-      sessionRpe: rpe,
-      plannedSetCount: sets.length,
-      sets: { create: sets },
+      title: input.title,
+      performedAt: input.now,
+      status: "draft",
     },
-    include: { sets: true },
   });
+  return created.id;
 }

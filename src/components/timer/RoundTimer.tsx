@@ -73,6 +73,50 @@ async function requestWakeLock() {
   }
 }
 
+function RoundLogNotes({
+  notes,
+  rpe,
+  onNotes,
+  onRpe,
+}: {
+  notes: string;
+  rpe: string;
+  onNotes: (value: string) => void;
+  onRpe: (value: string) => void;
+}) {
+  return (
+    <div className="mb-3 space-y-3">
+      <label className="block text-sm">
+        Notes
+        <textarea
+          data-testid="chrome-round-notes"
+          name="notes"
+          value={notes}
+          onChange={(event) => onNotes(event.target.value)}
+          onInput={(event) => onNotes(event.currentTarget.value)}
+          maxLength={500}
+          rows={2}
+          placeholder="Optional"
+          className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+        />
+      </label>
+      <label className="block text-sm">
+        RPE
+        <input
+          data-testid="chrome-round-rpe"
+          name="rpe"
+          value={rpe}
+          onChange={(event) => onRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+          onInput={(event) => onRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
+          inputMode="numeric"
+          placeholder="1–10, optional"
+          className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+        />
+      </label>
+    </div>
+  );
+}
+
 export type RoundTimerLaunch = {
   key: string;
   name: string;
@@ -87,12 +131,15 @@ export function RoundTimer({
   onClose,
   titleId,
   mode = null,
+  programDayId = null,
 }: {
   launch?: RoundTimerLaunch | null;
   onClose?: () => void;
   titleId?: string;
   /** Session type for this entry. Wins over the last mode saved on this phone. */
   mode?: TimerSurfaceMode | null;
+  /** Planned day this timer belongs to. Sent only while the open tab matches that day. */
+  programDayId?: string | null;
 }) {
   const launchConfig = launch
     ? sanitizeTimerConfig({
@@ -209,11 +256,21 @@ export function RoundTimer({
         workoutKey: launch.key,
         rounds: roundsDone,
         workSeconds: config.workSeconds,
+        restSeconds: config.restSeconds,
+        configuredRounds: launch.rounds,
         notes: notesRef.current,
         rpe: Number.isInteger(parsedRpe) ? parsedRpe : null,
-      }).then((result) => setLogState(result));
+      }).then((result) => {
+        if (!result.ok) {
+          logged.current = false;
+          setLogState(result);
+          return;
+        }
+        setLogState(result);
+        window.location.assign(`/training/log/${result.sessionId}/done?celebrate=workout`);
+      });
     },
-    [config.workSeconds, launch],
+    [config.restSeconds, config.workSeconds, launch],
   );
 
   useEffect(() => {
@@ -366,6 +423,11 @@ export function RoundTimer({
       : bikeChoiceById(bikePreset);
   const bikeSession = bikeChoice ? sessionWithChoice(DEFAULT_BIKE_SESSION, bikeChoice) : null;
   const bikeRounds = bikeChoice ? bikeTimerRoundCount(bikeChoice) : 0;
+  const linkedProgramDayId = programDayId && mode && prefs.mode === mode ? programDayId : "";
+  const timerOn = startedAtMs != null;
+  const finishedWork = completedWorkRounds(resolved.phase, resolved.round, resolved.totalRounds);
+  const roundsToLog = timerOn ? finishedWork : config.rounds;
+  const logDisabled = timerOn && finishedWork < 1;
   const noteBikeRounds = useCallback((count: number) => {
     setBikeFinished((current) => (count > current ? count : current));
   }, []);
@@ -433,6 +495,7 @@ export function RoundTimer({
               data-testid="chrome-timer-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              onInput={(event) => setNotes(event.currentTarget.value)}
               maxLength={500}
               rows={2}
               placeholder="Optional"
@@ -445,6 +508,7 @@ export function RoundTimer({
               data-testid="chrome-timer-rpe"
               value={rpe}
               onChange={(event) => setRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+              onInput={(event) => setRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
               inputMode="numeric"
               placeholder="1–10, optional"
               className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
@@ -463,7 +527,7 @@ export function RoundTimer({
         </div>
       ) : null}
 
-      {launch || onClose || !bikeMode || !bikeChoice ? null : bikeFinished < 1 ? (
+      {launch || !bikeMode || !bikeChoice ? null : bikeFinished < 1 ? (
       <p className="text-sm text-muted" data-bike-round-log="waiting">
         Finish a round before logging.
       </p>
@@ -471,28 +535,35 @@ export function RoundTimer({
       <form action={logBikeTimerAction} data-bike-round-log="">
         <input type="hidden" name="workout" value={choiceToken(bikeChoice)} />
         <input type="hidden" name="rounds" value={Math.min(bikeFinished, bikeRounds)} />
+        <input type="hidden" name="programDayId" value={linkedProgramDayId} />
+        <RoundLogNotes notes={notes} rpe={rpe} onNotes={setNotes} onRpe={setRpe} />
         <button type="submit" className="touch-target w-full rounded-full bg-accent text-sm uppercase tracking-wide text-black">
           {`LOG ${Math.min(bikeFinished, bikeRounds)} BIKE ROUNDS`}
         </button>
       </form>
       )}
 
-      {launch || onClose || bikeMode ? null : (
+      {launch || bikeMode ? null : (
       <form data-testid="chrome-round-log" action={startRoundLogAction} data-round-log="">
         <input type="hidden" name="mode" value={prefs.mode} />
-        <input type="hidden" name="rounds" value={configForPreset(prefs.preset, customDraft).rounds} />
+        <input type="hidden" name="rounds" value={Math.max(0, roundsToLog)} />
+        <input type="hidden" name="configuredRounds" value={config.rounds} />
         <input
           data-testid="chrome-work-seconds"
           type="hidden"
           name="workSeconds"
-          value={configForPreset(prefs.preset, customDraft).workSeconds}
+          value={config.workSeconds}
         />
+        <input type="hidden" name="restSeconds" value={config.restSeconds} />
+        <input type="hidden" name="programDayId" value={linkedProgramDayId} />
+        <RoundLogNotes notes={notes} rpe={rpe} onNotes={setNotes} onRpe={setRpe} />
         <button
           data-testid="chrome-log-rounds"
           type="submit"
-          className="touch-target w-full rounded-full bg-accent text-black"
+          disabled={logDisabled}
+          className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-40"
         >
-          Log {configForPreset(prefs.preset, customDraft).rounds} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
+          Log {Math.max(0, roundsToLog)} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
         </button>
       </form>
       )}

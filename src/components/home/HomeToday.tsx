@@ -47,6 +47,12 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
   )?.[1];
   const firstDone = Boolean(first?.dayId && guide.today.completedDayIds?.includes(first.dayId));
   const nextDone = Boolean(next?.dayId && guide.today.completedDayIds?.includes(next.dayId));
+  const firstPartial = Boolean(
+    first?.dayId && !firstDone && guide.today.partialDayIds?.includes(first.dayId),
+  );
+  const nextPartial = Boolean(
+    next?.dayId && !nextDone && guide.today.partialDayIds?.includes(next.dayId),
+  );
 
   if (!first) {
     return (
@@ -80,6 +86,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         ) : nextDone ? (
           <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
             Done
+          </p>
+        ) : nextPartial ? (
+          <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+            Partial
           </p>
         ) : next?.dayId ? (
           <Link
@@ -138,6 +148,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         </p>
       ) : resume ? (
         <ResumeButton log={resume} className={resumeClass} />
+      ) : firstPartial ? (
+        <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+          Partial
+        </p>
       ) : first.dayId ? (
         <Link
           href={first.startHref ?? first.logHref ?? bikeLoggerHref(first.dayId)}

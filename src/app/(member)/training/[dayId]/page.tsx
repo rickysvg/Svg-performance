@@ -183,6 +183,7 @@ export default async function TrainingDayPage({
         </p>
         <RoundTimerButton
           mode={roundMode}
+          programDayId={roundMode ? day.id : null}
           bikeSession={bikeSession}
           bikeDayId={bikeSession ? day.id : null}
         />
