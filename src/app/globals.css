@@ -103,9 +103,13 @@ textarea:focus-visible {
   so a 375px page does not scroll sideways. Native pan keeps momentum.
 */
 [data-week-carousel] {
+  /* Paint containment stops off-screen weeks from widening the page.
+     inline-size keeps the strip as wide as the column, not the five weeks. */
+  contain: inline-size paint;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow-x: clip;
+  overflow: clip;
 }
 
 [data-week-scroller] {

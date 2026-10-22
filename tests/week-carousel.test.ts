@@ -134,6 +134,7 @@ describe("week day carousel", () => {
     expect(strip).toContain("bg-signal");
     expect(css).toContain("scroll-snap-type: x mandatory");
     expect(css).toContain("overscroll-behavior-x: contain");
+    expect(css).toContain("contain: inline-size paint");
     expect(css).toContain("[data-week-carousel]");
 
     expect(train).toContain("carouselWeekStrips");
