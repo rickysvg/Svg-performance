@@ -4,7 +4,6 @@ import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
   completedLocalDayKeys,
   completedProgramDayIdsOnDay,
-  completedProgramDayIdsOnDays,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
   listDraftSessionsForUser,
@@ -28,6 +27,7 @@ import {
   planForDate,
   planWeekIndex,
   resolvePlanSessions,
+  weekdayInAppZone,
   withBikeChipLogHrefs,
   withChipSessionIds,
 } from "@/lib/week-plan";
@@ -41,9 +41,9 @@ import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { Suspense } from "react";
 import { WeekStrip } from "@/components/training/WeekStrip";
+import { TrainWeekFollow } from "@/components/training/TrainWeekFollow";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
-import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import { NextSessionCta } from "@/components/training/NextSessionCta";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
@@ -56,7 +56,7 @@ import { FightCampOptIn } from "@/components/training/FightCampOptIn";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
-import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
+import { formatDayParam, parseDayParam } from "@/lib/home";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { getSparringLog, latestSparringSessionRating, sparringDateError } from "@/lib/outside-log";
 import { sparringTileHint } from "@/lib/sparring-tile";
@@ -123,11 +123,6 @@ export default async function TrainingPage({
   const campWeekIndex = campPlanWeekIndex(camp);
   if (campWeekIndex != null) prefs.forcedWeekIndex = campWeekIndex;
   const weekIndex = campWeekIndex ?? planWeekIndex(selected, tz, profile?.onboardingCompletedAt);
-  const corePlan = planForDate(prefs, selected, tz, swaps);
-  const shaped =
-    campOn && camp && camp.phase !== "complete" ? shapeDayPlan(corePlan, camp.phase) : corePlan;
-  const easedSelected = await easePlanForUser(user.id, selected, tz, shaped);
-  const dayPlan = easedSelected.plan;
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
   const scaledCatalog = scaleDemoCatalog(catalog, {
     experienceLevel: band,
@@ -136,7 +131,6 @@ export default async function TrainingPage({
     weekIndex,
     campPhase: campOn && camp ? camp.phase : null,
   });
-  const planned = resolvePlanSessions(dayPlan, scaledCatalog);
   const builtWeeks = carouselWeekStrips(prefs, now, tz, selected, swaps);
   const linkedWeeks = withBikeChipLogHrefs(
     await easeWeekStripDays(user.id, prefs, builtWeeks.days, tz, swaps),
@@ -150,39 +144,10 @@ export default async function TrainingPage({
     withChipSessionIds(linkedWeeks, prefs, scaledCatalog, tz, swaps),
   );
   const focusOffset = carouselFocusOffset(weeks);
-  const nextDay = dayPlan.active ? null : nextActiveWeekday(prefs, selected, tz, swaps);
-  const deload = campWeekIndex == null && isDeloadWeekIndex(weekIndex);
   const testing = isTestingWeekIndex(weekIndex);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
-  const showPlyo = planned.some((session) => session.kind === "strength");
-  const plyo =
-    showPlyo && dayPlan.active
-      ? profile?.experienceLevel === "beginner"
-        ? beginnerPlyoBlock()
-        : weightAccess === "none"
-          ? floorPlyoBlock()
-          : plyoBlockFor(emphasis)
-      : [];
-  const hasSkill = planned.some((session) => session.kind === "skill");
-  const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
-  const gear = equipmentForExercises(
-    planned.flatMap((session) =>
-      ((session.day?.exercises ?? []) as { name?: string }[]).map((exercise) => exercise.name ?? ""),
-    ),
-  );
-  const zones = [
-    ...new Map(
-      planned.flatMap((session) => {
-        const zone = bikeZoneForDayNumber(session.dayNumber);
-        return zone ? [[zone.label, zone] as const] : [];
-      }),
-    ).values(),
-  ];
-  const isToday = sameLocalDay(selected, now, tz);
   const dayParam = formatDayParam(selected, tz);
   const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
-  const sparringFuture =
-    dayPlan.outside?.kind === "sparring" ? sparringDateError(dayParam, now, memberTz) : null;
   const draftIdFor = (
     sessions: { dayId?: string; day?: { title?: string | null; focus?: string | null; exercises?: { name?: string | null }[] } | null }[],
   ) => (dayId: string) => {
@@ -211,16 +176,6 @@ export default async function TrainingPage({
       tz,
     ),
   );
-  const doneOnView = new Set(
-    await completedProgramDayIdsOnDays(user.id, [dayParam], tz),
-  );
-  const nextAction = dayPlan.active
-    ? nextTrainAction(
-        planned,
-        draftIdFor(planned),
-        (dayId) => doneOnView.has(dayId),
-      )
-    : null;
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -242,14 +197,105 @@ export default async function TrainingPage({
     completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz),
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
   ]);
-  const planDateLabel = formatCalendarHeading(selected, now, tz);
-  const bagIndex = planned.findIndex((session) => session.kind === "skill");
-  const showDetails =
-    dayPlan.active && (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote));
-
-  const dayPlans = await listDayPlansForUser(user.id, [dayParam]);
-  const dayOverlay = applyPlansToProgramCards(planned, dayPlans);
-  const visiblePlanned = dayOverlay.cards;
+  const selectedWeekday = weekdayInAppZone(selected, tz);
+  const focusDays = weeks.map((week) => {
+    const day = week.days.find((item) => item.weekday === selectedWeekday) ?? week.days[0]!;
+    return { weekStart: week.weekStart, day };
+  });
+  const savedDayPlans = await listDayPlansForUser(
+    user.id,
+    focusDays.map((focus) => focus.day.dayParam),
+  );
+  const focusModels = await Promise.all(
+    focusDays.map(async (focus) => {
+      const date = focus.day.date;
+      const focusParam = focus.day.dayParam;
+      const core = planForDate(prefs, date, tz, swaps);
+      const shaped =
+        campOn && camp && camp.phase !== "complete" ? shapeDayPlan(core, camp.phase) : core;
+      const eased = await easePlanForUser(user.id, date, tz, shaped);
+      const focusPlan = eased.plan;
+      const focusWeekIndex =
+        campWeekIndex ?? planWeekIndex(date, tz, profile?.onboardingCompletedAt);
+      const focusCatalog = scaleDemoCatalog(catalog, {
+        experienceLevel: band,
+        competitionStatus: levelOverride ? null : profile?.competitionStatus,
+        weightAccess,
+        weekIndex: focusWeekIndex,
+        campPhase: campOn && camp ? camp.phase : null,
+      });
+      const focusPlanned = resolvePlanSessions(focusPlan, focusCatalog);
+      const focusDayPlans = savedDayPlans.filter((plan) => plan.dayKey === focusParam);
+      const overlay = applyPlansToProgramCards(focusPlanned, focusDayPlans);
+      const plyo =
+        focusPlanned.some((session) => session.kind === "strength") && focusPlan.active
+          ? profile?.experienceLevel === "beginner"
+            ? beginnerPlyoBlock()
+            : weightAccess === "none"
+              ? floorPlyoBlock()
+              : plyoBlockFor(emphasis)
+          : [];
+      const hasSkill = focusPlanned.some((session) => session.kind === "skill");
+      const equipmentNote = hasSkill ? skillEquipmentNote(profile?.equipment) : "";
+      const gear = equipmentForExercises(
+        focusPlanned.flatMap((session) =>
+          ((session.day?.exercises ?? []) as { name?: string }[]).map((exercise) => exercise.name ?? ""),
+        ),
+      );
+      const zones = [
+        ...new Map(
+          focusPlanned.flatMap((session) => {
+            const zone = bikeZoneForDayNumber(session.dayNumber);
+            return zone ? [[zone.label, zone] as const] : [];
+          }),
+        ).values(),
+      ];
+      return {
+        weekStart: focus.weekStart,
+        dayParam: focusParam,
+        dateLabel: formatCalendarHeading(date, now, tz),
+        dayPlan: focusPlan,
+        checkIn: eased.checkIn,
+        cards: overlay.cards,
+        replaced: overlay.replaced,
+        dayPlans: focusDayPlans,
+        doneIds: new Set(completedByDay[focusParam] ?? []),
+        nextAction: focusPlan.active
+          ? nextTrainAction(
+              focusPlanned,
+              draftIdFor(focusPlanned),
+              (dayId) => (completedByDay[focusParam] ?? []).includes(dayId),
+            )
+          : null,
+        isToday: focus.day.isToday,
+        deload: campWeekIndex == null && isDeloadWeekIndex(focusWeekIndex),
+        testing: isTestingWeekIndex(focusWeekIndex),
+        plyo,
+        zones,
+        gear,
+        equipmentNote,
+        showDetails:
+          focusPlan.active &&
+          (plyo.length > 0 || zones.length > 0 || gear.length > 0 || Boolean(equipmentNote)),
+        sparringSaved:
+          focusPlan.outside?.kind === "sparring" ? await getSparringLog(user.id, focusParam) : null,
+        sparringFuture:
+          focusPlan.outside?.kind === "sparring" ? sparringDateError(focusParam, now, memberTz) : null,
+        nextDay: focusPlan.active ? null : nextActiveWeekday(prefs, date, tz, swaps),
+        bagIndex: focusPlanned.findIndex((session) => session.kind === "skill"),
+        plannedCount: focusPlanned.length,
+      };
+    }),
+  );
+  const moves = Object.fromEntries(
+    focusDays.map((focus) => [
+      focus.weekStart,
+      {
+        editable: weekStartInRange(focus.weekStart, weekStartKey(now, tz)),
+        days: moveDayChoices(prefs, now, tz, focus.day.date, swaps),
+      },
+    ]),
+  );
 
   const moreLinks = [
     { href: "/training/my-workouts", label: "My Workouts" },
@@ -265,17 +311,9 @@ export default async function TrainingPage({
   ];
 
   const viewedWeek = weekStartKey(selected, tz);
-  const moveDays = moveDayChoices(prefs, now, tz, selected, swaps);
   const coach = resolveAiCoach(profile?.aiCoachId);
-  const sparringSaved =
-    dayPlan.outside?.kind === "sparring" ? await getSparringLog(user.id, dayParam) : null;
 
   return (
-    <WorkoutMoveProvider
-      editable={weekStartInRange(viewedWeek, weekStartKey(now, tz))}
-      weekStart={viewedWeek}
-      days={moveDays}
-    >
     <main className="min-w-0 space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -340,6 +378,7 @@ export default async function TrainingPage({
         src={tileSrc("/tiles/sparring.webp", profile?.athleteImagery)}
       />
 
+      <TrainWeekFollow initialWeekStart={viewedWeek} level={levelOverride} moves={moves}>
       <WeekStrip
         days={weeks.find((week) => week.offset === 0)?.days ?? []}
         weeks={weeks}
@@ -352,19 +391,31 @@ export default async function TrainingPage({
 
       <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
 
+      {focusModels.map((focus) => {
+        const planDateLabel = focus.dateLabel;
+        const dayPlan = focus.dayPlan;
+        const visible = focus.weekStart === viewedWeek;
+        return (
+          <div
+            key={focus.weekStart}
+            data-train-panel={focus.weekStart}
+            hidden={visible ? undefined : true}
+            inert={visible ? undefined : true}
+            className="space-y-4"
+          >
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">
           <p className="font-display text-xs uppercase tracking-wide text-accent" data-day-heading>
-            {formatCalendarHeading(selected, now, tz)}
+            {planDateLabel}
             {dayPlan.movedFrom ? ` · ${dayPlan.movedFrom}’s workout` : ""}
           </p>
           <h2 className="mt-1 text-lg">
-            {dayOverlay.replaced
-              ? dayPlans.map((plan) => plan.name).join(" · ")
+            {focus.replaced
+              ? focus.dayPlans.map((plan) => plan.name).join(" · ")
               : dayPlan.active
                 ? dayPlan.summary
-                : nextDay
-                  ? `Rest · next up ${nextDay}`
+                : focus.nextDay
+                  ? `Rest · next up ${focus.nextDay}`
                   : "Rest day"}
           </h2>
           {dayPlan.movedFrom ? (
@@ -375,35 +426,35 @@ export default async function TrainingPage({
           {dayPlan.skipReason && !dayPlan.active ? (
             <p className="mt-1 text-sm text-muted">{dayPlan.skipReason}</p>
           ) : null}
-          {dayPlan.easeNote || easedSelected.checkIn ? (
+          {dayPlan.easeNote || focus.checkIn ? (
             <div className="mt-3">
               <RecoveryNotice
                 note={dayPlan.easeNote}
-                coachName={easedSelected.checkIn?.name}
-                coachImage={easedSelected.checkIn?.image}
-                message={easedSelected.checkIn?.message}
+                coachName={focus.checkIn?.name}
+                coachImage={focus.checkIn?.image}
+                message={focus.checkIn?.message}
               />
             </div>
           ) : null}
         </div>
 
-        {nextAction && !isToday ? <NextSessionCta action={nextAction} /> : null}
-        {deload ? (
+        {focus.nextAction && !focus.isToday ? <NextSessionCta action={focus.nextAction} /> : null}
+        {focus.deload ? (
           <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">{DELOAD_LABEL}</p>
         ) : null}
       </section>
 
       {dayPlan.outside?.kind === "sparring" ? (
-        sparringFuture ? (
+        focus.sparringFuture ? (
           <p className="rounded-2xl border border-line bg-card px-4 py-3 text-sm" data-sparring-future>
-            {sparringFuture}
+            {focus.sparringFuture}
           </p>
         ) : (
           <SparringLogForm
-            dateKey={dayParam}
+            dateKey={focus.dayParam}
             weekday={dayPlan.weekday}
             timeLabel={dayPlan.outside.label.replace(/^Sparring\s*·\s*/, "")}
-            saved={sparringSaved}
+            saved={focus.sparringSaved}
             coachName={coach.name}
             coachImage={coach.circle}
           />
@@ -411,31 +462,31 @@ export default async function TrainingPage({
       ) : null}
 
       <section className="space-y-3" data-session-phase="next">
-        {visiblePlanned.map((session, index) => (
+        {focus.cards.map((session, index) => (
           <div
             key={`${session.sessionKey ?? session.slot}-${session.dayId ?? session.label}`}
-            {...(index === bagIndex ? { "data-bag-session": "" } : {})}
+            {...(index === focus.bagIndex ? { "data-bag-session": "" } : {})}
           >
             <PlanSessionCard
               session={session}
               compact
               calendarWeekday={dayPlan.weekday}
-              highlight={session.slot === "A" && planned.length > 1}
+              highlight={session.slot === "A" && focus.plannedCount > 1}
               draftId={session.dayId ? matchingDraftId(drafts, session) : undefined}
-              completed={session.dayId ? doneOnView.has(session.dayId) : false}
+              completed={session.dayId ? focus.doneIds.has(session.dayId) : false}
               dateLabel={planDateLabel}
             />
           </div>
         ))}
-        {dayPlans.map((plan) => (
+        {focus.dayPlans.map((plan) => (
           <CustomWorkoutCard key={plan.id} plan={plan} />
         ))}
-        {dayPlans.length > 0 ? (
-          <RevertDayButton dayKey={dayParam} next={`/training?day=${dayParam}`} />
+        {focus.dayPlans.length > 0 ? (
+          <RevertDayButton dayKey={focus.dayParam} next={`/training?day=${focus.dayParam}`} />
         ) : null}
       </section>
 
-      {showDetails || dayPlan.active ? (
+      {focus.showDetails || dayPlan.active ? (
         <SessionDetails>
           {dayPlan.active ? (
             <Link href="/mobility/daily-warmup/play" className="block rounded-2xl border border-line bg-background px-4 py-3">
@@ -445,9 +496,9 @@ export default async function TrainingPage({
             </Link>
           ) : null}
           {weightAccess === "gym"
-            ? zones.map((zone) => <BikeZoneNote key={zone.label} zone={zone} />)
+            ? focus.zones.map((zone) => <BikeZoneNote key={zone.label} zone={zone} />)
             : null}
-          {plyo.length > 0 ? (
+          {focus.plyo.length > 0 ? (
             <div className="rounded-2xl border border-line bg-background px-4 py-3">
               <p className="font-display text-xs uppercase tracking-wide text-accent">
                 Before the lifts · {PLYO_MINUTES}
@@ -455,7 +506,7 @@ export default async function TrainingPage({
               <h3 className="mt-1 text-lg">Plyo / power</h3>
               <p className="mt-1 text-sm text-muted">{emphasisAccessoryLine(emphasis)}</p>
               <ul className="mt-3 space-y-2 text-sm">
-                {plyo.map((drill) => (
+                {focus.plyo.map((drill) => (
                   <li key={drill.name}>
                     <span className="font-semibold">{drill.name}</span> · {drill.prescription}
                     <span className="block text-muted">{drill.cues}</span>
@@ -464,8 +515,8 @@ export default async function TrainingPage({
               </ul>
             </div>
           ) : null}
-          {equipmentNote ? <p className="text-sm text-muted">{equipmentNote}</p> : null}
-          <EquipmentRow chips={gear} />
+          {focus.equipmentNote ? <p className="text-sm text-muted">{focus.equipmentNote}</p> : null}
+          <EquipmentRow chips={focus.gear} />
         </SessionDetails>
       ) : null}
 
@@ -479,13 +530,17 @@ export default async function TrainingPage({
         </section>
       ) : null}
 
-      {testing ? (
+      {focus.testing ? (
         <Link href="/training/testing" className="block rounded-[1.5rem] bg-black px-5 py-4 text-white">
           <p className="font-display text-xs uppercase tracking-[0.12em] text-highlighter">Testing</p>
           <h2 className="mt-1 text-2xl text-white">Testing Week</h2>
           <p className="mt-1 text-sm text-white/70">Broad jump, strength estimate, bike sprint, 5-minute bike.</p>
         </Link>
       ) : null}
+          </div>
+        );
+      })}
+      </TrainWeekFollow>
 
       {fromProfile ? null : (
         <Suspense fallback={null}>
@@ -534,6 +589,5 @@ export default async function TrainingPage({
         )}
       </details>
     </main>
-    </WorkoutMoveProvider>
   );
 }

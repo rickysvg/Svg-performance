@@ -115,3 +115,54 @@ export function weekChipHref(
   if (day.isToday && day.logHref) return day.logHref;
   return `${basePath}?day=${day.dayParam}`;
 }
+
+export type CarouselChipDay = { weekday: string; dayParam: string };
+
+/**
+ * The day the strip should highlight.
+ * A jump to today must stay on today's key. Copying the previous weekday
+ * into the new week lands on yesterday (the same weekday as the old pick).
+ */
+export function nextSelectedDay(
+  event:
+    | { type: "prop"; dayParam: string }
+    | { type: "url"; dayParam: string | null; known: readonly string[]; fallback: string }
+    | { type: "chip"; dayParam: string }
+    | { type: "today"; todayParam: string }
+    | {
+        type: "snap";
+        weekDays: readonly CarouselChipDay[];
+        previousDayParam: string;
+        allDays: readonly CarouselChipDay[];
+        todayParam: string;
+        jumpingToToday: boolean;
+      },
+): string {
+  if (event.type === "chip") return event.dayParam;
+  if (event.type === "today") return event.todayParam;
+  if (event.type === "prop") return event.dayParam;
+  if (event.type === "url") {
+    if (event.dayParam && event.known.includes(event.dayParam)) return event.dayParam;
+    return event.fallback;
+  }
+  if (event.jumpingToToday && event.todayParam) return event.todayParam;
+  const previous = event.allDays.find((day) => day.dayParam === event.previousDayParam);
+  const next =
+    event.weekDays.find((day) => day.weekday === previous?.weekday) ?? event.weekDays[0];
+  return next?.dayParam ?? event.previousDayParam;
+}
+
+/** Shallow Train URL. The plan for this day is already on the page. */
+export function trainDayHref(
+  pathname: string,
+  search: string,
+  dayParam: string,
+  level: string | null,
+) {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  params.set("day", dayParam);
+  if (level) params.set("level", level);
+  else params.delete("level");
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}

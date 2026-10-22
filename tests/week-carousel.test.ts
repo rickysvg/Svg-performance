@@ -11,10 +11,17 @@ import {
   carouselWeekStrips,
   packCarouselWeeks,
   weekCarouselLabel,
+  nextSelectedDay,
+  trainDayHref,
   weekChipHref,
   weekRangeLabel,
 } from "@/lib/week-carousel";
+import { Prisma } from "@prisma/client";
 import { chipMarkForDay } from "@/lib/chip-mark";
+import {
+  completedProgramDayIdsForChip,
+  completionSessionSelect,
+} from "@/lib/chip-completion";
 import { mondayOfZoned } from "@/lib/timezone";
 
 function read(rel: string) {
@@ -150,8 +157,16 @@ describe("week day carousel", () => {
     expect(train).toContain("dateLabel={planDateLabel}");
     expect(train).toContain("completedLocalDayKeys");
     expect(train).toContain("completedSessionIdsByLocalDay");
+    expect(train).toContain("<TrainWeekFollow");
+    expect(train).toContain("data-train-panel");
     expect(train).not.toContain("rearrange");
     expect(train).not.toContain("This week");
+    expect(read("src/components/training/TrainWeekFollow.tsx")).toContain("history.replaceState");
+    expect(read("src/components/training/TrainWeekFollow.tsx")).toContain("trainDayHref");
+    expect(strip).toContain('type: "chip"');
+    expect(strip).toContain('type: "today"');
+    expect(strip).toContain("jumpingToToday");
+    expect(strip).toContain("router.push(todayHref)");
 
     expect(calendar).toContain("carouselWeekStrips");
     expect(calendar).toContain("withBikeChipLogHrefs");
@@ -165,6 +180,8 @@ describe("week day carousel", () => {
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("week"');
     expect(read("src/components/training/CalendarWeekFollow.tsx")).toContain('params.set("day"');
     expect(read("src/lib/chip-completion.ts")).toContain("sessionCountsAsPlannedCompletion");
+    expect(read("src/lib/chip-completion.ts")).toContain("plannedSetCount");
+    expect(read("src/lib/chip-completion.ts")).toContain("completionSessionSelect");
     expect(read("src/lib/logged-work.ts")).not.toContain("chipMarkForDay");
     expect(calendar).not.toContain("data-week-nav");
 
@@ -207,6 +224,155 @@ describe("week day carousel", () => {
         dayLogged: true,
       }),
     ).toBe("complete");
+  });
+
+  it("moves the highlight on a chip tap and keeps Today from rewriting to yesterday", () => {
+    expect(nextSelectedDay({ type: "chip", dayParam: "2026-10-23" })).toBe("2026-10-23");
+    expect(nextSelectedDay({ type: "prop", dayParam: "2026-10-22" })).toBe("2026-10-22");
+    expect(
+      nextSelectedDay({
+        type: "url",
+        dayParam: "2026-10-22",
+        known: ["2026-10-21", "2026-10-22"],
+        fallback: "2026-10-21",
+      }),
+    ).toBe("2026-10-22");
+
+    const allDays = [
+      { weekday: "Wednesday", dayParam: "2026-10-07" },
+      { weekday: "Wednesday", dayParam: "2026-10-21" },
+      { weekday: "Thursday", dayParam: "2026-10-22" },
+    ];
+    const thisWeek = [
+      { weekday: "Wednesday", dayParam: "2026-10-21" },
+      { weekday: "Thursday", dayParam: "2026-10-22" },
+    ];
+    expect(
+      nextSelectedDay({
+        type: "snap",
+        weekDays: thisWeek,
+        previousDayParam: "2026-10-07",
+        allDays,
+        todayParam: "2026-10-22",
+        jumpingToToday: true,
+      }),
+    ).toBe("2026-10-22");
+    expect(
+      nextSelectedDay({
+        type: "today",
+        todayParam: "2026-10-22",
+      }),
+    ).toBe("2026-10-22");
+  });
+
+  it("points a Train swipe at the same weekday and that day's plan URL", () => {
+    const allDays = [
+      { weekday: "Thursday", dayParam: "2026-10-15" },
+      { weekday: "Thursday", dayParam: "2026-10-22" },
+    ];
+    const lastWeek = [{ weekday: "Thursday", dayParam: "2026-10-15" }];
+    const dayParam = nextSelectedDay({
+      type: "snap",
+      weekDays: lastWeek,
+      previousDayParam: "2026-10-22",
+      allDays,
+      todayParam: "2026-10-22",
+      jumpingToToday: false,
+    });
+    expect(dayParam).toBe("2026-10-15");
+    expect(trainDayHref("/training", "", dayParam, null)).toBe("/training?day=2026-10-15");
+    expect(trainDayHref("/training", "level=beginner", dayParam, "beginner")).toBe(
+      "/training?level=beginner&day=2026-10-15",
+    );
+  });
+
+  it("shows a half ring when one session on a two-session day is short", () => {
+    const names = new Map<string, string[]>([
+      ["lift", ["Back squat"]],
+      ["bag", ["Jab"]],
+    ]);
+    const rows = [
+      {
+        status: "complete",
+        programDayId: "lift",
+        plannedSetCount: 4,
+        day: "2026-10-22",
+        sets: [1, 2, 3, 4].map(() => ({
+          completed: true,
+          reps: 5,
+          exerciseName: "Back squat",
+        })),
+      },
+      {
+        status: "complete",
+        programDayId: "bag",
+        plannedSetCount: 4,
+        day: "2026-10-22",
+        sets: [{ completed: true, reps: 5, exerciseName: "Push-up" }],
+      },
+    ];
+    const ids = completedProgramDayIdsForChip(rows, names, "2026-10-22");
+    expect(ids).toEqual(["lift"]);
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["lift", "bag"],
+        completedSessionIds: ids,
+        dayLogged: true,
+      }),
+    ).toBe("partial");
+    const strip = read("src/components/training/WeekStrip.tsx");
+    expect(strip).toContain('mark === "partial"');
+    expect(strip).toContain("data-week-partial");
+    expect(strip).toContain("clip-path:inset(0_50%_0_0)");
+  });
+
+  it("selects plannedSetCount when the workout session has that column", () => {
+    const select = completionSessionSelect();
+    expect(select).toMatchObject({ status: true, programDayId: true, performedAt: true });
+    const fields = Prisma.WorkoutSessionScalarFieldEnum as Record<string, string>;
+    const source = read("src/lib/chip-completion.ts");
+    expect(source).toContain("plannedSetCount");
+    expect(source).toContain("sessionCountsAsPlannedCompletion");
+    if ("plannedSetCount" in fields) {
+      expect(select).toMatchObject({ plannedSetCount: true });
+      const names = new Map<string, string[]>([
+        ["lift", ["Back squat"]],
+        ["bag", ["Jab"]],
+      ]);
+      const ids = completedProgramDayIdsForChip(
+        [
+          {
+            status: "complete",
+            programDayId: "lift",
+            plannedSetCount: 4,
+            day: "2026-10-22",
+            sets: [1, 2, 3, 4].map(() => ({
+              completed: true,
+              reps: 5,
+              exerciseName: "Back squat",
+            })),
+          },
+          {
+            status: "complete",
+            programDayId: "bag",
+            plannedSetCount: 4,
+            day: "2026-10-22",
+            sets: [{ completed: true, reps: 5, exerciseName: "Jab" }],
+          },
+        ],
+        names,
+        "2026-10-22",
+      );
+      expect(
+        chipMarkForDay({
+          plannedSessionIds: ["lift", "bag"],
+          completedSessionIds: ids,
+          dayLogged: ids.length > 0,
+        }),
+      ).toBe("partial");
+    } else {
+      expect(select).not.toHaveProperty("plannedSetCount");
+    }
   });
 
   it("sends non-today chips to that date and keeps today's bike logger", () => {

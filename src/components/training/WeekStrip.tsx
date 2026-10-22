@@ -20,7 +20,7 @@ import {
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
-import { weekChipHref } from "@/lib/week-carousel";
+import { nextSelectedDay, weekChipHref } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number] & {
@@ -437,6 +437,7 @@ function WeekChipList({
   onPointerUp,
   onChipClick,
   onContextMenu,
+  onSelectDay,
 }: {
   days: Item[];
   basePath: string;
@@ -468,6 +469,7 @@ function WeekChipList({
     rearrange: boolean,
     weekStart?: string,
   ) => void;
+  onSelectDay?: (dayParam: string) => void;
 }) {
   return (
     <ol data-week-strip className="grid grid-cols-7 gap-1">
@@ -517,7 +519,7 @@ function WeekChipList({
               aria-current={day.isToday ? "date" : undefined}
               data-week-today={day.isToday ? "true" : undefined}
               data-week-selected={selected ? "true" : undefined}
-              aria-pressed={rearrange ? held : undefined}
+              aria-pressed={rearrange ? Boolean(held || selected) : selected}
               aria-label={label}
               draggable={false}
               onDragStart={(event) => event.preventDefault()}
@@ -531,7 +533,10 @@ function WeekChipList({
                   : undefined
               }
               onContextMenu={(event) => onContextMenu(event, day.weekday, rearrange, weekStart)}
-              onClick={(event) => onChipClick(event, day.weekday, rearrange, weekStart)}
+              onClick={(event) => {
+                onChipClick(event, day.weekday, rearrange, weekStart);
+                if (!event.defaultPrevented) onSelectDay?.(day.dayParam);
+              }}
               className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center text-foreground transition-colors ${
                 rearrange ? "touch-manipulation select-none" : ""
               } ${
@@ -738,6 +743,7 @@ function WeekDayCarousel({
   const [selectedDay, setSelectedDay] = useState(initialSelected);
   const selectedDayRef = useRef(initialSelected);
   const skipUrl = useRef(true);
+  const jumpingToToday = useRef(false);
   const pendingFocus = useRef<string | null>(null);
   const weeksRef = useRef(weeks);
   const onWeekChangeRef = useRef(onWeekChange);
@@ -745,6 +751,19 @@ function WeekDayCarousel({
   onWeekChangeRef.current = onWeekChange;
   indexRef.current = activeIndex;
   selectedDayRef.current = selectedDay;
+
+  function knownDayParams() {
+    return weeksRef.current.flatMap((week) => week.days.map((day) => day.dayParam));
+  }
+
+  function todayParam() {
+    return weeksRef.current.flatMap((week) => week.days).find((day) => day.isToday)?.dayParam ?? "";
+  }
+
+  function applySelected(dayParam: string) {
+    selectedDayRef.current = dayParam;
+    setSelectedDay(dayParam);
+  }
 
   function scrollToIndex(index: number, behavior: ScrollBehavior) {
     const el = scrollerRef.current;
@@ -777,22 +796,41 @@ function WeekDayCarousel({
   }, []);
 
   useEffect(() => {
+    if (jumpingToToday.current) return;
+    const urlDay =
+      typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("day");
+    const next = nextSelectedDay(
+      urlDay
+        ? { type: "url", dayParam: urlDay, known: knownDayParams(), fallback: initialSelected }
+        : { type: "prop", dayParam: initialSelected },
+    );
+    applySelected(next);
+  }, [initialSelected]);
+
+  useEffect(() => {
     if (!ready) return;
     const week = weeksRef.current[activeIndex];
     if (!week) return;
     if (skipUrl.current) {
       skipUrl.current = false;
+      jumpingToToday.current = false;
       return;
     }
     const timer = window.setTimeout(() => {
-      const previous = weeksRef.current
-        .flatMap((item) => item.days)
-        .find((day) => day.dayParam === selectedDayRef.current);
-      const next =
-        week.days.find((day) => day.weekday === previous?.weekday) ?? week.days[0];
-      const dayParam = next?.dayParam ?? selectedDayRef.current;
-      selectedDayRef.current = dayParam;
-      setSelectedDay(dayParam);
+      const jumping = jumpingToToday.current;
+      const dayParam = nextSelectedDay({
+        type: "snap",
+        weekDays: week.days,
+        previousDayParam: selectedDayRef.current,
+        allDays: weeksRef.current.flatMap((item) => item.days),
+        todayParam: todayParam(),
+        jumpingToToday: jumping,
+      });
+      jumpingToToday.current = false;
+      applySelected(dayParam);
+      if (jumping) return;
       onWeekChangeRef.current?.({
         weekStart: week.weekStart,
         offset: week.offset,
@@ -864,14 +902,21 @@ function WeekDayCarousel({
   const active = weeks[activeIndex] ?? weeks[0];
   const awayFromToday = (active?.offset ?? 0) !== 0;
   const legendDays = weeks.flatMap((week) => week.days);
-  const selectedIsToday = weeks.some((week) =>
-    week.days.some((day) => day.isSelected && day.isToday),
-  );
 
   function jumpToday() {
+    const today = todayParam();
+    // Set today before the week scroll. The snap callback runs ~120ms later
+    // and would otherwise copy the old weekday into this week (yesterday).
+    if (today) {
+      jumpingToToday.current = true;
+      applySelected(nextSelectedDay({ type: "today", todayParam: today }));
+    }
     const current = weeks.findIndex((week) => week.offset === 0);
-    goTo(current < 0 ? 0 : current);
-    if (!selectedIsToday && todayHref) router.push(todayHref);
+    const target = current < 0 ? 0 : current;
+    const staying = indexRef.current === target;
+    goTo(target);
+    if (staying) jumpingToToday.current = false;
+    if (todayHref) router.push(todayHref);
   }
 
   if (!active) return null;
@@ -962,6 +1007,9 @@ function WeekDayCarousel({
               onPointerUp={swap.onPointerUp}
               onChipClick={swap.onChipClick}
               onContextMenu={swap.onContextMenu}
+              onSelectDay={(dayParam) =>
+                applySelected(nextSelectedDay({ type: "chip", dayParam }))
+              }
             />
           </div>
         ))}

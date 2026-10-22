@@ -1,9 +1,74 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { loggedSetSome, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
+import {
+  loggedSetSome,
+  sessionCountsAsPlannedCompletion,
+  type TickedSet,
+} from "@/lib/logged-work";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { dayKey } from "@/lib/timezone";
 
 const DAY_PAD_MS = 36 * 60 * 60 * 1000;
+
+const COMPLETION_SET_SELECT = {
+  exerciseName: true,
+  completed: true,
+  reps: true,
+  loadValue: true,
+  durationSeconds: true,
+} as const;
+
+/**
+ * Same session rows as `completedLocalDayKeys`.
+ * `plannedSetCount` is the WorkoutSession column #140 adds. Select it when
+ * this Prisma client has the column so `sessionCountsAsPlannedCompletion`
+ * can require every prescribed set. Rebase onto #140 must regenerate the
+ * client; this select then includes the field and passes it through.
+ * Do not add a second done rule here.
+ */
+export function completionSessionSelect(): Prisma.WorkoutSessionSelect {
+  const select: Prisma.WorkoutSessionSelect = {
+    status: true,
+    programDayId: true,
+    performedAt: true,
+    sets: { select: { ...COMPLETION_SET_SELECT } },
+  };
+  const fields = Prisma.WorkoutSessionScalarFieldEnum as Record<string, string>;
+  if ("plannedSetCount" in fields) {
+    (select as { plannedSetCount?: boolean }).plannedSetCount = true;
+  }
+  return select;
+}
+
+type ChipCompletionRow = {
+  status: string;
+  programDayId: string | null;
+  plannedSetCount?: number | null;
+  sets: TickedSet[];
+  day: string;
+};
+
+/** Program days on one civil day that pass the shared completion helper. */
+export function completedProgramDayIdsForChip(
+  rows: readonly ChipCompletionRow[],
+  namesByDay: ReadonlyMap<string, readonly string[]>,
+  day: string,
+) {
+  const ids: string[] = [];
+  for (const row of rows) {
+    if (row.day !== day || !row.programDayId) continue;
+    if (
+      !sessionCountsAsPlannedCompletion(
+        row,
+        [...(namesByDay.get(row.programDayId) ?? [])],
+      )
+    ) {
+      continue;
+    }
+    ids.push(row.programDayId);
+  }
+  return ids;
+}
 
 /**
  * Program days completed on each civil day in [from, to).
@@ -28,20 +93,7 @@ export async function completedSessionIdsByLocalDay(
         lt: new Date(to.getTime() + DAY_PAD_MS),
       },
     },
-    select: {
-      status: true,
-      programDayId: true,
-      performedAt: true,
-      sets: {
-        select: {
-          exerciseName: true,
-          completed: true,
-          reps: true,
-          loadValue: true,
-          durationSeconds: true,
-        },
-      },
-    },
+    select: completionSessionSelect(),
   });
   const dayIds = rows
     .map((row) => row.programDayId)
@@ -56,19 +108,16 @@ export async function completedSessionIdsByLocalDay(
     list.push(exercise.name);
     namesByDay.set(exercise.programDayId, list);
   }
-  const byDay = new Map<string, Set<string>>();
-  for (const row of rows) {
-    if (!row.programDayId) continue;
+  const tagged = rows.flatMap((row) => {
+    if (!row.programDayId) return [];
     const key = sessionCompletionDay(row, timeZone);
-    if (key < fromKey || key >= endKey) continue;
-    if (
-      !sessionCountsAsPlannedCompletion(row, namesByDay.get(row.programDayId) ?? [])
-    ) {
-      continue;
-    }
-    const ids = byDay.get(key) ?? new Set<string>();
-    ids.add(row.programDayId);
-    byDay.set(key, ids);
+    if (key < fromKey || key >= endKey) return [];
+    return [{ ...row, day: key }];
+  });
+  const byDay = new Map<string, string[]>();
+  for (const key of new Set(tagged.map((row) => row.day))) {
+    const ids = completedProgramDayIdsForChip(tagged, namesByDay, key);
+    if (ids.length > 0) byDay.set(key, ids);
   }
-  return Object.fromEntries([...byDay].map(([key, ids]) => [key, [...ids]]));
+  return Object.fromEntries(byDay);
 }
