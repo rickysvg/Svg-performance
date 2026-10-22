@@ -29,8 +29,8 @@ export function Toast({
   placement = "above-chrome",
   action,
   attrs,
-  closeTestId,
-  actionTestId,
+  closeTestId = "chrome-toast-close",
+  actionTestId = "chrome-toast-action",
 }: {
   message: string;
   onDismiss: () => void;

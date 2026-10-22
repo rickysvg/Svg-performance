@@ -383,7 +383,7 @@ export function BikeWorkoutChooser({
               >
                 History
               </Link>
-              <button type="button" onClick={close} className="touch-target text-2xl leading-none" aria-label="Close">
+              <button type="button" onClick={close} data-testid="chrome-bike-workout-close" className="touch-target text-2xl leading-none" aria-label="Close">
                 ×
               </button>
             </div>

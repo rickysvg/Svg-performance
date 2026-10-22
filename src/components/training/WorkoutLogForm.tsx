@@ -441,6 +441,7 @@ export function WorkoutLogForm({
 }) {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [restByName, setRestByName] = useState<Record<string, number>>({});
+  const [programmedName, setProgrammedName] = useState<Record<string, string>>({});
   const [swapOverlay, setSwapOverlay] = useState<
     Record<
       string,
@@ -1667,7 +1668,9 @@ export function WorkoutLogForm({
                         dayNumber={swap?.dayNumber ?? 0}
                         programDayId={session.programDayId ?? undefined}
                         originalName={
-                          swap?.slots.find((slot) => slot.currentName === name)?.programmedName ?? name
+                          programmedName[name] ??
+                          swap?.slots.find((slot) => slot.currentName === name)?.programmedName ??
+                          name
                         }
                         currentName={name}
                         source={swapSource(name, group, planned, restSeconds, mode, swap?.slots)}
@@ -1677,6 +1680,11 @@ export function WorkoutLogForm({
                         getCurrentSets={() => setsRef.current.map(toSetInput)}
                         snapshotSets={() => setsRef.current.map((set) => ({ ...set }))}
                         onSwapped={(swappedName, prescription) => {
+                          const source =
+                            swap?.slots.find((slot) => slot.currentName === name)?.programmedName ??
+                            programmedName[name] ??
+                            name;
+                          setProgrammedName((current) => ({ ...current, [swappedName]: source }));
                           setSwapOverlay((current) => ({ ...current, [swappedName]: prescription }));
                           setRestByName((current) => ({
                             ...current,
@@ -1755,6 +1763,7 @@ export function WorkoutLogForm({
                   <span>Rest between each set</span>
                   <span className="flex items-center gap-2">
                     <input
+                      data-testid={`training-log-rest-${name}`}
                       type="number"
                       min={0}
                       max={600}
@@ -1832,11 +1841,13 @@ export function WorkoutLogForm({
                       ) : null}
                       <div className={`grid ${columns} items-center gap-2`}>
                       <input
+                        data-testid={`training-log-set-exercise-${set.id}`}
                         type="hidden"
                         name={`sets.${index}.exerciseName`}
                         value={set.exerciseName}
                       />
                       <input
+                        data-testid={`training-log-set-number-${set.id}`}
                         type="hidden"
                         name={`sets.${index}.setNumber`}
                         value={set.setNumber}
@@ -1844,6 +1855,7 @@ export function WorkoutLogForm({
                       <input type="hidden" name={`sets.${index}.loadUnit`} value={set.loadUnit} />
                       <input type="hidden" name={`sets.${index}.logMode`} value={mode} />
                       <input
+                        data-testid={`training-log-prescription-${set.id}`}
                         type="hidden"
                         name={`sets.${index}.prescriptionKey`}
                         value={set.prescriptionKey}
@@ -1870,6 +1882,7 @@ export function WorkoutLogForm({
                       )}
                       {bike ? (
                         <input
+                          data-testid={`training-log-duration-${set.id}`}
                           type="hidden"
                           name={`sets.${index}.durationSeconds`}
                           value={
@@ -1932,6 +1945,7 @@ export function WorkoutLogForm({
                         <label className="block">
                           <span className="sr-only">{loadHeader}</span>
                           <input
+                            data-testid={`training-log-load-${set.id}`}
                             name={`sets.${index}.loadValue`}
                             type="number"
                             min={0}

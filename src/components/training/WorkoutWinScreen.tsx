@@ -103,6 +103,7 @@ export function WorkoutWinScreen({
 
   return (
     <div
+      data-testid="training-log-done-sheet"
       className="workout-win-backdrop fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto px-5 py-8"
       role="dialog"
       aria-modal="true"

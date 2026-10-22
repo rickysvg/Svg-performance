@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
 import {
   CATEGORY_FILTERS,
   categoryLabel,
@@ -41,6 +42,7 @@ export function ExerciseLibrarySheet({
   footer: (choice: LibraryExercise) => ReactNode;
 }) {
   const confirmRef = useRef<HTMLDivElement>(null);
+  const panelRef = useSheetBehavior(onClose);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORY_FILTERS)[number]["id"]>("all");
   const [equipment, setEquipment] = useState<"gym" | "none">(weightAccess);
@@ -66,13 +68,20 @@ export function ExerciseLibrarySheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground"
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      tabIndex={-1}
+      data-testid={variant === "swap" ? "training-swap-sheet" : "training-add-sheet"}
+      className="fixed inset-0 z-[80] flex w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground outline-none"
+      onMouseDown={(event) => onSheetBackdropMouseDown(event, onClose)}
       {...(variant === "swap"
         ? { "data-swap-sheet": sheetName ?? "" }
         : { "data-add-sheet": "true" })}
     >
       <header className="flex items-center gap-2 border-b border-line px-4 py-3">
-        <button type="button" onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close">
+        <button type="button" data-testid="training-library-close" onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close">
           ×
         </button>
         <div className="min-w-0 flex-1">
@@ -103,6 +112,7 @@ export function ExerciseLibrarySheet({
             <button
               key={id}
               type="button"
+              data-testid={`training-library-equipment-${id}`}
               onClick={() => setEquipment(id)}
               className={`min-h-9 flex-1 rounded-full text-sm font-semibold ${
                 equipment === id ? "bg-accent text-black" : "border border-line"
@@ -117,6 +127,7 @@ export function ExerciseLibrarySheet({
             <button
               key={filter.id}
               type="button"
+              data-testid={`training-library-category-${filter.id}`}
               onClick={() => setCategory(filter.id)}
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
                 category === filter.id ? "bg-accent text-black" : "border border-line"

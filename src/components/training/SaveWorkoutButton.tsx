@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
 import { saveMyWorkoutAction, type SavedWorkoutActionState } from "@/app/actions/my-workouts";
 import type { SavedExercise } from "@/lib/my-workout-plan";
 
@@ -20,6 +21,7 @@ export function SaveWorkoutButton({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
   const [state, action, pending] = useActionState(saveMyWorkoutAction, {} as SavedWorkoutActionState);
+  const panelRef = useSheetBehavior(() => setOpen(false), open);
 
   return (
     <>
@@ -39,13 +41,19 @@ export function SaveWorkoutButton({
       </button>
       {open && typeof document !== "undefined"
         ? createPortal(
-        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center">
+        <div
+          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center"
+          data-testid="training-save-workout-sheet"
+          onMouseDown={(event) => onSheetBackdropMouseDown(event, () => setOpen(false))}
+        >
           <div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="save-my-workout-title"
+            tabIndex={-1}
             data-save-my-workout-sheet
-            className="w-full max-w-sm rounded-3xl bg-card px-5 py-5 text-foreground"
+            className="w-full max-w-sm rounded-3xl bg-card px-5 py-5 text-foreground outline-none"
           >
             <p id="save-my-workout-title" className="font-display text-lg uppercase tracking-wide">
               Save as my workout
@@ -78,6 +86,7 @@ export function SaveWorkoutButton({
                   <input
                     data-testid="training-history-name"
                     name="name"
+                    data-testid="training-history-name"
                     data-save-my-workout-name
                     value={name}
                     onChange={(event) => setName(event.target.value)}

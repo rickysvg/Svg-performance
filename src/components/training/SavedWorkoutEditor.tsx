@@ -111,6 +111,7 @@ export function SavedWorkoutEditor({
               <label>
                 Sets
                 <input
+                  data-testid={`training-my-workouts-sets-${index}`}
                   type="number"
                   min={1}
                   max={12}
@@ -128,6 +129,7 @@ export function SavedWorkoutEditor({
               <label>
                 Reps
                 <input
+                  data-testid={`training-my-workouts-reps-${index}`}
                   value={row.reps}
                   onChange={(event) =>
                     setRows((current) =>
@@ -142,6 +144,7 @@ export function SavedWorkoutEditor({
               <label>
                 Rest (sec)
                 <input
+                  data-testid={`training-my-workouts-rest-${index}`}
                   type="number"
                   min={0}
                   max={600}
@@ -159,6 +162,7 @@ export function SavedWorkoutEditor({
               <label>
                 RIR
                 <input
+                  data-testid={`training-my-workouts-rir-${index}`}
                   value={row.rir}
                   onChange={(event) =>
                     setRows((current) =>
@@ -173,6 +177,7 @@ export function SavedWorkoutEditor({
               <label className="col-span-2">
                 Load notes
                 <input
+                  data-testid={`training-my-workouts-load-${index}`}
                   value={row.loadText}
                   onChange={(event) =>
                     setRows((current) =>

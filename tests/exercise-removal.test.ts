@@ -11,10 +11,12 @@ import {
   visibleExerciseCount,
   withoutExerciseName,
 } from "@/lib/exercise-removal";
-import { removeSessionExercise, undoExerciseRemoval } from "@/lib/exercise-removal-store";
-import { trainingBlockKey } from "@/lib/exercise-swap";
+import { listRemovalsForDay, removeSessionExercise, undoExerciseRemoval } from "@/lib/exercise-removal-store";
+import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
+import { applyExerciseSwap } from "@/lib/exercise-swap-store";
+import { isLogMode } from "@/lib/exercise-log-mode";
 import { scaleProgramDay } from "@/lib/training-scale";
-import { startWorkoutFromDay } from "@/lib/workouts";
+import { startWorkoutFromDay, updateWorkoutSessionForUser } from "@/lib/workouts";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
 const blockKey = trainingBlockKey(new Date(), APP_TIMEZONE);
@@ -212,5 +214,120 @@ describe("persisted session removal", () => {
       scale: { experienceLevel: "intermediate", weightAccess: "gym" },
     });
     expect(second.sets.some((set) => set.exerciseName === "One-arm row")).toBe(true);
+  });
+
+  it("keeps Goblet squat removed when it was swapped in and then removed", async () => {
+    const user = await makeUser("swap-then-remove@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 1)!;
+    const scaled = scaleProgramDay(day, {
+      band: "intermediate",
+      programSlug: DEMO_PROGRAM_SLUG,
+      weightAccess: "gym",
+    });
+    const source = scaled.exercises.find((exercise) => exercise.name === "One-arm row");
+    expect(source).toBeTruthy();
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      scale: { experienceLevel: "intermediate", weightAccess: "gym" },
+    });
+    const swapped = await applyExerciseSwap({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      originalName: "One-arm row",
+      currentName: "One-arm row",
+      replacementName: "Goblet squat",
+      scope: "session",
+      workoutSessionId: started.id,
+      blockKey,
+      source: {
+        sets: source!.sets,
+        reps: source!.reps,
+        loadText: source!.loadText,
+        restSeconds: source!.restSeconds,
+        logMode: source!.logMode,
+        notes: source!.notes,
+      },
+    });
+    const introduced = swapped.sets?.find(
+      (set) => set.exerciseName.startsWith("Goblet squat") && set.exerciseName !== "Goblet squat",
+    );
+    const swappedName = introduced?.exerciseName ?? "Goblet squat";
+    expect(swapped.sets?.some((set) => set.exerciseName === swappedName)).toBe(true);
+    const beforeRemove = (swapped.sets ?? []).map((set) => ({
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      reps: set.reps,
+      loadValue: set.loadValue,
+      loadUnit: "lb" as const,
+      logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+      durationSeconds: set.durationSeconds,
+      completed: set.completed,
+      notes: set.notes,
+      prescriptionKey: set.prescriptionKey,
+      rir: set.rir,
+    }));
+
+    // The open logger still has the pre-swap slot list, so it sends the new
+    // card name as the programmed slot. That used to save a removal the reload ignored.
+    const removed = await removeSessionExercise({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      programDayId: day.id,
+      originalName: swappedName,
+      exerciseName: swappedName,
+      workoutSessionId: started.id,
+      blockKey,
+      currentSets: beforeRemove,
+    });
+    expect(removed.sets?.some((set) => set.exerciseName === swappedName)).toBe(false);
+
+    const stored = await prisma.exerciseRemoval.findFirstOrThrow({ where: { userId: user.id } });
+    expect(stored.originalName).toBe("One-arm row");
+    expect(stored.exerciseName).toBe(swappedName);
+
+    const late = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: started.id,
+      title: started.title,
+      performedAt: started.performedAt,
+      notes: started.notes,
+      status: "draft",
+      sets: beforeRemove,
+    });
+    expect(late.sets.some((set) => set.exerciseName === swappedName)).toBe(false);
+    expect(late.sets.some((set) => set.exerciseName === "One-arm row")).toBe(false);
+
+    const reloaded = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: started.id },
+      include: { sets: true },
+    });
+    const swaps = await (await import("@/lib/exercise-swap-store")).listSwapsForDay({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+    });
+    const shown = applySwapsToExercises(scaled.exercises, swaps, {
+      sessionId: started.id,
+      blockKey,
+      includePending: false,
+    });
+    const removals = await listRemovalsForDay({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+    });
+    const omitted = omitRemovedSlots(scaled.exercises, shown, removals, {
+      sessionId: started.id,
+      includePending: false,
+    });
+    expect(omitted.shown.some((row) => row.name === swappedName || row.name === "One-arm row")).toBe(false);
+    expect(reloaded.sets.some((set) => set.exerciseName === swappedName)).toBe(false);
+    expect(reloaded.status).toBe("draft");
   });
 });
