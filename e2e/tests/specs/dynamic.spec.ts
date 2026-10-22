@@ -37,6 +37,8 @@ type RouteCase = {
   admin?: boolean;
   /** Hard skip. The route is listed so the inventory key is covered, and it is not opened. */
   skipReason?: string;
+  /** Caps a route that must not consume the 180s suite timeout. */
+  timeoutMs?: number;
   resolve: (page: Page) => Promise<string | null>;
 };
 
@@ -117,14 +119,22 @@ const CASES: RouteCase[] = [
   },
   {
     key: "/progress/photos/[photoId]",
+    // count() does not wait. getAttribute() waits until the test timeout, so a
+    // missing photo (or a build without the test id) used to burn all 180s.
+    timeoutMs: 60_000,
     resolve: async (page) => {
-      await page.goto("/progress/photos", { waitUntil: "domcontentloaded" });
-      await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
-      const testid = await page.locator('[data-testid^="progress-photos-photo-"]').first().getAttribute("data-testid").catch(() => null);
-      const fromTestid = testid?.slice("progress-photos-photo-".length);
-      if (fromTestid) return `/progress/photos/${fromTestid}`;
-      const src = await page.locator('img[src^="/api/progress-photos/"]').first().getAttribute("src").catch(() => null);
-      const photoId = src?.split("/").filter(Boolean).pop();
+      await page.goto("/progress/photos", { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+      const tagged = page.locator('[data-testid^="progress-photos-photo-"]');
+      if (await tagged.count()) {
+        const testid = await tagged.first().getAttribute("data-testid", { timeout: 3_000 });
+        const id = testid?.slice("progress-photos-photo-".length);
+        if (id) return `/progress/photos/${id}`;
+      }
+      const image = page.locator('img[src^="/api/progress-photos/"]');
+      if (!(await image.count())) return null;
+      const src = await image.first().getAttribute("src", { timeout: 3_000 });
+      const photoId = src?.split("?")[0]?.split("/").filter(Boolean).pop();
       return photoId ? `/progress/photos/${photoId}` : null;
     },
   },
@@ -169,6 +179,7 @@ if (CASES.length !== 21) {
 test.describe("dynamic", () => {
   for (const item of CASES) {
     test(`${item.key} @member`, async ({ page }, info) => {
+      if (item.timeoutMs) test.setTimeout(item.timeoutMs);
       test.skip(Boolean(item.admin) && !process.env.RUN_ADMIN, "BLOCKED-NO-ACCESS");
       test.skip(Boolean(item.skipReason), item.skipReason);
       const url = seededPath(item.key) ?? (await item.resolve(page));

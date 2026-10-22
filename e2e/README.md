@@ -31,6 +31,8 @@ Create the secrets in Settings → Secrets and variables → Actions. Do not poi
 
 GitHub Actions runs this suite on a push to `main` and on `workflow_dispatch`, always against production. Pull requests do not run it. The upload publishes `report.json`, the HTML report, screenshots, and the per-item JSONL. It does not upload `e2e/.auth`, `storageState`, or Playwright traces.
 
+The setup project sets `trace`, `screenshot`, and `video` to `off`, so a failed login does not inherit `retain-on-failure`. Login fields are not filled with `locator.fill()` — that API records the value in the report step title. If login fails, the fields are cleared before Playwright writes its error snapshot.
+
 ## STRICT / always-render
 
 `data/always-render.json` lists inventory ids that are in the DOM on first paint:
@@ -47,6 +49,8 @@ Production serves the previous deploy until Vercel finishes the push. A `main` r
 `tests/specs/dynamic.spec.ts` covers the 21 inventory routes that contain a `[param]`. Each test opens a concrete pathname from `E2E_SEEDED_PATHS` or from a link (or photo id) on the signed-in account, then runs the same checks as a static route. If the account has no such id, the test skips. Admin dynamic routes also skip unless `RUN_ADMIN` is set.
 
 `/training/[dayId]/start` is listed and always skipped. Opening it calls `startProgramDayLog` and creates a session.
+
+`/progress/photos/[photoId]` looks up a photo with `locator.count()` (no wait) and skips when the account has none. That test's timeout is 60s.
 
 Example:
 

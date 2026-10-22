@@ -12,7 +12,9 @@ export default defineConfig({
   outputDir: "results/artifacts",
   use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure", hasTouch: true, isMobile: true },
   projects: [
-    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    // Do not inherit retain-on-failure. A failed login must not write a trace,
+    // screenshot, or video that contains the typed email or password.
+    { name: "setup", testMatch: /auth\.setup\.ts/, use: { trace: "off", screenshot: "off", video: "off" } },
     { name: "m375", testMatch: /specs\/.*\.spec\.ts/, dependencies: ["setup"], use: { viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 } },
     { name: "m430", testMatch: /specs\/.*\.spec\.ts/, dependencies: ["setup"], use: { viewport: { width: 430, height: 932 }, deviceScaleFactor: 3 } },
   ],
