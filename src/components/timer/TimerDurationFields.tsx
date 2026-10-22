@@ -98,7 +98,7 @@ function PickerSheet({
                 aria-pressed={selected}
                 onClick={() => onSelect(option)}
                 className={`flex min-h-14 w-full items-center justify-center border-b border-line font-display text-2xl uppercase tracking-wide last:border-b-0 ${
-                  selected ? "bg-black text-accent" : "text-foreground"
+                  selected ? "bg-black text-highlighter" : "text-foreground"
                 }`}
               >
                 {optionLabel(field, option)}

@@ -66,8 +66,18 @@ export function sessionCountsAsPlannedCompletion(
   }
   const ticked = tickedExerciseKeys(session.sets);
   if (plannedExerciseNames.length === 0) return true;
-  const planned = new Set(plannedExerciseNames.map((name) => gymExerciseKey(name)));
-  return [...planned].every((name) => ticked.includes(name));
+  const planned = plannedExerciseNames.map((name) => gymExerciseKey(name));
+  if (planned.every((name) => ticked.includes(name))) return true;
+  // Scaling can drop a catalog exercise the started session never contained.
+  // A full prescription still finishes the day. A different exercise on that
+  // day does not: the session has to share a planned name.
+  const filled = typeof plannedCount === "number" && plannedCount > 0 && tickedCount >= plannedCount;
+  if (!filled) return false;
+  const present = new Set(
+    session.sets.map((set) => gymExerciseKey(set.exerciseName ?? "")),
+  );
+  const missing = planned.filter((name) => !ticked.includes(name));
+  return missing.every((name) => !present.has(name)) && planned.some((name) => ticked.includes(name));
 }
 
 export function formatSetProgress(ticked: number, planned: number) {

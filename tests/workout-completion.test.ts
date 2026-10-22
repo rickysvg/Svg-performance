@@ -141,7 +141,7 @@ describe("a workout is complete only after a logged save", () => {
       new Date("2026-10-14T18:30:00.000Z"),
       APP_TIMEZONE,
     );
-    expect(marked).toEqual([day.id]);
+    expect(marked).toEqual([]);
   });
 
   it("discards an empty draft and leaves a typed draft alone", async () => {
