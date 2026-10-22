@@ -203,7 +203,11 @@ export function PlanSessionCard({
               Resume
             </Link>
           ) : session.dayId ? (
-            <form action={startSessionAction} data-prime-coach-audio>
+            <form
+              action={startSessionAction}
+              data-open-bike-logger={session.logHref ? "train" : undefined}
+              data-prime-coach-audio
+            >
               <input type="hidden" name="programDayId" value={session.dayId} />
               <StartSubmit
                 label="Start"

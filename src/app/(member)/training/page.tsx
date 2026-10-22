@@ -27,6 +27,7 @@ import {
   planWeekIndex,
   resolvePlanSessions,
   weekStrip,
+  withBikeChipLogHrefs,
 } from "@/lib/week-plan";
 import { weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
@@ -119,20 +120,24 @@ export default async function TrainingPage({
   const easedSelected = await easePlanForUser(user.id, selected, tz, shaped);
   const dayPlan = easedSelected.plan;
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
-  const planned = resolvePlanSessions(
-    dayPlan,
-    scaleDemoCatalog(catalog, {
-      experienceLevel: band,
-      competitionStatus: levelOverride ? null : profile?.competitionStatus,
-      weightAccess,
-      weekIndex,
-      campPhase: campOn && camp ? camp.phase : null,
-    }),
-  );
-  const strip = await easeWeekStripDays(
-    user.id,
+  const scaledCatalog = scaleDemoCatalog(catalog, {
+    experienceLevel: band,
+    competitionStatus: levelOverride ? null : profile?.competitionStatus,
+    weightAccess,
+    weekIndex,
+    campPhase: campOn && camp ? camp.phase : null,
+  });
+  const planned = resolvePlanSessions(dayPlan, scaledCatalog);
+  const strip = withBikeChipLogHrefs(
+    await easeWeekStripDays(
+      user.id,
+      prefs,
+      weekStrip(prefs, now, tz, selected, swaps),
+      tz,
+      swaps,
+    ),
     prefs,
-    weekStrip(prefs, now, tz, selected, swaps),
+    scaledCatalog,
     tz,
     swaps,
   );
@@ -210,6 +215,7 @@ export default async function TrainingPage({
       subtitle: session.subtitle,
       dayId: session.dayId,
       href: session.href,
+      logHref: session.logHref,
       minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
       completed: session.dayId ? doneToday.has(session.dayId) : false,
     })),

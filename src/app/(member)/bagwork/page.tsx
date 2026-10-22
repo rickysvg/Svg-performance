@@ -21,7 +21,7 @@ export default async function BagworkPage() {
         </p>
       </div>
 
-      <RoundTimerButton label="Start rounds" />
+      <RoundTimerButton label="Start rounds" mode="bag" />
 
       <section className="space-y-2" data-bagwork-picker>
         {BAG_WORKOUTS.map((workout) => (

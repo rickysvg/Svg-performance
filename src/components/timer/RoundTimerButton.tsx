@@ -2,7 +2,10 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BikeClockScreen } from "@/components/timer/BikeClockScreen";
 import { RoundTimer, type RoundTimerLaunch } from "@/components/timer/RoundTimer";
+import type { BikeSession } from "@/lib/bike-sessions";
+import type { TimerMode } from "@/lib/round-timer";
 
 function StopwatchIcon() {
   return (
@@ -18,10 +21,18 @@ function StopwatchIcon() {
 
 function RoundTimerSheet({
   launch,
+  mode,
+  bikeSession,
+  bikeToken,
+  bikeDayId,
   titleId,
   onClose,
 }: {
   launch: RoundTimerLaunch | null;
+  mode: TimerMode | null;
+  bikeSession: BikeSession | null;
+  bikeToken: string | null;
+  bikeDayId: string | null;
   titleId: string;
   onClose: () => void;
 }) {
@@ -55,7 +66,17 @@ function RoundTimerSheet({
         data-round-timer-sheet
         className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-background px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2"
       >
-        <RoundTimer launch={launch} onClose={onClose} titleId={titleId} />
+        {bikeSession || bikeToken ? (
+          <BikeClockScreen
+            token={bikeToken}
+            session={bikeSession}
+            dayId={bikeDayId}
+            onClose={onClose}
+            titleId={titleId}
+          />
+        ) : (
+          <RoundTimer launch={launch} onClose={onClose} titleId={titleId} mode={mode} />
+        )}
       </div>
     </div>
   );
@@ -68,12 +89,20 @@ export function RoundTimerButton({
   launch = null,
   label,
   className,
+  mode = null,
+  bikeSession = null,
+  bikeToken = null,
+  bikeDayId = null,
 }: {
   launch?: RoundTimerLaunch | null;
   label?: string;
   className?: string;
+  mode?: TimerMode | null;
+  bikeSession?: BikeSession | null;
+  bikeToken?: string | null;
+  bikeDayId?: string | null;
 }) {
-  const [sheet, setSheet] = useState<{ launch: RoundTimerLaunch | null } | null>(null);
+  const [sheet, setSheet] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const named = Boolean(label);
@@ -84,10 +113,11 @@ export function RoundTimerButton({
         ref={buttonRef}
         type="button"
         data-round-timer-button
+        data-header-timer={bikeSession || bikeToken ? "bike" : "rounds"}
         aria-label={named ? undefined : "Start rounds"}
         aria-haspopup="dialog"
-        aria-expanded={sheet != null}
-        onClick={() => setSheet({ launch: launch ?? null })}
+        aria-expanded={sheet}
+        onClick={() => setSheet(true)}
         className={
           className ??
           (named
@@ -100,10 +130,14 @@ export function RoundTimerButton({
       </button>
       {sheet ? (
         <RoundTimerSheet
-          launch={sheet.launch}
+          launch={launch ?? null}
+          mode={mode}
+          bikeSession={bikeSession}
+          bikeToken={bikeToken}
+          bikeDayId={bikeDayId}
           titleId={titleId}
           onClose={() => {
-            setSheet(null);
+            setSheet(false);
             buttonRef.current?.focus();
           }}
         />

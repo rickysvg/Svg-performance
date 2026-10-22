@@ -187,6 +187,11 @@ function isSingleClockBlock(reps: string) {
   return /^\s*\d+\s*:\s*\d{2}\s*$/.test(reps);
 }
 
+/** Hide the machine tag that keeps a chosen bike workout with a saved session. */
+function visibleBikeReps(reps: string) {
+  return reps.replace(/\s*·\s*bw\s+[a-z0-9.-]+\s*$/i, "").replace(/^\s*bw\s+[a-z0-9.-]+\s*$/i, "").trim();
+}
+
 export function plannedSetLine(input: {
   sets: number;
   reps: string;
@@ -197,7 +202,7 @@ export function plannedSetLine(input: {
 }) {
   const mode = resolveLogMode(input);
   if (isBikeIntervalName(input.name ?? "")) {
-    const reps = input.reps || bikeIntervalReps();
+    const reps = visibleBikeReps(input.reps || bikeIntervalReps());
     const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between rounds` : "";
     const camp = input.loadText?.match(/Camp [a-z-]+: same bike, [a-z]+ dose\./i)?.[0] ?? "";
     return `${countLabel(input.sets, "round")} · ${reps}${between}${camp ? `. ${camp}` : ""}`;
@@ -249,7 +254,7 @@ export function loggerCardLine(input: {
   const rir = rirFromLoadText(input.loadText);
   const effort = rir ? ` @ ${rir}` : "";
   if (isBikeIntervalName(name)) {
-    const reps = input.reps || bikeIntervalReps();
+    const reps = visibleBikeReps(input.reps || bikeIntervalReps());
     return `${countLabel(input.sets, "round")} · ${reps}${effort}`;
   }
   if (mode === "timed_round") {

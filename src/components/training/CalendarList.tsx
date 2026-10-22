@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { weekSessionTally, type CalendarActivity, type CalendarDay } from "@/lib/calendar";
+import { isBikeLoggerHref } from "@/lib/timer-session";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
@@ -45,7 +46,11 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
       data-applied-workout={activity.customPlan ? activity.title : undefined}
       className="flex items-center gap-3 rounded-2xl border border-line bg-card py-3.5 pr-3 pl-4 shadow-sm"
     >
-      <Link href={activity.href} className="flex min-w-0 flex-1 items-center gap-3">
+      <Link
+        href={activity.href}
+        data-open-bike-logger={isBikeLoggerHref(activity.href) ? "calendar" : undefined}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
         <StatusCircle kind={activity.kind} status={activity.status} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">

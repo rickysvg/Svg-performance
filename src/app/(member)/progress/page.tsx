@@ -125,6 +125,13 @@ export default async function ProgressPage() {
           Heart rate
         </Link>
         <Link
+          href="/training/history/bike"
+          data-bike-history-link
+          className="inline-flex h-8 items-center rounded-full border border-line px-3 text-sm"
+        >
+          Bike history
+        </Link>
+        <Link
           href="/profile"
           className="inline-flex h-8 items-center rounded-full border border-line px-3 text-sm"
           aria-label="Progress settings (profile)"

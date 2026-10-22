@@ -13,11 +13,13 @@ import { weekInBlock } from "@/lib/mesocycle";
 import { catalogMeta, catalogSlot, parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
 import { bagFocusLines, formatBagRoundNotes } from "@/lib/bag-themes";
 import {
+  alignBikeRestPhrase,
   bikeIntervalReps,
   bikeSessionForLogger,
   bikeSessionForName,
   bikeWorkSecondsPerSet,
   isBikeIntervalName,
+  parseBikeIntervalReps,
   planBikeDose,
   scaleBikeSession,
 } from "@/lib/bike-sessions";
@@ -1040,8 +1042,17 @@ export function scaleProgramDay<
     ...day,
     title: day.title ? memberCopy(day.title) : day.title,
     exercises,
-    focus: memberCopy(withFloor),
+    focus: memberCopy(alignScaledBikeFocus(withFloor, exercises)),
   };
+}
+
+/** Day subtitle rest follows the scaled bike dose, not the catalog phrase. */
+function alignScaledBikeFocus(focus: string, exercises: Array<{ name: string; reps: string }>) {
+  const bike = exercises.find((exercise) => isBikeIntervalName(exercise.name));
+  if (!bike) return focus;
+  const parsed = parseBikeIntervalReps(bike.reps);
+  if (!parsed || parsed.restSeconds <= 0) return focus;
+  return alignBikeRestPhrase(focus, parsed.workSeconds, parsed.restSeconds);
 }
 
 export function scaleDemoCatalog<
