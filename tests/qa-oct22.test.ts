@@ -146,6 +146,69 @@ describe("Oct 22 partial saves", () => {
     expect(other).toMatchObject({ verb: "Start today", dayId: "bag", draftId: undefined });
   });
 
+  it("keeps a partial save when a newer empty draft is on that day and uses the scaled dose", () => {
+    const open = openLogsByProgramDay(
+      [
+        {
+          id: "empty-newer",
+          status: "draft",
+          performedAt: new Date("2026-10-22T18:00:00.000Z"),
+          programDayId: "lift",
+          sets: [
+            {
+              exerciseName: "Goblet squat",
+              completed: false,
+              reps: null,
+              loadValue: null,
+              durationSeconds: null,
+            },
+          ],
+          programDay: { exercises: [{ name: "Goblet squat", sets: 4 }, { name: "Row", sets: 3 }] },
+        },
+        {
+          id: "partial-older",
+          status: "partial",
+          performedAt: new Date("2026-10-22T14:00:00.000Z"),
+          programDayId: "lift",
+          sets: [
+            {
+              exerciseName: "Goblet squat",
+              completed: true,
+              reps: 8,
+              loadValue: 40,
+              durationSeconds: null,
+            },
+          ],
+          programDay: { exercises: [{ name: "Goblet squat", sets: 4 }, { name: "Row", sets: 3 }] },
+        },
+      ],
+      "2026-10-22",
+      zone,
+      new Map([["lift", { dose: 3, names: ["Goblet squat"] }]]),
+    );
+    expect(open.get("lift")).toMatchObject({
+      id: "partial-older",
+      partial: true,
+      ticked: 1,
+      planned: 3,
+      progress: "Partial · 1/3 sets",
+    });
+    const today = todayStartAction(
+      [
+        {
+          kind: "strength",
+          label: "Lift",
+          title: "Lift 3",
+          subtitle: "Lightest lift of the week",
+          dayId: "lift",
+          minutes: 56,
+        },
+      ],
+      (dayId) => open.get(dayId),
+    );
+    expect(today).toMatchObject({ verb: "Continue", draftId: "partial-older", planned: 3 });
+  });
+
   it("drops a leftover draft on a day that already has a planned completion", () => {
     const sets = Array.from({ length: 4 }, () => ({
       exerciseName: "Goblet squat",

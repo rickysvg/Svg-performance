@@ -6,6 +6,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { listResumableSessionsForUser, sessionMatchesPlannedDay } from "@/lib/workouts";
 import { openLogsByProgramDay } from "@/lib/today-start";
+import { calendarPlanDoses } from "@/lib/calendar";
 import { dayKey } from "@/lib/timezone";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
@@ -87,8 +88,11 @@ export default async function TrainingDayPage({
     notFound();
   }
 
-  const resumable = await listResumableSessionsForUser(user.id);
-  const open = openLogsByProgramDay(resumable, dayKey(now, tz), tz).get(day.id);
+  const [resumable, planByDay] = await Promise.all([
+    listResumableSessionsForUser(user.id),
+    calendarPlanDoses(user.id, now),
+  ]);
+  const open = openLogsByProgramDay(resumable, dayKey(now, tz), tz, planByDay).get(day.id);
   const openSession = open ? resumable.find((session) => session.id === open.id) : undefined;
   const matched =
     open && openSession && sessionMatchesPlannedDay(openSession, day) ? open : undefined;

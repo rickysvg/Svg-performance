@@ -152,7 +152,8 @@ export default async function TrainingPage({
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const dayParam = formatDayParam(selected, tz);
   const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
-  const openToday = openLogsByProgramDay(resumable, formatDayParam(now, tz), tz);
+  const planByDay = await calendarPlanDoses(user.id, now);
+  const openToday = openLogsByProgramDay(resumable, formatDayParam(now, tz), tz, planByDay);
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
@@ -193,7 +194,6 @@ export default async function TrainingPage({
   const liveDraft =
     drafts.find((row) => !row.programDayId || !doneToday.has(row.programDayId)) ?? null;
   const loggedRange = carouselLoggedRange(now, tz);
-  const planByDay = await calendarPlanDoses(user.id, now);
   const [completedDays, completedByDay, partialDays] = await Promise.all([
     completedLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, now),
     completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
@@ -229,7 +229,7 @@ export default async function TrainingPage({
       const focusPlanned = resolvePlanSessions(focusPlan, focusCatalog);
       const focusDayPlans = savedDayPlans.filter((plan) => plan.dayKey === focusParam);
       const overlay = applyPlansToProgramCards(focusPlanned, focusDayPlans);
-      const openOnDay = openLogsByProgramDay(resumable, focusParam, tz);
+      const openOnDay = openLogsByProgramDay(resumable, focusParam, tz, planByDay);
       const plyo =
         focusPlanned.some((session) => session.kind === "strength") && focusPlan.active
           ? profile?.experienceLevel === "beginner"

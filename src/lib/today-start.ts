@@ -30,26 +30,40 @@ export type OpenProgramLog = {
   progress?: string;
 };
 
+/** Same shape `calendarPlanDoses` returns. A later plan-doses module can pass it through. */
+export type PlanDose = {
+  dose: number;
+  names: readonly string[];
+};
+
 /**
  * Newest session on this civil day that is still open: a draft, a partial,
  * or a short save that did not finish the prescription. A finished day is omitted.
- * Sessions must be newest first.
+ * Sessions must be newest first. An empty draft never claims the day, so a
+ * real partial save still shows when a second tab started a newer blank draft.
+ * `planByDay` is the scaled dose from `calendarPlanDoses`.
  */
 export function openLogsByProgramDay(
   sessions: ResumableLog[],
   onDay: string,
   timeZone: string,
+  planByDay?: ReadonlyMap<string, PlanDose>,
 ) {
   const map = new Map<string, OpenProgramLog>();
   const finished = new Set<string>();
   for (const session of sessions) {
     if (!session.programDayId) continue;
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
-    if (session.status === "draft" && !sessionHasLoggedWork(session.sets)) continue;
     if (session.status === "abandoned") continue;
+    const emptyDraft = session.status === "draft" && !sessionHasLoggedWork(session.sets);
+    if (emptyDraft) continue;
     const exercises = session.programDay?.exercises ?? [];
-    const names = exercises.map((exercise) => exercise.name ?? "");
-    const dose = prescribedSetTotal(exercises);
+    const plan = planByDay?.get(session.programDayId);
+    const names =
+      plan && plan.names.length > 0
+        ? [...plan.names]
+        : exercises.map((exercise) => exercise.name ?? "");
+    const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetTotal(exercises);
     if (
       session.status === "complete" &&
       sessionCountsAsPlannedCompletion(session, names, dose)
@@ -61,7 +75,7 @@ export function openLogsByProgramDay(
     }
     if (finished.has(session.programDayId) || map.has(session.programDayId)) continue;
     const totals = progressTotals(exerciseSetProgress(exercises, session.sets));
-    const planned = totals.planned > 0 ? totals.planned : dose;
+    const planned = plan && plan.dose > 0 ? plan.dose : totals.planned > 0 ? totals.planned : dose;
     const partial = session.status !== "draft";
     map.set(session.programDayId, {
       id: session.id,
