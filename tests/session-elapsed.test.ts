@@ -133,6 +133,27 @@ describe("session header elapsed clock", () => {
     );
     expect(again.elapsedSeconds).toBe(47 * 60 + 12);
     expect(again.finishedAt).toEqual(NOW);
+
+    const grown = freezeElapsedOnSave(
+      { ...draft, status: "complete", finishedAt: first.finishedAt, elapsedSeconds: 660 },
+      new Date(NOW.getTime() + 60_000),
+      900,
+    );
+    expect(grown.elapsedSeconds).toBe(900);
+    expect(grown.finishedAt).toEqual(NOW);
+  });
+
+  it("keeps the live segment after Resume when the posted clock is short", () => {
+    const resumed = {
+      status: "draft",
+      createdAt: new Date(NOW.getTime() - 2 * 60 * 60 * 1000),
+      elapsedSeconds: 600,
+      timerStartedAt: new Date(NOW.getTime() - 25_000),
+    };
+    expect(elapsedSecondsToFreeze(resumed, NOW, 606)).toBe(625);
+    const saved = freezeElapsedOnSave(resumed, NOW, 606);
+    expect(saved.elapsedSeconds).toBe(625);
+    expect(saved.timerStartedAt).toBeNull();
   });
 
   it("ignores an absurd reported value and an unreported multi-day gap", () => {

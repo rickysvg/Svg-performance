@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 /**
  * Header-timer columns are additive. Production can be serving this code
@@ -137,6 +137,27 @@ export async function readWorkoutTimerFields(id: string, client: RawClient): Pro
     LIMIT 1
   `;
   return asTimer(rows[0]);
+}
+
+/** Timer columns for many sessions. Prisma omits them from model selects. */
+export async function readTimerFieldsByIds(
+  ids: string[],
+  client: RawClient,
+): Promise<Map<string, WorkoutTimerFields>> {
+  const timers = new Map<string, WorkoutTimerFields>();
+  const unique = [...new Set(ids.filter((id) => id.length > 0))];
+  if (unique.length === 0) return timers;
+  if (!(await workoutTimerColumnsAvailable(client))) return timers;
+  const rows = await client.$queryRaw<Array<Record<string, unknown>>>`
+    SELECT "id", "finishedAt", "elapsedSeconds", "timerStartedAt"
+    FROM "WorkoutSession"
+    WHERE "id" IN (${Prisma.join(unique)})
+  `;
+  for (const row of rows) {
+    const id = field(row, "id");
+    if (typeof id === "string" && id) timers.set(id, asTimer(row));
+  }
+  return timers;
 }
 
 export async function readDraftTimerFields(

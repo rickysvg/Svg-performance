@@ -74,5 +74,42 @@ describe("History, Calendar, and the finish screen share one progress line", () 
     };
     expect(historySessionText(doneRounds)).toBe("3/3 rounds · Done");
     expect(calendarSessionText(doneRounds)).toBe(finishSessionText(doneRounds));
+
+    const squat = {
+      exerciseName: "Squat",
+      completed: true,
+      reps: 5,
+      loadValue: 135,
+      durationSeconds: null,
+    };
+    const bag = {
+      exerciseName: "Heavy bag rounds",
+      completed: true,
+      reps: null,
+      loadValue: null,
+      durationSeconds: 180,
+      prescriptionKey: "round:bag:60",
+      logMode: "timed_round" as const,
+    };
+    const mixedExercises = [
+      { name: "Squat", sets: 5 },
+      { name: "Heavy bag rounds", sets: 3 },
+    ];
+    const mixed = {
+      status: "complete",
+      plannedSetCount: 8,
+      programDayId: "mixed-day",
+      sets: [...Array.from({ length: 5 }, () => squat), ...Array.from({ length: 3 }, () => bag)],
+      programDay: { exercises: mixedExercises },
+    };
+    const mixedDose = {
+      dose: 8,
+      names: ["Squat", "Heavy bag rounds"],
+      exercises: mixedExercises,
+    };
+    const mixedText = "5/5 sets · 3/3 rounds · Done";
+    expect(historySessionText(mixed, mixedDose)).toBe(mixedText);
+    expect(calendarSessionText(mixed, mixedDose)).toBe(mixedText);
+    expect(finishSessionText(mixed, mixedDose)).toBe(mixedText);
   });
 });

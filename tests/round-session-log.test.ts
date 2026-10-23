@@ -27,7 +27,7 @@ import {
 } from "@/lib/round-session";
 import { formatTimerClock } from "@/lib/round-timer";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
-import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
+import { readTimerFieldsByIds, readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import { getShareCardView } from "@/lib/share-card-data";
 import { APP_TIMEZONE, addZonedDays, dayKey } from "@/lib/timezone";
 import {
@@ -379,7 +379,31 @@ describe("mid-timer round saves", () => {
     expect(label).not.toContain("8/8");
     expect(label?.endsWith("complete")).toBe(false);
     expect(roundHistoryLine({ elapsedSeconds: 20, sets: bikeSets })).toBe(
-      "1 round · 0:20 round · 0:10 rest · 0:20 total",
+      "1 round · 0:20 round · 0:10 rest · 0:30 total",
+    );
+    const tabataTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Assault bike intervals",
+        status: "complete",
+        performedAt: new Date(0),
+        elapsedSeconds: 20,
+        sets: bikeSets.map((set) => ({
+          exerciseName: set.exerciseName,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb" as const,
+          logMode: set.logMode,
+          durationSeconds: set.durationSeconds,
+          completed: set.completed,
+          prescriptionKey: set.prescriptionKey,
+        })),
+      },
+    });
+    expect(tabataTiles.find((tile) => tile.key === "time")?.value).toBe("0:30");
+    expect(roundHistoryLine({ elapsedSeconds: 45, sets: bikeSets })).toBe(
+      "1 round · 0:20 round · 0:10 rest · 0:45 total",
     );
 
     const mixed = roundFinishProgress({
@@ -861,6 +885,68 @@ describe("round session logs", () => {
     expect(second.id).toBe(first.id);
     expect(second.status).toBe("complete");
     expect(second.sets).toHaveLength(5);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it("stores the new total when a finished bag log grows from 3 rounds to 4", async () => {
+    const user = await makeUser("bag-grow-time@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE },
+    });
+    const now = new Date();
+    const first = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 3,
+      configuredRounds: 3,
+      workSeconds: 180,
+      restSeconds: 60,
+      elapsedSeconds: 660,
+      now,
+    });
+    expect(first.status).toBe("complete");
+    expect((await readWorkoutTimerFields(first.id, prisma)).elapsedSeconds).toBe(660);
+
+    const grown = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 4,
+      configuredRounds: 4,
+      workSeconds: 180,
+      restSeconds: 60,
+      elapsedSeconds: 900,
+      now,
+    });
+    expect(grown.id).toBe(first.id);
+    expect(grown.sets).toHaveLength(4);
+    expect(grown.status).toBe("complete");
+    const stored = await readWorkoutTimerFields(first.id, prisma);
+    expect(stored.elapsedSeconds).toBe(900);
+    expect((await readTimerFieldsByIds([first.id], prisma)).get(first.id)?.elapsedSeconds).toBe(900);
+    const history = roundHistoryLine({ ...grown, elapsedSeconds: stored.elapsedSeconds });
+    expect(history).toBe("4 rounds · 3:00 round · 1:00 rest · 15:00 total");
+    const tiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: grown.title,
+        status: "complete",
+        performedAt: grown.performedAt,
+        elapsedSeconds: stored.elapsedSeconds,
+        sets: grown.sets.map((set) => ({
+          exerciseName: set.exerciseName,
+          reps: set.reps,
+          loadValue: set.loadValue,
+          loadUnit: "lb" as const,
+          logMode: set.logMode,
+          durationSeconds: set.durationSeconds,
+          completed: set.completed,
+          prescriptionKey: set.prescriptionKey,
+        })),
+      },
+    });
+    expect(tiles.find((tile) => tile.key === "time")?.value).toBe("15:00");
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
   });
 

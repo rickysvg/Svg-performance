@@ -171,7 +171,11 @@ function reportedElapsed(value: number | null | undefined, cap: number): number 
   return Math.min(cap, parsed);
 }
 
-/** Seconds to persist when Save freezes the clock. Never the raw multi-day gap. */
+/**
+ * Seconds to persist when Save freezes the clock. Never the raw multi-day gap.
+ * A resumed draft already has timerStartedAt. A short reported number must not
+ * drop the seconds since that anchor.
+ */
 export function elapsedSecondsToFreeze(
   session: SessionClock,
   now: Date | number,
@@ -179,9 +183,12 @@ export function elapsedSecondsToFreeze(
   cap = SESSION_DURATION_CAP_SECONDS,
 ): number {
   const reported = reportedElapsed(reportedSeconds, cap);
-  if (reported != null) return reported;
-  const view = resolveSessionElapsed({ ...session, status: "draft" }, now, cap);
-  return Math.min(view.seconds, cap);
+  const live = resolveSessionElapsed({ ...session, status: "draft" }, now, cap);
+  const resumed =
+    session.timerStartedAt != null && !live.stale && !live.capped ? live.seconds : null;
+  if (reported == null) return Math.min(live.seconds, cap);
+  if (resumed != null && resumed > reported) return Math.min(resumed, cap);
+  return reported;
 }
 
 export function freezeElapsedOnSave(
@@ -195,9 +202,16 @@ export function freezeElapsedOnSave(
     session.elapsedSeconds != null &&
     Number.isFinite(session.elapsedSeconds)
   ) {
+    const stored = Math.min(
+      SESSION_DURATION_CAP_SECONDS,
+      Math.max(0, Math.floor(session.elapsedSeconds)),
+    );
+    const reported = reportedElapsed(reportedSeconds, SESSION_DURATION_CAP_SECONDS);
+    // A longer round save replaces the frozen total. A shorter one must not.
+    const elapsedSeconds = reported != null && reported > stored ? reported : stored;
     return {
       finishedAt: new Date(session.finishedAt),
-      elapsedSeconds: Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(0, Math.floor(session.elapsedSeconds))),
+      elapsedSeconds,
       timerStartedAt: null,
     };
   }

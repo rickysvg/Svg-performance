@@ -12,6 +12,7 @@ import {
   type ExerciseSetProgress,
 } from "@/lib/logged-work";
 import { bikeChoiceFromKey } from "@/lib/bike-chooser";
+import { bikeCardioDurationSeconds } from "@/lib/workout-complete";
 import { completedWorkRounds, formatTimerClock, type TimerPhase } from "@/lib/round-timer";
 import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
@@ -419,8 +420,25 @@ export function roundHistoryLine(session: {
     restSecondsFromRoundKey(sets[0]?.prescriptionKey) ??
     bikeChoiceFromKey(sets[0]?.prescriptionKey)?.spec.restSeconds ??
     0;
-  const total =
-    session.elapsedSeconds && session.elapsedSeconds > 0
+  const bikeOnly = sets.every((set) => isBikeIntervalName(set.exerciseName ?? ""));
+  const total = bikeOnly
+    ? bikeCardioDurationSeconds({
+        title: sets[0]?.exerciseName ?? "Bike",
+        performedAt: new Date(0),
+        status: "complete",
+        elapsedSeconds: session.elapsedSeconds,
+        sets: sets.map((set) => ({
+          exerciseName: set.exerciseName ?? "",
+          reps: set.reps ?? null,
+          loadValue: set.loadValue ?? null,
+          loadUnit: "lb",
+          logMode: set.logMode,
+          durationSeconds: set.durationSeconds,
+          completed: set.completed !== false,
+          prescriptionKey: set.prescriptionKey,
+        })),
+      })
+    : session.elapsedSeconds && session.elapsedSeconds > 0
       ? session.elapsedSeconds
       : roundSessionDuration(sets.length, work, rest);
   const parts = [

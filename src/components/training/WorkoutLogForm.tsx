@@ -336,6 +336,9 @@ function serverRest(session: { restExerciseName: string; restEndsAt: Date | null
 let sessionClockMs = 0;
 
 function readSessionClock() {
+  // 0 is "not started", not the epoch. The first client read is the resume
+  // instant onward, so Save does not wait for a set check to start the clock.
+  if (sessionClockMs === 0 && typeof window !== "undefined") sessionClockMs = Date.now();
   return sessionClockMs;
 }
 
