@@ -1,4 +1,5 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { resolveLogMode } from "@/lib/exercise-log-mode";
 import {
   exerciseSetProgress,
   loggedNameMatchesPlanned,
@@ -105,6 +106,58 @@ function progressText(ticked: number, planned: number, done: boolean, unit: "set
   return `${progressCount(ticked, planned, unit)} · ${done ? "Done" : "Partial"}`;
 }
 
+function countsAsRoundSet(set: ProgressSet) {
+  const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName ?? "" });
+  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName ?? "")) return true;
+  const key = set.prescriptionKey ?? "";
+  return key.startsWith("round:") || key === "bagwork";
+}
+
+function normName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+/** Lift sets and bag rounds on one log. "5/5 sets · 3/3 rounds · Done". */
+function mixedProgressText(
+  session: ProgressSession,
+  exercises: { name?: string | null; sets?: number | null }[],
+  done: boolean,
+) {
+  const roundNames = new Set(
+    session.sets
+      .filter((set) => countsAsRoundSet(set))
+      .map((set) => normName(set.exerciseName ?? ""))
+      .filter((name) => name.length > 0),
+  );
+  const liftLogged = session.sets.some((set) => setIsTicked(set) && !countsAsRoundSet(set));
+  const roundsLogged = session.sets.some((set) => setIsTicked(set) && countsAsRoundSet(set));
+  if (!liftLogged || !roundsLogged) return null;
+  const rows = exerciseSetProgress(exercises, session.sets);
+  const roundRow = (name: string) => {
+    const key = normName(name);
+    if (roundNames.has(key)) return true;
+    if (isBikeIntervalName(name)) return true;
+    return resolveLogMode({ name }) === "timed_round";
+  };
+  let setsTicked = 0;
+  let setsPlanned = 0;
+  let roundsTicked = 0;
+  let roundsPlanned = 0;
+  for (const row of rows) {
+    if (roundRow(row.name)) {
+      roundsTicked += row.ticked;
+      roundsPlanned += row.planned;
+    } else {
+      setsTicked += row.ticked;
+      setsPlanned += row.planned;
+    }
+  }
+  if (setsTicked <= 0 || roundsTicked <= 0) return null;
+  const setsTarget = Math.max(setsPlanned, setsTicked);
+  const roundsTarget = Math.max(roundsPlanned, roundsTicked);
+  return `${setsTicked}/${setsTarget} sets · ${roundsTicked}/${roundsTarget} rounds · ${done ? "Done" : "Partial"}`;
+}
+
 export function sessionProgress(session: ProgressSession, dose?: ProgressDose | null): SessionProgress {
   const ticked = tickedSetCount(session.sets);
   const programExercises = [...(dose?.exercises ?? session.programDay?.exercises ?? [])];
@@ -153,11 +206,12 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
     ticked >= planned &&
     (names.length === 0 || namesAreCovered(session, names) || session.sets.every((set) => setIsTicked(set)));
   const unit = roundOrBikeSession(session) ? "rounds" : "sets";
+  const mixed = mixedProgressText(session, programExercises, done);
   return {
     ticked,
     planned,
     done,
-    text: progressText(ticked, planned, done, unit),
+    text: mixed ?? progressText(ticked, planned, done, unit),
     rows,
   };
 }

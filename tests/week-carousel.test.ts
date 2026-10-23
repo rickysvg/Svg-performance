@@ -25,7 +25,7 @@ import {
   scaledPlanByProgramDay,
 } from "@/lib/chip-completion";
 import { prisma } from "@/lib/prisma";
-import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned } from "@/lib/timezone";
+import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned, zonedParts } from "@/lib/timezone";
 import {
   completedLocalDayKeys,
   startWorkoutFromDay,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/workouts";
 import {
   calendarFocusStatusSuffix,
+  formatCalendarHeading,
   calendarPlanDoses,
   calendarScaledCatalog,
   getCalendarSchedule,
@@ -41,7 +42,7 @@ import {
 } from "@/lib/calendar";
 import { exerciseSetProgress, prescribedSetTotal, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { findDemoTrainingCatalog } from "@/lib/programs";
-import { planWeekIndex } from "@/lib/week-plan";
+import { planWeekIndex, weekStrip } from "@/lib/week-plan";
 import { makeUser, resetDatabase } from "./helpers";
 
 function read(rel: string) {
@@ -86,6 +87,58 @@ describe("week day carousel", () => {
       "Nov 2 – 8",
     ]);
     expect(weekRangeLabel(mondayOfZoned(now, zone), zone)).toBe("Oct 19 – 25");
+  });
+
+  it("pairs weekday chips with Oct 19–25 in America/Denver and UTC", () => {
+    const friday = new Date("2026-10-23T18:00:00.000Z");
+    const labels = ["Mon 19", "Tue 20", "Wed 21", "Thu 22", "Fri 23", "Sat 24", "Sun 25"];
+    const days = [
+      "2026-10-19",
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-24",
+      "2026-10-25",
+    ];
+    const zones = [
+      { zone: "America/Denver", mondayMidnight: new Date("2026-10-19T06:00:00.000Z") },
+      { zone: "UTC", mondayMidnight: new Date("2026-10-19T00:00:00.000Z") },
+    ];
+    for (const { zone, mondayMidnight } of zones) {
+      const strip = weekStrip(prefs, friday, zone);
+      expect(weekRangeLabel(mondayOfZoned(friday, zone), zone)).toBe("Oct 19 – 25");
+      expect(strip.map((day) => `${day.short} ${day.dateLabel}`)).toEqual(labels);
+      expect(strip.map((day) => day.dayParam)).toEqual(days);
+      expect(strip.map((day) => day.weekday)).toEqual([
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ]);
+      for (const day of strip) {
+        const parts = zonedParts(day.date, zone);
+        expect(parts.weekday).toBe(day.weekday);
+        expect(String(parts.day)).toBe(day.dateLabel);
+      }
+      expect(formatCalendarHeading(strip[0]!.date, friday, zone)).toBe("Monday, October 19th");
+      expect(formatCalendarHeading(strip[2]!.date, friday, zone)).toBe("Wednesday, October 21st");
+      expect(strip.find((day) => day.short === "Mon")?.dateLabel).toBe("19");
+      expect(strip.find((day) => day.short === "Wed")?.dateLabel).toBe("21");
+
+      const atMonday = weekStrip(prefs, mondayMidnight, zone);
+      expect(weekRangeLabel(mondayOfZoned(mondayMidnight, zone), zone)).toBe("Oct 19 – 25");
+      expect(atMonday.map((day) => `${day.short} ${day.dateLabel}`)).toEqual(labels);
+      expect(formatCalendarHeading(atMonday[0]!.date, mondayMidnight, zone)).toBe(
+        "Today · Monday, October 19th",
+      );
+      expect(formatCalendarHeading(atMonday[2]!.date, mondayMidnight, zone)).toBe(
+        "Wednesday, October 21st",
+      );
+    }
   });
 
   it("uses the member timezone when the UTC date is already the next day", () => {

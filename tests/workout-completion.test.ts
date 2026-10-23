@@ -6,7 +6,7 @@ import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { resolveSessionElapsed } from "@/lib/session-elapsed";
+import { resolveSessionElapsed, SESSION_DURATION_CAP_SECONDS } from "@/lib/session-elapsed";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
   completedProgramDayIdsOnDay,
@@ -16,6 +16,7 @@ import {
   reopenEmptyCompletion,
   deleteWorkoutSessionForUser,
   continuePartialWorkoutForUser,
+  recordWorkoutActivityForUser,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
   startWorkoutFromDay,
@@ -1116,6 +1117,165 @@ describe("a workout is complete only after a logged save", () => {
     expect(ticking.ticking).toBe(true);
     expect(ticking.seconds).toBe(70 * 60 + 25 + 30);
     expect(ticking.label).toBe("1:10:55");
+  });
+
+  it("keeps a capped clock on resume and credits activity gaps from that clock", async () => {
+    const user = await makeUser("resume-cap@example.com");
+    const now = new Date();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Heavy bag rounds",
+        performedAt: now,
+        status: "complete",
+        sets: {
+          create: [
+            {
+              exerciseName: "Heavy bag rounds",
+              setNumber: 1,
+              durationSeconds: 180,
+              completed: true,
+              logMode: "timed_round",
+              prescriptionKey: "round:bag:60",
+              loadUnit: "lb",
+            },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: {
+        elapsedSeconds: SESSION_DURATION_CAP_SECONDS,
+        finishedAt: now,
+        timerStartedAt: null,
+      },
+    });
+    await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: session.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect((await readWorkoutTimerFields(session.id, prisma)).elapsedSeconds).toBe(
+      SESSION_DURATION_CAP_SECONDS,
+    );
+
+    const anchor = new Date(Date.now() - 13 * 60 * 60 * 1000);
+    await prisma.$executeRaw`
+      UPDATE "WorkoutSession"
+      SET "timerStartedAt" = ${anchor}, "elapsedSeconds" = ${SESSION_DURATION_CAP_SECONDS}
+      WHERE "id" = ${session.id}
+    `;
+    const row = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: session.id },
+      include: { sets: true },
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: row.title,
+      performedAt: row.performedAt,
+      notes: "",
+      status: "complete",
+      elapsedSeconds: 0,
+      timeZone: APP_TIMEZONE,
+      sets: row.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.reps,
+        loadValue: set.loadValue,
+        loadUnit: "lb" as const,
+        logMode: "timed_round" as const,
+        durationSeconds: set.durationSeconds,
+        completed: set.completed,
+        prescriptionKey: set.prescriptionKey,
+      })),
+    });
+    expect((await readWorkoutTimerFields(session.id, prisma)).elapsedSeconds).toBe(
+      SESSION_DURATION_CAP_SECONDS,
+    );
+
+    const fresh = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Lift",
+        performedAt: now,
+        status: "draft",
+      },
+    });
+    const workedAt = new Date();
+    await prisma.workoutSession.update({
+      where: { id: fresh.id },
+      data: { elapsedSeconds: 600, timerStartedAt: new Date(workedAt.getTime() - 25_000) },
+    });
+    const worked = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: fresh.id,
+      now: workedAt,
+    });
+    expect(worked.elapsedSeconds).toBe(625);
+
+    const restAt = new Date();
+    await prisma.workoutSession.update({
+      where: { id: fresh.id },
+      data: { elapsedSeconds: 600, timerStartedAt: new Date(restAt.getTime() - 3 * 60 * 1000) },
+    });
+    const rest = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: fresh.id,
+      now: restAt,
+    });
+    expect(rest.elapsedSeconds).toBe(600 + 180);
+
+    const awayAt = new Date();
+    await prisma.workoutSession.update({
+      where: { id: fresh.id },
+      data: { elapsedSeconds: 600, timerStartedAt: new Date(awayAt.getTime() - 2 * 60 * 60 * 1000) },
+    });
+    const away = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: fresh.id,
+      now: awayAt,
+    });
+    expect(away.elapsedSeconds).toBe(600 + 10 * 60);
+    expect((await readWorkoutTimerFields(fresh.id, prisma)).elapsedSeconds).toBe(600 + 10 * 60);
+  });
+
+  it("keeps a partial or complete log's time when it is only viewed", async () => {
+    const user = await makeUser("view-activity@example.com");
+    const now = new Date("2026-10-22T18:00:00.000Z");
+    const anchor = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const lookedAt = new Date(now.getTime() + 60_000);
+    for (const [status, stored] of [
+      ["partial", 180],
+      ["complete", 600],
+    ] as const) {
+      const session = await prisma.workoutSession.create({
+        data: {
+          userId: user.id,
+          title: status,
+          performedAt: now,
+          status,
+        },
+      });
+      await prisma.workoutSession.update({
+        where: { id: session.id },
+        data: { elapsedSeconds: stored, timerStartedAt: anchor },
+      });
+      await expect(
+        recordWorkoutActivityForUser({
+          userId: user.id,
+          workoutId: session.id,
+          now: lookedAt,
+        }),
+      ).rejects.toBeInstanceOf(AppError);
+      const timer = await readWorkoutTimerFields(session.id, prisma);
+      expect(timer.elapsedSeconds).toBe(stored);
+      expect(timer.timerStartedAt?.getTime()).toBe(anchor.getTime());
+      const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+      expect(row.status).toBe(status);
+    }
   });
 
   it("stores a capped duration when a past draft is closed, not the gap until the job runs", async () => {

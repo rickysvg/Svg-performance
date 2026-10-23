@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import { readTimerFieldsByIds } from "@/lib/workout-timer-columns";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
@@ -23,6 +25,10 @@ export default async function HistoryPage() {
   const profile = await getProfileForUser(user.id);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sessions = await listWorkoutSessionsForUser(user.id);
+  const timers = await readTimerFieldsByIds(
+    sessions.map((session) => session.id),
+    prisma,
+  );
   const weeks = new Map<string, Date>();
   for (const session of sessions) {
     const performed = new Date(session.performedAt);
@@ -100,7 +106,9 @@ export default async function HistoryPage() {
             const liveName = session.savedWorkout?.name?.trim();
             const title = liveName || memberFacingTitle(session.title);
             const bagLine = bagworkHistoryLine(session);
-            const roundLine = bagLine ? null : roundHistoryLine(session);
+            const roundLine = bagLine
+              ? null
+              : roundHistoryLine({ ...session, ...timers.get(session.id) });
             const bikeLine = bikeHistoryLine(session);
             const detailLine = historyDetailBesideCount(bagLine ?? roundLine);
             const pastSeed = session.backfilled ? backfillFormSeed(session, timeZone) : null;
