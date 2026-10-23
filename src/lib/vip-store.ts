@@ -5,7 +5,7 @@ import { getTrialState } from "@/lib/trial";
 import { APP_TIMEZONE, mondayOfZoned } from "@/lib/timezone";
 import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
 import { loggedSetSome } from "@/lib/logged-work";
-import { normalizePlanId } from "@/lib/plans";
+import { billingPlanFromStored, catalogPlanFromStored } from "@/lib/pro-annual-record";
 import {
   buildVipCheckoutDraft,
   holdIsOpen,
@@ -126,11 +126,13 @@ export async function proUnusedCentsForUser(userId: string, now = new Date()) {
   });
   if (!sub?.currentPeriodEnd) return 0;
   if (sub.status !== "active") return 0;
-  if (normalizePlanId(sub.plan) !== "performance") return 0;
+  if (catalogPlanFromStored(sub) !== "performance") return 0;
   if (sub.currentPeriodEnd.getTime() <= now.getTime()) return 0;
   const remaining = sub.currentPeriodEnd.getTime() - now.getTime();
+  const billedPlan = billingPlanFromStored(sub);
   const annual =
-    sub.plan.includes("year") ||
+    billedPlan.includes("year") ||
+    billedPlan.includes("annual") ||
     (Boolean(process.env.STRIPE_PRICE_PERFORMANCE_YEAR) &&
       sub.stripePriceId === process.env.STRIPE_PRICE_PERFORMANCE_YEAR) ||
     remaining > 40 * DAY_MS;
@@ -400,7 +402,7 @@ async function upsellSignals(userId: string, now: Date): Promise<VipUpsellSignal
       sevenDayTrial && trial.trialStartedAt ? trialDayNumber(trial.trialStartedAt, now) : null,
     proRenewal: Boolean(
       pro &&
-        normalizePlanId(pro.plan) === "performance" &&
+        catalogPlanFromStored(pro) === "performance" &&
         proRenewalWindow(pro.currentPeriodEnd, now),
     ),
     aiMessages24h: ai._sum.units ?? 0,

@@ -638,7 +638,7 @@ model Subscription {
   stripeCustomerId     String   @default("")
   stripeSubscriptionId String   @default("")
   stripePriceId        String   @default("")
-  /// Unused. Kept so existing rows stay in place. App code does not read or write this flag.
+  /// Retained so existing rows are not dropped. A true value on a Pro row is read as Pro annual ($72.99/yr). App writes do not clear it.
   founding             Boolean  @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")

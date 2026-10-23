@@ -143,6 +143,9 @@ describe("owner-approved three-plan pricing", () => {
       "src/app/page.tsx",
       "src/app/(member)/plan/page.tsx",
       "src/lib/member-pro-reminders.ts",
+      "src/lib/mail.ts",
+      "src/lib/reminders.ts",
+      "src/app/(member)/admin/plans/page.tsx",
     ];
     for (const file of publicSurfaces) {
       const surface = read(file);

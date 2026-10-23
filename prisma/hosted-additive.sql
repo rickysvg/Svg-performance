@@ -558,7 +558,8 @@ BEGIN
 END $$;
 
 
--- Subscription.founding stays in place. Additive, idempotent. The app does not read or write it.
+-- Subscription.founding stays in place so existing rows are not dropped.
+-- A true value on a Pro row is read as Pro annual. App writes do not clear the column.
 DO $$
 BEGIN
   IF to_regclass('public."Subscription"') IS NULL THEN

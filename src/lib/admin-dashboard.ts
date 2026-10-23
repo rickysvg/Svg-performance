@@ -1,6 +1,7 @@
 import { libraryReviewQueue, memberSwappable } from "@/lib/combat-library";
 import { prisma } from "@/lib/prisma";
-import { PLAN_CATALOG, normalizePlanId, type CatalogPlanId } from "@/lib/plans";
+import { PLAN_CATALOG, type CatalogPlanId } from "@/lib/plans";
+import { billingPlanFromStored, catalogPlanFromStored } from "@/lib/pro-annual-record";
 import { COACHING_CAP } from "@/lib/pricing";
 import { isTrialActive } from "@/lib/trial";
 import {
@@ -39,7 +40,7 @@ export function memberPlanSnapshot(input: {
   const subLive =
     input.status === "active" && (!input.periodEnd || input.periodEnd.getTime() >= now.getTime());
   if (subLive && input.plan) {
-    const planId = normalizePlanId(input.plan);
+    const planId = catalogPlanFromStored({ plan: input.plan });
     if (planId !== "member_access" && planId !== "academy") {
       return {
         planId,
@@ -78,6 +79,7 @@ type SubRow = {
   plan: string;
   status: string;
   currentPeriodEnd: Date | null;
+  founding?: boolean;
 };
 
 type ProfileRow = {
@@ -98,12 +100,12 @@ export function revenueSnapshot(input: {
   const now = input.now ?? new Date();
   const active = input.subscriptions.filter((row) => liveSub(row, now));
   const proUsers = new Set(
-    active.filter((row) => normalizePlanId(row.plan) === "performance").map((row) => row.userId),
+    active.filter((row) => catalogPlanFromStored(row) === "performance").map((row) => row.userId),
   );
   const paidUsers = new Set(
     active
       .filter((row) => {
-        const planId = normalizePlanId(row.plan);
+        const planId = catalogPlanFromStored(row);
         return planId !== "member_access" && planId !== "academy";
       })
       .map((row) => row.userId),
@@ -193,7 +195,7 @@ function presentMember(user: MemberRecord, now: Date, withTitles: boolean): Admi
   const sub = user.subscriptions[0] ?? null;
   const plan = memberPlanSnapshot({
     now,
-    plan: sub?.plan ?? null,
+    plan: sub ? billingPlanFromStored(sub) : null,
     status: sub?.status ?? null,
     periodEnd: sub?.currentPeriodEnd ?? null,
     verified: Boolean(profile?.gymMembershipVerified),
@@ -248,7 +250,7 @@ function presentMember(user: MemberRecord, now: Date, withTitles: boolean): Admi
     verified: Boolean(profile?.gymMembershipVerified),
     override: profile?.gymMembershipOverride ?? "none",
     overrideNote: profile?.gymMembershipOverrideNote ?? "",
-    currentPlan: sub ? normalizePlanId(sub.plan) : "member_access",
+    currentPlan: sub ? catalogPlanFromStored(sub) : "member_access",
   };
 }
 
@@ -280,7 +282,7 @@ export async function listCoachingRoster(now = new Date()) {
   const rows: { userId: string; email: string; name: string; since: Date }[] = [];
   for (const sub of subs) {
     if (sub.currentPeriodEnd && sub.currentPeriodEnd < now) continue;
-    if (normalizePlanId(sub.plan) !== "coaching") continue;
+    if (catalogPlanFromStored(sub) !== "coaching") continue;
     if (seen.has(sub.userId)) continue;
     seen.add(sub.userId);
     rows.push({
@@ -316,13 +318,13 @@ export async function getRevenueDesk(now = new Date()) {
     subscriptions
       .filter((row) => liveSub(row, now))
       .filter((row) => {
-        const planId = normalizePlanId(row.plan);
+        const planId = catalogPlanFromStored(row);
         return planId !== "member_access" && planId !== "academy";
       })
       .map((row) => row.userId),
   );
   const pro = subscriptions.filter(
-    (row) => liveSub(row, now) && normalizePlanId(row.plan) === "performance",
+    (row) => liveSub(row, now) && catalogPlanFromStored(row) === "performance",
   );
   const seen = new Set<string>();
   const activeProRows = pro.filter((row) => {
@@ -484,6 +486,7 @@ export async function getAdminDeskCounts(now = new Date()) {
         plan: true,
         status: true,
         currentPeriodEnd: true,
+        founding: true,
       },
     }),
     prisma.subscription.count({ where: { status: { in: ["past_due", "unpaid"] } } }),
@@ -515,7 +518,7 @@ export async function getAdminDeskCounts(now = new Date()) {
   const paidUsers = new Set<string>();
   for (const sub of subs) {
     if (!liveSub(sub, now)) continue;
-    const planId = normalizePlanId(sub.plan);
+    const planId = catalogPlanFromStored(sub);
     if (planId === "coaching") coachingUsers.add(sub.userId);
     if (planId !== "member_access" && planId !== "academy") paidUsers.add(sub.userId);
   }

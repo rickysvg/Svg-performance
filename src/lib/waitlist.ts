@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
 import { type CatalogPlanId, isCatalogPlanId, PLAN_CAPS, PLAN_CATALOG } from "@/lib/plans";
+import { catalogPlanFromStored } from "@/lib/pro-annual-record";
 import { normalizePlanId } from "@/lib/plans";
 
 export function capForPlan(planId: CatalogPlanId): number | null {
@@ -15,7 +16,7 @@ export async function countActiveSeats(planId: CatalogPlanId, now = new Date()) 
     where: { status: "active" },
   });
   return rows.filter((row) => {
-    if (normalizePlanId(row.plan) !== planId) return false;
+    if (catalogPlanFromStored(row) !== planId) return false;
     if (row.currentPeriodEnd && row.currentPeriodEnd < now) return false;
     return true;
   }).length;

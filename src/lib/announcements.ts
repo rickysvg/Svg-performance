@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { normalizePlanId } from "@/lib/plans";
+import { catalogPlanFromStored } from "@/lib/pro-annual-record";
 import { isSmtpConfigured, sendMail } from "@/lib/mail";
 import { sendPushToUser, vapidConfig } from "@/lib/weekly-checkin-push";
 
@@ -73,6 +73,7 @@ async function loadAudience(audience: AnnouncementAudience) {
     select: {
       userId: true,
       plan: true,
+      founding: true,
       currentPeriodEnd: true,
       user: { select: { id: true, email: true } },
     },
@@ -82,7 +83,7 @@ async function loadAudience(audience: AnnouncementAudience) {
   const rows: { id: string; email: string }[] = [];
   for (const sub of subs) {
     if (sub.currentPeriodEnd && sub.currentPeriodEnd.getTime() < now) continue;
-    if (normalizePlanId(sub.plan) !== planId) continue;
+    if (catalogPlanFromStored(sub) !== planId) continue;
     if (seen.has(sub.userId)) continue;
     seen.add(sub.userId);
     rows.push(sub.user);

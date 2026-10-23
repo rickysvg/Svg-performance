@@ -5,12 +5,15 @@ import { isStripeConfigured } from "@/lib/access";
 import { ensureCreditsForPlan } from "@/lib/credits";
 import { isPlanAtCap } from "@/lib/waitlist";
 import {
+  billingPlanFromStored,
+  catalogPlanFromStored,
+  referencesRetiredAnnual,
+} from "@/lib/pro-annual-record";
+import {
   CHECKOUT_SKUS,
   type CheckoutSkuId,
   isCheckoutSkuId,
-  normalizePlanId,
   PLAN_CATALOG,
-  PLANS,
 } from "@/lib/plans";
 
 export { PLANS, isPlanId, isCheckoutSkuId } from "@/lib/plans";
@@ -140,7 +143,11 @@ export async function applyStripeEvent(event: {
   const planRaw = object.metadata?.plan || "standalone";
   const catalogPlan = isCheckoutSkuId(planRaw)
     ? CHECKOUT_SKUS[planRaw].catalogId
-    : normalizePlanId(planRaw);
+    : catalogPlanFromStored({ plan: planRaw });
+  // Keep the Stripe event, but record a retired annual seat as Pro annual.
+  const recordedPlan = referencesRetiredAnnual({ plan: planRaw })
+    ? billingPlanFromStored({ plan: planRaw })
+    : catalogPlan;
   const stripePriceId = object.items?.data?.[0]?.price?.id;
 
   if (!userId) {
@@ -175,7 +182,7 @@ export async function applyStripeEvent(event: {
   if (event.type === "checkout.session.expired") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "incomplete",
       stripeSubscriptionId:
         typeof object.subscription === "string" ? object.subscription : object.id,
@@ -188,7 +195,7 @@ export async function applyStripeEvent(event: {
   ) {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "active",
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId:
@@ -204,7 +211,7 @@ export async function applyStripeEvent(event: {
   } else if (event.type === "invoice.payment_failed") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "past_due",
       stripeSubscriptionId:
         typeof object.subscription === "string" ? object.subscription : object.id,
@@ -217,7 +224,7 @@ export async function applyStripeEvent(event: {
   ) {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "canceled",
       stripeSubscriptionId: object.id,
       currentPeriodEnd: periodEnd,
@@ -225,7 +232,7 @@ export async function applyStripeEvent(event: {
   } else if (event.type === "customer.subscription.updated") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: mapSubscriptionStatus(object.status),
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId: object.id,
@@ -255,13 +262,16 @@ export async function assignPlanForPilot(input: {
   if (!admin || admin.role !== "admin") {
     throw new ForbiddenError("Only an admin can assign a plan for the pilot.");
   }
-  const catalogPlan = normalizePlanId(input.plan);
+  const catalogPlan = catalogPlanFromStored({ plan: input.plan });
+  const recordedPlan = referencesRetiredAnnual({ plan: input.plan })
+    ? billingPlanFromStored({ plan: input.plan })
+    : catalogPlan;
   // Admin override is the pilot escape hatch — caps apply to self-serve checkout only.
   const periodEnd = new Date();
   periodEnd.setUTCDate(periodEnd.getUTCDate() + 30);
   const row = await upsertSubscriptionFromWebhook({
     userId: input.targetUserId,
-    plan: catalogPlan,
+    plan: recordedPlan,
     status: catalogPlan === "member_access" ? "canceled" : "active",
     currentPeriodEnd: catalogPlan === "member_access" ? null : periodEnd,
     source: "admin",
