@@ -34,7 +34,7 @@ export default async function BikeHistoryPage() {
             </Link>
           }
         >
-          Finish a bike day and it will show up here with the work, rest, sprints, and rounds.
+          Finish a bike day and it will show up here with the work, rest, rounds, and sets.
         </EmptyState>
       ) : (
         <ul className="space-y-3">
@@ -50,13 +50,15 @@ export default async function BikeHistoryPage() {
                 <p className="font-display mt-1 text-lg uppercase leading-tight tracking-wide">{row.workoutName}</p>
                 <p className="mt-1 text-sm">{row.recipe}</p>
                 <p className="mt-2 text-sm text-muted">
-                  {row.workSeconds != null && row.restSeconds != null
-                    ? `${row.workSeconds}s work / ${row.restSeconds}s rest · `
+                  {row.sprints != null
+                    ? `${
+                        row.sprints *
+                        ((row.restBetweenRoundsSeconds > 0 ||
+                          ((row.rounds ?? 1) > 1 && row.workoutName.includes("×")))
+                          ? Math.max(1, row.rounds ?? 1)
+                          : 1)
+                      } rounds · `
                     : ""}
-                  {row.sprints != null ? `${row.sprints} sprints · ` : ""}
-                  {row.rounds != null ? `${row.rounds} ${row.rounds === 1 ? "round" : "rounds"}` : ""}
-                  {row.restBetweenRoundsSeconds > 0 ? ` · ${row.restBetweenRoundsSeconds}s between` : ""}
-                  {" · "}
                   <span className={row.completed ? "text-accent" : "text-signal"}>
                     {row.completed
                       ? "Completed"

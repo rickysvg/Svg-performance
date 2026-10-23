@@ -31,6 +31,19 @@ describe("interval shorthand", () => {
     });
   });
 
+  it("rejects a one-digit clock and a stray m, and reads 15m as minutes", () => {
+    expect(parseIntervalShorthand("8x1:5/10").ok).toBe(false);
+    expect(parseIntervalShorthand("2x8 @ 15/15 m").ok).toBe(false);
+    expect(parseIntervalShorthand("2x8 @ 15/15m")).toMatchObject({
+      ok: true,
+      value: { restSeconds: 900 },
+    });
+    expect(parseIntervalShorthand("8x20/10 r1m")).toMatchObject({
+      ok: true,
+      value: { setRestSeconds: 60 },
+    });
+  });
+
   it("keeps the steppers when the line is not a structure", () => {
     expect(parseIntervalShorthand("heavy bag")).toEqual({ ok: false, error: "Try 2x8 @ 15/15" });
     expect(commitShorthand("nope", base)).toEqual({ structure: base, error: "Try 2x8 @ 15/15" });

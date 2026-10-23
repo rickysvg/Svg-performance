@@ -98,7 +98,7 @@ function isStructureKind(kind: string): kind is RoundKind {
 }
 
 function defaultStructure(kind: string, bagRounds: number): IntervalStructure {
-  if (kind === "bag") return { sets: 1, rounds: Math.max(1, bagRounds), workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
+  if (kind === "bag") return { sets: 1, rounds: 5, workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "pads") return { sets: 1, rounds: 5, workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "sparring") return { sets: 1, rounds: 3, workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "grappling") return { sets: 1, rounds: 5, workSeconds: 300, restSeconds: 60, setRestSeconds: 60 };
@@ -271,6 +271,8 @@ function LogPastWorkoutSheet({
   const [structure, setStructure] = useState<IntervalStructure>(openingStructure);
   const [shorthand, setShorthand] = useState(formatIntervalShorthand(openingStructure));
   const [done, setDone] = useState(openingStructure.sets * openingStructure.rounds);
+  const [editingInterval, setEditingInterval] = useState(false);
+  const [intervalKind, setIntervalKind] = useState<RoundKind>("bike");
   const [rows, setRows] = useState<ExerciseRow[]>(() => (seed?.exercises ?? []).map(toRow));
   const [programId, setProgramId] = useState(initialPreview?.programs[0]?.programDayId ?? "");
   const [savedId, setSavedId] = useState(initialPreview?.saved[0]?.id ?? "");
@@ -322,6 +324,8 @@ function LogPastWorkoutSheet({
               restSeconds: loaded.structure.restSeconds,
               setRestSeconds: loaded.structure.setRestSeconds,
             };
+            setEditingInterval(true);
+            if (loaded.structure.kind !== "bike") setIntervalKind(loaded.structure.kind);
             setStructure(next);
             setShorthand(formatIntervalShorthand(next));
             setDone(loaded.structure.done);
@@ -379,12 +383,16 @@ function LogPastWorkoutSheet({
     if (preview) setRows(rowsFor("saved", preview, programId, id));
   }
 
-  function changeStructure(next: IntervalStructure) {
+  function applyStructure(next: IntervalStructure, rewriteShorthand: boolean) {
     const previousTotal = structure.sets * structure.rounds;
     setStructure(next);
-    setShorthand(formatIntervalShorthand(next));
+    if (rewriteShorthand) setShorthand(formatIntervalShorthand(next));
     const nextTotal = next.sets * next.rounds;
     setDone((current) => (current === previousTotal ? nextTotal : Math.min(current, nextTotal)));
+  }
+
+  function changeStructure(next: IntervalStructure) {
+    applyStructure(next, true);
   }
 
   const days =
@@ -486,8 +494,8 @@ function LogPastWorkoutSheet({
             <input type="hidden" name="confirm" value={mode === "create" || confirming ? "yes" : ""} />
             <input type="hidden" name="dayKey" data-testid="log-past-workout-date" value={dayKey} />
             {mode === "create" ? (
-              <div className="flex gap-2 overflow-x-auto pb-1" data-testid="log-past-workout-types">
-                <div className="inline-flex h-11 shrink-0 items-center gap-1 rounded-full border border-line px-1">
+              <div className="flex items-center gap-2">
+                <div className="inline-flex h-12 shrink-0 items-center gap-1 rounded-full border border-line bg-black px-1">
                   <button
                     type="button"
                     aria-label="Older day"
@@ -496,11 +504,11 @@ function LogPastWorkoutSheet({
                       const older = days[dayIndex + 1];
                       if (older) setDayKey(older.key);
                     }}
-                    className="flex size-9 items-center justify-center rounded-full text-lg disabled:opacity-30"
+                    className="flex size-11 items-center justify-center rounded-full text-lg disabled:opacity-30"
                   >
                     ‹
                   </button>
-                  <span className="min-w-[7.5rem] text-center text-sm">{days[dayIndex]?.label ?? dayKey}</span>
+                  <span className="min-w-[6.5rem] text-center text-sm">{days[dayIndex]?.label ?? dayKey}</span>
                   <button
                     type="button"
                     aria-label="Newer day"
@@ -509,11 +517,12 @@ function LogPastWorkoutSheet({
                       const newer = days[dayIndex - 1];
                       if (newer) setDayKey(newer.key);
                     }}
-                    className="flex size-9 items-center justify-center rounded-full text-lg disabled:opacity-30"
+                    className="flex size-11 items-center justify-center rounded-full text-lg disabled:opacity-30"
                   >
                     ›
                   </button>
                 </div>
+                <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" data-testid="log-past-workout-types">
                 {plannedKind(preview) ? (
                   <TypeChip
                     id="plan"
@@ -531,9 +540,16 @@ function LogPastWorkoutSheet({
                     onClick={() => applyKind(item.id, preview)}
                   />
                 ))}
+                </div>
               </div>
             ) : null}
-            {mode === "create" ? <input type="hidden" name="kind" value={kind} /> : <input type="hidden" name="kind" value="custom" />}
+            {mode === "create" ? (
+              <input type="hidden" name="kind" value={kind} />
+            ) : editingInterval ? (
+              <input type="hidden" name="kind" value={intervalKind} />
+            ) : (
+              <input type="hidden" name="kind" value="custom" />
+            )}
             {mode === "create" && chip === "plan" && preview ? (
               <p className="text-sm text-[#CBF805]" data-testid="log-past-workout-plan">
                 {planHint(preview, plannedKind(preview))}
@@ -592,16 +608,18 @@ function LogPastWorkoutSheet({
                 />
               </Field>
             ) : null}
-            {mode === "create" && isStructureKind(kind) ? (
+            {(mode === "create" && isStructureKind(kind)) || editingInterval ? (
               <>
+                {editingInterval ? <input type="hidden" name="intervalEdit" value="yes" /> : null}
                 <IntervalStructureFields
                   shorthand={shorthand}
                   structure={structure}
                   done={done}
-                  totalType={kind}
-                  presets={presets}
+                  totalType={editingInterval || !isStructureKind(kind) ? intervalKind : kind}
+                  presets={mode === "create" ? presets : []}
                   onShorthandCommit={setShorthand}
                   onStructure={changeStructure}
+                  onLiveStructure={(next) => applyStructure(next, false)}
                   onDone={setDone}
                 />
                 <input type="hidden" name="roundsPerSet" value={structure.rounds} />
@@ -691,7 +709,7 @@ function LogPastWorkoutSheet({
                 />
               </Field>
             ) : null}
-            {rows.length > 0 && (mode === "edit" || kind === "program" || kind === "saved" || kind === "custom") ? (
+            {rows.length > 0 && !editingInterval && (mode === "edit" || kind === "program" || kind === "saved" || kind === "custom") ? (
               <div className="space-y-2" data-testid="log-past-workout-exercises">
                 <input type="hidden" name="exerciseCount" value={rows.length} />
                 {rows.map((row, index) => (

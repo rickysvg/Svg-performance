@@ -322,7 +322,7 @@ export function BikeWorkoutChooser({
       restBetweenRoundsSeconds: between,
     });
     if (!next) {
-      setError("Pick a sprint, rest, and count from the lists.");
+      setError("Pick work, rest, and rounds from the lists.");
       return;
     }
     apply(next);
@@ -390,7 +390,7 @@ export function BikeWorkoutChooser({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p id={titleId} className="font-display text-xl uppercase tracking-wide">
-                {customOpen ? "Custom sprints" : "Bike workouts"}
+                {customOpen ? "Custom rounds" : "Bike workouts"}
               </p>
               <p className="mt-1 text-sm text-muted">
                 {customOpen
@@ -422,6 +422,14 @@ export function BikeWorkoutChooser({
                 presets={[]}
                 showDone={false}
                 onShorthandCommit={setCustomLine}
+                onLiveStructure={(next) => {
+                  setSprint(next.workSeconds);
+                  setRest(next.restSeconds);
+                  setSprints(next.rounds);
+                  setRounds(next.sets);
+                  setBetween(next.setRestSeconds);
+                  setError("");
+                }}
                 onStructure={(next) => {
                   setSprint(next.workSeconds);
                   setRest(next.restSeconds);

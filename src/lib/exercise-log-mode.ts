@@ -1,4 +1,5 @@
-import { bikeIntervalReps, bikeSessionForName, isBikeIntervalName } from "@/lib/bike-sessions";
+import { bikeIntervalReps, bikeSessionForName, isBikeIntervalName, parseBikeIntervalReps } from "@/lib/bike-sessions";
+import { formatIntervalDisplay } from "@/lib/interval-shorthand";
 import { percentFromLoadText, rirFromLoadText } from "@/lib/rir";
 
 export const LOG_MODES = ["load_reps", "load_timed", "reps_only", "timed", "timed_round"] as const;
@@ -203,9 +204,18 @@ export function plannedSetLine(input: {
   const mode = resolveLogMode(input);
   if (isBikeIntervalName(input.name ?? "")) {
     const reps = visibleBikeReps(input.reps || bikeIntervalReps());
-    const between = input.restSeconds > 0 ? `, ${input.restSeconds}s between rounds` : "";
+    const parsed = parseBikeIntervalReps(reps);
     const camp = input.loadText?.match(/Camp [a-z-]+: same bike, [a-z]+ dose\./i)?.[0] ?? "";
-    return `${countLabel(input.sets, "round")} · ${reps}${between}${camp ? `. ${camp}` : ""}`;
+    const line = parsed
+      ? formatIntervalDisplay({
+          sets: input.sets,
+          rounds: parsed.roundsPerSet,
+          workSeconds: parsed.workSeconds,
+          restSeconds: parsed.restSeconds,
+          setRestSeconds: input.restSeconds,
+        })
+      : `${countLabel(input.sets, "set")} · ${reps}`;
+    return camp ? `${line}. ${camp}` : line;
   }
   const rest = input.restSeconds > 0 ? `, ${input.restSeconds}s rest` : "";
   const rir = rirFromLoadText(input.loadText);

@@ -15,6 +15,7 @@ import {
   type BikeIntervalSpec,
 } from "@/lib/bike-interval-timer";
 import { addedPrescriptionKey, parseAddedPlan } from "@/lib/logger-insert";
+import { formatIntervalDisplay, formatIntervalTotal } from "@/lib/interval-shorthand";
 
 export type BikeGoal = "power" | "anaerobic" | "aerobic" | "fight-sim";
 export type BikeLevel = "beginner" | "intermediate" | "advanced";
@@ -246,7 +247,7 @@ export const BIKE_ROUND_COUNTS = Array.from({ length: 10 }, (_, index) => index 
 export const BIKE_BETWEEN_SECONDS = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300] as const;
 export const BIKE_PREP_MINUTES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
-const REPEAT_SUFFIX = / · \d+ rounds(?: · \d+s between)?$/;
+const REPEAT_SUFFIX = / · \d+ × .*$| · \d+ rounds(?: · \d+s between)?$/;
 
 export function bikeChoiceWithRounds(
   choice: BikeChoice,
@@ -256,20 +257,26 @@ export function bikeChoiceWithRounds(
   const rounds = clampInt(repeatRounds, 1, 10);
   const between = clampInt(restBetweenRoundsSeconds, 0, 600);
   if (rounds == null || between == null) return null;
-  const basePlain = choice.plain.replace(REPEAT_SUFFIX, "");
-  const baseName = choice.name.replace(/ · \d+ rounds$/, "");
+  const baseName = choice.name.replace(REPEAT_SUFFIX, "");
+  const display = formatIntervalDisplay({
+    sets: rounds,
+    rounds: choice.spec.roundsPerSet,
+    workSeconds: choice.spec.workSeconds,
+    restSeconds: choice.spec.restSeconds,
+    setRestSeconds: rounds > 1 ? between : 0,
+  });
   if (rounds <= 1) {
     return {
       ...choice,
       name: baseName,
-      plain: basePlain,
+      plain: choice.plain.replace(REPEAT_SUFFIX, "") || display,
       spec: { ...choice.spec, repeatRounds: 1, restBetweenRoundsSeconds: 0 },
     };
   }
   return {
     ...choice,
-    name: `${baseName} · ${rounds} rounds`,
-    plain: `${basePlain} · ${rounds} rounds · ${between}s between`,
+    name: `${baseName} · ${display}`,
+    plain: display,
     spec: { ...choice.spec, repeatRounds: rounds, restBetweenRoundsSeconds: between },
   };
 }
@@ -302,12 +309,22 @@ export function customBikeChoice(input: {
     return null;
   }
   const shownBetween = repeatRounds > 1 ? between : 0;
-  const basePlain = `${workSeconds}s work / ${restSeconds}s rest × ${rounds} · wu ${warmupSeconds} · cd ${cooldownSeconds}`;
-  const plain = repeatRounds > 1 ? `${basePlain} · ${repeatRounds} rounds · ${shownBetween}s between` : basePlain;
+  const display = formatIntervalDisplay({
+    sets: repeatRounds,
+    rounds,
+    workSeconds,
+    restSeconds,
+    setRestSeconds: shownBetween,
+  });
+  const prep = [
+    warmupSeconds > 0 ? `wu ${warmupSeconds}` : "",
+    cooldownSeconds > 0 ? `cd ${cooldownSeconds}` : "",
+  ].filter(Boolean);
+  const plain = prep.length > 0 ? `${display} · ${prep.join(" · ")}` : display;
   return {
     id: "custom",
-    name: repeatRounds > 1 ? `Custom sprints · ${repeatRounds} rounds` : "Custom sprints",
-    description: "Your sprint, rest, and count. Repeat the block for extra rounds.",
+    name: display,
+    description: "Your work, rest, and rounds. Repeat the block for extra sets.",
     goal: "anaerobic",
     level: "intermediate",
     plain,
@@ -608,12 +625,11 @@ export function bikeHistoryLine(session: BikeHistorySession) {
   if (rows.length === 0) return null;
   return rows
     .map((row) => {
-      const parts = [row.workoutName];
-      if (row.workSeconds != null && row.restSeconds != null) {
-        parts.push(`${row.workSeconds}s/${row.restSeconds}s`);
-      }
-      if (row.sprints != null) parts.push(`${row.sprints} sprints`);
-      return parts.join(" · ");
+      const perSet = row.sprints ?? 0;
+      const groups = row.rounds ?? 1;
+      const grouped = row.restBetweenRoundsSeconds > 0 || (groups > 1 && row.workoutName.includes("×"));
+      const total = perSet > 0 ? formatIntervalTotal(grouped ? perSet * groups : perSet) : null;
+      return total ? `${row.workoutName} · ${total}` : row.workoutName;
     })
     .join(" · ");
 }

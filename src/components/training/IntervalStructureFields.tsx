@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from "react";
 import {
+  clampIntervalStructure,
   commitShorthand,
   formatIntervalShorthand,
   stepSeconds,
@@ -36,6 +37,7 @@ export function IntervalStructureFields({
   showDone = true,
   onShorthandCommit,
   onStructure,
+  onLiveStructure,
   onDone,
 }: {
   shorthand: string;
@@ -46,11 +48,25 @@ export function IntervalStructureFields({
   showDone?: boolean;
   onShorthandCommit: (text: string) => void;
   onStructure: (next: IntervalStructure) => void;
+  /** Updates the steppers while the member is still typing. Does not rewrite the line. */
+  onLiveStructure?: (next: IntervalStructure) => void;
   onDone: (done: number) => void;
 }) {
   const [line, setLine] = useState(shorthand);
   const [error, setError] = useState("");
+  const structureRef = useRef(structure);
+  const liveRef = useRef(onLiveStructure ?? onStructure);
+  structureRef.current = structure;
+  liveRef.current = onLiveStructure ?? onStructure;
   useEffect(() => setLine(shorthand), [shorthand]);
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = commitShorthand(line, structureRef.current);
+      setError(next.error);
+      if (!next.error) liveRef.current(next.structure);
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [line]);
   const totalRounds = Math.max(1, structure.sets * structure.rounds);
   const totals = intervalTotals(totalType, {
     sets: structure.sets,
@@ -71,7 +87,12 @@ export function IntervalStructureFields({
   }
 
   function patch(partial: Partial<IntervalStructure>) {
-    onStructure({ ...structure, ...partial });
+    onStructure(clampIntervalStructure({ ...structure, ...partial }));
+  }
+
+  function commitDone(value: number) {
+    const total = Math.max(1, structure.sets * structure.rounds);
+    onDone(Math.min(total, Math.max(0, Math.round(value) || 0)));
   }
 
   return (
@@ -120,7 +141,7 @@ export function IntervalStructureFields({
           ))}
         </div>
       ) : null}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">
         <CompactStepper
           field="work"
           label="Work s"
@@ -169,7 +190,7 @@ export function IntervalStructureFields({
             value={Math.min(totalRounds, Math.max(0, done))}
             onDec={() => onDone(Math.max(0, done - 1))}
             onInc={() => onDone(Math.min(totalRounds, done + 1))}
-            onCommit={(value) => onDone(value)}
+            onCommit={commitDone}
           />
         ) : null}
       </div>
@@ -204,7 +225,7 @@ function CompactStepper({
   return (
     <div
       data-interval-step={field}
-      className={`flex h-[60px] flex-col items-center justify-center rounded-2xl border border-line bg-card ${
+      className={`flex flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-card px-1 py-2 ${
         disabled ? "opacity-40" : ""
       }`}
     >
@@ -257,6 +278,8 @@ function StepButton({
   const repeated = useRef(false);
   const delay = useRef<number | null>(null);
   const repeat = useRef<number | null>(null);
+  const stepRef = useRef(onStep);
+  stepRef.current = onStep;
 
   function clearTimers() {
     if (delay.current != null) window.clearTimeout(delay.current);
@@ -275,8 +298,8 @@ function StepButton({
     clearTimers();
     delay.current = window.setTimeout(() => {
       repeated.current = true;
-      onStep();
-      repeat.current = window.setInterval(onStep, 120);
+      stepRef.current();
+      repeat.current = window.setInterval(() => stepRef.current(), 120);
     }, 400);
   }
 
@@ -318,7 +341,7 @@ function StepButton({
         event.stopPropagation();
         applyStepperTap("click", pointer.current, onStep, { button: event.button, detail: event.detail });
       }}
-      className="flex size-9 items-center justify-center rounded-full border border-line text-lg leading-none disabled:opacity-40"
+      className="flex size-11 items-center justify-center rounded-full border border-line text-lg leading-none disabled:opacity-40"
     >
       {label.startsWith("Decrease") ? "−" : "+"}
     </button>

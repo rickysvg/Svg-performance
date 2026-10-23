@@ -25,7 +25,8 @@ const WORK_MAX = 3600;
 const REST_MAX = 3600;
 const SET_REST_MAX = 600;
 
-const DURATION = String.raw`\d+:\d{1,2}|\d+\s*[sm]?`;
+/** `1:05` is a clock. `1:5` is not. `15m` is minutes. A spaced `15 m` is not. */
+const DURATION = String.raw`\d+:\d{2}|\d+[sm]?`;
 const SET_REST = String.raw`(?:\s*(?:r|\+)\s*(${DURATION})|\s*\/\s*(${DURATION}))?`;
 const FULL = new RegExp(
   String.raw`^(\d+)\s*[x×*]\s*(\d+)\s*(?:@|\s)\s*(${DURATION})\s*\/\s*(${DURATION})${SET_REST}$`,
@@ -39,7 +40,7 @@ const SINGLE = new RegExp(
 export function parseShorthandDuration(raw: string): number | null {
   const text = raw.trim().toLowerCase().replace(/\s+/g, "");
   if (!text) return null;
-  const clock = /^(\d+):(\d{1,2})$/.exec(text);
+  const clock = /^(\d+):(\d{2})$/.exec(text);
   if (clock) {
     const seconds = Number(clock[2]);
     if (seconds > 59) return null;
@@ -134,6 +135,35 @@ export function formatIntervalShorthand(spec: {
     return `${core} r${Math.round(spec.setRestSeconds)}`;
   }
   return core;
+}
+
+/**
+ * One member-facing line. Rounds are the intervals inside a set.
+ * Sets are the groups. `2 × 8 rounds · 15/15 · 60s between sets`.
+ */
+export function formatIntervalDisplay(spec: {
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds?: number | null;
+}) {
+  const sets = Math.max(1, Math.round(spec.sets) || 1);
+  const rounds = Math.max(1, Math.round(spec.rounds) || 1);
+  const pair = `${formatShorthandDuration(spec.workSeconds)}/${formatShorthandDuration(spec.restSeconds)}`;
+  if (sets > 1) {
+    const between =
+      spec.setRestSeconds != null && spec.setRestSeconds > 0
+        ? ` · ${Math.round(spec.setRestSeconds)}s between sets`
+        : "";
+    return `${sets} × ${rounds} rounds · ${pair}${between}`;
+  }
+  return `${rounds} rounds · ${pair}`;
+}
+
+export function formatIntervalTotal(totalRounds: number) {
+  const count = Math.max(0, Math.round(totalRounds));
+  return `${count} ${count === 1 ? "round" : "rounds"}`;
 }
 
 /** Button copy. The set-rest suffix stays in the field, not on Save. */

@@ -69,7 +69,7 @@ describe("bike workout chooser", () => {
 
   it("repeats any workout for N rounds and keeps that on the prescription key", () => {
     const triple = bikeChoiceWithRounds(bikeChoiceById("tabata")!, 3, 60);
-    expect(triple?.name).toContain("3 rounds");
+    expect(triple?.name).toContain("3 × 8 rounds");
     expect(triple?.spec.repeatRounds).toBe(3);
     expect(triple?.spec.restBetweenRoundsSeconds).toBe(60);
     expect(bikeSetDurationSeconds(triple!.spec)).toBe(240 * 3 + 60 * 2);
@@ -202,9 +202,10 @@ describe("bike workout chooser", () => {
         },
       ],
     });
-    expect(chosen).toBe(`${triple.name} · 20s/10s · 8 sprints`);
+    expect(triple.plain).toBe("3 × 8 rounds · 20/10 · 60s between sets");
+    expect(chosen).toBe(`${triple.name} · 24 rounds`);
     expect(chosen).not.toMatch(/completed|open/);
-    expect(chosen?.match(/rounds/g)).toHaveLength(1);
+    expect(chosen?.match(/rounds/g)).toHaveLength(2);
   });
 
   it("stores the choice on the prescription key and collapses today's open bike sets to one", () => {

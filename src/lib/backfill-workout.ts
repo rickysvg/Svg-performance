@@ -11,13 +11,15 @@ import {
   choiceForBackfill,
   scheduledRoundPlanTarget,
 } from "@/lib/bike-timer-log";
+import { canMergeIntervalLog, type IntervalMergeClock } from "@/lib/interval-merge";
 import { intervalTotals } from "@/lib/interval-totals";
 import {
   exerciseMatchesRoundType,
   restSecondsFromRoundKey,
   roundLogSets,
-  roundPrescriptionKey,
   roundSaveStatus,
+  roundStructureFromKey,
+  roundStructureKey,
   roundTargetFromExercises,
   sessionMatchesRoundType,
   setBelongsToRoundType,
@@ -28,10 +30,10 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { sessionCompletionDay } from "@/lib/performed-at";
+import { dayKey } from "@/lib/timezone";
 import {
   formatClock,
   isDurationMode,
-  isLogMode,
   isShadowName,
   isWeightedShadowName,
   resolveLogMode,
@@ -64,6 +66,7 @@ import {
   parseOptionalDistance,
   parseOptionalRpe,
   performedAtForDayKey,
+  performedAtForLoggedDay,
   setsForBackfillExercises,
   type BackfillExerciseInput,
   type BackfillKind,
@@ -385,6 +388,7 @@ async function persistBackfill(input: {
   plannedNames: string[];
   elapsedSeconds?: number | null;
   resolution: "" | "extra" | "replace";
+  now?: Date;
 }) {
   const existing = await sessionsOnCivilDay(input.userId, input.dayKey, input.timeZone);
   if (existing.length > 0 && input.resolution !== "extra" && input.resolution !== "replace") {
@@ -402,7 +406,7 @@ async function persistBackfill(input: {
     plannedSetCount: input.plannedSetCount,
     plannedNames: input.plannedNames,
   });
-  const performedAt = performedAtForDayKey(input.dayKey, input.timeZone);
+  const performedAt = performedAtForLoggedDay(input.dayKey, input.timeZone, input.now ?? new Date());
   const replacing = input.resolution === "replace" && existing.length > 0;
   const timerReady = await workoutTimerColumnsAvailable(prisma);
   const created = await prisma.$transaction(async (tx) => {
@@ -451,6 +455,7 @@ type IntervalSave = {
   plannedRounds: number;
   configuredRounds: number;
   daySetCount: number | null;
+  clock: IntervalMergeClock;
 };
 
 function assertCount(value: number, min: number, max: number, label: string) {
@@ -637,6 +642,14 @@ function shadowPayload(input: BackfillPayload, unit: LoadUnit, weightAccess: str
       plannedRounds: rounds.length,
       configuredRounds: rounds.length,
       daySetCount: null,
+      clock: {
+        workSeconds: Math.round(rounds[0]?.workSeconds ?? 0),
+        restSeconds: 0,
+        sets: 1,
+        setRestSeconds: 0,
+        roundsCompleted: rounds.length,
+        roundWorkSeconds: rounds.map((round) => Math.round(round.workSeconds)),
+      },
     },
   };
 }
@@ -675,37 +688,6 @@ function loggedIntervalRounds(
   return sets.filter((set) => set.completed !== false && setMatchesInterval(set, type) && setHasLoggedWork(set)).length;
 }
 
-function keptSetDraft(
-  set: {
-    exerciseName: string;
-    setNumber: number;
-    reps: number | null;
-    loadValue: number | null;
-    loadUnit: string;
-    logMode: string;
-    durationSeconds: number | null;
-    completed: boolean;
-    notes: string;
-    prescriptionKey: string;
-    rir: string;
-  },
-  unit: LoadUnit,
-): BackfillSetDraft {
-  return {
-    exerciseName: set.exerciseName,
-    setNumber: set.setNumber,
-    reps: set.reps,
-    loadValue: set.loadValue,
-    loadUnit: set.loadUnit === "kg" ? "kg" : unit,
-    logMode: isLogMode(set.logMode) ? set.logMode : "load_reps",
-    durationSeconds: set.durationSeconds,
-    completed: set.completed,
-    notes: set.notes ?? "",
-    prescriptionKey: set.prescriptionKey ?? "",
-    rir: set.rir ?? "",
-  };
-}
-
 function intervalStatus(interval: IntervalSave, keptCount: number) {
   const mixed = keptCount > 0 || (interval.daySetCount != null && interval.daySetCount > interval.plannedRounds);
   if (mixed) return "partial" as const;
@@ -729,14 +711,15 @@ async function writeElapsedSecondsOnly(
 }
 
 /**
- * Interval saves merge into a same-day session of the same type and plan.
- * A longer saved session is left alone. A different type stays as its own row.
- * Source, backfilled, and performedAt on an existing row are not rewritten.
+ * Interval saves extend a same-day log only when canMergeIntervalLog says so.
+ * Stored rounds stay. A different clock, a longer log, or a running draft
+ * becomes its own session. Source, backfilled, and performedAt are not rewritten.
  */
 async function persistIntervalBackfill(input: {
   userId: string;
   dayKey: string;
   timeZone: string;
+  now: Date;
   title: string;
   notes: string;
   rpe: number | null;
@@ -746,7 +729,7 @@ async function persistIntervalBackfill(input: {
   elapsedSeconds: number;
   interval: IntervalSave;
 }) {
-  const when = performedAtForDayKey(input.dayKey, input.timeZone);
+  const when = performedAtForLoggedDay(input.dayKey, input.timeZone, input.now);
   const rows = await prisma.workoutSession.findMany({
     where: {
       userId: input.userId,
@@ -760,50 +743,68 @@ async function persistIntervalBackfill(input: {
     orderBy: { createdAt: "asc" },
   });
   const programDayId = input.programDayId ?? null;
+  const timerReady = await workoutTimerColumnsAvailable(prisma);
   const matches = rows.filter(
     (row) =>
       sessionCompletionDay(row, input.timeZone) === input.dayKey &&
-      (row.programDayId ?? null) === programDayId &&
       sessionMatchesInterval(row, input.interval.type),
   );
-  const fits = (row: (typeof matches)[number]) =>
-    loggedIntervalRounds(row.sets, input.interval.type) <= input.interval.roundsCompleted;
-  const saved = matches.find((row) => (row.status === "complete" || row.status === "partial") && fits(row));
-  const draft = matches.find((row) => row.status === "draft" && fits(row));
-  const target = saved ?? draft ?? null;
-  const timerReady = await workoutTimerColumnsAvailable(prisma);
-  const kept = target ? target.sets.filter((set) => !setMatchesInterval(set, input.interval.type)) : [];
-  const combined = [...input.sets, ...kept.map((set) => keptSetDraft(set, input.sets[0]?.loadUnit ?? "lb"))];
-  const status = intervalStatus(input.interval, kept.length);
-  let elapsed = input.elapsedSeconds;
-  if (target && kept.length > 0 && timerReady) {
-    const prior = await readWorkoutTimerFields(target.id, prisma);
-    if (prior.elapsedSeconds && prior.elapsedSeconds > 0) {
-      elapsed = Math.max(prior.elapsedSeconds, elapsed);
+  let target: (typeof matches)[number] | null = null;
+  for (const row of matches) {
+    const timer = timerReady ? await readWorkoutTimerFields(row.id, prisma) : null;
+    const merge = canMergeIntervalLog(
+      { ...row, timerStartedAt: timer?.timerStartedAt ?? null },
+      { type: input.interval.type, programDayId, clock: input.interval.clock },
+      timerReady,
+    );
+    if (!merge) continue;
+    if (row.status === "complete" || row.status === "partial") {
+      target = row;
+      break;
     }
+    target ??= row;
   }
+  const status = intervalStatus(input.interval, 0);
   if (target) {
+    const storedCount = loggedIntervalRounds(target.sets, input.interval.type);
+    const adding = input.sets.slice(storedCount);
     const notes = input.notes.trim() ? input.notes.trim().slice(0, 1000) : target.notes;
+    const growing = adding.length > 0;
+    const nextStatus: "complete" | "partial" =
+      growing || target.status === "draft" ? status : target.status === "complete" ? "complete" : "partial";
+    const plannedSetCount = Math.max(target.plannedSetCount ?? 0, input.plannedSetCount);
     await prisma.$transaction(async (tx) => {
-      await tx.workoutSet.deleteMany({ where: { workoutSessionId: target.id } });
       throwIfBackfillWriteFault();
+      if (adding.length > 0) {
+        const maxNumber = target.sets.reduce((max, set) => Math.max(max, set.setNumber), 0);
+        const maxSort = target.sets.reduce((max, set) => Math.max(max, set.sortOrder), 0);
+        await tx.workoutSet.createMany({
+          data: toCreate(adding).map((set, index) => ({
+            ...set,
+            workoutSessionId: target.id,
+            setNumber: maxNumber + index + 1,
+            sortOrder: maxSort + index + 1,
+          })),
+        });
+      }
       await tx.workoutSession.update({
         where: { id: target.id },
         data: {
-          title: kept.length > 0 ? target.title : input.title,
+          title: growing ? input.title : target.title,
           notes,
-          status,
-          plannedSetCount: input.plannedSetCount,
+          status: nextStatus,
+          plannedSetCount,
           sessionRpe: input.rpe == null ? target.sessionRpe : input.rpe,
-          sets: { create: toCreate(combined) },
         },
       });
-      if (timerReady && elapsed > 0) await writeElapsedSecondsOnly(tx, target.id, elapsed);
+      if (timerReady && growing && input.elapsedSeconds > 0) {
+        await writeElapsedSecondsOnly(tx, target.id, input.elapsedSeconds);
+      }
     });
-    if (status === "complete" && target.status !== "complete") {
+    if (nextStatus === "complete" && target.status !== "complete") {
       await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
     }
-    return { ok: true as const, sessionId: target.id, status };
+    return { ok: true as const, sessionId: target.id, status: nextStatus };
   }
   const created = await prisma.$transaction(async (tx) => {
     throwIfBackfillWriteFault();
@@ -822,14 +823,14 @@ async function persistIntervalBackfill(input: {
         sets: { create: toCreate(input.sets) },
       },
     });
-    if (timerReady && elapsed > 0) await writeElapsedOn(tx, row.id, elapsed, when);
+    if (timerReady && input.elapsedSeconds > 0) await writeElapsedOn(tx, row.id, input.elapsedSeconds, when);
     return row;
   });
   if (status === "complete") await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
   return { ok: true as const, sessionId: created.id, status };
 }
 
-function decodeInterval(
+export function decodeInterval(
   sets: {
     exerciseName: string;
     prescriptionKey: string | null;
@@ -854,19 +855,20 @@ function decodeInterval(
     };
   }
   const roundSet = sets.find((set) => (set.prescriptionKey ?? "").startsWith("round:"));
-  const kind = roundSet?.prescriptionKey?.split(":")[1] ?? "";
-  if (!roundSet || !isBackfillRoundMode(kind)) return null;
+  const structure = roundStructureFromKey(roundSet?.prescriptionKey);
+  const kind = structure?.type ?? "";
+  if (!roundSet || !structure || !isBackfillRoundMode(kind)) return null;
   const done = sets.filter(
     (set) =>
       (set.prescriptionKey ?? "").startsWith(`round:${kind}:`) && set.completed && (set.durationSeconds ?? 0) > 0,
   ).length;
   return {
     kind,
-    sets: 1,
-    rounds: Math.max(1, done),
+    sets: structure.sets,
+    rounds: structure.roundsPerSet ?? Math.max(1, done),
     workSeconds: roundSet.durationSeconds ?? 180,
-    restSeconds: restSecondsFromRoundKey(roundSet.prescriptionKey) ?? 0,
-    setRestSeconds: 0,
+    restSeconds: structure.restSeconds,
+    setRestSeconds: structure.setRestSeconds,
     done,
   };
 }
@@ -1005,6 +1007,13 @@ async function payloadFromKind(
         plannedRounds,
         configuredRounds: total,
         daySetCount,
+        clock: {
+          workSeconds,
+          restSeconds,
+          sets: repeatRounds,
+          setRestSeconds: repeatRounds > 1 ? setRest : 0,
+          roundsCompleted: done,
+        },
       },
     };
   }
@@ -1047,7 +1056,11 @@ async function payloadFromKind(
       durationSeconds: set.durationSeconds ?? null,
       completed: true,
       notes: (focus[index] || set.notes || "").slice(0, 200),
-      prescriptionKey: set.prescriptionKey ?? roundPrescriptionKey(roundMode, restSeconds),
+      prescriptionKey: roundStructureKey(roundMode, restSeconds, {
+        sets: repeatRounds,
+        setRestSeconds: setRest,
+        roundsPerSet,
+      }),
     }));
     const target = await scheduledRoundPlanTarget(
       input.userId,
@@ -1082,6 +1095,13 @@ async function payloadFromKind(
         plannedRounds,
         configuredRounds: total,
         daySetCount,
+        clock: {
+          workSeconds,
+          restSeconds,
+          sets: repeatRounds,
+          setRestSeconds: repeatRounds > 1 ? setRest : 0,
+          roundsCompleted: done,
+        },
       },
     };
   }
@@ -1117,6 +1137,7 @@ export async function createBackfillWorkout(input: BackfillPayload): Promise<Bac
       userId: input.userId,
       dayKey: input.dayKey,
       timeZone,
+      now,
       title: built.title,
       notes: built.notes,
       rpe: input.rpe,
@@ -1141,6 +1162,7 @@ export async function createBackfillWorkout(input: BackfillPayload): Promise<Bac
     plannedNames: built.plannedNames,
     elapsedSeconds: built.elapsedSeconds,
     resolution: input.resolution,
+    now,
   });
 }
 
@@ -1303,6 +1325,134 @@ export function preserveBackfillExercises(
   });
 }
 
+async function updateIntervalBackfill(input: {
+  session: {
+    id: string;
+    title: string;
+    performedAt: Date;
+    status: string;
+    plannedSetCount: number | null;
+    notes: string | null;
+  };
+  dayKey: string;
+  timeZone: string;
+  units: LoadUnit;
+  now: Date;
+  title: string;
+  notes: string;
+  rpe: number | null;
+  posted: DecodedInterval;
+  decoded: DecodedInterval;
+}) {
+  const posted = input.posted;
+  const configured = Math.max(1, posted.sets * posted.rounds);
+  const done = Math.min(configured, Math.max(1, Math.round(posted.done)));
+  const sameStructure =
+    posted.sets === input.decoded.sets &&
+    posted.rounds === input.decoded.rounds &&
+    posted.workSeconds === input.decoded.workSeconds &&
+    posted.restSeconds === input.decoded.restSeconds &&
+    posted.setRestSeconds === input.decoded.setRestSeconds;
+  const doneUnchanged = done === input.decoded.done;
+  const sameDay = sessionCompletionDay({ performedAt: input.session.performedAt }, input.timeZone) === input.dayKey;
+  const performedAt = sameDay
+    ? input.session.performedAt
+    : performedAtForLoggedDay(input.dayKey, input.timeZone, input.now);
+  const keptStatus: "complete" | "partial" = input.session.status === "complete" ? "complete" : "partial";
+  if (sameStructure && doneUnchanged) {
+    await prisma.workoutSession.update({
+      where: { id: input.session.id },
+      data: {
+        title: cleanTitle(input.title, input.session.title),
+        notes: input.notes.trim().slice(0, 1000),
+        performedAt,
+        sessionRpe: input.rpe,
+      },
+    });
+    return { ok: true as const, sessionId: input.session.id, status: keptStatus };
+  }
+  const kind = posted.kind;
+  let sets: BackfillSetDraft[];
+  let elapsed = 0;
+  if (kind === "bike") {
+    const choice = choiceForBackfill({
+      workSeconds: posted.workSeconds,
+      restSeconds: posted.restSeconds,
+      roundsPerSet: posted.rounds,
+      repeatRounds: posted.sets,
+      restBetweenRoundsSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
+    });
+    sets = bikeTimerLogSets(choice, input.units, done).map((set) => ({
+      ...set,
+      notes: "",
+      loadValue: null,
+    }));
+    elapsed = bikeTimerSessionSeconds(choice, done);
+  } else {
+    const logged = roundLogSets({
+      type: kind,
+      exerciseName: BACKFILL_ROUND_MODES[kind],
+      rounds: done,
+      workSeconds: posted.workSeconds,
+      restSeconds: posted.restSeconds,
+      unit: input.units,
+    });
+    const key = roundStructureKey(kind, posted.restSeconds, {
+      sets: posted.sets,
+      setRestSeconds: posted.setRestSeconds,
+      roundsPerSet: posted.rounds,
+    });
+    sets = logged.map((set) => ({
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      reps: null,
+      loadValue: null,
+      loadUnit: input.units,
+      logMode: "timed_round" as const,
+      durationSeconds: set.durationSeconds ?? null,
+      completed: true,
+      notes: set.notes ?? "",
+      prescriptionKey: key,
+    }));
+    elapsed = intervalTotals(
+      kind,
+      {
+        sets: posted.sets,
+        rounds: posted.rounds,
+        workSeconds: posted.workSeconds,
+        restSeconds: posted.restSeconds,
+        setRestSeconds: posted.setRestSeconds,
+      },
+      done,
+    ).totalSeconds;
+  }
+  const plannedSetCount = sameStructure ? Math.max(input.session.plannedSetCount ?? 0, configured) : configured;
+  const status = roundSaveStatus({
+    roundsCompleted: done,
+    plannedRounds: plannedSetCount,
+    configuredRounds: configured,
+  });
+  const timerReady = await workoutTimerColumnsAvailable(prisma);
+  await prisma.$transaction(async (tx) => {
+    await tx.workoutSet.deleteMany({ where: { workoutSessionId: input.session.id } });
+    throwIfBackfillWriteFault();
+    await tx.workoutSession.update({
+      where: { id: input.session.id },
+      data: {
+        title: cleanTitle(input.title, input.session.title),
+        notes: input.notes.trim().slice(0, 1000),
+        performedAt,
+        status,
+        plannedSetCount,
+        sessionRpe: input.rpe,
+        sets: { create: toCreate(sets) },
+      },
+    });
+    if (timerReady && elapsed > 0) await writeElapsedSecondsOnly(tx, input.session.id, elapsed);
+  });
+  return { ok: true as const, sessionId: input.session.id, status };
+}
+
 export async function updateBackfillWorkout(input: {
   userId: string;
   sessionId: string;
@@ -1314,6 +1464,8 @@ export async function updateBackfillWorkout(input: {
   confirmed: boolean;
   resolution: "" | "extra" | "replace";
   now?: Date;
+  /** Present when the edit sheet decoded an interval. Absent on a lift edit. */
+  interval?: DecodedInterval | null;
 }): Promise<BackfillWriteResult> {
   if (!input.confirmed) throw new AppError("WORKOUT", "Confirm before saving this change.");
   const { timeZone, units } = await memberZone(input.userId);
@@ -1325,6 +1477,21 @@ export async function updateBackfillWorkout(input: {
   });
   if (!session || session.userId !== input.userId) throw new ForbiddenError();
   if (!session.backfilled) throw new AppError("WORKOUT", "Only a logged-later workout can be edited here.");
+  const decoded = decodeInterval(session.sets);
+  if (input.interval && decoded && input.interval.kind === decoded.kind) {
+    return updateIntervalBackfill({
+      session,
+      dayKey: input.dayKey,
+      timeZone,
+      units,
+      now,
+      title: input.title,
+      notes: input.notes,
+      rpe: input.rpe,
+      posted: input.interval,
+      decoded,
+    });
+  }
   const others = (await sessionsOnCivilDay(input.userId, input.dayKey, timeZone)).filter((row) => row.id !== session.id);
   if (others.length > 0 && input.resolution !== "extra" && input.resolution !== "replace") {
     return {
@@ -1343,7 +1510,10 @@ export async function updateBackfillWorkout(input: {
     plannedSetCount: built.plannedSetCount,
     plannedNames: built.plannedNames,
   });
-  const performedAt = performedAtForDayKey(input.dayKey, timeZone);
+  const performedAt =
+    sessionCompletionDay(session, timeZone) === input.dayKey
+      ? session.performedAt
+      : performedAtForLoggedDay(input.dayKey, timeZone, now);
   await prisma.$transaction(async (tx) => {
     if (replacing) {
       await tx.workoutSession.deleteMany({

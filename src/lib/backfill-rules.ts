@@ -136,6 +136,15 @@ export function backfillDayOptions(now: Date, timeZone: string) {
   return options;
 }
 
+/**
+ * Today keeps the clock time the member saved. A past day stays at noon so
+ * the civil day cannot slip backward.
+ */
+export function performedAtForLoggedDay(day: string, timeZone: string, now: Date) {
+  if (day === dayKey(now, timeZone)) return now;
+  return performedAtForDayKey(day, timeZone);
+}
+
 /** Noon in the member's zone, so the civil day key cannot slip to the day before. */
 export function performedAtForDayKey(day: string, timeZone: string) {
   const [year, month, date] = day.split("-").map(Number);

@@ -44,7 +44,7 @@ describe("backfill bike parity", () => {
     });
     expect(choice).toBeTruthy();
     expect(choiceToken(choice!)).toBe("c.15.15.8.0.0.2.60");
-    expect(choice!.name).toBe("Custom sprints · 2 rounds");
+    expect(choice!.name).toBe("2 × 8 rounds · 15/15 · 60s between sets");
     const when = performedAtForDayKey(DAY, TZ);
     const liveUser = await makeUser("parity-live@example.com");
     const backUser = await makeUser("parity-backfill@example.com");

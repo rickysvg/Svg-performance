@@ -97,10 +97,81 @@ export function roundPrescriptionKey(type: RoundSessionType, restSeconds: number
   return `round:${type}:${Math.max(0, Math.round(restSeconds))}`;
 }
 
-export function restSecondsFromRoundKey(key: string | null | undefined) {
+/** Rest, groups, set rest, and rounds per set. Old `round:bag:60` keys still parse. */
+export function roundStructureKey(
+  type: RoundSessionType,
+  restSeconds: number,
+  structure: { sets: number; setRestSeconds: number; roundsPerSet: number },
+) {
+  const rest = Math.max(0, Math.round(restSeconds));
+  const sets = Math.max(1, Math.round(structure.sets));
+  const setRest = sets > 1 ? Math.max(0, Math.round(structure.setRestSeconds)) : 0;
+  const rounds = Math.max(1, Math.round(structure.roundsPerSet));
+  return `round:${type}:${rest}:${sets}:${setRest}:${rounds}`;
+}
+
+export function roundStructureFromKey(key: string | null | undefined) {
   if (!key?.startsWith("round:")) return null;
-  const rest = Number(key.split(":")[2]);
-  return Number.isFinite(rest) ? rest : null;
+  const parts = key.split(":");
+  const type = parts[1] ?? "";
+  const rest = Number(parts[2]);
+  if (!type || !Number.isFinite(rest)) return null;
+  const sets = parts[3] != null && parts[3] !== "" ? Number(parts[3]) : 1;
+  const setRest = parts[4] != null && parts[4] !== "" ? Number(parts[4]) : 0;
+  const rounds = parts[5] != null && parts[5] !== "" ? Number(parts[5]) : null;
+  return {
+    type,
+    restSeconds: rest,
+    sets: Number.isFinite(sets) && sets > 0 ? Math.round(sets) : 1,
+    setRestSeconds: Number.isFinite(setRest) && setRest >= 0 ? Math.round(setRest) : 0,
+    roundsPerSet: rounds != null && Number.isFinite(rounds) && rounds > 0 ? Math.round(rounds) : null,
+  };
+}
+
+export function restSecondsFromRoundKey(key: string | null | undefined) {
+  return roundStructureFromKey(key)?.restSeconds ?? null;
+}
+
+/** Full interval count from a bike token or a round structure key. 0 when the key does not say. */
+export function configuredRoundTotal(
+  sets: { prescriptionKey?: string | null }[],
+) {
+  const bike = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((choice) => choice != null);
+  if (bike) return bikeTimerRoundCount(bike);
+  const structure = sets
+    .map((set) => roundStructureFromKey(set.prescriptionKey))
+    .find((row) => row?.roundsPerSet);
+  if (!structure?.roundsPerSet) return 0;
+  return structure.sets * structure.roundsPerSet;
+}
+
+/**
+ * Bag, pads, sparring, and grappling stop on the last work interval.
+ * The rest after the last round of a set is the set rest when another set follows.
+ */
+export function roundBlockDuration(input: {
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+  done: number;
+}) {
+  const sets = Math.max(1, Math.round(input.sets));
+  const perSet = Math.max(1, Math.round(input.rounds));
+  const done = Math.min(sets * perSet, Math.max(0, Math.round(input.done)));
+  const work = Math.max(0, Math.round(input.workSeconds));
+  const rest = Math.max(0, Math.round(input.restSeconds));
+  const setRest = Math.max(0, Math.round(input.setRestSeconds));
+  let remaining = done;
+  let totalSeconds = 0;
+  for (let set = 0; set < sets && remaining > 0; set += 1) {
+    const inSet = Math.min(perSet, remaining);
+    totalSeconds += roundSessionDuration(inSet, work, rest);
+    remaining -= inSet;
+    if (remaining > 0) totalSeconds += setRest;
+  }
+  return totalSeconds;
 }
 
 export function roundSessionDuration(rounds: number, workSeconds: number, restSeconds: number) {
@@ -465,6 +536,18 @@ export function roundHistoryLine(session: {
     bikeChoiceFromKey(sets[0]?.prescriptionKey)?.spec.restSeconds ??
     0;
   const bike = bikeChoiceFromKey(sets[0]?.prescriptionKey);
+  const structure = roundStructureFromKey(sets[0]?.prescriptionKey);
+  const block =
+    !bike && structure?.roundsPerSet
+      ? roundBlockDuration({
+          sets: structure.sets,
+          rounds: structure.roundsPerSet,
+          workSeconds: work,
+          restSeconds: structure.restSeconds,
+          setRestSeconds: structure.setRestSeconds,
+          done: sets.length,
+        })
+      : null;
   const bikeOnly = sets.every((set) => isBikeIntervalName(set.exerciseName ?? ""));
   const total = bikeOnly
     ? bikeCardioDurationSeconds({
@@ -487,7 +570,7 @@ export function roundHistoryLine(session: {
       ? session.elapsedSeconds
       : bike
         ? bikeClockSeconds(bike, sets.length)
-        : roundSessionDuration(sets.length, work, rest);
+        : (block ?? roundSessionDuration(sets.length, work, rest));
   const parts = [
     `${sets.length} round${sets.length === 1 ? "" : "s"}`,
     `${formatTimerClock(work)} round`,
