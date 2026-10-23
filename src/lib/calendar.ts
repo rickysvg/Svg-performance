@@ -327,6 +327,7 @@ function logIsOpenPartial(
     programSlug: log.programDay?.program.slug,
     dayNumber: log.programDay?.dayNumber,
     edits,
+    loggedSets: log.sets,
   });
   return !offPlanSessionDone(log, visible.dose, visible.names);
 }
@@ -597,6 +598,7 @@ async function loadCalendarSchedule(
         programSlug: matched?.programDay?.program.slug ?? session.programSlug,
         dayNumber: matched?.programDay?.dayNumber ?? session.dayNumber,
         edits,
+        loggedSets: matched?.sets,
       });
       const dose = visible.dose;
       const view = matched
@@ -687,6 +689,7 @@ async function loadCalendarSchedule(
         programSlug: log.programDay?.program.slug,
         dayNumber: log.programDay?.dayNumber,
         edits,
+        loggedSets: log.sets,
       });
       const view = sessionProgress(log, {
         dose: visible.dose,

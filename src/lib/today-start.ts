@@ -79,6 +79,7 @@ export function openLogsByProgramDay(
           programSlug: session.programDay?.program?.slug,
           dayNumber: session.programDay?.dayNumber,
           edits: visibleEdits.edits,
+          loggedSets: session.sets,
         })
       : null;
     const progress = sessionProgress(session, {

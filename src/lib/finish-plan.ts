@@ -1,8 +1,47 @@
+import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { omitRemovedSlots, type RemovalRecord } from "@/lib/exercise-removal";
+import { isShadowName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { applySwapsToExercises, type SwapRecord } from "@/lib/exercise-swap";
 import { prescribedSetTotal } from "@/lib/logged-work";
+import { configuredRoundTotal } from "@/lib/round-session";
 
 type NamedSets = { name: string; sets: number };
+
+export type VisibleDoseSet = {
+  exerciseName?: string | null;
+  prescriptionKey?: string | null;
+  logMode?: string | null;
+};
+
+function countsAsRoundSet(set: VisibleDoseSet) {
+  const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName ?? "" });
+  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName ?? "") || isShadowName(set.exerciseName ?? "")) {
+    return true;
+  }
+  const key = set.prescriptionKey ?? "";
+  return key.startsWith("round:") || key === "bagwork";
+}
+
+/**
+ * A rounds-only log counts sets × rounds from the stored interval, not the
+ * catalog's single set. A mixed log keeps each card's own count.
+ */
+function doseWithIntervalPlan(
+  exercises: NamedSets[],
+  summed: number,
+  catalog: number,
+  loggedSets?: readonly VisibleDoseSet[],
+) {
+  const base = summed > 0 ? summed : catalog;
+  if (!loggedSets || loggedSets.length === 0 || !loggedSets.every(countsAsRoundSet)) {
+    return { dose: base, exercises };
+  }
+  const configured = configuredRoundTotal([...loggedSets]);
+  if (configured <= 0) return { dose: base, exercises };
+  if (exercises.length !== 1) return { dose: Math.max(base, configured), exercises };
+  const sets = Math.max(exercises[0]!.sets, configured);
+  return { dose: sets, exercises: [{ ...exercises[0]!, sets }] };
+}
 
 export function exerciseEditKey(programSlug: string, dayNumber: number) {
   return `${programSlug}:${dayNumber}`;
@@ -34,6 +73,8 @@ export function visibleSessionDose(input: {
   sessionId: string;
   blockKey: string;
   catalogDose?: number;
+  /** Logged rows. Interval keys raise a rounds-only plan to sets × rounds. */
+  loggedSets?: readonly VisibleDoseSet[];
 }): { dose: number; names: string[]; exercises: NamedSets[] } {
   const programmed = namedSetRows(input.exercises).map((exercise) => ({
     ...exercise,
@@ -49,16 +90,17 @@ export function visibleSessionDose(input: {
     sessionId: input.sessionId,
     includePending: false,
   }).shown;
-  const exercises = namedSetRows(shown);
-  const summed = prescribedSetTotal(exercises);
+  const shownRows = namedSetRows(shown);
+  const summed = prescribedSetTotal(shownRows);
   const catalog =
     typeof input.catalogDose === "number" && input.catalogDose > 0
       ? Math.round(input.catalogDose)
       : 0;
+  const planned = doseWithIntervalPlan(shownRows, summed, catalog, input.loggedSets);
   return {
-    dose: summed > 0 ? summed : catalog,
-    names: exercises.map((exercise) => exercise.name),
-    exercises,
+    dose: planned.dose,
+    names: planned.exercises.map((exercise) => exercise.name),
+    exercises: planned.exercises,
   };
 }
 
@@ -70,6 +112,7 @@ export function visibleFinishDose(input: {
   sessionId: string;
   blockKey: string;
   catalogDose?: number;
+  loggedSets?: readonly VisibleDoseSet[];
 }) {
   return visibleSessionDose(input);
 }
@@ -86,6 +129,7 @@ export function visibleDoseForSession(input: {
   programSlug?: string | null;
   dayNumber?: number | null;
   edits?: MemberExerciseEdits | null;
+  loggedSets?: readonly VisibleDoseSet[];
 }) {
   const key =
     input.programSlug && input.dayNumber != null
@@ -99,6 +143,7 @@ export function visibleDoseForSession(input: {
     sessionId: input.sessionId ?? "",
     blockKey: input.blockKey,
     catalogDose: input.catalogDose,
+    loggedSets: input.loggedSets,
   });
 }
 

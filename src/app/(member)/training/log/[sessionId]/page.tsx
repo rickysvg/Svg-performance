@@ -90,6 +90,7 @@ export default async function WorkoutLogPage({
           programSlug: session.programDay.program.slug,
           dayNumber: session.programDay.dayNumber,
           edits: await loadMemberExerciseEdits(user.id),
+          loggedSets: session.sets,
         })
       : null;
     const progress = sessionProgress(

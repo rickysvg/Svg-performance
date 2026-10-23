@@ -182,6 +182,100 @@ describe("Oct 23 QA fixes", () => {
     expect(read("src/lib/home.ts")).toContain("visibleDoseForSession");
     expect(read("src/lib/today-start.ts")).toContain("visibleDoseForSession");
     expect(read("src/app/(member)/training/page.tsx")).toContain("withVisiblePlanExercises");
+
+    const token = "timer#bw:c.15.15.8.0.0.2.60";
+    const interval = {
+      exerciseName: "Assault bike intervals",
+      completed: true,
+      reps: null,
+      loadValue: null,
+      durationSeconds: 15,
+      prescriptionKey: token,
+      logMode: "timed_round" as const,
+    };
+    const sixteenSets = Array.from({ length: 16 }, () => interval);
+    const intervalDose = visibleSessionDose({
+      exercises: [{ name: "Assault bike intervals", sets: 1 }],
+      swaps: [],
+      removals: [],
+      sessionId: "bike",
+      blockKey: "2026-w",
+      catalogDose: 1,
+      loggedSets: sixteenSets,
+    });
+    expect(intervalDose.dose).toBe(16);
+    expect(intervalDose.exercises[0]?.sets).toBe(16);
+    expect(
+      sessionProgress(
+        { status: "complete", programDayId: "bike", plannedSetCount: 1, sets: sixteenSets },
+        { dose: intervalDose.dose, names: intervalDose.names, exercises: intervalDose.exercises },
+      ).text,
+    ).toBe("16/16 rounds · Done");
+    expect(
+      sessionProgress(
+        {
+          status: "partial",
+          programDayId: "bike",
+          plannedSetCount: 1,
+          sets: sixteenSets.slice(0, 12),
+        },
+        { dose: intervalDose.dose, names: intervalDose.names, exercises: intervalDose.exercises },
+      ).text,
+    ).toBe("12/16 rounds · Partial");
+
+    const bag = {
+      exerciseName: "Heavy bag rounds",
+      completed: true,
+      reps: null,
+      loadValue: null,
+      durationSeconds: 180,
+      prescriptionKey: "round:bag:60",
+      logMode: "timed_round" as const,
+    };
+    const squat = { exerciseName: "Squat", completed: true, reps: 5, loadValue: 135, durationSeconds: null };
+    const mixedExercises = [
+      { name: "Squat", sets: 5 },
+      { name: "Heavy bag rounds", sets: 3 },
+    ];
+    const mixedDose = visibleSessionDose({
+      exercises: mixedExercises,
+      swaps: [],
+      removals: [],
+      sessionId: "mixed",
+      blockKey: "2026-w",
+      catalogDose: 8,
+      loggedSets: [...Array.from({ length: 5 }, () => squat), ...Array.from({ length: 3 }, () => bag)],
+    });
+    expect(mixedDose.dose).toBe(8);
+    expect(
+      sessionProgress(
+        {
+          status: "complete",
+          programDayId: "mixed",
+          plannedSetCount: 8,
+          sets: [...Array.from({ length: 5 }, () => squat), ...Array.from({ length: 3 }, () => bag)],
+        },
+        { dose: mixedDose.dose, names: mixedDose.names, exercises: mixedDose.exercises },
+      ).text,
+    ).toBe("5/5 sets · 3/3 rounds · Done");
+
+    const shadowSets = [1, 2].map((round) => ({
+      exerciseName: `Shadowbox round ${round} — empty hands`,
+      completed: true,
+      reps: null,
+      loadValue: null,
+      durationSeconds: 180,
+    }));
+    expect(
+      sessionProgress({ status: "complete", plannedSetCount: 2, sets: shadowSets }, visibleSessionDose({
+        exercises: [],
+        swaps: [],
+        removals: [],
+        sessionId: "shadow",
+        blockKey: "2026-w",
+        loggedSets: shadowSets,
+      })).text,
+    ).toBe("2/2 rounds · Done");
   });
 
   it("lines the focused week up with its header and day links, and keeps the carousel", () => {

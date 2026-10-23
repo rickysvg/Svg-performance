@@ -111,6 +111,7 @@ export default async function HistoryPage() {
                   programSlug: session.programDay.program.slug,
                   dayNumber: session.programDay.dayNumber,
                   edits,
+                  loggedSets: session.sets,
                 })
               : null;
             const progress = sessionProgress(

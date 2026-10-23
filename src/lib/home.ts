@@ -310,6 +310,7 @@ function homeProgress(
     programSlug: session.programDay?.program?.slug,
     dayNumber: session.programDay?.dayNumber,
     edits,
+    loggedSets: session.sets,
   });
   return sessionProgress(session, {
     dose: visible.dose,

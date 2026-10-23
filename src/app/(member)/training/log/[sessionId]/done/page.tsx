@@ -107,6 +107,7 @@ export default async function WorkoutDonePage({
             profile?.onboardingCompletedAt ?? null,
           ),
           catalogDose: plan?.dose,
+          loggedSets: view.session.sets,
         })
       : null;
   const progress = sessionProgress(view.session, {

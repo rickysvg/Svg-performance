@@ -415,6 +415,8 @@ export async function completedProgramDayIdsOnDay(
           reps: true,
           loadValue: true,
           durationSeconds: true,
+          prescriptionKey: true,
+          logMode: true,
         },
       },
     },
@@ -447,6 +449,7 @@ export async function completedProgramDayIdsOnDay(
                   programSlug: row.programDay?.program.slug,
                   dayNumber: row.programDay?.dayNumber,
                   edits,
+                  loggedSets: row.sets,
                 })
               : null;
           return sessionProgress(
