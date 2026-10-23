@@ -9,6 +9,7 @@ import {
   getOwnWorkoutSessionOrNull,
   rateWorkoutSessionForUser,
   continuePartialWorkoutForUser,
+  recordWorkoutActivityForUser,
   reopenCompletedWorkoutForUser,
   completeBikeLoggerSession,
   logBikeRoundsForUser,
@@ -323,6 +324,16 @@ export async function saveWorkoutAction(
     return { error: publicErrorMessage(error) };
   }
   redirect(redirectPath);
+}
+
+/** Visible logger heartbeat, set check, or timer event. Failures stay quiet; Save applies the same rule. */
+export async function recordWorkoutActivityAction(workoutId: string) {
+  try {
+    const user = await requireUserOrThrow();
+    await recordWorkoutActivityForUser({ userId: user.id, workoutId });
+  } catch {
+    return;
+  }
 }
 
 export async function syncWorkoutDraftAction(input: {

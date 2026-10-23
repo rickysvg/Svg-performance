@@ -950,6 +950,48 @@ describe("round session logs", () => {
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
   });
 
+  it("does not replace a 3:00 bag log with a shorter round clock", async () => {
+    const user = await makeUser("bag-different-clock@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE },
+    });
+    const now = new Date();
+    const first = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 3,
+      configuredRounds: 3,
+      workSeconds: 180,
+      restSeconds: 60,
+      elapsedSeconds: 660,
+      now,
+    });
+    const other = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 4,
+      configuredRounds: 4,
+      workSeconds: 15,
+      restSeconds: 15,
+      elapsedSeconds: 105,
+      now,
+    });
+    expect(other.id).not.toBe(first.id);
+    expect(other.sets).toHaveLength(4);
+    expect(other.sets.every((set) => set.durationSeconds === 15)).toBe(true);
+    expect(restSecondsFromRoundKey(other.sets[0]?.prescriptionKey)).toBe(15);
+    const still = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: first.id },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    expect(still.sets).toHaveLength(3);
+    expect(still.sets.map((set) => set.durationSeconds)).toEqual([180, 180, 180]);
+    expect(restSecondsFromRoundKey(still.sets[0]?.prescriptionKey)).toBe(60);
+    expect((await readWorkoutTimerFields(first.id, prisma)).elapsedSeconds).toBe(660);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
+  });
+
   it("does not shrink a finished bag log when the timer saves fewer rounds", async () => {
     const user = await makeUser("bag-no-shrink@example.com");
     await prisma.profile.update({

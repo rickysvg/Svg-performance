@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sessionDurationSeconds, SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import {
   elapsedSecondsToFreeze,
+  foldActivityGap,
   formatSessionElapsed,
   freezeElapsedOnSave,
   resolveSessionElapsed,
@@ -90,32 +91,91 @@ describe("session header elapsed clock", () => {
     expect(view.label).not.toContain("1397");
   });
 
-  it("ignores a stored 4 hour cap and counts only the live segment", () => {
+  it("keeps a stored 4 hour clock and does not count past the cap", () => {
     const view = resolveSessionElapsed(
       {
         status: "draft",
         createdAt: new Date(NOW.getTime() - 3 * 24 * 60 * 60 * 1000),
-        elapsedSeconds: 14400,
+        elapsedSeconds: SESSION_DURATION_CAP_SECONDS,
         timerStartedAt: new Date(NOW.getTime() - 10_000),
       },
       NOW,
     );
-    expect(view.ticking).toBe(true);
-    expect(view.label).toBe("00:10");
-    expect(view.label).not.toBe("4:00:00");
+    expect(view.capped).toBe(true);
+    expect(view.seconds).toBe(SESSION_DURATION_CAP_SECONDS);
+    expect(view.label).toBe("4:00:00");
   });
 
-  it("caps a long-but-not-abandoned draft instead of counting past four hours", () => {
-    const view = resolveSessionElapsed(
+  it("counts a long idle gap as ten minutes, and the four hour cap still stops the total", () => {
+    const idle = resolveSessionElapsed(
       {
         status: "draft",
         createdAt: new Date(NOW.getTime() - (SESSION_DURATION_CAP_SECONDS + 60) * 1000),
       },
       NOW,
     );
-    expect(view.ticking).toBe(false);
-    expect(view.capped).toBe(true);
-    expect(view.label).toBe("4:00:00");
+    expect(idle.ticking).toBe(true);
+    expect(idle.seconds).toBe(10 * 60);
+    expect(idle.label).toBe("10:00");
+
+    const nearCap = resolveSessionElapsed(
+      {
+        status: "draft",
+        createdAt: NOW,
+        elapsedSeconds: SESSION_DURATION_CAP_SECONDS - 30,
+        timerStartedAt: new Date(NOW.getTime() - 2 * 60 * 60 * 1000),
+      },
+      NOW,
+    );
+    expect(nearCap.seconds).toBe(SESSION_DURATION_CAP_SECONDS);
+    expect(nearCap.label).toBe("4:00:00");
+  });
+
+  it("adds about 25s of work, ten minutes for a 2h gap, and a full 3 minute rest", () => {
+    const worked = {
+      status: "draft" as const,
+      createdAt: new Date(NOW.getTime() - 2 * 60 * 60 * 1000),
+      elapsedSeconds: 600,
+      timerStartedAt: new Date(NOW.getTime() - 25_000),
+    };
+    expect(resolveSessionElapsed(worked, NOW).seconds).toBe(625);
+    expect(elapsedSecondsToFreeze(worked, NOW, 606)).toBe(625);
+
+    const away = {
+      status: "draft" as const,
+      createdAt: new Date(NOW.getTime() - 5 * 60 * 60 * 1000),
+      elapsedSeconds: 600,
+      timerStartedAt: new Date(NOW.getTime() - 2 * 60 * 60 * 1000),
+    };
+    expect(resolveSessionElapsed(away, NOW).seconds).toBe(600 + 10 * 60);
+    expect(elapsedSecondsToFreeze(away, NOW, 600 + 7215)).toBe(600 + 10 * 60);
+
+    let active = 600;
+    for (let beat = 0; beat < 6; beat += 1) active = foldActivityGap(active, 30);
+    expect(active).toBe(600 + 180);
+    const afterAway = foldActivityGap(active, 2 * 60 * 60);
+    expect(afterAway).toBe(600 + 180 + 10 * 60);
+
+    const locked = {
+      status: "draft" as const,
+      createdAt: new Date(NOW.getTime() - 60 * 60 * 1000),
+      elapsedSeconds: active,
+      timerStartedAt: new Date(NOW.getTime() - 3 * 60 * 1000),
+    };
+    expect(resolveSessionElapsed(locked, NOW).seconds).toBe(active + 180);
+    expect(elapsedSecondsToFreeze(locked, NOW, active + 180)).toBe(active + 180);
+  });
+
+  it("keeps a capped clock when a resumed save is stale", () => {
+    const session = {
+      status: "draft" as const,
+      createdAt: new Date(NOW.getTime() - 20 * 60 * 60 * 1000),
+      elapsedSeconds: SESSION_DURATION_CAP_SECONDS,
+      timerStartedAt: new Date(NOW.getTime() - 13 * 60 * 60 * 1000),
+    };
+    expect(elapsedSecondsToFreeze(session, NOW, 0)).toBe(SESSION_DURATION_CAP_SECONDS);
+    expect(resolveSessionElapsed(session, NOW).label).toBe("Paused");
+    expect(resolveSessionElapsed(session, NOW).seconds).toBe(SESSION_DURATION_CAP_SECONDS);
   });
 
   it("freezes the reported clock on Save and keeps that value if Save runs again", () => {

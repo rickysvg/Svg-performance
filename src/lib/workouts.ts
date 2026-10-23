@@ -12,6 +12,7 @@ import {
   roundSessionDuration,
   roundTargetForProgramDay,
   ROUND_SESSION_TITLES,
+  sameRoundClock,
   sessionMatchesRoundType,
   setBelongsToRoundType,
   setIsSavedRoundWork,
@@ -77,6 +78,8 @@ import {
 import {
   freezeElapsedOnSave,
   plausibleElapsed,
+  resolveSessionElapsed,
+  resumeStoredElapsed,
   usableStoredElapsed,
 } from "@/lib/session-elapsed";
 import {
@@ -740,6 +743,8 @@ export async function logRoundSessionForUser(input: {
     timeZone,
     title: roundTitle,
     incomingRounds: roundSets.length,
+    workSeconds,
+    restSeconds,
   });
   const existing = await prisma.workoutSession.findUnique({
     where: { id: workoutId },
@@ -831,6 +836,8 @@ async function reuseRoundSessionId(input: {
   title: string;
   /** Logged rounds this save would write. A row with more than this is left alone. */
   incomingRounds: number;
+  workSeconds: number;
+  restSeconds: number;
 }) {
   const from = new Date(input.now.getTime() - 36 * 60 * 60 * 1000);
   const to = new Date(input.now.getTime() + 36 * 60 * 60 * 1000);
@@ -861,8 +868,12 @@ async function reuseRoundSessionId(input: {
       sessionCompletionDay({ performedAt: row.performedAt }, input.timeZone) === today &&
       sessionMatchesRoundType(row, input.type),
   );
-  const fits = (row: (typeof matches)[number]) =>
-    loggedRoundsForType(row.sets, input.type) <= input.incomingRounds;
+  const fits = (row: (typeof matches)[number]) => {
+    const logged = loggedRoundsForType(row.sets, input.type);
+    if (logged > input.incomingRounds) return false;
+    if (logged === 0) return true;
+    return sameRoundClock(row.sets, input.type, input.workSeconds, input.restSeconds);
+  };
   const saved = matches.find(
     (row) => (row.status === "complete" || row.status === "partial") && fits(row),
   );
@@ -1156,6 +1167,50 @@ async function findCompletedSameDaySession(
 }
 
 /**
+ * Mark the open logger as active and fold the gap since the last mark.
+ * A gap of ten minutes or less counts in full. A longer gap counts as ten
+ * minutes. This does not touch sets or updatedAt, so a draft autosave is not
+ * marked stale.
+ */
+export async function recordWorkoutActivityForUser(input: {
+  userId: string;
+  workoutId: string;
+  now?: Date;
+}) {
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: input.workoutId },
+    select: { id: true, userId: true, status: true, createdAt: true },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    throw new NotFoundError("Workout not found.");
+  }
+  if (existing.status === "complete") return { elapsedSeconds: null as number | null, timerStartedAt: null as Date | null };
+  if (!(await workoutTimerColumnsAvailable(prisma))) {
+    return { elapsedSeconds: null as number | null, timerStartedAt: null as Date | null };
+  }
+  const now = input.now ?? new Date();
+  const timer = await readWorkoutTimerFields(existing.id, prisma);
+  const base = resumeStoredElapsed(timer.elapsedSeconds) ?? 0;
+  const anchor = timer.timerStartedAt ?? existing.createdAt;
+  const view = resolveSessionElapsed(
+    {
+      status: existing.status,
+      createdAt: existing.createdAt,
+      elapsedSeconds: base,
+      timerStartedAt: anchor,
+    },
+    now,
+  );
+  const elapsedSeconds = view.stale ? base : view.seconds;
+  await prisma.$executeRaw`
+    UPDATE "WorkoutSession"
+    SET "elapsedSeconds" = ${elapsedSeconds}, "timerStartedAt" = ${now}
+    WHERE "id" = ${existing.id} AND "userId" = ${input.userId} AND "status" != 'complete'
+  `;
+  return { elapsedSeconds, timerStartedAt: now };
+}
+
+/**
  * Reopen a short save and put the planned rows back on that same session.
  * A planned completion stays finished. Removed and swapped-out names are not re-added.
  * Call this from the Resume action only. Viewing a log must not run it.
@@ -1194,7 +1249,7 @@ export async function continuePartialWorkoutForUser(input: {
         ...(stored
           ? {
               finishedAt: null,
-              elapsedSeconds: usableStoredElapsed(stored.elapsedSeconds),
+              elapsedSeconds: resumeStoredElapsed(stored.elapsedSeconds),
               timerStartedAt: new Date(),
             }
           : {}),
@@ -1286,7 +1341,7 @@ export async function continuePartialWorkoutForUser(input: {
       timerColumns && (fresh.status === "complete" || fresh.status === "partial")
         ? {
             finishedAt: null,
-            elapsedSeconds: usableStoredElapsed(
+            elapsedSeconds: resumeStoredElapsed(
               (await readWorkoutTimerFields(fresh.id, tx)).elapsedSeconds,
             ),
             timerStartedAt: new Date(),
@@ -2117,8 +2172,8 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
   }
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
-  // Keep a real saved clock. A missing value or the 4 hour cap is not training time.
-  const elapsed = usableStoredElapsed(stored.elapsedSeconds);
+  // Keep a real saved clock, including one that already sits on the 4 hour cap.
+  const elapsed = resumeStoredElapsed(stored.elapsedSeconds);
   const timerStartedAt = new Date();
   const updated = await prisma.workoutSession.update({
     where: { id: existing.id },

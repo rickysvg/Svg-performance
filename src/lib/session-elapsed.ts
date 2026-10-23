@@ -8,6 +8,16 @@ export { SESSION_DURATION_CAP_SECONDS };
  */
 export const STALE_DRAFT_SECONDS = 12 * 60 * 60;
 
+/**
+ * A quiet stretch between logger activity marks. Ten minutes or less counts
+ * in full, so a locked phone on a rest timer still counts. A longer gap counts
+ * as ten minutes. Hiding the tab is not a pause.
+ */
+export const ACTIVITY_GAP_CREDIT_SECONDS = 10 * 60;
+
+/** How often an open, visible logger marks activity. */
+export const ACTIVITY_HEARTBEAT_MS = 30_000;
+
 export type SessionClock = {
   status?: string | null;
   createdAt: Date | string | number;
@@ -67,6 +77,42 @@ export function usableStoredElapsed(
 }
 
 /**
+ * Clock to restore on Resume. A session that already reached the 4 hour cap
+ * keeps that capped value. Only a missing or empty clock stays empty.
+ */
+export function resumeStoredElapsed(
+  value: number | null | undefined,
+  cap = SESSION_DURATION_CAP_SECONDS,
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const seconds = Math.floor(value);
+  if (seconds <= 0) return null;
+  return Math.min(cap, seconds);
+}
+
+/** Seconds a single quiet gap contributes. A stale gap contributes nothing. */
+export function creditActivityGap(
+  gapSeconds: number,
+  maxGap = ACTIVITY_GAP_CREDIT_SECONDS,
+  staleAfter = STALE_DRAFT_SECONDS,
+): number {
+  if (!Number.isFinite(gapSeconds) || gapSeconds <= 0) return 0;
+  const gap = Math.floor(gapSeconds);
+  if (gap >= staleAfter) return 0;
+  return Math.min(gap, maxGap);
+}
+
+/** Fold one gap into a running total. The 4 hour cap is the backstop. */
+export function foldActivityGap(
+  elapsedSeconds: number,
+  gapSeconds: number,
+  cap = SESSION_DURATION_CAP_SECONDS,
+): number {
+  const base = Number.isFinite(elapsedSeconds) ? Math.max(0, Math.floor(elapsedSeconds)) : 0;
+  return Math.min(cap, base + creditActivityGap(gapSeconds));
+}
+
+/**
  * Wall-clock gap worth storing. Null when the gap is the cap or a stale draft
  * left open, so finalize and resume do not write 4:00:00.
  */
@@ -120,12 +166,13 @@ export function resolveSessionElapsed(
     };
   }
 
-  // A stored base at the cap is a wall-clock gap, not time the member trained.
-  const base = stored != null && stored < cap ? stored : 0;
+  // A stored cap is a real clock. Resume keeps it. The open gap still cannot
+  // push the total past four hours.
+  const base = stored != null && stored > 0 ? Math.min(stored, cap) : 0;
   const anchor = toMs(session.timerStartedAt) ?? created;
-  const segment = Math.max(0, Math.floor((nowMs - anchor) / 1000));
+  const rawSegment = Math.max(0, Math.floor((nowMs - anchor) / 1000));
 
-  if (segment >= STALE_DRAFT_SECONDS) {
+  if (rawSegment >= STALE_DRAFT_SECONDS) {
     return {
       seconds: Math.min(base, cap),
       ticking: false,
@@ -135,7 +182,8 @@ export function resolveSessionElapsed(
     };
   }
 
-  if (segment > cap || base + segment >= cap) {
+  const segment = creditActivityGap(rawSegment);
+  if (base + segment >= cap) {
     return {
       seconds: cap,
       ticking: false,
@@ -184,10 +232,24 @@ export function elapsedSecondsToFreeze(
 ): number {
   const reported = reportedElapsed(reportedSeconds, cap);
   const live = resolveSessionElapsed({ ...session, status: "draft" }, now, cap);
-  const resumed =
-    session.timerStartedAt != null && !live.stale && !live.capped ? live.seconds : null;
-  if (reported == null) return Math.min(live.seconds, cap);
-  if (resumed != null && resumed > reported) return Math.min(resumed, cap);
+  const anchorMs = toMs(session.timerStartedAt);
+  if (anchorMs == null) {
+    if (reported == null) return Math.min(live.seconds, cap);
+    return reported;
+  }
+  if (live.stale) {
+    const kept = resumeStoredElapsed(session.elapsedSeconds, cap);
+    return kept ?? 0;
+  }
+  const credited = Math.min(live.seconds, cap);
+  if (reported == null || reported <= credited) return credited;
+  const nowMs = typeof now === "number" ? now : now.getTime();
+  const base = resumeStoredElapsed(session.elapsedSeconds, cap) ?? 0;
+  const rawGap = Math.max(0, Math.floor((nowMs - anchorMs) / 1000));
+  const wall = Math.min(cap, base + rawGap);
+  // A gap past ten minutes that the logger posted as the wall clock is idle
+  // time. An explicit round duration is not close to that wall.
+  if (rawGap > ACTIVITY_GAP_CREDIT_SECONDS && Math.abs(reported - wall) <= 60) return credited;
   return reported;
 }
 

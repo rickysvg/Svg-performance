@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
+import { recordWorkoutActivityAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
@@ -76,7 +76,13 @@ import {
 } from "@/lib/rest-timer";
 import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
-import { resolveSessionElapsed, sessionElapsedState } from "@/lib/session-elapsed";
+import {
+  ACTIVITY_HEARTBEAT_MS,
+  foldActivityGap,
+  resolveSessionElapsed,
+  resumeStoredElapsed,
+  sessionElapsedState,
+} from "@/lib/session-elapsed";
 import { exerciseUsesBikeLogger, textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { restoreLoggerSets } from "@/lib/logger-sets";
@@ -334,6 +340,11 @@ function serverRest(session: { restExerciseName: string; restEndsAt: Date | null
 }
 
 let sessionClockMs = 0;
+const clockListeners = new Set<() => void>();
+let activitySessionId = "";
+let activityElapsed = 0;
+let activityAtMs = 0;
+let activityPersistTimer = 0;
 
 function readSessionClock() {
   // 0 is "not started", not the epoch. The first client read is the resume
@@ -342,17 +353,51 @@ function readSessionClock() {
   return sessionClockMs;
 }
 
+function pokeSessionClock() {
+  sessionClockMs = Date.now();
+  clockListeners.forEach((listener) => listener());
+}
+
+function readActivityClock(sessionId: string, base: number, anchorMs: number) {
+  if (activitySessionId !== sessionId) {
+    activitySessionId = sessionId;
+    activityElapsed = base;
+    activityAtMs = anchorMs;
+  } else if (anchorMs > activityAtMs && base >= activityElapsed) {
+    activityElapsed = base;
+    activityAtMs = anchorMs;
+  }
+  return { elapsed: activityElapsed, at: activityAtMs };
+}
+
+function noteLoggerActivity(sessionId: string, at = Date.now()) {
+  if (typeof window === "undefined" || activitySessionId !== sessionId || activityAtMs <= 0) return;
+  const gap = Math.floor((at - activityAtMs) / 1000);
+  activityElapsed = foldActivityGap(activityElapsed, gap);
+  activityAtMs = at;
+  pokeSessionClock();
+  if (activityPersistTimer) return;
+  activityPersistTimer = window.setTimeout(() => {
+    activityPersistTimer = 0;
+    void recordWorkoutActivityAction(sessionId);
+  }, 1000);
+}
+
 function subscribeSessionClock(onChange: () => void) {
+  clockListeners.add(onChange);
   const tick = () => {
     sessionClockMs = Date.now();
     onChange();
   };
   const kick = window.setTimeout(tick, 0);
   const timer = window.setInterval(tick, 1000);
+  // Wake refreshes the display. It is not a pause: a locked phone keeps counting
+  // until the activity gap reaches ten minutes.
   const onWake = () => tick();
   document.addEventListener("visibilitychange", onWake);
   window.addEventListener("focus", onWake);
   return () => {
+    clockListeners.delete(onChange);
     window.clearTimeout(kick);
     window.clearInterval(timer);
     document.removeEventListener("visibilitychange", onWake);
@@ -365,6 +410,7 @@ function subscribeFrozenClock() {
 }
 
 function SessionTimer({
+  sessionId,
   status,
   createdAt,
   updatedAt,
@@ -372,6 +418,7 @@ function SessionTimer({
   elapsedSeconds,
   timerStartedAt,
 }: {
+  sessionId: string;
   status: string;
   createdAt: Date | string;
   updatedAt?: Date | string | null;
@@ -392,8 +439,19 @@ function SessionTimer({
     frozen ? () => anchorMs : readSessionClock,
     () => anchorMs,
   );
+  const tracked =
+    !frozen && typeof window !== "undefined"
+      ? readActivityClock(sessionId, resumeStoredElapsed(elapsedSeconds) ?? 0, anchorMs)
+      : null;
   const view = resolveSessionElapsed(
-    { status, createdAt, updatedAt, finishedAt, elapsedSeconds, timerStartedAt },
+    {
+      status,
+      createdAt,
+      updatedAt,
+      finishedAt,
+      elapsedSeconds: tracked ? tracked.elapsed : elapsedSeconds,
+      timerStartedAt: tracked ? tracked.at : timerStartedAt,
+    },
     now,
   );
   const pending = !frozen && now === anchorMs;
@@ -768,6 +826,16 @@ export function WorkoutLogForm({
   }, []);
 
   useEffect(() => {
+    if (session.status === "complete") return;
+    const beat = () => {
+      if (document.visibilityState !== "visible") return;
+      noteLoggerActivity(session.id);
+    };
+    const timer = window.setInterval(beat, ACTIVITY_HEARTBEAT_MS);
+    return () => window.clearInterval(timer);
+  }, [session.id, session.status]);
+
+  useEffect(() => {
     if (!state.error) return;
     saveErrorRef.current?.scrollIntoView({ block: "center" });
   }, [state.error]);
@@ -901,6 +969,7 @@ export function WorkoutLogForm({
   }, [restTimer]);
 
   function updateSet(id: string, patch: Partial<WorkoutSet>) {
+    noteLoggerActivity(session.id);
     const name = sets.find((set) => set.id === id)?.exerciseName;
     if (name) setActiveName(name);
     setSets((current) =>
@@ -967,6 +1036,7 @@ export function WorkoutLogForm({
     restSeconds: number,
     completed: boolean,
   ) {
+    noteLoggerActivity(session.id);
     const target = sets.find((set) => set.id === setId);
     const mode = resolveLogMode({ logMode: target?.logMode, name: exerciseName });
     const bike = exerciseUsesBikeLogger(exerciseName, target?.prescriptionKey);
@@ -1046,6 +1116,7 @@ export function WorkoutLogForm({
   }
 
   function beginRest() {
+    noteLoggerActivity(session.id);
     if (!cursor.exerciseName || currentRestSeconds <= 0 || restRunning) return;
     primeRestAudio();
     primeMediaOutput();
@@ -1055,6 +1126,7 @@ export function WorkoutLogForm({
   }
 
   function commitRest(next: RestTimerState | null) {
+    noteLoggerActivity(session.id);
     setNowMs(readRestNow());
     primeMediaOutput();
     if (!next || remainingRestSeconds(next) <= 0) {
@@ -1262,6 +1334,7 @@ export function WorkoutLogForm({
                 </p>
               ) : null}
               <SessionTimer
+                sessionId={session.id}
                 status={session.status}
                 createdAt={session.createdAt}
                 updatedAt={session.updatedAt}
@@ -1621,6 +1694,7 @@ export function WorkoutLogForm({
                       session={bikeSession}
                       canStart={group.some((set) => !set.completed)}
                       onSetComplete={() => {
+                        noteLoggerActivity(session.id);
                         const current = setsRef.current;
                         const nextOpen = current.find(
                           (set) => set.exerciseName === name && !set.completed,

@@ -367,6 +367,36 @@ export function setIsSavedRoundWork(set: {
   );
 }
 
+/**
+ * True when this save uses the same work and rest as the rounds already stored.
+ * A different clock must not replace those sets.
+ */
+export function sameRoundClock(
+  sets: {
+    exerciseName?: string | null;
+    logMode?: string | null;
+    prescriptionKey?: string | null;
+    reps?: number | null;
+    loadValue?: number | null;
+    durationSeconds?: number | null;
+  }[],
+  type: RoundSessionType,
+  workSeconds: number,
+  restSeconds: number,
+) {
+  const logged = sets.filter((set) => setBelongsToRoundType(set, type) && setHasLoggedWork(set));
+  if (logged.length === 0) return true;
+  const work = Math.max(1, Math.round(workSeconds));
+  const rest = Math.max(0, Math.round(restSeconds));
+  return logged.every((set) => {
+    if ((set.durationSeconds ?? 0) !== work) return false;
+    const storedRest =
+      restSecondsFromRoundKey(set.prescriptionKey) ??
+      bikeChoiceFromKey(set.prescriptionKey)?.spec.restSeconds;
+    return storedRest === rest;
+  });
+}
+
 export function setBelongsToRoundType(
   set: { exerciseName?: string | null; logMode?: string | null; prescriptionKey?: string | null },
   type: RoundSessionType,
