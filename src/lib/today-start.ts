@@ -1,13 +1,6 @@
 import { sessionCompletionDay } from "@/lib/performed-at";
-import {
-  exerciseSetProgress,
-  partialSetsLine,
-  prescribedSetTotal,
-  progressTotals,
-  sessionCountsAsPlannedCompletion,
-  draftHasResumeWork,
-  type TickedSet,
-} from "@/lib/logged-work";
+import { partialSetsLine, draftHasResumeWork, type TickedSet } from "@/lib/logged-work";
+import { sessionProgress } from "@/lib/session-progress";
 
 export type ResumableLog = {
   id: string;
@@ -36,6 +29,7 @@ export type OpenProgramLog = {
 export type PlanDose = {
   dose: number;
   names: readonly string[];
+  exercises?: readonly { name?: string | null; sets?: number | null }[];
 };
 
 /**
@@ -66,26 +60,28 @@ export function openLogsByProgramDay(
       plan && plan.names.length > 0
         ? [...plan.names]
         : exercises.map((exercise) => exercise.name ?? "");
-    const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetTotal(exercises);
-    if (
-      session.status === "complete" &&
-      sessionCountsAsPlannedCompletion(session, names, dose)
-    ) {
+    const scaledExercises =
+      plan?.exercises && plan.exercises.length > 0 ? plan.exercises : exercises;
+    const dose = plan && plan.dose > 0 ? plan.dose : undefined;
+    const progress = sessionProgress(session, {
+      dose,
+      names,
+      exercises: scaledExercises,
+    });
+    if (session.status === "complete" && progress.done) {
       finished.add(session.programDayId);
       const existing = map.get(session.programDayId);
       if (existing && !existing.partial) map.delete(session.programDayId);
       continue;
     }
     if (finished.has(session.programDayId) || map.has(session.programDayId)) continue;
-    const totals = progressTotals(exerciseSetProgress(exercises, session.sets));
-    const planned = plan && plan.dose > 0 ? plan.dose : totals.planned > 0 ? totals.planned : dose;
     const partial = session.status !== "draft";
     map.set(session.programDayId, {
       id: session.id,
       partial,
-      ticked: totals.ticked,
-      planned,
-      progress: partial ? partialSetsLine(totals.ticked, planned) : undefined,
+      ticked: progress.ticked,
+      planned: progress.planned,
+      progress: partial ? partialSetsLine(progress.ticked, progress.planned) : undefined,
     });
   }
   return map;
@@ -109,24 +105,15 @@ export function openCustomLog(
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
     if (session.status === "abandoned") continue;
     if (session.status === "draft" && !draftHasResumeWork(session.sets)) continue;
-    if (
-      session.status === "complete" &&
-      sessionCountsAsPlannedCompletion(session, [], session.plannedSetCount)
-    ) {
-      continue;
-    }
-    const totals = progressTotals(exerciseSetProgress([], session.sets));
-    const planned =
-      session.plannedSetCount && session.plannedSetCount > 0
-        ? session.plannedSetCount
-        : totals.planned;
+    const progress = sessionProgress(session);
+    if (session.status === "complete" && progress.done) continue;
     const partial = session.status !== "draft";
     return {
       id: session.id,
       partial,
-      ticked: totals.ticked,
-      planned,
-      progress: partial ? partialSetsLine(totals.ticked, planned) : undefined,
+      ticked: progress.ticked,
+      planned: progress.planned,
+      progress: partial ? partialSetsLine(progress.ticked, progress.planned) : undefined,
     };
   }
   return null;

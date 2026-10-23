@@ -81,18 +81,22 @@ export function TimerDurationSteppers({
 }
 
 /**
- * One step per tap that ends inside the button. pointerdown only arms the tap.
- * pointerup applies when the pointer is still inside. A drag-off applies nothing.
- * Chrome still fires click on the button after that pointerup, so the click that
- * belongs to the pointer sequence is swallowed. A later click with no pointer
- * (Enter) applies once. pointercancel is a touch drag-off and does not swallow Enter.
+ * One step per left-button press that started on this button and ended inside it.
+ * pointerdown (button 0 only) arms the tap. pointerup applies only when that
+ * arm is still set and the pointer is inside. A drag-off, a drag-on, and a
+ * right or middle click apply nothing. The mouse click Chrome fires after
+ * pointerup is swallowed. Enter (detail 0) always steps, including the key
+ * that follows a pointer sequence.
  */
 export function applyStepperTap(
   event: "pointerdown" | "pointerup" | "pointercancel" | "click",
   state: { fromPointer: boolean; inside: boolean; suppressClick: boolean },
   apply: () => void,
+  meta?: { button?: number; detail?: number },
 ) {
+  const button = meta?.button ?? 0;
   if (event === "pointerdown") {
+    if (button !== 0) return;
     state.fromPointer = true;
     state.inside = true;
     state.suppressClick = false;
@@ -105,6 +109,7 @@ export function applyStepperTap(
     return;
   }
   if (event === "pointerup") {
+    if (!state.fromPointer || button !== 0) return;
     const inside = state.inside;
     state.inside = false;
     state.fromPointer = false;
@@ -113,12 +118,19 @@ export function applyStepperTap(
     apply();
     return;
   }
+  // Keyboard activation. Never swallow the next Enter.
+  if ((meta?.detail ?? 0) === 0) {
+    state.suppressClick = false;
+    state.fromPointer = false;
+    if (button !== 0) return;
+    apply();
+    return;
+  }
+  if (button !== 0) return;
   if (state.suppressClick || state.fromPointer) {
     state.suppressClick = false;
     state.fromPointer = false;
-    return;
   }
-  apply();
 }
 
 function Stepper({
@@ -146,7 +158,7 @@ function Stepper({
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
-        applyStepperTap("pointerdown", state, apply);
+        applyStepperTap("pointerdown", state, apply, { button: event.button });
       },
       onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -155,7 +167,7 @@ function Stepper({
           event.clientX <= rect.right &&
           event.clientY >= rect.top &&
           event.clientY <= rect.bottom;
-        applyStepperTap("pointerup", state, apply);
+        applyStepperTap("pointerup", state, apply, { button: event.button });
       },
       onPointerCancel: () => {
         applyStepperTap("pointercancel", state, apply);
@@ -163,7 +175,7 @@ function Stepper({
       onClick: (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
-        applyStepperTap("click", state, apply);
+        applyStepperTap("click", state, apply, { button: event.button, detail: event.detail });
       },
     };
   }

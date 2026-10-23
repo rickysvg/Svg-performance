@@ -7,6 +7,7 @@ export function ContinueWorkoutButton({
   testId,
   startToday = false,
   nextSession = false,
+  planId,
 }: {
   workoutId: string;
   label: string;
@@ -14,6 +15,7 @@ export function ContinueWorkoutButton({
   testId?: string;
   startToday?: boolean;
   nextSession?: boolean;
+  planId?: string;
 }) {
   return (
     <form action={continuePartialWorkoutAction} className="w-full">
@@ -26,6 +28,7 @@ export function ContinueWorkoutButton({
         data-start-today={startToday ? "" : undefined}
         data-next-session={nextSession ? "" : undefined}
         data-testid={testId}
+        data-resume-plan={planId}
         className={className}
       >
         {label}

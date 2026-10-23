@@ -32,6 +32,17 @@ function StatusCircle({
   );
 }
 
+/** The count line already says "1/26 sets · Partial". Don't print that string again. */
+function subtitleEchoesProgress(activity: CalendarActivity) {
+  const count = activity.setCountLabel?.trim() ?? "";
+  const subtitle = activity.subtitle?.trim() ?? "";
+  if (!count || !subtitle) return false;
+  if (subtitle === count || subtitle.includes(count)) return true;
+  const title = activity.title.trim();
+  if (!title) return false;
+  return subtitle === `${title} · Done` || subtitle === `${title} · Partial`;
+}
+
 function ActivityCard({ activity }: { activity: CalendarActivity }) {
   const movable = Boolean(
     activity.kind === "workout" &&
@@ -78,7 +89,9 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
               ))}
             </span>
           ) : null}
-          <span className="mt-0.5 block text-sm text-muted">{activity.subtitle}</span>
+          {activity.subtitle && !subtitleEchoesProgress(activity) ? (
+            <span className="mt-0.5 block text-sm text-muted">{activity.subtitle}</span>
+          ) : null}
         </span>
         <span className="text-lg text-muted" aria-hidden>
           ›

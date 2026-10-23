@@ -45,7 +45,9 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
       dayId !== CUSTOM_HOME_RESUME &&
       !guide.today.completedDayIds?.includes(dayId),
   )?.[1];
-  const firstDone = Boolean(first?.dayId && guide.today.completedDayIds?.includes(first.dayId));
+  const firstDone = Boolean(
+    first?.dayId && guide.today.completedDayIds?.includes(first.dayId) && !resume?.partial,
+  );
   const nextDone = Boolean(next?.dayId && guide.today.completedDayIds?.includes(next.dayId));
   const firstPartial = Boolean(
     first?.dayId && !firstDone && guide.today.partialDayIds?.includes(first.dayId),

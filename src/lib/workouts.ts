@@ -29,6 +29,7 @@ import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc }
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { calendarPlanDoses, withCalendarScaleMemory } from "@/lib/plan-doses";
+import { sessionProgress } from "@/lib/session-progress";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
 import { parseSessionRpe } from "@/lib/bagwork";
@@ -63,6 +64,7 @@ import {
   draftHasResumeWork,
   loggedSetSome,
   offPlanSessionDone,
+  prescribedSetTotal,
   prepareSetsForPersist,
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
@@ -408,20 +410,23 @@ export async function completedProgramDayIdsOnDay(
     },
   });
   const targets = await plannedTargetsByDay(ids);
+  const doses = await calendarPlanDoses(userId, day);
   const key = dayKey(day, timeZone);
   return [
     ...new Set(
       rows
-        .filter(
-          (row) =>
-            row.programDayId &&
-            sessionCompletionDay(row, timeZone) === key &&
-            sessionCountsAsPlannedCompletion(
-              row,
-              targets.names.get(row.programDayId) ?? [],
-              targets.doses.get(row.programDayId) ?? null,
-            ),
-        )
+        .filter((row) => {
+          if (!row.programDayId || sessionCompletionDay(row, timeZone) !== key) return false;
+          const plan = doses.get(row.programDayId);
+          const names =
+            plan && plan.names.length > 0 ? [...plan.names] : (targets.names.get(row.programDayId) ?? []);
+          const dose = plan && plan.dose > 0 ? plan.dose : (targets.doses.get(row.programDayId) ?? 0);
+          return sessionProgress(row, {
+            dose,
+            names,
+            exercises: plan?.exercises,
+          }).done;
+        })
         .map((row) => row.programDayId)
         .filter((id): id is string => Boolean(id)),
     ),
@@ -1181,7 +1186,12 @@ export async function continuePartialWorkoutForUser(input: {
           (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
           0,
         );
-  if (existing.status === "complete" && offPlanSessionDone(existing, dose, names)) {
+  const progressDose = {
+    dose,
+    names,
+    exercises: calendar?.exercises && calendar.exercises.length > 0 ? calendar.exercises : day.exercises,
+  };
+  if (existing.status === "complete" && sessionProgress(existing, progressDose).done) {
     return existing;
   }
 
@@ -1214,7 +1224,10 @@ export async function continuePartialWorkoutForUser(input: {
     if (fresh.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
-    if (fresh.status === "complete" && offPlanSessionDone(fresh, dose, names)) {
+    if (
+      fresh.status === "complete" &&
+      sessionProgress({ ...fresh, programDayId: existing.programDayId }, progressDose).done
+    ) {
       return fresh;
     }
     await tx.workoutSession.update({
@@ -1365,6 +1378,29 @@ export async function startWorkoutFromDay(input: {
     visible.map((exercise) => exercise.name),
   );
   if (sameDay) return sameDay;
+  const shortComplete = await findCompletedSameDaySession(
+    prisma,
+    input.userId,
+    rawDay.id,
+    now,
+    zone,
+    visible.map((exercise) => exercise.name),
+  );
+  if (shortComplete) {
+    const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
+    const progress = sessionProgress(shortComplete, {
+      dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
+      names:
+        calendar && calendar.names.length > 0
+          ? [...calendar.names]
+          : visible.map((exercise) => exercise.name),
+      exercises:
+        calendar?.exercises && calendar.exercises.length > 0
+          ? calendar.exercises
+          : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
+    });
+    if (!progress.done) return shortComplete;
+  }
 
   const sets = visible.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
@@ -1407,6 +1443,29 @@ export async function startWorkoutFromDay(input: {
       visible.map((exercise) => exercise.name),
     );
     if (again) return again;
+    const shortAgain = await findCompletedSameDaySession(
+      tx,
+      input.userId,
+      rawDay.id,
+      now,
+      zone,
+      visible.map((exercise) => exercise.name),
+    );
+    if (shortAgain) {
+      const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
+      const progress = sessionProgress(shortAgain, {
+        dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
+        names:
+          calendar && calendar.names.length > 0
+            ? [...calendar.names]
+            : visible.map((exercise) => exercise.name),
+        exercises:
+          calendar?.exercises && calendar.exercises.length > 0
+            ? calendar.exercises
+            : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
+      });
+      if (!progress.done) return shortAgain;
+    }
     fresh = true;
     return tx.workoutSession.create({
       data: {

@@ -143,13 +143,14 @@ export function roundLogFromClock(input: {
   }
   if (phase === "work") {
     const intoWork = work > 0 ? Math.min(work, phaseElapsed) : phaseElapsed;
-    // Rests that already finished sit in the total once the next round starts.
-    // End of work N then matches the start of rest N, and round 2+ keeps those rests.
-    // The rest phase below still omits the rest that is in progress.
+    // Completed work plus the rests that sit between rounds already completed.
+    // The rest that just ended is not between two completed rounds until this
+    // round's work finishes, so round 2 (and later) starts where the previous
+    // rest left off instead of jumping by a full rest.
     return {
       roundsCompleted,
       restSeconds: configuredRest,
-      elapsedSeconds: roundsCompleted * work + roundsCompleted * configuredRest + intoWork,
+      elapsedSeconds: roundSessionDuration(roundsCompleted, work, configuredRest) + intoWork,
     };
   }
   return {

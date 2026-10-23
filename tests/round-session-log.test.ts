@@ -89,7 +89,7 @@ describe("mid-timer round saves", () => {
         restSeconds: 15,
         phaseElapsedSeconds: 0,
       }),
-    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
     expect(
       roundLogFromClock({
         phase: "work",
@@ -99,7 +99,7 @@ describe("mid-timer round saves", () => {
         restSeconds: 15,
         phaseElapsedSeconds: 15,
       }).elapsedSeconds,
-    ).toBe(45);
+    ).toBe(30);
     expect(
       roundLogFromClock({
         phase: "rest",
@@ -110,6 +110,24 @@ describe("mid-timer round saves", () => {
         phaseElapsedSeconds: 0,
       }).elapsedSeconds,
     ).toBe(45);
+    const restBeforeRound3 = roundLogFromClock({
+      phase: "rest",
+      round: 2,
+      totalRounds: 3,
+      workSeconds: 15,
+      restSeconds: 15,
+      phaseElapsedSeconds: 14,
+    }).elapsedSeconds;
+    expect(
+      roundLogFromClock({
+        phase: "work",
+        round: 3,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 0,
+      }).elapsedSeconds,
+    ).toBe(restBeforeRound3);
   });
 
   it("does not save two rounds and a zero rest from a running timer", () => {

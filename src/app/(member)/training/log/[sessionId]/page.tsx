@@ -4,11 +4,14 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
+  continuePartialWorkoutForUser,
   getOwnWorkoutSessionOrNull,
   getPreviousLoadsForSlots,
   getPreviousLoadsForUser,
   reopenEmptyCompletion,
 } from "@/lib/workouts";
+import { calendarPlanDoses } from "@/lib/plan-doses";
+import { sessionProgress } from "@/lib/session-progress";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -64,9 +67,28 @@ export default async function WorkoutLogPage({
   }
   const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
   // A partial stays in the logger so it can be corrected or resumed.
-  // Only a finished session opens the recap.
+  // Only a session that has actually finished its plan opens the recap.
+  // A short save is stored complete; Resume and History reopen that same logger.
   if (session.status === "complete") {
-    redirect(`/training/log/${session.id}/done`);
+    const doses = session.programDayId ? await calendarPlanDoses(user.id, session.performedAt) : null;
+    const plan = session.programDayId ? doses?.get(session.programDayId) : undefined;
+    const progress = sessionProgress(
+      session,
+      plan
+        ? { dose: plan.dose, names: plan.names, exercises: plan.exercises ?? session.programDay?.exercises }
+        : { exercises: session.programDay?.exercises },
+    );
+    if (progress.done) {
+      redirect(`/training/log/${session.id}/done`);
+    }
+    const units = profile?.preferredUnits === "kg" ? "kg" : "lb";
+    await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: session.id,
+      preferredUnits: units,
+      timeZone: tz,
+    });
+    redirect(`/training/log/${session.id}`);
   }
   const band = scaleBandFromPrefs(scale);
   const planned = await activePlanWeekIndex(

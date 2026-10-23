@@ -65,6 +65,40 @@ describe("Oct 22 partial saves", () => {
     expect(partialSetsLine(1, 7)).toBe("Partial · 1/7 sets");
   });
 
+  it("keeps a one-set program save partial against the scaled dose", () => {
+    const open = openLogsByProgramDay(
+      [
+        {
+          id: "one",
+          status: "complete",
+          performedAt: new Date("2026-10-22T14:00:00.000Z"),
+          programDayId: "lift",
+          plannedSetCount: 1,
+          sets: [
+            {
+              exerciseName: "Goblet squat",
+              completed: true,
+              reps: 8,
+              loadValue: 40,
+              durationSeconds: null,
+            },
+          ],
+          programDay: { exercises: [{ name: "Goblet squat", sets: 4 }] },
+        },
+      ],
+      "2026-10-22",
+      zone,
+      new Map([["lift", { dose: 34, names: ["Goblet squat", "Row"] }]]),
+    );
+    expect(open.get("lift")).toMatchObject({
+      id: "one",
+      partial: true,
+      ticked: 1,
+      planned: 34,
+      progress: "Partial · 1/34 sets",
+    });
+  });
+
   it("makes Today and the next action Resume for a partial and a draft", () => {
     const logs = openLogsByProgramDay(sessions, "2026-10-22", zone);
     const today = todayStartAction(

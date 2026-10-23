@@ -65,6 +65,14 @@ describe("History, Calendar, and the finish screen share one progress line", () 
     const bikeFinish = finishSessionText(bike, bikeDose);
     expect(bikeHistory).toBe(bikeCalendar);
     expect(bikeCalendar).toBe(bikeFinish);
-    expect(bikeHistory).toBe("1/3 sets · Partial");
+    expect(bikeHistory).toBe("1/3 rounds · Partial");
+
+    const doneRounds = {
+      status: "complete",
+      plannedSetCount: 3,
+      sets: [1, 2, 3].map(() => bikeSet),
+    };
+    expect(historySessionText(doneRounds)).toBe("3/3 rounds · Done");
+    expect(calendarSessionText(doneRounds)).toBe(finishSessionText(doneRounds));
   });
 });

@@ -562,6 +562,48 @@ describe("a workout is complete only after a logged save", () => {
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
   });
 
+  it("starts the same session when a one-set save is still short of the dose", async () => {
+    const user = await makeUser("short-lift@example.com");
+    const program = await getDemoProgram();
+    const day = program.days[0];
+    const first = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    const kept = first.sets[0];
+    expect(kept).toBeTruthy();
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: first.id,
+      title: first.title,
+      performedAt: first.performedAt,
+      notes: "",
+      status: "complete",
+      plannedSetCount: 1,
+      timeZone: APP_TIMEZONE,
+      sets: [
+        {
+          exerciseName: kept!.exerciseName,
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          completed: true,
+        },
+      ],
+    });
+    const again = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(again.id).toBe(first.id);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id, programDayId: day.id } })).toBe(1);
+  });
+
   it("opens a new draft after that session is already complete today", async () => {
     const user = await makeUser("fully-logged@example.com");
     const program = await getDemoProgram();

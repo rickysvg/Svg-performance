@@ -1,7 +1,6 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import {
   exerciseSetProgress,
-  formatSetProgress,
   loggedNameMatchesPlanned,
   prescribedSetTotal,
   setIsTicked,
@@ -40,7 +39,7 @@ export type SessionProgress = {
   ticked: number;
   planned: number;
   done: boolean;
-  /** "1/26 sets · Partial". The same string on every surface. */
+  /** "1/26 sets · Partial" or "3/3 rounds · Done". The same string on every surface. */
   text: string;
   rows: ExerciseSetProgress[];
 };
@@ -93,10 +92,17 @@ function roundPlanFromExercises(session: ProgressSession, exercises: { name?: st
   return prescribedSetTotal(rows);
 }
 
-function progressText(ticked: number, planned: number, done: boolean) {
+function progressCount(ticked: number, planned: number, unit: "sets" | "rounds") {
+  const noun = unit === "rounds" ? "rounds" : "sets";
+  if (planned > 0) return `${ticked}/${planned} ${noun}`;
+  const count = Math.max(0, ticked);
+  if (unit === "rounds") return `${count} ${count === 1 ? "round" : "rounds"}`;
+  return `${count} ${count === 1 ? "set" : "sets"}`;
+}
+
+function progressText(ticked: number, planned: number, done: boolean, unit: "sets" | "rounds") {
   if (ticked <= 0 && planned <= 0) return "Partial";
-  const count = planned > 0 ? formatSetProgress(ticked, planned) : formatSetProgress(ticked, 0);
-  return `${count} · ${done ? "Done" : "Partial"}`;
+  return `${progressCount(ticked, planned, unit)} · ${done ? "Done" : "Partial"}`;
 }
 
 export function sessionProgress(session: ProgressSession, dose?: ProgressDose | null): SessionProgress {
@@ -146,11 +152,12 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
     planned > 0 &&
     ticked >= planned &&
     (names.length === 0 || namesAreCovered(session, names) || session.sets.every((set) => setIsTicked(set)));
+  const unit = roundOrBikeSession(session) ? "rounds" : "sets";
   return {
     ticked,
     planned,
     done,
-    text: progressText(ticked, planned, done),
+    text: progressText(ticked, planned, done, unit),
     rows,
   };
 }

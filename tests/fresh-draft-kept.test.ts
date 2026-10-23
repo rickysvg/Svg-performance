@@ -144,12 +144,7 @@ describe("an in-progress draft stays until the member discards it", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(fresh.id).not.toBe(earlier.id);
-    await prisma.workoutSession.update({
-      where: { id: fresh.id },
-      data: { createdAt: new Date(Date.now() - 60_000) },
-    });
-
+    expect(fresh.id).toBe(earlier.id);
     const saved = await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: fresh.id,
@@ -160,7 +155,7 @@ describe("an in-progress draft stays until the member discards it", () => {
       timeZone: APP_TIMEZONE,
       sets: [
         {
-          exerciseName: fresh.sets[0].exerciseName,
+          exerciseName: earlier.sets[0].exerciseName,
           setNumber: 1,
           reps: 5,
           loadValue: 25,
@@ -170,9 +165,7 @@ describe("an in-progress draft stays until the member discards it", () => {
       ],
     });
     expect(saved.id).toBe(earlier.id);
-    const open = await prisma.workoutSession.findUnique({ where: { id: fresh.id } });
-    expect(open?.status).toBe("draft");
-    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
   });
 
   it("only discards from the logger's explicit Cancel, not pagehide", () => {
