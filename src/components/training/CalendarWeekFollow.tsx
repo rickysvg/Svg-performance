@@ -4,7 +4,6 @@ import {
   Children,
   cloneElement,
   isValidElement,
-  useEffect,
   useState,
   type ReactElement,
   type ReactNode,
@@ -78,11 +77,12 @@ export function CalendarWeekFollow({
 }) {
   const pathname = usePathname();
   const [weekStart, setWeekStart] = useState(initialWeekStart);
-  const move = moves[weekStart];
-
-  useEffect(() => {
+  const [trackedWeek, setTrackedWeek] = useState(initialWeekStart);
+  if (initialWeekStart !== trackedWeek) {
+    setTrackedWeek(initialWeekStart);
     setWeekStart(initialWeekStart);
-  }, [initialWeekStart]);
+  }
+  const move = moves[weekStart];
 
   function onWeekChange(week: WeekChange) {
     setWeekStart(week.weekStart);

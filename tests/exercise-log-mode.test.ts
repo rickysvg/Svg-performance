@@ -188,7 +188,7 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         name: "Assault bike intervals",
       }),
-    ).toBe("4 rounds · 15s work / 15s rest × 8, 60s between rounds");
+    ).toBe("4 × 8 rounds · 15/15 · 60s between sets");
     expect(
       plannedSetLine({
         sets: 3,
@@ -209,7 +209,7 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         name: "Daru alactic power bike",
       }),
-    ).toBe("1 round · 10s work / 50s rest × 4");
+    ).toBe("4 rounds · 10/50");
     expect(
       plannedSetLine({
         sets: 1,
@@ -271,7 +271,7 @@ describe("exercise log modes", () => {
         logMode: "timed_round",
         name: "Assault bike intervals",
       }),
-    ).toBe("5 rounds · 15s work / 15s rest × 8, 60s between rounds");
+    ).toBe("5 × 8 rounds · 15/15 · 60s between sets");
     expect(
       plannedSetLine({
         sets: 5,

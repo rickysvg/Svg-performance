@@ -30,7 +30,25 @@ export const BACKFILL_ROUND_MODES = {
 
 export type BackfillRoundMode = keyof typeof BACKFILL_ROUND_MODES;
 
-export type BackfillKind = "program" | "saved" | "custom" | "bike" | "rounds" | "free";
+const BACKFILL_KINDS = [
+  "program",
+  "saved",
+  "custom",
+  "bike",
+  "rounds",
+  "free",
+  "bag",
+  "pads",
+  "sparring",
+  "grappling",
+  "shadow",
+] as const;
+
+export type BackfillKind = (typeof BACKFILL_KINDS)[number];
+
+export const INTERVAL_BACKFILL_KINDS = ["bike", "bag", "pads", "sparring", "grappling", "shadow"] as const;
+
+export type IntervalBackfillKind = (typeof INTERVAL_BACKFILL_KINDS)[number];
 
 export type BackfillExerciseInput = {
   name: string;
@@ -44,23 +62,30 @@ export type BackfillExerciseInput = {
   storedReps?: number | null;
   prescriptionKey?: string;
   setNotes?: string;
+  restSeconds?: number | null;
+  notes?: string | null;
 };
 
 export type BackfillSetDraft = {
   exerciseName: string;
   setNumber: number;
   reps: number | null;
-  loadValue: null;
+  loadValue: number | null;
   loadUnit: LoadUnit;
   logMode: LogMode;
   durationSeconds: number | null;
   completed: boolean;
   notes: string;
   prescriptionKey: string;
+  rir?: string;
 };
 
 export function isBackfillKind(value: string): value is BackfillKind {
-  return value === "program" || value === "saved" || value === "custom" || value === "bike" || value === "rounds" || value === "free";
+  return (BACKFILL_KINDS as readonly string[]).includes(value);
+}
+
+export function isIntervalBackfillKind(value: string): value is IntervalBackfillKind {
+  return (INTERVAL_BACKFILL_KINDS as readonly string[]).includes(value);
 }
 
 export function isBackfillRoundMode(value: string): value is BackfillRoundMode {
@@ -69,7 +94,7 @@ export function isBackfillRoundMode(value: string): value is BackfillRoundMode {
 
 export type BackfillDayState = "ok" | "future" | "today" | "old" | "invalid";
 
-/** Yesterday through 30 days ago, in the member's zone. Today and the future are not past logs. */
+/** Today through 30 days ago, in the member's zone. The future is not a log. */
 export function backfillDayState(day: string, now: Date, timeZone: string): BackfillDayState {
   if (!isDayKey(day)) return "invalid";
   const [year, month, date] = day.split("-").map(Number);
@@ -77,7 +102,6 @@ export function backfillDayState(day: string, now: Date, timeZone: string): Back
   if (dayKey(probe, timeZone) !== day) return "invalid";
   const today = dayKey(now, timeZone);
   if (day > today) return "future";
-  if (day === today) return "today";
   const earliest = dayKey(addZonedDays(startOfZonedDay(now, timeZone), -BACKFILL_MAX_DAYS, timeZone), timeZone);
   if (day < earliest) return "old";
   return "ok";
@@ -87,9 +111,6 @@ export function assertBackfillDay(day: string, now: Date, timeZone: string) {
   const state = backfillDayState(day, now, timeZone);
   if (state === "ok") return;
   if (state === "future") throw new AppError("WORKOUT", "That day is in the future.");
-  if (state === "today") {
-    throw new AppError("WORKOUT", "Log today from Train. A past workout starts yesterday.");
-  }
   if (state === "old") {
     throw new AppError("WORKOUT", "You can log a workout up to 30 days back.");
   }
@@ -99,7 +120,7 @@ export function assertBackfillDay(day: string, now: Date, timeZone: string) {
 export function backfillDayOptions(now: Date, timeZone: string) {
   const start = startOfZonedDay(now, timeZone);
   const options: { key: string; label: string }[] = [];
-  for (let ago = 1; ago <= BACKFILL_MAX_DAYS; ago += 1) {
+  for (let ago = 0; ago <= BACKFILL_MAX_DAYS; ago += 1) {
     const date = addZonedDays(start, -ago, timeZone);
     const key = dayKey(date, timeZone);
     options.push({
@@ -113,6 +134,15 @@ export function backfillDayOptions(now: Date, timeZone: string) {
     });
   }
   return options;
+}
+
+/**
+ * Today keeps the clock time the member saved. A past day stays at noon so
+ * the civil day cannot slip backward.
+ */
+export function performedAtForLoggedDay(day: string, timeZone: string, now: Date) {
+  if (day === dayKey(now, timeZone)) return now;
+  return performedAtForDayKey(day, timeZone);
 }
 
 /** Noon in the member's zone, so the civil day key cannot slip to the day before. */

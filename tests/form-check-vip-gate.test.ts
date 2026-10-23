@@ -283,12 +283,15 @@ describe("form check is VIP Coaching only", () => {
     expect(openHome).not.toContain("form-check-lock-icon");
 
     const profile = renderToStaticMarkup(
-      createElement(FormCheckLockedTrigger, {
-        testId: "form-check-locked-trigger-profile",
-        lock: "inline",
-        className: "inline-flex",
-        children: "Form check",
-      }),
+      createElement(
+        FormCheckLockedTrigger,
+        {
+          testId: "form-check-locked-trigger-profile",
+          lock: "inline",
+          className: "inline-flex",
+        },
+        "Form check",
+      ),
     );
     expect(profile).toContain("form-check-locked-trigger-profile");
     expect(profile).toContain("form-check-lock-icon");

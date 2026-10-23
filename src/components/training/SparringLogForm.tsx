@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { saveSparringLogAction, type SparringLogState } from "@/app/actions/outside-log";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { SORE_SPOTS, SORE_SPOT_LABELS, type SparringLog } from "@/lib/outside-log";
@@ -73,11 +73,14 @@ export function SparringLogForm({
   );
   const [bodyRating, setBodyRating] = useState(saved?.bodyRating == null ? "" : String(saved.bodyRating));
   const [ratingError, setRatingError] = useState("");
-  useEffect(() => {
-    if (!state.saved) return;
-    if (typeof state.intensity === "string") setIntensity(state.intensity);
-    if (typeof state.partner === "string") setPartner(state.partner);
-  }, [state]);
+  const [trackedSave, setTrackedSave] = useState(state);
+  if (state !== trackedSave) {
+    setTrackedSave(state);
+    if (state.saved) {
+      if (typeof state.intensity === "string") setIntensity(state.intensity);
+      if (typeof state.partner === "string") setPartner(state.partner);
+    }
+  }
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
 
   return (

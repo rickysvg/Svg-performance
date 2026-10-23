@@ -1,5 +1,6 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
-import { resolveLogMode } from "@/lib/exercise-log-mode";
+import { isShadowName, resolveLogMode } from "@/lib/exercise-log-mode";
+import { configuredRoundTotal } from "@/lib/round-session";
 import {
   exerciseSetProgress,
   loggedNameMatchesPlanned,
@@ -69,6 +70,7 @@ function isRoundOrBikeSet(set: ProgressSet) {
   const key = set.prescriptionKey ?? "";
   if (key.startsWith("round:") || key === "bagwork") return true;
   if (isBikeIntervalName(set.exerciseName ?? "")) return true;
+  if (isShadowName(set.exerciseName ?? "")) return true;
   return false;
 }
 
@@ -108,7 +110,7 @@ function progressText(ticked: number, planned: number, done: boolean, unit: "set
 
 function countsAsRoundSet(set: ProgressSet) {
   const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName ?? "" });
-  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName ?? "")) return true;
+  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName ?? "") || isShadowName(set.exerciseName ?? "")) return true;
   const key = set.prescriptionKey ?? "";
   return key.startsWith("round:") || key === "bagwork";
 }
@@ -136,7 +138,7 @@ function mixedProgressText(
   const roundRow = (name: string) => {
     const key = normName(name);
     if (roundNames.has(key)) return true;
-    if (isBikeIntervalName(name)) return true;
+    if (isBikeIntervalName(name) || isShadowName(name)) return true;
     return resolveLogMode({ name }) === "timed_round";
   };
   let setsTicked = 0;
@@ -171,12 +173,10 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
 
   if (roundOrBikeSession(session)) {
     const fromPlan = roundPlanFromExercises(session, programExercises) || (catalogDose > 0 && programExercises.length === 1 ? catalogDose : 0);
-    planned =
-      stored > ticked
-        ? stored
-        : fromPlan > stored
-          ? fromPlan
-          : stored || fromPlan || Math.max(ticked, session.sets.length);
+    const configured = configuredRoundTotal(session.sets);
+    // The interval structure is the round count. A plan set-count of 1 must not
+    // paint 16 finished rounds as 16/1.
+    planned = Math.max(fromPlan, configured, stored > ticked ? stored : 0, ticked);
     const name =
       session.sets.find((set) => set.completed && (set.exerciseName ?? "").trim())?.exerciseName?.trim() ||
       session.sets[0]?.exerciseName?.trim() ||
@@ -214,6 +214,12 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
     text: mixed ?? progressText(ticked, planned, done, unit),
     rows,
   };
+}
+
+/** Bike history status. The same line History and Calendar already show. */
+export function bikeHistoryStatusLine(session: ProgressSession, dose?: ProgressDose | null) {
+  const progress = sessionProgress(session, dose);
+  return { text: progress.text, done: progress.done };
 }
 
 /** History row. */

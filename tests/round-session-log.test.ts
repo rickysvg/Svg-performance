@@ -186,6 +186,39 @@ describe("mid-timer round saves", () => {
       },
     });
     expect(roundTiles.find((tile) => tile.key === "setsRounds")?.label).toBe("Rounds");
+    const shadowTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Shadowbox",
+        status: "complete",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        elapsedSeconds: 420,
+        sets: [
+          {
+            exerciseName: "Shadowbox round 1 — empty hands",
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            completed: true,
+            durationSeconds: 180,
+            logMode: "timed",
+          },
+          {
+            exerciseName: "Shadowbox round 2 — hand weights",
+            reps: null,
+            loadValue: 5,
+            loadUnit: "lb",
+            completed: true,
+            durationSeconds: 180,
+            logMode: "load_timed",
+          },
+        ],
+      },
+    });
+    expect(shadowTiles.find((tile) => tile.key === "setsRounds")?.label).toBe("Rounds");
+    expect(shadowTiles.find((tile) => tile.key === "setsRounds")?.value).toBe("2");
+    expect(shadowTiles.some((tile) => tile.label === "Sets")).toBe(false);
     const liftTiles = workoutCompleteTiles({
       displayUnit: "lb",
       newPrCount: 0,

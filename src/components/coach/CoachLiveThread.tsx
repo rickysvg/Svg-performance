@@ -199,6 +199,8 @@ export function CoachLiveThread({
     const message = raw.trim();
     if (!message || streaming) return;
     setDraft("");
+    // Optimistic ids are minted when the member sends, not while the thread renders.
+    // eslint-disable-next-line react-hooks/purity
     const userId = `local-user-${Date.now()}`;
     setMessages((current) => [
       ...current,

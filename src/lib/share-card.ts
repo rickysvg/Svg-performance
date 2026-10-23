@@ -1,4 +1,4 @@
-import { formatClock, resolveLogMode } from "@/lib/exercise-log-mode";
+import { formatClock, isShadowName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { setHasLoggedWork } from "@/lib/logged-work";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { currentConsecutiveDays, uniqueActiveDayKeys } from "@/lib/records";
@@ -83,7 +83,7 @@ export function sessionSetCount(sets: ShareSetLike[]) {
 export function sessionRoundCount(sets: ShareSetLike[]) {
   return loggedSets(sets).filter((set) => {
     const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
-    return mode === "timed_round" || isBikeIntervalName(set.exerciseName);
+    return mode === "timed_round" || isBikeIntervalName(set.exerciseName) || isShadowName(set.exerciseName);
   }).length;
 }
 

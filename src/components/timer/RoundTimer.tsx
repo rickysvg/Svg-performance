@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { logBagworkSessionAction } from "@/app/actions/bagwork";
 import { logBikeTimerAction, startRoundLogAction } from "@/app/actions/workouts";
@@ -30,6 +30,7 @@ import {
   bikeTimerRoundCount,
   choiceToken,
   customBikeChoice,
+  readRememberedBikeChoice,
   sessionWithChoice,
 } from "@/lib/bike-chooser";
 import { DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
@@ -50,7 +51,7 @@ const MODE_LABEL: Record<TimerSurfaceMode, string> = {
 
 const BIKE_PRESETS = [
   ["tabata", "Tabata", "8×20s/10s"],
-  ["alactic-10", "10×10s", "Sprints"],
+  ["alactic-10", "10×10s", "10s on"],
   ["fight-rounds", "Fight sim", "5 rounds"],
   ["custom", "Custom", "Set your own"],
 ] as const;
@@ -86,22 +87,10 @@ function RoundLogNotes({
   onNotes: (value: string) => void;
   onRpe: (value: string) => void;
 }) {
+  const [more, setMore] = useState(false);
   return (
     <div className="mb-3 space-y-3">
-      <label className="block text-sm">
-        Notes
-        <textarea
-          data-testid="chrome-round-notes"
-          name="notes"
-          value={notes}
-          onChange={(event) => onNotes(event.target.value)}
-          onInput={(event) => onNotes(event.currentTarget.value)}
-          maxLength={500}
-          rows={2}
-          placeholder="Optional"
-          className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
-        />
-      </label>
+      <input type="hidden" name="notes" value={notes} />
       <label className="block text-sm">
         RPE
         <input
@@ -111,10 +100,28 @@ function RoundLogNotes({
           onChange={(event) => onRpe(event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
           onInput={(event) => onRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
           inputMode="numeric"
-          placeholder="1–10, optional"
-          className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+          placeholder="1–10"
+          className="mt-1 w-16 rounded-2xl border border-line bg-card px-2 py-2 text-center text-base"
         />
       </label>
+      <button type="button" onClick={() => setMore((open) => !open)} className="text-sm font-semibold text-accent">
+        + More
+      </button>
+      {more ? (
+        <label className="block text-sm">
+          Notes
+          <textarea
+            data-testid="chrome-round-notes"
+            value={notes}
+            onChange={(event) => onNotes(event.target.value)}
+            onInput={(event) => onNotes(event.currentTarget.value)}
+            maxLength={500}
+            rows={2}
+            placeholder="Optional"
+            className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2 text-base"
+          />
+        </label>
+      ) : null}
     </div>
   );
 }
@@ -164,7 +171,14 @@ export function RoundTimer({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [customDraft, setCustomDraft] = useState(launchConfig ?? DEFAULT_CUSTOM);
   const [bikePreset, setBikePreset] = useState<(typeof BIKE_PRESETS)[number][0]>("tabata");
-  const [bikeCustom, setBikeCustom] = useState({ rounds: 8, workSeconds: 20, restSeconds: 10 });
+  const [bikeCustom, setBikeCustom] = useState({
+    rounds: 8,
+    workSeconds: 20,
+    restSeconds: 10,
+    sets: 1,
+    setRestSeconds: 60,
+  });
+  const [lastBikeLabel, setLastBikeLabel] = useState("");
   const [bikeFinished, setBikeFinished] = useState(0);
   const [notes, setNotes] = useState("");
   const [rpe, setRpe] = useState("");
@@ -195,11 +209,14 @@ export function RoundTimer({
 
   if (seenUrlMode.current !== mode) {
     seenUrlMode.current = mode;
+    // A URL mode change drops a manual pick before this render chooses the surface.
+    // eslint-disable-next-line react-hooks/refs -- active mode is derived from this ref in the same render
     pickedMode.current = false;
     if (mode && prefs.mode !== mode) {
       setPrefs((current) => ({ ...current, mode }));
     }
   }
+  // eslint-disable-next-line react-hooks/refs -- manual picks are stored on the ref so hydration cannot overwrite them
   const activeMode: TimerSurfaceMode = pickedMode.current ? prefs.mode : (mode ?? prefs.mode);
 
   useEffect(() => {
@@ -234,6 +251,8 @@ export function RoundTimer({
         }),
       );
       setCustomDraft((current) => (touchedConfig.current ? current : custom));
+      const remembered = readRememberedBikeChoice();
+      setLastBikeLabel(remembered ? remembered.name : "");
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
@@ -271,7 +290,9 @@ export function RoundTimer({
   });
 
   const clockRef = useRef(resolved);
-  clockRef.current = resolved;
+  useLayoutEffect(() => {
+    clockRef.current = resolved;
+  });
   const liveElapsed = roundLiveElapsed({
     phase: resolved.phase,
     round: resolved.round,
@@ -468,6 +489,8 @@ export function RoundTimer({
           workSeconds: bikeCustom.workSeconds,
           restSeconds: bikeCustom.restSeconds,
           rounds: bikeCustom.rounds,
+          repeatRounds: bikeCustom.sets,
+          restBetweenRoundsSeconds: bikeCustom.sets > 1 ? bikeCustom.setRestSeconds : 0,
         }) ?? bikeChoiceById("tabata")
       : bikeChoiceById(bikePreset);
   const bikeSession = bikeChoice ? sessionWithChoice(DEFAULT_BIKE_SESSION, bikeChoice) : null;
@@ -552,8 +575,8 @@ export function RoundTimer({
               maxLength={500}
               rows={2}
               placeholder="Optional"
-              className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
-            />
+            className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2 text-base"
+          />
           </label>
           <label className="block text-sm">
             RPE
@@ -564,7 +587,7 @@ export function RoundTimer({
               onInput={(event) => setRpe(event.currentTarget.value.replace(/[^\d]/g, "").slice(0, 2))}
               inputMode="numeric"
               placeholder="1–10, optional"
-              className="mt-1 w-full rounded-2xl border border-line bg-card px-3 py-2"
+              className="mt-1 w-16 rounded-2xl border border-line bg-card px-2 py-2 text-center text-base"
             />
           </label>
           {logHint ? <p className="text-sm text-signal">{logHint}</p> : null}
@@ -689,7 +712,35 @@ export function RoundTimer({
       )}
 
       {bikeMode ? (
-        <div className="grid grid-cols-2 gap-2" data-bike-timer-presets>
+        <div className="flex gap-2 overflow-x-auto" data-bike-timer-presets>
+          {lastBikeLabel ? (
+            <button
+              type="button"
+              data-bike-preset="last"
+              onClick={() => {
+                const remembered = readRememberedBikeChoice();
+                if (!remembered) return;
+                const known = BIKE_PRESETS.some(([id]) => id === remembered.id);
+                if (known && remembered.id !== "custom") {
+                  setBikePreset(remembered.id as (typeof BIKE_PRESETS)[number][0]);
+                } else {
+                  setBikePreset("custom");
+                  setBikeCustom({
+                    rounds: remembered.spec.roundsPerSet,
+                    workSeconds: remembered.spec.workSeconds,
+                    restSeconds: remembered.spec.restSeconds,
+                    sets: remembered.spec.repeatRounds ?? 1,
+                    setRestSeconds: remembered.spec.restBetweenRoundsSeconds ?? 60,
+                  });
+                }
+                setBikeFinished(0);
+              }}
+              className="min-h-16 min-w-[7.5rem] shrink-0 rounded-2xl bg-card px-2 py-3 text-center text-foreground"
+            >
+              <span className="block text-sm font-medium">Last used</span>
+              <span className="mt-1 block text-[11px] opacity-70">{lastBikeLabel}</span>
+            </button>
+          ) : null}
           {BIKE_PRESETS.map(([id, title, hint]) => (
             <button
               key={id}
@@ -699,7 +750,7 @@ export function RoundTimer({
                 setBikePreset(id);
                 setBikeFinished(0);
               }}
-              className={`min-h-16 rounded-2xl px-2 py-3 text-center ${
+              className={`min-h-16 min-w-[7.5rem] shrink-0 rounded-2xl px-2 py-3 text-center ${
                 bikePreset === id ? "bg-accent text-black" : "bg-card text-foreground"
               }`}
             >
@@ -716,12 +767,18 @@ export function RoundTimer({
             rounds={bikeCustom.rounds}
             workSeconds={bikeCustom.workSeconds}
             restSeconds={bikeCustom.restSeconds}
-            roundsLabel="Sprints"
+            roundsLabel="Rounds"
             stepSeconds={5}
             minSeconds={5}
             maxRounds={30}
+            sets={bikeCustom.sets}
+            setRestSeconds={bikeCustom.setRestSeconds}
+            onSets={(next) => {
+              setBikeCustom((current) => ({ ...current, ...next }));
+              setBikeFinished(0);
+            }}
             onChange={(next) => {
-              setBikeCustom(next);
+              setBikeCustom((current) => ({ ...current, ...next }));
               setBikeFinished(0);
             }}
           />
@@ -741,7 +798,7 @@ export function RoundTimer({
 
       {bikeMode && bikeSession ? (
         <BikeSetTimer
-          key={`${bikeChoice?.id ?? "bike"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}`}
+          key={`${bikeChoice?.id ?? "bike"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}-${bikeSession.repeatRounds}-${bikeSession.restBetweenRoundsSeconds}`}
           session={bikeSession}
           canStart
           bell={prefs.bell}

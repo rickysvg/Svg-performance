@@ -22,6 +22,7 @@ import {
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import { nextSelectedDay, weekChipHref } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
@@ -773,10 +774,12 @@ function WeekDayCarousel({
   const pendingFocus = useRef<string | null>(null);
   const weeksRef = useRef(weeks);
   const onWeekChangeRef = useRef(onWeekChange ?? trainWeekChange ?? undefined);
-  weeksRef.current = weeks;
-  onWeekChangeRef.current = onWeekChange ?? trainWeekChange ?? undefined;
-  indexRef.current = activeIndex;
-  selectedDayRef.current = selectedDay;
+  useLayoutEffect(() => {
+    weeksRef.current = weeks;
+    onWeekChangeRef.current = onWeekChange ?? trainWeekChange ?? undefined;
+    indexRef.current = activeIndex;
+    selectedDayRef.current = selectedDay;
+  });
 
   function knownDayParams() {
     return weeksRef.current.flatMap((week) => week.days.map((day) => day.dayParam));
@@ -804,6 +807,8 @@ function WeekDayCarousel({
       weeks.findIndex((week) => week.offset === focusOffset),
     );
     scrollToIndex(index, "auto");
+    // The strip scrolls before paint, then the index matches the week on screen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(index);
     setReady(true);
   }, [focusOffset, weeks]);
@@ -999,7 +1004,9 @@ function WeekDayCarousel({
           <LogPastWorkoutButton
             dayKey={selectedDay}
             entry="week"
-            label="Log a past workout"
+            label={
+              timeZone && selectedDay === dayKey(new Date(), timeZone) ? "Log a workout" : "Log a past workout"
+            }
             compact
             timeZone={timeZone}
           />

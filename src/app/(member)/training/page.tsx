@@ -498,7 +498,7 @@ export default async function TrainingPage({
               <LogPastWorkoutButton
                 dayKey={focus.dayParam}
                 entry="train"
-                label="Log a past workout"
+                label={focus.dayParam === dayKey(now, tz) ? "Log a workout" : "Log a past workout"}
                 timeZone={tz}
               />
             </div>

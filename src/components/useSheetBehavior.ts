@@ -29,7 +29,9 @@ function focusableIn(panel: HTMLElement) {
 export function useSheetBehavior(onClose: () => void, open = true) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;

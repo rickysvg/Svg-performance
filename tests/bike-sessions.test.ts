@@ -181,7 +181,7 @@ describe("assault bike catalog", () => {
         logMode: "timed_round",
         name: DEFAULT_BIKE_SESSION.name,
       }),
-    ).toBe("5 rounds · 15s work / 15s rest × 8, 60s between rounds");
+    ).toBe("5 × 8 rounds · 15/15 · 60s between sets");
     const camp = scaleExercise(seed, {
       band: "intermediate",
       programSlug: "demo-strength-base",
@@ -199,7 +199,7 @@ describe("assault bike catalog", () => {
         loadText: camp.loadText,
       }),
     ).toBe(
-      "5 rounds · 15s work / 15s rest × 8, 60s between rounds. Camp build: same bike, advanced dose.",
+      "5 × 8 rounds · 15/15 · 60s between sets. Camp build: same bike, advanced dose.",
     );
   });
 

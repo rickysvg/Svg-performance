@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bikeHistoryStatusLine,
   calendarSessionText,
   finishSessionText,
   historySessionText,
@@ -111,5 +112,45 @@ describe("History, Calendar, and the finish screen share one progress line", () 
     expect(historySessionText(mixed, mixedDose)).toBe(mixedText);
     expect(calendarSessionText(mixed, mixedDose)).toBe(mixedText);
     expect(finishSessionText(mixed, mixedDose)).toBe(mixedText);
+
+    const token = "timer#bw:c.15.15.8.0.0.2.60";
+    const interval = {
+      exerciseName: "Assault bike intervals",
+      completed: true,
+      reps: null,
+      loadValue: null,
+      durationSeconds: 15,
+      prescriptionKey: token,
+      logMode: "timed_round" as const,
+    };
+    const sixteen = {
+      status: "complete",
+      plannedSetCount: 1,
+      programDayId: "bike-day",
+      sets: Array.from({ length: 16 }, () => interval),
+      programDay: { exercises: [{ name: "Assault bike intervals", sets: 1 }] },
+    };
+    expect(historySessionText(sixteen)).toBe("16/16 rounds · Done");
+    expect(calendarSessionText(sixteen)).toBe("16/16 rounds · Done");
+    expect(finishSessionText(sixteen)).toBe("16/16 rounds · Done");
+    const twelve = { ...sixteen, status: "partial", sets: sixteen.sets.slice(0, 12) };
+    expect(calendarSessionText(twelve)).toBe("12/16 rounds · Partial");
+    expect(bikeHistoryStatusLine(twelve).text).toBe("12/16 rounds · Partial");
+    expect(bikeHistoryStatusLine(twelve).done).toBe(false);
+    expect(bikeHistoryStatusLine(sixteen).text).toBe("16/16 rounds · Done");
+
+    const shadow = {
+      status: "complete",
+      plannedSetCount: 2,
+      sets: [1, 2].map((round) => ({
+        exerciseName: `Shadowbox round ${round} — empty hands`,
+        completed: true,
+        reps: null,
+        loadValue: null,
+        durationSeconds: 180,
+      })),
+    };
+    expect(historySessionText(shadow)).toBe("2/2 rounds · Done");
+    expect(calendarSessionText(shadow)).toBe(finishSessionText(shadow));
   });
 });

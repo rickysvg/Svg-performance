@@ -82,6 +82,8 @@ export async function updateBackfillAction(
         setNotes: String(formData.get(`exerciseNotes_${index}`) ?? ""),
       });
     }
+    const intervalEdit = String(formData.get("intervalEdit") ?? "") === "yes";
+    const intervalKind = String(formData.get("kind") ?? "");
     const result = await updateBackfillWorkout({
       userId: user.id,
       sessionId: String(formData.get("sessionId") ?? ""),
@@ -92,6 +94,18 @@ export async function updateBackfillAction(
       exercises,
       confirmed: String(formData.get("confirm") ?? "") === "yes",
       resolution,
+      interval:
+        intervalEdit && intervalKind && intervalKind !== "custom"
+          ? {
+              kind: intervalKind as "bike" | "bag" | "pads" | "sparring" | "grappling",
+              sets: Number(formData.get("repeatRounds") ?? 1),
+              rounds: Number(formData.get("roundsPerSet") ?? 1),
+              workSeconds: Number(formData.get("workSeconds") ?? 0),
+              restSeconds: Number(formData.get("restSeconds") ?? 0),
+              setRestSeconds: Number(formData.get("restBetweenRoundsSeconds") ?? 0),
+              done: Number(formData.get("doneRounds") ?? 0),
+            }
+          : null,
     });
     if (!result.ok) return { conflict: result.conflict };
     sessionId = result.sessionId;

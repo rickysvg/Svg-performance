@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { recordWorkoutActivityAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
@@ -400,7 +400,10 @@ function subscribeSessionClock(onChange: () => void) {
     sessionClockMs = Date.now();
     onChange();
   };
-  const kick = window.setTimeout(tick, 0);
+  const kick = window.setTimeout(() => {
+    if (activityLive && activitySessionId) noteLoggerActivity(activitySessionId);
+    tick();
+  }, 0);
   const timer = window.setInterval(tick, 1000);
   // Fold the gap now. Waiting for the 30s heartbeat leaves the header stuck
   // at the old time plus 10:00. Hiding the tab still does not pause the clock.
@@ -449,13 +452,15 @@ function SessionTimer({
     return Number.isFinite(created) ? created : 0;
   })();
   const live = sessionRecordsActivity(status);
-  if (!live && activitySessionId === sessionId) activityLive = false;
   // Server and the hydration render share the anchor. A live draft picks up the wall clock after that.
   const now = useSyncExternalStore(
     live ? subscribeSessionClock : subscribeFrozenClock,
     live ? readSessionClock : () => anchorMs,
     () => anchorMs,
   );
+  useLayoutEffect(() => {
+    if (!live && activitySessionId === sessionId) activityLive = false;
+  }, [live, sessionId]);
   const tracked =
     live && typeof window !== "undefined"
       ? readActivityClock(sessionId, resumeStoredElapsed(elapsedSeconds) ?? 0, anchorMs)
@@ -542,19 +547,21 @@ export function WorkoutLogForm({
     {} as WorkoutActionState,
   );
   const [draftNotice, setDraftNotice] = useState("");
-  const draftSavePending = useRef(false);
-  useEffect(() => {
-    if (pending) {
-      draftSavePending.current = true;
-      return;
+  const [pendingEdge, setPendingEdge] = useState(pending);
+  const [awaitingDraftSave, setAwaitingDraftSave] = useState(false);
+  if (pending !== pendingEdge) {
+    setPendingEdge(pending);
+    if (pending) setAwaitingDraftSave(true);
+    else if (awaitingDraftSave) {
+      setAwaitingDraftSave(false);
+      if (state.success?.startsWith("Draft saved")) setDraftNotice("Draft saved");
     }
-    if (!draftSavePending.current) return;
-    draftSavePending.current = false;
-    if (!state.success?.startsWith("Draft saved")) return;
-    setDraftNotice("Draft saved");
+  }
+  useEffect(() => {
+    if (!draftNotice) return;
     const timer = window.setTimeout(() => setDraftNotice(""), 2500);
     return () => window.clearTimeout(timer);
-  }, [pending, state.success]);
+  }, [draftNotice]);
   const [sets, setSets] = useState(() => setsForLogger(session));
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [pickerIndex, setPickerIndex] = useState<number | null>(null);
@@ -844,6 +851,7 @@ export function WorkoutLogForm({
 
   useEffect(() => {
     if (!sessionRecordsActivity(session.status)) return;
+    noteLoggerActivity(session.id);
     const beat = () => {
       if (document.visibilityState !== "visible") return;
       noteLoggerActivity(session.id);

@@ -3,6 +3,8 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { IntervalStructureFields } from "@/components/training/IntervalStructureFields";
+import { formatIntervalShorthand, type IntervalStructure } from "@/lib/interval-shorthand";
 import {
   BIKE_BETWEEN_SECONDS,
   BIKE_CHOICES,
@@ -25,9 +27,9 @@ type PickerField = "sprint" | "rest" | "sprints" | "rounds" | "between" | "warmu
 const FIELD_TITLE: Record<PickerField, string> = {
   sprint: "Sprint seconds",
   rest: "Rest seconds",
-  sprints: "Sprints",
-  rounds: "Rounds",
-  between: "Rest between rounds",
+  sprints: "Rounds",
+  rounds: "Sets",
+  between: "Set rest",
   warmup: "Warm-up",
   cooldown: "Cool-down",
 };
@@ -258,6 +260,15 @@ export function BikeWorkoutChooser({
   const [cooldown, setCooldown] = useState(
     customSpec ? Math.round((customSpec.cooldownSeconds ?? 0) / 60) : 0,
   );
+  const [customMore, setCustomMore] = useState(false);
+  const customStructure: IntervalStructure = {
+    sets: rounds,
+    rounds: sprints,
+    workSeconds: sprint,
+    restSeconds: rest,
+    setRestSeconds: between,
+  };
+  const [customLine, setCustomLine] = useState(() => formatIntervalShorthand(customStructure));
 
   function close() {
     setOpen(false);
@@ -273,11 +284,23 @@ export function BikeWorkoutChooser({
 
   function openCustom() {
     const next = choice?.spec ?? seed;
+    const work = next && choice?.id !== "custom" ? next.workSeconds : sprint;
+    const easy = next && choice?.id !== "custom" ? next.restSeconds : rest;
+    const count = next && choice?.id !== "custom" ? next.roundsPerSet : sprints;
     if (next && choice?.id !== "custom") {
-      setSprint(next.workSeconds);
-      setRest(next.restSeconds);
-      setSprints(next.roundsPerSet);
+      setSprint(work);
+      setRest(easy);
+      setSprints(count);
     }
+    setCustomLine(
+      formatIntervalShorthand({
+        sets: rounds,
+        rounds: count,
+        workSeconds: work,
+        restSeconds: easy,
+        setRestSeconds: between,
+      }),
+    );
     setCustomOpen(true);
     setError("");
   }
@@ -299,7 +322,7 @@ export function BikeWorkoutChooser({
       restBetweenRoundsSeconds: between,
     });
     if (!next) {
-      setError("Pick a sprint, rest, and count from the lists.");
+      setError("Pick work, rest, and rounds from the lists.");
       return;
     }
     apply(next);
@@ -367,11 +390,11 @@ export function BikeWorkoutChooser({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p id={titleId} className="font-display text-xl uppercase tracking-wide">
-                {customOpen ? "Custom sprints" : "Bike workouts"}
+                {customOpen ? "Custom rounds" : "Bike workouts"}
               </p>
               <p className="mt-1 text-sm text-muted">
                 {customOpen
-                  ? "Tap a value, then scroll to the one you want."
+                  ? "Type 2x8 @ 15/15, or tap the steppers."
                   : "Tap a workout to replace today’s session."}
               </p>
             </div>
@@ -391,22 +414,42 @@ export function BikeWorkoutChooser({
 
           {customOpen ? (
             <div className="mt-4 space-y-3" data-bike-custom-form>
-              <div className="grid grid-cols-3 gap-2">
-                <PickButton field="sprint" label="Sprint sec" value={sprint} onOpen={setPicker} />
-                <PickButton field="rest" label="Rest sec" value={rest} onOpen={setPicker} />
-                <PickButton field="sprints" label="Sprints" value={sprints} onOpen={setPicker} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <PickButton field="rounds" label="Rounds" value={rounds} onOpen={setPicker} />
-                <PickButton field="between" label="Rest between" value={between} onOpen={setPicker} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <PickButton field="warmup" label="Warm-up" value={warmup} onOpen={setPicker} />
-                <PickButton field="cooldown" label="Cool-down" value={cooldown} onOpen={setPicker} />
-              </div>
-              <p className="text-xs text-muted">
-                Rounds repeat the whole block. Rest between rounds is used when you pick more than one.
-              </p>
+              <IntervalStructureFields
+                shorthand={customLine}
+                structure={customStructure}
+                done={customStructure.sets * customStructure.rounds}
+                totalType="bike"
+                presets={[]}
+                showDone={false}
+                onShorthandCommit={setCustomLine}
+                onLiveStructure={(next) => {
+                  setSprint(next.workSeconds);
+                  setRest(next.restSeconds);
+                  setSprints(next.rounds);
+                  setRounds(next.sets);
+                  setBetween(next.setRestSeconds);
+                  setError("");
+                }}
+                onStructure={(next) => {
+                  setSprint(next.workSeconds);
+                  setRest(next.restSeconds);
+                  setSprints(next.rounds);
+                  setRounds(next.sets);
+                  setBetween(next.setRestSeconds);
+                  setCustomLine(formatIntervalShorthand(next));
+                  setError("");
+                }}
+                onDone={() => {}}
+              />
+              <button type="button" onClick={() => setCustomMore((open) => !open)} className="text-sm font-semibold text-accent">
+                + More
+              </button>
+              {customMore ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <PickButton field="warmup" label="Warm-up" value={warmup} onOpen={setPicker} />
+                  <PickButton field="cooldown" label="Cool-down" value={cooldown} onOpen={setPicker} />
+                </div>
+              ) : null}
               {error ? (
                 <p className="text-sm text-signal" role="alert">
                   {error}
@@ -434,10 +477,10 @@ export function BikeWorkoutChooser({
           ) : (
             <div className="mt-4 space-y-2" data-bike-workout-list>
               <div className="grid grid-cols-2 gap-2" data-bike-round-picks>
-                <PickButton field="rounds" label="Rounds" value={rounds} onOpen={setPicker} />
-                <PickButton field="between" label="Rest between" value={between} onOpen={setPicker} />
+                <PickButton field="rounds" label="Sets" value={rounds} onOpen={setPicker} />
+                <PickButton field="between" label="Set rest" value={between} onOpen={setPicker} />
               </div>
-              <p className="text-xs text-muted">Rounds repeat whichever workout you tap. One round runs it once.</p>
+              <p className="text-xs text-muted">Sets repeat whichever workout you tap. One set runs it once.</p>
               {BIKE_CHOICES.map((workout) => {
                 const selected = choice?.id === workout.id;
                 return (
@@ -475,7 +518,7 @@ export function BikeWorkoutChooser({
               >
                 <span className="font-display block text-lg uppercase leading-tight tracking-wide">Custom</span>
                 <span className="mt-1 block text-sm text-muted">
-                  Set sprint, rest, sprints, and how many rounds.
+                  Set work, rest, rounds, and how many sets.
                 </span>
               </button>
             </div>
