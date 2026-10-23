@@ -22,6 +22,7 @@ import {
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import { nextSelectedDay, weekChipHref } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
@@ -999,7 +1000,9 @@ function WeekDayCarousel({
           <LogPastWorkoutButton
             dayKey={selectedDay}
             entry="week"
-            label="Log a past workout"
+            label={
+              timeZone && selectedDay === dayKey(new Date(), timeZone) ? "Log a workout" : "Log a past workout"
+            }
             compact
             timeZone={timeZone}
           />

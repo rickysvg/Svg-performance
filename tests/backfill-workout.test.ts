@@ -17,11 +17,13 @@ import {
 import { completionListLabel, exerciseSetProgress, historyCountLine } from "@/lib/logged-work";
 import { roundHistoryLine } from "@/lib/round-session";
 import { getCalendarSchedule, subtitleShowsPartial } from "@/lib/calendar";
-import { completedLocalDayKeys, listWorkoutSessionsForUser } from "@/lib/workouts";
+import { completedLocalDayKeys, listWorkoutSessionsForUser, logBikeRoundsForUser } from "@/lib/workouts";
+import { customBikeChoice } from "@/lib/bike-chooser";
+import { backfillDayOptions, performedAtForDayKey } from "@/lib/backfill-rules";
+import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { backfillDayOptions } from "@/lib/backfill-rules";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
@@ -61,10 +63,6 @@ describe("log a past workout", () => {
   beforeEach(async () => {
     clearBackfillWriteFault();
     await resetDatabase();
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
   });
 
   it("marks the calendar, history, weekly stats, and streak", async () => {
@@ -210,7 +208,12 @@ describe("log a past workout", () => {
     const nz = await makeUser("backfill-nz@example.com");
     await onboard(nz.id, "Pacific/Auckland");
     const nzNow = new Date("2026-10-22T15:00:00.000Z");
-    await expect(freeLog(nz.id, "2026-10-23", "Today", nzNow)).rejects.toThrow(/yesterday/i);
+    const nzToday = await freeLog(nz.id, "2026-10-23", "Today", nzNow);
+    expect(nzToday.ok).toBe(true);
+    if (nzToday.ok) {
+      const todayRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: nzToday.sessionId } });
+      expect(sessionCompletionDay(todayRow, "Pacific/Auckland")).toBe("2026-10-23");
+    }
     await expect(freeLog(nz.id, "2026-10-24", "Ahead", nzNow)).rejects.toThrow(/future/i);
     const nzSaved = await freeLog(nz.id, "2026-10-22", "East coast", nzNow);
     expect(nzSaved.ok).toBe(true);
@@ -219,13 +222,19 @@ describe("log a past workout", () => {
     expect(sessionCompletionDay(nzRow, "Pacific/Auckland")).toBe("2026-10-22");
   });
 
-  it("rejects today, the future, dates older than 30 days, and absurd durations", async () => {
+  it("accepts today, and rejects the future, dates older than 30 days, and absurd durations", async () => {
     const user = await makeUser("backfill-window@example.com");
     await onboard(user.id);
     const today = dayKey(NOW, TZ);
     const future = dayKey(addZonedDays(startOfZonedDay(NOW, TZ), 1, TZ), TZ);
     const old = dayKey(addZonedDays(startOfZonedDay(NOW, TZ), -31, TZ), TZ);
-    await expect(freeLog(user.id, today, "Today")).rejects.toThrow(/yesterday/i);
+    const todaySaved = await freeLog(user.id, today, "Today");
+    expect(todaySaved.ok).toBe(true);
+    if (todaySaved.ok) {
+      const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: todaySaved.sessionId } });
+      expect(sessionCompletionDay(row, TZ)).toBe(today);
+      expect(row.backfilled).toBe(true);
+    }
     await expect(freeLog(user.id, future, "Future")).rejects.toThrow(/future/i);
     await expect(freeLog(user.id, old, "Old")).rejects.toThrow(/30/);
     await expect(
@@ -379,8 +388,9 @@ describe("log a past workout", () => {
       title: "Assault bike",
       notes: "",
       rpe: null,
-      durationSeconds: 20 * 60,
-      plannedRounds: 8,
+      workSeconds: 15,
+      restSeconds: 15,
+      roundsPerSet: 8,
       doneRounds: 8,
     });
     expect(bike.ok).toBe(true);
@@ -389,7 +399,7 @@ describe("log a past workout", () => {
         where: { id: bike.sessionId },
         include: { sets: true },
       });
-      expect(roundHistoryLine(row!)).toBe("8 rounds · 2:30 round · 0:00 rest · 20:00 total");
+      expect(roundHistoryLine(row!)).toBe("8 rounds · 0:15 round · 0:15 rest · 4:00 total");
     }
 
     await deleteBackfillWorkout({ userId: user.id, sessionId: saved.sessionId, confirmed: true });
@@ -471,9 +481,35 @@ describe("past log first paint and finish time", () => {
       }),
     );
     expect(createHtml).toContain('data-testid="log-past-workout-date"');
-    expect(createHtml).toContain(sample!.key);
+    expect(createHtml).toContain(`value="${sample!.key}"`);
     expect(createHtml).toContain(sample!.label);
-    expect(createHtml.split("<option").length).toBeGreaterThan(2);
+    expect(createHtml).toContain("Log a past workout");
+    expect(createHtml).toContain("8x20/10");
+    expect(createHtml).toContain("text-base");
+    const days = backfillDayOptions(new Date(), TZ);
+    const homeHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: days[0]!.key,
+        entry: "home",
+        label: "Open",
+        timeZone: TZ,
+        defaultOpen: true,
+      }),
+    );
+    expect(homeHtml).toContain("Log a workout");
+    expect(homeHtml).toContain(`value="${days[0]!.key}"`);
+    expect(homeHtml).toContain(days[0]!.label);
+    const historyHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        entry: "history",
+        label: "Open",
+        timeZone: TZ,
+        defaultOpen: true,
+      }),
+    );
+    expect(historyHtml).toContain("Log a past workout");
+    expect(historyHtml).toContain(days[1]!.label);
+    expect(historyHtml).toContain(`value="${days[1]!.key}"`);
 
     const editHtml = renderToStaticMarkup(
       createElement(LogPastWorkoutButton, {
@@ -623,4 +659,216 @@ describe("past log first paint and finish time", () => {
       { name: "Assault bike alactic", ticked: 1, planned: 1, state: "complete" },
     ]);
   });
+});
+
+describe("today and past interval logs", () => {
+  beforeEach(async () => {
+    clearBackfillWriteFault();
+    await resetDatabase();
+  });
+
+  function rickyBike(userId: string, dayKeyValue: string, doneRounds: number) {
+    return createBackfillWorkout({
+      userId,
+      dayKey: dayKeyValue,
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "",
+      rpe: null,
+      workSeconds: 15,
+      restSeconds: 15,
+      roundsPerSet: 8,
+      repeatRounds: 2,
+      restBetweenRoundsSeconds: 60,
+      doneRounds,
+    });
+  }
+
+  it("logs today and a past Wednesday in the live timer shape", async () => {
+    const user = await makeUser("backfill-today-past@example.com");
+    await onboard(user.id);
+    const today = dayKey(NOW, TZ);
+    const past = "2026-10-21";
+    const pastPreview = await previewBackfillDay(user.id, past, NOW);
+    const todayPreview = await previewBackfillDay(user.id, today, NOW);
+    expect(pastPreview.days[0]?.key).toBe(today);
+    expect(pastPreview.days.some((day) => day.key === past)).toBe(true);
+    expect(pastPreview.days.some((day) => day.key > today)).toBe(false);
+
+    const wednesday = await rickyBike(user.id, past, 16);
+    expect(wednesday.ok).toBe(true);
+    if (!wednesday.ok) return;
+    const pastRow = await prisma.workoutSession.findUnique({
+      where: { id: wednesday.sessionId },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    expect(pastRow?.sets).toHaveLength(16);
+    expect(pastRow?.sets.every((set) => set.completed && set.durationSeconds === 15)).toBe(true);
+    expect(pastRow?.sets.some((set) => set.completed === false)).toBe(false);
+    expect(pastRow?.sets[0]?.prescriptionKey).toBe("timer#bw:c.15.15.8.0.0.2.60");
+    expect(pastRow?.title).toBe("Custom sprints · 2 rounds");
+    expect((await readWorkoutTimerFields(wednesday.sessionId, prisma)).elapsedSeconds).toBe(540);
+    expect(sessionCompletionDay(pastRow!, TZ)).toBe(past);
+    if (pastPreview.roundTargets.bike) {
+      expect(pastRow?.programDayId).toBe(pastPreview.roundTargets.bike.programDayId);
+    }
+
+    const todaySaved = await rickyBike(user.id, today, 16);
+    expect(todaySaved.ok).toBe(true);
+    if (!todaySaved.ok) return;
+    const todayRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: todaySaved.sessionId } });
+    expect(sessionCompletionDay(todayRow, TZ)).toBe(today);
+    expect(todayRow.backfilled).toBe(true);
+    if (todayPreview.roundTargets.bike) {
+      expect(todayRow.programDayId).toBe(todayPreview.roundTargets.bike.programDayId);
+    }
+
+    const from = new Date("2026-10-18T00:00:00.000Z");
+    const to = new Date("2026-10-24T00:00:00.000Z");
+    const chips = await completedLocalDayKeys(user.id, from, to, TZ);
+    if (wednesday.status === "complete") expect(chips).toContain(past);
+    if (todaySaved.status === "complete" && todayRow.programDayId) expect(chips).toContain(today);
+
+    const partial = await rickyBike(await makeUser("backfill-partial-bike@example.com").then(async (row) => {
+      await onboard(row.id);
+      return row.id;
+    }), past, 12);
+    expect(partial.ok).toBe(true);
+    if (!partial.ok) return;
+    expect(partial.status).toBe("partial");
+    const partialSets = await prisma.workoutSet.findMany({ where: { workoutSessionId: partial.sessionId } });
+    expect(partialSets).toHaveLength(12);
+    expect(partialSets.every((set) => set.completed)).toBe(true);
+    expect((await readWorkoutTimerFields(partial.sessionId, prisma)).elapsedSeconds).toBe(405);
+  });
+
+  it("merges a live session and leaves a longer or different session in place", async () => {
+    const user = await makeUser("backfill-merge@example.com");
+    await onboard(user.id);
+    const when = performedAtForDayKey("2026-10-21", TZ);
+    const choice = customBikeChoice({
+      workSeconds: 15,
+      restSeconds: 15,
+      rounds: 8,
+      repeatRounds: 2,
+      restBetweenRoundsSeconds: 60,
+    });
+    expect(choice?.name).toBe("Custom sprints · 2 rounds");
+    const live = await logBikeRoundsForUser({
+      userId: user.id,
+      choice: choice!,
+      roundsCompleted: 8,
+      now: when,
+    });
+    const merged = await rickyBike(user.id, "2026-10-21", 16);
+    expect(merged.ok).toBe(true);
+    if (!merged.ok) return;
+    expect(merged.sessionId).toBe(live.id);
+    const after = await prisma.workoutSession.findUnique({
+      where: { id: live.id },
+      include: { sets: true },
+    });
+    expect(after?.backfilled).toBe(false);
+    expect(after?.source).not.toBe("backfill");
+    expect(after?.sets).toHaveLength(16);
+    expect(after?.performedAt.toISOString()).toBe(live.performedAt.toISOString());
+
+    const other = await makeUser("backfill-separate@example.com");
+    await onboard(other.id);
+    const full = await logBikeRoundsForUser({
+      userId: other.id,
+      choice: choice!,
+      roundsCompleted: 16,
+      now: when,
+    });
+    const extra = await rickyBike(other.id, "2026-10-21", 4);
+    expect(extra.ok).toBe(true);
+    if (!extra.ok) return;
+    expect(extra.sessionId).not.toBe(full.id);
+    const kept = await prisma.workoutSession.findUnique({
+      where: { id: full.id },
+      include: { sets: true },
+    });
+    expect(kept?.sets).toHaveLength(16);
+    expect(await prisma.workoutSession.count({ where: { userId: other.id } })).toBe(2);
+
+    const lift = await createBackfillWorkout({
+      userId: other.id,
+      dayKey: "2026-10-20",
+      kind: "custom",
+      resolution: "",
+      now: NOW,
+      title: "Squat day",
+      notes: "",
+      rpe: null,
+      exercises: [{ name: "Back squat", sets: 3, done: 3, reps: "5", logMode: "load_reps" }],
+    });
+    expect(lift.ok).toBe(true);
+    const beside = await rickyBike(other.id, "2026-10-20", 16);
+    expect(beside.ok).toBe(true);
+    if (!lift.ok || !beside.ok) return;
+    expect(beside.sessionId).not.toBe(lift.sessionId);
+    const squat = await prisma.workoutSession.findUnique({ where: { id: lift.sessionId } });
+    expect(squat?.title).toBe("Squat day");
+  });
+
+  it("saves shadow rounds with a weight, and without one when the member has no weights", async () => {
+    const user = await makeUser("backfill-shadow@example.com");
+    await onboard(user.id);
+    const saved = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-20",
+      kind: "shadow",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "",
+      rpe: null,
+      shadowRounds: [
+        { workSeconds: 180, restSeconds: 60, weight: null },
+        { workSeconds: 120, restSeconds: 0, weight: 3 },
+      ],
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    const sets = await prisma.workoutSet.findMany({
+      where: { workoutSessionId: saved.sessionId },
+      orderBy: { exerciseName: "asc" },
+    });
+    expect(sets.map((set) => set.exerciseName).sort()).toEqual([
+      "Shadowbox round 1 — empty hands",
+      "Shadowbox round 2 — hand weights",
+    ]);
+    const weighted = sets.find((set) => set.exerciseName.includes("hand weights"));
+    expect(weighted?.logMode).toBe("load_timed");
+    expect(weighted?.loadValue).toBe(3);
+    expect(weighted?.setNumber).toBe(1);
+
+    await prisma.profile.update({ where: { userId: user.id }, data: { weightAccess: "none" } });
+    const bare = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-19",
+      kind: "shadow",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "",
+      rpe: null,
+      shadowRounds: [
+        { workSeconds: 180, restSeconds: 60, weight: 3 },
+        { workSeconds: 180, restSeconds: 0, weight: 3 },
+      ],
+    });
+    expect(bare.ok).toBe(true);
+    if (!bare.ok) return;
+    const bareSets = await prisma.workoutSet.findMany({ where: { workoutSessionId: bare.sessionId } });
+    expect(bareSets.map((set) => set.exerciseName)).toContain("Shadowbox round 2 — fists, no weights");
+    expect(bareSets.every((set) => set.logMode === "timed" && set.loadValue == null)).toBe(true);
+  });
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
 });

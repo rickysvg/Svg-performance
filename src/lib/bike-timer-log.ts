@@ -5,7 +5,13 @@ import { easePlanForUser } from "@/lib/recovery-ease";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
-import { attachBikeChoice, bikeTimerRoundCount, choiceToken, type BikeChoice } from "@/lib/bike-chooser";
+import {
+  attachBikeChoice,
+  bikeTimerRoundCount,
+  choiceToken,
+  customBikeChoice,
+  type BikeChoice,
+} from "@/lib/bike-chooser";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { highestSetNumber } from "@/lib/logger-insert";
 import type { LoadUnit } from "@/lib/units";
@@ -53,6 +59,41 @@ export function loggerChoiceFromSession(session: {
       blocks: session.blocks,
     },
   };
+}
+
+/**
+ * Same token as the live custom timer when the numbers fit `customBikeChoice`.
+ * Wider backfill values (rest 0, work past 2 minutes) fall through to the logger choice.
+ */
+export function choiceForBackfill(input: {
+  workSeconds: number;
+  restSeconds: number;
+  roundsPerSet: number;
+  repeatRounds?: number;
+  restBetweenRoundsSeconds?: number;
+  warmupSeconds?: number;
+  cooldownSeconds?: number;
+}): BikeChoice {
+  return (
+    customBikeChoice({
+      workSeconds: input.workSeconds,
+      restSeconds: input.restSeconds,
+      rounds: input.roundsPerSet,
+      warmupSeconds: input.warmupSeconds,
+      cooldownSeconds: input.cooldownSeconds,
+      repeatRounds: input.repeatRounds,
+      restBetweenRoundsSeconds: input.restBetweenRoundsSeconds,
+    }) ??
+    loggerChoiceFromSession({
+      workSeconds: input.workSeconds,
+      restSeconds: input.restSeconds,
+      roundsPerSet: input.roundsPerSet,
+      warmupSeconds: input.warmupSeconds,
+      cooldownSeconds: input.cooldownSeconds,
+      repeatRounds: input.repeatRounds,
+      restBetweenRoundsSeconds: input.restBetweenRoundsSeconds,
+    })
+  );
 }
 
 export type BikeTimerSet = {

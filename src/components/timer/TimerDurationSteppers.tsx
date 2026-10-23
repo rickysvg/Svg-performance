@@ -17,6 +17,9 @@ export function TimerDurationSteppers({
   stepSeconds = 15,
   minSeconds = 15,
   maxRounds = 20,
+  sets,
+  setRestSeconds,
+  onSets,
 }: {
   rounds: number;
   workSeconds: number;
@@ -28,9 +31,14 @@ export function TimerDurationSteppers({
   stepSeconds?: number;
   minSeconds?: number;
   maxRounds?: number;
+  sets?: number;
+  setRestSeconds?: number;
+  onSets?: (next: { sets: number; setRestSeconds: number }) => void;
 }) {
+  const showSets = onSets != null && sets != null && setRestSeconds != null;
   return (
-    <div data-timer-settings className="grid grid-cols-3 gap-2">
+    <div data-timer-settings className="space-y-2">
+    <div className="grid grid-cols-3 gap-2">
       <Stepper
         field="rounds"
         label={roundsLabel}
@@ -76,6 +84,26 @@ export function TimerDurationSteppers({
           })
         }
       />
+    </div>
+    {showSets ? (
+      <div className="grid grid-cols-2 gap-2">
+        <Stepper
+          field="sets"
+          label="Sets"
+          value={String(sets)}
+          onDec={() => onSets({ sets: Math.max(1, sets - 1), setRestSeconds })}
+          onInc={() => onSets({ sets: Math.min(10, sets + 1), setRestSeconds })}
+        />
+        <Stepper
+          field="set-rest"
+          label="Set rest"
+          value={formatDurationPick(setRestSeconds)}
+          disabled={sets <= 1}
+          onDec={() => onSets({ sets, setRestSeconds: Math.max(0, setRestSeconds - 15) })}
+          onInc={() => onSets({ sets, setRestSeconds: Math.min(600, setRestSeconds + 15) })}
+        />
+      </div>
+    ) : null}
     </div>
   );
 }
@@ -133,16 +161,18 @@ export function applyStepperTap(
   }
 }
 
-function Stepper({
+export function Stepper({
   field,
   label,
   value,
+  disabled = false,
   onDec,
   onInc,
 }: {
   field: string;
   label: string;
   value: string;
+  disabled?: boolean;
   onDec: () => void;
   onInc: () => void;
 }) {
@@ -182,7 +212,9 @@ function Stepper({
   return (
     <div
       data-timer-step={field}
-      className="flex min-h-16 flex-col items-center justify-center rounded-2xl border border-line bg-card px-1 py-2"
+      className={`flex min-h-16 flex-col items-center justify-center rounded-2xl border border-line bg-card px-1 py-2 ${
+        disabled ? "opacity-40" : ""
+      }`}
     >
       <span className="text-[10px] uppercase leading-tight tracking-wide text-muted">{label}</span>
       <span data-timer-step-value={field} className="font-display mt-1 text-xl leading-none text-accent">
@@ -193,6 +225,7 @@ function Stepper({
           type="button"
           aria-label={`Decrease ${label}`}
           data-timer-step-dec={field}
+          disabled={disabled}
           {...press(onDec, decPointer.current)}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
@@ -202,6 +235,7 @@ function Stepper({
           type="button"
           aria-label={`Increase ${label}`}
           data-timer-step-inc={field}
+          disabled={disabled}
           {...press(onInc, incPointer.current)}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >

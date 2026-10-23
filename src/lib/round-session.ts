@@ -11,7 +11,8 @@ import {
   sessionProgressLabel,
   type ExerciseSetProgress,
 } from "@/lib/logged-work";
-import { bikeChoiceFromKey } from "@/lib/bike-chooser";
+import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
+import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { bikeCardioDurationSeconds } from "@/lib/workout-complete";
 import { completedWorkRounds, formatTimerClock, type TimerPhase } from "@/lib/round-timer";
 import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
@@ -422,6 +423,19 @@ export function sessionMatchesRoundType(
   );
 }
 
+/** Same clock as the live bike save, including the rest after the last sprint. */
+function bikeClockSeconds(
+  choice: NonNullable<ReturnType<typeof bikeChoiceFromKey>>,
+  roundsCompleted: number,
+) {
+  const fullRounds = bikeTimerRoundCount(choice);
+  const done = Math.min(fullRounds, Math.max(0, Math.round(roundsCompleted)));
+  const full = bikeSetDurationSeconds(choice.spec);
+  if (done <= 0) return 0;
+  if (done >= fullRounds) return full;
+  return Math.max(1, Math.round((full * done) / fullRounds));
+}
+
 export function roundHistoryLine(session: {
   sessionRpe?: number | null;
   elapsedSeconds?: number | null;
@@ -450,6 +464,7 @@ export function roundHistoryLine(session: {
     restSecondsFromRoundKey(sets[0]?.prescriptionKey) ??
     bikeChoiceFromKey(sets[0]?.prescriptionKey)?.spec.restSeconds ??
     0;
+  const bike = bikeChoiceFromKey(sets[0]?.prescriptionKey);
   const bikeOnly = sets.every((set) => isBikeIntervalName(set.exerciseName ?? ""));
   const total = bikeOnly
     ? bikeCardioDurationSeconds({
@@ -470,7 +485,9 @@ export function roundHistoryLine(session: {
       })
     : session.elapsedSeconds && session.elapsedSeconds > 0
       ? session.elapsedSeconds
-      : roundSessionDuration(sets.length, work, rest);
+      : bike
+        ? bikeClockSeconds(bike, sets.length)
+        : roundSessionDuration(sets.length, work, rest);
   const parts = [
     `${sets.length} round${sets.length === 1 ? "" : "s"}`,
     `${formatTimerClock(work)} round`,

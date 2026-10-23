@@ -10,6 +10,7 @@ import { HomeQuickActions } from "@/components/home/HomeQuickActions";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { HomeTelemetry } from "@/components/home/HomeTelemetry";
 import { HomeToday } from "@/components/home/HomeToday";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { TodaySummaryButton } from "@/components/home/TodaySummaryButton";
@@ -182,6 +183,9 @@ export default async function HomePage({
       ) : null}
 
       <HomeToday guide={guide} locked={trialEnded} />
+      <div className="pt-2">
+        <LogPastWorkoutButton dayKey={dayKey} entry="home" label="Log a workout" timeZone={tz} />
+      </div>
 
       {guide.today.outsideKind === "sparring" ? (
         <SparringLogForm

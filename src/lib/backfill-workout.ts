@@ -1,22 +1,50 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
-import { BIKE_TIMER_EXERCISE } from "@/lib/bike-timer-log";
-import { roundLogSets, roundPrescriptionKey, roundSessionDuration, type RoundSessionType } from "@/lib/round-session";
+import { bagRoundCountFor } from "@/lib/bag-sessions";
+import { bagFocusLines, SHADOW_EMPTY_NAME, SHADOW_WEIGHTED_NAME } from "@/lib/bag-themes";
+import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
+import { parseBikeIntervalReps } from "@/lib/bike-sessions";
+import {
+  BIKE_TIMER_EXERCISE,
+  bikeTimerLogSets,
+  bikeTimerSessionSeconds,
+  choiceForBackfill,
+  scheduledRoundPlanTarget,
+} from "@/lib/bike-timer-log";
+import { intervalTotals } from "@/lib/interval-totals";
+import {
+  exerciseMatchesRoundType,
+  restSecondsFromRoundKey,
+  roundLogSets,
+  roundPrescriptionKey,
+  roundSaveStatus,
+  roundTargetFromExercises,
+  sessionMatchesRoundType,
+  setBelongsToRoundType,
+} from "@/lib/round-session";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { formatClock, isDurationMode, resolveLogMode } from "@/lib/exercise-log-mode";
-import { sessionHasLoggedWork } from "@/lib/logged-work";
+import {
+  formatClock,
+  isDurationMode,
+  isLogMode,
+  isShadowName,
+  isWeightedShadowName,
+  resolveLogMode,
+} from "@/lib/exercise-log-mode";
+import { scaleBandFromPrefs } from "@/lib/training-scale";
+import { sessionHasLoggedWork, setHasLoggedWork } from "@/lib/logged-work";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { scaleDemoCatalog } from "@/lib/training-scale";
 import { planForDate, planWeekIndex, resolvePlanSessions } from "@/lib/week-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { listSavedWorkouts, getSavedWorkoutForUser } from "@/lib/my-workouts";
-import { workoutTimerColumnsAvailable } from "@/lib/workout-timer-columns";
+import { readWorkoutTimerFields, workoutTimerColumnsAvailable } from "@/lib/workout-timer-columns";
 import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import type { LoadUnit } from "@/lib/units";
 import {
@@ -39,6 +67,7 @@ import {
   setsForBackfillExercises,
   type BackfillExerciseInput,
   type BackfillKind,
+  type BackfillRoundMode,
   type BackfillSetDraft,
 } from "@/lib/backfill-rules";
 
@@ -58,12 +87,50 @@ export type BackfillProgramOption = {
   exercises: BackfillExerciseInput[];
 };
 
+export type BackfillIntervalTarget = {
+  programDayId: string;
+  exerciseName: string;
+  plannedRounds: number;
+  daySetCount: number;
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+  focusRounds: string[];
+};
+
+export type BackfillLastUsed = {
+  label: string;
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+};
+
+export type DecodedInterval = {
+  kind: "bike" | BackfillRoundMode;
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+  done: number;
+};
+
 export type BackfillPreview = {
   dayKey: string;
   programs: BackfillProgramOption[];
   saved: { id: string; name: string; exercises: BackfillExerciseInput[] }[];
   existing: BackfillExisting[];
   days: { key: string; label: string }[];
+  roundTargets: Partial<Record<"bike" | BackfillRoundMode, BackfillIntervalTarget>>;
+  lastUsed: Partial<Record<"bike" | BackfillRoundMode | "shadow", BackfillLastUsed>>;
+  bagRounds: number;
+  units: LoadUnit;
+  weightAccess: string;
+  shadowWeight: number | null;
 };
 
 export type BackfillWriteResult =
@@ -88,6 +155,11 @@ type BackfillPayload = {
   roundMode?: string | null;
   workSeconds?: number | null;
   restSeconds?: number | null;
+  roundsPerSet?: number | null;
+  repeatRounds?: number | null;
+  restBetweenRoundsSeconds?: number | null;
+  focusNotes?: string[] | null;
+  shadowRounds?: { workSeconds: number; restSeconds: number; weight: number | null }[] | null;
   calories?: number | null;
   distance?: number | null;
 };
@@ -101,7 +173,7 @@ async function memberZone(userId: string) {
   const profile = await getProfileForUser(userId);
   const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const units: LoadUnit = profile?.preferredUnits === "kg" ? "kg" : "lb";
-  return { profile, timeZone, units };
+  return { profile, timeZone, units, weightAccess: profile?.weightAccess ?? "gym" };
 }
 
 export async function sessionsOnCivilDay(userId: string, day: string, timeZone: string) {
@@ -188,6 +260,8 @@ async function programOptionsForDay(userId: string, when: Date, timeZone: string
           done: Math.max(1, exercise.sets),
           reps: exercise.reps,
           logMode: exercise.logMode,
+          restSeconds: exercise.restSeconds,
+          notes: exercise.notes,
         })),
       },
     ];
@@ -195,15 +269,17 @@ async function programOptionsForDay(userId: string, when: Date, timeZone: string
 }
 
 export async function previewBackfillDay(userId: string, day: string, now = new Date()): Promise<BackfillPreview> {
-  const { timeZone } = await memberZone(userId);
+  const { profile, timeZone, units, weightAccess } = await memberZone(userId);
   const options = backfillDayOptions(now, timeZone);
   const key = day.trim() || options[0]?.key || "";
   assertBackfillDay(key, now, timeZone);
   const when = performedAtForDayKey(key, timeZone);
-  const [programs, savedRows, existing] = await Promise.all([
+  const [programs, savedRows, existing, lastUsed, shadowWeight] = await Promise.all([
     programOptionsForDay(userId, when, timeZone),
     listSavedWorkouts(userId),
     sessionsOnCivilDay(userId, key, timeZone),
+    lastUsedByType(userId),
+    lastShadowWeight(userId),
   ]);
   const saved = await Promise.all(
     savedRows.slice(0, 20).map(async (row) => {
@@ -221,6 +297,10 @@ export async function previewBackfillDay(userId: string, day: string, now = new 
       };
     }),
   );
+  const band = scaleBandFromPrefs({
+    experienceLevel: profile?.experienceLevel,
+    competitionStatus: profile?.competitionStatus,
+  });
   return {
     dayKey: key,
     programs,
@@ -231,6 +311,12 @@ export async function previewBackfillDay(userId: string, day: string, now = new 
       status: row.status,
     })),
     days: backfillDayOptions(now, timeZone),
+    roundTargets: targetsFromPrograms(programs),
+    lastUsed,
+    bagRounds: bagRoundCountFor(band),
+    units,
+    weightAccess,
+    shadowWeight,
   };
 }
 
@@ -247,6 +333,7 @@ function toCreate(sets: BackfillSetDraft[]) {
     completed: set.completed,
     notes: set.notes,
     prescriptionKey: set.prescriptionKey.slice(0, 160),
+    rir: set.rir ?? "",
   }));
 }
 
@@ -356,54 +443,440 @@ function exercisePayload(exercises: BackfillExerciseInput[], unit: LoadUnit, key
   return setsForBackfillExercises(exercises, unit, keyFor);
 }
 
-function roundBackfillSets(input: {
-  type: RoundSessionType;
-  exerciseName: string;
+const SHADOW_FISTS_NAME = "Shadowbox round 2 — fists, no weights";
+
+type IntervalSave = {
+  type: "bike" | BackfillRoundMode | "shadow";
+  roundsCompleted: number;
   plannedRounds: number;
-  doneRounds: number;
-  workSeconds: number;
-  restSeconds: number;
-  unit: LoadUnit;
-}): { sets: BackfillSetDraft[]; plannedSetCount: number; plannedNames: string[] } {
-  const done = roundLogSets({
-    type: input.type,
-    exerciseName: input.exerciseName,
-    rounds: input.doneRounds,
-    workSeconds: input.workSeconds,
-    restSeconds: input.restSeconds,
-    unit: input.unit,
-  });
-  const key = roundPrescriptionKey(input.type, input.restSeconds);
-  const sets: BackfillSetDraft[] = done.map((set) => ({
-    exerciseName: set.exerciseName,
-    setNumber: set.setNumber,
-    reps: null,
-    loadValue: null,
-    loadUnit: input.unit,
-    logMode: "timed_round",
-    durationSeconds: set.durationSeconds ?? null,
-    completed: true,
-    notes: set.notes ?? "",
-    prescriptionKey: set.prescriptionKey ?? key,
-  }));
-  for (let index = sets.length; index < input.plannedRounds; index += 1) {
-    sets.push({
-      exerciseName: input.exerciseName,
-      setNumber: index + 1,
-      reps: null,
-      loadValue: null,
-      loadUnit: input.unit,
-      logMode: "timed_round",
-      durationSeconds: null,
-      completed: false,
-      notes: "",
-      prescriptionKey: key,
-    });
+  configuredRounds: number;
+  daySetCount: number | null;
+};
+
+function assertCount(value: number, min: number, max: number, label: string) {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new AppError("WORKOUT", `${label} should be between ${min} and ${max}.`);
   }
-  return { sets, plannedSetCount: input.plannedRounds, plannedNames: [input.exerciseName] };
 }
 
-async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
+function lastUsedLabel(sets: number, rounds: number, workSeconds: number, restSeconds: number) {
+  const work = workSeconds >= 60 && workSeconds % 60 === 0 ? `${workSeconds / 60}:00` : String(workSeconds);
+  const rest = restSeconds >= 60 && restSeconds % 60 === 0 ? `${restSeconds / 60}:00` : String(restSeconds);
+  return sets > 1 ? `Last: ${sets}×${rounds} ${work}/${rest}` : `Last: ${rounds}×${work}/${rest}`;
+}
+
+function targetsFromPrograms(programs: BackfillProgramOption[]): BackfillPreview["roundTargets"] {
+  const out: BackfillPreview["roundTargets"] = {};
+  const types = ["bike", "bag", "pads", "sparring", "grappling"] as const;
+  for (const program of programs) {
+    const daySetCount = program.exercises.reduce(
+      (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets || 0)),
+      0,
+    );
+    const asRound = program.exercises.map((exercise) => ({
+      name: exercise.name,
+      sets: exercise.sets,
+      reps: exercise.reps,
+      restSeconds: exercise.restSeconds,
+      logMode: exercise.logMode,
+    }));
+    for (const type of types) {
+      if (out[type]) continue;
+      const target = roundTargetFromExercises(asRound, type);
+      if (!target) continue;
+      const primary = program.exercises.find((exercise) =>
+        exerciseMatchesRoundType(exercise.name, exercise.logMode, type),
+      );
+      const parsed = type === "bike" && primary?.reps ? parseBikeIntervalReps(primary.reps) : null;
+      const focus = type === "bag" && primary?.notes ? bagFocusLines(primary.notes) : null;
+      const sets = type === "bike" ? Math.max(1, Math.round(primary?.sets ?? 1)) : 1;
+      const rounds =
+        type === "bike"
+          ? (parsed?.roundsPerSet ?? Math.max(1, target.plannedRounds))
+          : type === "bag" && focus
+            ? focus.rounds.length
+            : Math.max(1, target.plannedRounds);
+      const storedRest = Math.max(0, Math.round(primary?.restSeconds ?? 0));
+      out[type] = {
+        programDayId: program.programDayId,
+        exerciseName: target.exerciseName,
+        plannedRounds: target.plannedRounds,
+        daySetCount,
+        sets,
+        rounds,
+        workSeconds: target.workSeconds,
+        restSeconds: target.restSeconds,
+        setRestSeconds: type === "bike" ? (storedRest > 0 ? storedRest : 60) : storedRest,
+        focusRounds: focus?.rounds ?? [],
+      };
+    }
+  }
+  return out;
+}
+
+async function lastUsedByType(userId: string): Promise<BackfillPreview["lastUsed"]> {
+  const rows = await prisma.workoutSession.findMany({
+    where: { userId, status: { in: ["complete", "partial"] } },
+    orderBy: { performedAt: "desc" },
+    take: 30,
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+  });
+  const out: BackfillPreview["lastUsed"] = {};
+  for (const row of rows) {
+    if (!out.bike) {
+      const choice = bikeChoiceFromKey(row.sets.find((set) => bikeChoiceFromKey(set.prescriptionKey))?.prescriptionKey);
+      if (choice) {
+        const sets = choice.spec.repeatRounds ?? 1;
+        const rounds = choice.spec.roundsPerSet;
+        out.bike = {
+          label: lastUsedLabel(sets, rounds, choice.spec.workSeconds, choice.spec.restSeconds),
+          sets,
+          rounds,
+          workSeconds: choice.spec.workSeconds,
+          restSeconds: choice.spec.restSeconds,
+          setRestSeconds: choice.spec.restBetweenRoundsSeconds ?? 0,
+        };
+      }
+    }
+    for (const type of ["bag", "pads", "sparring", "grappling"] as const) {
+      if (out[type]) continue;
+      const matched = row.sets.filter(
+        (set) => (set.prescriptionKey ?? "").startsWith(`round:${type}:`) && (set.durationSeconds ?? 0) > 0,
+      );
+      if (matched.length === 0) continue;
+      const work = matched[0]?.durationSeconds ?? 180;
+      const rest = restSecondsFromRoundKey(matched[0]?.prescriptionKey) ?? 0;
+      out[type] = {
+        label: lastUsedLabel(1, matched.length, work, rest),
+        sets: 1,
+        rounds: matched.length,
+        workSeconds: work,
+        restSeconds: rest,
+        setRestSeconds: 0,
+      };
+    }
+    if (!out.shadow) {
+      const shadow = row.sets.filter((set) => isShadowName(set.exerciseName) && (set.durationSeconds ?? 0) > 0);
+      if (shadow.length >= 2) {
+        const work = shadow[0]?.durationSeconds ?? 180;
+        out.shadow = {
+          label: "Last: shadow",
+          sets: 1,
+          rounds: shadow.length,
+          workSeconds: work,
+          restSeconds: 60,
+          setRestSeconds: 0,
+        };
+      }
+    }
+  }
+  return out;
+}
+
+async function lastShadowWeight(userId: string): Promise<number | null> {
+  const rows = await prisma.workoutSet.findMany({
+    where: { logMode: "load_timed", loadValue: { gt: 0 }, session: { userId } },
+    orderBy: { session: { performedAt: "desc" } },
+    take: 20,
+    select: { exerciseName: true, loadValue: true },
+  });
+  const hit = rows.find((row) => isWeightedShadowName(row.exerciseName));
+  return hit?.loadValue ?? null;
+}
+
+function shadowPayload(input: BackfillPayload, unit: LoadUnit, weightAccess: string) {
+  const rounds = input.shadowRounds ?? [];
+  if (rounds.length < 2) throw new AppError("WORKOUT", "Shadow needs at least 2 rounds.");
+  const bare = weightAccess === "none";
+  const sets: BackfillSetDraft[] = rounds.map((round, index) => {
+    const workSeconds = Math.round(round.workSeconds);
+    assertSaneSetSeconds(workSeconds, "Round length");
+    const weighted = index === 1 && !bare;
+    const exerciseName =
+      index === 0 ? SHADOW_EMPTY_NAME : index === 1 ? (bare ? SHADOW_FISTS_NAME : SHADOW_WEIGHTED_NAME) : `Shadowbox round ${index + 1}`;
+    return {
+      exerciseName,
+      setNumber: 1,
+      reps: null,
+      loadValue: weighted && round.weight != null && round.weight > 0 ? round.weight : null,
+      loadUnit: unit,
+      logMode: weighted ? "load_timed" : "timed",
+      durationSeconds: workSeconds,
+      completed: true,
+      notes: "",
+      prescriptionKey: "",
+    };
+  });
+  const totals = intervalTotals(
+    "shadow",
+    {
+      sets: 1,
+      rounds: rounds.length,
+      workSeconds: rounds[0]?.workSeconds ?? 180,
+      restSeconds: rounds[0]?.restSeconds ?? 0,
+      setRestSeconds: 0,
+      shadowRounds: rounds.map((round) => ({
+        workSeconds: round.workSeconds,
+        restSeconds: round.restSeconds,
+      })),
+    },
+    rounds.length,
+  );
+  return {
+    title: cleanTitle(input.title, "Shadowbox"),
+    notes: input.notes.trim().slice(0, 1000),
+    programDayId: null as string | null,
+    savedWorkoutId: null as string | null,
+    sets,
+    plannedSetCount: sets.length,
+    plannedNames: sets.map((set) => set.exerciseName),
+    elapsedSeconds: totals.totalSeconds,
+    interval: {
+      type: "shadow" as const,
+      roundsCompleted: rounds.length,
+      plannedRounds: rounds.length,
+      configuredRounds: rounds.length,
+      daySetCount: null,
+    },
+  };
+}
+
+function setMatchesInterval(
+  set: { exerciseName?: string | null; logMode?: string | null; prescriptionKey?: string | null },
+  type: IntervalSave["type"],
+) {
+  if (type === "shadow") return isShadowName(set.exerciseName ?? "");
+  return setBelongsToRoundType(set, type);
+}
+
+function sessionMatchesInterval(
+  session: {
+    title?: string | null;
+    sets: { exerciseName?: string | null; logMode?: string | null; prescriptionKey?: string | null }[];
+  },
+  type: IntervalSave["type"],
+) {
+  if (type === "shadow") return session.sets.some((set) => isShadowName(set.exerciseName ?? ""));
+  return sessionMatchesRoundType(session, type);
+}
+
+function loggedIntervalRounds(
+  sets: {
+    exerciseName?: string | null;
+    logMode?: string | null;
+    prescriptionKey?: string | null;
+    reps?: number | null;
+    loadValue?: number | null;
+    durationSeconds?: number | null;
+    completed?: boolean | null;
+  }[],
+  type: IntervalSave["type"],
+) {
+  return sets.filter((set) => set.completed !== false && setMatchesInterval(set, type) && setHasLoggedWork(set)).length;
+}
+
+function keptSetDraft(
+  set: {
+    exerciseName: string;
+    setNumber: number;
+    reps: number | null;
+    loadValue: number | null;
+    loadUnit: string;
+    logMode: string;
+    durationSeconds: number | null;
+    completed: boolean;
+    notes: string;
+    prescriptionKey: string;
+    rir: string;
+  },
+  unit: LoadUnit,
+): BackfillSetDraft {
+  return {
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: set.loadUnit === "kg" ? "kg" : unit,
+    logMode: isLogMode(set.logMode) ? set.logMode : "load_reps",
+    durationSeconds: set.durationSeconds,
+    completed: set.completed,
+    notes: set.notes ?? "",
+    prescriptionKey: set.prescriptionKey ?? "",
+    rir: set.rir ?? "",
+  };
+}
+
+function intervalStatus(interval: IntervalSave, keptCount: number) {
+  const mixed = keptCount > 0 || (interval.daySetCount != null && interval.daySetCount > interval.plannedRounds);
+  if (mixed) return "partial" as const;
+  return roundSaveStatus({
+    roundsCompleted: interval.roundsCompleted,
+    plannedRounds: interval.plannedRounds,
+    configuredRounds: interval.configuredRounds,
+  });
+}
+
+async function writeElapsedSecondsOnly(
+  db: { workoutSession: { update: typeof prisma.workoutSession.update } },
+  sessionId: string,
+  seconds: number,
+) {
+  const elapsedSeconds = Math.min(SESSION_DURATION_CAP_SECONDS, Math.max(1, Math.round(seconds)));
+  await db.workoutSession.update({
+    where: { id: sessionId },
+    data: { elapsedSeconds },
+  });
+}
+
+/**
+ * Interval saves merge into a same-day session of the same type and plan.
+ * A longer saved session is left alone. A different type stays as its own row.
+ * Source, backfilled, and performedAt on an existing row are not rewritten.
+ */
+async function persistIntervalBackfill(input: {
+  userId: string;
+  dayKey: string;
+  timeZone: string;
+  title: string;
+  notes: string;
+  rpe: number | null;
+  programDayId: string | null;
+  sets: BackfillSetDraft[];
+  plannedSetCount: number;
+  elapsedSeconds: number;
+  interval: IntervalSave;
+}) {
+  const when = performedAtForDayKey(input.dayKey, input.timeZone);
+  const rows = await prisma.workoutSession.findMany({
+    where: {
+      userId: input.userId,
+      status: { in: ["draft", "partial", "complete"] },
+      performedAt: {
+        gte: new Date(when.getTime() - DAY_PAD_MS),
+        lte: new Date(when.getTime() + DAY_PAD_MS),
+      },
+    },
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+    orderBy: { createdAt: "asc" },
+  });
+  const programDayId = input.programDayId ?? null;
+  const matches = rows.filter(
+    (row) =>
+      sessionCompletionDay(row, input.timeZone) === input.dayKey &&
+      (row.programDayId ?? null) === programDayId &&
+      sessionMatchesInterval(row, input.interval.type),
+  );
+  const fits = (row: (typeof matches)[number]) =>
+    loggedIntervalRounds(row.sets, input.interval.type) <= input.interval.roundsCompleted;
+  const saved = matches.find((row) => (row.status === "complete" || row.status === "partial") && fits(row));
+  const draft = matches.find((row) => row.status === "draft" && fits(row));
+  const target = saved ?? draft ?? null;
+  const timerReady = await workoutTimerColumnsAvailable(prisma);
+  const kept = target ? target.sets.filter((set) => !setMatchesInterval(set, input.interval.type)) : [];
+  const combined = [...input.sets, ...kept.map((set) => keptSetDraft(set, input.sets[0]?.loadUnit ?? "lb"))];
+  const status = intervalStatus(input.interval, kept.length);
+  let elapsed = input.elapsedSeconds;
+  if (target && kept.length > 0 && timerReady) {
+    const prior = await readWorkoutTimerFields(target.id, prisma);
+    if (prior.elapsedSeconds && prior.elapsedSeconds > 0) {
+      elapsed = Math.max(prior.elapsedSeconds, elapsed);
+    }
+  }
+  if (target) {
+    const notes = input.notes.trim() ? input.notes.trim().slice(0, 1000) : target.notes;
+    await prisma.$transaction(async (tx) => {
+      await tx.workoutSet.deleteMany({ where: { workoutSessionId: target.id } });
+      throwIfBackfillWriteFault();
+      await tx.workoutSession.update({
+        where: { id: target.id },
+        data: {
+          title: kept.length > 0 ? target.title : input.title,
+          notes,
+          status,
+          plannedSetCount: input.plannedSetCount,
+          sessionRpe: input.rpe == null ? target.sessionRpe : input.rpe,
+          sets: { create: toCreate(combined) },
+        },
+      });
+      if (timerReady && elapsed > 0) await writeElapsedSecondsOnly(tx, target.id, elapsed);
+    });
+    if (status === "complete" && target.status !== "complete") {
+      await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
+    }
+    return { ok: true as const, sessionId: target.id, status };
+  }
+  const created = await prisma.$transaction(async (tx) => {
+    throwIfBackfillWriteFault();
+    const row = await tx.workoutSession.create({
+      data: {
+        userId: input.userId,
+        programDayId,
+        title: input.title,
+        performedAt: when,
+        notes: input.notes.trim().slice(0, 1000),
+        status,
+        plannedSetCount: input.plannedSetCount,
+        sessionRpe: input.rpe,
+        source: BACKFILL_SOURCE,
+        backfilled: true,
+        sets: { create: toCreate(input.sets) },
+      },
+    });
+    if (timerReady && elapsed > 0) await writeElapsedOn(tx, row.id, elapsed, when);
+    return row;
+  });
+  if (status === "complete") await recordMetric(METRIC_NAMES.workoutLogged, input.userId);
+  return { ok: true as const, sessionId: created.id, status };
+}
+
+function decodeInterval(
+  sets: {
+    exerciseName: string;
+    prescriptionKey: string | null;
+    durationSeconds: number | null;
+    completed: boolean;
+  }[],
+): DecodedInterval | null {
+  const bikeSet = sets.find((set) => bikeChoiceFromKey(set.prescriptionKey));
+  const choice = bikeSet ? bikeChoiceFromKey(bikeSet.prescriptionKey) : null;
+  if (choice) {
+    const done = sets.filter(
+      (set) => Boolean(bikeChoiceFromKey(set.prescriptionKey)) && set.completed && (set.durationSeconds ?? 0) > 0,
+    ).length;
+    return {
+      kind: "bike",
+      sets: choice.spec.repeatRounds ?? 1,
+      rounds: choice.spec.roundsPerSet,
+      workSeconds: choice.spec.workSeconds,
+      restSeconds: choice.spec.restSeconds,
+      setRestSeconds: choice.spec.restBetweenRoundsSeconds ?? 0,
+      done,
+    };
+  }
+  const roundSet = sets.find((set) => (set.prescriptionKey ?? "").startsWith("round:"));
+  const kind = roundSet?.prescriptionKey?.split(":")[1] ?? "";
+  if (!roundSet || !isBackfillRoundMode(kind)) return null;
+  const done = sets.filter(
+    (set) =>
+      (set.prescriptionKey ?? "").startsWith(`round:${kind}:`) && set.completed && (set.durationSeconds ?? 0) > 0,
+  ).length;
+  return {
+    kind,
+    sets: 1,
+    rounds: Math.max(1, done),
+    workSeconds: roundSet.durationSeconds ?? 180,
+    restSeconds: restSecondsFromRoundKey(roundSet.prescriptionKey) ?? 0,
+    setRestSeconds: 0,
+    done,
+  };
+}
+
+async function payloadFromKind(
+  input: BackfillPayload,
+  unit: LoadUnit,
+  timeZone: string,
+  weightAccess: string,
+) {
   if (input.kind === "program") {
     const programDayId = input.programDayId ?? "";
     const day = await prisma.programDay.findUnique({
@@ -438,6 +911,7 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
       savedWorkoutId: null,
       ...built,
       elapsedSeconds: null as number | null,
+      interval: null,
     };
   }
 
@@ -462,6 +936,7 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
       savedWorkoutId: saved.id,
       ...built,
       elapsedSeconds: null as number | null,
+      interval: null,
     };
   }
 
@@ -474,41 +949,63 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
       savedWorkoutId: null,
       ...built,
       elapsedSeconds: null as number | null,
+      interval: null,
     };
   }
 
+  if (input.kind === "bag" || input.kind === "pads" || input.kind === "sparring" || input.kind === "grappling") {
+    return payloadFromKind({ ...input, kind: "rounds", roundMode: input.kind }, unit, timeZone, weightAccess);
+  }
+
+  if (input.kind === "shadow") {
+    return shadowPayload(input, unit, weightAccess);
+  }
+
   if (input.kind === "bike") {
-    const durationSeconds = Math.round(input.durationSeconds ?? 0);
-    assertSaneDurationSeconds(durationSeconds, "Bike time");
-    const plannedRounds = Math.round(input.plannedRounds ?? 0);
-    const doneRounds = Math.round(input.doneRounds ?? plannedRounds);
-    if (!Number.isInteger(plannedRounds) || plannedRounds < 1 || plannedRounds > 50) {
-      throw new AppError("WORKOUT", "Rounds should be between 1 and 50.");
-    }
-    if (!Number.isInteger(doneRounds) || doneRounds < 0 || doneRounds > plannedRounds) {
-      throw new AppError("WORKOUT", "Finished rounds cannot be more than the workout.");
-    }
-    const perRound = Math.min(
-      BACKFILL_MAX_SET_SECONDS,
-      Math.max(1, Math.round(durationSeconds / plannedRounds)),
-    );
+    const roundsPerSet = Math.round(input.roundsPerSet ?? input.plannedRounds ?? 0);
+    const repeatRounds = Math.round(input.repeatRounds ?? 1);
+    const workSeconds = Math.round(input.workSeconds ?? 0);
     const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
-    const built = roundBackfillSets({
-      type: "bike",
-      exerciseName: BIKE_TIMER_EXERCISE,
-      plannedRounds,
-      doneRounds,
-      workSeconds: perRound,
+    const setRest = Math.max(0, Math.round(input.restBetweenRoundsSeconds ?? 0));
+    assertCount(workSeconds, 1, BACKFILL_MAX_SET_SECONDS, "Work");
+    assertCount(restSeconds, 0, BACKFILL_MAX_SET_SECONDS, "Rest");
+    assertCount(roundsPerSet, 1, 50, "Rounds");
+    assertCount(repeatRounds, 1, 10, "Sets");
+    assertCount(setRest, 0, 600, "Set rest");
+    const choice = choiceForBackfill({
+      workSeconds,
       restSeconds,
-      unit,
+      roundsPerSet,
+      repeatRounds,
+      restBetweenRoundsSeconds: repeatRounds > 1 ? setRest : 0,
     });
+    const total = bikeTimerRoundCount(choice);
+    const done = Math.min(total, Math.max(0, Math.round(input.doneRounds ?? total)));
+    if (done < 1) throw new AppError("WORKOUT", "Log at least one set, then save.");
+    const sets: BackfillSetDraft[] = bikeTimerLogSets(choice, unit, done).map((set) => ({
+      ...set,
+      notes: "",
+      loadValue: null,
+    }));
+    const target = await scheduledRoundPlanTarget(input.userId, "bike", performedAtForDayKey(input.dayKey, timeZone));
+    const plannedRounds = target?.plannedRounds ?? total;
+    const daySetCount = target && target.daySetCount > 0 ? target.daySetCount : null;
     return {
-      title: cleanTitle(input.title, "Assault bike"),
+      title: cleanTitle(input.title, choice.name),
       notes: notesWithBikeMetrics(input.notes, input.calories ?? null, input.distance ?? null),
-      programDayId: null,
+      programDayId: target?.programDayId ?? input.programDayId ?? null,
       savedWorkoutId: null,
-      ...built,
-      elapsedSeconds: durationSeconds,
+      sets,
+      plannedSetCount: daySetCount ?? plannedRounds,
+      plannedNames: [BIKE_TIMER_EXERCISE],
+      elapsedSeconds: bikeTimerSessionSeconds(choice, done),
+      interval: {
+        type: "bike" as const,
+        roundsCompleted: done,
+        plannedRounds,
+        configuredRounds: total,
+        daySetCount,
+      },
     };
   }
 
@@ -517,34 +1014,75 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
     if (!isBackfillRoundMode(roundMode)) {
       throw new AppError("WORKOUT", "Pick bag, pads, sparring, or grappling.");
     }
+    const roundsPerSet = Math.round(input.roundsPerSet ?? input.plannedRounds ?? 0);
+    const repeatRounds = Math.round(input.repeatRounds ?? 1);
     const workSeconds = Math.round(input.workSeconds ?? 180);
-    assertSaneSetSeconds(workSeconds, "Round length");
-    const plannedRounds = Math.round(input.plannedRounds ?? 0);
-    const doneRounds = Math.round(input.doneRounds ?? plannedRounds);
-    if (!Number.isInteger(plannedRounds) || plannedRounds < 1 || plannedRounds > 20) {
-      throw new AppError("WORKOUT", "Rounds should be between 1 and 20.");
-    }
-    if (!Number.isInteger(doneRounds) || doneRounds < 0 || doneRounds > plannedRounds) {
-      throw new AppError("WORKOUT", "Finished rounds cannot be more than the workout.");
-    }
-    const name = BACKFILL_ROUND_MODES[roundMode];
     const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
-    const built = roundBackfillSets({
+    const setRest = Math.max(0, Math.round(input.restBetweenRoundsSeconds ?? 0));
+    assertSaneSetSeconds(workSeconds, "Round length");
+    assertCount(restSeconds, 0, BACKFILL_MAX_SET_SECONDS, "Rest");
+    assertCount(roundsPerSet, 1, 50, "Rounds");
+    assertCount(repeatRounds, 1, 10, "Sets");
+    assertCount(setRest, 0, 600, "Set rest");
+    const total = roundsPerSet * repeatRounds;
+    const done = Math.min(total, Math.max(0, Math.round(input.doneRounds ?? total)));
+    if (done < 1) throw new AppError("WORKOUT", "Log at least one set, then save.");
+    const name = BACKFILL_ROUND_MODES[roundMode];
+    const focus = (input.focusNotes ?? []).map((line) => line.trim()).filter(Boolean);
+    const logged = roundLogSets({
       type: roundMode,
       exerciseName: name,
-      plannedRounds,
-      doneRounds,
+      rounds: done,
       workSeconds,
       restSeconds,
       unit,
     });
+    const sets: BackfillSetDraft[] = logged.map((set, index) => ({
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      reps: null,
+      loadValue: null,
+      loadUnit: unit,
+      logMode: "timed_round",
+      durationSeconds: set.durationSeconds ?? null,
+      completed: true,
+      notes: (focus[index] || set.notes || "").slice(0, 200),
+      prescriptionKey: set.prescriptionKey ?? roundPrescriptionKey(roundMode, restSeconds),
+    }));
+    const target = await scheduledRoundPlanTarget(
+      input.userId,
+      roundMode,
+      performedAtForDayKey(input.dayKey, timeZone),
+    );
+    const plannedRounds = target?.plannedRounds ?? total;
+    const daySetCount = target && target.daySetCount > 0 ? target.daySetCount : null;
+    const totals = intervalTotals(
+      roundMode,
+      {
+        sets: repeatRounds,
+        rounds: roundsPerSet,
+        workSeconds,
+        restSeconds,
+        setRestSeconds: setRest,
+      },
+      done,
+    );
     return {
       title: cleanTitle(input.title, name),
       notes: input.notes.trim().slice(0, 1000),
-      programDayId: null,
+      programDayId: target?.programDayId ?? input.programDayId ?? null,
       savedWorkoutId: null,
-      ...built,
-      elapsedSeconds: roundSessionDuration(doneRounds, workSeconds, restSeconds),
+      sets,
+      plannedSetCount: daySetCount ?? plannedRounds,
+      plannedNames: [name],
+      elapsedSeconds: totals.totalSeconds,
+      interval: {
+        type: roundMode,
+        roundsCompleted: done,
+        plannedRounds,
+        configuredRounds: total,
+        daySetCount,
+      },
     };
   }
 
@@ -564,15 +1102,31 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
     savedWorkoutId: null,
     ...built,
     elapsedSeconds: durationSeconds,
+    interval: null,
   };
 }
 
 export async function createBackfillWorkout(input: BackfillPayload): Promise<BackfillWriteResult> {
   if (!isBackfillKind(input.kind)) throw new AppError("WORKOUT", "Pick a workout type.");
-  const { timeZone, units } = await memberZone(input.userId);
+  const { timeZone, units, weightAccess } = await memberZone(input.userId);
   const now = input.now ?? new Date();
   assertBackfillDay(input.dayKey, now, timeZone);
-  const built = await payloadFromKind(input, units);
+  const built = await payloadFromKind(input, units, timeZone, weightAccess);
+  if (built.interval) {
+    return persistIntervalBackfill({
+      userId: input.userId,
+      dayKey: input.dayKey,
+      timeZone,
+      title: built.title,
+      notes: built.notes,
+      rpe: input.rpe,
+      programDayId: built.programDayId,
+      sets: built.sets,
+      plannedSetCount: built.plannedSetCount,
+      elapsedSeconds: built.elapsedSeconds ?? 0,
+      interval: built.interval,
+    });
+  }
   return persistBackfill({
     userId: input.userId,
     dayKey: input.dayKey,
@@ -706,6 +1260,7 @@ export async function getBackfillForEdit(userId: string, sessionId: string, now 
     status: session.status,
     sessionRpe: seed.sessionRpe,
     exercises: seed.exercises,
+    structure: decodeInterval(session.sets),
     days: backfillDayOptions(now, timeZone),
     existing: (await sessionsOnCivilDay(userId, key, timeZone))
       .filter((row) => row.id !== session.id)
@@ -862,9 +1417,33 @@ export function readBackfillForm(formData: FormData, userId: string, now = new D
     roundMode: String(formData.get("roundMode") ?? ""),
     workSeconds: numberOrNull(formData.get("workSeconds")),
     restSeconds: numberOrNull(formData.get("restSeconds")),
+    roundsPerSet: numberOrNull(formData.get("roundsPerSet")),
+    repeatRounds: numberOrNull(formData.get("repeatRounds")),
+    restBetweenRoundsSeconds: numberOrNull(formData.get("restBetweenRoundsSeconds")),
+    focusNotes: focusNotesFromForm(formData),
+    shadowRounds: shadowRoundsFromForm(formData),
     calories: parseOptionalCalories(String(formData.get("calories") ?? "")),
     distance: parseOptionalDistance(String(formData.get("distance") ?? "")),
   };
+}
+
+function focusNotesFromForm(formData: FormData) {
+  if (!formData.has("focusNotes")) return null;
+  return String(formData.get("focusNotes") ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function shadowRoundsFromForm(formData: FormData) {
+  if (!formData.has("shadowCount")) return null;
+  const count = Math.min(8, Math.max(0, Math.round(Number(formData.get("shadowCount") ?? 0))));
+  if (!Number.isFinite(count) || count < 1) return [];
+  return Array.from({ length: count }, (_, index) => ({
+    workSeconds: Number(formData.get(`shadowWork_${index}`) ?? 0),
+    restSeconds: Number(formData.get(`shadowRest_${index}`) ?? 0),
+    weight: numberOrNull(formData.get(`shadowWeight_${index}`)),
+  }));
 }
 
 function numberOrNull(value: FormDataEntryValue | null) {

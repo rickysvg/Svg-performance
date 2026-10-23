@@ -44,6 +44,7 @@ import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessio
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { backfillDayState } from "@/lib/backfill-rules";
+import { dayKey } from "@/lib/timezone";
 
 function parseLevelParam(value: string | undefined): ScaleBand | null {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
@@ -233,7 +234,7 @@ export default async function TrainingCalendarPage({
             <LogPastWorkoutButton
               dayKey={focusKey}
               entry="calendar"
-              label="Log a completed workout"
+              label={focusKey === dayKey(now, tz) ? "Log a workout" : "Log a completed workout"}
               timeZone={tz}
             />
           ) : null}
