@@ -460,6 +460,12 @@ describe("log a past workout", () => {
   });
 });
 
+function fieldValue(html: string, name: string) {
+  const pattern = new RegExp(`name="${name}"[^>]*value="([^"]*)"|value="([^"]*)"[^>]*name="${name}"`);
+  const match = html.match(pattern);
+  return match?.[1] ?? match?.[2] ?? "";
+}
+
 const pastSeed: BackfillFormSeed = {
   title: "Lift 3",
   notes: "easy",
@@ -1017,6 +1023,75 @@ describe("today and past interval logs", () => {
     expect(after.sets.every((set) => set.prescriptionKey === "timer#bw:c.15.15.8.0.0.2.60")).toBe(true);
   });
 
+  it("opens a partial bike from History Edit and saves it unchanged", async () => {
+    const user = await makeUser("backfill-history-edit@example.com");
+    await onboard(user.id);
+    const day = "2026-10-21";
+    const partial = await rickyBike(user.id, day, 12);
+    expect(partial.ok).toBe(true);
+    if (!partial.ok) return;
+    const before = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: partial.sessionId },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    const seed = backfillFormSeed(before, TZ, NOW);
+    const html = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        entry: "edit",
+        sessionId: partial.sessionId,
+        label: "Edit",
+        compact: true,
+        timeZone: TZ,
+        seed,
+        defaultOpen: true,
+      }),
+    );
+    expect(html).toContain('data-testid="log-past-workout-edit"');
+    expect(html).toContain('data-testid="interval-structure"');
+    expect(html).toContain('name="intervalEdit" value="yes"');
+    expect(html).toContain('name="kind" value="bike"');
+    expect(html).toContain('name="doneRounds" value="12"');
+    expect(html).toContain('name="roundsPerSet" value="8"');
+    expect(html).toContain('name="repeatRounds" value="2"');
+    expect(html).not.toContain('name="exerciseSets_0"');
+    const beforeTimer = await readWorkoutTimerFields(partial.sessionId, prisma);
+    const edited = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: partial.sessionId,
+      dayKey: fieldValue(html, "dayKey"),
+      title: fieldValue(html, "title"),
+      notes: before.notes ?? "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: Number(fieldValue(html, "repeatRounds")),
+        rounds: Number(fieldValue(html, "roundsPerSet")),
+        workSeconds: Number(fieldValue(html, "workSeconds")),
+        restSeconds: Number(fieldValue(html, "restSeconds")),
+        setRestSeconds: Number(fieldValue(html, "restBetweenRoundsSeconds")),
+        done: Number(fieldValue(html, "doneRounds")),
+      },
+    });
+    expect(edited.ok).toBe(true);
+    if (!edited.ok) return;
+    expect(edited.status).toBe("partial");
+    const after = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: partial.sessionId },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    const afterTimer = await readWorkoutTimerFields(partial.sessionId, prisma);
+    expect(after.status).toBe("partial");
+    expect(after.plannedSetCount).toBe(before.plannedSetCount);
+    expect(after.performedAt.toISOString()).toBe(before.performedAt.toISOString());
+    expect(after.sets.map((set) => set.id)).toEqual(before.sets.map((set) => set.id));
+    expect(afterTimer.elapsedSeconds).toBe(beforeTimer.elapsedSeconds);
+    expect(afterTimer.finishedAt?.toISOString() ?? null).toBe(beforeTimer.finishedAt?.toISOString() ?? null);
+  });
+
   it("leaves a running lift draft alone when bag rounds are logged that day", async () => {
     const user = await makeUser("backfill-live-draft@example.com");
     await onboard(user.id);
@@ -1091,6 +1166,106 @@ describe("today and past interval logs", () => {
     });
     expect(bag.sets.every((set) => set.durationSeconds === 180)).toBe(true);
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
+  });
+
+  it("leaves a paused bag draft alone and logs the backfill as its own session", async () => {
+    const user = await makeUser("backfill-paused-draft@example.com");
+    await onboard(user.id);
+    const day = "2026-10-21";
+    const probe = await bagLog(user.id, day, 180);
+    expect(probe.ok).toBe(true);
+    if (!probe.ok) return;
+    const probeRow = await prisma.workoutSession.findUniqueOrThrow({ where: { id: probe.sessionId } });
+    await prisma.workoutSession.delete({ where: { id: probe.sessionId } });
+    const draft = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: probeRow.programDayId,
+        title: "Heavy bag rounds",
+        performedAt: performedAtForDayKey(day, TZ),
+        status: "draft",
+        plannedSetCount: 3,
+        source: "logger",
+        backfilled: false,
+        sets: {
+          create: [
+            {
+              exerciseName: "Heavy bag rounds",
+              setNumber: 1,
+              durationSeconds: 180,
+              loadUnit: "lb",
+              logMode: "timed_round",
+              completed: true,
+              sortOrder: 1,
+              notes: "",
+              prescriptionKey: "round:bag:60:1:0:3",
+            },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.update({
+      where: { id: draft.id },
+      data: { timerStartedAt: null, elapsedSeconds: 300 },
+    });
+    const logged = await bagLog(user.id, day, 180);
+    expect(logged.ok).toBe(true);
+    if (!logged.ok) return;
+    expect(logged.sessionId).not.toBe(draft.id);
+    expect(logged.status).toBe("complete");
+    const kept = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: draft.id },
+      include: { sets: true },
+    });
+    expect(kept.status).toBe("draft");
+    expect(kept.sets).toHaveLength(1);
+    const timer = await readWorkoutTimerFields(draft.id, prisma);
+    expect(timer.elapsedSeconds).toBe(300);
+    expect(timer.timerStartedAt).toBeNull();
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
+  });
+
+  it("rejects an interval past the live limits or 4 hours without writing rows", async () => {
+    const user = await makeUser("backfill-too-long@example.com");
+    await onboard(user.id);
+    const day = "2026-10-21";
+    await expect(
+      createBackfillWorkout({
+        userId: user.id,
+        dayKey: day,
+        kind: "bag",
+        resolution: "",
+        now: NOW,
+        title: "",
+        notes: "",
+        rpe: null,
+        workSeconds: 5,
+        restSeconds: 3600,
+        roundsPerSet: 50,
+        repeatRounds: 10,
+        restBetweenRoundsSeconds: 600,
+        doneRounds: 500,
+      }),
+    ).rejects.toBeInstanceOf(AppError);
+    await expect(
+      createBackfillWorkout({
+        userId: user.id,
+        dayKey: day,
+        kind: "bike",
+        resolution: "",
+        now: NOW,
+        title: "",
+        notes: "",
+        rpe: null,
+        workSeconds: 900,
+        restSeconds: 600,
+        roundsPerSet: 30,
+        repeatRounds: 10,
+        restBetweenRoundsSeconds: 600,
+        doneRounds: 1,
+      }),
+    ).rejects.toThrow("That workout is longer than 4 hours.");
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it("stamps today with the save time and keeps a past day at noon", async () => {

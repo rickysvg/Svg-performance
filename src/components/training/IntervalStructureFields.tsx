@@ -5,6 +5,11 @@ import {
   clampIntervalStructure,
   commitShorthand,
   formatIntervalShorthand,
+  INTERVAL_REST_MAX,
+  INTERVAL_ROUNDS_MAX,
+  INTERVAL_SET_REST_MAX,
+  INTERVAL_WORK_MAX,
+  INTERVAL_WORK_MIN,
   stepSeconds,
   type IntervalStructure,
 } from "@/lib/interval-shorthand";
@@ -25,7 +30,7 @@ function clock(seconds: number) {
 }
 
 function stepSetRest(current: number, direction: -1 | 1) {
-  return Math.min(600, Math.max(0, current + direction * 15));
+  return Math.min(INTERVAL_SET_REST_MAX, Math.max(0, current + direction * 15));
 }
 
 export function IntervalStructureFields({
@@ -146,16 +151,16 @@ export function IntervalStructureFields({
           field="work"
           label="Work s"
           value={structure.workSeconds}
-          onDec={() => patch({ workSeconds: stepSeconds(structure.workSeconds, -1, 5, 3600) })}
-          onInc={() => patch({ workSeconds: stepSeconds(structure.workSeconds, 1, 5, 3600) })}
+          onDec={() => patch({ workSeconds: stepSeconds(structure.workSeconds, -1, INTERVAL_WORK_MIN, INTERVAL_WORK_MAX) })}
+          onInc={() => patch({ workSeconds: stepSeconds(structure.workSeconds, 1, INTERVAL_WORK_MIN, INTERVAL_WORK_MAX) })}
           onCommit={(value) => patch({ workSeconds: value })}
         />
         <CompactStepper
           field="rest"
           label="Rest s"
           value={structure.restSeconds}
-          onDec={() => patch({ restSeconds: stepSeconds(structure.restSeconds, -1, 0, 3600) })}
-          onInc={() => patch({ restSeconds: stepSeconds(structure.restSeconds, 1, 0, 3600) })}
+          onDec={() => patch({ restSeconds: stepSeconds(structure.restSeconds, -1, 0, INTERVAL_REST_MAX) })}
+          onInc={() => patch({ restSeconds: stepSeconds(structure.restSeconds, 1, 0, INTERVAL_REST_MAX) })}
           onCommit={(value) => patch({ restSeconds: value })}
         />
         <CompactStepper
@@ -163,7 +168,7 @@ export function IntervalStructureFields({
           label="Rounds"
           value={structure.rounds}
           onDec={() => patch({ rounds: Math.max(1, structure.rounds - 1) })}
-          onInc={() => patch({ rounds: Math.min(50, structure.rounds + 1) })}
+          onInc={() => patch({ rounds: Math.min(INTERVAL_ROUNDS_MAX, structure.rounds + 1) })}
           onCommit={(value) => patch({ rounds: value })}
         />
         <CompactStepper

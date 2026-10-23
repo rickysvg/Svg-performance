@@ -15,6 +15,7 @@ import { useSheetDismiss } from "@/components/useSheetDismiss";
 import type { BackfillKind } from "@/lib/backfill-rules";
 import { backfillDayOptions } from "@/lib/backfill-rules";
 import type { BackfillFormSeed, BackfillPreview } from "@/lib/backfill-workout";
+import { decodeSeedInterval } from "@/lib/interval-decode";
 import { formatIntervalShorthand, formatSessionSummary, type IntervalStructure } from "@/lib/interval-shorthand";
 import { intervalTotals, type IntervalTotalType } from "@/lib/interval-totals";
 import { APP_TIMEZONE } from "@/lib/timezone";
@@ -264,15 +265,24 @@ function LogPastWorkoutSheet({
   const [notes, setNotes] = useState(seed?.notes ?? "");
   const [rpe, setRpe] = useState(seed?.sessionRpe != null ? String(seed.sessionRpe) : "");
   const [loadError, setLoadError] = useState("");
+  const seededInterval = seed ? decodeSeedInterval(seed.exercises) : null;
   const openingPlan = plannedKind(initialPreview);
   const [chip, setChip] = useState<BackfillKind | "plan">(openingPlan ? "plan" : "bike");
   const openingKind = openingPlan ?? "bike";
-  const openingStructure = structureFor(openingKind, initialPreview);
+  const openingStructure: IntervalStructure = seededInterval
+    ? {
+        sets: seededInterval.sets,
+        rounds: seededInterval.rounds,
+        workSeconds: seededInterval.workSeconds,
+        restSeconds: seededInterval.restSeconds,
+        setRestSeconds: seededInterval.setRestSeconds,
+      }
+    : structureFor(openingKind, initialPreview);
   const [structure, setStructure] = useState<IntervalStructure>(openingStructure);
   const [shorthand, setShorthand] = useState(formatIntervalShorthand(openingStructure));
-  const [done, setDone] = useState(openingStructure.sets * openingStructure.rounds);
-  const [editingInterval, setEditingInterval] = useState(false);
-  const [intervalKind, setIntervalKind] = useState<RoundKind>("bike");
+  const [done, setDone] = useState(seededInterval ? seededInterval.done : openingStructure.sets * openingStructure.rounds);
+  const [editingInterval, setEditingInterval] = useState(Boolean(seededInterval));
+  const [intervalKind, setIntervalKind] = useState<RoundKind>(seededInterval?.kind ?? "bike");
   const [rows, setRows] = useState<ExerciseRow[]>(() => (seed?.exercises ?? []).map(toRow));
   const [programId, setProgramId] = useState(initialPreview?.programs[0]?.programDayId ?? "");
   const [savedId, setSavedId] = useState(initialPreview?.saved[0]?.id ?? "");
@@ -316,20 +326,20 @@ function LogPastWorkoutSheet({
           setNotes(loaded.notes);
           setRpe(loaded.sessionRpe != null ? String(loaded.sessionRpe) : "");
           setRows(loaded.exercises.map((row) => ({ ...row, reps: row.reps ?? "" })));
-          if (loaded.structure) {
-            const next = {
-              sets: loaded.structure.sets,
-              rounds: loaded.structure.rounds,
-              workSeconds: loaded.structure.workSeconds,
-              restSeconds: loaded.structure.restSeconds,
-              setRestSeconds: loaded.structure.setRestSeconds,
-            };
-            setEditingInterval(true);
-            if (loaded.structure.kind !== "bike") setIntervalKind(loaded.structure.kind);
-            setStructure(next);
-            setShorthand(formatIntervalShorthand(next));
-            setDone(loaded.structure.done);
-          }
+        }
+        if (loaded.structure) {
+          const next = {
+            sets: loaded.structure.sets,
+            rounds: loaded.structure.rounds,
+            workSeconds: loaded.structure.workSeconds,
+            restSeconds: loaded.structure.restSeconds,
+            setRestSeconds: loaded.structure.setRestSeconds,
+          };
+          setEditingInterval(true);
+          setIntervalKind(loaded.structure.kind);
+          setStructure(next);
+          setShorthand(formatIntervalShorthand(next));
+          setDone(loaded.structure.done);
         }
       })
       .catch(() => {

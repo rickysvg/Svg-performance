@@ -83,6 +83,12 @@ describe("canMergeIntervalLog", () => {
         false,
       ),
     ).toBe(false);
+    expect(
+      canMergeIntervalLog(
+        { status: "draft", programDayId: "day", timerStartedAt: null, sets: [bagSet()] },
+        { type: "bag", programDayId: "day", clock },
+      ),
+    ).toBe(false);
   });
 
   it("refuses 20/10 into 15/15 and a 2-set block into a single Tabata", () => {

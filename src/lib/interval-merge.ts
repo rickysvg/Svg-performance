@@ -87,8 +87,8 @@ function storedGroups(set: IntervalMergeSet, type: IntervalMergeType) {
 
 /**
  * True when this save can extend the existing log. False means a new session.
- * `timerKnown` is false when the running-clock columns could not be read;
- * a draft is then left alone.
+ * Any draft is left alone, running or paused. `timerKnown` stays so a caller
+ * that could not read the clock columns keeps the same arguments.
  */
 export function canMergeIntervalLog(
   existing: IntervalMergeSession,
@@ -99,9 +99,10 @@ export function canMergeIntervalLog(
   },
   timerKnown = true,
 ) {
+  void timerKnown;
   if (!samePlan(existing.programDayId, incoming.programDayId)) return false;
   if (existing.sets.some((set) => !belongs(set, incoming.type))) return false;
-  if (existing.status === "draft" && (!timerKnown || existing.timerStartedAt)) return false;
+  if (existing.status === "draft") return false;
 
   const stored = logged(existing.sets, incoming.type);
   if (stored.length === 0) return false;

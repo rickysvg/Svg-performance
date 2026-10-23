@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { bikeHistoryFromSessions } from "@/lib/bike-chooser";
+import { bikeHistoryStatusLine } from "@/lib/session-progress";
 import { EmptyState } from "@/components/EmptyState";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { formatMemberDate } from "@/lib/timezone";
@@ -12,6 +13,7 @@ export default async function BikeHistoryPage() {
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sessions = await listWorkoutSessionsForUser(user.id);
   const rows = bikeHistoryFromSessions(sessions);
+  const statusBySession = new Map(sessions.map((session) => [session.id, bikeHistoryStatusLine(session)]));
 
   return (
     <main className="space-y-6" data-bike-history>
@@ -50,21 +52,8 @@ export default async function BikeHistoryPage() {
                 <p className="font-display mt-1 text-lg uppercase leading-tight tracking-wide">{row.workoutName}</p>
                 <p className="mt-1 text-sm">{row.recipe}</p>
                 <p className="mt-2 text-sm text-muted">
-                  {row.sprints != null
-                    ? `${
-                        row.sprints *
-                        ((row.restBetweenRoundsSeconds > 0 ||
-                          ((row.rounds ?? 1) > 1 && row.workoutName.includes("×")))
-                          ? Math.max(1, row.rounds ?? 1)
-                          : 1)
-                      } rounds · `
-                    : ""}
-                  <span className={row.completed ? "text-accent" : "text-signal"}>
-                    {row.completed
-                      ? "Completed"
-                      : row.doneSets > 0
-                        ? `${row.doneSets} of ${row.totalSets} completed`
-                        : "Not completed"}
+                  <span className={statusBySession.get(row.sessionId)?.done ? "text-accent" : "text-signal"}>
+                    {statusBySession.get(row.sessionId)?.text}
                   </span>
                 </p>
               </Link>

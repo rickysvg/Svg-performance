@@ -18,12 +18,22 @@ export type IntervalShorthandResult =
 
 const HINT = "Try 2x8 @ 15/15";
 
-const SETS_MAX = 10;
-const ROUNDS_MAX = 50;
-const WORK_MIN = 5;
-const WORK_MAX = 3600;
-const REST_MAX = 3600;
-const SET_REST_MAX = 600;
+/** Live timer steppers: 30 rounds, 10 sets, 15 min work, 10 min rest and set rest. */
+export const INTERVAL_SETS_MAX = 10;
+export const INTERVAL_ROUNDS_MAX = 30;
+export const INTERVAL_WORK_MIN = 5;
+export const INTERVAL_WORK_MAX = 15 * 60;
+export const INTERVAL_REST_MAX = 10 * 60;
+export const INTERVAL_SET_REST_MAX = 10 * 60;
+/** A logged interval longer than this is rejected, matching the session clock cap. */
+export const INTERVAL_SESSION_MAX_SECONDS = 4 * 60 * 60;
+
+const SETS_MAX = INTERVAL_SETS_MAX;
+const ROUNDS_MAX = INTERVAL_ROUNDS_MAX;
+const WORK_MIN = INTERVAL_WORK_MIN;
+const WORK_MAX = INTERVAL_WORK_MAX;
+const REST_MAX = INTERVAL_REST_MAX;
+const SET_REST_MAX = INTERVAL_SET_REST_MAX;
 
 /** `1:05` is a clock. `1:5` is not. `15m` is minutes. A spaced `15 m` is not. */
 const DURATION = String.raw`\d+:\d{2}|\d+[sm]?`;
@@ -69,6 +79,30 @@ function inRange(value: number, min: number, max: number) {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
+/** Full block, stopping on the last work interval. Matches a bag, pads, sparring, or grappling save. */
+function configuredSeconds(spec: {
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+}) {
+  const sets = Math.max(1, Math.round(spec.sets));
+  const rounds = Math.max(1, Math.round(spec.rounds));
+  const work = Math.max(0, Math.round(spec.workSeconds));
+  const rest = Math.max(0, Math.round(spec.restSeconds));
+  const setRest = sets > 1 ? Math.max(0, Math.round(spec.setRestSeconds)) : 0;
+  let remaining = sets * rounds;
+  let total = 0;
+  for (let set = 0; set < sets && remaining > 0; set += 1) {
+    const inSet = Math.min(rounds, remaining);
+    total += inSet * work + Math.max(0, inSet - 1) * rest;
+    remaining -= inSet;
+    if (remaining > 0) total += setRest;
+  }
+  return total;
+}
+
 function finish(
   sets: number,
   rounds: number,
@@ -86,6 +120,17 @@ function finish(
   if (!inRange(workSeconds, WORK_MIN, WORK_MAX)) return fail();
   if (!inRange(restSeconds, 0, REST_MAX)) return fail();
   if (setRestSeconds != null && !inRange(setRestSeconds, 0, SET_REST_MAX)) return fail();
+  if (
+    configuredSeconds({
+      sets,
+      rounds,
+      workSeconds,
+      restSeconds,
+      setRestSeconds: setRestSeconds ?? 0,
+    }) > INTERVAL_SESSION_MAX_SECONDS
+  ) {
+    return fail();
+  }
   return {
     ok: true,
     value: { sets, rounds, workSeconds, restSeconds, setRestSeconds },
@@ -200,16 +245,17 @@ export function clampIntervalStructure(spec: IntervalStructure): IntervalStructu
 export function commitShorthand(text: string, current: IntervalStructure) {
   const parsed = parseIntervalShorthand(text);
   if (!parsed.ok) return { structure: current, error: parsed.error };
-  return {
-    structure: clampIntervalStructure({
-      sets: parsed.value.sets,
-      rounds: parsed.value.rounds,
-      workSeconds: parsed.value.workSeconds,
-      restSeconds: parsed.value.restSeconds,
-      setRestSeconds: parsed.value.setRestSeconds ?? current.setRestSeconds,
-    }),
-    error: "",
-  };
+  const structure = clampIntervalStructure({
+    sets: parsed.value.sets,
+    rounds: parsed.value.rounds,
+    workSeconds: parsed.value.workSeconds,
+    restSeconds: parsed.value.restSeconds,
+    setRestSeconds: parsed.value.setRestSeconds ?? current.setRestSeconds,
+  });
+  if (configuredSeconds(structure) > INTERVAL_SESSION_MAX_SECONDS) {
+    return { structure: current, error: HINT };
+  }
+  return { structure, error: "" };
 }
 
 export function commitStructure(next: IntervalStructure) {

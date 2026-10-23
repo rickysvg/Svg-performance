@@ -216,6 +216,12 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
   };
 }
 
+/** Bike history status. The same line History and Calendar already show. */
+export function bikeHistoryStatusLine(session: ProgressSession, dose?: ProgressDose | null) {
+  const progress = sessionProgress(session, dose);
+  return { text: progress.text, done: progress.done };
+}
+
 /** History row. */
 export function historySessionText(session: ProgressSession, dose?: ProgressDose | null) {
   return sessionProgress(session, dose).text;

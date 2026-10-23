@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bikeHistoryStatusLine,
   calendarSessionText,
   finishSessionText,
   historySessionText,
@@ -134,6 +135,9 @@ describe("History, Calendar, and the finish screen share one progress line", () 
     expect(finishSessionText(sixteen)).toBe("16/16 rounds · Done");
     const twelve = { ...sixteen, status: "partial", sets: sixteen.sets.slice(0, 12) };
     expect(calendarSessionText(twelve)).toBe("12/16 rounds · Partial");
+    expect(bikeHistoryStatusLine(twelve).text).toBe("12/16 rounds · Partial");
+    expect(bikeHistoryStatusLine(twelve).done).toBe(false);
+    expect(bikeHistoryStatusLine(sixteen).text).toBe("16/16 rounds · Done");
 
     const shadow = {
       status: "complete",

@@ -12,10 +12,23 @@ import {
   scheduledRoundPlanTarget,
 } from "@/lib/bike-timer-log";
 import { canMergeIntervalLog, type IntervalMergeClock } from "@/lib/interval-merge";
+import { decodeInterval, type DecodedInterval } from "@/lib/interval-decode";
+
+export { decodeInterval, type DecodedInterval };
+import {
+  INTERVAL_REST_MAX,
+  INTERVAL_ROUNDS_MAX,
+  INTERVAL_SESSION_MAX_SECONDS,
+  INTERVAL_SETS_MAX,
+  INTERVAL_SET_REST_MAX,
+  INTERVAL_WORK_MAX,
+  INTERVAL_WORK_MIN,
+} from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
 import {
   exerciseMatchesRoundType,
   restSecondsFromRoundKey,
+  roundBlockDuration,
   roundLogSets,
   roundSaveStatus,
   roundStructureFromKey,
@@ -112,15 +125,6 @@ export type BackfillLastUsed = {
   setRestSeconds: number;
 };
 
-export type DecodedInterval = {
-  kind: "bike" | BackfillRoundMode;
-  sets: number;
-  rounds: number;
-  workSeconds: number;
-  restSeconds: number;
-  setRestSeconds: number;
-  done: number;
-};
 
 export type BackfillPreview = {
   dayKey: string;
@@ -712,7 +716,7 @@ async function writeElapsedSecondsOnly(
 
 /**
  * Interval saves extend a same-day log only when canMergeIntervalLog says so.
- * Stored rounds stay. A different clock, a longer log, or a running draft
+ * Stored rounds stay. A different clock, a longer log, or any draft
  * becomes its own session. Source, backfilled, and performedAt are not rewritten.
  */
 async function persistIntervalBackfill(input: {
@@ -830,47 +834,54 @@ async function persistIntervalBackfill(input: {
   return { ok: true as const, sessionId: created.id, status };
 }
 
-export function decodeInterval(
-  sets: {
-    exerciseName: string;
-    prescriptionKey: string | null;
-    durationSeconds: number | null;
-    completed: boolean;
-  }[],
-): DecodedInterval | null {
-  const bikeSet = sets.find((set) => bikeChoiceFromKey(set.prescriptionKey));
-  const choice = bikeSet ? bikeChoiceFromKey(bikeSet.prescriptionKey) : null;
-  if (choice) {
-    const done = sets.filter(
-      (set) => Boolean(bikeChoiceFromKey(set.prescriptionKey)) && set.completed && (set.durationSeconds ?? 0) > 0,
-    ).length;
-    return {
-      kind: "bike",
-      sets: choice.spec.repeatRounds ?? 1,
-      rounds: choice.spec.roundsPerSet,
-      workSeconds: choice.spec.workSeconds,
-      restSeconds: choice.spec.restSeconds,
-      setRestSeconds: choice.spec.restBetweenRoundsSeconds ?? 0,
-      done,
-    };
+/** Full configured clock, including rounds the member has not marked done. */
+function configuredIntervalSeconds(input: {
+  kind: "bike" | BackfillRoundMode;
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+}) {
+  const sets = Math.max(1, Math.round(input.sets) || 1);
+  const rounds = Math.max(1, Math.round(input.rounds) || 1);
+  const setRest = sets > 1 ? Math.max(0, Math.round(input.setRestSeconds)) : 0;
+  if (input.kind === "bike") {
+    const choice = choiceForBackfill({
+      workSeconds: input.workSeconds,
+      restSeconds: input.restSeconds,
+      roundsPerSet: rounds,
+      repeatRounds: sets,
+      restBetweenRoundsSeconds: setRest,
+    });
+    return bikeTimerSessionSeconds(choice, sets * rounds);
   }
-  const roundSet = sets.find((set) => (set.prescriptionKey ?? "").startsWith("round:"));
-  const structure = roundStructureFromKey(roundSet?.prescriptionKey);
-  const kind = structure?.type ?? "";
-  if (!roundSet || !structure || !isBackfillRoundMode(kind)) return null;
-  const done = sets.filter(
-    (set) =>
-      (set.prescriptionKey ?? "").startsWith(`round:${kind}:`) && set.completed && (set.durationSeconds ?? 0) > 0,
-  ).length;
-  return {
-    kind,
-    sets: structure.sets,
-    rounds: structure.roundsPerSet ?? Math.max(1, done),
-    workSeconds: roundSet.durationSeconds ?? 180,
-    restSeconds: structure.restSeconds,
-    setRestSeconds: structure.setRestSeconds,
-    done,
-  };
+  return roundBlockDuration({
+    sets,
+    rounds,
+    workSeconds: input.workSeconds,
+    restSeconds: input.restSeconds,
+    setRestSeconds: setRest,
+    done: sets * rounds,
+  });
+}
+
+function assertSavableInterval(input: {
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+  totalSeconds: number;
+}) {
+  assertCount(input.sets, 1, INTERVAL_SETS_MAX, "Sets");
+  assertCount(input.rounds, 1, INTERVAL_ROUNDS_MAX, "Rounds");
+  assertCount(input.workSeconds, INTERVAL_WORK_MIN, INTERVAL_WORK_MAX, "Work");
+  assertCount(input.restSeconds, 0, INTERVAL_REST_MAX, "Rest");
+  assertCount(input.setRestSeconds, 0, INTERVAL_SET_REST_MAX, "Set rest");
+  if (input.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    throw new AppError("WORKOUT", "That workout is longer than 4 hours.");
+  }
 }
 
 async function payloadFromKind(
@@ -969,11 +980,22 @@ async function payloadFromKind(
     const workSeconds = Math.round(input.workSeconds ?? 0);
     const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
     const setRest = Math.max(0, Math.round(input.restBetweenRoundsSeconds ?? 0));
-    assertCount(workSeconds, 1, BACKFILL_MAX_SET_SECONDS, "Work");
-    assertCount(restSeconds, 0, BACKFILL_MAX_SET_SECONDS, "Rest");
-    assertCount(roundsPerSet, 1, 50, "Rounds");
-    assertCount(repeatRounds, 1, 10, "Sets");
-    assertCount(setRest, 0, 600, "Set rest");
+    const shownSetRest = repeatRounds > 1 ? setRest : 0;
+    assertSavableInterval({
+      sets: repeatRounds,
+      rounds: roundsPerSet,
+      workSeconds,
+      restSeconds,
+      setRestSeconds: shownSetRest,
+      totalSeconds: configuredIntervalSeconds({
+        kind: "bike",
+        sets: repeatRounds,
+        rounds: roundsPerSet,
+        workSeconds,
+        restSeconds,
+        setRestSeconds: shownSetRest,
+      }),
+    });
     const choice = choiceForBackfill({
       workSeconds,
       restSeconds,
@@ -1028,11 +1050,22 @@ async function payloadFromKind(
     const workSeconds = Math.round(input.workSeconds ?? 180);
     const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
     const setRest = Math.max(0, Math.round(input.restBetweenRoundsSeconds ?? 0));
-    assertSaneSetSeconds(workSeconds, "Round length");
-    assertCount(restSeconds, 0, BACKFILL_MAX_SET_SECONDS, "Rest");
-    assertCount(roundsPerSet, 1, 50, "Rounds");
-    assertCount(repeatRounds, 1, 10, "Sets");
-    assertCount(setRest, 0, 600, "Set rest");
+    const shownSetRest = repeatRounds > 1 ? setRest : 0;
+    assertSavableInterval({
+      sets: repeatRounds,
+      rounds: roundsPerSet,
+      workSeconds,
+      restSeconds,
+      setRestSeconds: shownSetRest,
+      totalSeconds: configuredIntervalSeconds({
+        kind: roundMode,
+        sets: repeatRounds,
+        rounds: roundsPerSet,
+        workSeconds,
+        restSeconds,
+        setRestSeconds: shownSetRest,
+      }),
+    });
     const total = roundsPerSet * repeatRounds;
     const done = Math.min(total, Math.max(0, Math.round(input.doneRounds ?? total)));
     if (done < 1) throw new AppError("WORKOUT", "Log at least one set, then save.");
@@ -1372,6 +1405,21 @@ async function updateIntervalBackfill(input: {
     return { ok: true as const, sessionId: input.session.id, status: keptStatus };
   }
   const kind = posted.kind;
+  assertSavableInterval({
+    sets: posted.sets,
+    rounds: posted.rounds,
+    workSeconds: posted.workSeconds,
+    restSeconds: posted.restSeconds,
+    setRestSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
+    totalSeconds: configuredIntervalSeconds({
+      kind,
+      sets: posted.sets,
+      rounds: posted.rounds,
+      workSeconds: posted.workSeconds,
+      restSeconds: posted.restSeconds,
+      setRestSeconds: posted.setRestSeconds,
+    }),
+  });
   let sets: BackfillSetDraft[];
   let elapsed = 0;
   if (kind === "bike") {

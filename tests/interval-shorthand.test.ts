@@ -34,14 +34,24 @@ describe("interval shorthand", () => {
   it("rejects a one-digit clock and a stray m, and reads 15m as minutes", () => {
     expect(parseIntervalShorthand("8x1:5/10").ok).toBe(false);
     expect(parseIntervalShorthand("2x8 @ 15/15 m").ok).toBe(false);
-    expect(parseIntervalShorthand("2x8 @ 15/15m")).toMatchObject({
+    expect(parseIntervalShorthand("8x15m/15")).toMatchObject({
       ok: true,
-      value: { restSeconds: 900 },
+      value: { sets: 1, rounds: 8, workSeconds: 900, restSeconds: 15 },
     });
     expect(parseIntervalShorthand("8x20/10 r1m")).toMatchObject({
       ok: true,
       value: { setRestSeconds: 60 },
     });
+  });
+
+  it("rejects live-timer limits and a block longer than 4 hours", () => {
+    expect(parseIntervalShorthand("10x50 @ 5/60:00 r600").ok).toBe(false);
+    expect(parseIntervalShorthand("2x8 @ 15/15m").ok).toBe(false);
+    expect(parseIntervalShorthand("10x30 @ 15:00/10:00 r600").ok).toBe(false);
+    expect(parseIntervalShorthand("2x8 @ 15m/15").ok).toBe(false);
+    const kept = commitShorthand("2x8 @ 14:50/10", { ...base, setRestSeconds: 600 });
+    expect(kept.error).toBe("Try 2x8 @ 15/15");
+    expect(kept.structure).toEqual({ ...base, setRestSeconds: 600 });
   });
 
   it("keeps the steppers when the line is not a structure", () => {

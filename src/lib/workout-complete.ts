@@ -2,7 +2,7 @@ import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { textIsBikeWorkout } from "@/lib/timer-session";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
-import { resolveLogMode } from "@/lib/exercise-log-mode";
+import { isShadowName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { setHasLoggedWork } from "@/lib/logged-work";
 import {
   formatShareDuration,
@@ -150,13 +150,13 @@ function applyFinishTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike
 
 function isRoundTileSet(set: ShareSetLike) {
   const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
-  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName)) return true;
+  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName) || isShadowName(set.exerciseName)) return true;
   const key = set.prescriptionKey ?? "";
   return key.startsWith("round:") || key === "bagwork";
 }
 
 function exerciseIsRound(name: string) {
-  return resolveLogMode({ name }) === "timed_round" || isBikeIntervalName(name);
+  return resolveLogMode({ name }) === "timed_round" || isBikeIntervalName(name) || isShadowName(name);
 }
 
 function plannedFromExercises(
