@@ -5,15 +5,13 @@ import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
 import {
-  exerciseSetProgress,
-  formatSetProgress,
   prescribedSetTotal,
-  resolvedPlannedSetCount,
   loggedNameMatchesPlanned,
   offPlanSessionDone,
   setIsTicked,
   tickedSetCount,
 } from "@/lib/logged-work";
+import { sessionProgress } from "@/lib/session-progress";
 import { calendarScaleContext, withCalendarScaleMemory } from "@/lib/plan-doses";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
@@ -386,7 +384,7 @@ export function loggedSessionCardLine(item: {
 }) {
   const statusWord = item.status === "complete" ? "Done" : "Partial";
   const title = item.title.trim();
-  const subtitle = (item.subtitle ?? "").trim();
+  const subtitle = (item.subtitle ?? "").trim().replace(/^Logged this day\.\s*/i, "");
   if (!subtitle) return `${title} · ${statusWord}`;
   const hasStatus = subtitle.includes(statusWord);
   const hasTitle = title.length > 0 && subtitle.includes(title);
@@ -562,30 +560,22 @@ async function loadCalendarSchedule(
         linkRepairs.push({ id: matched.id, programDayId: session.dayId });
         matched.programDayId = session.dayId;
       }
-      const plannedNames = (session.day?.exercises ?? [])
-        .map((exercise) => (exercise.name ?? "").trim())
-        .filter((name) => name.length > 0);
-      const dose = prescribedSetCount(session.day?.exercises);
-      const planned =
-        matched?.plannedSetCount && matched.plannedSetCount > 0 ? matched.plannedSetCount : dose;
-      const ticked = matched ? tickedSetCount(matched.sets) : 0;
-      const setCountLabel =
-        planned > 0
-          ? ticked > 0
-            ? formatSetProgress(ticked, planned)
-            : `${planned} sets`
-          : ticked > 0
-            ? formatSetProgress(ticked, 0)
-            : "";
-      const sessionDone = matched ? offPlanSessionDone(matched, dose, plannedNames) : false;
+      const scaledPlan = session.dayId ? planByDay.get(session.dayId) : undefined;
+      const scaledExercises =
+        scaledPlan?.exercises && scaledPlan.exercises.length > 0
+          ? scaledPlan.exercises
+          : (session.day?.exercises ?? []);
+      const dose =
+        scaledPlan && scaledPlan.dose > 0 ? scaledPlan.dose : prescribedSetCount([...scaledExercises]);
+      const view = matched
+        ? sessionProgress(matched, { dose, names: scaledPlan?.names, exercises: scaledExercises })
+        : null;
+      const sessionDone = Boolean(view?.done);
+      const ticked = view?.ticked ?? 0;
+      const setCountLabel = view && ticked > 0 ? view.text : dose > 0 ? `${dose} sets` : "";
       const exerciseRows =
-        matched && ticked > 0
-          ? visibleCalendarExercises(
-              exerciseSetProgress(session.day?.exercises ?? [], matched.sets),
-              sessionDone,
-            )
-          : [];
-      const partial = Boolean(matched) && !sessionDone && ticked > 0;
+        view && ticked > 0 ? visibleCalendarExercises(view.rows, view.done) : [];
+      const partial = Boolean(view && !view.done && ticked > 0);
       const dayHasPartialWork = dayLogs.some((log) => logIsOpenPartial(log, planByDay));
       const href =
         sessionOpenHref(session, sessionDone) ??
@@ -610,13 +600,11 @@ async function loadCalendarSchedule(
       day.activities.push({
         kind: "workout",
         title: matched?.savedWorkout?.name?.trim() || session.title,
-        subtitle: sessionDone
-          ? loggedSummary
-            ? `Logged this day. ${loggedSummary}`
-            : "Logged this day. Open to review or run a session again."
-          : partial
-            ? sessionStatusLine(statusName, "Partial")
-            : missed
+        subtitle: view
+          ? view.done
+            ? loggedSummary || view.text
+            : view.text
+          : missed
               ? sessionStatusLine(statusName, "Missed")
               : notDoneInstead
                 ? `Not done — you logged ${loggedInsteadName(insteadNames)} instead. Tap Move to reschedule.`
@@ -637,43 +625,36 @@ async function loadCalendarSchedule(
       if (matchedLogIds.has(log.id) || log.dayPlanId) continue;
       if (!log.programDayId) {
         const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
-        const ticked = tickedSetCount(log.sets);
-        const planned = resolvedPlannedSetCount(log, 0);
-        const setCountLabel = formatSetProgress(ticked, planned);
-        const done = offPlanSessionDone(log, 0, []);
+        const view = sessionProgress(log);
         day.activities.push({
           kind: "workout",
           title,
-          subtitle: done ? sessionStatusLine(title, "Done") : sessionStatusLine(title, "Partial"),
+          subtitle: view.done ? sessionStatusLine(title, "Done") : view.text,
           href: `/training/log/${log.id}`,
-          status: done ? "complete" : "scheduled",
+          status: view.done ? "complete" : "scheduled",
           weekday: calendarWeekday,
-          setCountLabel,
+          setCountLabel: view.text,
         });
         continue;
       }
       const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
-      const ticked = tickedSetCount(log.sets);
       const plan = planByDay.get(log.programDayId);
       const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
-      const planned = resolvedPlannedSetCount(log, dose);
-      const setCountLabel = formatSetProgress(ticked, planned);
-      const done = offPlanSessionDone(log, dose, plan?.names ?? []);
+      const exercises =
+        plan?.exercises && plan.exercises.length > 0 ? plan.exercises : (log.programDay?.exercises ?? []);
+      const view = sessionProgress(log, { dose, names: plan?.names, exercises });
       day.activities.push({
         kind: "workout",
         title,
-        subtitle: done ? `Logged this day. ${title}` : `Partial · ${setCountLabel}`,
+        subtitle: view.done ? title : view.text,
         href: `/training/${log.programDayId}`,
-        status: done ? "complete" : "scheduled",
+        status: view.done ? "complete" : "scheduled",
         programDayId: log.programDayId,
         weekday: calendarWeekday,
-        setCountLabel,
+        setCountLabel: view.text,
         exercises: (() => {
-          if (ticked <= 0) return undefined;
-          const rows = visibleCalendarExercises(
-            exerciseSetProgress(log.programDay?.exercises ?? [], log.sets),
-            done,
-          );
+          if (view.ticked <= 0) return undefined;
+          const rows = visibleCalendarExercises(view.rows, view.done);
           return rows.length > 0 ? rows : undefined;
         })(),
       });

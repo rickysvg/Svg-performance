@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { civilDayInstant } from "@/lib/performed-at";
+import { dayKey } from "@/lib/timezone";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
@@ -15,8 +17,10 @@ import {
 } from "@/lib/workout-complete";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
 import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
-import { loggedSetSome } from "@/lib/logged-work";
-import { roundFinishProgress } from "@/lib/round-session";
+import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import { sessionProgress } from "@/lib/session-progress";
+import { calendarPlanDoses } from "@/lib/plan-doses";
+import { getOwnWorkoutSessionOrNull } from "@/lib/workouts";
 import { prisma } from "@/lib/prisma";
 
 export default async function WorkoutDonePage({
@@ -29,10 +33,39 @@ export default async function WorkoutDonePage({
   const user = await requireUser();
   const { sessionId } = await params;
   const query = await searchParams;
+  const owned = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  if (!owned) notFound();
+  if (owned.status === "partial" && !sessionHasLoggedWork(owned.sets)) {
+    return (
+      <main className="space-y-4 py-10" data-empty-partial>
+        <p className="font-display text-xs uppercase tracking-[0.06em]">Session</p>
+        <h1 className="text-3xl">Nothing logged yet</h1>
+        <p className="text-sm text-muted">
+          This partial session has no sets. Open it to log the first one, or leave it until you train.
+        </p>
+        <Link
+          href={`/training/log/${sessionId}`}
+          className="touch-target inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+        >
+          Open the logger
+        </Link>
+      </main>
+    );
+  }
   const view = await getShareCardView(user.id, sessionId);
   if (!view) notFound();
   const profile = await getProfileForUser(user.id);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+  const doses = view.session.programDayId
+    ? await calendarPlanDoses(user.id, view.session.performedAt)
+    : null;
+  const plan = view.session.programDayId ? doses?.get(view.session.programDayId) : undefined;
+  const progress = sessionProgress(view.session, {
+    dose: plan?.dose,
+    names: plan?.names,
+    exercises: plan?.exercises ?? view.session.programDay?.exercises,
+  });
+  const partial = !progress.done;
   const unit = profile?.preferredUnits ?? "lb";
   const [prs, completeIds, badges] = await Promise.all([
     detectNewPrsForSession(user.id, sessionId, unit),
@@ -51,7 +84,27 @@ export default async function WorkoutDonePage({
     session: view.session,
     displayUnit: unit,
     newPrCount: newPrExerciseCount(prs),
+    planExercises: plan?.exercises ?? view.session.programDay?.exercises,
   });
+  const performed = civilDayInstant(view.session.performedAt, tz);
+  const whenLabel =
+    dayKey(performed, tz) === dayKey(new Date(), tz)
+      ? "Today"
+      : performed.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: tz,
+        });
+  const summary = {
+    ...buildSessionSummary({
+      title: memberFacingTitle(view.session.title),
+      programDayTitle: view.session.programDay?.title,
+      programDayFocus: view.session.programDay?.focus,
+      exercises: summaryExercises(view.session),
+    }),
+    whenLabel,
+  };
 
   return (
     <main className="min-h-[50vh]">
@@ -73,18 +126,10 @@ export default async function WorkoutDonePage({
           date: view.session.performedAt,
           timeZone: tz,
         })}
-        exerciseProgress={roundFinishProgress({
-          plannedExercises: view.session.programDay?.exercises ?? [],
-          sets: view.session.sets,
-          plannedSetCount: view.session.plannedSetCount,
-          status: view.session.status,
-        }).filter((row) => row.ticked > 0 || row.planned > 0)}
-        summary={buildSessionSummary({
-          title: memberFacingTitle(view.session.title),
-          programDayTitle: view.session.programDay?.title,
-          programDayFocus: view.session.programDay?.focus,
-          exercises: summaryExercises(view.session),
-        })}
+        exerciseProgress={progress.rows.filter((row) => row.ticked > 0 || row.planned > 0)}
+        summary={summary}
+        partial={partial}
+        statusLabel={progress.text}
       />
     </main>
   );

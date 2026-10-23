@@ -134,21 +134,42 @@ describe("round countdown and seconds steppers", () => {
     expect(html).not.toContain("REST MIN");
   });
 
-  it("applies one step when pointerdown is followed by click", () => {
+  it("applies one step when the pointer stays inside, and a drag-off does not step", () => {
     let steps = 0;
-    const state = { fromPointer: false };
+    const state = { fromPointer: false, inside: false, suppressClick: false };
     const apply = () => {
       steps += 1;
     };
-    applyStepperTap("pointerdown", state, apply);
-    applyStepperTap("click", state, apply);
+    const mouseClick = { button: 0, detail: 1 };
+    const enter = { button: 0, detail: 0 };
+    applyStepperTap("pointerdown", state, apply, { button: 0 });
+    applyStepperTap("pointerup", state, apply, { button: 0 });
+    applyStepperTap("click", state, apply, mouseClick);
     expect(steps).toBe(1);
     expect(state.fromPointer).toBe(false);
-    applyStepperTap("click", state, apply);
+    applyStepperTap("click", state, apply, enter);
     expect(steps).toBe(2);
-    applyStepperTap("pointerdown", state, apply);
+    applyStepperTap("pointerdown", state, apply, { button: 0 });
+    state.inside = false;
+    applyStepperTap("pointerup", state, apply, { button: 0 });
+    expect(steps).toBe(2);
+    expect(state.suppressClick).toBe(true);
+    applyStepperTap("click", state, apply, mouseClick);
+    expect(steps).toBe(2);
+    applyStepperTap("click", state, apply, enter);
     expect(steps).toBe(3);
-    expect(state.fromPointer).toBe(true);
+    // Press started elsewhere, or a right/middle click: no step, and Enter still works.
+    applyStepperTap("pointerup", state, apply, { button: 0 });
+    expect(steps).toBe(3);
+    expect(state.suppressClick).toBe(false);
+    applyStepperTap("click", state, apply, mouseClick);
+    expect(steps).toBe(3);
+    applyStepperTap("pointerdown", state, apply, { button: 2 });
+    applyStepperTap("pointerup", state, apply, { button: 2 });
+    applyStepperTap("click", state, apply, { button: 2, detail: 1 });
+    expect(steps).toBe(3);
+    applyStepperTap("click", state, apply, enter);
+    expect(steps).toBe(4);
   });
 
   it("does not paint a bag log before the stored timer mode hydrates", () => {

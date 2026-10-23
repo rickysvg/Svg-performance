@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { resumeWorkoutAction } from "@/app/actions/workouts";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
@@ -9,6 +9,8 @@ import {
   getPreviousLoadsForUser,
   reopenEmptyCompletion,
 } from "@/lib/workouts";
+import { calendarPlanDoses } from "@/lib/plan-doses";
+import { sessionProgress } from "@/lib/session-progress";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -63,6 +65,24 @@ export default async function WorkoutLogPage({
     await alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null);
   }
   const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
+  // A finished plan opens the recap. A short save stays on the rows already
+  // stored. Resume and Start are the only paths that add the missing rows.
+  let correcting = false;
+  if (session.status === "complete") {
+    const doses = session.programDayId ? await calendarPlanDoses(user.id, session.performedAt) : null;
+    const plan = session.programDayId ? doses?.get(session.programDayId) : undefined;
+    const progress = sessionProgress(
+      session,
+      plan
+        ? { dose: plan.dose, names: plan.names, exercises: plan.exercises ?? session.programDay?.exercises }
+        : { exercises: session.programDay?.exercises },
+    );
+    if (progress.done) {
+      redirect(`/training/log/${session.id}/done`);
+    }
+    correcting = true;
+  }
+  const finishedView = session.status === "complete" && !correcting;
   const band = scaleBandFromPrefs(scale);
   const planned = await activePlanWeekIndex(
     user.id,
@@ -145,7 +165,7 @@ export default async function WorkoutLogPage({
     ...shownExercises.map((exercise) => exercise.name),
   ]);
   const promptRating =
-    session.status === "complete" &&
+    finishedView &&
     (query.rate === "1" || !session.difficultyRating);
   const hrLog = await getWorkoutHrForLoggedSession(session.id, user.id);
   const performed = new Date(session.performedAt);
@@ -182,14 +202,14 @@ export default async function WorkoutLogPage({
         <div>
           <p className="hc-kicker">Logger</p>
           <p className="mt-1 font-display text-xl">
-            {session.status === "complete" ? "Saved" : "Live session"}
+            {finishedView ? "Saved" : "Live session"}
           </p>
         </div>
         <p className="font-telemetry text-xs uppercase tracking-[0.16em] text-[#CBF805]">
-          {session.status === "complete" ? "Hold" : "Armed"}
+          {finishedView ? "Hold" : "Armed"}
         </p>
       </header>
-      {session.status === "complete" ? (
+      {finishedView ? (
         <div className="space-y-2">
           <form action={resumeWorkoutAction}>
             <input type="hidden" name="workoutId" value={session.id} />
@@ -219,7 +239,7 @@ export default async function WorkoutLogPage({
           celebrate={query.celebrate}
         />
       ) : null}
-      {session.status === "complete" ? (
+      {finishedView ? (
         hrLog ? (
           <section className="rounded-2xl border border-line bg-card p-5">
             <h2>Workout heart rate</h2>
@@ -235,6 +255,7 @@ export default async function WorkoutLogPage({
       <WorkoutLogForm
         key={`${session.id}:${session.status}`}
         session={loggedSession}
+        correctable={correcting}
         previousLoads={previousLoads}
         notes={notes}
         coachId={resolveAiCoach(profile?.aiCoachId).id}

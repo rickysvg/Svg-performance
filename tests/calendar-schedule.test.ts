@@ -350,7 +350,8 @@ describe("calendar schedule loader", () => {
     const logged = mondayWorkouts.filter((row) => row.programDayId === loggedDayId);
     expect(logged).toHaveLength(1);
     expect(logged.every((row) => row.status === "complete")).toBe(true);
-    expect(logged[0]?.subtitle).toContain("Logged this day");
+    expect(logged[0]?.subtitle).not.toContain("Logged this day");
+    expect(logged[0]?.setCountLabel).toMatch(/Done/);
     expect(mondayWorkouts.some((row) => row.status === "scheduled")).toBe(false);
 
     const tuesdayRow = schedule.days[1];

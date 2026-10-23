@@ -2,6 +2,8 @@ import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { textIsBikeWorkout } from "@/lib/timer-session";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
+import { resolveLogMode } from "@/lib/exercise-log-mode";
+import { setHasLoggedWork } from "@/lib/logged-work";
 import {
   formatShareDuration,
   formatShareVolume,
@@ -18,7 +20,7 @@ import {
 import type { LoadUnit } from "@/lib/units";
 
 export type WorkoutCompleteTile = {
-  key: "time" | "setsRounds" | "volume" | "prs";
+  key: "time" | "setsRounds" | "rounds" | "volume" | "prs";
   label: string;
   value: string;
 };
@@ -118,17 +120,70 @@ function applyBackfillTime(tiles: WorkoutCompleteTile[], session: ShareSessionLi
   );
 }
 
+/**
+ * A partial lift has no frozen clock. The create-to-save gap is not workout time.
+ * Stored elapsed or logged set durations still show. Zero hides the Time tile.
+ */
+export function partialFinishDurationSeconds(session: ShareSessionLike): number | null {
+  if (session.status !== "partial" || session.backfilled) return null;
+  const stored = session.elapsedSeconds;
+  if (typeof stored === "number" && Number.isFinite(stored) && stored > 0) {
+    return Math.min(SESSION_DURATION_CAP_SECONDS, Math.round(stored));
+  }
+  const logged = loggedSets(session.sets).reduce(
+    (sum, set) => sum + (set.durationSeconds && set.durationSeconds > 0 ? set.durationSeconds : 0),
+    0,
+  );
+  return logged > 0 ? Math.min(SESSION_DURATION_CAP_SECONDS, logged) : 0;
+}
+
+function applyFinishTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike) {
+  const backfill = applyBackfillTime(tiles, session);
+  if (session.backfilled) return backfill;
+  const seconds = partialFinishDurationSeconds(session);
+  if (seconds == null) return tiles;
+  if (seconds <= 0) return tiles.filter((tile) => tile.key !== "time");
+  return tiles.map((tile) =>
+    tile.key === "time" ? { ...tile, value: formatShareDuration(seconds) } : tile,
+  );
+}
+
+function isRoundTileSet(set: ShareSetLike) {
+  const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
+  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName)) return true;
+  const key = set.prescriptionKey ?? "";
+  return key.startsWith("round:") || key === "bagwork";
+}
+
+function exerciseIsRound(name: string) {
+  return resolveLogMode({ name }) === "timed_round" || isBikeIntervalName(name);
+}
+
+function plannedFromExercises(
+  exercises: readonly { name?: string | null; sets?: number | null }[] | null | undefined,
+  wantRound: boolean,
+) {
+  if (!exercises || exercises.length === 0) return 0;
+  return exercises.reduce((sum, exercise) => {
+    const name = (exercise.name ?? "").trim();
+    if (!name || exerciseIsRound(name) !== wantRound) return sum;
+    return sum + Math.max(0, Math.round(exercise.sets ?? 0));
+  }, 0);
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;
   newPrCount: number;
+  /** Scaled day, when the finish screen has one. Done/planned uses it for mixed days. */
+  planExercises?: readonly { name?: string | null; sets?: number | null }[] | null;
 }): WorkoutCompleteTile[] {
   if (isBikeCardioSession(input.session)) {
     const sets = loggedSets(input.session.sets);
     const effort = bikeCardioEffort(sets);
     const seconds = bikeCardioDurationSeconds(input.session);
     const intervals = sessionRoundCount(sets) || sets.length;
-    return applyBackfillTime(
+    return applyFinishTime(
       [
         { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
         { key: "setsRounds", label: "Intervals", value: String(intervals) },
@@ -142,11 +197,34 @@ export function workoutCompleteTiles(input: {
   const sets = sessionSetCount(input.session.sets);
   const rounds = sessionRoundCount(input.session.sets);
   const volume = sessionVolume(input.session.sets, input.displayUnit);
+  const roundRows = input.session.sets.filter((set) => isRoundTileSet(set));
+  const liftRows = input.session.sets.filter((set) => !isRoundTileSet(set));
+  const roundDone = sessionRoundCount(roundRows);
+  const liftDone = liftRows.filter((set) => set.completed && setHasLoggedWork(set)).length;
+  if (roundDone > 0 && liftDone > 0) {
+    const liftPlanned = Math.max(liftRows.length, plannedFromExercises(input.planExercises, false), liftDone);
+    const roundPlanned = Math.max(roundRows.length, plannedFromExercises(input.planExercises, true), roundDone);
+    return applyFinishTime(
+      [
+        { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
+        { key: "setsRounds", label: "Sets", value: `${liftDone} / ${liftPlanned}` },
+        { key: "rounds", label: "Rounds", value: `${roundDone} / ${roundPlanned}` },
+        {
+          key: "volume",
+          label: `Total ${shareVolumeUnit(input.displayUnit)}`,
+          value: formatShareVolume(volume),
+        },
+        { key: "prs", label: "New PRs", value: String(input.newPrCount) },
+      ],
+      input.session,
+    );
+  }
   const setsRounds = rounds > 0 && rounds !== sets ? `${sets} / ${rounds}` : String(Math.max(sets, rounds));
-  return applyBackfillTime(
+  const countLabel = rounds > 0 && (sets === rounds || sets === 0) ? "Rounds" : "Sets";
+  return applyFinishTime(
     [
       { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
-      { key: "setsRounds", label: "Sets / Rounds", value: setsRounds },
+      { key: "setsRounds", label: countLabel, value: setsRounds },
       {
         key: "volume",
         label: `Total ${shareVolumeUnit(input.displayUnit)}`,

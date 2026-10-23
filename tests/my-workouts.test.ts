@@ -25,6 +25,8 @@ import {
 } from "@/lib/my-workouts";
 import {
   applyPlansToProgramCards,
+  homePlanSession,
+  homeSessionsAfterPlans,
   defaultSavedWorkoutName,
   summaryAfterDayPlans,
   withDayPlans,
@@ -54,6 +56,32 @@ describe("saved workout names and day overlay", () => {
     expect(applyPlansToProgramCards(cards, [{ mode: "extra" }]).cards).toEqual(cards);
     expect(summaryAfterDayPlans("Lift + bag", [{ mode: "replace", name: "Camp arms" }])).toBe("Camp arms");
     expect(summaryAfterDayPlans("Lift + bag", [{ mode: "extra", name: "Camp arms" }])).toBe("Lift + bag");
+    const daru = homePlanSession({
+      id: "plan-daru",
+      mode: "replace",
+      name: "Daru Alactic Power",
+      exerciseNames: ["Assault bike"],
+      exercises: [{ name: "Assault bike", sets: 1, restSeconds: 60 }],
+      complete: false,
+      partial: true,
+      draftId: "draft-1",
+    });
+    expect(daru.title).toBe("Daru Alactic Power");
+    expect(daru.startHref).toBe("/training/log/draft-1");
+    expect(daru.dayId).toBe("plan:plan-daru");
+    const shown = homeSessionsAfterPlans([{ title: "Lift 3", kind: "strength" }], [
+      {
+        id: "plan-daru",
+        mode: "replace",
+        name: "Daru Alactic Power",
+        exerciseNames: ["Assault bike"],
+        exercises: [{ name: "Assault bike", sets: 1, restSeconds: 60 }],
+        complete: false,
+        partial: true,
+        draftId: null,
+      },
+    ]);
+    expect(shown.map((row) => row.title)).toEqual(["Daru Alactic Power"]);
   });
 
   it("names the restore control Revert to default", () => {
@@ -78,6 +106,31 @@ describe("saved workout names and day overlay", () => {
       },
     ]);
     expect(replaced.map((row) => row.title)).toEqual(["Weekly SVG report", "Camp arms"]);
+    const keptLog = withDayPlans(
+      [
+        { kind: "workout", title: "Lift 3", status: "scheduled", subtitle: "Partial · 5/34 sets" },
+        { kind: "workout", title: "Heavy bag rounds", status: "scheduled", subtitle: "Heavy bag rounds · Partial" },
+        { kind: "workout", title: "Lift 1", status: "scheduled", subtitle: "Lift · Missed" },
+        { kind: "report", title: "Weekly SVG report" },
+      ],
+      [
+        {
+          id: "plan-1",
+          name: "Daru Alactic Power",
+          mode: "replace",
+          exerciseCount: 4,
+          complete: false,
+          partial: true,
+          exerciseNames: ["Bike"],
+        },
+      ],
+    );
+    expect(keptLog.map((row) => row.title)).toEqual([
+      "Lift 3",
+      "Heavy bag rounds",
+      "Weekly SVG report",
+      "Daru Alactic Power",
+    ]);
     const extra = withDayPlans(program, [
       { id: "plan-2", name: "Camp arms", mode: "extra", exerciseCount: 3, complete: true },
     ]);

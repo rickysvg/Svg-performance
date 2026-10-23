@@ -8,6 +8,7 @@ import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { OpenProgramLog } from "@/lib/today-start";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
@@ -199,6 +200,11 @@ export function PlanSessionCard({
           />
         </div>
       ) : null}
+      {partial && !completed ? (
+        <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+          Partial
+        </p>
+      ) : null}
       {partial && resume?.progress ? (
         <p data-session-progress className="mt-3 text-sm font-semibold text-accent">
           {resume.progress}
@@ -224,6 +230,15 @@ export function PlanSessionCard({
           >
             Preview
           </Link>
+          {partial && resume && !completed ? (
+            <ContinueWorkoutButton
+              workoutId={resume.id}
+              label="Resume"
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
+                highlight ? "bg-accent text-black" : "bg-accent text-black"
+              }`}
+            />
+          ) : null}
         </div>
       ) : href ? (
         <div data-session-actions className="above-dock mt-4">

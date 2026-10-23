@@ -8,6 +8,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { sessionCompletionDay } from "@/lib/performed-at";
+import { formatClock, isDurationMode, resolveLogMode } from "@/lib/exercise-log-mode";
 import { sessionHasLoggedWork } from "@/lib/logged-work";
 import { easePlanForUser } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
@@ -594,7 +595,17 @@ export type BackfillFormSeed = {
   notes: string;
   dayKey: string;
   sessionRpe: number | null;
-  exercises: { name: string; sets: number; done: number; reps: string; logMode: string }[];
+  exercises: {
+    name: string;
+    sets: number;
+    done: number;
+    reps: string;
+    logMode: string;
+    prescriptionKey?: string;
+    durationSeconds?: number | null;
+    setNotes?: string;
+    storedReps?: number | null;
+  }[];
 };
 
 /** Values the edit and delete dialogs can paint before the edit request returns. */
@@ -611,19 +622,46 @@ export function backfillFormSeed(
       loadValue: number | null;
       durationSeconds: number | null;
       logMode: string;
+      prescriptionKey?: string | null;
+      notes?: string | null;
     }[];
   },
   timeZone: string,
   now = new Date(),
 ): BackfillFormSeed {
   const key = sessionCompletionDay(session, timeZone);
-  const groups = new Map<string, { planned: number; done: number; logMode: string }>();
-  for (const set of session.sets) {
-    const current = groups.get(set.exerciseName) ?? { planned: 0, done: 0, logMode: set.logMode };
-    current.planned += 1;
-    if (set.completed && (set.reps != null || set.loadValue != null || (set.durationSeconds ?? 0) > 0)) {
-      current.done += 1;
+  const groups = new Map<
+    string,
+    {
+      planned: number;
+      done: number;
+      logMode: string;
+      durationSeconds: number | null;
+      reps: number | null;
+      prescriptionKey: string;
+      notes: string;
     }
+  >();
+  for (const set of session.sets) {
+    const current = groups.get(set.exerciseName) ?? {
+      planned: 0,
+      done: 0,
+      logMode: set.logMode,
+      durationSeconds: null,
+      reps: null,
+      prescriptionKey: "",
+      notes: "",
+    };
+    current.planned += 1;
+    const worked = set.completed && (set.reps != null || set.loadValue != null || (set.durationSeconds ?? 0) > 0);
+    if (worked) current.done += 1;
+    if ((set.durationSeconds ?? 0) > 0 && current.durationSeconds == null) {
+      current.durationSeconds = set.durationSeconds;
+    }
+    if (set.reps != null && set.reps > 0 && current.reps == null) current.reps = set.reps;
+    if (!current.prescriptionKey && set.prescriptionKey) current.prescriptionKey = set.prescriptionKey;
+    if (!current.notes && set.notes) current.notes = set.notes;
+    if (set.logMode) current.logMode = set.logMode;
     groups.set(set.exerciseName, current);
   }
   return {
@@ -631,13 +669,21 @@ export function backfillFormSeed(
     notes: session.notes ?? "",
     dayKey: backfillDayState(key, now, timeZone) === "ok" ? key : backfillDayOptions(now, timeZone)[0]?.key ?? key,
     sessionRpe: session.sessionRpe,
-    exercises: [...groups.entries()].map(([name, row]) => ({
-      name,
-      sets: row.planned,
-      done: row.done,
-      logMode: row.logMode,
-      reps: "",
-    })),
+    exercises: [...groups.entries()].map(([name, row]) => {
+      const mode = resolveLogMode({ logMode: row.logMode, name, reps: "" });
+      const timed = isDurationMode(mode);
+      return {
+        name,
+        sets: row.planned,
+        done: row.done,
+        logMode: row.logMode,
+        reps: timed && row.durationSeconds ? formatClock(row.durationSeconds) : row.reps != null ? String(row.reps) : "",
+        prescriptionKey: row.prescriptionKey,
+        durationSeconds: row.durationSeconds,
+        setNotes: row.notes,
+        storedReps: row.reps,
+      };
+    }),
   };
 }
 
@@ -667,6 +713,41 @@ export async function getBackfillForEdit(userId: string, sessionId: string, now 
   };
 }
 
+/** Blank edit fields keep the duration, round key, and notes already on the log. */
+export function preserveBackfillExercises(
+  posted: BackfillExerciseInput[],
+  existing: {
+    exerciseName: string;
+    durationSeconds: number | null;
+    prescriptionKey?: string | null;
+    notes?: string | null;
+    logMode?: string | null;
+    reps: number | null;
+    completed?: boolean | null;
+  }[],
+): BackfillExerciseInput[] {
+  return posted.map((exercise) => {
+    const name = exercise.name.trim().replace(/\s+/g, " ");
+    const matches = existing.filter((set) => set.exerciseName.trim().replace(/\s+/g, " ") === name);
+    if (matches.length === 0) return exercise;
+    const template =
+      matches.find((set) => set.completed !== false && ((set.durationSeconds ?? 0) > 0 || (set.reps ?? 0) > 0)) ??
+      matches[0]!;
+    const repsText = (exercise.reps ?? "").trim();
+    const key = (exercise.prescriptionKey ?? "").trim() || (template.prescriptionKey ?? "").trim();
+    const notes = (exercise.setNotes ?? "").trim() || template.notes || "";
+    return {
+      ...exercise,
+      logMode: exercise.logMode || template.logMode || "",
+      durationSeconds: exercise.durationSeconds ?? template.durationSeconds,
+      storedReps: exercise.storedReps ?? template.reps,
+      prescriptionKey: key,
+      setNotes: notes,
+      reps: repsText,
+    };
+  });
+}
+
 export async function updateBackfillWorkout(input: {
   userId: string;
   sessionId: string;
@@ -683,7 +764,10 @@ export async function updateBackfillWorkout(input: {
   const { timeZone, units } = await memberZone(input.userId);
   const now = input.now ?? new Date();
   assertBackfillDay(input.dayKey, now, timeZone);
-  const session = await prisma.workoutSession.findUnique({ where: { id: input.sessionId } });
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: input.sessionId },
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+  });
   if (!session || session.userId !== input.userId) throw new ForbiddenError();
   if (!session.backfilled) throw new AppError("WORKOUT", "Only a logged-later workout can be edited here.");
   const others = (await sessionsOnCivilDay(input.userId, input.dayKey, timeZone)).filter((row) => row.id !== session.id);
@@ -698,7 +782,7 @@ export async function updateBackfillWorkout(input: {
     };
   }
   const replacing = input.resolution === "replace" && others.length > 0;
-  const built = setsForBackfillExercises(input.exercises, units);
+  const built = setsForBackfillExercises(preserveBackfillExercises(input.exercises, session.sets), units);
   const status = backfillCompletionStatus({
     sets: built.sets,
     plannedSetCount: built.plannedSetCount,

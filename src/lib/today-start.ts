@@ -1,13 +1,6 @@
 import { sessionCompletionDay } from "@/lib/performed-at";
-import {
-  exerciseSetProgress,
-  partialSetsLine,
-  prescribedSetTotal,
-  progressTotals,
-  sessionCountsAsPlannedCompletion,
-  draftHasResumeWork,
-  type TickedSet,
-} from "@/lib/logged-work";
+import { draftHasResumeWork, type TickedSet } from "@/lib/logged-work";
+import { sessionProgress } from "@/lib/session-progress";
 
 export type ResumableLog = {
   id: string;
@@ -15,6 +8,8 @@ export type ResumableLog = {
   performedAt: Date;
   createdAt?: Date;
   programDayId: string | null;
+  /** Applied My Workout log. It is not the free custom resume. */
+  dayPlanId?: string | null;
   plannedSetCount?: number | null;
   sets: TickedSet[];
   programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
@@ -26,7 +21,7 @@ export type OpenProgramLog = {
   partial: boolean;
   ticked: number;
   planned: number;
-  /** "Partial · 1/34 sets" when the save is short. */
+  /** "1/34 sets · Partial" when the save is short. Same string as History. */
   progress?: string;
 };
 
@@ -34,6 +29,7 @@ export type OpenProgramLog = {
 export type PlanDose = {
   dose: number;
   names: readonly string[];
+  exercises?: readonly { name?: string | null; sets?: number | null }[];
 };
 
 /**
@@ -64,26 +60,28 @@ export function openLogsByProgramDay(
       plan && plan.names.length > 0
         ? [...plan.names]
         : exercises.map((exercise) => exercise.name ?? "");
-    const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetTotal(exercises);
-    if (
-      session.status === "complete" &&
-      sessionCountsAsPlannedCompletion(session, names, dose)
-    ) {
+    const scaledExercises =
+      plan?.exercises && plan.exercises.length > 0 ? plan.exercises : exercises;
+    const dose = plan && plan.dose > 0 ? plan.dose : undefined;
+    const progress = sessionProgress(session, {
+      dose,
+      names,
+      exercises: scaledExercises,
+    });
+    if (session.status === "complete" && progress.done) {
       finished.add(session.programDayId);
       const existing = map.get(session.programDayId);
       if (existing && !existing.partial) map.delete(session.programDayId);
       continue;
     }
     if (finished.has(session.programDayId) || map.has(session.programDayId)) continue;
-    const totals = progressTotals(exerciseSetProgress(exercises, session.sets));
-    const planned = plan && plan.dose > 0 ? plan.dose : totals.planned > 0 ? totals.planned : dose;
     const partial = session.status !== "draft";
     map.set(session.programDayId, {
       id: session.id,
       partial,
-      ticked: totals.ticked,
-      planned,
-      progress: partial ? partialSetsLine(totals.ticked, planned) : undefined,
+      ticked: progress.ticked,
+      planned: progress.planned,
+      progress: partial ? progress.text : undefined,
     });
   }
   return map;
@@ -103,28 +101,19 @@ export function openCustomLog(
   timeZone: string,
 ): OpenProgramLog | null {
   for (const session of sessions) {
-    if (session.programDayId) continue;
+    if (session.programDayId || session.dayPlanId) continue;
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
     if (session.status === "abandoned") continue;
     if (session.status === "draft" && !draftHasResumeWork(session.sets)) continue;
-    if (
-      session.status === "complete" &&
-      sessionCountsAsPlannedCompletion(session, [], session.plannedSetCount)
-    ) {
-      continue;
-    }
-    const totals = progressTotals(exerciseSetProgress([], session.sets));
-    const planned =
-      session.plannedSetCount && session.plannedSetCount > 0
-        ? session.plannedSetCount
-        : totals.planned;
+    const progress = sessionProgress(session);
+    if (session.status === "complete" && progress.done) continue;
     const partial = session.status !== "draft";
     return {
       id: session.id,
       partial,
-      ticked: totals.ticked,
-      planned,
-      progress: partial ? partialSetsLine(totals.ticked, planned) : undefined,
+      ticked: progress.ticked,
+      planned: progress.planned,
+      progress: partial ? progress.text : undefined,
     };
   }
   return null;
@@ -153,7 +142,7 @@ export type TodayStartAction = {
   partial?: boolean;
   ticked?: number;
   planned?: number;
-  /** "Partial · 1/34 sets" when a short save is already on this session. */
+  /** "1/34 sets · Partial" when a short save is already on this session. */
   progress?: string;
   href?: string;
   logHref?: string;

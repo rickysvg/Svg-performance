@@ -261,9 +261,17 @@ function valueUnit(best: PersonalBest, _displayUnit: LoadUnit) {
   return "lb";
 }
 
-/** Finish-screen count: one PR per exercise, not one per heaviest / e1RM / reps row. */
-export function newPrExerciseCount(prs: Array<{ exerciseName: string }>) {
-  return new Set(prs.map((row) => row.exerciseName.trim()).filter(Boolean)).size;
+/**
+ * Finish-screen count: one PR per exercise, not one per heaviest / e1RM / reps row.
+ * Most-rounds stays on Records and is not a finish-screen PR.
+ */
+export function newPrExerciseCount(prs: Array<{ exerciseName: string; kind?: string }>) {
+  return new Set(
+    prs
+      .filter((row) => row.kind !== "most_rounds")
+      .map((row) => row.exerciseName.trim())
+      .filter(Boolean),
+  ).size;
 }
 
 export function detectNewPrs(

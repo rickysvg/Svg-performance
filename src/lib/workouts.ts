@@ -29,6 +29,7 @@ import { APP_TIMEZONE, dayKey, endOfZonedDay, startOfZonedDay, zonedCivilToUtc }
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { calendarPlanDoses, withCalendarScaleMemory } from "@/lib/plan-doses";
+import { sessionProgress } from "@/lib/session-progress";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { parseDifficultyRating } from "@/lib/difficulty";
 import { parseSessionRpe } from "@/lib/bagwork";
@@ -63,6 +64,7 @@ import {
   draftHasResumeWork,
   loggedSetSome,
   offPlanSessionDone,
+  prescribedSetTotal,
   prepareSetsForPersist,
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
@@ -408,20 +410,23 @@ export async function completedProgramDayIdsOnDay(
     },
   });
   const targets = await plannedTargetsByDay(ids);
+  const doses = await calendarPlanDoses(userId, day);
   const key = dayKey(day, timeZone);
   return [
     ...new Set(
       rows
-        .filter(
-          (row) =>
-            row.programDayId &&
-            sessionCompletionDay(row, timeZone) === key &&
-            sessionCountsAsPlannedCompletion(
-              row,
-              targets.names.get(row.programDayId) ?? [],
-              targets.doses.get(row.programDayId) ?? null,
-            ),
-        )
+        .filter((row) => {
+          if (!row.programDayId || sessionCompletionDay(row, timeZone) !== key) return false;
+          const plan = doses.get(row.programDayId);
+          const names =
+            plan && plan.names.length > 0 ? [...plan.names] : (targets.names.get(row.programDayId) ?? []);
+          const dose = plan && plan.dose > 0 ? plan.dose : (targets.doses.get(row.programDayId) ?? 0);
+          return sessionProgress(row, {
+            dose,
+            names,
+            exercises: plan?.exercises,
+          }).done;
+        })
         .map((row) => row.programDayId)
         .filter((id): id is string => Boolean(id)),
     ),
@@ -654,7 +659,9 @@ export async function startRoundWorkoutForUser(input: {
 }
 
 /**
- * One log for a round-based save. A second save updates that same row.
+ * One log for a round-based save. A second save updates that same row when it
+ * keeps or adds rounds. A shorter timer save is a new session: it must not
+ * shrink a log that already has more rounds or replace its stored time.
  * Today's matching program day is linked when the plan has one.
  * A mixed day stays partial so the logger can still finish the other work.
  * Only a round-only day is complete, and only when its rounds are covered.
@@ -732,6 +739,7 @@ export async function logRoundSessionForUser(input: {
     now,
     timeZone,
     title: roundTitle,
+    incomingRounds: roundSets.length,
   });
   const existing = await prisma.workoutSession.findUnique({
     where: { id: workoutId },
@@ -778,6 +786,10 @@ export async function logRoundSessionForUser(input: {
         plannedRounds,
         configuredRounds: configured,
       });
+  const priorTimer = await readWorkoutTimerFields(workoutId, prisma);
+  const keptElapsed = usableStoredElapsed(priorTimer.elapsedSeconds);
+  // A longer clock replaces the stored one. A shorter clock must not erase it.
+  const elapsedToStore = keptElapsed == null ? elapsed : Math.max(keptElapsed, elapsed);
   return updateWorkoutSessionForUser({
     userId: input.userId,
     workoutId,
@@ -788,11 +800,26 @@ export async function logRoundSessionForUser(input: {
     sets,
     rest: null,
     timeZone,
-    elapsedSeconds: elapsed,
+    elapsedSeconds: elapsedToStore,
     plannedSetCount,
     sessionRpe: input.rpe === undefined ? undefined : input.rpe,
     retainEmptySets: keptCount > 0,
+    keepOwnSession: true,
   });
+}
+
+function loggedRoundsForType(
+  sets: {
+    exerciseName?: string | null;
+    logMode?: string | null;
+    prescriptionKey?: string | null;
+    reps?: number | null;
+    loadValue?: number | null;
+    durationSeconds?: number | null;
+  }[],
+  type: RoundSessionType,
+) {
+  return sets.filter((set) => setBelongsToRoundType(set, type) && setHasLoggedWork(set)).length;
 }
 
 async function reuseRoundSessionId(input: {
@@ -802,6 +829,8 @@ async function reuseRoundSessionId(input: {
   now: Date;
   timeZone: string;
   title: string;
+  /** Logged rounds this save would write. A row with more than this is left alone. */
+  incomingRounds: number;
 }) {
   const from = new Date(input.now.getTime() - 36 * 60 * 60 * 1000);
   const to = new Date(input.now.getTime() + 36 * 60 * 60 * 1000);
@@ -813,7 +842,18 @@ async function reuseRoundSessionId(input: {
       status: { in: ["draft", "partial", "complete"] },
       performedAt: { gte: from, lte: to },
     },
-    include: { sets: { select: { exerciseName: true, logMode: true, prescriptionKey: true } } },
+    include: {
+      sets: {
+        select: {
+          exerciseName: true,
+          logMode: true,
+          prescriptionKey: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+        },
+      },
+    },
     orderBy: { createdAt: "asc" },
   });
   const matches = rows.filter(
@@ -821,8 +861,12 @@ async function reuseRoundSessionId(input: {
       sessionCompletionDay({ performedAt: row.performedAt }, input.timeZone) === today &&
       sessionMatchesRoundType(row, input.type),
   );
-  const saved = matches.find((row) => row.status === "complete" || row.status === "partial");
-  const draft = matches.find((row) => row.status === "draft");
+  const fits = (row: (typeof matches)[number]) =>
+    loggedRoundsForType(row.sets, input.type) <= input.incomingRounds;
+  const saved = matches.find(
+    (row) => (row.status === "complete" || row.status === "partial") && fits(row),
+  );
+  const draft = matches.find((row) => row.status === "draft" && fits(row));
   if (saved) return saved.id;
   if (draft) return draft.id;
   const created = await prisma.workoutSession.create({
@@ -970,8 +1014,8 @@ export async function completeBikeLoggerSession(input: {
         status,
         plannedSetCount,
         title: existing.title.trim() || input.choice.name,
-        notes: (input.notes ?? existing.notes ?? "").trim().slice(0, 1000),
-        ...(input.rpe !== undefined ? { sessionRpe: parseSessionRpe(input.rpe) } : {}),
+        notes: ((input.notes ?? "").trim() || existing.notes || "").trim().slice(0, 1000),
+        ...(input.rpe == null ? {} : { sessionRpe: parseSessionRpe(input.rpe) }),
         sets: { create: sets },
         ...(timerReady ? { elapsedSeconds: elapsed, finishedAt, timerStartedAt: null } : {}),
       },
@@ -1137,7 +1181,27 @@ export async function continuePartialWorkoutForUser(input: {
   if (!existing || existing.userId !== input.userId) {
     throw new NotFoundError("Workout not found.");
   }
-  if (!existing.programDay) return existing;
+  if (!existing.programDay) {
+    if (existing.status !== "partial" && existing.status !== "complete") return existing;
+    const timerColumns = await workoutTimerColumnsAvailable(prisma);
+    const stored = timerColumns ? await readWorkoutTimerFields(existing.id, prisma) : null;
+    return prisma.workoutSession.update({
+      where: { id: existing.id },
+      data: {
+        status: "draft",
+        // Keep the saved clock and start a new segment. Leaving timerStartedAt
+        // empty makes the next save add every second since the log was created.
+        ...(stored
+          ? {
+              finishedAt: null,
+              elapsedSeconds: usableStoredElapsed(stored.elapsedSeconds),
+              timerStartedAt: new Date(),
+            }
+          : {}),
+      },
+      include: { sets: true, programDay: { include: { program: true, exercises: { orderBy: { sortOrder: "asc" } } } } },
+    });
+  }
 
   const profile = await getProfileForUser(input.userId);
   const zone = input.timeZone || APP_TIMEZONE;
@@ -1174,7 +1238,12 @@ export async function continuePartialWorkoutForUser(input: {
           (sum, exercise) => sum + Math.max(0, Math.round(exercise.sets ?? 0)),
           0,
         );
-  if (existing.status === "complete" && offPlanSessionDone(existing, dose, names)) {
+  const progressDose = {
+    dose,
+    names,
+    exercises: calendar?.exercises && calendar.exercises.length > 0 ? calendar.exercises : day.exercises,
+  };
+  if (existing.status === "complete" && sessionProgress(existing, progressDose).done) {
     return existing;
   }
 
@@ -1207,16 +1276,27 @@ export async function continuePartialWorkoutForUser(input: {
     if (fresh.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
-    if (fresh.status === "complete" && offPlanSessionDone(fresh, dose, names)) {
+    if (
+      fresh.status === "complete" &&
+      sessionProgress({ ...fresh, programDayId: existing.programDayId }, progressDose).done
+    ) {
       return fresh;
     }
+    const resumeClock =
+      timerColumns && (fresh.status === "complete" || fresh.status === "partial")
+        ? {
+            finishedAt: null,
+            elapsedSeconds: usableStoredElapsed(
+              (await readWorkoutTimerFields(fresh.id, tx)).elapsedSeconds,
+            ),
+            timerStartedAt: new Date(),
+          }
+        : null;
     await tx.workoutSession.update({
       where: { id: fresh.id },
       data: {
         status: "draft",
-        ...(timerColumns && (fresh.status === "complete" || fresh.status === "partial")
-          ? { finishedAt: null }
-          : {}),
+        ...(resumeClock ?? {}),
       },
     });
     const lockedSets = await tx.workoutSet.findMany({
@@ -1358,6 +1438,36 @@ export async function startWorkoutFromDay(input: {
     visible.map((exercise) => exercise.name),
   );
   if (sameDay) return sameDay;
+  const shortComplete = await findCompletedSameDaySession(
+    prisma,
+    input.userId,
+    rawDay.id,
+    now,
+    zone,
+    visible.map((exercise) => exercise.name),
+  );
+  if (shortComplete) {
+    const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
+    const progress = sessionProgress(shortComplete, {
+      dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
+      names:
+        calendar && calendar.names.length > 0
+          ? [...calendar.names]
+          : visible.map((exercise) => exercise.name),
+      exercises:
+        calendar?.exercises && calendar.exercises.length > 0
+          ? calendar.exercises
+          : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
+    });
+    if (!progress.done) {
+      return continuePartialWorkoutForUser({
+        userId: input.userId,
+        workoutId: shortComplete.id,
+        preferredUnits: input.preferredUnits,
+        timeZone: zone,
+      });
+    }
+  }
 
   const sets = visible.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
@@ -1400,6 +1510,29 @@ export async function startWorkoutFromDay(input: {
       visible.map((exercise) => exercise.name),
     );
     if (again) return again;
+    const shortAgain = await findCompletedSameDaySession(
+      tx,
+      input.userId,
+      rawDay.id,
+      now,
+      zone,
+      visible.map((exercise) => exercise.name),
+    );
+    if (shortAgain) {
+      const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
+      const progress = sessionProgress(shortAgain, {
+        dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
+        names:
+          calendar && calendar.names.length > 0
+            ? [...calendar.names]
+            : visible.map((exercise) => exercise.name),
+        exercises:
+          calendar?.exercises && calendar.exercises.length > 0
+            ? calendar.exercises
+            : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
+      });
+      if (!progress.done) return shortAgain;
+    }
     fresh = true;
     return tx.workoutSession.create({
       data: {
@@ -1415,7 +1548,17 @@ export async function startWorkoutFromDay(input: {
       include: { sets: true },
     });
   });
-  if (!fresh) return created;
+  if (!fresh) {
+    if (created.status === "complete") {
+      return continuePartialWorkoutForUser({
+        userId: input.userId,
+        workoutId: created.id,
+        preferredUnits: input.preferredUnits,
+        timeZone: zone,
+      });
+    }
+    return created;
+  }
   await bindPendingSwaps({
     userId: input.userId,
     programSlug: rawDay.program.slug,
@@ -1601,6 +1744,11 @@ export async function updateWorkoutSessionForUser(input: {
   timeZone?: string;
   /** Header seconds the logger was showing when Save was pressed. */
   elapsedSeconds?: number | null;
+  /**
+   * Leave this row as its own log. A shorter round save must not fold into
+   * today's finished session and replace that session's rounds.
+   */
+  keepOwnSession?: boolean;
 }): Promise<SavedWorkoutSession> {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -1632,7 +1780,7 @@ export async function updateWorkoutSessionForUser(input: {
   if (Number.isNaN(input.performedAt.getTime())) {
     throw new AppError("WORKOUT", "Enter a valid date.");
   }
-  if (input.status === "complete" && existing.programDayId) {
+  if (input.status === "complete" && existing.programDayId && !input.keepOwnSession) {
     const canonical = await findCompletedSameDaySession(
       prisma,
       input.userId,
@@ -1964,7 +2112,9 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
     }),
     userId,
   );
-  if (existing.status !== "complete") return attachWorkoutTimer(existing, prisma);
+  if (existing.status !== "complete" && existing.status !== "partial") {
+    return attachWorkoutTimer(existing, prisma);
+  }
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
   // Keep a real saved clock. A missing value or the 4 hour cap is not training time.

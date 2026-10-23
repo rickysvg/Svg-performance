@@ -116,37 +116,68 @@ export type RoundClockLog = {
   elapsedSeconds: number;
 };
 
-/**
- * A mid-timer save counts work rounds that already finished.
- * Rest on the log is the configured gap. The total is completed work plus the
- * configured rests that sit between those rounds, not the rest still in progress.
- */
-export function roundLogFromClock(input: {
+type RoundClockInput = {
   phase: TimerPhase | string;
   round: number;
   totalRounds: number;
   workSeconds: number;
   restSeconds: number;
   phaseElapsedSeconds: number;
-}): RoundClockLog {
-  const phase = input.phase === "work" || input.phase === "rest" || input.phase === "done" ? input.phase : "idle";
+};
+
+function clockPhase(value: string): TimerPhase {
+  if (value === "work" || value === "rest" || value === "done" || value === "idle") return value;
+  return "idle";
+}
+
+function clockParts(input: RoundClockInput) {
+  const phase = clockPhase(input.phase);
   const work = Math.max(0, Math.round(input.workSeconds));
   const configuredRest = Math.max(0, Math.round(input.restSeconds));
   const phaseElapsed = Math.max(0, Math.round(input.phaseElapsedSeconds));
-  const roundsCompleted = completedWorkRounds(phase, Math.round(input.round), Math.round(input.totalRounds));
+  const round = Math.round(input.round);
+  const totalRounds = Math.round(input.totalRounds);
+  return { phase, work, configuredRest, phaseElapsed, round, totalRounds };
+}
+
+/**
+ * Running total while the clock is moving. Rest counts as it elapses, so a
+ * 15/15 session is monotonic: round 1 is 0→15, rest 1 is 15→30, round 2 is
+ * 30→45, rest 2 is 45→60. This is the number on the timer, not the saved log.
+ */
+export function roundLiveElapsed(input: RoundClockInput) {
+  const { phase, work, configuredRest, phaseElapsed, round, totalRounds } = clockParts(input);
+  if (phase === "done") return roundSessionDuration(totalRounds, work, configuredRest);
   if (phase === "rest") {
-    return {
-      roundsCompleted,
-      restSeconds: configuredRest,
-      elapsedSeconds: roundSessionDuration(roundsCompleted, work, configuredRest),
-    };
+    const intoRest = configuredRest > 0 ? Math.min(configuredRest, phaseElapsed) : phaseElapsed;
+    const finished = completedWorkRounds("rest", round, totalRounds);
+    return roundSessionDuration(finished, work, configuredRest) + intoRest;
   }
   if (phase === "work") {
     const intoWork = work > 0 ? Math.min(work, phaseElapsed) : phaseElapsed;
+    const finished = Math.max(0, round - 1);
+    return finished * work + finished * configuredRest + intoWork;
+  }
+  return 0;
+}
+
+/**
+ * A mid-timer save counts work rounds that already finished.
+ * Stored rest stays the configured gap. The saved total is completed work
+ * plus the configured rests that sit between those rounds. A rest still in
+ * progress does not add to the save. The next work block does count the rest
+ * that just finished, plus any partial work already done in that block.
+ */
+export function roundLogFromClock(input: RoundClockInput): RoundClockLog {
+  const { phase, work, configuredRest, phaseElapsed, round, totalRounds } = clockParts(input);
+  const roundsCompleted = completedWorkRounds(phase, round, totalRounds);
+  if (phase === "work") {
+    const intoWork = work > 0 ? Math.min(work, phaseElapsed) : phaseElapsed;
+    const finished = Math.max(0, roundsCompleted);
     return {
       roundsCompleted,
       restSeconds: configuredRest,
-      elapsedSeconds: roundsCompleted * work + roundsCompleted * configuredRest + intoWork,
+      elapsedSeconds: finished * work + finished * configuredRest + intoWork,
     };
   }
   return {
@@ -400,6 +431,13 @@ export function roundHistoryLine(session: {
   ];
   if (session.sessionRpe != null) parts.push(`RPE ${session.sessionRpe}`);
   return parts.join(" · ");
+}
+
+/** Progress already names the rounds. History keeps the clock, not a second count. */
+export function historyDetailBesideCount(line: string | null) {
+  if (!line) return null;
+  const clock = line.replace(/^\d+ rounds?(?: · )?/, "");
+  return clock.length > 0 ? clock : null;
 }
 
 type FinishSet = {

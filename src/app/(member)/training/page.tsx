@@ -21,6 +21,7 @@ import { mesoBlockForWeekIndex, mesoBlockLabel } from "@/lib/mesocycle";
 import { blockWeekLabel } from "@/lib/plan-structure";
 import { isDeloadWeekIndex, isTestingWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
@@ -405,9 +406,17 @@ export default async function TrainingPage({
         const dayPlan = focus.dayPlan;
         const visible = focus.weekStart === viewedWeek;
         const replacement = focus.dayPlans.find((plan) => plan.mode === "replace");
+        const openPlan = focus.dayPlans.find((plan) => !plan.complete && plan.draftId);
+        const planResume = openPlan?.draftId;
         const trainCta = focus.isToday
           ? primaryTrainCta({
-              resumeHref: resumeId ? `/training/log/${resumeId}` : null,
+              resumeHref: focus.replaced
+                ? planResume
+                  ? `/training/log/${planResume}`
+                  : null
+                : resumeId
+                  ? `/training/log/${resumeId}`
+                  : null,
               startHref: explicitStartHref({
                 replaced: focus.replaced,
                 plans: focus.dayPlans,
@@ -439,7 +448,16 @@ export default async function TrainingPage({
           minutes={replacement ? 0 : (todayAction?.minutes ?? 0)}
         />
       ) : null}
-      {trainCta ? (
+      {trainCta?.verb === "Resume" &&
+      (focus.replaced ? openPlan?.partial && openPlan.draftId : todayAction?.partial && todayAction.draftId) ? (
+        <ContinueWorkoutButton
+          workoutId={(focus.replaced ? openPlan?.draftId : todayAction?.draftId) ?? ""}
+          label="Resume"
+          className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
+          testId="training-primary-resume"
+          primary
+        />
+      ) : trainCta ? (
         <Link
           href={trainCta.href}
           prefetch={trainCta.verb === "Start" ? false : undefined}
@@ -447,7 +465,7 @@ export default async function TrainingPage({
           data-resume-workout={trainCta.verb === "Resume" ? "true" : undefined}
           data-start-today={trainCta.verb === "Start" ? "true" : undefined}
           data-prime-coach-audio
-          className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
+          className="relative z-30 flex w-full touch-target scroll-mt-20 items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
         >
           {trainCta.verb}
         </Link>
@@ -532,7 +550,11 @@ export default async function TrainingPage({
               highlight={session.slot === "A" && focus.plannedCount > 1}
               resume={session.dayId ? focus.openOnDay.get(session.dayId) : undefined}
               draftId={session.dayId ? draftsOn(focus.dayParam).find((row) => row.programDayId === session.dayId)?.id : undefined}
-              completed={session.dayId ? focus.doneIds.has(session.dayId) : false}
+              completed={
+                session.dayId
+                  ? focus.doneIds.has(session.dayId) && !focus.openOnDay.get(session.dayId)?.partial
+                  : false
+              }
               dateLabel={planDateLabel}
             />
           </div>

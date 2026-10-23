@@ -45,7 +45,9 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
       dayId !== CUSTOM_HOME_RESUME &&
       !guide.today.completedDayIds?.includes(dayId),
   )?.[1];
-  const firstDone = Boolean(first?.dayId && guide.today.completedDayIds?.includes(first.dayId));
+  const firstDone = Boolean(
+    first?.dayId && guide.today.completedDayIds?.includes(first.dayId) && !resume?.partial,
+  );
   const nextDone = Boolean(next?.dayId && guide.today.completedDayIds?.includes(next.dayId));
   const firstPartial = Boolean(
     first?.dayId && !firstDone && guide.today.partialDayIds?.includes(first.dayId),
@@ -65,12 +67,34 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
             : "Recover today."}
         </p>
         {locked ? (
-          <a
-            href="#trial-ended"
-            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          >
-            Subscribe
-          </a>
+          <>
+            <a
+              href="#trial-ended"
+              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+            >
+              Subscribe
+            </a>
+            {!nextDone && (nextPartial || customResume?.partial || otherResume?.partial) ? (
+              <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+                Partial
+              </p>
+            ) : nextDone ? (
+              <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+                Done
+              </p>
+            ) : null}
+            {customResume ? (
+              <ResumeButton log={customResume} className={resumeClass} />
+            ) : otherResume ? (
+              <ResumeButton log={otherResume} className={resumeClass} />
+            ) : null}
+            {customResume && otherResume ? (
+              <ResumeButton
+                log={otherResume}
+                className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+              />
+            ) : null}
+          </>
         ) : (
           <>
             {!nextDone && (nextPartial || customResume?.partial || otherResume?.partial) ? (
@@ -141,12 +165,41 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         {extra > 0 ? ` · ${extra} more today` : ""}
       </p>
       {locked ? (
-        <a
-          href="#trial-ended"
-          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        >
-          Subscribe
-        </a>
+        <>
+          <a
+            href="#trial-ended"
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+          >
+            Subscribe
+          </a>
+          {firstDone ? (
+            <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+              Done
+            </p>
+          ) : firstPartial || resume?.partial ? (
+            <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+              Partial
+            </p>
+          ) : null}
+          {resume ? <ResumeButton log={resume} className={resumeClass} /> : null}
+          {customResume && customResume.id !== resume?.id ? (
+            <ResumeButton
+              log={customResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {otherResume && otherResume.id !== customResume?.id ? (
+            <ResumeButton
+              log={otherResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {extra > 0 || customResume || otherResume ? (
+            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={Math.max(extra, 1)}>
+              See the rest of today
+            </Link>
+          ) : null}
+        </>
       ) : firstDone ? (
         <>
           <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
@@ -164,8 +217,8 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
               className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
             />
           ) : null}
-          {extra > 0 ? (
-            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
+          {extra > 0 || customResume || otherResume ? (
+            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={Math.max(extra, 1)}>
               See the rest of today
             </Link>
           ) : null}
@@ -217,8 +270,8 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
               className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
             />
           ) : null}
-          {extra > 0 ? (
-            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
+          {extra > 0 || customResume || otherResume ? (
+            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={Math.max(extra, 1)}>
               See the rest of today
             </Link>
           ) : null}

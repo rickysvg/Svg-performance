@@ -1,4 +1,5 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { historySessionText } from "@/lib/session-progress";
 import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 import { defaultLoggedReps, parseAddedPlan } from "@/lib/logger-insert";
@@ -250,12 +251,38 @@ export function completionListLabel(session: {
   status: string;
   sets: TickedSet[];
   plannedSetCount?: number | null;
-  programDay?: { exercises?: { sets?: number | null }[] } | null;
+  programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
 }) {
   const dose = prescribedSetTotal(session.programDay?.exercises);
-  if (sessionCountsAsPlannedCompletion(session, [], dose)) return "complete";
-  if (session.status === "complete") return "partial";
-  return session.status;
+  const stored =
+    sessionCountsAsPlannedCompletion(session, [], dose)
+      ? "complete"
+      : session.status === "complete"
+        ? "partial"
+        : session.status;
+  const planned = session.programDay?.exercises ?? [];
+  if (stored === "complete" && planned.length > 0) {
+    const progress = sessionProgressLabel(exerciseSetProgress(planned, session.sets));
+    if (progress?.endsWith("partial")) return "partial";
+  }
+  return stored;
+}
+
+/**
+ * History count. Same line Calendar and the finish screen render.
+ * Pass the scaled dose from calendarPlanDoses when the session is planned.
+ */
+export function historyCountLine(
+  session: {
+    status: string;
+    sets: TickedSet[];
+    plannedSetCount?: number | null;
+    programDayId?: string | null;
+    programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
+  },
+  dose?: { dose?: number | null; exercises?: { name?: string | null; sets?: number | null }[] | null } | null,
+) {
+  return historySessionText(session, dose);
 }
 
 export type ExerciseProgressState = "complete" | "partial" | "open";
@@ -276,7 +303,7 @@ export function exerciseSetProgress(
   for (const set of logged) {
     const name = (set.exerciseName ?? "").trim();
     if (!name) continue;
-    const key = gymExerciseKey(name);
+    const key = exerciseCompletionKey(name);
     const row = byKey.get(key) ?? { name, ticked: 0, rows: 0 };
     row.rows += 1;
     if (setIsTicked(set)) row.ticked += 1;
@@ -287,7 +314,7 @@ export function exerciseSetProgress(
   for (const exercise of planned) {
     const name = (exercise.name ?? "").trim();
     if (!name) continue;
-    const key = gymExerciseKey(name);
+    const key = exerciseCompletionKey(name);
     used.add(key);
     const loggedRow = byKey.get(key);
     const plannedCount = Math.max(0, Math.round(exercise.sets ?? loggedRow?.rows ?? 0));
@@ -333,9 +360,9 @@ export function sessionProgressLabel(
   return `${formatSetProgress(ticked, planned)} · ${done ? "complete" : "partial"}`;
 }
 
-/** Card and Today copy for a short save. A draft does not use this line. */
+/** Card and Today copy for a short save. Same order as sessionProgress. */
 export function partialSetsLine(ticked: number, planned: number) {
-  return `Partial · ${ticked}/${planned} sets`;
+  return `${ticked}/${planned} sets · Partial`;
 }
 
 /** Finish and calendar rows. A finished exercise reads done, even on a partial day. */

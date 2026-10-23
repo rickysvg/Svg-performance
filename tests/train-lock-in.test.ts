@@ -520,6 +520,13 @@ describe("train page lock-in", () => {
         subtitle: "Daru Alactic Power · Done",
       }),
     ).toBe("Daru Alactic Power · Done");
+    expect(
+      loggedSessionCardLine({
+        title: "Lift 1 — Full body",
+        status: "complete",
+        subtitle: "Logged this day. Lift 1 — Full body",
+      }),
+    ).toBe("Lift 1 — Full body · Done");
     expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "2026-10-20", dayKey: "2026-10-20" })).toBe(
       true,
     );

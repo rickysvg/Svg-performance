@@ -420,6 +420,7 @@ export function WorkoutLogForm({
   canStartTrial = false,
   trialDays = 7,
   timeZone = APP_TIMEZONE,
+  correctable = false,
 }: {
   session: Session;
   previousLoads?: PreviousSetLookup;
@@ -438,7 +439,10 @@ export function WorkoutLogForm({
     retiredNames: string[];
     removedNames?: string[];
   };
+  /** A short save stays complete in the database. The logger is still editable. */
+  correctable?: boolean;
 }) {
+  const loggerOpen = session.status !== "complete" || correctable;
   const [activeName, setActiveName] = useState<string | null>(null);
   const [restByName, setRestByName] = useState<Record<string, number>>({});
   const [programmedName, setProgrammedName] = useState<Record<string, string>>({});
@@ -1526,7 +1530,7 @@ export function WorkoutLogForm({
           const pounds = prescribedLbLabel(planned?.loadText);
           return (
             <Fragment key={name}>
-            {session.status !== "complete" ? (
+            {loggerOpen ? (
               <div className="flex items-center gap-3" data-insert-at={exerciseIndex}>
                 <div className="h-px flex-1 bg-line" />
                 <button
@@ -1593,7 +1597,7 @@ export function WorkoutLogForm({
                     notes={planned?.notes}
                     activeRound={current && layout === "bag" ? cursor.setIndex : undefined}
                   />
-                  {bike && session.status !== "complete" ? (
+                  {bike && loggerOpen ? (
                     <BikeWorkoutChooser
                       choice={bikeChoice}
                       seed={
@@ -1651,7 +1655,7 @@ export function WorkoutLogForm({
                     />
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                    {session.status !== "complete" ? (
+                    {loggerOpen ? (
                       <>
                         <button
                           type="button"
@@ -1685,7 +1689,7 @@ export function WorkoutLogForm({
                         ) : null}
                       </>
                     ) : null}
-                    {session.status !== "complete" && !added ? (
+                    {loggerOpen && !added ? (
                       <ExerciseCardMenu
                         programSlug={swap?.programSlug ?? ""}
                         dayNumber={swap?.dayNumber ?? 0}
@@ -2033,7 +2037,7 @@ export function WorkoutLogForm({
           );
         })}
 
-        {session.status !== "complete" ? (
+        {loggerOpen ? (
           <button
             type="button"
             data-add-exercise
@@ -2157,7 +2161,7 @@ export function WorkoutLogForm({
           )}
         </div>
       ) : null}
-      {pickerIndex != null && session.status !== "complete" ? (
+      {pickerIndex != null && loggerOpen ? (
         <ExerciseLibrarySheet
           variant="add"
           title="Add exercise"

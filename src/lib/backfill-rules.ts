@@ -38,6 +38,12 @@ export type BackfillExerciseInput = {
   done: number;
   reps?: string;
   logMode?: string;
+  /** Kept when the edit form posts an empty reps field. */
+  durationSeconds?: number | null;
+  /** Rep count already stored, used when the edit form posts an empty reps field. */
+  storedReps?: number | null;
+  prescriptionKey?: string;
+  setNotes?: string;
 };
 
 export type BackfillSetDraft = {
@@ -179,14 +185,21 @@ export function setsForBackfillExercises(
     const repsText = (exercise.reps ?? "").trim();
     const mode = resolveLogMode({ logMode: exercise.logMode, name, reps: repsText });
     const timed = isDurationMode(mode);
-    const reps = timed ? null : (defaultLoggedReps(repsText) ?? 8);
+    const storedReps =
+      exercise.storedReps != null && exercise.storedReps > 0 ? Math.round(exercise.storedReps) : null;
+    const reps = timed ? null : (defaultLoggedReps(repsText) ?? storedReps ?? 8);
     const parsedDuration = timed ? parseDurationSeconds(repsText) : null;
+    const storedDuration =
+      timed && exercise.durationSeconds != null && exercise.durationSeconds > 0
+        ? Math.min(BACKFILL_MAX_SET_SECONDS, Math.round(exercise.durationSeconds))
+        : null;
     const durationSeconds = timed
-      ? Math.min(BACKFILL_MAX_SET_SECONDS, Math.max(1, parsedDuration ?? 30))
+      ? Math.min(BACKFILL_MAX_SET_SECONDS, Math.max(1, parsedDuration ?? storedDuration ?? 30))
       : null;
     plannedNames.push(name);
     plannedSetCount += planned;
-    const prescriptionKey = prescriptionKeyFor?.(exercise) ?? "";
+    const prescriptionKey = prescriptionKeyFor?.(exercise) ?? (exercise.prescriptionKey ?? "").trim();
+    const setNotes = (exercise.setNotes ?? "").slice(0, 200);
     const first = nextSetNumber.get(name) ?? 1;
     for (let offset = 0; offset < planned; offset += 1) {
       const completed = offset < done;
@@ -199,7 +212,7 @@ export function setsForBackfillExercises(
         logMode: mode,
         durationSeconds: completed ? durationSeconds : null,
         completed,
-        notes: "",
+        notes: completed ? setNotes : "",
         prescriptionKey,
       });
     }

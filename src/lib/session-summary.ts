@@ -15,6 +15,8 @@ export type SessionSummary = {
   goal: string;
   targets: string[];
   payoff: string;
+  /** "Today" on the session's civil day. A past log uses its date. */
+  whenLabel?: string;
 };
 
 const TARGET_CAP = 4;

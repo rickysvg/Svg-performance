@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { exerciseCountLabel } from "@/lib/my-workout-plan";
 import type { DayPlanView } from "@/lib/my-workouts";
+import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 
 export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
   return (
@@ -18,6 +19,26 @@ export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
         {exerciseCountLabel(plan.exerciseCount)}
         {plan.exerciseNames.length > 0 ? ` · ${plan.exerciseNames.slice(0, 3).join(" · ")}` : ""}
       </p>
+      {plan.draftId && !plan.complete ? (
+        plan.partial ? (
+          <ContinueWorkoutButton
+            workoutId={plan.draftId}
+            label="Resume"
+            className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-black"
+            testId={`training-resume-custom-${plan.id}`}
+            planId={plan.id}
+          />
+        ) : (
+          <Link
+            data-testid={`training-resume-custom-${plan.id}`}
+            href={`/training/log/${plan.draftId}`}
+            data-resume-plan={plan.id}
+            className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-black"
+          >
+            Resume
+          </Link>
+        )
+      ) : null}
       <Link
         data-testid={`training-view-custom-${plan.id}`}
         href={`/training/my-workouts/day/${plan.id}`}

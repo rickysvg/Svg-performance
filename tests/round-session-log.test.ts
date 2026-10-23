@@ -12,8 +12,10 @@ import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { exerciseProgressStateWord } from "@/lib/logged-work";
 import {
+  historyDetailBesideCount,
   launchRoundLogFromClock,
   resolveSubmittedRoundLog,
+  roundLiveElapsed,
   restSecondsFromRoundKey,
   ROUND_SET_CAP_SECONDS,
   roundFinishProgress,
@@ -24,6 +26,8 @@ import {
   SESSION_DURATION_CAP_SECONDS,
 } from "@/lib/round-session";
 import { formatTimerClock } from "@/lib/round-timer";
+import { workoutCompleteTiles } from "@/lib/workout-complete";
+import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import { getShareCardView } from "@/lib/share-card-data";
 import { APP_TIMEZONE, addZonedDays, dayKey } from "@/lib/timezone";
 import {
@@ -80,6 +84,173 @@ describe("mid-timer round saves", () => {
         elapsedSeconds: 21,
       }),
     ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+    expect(
+      roundLogFromClock({
+        phase: "work",
+        round: 2,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 0,
+      }),
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
+    expect(
+      roundLogFromClock({
+        phase: "work",
+        round: 2,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 15,
+      }).elapsedSeconds,
+    ).toBe(45);
+    expect(
+      roundLogFromClock({
+        phase: "rest",
+        round: 2,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 0,
+      }).elapsedSeconds,
+    ).toBe(45);
+    expect(
+      roundLogFromClock({
+        phase: "rest",
+        round: 2,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 14,
+      }).elapsedSeconds,
+    ).toBe(45);
+    expect(
+      roundLogFromClock({
+        phase: "work",
+        round: 3,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 0,
+      }).elapsedSeconds,
+    ).toBe(60);
+  });
+
+  it("counts rest on the live total and keeps a mid-rest save discrete", () => {
+    const clock = {
+      totalRounds: 3,
+      workSeconds: 15,
+      restSeconds: 15,
+    };
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 1, phaseElapsedSeconds: 0 })).toBe(0);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 1, phaseElapsedSeconds: 15 })).toBe(15);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 1, phaseElapsedSeconds: 0 })).toBe(15);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 1, phaseElapsedSeconds: 14 })).toBe(29);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 1, phaseElapsedSeconds: 15 })).toBe(30);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 2, phaseElapsedSeconds: 0 })).toBe(30);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 2, phaseElapsedSeconds: 15 })).toBe(45);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 2, phaseElapsedSeconds: 0 })).toBe(45);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 2, phaseElapsedSeconds: 15 })).toBe(60);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 3, phaseElapsedSeconds: 0 })).toBe(60);
+    const samples = [0, 15, 29, 30, 45, 60, 60];
+    for (let index = 1; index < samples.length; index += 1) {
+      expect(samples[index]).toBeGreaterThanOrEqual(samples[index - 1] ?? 0);
+    }
+    expect(historyDetailBesideCount("5 rounds · 3:00 round · 1:00 rest · 15:00 total")).toBe(
+      "3:00 round · 1:00 rest · 15:00 total",
+    );
+    expect(historyDetailBesideCount("1 round · 0:15 round · 0:15 rest · 0:15 total")).toBe(
+      "0:15 round · 0:15 rest · 0:15 total",
+    );
+    expect(historyDetailBesideCount("5 rounds")).toBeNull();
+    const roundTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Heavy bag rounds",
+        status: "complete",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        elapsedSeconds: 45,
+        sets: [
+          {
+            exerciseName: "Heavy bag rounds",
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            completed: true,
+            durationSeconds: 15,
+            logMode: "timed_round",
+            prescriptionKey: "round:bag:15",
+          },
+        ],
+      },
+    });
+    expect(roundTiles.find((tile) => tile.key === "setsRounds")?.label).toBe("Rounds");
+    const liftTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Lift",
+        status: "complete",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        sets: [
+          {
+            exerciseName: "Squat",
+            reps: 5,
+            loadValue: 100,
+            loadUnit: "lb",
+            completed: true,
+          },
+        ],
+      },
+    });
+    expect(liftTiles.find((tile) => tile.key === "setsRounds")?.label).toBe("Sets");
+    const mixedTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      planExercises: [
+        { name: "Back squat", sets: 8 },
+        { name: "Heavy bag rounds", sets: 3 },
+      ],
+      session: {
+        title: "Lift and bag",
+        status: "partial",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        sets: [
+          ...[1, 2, 3, 4, 5].map((setNumber) => ({
+            exerciseName: "Back squat",
+            setNumber,
+            reps: 5,
+            loadValue: 100,
+            loadUnit: "lb",
+            logMode: "load_reps",
+            completed: true,
+          })),
+          ...[1, 2, 3].map((setNumber) => ({
+            exerciseName: "Heavy bag rounds",
+            setNumber,
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            durationSeconds: 180,
+            logMode: "timed_round",
+            completed: true,
+            prescriptionKey: "round:bag:180",
+          })),
+        ],
+      },
+    });
+    expect(mixedTiles.find((tile) => tile.key === "setsRounds")).toEqual({
+      key: "setsRounds",
+      label: "Sets",
+      value: "5 / 8",
+    });
+    expect(mixedTiles.find((tile) => tile.key === "rounds")).toEqual({
+      key: "rounds",
+      label: "Rounds",
+      value: "3 / 3",
+    });
+    expect(mixedTiles.some((tile) => tile.value === "8 / 3")).toBe(false);
   });
 
   it("does not save two rounds and a zero rest from a running timer", () => {
@@ -691,6 +862,64 @@ describe("round session logs", () => {
     expect(second.status).toBe("complete");
     expect(second.sets).toHaveLength(5);
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it("does not shrink a finished bag log when the timer saves fewer rounds", async () => {
+    const user = await makeUser("bag-no-shrink@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: APP_TIMEZONE },
+    });
+    const now = new Date();
+    const first = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 3,
+      configuredRounds: 3,
+      workSeconds: 180,
+      restSeconds: 60,
+      elapsedSeconds: 660,
+      now,
+    });
+    expect(first.status).toBe("complete");
+    expect(first.sets).toHaveLength(3);
+    expect((await readWorkoutTimerFields(first.id, prisma)).elapsedSeconds).toBe(660);
+
+    const again = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 3,
+      configuredRounds: 3,
+      workSeconds: 180,
+      restSeconds: 60,
+      elapsedSeconds: 10,
+      now,
+    });
+    expect(again.id).toBe(first.id);
+    expect(again.sets).toHaveLength(3);
+    expect((await readWorkoutTimerFields(first.id, prisma)).elapsedSeconds).toBe(660);
+
+    const second = await logRoundSessionForUser({
+      userId: user.id,
+      type: "bag",
+      roundsCompleted: 1,
+      configuredRounds: 1,
+      workSeconds: 180,
+      restSeconds: 60,
+      elapsedSeconds: 15,
+      now,
+    });
+    expect(second.id).not.toBe(first.id);
+    expect(second.sets).toHaveLength(1);
+    expect((await readWorkoutTimerFields(second.id, prisma)).elapsedSeconds).toBe(15);
+    const still = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: first.id },
+      include: { sets: true },
+    });
+    expect(still.status).toBe("complete");
+    expect(still.sets).toHaveLength(3);
+    expect((await readWorkoutTimerFields(first.id, prisma)).elapsedSeconds).toBe(660);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
   });
 
   it("saves a short assault bike ride as partial and a full tabata as done", async () => {

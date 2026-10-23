@@ -13,6 +13,7 @@ export type ShareCardSummary = {
   goal: string;
   targets: string[];
   payoff: string;
+  whenLabel?: string;
 };
 
 export type ShareCardDrawInput = {
@@ -204,7 +205,7 @@ function drawShareSummary(
   ctx.letterSpacing = "0.14em";
   ctx.fillStyle = box.accent;
   ctx.font = `400 26px ${box.display}`;
-  if (y <= box.maxY) ctx.fillText("TODAY", center, y);
+  if (y <= box.maxY) ctx.fillText((summary.whenLabel ?? "TODAY").toUpperCase(), center, y);
   y += 42;
   ctx.letterSpacing = "0";
   ctx.fillStyle = box.ink;

@@ -269,7 +269,7 @@ describe("scaled dose agreement", () => {
     const card = after.days
       .find((day) => dayKey(day.date, APP_TIMEZONE) === tuesdayKey)
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === programDay.id);
-    expect(card?.subtitle.startsWith("Partial")).toBe(true);
+    expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(card?.status).not.toBe("complete");
     const from = addZonedDays(tuesday, -1, APP_TIMEZONE);
     const to = addZonedDays(tuesday, 2, APP_TIMEZONE);
@@ -327,7 +327,8 @@ describe("scaled dose agreement", () => {
     const card = after.days
       .find((day) => dayKey(day.date, APP_TIMEZONE) === tuesdayKey)
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === lift!.programDayId);
-    expect(card?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(card?.subtitle).not.toContain("Logged this day");
+    expect(card?.setCountLabel).toMatch(/Done/);
     expect(card?.status).toBe("complete");
     const from = addZonedDays(tuesday, -1, APP_TIMEZONE);
     const to = addZonedDays(tuesday, 2, APP_TIMEZONE);
@@ -386,7 +387,8 @@ describe("scaled dose agreement", () => {
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === lift!.programDayId);
     expect(card?.subtitle.startsWith("Partial")).toBe(false);
     expect(card?.subtitle).not.toContain(`${dose}/${dose}`);
-    expect(card?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(card?.subtitle).not.toContain("Logged this day");
+    expect(card?.setCountLabel).toMatch(/Done/);
     expect(card?.status).toBe("complete");
     const from = addZonedDays(mondayDate, -1, APP_TIMEZONE);
     const to = addZonedDays(mondayDate, 2, APP_TIMEZONE);
@@ -507,7 +509,8 @@ describe("scaled dose agreement", () => {
       .find((item) => dayKey(item.date, APP_TIMEZONE) === day)
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === plan.programDayId);
     expect(card?.status).toBe("complete");
-    expect(card?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(card?.subtitle).not.toContain("Logged this day");
+    expect(card?.setCountLabel).toMatch(/Done/);
     const currentDoses = await calendarPlanDoses(user.id, plan.judgedAt);
     const keys = await completedLocalDayKeys(user.id, from, to, APP_TIMEZONE, plan.judgedAt);
     const chips = await completedSessionIdsByLocalDay(user.id, from, to, APP_TIMEZONE, plan.judgedAt);
@@ -735,8 +738,8 @@ describe("scaled dose agreement", () => {
     const card = after.days
       .find((day) => day.isToday)
       ?.activities.find((item) => item.kind === "workout" && item.programDayId === lift!.programDayId);
-    expect(card?.setCountLabel).toMatch(/^1\/\d+ sets$/);
-    expect(card?.setCountLabel?.endsWith(" sets") && !card.setCountLabel.includes("/")).toBe(false);
+    expect(card?.setCountLabel).toMatch(/^1\/\d+ sets · Partial$/);
+    expect(card?.setCountLabel).toMatch(/\d+\/\d+/);
     expect(card?.subtitle.includes("· Partial") || card?.subtitle.startsWith("Partial")).toBe(true);
     expect(card?.status).not.toBe("complete");
     const day = dayKey(thursday, APP_TIMEZONE);

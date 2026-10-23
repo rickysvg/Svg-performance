@@ -613,8 +613,6 @@ export function bikeHistoryLine(session: BikeHistorySession) {
         parts.push(`${row.workSeconds}s/${row.restSeconds}s`);
       }
       if (row.sprints != null) parts.push(`${row.sprints} sprints`);
-      if (row.rounds != null) parts.push(`${row.rounds} ${row.rounds === 1 ? "round" : "rounds"}`);
-      parts.push(row.completed ? "completed" : "open");
       return parts.join(" · ");
     })
     .join(" · ");
