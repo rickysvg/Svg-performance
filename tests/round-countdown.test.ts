@@ -18,7 +18,7 @@ import {
   countdownDigitAt,
   countdownSound,
 } from "@/lib/round-countdown";
-import { DURATION_STEP_SECONDS, formatDurationPick, stepDurationSeconds } from "@/lib/round-timer";
+import { DURATION_STEP_SECONDS, formatDurationPick, stepDurationSeconds, stepSetRestSeconds } from "@/lib/round-timer";
 import { APP_TIMEZONE, zonedCivilToUtc } from "@/lib/timezone";
 import { logBikeRoundsForUser, rateWorkoutSessionForUser, startWorkoutFromDay } from "@/lib/workouts";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
@@ -58,6 +58,12 @@ describe("round countdown and seconds steppers", () => {
     expect(stepDurationSeconds(180, -1)).toBe(165);
     expect(stepDurationSeconds(15, -1)).toBe(15);
     expect(stepDurationSeconds(10, 1)).toBe(15);
+    expect(stepSetRestSeconds(15, 1, 5)).toBe(20);
+    expect(stepSetRestSeconds(20, -1, 5)).toBe(15);
+    expect(stepSetRestSeconds(0, -1, 5)).toBe(0);
+    expect(stepSetRestSeconds(595, 1, 5)).toBe(600);
+    expect(stepSetRestSeconds(600, 1, 5)).toBe(600);
+    expect(read("src/components/timer/TimerDurationSteppers.tsx")).toContain("stepSetRestSeconds(setRestSeconds, -1, stepSeconds)");
     expect(formatDurationPick(180)).toBe("3:00");
     expect(formatDurationPick(165)).toBe("2:45");
 

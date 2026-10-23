@@ -28,7 +28,7 @@ import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
-import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { chipAfterDayPreview, LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
 
 const NOW = new Date("2026-10-22T18:00:00.000Z");
@@ -586,6 +586,80 @@ describe("past log first paint and finish time", () => {
     expect(overCapHtml).not.toContain("7490:00");
     expect(overCapHtml).toContain("Max 4:00:00");
     expect(overCapHtml).toMatch(/data-testid="log-past-workout-save"[^>]*disabled/);
+
+    const steadyPreview: BackfillPreview = {
+      dayKey: sample!.key,
+      programs: [],
+      saved: [],
+      existing: [],
+      days: [{ key: sample!.key, label: sample!.label }],
+      roundTargets: {
+        bike: {
+          programDayId: "bike-day",
+          exerciseName: "Bike",
+          plannedRounds: 1,
+          daySetCount: 1,
+          sets: 1,
+          rounds: 1,
+          workSeconds: 22 * 60,
+          restSeconds: 0,
+          setRestSeconds: 0,
+          focusRounds: [],
+        },
+      },
+      lastUsed: {},
+      bagRounds: 5,
+      units: "lb",
+      weightAccess: "gym",
+      shadowWeight: null,
+    };
+    const steadyHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: sample!.key,
+        entry: "calendar",
+        label: "Log",
+        timeZone: TZ,
+        defaultOpen: true,
+        initialPreview: steadyPreview,
+      }),
+    );
+    expect(steadyHtml).toContain("1x22:00/0");
+    expect(steadyHtml).toContain("Save · 1×22:00/0 · 22:00");
+    expect(steadyHtml).not.toContain("Work should be between 5 and 900");
+    expect(steadyHtml).not.toContain("Try 2x8 @ 15/15");
+    expect(steadyHtml).toContain('data-testid="log-past-workout-save" class="font-display');
+
+    const rejectedPreview: BackfillPreview = {
+      ...overCapPreview,
+      lastUsed: {
+        bike: {
+          label: "stale",
+          sets: 2,
+          rounds: 8,
+          workSeconds: 2000,
+          restSeconds: 15,
+          setRestSeconds: 60,
+        },
+      },
+    };
+    const rejectedHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: sample!.key,
+        entry: "calendar",
+        label: "Log",
+        timeZone: TZ,
+        defaultOpen: true,
+        initialPreview: rejectedPreview,
+      }),
+    );
+    expect(rejectedHtml).toContain("2x8 @ 33:20/15 r60");
+    expect(rejectedHtml).toContain("Try 2x8 @ 15/15");
+    expect(rejectedHtml).not.toContain("Save · 2×8");
+    expect(rejectedHtml).toMatch(/data-testid="log-past-workout-save"[^>]*disabled/);
+    expect(chipAfterDayPreview(null, true)).toBe("plan");
+    expect(chipAfterDayPreview(null, false)).toBe("bike");
+    expect(chipAfterDayPreview("bag", true)).toBe("bag");
+    expect(chipAfterDayPreview("bike", true)).toBe("bike");
 
     const zeroDone: BackfillFormSeed = {
       title: "2 × 8 rounds · 15/15 · 60s between sets",
@@ -1601,6 +1675,89 @@ describe("today and past interval logs", () => {
       }),
     ).rejects.toThrow("That workout is longer than 4 hours.");
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it("saves a steady bike longer than 15 minutes and still caps multi-round work", async () => {
+    const user = await makeUser("backfill-steady-bike@example.com");
+    await onboard(user.id);
+    const saved = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-20",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "",
+      rpe: null,
+      workSeconds: 22 * 60,
+      restSeconds: 0,
+      roundsPerSet: 1,
+      repeatRounds: 1,
+      doneRounds: 1,
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    const row = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: saved.sessionId },
+      include: { sets: true },
+    });
+    expect(row.sets).toHaveLength(1);
+    expect(row.sets[0]?.durationSeconds).toBe(22 * 60);
+    expect((await readWorkoutTimerFields(saved.sessionId, prisma)).elapsedSeconds).toBe(22 * 60);
+
+    const full = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-19",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "",
+      rpe: null,
+      workSeconds: 4 * 60 * 60,
+      restSeconds: 0,
+      roundsPerSet: 1,
+      repeatRounds: 1,
+      doneRounds: 1,
+    });
+    expect(full.ok).toBe(true);
+    if (!full.ok) return;
+    expect((await readWorkoutTimerFields(full.sessionId, prisma)).elapsedSeconds).toBe(4 * 60 * 60);
+
+    await expect(
+      createBackfillWorkout({
+        userId: user.id,
+        dayKey: "2026-10-18",
+        kind: "bike",
+        resolution: "",
+        now: NOW,
+        title: "",
+        notes: "",
+        rpe: null,
+        workSeconds: 22 * 60,
+        restSeconds: 0,
+        roundsPerSet: 2,
+        repeatRounds: 1,
+        doneRounds: 1,
+      }),
+    ).rejects.toThrow("Work should be between 5 and 900.");
+    await expect(
+      createBackfillWorkout({
+        userId: user.id,
+        dayKey: "2026-10-17",
+        kind: "bike",
+        resolution: "",
+        now: NOW,
+        title: "",
+        notes: "",
+        rpe: null,
+        workSeconds: 4 * 60 * 60 + 1,
+        restSeconds: 0,
+        roundsPerSet: 1,
+        repeatRounds: 1,
+        doneRounds: 1,
+      }),
+    ).rejects.toThrow("That workout is longer than 4 hours.");
   });
 
   it("stamps today with the save time and keeps a past day at noon", async () => {

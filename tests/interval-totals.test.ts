@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IntervalStructureFields } from "@/components/training/IntervalStructureFields";
-import { intervalDurationCapMessage } from "@/lib/interval-shorthand";
+import { intervalConfiguredSeconds, intervalDurationCapMessage } from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
 
 describe("interval totals", () => {
@@ -91,5 +91,28 @@ describe("interval totals", () => {
     expect(html).toContain('data-testid="interval-total-time">4:00:00');
     expect(html).not.toContain("240:00");
     expect(html).not.toContain("Max 4:00:00");
+  });
+
+  it("shares one total for the bike line and the card", () => {
+    const trailing = { sets: 10, rounds: 1, workSeconds: 900, restSeconds: 600, setRestSeconds: 600 };
+    expect(intervalConfiguredSeconds("bike", trailing)).toBe(5 * 3600 + 40 * 60);
+    expect(intervalTotals("bike", trailing, 10).totalSeconds).toBe(intervalConfiguredSeconds("bike", trailing));
+    expect(intervalConfiguredSeconds("round", trailing)).toBe(4 * 60 * 60);
+    const pair = { sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 };
+    expect(intervalConfiguredSeconds("bike", pair)).toBe(intervalTotals("bike", pair, 16).totalSeconds);
+    const html = renderToStaticMarkup(
+      createElement(IntervalStructureFields, {
+        shorthand: "10x25 @ 1:00/0 r0",
+        structure: trailing,
+        done: 10,
+        totalType: "bike",
+        presets: [],
+        onShorthandCommit: () => undefined,
+        onStructure: () => undefined,
+        onDone: () => undefined,
+      }),
+    );
+    expect(html).toContain("That workout is 4:10:00. Max 4:00:00.");
+    expect(html).not.toContain("5:40:00");
   });
 });

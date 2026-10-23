@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   deleteBackfillAction,
@@ -20,7 +20,9 @@ import {
   formatIntervalClock,
   formatIntervalShorthand,
   formatSessionSummary,
+  intervalClockKind,
   INTERVAL_SESSION_MAX_SECONDS,
+  shorthandLineState,
   type IntervalStructure,
 } from "@/lib/interval-shorthand";
 import { intervalTotals, type IntervalTotalType } from "@/lib/interval-totals";
@@ -146,6 +148,15 @@ function structureFor(kind: string, preview: Preview | null): IntervalStructure 
     };
   }
   return defaultStructure(kind, preview?.bagRounds ?? 5);
+}
+
+/**
+ * A preview that returns after the member already picked Bike or Bag must keep
+ * that pick. Otherwise the first tap after a day change is overwritten.
+ */
+export function chipAfterDayPreview<T extends string>(picked: T | null, hasPlan: boolean): T | "plan" | "bike" {
+  if (picked) return picked;
+  return hasPlan ? "plan" : "bike";
 }
 
 function planHint(preview: Preview, kind: BackfillKind | null) {
@@ -285,6 +296,12 @@ function LogPastWorkoutSheet({
     : structureFor(openingKind, initialPreview);
   const [structure, setStructure] = useState<IntervalStructure>(openingStructure);
   const [shorthand, setShorthand] = useState(formatIntervalShorthand(openingStructure));
+  const [draft, setDraft] = useState(shorthand);
+  const [trackedShorthand, setTrackedShorthand] = useState(shorthand);
+  if (shorthand !== trackedShorthand) {
+    setTrackedShorthand(shorthand);
+    setDraft(shorthand);
+  }
   const [done, setDone] = useState(seededInterval ? seededInterval.done : openingStructure.sets * openingStructure.rounds);
   const [editingInterval, setEditingInterval] = useState(Boolean(seededInterval));
   const [intervalKind, setIntervalKind] = useState<RoundKind>(seededInterval?.kind ?? "bike");
@@ -309,9 +326,16 @@ function LogPastWorkoutSheet({
   const [state, formAction, pending] = useActionState<BackfillFormState, FormData>(action, {});
 
   const kind: BackfillKind = chip === "plan" ? (plannedKind(preview) ?? "bike") : chip;
+  const chipPick = useRef<{ dayKey: string; chip: BackfillKind | "plan" | null }>({ dayKey, chip: null });
+
+  function selectDay(nextKey: string) {
+    chipPick.current = { dayKey: nextKey, chip: null };
+    setDayKey(nextKey);
+  }
 
   function applyKind(nextChip: BackfillKind | "plan", loaded: Preview | null) {
     const nextKind = nextChip === "plan" ? (plannedKind(loaded) ?? "bike") : nextChip;
+    chipPick.current = { dayKey, chip: nextChip };
     setChip(nextChip);
     if (loaded && (nextKind === "program" || nextKind === "saved" || nextKind === "custom")) {
       setRows(rowsFor(nextKind, loaded, programId, savedId));
@@ -364,15 +388,17 @@ function LogPastWorkoutSheet({
   useEffect(() => {
     if (mode !== "create" || initialPreview) return;
     let cancelled = false;
-    loadBackfillPreview(dayKey)
+    const requestedDay = dayKey;
+    loadBackfillPreview(requestedDay)
       .then((loaded) => {
         if (cancelled) return;
         setPreview(loaded);
         setDayOptions(loaded.days);
-        if (!dayKey && loaded.dayKey) setDayKey(loaded.dayKey);
+        if (!requestedDay && loaded.dayKey) setDayKey(loaded.dayKey);
         const planned = plannedKind(loaded);
-        const nextChip = planned ? "plan" : "bike";
-        const nextKind = planned ?? "bike";
+        const picked = chipPick.current.dayKey === requestedDay ? chipPick.current.chip : null;
+        const nextChip = chipAfterDayPreview(picked, planned != null);
+        const nextKind = nextChip === "plan" ? (planned ?? "bike") : nextChip;
         setChip(nextChip);
         setProgramId(loaded.programs[0]?.programDayId ?? "");
         setSavedId(loaded.saved[0]?.id ?? "");
@@ -462,15 +488,21 @@ function LogPastWorkoutSheet({
   ).totalSeconds;
   const overDuration = showingInterval && configuredSeconds > INTERVAL_SESSION_MAX_SECONDS;
   const needsOneSet = showingInterval && done < 1;
+  const lineState = showingInterval
+    ? shorthandLineState(draft, structure, intervalClockKind(intervalType))
+    : { error: "", matches: true, blocked: false };
+  const lineBlocked = lineState.blocked && !lineState.matches;
   const saveText = pending
     ? "Saving…"
     : mode === "edit"
       ? "Save changes"
-      : isStructureKind(kind) || kind === "shadow"
-        ? overDuration
-          ? `Save · ${kind === "shadow" ? "Shadow" : summary}`
-          : `Save · ${kind === "shadow" ? "Shadow" : summary} · ${clock(totals.totalSeconds)}`
-        : "Save workout";
+      : lineBlocked
+        ? "Save"
+        : isStructureKind(kind) || kind === "shadow"
+          ? overDuration
+            ? `Save · ${kind === "shadow" ? "Shadow" : summary}`
+            : `Save · ${kind === "shadow" ? "Shadow" : summary} · ${clock(totals.totalSeconds)}`
+          : "Save workout";
   const last = isRoundKind(kind) || kind === "shadow" ? preview?.lastUsed[kind] : undefined;
   const presets = [
     ...(last
@@ -539,7 +571,7 @@ function LogPastWorkoutSheet({
                     disabled={!days[dayIndex + 1]}
                     onClick={() => {
                       const older = days[dayIndex + 1];
-                      if (older) setDayKey(older.key);
+                      if (older) selectDay(older.key);
                     }}
                     className="flex size-11 items-center justify-center rounded-full text-lg disabled:opacity-30"
                   >
@@ -552,7 +584,7 @@ function LogPastWorkoutSheet({
                     disabled={dayIndex <= 0}
                     onClick={() => {
                       const newer = days[dayIndex - 1];
-                      if (newer) setDayKey(newer.key);
+                      if (newer) selectDay(newer.key);
                     }}
                     className="flex size-11 items-center justify-center rounded-full text-lg disabled:opacity-30"
                   >
@@ -657,6 +689,7 @@ function LogPastWorkoutSheet({
                   onShorthandCommit={setShorthand}
                   onStructure={changeStructure}
                   onLiveStructure={(next) => applyStructure(next, false)}
+                  onDraft={setDraft}
                   onDone={setDone}
                 />
                 <input type="hidden" name="roundsPerSet" value={structure.rounds} />
@@ -903,7 +936,7 @@ function LogPastWorkoutSheet({
                   type="button"
                   data-testid="log-past-workout-confirm"
                   onClick={() => setConfirming(true)}
-                  disabled={overDuration || needsOneSet}
+                  disabled={overDuration || needsOneSet || lineBlocked}
                   className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   Review changes
@@ -913,7 +946,7 @@ function LogPastWorkoutSheet({
                 <button
                   type="submit"
                   data-testid="log-past-workout-save"
-                  disabled={pending || overDuration || needsOneSet || (mode === "create" && !preview)}
+                  disabled={pending || overDuration || needsOneSet || lineBlocked || (mode === "create" && !preview)}
                   className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   {saveText}

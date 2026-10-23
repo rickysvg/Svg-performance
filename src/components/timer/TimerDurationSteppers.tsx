@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type MouseEvent, type PointerEvent } from "react";
-import { formatDurationPick, stepDurationSeconds } from "@/lib/round-timer";
+import { formatDurationPick, stepDurationSeconds, stepSetRestSeconds } from "@/lib/round-timer";
 
 const WORK_MAX = 15 * 60;
 const REST_MAX = 10 * 60;
@@ -99,8 +99,8 @@ export function TimerDurationSteppers({
           label="Set rest"
           value={formatDurationPick(setRestSeconds)}
           disabled={sets <= 1}
-          onDec={() => onSets({ sets, setRestSeconds: Math.max(0, setRestSeconds - 15) })}
-          onInc={() => onSets({ sets, setRestSeconds: Math.min(600, setRestSeconds + 15) })}
+          onDec={() => onSets({ sets, setRestSeconds: stepSetRestSeconds(setRestSeconds, -1, stepSeconds) })}
+          onInc={() => onSets({ sets, setRestSeconds: stepSetRestSeconds(setRestSeconds, 1, stepSeconds) })}
         />
       </div>
     ) : null}

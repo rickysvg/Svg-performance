@@ -4,15 +4,19 @@ import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from 
 import {
   clampIntervalStructure,
   commitShorthand,
+  draftCount,
   formatIntervalClock,
   formatIntervalShorthand,
+  intervalClockKind,
+  intervalConfiguredSeconds,
   intervalDurationCapMessage,
+  intervalWorkMax,
   INTERVAL_REST_MAX,
   INTERVAL_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
   INTERVAL_SET_REST_MAX,
-  INTERVAL_WORK_MAX,
   INTERVAL_WORK_MIN,
+  shorthandLineState,
   stepSeconds,
   type IntervalStructure,
 } from "@/lib/interval-shorthand";
@@ -39,6 +43,7 @@ export function IntervalStructureFields({
   onShorthandCommit,
   onStructure,
   onLiveStructure,
+  onDraft,
   onDone,
 }: {
   shorthand: string;
@@ -51,29 +56,18 @@ export function IntervalStructureFields({
   onStructure: (next: IntervalStructure) => void;
   /** Updates the steppers while the member is still typing. Does not rewrite the line. */
   onLiveStructure?: (next: IntervalStructure) => void;
+  /** The text currently in the field, including a line that has not been accepted. */
+  onDraft?: (text: string) => void;
   onDone: (done: number) => void;
 }) {
   const [line, setLine] = useState(shorthand);
   const [trackedShorthand, setTrackedShorthand] = useState(shorthand);
-  const [error, setError] = useState("");
-  const structureRef = useRef(structure);
-  const liveRef = useRef(onLiveStructure ?? onStructure);
   if (shorthand !== trackedShorthand) {
     setTrackedShorthand(shorthand);
     setLine(shorthand);
   }
-  useEffect(() => {
-    structureRef.current = structure;
-    liveRef.current = onLiveStructure ?? onStructure;
-  });
-  useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const next = commitShorthand(line, structureRef.current);
-      setError(next.error);
-      if (!next.error) liveRef.current(next.structure);
-    }, 200);
-    return () => window.clearTimeout(handle);
-  }, [line]);
+  const mode = intervalClockKind(totalType);
+  const lineState = shorthandLineState(line, structure, mode);
   const totalRounds = Math.max(1, structure.sets * structure.rounds);
   const spec = {
     sets: structure.sets,
@@ -83,17 +77,28 @@ export function IntervalStructureFields({
     setRestSeconds: structure.setRestSeconds,
   };
   const totals = intervalTotals(totalType, spec, Math.min(totalRounds, Math.max(0, done)));
-  const configured = intervalTotals(totalType, spec, totalRounds);
-  const overCap = configured.totalSeconds > INTERVAL_SESSION_MAX_SECONDS;
+  const configuredSeconds = intervalConfiguredSeconds(mode, spec);
+  const structureOver = configuredSeconds > INTERVAL_SESSION_MAX_SECONDS;
+  const lineCap = lineState.error.startsWith("That workout is ");
+  const capMessage =
+    lineCap && !lineState.matches ? lineState.error : structureOver ? intervalDurationCapMessage(configuredSeconds) : "";
+  const hint = lineState.error && !lineCap ? lineState.error : "";
   const setsLocked = structure.sets <= 1;
+  const workMax = intervalWorkMax(structure);
 
   function commitLine(text: string) {
-    const next = commitShorthand(text, structure);
-    setError(next.error);
+    const next = commitShorthand(text, structure, mode);
     if (!next.error) {
       onShorthandCommit(formatIntervalShorthand(next.structure));
       onStructure(next.structure);
     }
+  }
+
+  function editLine(text: string) {
+    setLine(text);
+    onDraft?.(text);
+    const next = commitShorthand(text, structure, mode);
+    if (!next.error) (onLiveStructure ?? onStructure)(next.structure);
   }
 
   function patch(partial: Partial<IntervalStructure>) {
@@ -111,10 +116,7 @@ export function IntervalStructureFields({
         <span className="sr-only">Interval shorthand</span>
         <input
           value={line}
-          onChange={(event) => {
-            setLine(event.target.value);
-            setError("");
-          }}
+          onChange={(event) => editLine(event.target.value)}
           onBlur={() => commitLine(line)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -127,14 +129,14 @@ export function IntervalStructureFields({
           autoCorrect="off"
           spellCheck={false}
           enterKeyHint="done"
-          aria-invalid={error ? true : undefined}
+          aria-invalid={lineState.error ? true : undefined}
           data-testid="interval-shorthand"
           className="h-11 w-full rounded-2xl border border-[#CBF805] bg-black px-3 font-mono text-base text-[#CBF805]"
         />
       </label>
-      {error && !overCap ? (
+      {hint ? (
         <p className="text-sm text-[#FF3B3B]" role="alert" data-testid="interval-shorthand-error">
-          {error}
+          {hint}
         </p>
       ) : null}
       {presets.length > 0 ? (
@@ -156,8 +158,8 @@ export function IntervalStructureFields({
           field="work"
           label="Work s"
           value={structure.workSeconds}
-          onDec={() => patch({ workSeconds: stepSeconds(structure.workSeconds, -1, INTERVAL_WORK_MIN, INTERVAL_WORK_MAX) })}
-          onInc={() => patch({ workSeconds: stepSeconds(structure.workSeconds, 1, INTERVAL_WORK_MIN, INTERVAL_WORK_MAX) })}
+          onDec={() => patch({ workSeconds: stepSeconds(structure.workSeconds, -1, INTERVAL_WORK_MIN, workMax) })}
+          onInc={() => patch({ workSeconds: stepSeconds(structure.workSeconds, 1, INTERVAL_WORK_MIN, workMax) })}
           onCommit={(value) => patch({ workSeconds: value })}
         />
         <CompactStepper
@@ -198,6 +200,7 @@ export function IntervalStructureFields({
             field="done"
             label="Done"
             value={Math.min(totalRounds, Math.max(0, done))}
+            live
             onDec={() => onDone(Math.max(0, done - 1))}
             onInc={() => onDone(Math.min(totalRounds, done + 1))}
             onCommit={commitDone}
@@ -206,11 +209,11 @@ export function IntervalStructureFields({
       </div>
       <div className="rounded-2xl border border-line bg-card px-4 py-3" data-testid="interval-total">
         <p className="font-display text-2xl text-[#CBF805]" data-testid="interval-total-time">
-          {overCap ? "Max 4:00:00" : formatIntervalClock(totals.totalSeconds)}
+          {capMessage ? "Max 4:00:00" : formatIntervalClock(totals.totalSeconds)}
         </p>
-        {overCap ? (
+        {capMessage ? (
           <p className="text-sm text-[#FF3B3B]" role="alert" data-testid="interval-duration-cap">
-            {intervalDurationCapMessage(configured.totalSeconds)}
+            {capMessage}
           </p>
         ) : (
           <p className="text-sm text-white/70">
@@ -227,6 +230,7 @@ function CompactStepper({
   label,
   value,
   disabled = false,
+  live = false,
   onDec,
   onInc,
   onCommit,
@@ -235,6 +239,8 @@ function CompactStepper({
   label: string;
   value: number;
   disabled?: boolean;
+  /** Report a typed value on each change. Done uses this so 0 shows its message before blur. */
+  live?: boolean;
   onDec: () => void;
   onInc: () => void;
   onCommit: (value: number) => void;
@@ -254,6 +260,14 @@ function CompactStepper({
           inputMode="numeric"
           defaultValue={value}
           aria-label={label}
+          onChange={
+            live
+              ? (event) => {
+                  const next = draftCount(event.target.value);
+                  if (next != null) onCommit(next);
+                }
+              : undefined
+          }
           onBlur={(event) => {
             const parsed = Number(event.target.value);
             if (Number.isFinite(parsed)) onCommit(parsed);
