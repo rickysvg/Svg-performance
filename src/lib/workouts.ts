@@ -80,6 +80,7 @@ import {
   plausibleElapsed,
   resolveSessionElapsed,
   resumeStoredElapsed,
+  sessionRecordsActivity,
   usableStoredElapsed,
 } from "@/lib/session-elapsed";
 import {
@@ -1167,10 +1168,10 @@ async function findCompletedSameDaySession(
 }
 
 /**
- * Mark the open logger as active and fold the gap since the last mark.
+ * Mark a live draft as active and fold the gap since the last mark.
  * A gap of ten minutes or less counts in full. A longer gap counts as ten
- * minutes. This does not touch sets or updatedAt, so a draft autosave is not
- * marked stale.
+ * minutes. Partial and complete logs are rejected. This does not touch sets
+ * or updatedAt, so a draft autosave is not marked stale.
  */
 export async function recordWorkoutActivityForUser(input: {
   userId: string;
@@ -1184,7 +1185,9 @@ export async function recordWorkoutActivityForUser(input: {
   if (!existing || existing.userId !== input.userId) {
     throw new NotFoundError("Workout not found.");
   }
-  if (existing.status === "complete") return { elapsedSeconds: null as number | null, timerStartedAt: null as Date | null };
+  if (!sessionRecordsActivity(existing.status)) {
+    throw new AppError("WORKOUT", "Only a live draft can record activity.");
+  }
   if (!(await workoutTimerColumnsAvailable(prisma))) {
     return { elapsedSeconds: null as number | null, timerStartedAt: null as Date | null };
   }
@@ -1205,7 +1208,7 @@ export async function recordWorkoutActivityForUser(input: {
   await prisma.$executeRaw`
     UPDATE "WorkoutSession"
     SET "elapsedSeconds" = ${elapsedSeconds}, "timerStartedAt" = ${now}
-    WHERE "id" = ${existing.id} AND "userId" = ${input.userId} AND "status" != 'complete'
+    WHERE "id" = ${existing.id} AND "userId" = ${input.userId} AND "status" = 'draft'
   `;
   return { elapsedSeconds, timerStartedAt: now };
 }

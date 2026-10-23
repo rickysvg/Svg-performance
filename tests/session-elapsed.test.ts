@@ -6,7 +6,9 @@ import {
   formatSessionElapsed,
   freezeElapsedOnSave,
   resolveSessionElapsed,
+  sessionRecordsActivity,
   STALE_DRAFT_SECONDS,
+  wakeActivityClock,
 } from "@/lib/session-elapsed";
 
 const NOW = new Date("2026-10-21T18:00:00.000Z");
@@ -164,6 +166,31 @@ describe("session header elapsed clock", () => {
     };
     expect(resolveSessionElapsed(locked, NOW).seconds).toBe(active + 180);
     expect(elapsedSecondsToFreeze(locked, NOW, active + 180)).toBe(active + 180);
+  });
+
+  it("ticks again as soon as the logger wakes after a gap past ten minutes", () => {
+    const base = 31 * 60 + 27;
+    const anchor = new Date(NOW.getTime() - 11 * 60 * 1000);
+    const asleep = {
+      status: "draft" as const,
+      createdAt: new Date(NOW.getTime() - 60 * 60 * 1000),
+      elapsedSeconds: base,
+      timerStartedAt: anchor,
+    };
+    expect(resolveSessionElapsed(asleep, NOW).seconds).toBe(base + 10 * 60);
+    expect(resolveSessionElapsed(asleep, new Date(NOW.getTime() + 30_000)).seconds).toBe(base + 10 * 60);
+    const woken = wakeActivityClock(base, anchor.getTime(), NOW.getTime());
+    expect(woken.elapsed).toBe(base + 10 * 60);
+    expect(woken.at).toBe(NOW.getTime());
+    expect(
+      resolveSessionElapsed(
+        { ...asleep, elapsedSeconds: woken.elapsed, timerStartedAt: woken.at },
+        new Date(NOW.getTime() + 1000),
+      ).seconds,
+    ).toBe(base + 10 * 60 + 1);
+    expect(sessionRecordsActivity("draft")).toBe(true);
+    expect(sessionRecordsActivity("partial")).toBe(false);
+    expect(sessionRecordsActivity("complete")).toBe(false);
   });
 
   it("keeps a capped clock when a resumed save is stale", () => {

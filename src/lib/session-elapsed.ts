@@ -112,6 +112,26 @@ export function foldActivityGap(
   return Math.min(cap, base + creditActivityGap(gapSeconds));
 }
 
+/** Only a draft that was started or resumed may mark activity. A saved partial is view-only. */
+export function sessionRecordsActivity(status: string | null | undefined) {
+  return status === "draft";
+}
+
+/**
+ * Move the activity anchor to now and keep the credited gap.
+ * A gap past ten minutes stays on the old total until this runs, so the
+ * header must call it on visibility, focus, and pageshow instead of waiting
+ * for the next heartbeat.
+ */
+export function wakeActivityClock(elapsedSeconds: number, anchorMs: number, nowMs: number) {
+  const gap =
+    Number.isFinite(anchorMs) && Number.isFinite(nowMs) ? Math.floor((nowMs - anchorMs) / 1000) : 0;
+  return {
+    elapsed: foldActivityGap(elapsedSeconds, gap),
+    at: Number.isFinite(nowMs) ? nowMs : anchorMs,
+  };
+}
+
 /**
  * Wall-clock gap worth storing. Null when the gap is the cap or a stale draft
  * left open, so finalize and resume do not write 4:00:00.

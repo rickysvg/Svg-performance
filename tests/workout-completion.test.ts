@@ -1242,6 +1242,42 @@ describe("a workout is complete only after a logged save", () => {
     expect((await readWorkoutTimerFields(fresh.id, prisma)).elapsedSeconds).toBe(600 + 10 * 60);
   });
 
+  it("keeps a partial or complete log's time when it is only viewed", async () => {
+    const user = await makeUser("view-activity@example.com");
+    const now = new Date("2026-10-22T18:00:00.000Z");
+    const anchor = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const lookedAt = new Date(now.getTime() + 60_000);
+    for (const [status, stored] of [
+      ["partial", 180],
+      ["complete", 600],
+    ] as const) {
+      const session = await prisma.workoutSession.create({
+        data: {
+          userId: user.id,
+          title: status,
+          performedAt: now,
+          status,
+        },
+      });
+      await prisma.workoutSession.update({
+        where: { id: session.id },
+        data: { elapsedSeconds: stored, timerStartedAt: anchor },
+      });
+      await expect(
+        recordWorkoutActivityForUser({
+          userId: user.id,
+          workoutId: session.id,
+          now: lookedAt,
+        }),
+      ).rejects.toBeInstanceOf(AppError);
+      const timer = await readWorkoutTimerFields(session.id, prisma);
+      expect(timer.elapsedSeconds).toBe(stored);
+      expect(timer.timerStartedAt?.getTime()).toBe(anchor.getTime());
+      const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+      expect(row.status).toBe(status);
+    }
+  });
+
   it("stores a capped duration when a past draft is closed, not the gap until the job runs", async () => {
     const user = await makeUser("finalize-timer@example.com");
     const program = await getDemoProgram();

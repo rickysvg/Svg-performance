@@ -78,10 +78,11 @@ import { nextIncompleteSetId } from "@/lib/logger-progress";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import {
   ACTIVITY_HEARTBEAT_MS,
-  foldActivityGap,
   resolveSessionElapsed,
   resumeStoredElapsed,
   sessionElapsedState,
+  sessionRecordsActivity,
+  wakeActivityClock,
 } from "@/lib/session-elapsed";
 import { exerciseUsesBikeLogger, textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
@@ -345,6 +346,8 @@ let activitySessionId = "";
 let activityElapsed = 0;
 let activityAtMs = 0;
 let activityPersistTimer = 0;
+/** True only while the open logger is a draft. A saved partial must not mark activity. */
+let activityLive = false;
 
 function readSessionClock() {
   // 0 is "not started", not the epoch. The first client read is the resume
@@ -359,6 +362,7 @@ function pokeSessionClock() {
 }
 
 function readActivityClock(sessionId: string, base: number, anchorMs: number) {
+  activityLive = true;
   if (activitySessionId !== sessionId) {
     activitySessionId = sessionId;
     activityElapsed = base;
@@ -371,10 +375,17 @@ function readActivityClock(sessionId: string, base: number, anchorMs: number) {
 }
 
 function noteLoggerActivity(sessionId: string, at = Date.now()) {
-  if (typeof window === "undefined" || activitySessionId !== sessionId || activityAtMs <= 0) return;
-  const gap = Math.floor((at - activityAtMs) / 1000);
-  activityElapsed = foldActivityGap(activityElapsed, gap);
-  activityAtMs = at;
+  if (
+    typeof window === "undefined" ||
+    !activityLive ||
+    activitySessionId !== sessionId ||
+    activityAtMs <= 0
+  ) {
+    return;
+  }
+  const next = wakeActivityClock(activityElapsed, activityAtMs, at);
+  activityElapsed = next.elapsed;
+  activityAtMs = next.at;
   pokeSessionClock();
   if (activityPersistTimer) return;
   activityPersistTimer = window.setTimeout(() => {
@@ -391,17 +402,22 @@ function subscribeSessionClock(onChange: () => void) {
   };
   const kick = window.setTimeout(tick, 0);
   const timer = window.setInterval(tick, 1000);
-  // Wake refreshes the display. It is not a pause: a locked phone keeps counting
-  // until the activity gap reaches ten minutes.
-  const onWake = () => tick();
+  // Fold the gap now. Waiting for the 30s heartbeat leaves the header stuck
+  // at the old time plus 10:00. Hiding the tab still does not pause the clock.
+  const onWake = () => {
+    if (activityLive && activitySessionId) noteLoggerActivity(activitySessionId);
+    tick();
+  };
   document.addEventListener("visibilitychange", onWake);
   window.addEventListener("focus", onWake);
+  window.addEventListener("pageshow", onWake);
   return () => {
     clockListeners.delete(onChange);
     window.clearTimeout(kick);
     window.clearInterval(timer);
     document.removeEventListener("visibilitychange", onWake);
     window.removeEventListener("focus", onWake);
+    window.removeEventListener("pageshow", onWake);
   };
 }
 
@@ -432,15 +448,16 @@ function SessionTimer({
     const created = new Date(createdAt).getTime();
     return Number.isFinite(created) ? created : 0;
   })();
-  const frozen = status === "complete";
+  const live = sessionRecordsActivity(status);
+  if (!live && activitySessionId === sessionId) activityLive = false;
   // Server and the hydration render share the anchor. A live draft picks up the wall clock after that.
   const now = useSyncExternalStore(
-    frozen ? subscribeFrozenClock : subscribeSessionClock,
-    frozen ? () => anchorMs : readSessionClock,
+    live ? subscribeSessionClock : subscribeFrozenClock,
+    live ? readSessionClock : () => anchorMs,
     () => anchorMs,
   );
   const tracked =
-    !frozen && typeof window !== "undefined"
+    live && typeof window !== "undefined"
       ? readActivityClock(sessionId, resumeStoredElapsed(elapsedSeconds) ?? 0, anchorMs)
       : null;
   const view = resolveSessionElapsed(
@@ -454,7 +471,7 @@ function SessionTimer({
     },
     now,
   );
-  const pending = !frozen && now === anchorMs;
+  const pending = live && now === anchorMs;
 
   return (
     <>
@@ -826,7 +843,7 @@ export function WorkoutLogForm({
   }, []);
 
   useEffect(() => {
-    if (session.status === "complete") return;
+    if (!sessionRecordsActivity(session.status)) return;
     const beat = () => {
       if (document.visibilityState !== "visible") return;
       noteLoggerActivity(session.id);
