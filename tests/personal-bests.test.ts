@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   detectNewPrs,
   epley1rm,
+  newPrExerciseCount,
   type DatedSetLike,
 } from "@/lib/personal-bests";
 
@@ -114,8 +115,9 @@ describe("personal record detection", () => {
     ];
     const prs = detectNewPrs([], next, "lb");
     expect(prs.some((row) => row.kind === "longest")).toBe(false);
-    expect(prs.some((row) => row.kind === "most_rounds")).toBe(false);
-    expect(prs).toEqual([]);
+    expect(prs.find((row) => row.kind === "most_rounds")?.value).toBe(2);
+    expect(prs.filter((row) => row.kind !== "most_rounds")).toEqual([]);
+    expect(newPrExerciseCount(prs)).toBe(0);
   });
 
   it("converts stored kg lifts into the athlete's lb preference", () => {

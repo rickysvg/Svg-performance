@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { resumeWorkoutAction } from "@/app/actions/workouts";
 import { notFound, redirect } from "next/navigation";
-import { sessionOpensFinishScreen } from "@/lib/logged-work";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import {
@@ -64,7 +63,9 @@ export default async function WorkoutLogPage({
     await alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null);
   }
   const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
-  if (sessionOpensFinishScreen(session)) {
+  // A partial stays in the logger so it can be corrected or resumed.
+  // Only a finished session opens the recap.
+  if (session.status === "complete") {
     redirect(`/training/log/${session.id}/done`);
   }
   const band = scaleBandFromPrefs(scale);

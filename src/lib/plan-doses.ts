@@ -10,6 +10,7 @@ import { dayKey, mondayOfZoned } from "@/lib/timezone";
 export type ScaledDayPlan = {
   dose: number;
   names: readonly string[];
+  exercises?: readonly { name?: string | null; sets?: number | null }[];
 };
 
 type CalendarScaleInput = {
@@ -36,10 +37,14 @@ export function scaledPlanByProgramDay(catalog: {
       if (!day.id) continue;
       const dose = prescribedSetTotal(day.exercises);
       if (dose <= 0) continue;
-      const names = (day.exercises ?? [])
-        .map((exercise) => (exercise.name ?? "").trim())
-        .filter((name) => name.length > 0);
-      plans.set(day.id, { dose, names });
+      const exercises = (day.exercises ?? [])
+        .map((exercise) => ({
+          name: (exercise.name ?? "").trim(),
+          sets: Math.max(0, Math.round(exercise.sets ?? 0)),
+        }))
+        .filter((exercise) => exercise.name.length > 0);
+      const names = exercises.map((exercise) => exercise.name);
+      plans.set(day.id, { dose, names, exercises });
     }
   }
   return plans;

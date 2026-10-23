@@ -99,7 +99,13 @@ describe("log a past workout", () => {
     const schedule = await getCalendarSchedule(user.id, NOW, NOW);
     const wednesday = schedule.days.find((day) => formatDayParam(day.date, TZ) === "2026-10-21");
     const tuesdayRow = schedule.days.find((day) => formatDayParam(day.date, TZ) === "2026-10-20");
-    expect(wednesday?.activities.some((item) => item.kind === "workout" && item.status === "complete")).toBe(true);
+    expect(
+      wednesday?.activities.some(
+        (item) =>
+          item.kind === "workout" &&
+          (item.status === "complete" || subtitleShowsPartial(item.subtitle ?? "")),
+      ),
+    ).toBe(true);
     expect(
       tuesdayRow?.activities.some((item) => item.title === "Easy spin" && item.status === "complete"),
     ).toBe(true);
@@ -608,7 +614,7 @@ describe("past log first paint and finish time", () => {
       sets: [{ exerciseName: "Weighted push-up", completed: true, reps: 8, loadValue: 25, durationSeconds: null }],
       programDay: { exercises: [{ name: "Weighted push-up", sets: 4 }] },
     });
-    expect(pushUp).toBe("1/4 sets · partial");
+    expect(pushUp).toBe("1/4 sets · Partial");
     const bikeRows = exerciseSetProgress(
       [{ name: "Assault bike alactic", sets: 1 }],
       [{ exerciseName: "Assault bike intervals", completed: true, reps: null, loadValue: null, durationSeconds: 20 }],

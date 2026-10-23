@@ -405,9 +405,16 @@ export default async function TrainingPage({
         const dayPlan = focus.dayPlan;
         const visible = focus.weekStart === viewedWeek;
         const replacement = focus.dayPlans.find((plan) => plan.mode === "replace");
+        const planResume = focus.dayPlans.find((plan) => !plan.complete && plan.draftId)?.draftId;
         const trainCta = focus.isToday
           ? primaryTrainCta({
-              resumeHref: resumeId ? `/training/log/${resumeId}` : null,
+              resumeHref: focus.replaced
+                ? planResume
+                  ? `/training/log/${planResume}`
+                  : null
+                : resumeId
+                  ? `/training/log/${resumeId}`
+                  : null,
               startHref: explicitStartHref({
                 replaced: focus.replaced,
                 plans: focus.dayPlans,

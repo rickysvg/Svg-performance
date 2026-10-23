@@ -18,6 +18,16 @@ export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
         {exerciseCountLabel(plan.exerciseCount)}
         {plan.exerciseNames.length > 0 ? ` · ${plan.exerciseNames.slice(0, 3).join(" · ")}` : ""}
       </p>
+      {plan.draftId && !plan.complete ? (
+        <Link
+          data-testid={`training-resume-custom-${plan.id}`}
+          href={`/training/log/${plan.draftId}`}
+          data-resume-plan={plan.id}
+          className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-black"
+        >
+          Resume
+        </Link>
+      ) : null}
       <Link
         data-testid={`training-view-custom-${plan.id}`}
         href={`/training/my-workouts/day/${plan.id}`}

@@ -1971,7 +1971,9 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
     }),
     userId,
   );
-  if (existing.status !== "complete") return attachWorkoutTimer(existing, prisma);
+  if (existing.status !== "complete" && existing.status !== "partial") {
+    return attachWorkoutTimer(existing, prisma);
+  }
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
   // Keep a real saved clock. A missing value or the 4 hour cap is not training time.

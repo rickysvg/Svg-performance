@@ -1,4 +1,5 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { historySessionText } from "@/lib/session-progress";
 import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 import { defaultLoggedReps, parseAddedPlan } from "@/lib/logger-insert";
@@ -268,23 +269,20 @@ export function completionListLabel(session: {
 }
 
 /**
- * History and calendar share exercise progress. A 1-of-4 program set reads
- * "1/4 sets · partial", the same fraction the calendar row uses.
+ * History count. Same line Calendar and the finish screen render.
+ * Pass the scaled dose from calendarPlanDoses when the session is planned.
  */
-export function historyCountLine(session: {
-  status: string;
-  sets: TickedSet[];
-  plannedSetCount?: number | null;
-  programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
-}) {
-  const planned = session.programDay?.exercises ?? [];
-  if (planned.length > 0) {
-    const progress = sessionProgressLabel(exerciseSetProgress(planned, session.sets));
-    if (progress) return progress;
-  }
-  const setCount = tickedSetCount(session.sets);
-  const label = completionListLabel(session);
-  return `${label} · ${setCount} set${setCount === 1 ? "" : "s"}`;
+export function historyCountLine(
+  session: {
+    status: string;
+    sets: TickedSet[];
+    plannedSetCount?: number | null;
+    programDayId?: string | null;
+    programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
+  },
+  dose?: { dose?: number | null; exercises?: { name?: string | null; sets?: number | null }[] | null } | null,
+) {
+  return historySessionText(session, dose);
 }
 
 export type ExerciseProgressState = "complete" | "partial" | "open";

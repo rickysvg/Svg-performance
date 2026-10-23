@@ -40,6 +40,7 @@ export function WorkoutWinScreen({
   savedWorkoutName,
   exerciseProgress = [],
   partial = false,
+  statusLabel,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -54,6 +55,8 @@ export function WorkoutWinScreen({
   savedWorkoutName: string;
   exerciseProgress?: { name: string; ticked: number; planned: number; state: string }[];
   partial?: boolean;
+  /** Same progress line History and Calendar use. */
+  statusLabel: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -133,15 +136,19 @@ export function WorkoutWinScreen({
             </div>
           )}
           <div className={`relative z-20 ${reduce ? "badge-unlock-fade" : "badge-unlock-fly"}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/workout_complete_hero.webp"
-              alt=""
-              width={112}
-              height={112}
-              className="workout-win-crest mx-auto h-24 w-24"
-              draggable={false}
-            />
+            {partial ? null : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/workout_complete_hero.webp"
+                  alt=""
+                  width={112}
+                  height={112}
+                  className="workout-win-crest mx-auto h-24 w-24"
+                  draggable={false}
+                />
+              </>
+            )}
           </div>
         </div>
         <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
@@ -154,8 +161,9 @@ export function WorkoutWinScreen({
           className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#cbf805]"
           data-workout-saved
           data-workout-status={partial ? "partial" : "complete"}
+          data-session-progress
         >
-          {partial ? "Partial" : "Saved"}
+          {statusLabel}
         </p>
         {exerciseProgress.length > 0 ? (
           <ul data-exercise-progress className="mt-4 w-full space-y-1 text-left text-sm">

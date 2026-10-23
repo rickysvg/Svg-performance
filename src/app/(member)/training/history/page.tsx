@@ -7,7 +7,9 @@ import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
 import { bikeHistoryLine } from "@/lib/bike-chooser";
 import { roundHistoryLine } from "@/lib/round-session";
-import { completionListLabel, historyCountLine } from "@/lib/logged-work";
+import { calendarPlanDoses } from "@/lib/plan-doses";
+import { sessionProgress } from "@/lib/session-progress";
+import { dayKey, mondayOfZoned } from "@/lib/timezone";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { backfillFormSeed } from "@/lib/backfill-workout";
@@ -21,6 +23,17 @@ export default async function HistoryPage() {
   const profile = await getProfileForUser(user.id);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const sessions = await listWorkoutSessionsForUser(user.id);
+  const weeks = new Map<string, Date>();
+  for (const session of sessions) {
+    const performed = new Date(session.performedAt);
+    const week = dayKey(mondayOfZoned(performed, timeZone), timeZone);
+    if (!weeks.has(week)) weeks.set(week, performed);
+  }
+  const doseByWeek = new Map(
+    await Promise.all(
+      [...weeks].map(async ([week, date]) => [week, await calendarPlanDoses(user.id, date)] as const),
+    ),
+  );
 
   return (
     <main className="space-y-6">
@@ -69,9 +82,20 @@ export default async function HistoryPage() {
       ) : (
         <ul className="space-y-3">
           {sessions.map((session) => {
-            const countLine = historyCountLine(session);
-            const statusWord = completionListLabel(session);
-            const finished = statusWord === "complete";
+            const week = dayKey(mondayOfZoned(new Date(session.performedAt), timeZone), timeZone);
+            const plan = session.programDayId ? doseByWeek.get(week)?.get(session.programDayId) : undefined;
+            const progress = sessionProgress(
+              session,
+              plan
+                ? {
+                    dose: plan.dose,
+                    names: plan.names,
+                    exercises: plan.exercises ?? session.programDay?.exercises,
+                  }
+                : { exercises: session.programDay?.exercises },
+            );
+            const countLine = progress.text;
+            const finished = progress.done;
             const names = loggedExerciseNamesInOrder(session.sets);
             const liveName = session.savedWorkout?.name?.trim();
             const title = liveName || memberFacingTitle(session.title);
@@ -98,7 +122,8 @@ export default async function HistoryPage() {
                 ) : null}
                 <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
                   {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} ·{" "}
-                  {detailLine ? `${statusWord} · ${detailLine}` : countLine}
+                  <span data-session-progress>{countLine}</span>
+                  {detailLine ? ` · ${detailLine}` : ""}
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
                     : finished && !bagLine

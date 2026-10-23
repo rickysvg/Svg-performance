@@ -186,8 +186,9 @@ describe("QA Oct 21 saved logs", () => {
     const mondayLift = onDay("2026-10-19")?.activities.find(
       (item) => item.kind === "workout" && /lift 1/i.test(item.title),
     );
-    expect(wednesdayCard?.status).toBe("complete");
-    expect(wednesdayCard?.subtitle.startsWith("Logged this day")).toBe(true);
+    expect(wednesdayCard?.status).not.toBe("complete");
+    expect(wednesdayCard?.subtitle).not.toContain("Logged this day");
+    expect(wednesdayCard?.setCountLabel).toBe("34/36 sets · Partial");
     expect(thursdayCard?.status).not.toBe("complete");
     expect(mondayLift?.subtitle).toContain("· Missed");
     const monday = mondayOfZoned(wednesday, "America/Denver");
@@ -210,7 +211,7 @@ describe("QA Oct 21 saved logs", () => {
     expect(logged).toEqual(["2026-10-21"]);
     expect(doneOnWednesday).toContain(lift?.programDayId);
     expect(doneOnThursday).not.toContain(lift?.programDayId);
-    expect(weekSessionTally(after.days).done).toBe(1);
+    expect(weekSessionTally(after.days).partial).toBeGreaterThan(0);
   });
 
   it("keeps a blank done set checked after a later save", async () => {

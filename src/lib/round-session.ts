@@ -143,12 +143,13 @@ export function roundLogFromClock(input: {
   }
   if (phase === "work") {
     const intoWork = work > 0 ? Math.min(work, phaseElapsed) : phaseElapsed;
-    // The first instant of the next round continues the rest-phase total.
-    // Adding the full rest here jumps the clock the moment round 2 starts.
+    // Rests that already finished sit in the total once the next round starts.
+    // End of work N then matches the start of rest N, and round 2+ keeps those rests.
+    // The rest phase below still omits the rest that is in progress.
     return {
       roundsCompleted,
       restSeconds: configuredRest,
-      elapsedSeconds: roundSessionDuration(roundsCompleted, work, configuredRest) + intoWork,
+      elapsedSeconds: roundsCompleted * work + roundsCompleted * configuredRest + intoWork,
     };
   }
   return {

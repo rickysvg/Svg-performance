@@ -604,7 +604,7 @@ describe("week day carousel", () => {
       .find((item) => item.kind === "workout" && item.programDayId === picked!.programDayId);
     expect(card?.subtitle).toContain("· Partial");
     expect(card?.subtitle).not.toContain("· Missed");
-    const counted = /^(\d+)\/(\d+) sets$/.exec(card?.setCountLabel ?? "");
+    const counted = /^(\d+)\/(\d+) sets/.exec(card?.setCountLabel ?? "");
     expect(counted).toBeTruthy();
     expect(Number(counted?.[1])).toBeGreaterThan(0);
     expect(Number(counted?.[1])).toBeLessThan(Number(counted?.[2]));

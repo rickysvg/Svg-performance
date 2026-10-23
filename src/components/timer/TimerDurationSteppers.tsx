@@ -82,31 +82,39 @@ export function TimerDurationSteppers({
 
 /**
  * One step per tap that ends inside the button. pointerdown only arms the tap.
- * pointerup applies when the pointer is still inside. A drag-off applies nothing
- * and leaves the next keyboard Enter free to apply. A click after a completed
- * pointer tap is swallowed. A click with no pointer (Enter) applies once.
+ * pointerup applies when the pointer is still inside. A drag-off applies nothing.
+ * Chrome still fires click on the button after that pointerup, so the click that
+ * belongs to the pointer sequence is swallowed. A later click with no pointer
+ * (Enter) applies once. pointercancel is a touch drag-off and does not swallow Enter.
  */
 export function applyStepperTap(
-  event: "pointerdown" | "pointerup" | "click",
-  state: { fromPointer: boolean; inside: boolean },
+  event: "pointerdown" | "pointerup" | "pointercancel" | "click",
+  state: { fromPointer: boolean; inside: boolean; suppressClick: boolean },
   apply: () => void,
 ) {
   if (event === "pointerdown") {
     state.fromPointer = true;
     state.inside = true;
+    state.suppressClick = false;
+    return;
+  }
+  if (event === "pointercancel") {
+    state.fromPointer = false;
+    state.inside = false;
+    state.suppressClick = false;
     return;
   }
   if (event === "pointerup") {
     const inside = state.inside;
     state.inside = false;
-    if (!inside) {
-      state.fromPointer = false;
-      return;
-    }
+    state.fromPointer = false;
+    state.suppressClick = true;
+    if (!inside) return;
     apply();
     return;
   }
-  if (state.fromPointer) {
+  if (state.suppressClick || state.fromPointer) {
+    state.suppressClick = false;
     state.fromPointer = false;
     return;
   }
@@ -126,9 +134,12 @@ function Stepper({
   onDec: () => void;
   onInc: () => void;
 }) {
-  const decPointer = useRef({ fromPointer: false, inside: false });
-  const incPointer = useRef({ fromPointer: false, inside: false });
-  function press(apply: () => void, state: { fromPointer: boolean; inside: boolean }) {
+  const decPointer = useRef({ fromPointer: false, inside: false, suppressClick: false });
+  const incPointer = useRef({ fromPointer: false, inside: false, suppressClick: false });
+  function press(
+    apply: () => void,
+    state: { fromPointer: boolean; inside: boolean; suppressClick: boolean },
+  ) {
     return {
       onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
         if (event.button !== 0) return;
@@ -147,8 +158,7 @@ function Stepper({
         applyStepperTap("pointerup", state, apply);
       },
       onPointerCancel: () => {
-        state.inside = false;
-        state.fromPointer = false;
+        applyStepperTap("pointercancel", state, apply);
       },
       onClick: (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();

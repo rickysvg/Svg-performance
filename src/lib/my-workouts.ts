@@ -527,7 +527,9 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
         status: { in: ["complete", "partial", "draft"] },
         sets: loggedSetSome,
       },
+      orderBy: { updatedAt: "desc" },
       select: {
+        id: true,
         dayPlanId: true,
         status: true,
         plannedSetCount: true,
@@ -553,13 +555,17 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
   ]);
   const complete = new Set<string>();
   const partial = new Set<string>();
+  const openByPlan = new Map<string, string>();
   for (const row of done) {
     if (!row.dayPlanId) continue;
     if (row.status !== "complete" && row.status !== "partial" && row.status !== "draft") continue;
     if (row.status === "draft" && !draftHasResumeWork(row.sets)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
     if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
-    else partial.add(row.dayPlanId);
+    else {
+      partial.add(row.dayPlanId);
+      if (!openByPlan.has(row.dayPlanId)) openByPlan.set(row.dayPlanId, row.id);
+    }
   }
   for (const id of complete) partial.delete(id);
   const draftByPlan = new Map<string, string>();
@@ -580,7 +586,9 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
         exercises,
         complete: complete.has(plan.id),
         partial: partial.has(plan.id),
-        draftId: draftByPlan.get(plan.id) ?? null,
+        draftId: partial.has(plan.id)
+          ? (openByPlan.get(plan.id) ?? draftByPlan.get(plan.id) ?? null)
+          : (draftByPlan.get(plan.id) ?? null),
       },
     ];
   });

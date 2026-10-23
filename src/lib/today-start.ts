@@ -15,6 +15,8 @@ export type ResumableLog = {
   performedAt: Date;
   createdAt?: Date;
   programDayId: string | null;
+  /** Applied My Workout log. It is not the free custom resume. */
+  dayPlanId?: string | null;
   plannedSetCount?: number | null;
   sets: TickedSet[];
   programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
@@ -103,7 +105,7 @@ export function openCustomLog(
   timeZone: string,
 ): OpenProgramLog | null {
   for (const session of sessions) {
-    if (session.programDayId) continue;
+    if (session.programDayId || session.dayPlanId) continue;
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
     if (session.status === "abandoned") continue;
     if (session.status === "draft" && !draftHasResumeWork(session.sets)) continue;
