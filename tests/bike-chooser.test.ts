@@ -202,7 +202,7 @@ describe("bike workout chooser", () => {
         },
       ],
     });
-    expect(chosen).toBe(`${triple.name} · 20s / 10s · 3×8`);
+    expect(chosen).toBe(`${triple.name} · 20s/10s · 8 sprints`);
     expect(chosen).not.toMatch(/completed|open/);
     expect(chosen?.match(/rounds/g)).toHaveLength(1);
   });

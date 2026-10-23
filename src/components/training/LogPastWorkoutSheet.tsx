@@ -13,13 +13,6 @@ import {
 import { useSheetDismiss } from "@/components/useSheetDismiss";
 import type { BackfillKind } from "@/lib/backfill-rules";
 import { BACKFILL_ROUND_MODES, backfillDayOptions } from "@/lib/backfill-rules";
-import {
-  bikeBackfillFormFromSpec,
-  bikeBackfillTotalRounds,
-  DEFAULT_BIKE_BACKFILL,
-  syncBikeBackfillForm,
-  type BikeBackfillFormState,
-} from "@/lib/bike-backfill";
 import type { BackfillFormSeed } from "@/lib/backfill-workout";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
@@ -70,7 +63,6 @@ export function LogPastWorkoutButton({
   timeZone = APP_TIMEZONE,
   seed,
   defaultOpen = false,
-  initialKind,
 }: {
   dayKey?: string;
   entry: "calendar" | "train" | "week" | "history" | "edit" | "delete";
@@ -81,8 +73,6 @@ export function LogPastWorkoutButton({
   seed?: BackfillFormSeed;
   /** Tests open the dialog on the first render. Members open it from the button. */
   defaultOpen?: boolean;
-  /** Tests paint a type before the day preview returns. */
-  initialKind?: BackfillKind;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const testId =
@@ -116,7 +106,6 @@ export function LogPastWorkoutButton({
           mode={entry === "delete" ? "delete" : sessionId ? "edit" : "create"}
           timeZone={timeZone}
           seed={seed}
-          initialKind={initialKind}
           onClose={() => setOpen(false)}
         />
       ) : null}
@@ -130,7 +119,6 @@ function LogPastWorkoutSheet({
   mode,
   timeZone,
   seed,
-  initialKind,
   onClose,
 }: {
   initialDayKey: string;
@@ -138,7 +126,6 @@ function LogPastWorkoutSheet({
   mode: "create" | "edit" | "delete";
   timeZone: string;
   seed?: BackfillFormSeed;
-  initialKind?: BackfillKind;
   onClose: () => void;
 }) {
   const titleId = useId();
@@ -153,8 +140,7 @@ function LogPastWorkoutSheet({
   const [notes, setNotes] = useState(seed?.notes ?? "");
   const [rpe, setRpe] = useState(seed?.sessionRpe != null ? String(seed.sessionRpe) : "");
   const [loadError, setLoadError] = useState("");
-  const [kind, setKind] = useState<BackfillKind>(initialKind ?? "free");
-  const [bikeForm, setBikeForm] = useState<BikeBackfillFormState>(() => bikeBackfillFormFromSpec(DEFAULT_BIKE_BACKFILL));
+  const [kind, setKind] = useState<BackfillKind>("free");
   const [rows, setRows] = useState<ExerciseRow[]>(() => (seed?.exercises ?? []).map(toRow));
   const [programId, setProgramId] = useState("");
   const [savedId, setSavedId] = useState("");
@@ -202,7 +188,6 @@ function LogPastWorkoutSheet({
         setProgramId(first?.programDayId ?? "");
         setSavedId(loaded.saved[0]?.id ?? "");
         setRows(rowsFor(nextKind, loaded, first?.programDayId ?? "", loaded.saved[0]?.id ?? ""));
-        setBikeForm(bikeBackfillFormFromSpec(loaded.bike ?? DEFAULT_BIKE_BACKFILL));
       })
       .catch((error: unknown) => {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : "That day is not available.");
@@ -404,36 +389,40 @@ function LogPastWorkoutSheet({
                 </select>
               </Field>
             ) : null}
-            {mode === "create" && kind === "free" ? (
+            {mode === "create" && (kind === "bike" || kind === "free") ? (
               <Field label="Minutes">
-                <input name="minutes" data-testid="log-past-workout-minutes" inputMode="numeric" defaultValue={30} className={inputClass} />
+                <input name="minutes" data-testid="log-past-workout-minutes" inputMode="numeric" defaultValue={kind === "bike" ? 20 : 30} className={inputClass} />
               </Field>
             ) : null}
-            {mode === "create" && kind === "rounds" ? (
+            {mode === "create" && (kind === "bike" || kind === "rounds") ? (
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Rounds">
-                  <input name="plannedRounds" data-testid="log-past-workout-rounds" inputMode="numeric" defaultValue={3} className={inputClass} />
+                  <input name="plannedRounds" data-testid="log-past-workout-rounds" inputMode="numeric" defaultValue={kind === "rounds" ? 3 : 8} className={inputClass} />
                 </Field>
                 <Field label="Finished">
-                  <input name="doneRounds" data-testid="log-past-workout-done-rounds" inputMode="numeric" defaultValue={3} className={inputClass} />
+                  <input name="doneRounds" data-testid="log-past-workout-done-rounds" inputMode="numeric" defaultValue={kind === "rounds" ? 3 : 8} className={inputClass} />
                 </Field>
               </div>
             ) : null}
             {mode === "create" && kind === "rounds" ? (
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Work (sec)">
-                  <input name="workSeconds" data-testid="log-past-workout-work" inputMode="numeric" defaultValue={180} className={inputClass} />
+                <Field label="Seconds each round">
+                  <input name="workSeconds" inputMode="numeric" defaultValue={180} className={inputClass} />
                 </Field>
-                <Field label="Rest (sec)">
-                  <input name="restSeconds" data-testid="log-past-workout-rest" inputMode="numeric" defaultValue={60} className={inputClass} />
+                <Field label="Rest between rounds">
+                  <input name="restSeconds" inputMode="numeric" defaultValue={60} className={inputClass} />
                 </Field>
               </div>
             ) : null}
             {mode === "create" && kind === "bike" ? (
-              <BikeBackfillFields
-                form={bikeForm}
-                onChange={setBikeForm}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Calories, optional">
+                  <input name="calories" data-testid="log-past-workout-calories" inputMode="numeric" className={inputClass} />
+                </Field>
+                <Field label="Distance, optional">
+                  <input name="distance" data-testid="log-past-workout-distance" inputMode="decimal" className={inputClass} />
+                </Field>
+              </div>
             ) : null}
             {rows.length > 0 && (mode === "edit" || kind === "program" || kind === "saved" || kind === "custom") ? (
               <div className="space-y-2" data-testid="log-past-workout-exercises">
@@ -586,120 +575,6 @@ function LogPastWorkoutSheet({
 
   if (typeof document === "undefined") return sheet;
   return createPortal(sheet, document.body);
-}
-
-function BikeBackfillFields({
-  form,
-  onChange,
-}: {
-  form: BikeBackfillFormState;
-  onChange: (next: BikeBackfillFormState) => void;
-}) {
-  const total = bikeBackfillTotalRounds(form);
-  function editInterval(patch: Partial<Pick<BikeBackfillFormState, "workSeconds" | "restSeconds" | "roundsPerSet" | "sets" | "restBetweenSetsSeconds">>) {
-    onChange(syncBikeBackfillForm(form, { source: "interval", ...patch }));
-  }
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Work (sec)">
-          <input
-            name="workSeconds"
-            data-testid="log-past-workout-work"
-            inputMode="numeric"
-            value={form.workSeconds}
-            onChange={(event) => editInterval({ workSeconds: Number(event.target.value) })}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Rest (sec)">
-          <input
-            name="restSeconds"
-            data-testid="log-past-workout-rest"
-            inputMode="numeric"
-            value={form.restSeconds}
-            onChange={(event) => editInterval({ restSeconds: Number(event.target.value) })}
-            className={inputClass}
-          />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Rounds per set">
-          <input
-            name="roundsPerSet"
-            data-testid="log-past-workout-rounds-per-set"
-            inputMode="numeric"
-            value={form.roundsPerSet}
-            onChange={(event) => editInterval({ roundsPerSet: Number(event.target.value) })}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Sets">
-          <input
-            name="bikeSets"
-            data-testid="log-past-workout-sets"
-            inputMode="numeric"
-            value={form.sets}
-            onChange={(event) => editInterval({ sets: Number(event.target.value) })}
-            className={inputClass}
-          />
-        </Field>
-      </div>
-      <Field label="Rest between sets (sec, optional)">
-        <input
-          name="restBetweenSets"
-          data-testid="log-past-workout-rest-between"
-          inputMode="numeric"
-          value={form.restBetweenSetsSeconds > 0 ? form.restBetweenSetsSeconds : ""}
-          placeholder="0"
-          onChange={(event) => {
-            const raw = event.target.value.trim();
-            editInterval({ restBetweenSetsSeconds: raw === "" ? 0 : Number(raw) });
-          }}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Minutes">
-        <input
-          name="minutes"
-          data-testid="log-past-workout-minutes"
-          inputMode="numeric"
-          value={form.minutes}
-          onChange={(event) => onChange(syncBikeBackfillForm(form, { source: "minutes", minutes: Number(event.target.value) }))}
-          className={inputClass}
-        />
-      </Field>
-      <input type="hidden" name="minutesEdited" value={form.minutesEdited ? "yes" : ""} />
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Rounds">
-          <input
-            data-testid="log-past-workout-total-rounds"
-            readOnly
-            value={total}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Finished">
-          <input
-            name="doneRounds"
-            data-testid="log-past-workout-done-rounds"
-            inputMode="numeric"
-            value={form.doneRounds}
-            onChange={(event) => onChange(syncBikeBackfillForm(form, { source: "finished", doneRounds: Number(event.target.value) }))}
-            className={inputClass}
-          />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Calories, optional">
-          <input name="calories" data-testid="log-past-workout-calories" inputMode="numeric" className={inputClass} />
-        </Field>
-        <Field label="Distance, optional">
-          <input name="distance" data-testid="log-past-workout-distance" inputMode="decimal" className={inputClass} />
-        </Field>
-      </div>
-    </>
-  );
 }
 
 function rowsFor(kind: BackfillKind, preview: Preview, programId: string, savedId: string): ExerciseRow[] {

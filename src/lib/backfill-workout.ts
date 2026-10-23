@@ -1,12 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
-import { bikeTimerLogSets, bikeTimerSessionSeconds, BIKE_TIMER_EXERCISE } from "@/lib/bike-timer-log";
-import { bikeTimerRoundCount } from "@/lib/bike-chooser";
-import {
-  bikeBackfillChoice,
-  bikeBackfillSpecFromExercises,
-  type BikeBackfillSpec,
-} from "@/lib/bike-backfill";
+import { BIKE_TIMER_EXERCISE } from "@/lib/bike-timer-log";
 import { roundLogSets, roundPrescriptionKey, roundSessionDuration, type RoundSessionType } from "@/lib/round-session";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { memberFacingTitle } from "@/lib/member-copy";
@@ -70,8 +64,6 @@ export type BackfillPreview = {
   saved: { id: string; name: string; exercises: BackfillExerciseInput[] }[];
   existing: BackfillExisting[];
   days: { key: string; label: string }[];
-  /** Assault bike prescription on the chosen day, when the plan has one. */
-  bike: BikeBackfillSpec | null;
 };
 
 export type BackfillWriteResult =
@@ -96,9 +88,6 @@ type BackfillPayload = {
   roundMode?: string | null;
   workSeconds?: number | null;
   restSeconds?: number | null;
-  roundsPerSet?: number | null;
-  bikeSets?: number | null;
-  restBetweenSets?: number | null;
   calories?: number | null;
   distance?: number | null;
 };
@@ -144,11 +133,7 @@ export async function sessionsOnCivilDay(userId: string, day: string, timeZone: 
   });
 }
 
-async function programOptionsForDay(
-  userId: string,
-  when: Date,
-  timeZone: string,
-): Promise<{ programs: BackfillProgramOption[]; bike: BikeBackfillSpec | null }> {
+async function programOptionsForDay(userId: string, when: Date, timeZone: string): Promise<BackfillProgramOption[]> {
   const [profile, swaps, catalog, account] = await Promise.all([
     getProfileForUser(userId),
     getWeekPlanSwapsForUser(userId),
@@ -182,24 +167,13 @@ async function programOptionsForDay(
   });
   const resolved = resolvePlanSessions(eased.plan, scaled).filter((session) => session.dayId && session.kind !== "rest");
   const ids = resolved.map((session) => session.dayId).filter((id): id is string => Boolean(id));
-  if (ids.length === 0) return { programs: [], bike: null };
+  if (ids.length === 0) return [];
   const days = await prisma.programDay.findMany({
     where: { id: { in: ids } },
     include: { program: true, exercises: { orderBy: { sortOrder: "asc" } } },
   });
   const byId = new Map(days.map((day) => [day.id, day]));
-  let bike: BikeBackfillSpec | null = null;
-  for (const session of resolved) {
-    const exercises = (session.day?.exercises ?? []) as {
-      name?: string;
-      sets?: number;
-      reps?: string;
-      restSeconds?: number;
-    }[];
-    bike = bikeBackfillSpecFromExercises(exercises);
-    if (bike) break;
-  }
-  const programs = resolved.flatMap((session) => {
+  return resolved.flatMap((session) => {
     const day = session.dayId ? byId.get(session.dayId) : undefined;
     if (!day || day.exercises.length === 0) return [];
     return [
@@ -214,13 +188,10 @@ async function programOptionsForDay(
           done: Math.max(1, exercise.sets),
           reps: exercise.reps,
           logMode: exercise.logMode,
-          restSeconds: exercise.restSeconds,
         })),
       },
     ];
   });
-  if (!bike) bike = bikeBackfillSpecFromExercises(programs.flatMap((program) => program.exercises));
-  return { programs, bike };
 }
 
 export async function previewBackfillDay(userId: string, day: string, now = new Date()): Promise<BackfillPreview> {
@@ -229,12 +200,11 @@ export async function previewBackfillDay(userId: string, day: string, now = new 
   const key = day.trim() || options[0]?.key || "";
   assertBackfillDay(key, now, timeZone);
   const when = performedAtForDayKey(key, timeZone);
-  const [programDay, savedRows, existing] = await Promise.all([
+  const [programs, savedRows, existing] = await Promise.all([
     programOptionsForDay(userId, when, timeZone),
     listSavedWorkouts(userId),
     sessionsOnCivilDay(userId, key, timeZone),
   ]);
-  const programs = programDay.programs;
   const saved = await Promise.all(
     savedRows.slice(0, 20).map(async (row) => {
       const full = await getSavedWorkoutForUser(row.id, userId);
@@ -261,7 +231,6 @@ export async function previewBackfillDay(userId: string, day: string, now = new 
       status: row.status,
     })),
     days: backfillDayOptions(now, timeZone),
-    bike: programDay.bike,
   };
 }
 
@@ -434,68 +403,6 @@ function roundBackfillSets(input: {
   return { sets, plannedSetCount: input.plannedRounds, plannedNames: [input.exerciseName] };
 }
 
-function assertRange(value: number, min: number, max: number, label: string) {
-  if (!Number.isInteger(value) || value < min || value > max) {
-    throw new AppError("WORKOUT", `${label} should be from ${min} to ${max}.`);
-  }
-}
-
-/** Past bike intervals use the live timer's choice key, work-only set length, and round total. */
-function bikeIntervalPayload(input: BackfillPayload, unit: LoadUnit) {
-  const workSeconds = Math.round(input.workSeconds ?? Number.NaN);
-  const restSeconds = Math.round(input.restSeconds ?? Number.NaN);
-  const roundsPerSet = Math.round(input.roundsPerSet ?? Number.NaN);
-  const sets = Math.round(input.bikeSets ?? Number.NaN);
-  const restBetweenSets = input.restBetweenSets == null ? 0 : Math.round(input.restBetweenSets);
-  assertRange(workSeconds, 5, 120, "Work");
-  assertRange(restSeconds, 5, 180, "Rest");
-  assertRange(roundsPerSet, 1, 30, "Rounds per set");
-  assertRange(sets, 1, 10, "Sets");
-  assertRange(restBetweenSets, 0, 600, "Rest between sets");
-  const choice = bikeBackfillChoice({
-    workSeconds,
-    restSeconds,
-    roundsPerSet,
-    sets,
-    restBetweenSetsSeconds: restBetweenSets,
-  });
-  if (!choice) throw new AppError("WORKOUT", "That bike interval cannot be saved.");
-  const plannedRounds = bikeTimerRoundCount(choice);
-  const doneRounds = Math.round(input.doneRounds ?? plannedRounds);
-  if (!Number.isInteger(doneRounds) || doneRounds < 1 || doneRounds > plannedRounds) {
-    throw new AppError("WORKOUT", "Finished rounds cannot be more than the workout.");
-  }
-  const setsWritten = bikeTimerLogSets(choice, unit, doneRounds).map((set) => ({
-    exerciseName: set.exerciseName,
-    setNumber: set.setNumber,
-    reps: null,
-    loadValue: null,
-    loadUnit: unit,
-    logMode: "timed_round" as const,
-    durationSeconds: set.durationSeconds,
-    completed: true,
-    notes: "",
-    prescriptionKey: set.prescriptionKey,
-  }));
-  const prescribed = bikeTimerSessionSeconds(choice, setsWritten.length);
-  let elapsedSeconds = prescribed;
-  if (input.durationSeconds != null && input.durationSeconds > 0) {
-    const posted = Math.round(input.durationSeconds);
-    assertSaneDurationSeconds(posted, "Bike time");
-    elapsedSeconds = posted;
-  }
-  return {
-    title: cleanTitle(input.title, "Assault bike"),
-    notes: notesWithBikeMetrics(input.notes, input.calories ?? null, input.distance ?? null),
-    programDayId: null,
-    savedWorkoutId: null,
-    sets: setsWritten,
-    plannedSetCount: plannedRounds,
-    plannedNames: [BIKE_TIMER_EXERCISE],
-    elapsedSeconds,
-  };
-}
-
 async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
   if (input.kind === "program") {
     const programDayId = input.programDayId ?? "";
@@ -571,9 +478,6 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
   }
 
   if (input.kind === "bike") {
-    if (input.roundsPerSet != null || input.bikeSets != null) {
-      return bikeIntervalPayload(input, unit);
-    }
     const durationSeconds = Math.round(input.durationSeconds ?? 0);
     assertSaneDurationSeconds(durationSeconds, "Bike time");
     const plannedRounds = Math.round(input.plannedRounds ?? 0);
@@ -937,13 +841,9 @@ export function readBackfillForm(formData: FormData, userId: string, now = new D
     });
   }
   const minutes = Number(formData.get("minutes") ?? "");
-  const roundsPerSet = numberOrNull(formData.get("roundsPerSet"));
-  const bikeSets = numberOrNull(formData.get("bikeSets"));
-  const structuredBike = kindRaw === "bike" && (roundsPerSet != null || bikeSets != null);
-  const minutesEdited = String(formData.get("minutesEdited") ?? "") === "yes";
-  const minutesPosted = Number.isFinite(minutes) && String(formData.get("minutes") ?? "").trim() !== "";
-  const durationSeconds =
-    structuredBike && !minutesEdited ? null : minutesPosted ? Math.round(minutes * 60) : null;
+  const durationSeconds = Number.isFinite(minutes) && String(formData.get("minutes") ?? "").trim() !== ""
+    ? Math.round(minutes * 60)
+    : null;
   return {
     userId,
     dayKey: String(formData.get("dayKey") ?? ""),
@@ -962,9 +862,6 @@ export function readBackfillForm(formData: FormData, userId: string, now = new D
     roundMode: String(formData.get("roundMode") ?? ""),
     workSeconds: numberOrNull(formData.get("workSeconds")),
     restSeconds: numberOrNull(formData.get("restSeconds")),
-    roundsPerSet,
-    bikeSets,
-    restBetweenSets: numberOrNull(formData.get("restBetweenSets")),
     calories: parseOptionalCalories(String(formData.get("calories") ?? "")),
     distance: parseOptionalDistance(String(formData.get("distance") ?? "")),
   };

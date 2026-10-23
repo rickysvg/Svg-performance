@@ -542,8 +542,6 @@ export type BikeHistoryRow = {
   restSeconds: number | null;
   sprints: number | null;
   rounds: number | null;
-  /** Repeat blocks from a saved choice. Absent when rounds is only how many sets were logged. */
-  repeatRounds: number | null;
   restBetweenRoundsSeconds: number;
   completed: boolean;
   doneSets: number;
@@ -595,7 +593,6 @@ export function bikeHistoryFromSessions(sessions: readonly BikeHistorySession[])
         restSeconds: spec?.restSeconds ?? programmed?.restSeconds ?? null,
         sprints: spec ? sprintCountForSpec(spec) : programmed?.roundsPerSet ?? null,
         rounds: spec ? Math.max(1, spec.repeatRounds ?? 1) : sets.length,
-        repeatRounds: spec ? Math.max(1, Math.round(spec.repeatRounds ?? 1)) : null,
         restBetweenRoundsSeconds: spec?.restBetweenRoundsSeconds ?? 0,
         completed: sets.length > 0 && doneSets === sets.length,
         doneSets,
@@ -613,13 +610,9 @@ export function bikeHistoryLine(session: BikeHistorySession) {
     .map((row) => {
       const parts = [row.workoutName];
       if (row.workSeconds != null && row.restSeconds != null) {
-        parts.push(`${row.workSeconds}s / ${row.restSeconds}s`);
+        parts.push(`${row.workSeconds}s/${row.restSeconds}s`);
       }
-      if (row.sprints != null && row.repeatRounds != null && row.repeatRounds > 1) {
-        parts.push(`${row.repeatRounds}×${row.sprints}`);
-      } else if (row.sprints != null) {
-        parts.push(`${row.sprints} sprints`);
-      }
+      if (row.sprints != null) parts.push(`${row.sprints} sprints`);
       return parts.join(" · ");
     })
     .join(" · ");
