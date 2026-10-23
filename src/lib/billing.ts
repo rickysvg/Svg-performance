@@ -274,7 +274,7 @@ export async function assignPlanForPilot(input: {
     where: { userId: input.targetUserId },
     orderBy: { updatedAt: "desc" },
   });
-  // The assigned plan is current. A leftover founding price must not keep the
+  // The assigned plan is current. A leftover retired price must not keep the
   // row on Pro annual. Clear that price only. Do not delete the row or the flag.
   const clearRetiredPrice =
     Boolean(existing) &&
