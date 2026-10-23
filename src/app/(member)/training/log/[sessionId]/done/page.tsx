@@ -84,6 +84,7 @@ export default async function WorkoutDonePage({
     session: view.session,
     displayUnit: unit,
     newPrCount: newPrExerciseCount(prs),
+    planExercises: plan?.exercises ?? view.session.programDay?.exercises,
   });
   const performed = civilDayInstant(view.session.performedAt, tz);
   const whenLabel =

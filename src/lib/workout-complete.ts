@@ -2,6 +2,8 @@ import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { textIsBikeWorkout } from "@/lib/timer-session";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
+import { resolveLogMode } from "@/lib/exercise-log-mode";
+import { setHasLoggedWork } from "@/lib/logged-work";
 import {
   formatShareDuration,
   formatShareVolume,
@@ -18,7 +20,7 @@ import {
 import type { LoadUnit } from "@/lib/units";
 
 export type WorkoutCompleteTile = {
-  key: "time" | "setsRounds" | "volume" | "prs";
+  key: "time" | "setsRounds" | "rounds" | "volume" | "prs";
   label: string;
   value: string;
 };
@@ -146,10 +148,35 @@ function applyFinishTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike
   );
 }
 
+function isRoundTileSet(set: ShareSetLike) {
+  const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
+  if (mode === "timed_round" || isBikeIntervalName(set.exerciseName)) return true;
+  const key = set.prescriptionKey ?? "";
+  return key.startsWith("round:") || key === "bagwork";
+}
+
+function exerciseIsRound(name: string) {
+  return resolveLogMode({ name }) === "timed_round" || isBikeIntervalName(name);
+}
+
+function plannedFromExercises(
+  exercises: readonly { name?: string | null; sets?: number | null }[] | null | undefined,
+  wantRound: boolean,
+) {
+  if (!exercises || exercises.length === 0) return 0;
+  return exercises.reduce((sum, exercise) => {
+    const name = (exercise.name ?? "").trim();
+    if (!name || exerciseIsRound(name) !== wantRound) return sum;
+    return sum + Math.max(0, Math.round(exercise.sets ?? 0));
+  }, 0);
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;
   newPrCount: number;
+  /** Scaled day, when the finish screen has one. Done/planned uses it for mixed days. */
+  planExercises?: readonly { name?: string | null; sets?: number | null }[] | null;
 }): WorkoutCompleteTile[] {
   if (isBikeCardioSession(input.session)) {
     const sets = loggedSets(input.session.sets);
@@ -170,6 +197,28 @@ export function workoutCompleteTiles(input: {
   const sets = sessionSetCount(input.session.sets);
   const rounds = sessionRoundCount(input.session.sets);
   const volume = sessionVolume(input.session.sets, input.displayUnit);
+  const roundRows = input.session.sets.filter((set) => isRoundTileSet(set));
+  const liftRows = input.session.sets.filter((set) => !isRoundTileSet(set));
+  const roundDone = sessionRoundCount(roundRows);
+  const liftDone = liftRows.filter((set) => set.completed && setHasLoggedWork(set)).length;
+  if (roundDone > 0 && liftDone > 0) {
+    const liftPlanned = Math.max(liftRows.length, plannedFromExercises(input.planExercises, false), liftDone);
+    const roundPlanned = Math.max(roundRows.length, plannedFromExercises(input.planExercises, true), roundDone);
+    return applyFinishTime(
+      [
+        { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
+        { key: "setsRounds", label: "Sets", value: `${liftDone} / ${liftPlanned}` },
+        { key: "rounds", label: "Rounds", value: `${roundDone} / ${roundPlanned}` },
+        {
+          key: "volume",
+          label: `Total ${shareVolumeUnit(input.displayUnit)}`,
+          value: formatShareVolume(volume),
+        },
+        { key: "prs", label: "New PRs", value: String(input.newPrCount) },
+      ],
+      input.session,
+    );
+  }
   const setsRounds = rounds > 0 && rounds !== sets ? `${sets} / ${rounds}` : String(Math.max(sets, rounds));
   const countLabel = rounds > 0 && (sets === rounds || sets === 0) ? "Rounds" : "Sets";
   return applyFinishTime(

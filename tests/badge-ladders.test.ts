@@ -339,7 +339,16 @@ describe("badge ladders", () => {
       },
     });
     expect(tiles.find((row) => row.key === "time")?.value).toBe("60:00");
-    expect(tiles.find((row) => row.key === "setsRounds")?.value).toBe("2 / 1");
+    expect(tiles.find((row) => row.key === "setsRounds")).toEqual({
+      key: "setsRounds",
+      label: "Sets",
+      value: "1 / 1",
+    });
+    expect(tiles.find((row) => row.key === "rounds")).toEqual({
+      key: "rounds",
+      label: "Rounds",
+      value: "1 / 1",
+    });
     expect(tiles.find((row) => row.key === "volume")?.value).toBe("1,125");
     expect(tiles.find((row) => row.key === "prs")?.value).toBe("2");
     expect(tiles.find((row) => row.key === "volume")?.label).toBe("Total lbs");

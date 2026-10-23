@@ -11,6 +11,7 @@ import {
   bikeChoiceMinutes,
   bikeChoiceWithRounds,
   bikeHistoryFromSessions,
+  bikeHistoryLine,
   compactBikeReps,
   customBikeChoice,
   formatBikeRecipe,
@@ -184,6 +185,26 @@ describe("bike workout chooser", () => {
       doneSets: 1,
       totalSets: 2,
     });
+    const chosen = bikeHistoryLine({
+      id: "chosen",
+      title: "Day 4 — Assault bike",
+      performedAt: "2026-10-20T15:00:00.000Z",
+      sets: [
+        {
+          exerciseName: "Assault bike intervals",
+          completed: true,
+          durationSeconds: 840,
+          prescriptionKey: prescriptionWithBikeChoice(
+            "day|assault bike intervals::15swork/15srest×8",
+            "Assault bike intervals",
+            triple,
+          ),
+        },
+      ],
+    });
+    expect(chosen).toBe(`${triple.name} · 20s/10s · 8 sprints`);
+    expect(chosen).not.toMatch(/completed|open/);
+    expect(chosen?.match(/rounds/g)).toHaveLength(1);
   });
 
   it("stores the choice on the prescription key and collapses today's open bike sets to one", () => {
