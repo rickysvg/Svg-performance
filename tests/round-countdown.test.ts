@@ -64,6 +64,27 @@ describe("round countdown and seconds steppers", () => {
     expect(stepSetRestSeconds(595, 1, 5)).toBe(600);
     expect(stepSetRestSeconds(600, 1, 5)).toBe(600);
     expect(read("src/components/timer/TimerDurationSteppers.tsx")).toContain("stepSetRestSeconds(setRestSeconds, -1, stepSeconds)");
+    const setRest = (setRestSeconds: number) =>
+      renderToStaticMarkup(
+        createElement(TimerDurationSteppers, {
+          rounds: 8,
+          workSeconds: 20,
+          restSeconds: 10,
+          sets: 2,
+          setRestSeconds,
+          onChange: () => undefined,
+          onSets: () => undefined,
+        }),
+      );
+    const atZero = setRest(0);
+    expect(atZero).toMatch(/data-timer-step-dec="set-rest"[^>]*disabled/);
+    expect(atZero).not.toMatch(/data-timer-step-inc="set-rest"[^>]*disabled/);
+    const atCap = setRest(10 * 60);
+    expect(atCap).toMatch(/data-timer-step-inc="set-rest"[^>]*disabled/);
+    expect(atCap).not.toMatch(/data-timer-step-dec="set-rest"[^>]*disabled/);
+    const mid = setRest(20);
+    expect(mid).not.toMatch(/data-timer-step-dec="set-rest"[^>]*disabled/);
+    expect(mid).not.toMatch(/data-timer-step-inc="set-rest"[^>]*disabled/);
     expect(formatDurationPick(180)).toBe("3:00");
     expect(formatDurationPick(165)).toBe("2:45");
 

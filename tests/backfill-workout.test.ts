@@ -22,7 +22,7 @@ import { roundHistoryLine } from "@/lib/round-session";
 import { getCalendarSchedule, subtitleShowsPartial } from "@/lib/calendar";
 import { completedLocalDayKeys, listWorkoutSessionsForUser, logBikeRoundsForUser } from "@/lib/workouts";
 import { bikeChoiceById, customBikeChoice } from "@/lib/bike-chooser";
-import { backfillDayOptions, performedAtForDayKey } from "@/lib/backfill-rules";
+import { backfillDayOptions, performedAtForDayKey, setsForBackfillExercises } from "@/lib/backfill-rules";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
@@ -1836,6 +1836,203 @@ describe("today and past interval logs", () => {
     expect(row.sets[0]?.prescriptionKey).toBe("round:bag:60:2:120:3");
     expect(roundHistoryLine({ sets: row.sets })).toBe("6 rounds · 3:00 round · 1:00 rest · 24:00 total");
     expect((await readWorkoutTimerFields(saved.sessionId, prisma)).elapsedSeconds).toBe(1440);
+  });
+
+  it("keeps a one-round ride's duration when the edit is saved unchanged", async () => {
+    const kept = setsForBackfillExercises(
+      [
+        {
+          name: "Assault bike intervals",
+          sets: 1,
+          done: 1,
+          reps: "240:00",
+          logMode: "timed_round",
+          durationSeconds: 4 * 60 * 60,
+        },
+      ],
+      "lb",
+    );
+    expect(kept.sets[0]?.durationSeconds).toBe(4 * 60 * 60);
+    const shortened = setsForBackfillExercises(
+      [
+        {
+          name: "Assault bike intervals",
+          sets: 1,
+          done: 1,
+          reps: "90:00",
+          logMode: "timed_round",
+          durationSeconds: 4 * 60 * 60,
+        },
+      ],
+      "lb",
+    );
+    expect(shortened.sets[0]?.durationSeconds).toBe(90 * 60);
+    const fresh = setsForBackfillExercises(
+      [{ name: "Hold", sets: 1, done: 1, reps: "240:00", logMode: "timed" }],
+      "lb",
+    );
+    expect(fresh.sets[0]?.durationSeconds).toBe(60 * 60);
+
+    const days = backfillDayOptions(NOW, TZ);
+    const day = days[1]!;
+    const sheetRides = [
+      { seconds: 22 * 60, shorthand: "1x22:00/0", clock: "22:00" },
+      { seconds: 59 * 60, shorthand: "1x59:00/0", clock: "59:00" },
+      { seconds: 3601, shorthand: "1x60:01/0", clock: "1:00:01" },
+      { seconds: 4 * 60 * 60, shorthand: "1x240:00/0", clock: "4:00:00" },
+    ];
+    for (const ride of sheetRides) {
+      const seed: BackfillFormSeed = {
+        title: `Steady ride · ${ride.clock}`,
+        notes: "",
+        dayKey: day.key,
+        sessionRpe: null,
+        exercises: [
+          {
+            name: "Assault bike intervals",
+            sets: 1,
+            done: 1,
+            reps: ride.shorthand,
+            logMode: "timed_round",
+            prescriptionKey: `timer#bw:c.${ride.seconds}.0.1.0.0`,
+            durationSeconds: ride.seconds,
+          },
+        ],
+      };
+      const html = renderToStaticMarkup(
+        createElement(LogPastWorkoutButton, {
+          entry: "edit",
+          sessionId: "sess-steady",
+          label: "Edit",
+          timeZone: TZ,
+          seed,
+          defaultOpen: true,
+        }),
+      );
+      expect(html).toContain('name="intervalEdit" value="yes"');
+      expect(html).toContain(`value="${ride.shorthand}"`);
+      expect(html).toContain(`data-testid="interval-total-time">${ride.clock}`);
+      expect(html).toContain(`name="workSeconds" value="${ride.seconds}"`);
+      expect(html).not.toContain('data-testid="log-past-workout-exercises"');
+    }
+    const fourHourPreview: BackfillPreview = {
+      dayKey: day.key,
+      programs: [],
+      saved: [],
+      existing: [],
+      days: [{ key: day.key, label: day.label }],
+      roundTargets: {
+        bike: {
+          programDayId: "bike-day",
+          exerciseName: "Bike",
+          plannedRounds: 1,
+          daySetCount: 1,
+          sets: 1,
+          rounds: 1,
+          workSeconds: 4 * 60 * 60,
+          restSeconds: 0,
+          setRestSeconds: 0,
+          focusRounds: [],
+        },
+      },
+      lastUsed: {},
+      bagRounds: 5,
+      units: "lb",
+      weightAccess: "gym",
+      shadowWeight: null,
+    };
+    const createHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: day.key,
+        entry: "calendar",
+        label: "Log",
+        timeZone: TZ,
+        defaultOpen: true,
+        initialPreview: fourHourPreview,
+      }),
+    );
+    expect(createHtml).toContain("Save · 1×240:00/0 · 4:00:00");
+    expect(createHtml).toContain('data-testid="interval-total-time">4:00:00');
+    expect(createHtml).not.toContain("· 1:00:00");
+    expect(createHtml).toContain('data-testid="log-past-workout-save" class="font-display');
+
+    const user = await makeUser("backfill-steady-edit@example.com");
+    await onboard(user.id);
+    const rides = [
+      { dayKey: "2026-10-20", seconds: 22 * 60, title: "Steady ride · 22:00", total: "22:00 total" },
+      { dayKey: "2026-10-19", seconds: 59 * 60, title: "Steady ride · 59:00", total: "59:00 total" },
+      { dayKey: "2026-10-18", seconds: 3601, title: "Steady ride · 1:00:01", total: "1:00:01 total" },
+      { dayKey: "2026-10-17", seconds: 4 * 60 * 60, title: "Steady ride · 4:00:00", total: "4:00:00 total" },
+    ];
+    for (const ride of rides) {
+      const saved = await createBackfillWorkout({
+        userId: user.id,
+        dayKey: ride.dayKey,
+        kind: "bike",
+        resolution: "",
+        now: NOW,
+        title: "",
+        notes: "",
+        rpe: null,
+        workSeconds: ride.seconds,
+        restSeconds: 0,
+        roundsPerSet: 1,
+        repeatRounds: 1,
+        doneRounds: 1,
+      });
+      expect(saved.ok).toBe(true);
+      if (!saved.ok) return;
+      const before = await prisma.workoutSession.findUniqueOrThrow({
+        where: { id: saved.sessionId },
+        include: { sets: { orderBy: { setNumber: "asc" } } },
+      });
+      expect(before.title).toBe(ride.title);
+      expect(before.sets).toHaveLength(1);
+      expect(before.sets[0]?.durationSeconds).toBe(ride.seconds);
+      expect(decodeInterval(before.sets)).toMatchObject({
+        kind: "bike",
+        sets: 1,
+        rounds: 1,
+        workSeconds: ride.seconds,
+        restSeconds: 0,
+        done: 1,
+      });
+      expect(roundHistoryLine({ sets: before.sets, elapsedSeconds: ride.seconds })).toContain(ride.total);
+      expect(roundHistoryLine({ sets: before.sets, elapsedSeconds: ride.seconds })).not.toContain("240:00");
+      const loaded = await getBackfillForEdit(user.id, saved.sessionId, NOW);
+      expect(loaded.structure).toMatchObject({
+        kind: "bike",
+        workSeconds: ride.seconds,
+        restSeconds: 0,
+        sets: 1,
+        rounds: 1,
+        done: 1,
+      });
+      const edited = await updateBackfillWorkout({
+        userId: user.id,
+        sessionId: saved.sessionId,
+        dayKey: ride.dayKey,
+        title: before.title,
+        notes: before.notes ?? "",
+        rpe: before.sessionRpe,
+        exercises: [],
+        confirmed: true,
+        resolution: "",
+        now: NOW,
+        interval: loaded.structure,
+      });
+      expect(edited.ok).toBe(true);
+      if (!edited.ok) return;
+      const after = await prisma.workoutSession.findUniqueOrThrow({
+        where: { id: saved.sessionId },
+        include: { sets: { orderBy: { setNumber: "asc" } } },
+      });
+      expect(after.sets[0]?.id).toBe(before.sets[0]?.id);
+      expect(after.sets[0]?.durationSeconds).toBe(ride.seconds);
+      expect(after.status).toBe(before.status);
+      expect(after.performedAt.toISOString()).toBe(before.performedAt.toISOString());
+      expect((await readWorkoutTimerFields(saved.sessionId, prisma)).elapsedSeconds).toBe(ride.seconds);
+    }
   });
 });
 

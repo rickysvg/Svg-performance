@@ -5,6 +5,7 @@ import {
   commitStructure,
   draftCount,
   formatIntervalClock,
+  formatIntervalDisplay,
   formatIntervalShorthand,
   formatSessionSummary,
   intervalDurationCapMessage,
@@ -115,6 +116,16 @@ describe("interval shorthand", () => {
     expect(
       clampIntervalStructure({ sets: 1, rounds: 2, workSeconds: 22 * 60, restSeconds: 0, setRestSeconds: 0 }).workSeconds,
     ).toBe(15 * 60);
+    expect(
+      formatIntervalDisplay({ sets: 1, rounds: 1, workSeconds: 4 * 60 * 60, restSeconds: 0, setRestSeconds: 0 }),
+    ).toBe("Steady ride · 4:00:00");
+    expect(formatIntervalDisplay({ sets: 1, rounds: 1, workSeconds: 22 * 60, restSeconds: 0 })).toBe(
+      "Steady ride · 22:00",
+    );
+    expect(formatIntervalDisplay({ sets: 1, rounds: 1, workSeconds: 15, restSeconds: 15 })).toBe("1 round · 15/15");
+    expect(formatIntervalDisplay({ sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 })).toBe(
+      "2 × 8 rounds · 15/15 · 60s between sets",
+    );
   });
 
   it("uses the bike total, including rest after the last sprint, for the line cap", () => {

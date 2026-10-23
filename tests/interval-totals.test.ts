@@ -115,4 +115,26 @@ describe("interval totals", () => {
     expect(html).toContain("That workout is 4:10:00. Max 4:00:00.");
     expect(html).not.toContain("5:40:00");
   });
+
+  it("shows a one-round ride past 60 minutes as its real clock", () => {
+    const steady = { sets: 1, rounds: 1, restSeconds: 0, setRestSeconds: 0 };
+    expect(intervalTotals("bike", { ...steady, workSeconds: 3601 }, 1).totalSeconds).toBe(3601);
+    expect(intervalTotals("bike", { ...steady, workSeconds: 90 * 60 }, 1).totalSeconds).toBe(90 * 60);
+    expect(intervalTotals("bike", { ...steady, workSeconds: 4 * 60 * 60 }, 1).totalSeconds).toBe(4 * 60 * 60);
+    const html = renderToStaticMarkup(
+      createElement(IntervalStructureFields, {
+        shorthand: "1x240:00/0",
+        structure: { ...steady, workSeconds: 4 * 60 * 60 },
+        done: 1,
+        totalType: "bike",
+        presets: [],
+        onShorthandCommit: () => undefined,
+        onStructure: () => undefined,
+        onDone: () => undefined,
+      }),
+    );
+    expect(html).toContain('data-testid="interval-total-time">4:00:00');
+    expect(html).toContain("4:00:00 work · 1 round");
+    expect(html).not.toContain("1:00:00");
+  });
 });

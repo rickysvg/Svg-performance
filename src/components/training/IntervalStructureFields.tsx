@@ -6,6 +6,7 @@ import {
   commitShorthand,
   draftCount,
   formatIntervalClock,
+  formatIntervalTotal,
   formatIntervalShorthand,
   intervalClockKind,
   intervalConfiguredSeconds,
@@ -217,7 +218,7 @@ export function IntervalStructureFields({
           </p>
         ) : (
           <p className="text-sm text-white/70">
-            {formatIntervalClock(totals.workSeconds)} work · {totals.totalRounds} rounds
+            {formatIntervalClock(totals.workSeconds)} work · {formatIntervalTotal(totals.totalRounds)}
           </p>
         )}
       </div>

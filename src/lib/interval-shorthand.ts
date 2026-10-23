@@ -259,15 +259,20 @@ export function formatIntervalDisplay(spec: {
 }) {
   const sets = Math.max(1, Math.round(spec.sets) || 1);
   const rounds = Math.max(1, Math.round(spec.rounds) || 1);
-  const pair = `${formatShorthandDuration(spec.workSeconds)}/${formatShorthandDuration(spec.restSeconds)}`;
+  const restSeconds = Math.max(0, Math.round(spec.restSeconds) || 0);
+  if (sets === 1 && rounds === 1 && restSeconds === 0) {
+    return `Steady ride · ${formatIntervalClock(spec.workSeconds)}`;
+  }
+  const pair = `${formatShorthandDuration(spec.workSeconds)}/${formatShorthandDuration(restSeconds)}`;
+  const roundsLabel = formatIntervalTotal(rounds);
   if (sets > 1) {
     const between =
       spec.setRestSeconds != null && spec.setRestSeconds > 0
         ? ` · ${Math.round(spec.setRestSeconds)}s between sets`
         : "";
-    return `${sets} × ${rounds} rounds · ${pair}${between}`;
+    return `${sets} × ${roundsLabel} · ${pair}${between}`;
   }
-  return `${rounds} rounds · ${pair}`;
+  return `${roundsLabel} · ${pair}`;
 }
 
 export function formatIntervalTotal(totalRounds: number) {
