@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { getLatestSubscription } from "@/lib/access";
-import { applyStripeEvent } from "@/lib/billing";
+import { applyStripeEvent, assignPlanForPilot } from "@/lib/billing";
+import { getEffectivePlanId } from "@/lib/entitlements";
 import { isCheckoutSkuId } from "@/lib/plans";
 import { memberProCopy } from "@/lib/member-pro-reminders";
 import {
@@ -238,6 +239,145 @@ describe("subscription price ids leave the unused seat flag alone", () => {
       else process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING = previousFounding;
       if (previousMonthly === undefined) delete process.env.STRIPE_PRICE_PERFORMANCE_MONTHLY;
       else process.env.STRIPE_PRICE_PERFORMANCE_MONTHLY = previousMonthly;
+    }
+  });
+
+  it("does not read a coaching or other plan as Pro just because a retired price is still stored", async () => {
+    const previousFounding = process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING;
+    const previousConditioning = process.env.STRIPE_PRICE_CONDITIONING_FOUNDING_GYM;
+    process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING = "price_still_retired";
+    process.env.STRIPE_PRICE_CONDITIONING_FOUNDING_GYM = "price_cond_retired";
+    try {
+      for (const plan of ["coaching", "vip", "elite", "fighter_conditioning", "academy"] as const) {
+        expect(catalogPlanFromStored({ plan, stripePriceId: "price_still_retired", founding: true })).toBe(
+          plan,
+        );
+        expect(billingPlanFromStored({ plan, stripePriceId: "price_still_retired", founding: true })).toBe(
+          plan,
+        );
+      }
+      expect(
+        catalogPlanFromStored({ plan: "coaching", stripePriceId: "price_cond_retired", founding: true }),
+      ).toBe("coaching");
+      expect(billingPlanFromStored({ plan: "", stripePriceId: "price_still_retired" })).toBe(
+        "performance_year",
+      );
+      expect(catalogPlanFromStored({ plan: "performance", stripePriceId: "price_still_retired" })).toBe(
+        "performance",
+      );
+      expect(billingPlanFromStored({ plan: "gym", stripePriceId: "price_still_retired" })).toBe(
+        "performance_year",
+      );
+
+      const user = await makeUser("coaching-keeps-price@example.com");
+      const periodEnd = new Date("2026-12-01T00:00:00.000Z");
+      await prisma.subscription.create({
+        data: {
+          userId: user.id,
+          plan: "coaching",
+          status: "active",
+          stripeSubscriptionId: "sub_coaching_stale_price",
+          stripePriceId: "price_still_retired",
+          founding: true,
+          currentPeriodEnd: periodEnd,
+        },
+      });
+      expect((await getLatestSubscription(user.id))?.plan).toBe("coaching");
+      expect(await getEffectivePlanId(user.id)).toBe("coaching");
+      const stored = await prisma.subscription.findFirst({ where: { userId: user.id } });
+      expect(stored?.plan).toBe("coaching");
+      expect(stored?.stripePriceId).toBe("price_still_retired");
+      expect(stored?.founding).toBe(true);
+    } finally {
+      if (previousFounding === undefined) delete process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING;
+      else process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING = previousFounding;
+      if (previousConditioning === undefined) delete process.env.STRIPE_PRICE_CONDITIONING_FOUNDING_GYM;
+      else process.env.STRIPE_PRICE_CONDITIONING_FOUNDING_GYM = previousConditioning;
+    }
+  });
+
+  it("clears a stale retired price when an admin assigns a new plan and does not delete the row", async () => {
+    const previousFounding = process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING;
+    process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING = "price_still_retired";
+    try {
+      const admin = await makeUser("admin-reassign@example.com", false, "admin");
+      const user = await makeUser("admin-to-coaching@example.com");
+      const created = await prisma.subscription.create({
+        data: {
+          userId: user.id,
+          plan: "performance",
+          status: "active",
+          stripeSubscriptionId: "sub_admin_stale",
+          stripePriceId: "price_still_retired",
+          founding: true,
+          currentPeriodEnd: new Date("2026-12-01T00:00:00.000Z"),
+        },
+      });
+      expect((await getLatestSubscription(user.id))?.plan).toBe("performance_year");
+
+      const assigned = await assignPlanForPilot({
+        adminUserId: admin.id,
+        targetUserId: user.id,
+        plan: "coaching",
+      });
+      expect(assigned.plan).toBe("coaching");
+      expect(assigned.stripePriceId).toBe("");
+      expect(assigned.founding).toBe(true);
+      expect(assigned.id).toBe(created.id);
+
+      const stored = await prisma.subscription.findUnique({ where: { id: created.id } });
+      expect(stored?.plan).toBe("coaching");
+      expect(stored?.stripePriceId).toBe("");
+      expect(stored?.founding).toBe(true);
+      expect(await prisma.subscription.count({ where: { userId: user.id } })).toBe(1);
+      expect((await getLatestSubscription(user.id))?.plan).toBe("coaching");
+      expect(await getEffectivePlanId(user.id)).toBe("coaching");
+
+      const monthly = await makeUser("admin-to-monthly@example.com");
+      await prisma.subscription.create({
+        data: {
+          userId: monthly.id,
+          plan: "performance_founding",
+          status: "active",
+          stripeSubscriptionId: "sub_admin_monthly",
+          stripePriceId: "price_still_retired",
+          founding: true,
+        },
+      });
+      await assignPlanForPilot({
+        adminUserId: admin.id,
+        targetUserId: monthly.id,
+        plan: "performance",
+      });
+      const monthlyRow = await prisma.subscription.findFirst({ where: { userId: monthly.id } });
+      expect(monthlyRow?.plan).toBe("performance");
+      expect(monthlyRow?.stripePriceId).toBe("");
+      expect(monthlyRow?.founding).toBe(true);
+      expect((await getLatestSubscription(monthly.id))?.plan).toBe("performance");
+
+      const kept = await makeUser("admin-keeps-current-price@example.com");
+      await prisma.subscription.create({
+        data: {
+          userId: kept.id,
+          plan: "performance",
+          status: "active",
+          stripeSubscriptionId: "sub_admin_keep",
+          stripePriceId: "price_current_keep",
+          founding: false,
+        },
+      });
+      await assignPlanForPilot({
+        adminUserId: admin.id,
+        targetUserId: kept.id,
+        plan: "vip",
+      });
+      const keptRow = await prisma.subscription.findFirst({ where: { userId: kept.id } });
+      expect(keptRow?.plan).toBe("vip");
+      expect(keptRow?.stripePriceId).toBe("price_current_keep");
+      expect(await prisma.subscription.count({ where: { userId: kept.id } })).toBe(1);
+    } finally {
+      if (previousFounding === undefined) delete process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING;
+      else process.env.STRIPE_PRICE_PERFORMANCE_FOUNDING = previousFounding;
     }
   });
 

@@ -7,6 +7,7 @@ import { isPlanAtCap } from "@/lib/waitlist";
 import {
   billingPlanFromStored,
   catalogPlanFromStored,
+  isRetiredAnnualPrice,
   referencesRetiredAnnual,
 } from "@/lib/pro-annual-record";
 import {
@@ -75,8 +76,10 @@ export async function upsertSubscriptionFromWebhook(input: {
       });
 
   // Keep Stripe ids when a later event (payment failed, cancel) omits them.
+  // An explicit empty price clears a stale id. Omitting the field keeps the stored one.
   // Leave the unused seat column as stored. Do not set or clear it.
-  const stripePriceId = input.stripePriceId || existing?.stripePriceId || "";
+  const stripePriceId =
+    input.stripePriceId !== undefined ? input.stripePriceId : (existing?.stripePriceId ?? "");
 
   const data = {
     userId: input.userId,
@@ -267,6 +270,16 @@ export async function assignPlanForPilot(input: {
   const recordedPlan = referencesRetiredAnnual({ plan: input.plan })
     ? billingPlanFromStored({ plan: input.plan })
     : catalogPlan;
+  const existing = await prisma.subscription.findFirst({
+    where: { userId: input.targetUserId },
+    orderBy: { updatedAt: "desc" },
+  });
+  // The assigned plan is current. A leftover founding price must not keep the
+  // row on Pro annual. Clear that price only. Do not delete the row or the flag.
+  const clearRetiredPrice =
+    Boolean(existing) &&
+    isRetiredAnnualPrice(existing?.stripePriceId) &&
+    !referencesRetiredAnnual({ plan: input.plan });
   // Admin override is the pilot escape hatch — caps apply to self-serve checkout only.
   const periodEnd = new Date();
   periodEnd.setUTCDate(periodEnd.getUTCDate() + 30);
@@ -276,6 +289,7 @@ export async function assignPlanForPilot(input: {
     status: catalogPlan === "member_access" ? "canceled" : "active",
     currentPeriodEnd: catalogPlan === "member_access" ? null : periodEnd,
     source: "admin",
+    ...(clearRetiredPrice ? { stripePriceId: "" } : {}),
   });
   await ensureCreditsForPlan(input.targetUserId, catalogPlan);
   return { ...row, label: PLAN_CATALOG[catalogPlan].label };

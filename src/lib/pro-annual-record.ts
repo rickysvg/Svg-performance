@@ -2,9 +2,10 @@ import { normalizePlanId, type CatalogPlanId } from "@/lib/plans";
 
 /**
  * Exact retired checkout ids. A stored row maps to Pro annual only while its
- * plan id is one of these, or its Stripe price id is still that seat's price.
- * The boolean is not a mapping by itself, and a later plan or price is read
- * as whatever it is now. Nothing here deletes a row or clears the boolean.
+ * plan id is one of these, or its Stripe price id is still that seat's price
+ * and the plan is still a Pro plan or blank. A coaching or other plan wins
+ * over a leftover price. The boolean is not a mapping by itself. Nothing here
+ * deletes a row or clears the boolean.
  */
 const RETIRED_ANNUAL_PLAN_IDS = new Set([
   "performance_founding",
@@ -55,18 +56,37 @@ function priceIsRetiredAnnual(priceId: string | null | undefined) {
   return priceMatches(RETIRED_PRICE_ENVS, price);
 }
 
+/** A Stripe price id that still belongs to the retired seat. */
+export function isRetiredAnnualPrice(priceId: string | null | undefined) {
+  return priceIsRetiredAnnual(priceId);
+}
+
 function planIsRetiredAnnual(plan: string | null | undefined) {
   return RETIRED_ANNUAL_PLAN_IDS.has(planKey(plan));
 }
 
 /**
- * True only while this row's plan id or Stripe price is still the retired seat.
+ * Price-only mapping is for a blank plan or a Pro plan (`performance`,
+ * `performance_*`, and the `gym` / `standalone` checkout ids). Coaching and
+ * every other plan are read as themselves.
+ */
+function planAllowsRetiredPrice(plan: string | null | undefined) {
+  const key = planKey(plan);
+  if (!key) return true;
+  if (key === "performance" || key === "gym" || key === "standalone") return true;
+  return key.startsWith("performance_");
+}
+
+/**
+ * True only while this row's plan id is still the retired seat, or its Stripe
+ * price is still that seat and the plan is still Pro or blank.
  * A current Pro price wins over a leftover plan id.
  */
 export function referencesRetiredAnnual(row: StoredPlanRow) {
   const price = (row.stripePriceId ?? "").trim();
   if (price && priceMatches(CURRENT_PRO_PRICE_ENVS, price)) return false;
   if (planIsRetiredAnnual(row.plan)) return true;
+  if (!planAllowsRetiredPrice(row.plan)) return false;
   return priceIsRetiredAnnual(row.stripePriceId);
 }
 
