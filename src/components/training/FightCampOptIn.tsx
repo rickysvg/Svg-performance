@@ -48,9 +48,11 @@ export function FightCampOptIn({
     if (saveState.saved || cancelState.saved) router.refresh();
   }, [saveState.saved, cancelState.saved, router]);
 
-  useEffect(() => {
+  const [trackedEnabled, setTrackedEnabled] = useState(enabled);
+  if (enabled !== trackedEnabled) {
+    setTrackedEnabled(enabled);
     if (enabled) setOptimisticOn(false);
-  }, [enabled]);
+  }
 
   const checked = open || shown;
   function applyToggle(nextChecked: boolean) {

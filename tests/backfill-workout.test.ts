@@ -1023,6 +1023,93 @@ describe("today and past interval logs", () => {
     expect(after.sets.every((set) => set.prescriptionKey === "timer#bw:c.15.15.8.0.0.2.60")).toBe(true);
   });
 
+  it("renames an interval when the structure changes and rejects a zero done count", async () => {
+    const user = await makeUser("backfill-edit-structure@example.com");
+    await onboard(user.id);
+    const day = "2026-10-21";
+    const partial = await rickyBike(user.id, day, 16);
+    expect(partial.ok).toBe(true);
+    if (!partial.ok) return;
+    const before = await prisma.workoutSession.findUniqueOrThrow({ where: { id: partial.sessionId } });
+    await expect(
+      updateBackfillWorkout({
+        userId: user.id,
+        sessionId: partial.sessionId,
+        dayKey: day,
+        title: before.title,
+        notes: "",
+        rpe: null,
+        exercises: [],
+        confirmed: true,
+        resolution: "",
+        now: NOW,
+        interval: {
+          kind: "bike",
+          sets: 2,
+          rounds: 8,
+          workSeconds: 15,
+          restSeconds: 15,
+          setRestSeconds: 60,
+          done: 0,
+        },
+      }),
+    ).rejects.toThrow("Log at least one set, then save.");
+    const kept = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: partial.sessionId },
+      include: { sets: true },
+    });
+    expect(kept.sets).toHaveLength(16);
+    expect(kept.title).toBe(before.title);
+    const edited = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: partial.sessionId,
+      dayKey: day,
+      title: before.title,
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 2,
+        rounds: 8,
+        workSeconds: 20,
+        restSeconds: 10,
+        setRestSeconds: 60,
+        done: 16,
+      },
+    });
+    expect(edited.ok).toBe(true);
+    const after = await prisma.workoutSession.findUniqueOrThrow({ where: { id: partial.sessionId } });
+    expect(after.title).toBe("2 × 8 rounds · 20/10 · 60s between sets");
+    const custom = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: partial.sessionId,
+      dayKey: day,
+      title: "Morning ride",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 2,
+        rounds: 8,
+        workSeconds: 20,
+        restSeconds: 15,
+        setRestSeconds: 60,
+        done: 16,
+      },
+    });
+    expect(custom.ok).toBe(true);
+    const named = await prisma.workoutSession.findUniqueOrThrow({ where: { id: partial.sessionId } });
+    expect(named.title).toBe("Morning ride");
+  });
+
   it("opens a partial bike from History Edit and saves it unchanged", async () => {
     const user = await makeUser("backfill-history-edit@example.com");
     await onboard(user.id);

@@ -774,10 +774,12 @@ function WeekDayCarousel({
   const pendingFocus = useRef<string | null>(null);
   const weeksRef = useRef(weeks);
   const onWeekChangeRef = useRef(onWeekChange ?? trainWeekChange ?? undefined);
-  weeksRef.current = weeks;
-  onWeekChangeRef.current = onWeekChange ?? trainWeekChange ?? undefined;
-  indexRef.current = activeIndex;
-  selectedDayRef.current = selectedDay;
+  useLayoutEffect(() => {
+    weeksRef.current = weeks;
+    onWeekChangeRef.current = onWeekChange ?? trainWeekChange ?? undefined;
+    indexRef.current = activeIndex;
+    selectedDayRef.current = selectedDay;
+  });
 
   function knownDayParams() {
     return weeksRef.current.flatMap((week) => week.days.map((day) => day.dayParam));
@@ -805,6 +807,8 @@ function WeekDayCarousel({
       weeks.findIndex((week) => week.offset === focusOffset),
     );
     scrollToIndex(index, "auto");
+    // The strip scrolls before paint, then the index matches the week on screen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(index);
     setReady(true);
   }, [focusOffset, weeks]);

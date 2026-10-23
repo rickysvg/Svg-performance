@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type MouseEvent, type PointerEvent } from "react";
+import { useState, type MouseEvent, type PointerEvent } from "react";
 import { formatDurationPick, stepDurationSeconds } from "@/lib/round-timer";
 
 const WORK_MAX = 15 * 60;
@@ -176,8 +176,8 @@ export function Stepper({
   onDec: () => void;
   onInc: () => void;
 }) {
-  const decPointer = useRef({ fromPointer: false, inside: false, suppressClick: false });
-  const incPointer = useRef({ fromPointer: false, inside: false, suppressClick: false });
+  const [decPointer] = useState(() => ({ fromPointer: false, inside: false, suppressClick: false }));
+  const [incPointer] = useState(() => ({ fromPointer: false, inside: false, suppressClick: false }));
   function press(
     apply: () => void,
     state: { fromPointer: boolean; inside: boolean; suppressClick: boolean },
@@ -226,7 +226,7 @@ export function Stepper({
           aria-label={`Decrease ${label}`}
           data-timer-step-dec={field}
           disabled={disabled}
-          {...press(onDec, decPointer.current)}
+          {...press(onDec, decPointer)}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           −
@@ -236,7 +236,7 @@ export function Stepper({
           aria-label={`Increase ${label}`}
           data-timer-step-inc={field}
           disabled={disabled}
-          {...press(onInc, incPointer.current)}
+          {...press(onInc, incPointer)}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           +

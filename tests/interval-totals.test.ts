@@ -1,4 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { IntervalStructureFields } from "@/components/training/IntervalStructureFields";
 import { intervalTotals } from "@/lib/interval-totals";
 
 describe("interval totals", () => {
@@ -44,5 +47,23 @@ describe("interval totals", () => {
     );
     expect(shadow.totalSeconds).toBe(360);
     expect(shadow.workSeconds).toBe(300);
+  });
+
+  it("shows the 4 hour cap instead of a multi-hour clock", () => {
+    const html = renderToStaticMarkup(
+      createElement(IntervalStructureFields, {
+        shorthand: "10x30 @ 15:00/10:00 r600",
+        structure: { sets: 10, rounds: 30, workSeconds: 900, restSeconds: 600, setRestSeconds: 600 },
+        done: 1,
+        totalType: "bag",
+        presets: [],
+        onShorthandCommit: () => undefined,
+        onStructure: () => undefined,
+        onDone: () => undefined,
+      }),
+    );
+    expect(html).toContain("Max 4:00:00");
+    expect(html).toContain("That workout is longer than 4 hours.");
+    expect(html).not.toContain("240:00");
   });
 });

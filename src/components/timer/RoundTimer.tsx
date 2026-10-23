@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { logBagworkSessionAction } from "@/app/actions/bagwork";
 import { logBikeTimerAction, startRoundLogAction } from "@/app/actions/workouts";
@@ -209,11 +209,14 @@ export function RoundTimer({
 
   if (seenUrlMode.current !== mode) {
     seenUrlMode.current = mode;
+    // A URL mode change drops a manual pick before this render chooses the surface.
+    // eslint-disable-next-line react-hooks/refs -- active mode is derived from this ref in the same render
     pickedMode.current = false;
     if (mode && prefs.mode !== mode) {
       setPrefs((current) => ({ ...current, mode }));
     }
   }
+  // eslint-disable-next-line react-hooks/refs -- manual picks are stored on the ref so hydration cannot overwrite them
   const activeMode: TimerSurfaceMode = pickedMode.current ? prefs.mode : (mode ?? prefs.mode);
 
   useEffect(() => {
@@ -287,7 +290,9 @@ export function RoundTimer({
   });
 
   const clockRef = useRef(resolved);
-  clockRef.current = resolved;
+  useLayoutEffect(() => {
+    clockRef.current = resolved;
+  });
   const liveElapsed = roundLiveElapsed({
     phase: resolved.phase,
     round: resolved.round,

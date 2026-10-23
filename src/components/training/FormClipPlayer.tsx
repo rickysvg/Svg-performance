@@ -52,12 +52,10 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
   const src = nocookieEmbedSrc(url);
   const clip = formClipWindow(url);
   const still = youtubeThumbSrcs(url)[0] ?? "";
+  const clipMissing = !src || !youtubeVideoId(url);
 
   useEffect(() => {
-    if (!src || !youtubeVideoId(url)) {
-      setFailed(true);
-      return;
-    }
+    if (clipMissing) return;
     let cancelled = false;
     let ready = false;
     const timeout = window.setTimeout(() => {
@@ -100,7 +98,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       playerRef.current?.destroy?.();
       playerRef.current = null;
     };
-  }, [clip.end, clip.start, hostId, src, url]);
+  }, [clip.end, clip.start, clipMissing, hostId, src, url]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -126,7 +124,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
             Close
           </button>
         </div>
-        {failed || !src ? (
+        {failed || clipMissing ? (
           <div className="space-y-3">
             {still ? (
               // Still from the clip. Not an outbound YouTube link.

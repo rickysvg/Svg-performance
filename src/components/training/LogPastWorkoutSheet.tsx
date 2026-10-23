@@ -16,7 +16,12 @@ import type { BackfillKind } from "@/lib/backfill-rules";
 import { backfillDayOptions } from "@/lib/backfill-rules";
 import type { BackfillFormSeed, BackfillPreview } from "@/lib/backfill-workout";
 import { decodeSeedInterval } from "@/lib/interval-decode";
-import { formatIntervalShorthand, formatSessionSummary, type IntervalStructure } from "@/lib/interval-shorthand";
+import {
+  formatIntervalShorthand,
+  formatSessionSummary,
+  INTERVAL_SESSION_MAX_SECONDS,
+  type IntervalStructure,
+} from "@/lib/interval-shorthand";
 import { intervalTotals, type IntervalTotalType } from "@/lib/interval-totals";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
@@ -294,6 +299,12 @@ function LogPastWorkoutSheet({
   const [shadowRest, setShadowRest] = useState<[number, number]>([60, 60]);
   const [shadowWeight, setShadowWeight] = useState(initialPreview?.shadowWeight ? String(initialPreview.shadowWeight) : "");
   const seeded = Boolean(seed);
+  const previewRequest = mode === "create" && !initialPreview ? dayKey : null;
+  const [trackedPreview, setTrackedPreview] = useState(previewRequest);
+  if (previewRequest !== trackedPreview) {
+    setTrackedPreview(previewRequest);
+    if (previewRequest !== null) setLoadError("");
+  }
   const action = mode === "edit" ? updateBackfillAction : mode === "delete" ? deleteBackfillAction : saveBackfillAction;
   const [state, formAction, pending] = useActionState<BackfillFormState, FormData>(action, {});
 
@@ -353,7 +364,6 @@ function LogPastWorkoutSheet({
   useEffect(() => {
     if (mode !== "create" || initialPreview) return;
     let cancelled = false;
-    setLoadError("");
     loadBackfillPreview(dayKey)
       .then((loaded) => {
         if (cancelled) return;
@@ -418,6 +428,8 @@ function LogPastWorkoutSheet({
   const deleteTitle = editTitle.trim() || "this workout";
   const focus = kind === "bag" ? (preview?.roundTargets.bag?.focusRounds ?? []) : [];
   const totalType: IntervalTotalType = kind === "shadow" ? "shadow" : isRoundKind(kind) ? kind : "bike";
+  const intervalType: IntervalTotalType = editingInterval || !isStructureKind(kind) ? intervalKind : kind;
+  const showingInterval = (mode === "create" && isStructureKind(kind)) || editingInterval;
   const summary = formatSessionSummary(structure);
   const totals = intervalTotals(
     totalType,
@@ -437,6 +449,18 @@ function LogPastWorkoutSheet({
     },
     kind === "shadow" ? 2 : done,
   );
+  const configuredSeconds = intervalTotals(
+    showingInterval ? intervalType : totalType,
+    {
+      sets: structure.sets,
+      rounds: structure.rounds,
+      workSeconds: structure.workSeconds,
+      restSeconds: structure.restSeconds,
+      setRestSeconds: structure.setRestSeconds,
+    },
+    Math.max(1, structure.sets * structure.rounds),
+  ).totalSeconds;
+  const overDuration = showingInterval && configuredSeconds > INTERVAL_SESSION_MAX_SECONDS;
   const saveText = pending
     ? "Saving…"
     : mode === "edit"
@@ -871,7 +895,8 @@ function LogPastWorkoutSheet({
                   type="button"
                   data-testid="log-past-workout-confirm"
                   onClick={() => setConfirming(true)}
-                  className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black"
+                  disabled={overDuration}
+                  className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   Review changes
                 </button>
@@ -880,7 +905,7 @@ function LogPastWorkoutSheet({
                 <button
                   type="submit"
                   data-testid="log-past-workout-save"
-                  disabled={pending || (mode === "create" && !preview)}
+                  disabled={pending || overDuration || (mode === "create" && !preview)}
                   className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   {saveText}

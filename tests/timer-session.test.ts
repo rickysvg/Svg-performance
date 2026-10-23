@@ -38,6 +38,17 @@ describe("timer session routing", () => {
     );
     const timer = source.slice(source.indexOf("function SessionTimer"), source.indexOf("export function WorkoutLogForm"));
     expect(timer).toContain("useSyncExternalStore");
+    const form = fs.readFileSync(
+      path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"),
+      "utf8",
+    );
+    const beatStart = form.indexOf("if (!sessionRecordsActivity(session.status)) return;");
+    const beat = form.slice(beatStart, form.indexOf("ACTIVITY_HEARTBEAT_MS", beatStart));
+    expect(beat.indexOf("noteLoggerActivity(session.id)")).toBeGreaterThan(-1);
+    expect(beat.indexOf("noteLoggerActivity(session.id)")).toBeLessThan(beat.indexOf("setInterval"));
+    const subscribe = form.slice(form.indexOf("function subscribeSessionClock"), form.indexOf("function subscribeFrozenClock"));
+    const kick = subscribe.slice(subscribe.indexOf("const kick"), subscribe.indexOf("const timer"));
+    expect(kick).toContain("noteLoggerActivity(activitySessionId)");
     expect(timer).not.toContain("useState(() => Date.now())");
     expect(timer).toContain("resolveSessionElapsed");
     expect(timer).toContain("elapsedSeconds");

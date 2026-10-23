@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState, type PropsWithChildren } from "react";
 import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
 import {
   FORM_CHECK_APPLY_PATH,
@@ -97,12 +97,11 @@ export function FormCheckLockedTrigger({
   className,
   lock = "overlay",
   children,
-}: {
+}: PropsWithChildren<{
   testId: string;
   className?: string;
   lock?: "overlay" | "inline";
-  children: ReactNode;
-}) {
+}>) {
   const [open, setOpen] = useState(false);
   return (
     <>

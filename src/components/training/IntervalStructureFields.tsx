@@ -7,6 +7,7 @@ import {
   formatIntervalShorthand,
   INTERVAL_REST_MAX,
   INTERVAL_ROUNDS_MAX,
+  INTERVAL_SESSION_MAX_SECONDS,
   INTERVAL_SET_REST_MAX,
   INTERVAL_WORK_MAX,
   INTERVAL_WORK_MIN,
@@ -58,12 +59,18 @@ export function IntervalStructureFields({
   onDone: (done: number) => void;
 }) {
   const [line, setLine] = useState(shorthand);
+  const [trackedShorthand, setTrackedShorthand] = useState(shorthand);
   const [error, setError] = useState("");
   const structureRef = useRef(structure);
   const liveRef = useRef(onLiveStructure ?? onStructure);
-  structureRef.current = structure;
-  liveRef.current = onLiveStructure ?? onStructure;
-  useEffect(() => setLine(shorthand), [shorthand]);
+  if (shorthand !== trackedShorthand) {
+    setTrackedShorthand(shorthand);
+    setLine(shorthand);
+  }
+  useEffect(() => {
+    structureRef.current = structure;
+    liveRef.current = onLiveStructure ?? onStructure;
+  });
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const next = commitShorthand(line, structureRef.current);
@@ -73,13 +80,16 @@ export function IntervalStructureFields({
     return () => window.clearTimeout(handle);
   }, [line]);
   const totalRounds = Math.max(1, structure.sets * structure.rounds);
-  const totals = intervalTotals(totalType, {
+  const spec = {
     sets: structure.sets,
     rounds: structure.rounds,
     workSeconds: structure.workSeconds,
     restSeconds: structure.restSeconds,
     setRestSeconds: structure.setRestSeconds,
-  }, Math.min(totalRounds, Math.max(0, done)));
+  };
+  const totals = intervalTotals(totalType, spec, Math.min(totalRounds, Math.max(0, done)));
+  const configured = intervalTotals(totalType, spec, totalRounds);
+  const overCap = configured.totalSeconds > INTERVAL_SESSION_MAX_SECONDS;
   const setsLocked = structure.sets <= 1;
 
   function commitLine(text: string) {
@@ -200,10 +210,18 @@ export function IntervalStructureFields({
         ) : null}
       </div>
       <div className="rounded-2xl border border-line bg-card px-4 py-3" data-testid="interval-total">
-        <p className="font-display text-2xl text-[#CBF805]">{clock(totals.totalSeconds)}</p>
-        <p className="text-sm text-white/70">
-          {clock(totals.workSeconds)} work · {totals.totalRounds} rounds
+        <p className="font-display text-2xl text-[#CBF805]" data-testid="interval-total-time">
+          {overCap ? "Max 4:00:00" : clock(totals.totalSeconds)}
         </p>
+        {overCap ? (
+          <p className="text-sm text-[#FF3B3B]" role="alert" data-testid="interval-duration-cap">
+            That workout is longer than 4 hours.
+          </p>
+        ) : (
+          <p className="text-sm text-white/70">
+            {clock(totals.workSeconds)} work · {totals.totalRounds} rounds
+          </p>
+        )}
       </div>
     </div>
   );
@@ -284,7 +302,9 @@ function StepButton({
   const delay = useRef<number | null>(null);
   const repeat = useRef<number | null>(null);
   const stepRef = useRef(onStep);
-  stepRef.current = onStep;
+  useEffect(() => {
+    stepRef.current = onStep;
+  });
 
   function clearTimers() {
     if (delay.current != null) window.clearTimeout(delay.current);

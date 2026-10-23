@@ -37,6 +37,11 @@ export function MyWorkoutCard({
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [displayName, setDisplayName] = useState(name);
+  const [seenName, setSeenName] = useState(name);
+  if (name !== seenName) {
+    setSeenName(name);
+    setDisplayName(name);
+  }
   const [toast, setToast] = useState("");
   const applyLock = useRef(false);
   const applyStarted = useRef(false);
@@ -48,24 +53,35 @@ export function MyWorkoutCard({
     applySavedWorkoutAction,
     {} as SavedWorkoutActionState,
   );
+  const renameMark = rename.renamed ? `1:${rename.name ?? ""}` : "0";
+  const [seenRename, setSeenRename] = useState(renameMark);
+  if (renameMark !== seenRename) {
+    setSeenRename(renameMark);
+    if (rename.renamed) {
+      const settled = renameSheetSettle({ renamed: true, name: rename.name });
+      if (settled.close && settled.toast) {
+        setDisplayName(rename.name ?? "");
+        setRenameOpen(false);
+        setToast(settled.toast);
+      }
+    }
+  }
+  const [seenApplyPending, setSeenApplyPending] = useState(applyPending);
+  if (applyPending !== seenApplyPending) {
+    setSeenApplyPending(applyPending);
+    if (applyPending) setApplyDismissed(false);
+  }
+  const confirmDay = applyState.confirmDayKey ?? "";
+  const [seenConfirmDay, setSeenConfirmDay] = useState(confirmDay);
+  if (confirmDay !== seenConfirmDay) {
+    setSeenConfirmDay(confirmDay);
+    if (applyState.confirmDayKey) setApplyDayKey(applyState.confirmDayKey);
+  }
   useEffect(() => {
-    setDisplayName(name);
-  }, [name]);
-  useEffect(() => {
-    const settled = renameSheetSettle({ renamed: Boolean(rename.renamed), name: rename.name });
-    if (!settled.close || !settled.toast) return;
-    setDisplayName(rename.name ?? "");
-    setRenameOpen(false);
-    setToast(settled.toast);
+    if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), RENAME_TOAST_MS);
     return () => window.clearTimeout(timer);
-  }, [rename.renamed, rename.name]);
-  useEffect(() => {
-    if (applyPending) setApplyDismissed(false);
-  }, [applyPending]);
-  useEffect(() => {
-    if (applyState.confirmDayKey) setApplyDayKey(applyState.confirmDayKey);
-  }, [applyState.confirmDayKey]);
+  }, [toast]);
   useEffect(() => {
     const settled = applySheetSettle({
       pending: applyPending,

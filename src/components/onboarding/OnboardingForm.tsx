@@ -59,6 +59,8 @@ export function OnboardingForm({
       } catch {
         // Ignore storage failures.
       }
+      // Session storage is read after mount so the first paint matches the stored step.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStep(1);
       return;
     }
@@ -67,6 +69,7 @@ export function OnboardingForm({
   useEffect(() => {
     if (!state.error?.toLowerCase().includes("day you can train")) return;
     if (days.length > 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server day error sends the member back to step 1
     setStep(1);
     try {
       window.sessionStorage.setItem(INTAKE_STEP_KEY, "1");

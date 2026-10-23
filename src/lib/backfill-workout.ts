@@ -23,6 +23,7 @@ import {
   INTERVAL_SET_REST_MAX,
   INTERVAL_WORK_MAX,
   INTERVAL_WORK_MIN,
+  formatIntervalDisplay,
 } from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
 import {
@@ -31,7 +32,6 @@ import {
   roundBlockDuration,
   roundLogSets,
   roundSaveStatus,
-  roundStructureFromKey,
   roundStructureKey,
   roundTargetFromExercises,
   sessionMatchesRoundType,
@@ -43,7 +43,6 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { dayKey } from "@/lib/timezone";
 import {
   formatClock,
   isDurationMode,
@@ -1379,7 +1378,11 @@ async function updateIntervalBackfill(input: {
 }) {
   const posted = input.posted;
   const configured = Math.max(1, posted.sets * posted.rounds);
-  const done = Math.min(configured, Math.max(1, Math.round(posted.done)));
+  const requestedDone = Math.round(posted.done);
+  if (!Number.isInteger(requestedDone) || requestedDone < 1) {
+    throw new AppError("WORKOUT", "Log at least one set, then save.");
+  }
+  const done = Math.min(configured, requestedDone);
   const sameStructure =
     posted.sets === input.decoded.sets &&
     posted.rounds === input.decoded.rounds &&
@@ -1474,6 +1477,18 @@ async function updateIntervalBackfill(input: {
       done,
     ).totalSeconds;
   }
+  const postedName = input.title.trim();
+  const keepCustomName = postedName.length > 0 && postedName !== input.session.title.trim();
+  const title =
+    !sameStructure && !keepCustomName
+      ? formatIntervalDisplay({
+          sets: posted.sets,
+          rounds: posted.rounds,
+          workSeconds: posted.workSeconds,
+          restSeconds: posted.restSeconds,
+          setRestSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
+        })
+      : cleanTitle(input.title, input.session.title);
   const plannedSetCount = sameStructure ? Math.max(input.session.plannedSetCount ?? 0, configured) : configured;
   const status = roundSaveStatus({
     roundsCompleted: done,
@@ -1487,7 +1502,7 @@ async function updateIntervalBackfill(input: {
     await tx.workoutSession.update({
       where: { id: input.session.id },
       data: {
-        title: cleanTitle(input.title, input.session.title),
+        title,
         notes: input.notes.trim().slice(0, 1000),
         performedAt,
         status,
