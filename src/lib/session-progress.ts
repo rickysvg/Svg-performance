@@ -2,7 +2,9 @@ import { isBikeIntervalName } from "@/lib/bike-sessions";
 import {
   exerciseSetProgress,
   formatSetProgress,
+  loggedNameMatchesPlanned,
   prescribedSetTotal,
+  setIsTicked,
   tickedSetCount,
   type ExerciseSetProgress,
   type TickedSet,
@@ -42,6 +44,20 @@ export type SessionProgress = {
   text: string;
   rows: ExerciseSetProgress[];
 };
+
+function planNames(dose: ProgressDose | null | undefined, exercises: { name?: string | null }[]) {
+  const named = (dose?.names ?? []).map((name) => name.trim()).filter((name) => name.length > 0);
+  if (named.length > 0) return named;
+  return exercises.map((exercise) => (exercise.name ?? "").trim()).filter((name) => name.length > 0);
+}
+
+/** A push-up does not finish a bike day. A full swap that covers the dose still can. */
+function namesAreCovered(session: ProgressSession, names: string[]) {
+  const ticked = session.sets.filter((set) => setIsTicked(set));
+  return names.every((planned) =>
+    ticked.some((set) => loggedNameMatchesPlanned(planned, set.exerciseName ?? "")),
+  );
+}
 
 function storedPlan(session: ProgressSession) {
   return typeof session.plannedSetCount === "number" && session.plannedSetCount > 0
@@ -124,7 +140,12 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
     rows = exerciseSetProgress([], session.sets);
   }
 
-  const done = ticked > 0 && planned > 0 && ticked >= planned;
+  const names = planNames(dose, programExercises);
+  const done =
+    ticked > 0 &&
+    planned > 0 &&
+    ticked >= planned &&
+    (names.length === 0 || namesAreCovered(session, names) || session.sets.every((set) => setIsTicked(set)));
   return {
     ticked,
     planned,
