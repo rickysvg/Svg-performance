@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import {
   moveWorkoutAction,
@@ -52,7 +52,6 @@ export function WorkoutMoveProvider({
   days: MoveDayChoice[];
   children: ReactNode;
 }) {
-  const router = useRouter();
   const pathname = usePathname() ?? "";
   const swapSessionTestId = pathname.startsWith("/training/calendar")
     ? "workout-move-session-btn-2"
@@ -97,7 +96,6 @@ export function WorkoutMoveProvider({
     } finally {
       setSaving(false);
     }
-    router.refresh();
   }
 
   async function commitSwap(fromDay: string, toDay: string) {
@@ -114,7 +112,6 @@ export function WorkoutMoveProvider({
     } finally {
       setSaving(false);
     }
-    router.refresh();
   }
 
   async function commitSessionSwap(otherKey: string, otherTitle: string) {
@@ -131,7 +128,6 @@ export function WorkoutMoveProvider({
     } finally {
       setSaving(false);
     }
-    router.refresh();
   }
 
   function landingCaution(heavy: boolean, day: MoveDayChoice) {
@@ -184,7 +180,6 @@ export function WorkoutMoveProvider({
     } finally {
       setUndoing(false);
     }
-    router.refresh();
   }
 
   const today = days.find((day) => day.isToday);
@@ -198,6 +193,7 @@ export function WorkoutMoveProvider({
           .map((session) => ({ day, session })),
       )
     : [];
+  const pending = saving || undoing;
 
   return (
     <WorkoutMoveContext.Provider
@@ -213,6 +209,19 @@ export function WorkoutMoveProvider({
       }}
     >
       {children}
+      {pending ? (
+        <div
+          role="status"
+          data-plan-pending
+          className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-black px-4 py-3 text-sm font-semibold text-white"
+        >
+          <span
+            className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-[#CBF805]"
+            aria-hidden
+          />
+          Updating the week…
+        </div>
+      ) : null}
       {target ? (
         <div
           className="fixed inset-0 z-50 flex items-end overflow-x-hidden bg-black/50"

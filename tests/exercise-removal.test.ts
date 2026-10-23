@@ -13,7 +13,8 @@ import {
 } from "@/lib/exercise-removal";
 import { listRemovalsForDay, removeSessionExercise, undoExerciseRemoval } from "@/lib/exercise-removal-store";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
-import { applyExerciseSwap } from "@/lib/exercise-swap-store";
+import { applyExerciseSwap, listSwapsForDay } from "@/lib/exercise-swap-store";
+import { visibleSessionDose } from "@/lib/finish-plan";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import { scaleProgramDay } from "@/lib/training-scale";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
@@ -697,6 +698,94 @@ describe("persisted session removal", () => {
     await undoExerciseRemoval({ userId: user.id, removalId: bikeRemoval.id });
     const bikeUndone = await prisma.workoutSession.findUniqueOrThrow({ where: { id: bike.id } });
     expect(bikeUndone.plannedSetCount).toBe(bike.plannedSetCount);
+  });
+
+  it("stores the visible set count when a swap changes the set count and the card is removed", async () => {
+    const user = await makeUser("swap-count@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 1)!;
+    const scaled = scaleProgramDay(day, {
+      band: "intermediate",
+      programSlug: DEMO_PROGRAM_SLUG,
+      weightAccess: "gym",
+    });
+    const source = scaled.exercises.find((exercise) => exercise.sets !== 1) ?? scaled.exercises[0]!;
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+      scale: { experienceLevel: "intermediate", weightAccess: "gym" },
+    });
+    const before = started.plannedSetCount ?? 0;
+    const swapped = await applyExerciseSwap({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      originalName: source.name,
+      currentName: source.name,
+      replacementName: "Hip circles",
+      scope: "session",
+      workoutSessionId: started.id,
+      blockKey,
+      source: {
+        sets: source.sets,
+        reps: source.reps,
+        loadText: source.loadText,
+        restSeconds: source.restSeconds,
+        logMode: source.logMode,
+        notes: source.notes,
+      },
+    });
+    expect(swapped.prescription.sets).not.toBe(source.sets);
+    const afterSwap = await prisma.workoutSession.findUniqueOrThrow({ where: { id: started.id } });
+    expect(afterSwap.plannedSetCount).toBe(before + (swapped.prescription.sets - source.sets));
+
+    const removalName =
+      swapped.sets?.find((set) => set.exerciseName.startsWith("Hip circles"))?.exerciseName ??
+      "Hip circles";
+    const currentSets = (swapped.sets ?? []).map((set) => ({
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      reps: set.reps,
+      loadValue: set.loadValue,
+      loadUnit: "lb" as const,
+      logMode: isLogMode(set.logMode) ? set.logMode : undefined,
+      durationSeconds: set.durationSeconds,
+      completed: set.completed,
+      notes: set.notes,
+      prescriptionKey: set.prescriptionKey,
+      rir: set.rir,
+    }));
+    const removed = await removeSessionExercise({
+      userId: user.id,
+      programSlug: DEMO_PROGRAM_SLUG,
+      dayNumber: day.dayNumber,
+      programDayId: day.id,
+      originalName: removalName,
+      exerciseName: removalName,
+      workoutSessionId: started.id,
+      blockKey,
+      currentSets,
+    });
+    const after = await prisma.workoutSession.findUniqueOrThrow({ where: { id: started.id } });
+    const [swaps, removals] = await Promise.all([
+      listSwapsForDay({ userId: user.id, programSlug: DEMO_PROGRAM_SLUG, dayNumber: day.dayNumber }),
+      listRemovalsForDay({ userId: user.id, programSlug: DEMO_PROGRAM_SLUG, dayNumber: day.dayNumber }),
+    ]);
+    const visible = visibleSessionDose({
+      exercises: scaled.exercises.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
+      swaps,
+      removals,
+      sessionId: started.id,
+      blockKey,
+      catalogDose: before,
+    });
+    expect(after.plannedSetCount).toBe(visible.dose);
+    expect(after.plannedSetCount).not.toBe(before - swapped.prescription.sets);
+    await undoExerciseRemoval({ userId: user.id, removalId: removed.id });
+    const undone = await prisma.workoutSession.findUniqueOrThrow({ where: { id: started.id } });
+    expect(undone.plannedSetCount).toBe(afterSwap.plannedSetCount);
   });
 });
 

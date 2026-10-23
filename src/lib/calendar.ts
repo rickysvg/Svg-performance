@@ -12,7 +12,10 @@ import {
   tickedSetCount,
 } from "@/lib/logged-work";
 import { sessionProgress } from "@/lib/session-progress";
-import { calendarScaleContext, withCalendarScaleMemory } from "@/lib/plan-doses";
+import { namedSetRows, visibleDoseForSession, type MemberExerciseEdits } from "@/lib/finish-plan";
+import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
+import { trainingBlockKey } from "@/lib/exercise-swap";
+import { calendarScaleContext, withCalendarScaleMemory, type ScaledDayPlan } from "@/lib/plan-doses";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { shapeDayPlan } from "@/lib/fight-camp";
@@ -281,12 +284,12 @@ type LoggedPlanSession = {
   programDay: {
     dayNumber: number;
     program: { slug: string };
-    exercises?: { sets?: number | null }[];
+    exercises?: { name?: string | null; sets?: number | null }[];
   } | null;
 };
 
-function prescribedSetCount(exercises: { sets?: number | null }[] | null | undefined) {
-  return prescribedSetTotal(exercises);
+function prescribedSetCount(exercises: readonly { sets?: number | null }[] | null | undefined) {
+  return prescribedSetTotal(exercises ? [...exercises] : undefined);
 }
 
 function namesOverlap(log: LoggedPlanSession, plannedNames: string[]) {
@@ -305,13 +308,27 @@ function performedDayKey(session: { performedAt: Date }, timeZone: string) {
 /** Ticked work that does not finish its own dose. A past plan card must not say Missed beside it. */
 function logIsOpenPartial(
   log: LoggedPlanSession,
-  planByDay: ReadonlyMap<string, { dose: number; names: readonly string[] }>,
+  planByDay: ReadonlyMap<string, ScaledDayPlan>,
+  edits: MemberExerciseEdits,
+  timeZone: string,
+  anchor: Date | null,
 ) {
   if (tickedSetCount(log.sets) === 0) return false;
   if (!log.programDayId) return !offPlanSessionDone(log, 0, []);
   const plan = planByDay.get(log.programDayId);
-  const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
-  return !offPlanSessionDone(log, dose, plan?.names ?? []);
+  const exercises =
+    plan?.exercises && plan.exercises.length > 0 ? plan.exercises : (log.programDay?.exercises ?? []);
+  const catalog = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(exercises);
+  const visible = visibleDoseForSession({
+    exercises,
+    catalogDose: catalog,
+    sessionId: log.id,
+    blockKey: trainingBlockKey(log.performedAt, timeZone, anchor),
+    programSlug: log.programDay?.program.slug,
+    dayNumber: log.programDay?.dayNumber,
+    edits,
+  });
+  return !offPlanSessionDone(log, visible.dose, visible.names);
 }
 
 function titlesMatch(loggedTitle: string, plannedTitle: string) {
@@ -467,10 +484,11 @@ async function loadCalendarSchedule(
   now = new Date(),
   weekAnchor?: Date,
 ) {
-  const [scale, swaps, account] = await Promise.all([
+  const [scale, swaps, account, edits] = await Promise.all([
     calendarScaleContext(userId, weekAnchor ?? now),
     getWeekPlanSwapsForUser(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+    loadMemberExerciseEdits(userId),
   ]);
   const { profile, tz, strength, skill } = scale;
   await finalizePastLoggedDrafts(userId, now, tz);
@@ -565,10 +583,24 @@ async function loadCalendarSchedule(
         scaledPlan?.exercises && scaledPlan.exercises.length > 0
           ? scaledPlan.exercises
           : (session.day?.exercises ?? []);
-      const dose =
+      const catalogDose =
         scaledPlan && scaledPlan.dose > 0 ? scaledPlan.dose : prescribedSetCount([...scaledExercises]);
+      const visible = visibleDoseForSession({
+        exercises: namedSetRows(scaledExercises),
+        catalogDose,
+        sessionId: matched?.id ?? "",
+        blockKey: trainingBlockKey(
+          matched?.performedAt ?? day.date,
+          tz,
+          profile?.onboardingCompletedAt ?? null,
+        ),
+        programSlug: matched?.programDay?.program.slug ?? session.programSlug,
+        dayNumber: matched?.programDay?.dayNumber ?? session.dayNumber,
+        edits,
+      });
+      const dose = visible.dose;
       const view = matched
-        ? sessionProgress(matched, { dose, names: scaledPlan?.names, exercises: scaledExercises })
+        ? sessionProgress(matched, { dose, names: visible.names, exercises: visible.exercises })
         : null;
       const sessionDone = Boolean(view?.done);
       const ticked = view?.ticked ?? 0;
@@ -576,7 +608,9 @@ async function loadCalendarSchedule(
       const exerciseRows =
         view && ticked > 0 ? visibleCalendarExercises(view.rows, view.done) : [];
       const partial = Boolean(view && !view.done && ticked > 0);
-      const dayHasPartialWork = dayLogs.some((log) => logIsOpenPartial(log, planByDay));
+      const dayHasPartialWork = dayLogs.some((log) =>
+        logIsOpenPartial(log, planByDay, edits, tz, profile?.onboardingCompletedAt ?? null),
+      );
       const href =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
@@ -587,7 +621,10 @@ async function loadCalendarSchedule(
       const insteadNames = [
         ...new Set(
           dayLogs
-            .filter((log) => log.id !== matched?.id && logIsOpenPartial(log, planByDay))
+            .filter((log) =>
+              log.id !== matched?.id &&
+              logIsOpenPartial(log, planByDay, edits, tz, profile?.onboardingCompletedAt ?? null),
+            )
             .map((log) => memberFacingTitle(log.title).trim() || log.title.trim())
             .filter((name) => name.length > 0),
         ),
@@ -639,10 +676,23 @@ async function loadCalendarSchedule(
       }
       const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
       const plan = planByDay.get(log.programDayId);
-      const dose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(log.programDay?.exercises);
       const exercises =
         plan?.exercises && plan.exercises.length > 0 ? plan.exercises : (log.programDay?.exercises ?? []);
-      const view = sessionProgress(log, { dose, names: plan?.names, exercises });
+      const catalogDose = plan && plan.dose > 0 ? plan.dose : prescribedSetCount(exercises);
+      const visible = visibleDoseForSession({
+        exercises,
+        catalogDose,
+        sessionId: log.id,
+        blockKey: trainingBlockKey(log.performedAt, tz, profile?.onboardingCompletedAt ?? null),
+        programSlug: log.programDay?.program.slug,
+        dayNumber: log.programDay?.dayNumber,
+        edits,
+      });
+      const view = sessionProgress(log, {
+        dose: visible.dose,
+        names: visible.names,
+        exercises: visible.exercises,
+      });
       day.activities.push({
         kind: "workout",
         title,

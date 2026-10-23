@@ -2,10 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { visibleFinishDose } from "@/lib/finish-plan";
+import { visibleFinishDose, visibleSessionDose } from "@/lib/finish-plan";
 import type { SwapRecord } from "@/lib/exercise-swap";
 import { sessionProgress } from "@/lib/session-progress";
 import {
+  correctionEatenAt,
   createNutritionEntryForUser,
   updateNutritionEntryForUser,
 } from "@/lib/nutrition";
@@ -72,7 +73,8 @@ describe("Oct 23 QA fixes", () => {
   it("keeps the original eaten time when a correction is saved, and shows a spinner", () => {
     const form = read("src/components/nutrition/NutritionEntryForm.tsx");
     const action = read("src/lib/nutrition.ts");
-    expect(action).toContain("eatenAt: existing.eatenAt");
+    expect(action).toContain("correctionEatenAt");
+    expect(action).toContain("formatDateTimeLocal(existing, timeZone) === formatDateTimeLocal(submitted, timeZone)");
     expect(form).toContain("data-nutrition-spinner");
     expect(form).toContain("disabled={pending}");
     expect(form).toContain("state.saved");
@@ -143,6 +145,43 @@ describe("Oct 23 QA fixes", () => {
     expect(read("src/app/(member)/training/log/[sessionId]/done/page.tsx")).toContain(
       "visibleFinishDose",
     );
+    expect(visibleSessionDose({
+      exercises: names.map((name) => ({ name, sets: 4 })),
+      swaps: [swap],
+      removals: [
+        {
+          originalName: "Kettlebell swing",
+          exerciseName: "Cable pull-through",
+          workoutSessionId: "sess",
+        },
+      ],
+      sessionId: "sess",
+      blockKey: "2026-w",
+      catalogDose: 32,
+    })).toEqual(visible);
+
+    const fewerSets = visibleSessionDose({
+      exercises: names.map((name) => ({ name, sets: 4 })),
+      swaps: [{ ...swap, sets: 3 }],
+      removals: [
+        {
+          originalName: "Kettlebell swing",
+          exerciseName: "Cable pull-through",
+          workoutSessionId: "sess",
+        },
+      ],
+      sessionId: "sess",
+      blockKey: "2026-w",
+      catalogDose: 32,
+    });
+    expect(fewerSets.dose).toBe(28);
+    expect(fewerSets.names).not.toContain("Kettlebell swing");
+    expect(read("src/lib/finish-plan.ts")).toContain("return visibleSessionDose(input)");
+    expect(read("src/lib/calendar.ts")).toContain("visibleDoseForSession");
+    expect(read("src/app/(member)/training/history/page.tsx")).toContain("visibleDoseForSession");
+    expect(read("src/lib/home.ts")).toContain("visibleDoseForSession");
+    expect(read("src/lib/today-start.ts")).toContain("visibleDoseForSession");
+    expect(read("src/app/(member)/training/page.tsx")).toContain("withVisiblePlanExercises");
   });
 
   it("lines the focused week up with its header and day links, and keeps the carousel", () => {
@@ -214,8 +253,11 @@ describe("Oct 23 QA fixes", () => {
     const move = read("src/components/training/WorkoutMove.tsx");
     expect(move).not.toContain("if (!toast || pending) return");
     expect(move).toContain("if (!toast || undoing) return");
-    expect(move).toContain("router.refresh()");
+    expect(move).not.toContain("router.refresh(");
+    expect(move).toContain("data-plan-pending");
+    expect(move).toContain("saving || undoing");
     expect(move).not.toContain("useTransition");
+    expect(read("src/app/actions/week-plan.ts")).toContain("revalidatePath");
     expect(read("src/lib/week-plan-swap-store.ts")).toContain("writePrunedSwapsIfUnchanged");
     expect(read("src/components/home/SummaryReader.tsx")).toContain(
       "if (!coachVoiceEnabled()) return null",
@@ -235,9 +277,21 @@ describe("Oct 23 saved rows", () => {
     await prisma.$disconnect();
   });
 
-  it("keeps eatenAt when the correction form submits a shifted clock", async () => {
+  it("keeps an untouched When minute and saves an explicit change", async () => {
+    const denver = "America/Denver";
+    const existing = new Date("2026-10-23T16:43:12.000Z");
+    const sameMinute = new Date("2026-10-23T16:43:00.000Z");
+    expect(correctionEatenAt(existing, sameMinute, denver).toISOString()).toBe(existing.toISOString());
+    const eight = parseDateTimeLocal("2026-10-23T08:00", denver);
+    expect(eight?.toISOString()).toBe("2026-10-23T14:00:00.000Z");
+    expect(correctionEatenAt(existing, eight!, denver).toISOString()).toBe("2026-10-23T14:00:00.000Z");
+    const winter = new Date("2026-01-15T19:22:45.000Z");
+    expect(correctionEatenAt(winter, new Date("2026-01-15T19:22:00.000Z"), denver).toISOString()).toBe(
+      winter.toISOString(),
+    );
+
     const user = await makeUser("qa-oct23-food@example.com");
-    const eatenAt = new Date("2026-10-23T13:22:00.000Z");
+    const eatenAt = new Date("2026-10-23T16:43:12.000Z");
     const entry = await createNutritionEntryForUser(user.id, {
       name: "Rice cake",
       mealType: "breakfast",
@@ -249,19 +303,42 @@ describe("Oct 23 saved rows", () => {
       fatG: 0,
       eatenAt,
     });
-    const fixed = await updateNutritionEntryForUser(entry.id, user.id, {
-      name: "Rice cake",
-      mealType: "breakfast",
-      servings: 1,
-      servingLabel: "cake",
-      calories: 15,
-      proteinG: 0,
-      carbsG: 2,
-      fatG: 0,
-      eatenAt: new Date("2026-10-23T06:22:00.000Z"),
-    });
-    expect(fixed.calories).toBe(15);
-    expect(fixed.eatenAt.toISOString()).toBe(eatenAt.toISOString());
+    const untouched = await updateNutritionEntryForUser(
+      entry.id,
+      user.id,
+      {
+        name: "Rice cake",
+        mealType: "breakfast",
+        servings: 1,
+        servingLabel: "cake",
+        calories: 15,
+        proteinG: 0,
+        carbsG: 2,
+        fatG: 0,
+        eatenAt: sameMinute,
+      },
+      denver,
+    );
+    expect(untouched.calories).toBe(15);
+    expect(untouched.eatenAt.toISOString()).toBe(eatenAt.toISOString());
+
+    const moved = await updateNutritionEntryForUser(
+      entry.id,
+      user.id,
+      {
+        name: "Rice cake",
+        mealType: "breakfast",
+        servings: 1,
+        servingLabel: "cake",
+        calories: 15,
+        proteinG: 0,
+        carbsG: 2,
+        fatG: 0,
+        eatenAt: eight!,
+      },
+      denver,
+    );
+    expect(moved.eatenAt.toISOString()).toBe("2026-10-23T14:00:00.000Z");
   });
 
   it("does not let a stale prune write replace an Undo", async () => {

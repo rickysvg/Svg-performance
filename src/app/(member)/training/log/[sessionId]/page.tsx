@@ -11,6 +11,8 @@ import {
 } from "@/lib/workouts";
 import { calendarPlanDoses } from "@/lib/plan-doses";
 import { sessionProgress } from "@/lib/session-progress";
+import { visibleDoseForSession } from "@/lib/finish-plan";
+import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
 import { getWorkoutHrForLoggedSession, hrSourceLabel } from "@/lib/heart";
 import { WorkoutLogForm } from "@/components/training/WorkoutLogForm";
 import { DifficultyRatingForm } from "@/components/training/DifficultyRatingForm";
@@ -71,11 +73,32 @@ export default async function WorkoutLogPage({
   if (session.status === "complete") {
     const doses = session.programDayId ? await calendarPlanDoses(user.id, session.performedAt) : null;
     const plan = session.programDayId ? doses?.get(session.programDayId) : undefined;
+    const programmed =
+      plan?.exercises && plan.exercises.length > 0
+        ? plan.exercises
+        : (session.programDay?.exercises ?? []);
+    const visible = session.programDay
+      ? visibleDoseForSession({
+          exercises: programmed,
+          catalogDose: plan?.dose,
+          sessionId: session.id,
+          blockKey: trainingBlockKey(
+            session.performedAt,
+            tz,
+            profile?.onboardingCompletedAt ?? null,
+          ),
+          programSlug: session.programDay.program.slug,
+          dayNumber: session.programDay.dayNumber,
+          edits: await loadMemberExerciseEdits(user.id),
+        })
+      : null;
     const progress = sessionProgress(
       session,
-      plan
-        ? { dose: plan.dose, names: plan.names, exercises: plan.exercises ?? session.programDay?.exercises }
-        : { exercises: session.programDay?.exercises },
+      visible
+        ? { dose: visible.dose, names: visible.names, exercises: visible.exercises }
+        : plan
+          ? { dose: plan.dose, names: plan.names, exercises: plan.exercises ?? session.programDay?.exercises }
+          : { exercises: session.programDay?.exercises },
     );
     if (progress.done) {
       redirect(`/training/log/${session.id}/done`);

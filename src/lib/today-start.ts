@@ -1,6 +1,8 @@
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { draftHasResumeWork, type TickedSet } from "@/lib/logged-work";
 import { sessionProgress } from "@/lib/session-progress";
+import { visibleDoseForSession, type MemberExerciseEdits } from "@/lib/finish-plan";
+import { trainingBlockKey } from "@/lib/exercise-swap";
 
 export type ResumableLog = {
   id: string;
@@ -12,7 +14,11 @@ export type ResumableLog = {
   dayPlanId?: string | null;
   plannedSetCount?: number | null;
   sets: TickedSet[];
-  programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
+  programDay?: {
+    dayNumber?: number;
+    program?: { slug: string };
+    exercises?: { name?: string | null; sets?: number | null }[];
+  } | null;
 };
 
 export type OpenProgramLog = {
@@ -45,6 +51,7 @@ export function openLogsByProgramDay(
   onDay: string,
   timeZone: string,
   planByDay?: ReadonlyMap<string, PlanDose>,
+  visibleEdits?: { edits: MemberExerciseEdits; anchor?: Date | null } | null,
 ) {
   const map = new Map<string, OpenProgramLog>();
   const finished = new Set<string>();
@@ -63,10 +70,21 @@ export function openLogsByProgramDay(
     const scaledExercises =
       plan?.exercises && plan.exercises.length > 0 ? plan.exercises : exercises;
     const dose = plan && plan.dose > 0 ? plan.dose : undefined;
+    const shown = visibleEdits
+      ? visibleDoseForSession({
+          exercises: scaledExercises,
+          catalogDose: dose,
+          sessionId: session.id,
+          blockKey: trainingBlockKey(session.performedAt, timeZone, visibleEdits.anchor),
+          programSlug: session.programDay?.program?.slug,
+          dayNumber: session.programDay?.dayNumber,
+          edits: visibleEdits.edits,
+        })
+      : null;
     const progress = sessionProgress(session, {
-      dose,
-      names,
-      exercises: scaledExercises,
+      dose: shown?.dose ?? dose,
+      names: shown?.names ?? names,
+      exercises: shown?.exercises ?? scaledExercises,
     });
     if (session.status === "complete" && progress.done) {
       finished.add(session.programDayId);

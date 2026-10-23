@@ -59,6 +59,9 @@ import {
   sessionCountsAsPlannedCompletion,
 } from "@/lib/logged-work";
 import { sessionProgress, type ProgressDose } from "@/lib/session-progress";
+import { visibleDoseForSession, withVisiblePlanExercises, type MemberExerciseEdits } from "@/lib/finish-plan";
+import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
+import { trainingBlockKey } from "@/lib/exercise-swap";
 
 export type WeeklyActivity = {
   daysActive: number;
@@ -274,7 +277,9 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
 
 function homeProgress(
   session: {
+    id?: string;
     status: string;
+    performedAt?: Date;
     programDayId?: string | null;
     plannedSetCount?: number | null;
     sets: {
@@ -284,20 +289,32 @@ function homeProgress(
       durationSeconds?: number | null;
       exerciseName?: string | null;
     }[];
-    programDay?: { exercises?: { sets?: number | null; name?: string | null }[] } | null;
+    programDay?: {
+      dayNumber?: number;
+      program?: { slug: string };
+      exercises?: { sets?: number | null; name?: string | null }[];
+    } | null;
   },
   plan: ProgressDose | undefined,
   fallback: { name?: string | null; sets?: number | null }[],
+  edits: MemberExerciseEdits,
+  timeZone: string,
+  anchor: Date | null,
 ) {
   const exercises = plan?.exercises && plan.exercises.length > 0 ? plan.exercises : fallback;
-  const names =
-    plan?.names && plan.names.length > 0
-      ? [...plan.names]
-      : exercises.map((exercise) => (exercise.name ?? "").trim()).filter((name) => name.length > 0);
-  return sessionProgress(session, {
-    dose: plan?.dose,
-    names,
+  const visible = visibleDoseForSession({
     exercises,
+    catalogDose: typeof plan?.dose === "number" ? plan.dose : undefined,
+    sessionId: session.id ?? "",
+    blockKey: trainingBlockKey(session.performedAt ?? new Date(), timeZone, anchor),
+    programSlug: session.programDay?.program?.slug,
+    dayNumber: session.programDay?.dayNumber,
+    edits,
+  });
+  return sessionProgress(session, {
+    dose: visible.dose,
+    names: visible.names,
+    exercises: visible.exercises,
   });
 }
 
@@ -320,6 +337,8 @@ function partialProgramDayIds(
   tz: string,
   plannedSessions: { dayId?: string | null; day?: { exercises?: { name?: string | null; sets?: number | null }[] } | null }[],
   planByDay: ReadonlyMap<string, ProgressDose>,
+  edits: MemberExerciseEdits,
+  anchor: Date | null,
 ) {
   return [
     ...new Set(
@@ -331,6 +350,9 @@ function partialProgramDayIds(
             session,
             planByDay.get(session.programDayId),
             planned?.day?.exercises ?? session.programDay?.exercises ?? [],
+            edits,
+            tz,
+            anchor,
           );
           return progress.ticked > 0 && !(session.status === "complete" && progress.done);
         })
@@ -353,7 +375,7 @@ export async function getHomeToday(
   const selected = startOfLocalDay(selectedDay, tz);
   const now = new Date();
   const selectedKey = zonedDayKey(selected, tz);
-  const [catalog, sessions, drafts, resumable, planByDay, foodToday, allLessons, progress, activity, profile, swaps, account, dayPlans] =
+  const [catalog, sessions, drafts, resumable, planByDay, foodToday, allLessons, progress, activity, profile, swaps, account, dayPlans, edits] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
@@ -368,6 +390,7 @@ export async function getHomeToday(
       getWeekPlanSwapsForUser(userId),
       prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
       listDayPlansForUser(userId, [selectedKey]),
+      loadMemberExerciseEdits(userId),
     ]);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
@@ -434,6 +457,9 @@ export async function getHomeToday(
             session,
             planByDay.get(session.programDayId),
             planned?.day?.exercises ?? session.programDay?.exercises ?? [],
+            edits,
+            tz,
+            profile?.onboardingCompletedAt ?? null,
           );
           return session.status === "complete" && progress.done;
         })
@@ -444,7 +470,10 @@ export async function getHomeToday(
   const finishedToday = new Set(completedDayIds);
   const resumeByDay: Record<string, { id: string; partial: boolean }> = {};
   if (sameLocalDay(selected, now, tz)) {
-    for (const [dayId, log] of openLogsByProgramDay(resumable, todayKey, tz, planByDay)) {
+    for (const [dayId, log] of openLogsByProgramDay(resumable, todayKey, tz, planByDay, {
+      edits,
+      anchor: profile?.onboardingCompletedAt ?? null,
+    })) {
       if (finishedToday.has(dayId) && !log.partial) continue;
       resumeByDay[dayId] = { id: log.id, partial: log.partial };
     }
@@ -500,13 +529,28 @@ export async function getHomeToday(
       ? await getSparringLog(userId, zonedDayKey(selected, tz))
       : null;
 
+  const anchor = profile?.onboardingCompletedAt ?? null;
+  const withVisiblePlan = <T extends ResolvedPlanSession>(session: T, onDate: Date): T => {
+    const log = [...resumable, ...sessions].find(
+      (row) =>
+        Boolean(session.dayId) &&
+        row.programDayId === session.dayId &&
+        sameLocalDay(row.performedAt, onDate, tz),
+    );
+    return withVisiblePlanExercises(session, {
+      edits,
+      blockKey: trainingBlockKey(log?.performedAt ?? onDate, tz, anchor),
+      sessionId: log?.id ?? "",
+    });
+  };
+
   return {
     selected,
     timeZone: tz,
     isToday: sameLocalDay(selected, now, tz),
     suggestedDay,
-    plannedSessions,
-    nextSession: nextSession as ResolvedPlanSession | null,
+    plannedSessions: plannedSessions.map((session) => withVisiblePlan(session, selected)),
+    nextSession: nextSession ? withVisiblePlan(nextSession, nextDate ?? selected) : null,
     nextSessionWeekday: nextPlan?.weekday ?? "",
     weekStrip: withBikeChipLogHrefs(
       await easeWeekStripDays(
@@ -540,7 +584,15 @@ export async function getHomeToday(
     resumeByDay,
     completedDayIds,
     partialDayIds: [
-      ...partialProgramDayIds(sessions, selected, tz, plannedSessions, planByDay),
+      ...partialProgramDayIds(
+        sessions,
+        selected,
+        tz,
+        plannedSessions,
+        planByDay,
+        edits,
+        profile?.onboardingCompletedAt ?? null,
+      ),
       ...homePlans.filter((plan) => plan.partial && !plan.complete).map((plan) => homePlanDayId(plan.id)),
     ],
     loggedOnSelected: loggedOnSelected ?? null,

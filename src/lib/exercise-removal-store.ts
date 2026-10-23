@@ -88,6 +88,18 @@ export async function listRemovalsForDay(input: {
   return rows.map(toRecord);
 }
 
+export async function listRemovalsForUser(userId: string) {
+  const rows = await prisma.exerciseRemoval.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map((row) => ({
+    programSlug: row.programSlug,
+    dayNumber: row.dayNumber,
+    record: toRecord(row),
+  }));
+}
+
 export async function listRemovalsForSession(userId: string, workoutSessionId: string) {
   if (!workoutSessionId) return [];
   const rows = await prisma.exerciseRemoval.findMany({

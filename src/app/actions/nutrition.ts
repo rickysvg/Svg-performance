@@ -110,7 +110,7 @@ export async function saveNutritionEntryAction(
       ? !(await hasActivityOnLocalDay(user.id, payload.eatenAt, timeZone))
       : false;
     const saved = entryId
-      ? await updateNutritionEntryForUser(entryId, user.id, payload)
+      ? await updateNutritionEntryForUser(entryId, user.id, payload, timeZone)
       : await createNutritionEntryForUser(user.id, payload);
     revalidatePath("/nutrition");
     revalidatePath("/home");
