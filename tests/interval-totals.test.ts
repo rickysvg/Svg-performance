@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IntervalStructureFields } from "@/components/training/IntervalStructureFields";
+import { intervalDurationCapMessage } from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
 
 describe("interval totals", () => {
@@ -62,8 +63,33 @@ describe("interval totals", () => {
         onDone: () => undefined,
       }),
     );
+    const configured = intervalTotals(
+      "bag",
+      { sets: 10, rounds: 30, workSeconds: 900, restSeconds: 600, setRestSeconds: 600 },
+      300,
+    );
     expect(html).toContain("Max 4:00:00");
-    expect(html).toContain("That workout is longer than 4 hours.");
+    expect(html).toContain(intervalDurationCapMessage(configured.totalSeconds));
+    expect(html).toContain(`data-testid="interval-total-time">Max 4:00:00`);
     expect(html).not.toContain("240:00");
+    expect(html).not.toContain("7490:00");
+  });
+
+  it("shows exactly 4 hours as 4:00:00", () => {
+    const html = renderToStaticMarkup(
+      createElement(IntervalStructureFields, {
+        shorthand: "10x1 @ 15:00/0 r600",
+        structure: { sets: 10, rounds: 1, workSeconds: 900, restSeconds: 0, setRestSeconds: 600 },
+        done: 10,
+        totalType: "bag",
+        presets: [],
+        onShorthandCommit: () => undefined,
+        onStructure: () => undefined,
+        onDone: () => undefined,
+      }),
+    );
+    expect(html).toContain('data-testid="interval-total-time">4:00:00');
+    expect(html).not.toContain("240:00");
+    expect(html).not.toContain("Max 4:00:00");
   });
 });

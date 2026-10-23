@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from 
 import {
   clampIntervalStructure,
   commitShorthand,
+  formatIntervalClock,
   formatIntervalShorthand,
+  intervalDurationCapMessage,
   INTERVAL_REST_MAX,
   INTERVAL_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
@@ -22,13 +24,6 @@ export type IntervalFieldPreset = {
   label: string;
   structure: IntervalStructure;
 };
-
-function clock(seconds: number) {
-  const safe = Math.max(0, Math.round(seconds));
-  const minutes = Math.floor(safe / 60);
-  const rest = safe % 60;
-  return `${minutes}:${String(rest).padStart(2, "0")}`;
-}
 
 function stepSetRest(current: number, direction: -1 | 1) {
   return Math.min(INTERVAL_SET_REST_MAX, Math.max(0, current + direction * 15));
@@ -137,7 +132,7 @@ export function IntervalStructureFields({
           className="h-11 w-full rounded-2xl border border-[#CBF805] bg-black px-3 font-mono text-base text-[#CBF805]"
         />
       </label>
-      {error ? (
+      {error && !overCap ? (
         <p className="text-sm text-[#FF3B3B]" role="alert" data-testid="interval-shorthand-error">
           {error}
         </p>
@@ -211,15 +206,15 @@ export function IntervalStructureFields({
       </div>
       <div className="rounded-2xl border border-line bg-card px-4 py-3" data-testid="interval-total">
         <p className="font-display text-2xl text-[#CBF805]" data-testid="interval-total-time">
-          {overCap ? "Max 4:00:00" : clock(totals.totalSeconds)}
+          {overCap ? "Max 4:00:00" : formatIntervalClock(totals.totalSeconds)}
         </p>
         {overCap ? (
           <p className="text-sm text-[#FF3B3B]" role="alert" data-testid="interval-duration-cap">
-            That workout is longer than 4 hours.
+            {intervalDurationCapMessage(configured.totalSeconds)}
           </p>
         ) : (
           <p className="text-sm text-white/70">
-            {clock(totals.workSeconds)} work · {totals.totalRounds} rounds
+            {formatIntervalClock(totals.workSeconds)} work · {totals.totalRounds} rounds
           </p>
         )}
       </div>

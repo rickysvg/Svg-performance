@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   commitShorthand,
   commitStructure,
+  formatIntervalClock,
   formatIntervalShorthand,
   formatSessionSummary,
+  intervalDurationCapMessage,
   parseIntervalShorthand,
   stepSeconds,
 } from "@/lib/interval-shorthand";
@@ -47,11 +49,22 @@ describe("interval shorthand", () => {
   it("rejects live-timer limits and a block longer than 4 hours", () => {
     expect(parseIntervalShorthand("10x50 @ 5/60:00 r600").ok).toBe(false);
     expect(parseIntervalShorthand("2x8 @ 15/15m").ok).toBe(false);
-    expect(parseIntervalShorthand("10x30 @ 15:00/10:00 r600").ok).toBe(false);
+    expect(parseIntervalShorthand("10x30 @ 15:00/10:00 r600")).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("Max 4:00:00"),
+    });
     expect(parseIntervalShorthand("2x8 @ 15m/15").ok).toBe(false);
     const kept = commitShorthand("2x8 @ 14:50/10", { ...base, setRestSeconds: 600 });
-    expect(kept.error).toBe("Try 2x8 @ 15/15");
+    expect(kept.error).toBe("That workout is 4:09:40. Max 4:00:00.");
+    expect(kept.error).not.toBe("Try 2x8 @ 15/15");
     expect(kept.structure).toEqual({ ...base, setRestSeconds: 600 });
+  });
+
+  it("writes an hour or more as H:MM:SS", () => {
+    expect(formatIntervalClock(540)).toBe("9:00");
+    expect(formatIntervalClock(14400)).toBe("4:00:00");
+    expect(formatIntervalClock(14400)).not.toBe("240:00");
+    expect(intervalDurationCapMessage(14980)).toBe("That workout is 4:09:40. Max 4:00:00.");
   });
 
   it("keeps the steppers when the line is not a structure", () => {

@@ -30,6 +30,7 @@ import {
   exerciseMatchesRoundType,
   restSecondsFromRoundKey,
   roundBlockDuration,
+  ROUND_SESSION_TITLES,
   roundLogSets,
   roundSaveStatus,
   roundStructureKey,
@@ -173,6 +174,56 @@ type BackfillPayload = {
 function cleanTitle(value: string, fallback: string) {
   const title = value.trim().replace(/\s+/g, " ").slice(0, 120);
   return title || fallback;
+}
+
+const DEFAULT_ACTIVITY_TITLES = new Set<string>(Object.values(ROUND_SESSION_TITLES));
+
+function structureLabel(spec: {
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number;
+}) {
+  return formatIntervalDisplay({
+    sets: spec.sets,
+    rounds: spec.rounds,
+    workSeconds: spec.workSeconds,
+    restSeconds: spec.restSeconds,
+    setRestSeconds: spec.sets > 1 ? spec.setRestSeconds : 0,
+  });
+}
+
+/**
+ * A structure edit rewrites the title only when the stored name is the label
+ * generated for the previous structure. A typed name stays. So does a default
+ * activity title such as "Heavy bag rounds" or "Assault bike intervals".
+ */
+export function intervalEditTitle(input: {
+  postedTitle: string;
+  storedTitle: string;
+  previous: {
+    sets: number;
+    rounds: number;
+    workSeconds: number;
+    restSeconds: number;
+    setRestSeconds: number;
+  };
+  next: {
+    sets: number;
+    rounds: number;
+    workSeconds: number;
+    restSeconds: number;
+    setRestSeconds: number;
+  };
+}) {
+  const posted = input.postedTitle.trim();
+  const stored = input.storedTitle.trim();
+  if (posted && posted !== stored) return cleanTitle(input.postedTitle, stored);
+  if (stored === structureLabel(input.previous) && !DEFAULT_ACTIVITY_TITLES.has(stored)) {
+    return structureLabel(input.next);
+  }
+  return stored || structureLabel(input.next);
 }
 
 async function memberZone(userId: string) {
@@ -1002,6 +1053,14 @@ async function payloadFromKind(
       repeatRounds,
       restBetweenRoundsSeconds: repeatRounds > 1 ? setRest : 0,
     });
+    const structureName = structureLabel({
+      sets: repeatRounds,
+      rounds: roundsPerSet,
+      workSeconds,
+      restSeconds,
+      setRestSeconds: shownSetRest,
+    });
+    const generatedName = choice.name === BIKE_TIMER_EXERCISE ? structureName : choice.name;
     const total = bikeTimerRoundCount(choice);
     const done = Math.min(total, Math.max(0, Math.round(input.doneRounds ?? total)));
     if (done < 1) throw new AppError("WORKOUT", "Log at least one set, then save.");
@@ -1014,7 +1073,7 @@ async function payloadFromKind(
     const plannedRounds = target?.plannedRounds ?? total;
     const daySetCount = target && target.daySetCount > 0 ? target.daySetCount : null;
     return {
-      title: cleanTitle(input.title, choice.name),
+      title: cleanTitle(input.title, generatedName),
       notes: notesWithBikeMetrics(input.notes, input.calories ?? null, input.distance ?? null),
       programDayId: target?.programDayId ?? input.programDayId ?? null,
       savedWorkoutId: null,
@@ -1477,18 +1536,14 @@ async function updateIntervalBackfill(input: {
       done,
     ).totalSeconds;
   }
-  const postedName = input.title.trim();
-  const keepCustomName = postedName.length > 0 && postedName !== input.session.title.trim();
-  const title =
-    !sameStructure && !keepCustomName
-      ? formatIntervalDisplay({
-          sets: posted.sets,
-          rounds: posted.rounds,
-          workSeconds: posted.workSeconds,
-          restSeconds: posted.restSeconds,
-          setRestSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
-        })
-      : cleanTitle(input.title, input.session.title);
+  const title = sameStructure
+    ? cleanTitle(input.title, input.session.title)
+    : intervalEditTitle({
+        postedTitle: input.title,
+        storedTitle: input.session.title,
+        previous: input.decoded,
+        next: posted,
+      });
   const plannedSetCount = sameStructure ? Math.max(input.session.plannedSetCount ?? 0, configured) : configured;
   const status = roundSaveStatus({
     roundsCompleted: done,

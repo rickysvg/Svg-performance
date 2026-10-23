@@ -71,6 +71,22 @@ function formatShorthandDuration(seconds: number) {
   return `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
+/** Session totals. Under an hour stays M:SS. An hour or more is H:MM:SS, so 4 hours is 4:00:00. */
+export function formatIntervalClock(seconds: number) {
+  const safe = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const rest = safe % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+export function intervalDurationCapMessage(totalSeconds: number) {
+  return `That workout is ${formatIntervalClock(totalSeconds)}. Max 4:00:00.`;
+}
+
 function fail(): IntervalShorthandResult {
   return { ok: false, error: HINT };
 }
@@ -120,16 +136,15 @@ function finish(
   if (!inRange(workSeconds, WORK_MIN, WORK_MAX)) return fail();
   if (!inRange(restSeconds, 0, REST_MAX)) return fail();
   if (setRestSeconds != null && !inRange(setRestSeconds, 0, SET_REST_MAX)) return fail();
-  if (
-    configuredSeconds({
-      sets,
-      rounds,
-      workSeconds,
-      restSeconds,
-      setRestSeconds: setRestSeconds ?? 0,
-    }) > INTERVAL_SESSION_MAX_SECONDS
-  ) {
-    return fail();
+  const totalSeconds = configuredSeconds({
+    sets,
+    rounds,
+    workSeconds,
+    restSeconds,
+    setRestSeconds: setRestSeconds ?? 0,
+  });
+  if (totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    return { ok: false, error: intervalDurationCapMessage(totalSeconds) };
   }
   return {
     ok: true,
@@ -252,8 +267,9 @@ export function commitShorthand(text: string, current: IntervalStructure) {
     restSeconds: parsed.value.restSeconds,
     setRestSeconds: parsed.value.setRestSeconds ?? current.setRestSeconds,
   });
-  if (configuredSeconds(structure) > INTERVAL_SESSION_MAX_SECONDS) {
-    return { structure: current, error: HINT };
+  const totalSeconds = configuredSeconds(structure);
+  if (totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    return { structure: current, error: intervalDurationCapMessage(totalSeconds) };
   }
   return { structure, error: "" };
 }

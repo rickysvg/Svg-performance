@@ -73,7 +73,17 @@ export function decodeSeedInterval(
   const sets = exercises.flatMap((row) => {
     const key = row.prescriptionKey ?? "";
     const count = Math.max(0, Math.round(row.done));
-    if (!key || count < 1) return [];
+    if (!key) return [];
+    if (count < 1) {
+      return [
+        {
+          exerciseName: row.name,
+          prescriptionKey: key,
+          durationSeconds: row.durationSeconds ?? null,
+          completed: false,
+        },
+      ];
+    }
     return Array.from({ length: count }, () => ({
       exerciseName: row.name,
       prescriptionKey: key,

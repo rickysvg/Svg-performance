@@ -15,6 +15,7 @@ import {
   backfillFormSeed,
   updateBackfillWorkout,
   type BackfillFormSeed,
+  type BackfillPreview,
 } from "@/lib/backfill-workout";
 import { completionListLabel, exerciseSetProgress, historyCountLine } from "@/lib/logged-work";
 import { roundHistoryLine } from "@/lib/round-session";
@@ -547,6 +548,74 @@ describe("past log first paint and finish time", () => {
     );
     expect(deleteHtml).toContain("Delete Lift 3?");
     expect(deleteHtml).toContain('data-testid="log-past-workout-delete-confirm"');
+
+    const overCapPreview: BackfillPreview = {
+      dayKey: sample!.key,
+      programs: [],
+      saved: [],
+      existing: [],
+      days: [{ key: sample!.key, label: sample!.label }],
+      roundTargets: {},
+      lastUsed: {
+        bike: {
+          label: "10×30",
+          sets: 10,
+          rounds: 30,
+          workSeconds: 900,
+          restSeconds: 600,
+          setRestSeconds: 600,
+        },
+      },
+      bagRounds: 5,
+      units: "lb",
+      weightAccess: "gym",
+      shadowWeight: null,
+    };
+    const overCapHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: sample!.key,
+        entry: "calendar",
+        label: "Log",
+        timeZone: TZ,
+        defaultOpen: true,
+        initialPreview: overCapPreview,
+      }),
+    );
+    expect(overCapHtml).toContain("Save · 10×30 @ 15:00/10:00");
+    expect(overCapHtml).not.toContain("7590:00");
+    expect(overCapHtml).not.toContain("7490:00");
+    expect(overCapHtml).toContain("Max 4:00:00");
+    expect(overCapHtml).toMatch(/data-testid="log-past-workout-save"[^>]*disabled/);
+
+    const zeroDone: BackfillFormSeed = {
+      title: "2 × 8 rounds · 15/15 · 60s between sets",
+      notes: "",
+      dayKey: sample!.key,
+      sessionRpe: null,
+      exercises: [
+        {
+          name: "Assault bike intervals",
+          sets: 16,
+          done: 0,
+          reps: "15",
+          logMode: "timed_round",
+          prescriptionKey: "timer#bw:c.15.15.8.0.0.2.60",
+          durationSeconds: 15,
+        },
+      ],
+    };
+    const zeroHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        entry: "edit",
+        sessionId: "sess-zero",
+        label: "Edit",
+        timeZone: TZ,
+        seed: zeroDone,
+        defaultOpen: true,
+      }),
+    );
+    expect(zeroHtml).toContain("Log at least one set, then save.");
+    expect(zeroHtml).toMatch(/data-testid="log-past-workout-confirm"[^>]*disabled/);
     expect(deleteHtml).toContain('name="sessionId" value="sess-1"');
   });
 
@@ -1108,6 +1177,185 @@ describe("today and past interval logs", () => {
     expect(custom.ok).toBe(true);
     const named = await prisma.workoutSession.findUniqueOrThrow({ where: { id: partial.sessionId } });
     expect(named.title).toBe("Morning ride");
+    const later = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: partial.sessionId,
+      dayKey: day,
+      title: "Morning ride",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 2,
+        rounds: 8,
+        workSeconds: 30,
+        restSeconds: 30,
+        setRestSeconds: 60,
+        done: 16,
+      },
+    });
+    expect(later.ok).toBe(true);
+    const keptName = await prisma.workoutSession.findUniqueOrThrow({ where: { id: partial.sessionId } });
+    expect(keptName.title).toBe("Morning ride");
+  });
+
+  it("keeps a typed name and a default activity title when a later edit changes the structure", async () => {
+    const user = await makeUser("backfill-keep-custom-title@example.com");
+    await onboard(user.id);
+    const day = "2026-10-21";
+    const ride = await rickyBike(user.id, day, 16);
+    expect(ride.ok).toBe(true);
+    if (!ride.ok) return;
+    const renamed = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: ride.sessionId,
+      dayKey: day,
+      title: "Hill sprints",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 2,
+        rounds: 8,
+        workSeconds: 15,
+        restSeconds: 15,
+        setRestSeconds: 60,
+        done: 16,
+      },
+    });
+    expect(renamed.ok).toBe(true);
+    const tuesday = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: ride.sessionId,
+      dayKey: day,
+      title: "Tuesday ride",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 2,
+        rounds: 8,
+        workSeconds: 15,
+        restSeconds: 15,
+        setRestSeconds: 60,
+        done: 16,
+      },
+    });
+    expect(tuesday.ok).toBe(true);
+    const shifted = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: ride.sessionId,
+      dayKey: day,
+      title: "Tuesday ride",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 1,
+        rounds: 8,
+        workSeconds: 20,
+        restSeconds: 10,
+        setRestSeconds: 0,
+        done: 8,
+      },
+    });
+    expect(shifted.ok).toBe(true);
+    const named = await prisma.workoutSession.findUniqueOrThrow({ where: { id: ride.sessionId } });
+    expect(named.title).toBe("Tuesday ride");
+
+    const bag = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-20",
+      kind: "bag",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "",
+      rpe: null,
+      roundMode: "bag",
+      roundsPerSet: 3,
+      repeatRounds: 2,
+      doneRounds: 6,
+      workSeconds: 180,
+      restSeconds: 60,
+      restBetweenRoundsSeconds: 120,
+    });
+    expect(bag.ok).toBe(true);
+    if (!bag.ok) return;
+    const bagBefore = await prisma.workoutSession.findUniqueOrThrow({ where: { id: bag.sessionId } });
+    expect(bagBefore.title).toBe("Heavy bag rounds");
+    const bagEdited = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: bag.sessionId,
+      dayKey: "2026-10-20",
+      title: "Heavy bag rounds",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bag",
+        sets: 2,
+        rounds: 3,
+        workSeconds: 120,
+        restSeconds: 60,
+        setRestSeconds: 120,
+        done: 6,
+      },
+    });
+    expect(bagEdited.ok).toBe(true);
+    const bagAfter = await prisma.workoutSession.findUniqueOrThrow({ where: { id: bag.sessionId } });
+    expect(bagAfter.title).toBe("Heavy bag rounds");
+  });
+
+  it("names an out-of-range bike from the structure instead of Assault bike intervals", async () => {
+    const user = await makeUser("backfill-bike-structure-title@example.com");
+    await onboard(user.id);
+    const cases = [
+      { workSeconds: 20, restSeconds: 600, roundsPerSet: 2, title: "2 rounds · 20/10:00" },
+      { workSeconds: 900, restSeconds: 60, roundsPerSet: 2, title: "2 rounds · 15:00/1:00" },
+      { workSeconds: 20, restSeconds: 200, roundsPerSet: 8, title: "8 rounds · 20/3:20" },
+    ];
+    for (const [index, spec] of cases.entries()) {
+      const saved = await createBackfillWorkout({
+        userId: user.id,
+        dayKey: `2026-10-${18 + index}`,
+        kind: "bike",
+        resolution: "",
+        now: NOW,
+        title: "",
+        notes: "",
+        rpe: null,
+        workSeconds: spec.workSeconds,
+        restSeconds: spec.restSeconds,
+        roundsPerSet: spec.roundsPerSet,
+        repeatRounds: 1,
+        doneRounds: spec.roundsPerSet,
+      });
+      expect(saved.ok).toBe(true);
+      if (!saved.ok) return;
+      const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: saved.sessionId } });
+      expect(row.title).toBe(spec.title);
+      expect(row.title).not.toBe("Assault bike intervals");
+    }
   });
 
   it("opens a partial bike from History Edit and saves it unchanged", async () => {

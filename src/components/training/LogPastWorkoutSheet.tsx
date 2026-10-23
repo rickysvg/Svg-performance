@@ -17,6 +17,7 @@ import { backfillDayOptions } from "@/lib/backfill-rules";
 import type { BackfillFormSeed, BackfillPreview } from "@/lib/backfill-workout";
 import { decodeSeedInterval } from "@/lib/interval-decode";
 import {
+  formatIntervalClock,
   formatIntervalShorthand,
   formatSessionSummary,
   INTERVAL_SESSION_MAX_SECONDS,
@@ -91,8 +92,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function clock(seconds: number) {
-  const safe = Math.max(0, Math.round(seconds));
-  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+  return formatIntervalClock(seconds);
 }
 
 function isRoundKind(kind: string): kind is RoundKind {
@@ -461,12 +461,15 @@ function LogPastWorkoutSheet({
     Math.max(1, structure.sets * structure.rounds),
   ).totalSeconds;
   const overDuration = showingInterval && configuredSeconds > INTERVAL_SESSION_MAX_SECONDS;
+  const needsOneSet = showingInterval && done < 1;
   const saveText = pending
     ? "Saving…"
     : mode === "edit"
       ? "Save changes"
       : isStructureKind(kind) || kind === "shadow"
-        ? `Save · ${kind === "shadow" ? "Shadow" : summary} · ${clock(totals.totalSeconds)}`
+        ? overDuration
+          ? `Save · ${kind === "shadow" ? "Shadow" : summary}`
+          : `Save · ${kind === "shadow" ? "Shadow" : summary} · ${clock(totals.totalSeconds)}`
         : "Save workout";
   const last = isRoundKind(kind) || kind === "shadow" ? preview?.lastUsed[kind] : undefined;
   const presets = [
@@ -863,6 +866,11 @@ function LogPastWorkoutSheet({
               </div>
             ) : null}
             <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-black via-black px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+              {needsOneSet ? (
+                <p role="alert" data-testid="interval-done-required" className="mb-2 text-sm text-[#FF3B3B]">
+                  Log at least one set, then save.
+                </p>
+              ) : null}
               {conflict.length > 0 ? (
                 <div data-testid="log-past-workout-conflict" className="rounded-2xl border border-[#CBF805]/40 bg-black px-3 py-3">
                   <p className="text-sm">
@@ -895,7 +903,7 @@ function LogPastWorkoutSheet({
                   type="button"
                   data-testid="log-past-workout-confirm"
                   onClick={() => setConfirming(true)}
-                  disabled={overDuration}
+                  disabled={overDuration || needsOneSet}
                   className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   Review changes
@@ -905,7 +913,7 @@ function LogPastWorkoutSheet({
                 <button
                   type="submit"
                   data-testid="log-past-workout-save"
-                  disabled={pending || overDuration || (mode === "create" && !preview)}
+                  disabled={pending || overDuration || needsOneSet || (mode === "create" && !preview)}
                   className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   {saveText}
