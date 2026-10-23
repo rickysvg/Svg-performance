@@ -44,6 +44,8 @@ export type BackfillExerciseInput = {
   storedReps?: number | null;
   prescriptionKey?: string;
   setNotes?: string;
+  /** Rest on the programmed row. The past-bike form uses it as rest between sets. */
+  restSeconds?: number | null;
 };
 
 export type BackfillSetDraft = {

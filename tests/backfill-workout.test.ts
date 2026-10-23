@@ -25,6 +25,11 @@ import { backfillDayOptions } from "@/lib/backfill-rules";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
+import { bikeBackfillChoice, bikeBackfillMinutes, bikeBackfillFormFromSpec } from "@/lib/bike-backfill";
+import { bikeHistoryLine, bikeTimerRoundCount } from "@/lib/bike-chooser";
+import { bikeTimerLogSets, bikeTimerSessionSeconds } from "@/lib/bike-timer-log";
+import { calendarSessionText, finishSessionText, historySessionText } from "@/lib/session-progress";
+import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 
 const NOW = new Date("2026-10-22T18:00:00.000Z");
 const TZ = "America/Denver";
@@ -446,6 +451,184 @@ describe("log a past workout", () => {
     expect(after?.sets.every((set) => (set.prescriptionKey ?? "").startsWith("round:"))).toBe(true);
     expect(roundHistoryLine(after!)).toBe("3 rounds · 2:00 round · 1:00 rest · 8:00 total · RPE 6");
   });
+
+  it("saves 2×8 of 15/15 like a live bike timer", async () => {
+    const user = await makeUser("backfill-bike-intervals@example.com");
+    await onboard(user.id);
+    const spec = {
+      workSeconds: 15,
+      restSeconds: 15,
+      roundsPerSet: 8,
+      sets: 2,
+      restBetweenSetsSeconds: 0,
+    };
+    const choice = bikeBackfillChoice(spec);
+    expect(choice).not.toBeNull();
+    const saved = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-17",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "Assault bike",
+      notes: "",
+      rpe: null,
+      workSeconds: spec.workSeconds,
+      restSeconds: spec.restSeconds,
+      roundsPerSet: spec.roundsPerSet,
+      bikeSets: spec.sets,
+      restBetweenSets: spec.restBetweenSetsSeconds,
+      doneRounds: 16,
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok || !choice) return;
+    const row = await prisma.workoutSession.findUnique({
+      where: { id: saved.sessionId },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    const liveSets = bikeTimerLogSets(choice, "lb", 16);
+    expect(row?.status).toBe("complete");
+    expect(row?.plannedSetCount).toBe(bikeTimerRoundCount(choice));
+    expect(row?.sets.map((set) => set.exerciseName)).toEqual(liveSets.map((set) => set.exerciseName));
+    expect(row?.sets.map((set) => set.durationSeconds)).toEqual(liveSets.map((set) => set.durationSeconds));
+    expect(row?.sets.map((set) => set.prescriptionKey)).toEqual(liveSets.map((set) => set.prescriptionKey));
+    expect(row?.sets.every((set) => set.completed && set.logMode === "timed_round")).toBe(true);
+    const timer = await readWorkoutTimerFields(saved.sessionId, prisma);
+    expect(timer.elapsedSeconds).toBe(bikeTimerSessionSeconds(choice, 16));
+    const history = bikeHistoryLine({
+      id: row!.id,
+      title: row!.title,
+      performedAt: row!.performedAt,
+      sets: row!.sets,
+    });
+    const liveHistory = bikeHistoryLine({
+      id: "live",
+      title: choice.name,
+      performedAt: row!.performedAt,
+      sets: liveSets,
+    });
+    expect(history).toBe(liveHistory);
+    expect(history).toContain("15s / 15s · 2×8");
+    const logged = {
+      status: row!.status,
+      plannedSetCount: row!.plannedSetCount,
+      sets: row!.sets,
+    };
+    const liveLogged = {
+      status: "complete",
+      plannedSetCount: bikeTimerRoundCount(choice),
+      sets: liveSets,
+    };
+    expect(historySessionText(logged)).toBe(historySessionText(liveLogged));
+    expect(calendarSessionText(logged)).toBe(calendarSessionText(liveLogged));
+    expect(finishSessionText(logged)).toBe(finishSessionText(liveLogged));
+    expect(historySessionText(logged)).toBe("16/16 rounds · Done");
+    const shareSets = row!.sets.map((set) => ({
+      exerciseName: set.exerciseName,
+      reps: set.reps,
+      loadValue: set.loadValue,
+      loadUnit: set.loadUnit,
+      logMode: set.logMode,
+      durationSeconds: set.durationSeconds,
+      completed: set.completed,
+      prescriptionKey: set.prescriptionKey,
+    }));
+    const finish = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: row!.title,
+        performedAt: row!.performedAt,
+        status: row!.status,
+        elapsedSeconds: timer.elapsedSeconds,
+        backfilled: true,
+        sets: shareSets,
+      },
+    });
+    const liveFinish = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: choice.name,
+        performedAt: row!.performedAt,
+        status: "complete",
+        elapsedSeconds: timer.elapsedSeconds,
+        backfilled: false,
+        sets: liveSets,
+      },
+    });
+    expect(finish).toEqual(liveFinish);
+
+    const partial = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-16",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "Assault bike",
+      notes: "",
+      rpe: null,
+      workSeconds: 15,
+      restSeconds: 15,
+      roundsPerSet: 8,
+      bikeSets: 2,
+      restBetweenSets: 60,
+      doneRounds: 8,
+    });
+    expect(partial.ok).toBe(true);
+    if (!partial.ok) return;
+    const partialRow = await prisma.workoutSession.findUnique({
+      where: { id: partial.sessionId },
+      include: { sets: true },
+    });
+    expect(partialRow?.status).toBe("partial");
+    expect(partialRow?.plannedSetCount).toBe(16);
+    expect(partialRow?.sets).toHaveLength(8);
+    expect(
+      bikeHistoryLine({
+        id: partialRow!.id,
+        title: partialRow!.title,
+        performedAt: partialRow!.performedAt,
+        sets: partialRow!.sets,
+      }),
+    ).toContain("15s / 15s · 2×8");
+    const between = bikeBackfillChoice({
+      workSeconds: 15,
+      restSeconds: 15,
+      roundsPerSet: 8,
+      sets: 2,
+      restBetweenSetsSeconds: 60,
+    })!;
+    const partialTimer = await readWorkoutTimerFields(partial.sessionId, prisma);
+    expect(partialTimer.elapsedSeconds).toBe(bikeTimerSessionSeconds(between, 8));
+
+    const overridden = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-15",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "Assault bike",
+      notes: "",
+      rpe: null,
+      workSeconds: 15,
+      restSeconds: 15,
+      roundsPerSet: 8,
+      bikeSets: 2,
+      durationSeconds: 12 * 60,
+      doneRounds: 16,
+    });
+    expect(overridden.ok).toBe(true);
+    if (!overridden.ok) return;
+    expect((await readWorkoutTimerFields(overridden.sessionId, prisma)).elapsedSeconds).toBe(12 * 60);
+
+    const wednesday = await previewBackfillDay(user.id, "2026-10-21", NOW);
+    expect(wednesday.bike).not.toBeNull();
+    const prefilled = bikeBackfillFormFromSpec(wednesday.bike!);
+    expect(prefilled.doneRounds).toBe(prefilled.roundsPerSet * prefilled.sets);
+    expect(prefilled.minutes).toBe(bikeBackfillMinutes(wednesday.bike!));
+    expect(prefilled.minutesEdited).toBe(false);
+  });
 });
 
 const pastSeed: BackfillFormSeed = {
@@ -471,6 +654,37 @@ describe("past log first paint and finish time", () => {
       }),
     );
     expect(createHtml).toContain('data-testid="log-past-workout-date"');
+    const bikeHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: sample!.key,
+        entry: "calendar",
+        label: "Log a completed workout",
+        timeZone: TZ,
+        defaultOpen: true,
+        initialKind: "bike",
+      }),
+    );
+    expect(bikeHtml).toContain("Work (sec)");
+    expect(bikeHtml).toContain("Rest (sec)");
+    expect(bikeHtml).toContain("Rounds per set");
+    expect(bikeHtml).toContain("Sets");
+    expect(bikeHtml).toContain("Rest between sets (sec, optional)");
+    expect(bikeHtml).toContain('data-testid="log-past-workout-total-rounds"');
+    expect(bikeHtml).toContain('data-testid="log-past-workout-minutes"');
+    const roundsHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: sample!.key,
+        entry: "train",
+        label: "Log a completed workout",
+        timeZone: TZ,
+        defaultOpen: true,
+        initialKind: "rounds",
+      }),
+    );
+    expect(roundsHtml).toContain("Work (sec)");
+    expect(roundsHtml).toContain("Rest (sec)");
+    expect(roundsHtml).toContain('name="plannedRounds"');
+    expect(roundsHtml).toContain('data-testid="log-past-workout-work"');
     expect(createHtml).toContain(sample!.key);
     expect(createHtml).toContain(sample!.label);
     expect(createHtml.split("<option").length).toBeGreaterThan(2);
