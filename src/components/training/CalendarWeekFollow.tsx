@@ -57,6 +57,7 @@ export function CalendarWeekFollow({
   level,
   moves,
   rearrange,
+  logPastDayKeys = [],
   children,
 }: {
   weeks: WeekCarouselWeek[];
@@ -70,6 +71,7 @@ export function CalendarWeekFollow({
   moves: Record<string, CalendarMoveBundle>;
   /** Kept for the page that still decides whether the viewed week can be edited. */
   rearrange?: boolean;
+  logPastDayKeys?: string[];
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -115,6 +117,7 @@ export function CalendarWeekFollow({
         todayHref={todayHref}
         swapWeekStart={weekStart}
         onWeekChange={onWeekChange}
+        logPastDayKeys={logPastDayKeys}
       />
       {panels}
     </WorkoutMoveProvider>

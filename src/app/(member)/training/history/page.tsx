@@ -13,6 +13,7 @@ import {
   tickedSetCount,
 } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { loggedExerciseNamesInOrder } from "@/lib/logger-insert";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -52,6 +53,9 @@ export default async function HistoryPage() {
         <p className="mt-1 text-sm text-muted">
           Logged sessions persist after refresh. Open any row to correct a mistake.
         </p>
+        <div className="mt-3">
+          <LogPastWorkoutButton entry="history" label="+ Log past workout" />
+        </div>
       </div>
 
       {sessions.length === 0 ? (
@@ -120,6 +124,12 @@ export default async function HistoryPage() {
               ) : null}
               <DeleteWorkoutButton workoutId={session.id} compact />
             </div>
+            {session.backfilled ? (
+              <div className="flex flex-wrap gap-2">
+                <LogPastWorkoutButton entry="edit" sessionId={session.id} label="Edit" compact />
+                <LogPastWorkoutButton entry="delete" sessionId={session.id} label="Delete" compact />
+              </div>
+            ) : null}
             <SaveWorkoutButton
               workoutId={session.id}
               defaultName={defaultSavedWorkoutName({

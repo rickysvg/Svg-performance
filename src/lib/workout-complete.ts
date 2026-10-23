@@ -1,4 +1,5 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { textIsBikeWorkout } from "@/lib/timer-session";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
 import {
@@ -49,7 +50,10 @@ function loggedSets(sets: ShareSetLike[]) {
 /** A session whose logged work is only bike intervals. Lifts and bag rounds stay on the pound tiles. */
 export function isBikeCardioSession(session: ShareSessionLike) {
   const sets = loggedSets(session.sets);
-  return sets.length > 0 && sets.every((set) => isBikeIntervalName(set.exerciseName));
+  return (
+    sets.length > 0 &&
+    sets.every((set) => isBikeIntervalName(set.exerciseName) || textIsBikeWorkout(set.exerciseName))
+  );
 }
 
 function bikeCardioEffort(sets: ShareSetLike[]) {

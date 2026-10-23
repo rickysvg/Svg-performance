@@ -19,6 +19,7 @@ import {
   trimRoundSetSeconds,
   type RoundSessionType,
 } from "@/lib/round-session";
+import { textIsBikeWorkout } from "@/lib/timer-session";
 import { ForbiddenError, NotFoundError, AppError, StaleDraftError } from "@/lib/errors";
 import { APP_LOAD_UNIT, convertLoad, isLoadUnit, roundLoadForInput, type LoadUnit } from "@/lib/units";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
@@ -66,6 +67,7 @@ import {
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
+  sessionOpensFinishScreen,
   setHasLoggedWork,
   tickedSetCount,
   withTickedPlanWork,
@@ -871,6 +873,108 @@ export async function logBikeRoundsForUser(input: {
     sets,
     elapsedSeconds: bikeTimerSessionSeconds(input.choice, sets.length),
   });
+}
+
+const BIKE_LOGGER_SET_CAP_SECONDS = 60 * 60;
+const BIKE_LOGGER_SESSION_CAP_SECONDS = 4 * 60 * 60;
+
+/**
+ * Finish the open logger from the bike clock. A My Workout or custom bike
+ * has no program day, so the ride is written onto that session and the
+ * completed screen can open. Per-set time stays inside the 60-minute hold.
+ */
+export async function completeBikeLoggerSession(input: {
+  userId: string;
+  workoutId: string;
+  choice: BikeChoice;
+  roundsCompleted: number;
+}) {
+  const roundsCompleted = Math.round(input.roundsCompleted);
+  if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1 || roundsCompleted > 80) {
+    throw new AppError("WORKOUT", "Finish a round before logging.");
+  }
+  const existing = assertOwnSession(
+    await prisma.workoutSession.findUnique({
+      where: { id: input.workoutId },
+      include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+    }),
+    input.userId,
+  );
+  if (existing.status !== "draft") {
+    throw new AppError("WORKOUT", "This workout is already saved.");
+  }
+  const profile = await getProfileForUser(input.userId);
+  const units: LoadUnit = profile?.preferredUnits ?? "lb";
+  const prescribed = Math.max(1, bikeTimerRoundCount(input.choice));
+  const done = Math.min(prescribed, roundsCompleted);
+  const bikeSets = bikeTimerLogSets(input.choice, units, done).map((set, index) => ({
+    exerciseName: set.exerciseName,
+    setNumber: index + 1,
+    sortOrder: index,
+    reps: null as number | null,
+    loadValue: null as number | null,
+    loadUnit: set.loadUnit,
+    logMode: set.logMode,
+    durationSeconds: Math.min(BIKE_LOGGER_SET_CAP_SECONDS, Math.max(1, Math.round(set.durationSeconds))),
+    completed: true,
+    notes: "",
+    prescriptionKey: set.prescriptionKey.slice(0, 160),
+  }));
+  if (bikeSets.length < 1) {
+    throw new AppError("WORKOUT", "Finish a round before logging.");
+  }
+  const kept = existing.sets.filter(
+    (set) => !isBikeIntervalName(set.exerciseName) && !textIsBikeWorkout(set.exerciseName),
+  );
+  const keptRows = kept.map((set, index) => ({
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    sortOrder: bikeSets.length + index,
+    reps: set.reps,
+    loadValue: set.loadValue,
+    loadUnit: set.loadUnit,
+    logMode: set.logMode,
+    durationSeconds:
+      set.durationSeconds == null
+        ? null
+        : Math.min(BIKE_LOGGER_SET_CAP_SECONDS, Math.max(0, Math.round(set.durationSeconds))),
+    completed: set.completed,
+    notes: set.notes,
+    prescriptionKey: set.prescriptionKey.slice(0, 160),
+  }));
+  const sets = [...bikeSets, ...keptRows];
+  const plannedSetCount = kept.length + prescribed;
+  const status = sessionCountsAsPlannedCompletion(
+    { status: "complete", sets, plannedSetCount },
+    [],
+  )
+    ? "complete"
+    : "partial";
+  const elapsed = Math.min(
+    BIKE_LOGGER_SESSION_CAP_SECONDS,
+    Math.max(1, bikeTimerSessionSeconds(input.choice, done)),
+  );
+  const timerReady = await workoutTimerColumnsAvailable(prisma);
+  const priorTimer = timerReady ? await readWorkoutTimerFields(existing.id, prisma) : null;
+  // An open draft has no finish time. Stamp the session's own start only once
+  // the ride is complete, never "now", and leave a short ride unfinished.
+  const finishedAt =
+    status === "complete" ? (priorTimer?.finishedAt ?? existing.performedAt) : null;
+  const [, updated] = await prisma.$transaction([
+    prisma.workoutSet.deleteMany({ where: { workoutSessionId: existing.id } }),
+    prisma.workoutSession.update({
+      where: { id: existing.id },
+      data: {
+        status,
+        plannedSetCount,
+        title: existing.title.trim() || input.choice.name,
+        sets: { create: sets },
+        ...(timerReady ? { elapsedSeconds: elapsed, finishedAt, timerStartedAt: null } : {}),
+      },
+      include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+    }),
+  ]);
+  return { ...updated, elapsedSeconds: elapsed };
 }
 
 const SAME_DAY_SETS = {
@@ -1916,7 +2020,7 @@ export async function rateWorkoutSessionForUser(input: {
     await prisma.workoutSession.findUnique({ where: { id: input.workoutId } }),
     input.userId,
   );
-  if (existing.status !== "complete" && existing.status !== "partial") {
+  if (!sessionOpensFinishScreen(existing)) {
     throw new AppError("WORKOUT", "Save the session first, then rate how it felt.");
   }
   const rating = parseDifficultyRating(input.difficultyRating);

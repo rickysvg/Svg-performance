@@ -340,6 +340,10 @@ model WorkoutSession {
    * empty rows, so completion compares ticked sets to this count.
    */
   plannedSetCount  Int?
+  /** live | backfill. Empty on older rows means the session was logged as it happened. */
+  source           String   @default("")
+  /** True when the member logged this session for a day that had already passed. */
+  backfilled       Boolean  @default(false)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   /** Template this session was started from. Null when the template is deleted. */

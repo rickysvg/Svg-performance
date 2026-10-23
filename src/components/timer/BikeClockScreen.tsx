@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { logBikeTimerAction } from "@/app/actions/workouts";
+import { finishBikeLoggerAction, logBikeTimerAction } from "@/app/actions/workouts";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import { BikeSetTimer } from "@/components/training/BikeSetTimer";
 import { BikeWorkoutChooser } from "@/components/training/BikeWorkoutSheet";
@@ -10,6 +10,7 @@ import {
   BIKE_CHOICE_EVENT,
   BIKE_CHOICE_STORAGE_KEY,
   bikeChoiceById,
+  bikeTimerRoundCount,
   choiceFromToken,
   choiceToken,
   rememberBikeChoice,
@@ -41,16 +42,24 @@ function emptyBikeChoiceToken() {
   return "";
 }
 
+function sessionRoundCount(session: BikeSession) {
+  const repeats = Math.max(1, Math.round(session.repeatRounds ?? 1));
+  return Math.max(1, Math.round(session.roundsPerSet) * repeats);
+}
+
 export function BikeClockScreen({
   token = null,
   session = null,
   dayId = null,
+  workoutSessionId = null,
   onClose,
   titleId,
 }: {
   token?: string | null;
   session?: BikeSession | null;
   dayId?: string | null;
+  /** Open logger to write when this clock has no program day. */
+  workoutSessionId?: string | null;
   onClose?: () => void;
   titleId?: string;
 }) {
@@ -62,6 +71,7 @@ export function BikeClockScreen({
   const running = active ? sessionWithChoice(base, active) : session;
   const workoutLabel = active?.name ?? session?.focus ?? session?.title ?? "Bike workout";
   const ready = explicit != null || storedToken !== "" || !session;
+  const rounds = active ? bikeTimerRoundCount(active) : running ? sessionRoundCount(running) : 1;
   const [finished, setFinished] = useState(0);
   const [notes, setNotes] = useState("");
   const [rpe, setRpe] = useState("");
@@ -125,7 +135,25 @@ export function BikeClockScreen({
         onApply={rememberBikeChoice}
       />
 
-      {active && finished >= 1 ? (
+      {workoutSessionId && running ? (
+        <form action={finishBikeLoggerAction}>
+          <input type="hidden" name="workoutId" value={workoutSessionId} />
+          <input type="hidden" name="workout" value={active ? choiceToken(active) : ""} />
+          <input type="hidden" name="bikeName" value={running.focus || running.title || workoutLabel} />
+          <input type="hidden" name="workSeconds" value={running.workSeconds} />
+          <input type="hidden" name="restSeconds" value={running.restSeconds} />
+          <input type="hidden" name="roundsPerSet" value={running.roundsPerSet} />
+          <input type="hidden" name="repeatRounds" value={running.repeatRounds ?? 1} />
+          <input type="hidden" name="rounds" value={rounds} />
+          <button
+            type="submit"
+            data-testid="chrome-form-3"
+            className="touch-target inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#CBF805] text-sm font-semibold text-black"
+          >
+            Log this session
+          </button>
+        </form>
+      ) : active && finished >= 1 ? (
         <form action={logBikeTimerAction} data-bike-clock-log="">
           <input type="hidden" name="workout" value={choiceToken(active)} />
           <input type="hidden" name="rounds" value={finished} />
@@ -168,7 +196,7 @@ export function BikeClockScreen({
         </p>
       )}
 
-      {dayId ? (
+      {!workoutSessionId && dayId ? (
         <Link
           href={bikeLoggerHref(dayId)}
           prefetch={false}

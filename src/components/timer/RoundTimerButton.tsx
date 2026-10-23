@@ -26,6 +26,7 @@ function RoundTimerSheet({
   bikeToken,
   bikeDayId,
   programDayId,
+  workoutSessionId,
   titleId,
   onClose,
 }: {
@@ -35,6 +36,7 @@ function RoundTimerSheet({
   bikeToken: string | null;
   bikeDayId: string | null;
   programDayId: string | null;
+  workoutSessionId: string | null;
   titleId: string;
   onClose: () => void;
 }) {
@@ -75,6 +77,7 @@ function RoundTimerSheet({
             token={bikeToken}
             session={bikeSession}
             dayId={bikeDayId}
+            workoutSessionId={workoutSessionId}
             onClose={onClose}
             titleId={titleId}
           />
@@ -104,6 +107,7 @@ export function RoundTimerButton({
   bikeToken = null,
   bikeDayId = null,
   programDayId = null,
+  workoutSessionId = null,
 }: {
   launch?: RoundTimerLaunch | null;
   label?: string;
@@ -113,6 +117,7 @@ export function RoundTimerButton({
   bikeToken?: string | null;
   bikeDayId?: string | null;
   programDayId?: string | null;
+  workoutSessionId?: string | null;
 }) {
   const [sheet, setSheet] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -148,6 +153,7 @@ export function RoundTimerButton({
           bikeToken={bikeToken}
           bikeDayId={bikeDayId}
           programDayId={programDayId}
+          workoutSessionId={workoutSessionId}
           titleId={titleId}
           onClose={() => {
             setSheet(false);

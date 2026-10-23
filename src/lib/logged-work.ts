@@ -236,6 +236,15 @@ function tickedExerciseKeysForPlan(sets: readonly TickedSet[]) {
   return sets.filter(setIsTicked).map((set) => exerciseCompletionKey(set.exerciseName ?? ""));
 }
 
+/**
+ * The finish screen opens for a full save and for a partial that still has
+ * work. A past log and a short round save both need that screen. A short
+ * custom ride stays partial; it does not become a finished plan.
+ */
+export function sessionOpensFinishScreen(session: { status: string; backfilled?: boolean | null }) {
+  return session.status === "complete" || session.status === "partial";
+}
+
 /** History label. A short save reads partial, never complete. */
 export function completionListLabel(session: {
   status: string;

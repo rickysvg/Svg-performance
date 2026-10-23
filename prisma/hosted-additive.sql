@@ -789,6 +789,20 @@ BEGIN
   ) THEN
     ALTER TABLE "WorkoutSession" ADD COLUMN "plannedSetCount" INTEGER;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'source'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "source" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'backfilled'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "backfilled" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
 END $$;
 
 -- VIP Coaching. Additive only: applications, checkout grants, upsell events, 72h waitlist holds.
@@ -1016,5 +1030,29 @@ BEGIN
   ) THEN
     CREATE UNIQUE INDEX "WorkoutSet_workoutSessionId_exerciseName_setNumber_key"
       ON "WorkoutSet"("workoutSessionId", "exerciseName", "setNumber");
+  END IF;
+END $$;
+
+-- Past-day workout logs. This block stays as well as the WorkoutSession block above.
+-- Keep it beside any other block appended here. Idempotent, so running both is safe.
+-- Empty source and backfilled=false keep older sessions as live logs.
+DO $$
+BEGIN
+  IF to_regclass('public."WorkoutSession"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'source'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "source" TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'backfilled'
+  ) THEN
+    ALTER TABLE "WorkoutSession" ADD COLUMN "backfilled" BOOLEAN NOT NULL DEFAULT false;
   END IF;
 END $$;

@@ -1,4 +1,4 @@
-import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, sessionHasLoggedWork, sessionOpensFinishScreen } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getOwnWorkoutSessionOrNull } from "@/lib/workouts";
@@ -7,11 +7,7 @@ import { selectShareStats, workoutStreakDays } from "@/lib/share-card";
 
 export async function getShareCardView(userId: string, sessionId: string) {
   const session = await getOwnWorkoutSessionOrNull(sessionId, userId);
-  if (
-    !session ||
-    (session.status !== "complete" && session.status !== "partial") ||
-    !sessionHasLoggedWork(session.sets)
-  ) {
+  if (!session || !sessionOpensFinishScreen(session) || !sessionHasLoggedWork(session.sets)) {
     return null;
   }
   const profile = await getProfileForUser(userId);
