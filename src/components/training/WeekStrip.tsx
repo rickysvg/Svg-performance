@@ -24,7 +24,7 @@ import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
-import { nextSelectedDay, weekChipHref } from "@/lib/week-carousel";
+import { nextSelectedDay, weekChipHref, weekScrollLeft } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number] & {
@@ -449,6 +449,7 @@ function WeekChipList({
   onChipClick,
   onContextMenu,
   onSelectDay,
+  lockChipNavigation = false,
 }: {
   days: Item[];
   basePath: string;
@@ -483,6 +484,8 @@ function WeekChipList({
     weekStart?: string,
   ) => void;
   onSelectDay?: (dayParam: string) => void;
+  /** Calendar handles the day itself. The link must not reload the old day. */
+  lockChipNavigation?: boolean;
 }) {
   return (
     <ol data-week-strip className="grid grid-cols-7 gap-1">
@@ -547,7 +550,9 @@ function WeekChipList({
               onContextMenu={(event) => onContextMenu(event, day.weekday, rearrange, weekStart)}
               onClick={(event) => {
                 onChipClick(event, day.weekday, rearrange, weekStart);
-                if (!event.defaultPrevented) onSelectDay?.(day.dayParam);
+                if (event.defaultPrevented) return;
+                if (lockChipNavigation) event.preventDefault();
+                onSelectDay?.(day.dayParam);
               }}
               className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center text-foreground transition-colors ${
                 rearrange ? "touch-manipulation select-none" : ""
@@ -739,6 +744,7 @@ function WeekDayCarousel({
   onWeekChange,
   logPastDayKeys = [],
   timeZone,
+  onDayChange,
 }: {
   weeks: WeekCarouselWeek[];
   basePath: string;
@@ -752,6 +758,7 @@ function WeekDayCarousel({
   onWeekChange?: (week: WeekChange) => void;
   logPastDayKeys?: string[];
   timeZone?: string;
+  onDayChange?: (dayParam: string) => void;
 }) {
   const router = useRouter();
   const trainWeekChange = useContext(TrainWeekChangeContext);
@@ -796,9 +803,12 @@ function WeekDayCarousel({
 
   function scrollToIndex(index: number, behavior: ScrollBehavior) {
     const el = scrollerRef.current;
-    const panel = el?.querySelector<HTMLElement>(`[data-week-index="${index}"]`);
-    if (!el || !panel) return;
-    el.scrollTo({ left: panel.offsetLeft, behavior });
+    if (!el) return false;
+    const left = weekScrollLeft(index, el.clientWidth);
+    if (el.clientWidth <= 0) return false;
+    if (behavior === "auto") el.scrollLeft = left;
+    else el.scrollTo({ left, behavior });
+    return true;
   }
 
   useLayoutEffect(() => {
@@ -806,11 +816,11 @@ function WeekDayCarousel({
       0,
       weeks.findIndex((week) => week.offset === focusOffset),
     );
-    scrollToIndex(index, "auto");
+    const placed = scrollToIndex(index, "auto");
     // The strip scrolls before paint, then the index matches the week on screen.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(index);
-    setReady(true);
+    if (placed) setReady(true);
   }, [focusOffset, weeks]);
 
   useEffect(() => {
@@ -818,9 +828,11 @@ function WeekDayCarousel({
     if (!el) return;
     let width = el.clientWidth;
     const observer = new ResizeObserver(() => {
-      if (el.clientWidth === width) return;
-      width = el.clientWidth;
-      scrollToIndex(indexRef.current, "auto");
+      const next = el.clientWidth;
+      if (next === width && next > 0) return;
+      width = next;
+      const placed = scrollToIndex(indexRef.current, "auto");
+      if (placed) setReady(true);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -1053,9 +1065,12 @@ function WeekDayCarousel({
               onPointerUp={swap.onPointerUp}
               onChipClick={swap.onChipClick}
               onContextMenu={swap.onContextMenu}
-              onSelectDay={(dayParam) =>
-                applySelected(nextSelectedDay({ type: "chip", dayParam }))
-              }
+              lockChipNavigation={Boolean(onDayChange)}
+              onSelectDay={(dayParam) => {
+                const next = nextSelectedDay({ type: "chip", dayParam });
+                applySelected(next);
+                onDayChange?.(next);
+              }}
             />
           </div>
         ))}
@@ -1149,6 +1164,7 @@ export function WeekStrip({
   onWeekChange,
   logPastDayKeys = [],
   timeZone,
+  onDayChange,
 }: {
   days: Item[];
   /** When set, Train and Calendar swipe across these weeks instead of one row. */
@@ -1178,6 +1194,8 @@ export function WeekStrip({
   logPastDayKeys?: string[];
   /** Member zone for the past-log day list, so the dialog's first paint matches the server. */
   timeZone?: string;
+  /** Calendar chip tap. The strip keeps the link from loading a different day. */
+  onDayChange?: (dayParam: string) => void;
 }) {
   if (weeks && weeks.length > 0) {
     return (
@@ -1194,6 +1212,7 @@ export function WeekStrip({
         onWeekChange={onWeekChange}
         logPastDayKeys={logPastDayKeys}
         timeZone={timeZone}
+        onDayChange={onDayChange}
       />
     );
   }

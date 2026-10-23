@@ -5,6 +5,7 @@ import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { getNutritionEntryForUser, listSavedMealsForUser } from "@/lib/nutrition";
 import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
 import { DeleteNutritionButton } from "@/components/nutrition/DeleteNutritionButton";
+import { timeZoneForUser } from "@/lib/profile";
 
 export default async function NutritionEntryPage({
   params,
@@ -22,14 +23,17 @@ export default async function NutritionEntryPage({
     }
     throw error;
   }
-  const savedMeals = await listSavedMealsForUser(user.id);
+  const [savedMeals, timeZone] = await Promise.all([
+    listSavedMealsForUser(user.id),
+    timeZoneForUser(user.id),
+  ]);
 
   return (
     <main className="space-y-6">
       <Link href="/nutrition" className="text-sm text-accent underline-offset-4 hover:underline">
         Back to nutrition
       </Link>
-      <NutritionEntryForm savedMeals={savedMeals} entry={entry} />
+      <NutritionEntryForm savedMeals={savedMeals} entry={entry} timeZone={timeZone} />
       <DeleteNutritionButton entryId={entry.id} />
     </main>
   );

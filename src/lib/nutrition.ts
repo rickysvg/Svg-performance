@@ -158,14 +158,13 @@ export async function updateNutritionEntryForUser(
     eatenAt: Date;
   },
 ) {
-  await getNutritionEntryForUser(entryId, userId);
+  const existing = await getNutritionEntryForUser(entryId, userId);
   const data = validateNutritionInput(input);
-  if (Number.isNaN(input.eatenAt.getTime())) {
-    throw new AppError("NUTRITION", "Enter a valid date.");
-  }
+  // A correction changes the estimate, not when the meal was eaten.
+  // The form clock is the member's wall time and must not be written back.
   return prisma.nutritionEntry.update({
     where: { id: entryId },
-    data: { ...data, eatenAt: input.eatenAt },
+    data: { ...data, eatenAt: existing.eatenAt },
   });
 }
 

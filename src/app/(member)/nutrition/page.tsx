@@ -13,6 +13,7 @@ import {
 import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
 import { SavedMealForm } from "@/components/nutrition/SavedMealForm";
 import { EmptyState } from "@/components/EmptyState";
+import { formatDateTimeLocal, formatMemberDateTime } from "@/lib/timezone";
 
 export default async function NutritionPage() {
   const user = await requireUser();
@@ -64,7 +65,12 @@ export default async function NutritionPage() {
         </p>
       </section>
 
-      <NutritionEntryForm savedMeals={saved} defaultMeal={defaultMeal} />
+      <NutritionEntryForm
+        savedMeals={saved}
+        defaultMeal={defaultMeal}
+        timeZone={timeZone}
+        defaultEatenAt={formatDateTimeLocal(new Date(), timeZone)}
+      />
       <details className="rounded-2xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer font-semibold">More</summary>
         <div className="mt-4 space-y-4">
@@ -94,7 +100,7 @@ export default async function NutritionPage() {
                 >
                   <p className="font-semibold">{entry.name}</p>
                   <p className="text-sm text-muted">
-                    {entry.mealType} · {new Date(entry.eatenAt).toLocaleString()} ·{" "}
+                    {entry.mealType} · {formatMemberDateTime(new Date(entry.eatenAt), timeZone)} ·{" "}
                     {Math.round(entry.calories)} kcal · source: {entry.source.replace("_", " ")}
                   </p>
                 </Link>

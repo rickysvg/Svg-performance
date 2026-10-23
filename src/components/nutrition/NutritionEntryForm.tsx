@@ -8,6 +8,7 @@ import {
 import { StatusBanner } from "@/components/StatusBanner";
 import { MEAL_TYPES } from "@/lib/nutrition";
 import { searchFoodOptions, type SearchableMeal } from "@/lib/foods";
+import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 
 type Saved = {
   id: string;
@@ -26,23 +27,26 @@ type Prefill = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  servings?: number;
+  notes?: string;
+  eatenAtLocal?: string;
   savedMealId?: string;
 };
-
-function toDateInput(value?: Date | string) {
-  const date = value ? new Date(value) : new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 export function NutritionEntryForm({
   savedMeals,
   entry,
   defaultMeal,
+  timeZone = APP_TIMEZONE,
+  defaultEatenAt,
 }: {
   savedMeals: Saved[];
   /** Meal for the member's clock, computed on the server so SSR matches. */
   defaultMeal?: string;
+  /** Member zone. The When field is wall time in this zone, not the server clock. */
+  timeZone?: string;
+  /** Wall time for a new entry, computed on the server. */
+  defaultEatenAt?: string;
   entry?: {
     id: string;
     name: string;
@@ -76,14 +80,34 @@ export function NutritionEntryForm({
   );
   const [formKey, setFormKey] = useState(0);
   const [mealType, setMealType] = useState(entry?.mealType ?? defaultMeal ?? "breakfast");
-  const [clearedFor, setClearedFor] = useState<number | undefined>();
-  if (!entry && state.savedAt && clearedFor !== state.savedAt) {
-    setClearedFor(state.savedAt);
-    setPrefill(null);
-    setQuery("");
-    setMealType(defaultMeal ?? "breakfast");
+  const [appliedSave, setAppliedSave] = useState<number | undefined>();
+  if (state.savedAt && state.saved && appliedSave !== state.savedAt) {
+    setAppliedSave(state.savedAt);
+    if (entry) {
+      setPrefill({
+        name: state.saved.name,
+        servingLabel: state.saved.servingLabel,
+        calories: state.saved.calories,
+        proteinG: state.saved.proteinG,
+        carbsG: state.saved.carbsG,
+        fatG: state.saved.fatG,
+        servings: state.saved.servings,
+        notes: state.saved.notes,
+        eatenAtLocal: formatDateTimeLocal(new Date(state.saved.eatenAt), timeZone),
+      });
+      setMealType(state.saved.mealType);
+    } else {
+      setPrefill(null);
+      setQuery("");
+      setMealType(defaultMeal ?? "breakfast");
+    }
     setFormKey((value) => value + 1);
   }
+  const eatenAtValue =
+    prefill?.eatenAtLocal ??
+    (entry
+      ? formatDateTimeLocal(new Date(entry.eatenAt), timeZone)
+      : defaultEatenAt ?? formatDateTimeLocal(new Date(), timeZone));
 
   const matches = useMemo(
     () => searchFoodOptions(query, savedMeals).slice(0, 8),
@@ -109,6 +133,8 @@ export function NutritionEntryForm({
       data-testid="nutrition-form"
       key={formKey}
       action={action}
+      aria-busy={pending}
+      data-nutrition-saving={pending ? "true" : undefined}
       className="space-y-4 rounded-2xl border border-line bg-card p-5"
     >
       <h2 className="text-lg">
@@ -214,7 +240,7 @@ export function NutritionEntryForm({
             type="number"
             min={0.1}
             step="0.1"
-            defaultValue={entry?.servings ?? 1}
+            defaultValue={prefill?.servings ?? entry?.servings ?? 1}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           />
         </label>
@@ -272,7 +298,7 @@ export function NutritionEntryForm({
           data-testid="nutrition-eaten-at"
           name="eatenAt"
           type="datetime-local"
-          defaultValue={toDateInput(entry?.eatenAt)}
+          defaultValue={eatenAtValue}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
       </label>
@@ -281,7 +307,7 @@ export function NutritionEntryForm({
         <textarea
           data-testid="nutrition-notes"
           name="notes"
-          defaultValue={entry?.notes}
+          defaultValue={prefill?.notes ?? entry?.notes}
           rows={2}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         />
@@ -292,9 +318,22 @@ export function NutritionEntryForm({
         data-testid="nutrition-save-estimate"
         type="submit"
         disabled={pending}
-        className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
+        className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent text-black disabled:opacity-60"
       >
-        {pending ? "Saving…" : entry ? "Save correction" : "Save estimate"}
+        {pending ? (
+          <>
+            <span
+              data-nutrition-spinner
+              className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black"
+              aria-hidden
+            />
+            Saving…
+          </>
+        ) : entry ? (
+          "Save correction"
+        ) : (
+          "Save estimate"
+        )}
       </button>
     </form>
   );

@@ -11,7 +11,7 @@ import { bikeHistoryLine } from "@/lib/bike-chooser";
 import { historyDetailBesideCount, roundHistoryLine } from "@/lib/round-session";
 import { calendarPlanDoses } from "@/lib/plan-doses";
 import { sessionProgress } from "@/lib/session-progress";
-import { dayKey, mondayOfZoned } from "@/lib/timezone";
+import { dayKey, formatMemberDateTime, mondayOfZoned } from "@/lib/timezone";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { backfillFormSeed } from "@/lib/backfill-workout";
@@ -129,7 +129,7 @@ export default async function HistoryPage() {
                   </p>
                 ) : null}
                 <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
-                  {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} ·{" "}
+                  {formatMemberDateTime(new Date(session.performedAt), timeZone)} ·{" "}
                   <span data-session-progress>{countLine}</span>
                   {detailLine ? ` · ${detailLine}` : ""}
                   {difficultyLabel(session.difficultyRating)

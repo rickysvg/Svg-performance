@@ -37,13 +37,26 @@ export async function getWeekPlanSwapsForUser(userId: string): Promise<WeekPlanS
   });
   const parsed = parseWeekPlanSwaps(row?.weekPlanSwapsJson);
   const pruned = pruneAutoRolledSwaps(parsed);
-  if (row && JSON.stringify(pruned) !== JSON.stringify(parsed)) {
-    await prisma.profile.update({
-      where: { userId },
-      data: { weekPlanSwapsJson: JSON.stringify(pruned) },
-    });
+  const prunedJson = JSON.stringify(pruned);
+  if (row && prunedJson !== JSON.stringify(parsed)) {
+    await writePrunedSwapsIfUnchanged(userId, row.weekPlanSwapsJson, prunedJson);
   }
   return pruned;
+}
+
+/**
+ * Write a pruned plan only when the row is still the JSON this read saw.
+ * A later Undo must not be overwritten by a refresh that started earlier.
+ */
+export async function writePrunedSwapsIfUnchanged(
+  userId: string,
+  readJson: string | null,
+  prunedJson: string,
+) {
+  return prisma.profile.updateMany({
+    where: { userId, weekPlanSwapsJson: readJson },
+    data: { weekPlanSwapsJson: prunedJson },
+  });
 }
 
 async function writeWeekPlanSwaps(userId: string, swaps: WeekPlanSwap[]) {

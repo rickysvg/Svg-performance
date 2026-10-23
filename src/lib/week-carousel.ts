@@ -123,6 +123,22 @@ export function packCarouselWeeks<T>(anchors: CarouselAnchor[], days: T[]) {
   }));
 }
 
+/**
+ * Horizontal offset of a week panel. Each panel is one scroller width.
+ * A zero width means the strip is not laid out yet, so the caller must not
+ * treat the first week as the one on screen.
+ */
+export function weekScrollLeft(index: number, panelWidth: number) {
+  if (!Number.isFinite(panelWidth) || panelWidth <= 0) return 0;
+  const safe = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
+  return safe * panelWidth;
+}
+
+/** The day summary that matches the chip the member tapped. */
+export function calendarFocusMatches(selectedDay: string, dayParam: string) {
+  return selectedDay.length > 0 && selectedDay === dayParam;
+}
+
 /** Week offset to show first. Today lands on the current week. */
 export function carouselFocusOffset(
   weeks: { offset: number; days: { isSelected: boolean }[] }[],
