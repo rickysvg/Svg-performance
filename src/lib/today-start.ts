@@ -1,5 +1,5 @@
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { partialSetsLine, draftHasResumeWork, type TickedSet } from "@/lib/logged-work";
+import { draftHasResumeWork, type TickedSet } from "@/lib/logged-work";
 import { sessionProgress } from "@/lib/session-progress";
 
 export type ResumableLog = {
@@ -21,7 +21,7 @@ export type OpenProgramLog = {
   partial: boolean;
   ticked: number;
   planned: number;
-  /** "Partial · 1/34 sets" when the save is short. */
+  /** "1/34 sets · Partial" when the save is short. Same string as History. */
   progress?: string;
 };
 
@@ -81,7 +81,7 @@ export function openLogsByProgramDay(
       partial,
       ticked: progress.ticked,
       planned: progress.planned,
-      progress: partial ? partialSetsLine(progress.ticked, progress.planned) : undefined,
+      progress: partial ? progress.text : undefined,
     });
   }
   return map;
@@ -113,7 +113,7 @@ export function openCustomLog(
       partial,
       ticked: progress.ticked,
       planned: progress.planned,
-      progress: partial ? partialSetsLine(progress.ticked, progress.planned) : undefined,
+      progress: partial ? progress.text : undefined,
     };
   }
   return null;
@@ -142,7 +142,7 @@ export type TodayStartAction = {
   partial?: boolean;
   ticked?: number;
   planned?: number;
-  /** "Partial · 1/34 sets" when a short save is already on this session. */
+  /** "1/34 sets · Partial" when a short save is already on this session. */
   progress?: string;
   href?: string;
   logHref?: string;

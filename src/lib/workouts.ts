@@ -1399,7 +1399,14 @@ export async function startWorkoutFromDay(input: {
           ? calendar.exercises
           : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
     });
-    if (!progress.done) return shortComplete;
+    if (!progress.done) {
+      return continuePartialWorkoutForUser({
+        userId: input.userId,
+        workoutId: shortComplete.id,
+        preferredUnits: input.preferredUnits,
+        timeZone: zone,
+      });
+    }
   }
 
   const sets = visible.flatMap((exercise) => {
@@ -1481,7 +1488,17 @@ export async function startWorkoutFromDay(input: {
       include: { sets: true },
     });
   });
-  if (!fresh) return created;
+  if (!fresh) {
+    if (created.status === "complete") {
+      return continuePartialWorkoutForUser({
+        userId: input.userId,
+        workoutId: created.id,
+        preferredUnits: input.preferredUnits,
+        timeZone: zone,
+      });
+    }
+    return created;
+  }
   await bindPendingSwaps({
     userId: input.userId,
     programSlug: rawDay.program.slug,

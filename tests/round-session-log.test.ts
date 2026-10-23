@@ -12,8 +12,10 @@ import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { exerciseProgressStateWord } from "@/lib/logged-work";
 import {
+  historyDetailBesideCount,
   launchRoundLogFromClock,
   resolveSubmittedRoundLog,
+  roundLiveElapsed,
   restSecondsFromRoundKey,
   ROUND_SET_CAP_SECONDS,
   roundFinishProgress,
@@ -24,6 +26,7 @@ import {
   SESSION_DURATION_CAP_SECONDS,
 } from "@/lib/round-session";
 import { formatTimerClock } from "@/lib/round-timer";
+import { workoutCompleteTiles } from "@/lib/workout-complete";
 import { getShareCardView } from "@/lib/share-card-data";
 import { APP_TIMEZONE, addZonedDays, dayKey } from "@/lib/timezone";
 import {
@@ -89,7 +92,7 @@ describe("mid-timer round saves", () => {
         restSeconds: 15,
         phaseElapsedSeconds: 0,
       }),
-    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
     expect(
       roundLogFromClock({
         phase: "work",
@@ -99,7 +102,7 @@ describe("mid-timer round saves", () => {
         restSeconds: 15,
         phaseElapsedSeconds: 15,
       }).elapsedSeconds,
-    ).toBe(30);
+    ).toBe(45);
     expect(
       roundLogFromClock({
         phase: "rest",
@@ -110,14 +113,16 @@ describe("mid-timer round saves", () => {
         phaseElapsedSeconds: 0,
       }).elapsedSeconds,
     ).toBe(45);
-    const restBeforeRound3 = roundLogFromClock({
-      phase: "rest",
-      round: 2,
-      totalRounds: 3,
-      workSeconds: 15,
-      restSeconds: 15,
-      phaseElapsedSeconds: 14,
-    }).elapsedSeconds;
+    expect(
+      roundLogFromClock({
+        phase: "rest",
+        round: 2,
+        totalRounds: 3,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 14,
+      }).elapsedSeconds,
+    ).toBe(45);
     expect(
       roundLogFromClock({
         phase: "work",
@@ -127,7 +132,78 @@ describe("mid-timer round saves", () => {
         restSeconds: 15,
         phaseElapsedSeconds: 0,
       }).elapsedSeconds,
-    ).toBe(restBeforeRound3);
+    ).toBe(60);
+  });
+
+  it("counts rest on the live total and keeps a mid-rest save discrete", () => {
+    const clock = {
+      totalRounds: 3,
+      workSeconds: 15,
+      restSeconds: 15,
+    };
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 1, phaseElapsedSeconds: 0 })).toBe(0);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 1, phaseElapsedSeconds: 15 })).toBe(15);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 1, phaseElapsedSeconds: 0 })).toBe(15);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 1, phaseElapsedSeconds: 14 })).toBe(29);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 1, phaseElapsedSeconds: 15 })).toBe(30);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 2, phaseElapsedSeconds: 0 })).toBe(30);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 2, phaseElapsedSeconds: 15 })).toBe(45);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 2, phaseElapsedSeconds: 0 })).toBe(45);
+    expect(roundLiveElapsed({ ...clock, phase: "rest", round: 2, phaseElapsedSeconds: 15 })).toBe(60);
+    expect(roundLiveElapsed({ ...clock, phase: "work", round: 3, phaseElapsedSeconds: 0 })).toBe(60);
+    const samples = [0, 15, 29, 30, 45, 60, 60];
+    for (let index = 1; index < samples.length; index += 1) {
+      expect(samples[index]).toBeGreaterThanOrEqual(samples[index - 1] ?? 0);
+    }
+    expect(historyDetailBesideCount("5 rounds · 3:00 round · 1:00 rest · 15:00 total")).toBe(
+      "3:00 round · 1:00 rest · 15:00 total",
+    );
+    expect(historyDetailBesideCount("1 round · 0:15 round · 0:15 rest · 0:15 total")).toBe(
+      "0:15 round · 0:15 rest · 0:15 total",
+    );
+    expect(historyDetailBesideCount("5 rounds")).toBeNull();
+    const roundTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Heavy bag rounds",
+        status: "complete",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        elapsedSeconds: 45,
+        sets: [
+          {
+            exerciseName: "Heavy bag rounds",
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            completed: true,
+            durationSeconds: 15,
+            logMode: "timed_round",
+            prescriptionKey: "round:bag:15",
+          },
+        ],
+      },
+    });
+    expect(roundTiles.find((tile) => tile.key === "setsRounds")?.label).toBe("Rounds");
+    const liftTiles = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Lift",
+        status: "complete",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        sets: [
+          {
+            exerciseName: "Squat",
+            reps: 5,
+            loadValue: 100,
+            loadUnit: "lb",
+            completed: true,
+          },
+        ],
+      },
+    });
+    expect(liftTiles.find((tile) => tile.key === "setsRounds")?.label).toBe("Sets");
   });
 
   it("does not save two rounds and a zero rest from a running timer", () => {

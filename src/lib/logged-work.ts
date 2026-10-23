@@ -360,9 +360,9 @@ export function sessionProgressLabel(
   return `${formatSetProgress(ticked, planned)} · ${done ? "complete" : "partial"}`;
 }
 
-/** Card and Today copy for a short save. A draft does not use this line. */
+/** Card and Today copy for a short save. Same order as sessionProgress. */
 export function partialSetsLine(ticked: number, planned: number) {
-  return `Partial · ${ticked}/${planned} sets`;
+  return `${ticked}/${planned} sets · Partial`;
 }
 
 /** Finish and calendar rows. A finished exercise reads done, even on a partial day. */

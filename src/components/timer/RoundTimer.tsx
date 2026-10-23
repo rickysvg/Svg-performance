@@ -34,7 +34,7 @@ import {
 } from "@/lib/bike-chooser";
 import { DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
 import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
-import { launchRoundLogFromClock, roundLogFromClock } from "@/lib/round-session";
+import { launchRoundLogFromClock, roundLiveElapsed, roundLogFromClock } from "@/lib/round-session";
 import { TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
 import { CountdownFace } from "@/components/timer/CountdownFace";
 import { useGoCountdown } from "@/components/timer/useGoCountdown";
@@ -272,6 +272,14 @@ export function RoundTimer({
 
   const clockRef = useRef(resolved);
   clockRef.current = resolved;
+  const liveElapsed = roundLiveElapsed({
+    phase: resolved.phase,
+    round: resolved.round,
+    totalRounds: resolved.totalRounds,
+    workSeconds: config.workSeconds,
+    restSeconds: config.restSeconds,
+    phaseElapsedSeconds: resolved.phaseElapsedSeconds,
+  });
 
   const writeLog = useCallback(
     (roundsDone: number) => {
@@ -746,6 +754,7 @@ export function RoundTimer({
       {bikeMode ? null : (
       <section
         data-round-clock
+        data-round-elapsed={countdownActive || resolved.phase === "idle" ? undefined : Math.max(0, Math.round(liveElapsed))}
         data-timer-phase={countdownActive ? "countdown" : resolved.phase}
         className={`rounded-[2rem] px-5 py-6 text-center ${
           countdownActive ? "bg-black text-[#CBF805]" : workTheme ? "bg-accent text-black" : "bg-black text-highlighter"
@@ -763,6 +772,11 @@ export function RoundTimer({
         <p className="stat-display mt-1 text-[6.25rem] leading-none">
           {formatTimerClock(resolved.remainingSeconds)}
         </p>
+        {resolved.phase === "idle" ? null : (
+          <p className="mt-3 text-sm tabular-nums" data-round-total>
+            {formatTimerClock(liveElapsed)} total
+          </p>
+        )}
         <div
           className={`mx-auto mt-6 h-1.5 w-full max-w-xs overflow-hidden rounded-full ${
             workTheme ? "bg-black/15" : "bg-white/20"

@@ -171,10 +171,11 @@ export function workoutCompleteTiles(input: {
   const rounds = sessionRoundCount(input.session.sets);
   const volume = sessionVolume(input.session.sets, input.displayUnit);
   const setsRounds = rounds > 0 && rounds !== sets ? `${sets} / ${rounds}` : String(Math.max(sets, rounds));
+  const countLabel = rounds > 0 && (sets === rounds || sets === 0) ? "Rounds" : "Sets";
   return applyFinishTime(
     [
       { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
-      { key: "setsRounds", label: "Sets / Rounds", value: setsRounds },
+      { key: "setsRounds", label: countLabel, value: setsRounds },
       {
         key: "volume",
         label: `Total ${shareVolumeUnit(input.displayUnit)}`,

@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
 import { bikeHistoryLine } from "@/lib/bike-chooser";
-import { roundHistoryLine } from "@/lib/round-session";
+import { historyDetailBesideCount, roundHistoryLine } from "@/lib/round-session";
 import { calendarPlanDoses } from "@/lib/plan-doses";
 import { sessionProgress } from "@/lib/session-progress";
 import { dayKey, mondayOfZoned } from "@/lib/timezone";
@@ -102,7 +102,7 @@ export default async function HistoryPage() {
             const bagLine = bagworkHistoryLine(session);
             const roundLine = bagLine ? null : roundHistoryLine(session);
             const bikeLine = bikeHistoryLine(session);
-            const detailLine = bagLine ?? roundLine;
+            const detailLine = historyDetailBesideCount(bagLine ?? roundLine);
             const pastSeed = session.backfilled ? backfillFormSeed(session, timeZone) : null;
             return (
             <li key={session.id} className="space-y-2" {...(bagLine ? { "data-bagwork-session": "" } : {})}>

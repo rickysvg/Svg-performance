@@ -58,11 +58,11 @@ describe("Oct 22 partial saves", () => {
       partial: true,
       ticked: 1,
       planned: 7,
-      progress: "Partial · 1/7 sets",
+      progress: "1/7 sets · Partial",
     });
     expect(open.get("bag")).toMatchObject({ id: "draft", partial: false, progress: undefined });
     expect(open.has("shadow")).toBe(false);
-    expect(partialSetsLine(1, 7)).toBe("Partial · 1/7 sets");
+    expect(partialSetsLine(1, 7)).toBe("1/7 sets · Partial");
   });
 
   it("keeps a one-set program save partial against the scaled dose", () => {
@@ -95,7 +95,7 @@ describe("Oct 22 partial saves", () => {
       partial: true,
       ticked: 1,
       planned: 34,
-      progress: "Partial · 1/34 sets",
+      progress: "1/34 sets · Partial",
     });
   });
 
@@ -125,7 +125,7 @@ describe("Oct 22 partial saves", () => {
     expect(today).toMatchObject({ verb: "Resume", draftId: "short", partial: true, ticked: 1, planned: 7 });
     expect(todayStartLabel(today!)).toContain("Resume");
     expect(todayStartLabel(today!)).not.toContain("Continue");
-    expect(todayStartLabel(today!)).toContain("Partial · 1/7 sets");
+    expect(todayStartLabel(today!)).toContain("1/7 sets · Partial");
 
     const next = nextTrainAction(
       [
@@ -135,7 +135,7 @@ describe("Oct 22 partial saves", () => {
       (dayId) => logs.get(dayId),
       (dayId) => dayId === "done",
     );
-    expect(next).toMatchObject({ verb: "Resume", draftId: "short", progress: "Partial · 1/7 sets" });
+    expect(next).toMatchObject({ verb: "Resume", draftId: "short", progress: "1/7 sets · Partial" });
   });
 
   it("does not Resume a finished day because a second tab left a draft", () => {
@@ -232,7 +232,7 @@ describe("Oct 22 partial saves", () => {
       partial: true,
       ticked: 1,
       planned: 3,
-      progress: "Partial · 1/3 sets",
+      progress: "1/3 sets · Partial",
     });
     const today = todayStartAction(
       [

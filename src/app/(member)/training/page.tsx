@@ -455,6 +455,7 @@ export default async function TrainingPage({
           label="Resume"
           className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
           testId="training-primary-resume"
+          primary
         />
       ) : trainCta ? (
         <Link
@@ -464,7 +465,7 @@ export default async function TrainingPage({
           data-resume-workout={trainCta.verb === "Resume" ? "true" : undefined}
           data-start-today={trainCta.verb === "Start" ? "true" : undefined}
           data-prime-coach-audio
-          className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
+          className="relative z-30 flex w-full touch-target scroll-mt-20 items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
         >
           {trainCta.verb}
         </Link>
