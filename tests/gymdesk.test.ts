@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { GYMDESK_CSV_HEADERS, parseCsvRecords, parseGymdeskCsv } from "@/lib/gymdesk/csv";
-import { applyGymdeskCsv, previewGymdeskCsv } from "@/lib/gymdesk/csv-apply";
+import { applyGymdeskCsv, listGymdeskAdminSnapshot, previewGymdeskCsv } from "@/lib/gymdesk/csv-apply";
 import { handleGymdeskWebhook } from "@/lib/gymdesk/webhook";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { recomputeMembership } from "@/lib/gymdesk/recompute";
@@ -559,6 +559,51 @@ describe("gymdesk member verify", () => {
     const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
     expect(profile?.emailVerifiedAt).toBeTruthy();
     expect(profile?.gymMembershipVerified).toBe(true);
+  });
+
+  it("leaves retired annual ids out of the lapsed gym-price list", async () => {
+    const lapsed = await makeUser("lapsed-gym@example.com");
+    const retiredGym = await makeUser("retired-gym@example.com");
+    const retiredCond = await makeUser("retired-cond@example.com");
+    const verified = await makeUser("verified-gym@example.com", true);
+    await prisma.profile.update({
+      where: { userId: verified.id },
+      data: { gymMembershipVerified: true },
+    });
+    await prisma.subscription.createMany({
+      data: [
+        {
+          userId: lapsed.id,
+          plan: "gym",
+          status: "active",
+          stripePriceId: "price_gym",
+        },
+        {
+          userId: retiredGym.id,
+          plan: "performance_founding_gym",
+          status: "active",
+          stripePriceId: "price_retired_gym",
+          founding: true,
+        },
+        {
+          userId: retiredCond.id,
+          plan: "conditioning_founding_gym",
+          status: "active",
+          stripePriceId: "price_retired_cond",
+          founding: true,
+        },
+        {
+          userId: verified.id,
+          plan: "performance_gym",
+          status: "active",
+          stripePriceId: "price_gym_verified",
+        },
+      ],
+    });
+    const snapshot = await listGymdeskAdminSnapshot();
+    const lines = snapshot.flaggedGymSubs.map((row) => `${row.user.email} ${row.plan}`);
+    expect(lines).toEqual(["lapsed-gym@example.com gym"]);
+    expect(lines.join(" ")).not.toMatch(/founding/i);
   });
 
   it("stays disabled without secrets and cron still reports disabled", async () => {

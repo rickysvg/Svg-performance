@@ -44,6 +44,13 @@ describe("gymdesk UI copy", () => {
     expect(mail).toContain("SMTP_FROM");
   });
 
+  it("prints the mapped plan label on the lapsed gym-price list", () => {
+    const page = read("src/app/(member)/admin/gymdesk/page.tsx");
+    expect(page).toContain("PLAN_CATALOG[catalogPlanFromStored(row)].label");
+    expect(page).not.toContain("{row.plan}");
+    expect(page).not.toMatch(/founding/i);
+  });
+
   it("never says bout and stays worldwide", () => {
     const files = [
       "src/app/(member)/admin/gymdesk/page.tsx",

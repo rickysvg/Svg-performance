@@ -559,7 +559,7 @@ END $$;
 
 
 -- Subscription.founding stays in place so existing rows are not dropped.
--- A true value on a Pro row is read as Pro annual. App writes do not clear the column.
+-- App writes do not clear the column. Access follows the current plan or price.
 DO $$
 BEGIN
   IF to_regclass('public."Subscription"') IS NULL THEN

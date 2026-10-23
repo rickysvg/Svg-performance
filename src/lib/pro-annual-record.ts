@@ -1,45 +1,73 @@
 import { normalizePlanId, type CatalogPlanId } from "@/lib/plans";
 
 /**
- * Retired checkout ids. Stored rows that still use one of these, or the
- * subscription boolean from that seat, are read as Pro annual.
- * Nothing here deletes a row or clears the boolean.
- * A later coaching or higher-tier plan is left as stored.
+ * Exact retired checkout ids. A stored row maps to Pro annual only while its
+ * plan id is one of these, or its Stripe price id is still that seat's price.
+ * The boolean is not a mapping by itself, and a later plan or price is read
+ * as whatever it is now. Nothing here deletes a row or clears the boolean.
  */
 const RETIRED_ANNUAL_PLAN_IDS = new Set([
   "performance_founding",
   "performance_founding_gym",
+  "performance_founding_non",
   "conditioning_founding_gym",
   "conditioning_founding_non",
 ]);
 
+const RETIRED_PRICE_ENVS = [
+  "STRIPE_PRICE_PERFORMANCE_FOUNDING",
+  "STRIPE_PRICE_CONDITIONING_FOUNDING_GYM",
+  "STRIPE_PRICE_CONDITIONING_FOUNDING_NON",
+] as const;
+
+/** Current Pro prices. A match means the price has moved off the retired seat. */
+const CURRENT_PRO_PRICE_ENVS = [
+  "STRIPE_PRICE_PERFORMANCE_MONTHLY",
+  "STRIPE_PRICE_PERFORMANCE_YEAR",
+  "STRIPE_PRICE_GYM",
+  "STRIPE_PRICE_STANDALONE",
+  "STRIPE_PRICE_PERFORMANCE_ANNUAL_GYM",
+  "STRIPE_PRICE_PERFORMANCE_ANNUAL_NON",
+] as const;
+
 export type StoredPlanRow = {
   plan?: string | null;
+  /** Retained on the row. Not used to choose annual vs monthly. */
   founding?: boolean | null;
+  stripePriceId?: string | null;
 };
 
 function planKey(plan: string | null | undefined) {
   return (plan ?? "").trim().toLowerCase();
 }
 
-function planTextIsRetiredAnnual(plan: string | null | undefined) {
-  const key = planKey(plan);
-  if (!key) return false;
-  return RETIRED_ANNUAL_PLAN_IDS.has(key) || key.includes("founding");
+function priceMatches(names: readonly string[], priceId: string) {
+  return names.some((name) => {
+    const configured = process.env[name]?.trim();
+    return Boolean(configured) && configured === priceId;
+  });
+}
+
+function priceIsRetiredAnnual(priceId: string | null | undefined) {
+  const price = (priceId ?? "").trim();
+  if (!price) return false;
+  if (priceMatches(CURRENT_PRO_PRICE_ENVS, price)) return false;
+  return priceMatches(RETIRED_PRICE_ENVS, price);
+}
+
+function planIsRetiredAnnual(plan: string | null | undefined) {
+  return RETIRED_ANNUAL_PLAN_IDS.has(planKey(plan));
 }
 
 /**
- * True when this row is the retired annual seat.
- * A coaching, development, elite, VIP, or platinum plan wins over the boolean
- * so a later upgrade is not pulled back to Pro.
+ * True only while this row's plan id or Stripe price is still the retired seat.
+ * A current Pro price wins over a leftover plan id.
  */
 export function referencesRetiredAnnual(row: StoredPlanRow) {
-  if (planTextIsRetiredAnnual(row.plan)) return true;
-  if (!row.founding) return false;
-  const key = planKey(row.plan);
-  if (!key || key === "performance" || key === "gym" || key === "standalone") return true;
-  if (key.startsWith("performance_")) return true;
-  return false;
+  const price = (row.stripePriceId ?? "").trim();
+  if (price && priceMatches(CURRENT_PRO_PRICE_ENVS, price)) return false;
+  if (planIsRetiredAnnual(row.plan)) return true;
+  return priceIsRetiredAnnual(row.stripePriceId);
 }
 
 /** Catalog access. Retired annual rows are Pro. */

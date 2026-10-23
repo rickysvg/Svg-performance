@@ -141,14 +141,15 @@ export async function applyStripeEvent(event: {
   const userId =
     object.metadata?.userId || object.client_reference_id || "";
   const planRaw = object.metadata?.plan || "standalone";
+  const stripePriceId = object.items?.data?.[0]?.price?.id;
+  const incoming = { plan: planRaw, stripePriceId };
   const catalogPlan = isCheckoutSkuId(planRaw)
     ? CHECKOUT_SKUS[planRaw].catalogId
-    : catalogPlanFromStored({ plan: planRaw });
-  // Keep the Stripe event, but record a retired annual seat as Pro annual.
-  const recordedPlan = referencesRetiredAnnual({ plan: planRaw })
-    ? billingPlanFromStored({ plan: planRaw })
+    : catalogPlanFromStored(incoming);
+  // A retired seat id is recorded as Pro annual. A current price keeps the current plan.
+  const recordedPlan = referencesRetiredAnnual(incoming)
+    ? billingPlanFromStored(incoming)
     : catalogPlan;
-  const stripePriceId = object.items?.data?.[0]?.price?.id;
 
   if (!userId) {
     throw new AppError("BILLING", "Webhook event is missing the member id.");

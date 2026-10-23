@@ -92,6 +92,25 @@ describe("account export and delete", () => {
     await prisma.$disconnect();
   });
 
+  it("exports a retired annual id as Pro annual and keeps the stored id internal", async () => {
+    const owner = await makeUser("export-retired@example.com");
+    await prisma.subscription.create({
+      data: {
+        userId: owner.id,
+        plan: "performance_founding",
+        status: "active",
+        founding: true,
+        stripePriceId: "price_retired_export",
+      },
+    });
+    const payload = await exportAccountDataForUser(owner);
+    expect(payload.subscriptions[0].plan).toBe("performance_year");
+    expect(payload.subscriptions[0].internalStoredPlan).toBe("performance_founding");
+    const raw = JSON.stringify(payload);
+    expect(raw).toContain("internalStoredPlan");
+    expect(raw).not.toMatch(/"plan":"performance_founding"/);
+  });
+
   it("rejects unauthenticated export and delete", async () => {
     expect(() => requireSignedInAccount(null)).toThrow(AuthError);
     await expect(exportAccountDataForUser(null)).rejects.toBeInstanceOf(AuthError);
@@ -117,6 +136,7 @@ describe("account export and delete", () => {
     expect(payload.exerciseNotes[0].body).toBe("own notepad");
     expect(payload.coachChat[0].messages[0].content).toBe("own coach question");
     expect(payload.subscriptions[0].plan).toBe("performance");
+    expect(payload.subscriptions[0].internalStoredPlan).toBe("performance");
     expect(payload.subscriptions[0].status).toBe("active");
     expect(payload.polarConnection.connected).toBe(true);
 
