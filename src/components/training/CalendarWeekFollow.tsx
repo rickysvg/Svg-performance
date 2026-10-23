@@ -6,7 +6,6 @@ import {
   createContext,
   isValidElement,
   useContext,
-  useEffect,
   useState,
   type ReactElement,
   type ReactNode,
@@ -103,16 +102,18 @@ export function CalendarWeekFollow({
 }) {
   const pathname = usePathname();
   const [weekStart, setWeekStart] = useState(initialWeekStart);
+  const [seenWeek, setSeenWeek] = useState(initialWeekStart);
   const [dayParam, setDayParam] = useState(initialDay);
-  const move = moves[weekStart];
-
-  useEffect(() => {
+  const [seenDay, setSeenDay] = useState(initialDay);
+  if (initialWeekStart !== seenWeek) {
+    setSeenWeek(initialWeekStart);
     setWeekStart(initialWeekStart);
-  }, [initialWeekStart]);
-
-  useEffect(() => {
+  }
+  if (initialDay !== seenDay) {
+    setSeenDay(initialDay);
     setDayParam(initialDay);
-  }, [initialDay]);
+  }
+  const move = moves[weekStart];
 
   function onWeekChange(week: WeekChange) {
     setWeekStart(week.weekStart);

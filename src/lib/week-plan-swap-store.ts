@@ -53,6 +53,7 @@ export async function writePrunedSwapsIfUnchanged(
   readJson: string | null,
   prunedJson: string,
 ) {
+  if (readJson === null) return { count: 0 };
   return prisma.profile.updateMany({
     where: { userId, weekPlanSwapsJson: readJson },
     data: { weekPlanSwapsJson: prunedJson },
