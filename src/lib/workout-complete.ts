@@ -118,6 +118,34 @@ function applyBackfillTime(tiles: WorkoutCompleteTile[], session: ShareSessionLi
   );
 }
 
+/**
+ * A partial lift has no frozen clock. The create-to-save gap is not workout time.
+ * Stored elapsed or logged set durations still show. Zero hides the Time tile.
+ */
+export function partialFinishDurationSeconds(session: ShareSessionLike): number | null {
+  if (session.status !== "partial" || session.backfilled) return null;
+  const stored = session.elapsedSeconds;
+  if (typeof stored === "number" && Number.isFinite(stored) && stored > 0) {
+    return Math.min(SESSION_DURATION_CAP_SECONDS, Math.round(stored));
+  }
+  const logged = loggedSets(session.sets).reduce(
+    (sum, set) => sum + (set.durationSeconds && set.durationSeconds > 0 ? set.durationSeconds : 0),
+    0,
+  );
+  return logged > 0 ? Math.min(SESSION_DURATION_CAP_SECONDS, logged) : 0;
+}
+
+function applyFinishTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike) {
+  const backfill = applyBackfillTime(tiles, session);
+  if (session.backfilled) return backfill;
+  const seconds = partialFinishDurationSeconds(session);
+  if (seconds == null) return tiles;
+  if (seconds <= 0) return tiles.filter((tile) => tile.key !== "time");
+  return tiles.map((tile) =>
+    tile.key === "time" ? { ...tile, value: formatShareDuration(seconds) } : tile,
+  );
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;
@@ -128,7 +156,7 @@ export function workoutCompleteTiles(input: {
     const effort = bikeCardioEffort(sets);
     const seconds = bikeCardioDurationSeconds(input.session);
     const intervals = sessionRoundCount(sets) || sets.length;
-    return applyBackfillTime(
+    return applyFinishTime(
       [
         { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
         { key: "setsRounds", label: "Intervals", value: String(intervals) },
@@ -143,7 +171,7 @@ export function workoutCompleteTiles(input: {
   const rounds = sessionRoundCount(input.session.sets);
   const volume = sessionVolume(input.session.sets, input.displayUnit);
   const setsRounds = rounds > 0 && rounds !== sets ? `${sets} / ${rounds}` : String(Math.max(sets, rounds));
-  return applyBackfillTime(
+  return applyFinishTime(
     [
       { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
       { key: "setsRounds", label: "Sets / Rounds", value: setsRounds },

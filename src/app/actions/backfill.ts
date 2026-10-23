@@ -78,6 +78,8 @@ export async function updateBackfillAction(
         done: Number(formData.get(`exerciseDone_${index}`) ?? 0),
         reps: String(formData.get(`exerciseReps_${index}`) ?? ""),
         logMode: String(formData.get(`exerciseMode_${index}`) ?? ""),
+        prescriptionKey: String(formData.get(`exerciseKey_${index}`) ?? ""),
+        setNotes: String(formData.get(`exerciseNotes_${index}`) ?? ""),
       });
     }
     const result = await updateBackfillWorkout({

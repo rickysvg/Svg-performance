@@ -386,7 +386,7 @@ export function loggedSessionCardLine(item: {
 }) {
   const statusWord = item.status === "complete" ? "Done" : "Partial";
   const title = item.title.trim();
-  const subtitle = (item.subtitle ?? "").trim();
+  const subtitle = (item.subtitle ?? "").trim().replace(/^Logged this day\.\s*/i, "");
   if (!subtitle) return `${title} · ${statusWord}`;
   const hasStatus = subtitle.includes(statusWord);
   const hasTitle = title.length > 0 && subtitle.includes(title);

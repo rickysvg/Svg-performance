@@ -10,6 +10,8 @@ import {
   listResumableSessionsForUser,
 } from "@/lib/workouts";
 import { CUSTOM_HOME_RESUME, openCustomLog, openLogsByProgramDay } from "@/lib/today-start";
+import { listDayPlansForUser } from "@/lib/my-workouts";
+import { homePlanDayId, homeSessionsAfterPlans, type HomeDayPlan } from "@/lib/my-workout-plan";
 import { calendarPlanDoses } from "@/lib/calendar";
 import { getNutritionSummaryForDay, startOfLocalDay } from "@/lib/nutrition";
 import {
@@ -329,7 +331,8 @@ export async function getHomeToday(
     (await timeZoneForUser(userId, profileForZone?.timeZone ?? null));
   const selected = startOfLocalDay(selectedDay, tz);
   const now = new Date();
-  const [catalog, sessions, drafts, resumable, planByDay, foodToday, allLessons, progress, activity, profile, swaps, account] =
+  const selectedKey = zonedDayKey(selected, tz);
+  const [catalog, sessions, drafts, resumable, planByDay, foodToday, allLessons, progress, activity, profile, swaps, account, dayPlans] =
     await Promise.all([
       findDemoTrainingCatalog(),
       listRecentSessionsForUser(userId),
@@ -343,6 +346,7 @@ export async function getHomeToday(
       profileForZone ? Promise.resolve(profileForZone) : getProfileForUser(userId),
       getWeekPlanSwapsForUser(userId),
       prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+      listDayPlansForUser(userId, [selectedKey]),
     ]);
   const { strength, skill } = scaleDemoCatalog(catalog, {
     experienceLevel: profile?.experienceLevel,
@@ -367,7 +371,24 @@ export async function getHomeToday(
   const builtToday = planForDate(prefs, selected, tz, swaps);
   const easedToday = await easePlanForUser(userId, selected, tz, builtToday);
   const todayPlan = easedToday.plan;
-  const plannedSessions = resolvePlanSessions(todayPlan, { strength, skill });
+  const programSessions = resolvePlanSessions(todayPlan, { strength, skill });
+  const homePlans: HomeDayPlan[] = dayPlans
+    .filter((plan) => plan.dayKey === selectedKey)
+    .map((plan) => ({
+      id: plan.id,
+      mode: plan.mode,
+      name: plan.name,
+      exerciseNames: plan.exerciseNames,
+      exercises: plan.exercises.map((exercise) => ({
+        name: exercise.name,
+        sets: exercise.sets,
+        restSeconds: exercise.restSeconds,
+      })),
+      complete: plan.complete,
+      partial: plan.partial,
+      draftId: plan.draftId,
+    }));
+  const plannedSessions = homeSessionsAfterPlans(programSessions, homePlans) as ResolvedPlanSession[];
   const nextDate = todayPlan.active ? null : nextActiveDate(prefs, selected, tz, swaps);
   const nextBuilt = nextDate ? planForDate(prefs, nextDate, tz, swaps) : null;
   const nextEased = nextBuilt && nextDate ? await easePlanForUser(userId, nextDate, tz, nextBuilt) : null;
@@ -381,8 +402,8 @@ export async function getHomeToday(
     plannedSessions[0]?.day ??
     null;
   const completedDayIds = [
-    ...new Set(
-      sessions
+    ...new Set([
+      ...sessions
         .filter((session) => {
           if (!session.programDayId || !sameLocalDay(session.performedAt, selected, tz)) {
             return false;
@@ -395,7 +416,8 @@ export async function getHomeToday(
           return sessionCountsAsPlannedCompletion(session, names, dose);
         })
         .map((session) => session.programDayId as string),
-    ),
+      ...homePlans.filter((plan) => plan.complete).map((plan) => homePlanDayId(plan.id)),
+    ]),
   ];
   const finishedToday = new Set(completedDayIds);
   const resumeByDay: Record<string, { id: string; partial: boolean }> = {};
@@ -406,6 +428,10 @@ export async function getHomeToday(
     }
     const custom = openCustomLog(resumable, todayKey, tz);
     if (custom) resumeByDay[CUSTOM_HOME_RESUME] = { id: custom.id, partial: custom.partial };
+    for (const plan of homePlans) {
+      if (plan.complete || !plan.draftId) continue;
+      resumeByDay[homePlanDayId(plan.id)] = { id: plan.draftId, partial: plan.partial };
+    }
   }
   const draft =
     drafts.find(
@@ -491,7 +517,10 @@ export async function getHomeToday(
     draft: sameLocalDay(selected, now, tz) ? draft : undefined,
     resumeByDay,
     completedDayIds,
-    partialDayIds: partialProgramDayIds(sessions, selected, tz, plannedSessions, completedDayIds),
+    partialDayIds: [
+      ...partialProgramDayIds(sessions, selected, tz, plannedSessions, completedDayIds),
+      ...homePlans.filter((plan) => plan.partial && !plan.complete).map((plan) => homePlanDayId(plan.id)),
+    ],
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,
     foodNudge:

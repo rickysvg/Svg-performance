@@ -970,8 +970,8 @@ export async function completeBikeLoggerSession(input: {
         status,
         plannedSetCount,
         title: existing.title.trim() || input.choice.name,
-        notes: (input.notes ?? existing.notes ?? "").trim().slice(0, 1000),
-        ...(input.rpe !== undefined ? { sessionRpe: parseSessionRpe(input.rpe) } : {}),
+        notes: ((input.notes ?? "").trim() || existing.notes || "").trim().slice(0, 1000),
+        ...(input.rpe == null ? {} : { sessionRpe: parseSessionRpe(input.rpe) }),
         sets: { create: sets },
         ...(timerReady ? { elapsedSeconds: elapsed, finishedAt, timerStartedAt: null } : {}),
       },
@@ -1137,7 +1137,14 @@ export async function continuePartialWorkoutForUser(input: {
   if (!existing || existing.userId !== input.userId) {
     throw new NotFoundError("Workout not found.");
   }
-  if (!existing.programDay) return existing;
+  if (!existing.programDay) {
+    if (existing.status !== "partial" && existing.status !== "complete") return existing;
+    return prisma.workoutSession.update({
+      where: { id: existing.id },
+      data: { status: "draft" },
+      include: { sets: true, programDay: { include: { program: true, exercises: { orderBy: { sortOrder: "asc" } } } } },
+    });
+  }
 
   const profile = await getProfileForUser(input.userId);
   const zone = input.timeZone || APP_TIMEZONE;

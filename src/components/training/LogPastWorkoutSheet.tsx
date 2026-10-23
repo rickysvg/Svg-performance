@@ -22,6 +22,8 @@ type ExerciseRow = {
   done: number;
   reps: string;
   logMode: string;
+  prescriptionKey?: string;
+  setNotes?: string;
 };
 
 type Preview = Awaited<ReturnType<typeof loadBackfillPreview>>;
@@ -458,6 +460,8 @@ function LogPastWorkoutSheet({
                     </Field>
                     <input type="hidden" name={`exerciseReps_${index}`} value={row.reps} />
                     <input type="hidden" name={`exerciseMode_${index}`} value={row.logMode} />
+                    <input type="hidden" name={`exerciseKey_${index}`} value={row.prescriptionKey ?? ""} />
+                    <input type="hidden" name={`exerciseNotes_${index}`} value={row.setNotes ?? ""} />
                   </div>
                 ))}
                 {mode === "create" && kind === "custom" && rows.length < 8 ? (
@@ -588,12 +592,22 @@ function rowsFor(kind: BackfillKind, preview: Preview, programId: string, savedI
   return [];
 }
 
-function toRow(exercise: { name: string; sets: number; done: number; reps?: string; logMode?: string }): ExerciseRow {
+function toRow(exercise: {
+  name: string;
+  sets: number;
+  done: number;
+  reps?: string;
+  logMode?: string;
+  prescriptionKey?: string;
+  setNotes?: string;
+}): ExerciseRow {
   return {
     name: exercise.name,
     sets: exercise.sets,
     done: exercise.done,
     reps: exercise.reps ?? "",
     logMode: exercise.logMode ?? "",
+    prescriptionKey: exercise.prescriptionKey ?? "",
+    setNotes: exercise.setNotes ?? "",
   };
 }

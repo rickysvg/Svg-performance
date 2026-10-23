@@ -1,4 +1,3 @@
-import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { isHoldName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { convertLoad, formatLoad, isLoadUnit, type LoadUnit } from "@/lib/units";
 import { APP_TIMEZONE } from "@/lib/timezone";
@@ -103,13 +102,6 @@ function isIsometricHold(set: SetLike) {
   return mode === "timed" || mode === "load_timed";
 }
 
-/** Bag and pad rounds — most completed rounds in a session, never hold time. Bike intervals are cardio, not a PR. */
-function isIntervalRoundWork(set: SetLike) {
-  if (isHoldName(set.exerciseName)) return false;
-  if (isBikeIntervalName(set.exerciseName)) return false;
-  return modeOf(set) === "timed_round";
-}
-
 export function bestsFromSets(
   sets: DatedSetLike[],
   displayUnit: LoadUnit,
@@ -118,7 +110,6 @@ export function bestsFromSets(
   const repsAt = new Map<string, PersonalBest>();
   const e1rm = new Map<string, PersonalBest>();
   const longest = new Map<string, PersonalBest>();
-  const sessionRounds = new Map<string, { name: string; date: Date; count: number }>();
 
   for (const set of sets) {
     if (!logged(set)) continue;
@@ -175,16 +166,6 @@ export function bestsFromSets(
       }
     }
 
-    if (isIntervalRoundWork(set)) {
-      const key = `${name}::${set.performedAt.getTime()}`;
-      const current = sessionRounds.get(key);
-      if (current) {
-        current.count += 1;
-      } else {
-        sessionRounds.set(key, { name, date: set.performedAt, count: 1 });
-      }
-    }
-
     if (seconds != null && isIsometricHold(set)) {
       const current = longest.get(name);
       if (!current || seconds > current.value) {
@@ -201,29 +182,7 @@ export function bestsFromSets(
     }
   }
 
-  const mostRounds = new Map<string, PersonalBest>();
-  for (const row of sessionRounds.values()) {
-    const current = mostRounds.get(row.name);
-    if (!current || row.count > current.value) {
-      mostRounds.set(row.name, {
-        kind: "most_rounds",
-        exerciseName: row.name,
-        value: row.count,
-        unit: "rounds",
-        reps: row.count,
-        load: null,
-        date: row.date,
-      });
-    }
-  }
-
-  return [
-    ...heaviest.values(),
-    ...repsAt.values(),
-    ...e1rm.values(),
-    ...mostRounds.values(),
-    ...longest.values(),
-  ];
+  return [...heaviest.values(), ...repsAt.values(), ...e1rm.values(), ...longest.values()];
 }
 
 export function headlineForBest(best: PersonalBest, displayUnit: LoadUnit = "lb") {

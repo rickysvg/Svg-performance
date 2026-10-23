@@ -241,6 +241,55 @@ export function applyPlansToProgramCards<T>(cards: T[], plans: { mode: string }[
   return { cards: replaced ? [] : cards, replaced };
 }
 
+export type HomeDayPlan = {
+  id: string;
+  mode: string;
+  name: string;
+  exerciseNames: string[];
+  exercises: { name: string; sets: number; restSeconds: number }[];
+  complete: boolean;
+  partial: boolean;
+  draftId: string | null;
+};
+
+/** Home card id for an applied My Workout. It does not collide with a program day id. */
+export function homePlanDayId(planId: string) {
+  return `plan:${planId}`;
+}
+
+export function homePlanSession(plan: HomeDayPlan) {
+  return {
+    slot: "A" as const,
+    kind: "strength" as const,
+    label: plan.mode === "replace" ? "Your workout" : "Extra session",
+    title: plan.name,
+    subtitle: plan.exerciseNames.slice(0, 4).join(" · "),
+    optional: plan.mode !== "replace",
+    dayId: homePlanDayId(plan.id),
+    href: `/training/my-workouts/day/${plan.id}`,
+    startHref: plan.draftId
+      ? `/training/log/${plan.draftId}`
+      : `/training/my-workouts/day/${plan.id}/start`,
+    day: {
+      title: plan.name,
+      focus: "",
+      exercises: plan.exercises.map((exercise) => ({
+        name: exercise.name,
+        sets: exercise.sets,
+        restSeconds: exercise.restSeconds,
+      })),
+    },
+  };
+}
+
+/** Replace hides the program day. Extra keeps it and adds the saved workout. */
+export function homeSessionsAfterPlans<T>(sessions: T[], plans: HomeDayPlan[]): Array<T | ReturnType<typeof homePlanSession>> {
+  if (plans.length === 0) return sessions;
+  const cards = plans.map(homePlanSession);
+  if (plans.some((plan) => plan.mode === "replace")) return cards;
+  return [...sessions, ...cards];
+}
+
 export function summaryAfterDayPlans(programSummary: string, plans: { mode: string; name: string }[]) {
   if (!plans.some((plan) => plan.mode === "replace")) return programSummary;
   const names = plans.map((plan) => plan.name.trim()).filter(Boolean);
@@ -257,9 +306,21 @@ type OverlayPlan = {
   exerciseNames?: string[];
 };
 
+function activityWasLogged(activity: { kind: string; status?: string; subtitle?: string }) {
+  if (activity.kind !== "workout") return false;
+  if (activity.status === "complete") return true;
+  const subtitle = activity.subtitle ?? "";
+  return subtitle.startsWith("Logged this day") || subtitle.startsWith("Partial") || subtitle.includes("· Partial");
+}
+
 export function withDayPlans<T extends { kind: string }>(activities: T[], plans: OverlayPlan[]): T[] {
   const replaced = plans.some((plan) => plan.mode === "replace");
-  const kept = replaced ? activities.filter((activity) => activity.kind !== "workout") : [...activities];
+  const kept = replaced
+    ? activities.filter((activity) => {
+        if (activity.kind !== "workout") return true;
+        return activityWasLogged(activity as { kind: string; status?: string; subtitle?: string });
+      })
+    : [...activities];
   const custom = plans.map((plan) => {
     const preview = (plan.exerciseNames ?? []).slice(0, 3).join(" · ");
     const count = exerciseCountLabel(plan.exerciseCount);

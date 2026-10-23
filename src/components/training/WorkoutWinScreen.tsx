@@ -39,6 +39,7 @@ export function WorkoutWinScreen({
   summary,
   savedWorkoutName,
   exerciseProgress = [],
+  partial = false,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -52,6 +53,7 @@ export function WorkoutWinScreen({
   summary?: SessionSummary | null;
   savedWorkoutName: string;
   exerciseProgress?: { name: string; ticked: number; planned: number; state: string }[];
+  partial?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -151,8 +153,9 @@ export function WorkoutWinScreen({
         <p
           className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#cbf805]"
           data-workout-saved
+          data-workout-status={partial ? "partial" : "complete"}
         >
-          Saved
+          {partial ? "Partial" : "Saved"}
         </p>
         {exerciseProgress.length > 0 ? (
           <ul data-exercise-progress className="mt-4 w-full space-y-1 text-left text-sm">

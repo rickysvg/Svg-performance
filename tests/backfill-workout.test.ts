@@ -10,16 +10,18 @@ import {
   deleteBackfillWorkout,
   faultNextBackfillWrite,
   previewBackfillDay,
+  backfillFormSeed,
   updateBackfillWorkout,
   type BackfillFormSeed,
 } from "@/lib/backfill-workout";
-import { completionListLabel } from "@/lib/logged-work";
+import { completionListLabel, exerciseSetProgress, historyCountLine } from "@/lib/logged-work";
 import { roundHistoryLine } from "@/lib/round-session";
 import { getCalendarSchedule, subtitleShowsPartial } from "@/lib/calendar";
 import { completedLocalDayKeys, listWorkoutSessionsForUser } from "@/lib/workouts";
 import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { sessionCompletionDay } from "@/lib/performed-at";
+import { backfillDayOptions } from "@/lib/backfill-rules";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
@@ -387,6 +389,57 @@ describe("log a past workout", () => {
     await deleteBackfillWorkout({ userId: user.id, sessionId: saved.sessionId, confirmed: true });
     expect(await prisma.workoutSession.findUnique({ where: { id: saved.sessionId } })).toBeNull();
   });
+
+  it("keeps each round's duration and round key when an edit posts empty reps", async () => {
+    const user = await makeUser("backfill-keep-rounds@example.com");
+    await onboard(user.id);
+    const rounds = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-19",
+      kind: "rounds",
+      resolution: "",
+      now: NOW,
+      title: "Heavy bag rounds",
+      notes: "long jab",
+      rpe: 6,
+      roundMode: "bag",
+      plannedRounds: 3,
+      doneRounds: 3,
+      workSeconds: 120,
+      restSeconds: 60,
+    });
+    expect(rounds.ok).toBe(true);
+    if (!rounds.ok) return;
+    const before = await prisma.workoutSession.findUnique({
+      where: { id: rounds.sessionId },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    expect(roundHistoryLine(before!)).toBe("3 rounds · 2:00 round · 1:00 rest · 8:00 total · RPE 6");
+    const seed = backfillFormSeed(before!, TZ, NOW);
+    expect(seed.exercises[0]?.reps).toBe("2:00");
+    expect(seed.exercises[0]?.prescriptionKey?.startsWith("round:")).toBe(true);
+    const edited = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: rounds.sessionId,
+      dayKey: "2026-10-19",
+      title: "Heavy bag rounds",
+      notes: "notes only",
+      rpe: 6,
+      exercises: seed.exercises.map((row) => ({ ...row, reps: "" })),
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+    });
+    expect(edited.ok).toBe(true);
+    const after = await prisma.workoutSession.findUnique({
+      where: { id: rounds.sessionId },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    expect(after?.notes).toBe("notes only");
+    expect(after?.sets.map((set) => set.durationSeconds)).toEqual([120, 120, 120]);
+    expect(after?.sets.every((set) => (set.prescriptionKey ?? "").startsWith("round:"))).toBe(true);
+    expect(roundHistoryLine(after!)).toBe("3 rounds · 2:00 round · 1:00 rest · 8:00 total · RPE 6");
+  });
 });
 
 const pastSeed: BackfillFormSeed = {
@@ -399,9 +452,12 @@ const pastSeed: BackfillFormSeed = {
 
 describe("past log first paint and finish time", () => {
   it("renders the day select and edit or delete dialog with their initial values", () => {
+    const sample = backfillDayOptions(new Date(), TZ)[2];
+    expect(sample?.key).toBeTruthy();
+    const seeded: BackfillFormSeed = { ...pastSeed, dayKey: sample!.key };
     const createHtml = renderToStaticMarkup(
       createElement(LogPastWorkoutButton, {
-        dayKey: "2026-10-20",
+        dayKey: sample!.key,
         entry: "calendar",
         label: "Log a completed workout",
         timeZone: TZ,
@@ -409,8 +465,8 @@ describe("past log first paint and finish time", () => {
       }),
     );
     expect(createHtml).toContain('data-testid="log-past-workout-date"');
-    expect(createHtml).toContain("2026-10-20");
-    expect(createHtml).toContain("Oct 20");
+    expect(createHtml).toContain(sample!.key);
+    expect(createHtml).toContain(sample!.label);
     expect(createHtml.split("<option").length).toBeGreaterThan(2);
 
     const editHtml = renderToStaticMarkup(
@@ -419,7 +475,7 @@ describe("past log first paint and finish time", () => {
         sessionId: "sess-1",
         label: "Edit",
         timeZone: TZ,
-        seed: pastSeed,
+        seed: seeded,
         defaultOpen: true,
       }),
     );
@@ -427,7 +483,7 @@ describe("past log first paint and finish time", () => {
     expect(editHtml).toContain("Lift 3");
     expect(editHtml).toContain("easy");
     expect(editHtml).toContain("Bench");
-    expect(editHtml).toContain("2026-10-20");
+    expect(editHtml).toContain(sample!.key);
 
     const deleteHtml = renderToStaticMarkup(
       createElement(LogPastWorkoutButton, {
@@ -435,7 +491,7 @@ describe("past log first paint and finish time", () => {
         sessionId: "sess-1",
         label: "Delete",
         timeZone: TZ,
-        seed: pastSeed,
+        seed: seeded,
         defaultOpen: true,
       }),
     );
@@ -529,5 +585,36 @@ describe("past log first paint and finish time", () => {
       },
     });
     expect(logged.find((tile) => tile.key === "time")?.value).toBe("20:00");
+
+    const partialLift = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 1,
+      session: {
+        title: "Lift 3",
+        status: "partial",
+        performedAt: new Date("2026-10-20T18:00:00.000Z"),
+        createdAt: created,
+        updatedAt: updated,
+        elapsedSeconds: null,
+        sets,
+      },
+    });
+    expect(partialLift.find((tile) => tile.key === "time")).toBeUndefined();
+    expect(partialLift.map((tile) => tile.value)).not.toContain("2:52");
+
+    const pushUp = historyCountLine({
+      status: "complete",
+      plannedSetCount: 1,
+      sets: [{ exerciseName: "Weighted push-up", completed: true, reps: 8, loadValue: 25, durationSeconds: null }],
+      programDay: { exercises: [{ name: "Weighted push-up", sets: 4 }] },
+    });
+    expect(pushUp).toBe("1/4 sets · partial");
+    const bikeRows = exerciseSetProgress(
+      [{ name: "Assault bike alactic", sets: 1 }],
+      [{ exerciseName: "Assault bike intervals", completed: true, reps: null, loadValue: null, durationSeconds: 20 }],
+    );
+    expect(bikeRows).toEqual([
+      { name: "Assault bike alactic", ticked: 1, planned: 1, state: "complete" },
+    ]);
   });
 });

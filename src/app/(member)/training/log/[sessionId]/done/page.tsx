@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { civilDayInstant } from "@/lib/performed-at";
+import { dayKey } from "@/lib/timezone";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
@@ -52,6 +53,25 @@ export default async function WorkoutDonePage({
     displayUnit: unit,
     newPrCount: newPrExerciseCount(prs),
   });
+  const performedKey = dayKey(view.session.performedAt, tz);
+  const whenLabel =
+    performedKey === dayKey(new Date(), tz)
+      ? "Today"
+      : view.session.performedAt.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: tz,
+        });
+  const summary = {
+    ...buildSessionSummary({
+      title: memberFacingTitle(view.session.title),
+      programDayTitle: view.session.programDay?.title,
+      programDayFocus: view.session.programDay?.focus,
+      exercises: summaryExercises(view.session),
+    }),
+    whenLabel,
+  };
 
   return (
     <main className="min-h-[50vh]">
@@ -79,12 +99,8 @@ export default async function WorkoutDonePage({
           plannedSetCount: view.session.plannedSetCount,
           status: view.session.status,
         }).filter((row) => row.ticked > 0 || row.planned > 0)}
-        summary={buildSessionSummary({
-          title: memberFacingTitle(view.session.title),
-          programDayTitle: view.session.programDay?.title,
-          programDayFocus: view.session.programDay?.focus,
-          exercises: summaryExercises(view.session),
-        })}
+        summary={summary}
+        partial={view.session.status === "partial"}
       />
     </main>
   );

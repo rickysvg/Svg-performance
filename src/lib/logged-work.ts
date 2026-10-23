@@ -250,12 +250,41 @@ export function completionListLabel(session: {
   status: string;
   sets: TickedSet[];
   plannedSetCount?: number | null;
-  programDay?: { exercises?: { sets?: number | null }[] } | null;
+  programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
 }) {
   const dose = prescribedSetTotal(session.programDay?.exercises);
-  if (sessionCountsAsPlannedCompletion(session, [], dose)) return "complete";
-  if (session.status === "complete") return "partial";
-  return session.status;
+  const stored =
+    sessionCountsAsPlannedCompletion(session, [], dose)
+      ? "complete"
+      : session.status === "complete"
+        ? "partial"
+        : session.status;
+  const planned = session.programDay?.exercises ?? [];
+  if (stored === "complete" && planned.length > 0) {
+    const progress = sessionProgressLabel(exerciseSetProgress(planned, session.sets));
+    if (progress?.endsWith("partial")) return "partial";
+  }
+  return stored;
+}
+
+/**
+ * History and calendar share exercise progress. A 1-of-4 program set reads
+ * "1/4 sets · partial", the same fraction the calendar row uses.
+ */
+export function historyCountLine(session: {
+  status: string;
+  sets: TickedSet[];
+  plannedSetCount?: number | null;
+  programDay?: { exercises?: { name?: string | null; sets?: number | null }[] } | null;
+}) {
+  const planned = session.programDay?.exercises ?? [];
+  if (planned.length > 0) {
+    const progress = sessionProgressLabel(exerciseSetProgress(planned, session.sets));
+    if (progress) return progress;
+  }
+  const setCount = tickedSetCount(session.sets);
+  const label = completionListLabel(session);
+  return `${label} · ${setCount} set${setCount === 1 ? "" : "s"}`;
 }
 
 export type ExerciseProgressState = "complete" | "partial" | "open";
@@ -276,7 +305,7 @@ export function exerciseSetProgress(
   for (const set of logged) {
     const name = (set.exerciseName ?? "").trim();
     if (!name) continue;
-    const key = gymExerciseKey(name);
+    const key = exerciseCompletionKey(name);
     const row = byKey.get(key) ?? { name, ticked: 0, rows: 0 };
     row.rows += 1;
     if (setIsTicked(set)) row.ticked += 1;
@@ -287,7 +316,7 @@ export function exerciseSetProgress(
   for (const exercise of planned) {
     const name = (exercise.name ?? "").trim();
     if (!name) continue;
-    const key = gymExerciseKey(name);
+    const key = exerciseCompletionKey(name);
     used.add(key);
     const loggedRow = byKey.get(key);
     const plannedCount = Math.max(0, Math.round(exercise.sets ?? loggedRow?.rows ?? 0));

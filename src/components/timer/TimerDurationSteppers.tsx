@@ -81,18 +81,28 @@ export function TimerDurationSteppers({
 }
 
 /**
- * One step per tap. pointerdown applies immediately (a click can be lost after
- * preventDefault). The following click is swallowed. The flag clears on that
- * click, not on a timeout, so it is still set when the click arrives.
- * A click with no pointerdown (keyboard) applies once.
+ * One step per tap that ends inside the button. pointerdown only arms the tap.
+ * pointerup applies when the pointer is still inside. A drag-off applies nothing
+ * and leaves the next keyboard Enter free to apply. A click after a completed
+ * pointer tap is swallowed. A click with no pointer (Enter) applies once.
  */
 export function applyStepperTap(
-  event: "pointerdown" | "click",
-  state: { fromPointer: boolean },
+  event: "pointerdown" | "pointerup" | "click",
+  state: { fromPointer: boolean; inside: boolean },
   apply: () => void,
 ) {
   if (event === "pointerdown") {
     state.fromPointer = true;
+    state.inside = true;
+    return;
+  }
+  if (event === "pointerup") {
+    const inside = state.inside;
+    state.inside = false;
+    if (!inside) {
+      state.fromPointer = false;
+      return;
+    }
     apply();
     return;
   }
@@ -116,15 +126,29 @@ function Stepper({
   onDec: () => void;
   onInc: () => void;
 }) {
-  const decPointer = useRef({ fromPointer: false });
-  const incPointer = useRef({ fromPointer: false });
-  function press(apply: () => void, state: { fromPointer: boolean }) {
+  const decPointer = useRef({ fromPointer: false, inside: false });
+  const incPointer = useRef({ fromPointer: false, inside: false });
+  function press(apply: () => void, state: { fromPointer: boolean; inside: boolean }) {
     return {
       onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
         if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
+        event.currentTarget.setPointerCapture(event.pointerId);
         applyStepperTap("pointerdown", state, apply);
+      },
+      onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        state.inside =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom;
+        applyStepperTap("pointerup", state, apply);
+      },
+      onPointerCancel: () => {
+        state.inside = false;
+        state.fromPointer = false;
       },
       onClick: (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();

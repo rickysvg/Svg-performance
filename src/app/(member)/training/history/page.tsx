@@ -7,11 +7,7 @@ import { difficultyLabel } from "@/lib/difficulty";
 import { bagworkHistoryLine } from "@/lib/bagwork";
 import { bikeHistoryLine } from "@/lib/bike-chooser";
 import { roundHistoryLine } from "@/lib/round-session";
-import {
-  completionListLabel,
-  sessionCountsAsPlannedCompletion,
-  tickedSetCount,
-} from "@/lib/logged-work";
+import { completionListLabel, historyCountLine } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { backfillFormSeed } from "@/lib/backfill-workout";
@@ -73,9 +69,9 @@ export default async function HistoryPage() {
       ) : (
         <ul className="space-y-3">
           {sessions.map((session) => {
-            const finished = sessionCountsAsPlannedCompletion(session, []);
-            const setCount = tickedSetCount(session.sets);
-            const label = completionListLabel(session);
+            const countLine = historyCountLine(session);
+            const statusWord = completionListLabel(session);
+            const finished = statusWord === "complete";
             const names = loggedExerciseNamesInOrder(session.sets);
             const liveName = session.savedWorkout?.name?.trim();
             const title = liveName || memberFacingTitle(session.title);
@@ -101,8 +97,8 @@ export default async function HistoryPage() {
                   </p>
                 ) : null}
                 <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
-                  {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} · {label}
-                  {detailLine ? ` · ${detailLine}` : ` · ${setCount} set${setCount === 1 ? "" : "s"}`}
+                  {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} ·{" "}
+                  {detailLine ? `${statusWord} · ${detailLine}` : countLine}
                   {difficultyLabel(session.difficultyRating)
                     ? ` · ${difficultyLabel(session.difficultyRating)}`
                     : finished && !bagLine

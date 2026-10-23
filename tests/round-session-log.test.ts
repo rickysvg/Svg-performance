@@ -80,6 +80,16 @@ describe("mid-timer round saves", () => {
         elapsedSeconds: 21,
       }),
     ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+    expect(
+      roundLogFromClock({
+        phase: "work",
+        round: 2,
+        totalRounds: 2,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 0,
+      }),
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
   });
 
   it("does not save two rounds and a zero rest from a running timer", () => {

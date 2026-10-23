@@ -114,7 +114,8 @@ describe("personal record detection", () => {
     ];
     const prs = detectNewPrs([], next, "lb");
     expect(prs.some((row) => row.kind === "longest")).toBe(false);
-    expect(prs.find((row) => row.kind === "most_rounds")?.value).toBe(2);
+    expect(prs.some((row) => row.kind === "most_rounds")).toBe(false);
+    expect(prs).toEqual([]);
   });
 
   it("converts stored kg lifts into the athlete's lb preference", () => {

@@ -108,6 +108,63 @@ describe("custom bike logger", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
+  it("keeps draft notes and RPE when the bike clock posts blanks", async () => {
+    const user = await makeUser("bike-keep-notes@example.com");
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Custom bike",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        status: "draft",
+        notes: "keep this",
+        sessionRpe: 8,
+        plannedSetCount: 1,
+        sets: {
+          create: {
+            exerciseName: "Custom bike",
+            setNumber: 1,
+            sortOrder: 0,
+            logMode: "timed_round",
+            loadUnit: "lb",
+            completed: false,
+          },
+        },
+      },
+    });
+    const choice = bikeChoiceById("tabata")!;
+    const kept = await completeBikeLoggerSession({
+      userId: user.id,
+      workoutId: session.id,
+      choice,
+      roundsCompleted: 1,
+      notes: "",
+      rpe: null,
+    });
+    expect(kept.notes).toBe("keep this");
+    expect(kept.sessionRpe).toBe(8);
+    const replaced = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Custom bike 2",
+        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        status: "draft",
+        notes: "old",
+        sessionRpe: 4,
+        plannedSetCount: 1,
+      },
+    });
+    const next = await completeBikeLoggerSession({
+      userId: user.id,
+      workoutId: replaced.id,
+      choice,
+      roundsCompleted: 1,
+      notes: "new note",
+      rpe: 6,
+    });
+    expect(next.notes).toBe("new note");
+    expect(next.sessionRpe).toBe(6);
+  });
+
   it("caps a long ride instead of rejecting the completed screen", async () => {
     const user = await makeUser("long-bike@example.com");
     const session = await prisma.workoutSession.create({

@@ -134,21 +134,26 @@ describe("round countdown and seconds steppers", () => {
     expect(html).not.toContain("REST MIN");
   });
 
-  it("applies one step when pointerdown is followed by click", () => {
+  it("applies one step when the pointer stays inside, and the next Enter still works after a drag-off", () => {
     let steps = 0;
-    const state = { fromPointer: false };
+    const state = { fromPointer: false, inside: false };
     const apply = () => {
       steps += 1;
     };
     applyStepperTap("pointerdown", state, apply);
+    applyStepperTap("pointerup", state, apply);
     applyStepperTap("click", state, apply);
     expect(steps).toBe(1);
     expect(state.fromPointer).toBe(false);
     applyStepperTap("click", state, apply);
     expect(steps).toBe(2);
     applyStepperTap("pointerdown", state, apply);
+    state.inside = false;
+    applyStepperTap("pointerup", state, apply);
+    expect(steps).toBe(2);
+    expect(state.fromPointer).toBe(false);
+    applyStepperTap("click", state, apply);
     expect(steps).toBe(3);
-    expect(state.fromPointer).toBe(true);
   });
 
   it("does not paint a bag log before the stored timer mode hydrates", () => {
