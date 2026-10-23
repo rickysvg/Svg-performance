@@ -5,6 +5,7 @@ import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
 import {
   formatShareDuration,
   formatShareVolume,
+  SESSION_DURATION_CAP_SECONDS,
   sessionDurationSeconds,
   sessionRoundCount,
   sessionSetCount,
@@ -89,6 +90,34 @@ export function bikeCardioDurationSeconds(session: ShareSessionLike) {
   return wall > 0 ? wall : effort.totalSeconds;
 }
 
+/**
+ * Duration the member typed for a past log.
+ * Null means this is a live session and the finish screen keeps its clock.
+ * 0 means there is no logged duration, so the Time tile stays off
+ * (a create-to-save gap and a stored 0 are not a workout).
+ */
+export function backfillFinishDurationSeconds(session: ShareSessionLike): number | null {
+  if (!session.backfilled) return null;
+  const stored = session.elapsedSeconds;
+  if (typeof stored === "number" && Number.isFinite(stored) && stored > 0) {
+    return Math.min(SESSION_DURATION_CAP_SECONDS, Math.round(stored));
+  }
+  const logged = loggedSets(session.sets).reduce(
+    (sum, set) => sum + (set.durationSeconds && set.durationSeconds > 0 ? set.durationSeconds : 0),
+    0,
+  );
+  return logged > 0 ? Math.min(SESSION_DURATION_CAP_SECONDS, logged) : 0;
+}
+
+function applyBackfillTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike) {
+  const seconds = backfillFinishDurationSeconds(session);
+  if (seconds == null) return tiles;
+  if (seconds <= 0) return tiles.filter((tile) => tile.key !== "time");
+  return tiles.map((tile) =>
+    tile.key === "time" ? { ...tile, value: formatShareDuration(seconds) } : tile,
+  );
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;
@@ -99,28 +128,34 @@ export function workoutCompleteTiles(input: {
     const effort = bikeCardioEffort(sets);
     const seconds = bikeCardioDurationSeconds(input.session);
     const intervals = sessionRoundCount(sets) || sets.length;
-    return [
-      { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
-      { key: "setsRounds", label: "Intervals", value: String(intervals) },
-      { key: "volume", label: "Work", value: effort.workSeconds > 0 ? formatShareDuration(effort.workSeconds) : "0:00" },
-      { key: "prs", label: "New PRs", value: "0" },
-    ];
+    return applyBackfillTime(
+      [
+        { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
+        { key: "setsRounds", label: "Intervals", value: String(intervals) },
+        { key: "volume", label: "Work", value: effort.workSeconds > 0 ? formatShareDuration(effort.workSeconds) : "0:00" },
+        { key: "prs", label: "New PRs", value: "0" },
+      ],
+      input.session,
+    );
   }
   const seconds = sessionDurationSeconds(input.session);
   const sets = sessionSetCount(input.session.sets);
   const rounds = sessionRoundCount(input.session.sets);
   const volume = sessionVolume(input.session.sets, input.displayUnit);
   const setsRounds = rounds > 0 && rounds !== sets ? `${sets} / ${rounds}` : String(Math.max(sets, rounds));
-  return [
-    { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
-    { key: "setsRounds", label: "Sets / Rounds", value: setsRounds },
-    {
-      key: "volume",
-      label: `Total ${shareVolumeUnit(input.displayUnit)}`,
-      value: formatShareVolume(volume),
-    },
-    { key: "prs", label: "New PRs", value: String(input.newPrCount) },
-  ];
+  return applyBackfillTime(
+    [
+      { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
+      { key: "setsRounds", label: "Sets / Rounds", value: setsRounds },
+      {
+        key: "volume",
+        label: `Total ${shareVolumeUnit(input.displayUnit)}`,
+        value: formatShareVolume(volume),
+      },
+      { key: "prs", label: "New PRs", value: String(input.newPrCount) },
+    ],
+    input.session,
+  );
 }
 
 export function workoutCompleteShareStats(tiles: WorkoutCompleteTile[]): ShareStat[] {

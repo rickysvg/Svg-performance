@@ -39,6 +39,8 @@ export type ShareSessionLike = {
   status: string;
   /** Frozen header duration from Save. Preferred over updatedAt when the session is complete. */
   elapsedSeconds?: number | null;
+  /** Logged after the day passed. Wall-clock between create and update is not training time. */
+  backfilled?: boolean | null;
   sets: ShareSetLike[];
 };
 

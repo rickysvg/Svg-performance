@@ -888,6 +888,8 @@ export async function completeBikeLoggerSession(input: {
   workoutId: string;
   choice: BikeChoice;
   roundsCompleted: number;
+  notes?: string;
+  rpe?: number | null;
 }) {
   const roundsCompleted = Math.round(input.roundsCompleted);
   if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1 || roundsCompleted > 80) {
@@ -968,6 +970,8 @@ export async function completeBikeLoggerSession(input: {
         status,
         plannedSetCount,
         title: existing.title.trim() || input.choice.name,
+        notes: (input.notes ?? existing.notes ?? "").trim().slice(0, 1000),
+        ...(input.rpe !== undefined ? { sessionRpe: parseSessionRpe(input.rpe) } : {}),
         sets: { create: sets },
         ...(timerReady ? { elapsedSeconds: elapsed, finishedAt, timerStartedAt: null } : {}),
       },
@@ -2017,11 +2021,17 @@ export async function rateWorkoutSessionForUser(input: {
   difficultyRating: string;
 }) {
   const existing = assertOwnSession(
-    await prisma.workoutSession.findUnique({ where: { id: input.workoutId } }),
+    await prisma.workoutSession.findUnique({
+      where: { id: input.workoutId },
+      include: { sets: true },
+    }),
     input.userId,
   );
   if (!sessionOpensFinishScreen(existing)) {
     throw new AppError("WORKOUT", "Save the session first, then rate how it felt.");
+  }
+  if (existing.status === "partial" && !sessionHasLoggedWork(existing.sets)) {
+    throw new AppError("WORKOUT", "Log a set before you rate this session.");
   }
   const rating = parseDifficultyRating(input.difficultyRating);
   if (!rating) {

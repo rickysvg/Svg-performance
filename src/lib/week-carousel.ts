@@ -1,8 +1,9 @@
+import { BACKFILL_MAX_DAYS } from "@/lib/backfill-rules";
 import type { PlannerPrefs, WeekPlanSwap } from "@/lib/week-plan";
 import { weekStrip } from "@/lib/week-plan";
-import { addZonedDays, dayKey, mondayOfZoned, zonedParts } from "@/lib/timezone";
+import { addZonedDays, dayKey, mondayOfZoned, startOfZonedDay, zonedParts } from "@/lib/timezone";
 
-/** How far the day-chip carousel looks behind the current Monday. */
+/** How far the day-chip carousel looks behind the current Monday. Train stays on this. */
 export const WEEK_CAROUSEL_PAST_WEEKS = 2;
 /** How far the day-chip carousel looks ahead of the current Monday. */
 export const WEEK_CAROUSEL_FUTURE_WEEKS = 2;
@@ -38,15 +39,35 @@ export function weekRangeLabel(monday: Date, timeZone: string) {
   return `${startMonth} ${start.day} – ${endMonth} ${end.day}`;
 }
 
-/** Mondays from two weeks back through two weeks ahead, in the member's zone. */
-export function carouselWeekAnchors(now: Date, timeZone: string): CarouselAnchor[] {
+/**
+ * Past Mondays the calendar strip needs so a day inside the 30-day
+ * backfill window is a chip, and `?day=` for that day stays selected.
+ */
+export function carouselBackfillPastWeeks(now: Date, timeZone: string) {
+  const monday = mondayOfZoned(now, timeZone);
+  const earliestMonday = mondayOfZoned(
+    addZonedDays(startOfZonedDay(now, timeZone), -BACKFILL_MAX_DAYS, timeZone),
+    timeZone,
+  );
+  const earliestKey = dayKey(earliestMonday, timeZone);
+  let weeks = 0;
+  let cursor = monday;
+  while (dayKey(cursor, timeZone) > earliestKey && weeks < 12) {
+    weeks += 1;
+    cursor = addZonedDays(monday, -7 * weeks, timeZone);
+  }
+  return Math.max(WEEK_CAROUSEL_PAST_WEEKS, weeks);
+}
+
+/** Mondays from `pastWeeks` back through two weeks ahead, in the member's zone. */
+export function carouselWeekAnchors(
+  now: Date,
+  timeZone: string,
+  pastWeeks = WEEK_CAROUSEL_PAST_WEEKS,
+): CarouselAnchor[] {
   const monday = mondayOfZoned(now, timeZone);
   const anchors: CarouselAnchor[] = [];
-  for (
-    let offset = -WEEK_CAROUSEL_PAST_WEEKS;
-    offset <= WEEK_CAROUSEL_FUTURE_WEEKS;
-    offset += 1
-  ) {
+  for (let offset = -pastWeeks; offset <= WEEK_CAROUSEL_FUTURE_WEEKS; offset += 1) {
     const date = addZonedDays(monday, offset * 7, timeZone);
     anchors.push({
       offset,
@@ -63,10 +84,14 @@ export function carouselWeekAnchors(now: Date, timeZone: string): CarouselAnchor
  * Logged-day query window for the carousel. `completedLocalDayKeys` treats
  * `to` as exclusive, so this ends on the Monday after the last visible week.
  */
-export function carouselLoggedRange(now: Date, timeZone: string) {
+export function carouselLoggedRange(
+  now: Date,
+  timeZone: string,
+  pastWeeks = WEEK_CAROUSEL_PAST_WEEKS,
+) {
   const monday = mondayOfZoned(now, timeZone);
   return {
-    from: addZonedDays(monday, -7 * WEEK_CAROUSEL_PAST_WEEKS, timeZone),
+    from: addZonedDays(monday, -7 * pastWeeks, timeZone),
     to: addZonedDays(monday, 7 * (WEEK_CAROUSEL_FUTURE_WEEKS + 1), timeZone),
   };
 }
@@ -77,8 +102,9 @@ export function carouselWeekStrips(
   timeZone: string,
   selected: Date | undefined,
   swaps: WeekPlanSwap[] = [],
+  pastWeeks = WEEK_CAROUSEL_PAST_WEEKS,
 ) {
-  const anchors = carouselWeekAnchors(now, timeZone);
+  const anchors = carouselWeekAnchors(now, timeZone, pastWeeks);
   return {
     anchors,
     days: anchors.flatMap((anchor) =>

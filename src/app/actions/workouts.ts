@@ -159,6 +159,8 @@ export async function finishBikeLoggerAction(formData: FormData) {
     workoutId: String(formData.get("workoutId") ?? ""),
     choice,
     roundsCompleted: Number(formData.get("rounds")),
+    notes: String(formData.get("notes") ?? ""),
+    rpe: parseSessionRpe(formData.get("rpe")),
   });
   revalidatePath("/home");
   revalidatePath("/training");

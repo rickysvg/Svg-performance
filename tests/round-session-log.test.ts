@@ -783,6 +783,56 @@ describe("round session logs", () => {
     );
   });
 
+  it("rejects a rating when a partial session has no work", async () => {
+    const user = await makeUser("empty-partial-rate@example.com");
+    const empty = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Empty partial",
+        status: "partial",
+        performedAt: new Date(),
+        sets: {
+          create: {
+            exerciseName: "Squat",
+            setNumber: 1,
+            completed: false,
+            loadUnit: "lb",
+          },
+        },
+      },
+    });
+    await expect(
+      rateWorkoutSessionForUser({
+        userId: user.id,
+        workoutId: empty.id,
+        difficultyRating: "just_right",
+      }),
+    ).rejects.toThrow(/Log a set/);
+    const worked = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Short partial",
+        status: "partial",
+        performedAt: new Date(),
+        sets: {
+          create: {
+            exerciseName: "Squat",
+            setNumber: 1,
+            reps: 5,
+            completed: true,
+            loadUnit: "lb",
+          },
+        },
+      },
+    });
+    const rated = await rateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: worked.id,
+      difficultyRating: "just_right",
+    });
+    expect(rated.difficultyRating).toBe("just_right");
+  });
+
   it("keeps the member frame classes and the partial today color", () => {
     const frame = source("src/components/MemberFrame.tsx");
     expect(frame).toContain("min-w-0");

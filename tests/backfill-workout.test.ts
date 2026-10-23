@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
@@ -9,14 +11,18 @@ import {
   faultNextBackfillWrite,
   previewBackfillDay,
   updateBackfillWorkout,
+  type BackfillFormSeed,
 } from "@/lib/backfill-workout";
 import { completionListLabel } from "@/lib/logged-work";
+import { roundHistoryLine } from "@/lib/round-session";
 import { getCalendarSchedule, subtitleShowsPartial } from "@/lib/calendar";
 import { completedLocalDayKeys, listWorkoutSessionsForUser } from "@/lib/workouts";
 import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { workoutCompleteTiles } from "@/lib/workout-complete";
 
 const NOW = new Date("2026-10-22T18:00:00.000Z");
 const TZ = "America/Denver";
@@ -332,7 +338,196 @@ describe("log a past workout", () => {
         now: NOW,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
+    const rounds = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-19",
+      kind: "rounds",
+      resolution: "",
+      now: NOW,
+      title: "",
+      notes: "long jab",
+      rpe: 6,
+      roundMode: "bag",
+      plannedRounds: 3,
+      doneRounds: 2,
+      workSeconds: 180,
+      restSeconds: 60,
+    });
+    expect(rounds.ok).toBe(true);
+    if (rounds.ok) {
+      const row = await prisma.workoutSession.findUnique({
+        where: { id: rounds.sessionId },
+        include: { sets: true },
+      });
+      expect(row?.status).toBe("partial");
+      expect(roundHistoryLine(row!)).toBe("2 rounds · 3:00 round · 1:00 rest · 7:00 total · RPE 6");
+    }
+    const bike = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-18",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "Assault bike",
+      notes: "",
+      rpe: null,
+      durationSeconds: 20 * 60,
+      plannedRounds: 8,
+      doneRounds: 8,
+    });
+    expect(bike.ok).toBe(true);
+    if (bike.ok) {
+      const row = await prisma.workoutSession.findUnique({
+        where: { id: bike.sessionId },
+        include: { sets: true },
+      });
+      expect(roundHistoryLine(row!)).toBe("8 rounds · 2:30 round · 0:00 rest · 20:00 total");
+    }
+
     await deleteBackfillWorkout({ userId: user.id, sessionId: saved.sessionId, confirmed: true });
     expect(await prisma.workoutSession.findUnique({ where: { id: saved.sessionId } })).toBeNull();
+  });
+});
+
+const pastSeed: BackfillFormSeed = {
+  title: "Lift 3",
+  notes: "easy",
+  dayKey: "2026-10-20",
+  sessionRpe: 6,
+  exercises: [{ name: "Bench", sets: 3, done: 3, reps: "8", logMode: "load_reps" }],
+};
+
+describe("past log first paint and finish time", () => {
+  it("renders the day select and edit or delete dialog with their initial values", () => {
+    const createHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: "2026-10-20",
+        entry: "calendar",
+        label: "Log a completed workout",
+        timeZone: TZ,
+        defaultOpen: true,
+      }),
+    );
+    expect(createHtml).toContain('data-testid="log-past-workout-date"');
+    expect(createHtml).toContain("2026-10-20");
+    expect(createHtml).toContain("Oct 20");
+    expect(createHtml.split("<option").length).toBeGreaterThan(2);
+
+    const editHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        entry: "edit",
+        sessionId: "sess-1",
+        label: "Edit",
+        timeZone: TZ,
+        seed: pastSeed,
+        defaultOpen: true,
+      }),
+    );
+    expect(editHtml).toContain("Edit past workout");
+    expect(editHtml).toContain("Lift 3");
+    expect(editHtml).toContain("easy");
+    expect(editHtml).toContain("Bench");
+    expect(editHtml).toContain("2026-10-20");
+
+    const deleteHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        entry: "delete",
+        sessionId: "sess-1",
+        label: "Delete",
+        timeZone: TZ,
+        seed: pastSeed,
+        defaultOpen: true,
+      }),
+    );
+    expect(deleteHtml).toContain("Delete Lift 3?");
+    expect(deleteHtml).toContain('data-testid="log-past-workout-delete-confirm"');
+    expect(deleteHtml).toContain('name="sessionId" value="sess-1"');
+  });
+
+  it("shows a logged duration on a past finish screen and hides a bogus clock", () => {
+    const created = new Date("2026-10-22T18:00:00.000Z");
+    const updated = new Date(created.getTime() + 172_000);
+    const sets = [
+      {
+        exerciseName: "Bench",
+        reps: 8,
+        loadValue: 100,
+        loadUnit: "lb",
+        completed: true,
+      },
+    ];
+    const live = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Lift",
+        status: "complete",
+        performedAt: created,
+        createdAt: created,
+        updatedAt: updated,
+        elapsedSeconds: null,
+        sets,
+      },
+    });
+    expect(live.find((tile) => tile.key === "time")?.value).toBe("2:52");
+
+    const backfill = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Lift",
+        status: "complete",
+        performedAt: new Date("2026-10-20T18:00:00.000Z"),
+        createdAt: created,
+        updatedAt: updated,
+        elapsedSeconds: null,
+        backfilled: true,
+        sets,
+      },
+    });
+    expect(backfill.find((tile) => tile.key === "time")).toBeUndefined();
+    expect(backfill.map((tile) => tile.value)).not.toContain("2:52");
+    expect(backfill.map((tile) => tile.value)).not.toContain("0:00");
+
+    const zero = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Lift",
+        status: "complete",
+        performedAt: new Date("2026-10-20T18:00:00.000Z"),
+        createdAt: created,
+        updatedAt: created,
+        elapsedSeconds: 0,
+        backfilled: true,
+        sets,
+      },
+    });
+    expect(zero.find((tile) => tile.key === "time")).toBeUndefined();
+
+    const logged = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Assault bike",
+        status: "partial",
+        performedAt: new Date("2026-10-20T18:00:00.000Z"),
+        createdAt: created,
+        updatedAt: updated,
+        elapsedSeconds: 20 * 60,
+        backfilled: true,
+        sets: [
+          {
+            exerciseName: "Assault bike",
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            completed: true,
+            durationSeconds: 150,
+          },
+        ],
+      },
+    });
+    expect(logged.find((tile) => tile.key === "time")?.value).toBe("20:00");
   });
 });

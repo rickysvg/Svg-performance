@@ -12,7 +12,9 @@ import {
 } from "@/app/actions/backfill";
 import { useSheetDismiss } from "@/components/useSheetDismiss";
 import type { BackfillKind } from "@/lib/backfill-rules";
-import { BACKFILL_ROUND_MODES } from "@/lib/backfill-rules";
+import { BACKFILL_ROUND_MODES, backfillDayOptions } from "@/lib/backfill-rules";
+import type { BackfillFormSeed } from "@/lib/backfill-workout";
+import { APP_TIMEZONE } from "@/lib/timezone";
 
 type ExerciseRow = {
   name: string;
@@ -23,7 +25,6 @@ type ExerciseRow = {
 };
 
 type Preview = Awaited<ReturnType<typeof loadBackfillPreview>>;
-type EditView = Awaited<ReturnType<typeof loadBackfillEdit>>;
 
 const KINDS: { id: BackfillKind; label: string }[] = [
   { id: "program", label: "That day's session" },
@@ -57,14 +58,21 @@ export function LogPastWorkoutButton({
   label,
   sessionId,
   compact = false,
+  timeZone = APP_TIMEZONE,
+  seed,
+  defaultOpen = false,
 }: {
   dayKey?: string;
   entry: "calendar" | "train" | "week" | "history" | "edit" | "delete";
   label: string;
   sessionId?: string;
   compact?: boolean;
+  timeZone?: string;
+  seed?: BackfillFormSeed;
+  /** Tests open the dialog on the first render. Members open it from the button. */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const testId =
     entry === "history"
       ? "log-past-workout-history"
@@ -91,9 +99,11 @@ export function LogPastWorkoutButton({
       </button>
       {open ? (
         <LogPastWorkoutSheet
-          initialDayKey={dayKey}
+          initialDayKey={dayKey || seed?.dayKey || ""}
           sessionId={sessionId}
           mode={entry === "delete" ? "delete" : sessionId ? "edit" : "create"}
+          timeZone={timeZone}
+          seed={seed}
           onClose={() => setOpen(false)}
         />
       ) : null}
@@ -105,24 +115,35 @@ function LogPastWorkoutSheet({
   initialDayKey,
   sessionId,
   mode,
+  timeZone,
+  seed,
   onClose,
 }: {
   initialDayKey: string;
   sessionId?: string;
   mode: "create" | "edit" | "delete";
+  timeZone: string;
+  seed?: BackfillFormSeed;
   onClose: () => void;
 }) {
   const titleId = useId();
   useSheetDismiss(onClose);
-  const [dayKey, setDayKey] = useState(initialDayKey);
+  const seededDays = backfillDayOptions(new Date(), timeZone);
+  const [dayKey, setDayKey] = useState(
+    () => seededDays.find((day) => day.key === (seed?.dayKey || initialDayKey))?.key ?? seededDays[0]?.key ?? initialDayKey,
+  );
+  const [dayOptions, setDayOptions] = useState(seededDays);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [edit, setEdit] = useState<EditView | null>(null);
+  const [editTitle, setEditTitle] = useState(seed?.title ?? "");
+  const [notes, setNotes] = useState(seed?.notes ?? "");
+  const [rpe, setRpe] = useState(seed?.sessionRpe != null ? String(seed.sessionRpe) : "");
   const [loadError, setLoadError] = useState("");
   const [kind, setKind] = useState<BackfillKind>("free");
-  const [rows, setRows] = useState<ExerciseRow[]>([]);
+  const [rows, setRows] = useState<ExerciseRow[]>(() => (seed?.exercises ?? []).map(toRow));
   const [programId, setProgramId] = useState("");
   const [savedId, setSavedId] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const seeded = Boolean(seed);
   const action = mode === "edit" ? updateBackfillAction : mode === "delete" ? deleteBackfillAction : saveBackfillAction;
   const [state, formAction, pending] = useActionState<BackfillFormState, FormData>(action, {});
 
@@ -132,9 +153,14 @@ function LogPastWorkoutSheet({
     loadBackfillEdit(sessionId)
       .then((loaded) => {
         if (cancelled) return;
-        setEdit(loaded);
+        setDayOptions(loaded.days);
         setDayKey(loaded.dayKey);
-        setRows(loaded.exercises.map((row) => ({ ...row, reps: row.reps ?? "" })));
+        if (!seeded) {
+          setEditTitle(loaded.title);
+          setNotes(loaded.notes);
+          setRpe(loaded.sessionRpe != null ? String(loaded.sessionRpe) : "");
+          setRows(loaded.exercises.map((row) => ({ ...row, reps: row.reps ?? "" })));
+        }
       })
       .catch(() => {
         if (!cancelled) setLoadError("That workout could not be opened.");
@@ -142,7 +168,7 @@ function LogPastWorkoutSheet({
     return () => {
       cancelled = true;
     };
-  }, [mode, sessionId]);
+  }, [mode, seeded, sessionId]);
 
   useEffect(() => {
     if (mode !== "create") return;
@@ -152,6 +178,7 @@ function LogPastWorkoutSheet({
       .then((loaded) => {
         if (cancelled) return;
         setPreview(loaded);
+        setDayOptions(loaded.days);
         if (!dayKey && loaded.dayKey) setDayKey(loaded.dayKey);
         const first = loaded.programs[0];
         const nextKind: BackfillKind = first ? "program" : loaded.saved[0] ? "saved" : "free";
@@ -183,8 +210,12 @@ function LogPastWorkoutSheet({
     if (preview) setRows(rowsFor("saved", preview, programId, id));
   }
 
-  const days = mode === "create" ? preview?.days ?? [] : edit?.days ?? [];
+  const days =
+    dayOptions.some((day) => day.key === dayKey) || !dayKey
+      ? dayOptions
+      : [{ key: dayKey, label: dayKey }, ...dayOptions];
   const conflict = state.conflict ?? [];
+  const deleteTitle = editTitle.trim() || "this workout";
   const sheet = (
     <div
       className="fixed inset-0 z-[70] flex items-end bg-black/70"
@@ -219,12 +250,12 @@ function LogPastWorkoutSheet({
             {state.error}
           </p>
         ) : null}
-        {mode === "delete" && edit ? (
+        {mode === "delete" ? (
           <form action={formAction} className="mt-4 space-y-3">
-            <input type="hidden" name="sessionId" value={edit.id} />
+            <input type="hidden" name="sessionId" value={sessionId ?? ""} />
             <input type="hidden" name="confirm" value="yes" />
             <p className="text-sm">
-              Delete {edit.title}? It comes off the calendar, history, and streak.
+              Delete {deleteTitle}? It comes off the calendar, history, and streak.
             </p>
             <button
               type="submit"
@@ -327,12 +358,22 @@ function LogPastWorkoutSheet({
               </Field>
             ) : (
               <Field label="Name">
-                <input
-                  name="title"
-                  data-testid="log-past-workout-title"
-                  defaultValue={edit?.title ?? preview?.programs.find((row) => row.programDayId === programId)?.title ?? ""}
-                  className={inputClass}
-                />
+                {mode === "edit" ? (
+                  <input
+                    name="title"
+                    data-testid="log-past-workout-title"
+                    value={editTitle}
+                    onChange={(event) => setEditTitle(event.target.value)}
+                    className={inputClass}
+                  />
+                ) : (
+                  <input
+                    name="title"
+                    data-testid="log-past-workout-title"
+                    defaultValue={preview?.programs.find((row) => row.programDayId === programId)?.title ?? ""}
+                    className={inputClass}
+                  />
+                )}
               </Field>
             )}
             {mode === "create" && kind === "rounds" ? (
@@ -362,9 +403,14 @@ function LogPastWorkoutSheet({
               </div>
             ) : null}
             {mode === "create" && kind === "rounds" ? (
-              <Field label="Seconds each round">
-                <input name="workSeconds" inputMode="numeric" defaultValue={180} className={inputClass} />
-              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Seconds each round">
+                  <input name="workSeconds" inputMode="numeric" defaultValue={180} className={inputClass} />
+                </Field>
+                <Field label="Rest between rounds">
+                  <input name="restSeconds" inputMode="numeric" defaultValue={60} className={inputClass} />
+                </Field>
+              </div>
             ) : null}
             {mode === "create" && kind === "bike" ? (
               <div className="grid grid-cols-2 gap-2">
@@ -429,10 +475,39 @@ function LogPastWorkoutSheet({
               <input type="hidden" name="exerciseCount" value={0} />
             )}
             <Field label="RPE, optional">
-              <input name="rpe" data-testid="log-past-workout-rpe" inputMode="numeric" defaultValue={edit?.sessionRpe ?? ""} placeholder="1–10" className={inputClass} />
+              {mode === "edit" ? (
+                <input
+                  name="rpe"
+                  data-testid="log-past-workout-rpe"
+                  inputMode="numeric"
+                  value={rpe}
+                  onChange={(event) => setRpe(event.target.value)}
+                  placeholder="1–10"
+                  className={inputClass}
+                />
+              ) : (
+                <input
+                  name="rpe"
+                  data-testid="log-past-workout-rpe"
+                  inputMode="numeric"
+                  placeholder="1–10"
+                  className={inputClass}
+                />
+              )}
             </Field>
             <Field label="Notes">
-              <textarea name="notes" data-testid="log-past-workout-notes" defaultValue={edit?.notes ?? ""} rows={2} className={inputClass} />
+              {mode === "edit" ? (
+                <textarea
+                  name="notes"
+                  data-testid="log-past-workout-notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  rows={2}
+                  className={inputClass}
+                />
+              ) : (
+                <textarea name="notes" data-testid="log-past-workout-notes" rows={2} className={inputClass} />
+              )}
             </Field>
             {conflict.length > 0 ? (
               <div data-testid="log-past-workout-conflict" className="rounded-2xl border border-[#CBF805]/40 bg-black px-3 py-3">

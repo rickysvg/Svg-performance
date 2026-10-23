@@ -58,6 +58,7 @@ export function CalendarWeekFollow({
   moves,
   rearrange,
   logPastDayKeys = [],
+  timeZone,
   children,
 }: {
   weeks: WeekCarouselWeek[];
@@ -72,6 +73,7 @@ export function CalendarWeekFollow({
   /** Kept for the page that still decides whether the viewed week can be edited. */
   rearrange?: boolean;
   logPastDayKeys?: string[];
+  timeZone?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -118,6 +120,7 @@ export function CalendarWeekFollow({
         swapWeekStart={weekStart}
         onWeekChange={onWeekChange}
         logPastDayKeys={logPastDayKeys}
+        timeZone={timeZone}
       />
       {panels}
     </WorkoutMoveProvider>
