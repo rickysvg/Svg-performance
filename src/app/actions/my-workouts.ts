@@ -18,6 +18,7 @@ import {
 } from "@/lib/my-workouts";
 import { getWorkoutSessionForUser } from "@/lib/workouts";
 import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
+import { confirmReplaceForDay } from "@/lib/workout-sheet";
 
 export type SavedWorkoutActionState = {
   error?: string;
@@ -25,6 +26,8 @@ export type SavedWorkoutActionState = {
   renamed?: boolean;
   name?: string;
   applied?: boolean;
+  /** Day that raised the replace prompt. Confirm is valid only for this day. */
+  confirmDayKey?: string;
 };
 
 function revalidateTraining() {
@@ -151,6 +154,7 @@ export async function applySavedWorkoutAction(
   const dayKey = String(formData.get("dayKey") ?? "");
   const modeField = String(formData.get("mode") ?? "");
   const confirmField = String(formData.get("confirm") ?? "");
+  const confirmDayKey = String(formData.get("confirmDayKey") ?? "");
   const mode = modeField || (confirmField === "replace" ? "replace" : "");
   try {
     await applySavedWorkoutToDay({
@@ -158,10 +162,10 @@ export async function applySavedWorkoutAction(
       savedWorkoutId: String(formData.get("savedWorkoutId") ?? ""),
       dayKey,
       mode,
-      confirm: confirmField === "replace" || confirmField === "1",
+      confirm: confirmReplaceForDay({ confirmField, confirmDayKey, dayKey }),
     });
   } catch (error) {
-    return { error: publicErrorMessage(error) };
+    return { error: publicErrorMessage(error), confirmDayKey: dayKey };
   }
   revalidateTraining();
   return { applied: true };

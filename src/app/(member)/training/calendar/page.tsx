@@ -10,6 +10,7 @@ import {
   calendarPlanDoses,
   formatCalendarHeading,
   getCalendarSchedule,
+  loggedSessionCardLine,
   subtitleCountsAsMissed,
   subtitleShowsPartial,
   weekdayName,
@@ -220,8 +221,7 @@ export default async function TrainingCalendarPage({
               className="text-sm text-muted"
               data-completed-summary
             >
-              {item.title} · {item.status === "complete" ? "Done" : "Partial"}
-              {item.subtitle ? ` · ${item.subtitle}` : ""}
+              {loggedSessionCardLine(item)}
             </p>
           ))}
           {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (

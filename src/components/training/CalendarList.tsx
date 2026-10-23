@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { weekSessionTally, type CalendarActivity, type CalendarDay } from "@/lib/calendar";
+import { exerciseProgressStateWord } from "@/lib/logged-work";
 import { isBikeLoggerHref } from "@/lib/timer-session";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
@@ -72,7 +73,7 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
             <span className="mt-1 block space-y-0.5 text-xs text-muted" data-exercise-progress>
               {activity.exercises.map((exercise) => (
                 <span key={exercise.name} className="block">
-                  {exercise.name} · {exercise.ticked}/{exercise.planned} · {exercise.state}
+                  {exercise.name} · {exercise.ticked}/{exercise.planned} · {exerciseProgressStateWord(exercise.state)}
                 </span>
               ))}
             </span>

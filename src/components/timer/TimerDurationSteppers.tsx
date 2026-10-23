@@ -80,6 +80,29 @@ export function TimerDurationSteppers({
   );
 }
 
+/**
+ * One step per tap. pointerdown applies immediately (a click can be lost after
+ * preventDefault). The following click is swallowed. The flag clears on that
+ * click, not on a timeout, so it is still set when the click arrives.
+ * A click with no pointerdown (keyboard) applies once.
+ */
+export function applyStepperTap(
+  event: "pointerdown" | "click",
+  state: { fromPointer: boolean },
+  apply: () => void,
+) {
+  if (event === "pointerdown") {
+    state.fromPointer = true;
+    apply();
+    return;
+  }
+  if (state.fromPointer) {
+    state.fromPointer = false;
+    return;
+  }
+  apply();
+}
+
 function Stepper({
   field,
   label,
@@ -93,26 +116,20 @@ function Stepper({
   onDec: () => void;
   onInc: () => void;
 }) {
-  const fromPointer = useRef(false);
-  function press(apply: () => void) {
+  const decPointer = useRef({ fromPointer: false });
+  const incPointer = useRef({ fromPointer: false });
+  function press(apply: () => void, state: { fromPointer: boolean }) {
     return {
       onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+        if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
-        fromPointer.current = true;
-        apply();
-        window.setTimeout(() => {
-          fromPointer.current = false;
-        }, 0);
+        applyStepperTap("pointerdown", state, apply);
       },
       onClick: (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
-        if (fromPointer.current) {
-          fromPointer.current = false;
-          return;
-        }
-        apply();
+        applyStepperTap("click", state, apply);
       },
     };
   }
@@ -130,7 +147,7 @@ function Stepper({
           type="button"
           aria-label={`Decrease ${label}`}
           data-timer-step-dec={field}
-          {...press(onDec)}
+          {...press(onDec, decPointer.current)}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           −
@@ -139,7 +156,7 @@ function Stepper({
           type="button"
           aria-label={`Increase ${label}`}
           data-timer-step-inc={field}
-          {...press(onInc)}
+          {...press(onInc, incPointer.current)}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           +

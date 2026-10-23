@@ -369,6 +369,27 @@ export function sessionStatusLine(name: string, state: "Missed" | "Partial" | "D
   return `${name} · ${state}`;
 }
 
+/**
+ * Selected-day summary. Subtitles already carry the session name and Done or
+ * Partial, so the header must not say them again.
+ */
+export function loggedSessionCardLine(item: {
+  title: string;
+  status: string;
+  subtitle?: string | null;
+}) {
+  const statusWord = item.status === "complete" ? "Done" : "Partial";
+  const title = item.title.trim();
+  const subtitle = (item.subtitle ?? "").trim();
+  if (!subtitle) return `${title} · ${statusWord}`;
+  const hasStatus = subtitle.includes(statusWord);
+  const hasTitle = title.length > 0 && subtitle.includes(title);
+  if (hasTitle && hasStatus) return subtitle;
+  if (hasStatus) return `${title} · ${subtitle}`;
+  if (hasTitle) return `${subtitle} · ${statusWord}`;
+  return `${title} · ${statusWord} · ${subtitle}`;
+}
+
 export function subtitleShowsPartial(subtitle: string) {
   return subtitle.startsWith("Partial") || subtitle.includes("· Partial");
 }

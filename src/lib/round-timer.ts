@@ -252,6 +252,23 @@ export const DEFAULT_TIMER_PREFS: StoredTimerPrefs = {
   custom: DEFAULT_CUSTOM,
 };
 
+/** First paint has no stored mode yet. A mode chip tap must not drop the stored preset. */
+export function mergeHydratedTimerPrefs(input: {
+  stored: StoredTimerPrefs;
+  custom: TimerConfig;
+  current: StoredTimerPrefs;
+  urlMode?: TimerSurfaceMode | null;
+  pickedMode: boolean;
+  touchedConfig: boolean;
+}): StoredTimerPrefs {
+  return {
+    ...input.stored,
+    custom: input.touchedConfig ? input.current.custom : input.custom,
+    preset: input.touchedConfig ? input.current.preset : input.stored.preset,
+    mode: input.urlMode ?? (input.pickedMode ? input.current.mode : input.stored.mode),
+  };
+}
+
 export function parseStoredTimerPrefs(raw: string | null): StoredTimerPrefs {
   if (!raw) return DEFAULT_TIMER_PREFS;
   try {

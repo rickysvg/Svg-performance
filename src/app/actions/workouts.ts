@@ -61,11 +61,13 @@ export async function startRoundLogAction(formData: FormData) {
   const configuredRaw = String(formData.get("configuredRounds") ?? "").trim();
   const configuredRounds = configuredRaw === "" ? null : Number(configuredRaw);
   const elapsedRaw = String(formData.get("elapsedSeconds") ?? "").trim();
+  const configuredRestRaw = String(formData.get("configuredRestSeconds") ?? "").trim();
   const clock = resolveSubmittedRoundLog({
     rounds: Number(formData.get("rounds") ?? 0),
     workSeconds: Number(formData.get("workSeconds") ?? 180),
     restSeconds: Number(formData.get("restSeconds") ?? 0),
     configuredRounds,
+    configuredRestSeconds: configuredRestRaw === "" ? null : Number(configuredRestRaw),
     phase: String(formData.get("phase") ?? ""),
     timerRound: Number(formData.get("timerRound") ?? 0),
     phaseElapsedSeconds: Number(formData.get("phaseElapsed") ?? 0),

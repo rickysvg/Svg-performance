@@ -338,6 +338,11 @@ export function partialSetsLine(ticked: number, planned: number) {
   return `Partial · ${ticked}/${planned} sets`;
 }
 
+/** Finish and calendar rows. A finished exercise reads done, even on a partial day. */
+export function exerciseProgressStateWord(state: string) {
+  return state === "complete" ? "done" : state;
+}
+
 export function formatSetProgress(ticked: number, planned: number) {
   if (planned > 0) return `${ticked}/${planned} sets`;
   const count = Math.max(0, ticked);

@@ -148,9 +148,28 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Subscribe
         </a>
       ) : firstDone ? (
-        <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
-          Done
-        </p>
+        <>
+          <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+            Done
+          </p>
+          {customResume && customResume.id !== resume?.id ? (
+            <ResumeButton
+              log={customResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {otherResume && otherResume.id !== customResume?.id ? (
+            <ResumeButton
+              log={otherResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {extra > 0 ? (
+            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
+              See the rest of today
+            </Link>
+          ) : null}
+        </>
       ) : (
         <>
           {firstPartial || resume?.partial ? (

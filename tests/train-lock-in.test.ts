@@ -11,7 +11,7 @@ import {
 import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
 import { draftHasResumeWork } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { APPLY_TOAST, APPLY_TOAST_MS, REPLACE_LOGGED_CONFIRM, RENAME_TOAST_MS, applySheetSettle, renameSheetSettle, renameToast } from "@/lib/workout-sheet";
+import { APPLY_TOAST, APPLY_TOAST_MS, REPLACE_LOGGED_CONFIRM, RENAME_TOAST_MS, applySheetSettle, confirmReplaceForDay, renameSheetSettle, renameToast } from "@/lib/workout-sheet";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import {
   applySavedWorkoutToDay,
@@ -23,7 +23,7 @@ import {
   startDayPlanForUser,
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
-import { getCalendarSchedule, sessionStatusLine, subtitleCountsAsMissed } from "@/lib/calendar";
+import { getCalendarSchedule, loggedSessionCardLine, sessionStatusLine, subtitleCountsAsMissed } from "@/lib/calendar";
 import { chipMarkForDay } from "@/lib/chip-mark";
 import { offPlanMarksByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
 import { deleteWorkoutSessionForUser } from "@/lib/workouts";
@@ -499,6 +499,38 @@ describe("train page lock-in", () => {
     expect(APPLY_TOAST_MS).toBe(3000);
     expect(sessionStatusLine("Lift", "Missed")).toBe("Lift · Missed");
     expect(sessionStatusLine("Bag", "Partial")).toBe("Bag · Partial");
+    expect(
+      loggedSessionCardLine({
+        title: "Lift 1 — Full body",
+        status: "scheduled",
+        subtitle: "Partial · 4/10 sets",
+      }),
+    ).toBe("Lift 1 — Full body · Partial · 4/10 sets");
+    expect(
+      loggedSessionCardLine({
+        title: "Quick lift",
+        status: "scheduled",
+        subtitle: "Quick lift · Partial",
+      }),
+    ).toBe("Quick lift · Partial");
+    expect(
+      loggedSessionCardLine({
+        title: "Daru Alactic Power",
+        status: "complete",
+        subtitle: "Daru Alactic Power · Done",
+      }),
+    ).toBe("Daru Alactic Power · Done");
+    expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "2026-10-20", dayKey: "2026-10-20" })).toBe(
+      true,
+    );
+    expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "2026-10-20", dayKey: "2026-10-22" })).toBe(
+      false,
+    );
+    expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "", dayKey: "2026-10-22" })).toBe(false);
+    expect(card).toContain("confirmDayKey");
+    expect(card).toContain("value={applyDayKey}");
+    expect(card).toContain("setApplyDismissed(true)");
+    expect(card).not.toContain("defaultValue={todayKey}");
     expect(read("src/components/training/SavedWorkoutEditor.tsx")).toContain("Exercises saved.");
     expect(read("src/components/training/SavedWorkoutEditor.tsx")).not.toContain('name="name"');
   });

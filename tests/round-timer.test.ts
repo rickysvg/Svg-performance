@@ -7,6 +7,7 @@ import {
   configForPreset,
   formatDurationPick,
   formatTimerClock,
+  mergeHydratedTimerPrefs,
   parseStoredCustom,
   secondSteps,
   parseStoredTimerPrefs,
@@ -170,6 +171,26 @@ describe("round timer phase math", () => {
     expect(prefs.warningBeep).toBe(false);
     expect(prefs.bell).toBe(true);
     expect(prefs.custom.rounds).toBe(4);
+    const current = parseStoredTimerPrefs(null);
+    expect(
+      mergeHydratedTimerPrefs({
+        stored: prefs,
+        custom: prefs.custom,
+        current: { ...current, mode: "bike" },
+        pickedMode: true,
+        touchedConfig: false,
+      }),
+    ).toMatchObject({ mode: "bike", preset: "custom", custom: { rounds: 4 } });
+    expect(
+      mergeHydratedTimerPrefs({
+        stored: prefs,
+        custom: prefs.custom,
+        current,
+        urlMode: "pads",
+        pickedMode: false,
+        touchedConfig: false,
+      }).mode,
+    ).toBe("pads");
     expect(completedWorkRounds("idle", 1, 4)).toBe(0);
     expect(completedWorkRounds("work", 1, 4)).toBe(0);
     expect(completedWorkRounds("work", 3, 4)).toBe(2);

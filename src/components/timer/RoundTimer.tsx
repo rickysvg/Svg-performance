@@ -17,6 +17,7 @@ import {
   completedWorkRounds,
   configForPreset,
   formatTimerClock,
+  mergeHydratedTimerPrefs,
   parseStoredCustom,
   parseStoredTimerPrefs,
   resolveTimer,
@@ -33,7 +34,7 @@ import {
 } from "@/lib/bike-chooser";
 import { DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
 import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
-import { roundLogFromClock } from "@/lib/round-session";
+import { launchRoundLogFromClock, roundLogFromClock } from "@/lib/round-session";
 import { TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
 import { CountdownFace } from "@/components/timer/CountdownFace";
 import { useGoCountdown } from "@/components/timer/useGoCountdown";
@@ -173,6 +174,7 @@ export function RoundTimer({
   const [logHint, setLogHint] = useState("");
   const logged = useRef(false);
   const pickedMode = useRef(false);
+  const touchedConfig = useRef(false);
   const seenUrlMode = useRef(mode);
   const modesRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef("");
@@ -221,13 +223,17 @@ export function RoundTimer({
     const id = window.setTimeout(() => {
       const stored = parseStoredTimerPrefs(window.localStorage.getItem(TIMER_PREFS_STORAGE_KEY));
       const custom = parseStoredCustom(window.localStorage.getItem(TIMER_CUSTOM_STORAGE_KEY));
-      setPrefs((current) => ({
-        ...stored,
-        custom: pickedMode.current ? current.custom : custom,
-        preset: pickedMode.current ? current.preset : stored.preset,
-        mode: mode ?? (pickedMode.current ? current.mode : stored.mode),
-      }));
-      setCustomDraft((current) => (pickedMode.current ? current : custom));
+      setPrefs((current) =>
+        mergeHydratedTimerPrefs({
+          stored,
+          custom,
+          current,
+          urlMode: mode,
+          pickedMode: pickedMode.current,
+          touchedConfig: touchedConfig.current,
+        }),
+      );
+      setCustomDraft((current) => (touchedConfig.current ? current : custom));
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
@@ -273,7 +279,7 @@ export function RoundTimer({
       logged.current = true;
       const parsedRpe = Number(rpeRef.current);
       const snap = clockRef.current;
-      const clock = roundLogFromClock({
+      const clock = launchRoundLogFromClock({
         phase: snap.phase,
         round: snap.round,
         totalRounds: snap.totalRounds,
@@ -281,9 +287,13 @@ export function RoundTimer({
         restSeconds: config.restSeconds,
         phaseElapsedSeconds: snap.phaseElapsedSeconds,
       });
+      if (clock.rounds < 1) {
+        logged.current = false;
+        return;
+      }
       void logBagworkSessionAction({
         workoutKey: launch.key,
-        rounds: clock.roundsCompleted || roundsDone,
+        rounds: clock.rounds,
         workSeconds: config.workSeconds,
         restSeconds: clock.restSeconds,
         elapsedSeconds: clock.elapsedSeconds,
@@ -434,6 +444,7 @@ export function RoundTimer({
   }
 
   function persistCustom(next: TimerConfig) {
+    touchedConfig.current = true;
     setCustomDraft(next);
     setPrefs((current) => ({ ...current, preset: "custom", custom: next }));
     if (startedAtMs != null) reset();
@@ -454,6 +465,7 @@ export function RoundTimer({
   const bikeSession = bikeChoice ? sessionWithChoice(DEFAULT_BIKE_SESSION, bikeChoice) : null;
   const bikeRounds = bikeChoice ? bikeTimerRoundCount(bikeChoice) : 0;
   const linkedProgramDayId = programDayId && mode && activeMode === mode ? programDayId : "";
+  const modeKnown = Boolean(launch || mode || hydrated);
   const timerOn = startedAtMs != null;
   const finishedWork = completedWorkRounds(resolved.phase, resolved.round, resolved.totalRounds);
   const roundsToLog = timerOn ? finishedWork : config.rounds;
@@ -501,13 +513,13 @@ export function RoundTimer({
             type="button"
             data-testid={`chrome-mode-${item}`}
             data-timer-mode={item}
-            aria-pressed={activeMode === item}
+            aria-pressed={modeKnown && activeMode === item}
             onClick={() => {
               pickedMode.current = true;
               setPrefs((current) => ({ ...current, mode: item }));
             }}
             className={`inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-[11px] leading-none ${
-              activeMode === item ? "bg-accent text-black" : "text-muted"
+              modeKnown && activeMode === item ? "bg-accent text-black" : "text-muted"
             }`}
           >
             {MODE_LABEL[item]}
@@ -605,6 +617,7 @@ export function RoundTimer({
           setField("timerRound", String(snap.round));
           setField("phaseElapsed", String(Math.max(0, Math.round(snap.phaseElapsedSeconds))));
           setField("restSeconds", String(config.restSeconds));
+          setField("configuredRestSeconds", String(config.restSeconds));
           setField("elapsedSeconds", String(clock.elapsedSeconds));
         }}
       >
@@ -618,6 +631,7 @@ export function RoundTimer({
           value={config.workSeconds}
         />
         <input type="hidden" name="restSeconds" value={config.restSeconds} />
+        <input type="hidden" name="configuredRestSeconds" value={config.restSeconds} />
         <input type="hidden" name="phase" value="" />
         <input type="hidden" name="timerRound" value={resolved.round} />
         <input type="hidden" name="phaseElapsed" value={Math.max(0, Math.round(resolved.phaseElapsedSeconds))} />
@@ -630,7 +644,9 @@ export function RoundTimer({
           disabled={logDisabled}
           className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-40"
         >
-          Log {Math.max(0, roundsToLog)} {MODE_LABEL[activeMode].toLowerCase()} rounds
+          {modeKnown
+            ? `Log ${Math.max(0, roundsToLog)} ${MODE_LABEL[activeMode].toLowerCase()} rounds`
+            : "Log rounds"}
         </button>
       </form>
       )}
@@ -649,6 +665,7 @@ export function RoundTimer({
             key={id}
             type="button"
             onClick={() => {
+              touchedConfig.current = true;
               setPrefs((current) => ({ ...current, preset: id as TimerPreset }));
               if (startedAtMs != null) reset();
             }}

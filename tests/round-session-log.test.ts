@@ -10,7 +10,9 @@ import { sessionProgressLabel } from "@/lib/logged-work";
 import { buildProgressSummary } from "@/lib/progress";
 import { prisma } from "@/lib/prisma";
 import { findDemoTrainingCatalog } from "@/lib/programs";
+import { exerciseProgressStateWord } from "@/lib/logged-work";
 import {
+  launchRoundLogFromClock,
   resolveSubmittedRoundLog,
   restSecondsFromRoundKey,
   ROUND_SET_CAP_SECONDS,
@@ -55,7 +57,7 @@ async function bagDayFor(userId: string, now: Date) {
 }
 
 describe("mid-timer round saves", () => {
-  it("counts the finished round and the rest already elapsed", () => {
+  it("stores the configured rest and the work already finished", () => {
     expect(
       roundLogFromClock({
         phase: "rest",
@@ -63,20 +65,101 @@ describe("mid-timer round saves", () => {
         totalRounds: 2,
         workSeconds: 15,
         restSeconds: 15,
-        phaseElapsedSeconds: 15,
+        phaseElapsedSeconds: 6,
       }),
-    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+    expect(
+      resolveSubmittedRoundLog({
+        rounds: 2,
+        workSeconds: 15,
+        restSeconds: 15,
+        configuredRounds: 2,
+        phase: "rest",
+        timerRound: 1,
+        phaseElapsedSeconds: 6,
+        elapsedSeconds: 21,
+      }),
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+  });
+
+  it("does not save two rounds and a zero rest from a running timer", () => {
+    // The clock is in the first rest. A stale form still has the setup's 2
+    // rounds, rest 0 (elapsed rest written into the field), and a 0:30 total.
+    // Phase present: the clock wins, and the configured rest is kept when it
+    // arrives on its own field.
     expect(
       resolveSubmittedRoundLog({
         rounds: 2,
         workSeconds: 15,
         restSeconds: 0,
         configuredRounds: 2,
+        configuredRestSeconds: 15,
         phase: "rest",
         timerRound: 1,
-        phaseElapsedSeconds: 15,
+        phaseElapsedSeconds: 6,
+        elapsedSeconds: 30,
       }),
-    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 30 });
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+    // Phase stamp dropped. Same stale rounds/rest/total, clock position still set.
+    expect(
+      resolveSubmittedRoundLog({
+        rounds: 2,
+        workSeconds: 15,
+        restSeconds: 0,
+        configuredRounds: 2,
+        configuredRestSeconds: 15,
+        phase: "",
+        timerRound: 1,
+        phaseElapsedSeconds: 6,
+        elapsedSeconds: 30,
+      }),
+    ).toEqual({ roundsCompleted: 1, restSeconds: 15, elapsedSeconds: 15 });
+    // Without the configured-rest field the round count still cannot stay at 2.
+    expect(
+      resolveSubmittedRoundLog({
+        rounds: 2,
+        workSeconds: 15,
+        restSeconds: 0,
+        configuredRounds: 2,
+        phase: "",
+        timerRound: 1,
+        phaseElapsedSeconds: 6,
+        elapsedSeconds: 30,
+      }).roundsCompleted,
+    ).toBe(1);
+    // Idle "log the setup" has no phase elapsed, so the form's rounds stand.
+    expect(
+      resolveSubmittedRoundLog({
+        rounds: 2,
+        workSeconds: 15,
+        restSeconds: 15,
+        configuredRounds: 2,
+        phase: "",
+        timerRound: 1,
+        phaseElapsedSeconds: 0,
+      }),
+    ).toEqual({ roundsCompleted: 2, restSeconds: 15, elapsedSeconds: 45 });
+    // Launch End must not substitute the configured round count or elapsed rest.
+    expect(
+      launchRoundLogFromClock({
+        phase: "rest",
+        round: 1,
+        totalRounds: 2,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 0,
+      }),
+    ).toEqual({ rounds: 1, restSeconds: 15, elapsedSeconds: 15 });
+    expect(
+      launchRoundLogFromClock({
+        phase: "work",
+        round: 1,
+        totalRounds: 2,
+        workSeconds: 15,
+        restSeconds: 15,
+        phaseElapsedSeconds: 6,
+      }).rounds,
+    ).toBe(0);
   });
 
   it("keeps a 1-of-2 and 1-of-8 finish partial", () => {
@@ -127,6 +210,43 @@ describe("mid-timer round saves", () => {
     expect(roundHistoryLine({ elapsedSeconds: 20, sets: bikeSets })).toBe(
       "1 round · 0:20 round · 0:10 rest · 0:20 total",
     );
+
+    const mixed = roundFinishProgress({
+      plannedExercises: [
+        { name: "Bench press", sets: 2 },
+        { name: "Row", sets: 3 },
+      ],
+      sets: [
+        { exerciseName: "Bench press", completed: true, reps: 5 },
+        { exerciseName: "Bench press", completed: true, reps: 5 },
+        { exerciseName: "Row", completed: true, reps: 8 },
+      ],
+      status: "partial",
+    });
+    const bench = mixed.find((row) => row.name === "Bench press");
+    expect(bench).toMatchObject({ ticked: 2, planned: 2, state: "complete" });
+    expect(`${bench?.ticked}/${bench?.planned} · ${exerciseProgressStateWord(bench?.state ?? "")}`).toBe(
+      "2/2 · done",
+    );
+    expect(mixed.find((row) => row.name === "Row")).toMatchObject({
+      ticked: 1,
+      planned: 3,
+      state: "partial",
+    });
+    expect(
+      roundHistoryLine({
+        elapsedSeconds: 40 * 60,
+        sets: [
+          { exerciseName: "Bench press", completed: true, reps: 5, loadValue: 100 },
+          {
+            exerciseName: "Assault bike intervals",
+            completed: true,
+            durationSeconds: 20,
+            prescriptionKey: attachBikeChoice("timer", choiceToken(bikeChoiceById("tabata")!)),
+          },
+        ],
+      }),
+    ).toBeNull();
   });
 
   it("counts timer sparring rounds on the home rounds tile", () => {
@@ -233,7 +353,7 @@ describe("round session logs", () => {
     expect(await getShareCardView(user.id, saved.id)).not.toBeNull();
   });
 
-  it("saves a mid-rest bag log as one partial round and keeps the elapsed rest", async () => {
+  it("saves a mid-rest bag log as one partial round and keeps the configured rest", async () => {
     const user = await makeUser("bag-mid-rest@example.com");
     await prisma.profile.update({
       where: { userId: user.id },
@@ -245,9 +365,11 @@ describe("round session logs", () => {
       workSeconds: 15,
       restSeconds: 0,
       configuredRounds: 2,
+      configuredRestSeconds: 15,
       phase: "rest",
       timerRound: 1,
-      phaseElapsedSeconds: 15,
+      phaseElapsedSeconds: 6,
+      elapsedSeconds: 30,
     });
     const saved = await logRoundSessionForUser({
       userId: user.id,
@@ -263,12 +385,14 @@ describe("round session logs", () => {
     expect(saved.sets).toHaveLength(1);
     expect(saved.plannedSetCount).toBe(2);
     expect(restSecondsFromRoundKey(saved.sets[0]?.prescriptionKey)).toBe(15);
-    expect(saved.elapsedSeconds).toBe(30);
+    expect(saved.elapsedSeconds).toBe(15);
     const line = roundHistoryLine(saved);
     expect(line).toContain("1 round");
     expect(line).toContain("0:15 rest");
-    expect(line).toContain("0:30 total");
+    expect(line).toContain("0:15 total");
+    expect(line).not.toContain("0:06");
     expect(line).not.toContain("2 rounds");
+    expect(line).not.toContain("0:00 rest");
     const finish = roundFinishProgress({
       plannedExercises: [],
       sets: saved.sets,
@@ -673,6 +797,8 @@ describe("round session logs", () => {
     expect(timer).toContain('name="programDayId"');
     expect(timer).toContain('name="phase"');
     expect(source("src/components/timer/TimerDurationSteppers.tsx")).toContain("onPointerDown");
+    expect(source("src/components/timer/TimerDurationSteppers.tsx")).toContain("applyStepperTap");
+    expect(source("src/components/timer/TimerDurationSteppers.tsx")).not.toContain("setTimeout");
     expect(source("next.config.ts")).toContain('source: "/train"');
     expect(source("src/components/timer/BikeClockScreen.tsx")).toContain("logBikeTimerAction");
   });
