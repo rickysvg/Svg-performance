@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { BIKE_TIMER_EXERCISE } from "@/lib/bike-timer-log";
+import { roundLogSets, roundPrescriptionKey, roundSessionDuration, type RoundSessionType } from "@/lib/round-session";
 import { METRIC_NAMES, recordMetric } from "@/lib/metrics";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -85,6 +86,7 @@ type BackfillPayload = {
   doneRounds?: number | null;
   roundMode?: string | null;
   workSeconds?: number | null;
+  restSeconds?: number | null;
   calories?: number | null;
   distance?: number | null;
 };
@@ -353,6 +355,53 @@ function exercisePayload(exercises: BackfillExerciseInput[], unit: LoadUnit, key
   return setsForBackfillExercises(exercises, unit, keyFor);
 }
 
+function roundBackfillSets(input: {
+  type: RoundSessionType;
+  exerciseName: string;
+  plannedRounds: number;
+  doneRounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  unit: LoadUnit;
+}): { sets: BackfillSetDraft[]; plannedSetCount: number; plannedNames: string[] } {
+  const done = roundLogSets({
+    type: input.type,
+    exerciseName: input.exerciseName,
+    rounds: input.doneRounds,
+    workSeconds: input.workSeconds,
+    restSeconds: input.restSeconds,
+    unit: input.unit,
+  });
+  const key = roundPrescriptionKey(input.type, input.restSeconds);
+  const sets: BackfillSetDraft[] = done.map((set) => ({
+    exerciseName: set.exerciseName,
+    setNumber: set.setNumber,
+    reps: null,
+    loadValue: null,
+    loadUnit: input.unit,
+    logMode: "timed_round",
+    durationSeconds: set.durationSeconds ?? null,
+    completed: true,
+    notes: set.notes ?? "",
+    prescriptionKey: set.prescriptionKey ?? key,
+  }));
+  for (let index = sets.length; index < input.plannedRounds; index += 1) {
+    sets.push({
+      exerciseName: input.exerciseName,
+      setNumber: index + 1,
+      reps: null,
+      loadValue: null,
+      loadUnit: input.unit,
+      logMode: "timed_round",
+      durationSeconds: null,
+      completed: false,
+      notes: "",
+      prescriptionKey: key,
+    });
+  }
+  return { sets, plannedSetCount: input.plannedRounds, plannedNames: [input.exerciseName] };
+}
+
 async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
   if (input.kind === "program") {
     const programDayId = input.programDayId ?? "";
@@ -442,19 +491,16 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
       BACKFILL_MAX_SET_SECONDS,
       Math.max(1, Math.round(durationSeconds / plannedRounds)),
     );
-    const exercises: BackfillExerciseInput[] = [
-      {
-        name: BIKE_TIMER_EXERCISE,
-        sets: plannedRounds,
-        done: doneRounds,
-        reps: `${perRound}`,
-        logMode: "timed_round",
-      },
-    ];
-    const built = setsForBackfillExercises(exercises, unit, () => `backfill|bike|${choiceTokenLengthSafe(perRound)}`);
-    for (const set of built.sets) {
-      if (set.completed) set.durationSeconds = perRound;
-    }
+    const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
+    const built = roundBackfillSets({
+      type: "bike",
+      exerciseName: BIKE_TIMER_EXERCISE,
+      plannedRounds,
+      doneRounds,
+      workSeconds: perRound,
+      restSeconds,
+      unit,
+    });
     return {
       title: cleanTitle(input.title, "Assault bike"),
       notes: notesWithBikeMetrics(input.notes, input.calories ?? null, input.distance ?? null),
@@ -481,20 +527,23 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
       throw new AppError("WORKOUT", "Finished rounds cannot be more than the workout.");
     }
     const name = BACKFILL_ROUND_MODES[roundMode];
-    const built = setsForBackfillExercises(
-      [{ name, sets: plannedRounds, done: doneRounds, reps: String(workSeconds), logMode: "timed_round" }],
+    const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
+    const built = roundBackfillSets({
+      type: roundMode,
+      exerciseName: name,
+      plannedRounds,
+      doneRounds,
+      workSeconds,
+      restSeconds,
       unit,
-    );
-    for (const set of built.sets) {
-      if (set.completed) set.durationSeconds = workSeconds;
-    }
+    });
     return {
       title: cleanTitle(input.title, name),
       notes: input.notes.trim().slice(0, 1000),
       programDayId: null,
       savedWorkoutId: null,
       ...built,
-      elapsedSeconds: workSeconds * doneRounds,
+      elapsedSeconds: roundSessionDuration(doneRounds, workSeconds, restSeconds),
     };
   }
 
@@ -515,10 +564,6 @@ async function payloadFromKind(input: BackfillPayload, unit: LoadUnit) {
     ...built,
     elapsedSeconds: durationSeconds,
   };
-}
-
-function choiceTokenLengthSafe(seconds: number) {
-  return `t${seconds}`;
 }
 
 export async function createBackfillWorkout(input: BackfillPayload): Promise<BackfillWriteResult> {
@@ -544,14 +589,33 @@ export async function createBackfillWorkout(input: BackfillPayload): Promise<Bac
   });
 }
 
-export async function getBackfillForEdit(userId: string, sessionId: string, now = new Date()) {
-  const { timeZone } = await memberZone(userId);
-  const session = await prisma.workoutSession.findUnique({
-    where: { id: sessionId },
-    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
-  });
-  if (!session || session.userId !== userId) throw new ForbiddenError();
-  if (!session.backfilled) throw new AppError("WORKOUT", "Only a logged-later workout can be edited here.");
+export type BackfillFormSeed = {
+  title: string;
+  notes: string;
+  dayKey: string;
+  sessionRpe: number | null;
+  exercises: { name: string; sets: number; done: number; reps: string; logMode: string }[];
+};
+
+/** Values the edit and delete dialogs can paint before the edit request returns. */
+export function backfillFormSeed(
+  session: {
+    title: string;
+    notes: string | null;
+    sessionRpe: number | null;
+    performedAt: Date;
+    sets: {
+      exerciseName: string;
+      completed: boolean;
+      reps: number | null;
+      loadValue: number | null;
+      durationSeconds: number | null;
+      logMode: string;
+    }[];
+  },
+  timeZone: string,
+  now = new Date(),
+): BackfillFormSeed {
   const key = sessionCompletionDay(session, timeZone);
   const groups = new Map<string, { planned: number; done: number; logMode: string }>();
   for (const set of session.sets) {
@@ -563,12 +627,9 @@ export async function getBackfillForEdit(userId: string, sessionId: string, now 
     groups.set(set.exerciseName, current);
   }
   return {
-    id: session.id,
     title: session.title,
-    notes: session.notes,
+    notes: session.notes ?? "",
     dayKey: backfillDayState(key, now, timeZone) === "ok" ? key : backfillDayOptions(now, timeZone)[0]?.key ?? key,
-    originalDayKey: key,
-    status: session.status,
     sessionRpe: session.sessionRpe,
     exercises: [...groups.entries()].map(([name, row]) => ({
       name,
@@ -577,6 +638,28 @@ export async function getBackfillForEdit(userId: string, sessionId: string, now 
       logMode: row.logMode,
       reps: "",
     })),
+  };
+}
+
+export async function getBackfillForEdit(userId: string, sessionId: string, now = new Date()) {
+  const { timeZone } = await memberZone(userId);
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: sessionId },
+    include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
+  });
+  if (!session || session.userId !== userId) throw new ForbiddenError();
+  if (!session.backfilled) throw new AppError("WORKOUT", "Only a logged-later workout can be edited here.");
+  const key = sessionCompletionDay(session, timeZone);
+  const seed = backfillFormSeed(session, timeZone, now);
+  return {
+    id: session.id,
+    title: seed.title,
+    notes: seed.notes,
+    dayKey: seed.dayKey,
+    originalDayKey: key,
+    status: session.status,
+    sessionRpe: seed.sessionRpe,
+    exercises: seed.exercises,
     days: backfillDayOptions(now, timeZone),
     existing: (await sessionsOnCivilDay(userId, key, timeZone))
       .filter((row) => row.id !== session.id)
@@ -694,6 +777,7 @@ export function readBackfillForm(formData: FormData, userId: string, now = new D
     doneRounds: numberOrNull(formData.get("doneRounds")),
     roundMode: String(formData.get("roundMode") ?? ""),
     workSeconds: numberOrNull(formData.get("workSeconds")),
+    restSeconds: numberOrNull(formData.get("restSeconds")),
     calories: parseOptionalCalories(String(formData.get("calories") ?? "")),
     distance: parseOptionalDistance(String(formData.get("distance") ?? "")),
   };

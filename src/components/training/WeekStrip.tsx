@@ -737,6 +737,7 @@ function WeekDayCarousel({
   swapWeekStart,
   onWeekChange,
   logPastDayKeys = [],
+  timeZone,
 }: {
   weeks: WeekCarouselWeek[];
   basePath: string;
@@ -749,6 +750,7 @@ function WeekDayCarousel({
   swapWeekStart?: string;
   onWeekChange?: (week: WeekChange) => void;
   logPastDayKeys?: string[];
+  timeZone?: string;
 }) {
   const router = useRouter();
   const trainWeekChange = useContext(TrainWeekChangeContext);
@@ -994,7 +996,13 @@ function WeekDayCarousel({
       ) : null}
       {selectedDay && logPastDayKeys.includes(selectedDay) ? (
         <div className="mt-2 flex justify-center">
-          <LogPastWorkoutButton dayKey={selectedDay} entry="week" label="Log a past workout" compact />
+          <LogPastWorkoutButton
+            dayKey={selectedDay}
+            entry="week"
+            label="Log a past workout"
+            compact
+            timeZone={timeZone}
+          />
         </div>
       ) : null}
       <div
@@ -1133,6 +1141,7 @@ export function WeekStrip({
   swapWeekStart,
   onWeekChange,
   logPastDayKeys = [],
+  timeZone,
 }: {
   days: Item[];
   /** When set, Train and Calendar swipe across these weeks instead of one row. */
@@ -1160,6 +1169,8 @@ export function WeekStrip({
   onWeekChange?: (week: WeekChange) => void;
   /** Civil days that can take a past workout. The strip button follows the selected chip. */
   logPastDayKeys?: string[];
+  /** Member zone for the past-log day list, so the dialog's first paint matches the server. */
+  timeZone?: string;
 }) {
   if (weeks && weeks.length > 0) {
     return (
@@ -1175,6 +1186,7 @@ export function WeekStrip({
         swapWeekStart={swapWeekStart ?? weekStart}
         onWeekChange={onWeekChange}
         logPastDayKeys={logPastDayKeys}
+        timeZone={timeZone}
       />
     );
   }

@@ -32,6 +32,8 @@ export function MyWorkoutCard({
   todayKey: string;
 }) {
   const [applyOpen, setApplyOpen] = useState(false);
+  const [applyDayKey, setApplyDayKey] = useState(todayKey);
+  const [applyDismissed, setApplyDismissed] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [displayName, setDisplayName] = useState(name);
@@ -59,6 +61,12 @@ export function MyWorkoutCard({
     return () => window.clearTimeout(timer);
   }, [rename.renamed, rename.name]);
   useEffect(() => {
+    if (applyPending) setApplyDismissed(false);
+  }, [applyPending]);
+  useEffect(() => {
+    if (applyState.confirmDayKey) setApplyDayKey(applyState.confirmDayKey);
+  }, [applyState.confirmDayKey]);
+  useEffect(() => {
     const settled = applySheetSettle({
       pending: applyPending,
       started: applyStarted.current,
@@ -74,6 +82,7 @@ export function MyWorkoutCard({
     return () => window.clearTimeout(timer);
   }, [applyPending, applyState]);
   const count = `${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}`;
+  const applyError = applyDismissed ? undefined : applyState.error;
 
   return (
     <article data-my-workout={id} className="rounded-2xl border border-line bg-card p-4">
@@ -207,13 +216,17 @@ export function MyWorkoutCard({
                   name="dayKey"
                   data-apply-day-date
                   required
-                  defaultValue={todayKey}
+                  value={applyDayKey}
+                  onChange={(event) => setApplyDayKey(event.target.value)}
                   className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
                 />
               </label>
-              {applyState.error ? (
+              {applyError === REPLACE_LOGGED_CONFIRM ? (
+                <input type="hidden" name="confirmDayKey" value={applyState.confirmDayKey ?? applyDayKey} />
+              ) : null}
+              {applyError && applyError !== REPLACE_LOGGED_CONFIRM ? (
                 <p className="text-sm text-danger" data-apply-error>
-                  {applyState.error}
+                  {applyError}
                 </p>
               ) : null}
               <button
@@ -226,17 +239,20 @@ export function MyWorkoutCard({
               >
                 Replace that day&apos;s workout
               </button>
-              {applyState.error === REPLACE_LOGGED_CONFIRM ? (
-                <button
-                  type="submit"
-                  name="confirm"
-                  value="replace"
-                  data-apply-replace-confirm
-                  disabled={applyPending}
-                  className="touch-target w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
-                >
-                  Replace anyway
-                </button>
+              {applyError === REPLACE_LOGGED_CONFIRM ? (
+                <div data-replace-logged-confirm role="group" aria-label="Confirm replace">
+                  <p className="text-sm">{REPLACE_LOGGED_CONFIRM}</p>
+                  <button
+                    type="submit"
+                    name="confirm"
+                    value="replace"
+                    data-apply-replace-confirm
+                    disabled={applyPending}
+                    className="touch-target mt-2 w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
+                  >
+                    Replace anyway
+                  </button>
+                </div>
               ) : null}
               <button
                 type="submit"
@@ -254,6 +270,7 @@ export function MyWorkoutCard({
               onClick={() => {
                 applyLock.current = false;
                 applyStarted.current = false;
+                setApplyDismissed(true);
                 setApplyOpen(false);
               }}
               className="touch-target mt-2 w-full text-sm"

@@ -319,10 +319,14 @@ export function progressTotals(rows: ExerciseSetProgress[]) {
   };
 }
 
-export function sessionProgressLabel(rows: ExerciseSetProgress[]) {
+export function sessionProgressLabel(
+  rows: ExerciseSetProgress[],
+  options?: { forcePartial?: boolean },
+) {
   const { ticked, planned } = progressTotals(rows);
   if (ticked <= 0) return null;
   const done =
+    !options?.forcePartial &&
     planned > 0 &&
     ticked >= planned &&
     rows.every((row) => row.state === "complete" || row.planned === 0);
@@ -332,6 +336,11 @@ export function sessionProgressLabel(rows: ExerciseSetProgress[]) {
 /** Card and Today copy for a short save. A draft does not use this line. */
 export function partialSetsLine(ticked: number, planned: number) {
   return `Partial · ${ticked}/${planned} sets`;
+}
+
+/** Finish and calendar rows. A finished exercise reads done, even on a partial day. */
+export function exerciseProgressStateWord(state: string) {
+  return state === "complete" ? "done" : state;
 }
 
 export function formatSetProgress(ticked: number, planned: number) {

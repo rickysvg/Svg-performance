@@ -71,27 +71,30 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           >
             Subscribe
           </a>
-        ) : customResume ? (
+        ) : (
           <>
-            <ResumeButton log={customResume} className={resumeClass} />
-            {otherResume ? (
-              <ResumeButton
-                log={otherResume}
-                className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-              />
+            {!nextDone && (nextPartial || customResume?.partial || otherResume?.partial) ? (
+              <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+                Partial
+              </p>
             ) : null}
-          </>
-        ) : otherResume ? (
-          <ResumeButton log={otherResume} className={resumeClass} />
-        ) : nextDone ? (
-          <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
-            Done
-          </p>
-        ) : nextPartial ? (
-          <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-            Partial
-          </p>
-        ) : next?.dayId ? (
+            {customResume ? (
+              <>
+                <ResumeButton log={customResume} className={resumeClass} />
+                {otherResume ? (
+                  <ResumeButton
+                    log={otherResume}
+                    className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+                  />
+                ) : null}
+              </>
+            ) : otherResume ? (
+              <ResumeButton log={otherResume} className={resumeClass} />
+            ) : nextDone ? (
+              <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+                Done
+              </p>
+            ) : nextPartial ? null : next?.dayId ? (
           <Link
             href={next.startHref ?? next.logHref ?? bikeLoggerHref(next.dayId)}
             prefetch={false}
@@ -114,8 +117,10 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
             href="/training"
             className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
           >
-            Open Train
-          </Link>
+          Open Train
+        </Link>
+            )}
+          </>
         )}
       </section>
     );
@@ -143,58 +148,82 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           Subscribe
         </a>
       ) : firstDone ? (
-        <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
-          Done
-        </p>
-      ) : resume ? (
-        <ResumeButton log={resume} className={resumeClass} />
-      ) : firstPartial ? (
-        <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-          Partial
-        </p>
-      ) : first.dayId ? (
-        <Link
-          href={first.startHref ?? first.logHref ?? bikeLoggerHref(first.dayId)}
-          prefetch={false}
-          data-testid="home-prime-coach-audio-2"
-          data-prime-coach-audio
-          data-open-bike-logger={first.logHref ? "home" : undefined}
-          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        >
-          Start
-        </Link>
-      ) : first.href ? (
-        <Link
-          href={first.href}
-          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        >
-          Start
-        </Link>
+        <>
+          <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
+            Done
+          </p>
+          {customResume && customResume.id !== resume?.id ? (
+            <ResumeButton
+              log={customResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {otherResume && otherResume.id !== customResume?.id ? (
+            <ResumeButton
+              log={otherResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {extra > 0 ? (
+            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
+              See the rest of today
+            </Link>
+          ) : null}
+        </>
       ) : (
-        <Link
-          href="/training"
-          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-        >
-          Open Train
-        </Link>
+        <>
+          {firstPartial || resume?.partial ? (
+            <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
+              Partial
+            </p>
+          ) : null}
+          {resume ? (
+            <ResumeButton log={resume} className={resumeClass} />
+          ) : firstPartial ? null : first.dayId ? (
+            <Link
+              href={first.startHref ?? first.logHref ?? bikeLoggerHref(first.dayId)}
+              prefetch={false}
+              data-testid="home-prime-coach-audio-2"
+              data-prime-coach-audio
+              data-open-bike-logger={first.logHref ? "home" : undefined}
+              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+            >
+              Start
+            </Link>
+          ) : first.href ? (
+            <Link
+              href={first.href}
+              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+            >
+              Start
+            </Link>
+          ) : (
+            <Link
+              href="/training"
+              className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
+            >
+              Open Train
+            </Link>
+          )}
+          {customResume && customResume.id !== resume?.id ? (
+            <ResumeButton
+              log={customResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {otherResume && otherResume.id !== customResume?.id ? (
+            <ResumeButton
+              log={otherResume}
+              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
+            />
+          ) : null}
+          {extra > 0 ? (
+            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
+              See the rest of today
+            </Link>
+          ) : null}
+        </>
       )}
-      {customResume && customResume.id !== resume?.id ? (
-        <ResumeButton
-          log={customResume}
-          className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-        />
-      ) : null}
-      {otherResume && otherResume.id !== customResume?.id ? (
-        <ResumeButton
-          log={otherResume}
-          className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-        />
-      ) : null}
-      {extra > 0 ? (
-        <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={extra}>
-          See the rest of today
-        </Link>
-      ) : null}
     </section>
   );
 }

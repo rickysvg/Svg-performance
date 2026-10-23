@@ -10,6 +10,7 @@ import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
 import { SessionRecap } from "@/components/training/SessionRecap";
 import type { SessionSummary } from "@/lib/session-summary";
+import { exerciseProgressStateWord } from "@/lib/logged-work";
 import { workoutCompleteHeadline, type WorkoutCompleteTile } from "@/lib/workout-complete";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { ShareStat } from "@/lib/share-card";
@@ -157,7 +158,7 @@ export function WorkoutWinScreen({
           <ul data-exercise-progress className="mt-4 w-full space-y-1 text-left text-sm">
             {exerciseProgress.map((exercise) => (
               <li key={exercise.name}>
-                {exercise.name} · {exercise.ticked}/{exercise.planned} · {exercise.state}
+                {exercise.name} · {exercise.ticked}/{exercise.planned} · {exerciseProgressStateWord(exercise.state)}
               </li>
             ))}
           </ul>

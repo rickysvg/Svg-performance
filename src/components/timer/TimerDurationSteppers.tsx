@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, type MouseEvent, type PointerEvent } from "react";
 import { formatDurationPick, stepDurationSeconds } from "@/lib/round-timer";
 
 const WORK_MAX = 15 * 60;
@@ -15,6 +16,7 @@ export function TimerDurationSteppers({
   restLabel = "Rest",
   stepSeconds = 15,
   minSeconds = 15,
+  maxRounds = 20,
 }: {
   rounds: number;
   workSeconds: number;
@@ -25,6 +27,7 @@ export function TimerDurationSteppers({
   restLabel?: string;
   stepSeconds?: number;
   minSeconds?: number;
+  maxRounds?: number;
 }) {
   return (
     <div data-timer-settings className="grid grid-cols-3 gap-2">
@@ -33,7 +36,7 @@ export function TimerDurationSteppers({
         label={roundsLabel}
         value={String(rounds)}
         onDec={() => onChange({ rounds: Math.max(1, rounds - 1), workSeconds, restSeconds })}
-        onInc={() => onChange({ rounds: Math.min(20, rounds + 1), workSeconds, restSeconds })}
+        onInc={() => onChange({ rounds: Math.min(maxRounds, rounds + 1), workSeconds, restSeconds })}
       />
       <Stepper
         field="work"
@@ -77,6 +80,29 @@ export function TimerDurationSteppers({
   );
 }
 
+/**
+ * One step per tap. pointerdown applies immediately (a click can be lost after
+ * preventDefault). The following click is swallowed. The flag clears on that
+ * click, not on a timeout, so it is still set when the click arrives.
+ * A click with no pointerdown (keyboard) applies once.
+ */
+export function applyStepperTap(
+  event: "pointerdown" | "click",
+  state: { fromPointer: boolean },
+  apply: () => void,
+) {
+  if (event === "pointerdown") {
+    state.fromPointer = true;
+    apply();
+    return;
+  }
+  if (state.fromPointer) {
+    state.fromPointer = false;
+    return;
+  }
+  apply();
+}
+
 function Stepper({
   field,
   label,
@@ -90,6 +116,23 @@ function Stepper({
   onDec: () => void;
   onInc: () => void;
 }) {
+  const decPointer = useRef({ fromPointer: false });
+  const incPointer = useRef({ fromPointer: false });
+  function press(apply: () => void, state: { fromPointer: boolean }) {
+    return {
+      onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        applyStepperTap("pointerdown", state, apply);
+      },
+      onClick: (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        applyStepperTap("click", state, apply);
+      },
+    };
+  }
   return (
     <div
       data-timer-step={field}
@@ -99,13 +142,13 @@ function Stepper({
       <span data-timer-step-value={field} className="font-display mt-1 text-xl leading-none text-accent">
         {value}
       </span>
-      <span className="mt-1 flex gap-1">
+      <span className="relative z-10 mt-1 flex gap-1">
         <button
           type="button"
           aria-label={`Decrease ${label}`}
           data-timer-step-dec={field}
-          onClick={onDec}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-lg leading-none"
+          {...press(onDec, decPointer.current)}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           −
         </button>
@@ -113,8 +156,8 @@ function Stepper({
           type="button"
           aria-label={`Increase ${label}`}
           data-timer-step-inc={field}
-          onClick={onInc}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-lg leading-none"
+          {...press(onInc, incPointer.current)}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
         >
           +
         </button>

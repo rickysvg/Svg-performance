@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import {
+  draftHasResumeWork,
   loggedSetSome,
   offPlanSessionDone,
   prescribedSetTotal,
@@ -25,6 +26,9 @@ const CHIP_SESSION_SELECT = {
       reps: true,
       loadValue: true,
       durationSeconds: true,
+      notes: true,
+      prescriptionKey: true,
+      logMode: true,
     },
   },
   programDay: {
@@ -144,14 +148,31 @@ async function completedSessionIdsByLocalDayNow(
   return Object.fromEntries(byDay);
 }
 
+const CHIP_LIVE_STATUS = new Set(["complete", "partial", "draft"]);
+
+/**
+ * Chips ignore a deleted or abandoned row, and a draft the member has not
+ * ticked or edited. A prefilled library draft is not partly logged.
+ */
+function chipIgnoresSession(row: {
+  status: string;
+  sets: Parameters<typeof draftHasResumeWork>[0];
+}) {
+  if (!CHIP_LIVE_STATUS.has(row.status)) return true;
+  if (row.status === "draft" && !draftHasResumeWork(row.sets)) return true;
+  return false;
+}
+
 /**
  * Civil days in [from, to) that have ticked work which does not finish the
  * prescription. Each row uses the dose for its own week. `planByDay` only
  * fills a program day the week scale does not list.
  * A short log with no program day still marks the day partial, so an ad hoc
  * session does not read as missed. The dose is the session's own week.
- * Drafts and saved-short rows count. A day that passes the full rule is not included.
- * Unticked drafts stay out, even when the logger has prefilled numbers.
+ * Saved-short rows count. A day that passes the full rule is not included.
+ * A draft counts only when `draftHasResumeWork` is true (a tick or an edit).
+ * Unticked prefills stay out, even when the logger has prefilled numbers.
+ * Deleted and abandoned sessions stay out.
  *
  * Callers that need a partial mark to follow a swap use `partialProgramIdsByLocalDay`
  * and realign in chip-days. The done check stays `offPlanSessionDone`.
@@ -181,6 +202,7 @@ async function visitPartialSessions(
   for (const row of rows) {
     const key = sessionCompletionDay(row, timeZone);
     if (key < fromKey || key >= endKey) continue;
+    if (chipIgnoresSession(row)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
     const exercises = row.programDay?.exercises ?? [];
     const weekPlan = row.programDayId
@@ -267,6 +289,7 @@ async function offPlanMarksByLocalDayNow(userId: string, from: Date, to: Date, t
   for (const row of rows) {
     const key = sessionCompletionDay(row, timeZone);
     if (key < fromKey || key >= endKey) continue;
+    if (chipIgnoresSession(row)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
     const current = marks.get(key) ?? { done: false, partial: false };
     if (offPlanSessionDone(row, 0, [])) current.done = true;

@@ -4,7 +4,15 @@ import { parseDurationSeconds } from "@/lib/exercise-log-mode";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
 import { getProgramDayById } from "@/lib/programs";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { formatTimerClock } from "@/lib/round-timer";
+import {
+  exerciseSetProgress,
+  setHasLoggedWork,
+  setIsTicked,
+  sessionProgressLabel,
+  type ExerciseSetProgress,
+} from "@/lib/logged-work";
+import { bikeChoiceFromKey } from "@/lib/bike-chooser";
+import { completedWorkRounds, formatTimerClock, type TimerPhase } from "@/lib/round-timer";
 import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import type { LoadUnit } from "@/lib/units";
@@ -99,6 +107,163 @@ export function roundSessionDuration(rounds: number, workSeconds: number, restSe
   const work = Math.max(0, Math.round(workSeconds));
   const rest = Math.max(0, Math.round(restSeconds));
   return done * work + Math.max(0, done - 1) * rest;
+}
+
+export type RoundClockLog = {
+  roundsCompleted: number;
+  /** Configured rest gap. Mid-rest does not shrink this to the seconds already counted. */
+  restSeconds: number;
+  elapsedSeconds: number;
+};
+
+/**
+ * A mid-timer save counts work rounds that already finished.
+ * Rest on the log is the configured gap. The total is completed work plus the
+ * configured rests that sit between those rounds, not the rest still in progress.
+ */
+export function roundLogFromClock(input: {
+  phase: TimerPhase | string;
+  round: number;
+  totalRounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  phaseElapsedSeconds: number;
+}): RoundClockLog {
+  const phase = input.phase === "work" || input.phase === "rest" || input.phase === "done" ? input.phase : "idle";
+  const work = Math.max(0, Math.round(input.workSeconds));
+  const configuredRest = Math.max(0, Math.round(input.restSeconds));
+  const phaseElapsed = Math.max(0, Math.round(input.phaseElapsedSeconds));
+  const roundsCompleted = completedWorkRounds(phase, Math.round(input.round), Math.round(input.totalRounds));
+  if (phase === "rest") {
+    return {
+      roundsCompleted,
+      restSeconds: configuredRest,
+      elapsedSeconds: roundSessionDuration(roundsCompleted, work, configuredRest),
+    };
+  }
+  if (phase === "work") {
+    const intoWork = work > 0 ? Math.min(work, phaseElapsed) : phaseElapsed;
+    return {
+      roundsCompleted,
+      restSeconds: configuredRest,
+      elapsedSeconds: roundsCompleted * work + roundsCompleted * configuredRest + intoWork,
+    };
+  }
+  return {
+    roundsCompleted,
+    restSeconds: configuredRest,
+    elapsedSeconds: roundSessionDuration(roundsCompleted, work, configuredRest),
+  };
+}
+
+/**
+ * Clock fields win over a stale rounds/rest pair once the timer has left idle.
+ * A running timer that drops the phase stamp can still post the configured
+ * round count, rest 0, and a full-session total (prod "2 rounds / 0:00 rest").
+ * That shape is the clock position with the rest field zeroed, not a finished log.
+ */
+export function resolveSubmittedRoundLog(input: {
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  configuredRounds?: number | null;
+  configuredRestSeconds?: number | null;
+  phase?: string | null;
+  timerRound?: number | null;
+  phaseElapsedSeconds?: number | null;
+  elapsedSeconds?: number | null;
+}): RoundClockLog {
+  const phase = (input.phase ?? "").trim();
+  const postedRest = Math.max(0, Math.round(input.restSeconds));
+  const configuredRest =
+    input.configuredRestSeconds == null || !Number.isFinite(input.configuredRestSeconds)
+      ? postedRest
+      : Math.max(0, Math.round(input.configuredRestSeconds));
+  const restForClock = postedRest > 0 ? postedRest : configuredRest;
+  if (phase === "work" || phase === "rest" || phase === "done") {
+    const clock = roundLogFromClock({
+      phase,
+      round: Number(input.timerRound ?? 0),
+      totalRounds: Number(input.configuredRounds ?? input.rounds),
+      workSeconds: input.workSeconds,
+      restSeconds: restForClock,
+      phaseElapsedSeconds: Number(input.phaseElapsedSeconds ?? 0),
+    });
+    if (clock.roundsCompleted >= 1) return clock;
+  }
+  const droppedPhase = runningTimerDroppedPhase(input);
+  if (droppedPhase) {
+    const clock = roundLogFromClock({
+      phase: "rest",
+      round: droppedPhase.timerRound,
+      totalRounds: droppedPhase.configured,
+      workSeconds: input.workSeconds,
+      restSeconds: restForClock,
+      phaseElapsedSeconds: droppedPhase.phaseElapsed,
+    });
+    if (clock.roundsCompleted >= 1) return clock;
+  }
+  const roundsCompleted = Math.max(0, Math.round(input.rounds));
+  const elapsed =
+    input.elapsedSeconds == null || !Number.isFinite(input.elapsedSeconds)
+      ? roundSessionDuration(roundsCompleted, input.workSeconds, postedRest)
+      : Math.max(0, Math.round(input.elapsedSeconds));
+  return { roundsCompleted, restSeconds: postedRest, elapsedSeconds: elapsed };
+}
+
+/**
+ * Prod saved 2 rounds and 0:00 rest while the first rest was still running.
+ * The form kept the setup round count, wrote the elapsed rest (0) into rest,
+ * and never stamped phase. timerRound still said which round the clock was on.
+ * An idle "log the whole setup" submit has phaseElapsed 0, so it does not match.
+ */
+function runningTimerDroppedPhase(input: {
+  rounds: number;
+  restSeconds: number;
+  configuredRounds?: number | null;
+  phase?: string | null;
+  timerRound?: number | null;
+  phaseElapsedSeconds?: number | null;
+}) {
+  const phase = (input.phase ?? "").trim();
+  if (phase === "work" || phase === "rest" || phase === "done") return null;
+  const configured =
+    input.configuredRounds == null ? null : Math.max(1, Math.round(input.configuredRounds));
+  const timerRound = Math.round(Number(input.timerRound ?? 0));
+  const phaseElapsed = Math.round(Number(input.phaseElapsedSeconds ?? 0));
+  if (configured == null || configured < 2) return null;
+  if (Math.round(input.rounds) < configured) return null;
+  if (Math.round(input.restSeconds) !== 0) return null;
+  if (timerRound < 1 || timerRound >= configured) return null;
+  if (phaseElapsed <= 0) return null;
+  return { configured, timerRound, phaseElapsed };
+}
+
+/**
+ * Launch "End" and the auto-done log. Never substitute the configured round
+ * count when the clock has not finished a round, and never store elapsed rest
+ * in place of the configured gap.
+ */
+export function launchRoundLogFromClock(input: {
+  phase: TimerPhase | string;
+  round: number;
+  totalRounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  phaseElapsedSeconds: number;
+}) {
+  const clock = roundLogFromClock(input);
+  const rounds =
+    input.phase === "done" ? Math.max(0, Math.round(input.totalRounds)) : clock.roundsCompleted;
+  const elapsedSeconds =
+    input.phase === "done"
+      ? roundSessionDuration(rounds, input.workSeconds, input.restSeconds)
+      : clock.elapsedSeconds;
+  return {
+    rounds,
+    restSeconds: Math.max(0, Math.round(input.restSeconds)),
+    elapsedSeconds,
+  };
 }
 
 /**
@@ -203,19 +368,26 @@ export function roundHistoryLine(session: {
     prescriptionKey?: string | null;
     logMode?: string | null;
     durationSeconds?: number | null;
+    reps?: number | null;
+    loadValue?: number | null;
     completed?: boolean | null;
   }[];
 }) {
-  const sets = session.sets.filter(
-    (set) =>
-      set.completed !== false &&
-      (set.durationSeconds ?? 0) > 0 &&
-      (set.prescriptionKey ?? "").startsWith("round:") &&
-      !isBikeIntervalName(set.exerciseName ?? ""),
+  const logged = session.sets.filter(
+    (set) => set.completed !== false && setHasLoggedWork(set),
   );
-  if (sets.length === 0) return null;
+  const sets = logged.filter((set) => {
+    if ((set.durationSeconds ?? 0) <= 0) return false;
+    const key = set.prescriptionKey ?? "";
+    if (key.startsWith("round:")) return true;
+    return isBikeIntervalName(set.exerciseName ?? "");
+  });
+  if (sets.length === 0 || sets.length !== logged.length) return null;
   const work = sets[0]?.durationSeconds ?? 0;
-  const rest = restSecondsFromRoundKey(sets[0]?.prescriptionKey) ?? 0;
+  const rest =
+    restSecondsFromRoundKey(sets[0]?.prescriptionKey) ??
+    bikeChoiceFromKey(sets[0]?.prescriptionKey)?.spec.restSeconds ??
+    0;
   const total =
     session.elapsedSeconds && session.elapsedSeconds > 0
       ? session.elapsedSeconds
@@ -228,6 +400,57 @@ export function roundHistoryLine(session: {
   ];
   if (session.sessionRpe != null) parts.push(`RPE ${session.sessionRpe}`);
   return parts.join(" · ");
+}
+
+type FinishSet = {
+  exerciseName?: string | null;
+  completed?: boolean | null;
+  reps?: number | null;
+  loadValue?: number | null;
+  durationSeconds?: number | null;
+  prescriptionKey?: string | null;
+  logMode?: string | null;
+};
+
+/**
+ * Finish and Today rows for a round-only log use the stored plan.
+ * One logged round of a 2-round or 8-round timer stays partial, not 1/1 complete.
+ * A mixed skill day still uses the program rows, so a short bag save is not 7/7.
+ */
+export function roundFinishProgress(input: {
+  plannedExercises: { name?: string | null; sets?: number | null }[];
+  sets: FinishSet[];
+  plannedSetCount?: number | null;
+  status?: string | null;
+}): ExerciseSetProgress[] {
+  const base = exerciseSetProgress(input.plannedExercises, input.sets);
+  const roundOnly = input.sets.length > 0 && input.sets.every((set) => setIsSavedRoundWork(set));
+  if (!roundOnly) return base;
+  const ticked = input.sets.filter((set) => setIsTicked(set)).length;
+  const stored = Math.max(0, Math.round(input.plannedSetCount ?? 0));
+  const collapsed = base.reduce((sum, row) => sum + row.planned, 0);
+  const planned = stored > 0 ? stored : Math.max(collapsed, ticked);
+  const partial = input.status === "partial" || (planned > 0 && ticked < planned);
+  const name = base.find((row) => row.ticked > 0)?.name || base[0]?.name || "Rounds";
+  return [
+    {
+      name,
+      ticked,
+      planned: planned > 0 ? planned : ticked,
+      state: ticked <= 0 ? "open" : partial ? "partial" : "complete",
+    },
+  ];
+}
+
+export function roundProgressLabel(input: {
+  plannedExercises: { name?: string | null; sets?: number | null }[];
+  sets: FinishSet[];
+  plannedSetCount?: number | null;
+  status?: string | null;
+}) {
+  return sessionProgressLabel(roundFinishProgress(input), {
+    forcePartial: input.status === "partial",
+  });
 }
 
 export async function roundTargetForProgramDay(input: {

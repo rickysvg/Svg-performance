@@ -5,6 +5,7 @@ import { formatDayParam } from "@/lib/home";
 import {
   WEEK_CAROUSEL_FUTURE_WEEKS,
   WEEK_CAROUSEL_PAST_WEEKS,
+  carouselBackfillPastWeeks,
   carouselFocusOffset,
   carouselLoggedRange,
   carouselWeekAnchors,
@@ -36,8 +37,9 @@ import {
   calendarScaledCatalog,
   getCalendarSchedule,
   subtitleCountsAsMissed,
+  visibleCalendarExercises,
 } from "@/lib/calendar";
-import { prescribedSetTotal, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
+import { exerciseSetProgress, prescribedSetTotal, sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import { planWeekIndex } from "@/lib/week-plan";
 import { makeUser, resetDatabase } from "./helpers";
@@ -137,6 +139,48 @@ describe("week day carousel", () => {
     const range = carouselLoggedRange(now, zone);
     expect(formatDayParam(range.from, zone)).toBe("2026-10-05");
     expect(formatDayParam(range.to, zone)).toBe("2026-11-09");
+  });
+
+  it("reaches a day 30 days back from the calendar strip and its URL", () => {
+    const now = new Date("2026-10-23T18:00:00.000Z");
+    const zone = "America/Denver";
+    const past = carouselBackfillPastWeeks(now, zone);
+    const built = carouselWeekStrips(prefs, now, zone, undefined, [], past);
+    const earliest = "2026-09-23";
+    expect(past).toBeGreaterThan(WEEK_CAROUSEL_PAST_WEEKS);
+    expect(built.days.some((day) => day.dayParam === earliest)).toBe(true);
+    expect(built.anchors[0]!.weekStart <= earliest).toBe(true);
+    expect(
+      nextSelectedDay({
+        type: "url",
+        dayParam: earliest,
+        known: built.days.map((day) => day.dayParam),
+        fallback: "2026-10-23",
+      }),
+    ).toBe(earliest);
+    const window = carouselLoggedRange(now, zone, past);
+    expect(formatDayParam(window.from, zone) <= earliest).toBe(true);
+    expect(read("src/app/(member)/training/calendar/page.tsx")).toContain("carouselBackfillPastWeeks");
+  });
+
+  it("drops unlogged plan rows from a done calendar card", () => {
+    const rows = exerciseSetProgress(
+      [
+        { name: "Bench press", sets: 2 },
+        { name: "Step-out and stick", sets: 4 },
+      ],
+      [
+        { exerciseName: "Bench press", completed: true, reps: 8, loadValue: 95, durationSeconds: null },
+        { exerciseName: "Bench press", completed: true, reps: 8, loadValue: 95, durationSeconds: null },
+      ],
+    );
+    expect(rows.find((row) => row.name === "Step-out and stick")).toMatchObject({
+      ticked: 0,
+      planned: 4,
+      state: "open",
+    });
+    expect(visibleCalendarExercises(rows, true).map((row) => row.name)).toEqual(["Bench press"]);
+    expect(visibleCalendarExercises(rows, false).some((row) => row.name === "Step-out and stick")).toBe(true);
   });
 
   it("snaps the existing chips on Train and Calendar without touching completion logic", () => {

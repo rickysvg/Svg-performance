@@ -1,9 +1,13 @@
+import fs from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 import { bikeChoiceById } from "@/lib/bike-chooser";
-import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { BikeClockScreen } from "@/components/timer/BikeClockScreen";
+import { DEFAULT_BIKE_SESSION, isBikeIntervalName } from "@/lib/bike-sessions";
 import { loggerChoiceFromSession } from "@/lib/bike-timer-log";
 import { exerciseUsesBikeLogger } from "@/lib/timer-session";
 import { completeBikeLoggerSession, updateWorkoutSessionForUser } from "@/lib/workouts";
@@ -19,6 +23,24 @@ describe("custom bike logger", () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
+  });
+
+  it("waits for a finished round before the in-workout bike log", () => {
+    const html = renderToStaticMarkup(
+      createElement(BikeClockScreen, {
+        workoutSessionId: "session-1",
+        dayId: "day-1",
+        session: DEFAULT_BIKE_SESSION,
+      }),
+    );
+    expect(html).toContain("Finish a round before logging");
+    expect(html).not.toContain("Log this session");
+    expect(html).not.toContain("bike rounds");
+    const source = fs.readFileSync("src/components/timer/BikeClockScreen.tsx", "utf8");
+    expect(source).toContain('name="rounds" value={loggedRounds}');
+    expect(source).toContain('name="notes"');
+    expect(source).toContain('name="rpe"');
+    expect(source).not.toContain('name="rounds" value={rounds}');
   });
 
   it("treats a custom bike name as a logger exercise", () => {
@@ -56,8 +78,12 @@ describe("custom bike logger", () => {
       workoutId: session.id,
       choice: choice!,
       roundsCompleted: 8,
+      notes: "Nose stayed quiet.",
+      rpe: 7,
     });
     expect(saved.status).toBe("complete");
+    expect(saved.notes).toBe("Nose stayed quiet.");
+    expect(saved.sessionRpe).toBe(7);
     expect(saved.sets.every((set) => set.exerciseName === "Assault bike intervals")).toBe(true);
     expect(saved.sets.every((set) => (set.durationSeconds ?? 0) <= 3600)).toBe(true);
     const clock = await readWorkoutTimerFields(saved.id, prisma);

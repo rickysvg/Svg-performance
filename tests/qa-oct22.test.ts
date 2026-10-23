@@ -348,6 +348,27 @@ describe("Oct 22 member clock and chrome", () => {
     expect(home).toContain("Start");
     expect(home).toContain("/training/log/custom-1");
     expect(home).toContain("Resume");
+    const doneHome = renderToStaticMarkup(
+      createElement(HomeToday, {
+        guide: {
+          today: {
+            plannedSessions: [
+              { kind: "strength", title: "Lift 1", label: "Strength", dayId: "day-1" },
+              { kind: "skill", title: "Bag", label: "Skill", dayId: "day-2" },
+            ],
+            nextSession: null,
+            nextSessionWeekday: "",
+            completedDayIds: ["day-1"],
+            resumeByDay: { custom: { id: "custom-1", partial: false } },
+          },
+        },
+      } as never),
+    );
+    expect(doneHome).toContain("data-session-done");
+    expect(doneHome).toContain("/training/log/custom-1");
+    expect(doneHome).toContain("Resume");
+    expect(doneHome).toContain("See the rest of today");
+    expect(doneHome).toContain('data-more-today="1"');
     const action = fs.readFileSync("src/app/actions/workouts.ts", "utf8");
     expect(action).toContain("isUniqueConstraintError");
   });

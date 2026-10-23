@@ -10,7 +10,9 @@ import {
   calendarPlanDoses,
   formatCalendarHeading,
   getCalendarSchedule,
+  loggedSessionCardLine,
   subtitleCountsAsMissed,
+  subtitleShowsPartial,
   weekdayName,
 } from "@/lib/calendar";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -25,6 +27,7 @@ import {
   type MoveListedSession,
 } from "@/lib/week-plan";
 import {
+  carouselBackfillPastWeeks,
   carouselFocusOffset,
   carouselLoggedRange,
   carouselWeekStrips,
@@ -97,7 +100,8 @@ export default async function TrainingCalendarPage({
     weightAccess: normalizeWeightAccess(profile?.weightAccess),
     weekIndex,
   });
-  const builtWeeks = carouselWeekStrips(prefs, now, tz, selected, swaps);
+  const pastWeeks = carouselBackfillPastWeeks(now, tz);
+  const builtWeeks = carouselWeekStrips(prefs, now, tz, selected, swaps, pastWeeks);
   const linkedWeeks = withBikeChipLogHrefs(
     await easeWeekStripDays(user.id, prefs, builtWeeks.days, tz, swaps),
     prefs,
@@ -118,7 +122,7 @@ export default async function TrainingCalendarPage({
   const viewedWeek = weekStartKey(selected, tz);
   const currentWeek = weekStartKey(now, tz);
   const canEditWeek = weekStartInRange(viewedWeek, currentWeek);
-  const loggedWindow = carouselLoggedRange(now, tz);
+  const loggedWindow = carouselLoggedRange(now, tz, pastWeeks);
   const planByDay = await calendarPlanDoses(user.id, now);
   const carouselKeys = chipWeeks.flatMap((week) => week.days.map((day) => day.dayParam));
   const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans, weekSchedules] = await Promise.all([
@@ -163,7 +167,9 @@ export default async function TrainingCalendarPage({
       past: focusKey < todayKey,
       active: focus?.active ?? focusPlan.active,
     });
-    const focusSummary = workouts.find((item) => item.status === "complete")?.subtitle;
+    const loggedSessions = workouts.filter(
+      (item) => item.status === "complete" || subtitleShowsPartial(item.subtitle),
+    );
     const missedWorkouts = weekSchedule.days.reduce(
       (count, day) => count + day.activities.filter((item) => subtitleCountsAsMissed(item.subtitle)).length,
       0,
@@ -211,16 +217,25 @@ export default async function TrainingCalendarPage({
               {(focus?.movedFrom || focusPlan.movedFrom)}’s workout, on {focusPlan.weekday} this week.
             </p>
           ) : null}
-          {focusSummary ? (
-            <p className="text-sm text-muted" data-completed-summary>
-              {focusSummary}
+          {loggedSessions.map((item, index) => (
+            <p
+              key={`${item.title}-${item.subtitle}-${index}`}
+              className="text-sm text-muted"
+              data-completed-summary
+            >
+              {loggedSessionCardLine(item)}
             </p>
-          ) : null}
+          ))}
           {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (
             <p className="text-sm text-muted">{focusPlan.skipReason}</p>
           ) : null}
           {backfillDayState(focusKey, now, tz) === "ok" ? (
-            <LogPastWorkoutButton dayKey={focusKey} entry="calendar" label="Log a completed workout" />
+            <LogPastWorkoutButton
+              dayKey={focusKey}
+              entry="calendar"
+              label="Log a completed workout"
+              timeZone={tz}
+            />
           ) : null}
         </section>
 
@@ -282,6 +297,7 @@ export default async function TrainingCalendarPage({
         todayHref={todayHref}
         initialWeekStart={viewedWeek}
         logPastDayKeys={logPastDayKeys}
+        timeZone={tz}
         level={levelOverride}
         moves={moves}
         rearrange={canEditWeek}

@@ -3,7 +3,8 @@ import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
+import { applyStepperTap, TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
+import { RoundTimer } from "@/components/timer/RoundTimer";
 import { prisma } from "@/lib/prisma";
 import { completeOnboardingForUser } from "@/lib/onboarding";
 import { getHomeToday } from "@/lib/home";
@@ -131,6 +132,35 @@ describe("round countdown and seconds steppers", () => {
     expect(html).toContain('data-timer-settings');
     expect(html).not.toContain("WORK MIN");
     expect(html).not.toContain("REST MIN");
+  });
+
+  it("applies one step when pointerdown is followed by click", () => {
+    let steps = 0;
+    const state = { fromPointer: false };
+    const apply = () => {
+      steps += 1;
+    };
+    applyStepperTap("pointerdown", state, apply);
+    applyStepperTap("click", state, apply);
+    expect(steps).toBe(1);
+    expect(state.fromPointer).toBe(false);
+    applyStepperTap("click", state, apply);
+    expect(steps).toBe(2);
+    applyStepperTap("pointerdown", state, apply);
+    expect(steps).toBe(3);
+    expect(state.fromPointer).toBe(true);
+  });
+
+  it("does not paint a bag log before the stored timer mode hydrates", () => {
+    const fresh = renderToStaticMarkup(createElement(RoundTimer, {}));
+    expect(fresh).not.toContain("bag rounds");
+    expect(fresh).toContain("Log rounds");
+    expect(fresh).not.toContain('data-timer-mode="bag" aria-pressed="true"');
+    expect(fresh).not.toMatch(/aria-pressed="true"[^>]*data-timer-mode="bag"/);
+    const pads = renderToStaticMarkup(createElement(RoundTimer, { mode: "pads" }));
+    expect(pads).toContain("pads rounds");
+    expect(pads).toContain('data-timer-mode="pads"');
+    expect(pads).toMatch(/data-timer-mode="pads"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*data-timer-mode="pads"/);
   });
 
   it("does not count a bike round until that interval has finished", () => {

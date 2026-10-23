@@ -14,6 +14,7 @@ import {
 } from "@/lib/logged-work";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { backfillFormSeed } from "@/lib/backfill-workout";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { loggedExerciseNamesInOrder } from "@/lib/logger-insert";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -54,7 +55,7 @@ export default async function HistoryPage() {
           Logged sessions persist after refresh. Open any row to correct a mistake.
         </p>
         <div className="mt-3">
-          <LogPastWorkoutButton entry="history" label="+ Log past workout" />
+          <LogPastWorkoutButton entry="history" label="+ Log past workout" timeZone={timeZone} />
         </div>
       </div>
 
@@ -82,6 +83,7 @@ export default async function HistoryPage() {
             const roundLine = bagLine ? null : roundHistoryLine(session);
             const bikeLine = bikeHistoryLine(session);
             const detailLine = bagLine ?? roundLine;
+            const pastSeed = session.backfilled ? backfillFormSeed(session, timeZone) : null;
             return (
             <li key={session.id} className="space-y-2" {...(bagLine ? { "data-bagwork-session": "" } : {})}>
             <div className="flex items-stretch gap-2">
@@ -124,10 +126,24 @@ export default async function HistoryPage() {
               ) : null}
               <DeleteWorkoutButton workoutId={session.id} compact />
             </div>
-            {session.backfilled ? (
+            {pastSeed ? (
               <div className="flex flex-wrap gap-2">
-                <LogPastWorkoutButton entry="edit" sessionId={session.id} label="Edit" compact />
-                <LogPastWorkoutButton entry="delete" sessionId={session.id} label="Delete" compact />
+                <LogPastWorkoutButton
+                  entry="edit"
+                  sessionId={session.id}
+                  label="Edit"
+                  compact
+                  timeZone={timeZone}
+                  seed={pastSeed}
+                />
+                <LogPastWorkoutButton
+                  entry="delete"
+                  sessionId={session.id}
+                  label="Delete"
+                  compact
+                  timeZone={timeZone}
+                  seed={pastSeed}
+                />
               </div>
             ) : null}
             <SaveWorkoutButton

@@ -6,10 +6,12 @@ import {
   draftHasResumeWork,
   loggedSetSome,
   sessionCountsAsPlannedCompletion,
+  sessionHasLoggedWork,
   tickedSetCount,
 } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { sessionCompletionDay } from "@/lib/performed-at";
+import { timeZoneForUser } from "@/lib/profile";
 import { REPLACE_LOGGED_CONFIRM } from "@/lib/workout-sheet";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import type { LoadUnit } from "@/lib/units";
@@ -310,6 +312,61 @@ export async function startSavedWorkoutForUser(input: {
   return session;
 }
 
+const REPLACE_DAY_PAD_MS = 36 * 60 * 60 * 1000;
+
+type ReplaceWorkSet = Parameters<typeof draftHasResumeWork>[0][number];
+
+/** A ticked or edited draft, or a saved session with logged sets. Untouched prefills do not count. */
+export function sessionBlocksDayReplace(row: { status: string; sets: ReplaceWorkSet[] }) {
+  if (row.status !== "complete" && row.status !== "partial" && row.status !== "draft") return false;
+  if (draftHasResumeWork(row.sets)) return true;
+  if (row.status === "draft") return false;
+  return sessionHasLoggedWork(row.sets) || tickedSetCount(row.sets) > 0;
+}
+
+/**
+ * Real work on this civil day, including a program draft that is not attached
+ * to a My Workouts day plan.
+ */
+async function replaceDayHasRealWork(
+  db: { workoutSession: { findMany: typeof prisma.workoutSession.findMany } },
+  userId: string,
+  day: string,
+  timeZone: string,
+) {
+  const [year, month, date] = day.split("-").map(Number);
+  const anchor = zonedCivilToUtc(year!, month!, date!, timeZone);
+  const rows = await db.workoutSession.findMany({
+    where: {
+      userId,
+      status: { in: ["complete", "partial", "draft"] },
+      performedAt: {
+        gte: new Date(anchor.getTime() - REPLACE_DAY_PAD_MS),
+        lt: new Date(anchor.getTime() + 48 * 60 * 60 * 1000 + REPLACE_DAY_PAD_MS),
+      },
+    },
+    select: {
+      status: true,
+      performedAt: true,
+      sets: {
+        select: {
+          exerciseName: true,
+          completed: true,
+          reps: true,
+          loadValue: true,
+          durationSeconds: true,
+          notes: true,
+          prescriptionKey: true,
+          logMode: true,
+        },
+      },
+    },
+  });
+  return rows.some(
+    (row) => sessionCompletionDay(row, timeZone) === day && sessionBlocksDayReplace(row),
+  );
+}
+
 export async function applySavedWorkoutToDay(input: {
   userId: string;
   savedWorkoutId: string;
@@ -329,8 +386,15 @@ export async function applySavedWorkoutToDay(input: {
   if (exercises.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");
   }
+  const timeZone = await timeZoneForUser(input.userId);
   return prisma.$transaction(async (tx) => {
     if (input.mode === "replace") {
+      if (
+        !input.confirm &&
+        (await replaceDayHasRealWork(tx, input.userId, input.dayKey, timeZone))
+      ) {
+        throw new AppError("WORKOUT", REPLACE_LOGGED_CONFIRM);
+      }
       const previous = await tx.dayWorkoutPlan.findMany({
         where: { userId: input.userId, dayKey: input.dayKey, mode: "replace" },
         select: { id: true },
@@ -474,6 +538,9 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
             reps: true,
             loadValue: true,
             durationSeconds: true,
+            notes: true,
+            prescriptionKey: true,
+            logMode: true,
           },
         },
       },
@@ -488,6 +555,8 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
   const partial = new Set<string>();
   for (const row of done) {
     if (!row.dayPlanId) continue;
+    if (row.status !== "complete" && row.status !== "partial" && row.status !== "draft") continue;
+    if (row.status === "draft" && !draftHasResumeWork(row.sets)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
     if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
     else partial.add(row.dayPlanId);

@@ -51,6 +51,12 @@ const JS_WEEKDAYS = [
 export type CalendarActivityKind = "workout" | "report" | "challenge";
 export type CalendarActivityStatus = "scheduled" | "complete";
 
+/** A finished session lists the work that was logged. Unlogged plan rows stay off that card. */
+export function visibleCalendarExercises<T extends { state: string }>(rows: T[], done: boolean): T[] {
+  if (!done) return rows;
+  return rows.filter((row) => row.state !== "open");
+}
+
 export type CalendarActivity = {
   kind: CalendarActivityKind;
   title: string;
@@ -369,6 +375,27 @@ export function sessionStatusLine(name: string, state: "Missed" | "Partial" | "D
   return `${name} · ${state}`;
 }
 
+/**
+ * Selected-day summary. Subtitles already carry the session name and Done or
+ * Partial, so the header must not say them again.
+ */
+export function loggedSessionCardLine(item: {
+  title: string;
+  status: string;
+  subtitle?: string | null;
+}) {
+  const statusWord = item.status === "complete" ? "Done" : "Partial";
+  const title = item.title.trim();
+  const subtitle = (item.subtitle ?? "").trim();
+  if (!subtitle) return `${title} · ${statusWord}`;
+  const hasStatus = subtitle.includes(statusWord);
+  const hasTitle = title.length > 0 && subtitle.includes(title);
+  if (hasTitle && hasStatus) return subtitle;
+  if (hasStatus) return `${title} · ${subtitle}`;
+  if (hasTitle) return `${subtitle} · ${statusWord}`;
+  return `${title} · ${statusWord} · ${subtitle}`;
+}
+
 export function subtitleShowsPartial(subtitle: string) {
   return subtitle.startsWith("Partial") || subtitle.includes("· Partial");
 }
@@ -553,7 +580,10 @@ async function loadCalendarSchedule(
       const sessionDone = matched ? offPlanSessionDone(matched, dose, plannedNames) : false;
       const exerciseRows =
         matched && ticked > 0
-          ? exerciseSetProgress(session.day?.exercises ?? [], matched.sets)
+          ? visibleCalendarExercises(
+              exerciseSetProgress(session.day?.exercises ?? [], matched.sets),
+              sessionDone,
+            )
           : [];
       const partial = Boolean(matched) && !sessionDone && ticked > 0;
       const dayHasPartialWork = dayLogs.some((log) => logIsOpenPartial(log, planByDay));
@@ -622,7 +652,6 @@ async function loadCalendarSchedule(
         });
         continue;
       }
-      if (resolved.some((session) => session.dayId && session.dayId === log.programDayId)) continue;
       const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
       const ticked = tickedSetCount(log.sets);
       const plan = planByDay.get(log.programDayId);
@@ -639,7 +668,14 @@ async function loadCalendarSchedule(
         programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel,
-        exercises: ticked > 0 ? exerciseSetProgress(log.programDay?.exercises ?? [], log.sets) : undefined,
+        exercises: (() => {
+          if (ticked <= 0) return undefined;
+          const rows = visibleCalendarExercises(
+            exerciseSetProgress(log.programDay?.exercises ?? [], log.sets),
+            done,
+          );
+          return rows.length > 0 ? rows : undefined;
+        })(),
       });
     }
   }

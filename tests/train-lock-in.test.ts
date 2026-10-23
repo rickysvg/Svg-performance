@@ -11,7 +11,7 @@ import {
 import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
 import { draftHasResumeWork } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { APPLY_TOAST, APPLY_TOAST_MS, REPLACE_LOGGED_CONFIRM, RENAME_TOAST_MS, applySheetSettle, renameSheetSettle, renameToast } from "@/lib/workout-sheet";
+import { APPLY_TOAST, APPLY_TOAST_MS, REPLACE_LOGGED_CONFIRM, RENAME_TOAST_MS, applySheetSettle, confirmReplaceForDay, renameSheetSettle, renameToast } from "@/lib/workout-sheet";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import {
   applySavedWorkoutToDay,
@@ -19,12 +19,16 @@ import {
   listDayPlansForUser,
   renameSavedWorkout,
   revertDayToProgram,
+  sessionBlocksDayReplace,
   startDayPlanForUser,
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
-import { getCalendarSchedule, sessionStatusLine } from "@/lib/calendar";
+import { getCalendarSchedule, loggedSessionCardLine, sessionStatusLine, subtitleCountsAsMissed } from "@/lib/calendar";
+import { chipMarkForDay } from "@/lib/chip-mark";
+import { offPlanMarksByLocalDay, partialLocalDayKeys } from "@/lib/chip-completion";
+import { deleteWorkoutSessionForUser } from "@/lib/workouts";
 import { formatDayParam } from "@/lib/home";
-import { APP_TIMEZONE } from "@/lib/timezone";
+import { APP_TIMEZONE, dayKey } from "@/lib/timezone";
 
 function read(rel: string) {
   return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
@@ -195,7 +199,8 @@ describe("train page lock-in", () => {
       offPlan: {},
     });
     expect(partialMoved.partialDays).toContain("2026-10-20");
-    expect(partialMoved.partialDays).not.toContain("2026-10-19");
+    // The lift follows Thursday's chip, and the day it was logged stays partly logged.
+    expect(partialMoved.partialDays).toContain("2026-10-19");
     expect(partialMoved.loggedDays).not.toContain("2026-10-19");
 
     const partialStayed = chipMarksAfterPlans({
@@ -207,6 +212,241 @@ describe("train page lock-in", () => {
       offPlan: { "2026-10-19": { done: false, partial: true } },
     });
     expect(partialStayed.partialDays).toContain("2026-10-19");
+
+    // Mobility+Cardio is the plan. Lift 3 was logged partial on that civil day
+    // and is shown on the lift chip. The plan card stays Missed. The chip does not.
+    const loggedInstead = chipMarksAfterPlans({
+      days: [
+        { dayParam: "2026-10-20", weekStart: "2026-10-19", sessionIds: ["mobility", "cardio"] },
+        { dayParam: "2026-10-22", weekStart: "2026-10-19", sessionIds: ["lift-3"] },
+      ],
+      completedByDay: {},
+      partialDays: ["2026-10-20"],
+      partialByDay: { "2026-10-20": ["lift-3"] },
+      plansByDay: {},
+      offPlan: {},
+    });
+    expect(loggedInstead.partialDays).toContain("2026-10-20");
+    expect(loggedInstead.partialDays).toContain("2026-10-22");
+    expect(loggedInstead.loggedDays).not.toContain("2026-10-20");
+    expect(
+      chipMarkForDay({
+        plannedSessionIds: ["mobility", "cardio"],
+        completedSessionIds: [],
+        dayLogged: false,
+        partial: loggedInstead.partialDays.includes("2026-10-20"),
+      }),
+    ).toBe("partial");
+    expect(
+      subtitleCountsAsMissed(
+        "Not done — you logged Lift 3 instead. Tap Move to reschedule.",
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores an untouched draft and a deleted session on the week chip", async () => {
+    await resetDatabase();
+    const user = await makeUser("chip-drafts@example.com");
+    const performedAt = new Date("2026-10-22T18:00:00.000Z");
+    const day = dayKey(performedAt, APP_TIMEZONE);
+    const from = new Date("2026-10-21T12:00:00.000Z");
+    const to = new Date("2026-10-24T12:00:00.000Z");
+    const prefillKey = addedPrescriptionKey({
+      exerciseName: "Push-up",
+      reps: "10",
+      restSeconds: 60,
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "draft",
+        title: "Push-up",
+        performedAt,
+        sets: {
+          create: [
+            {
+              exerciseName: "Push-up",
+              setNumber: 1,
+              reps: 10,
+              completed: false,
+              prescriptionKey: prefillKey,
+              logMode: "reps_only",
+            },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "deleted",
+        title: "Deleted lift",
+        performedAt,
+        sets: {
+          create: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 8,
+              loadValue: 40,
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(draftHasResumeWork([{ completed: false, reps: 10, prescriptionKey: prefillKey, logMode: "reps_only" }])).toBe(
+      false,
+    );
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect((await offPlanMarksByLocalDay(user.id, from, to, APP_TIMEZONE))[day]).toBeUndefined();
+
+    const resumed = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "draft",
+        title: "Lift 3",
+        performedAt,
+        plannedSetCount: 34,
+        sets: {
+          create: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 5,
+              loadValue: 35,
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
+    await deleteWorkoutSessionForUser(resumed.id, user.id);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+
+    const worked = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        status: "partial",
+        title: "Lift 3",
+        performedAt,
+        plannedSetCount: 34,
+        sets: {
+          create: [
+            {
+              exerciseName: "Goblet squat",
+              setNumber: 1,
+              reps: 8,
+              loadValue: 40,
+              completed: true,
+            },
+          ],
+        },
+      },
+    });
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).toContain(day);
+    await deleteWorkoutSessionForUser(worked.id, user.id);
+    expect(await partialLocalDayKeys(user.id, from, to, APP_TIMEZONE)).not.toContain(day);
+    expect(await prisma.workoutSession.findUnique({ where: { id: worked.id } })).toBeNull();
+  });
+
+  it("asks before replace when today has a ticked draft from another plan", async () => {
+    await resetDatabase();
+    const user = await makeUser("replace-lift-draft@example.com");
+    const saved = await createSavedWorkout({
+      userId: user.id,
+      name: "Daru Alactic Power",
+      exercises: [pushUp],
+    });
+    const day = "2026-10-22";
+    const draft = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Lift 3 — Light full body",
+        status: "draft",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        plannedSetCount: 34,
+        sets: {
+          create: [
+            { exerciseName: "Ankle circles", setNumber: 1, reps: 8, completed: true },
+            { exerciseName: "Goblet squat", setNumber: 1, completed: false },
+          ],
+        },
+      },
+    });
+    const prefill = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Untouched",
+        status: "draft",
+        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        sets: {
+          create: [
+            {
+              exerciseName: "Push-up",
+              setNumber: 1,
+              reps: 10,
+              completed: false,
+              logMode: "reps_only",
+              prescriptionKey: addedPrescriptionKey({
+                exerciseName: "Push-up",
+                reps: "10",
+                restSeconds: 60,
+              }),
+            },
+          ],
+        },
+      },
+    });
+    expect(
+      sessionBlocksDayReplace({
+        status: "draft",
+        sets: [{ exerciseName: "Ankle circles", reps: 8, completed: true }],
+      }),
+    ).toBe(true);
+    expect(
+      sessionBlocksDayReplace({
+        status: "draft",
+        sets: [{ completed: false, reps: null, notes: "" }],
+      }),
+    ).toBe(false);
+    await expect(
+      applySavedWorkoutToDay({
+        userId: user.id,
+        savedWorkoutId: saved.id,
+        dayKey: day,
+        mode: "replace",
+      }),
+    ).rejects.toThrow(REPLACE_LOGGED_CONFIRM);
+    expect(await prisma.dayWorkoutPlan.count({ where: { userId: user.id, dayKey: day } })).toBe(0);
+    expect((await prisma.workoutSession.findUnique({ where: { id: draft.id } }))?.title).toBe(
+      "Lift 3 — Light full body",
+    );
+
+    const applied = await applySavedWorkoutToDay({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      dayKey: day,
+      mode: "replace",
+      confirm: true,
+    });
+    expect(applied.name).toBe("Daru Alactic Power");
+    expect(await prisma.workoutSession.findUnique({ where: { id: draft.id } })).toBeTruthy();
+    expect(await prisma.workoutSession.findUnique({ where: { id: prefill.id } })).toBeTruthy();
+
+    const otherDay = await createSavedWorkout({
+      userId: user.id,
+      name: "Easy",
+      exercises: [pushUp],
+    });
+    const quiet = await applySavedWorkoutToDay({
+      userId: user.id,
+      savedWorkoutId: otherDay.id,
+      dayKey: "2026-10-21",
+      mode: "replace",
+    });
+    expect(quiet.dayKey).toBe("2026-10-21");
   });
 
   it("renames the saved workout, the day plan, and the session, and rejects the same name", async () => {
@@ -243,6 +483,10 @@ describe("train page lock-in", () => {
     expect(card).toContain("RENAME_TOAST_MS");
     expect(card).toContain("APPLY_TOAST_MS");
     expect(card).toContain("data-apply-replace-confirm");
+    expect(card).toContain("data-replace-logged-confirm");
+    const applySheet = card.slice(card.indexOf("data-apply-sheet"), card.indexOf("data-delete-confirm"));
+    expect(applySheet).toContain('type="button"');
+    expect(applySheet).toContain("Cancel");
     expect(card).toContain("data-apply-toast");
     expect(submit).not.toContain("setApplyOpen(false)");
     expect(submit).toContain("applyStarted.current = true");
@@ -255,6 +499,38 @@ describe("train page lock-in", () => {
     expect(APPLY_TOAST_MS).toBe(3000);
     expect(sessionStatusLine("Lift", "Missed")).toBe("Lift · Missed");
     expect(sessionStatusLine("Bag", "Partial")).toBe("Bag · Partial");
+    expect(
+      loggedSessionCardLine({
+        title: "Lift 1 — Full body",
+        status: "scheduled",
+        subtitle: "Partial · 4/10 sets",
+      }),
+    ).toBe("Lift 1 — Full body · Partial · 4/10 sets");
+    expect(
+      loggedSessionCardLine({
+        title: "Quick lift",
+        status: "scheduled",
+        subtitle: "Quick lift · Partial",
+      }),
+    ).toBe("Quick lift · Partial");
+    expect(
+      loggedSessionCardLine({
+        title: "Daru Alactic Power",
+        status: "complete",
+        subtitle: "Daru Alactic Power · Done",
+      }),
+    ).toBe("Daru Alactic Power · Done");
+    expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "2026-10-20", dayKey: "2026-10-20" })).toBe(
+      true,
+    );
+    expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "2026-10-20", dayKey: "2026-10-22" })).toBe(
+      false,
+    );
+    expect(confirmReplaceForDay({ confirmField: "replace", confirmDayKey: "", dayKey: "2026-10-22" })).toBe(false);
+    expect(card).toContain("confirmDayKey");
+    expect(card).toContain("value={applyDayKey}");
+    expect(card).toContain("setApplyDismissed(true)");
+    expect(card).not.toContain("defaultValue={todayKey}");
     expect(read("src/components/training/SavedWorkoutEditor.tsx")).toContain("Exercises saved.");
     expect(read("src/components/training/SavedWorkoutEditor.tsx")).not.toContain('name="name"');
   });

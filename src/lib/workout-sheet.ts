@@ -2,6 +2,17 @@
 
 export const REPLACE_LOGGED_CONFIRM = "You have logged sets on this day. Replace anyway?";
 
+/** Confirm applies only to the day that raised the prompt. */
+export function confirmReplaceForDay(input: {
+  confirmField: string;
+  confirmDayKey: string;
+  dayKey: string;
+}) {
+  const requested = input.confirmField === "replace" || input.confirmField === "1";
+  const day = input.confirmDayKey.trim();
+  return requested && day.length > 0 && day === input.dayKey.trim();
+}
+
 export const APPLY_TOAST = "Applied.";
 
 export const RENAME_TOAST_MS = 3000;

@@ -73,6 +73,7 @@ export function BikeClockScreen({
   const ready = explicit != null || storedToken !== "" || !session;
   const rounds = active ? bikeTimerRoundCount(active) : running ? sessionRoundCount(running) : 1;
   const [finished, setFinished] = useState(0);
+  const loggedRounds = Math.max(0, Math.min(finished, rounds));
   const [notes, setNotes] = useState("");
   const [rpe, setRpe] = useState("");
 
@@ -135,29 +136,24 @@ export function BikeClockScreen({
         onApply={rememberBikeChoice}
       />
 
-      {workoutSessionId && running ? (
-        <form action={finishBikeLoggerAction}>
-          <input type="hidden" name="workoutId" value={workoutSessionId} />
+      {loggedRounds >= 1 && (workoutSessionId ? running : active) ? (
+        <form
+          action={workoutSessionId ? finishBikeLoggerAction : logBikeTimerAction}
+          data-bike-clock-log=""
+        >
+          {workoutSessionId && running ? (
+            <>
+              <input type="hidden" name="workoutId" value={workoutSessionId} />
+              <input type="hidden" name="bikeName" value={running.focus || running.title || workoutLabel} />
+              <input type="hidden" name="workSeconds" value={running.workSeconds} />
+              <input type="hidden" name="restSeconds" value={running.restSeconds} />
+              <input type="hidden" name="roundsPerSet" value={running.roundsPerSet} />
+              <input type="hidden" name="repeatRounds" value={running.repeatRounds ?? 1} />
+            </>
+          ) : null}
           <input type="hidden" name="workout" value={active ? choiceToken(active) : ""} />
-          <input type="hidden" name="bikeName" value={running.focus || running.title || workoutLabel} />
-          <input type="hidden" name="workSeconds" value={running.workSeconds} />
-          <input type="hidden" name="restSeconds" value={running.restSeconds} />
-          <input type="hidden" name="roundsPerSet" value={running.roundsPerSet} />
-          <input type="hidden" name="repeatRounds" value={running.repeatRounds ?? 1} />
-          <input type="hidden" name="rounds" value={rounds} />
-          <button
-            type="submit"
-            data-testid="chrome-form-3"
-            className="touch-target inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#CBF805] text-sm font-semibold text-black"
-          >
-            Log this session
-          </button>
-        </form>
-      ) : active && finished >= 1 ? (
-        <form action={logBikeTimerAction} data-bike-clock-log="">
-          <input type="hidden" name="workout" value={choiceToken(active)} />
-          <input type="hidden" name="rounds" value={finished} />
-          {dayId ? <input type="hidden" name="programDayId" value={dayId} /> : null}
+          <input type="hidden" name="rounds" value={loggedRounds} />
+          {!workoutSessionId && dayId ? <input type="hidden" name="programDayId" value={dayId} /> : null}
           <label className="block text-sm">
             Notes
             <textarea
@@ -185,9 +181,10 @@ export function BikeClockScreen({
           </label>
           <button
             type="submit"
-            className="touch-target mt-3 w-full rounded-full bg-accent text-sm uppercase tracking-wide text-black"
+            data-testid={workoutSessionId ? "chrome-form-3" : undefined}
+            className="touch-target mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#CBF805] text-sm font-semibold text-black"
           >
-            {`Log ${finished} bike rounds`}
+            {`Log ${loggedRounds} bike rounds`}
           </button>
         </form>
       ) : (

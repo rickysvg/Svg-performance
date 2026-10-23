@@ -395,6 +395,7 @@ export default async function TrainingPage({
         focusOffset={focusOffset}
         todayHref={`/training?day=${formatDayParam(now, tz)}`}
         logPastDayKeys={logPastDayKeys}
+        timeZone={tz}
       />
 
       <WeightAccessToggle access={weightAccess} nextPath={`/training?day=${dayParam}`} />
@@ -476,7 +477,12 @@ export default async function TrainingPage({
           ) : null}
           {backfillDayState(focus.dayParam, now, tz) === "ok" ? (
             <div className="pt-2">
-              <LogPastWorkoutButton dayKey={focus.dayParam} entry="train" label="Log a past workout" />
+              <LogPastWorkoutButton
+                dayKey={focus.dayParam}
+                entry="train"
+                label="Log a past workout"
+                timeZone={tz}
+              />
             </div>
           ) : null}
           {dayPlan.easeNote || focus.checkIn ? (

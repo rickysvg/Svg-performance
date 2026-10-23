@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { logBagworkSessionAction } from "@/app/actions/bagwork";
 import { logBikeTimerAction, startRoundLogAction } from "@/app/actions/workouts";
@@ -17,6 +17,7 @@ import {
   completedWorkRounds,
   configForPreset,
   formatTimerClock,
+  mergeHydratedTimerPrefs,
   parseStoredCustom,
   parseStoredTimerPrefs,
   resolveTimer,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/bike-chooser";
 import { DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
 import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
+import { launchRoundLogFromClock, roundLogFromClock } from "@/lib/round-session";
 import { TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
 import { CountdownFace } from "@/components/timer/CountdownFace";
 import { useGoCountdown } from "@/components/timer/useGoCountdown";
@@ -171,6 +173,9 @@ export function RoundTimer({
   );
   const [logHint, setLogHint] = useState("");
   const logged = useRef(false);
+  const pickedMode = useRef(false);
+  const touchedConfig = useRef(false);
+  const seenUrlMode = useRef(mode);
   const modesRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef("");
   const rpeRef = useRef("");
@@ -187,6 +192,15 @@ export function RoundTimer({
     begin: beginCountdown,
     cancel: cancelCountdown,
   } = useGoCountdown();
+
+  if (seenUrlMode.current !== mode) {
+    seenUrlMode.current = mode;
+    pickedMode.current = false;
+    if (mode && prefs.mode !== mode) {
+      setPrefs((current) => ({ ...current, mode }));
+    }
+  }
+  const activeMode: TimerSurfaceMode = pickedMode.current ? prefs.mode : (mode ?? prefs.mode);
 
   useEffect(() => {
     if (launch) {
@@ -209,8 +223,17 @@ export function RoundTimer({
     const id = window.setTimeout(() => {
       const stored = parseStoredTimerPrefs(window.localStorage.getItem(TIMER_PREFS_STORAGE_KEY));
       const custom = parseStoredCustom(window.localStorage.getItem(TIMER_CUSTOM_STORAGE_KEY));
-      setPrefs({ ...stored, custom, ...(mode ? { mode } : {}) });
-      setCustomDraft(custom);
+      setPrefs((current) =>
+        mergeHydratedTimerPrefs({
+          stored,
+          custom,
+          current,
+          urlMode: mode,
+          pickedMode: pickedMode.current,
+          touchedConfig: touchedConfig.current,
+        }),
+      );
+      setCustomDraft((current) => (touchedConfig.current ? current : custom));
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
@@ -225,14 +248,14 @@ export function RoundTimer({
   useEffect(() => {
     if (launch) return;
     const row = modesRef.current;
-    const selected = row?.querySelector<HTMLElement>(`[data-timer-mode="${prefs.mode}"]`);
+    const selected = row?.querySelector<HTMLElement>(`[data-timer-mode="${activeMode}"]`);
     if (!row || !selected) return;
     const pad = 4;
     const left = selected.offsetLeft - pad;
     const right = selected.offsetLeft + selected.offsetWidth + pad;
     if (left < row.scrollLeft) row.scrollLeft = Math.max(0, left);
     else if (right > row.scrollLeft + row.clientWidth) row.scrollLeft = right - row.clientWidth;
-  }, [launch, prefs.mode, hydrated]);
+  }, [launch, activeMode, hydrated]);
 
   const config = useMemo(
     () => configForPreset(prefs.preset, prefs.preset === "custom" ? customDraft : prefs.custom),
@@ -247,16 +270,33 @@ export function RoundTimer({
     nowMs,
   });
 
+  const clockRef = useRef(resolved);
+  clockRef.current = resolved;
+
   const writeLog = useCallback(
     (roundsDone: number) => {
       if (!launch || roundsDone < 1 || logged.current) return;
       logged.current = true;
       const parsedRpe = Number(rpeRef.current);
-      void logBagworkSessionAction({
-        workoutKey: launch.key,
-        rounds: roundsDone,
+      const snap = clockRef.current;
+      const clock = launchRoundLogFromClock({
+        phase: snap.phase,
+        round: snap.round,
+        totalRounds: snap.totalRounds,
         workSeconds: config.workSeconds,
         restSeconds: config.restSeconds,
+        phaseElapsedSeconds: snap.phaseElapsedSeconds,
+      });
+      if (clock.rounds < 1) {
+        logged.current = false;
+        return;
+      }
+      void logBagworkSessionAction({
+        workoutKey: launch.key,
+        rounds: clock.rounds,
+        workSeconds: config.workSeconds,
+        restSeconds: clock.restSeconds,
+        elapsedSeconds: clock.elapsedSeconds,
         configuredRounds: launch.rounds,
         notes: notesRef.current,
         rpe: Number.isInteger(parsedRpe) ? parsedRpe : null,
@@ -404,6 +444,7 @@ export function RoundTimer({
   }
 
   function persistCustom(next: TimerConfig) {
+    touchedConfig.current = true;
     setCustomDraft(next);
     setPrefs((current) => ({ ...current, preset: "custom", custom: next }));
     if (startedAtMs != null) reset();
@@ -412,7 +453,7 @@ export function RoundTimer({
   const workTheme = resolved.phase !== "rest";
   const primaryLabel =
     startedAtMs == null || resolved.phase === "done" ? "Start" : pausedAtMs ? "Start" : "Pause";
-  const bikeMode = prefs.mode === "bike";
+  const bikeMode = activeMode === "bike";
   const bikeChoice =
     bikePreset === "custom"
       ? customBikeChoice({
@@ -423,7 +464,8 @@ export function RoundTimer({
       : bikeChoiceById(bikePreset);
   const bikeSession = bikeChoice ? sessionWithChoice(DEFAULT_BIKE_SESSION, bikeChoice) : null;
   const bikeRounds = bikeChoice ? bikeTimerRoundCount(bikeChoice) : 0;
-  const linkedProgramDayId = programDayId && mode && prefs.mode === mode ? programDayId : "";
+  const linkedProgramDayId = programDayId && mode && activeMode === mode ? programDayId : "";
+  const modeKnown = Boolean(launch || mode || hydrated);
   const timerOn = startedAtMs != null;
   const finishedWork = completedWorkRounds(resolved.phase, resolved.round, resolved.totalRounds);
   const roundsToLog = timerOn ? finishedWork : config.rounds;
@@ -458,7 +500,7 @@ export function RoundTimer({
           </Link>
         )}
         <h1 className="text-xl" id={titleId} data-timer-title>
-          {launch ? launch.name : mode ? MODE_LABEL[prefs.mode] : "Round timer"}
+          {launch ? launch.name : mode ? MODE_LABEL[activeMode] : "Round timer"}
         </h1>
         <span className="w-8" aria-hidden />
       </div>
@@ -471,10 +513,13 @@ export function RoundTimer({
             type="button"
             data-testid={`chrome-mode-${item}`}
             data-timer-mode={item}
-            aria-pressed={prefs.mode === item}
-            onClick={() => setPrefs((current) => ({ ...current, mode: item }))}
+            aria-pressed={modeKnown && activeMode === item}
+            onClick={() => {
+              pickedMode.current = true;
+              setPrefs((current) => ({ ...current, mode: item }));
+            }}
             className={`inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-[11px] leading-none ${
-              prefs.mode === item ? "bg-accent text-black" : "text-muted"
+              modeKnown && activeMode === item ? "bg-accent text-black" : "text-muted"
             }`}
           >
             {MODE_LABEL[item]}
@@ -544,8 +589,39 @@ export function RoundTimer({
       )}
 
       {launch || bikeMode ? null : (
-      <form data-testid="chrome-round-log" action={startRoundLogAction} data-round-log="">
-        <input type="hidden" name="mode" value={prefs.mode} />
+      <form
+        data-testid="chrome-round-log"
+        action={startRoundLogAction}
+        data-round-log=""
+        onSubmit={(event: FormEvent<HTMLFormElement>) => {
+          const form = event.currentTarget;
+          const snap = clockRef.current;
+          const setField = (name: string, value: string) => {
+            const field = form.elements.namedItem(name);
+            if (field instanceof HTMLInputElement) field.value = value;
+          };
+          if (startedAtMs == null || snap.phase === "idle") {
+            setField("phase", "");
+            return;
+          }
+          const clock = roundLogFromClock({
+            phase: snap.phase,
+            round: snap.round,
+            totalRounds: snap.totalRounds,
+            workSeconds: config.workSeconds,
+            restSeconds: config.restSeconds,
+            phaseElapsedSeconds: snap.phaseElapsedSeconds,
+          });
+          setField("rounds", String(Math.max(0, clock.roundsCompleted)));
+          setField("phase", snap.phase);
+          setField("timerRound", String(snap.round));
+          setField("phaseElapsed", String(Math.max(0, Math.round(snap.phaseElapsedSeconds))));
+          setField("restSeconds", String(config.restSeconds));
+          setField("configuredRestSeconds", String(config.restSeconds));
+          setField("elapsedSeconds", String(clock.elapsedSeconds));
+        }}
+      >
+        <input type="hidden" name="mode" value={activeMode} />
         <input type="hidden" name="rounds" value={Math.max(0, roundsToLog)} />
         <input type="hidden" name="configuredRounds" value={config.rounds} />
         <input
@@ -555,6 +631,11 @@ export function RoundTimer({
           value={config.workSeconds}
         />
         <input type="hidden" name="restSeconds" value={config.restSeconds} />
+        <input type="hidden" name="configuredRestSeconds" value={config.restSeconds} />
+        <input type="hidden" name="phase" value="" />
+        <input type="hidden" name="timerRound" value={resolved.round} />
+        <input type="hidden" name="phaseElapsed" value={Math.max(0, Math.round(resolved.phaseElapsedSeconds))} />
+        <input type="hidden" name="elapsedSeconds" value="" />
         <input type="hidden" name="programDayId" value={linkedProgramDayId} />
         <RoundLogNotes notes={notes} rpe={rpe} onNotes={setNotes} onRpe={setRpe} />
         <button
@@ -563,7 +644,9 @@ export function RoundTimer({
           disabled={logDisabled}
           className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-40"
         >
-          Log {Math.max(0, roundsToLog)} {MODE_LABEL[prefs.mode].toLowerCase()} rounds
+          {modeKnown
+            ? `Log ${Math.max(0, roundsToLog)} ${MODE_LABEL[activeMode].toLowerCase()} rounds`
+            : "Log rounds"}
         </button>
       </form>
       )}
@@ -582,6 +665,7 @@ export function RoundTimer({
             key={id}
             type="button"
             onClick={() => {
+              touchedConfig.current = true;
               setPrefs((current) => ({ ...current, preset: id as TimerPreset }));
               if (startedAtMs != null) reset();
             }}
@@ -619,7 +703,7 @@ export function RoundTimer({
       ) : null}
 
       {bikeMode && bikePreset === "custom" ? (
-        <div className="rounded-2xl border border-line bg-card p-3">
+        <div className="relative z-10 rounded-2xl border border-line bg-card p-3">
           <TimerDurationSteppers
             rounds={bikeCustom.rounds}
             workSeconds={bikeCustom.workSeconds}
@@ -627,6 +711,7 @@ export function RoundTimer({
             roundsLabel="Sprints"
             stepSeconds={5}
             minSeconds={5}
+            maxRounds={30}
             onChange={(next) => {
               setBikeCustom(next);
               setBikeFinished(0);
