@@ -24,7 +24,7 @@ import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
-import { nextSelectedDay, weekChipHref, weekScrollLeft } from "@/lib/week-carousel";
+import { carouselIndexFromScroll, nextSelectedDay, weekChipHref, weekScrollLeft } from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number] & {
@@ -763,13 +763,17 @@ function WeekDayCarousel({
   const router = useRouter();
   const trainWeekChange = useContext(TrainWeekChangeContext);
   const scrollerId = useId();
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const indexRef = useRef(0);
-  const swap = useWeekSwap(swapWeekStart);
   const initialIndex = Math.max(
     0,
     weeks.findIndex((week) => week.offset === focusOffset),
   );
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const indexRef = useRef(initialIndex);
+  const intendedIndex = useRef(initialIndex);
+  const userScroll = useRef(false);
+  const gestureTimer = useRef<number | null>(null);
+  const restoring = useRef(false);
+  const swap = useWeekSwap(swapWeekStart);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [ready, setReady] = useState(false);
   const initialSelected =
@@ -801,10 +805,22 @@ function WeekDayCarousel({
     setSelectedDay(dayParam);
   }
 
+  function noteUserGesture() {
+    userScroll.current = true;
+    if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
+    gestureTimer.current = window.setTimeout(() => {
+      userScroll.current = false;
+      gestureTimer.current = null;
+    }, 400);
+  }
+
   function scrollToIndex(index: number, behavior: ScrollBehavior) {
     const el = scrollerRef.current;
     if (!el) return false;
-    const left = weekScrollLeft(index, el.clientWidth);
+    const last = Math.max(0, weeksRef.current.length - 1);
+    const safe = Math.max(0, Math.min(last, index));
+    intendedIndex.current = safe;
+    const left = weekScrollLeft(safe, el.clientWidth);
     if (el.clientWidth <= 0) return false;
     if (behavior === "auto") el.scrollLeft = left;
     else el.scrollTo({ left, behavior });
@@ -905,15 +921,32 @@ function WeekDayCarousel({
 
   function syncFromScroll() {
     const el = scrollerRef.current;
-    if (!el || el.clientWidth <= 0) return;
+    if (!el) return;
+    if (userScroll.current) noteUserGesture();
+    const decision = carouselIndexFromScroll({
+      scrollLeft: el.scrollLeft,
+      panelWidth: el.clientWidth,
+      weekCount: weeksRef.current.length,
+      intendedIndex: intendedIndex.current,
+      userGesture: userScroll.current,
+    });
+    if (decision.restore) {
+      if (restoring.current) return;
+      restoring.current = true;
+      const left = weekScrollLeft(decision.index, el.clientWidth);
+      if (el.clientWidth > 0 && el.scrollLeft !== left) el.scrollLeft = left;
+      restoring.current = false;
+      return;
+    }
+    if (el.clientWidth <= 0) return;
     swap.noteScrollerScroll();
-    const index = Math.round(el.scrollLeft / el.clientWidth);
-    const clamped = Math.max(0, Math.min(weeks.length - 1, index));
+    const clamped = decision.index;
     if (clamped !== indexRef.current) {
       rememberChipFocus();
       swap.setSource(null);
     }
     indexRef.current = clamped;
+    intendedIndex.current = clamped;
     setActiveIndex(clamped);
   }
 
@@ -1034,6 +1067,8 @@ function WeekDayCarousel({
         aria-roledescription="carousel"
         aria-label="Training weeks. Left and right arrow keys change the week."
         onKeyDown={onKeyDown}
+        onPointerDown={noteUserGesture}
+        onWheel={noteUserGesture}
         onScroll={syncFromScroll}
       >
         {weeks.map((week, index) => (

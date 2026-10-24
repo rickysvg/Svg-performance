@@ -106,16 +106,19 @@ export function parseDurationSeconds(value: string | number | null | undefined):
     return value > 0 ? Math.round(value) : null;
   }
   const raw = String(value ?? "").trim();
-  if (!raw) return null;
-  const hms = raw.match(/(\d+)\s*:\s*(\d{1,2})\s*:\s*(\d{1,2})/);
-  if (hms) {
+  if (!raw || raw.startsWith("-")) return null;
+  const colons = raw.match(/:/g)?.length ?? 0;
+  if (colons > 2) return null;
+  if (colons === 2) {
+    const hms = /^(\d+)\s*:\s*(\d{1,2})\s*:\s*(\d{1,2})$/.exec(raw);
+    if (!hms) return null;
     const minutes = Number(hms[2]);
     const seconds = Number(hms[3]);
     if (minutes > 59 || seconds > 59) return null;
     const total = Number(hms[1]) * 3600 + minutes * 60 + seconds;
     return total > 0 ? total : null;
   }
-  const clock = raw.match(/(\d+)\s*:\s*(\d{1,2})/);
+  const clock = /^(\d+)\s*:\s*(\d{1,2})$/.exec(raw);
   if (clock) {
     return Number(clock[1]) * 60 + Number(clock[2]);
   }

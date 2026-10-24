@@ -1,5 +1,7 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { bikeSessionForLogger, DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
+import { roundHistoryLine } from "@/lib/round-session";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { exercisesFromLoggerGroups } from "@/lib/my-workout-plan";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
@@ -66,7 +68,8 @@ describe("bike workout chooser", () => {
     expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })?.spec.restSeconds).toBe(0);
     expect(customBikeChoice({ workSeconds: 300, restSeconds: 0, rounds: 8 })?.spec.workSeconds).toBe(300);
     expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })?.spec.workSeconds).toBe(4 * 60 * 60);
-    expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })?.spec.roundsPerSet).toBe(31);
+    expect(customBikeChoice({ workSeconds: 15 * 60, restSeconds: 60, rounds: 40 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 20, restSeconds: 10, rounds: 8, warmupSeconds: 660 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 16 * 60, restSeconds: 15, rounds: 4 })).toBeNull();
     expect(choiceFromToken("c.14400.0.1.0.0")?.spec).toMatchObject({
@@ -267,6 +270,37 @@ describe("bike workout chooser", () => {
       "Row",
     ]);
     expect(bikeChoiceFromKey(bike[0]!.prescriptionKey)?.id).toBe("tabata");
+  });
+
+  it("stores the new work on each kept set so history matches the structure", () => {
+    const choice = customBikeChoice({ workSeconds: 105 * 60, restSeconds: 0, rounds: 1 });
+    expect(choice).not.toBeNull();
+    const sets = retainBikeChoiceSets(
+      [
+        {
+          exerciseName: "Assault bike intervals",
+          completed: true,
+          setNumber: 1,
+          prescriptionKey: "day|assault bike intervals::30:00",
+          durationSeconds: 1800,
+        },
+      ],
+      "Assault bike intervals",
+      choice!,
+    );
+    expect(sets[0]?.durationSeconds).toBe(105 * 60);
+    const line = roundHistoryLine({
+      elapsedSeconds: 1800,
+      sets: sets.map((set) => ({ ...set, logMode: "timed_round" })),
+    });
+    expect(line).toContain("1:45:00 round");
+    expect(line).toContain("1:45:00 total");
+    expect(line).not.toContain("30:00 round");
+    const sheet = fs.readFileSync("src/components/training/BikeWorkoutSheet.tsx", "utf8");
+    const apply = sheet.slice(sheet.indexOf("function applyCustom"), sheet.indexOf("function selectPicker"));
+    expect(apply).toContain("commitShorthand");
+    expect(apply).toContain("if (committed.error)");
+    expect(apply.indexOf("commitShorthand")).toBeLessThan(apply.indexOf("customBikeChoice"));
   });
 
   it("keeps a saved workout recipe inside the added prescription key", () => {

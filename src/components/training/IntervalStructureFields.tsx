@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from "react";
 import {
+  canAddIntervalRound,
   clampIntervalStructure,
   commitShorthand,
   draftCount,
@@ -13,7 +14,6 @@ import {
   intervalDurationCapMessage,
   intervalWorkMax,
   INTERVAL_REST_MAX,
-  INTERVAL_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
   INTERVAL_SET_REST_MAX,
   INTERVAL_WORK_MIN,
@@ -176,7 +176,10 @@ export function IntervalStructureFields({
           label="Rounds"
           value={structure.rounds}
           onDec={() => patch({ rounds: Math.max(1, structure.rounds - 1) })}
-          onInc={() => patch({ rounds: Math.min(INTERVAL_ROUNDS_MAX, structure.rounds + 1) })}
+          onInc={() => {
+            if (!canAddIntervalRound(structure, mode)) return;
+            patch({ rounds: structure.rounds + 1 });
+          }}
           onCommit={(value) => patch({ rounds: value })}
         />
         <CompactStepper

@@ -7,6 +7,7 @@ import {
   WEEK_CAROUSEL_PAST_WEEKS,
   carouselBackfillPastWeeks,
   carouselFocusOffset,
+  carouselIndexFromScroll,
   carouselLoggedRange,
   carouselWeekAnchors,
   carouselWeekStrips,
@@ -52,6 +53,34 @@ function read(rel: string) {
 const prefs = { primaryFocus: "mma" as const, weeklyAvailability: ["Monday", "Wednesday", "Friday"] };
 
 describe("week day carousel", () => {
+  it("keeps a non-gesture scroll on the week the member is viewing", () => {
+    const current = carouselIndexFromScroll({
+      scrollLeft: 0,
+      panelWidth: 400,
+      weekCount: 8,
+      intendedIndex: 5,
+      userGesture: false,
+    });
+    expect(current).toEqual({ index: 5, restore: true });
+    const swiped = carouselIndexFromScroll({
+      scrollLeft: 0,
+      panelWidth: 400,
+      weekCount: 8,
+      intendedIndex: 5,
+      userGesture: true,
+    });
+    expect(swiped).toEqual({ index: 0, restore: false });
+    const unplaced = carouselIndexFromScroll({
+      scrollLeft: 0,
+      panelWidth: 0,
+      weekCount: 8,
+      intendedIndex: 5,
+      userGesture: false,
+    });
+    expect(unplaced).toEqual({ index: 5, restore: false });
+    expect(read("src/components/training/WeekStrip.tsx")).toContain("carouselIndexFromScroll");
+  });
+
   it("labels two weeks back through two weeks ahead in the member zone", () => {
     expect(WEEK_CAROUSEL_PAST_WEEKS).toBe(2);
     expect(WEEK_CAROUSEL_FUTURE_WEEKS).toBe(2);

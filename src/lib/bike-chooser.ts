@@ -586,28 +586,26 @@ export function retainBikeChoiceSets<
     completed: boolean;
     setNumber: number;
     prescriptionKey: string;
+    durationSeconds?: number | null;
   },
 >(sets: T[], exerciseName: string, choice: BikeChoice): T[] {
   const first = sets.findIndex((set) => set.exerciseName === exerciseName);
   if (first < 0) return sets;
+  const workSeconds = Math.max(1, Math.round(choice.spec.workSeconds));
+  const stamped = (set: T): T =>
+    ({
+      ...set,
+      durationSeconds: workSeconds,
+      prescriptionKey: prescriptionWithBikeChoice(set.prescriptionKey, exerciseName, choice),
+    }) as T;
   const mine = sets.filter((set) => set.exerciseName === exerciseName);
   const completed = mine.filter((set) => set.completed);
   const open = mine.find((set) => !set.completed) ?? (completed.length === 0 ? mine[0] : undefined);
-  const kept = completed.map((set) => ({
-    ...set,
-    prescriptionKey: prescriptionWithBikeChoice(set.prescriptionKey, exerciseName, choice),
-  }));
+  const kept = completed.map((set) => stamped(set));
   if (open && !open.completed) {
-    kept.push({
-      ...open,
-      prescriptionKey: prescriptionWithBikeChoice(open.prescriptionKey, exerciseName, choice),
-    });
+    kept.push(stamped(open));
   } else if (!open && mine[0] && completed.length === 0) {
-    kept.push({
-      ...mine[0],
-      completed: false,
-      prescriptionKey: prescriptionWithBikeChoice(mine[0].prescriptionKey, exerciseName, choice),
-    });
+    kept.push(stamped({ ...mine[0], completed: false }));
   }
   const renumbered = kept.map((set, index) => ({ ...set, setNumber: index + 1 }));
   const before = sets.slice(0, first).filter((set) => set.exerciseName !== exerciseName);

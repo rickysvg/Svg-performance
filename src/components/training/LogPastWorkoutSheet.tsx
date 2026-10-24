@@ -500,8 +500,7 @@ function LogPastWorkoutSheet({
     ? shorthandLineState(draft, structure, intervalClockKind(intervalType))
     : { error: "", matches: true, blocked: false };
   const lineBlocked = lineState.blocked && !lineState.matches;
-  const defaultsReady = Boolean(dayKey) && showingInterval && !overDuration && !needsOneSet && !lineBlocked;
-  const waitingForPreview = mode === "create" && !preview && !defaultsReady;
+  const waitingForPreview = mode === "create" && !preview;
   const saveText = pending
     ? "Saving…"
     : mode === "edit"

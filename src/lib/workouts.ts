@@ -52,6 +52,7 @@ import {
 } from "@/lib/training-scale";
 import { DELOAD_LABEL } from "@/lib/training-cycle";
 import { memberFacingTitle } from "@/lib/member-copy";
+import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { visibleDoseForSession, namedSetRows } from "@/lib/finish-plan";
 import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
@@ -1229,7 +1230,7 @@ export async function recordWorkoutActivityForUser(input: {
   const now = input.now ?? new Date();
   const timer = await readWorkoutTimerFields(existing.id, prisma);
   const stored = resumeStoredElapsed(timer.elapsedSeconds);
-  // Undo finish and opening /training/log/<id> leave the clock stopped.
+  // A draft with a stored clock and no running segment stays put.
   // A heartbeat must not credit the gap since create or start a new segment.
   if (!timer.timerStartedAt && stored != null) {
     return { elapsedSeconds: stored, timerStartedAt: null };
@@ -1697,8 +1698,11 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.loadValue != null && (set.loadValue < 0 || set.loadValue > 2000)) {
       throw new AppError("WORKOUT", "Load should be between 0 and 2000.");
     }
-    if (set.durationSeconds != null && (set.durationSeconds < 0 || set.durationSeconds > 3600)) {
-      throw new AppError("WORKOUT", "Hold / round time should be under 60 minutes.");
+    if (
+      set.durationSeconds != null &&
+      (set.durationSeconds < 0 || set.durationSeconds > SESSION_DURATION_CAP_SECONDS)
+    ) {
+      throw new AppError("WORKOUT", "Hold / round time should be under 4 hours.");
     }
     if (set.logMode && !isLogMode(set.logMode)) {
       throw new AppError("WORKOUT", "Unknown logging mode.");
@@ -2225,23 +2229,27 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
   // Keep a real saved clock, including one that already sits on the 4 hour cap.
-  // Opening the logger does not start a new segment. Resume does that.
+  // Undo finish starts a new segment from that clock so the logger keeps counting.
+  // A heartbeat still ignores a draft whose timerStartedAt is empty.
   const elapsed = resumeStoredElapsed(stored.elapsedSeconds);
+  const startedAt = new Date();
   const updated = await prisma.workoutSession.update({
     where: { id: existing.id },
     data: {
       status: "draft",
-      ...(timerColumns ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: null } : {}),
+      ...(timerColumns
+        ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: startedAt }
+        : {}),
     },
     include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
   });
   if (!timerColumns) return attachWorkoutTimer(updated, prisma);
-  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: null };
+  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: startedAt };
 }
 
 /**
- * Start the clock on a finished log the member reopened. Viewing and Undo
- * finish leave timerStartedAt empty so a later save keeps the stored duration.
+ * Start the clock on a held draft. Undo finish already sets timerStartedAt.
+ * This is the explicit Resume for a draft that was opened without a segment.
  */
 export async function resumeHeldSessionClockForUser(input: { userId: string; workoutId: string }) {
   const existing = await prisma.workoutSession.findUnique({

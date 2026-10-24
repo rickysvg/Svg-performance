@@ -628,6 +628,16 @@ describe("past log first paint and finish time", () => {
     expect(steadyHtml).not.toContain("Work should be between 5 and 900");
     expect(steadyHtml).not.toContain("Try 2x8 @ 15/15");
     expect(steadyHtml).toContain('data-testid="log-past-workout-save" class="font-display');
+    const coldHtml = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: sample!.key,
+        entry: "calendar",
+        label: "Log",
+        timeZone: TZ,
+        defaultOpen: true,
+      }),
+    );
+    expect(coldHtml).toMatch(/data-testid="log-past-workout-save"[^>]*disabled/);
 
     const rejectedPreview: BackfillPreview = {
       ...overCapPreview,

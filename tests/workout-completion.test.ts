@@ -1113,11 +1113,11 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.status).toBe("draft");
     expect(resumed.finishedAt).toBeNull();
     expect(resumed.elapsedSeconds).toBe(70 * 60 + 25);
-    expect(resumed.timerStartedAt).toBeNull();
+    expect(resumed.timerStartedAt).toBeInstanceOf(Date);
     const held = resolveSessionElapsed(resumed, new Date(Date.now() + 5 * 60 * 1000));
-    expect(held.ticking).toBe(false);
-    expect(held.seconds).toBe(70 * 60 + 25);
-    expect(held.label).toBe("1:10:25");
+    expect(held.ticking).toBe(true);
+    expect(held.seconds).toBe(70 * 60 + 25 + 5 * 60);
+    expect(held.label).toBe("1:15:25");
   });
 
   it("keeps a capped clock on resume and credits activity gaps from that clock", async () => {
@@ -1448,17 +1448,18 @@ describe("a workout is complete only after a logged save", () => {
     });
     const resumed = await reopenCompletedWorkoutForUser(user.id, session.id);
     expect(resumed.status).toBe("draft");
-    expect(resumed.timerStartedAt).toBeNull();
+    expect(resumed.timerStartedAt).toBeInstanceOf(Date);
     expect(await finalizePastLoggedDrafts(user.id, new Date(), APP_TIMEZONE)).toBe(0);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
     const timer = await readWorkoutTimerFields(session.id, prisma);
     expect(row.status).toBe("draft");
     expect(timer.elapsedSeconds).toBe(70 * 60 + 25);
     expect(timer.finishedAt).toBeNull();
-    expect(timer.timerStartedAt).toBeNull();
+    expect(timer.timerStartedAt).toBeInstanceOf(Date);
     const held = resolveSessionElapsed({ ...row, ...timer }, new Date(Date.now() + 5_000));
-    expect(held.ticking).toBe(false);
-    expect(held.label).toBe("1:10:25");
+    expect(held.ticking).toBe(true);
+    expect(held.seconds).toBeGreaterThanOrEqual(70 * 60 + 25);
+    expect(held.seconds).toBeLessThan(70 * 60 + 25 + 30);
   });
 
   it("does not store a multi-day gap when a finished workout is reopened", async () => {

@@ -206,7 +206,7 @@ export function PlanSessionCard({
           {visiblePartialLabel(resume?.ticked, resume?.planned)}
         </p>
       ) : null}
-      {partial && resume?.progress ? (
+      {partial && completed && resume?.progress ? (
         <p data-session-progress className="mt-3 text-sm font-semibold text-accent">
           {resume.progress}
         </p>
