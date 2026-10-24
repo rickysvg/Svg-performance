@@ -1,3 +1,5 @@
+import { PLAN_CATALOG } from "@/lib/plans";
+import { catalogPlanFromStored } from "@/lib/pro-annual-record";
 import { requireAdmin } from "@/lib/roles";
 import { AdminBack } from "@/components/admin/AdminChrome";
 import { listUsersForAdmin } from "@/lib/admin";
@@ -146,7 +148,7 @@ export default async function AdminGymdeskPage() {
           <ul className="space-y-2 text-sm">
             {snapshot.flaggedGymSubs.map((row) => (
               <li key={row.id} className="rounded-xl border border-line bg-background p-3">
-                {row.user.email} · {row.plan} / {row.status}
+                {row.user.email} · {PLAN_CATALOG[catalogPlanFromStored(row)].label} / {row.status}
               </li>
             ))}
           </ul>

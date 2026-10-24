@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { billingPlanFromStored, referencesRetiredAnnual } from "@/lib/pro-annual-record";
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
 import { isTrialActive } from "@/lib/trial";
 
@@ -11,10 +12,13 @@ export function isStripeConfigured() {
 }
 
 export async function getLatestSubscription(userId: string) {
-  return prisma.subscription.findFirst({
+  const row = await prisma.subscription.findFirst({
     where: { userId },
     orderBy: { updatedAt: "desc" },
   });
+  // View only. The stored plan string and boolean stay in the database.
+  if (!row || !referencesRetiredAnnual(row)) return row;
+  return { ...row, plan: billingPlanFromStored(row) };
 }
 
 export async function hasWebhookGrantedAccess(userId: string) {

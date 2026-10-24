@@ -5,6 +5,7 @@ import { listWaitlist, listSeatStatus } from "@/lib/waitlist";
 import { listBookingRequestsForAdmin, bookingLabel } from "@/lib/bookings";
 import { isCreditKind, startOfUtcMonth } from "@/lib/credits";
 import { PLAN_CATALOG, CREDIT_LABELS, normalizePlanId } from "@/lib/plans";
+import { catalogPlanFromStored } from "@/lib/pro-annual-record";
 import { AdminAssignPlanForm } from "@/components/admin/AdminAssignPlanForm";
 import { AdminCreditForm } from "@/components/admin/AdminCreditForm";
 import { AdminRestoreCreditForm } from "@/components/admin/AdminRestoreCreditForm";
@@ -47,7 +48,7 @@ export default async function AdminPlansPage() {
       <ul className="space-y-4">
         {users.map((user) => {
           const sub = user.subscriptions[0];
-          const planId = sub ? normalizePlanId(sub.plan) : "member_access";
+          const planId = sub ? catalogPlanFromStored(sub) : "member_access";
           const monthCredits = user.coachingCredits.filter(
             (row) => row.periodStart.getTime() === periodStart.getTime(),
           );

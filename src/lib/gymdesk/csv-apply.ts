@@ -3,8 +3,10 @@ import type { GymdeskCsvRow } from "@/lib/gymdesk/csv";
 import { setSyncMeta, upsertRosterFromCsvRow } from "@/lib/gymdesk/roster";
 import { recomputeMembership, startCanceledGrace } from "@/lib/gymdesk/recompute";
 import { CHECKOUT_SKUS, isCheckoutSkuId } from "@/lib/plans";
+import { referencesRetiredAnnual } from "@/lib/pro-annual-record";
 
 function isGymPricedSubscription(row: { plan: string; stripePriceId: string }) {
+  if (referencesRetiredAnnual(row)) return false;
   if (row.plan === "gym" || /_gym$/.test(row.plan)) return true;
   if (isCheckoutSkuId(row.plan) && CHECKOUT_SKUS[row.plan].requiresGymVerify) return true;
   for (const sku of Object.values(CHECKOUT_SKUS)) {

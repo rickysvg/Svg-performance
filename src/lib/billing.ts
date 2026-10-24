@@ -5,12 +5,16 @@ import { isStripeConfigured } from "@/lib/access";
 import { ensureCreditsForPlan } from "@/lib/credits";
 import { isPlanAtCap } from "@/lib/waitlist";
 import {
+  billingPlanFromStored,
+  catalogPlanFromStored,
+  isRetiredAnnualPrice,
+  referencesRetiredAnnual,
+} from "@/lib/pro-annual-record";
+import {
   CHECKOUT_SKUS,
   type CheckoutSkuId,
   isCheckoutSkuId,
-  normalizePlanId,
   PLAN_CATALOG,
-  PLANS,
 } from "@/lib/plans";
 
 export { PLANS, isPlanId, isCheckoutSkuId } from "@/lib/plans";
@@ -72,8 +76,10 @@ export async function upsertSubscriptionFromWebhook(input: {
       });
 
   // Keep Stripe ids when a later event (payment failed, cancel) omits them.
+  // An explicit empty price clears a stale id. Omitting the field keeps the stored one.
   // Leave the unused seat column as stored. Do not set or clear it.
-  const stripePriceId = input.stripePriceId || existing?.stripePriceId || "";
+  const stripePriceId =
+    input.stripePriceId !== undefined ? input.stripePriceId : (existing?.stripePriceId ?? "");
 
   const data = {
     userId: input.userId,
@@ -138,10 +144,15 @@ export async function applyStripeEvent(event: {
   const userId =
     object.metadata?.userId || object.client_reference_id || "";
   const planRaw = object.metadata?.plan || "standalone";
+  const stripePriceId = object.items?.data?.[0]?.price?.id;
+  const incoming = { plan: planRaw, stripePriceId };
   const catalogPlan = isCheckoutSkuId(planRaw)
     ? CHECKOUT_SKUS[planRaw].catalogId
-    : normalizePlanId(planRaw);
-  const stripePriceId = object.items?.data?.[0]?.price?.id;
+    : catalogPlanFromStored(incoming);
+  // A retired seat id is recorded as Pro annual. A current price keeps the current plan.
+  const recordedPlan = referencesRetiredAnnual(incoming)
+    ? billingPlanFromStored(incoming)
+    : catalogPlan;
 
   if (!userId) {
     throw new AppError("BILLING", "Webhook event is missing the member id.");
@@ -175,7 +186,7 @@ export async function applyStripeEvent(event: {
   if (event.type === "checkout.session.expired") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "incomplete",
       stripeSubscriptionId:
         typeof object.subscription === "string" ? object.subscription : object.id,
@@ -188,7 +199,7 @@ export async function applyStripeEvent(event: {
   ) {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "active",
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId:
@@ -204,7 +215,7 @@ export async function applyStripeEvent(event: {
   } else if (event.type === "invoice.payment_failed") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "past_due",
       stripeSubscriptionId:
         typeof object.subscription === "string" ? object.subscription : object.id,
@@ -217,7 +228,7 @@ export async function applyStripeEvent(event: {
   ) {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: "canceled",
       stripeSubscriptionId: object.id,
       currentPeriodEnd: periodEnd,
@@ -225,7 +236,7 @@ export async function applyStripeEvent(event: {
   } else if (event.type === "customer.subscription.updated") {
     result = await upsertSubscriptionFromWebhook({
       userId,
-      plan: catalogPlan,
+      plan: recordedPlan,
       status: mapSubscriptionStatus(object.status),
       stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
       stripeSubscriptionId: object.id,
@@ -255,16 +266,30 @@ export async function assignPlanForPilot(input: {
   if (!admin || admin.role !== "admin") {
     throw new ForbiddenError("Only an admin can assign a plan for the pilot.");
   }
-  const catalogPlan = normalizePlanId(input.plan);
+  const catalogPlan = catalogPlanFromStored({ plan: input.plan });
+  const recordedPlan = referencesRetiredAnnual({ plan: input.plan })
+    ? billingPlanFromStored({ plan: input.plan })
+    : catalogPlan;
+  const existing = await prisma.subscription.findFirst({
+    where: { userId: input.targetUserId },
+    orderBy: { updatedAt: "desc" },
+  });
+  // The assigned plan is current. A leftover retired price must not keep the
+  // row on Pro annual. Clear that price only. Do not delete the row or the flag.
+  const clearRetiredPrice =
+    Boolean(existing) &&
+    isRetiredAnnualPrice(existing?.stripePriceId) &&
+    !referencesRetiredAnnual({ plan: input.plan });
   // Admin override is the pilot escape hatch — caps apply to self-serve checkout only.
   const periodEnd = new Date();
   periodEnd.setUTCDate(periodEnd.getUTCDate() + 30);
   const row = await upsertSubscriptionFromWebhook({
     userId: input.targetUserId,
-    plan: catalogPlan,
+    plan: recordedPlan,
     status: catalogPlan === "member_access" ? "canceled" : "active",
     currentPeriodEnd: catalogPlan === "member_access" ? null : periodEnd,
     source: "admin",
+    ...(clearRetiredPrice ? { stripePriceId: "" } : {}),
   });
   await ensureCreditsForPlan(input.targetUserId, catalogPlan);
   return { ...row, label: PLAN_CATALOG[catalogPlan].label };

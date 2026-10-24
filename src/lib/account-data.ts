@@ -10,6 +10,7 @@ import { deleteWeeklyCheckInMediaForUser } from "@/lib/weekly-checkin";
 import { deleteFeedbackMediaForUser } from "@/lib/feedback-storage";
 import type { PublicUser } from "@/lib/auth";
 import { isDeleteConfirmation } from "@/lib/account-confirm";
+import { billingPlanFromStored } from "@/lib/pro-annual-record";
 
 export { accountExportFilename, isDeleteConfirmation } from "@/lib/account-confirm";
 
@@ -270,7 +271,8 @@ export async function exportAccountData(userId: string) {
     coachChat: chatThreads,
     subscriptions: subscriptions.map((row) => ({
       id: row.id,
-      plan: row.plan,
+      plan: billingPlanFromStored(row),
+      internalStoredPlan: row.plan,
       status: row.status,
       currentPeriodEnd: row.currentPeriodEnd,
       source: row.source,
