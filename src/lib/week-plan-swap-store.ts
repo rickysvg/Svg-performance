@@ -1,4 +1,3 @@
-import { AsyncLocalStorage } from "node:async_hooks";
 import { AppError, NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -32,18 +31,26 @@ import {
 
 const WEEK_START = /^\d{4}-\d{2}-\d{2}$/;
 
-const weekPlanTurn = new AsyncLocalStorage<string>();
 const weekPlanTail = new Map<string, Promise<void>>();
+const weekPlanActive = new Set<string>();
 
 /**
  * One member's plan writes run in the order they were requested.
  * A move and the Undo 0.3s later share this queue, so the later request
- * reads the plan the earlier one already saved.
+ * reads the plan the earlier one already saved. A call from inside the
+ * turn runs immediately, so the snapshot and the write stay one step.
  */
 export function enqueueWeekPlan<T>(userId: string, task: () => Promise<T>): Promise<T> {
-  if (weekPlanTurn.getStore() === userId) return task();
+  if (weekPlanActive.has(userId)) return task();
   const previous = weekPlanTail.get(userId) ?? Promise.resolve();
-  const run = previous.then(() => weekPlanTurn.run(userId, task));
+  const run = previous.then(async () => {
+    weekPlanActive.add(userId);
+    try {
+      return await task();
+    } finally {
+      weekPlanActive.delete(userId);
+    }
+  });
   const settled = run.then(
     () => undefined,
     () => undefined,
@@ -56,7 +63,7 @@ export function enqueueWeekPlan<T>(userId: string, task: () => Promise<T>): Prom
 }
 
 function inWeekPlanTurn(userId: string) {
-  return weekPlanTurn.getStore() === userId;
+  return weekPlanActive.has(userId);
 }
 
 export async function getWeekPlanSwapsForUser(userId: string): Promise<WeekPlanSwap[]> {
