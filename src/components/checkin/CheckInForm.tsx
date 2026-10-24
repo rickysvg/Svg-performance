@@ -32,9 +32,9 @@ export function CheckInForm({
     submitWeeklyCheckInAction,
     {} as CheckInActionState,
   );
-  const [sleep, setSleep] = useState<number | null>(priorScores?.sleep ?? null);
-  const [energy, setEnergy] = useState<number | null>(priorScores?.energy ?? null);
-  const [stress, setStress] = useState<number | null>(priorScores?.stress ?? null);
+  const [sleep, setSleep] = useState<number | null>(priorScores?.sleep ?? 3);
+  const [energy, setEnergy] = useState<number | null>(priorScores?.energy ?? 3);
+  const [stress, setStress] = useState<number | null>(priorScores?.stress ?? 3);
   const [regions, setRegions] = useState<BodyRegionId[]>([]);
   const [localError, setLocalError] = useState("");
   const [duration, setDuration] = useState("");
