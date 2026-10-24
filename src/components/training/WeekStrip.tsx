@@ -442,7 +442,6 @@ function WeekChipList({
   selectedDay,
   interactive = true,
   source,
-  pending,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -462,7 +461,6 @@ function WeekChipList({
   selectedDay?: string;
   interactive?: boolean;
   source: { weekStart: string; weekday: string } | null;
-  pending: boolean;
   onPointerDown: (
     event: PointerEvent,
     weekday: string,
@@ -772,7 +770,9 @@ function WeekDayCarousel({
   const intendedIndex = useRef(initialIndex);
   const userScroll = useRef(false);
   const gestureTimer = useRef<number | null>(null);
-  const restoring = useRef(false);
+  const placing = useRef(false);
+  const placeFrame = useRef<number | null>(null);
+  const restoredOnce = useRef(false);
   const swap = useWeekSwap(swapWeekStart);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [ready, setReady] = useState(false);
@@ -814,6 +814,22 @@ function WeekDayCarousel({
     }, 400);
   }
 
+  function holdPlace() {
+    placing.current = true;
+    if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
+    placeFrame.current = window.requestAnimationFrame(() => {
+      placing.current = false;
+      placeFrame.current = null;
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
+      if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
+    };
+  }, []);
+
   function scrollToIndex(index: number, behavior: ScrollBehavior) {
     const el = scrollerRef.current;
     if (!el) return false;
@@ -822,6 +838,8 @@ function WeekDayCarousel({
     intendedIndex.current = safe;
     const left = weekScrollLeft(safe, el.clientWidth);
     if (el.clientWidth <= 0) return false;
+    restoredOnce.current = false;
+    holdPlace();
     if (behavior === "auto") el.scrollLeft = left;
     else el.scrollTo({ left, behavior });
     return true;
@@ -835,7 +853,7 @@ function WeekDayCarousel({
     const placed = scrollToIndex(index, "auto");
     // The strip scrolls before paint, then the index matches the week on screen.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveIndex(index);
+    setActiveIndex((current) => (current === index ? current : index));
     if (placed) setReady(true);
   }, [focusOffset, weeks]);
 
@@ -921,8 +939,7 @@ function WeekDayCarousel({
 
   function syncFromScroll() {
     const el = scrollerRef.current;
-    if (!el) return;
-    if (userScroll.current) noteUserGesture();
+    if (!el || placing.current) return;
     const decision = carouselIndexFromScroll({
       scrollLeft: el.scrollLeft,
       panelWidth: el.clientWidth,
@@ -931,20 +948,24 @@ function WeekDayCarousel({
       userGesture: userScroll.current,
     });
     if (decision.restore) {
-      if (restoring.current) return;
-      restoring.current = true;
+      // One correction. A snap fighting the write must not schedule another.
+      if (restoredOnce.current) return;
+      restoredOnce.current = true;
+      holdPlace();
       const left = weekScrollLeft(decision.index, el.clientWidth);
       if (el.clientWidth > 0 && el.scrollLeft !== left) el.scrollLeft = left;
-      restoring.current = false;
       return;
     }
     if (el.clientWidth <= 0) return;
+    restoredOnce.current = false;
     swap.noteScrollerScroll();
     const clamped = decision.index;
-    if (clamped !== indexRef.current) {
-      rememberChipFocus();
-      swap.setSource(null);
+    if (clamped === indexRef.current) {
+      intendedIndex.current = clamped;
+      return;
     }
+    rememberChipFocus();
+    swap.setSource(null);
     indexRef.current = clamped;
     intendedIndex.current = clamped;
     setActiveIndex(clamped);
@@ -1094,7 +1115,6 @@ function WeekDayCarousel({
               selectedDay={selectedDay}
               interactive={index === activeIndex}
               source={swap.source}
-              pending={swap.pending}
               onPointerDown={swap.onPointerDown}
               onPointerMove={swap.onPointerMove}
               onPointerUp={swap.onPointerUp}
@@ -1159,7 +1179,6 @@ function SingleWeekStrip({
         partialDays={partialDays}
         inProgressDay={inProgressDay}
         source={swap.source}
-        pending={swap.pending}
         onPointerDown={swap.onPointerDown}
         onPointerMove={swap.onPointerMove}
         onPointerUp={swap.onPointerUp}

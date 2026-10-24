@@ -112,8 +112,14 @@ export function backfillFinishDurationSeconds(session: ShareSessionLike): number
 }
 
 function applyBackfillTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike) {
-  const seconds = backfillFinishDurationSeconds(session);
-  if (seconds == null) return tiles;
+  const stored = backfillFinishDurationSeconds(session);
+  if (stored == null) return tiles;
+  // A custom ride can leave the session clock behind the new structure.
+  // History already prefers that structure. The finish Time tile matches it
+  // when the stored clock is the shorter one, and still keeps a longer typed clock.
+  const seconds = isBikeCardioSession(session)
+    ? bikeCardioDurationSeconds({ ...session, status: "complete", elapsedSeconds: stored })
+    : stored;
   if (seconds <= 0) return tiles.filter((tile) => tile.key !== "time");
   return tiles.map((tile) =>
     tile.key === "time" ? { ...tile, value: formatShareDuration(seconds) } : tile,

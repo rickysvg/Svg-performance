@@ -24,6 +24,7 @@ import {
   bikeChoiceFromKey,
   choiceToken,
   formatBikeRecipe,
+  nextGeneratedBikeTitle,
   parseBikeRecipe,
   rememberBikeChoice,
   retainBikeChoiceSets,
@@ -1246,6 +1247,13 @@ export function WorkoutLogForm({
   }
 
   function applyBikeWorkout(exerciseName: string, choice: BikeChoice) {
+    const previous =
+      setsRef.current
+        .filter((set) => set.exerciseName === exerciseName)
+        .map((set) => bikeChoiceFromKey(set.prescriptionKey))
+        .find((row) => row != null) ?? null;
+    const titleField = formRef.current?.querySelector<HTMLTextAreaElement>("[data-workout-title]");
+    if (titleField) titleField.value = nextGeneratedBikeTitle(titleField.value, previous, choice);
     setRestByName((current) => ({ ...current, [exerciseName]: 0 }));
     const nextRest = restTimer?.exerciseName === exerciseName ? null : restTimer;
     if (nextRest !== restTimer) setRestTimer(nextRest);

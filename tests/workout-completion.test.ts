@@ -6,6 +6,7 @@ import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
+import { choiceToken, customBikeChoice } from "@/lib/bike-chooser";
 import { resolveSessionElapsed, SESSION_DURATION_CAP_SECONDS } from "@/lib/session-elapsed";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
@@ -1479,5 +1480,46 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.status).toBe("draft");
     expect(resumed.elapsedSeconds == null || resumed.elapsedSeconds === 0).toBe(true);
     expect(resumed.elapsedSeconds).not.toBe(4 * 60 * 60);
+  });
+
+  it("does not add an empty Daru row onto a plan ride that is already logged", async () => {
+    const user = await makeUser("daru-empty-row@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 5);
+    expect(day?.exercises[0]?.name).toBe("Daru alactic power bike");
+    const choice = customBikeChoice({ workSeconds: 10, restSeconds: 50, rounds: 3 });
+    expect(choice).not.toBeNull();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: day!.id,
+        title: "Assault bike intervals",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        status: "partial",
+        plannedSetCount: 8,
+        sets: {
+          create: [
+            {
+              exerciseName: "Assault bike intervals",
+              setNumber: 1,
+              sortOrder: 0,
+              logMode: "timed_round",
+              durationSeconds: 10,
+              completed: true,
+              prescriptionKey: `timer#bw:${choiceToken(choice!)}`,
+            },
+          ],
+        },
+      },
+      include: { sets: true },
+    });
+    const resumed = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: session.id,
+      preferredUnits: "lb",
+    });
+    expect(resumed.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    expect(resumed.sets.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
+    expect(resumed.sets.every((set) => set.exerciseName !== "Daru alactic power bike")).toBe(true);
   });
 });

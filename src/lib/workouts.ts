@@ -1416,9 +1416,20 @@ export async function continuePartialWorkoutForUser(input: {
     // The short save already holds the rows it was started with. Filling from
     // the profile scale on top of those rows stacks a second catalog.
     const alreadyHeld = storedPlan != null && lockedSets.length >= storedPlan;
+    const loggedBike = lockedSets.some(
+      (set) => isBikeIntervalName(set.exerciseName) || textIsBikeWorkout(set.exerciseName),
+    );
     const create: Prisma.WorkoutSetCreateManyInput[] = [];
     let prescribedTotal = 0;
     for (const exercise of alreadyHeld ? [] : visible) {
+      // "Assault bike intervals" already is the plan's Daru row. A second
+      // empty plan set is the same ride under the catalog name.
+      if (
+        loggedBike &&
+        (isBikeIntervalName(exercise.name) || textIsBikeWorkout(exercise.name))
+      ) {
+        continue;
+      }
       const prescribed = Math.max(0, Math.round(exercise.sets));
       prescribedTotal += prescribed;
       const key = gymExerciseKey(exercise.name);

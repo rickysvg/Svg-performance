@@ -752,6 +752,15 @@ function intervalStatus(interval: IntervalSave, keptCount: number) {
   });
 }
 
+/** Stop the open segment so a history save of an Undo-finish draft can open the finish screen. */
+async function freezeOpenBackfillClock(sessionId: string, finishedAt: Date) {
+  if (!(await workoutTimerColumnsAvailable(prisma))) return;
+  await prisma.workoutSession.update({
+    where: { id: sessionId },
+    data: { finishedAt, timerStartedAt: null },
+  });
+}
+
 async function writeElapsedSecondsOnly(
   db: { workoutSession: { update: typeof prisma.workoutSession.update } },
   sessionId: string,
@@ -1426,7 +1435,13 @@ async function updateIntervalBackfill(input: {
   if (!Number.isInteger(requestedDone) || requestedDone < 1) {
     throw new AppError("WORKOUT", "Log at least one set, then save.");
   }
-  const done = Math.min(configured, requestedDone);
+  const oldConfigured = Math.max(1, input.decoded.sets * input.decoded.rounds);
+  const previouslyFinished =
+    input.session.status === "complete" || input.decoded.done >= oldConfigured;
+  // A finished ride's new structure is the whole ride. Done left at the old
+  // count (1 of a steady ride, including after Undo finish) is not a partial.
+  let done = Math.min(configured, requestedDone);
+  if (previouslyFinished && done === input.decoded.done && done < configured) done = configured;
   const sameStructure =
     posted.sets === input.decoded.sets &&
     posted.rounds === input.decoded.rounds &&
@@ -1438,7 +1453,7 @@ async function updateIntervalBackfill(input: {
   const performedAt = sameDay
     ? input.session.performedAt
     : performedAtForLoggedDay(input.dayKey, input.timeZone, input.now);
-  const keptStatus: "complete" | "partial" = input.session.status === "complete" ? "complete" : "partial";
+  const status: "complete" | "partial" = done >= configured ? "complete" : "partial";
   if (sameStructure && doneUnchanged) {
     await prisma.workoutSession.update({
       where: { id: input.session.id },
@@ -1447,9 +1462,13 @@ async function updateIntervalBackfill(input: {
         notes: input.notes.trim().slice(0, 1000),
         performedAt,
         sessionRpe: input.rpe,
+        status,
       },
     });
-    return { ok: true as const, sessionId: input.session.id, status: keptStatus };
+    // A draft left by Undo finish still redirects to the finish screen.
+    // Leaving the clock open keeps the row a moving draft after that redirect.
+    if (input.session.status === "draft") await freezeOpenBackfillClock(input.session.id, performedAt);
+    return { ok: true as const, sessionId: input.session.id, status };
   }
   const kind = posted.kind;
   assertSavableInterval({
@@ -1530,7 +1549,7 @@ async function updateIntervalBackfill(input: {
         next: posted,
       });
   const plannedSetCount = sameStructure ? Math.max(input.session.plannedSetCount ?? 0, configured) : configured;
-  const status = roundSaveStatus({
+  const writtenStatus = roundSaveStatus({
     roundsCompleted: done,
     plannedRounds: plannedSetCount,
     configuredRounds: configured,
@@ -1545,7 +1564,7 @@ async function updateIntervalBackfill(input: {
         title,
         notes: input.notes.trim().slice(0, 1000),
         performedAt,
-        status,
+        status: writtenStatus,
         plannedSetCount,
         sessionRpe: input.rpe,
         sets: { create: toCreate(sets) },
@@ -1553,7 +1572,8 @@ async function updateIntervalBackfill(input: {
     });
     if (timerReady && elapsed > 0) await writeElapsedSecondsOnly(tx, input.session.id, elapsed);
   });
-  return { ok: true as const, sessionId: input.session.id, status };
+  if (input.session.status === "draft") await freezeOpenBackfillClock(input.session.id, performedAt);
+  return { ok: true as const, sessionId: input.session.id, status: writtenStatus };
 }
 
 export async function updateBackfillWorkout(input: {
@@ -1640,6 +1660,7 @@ export async function updateBackfillWorkout(input: {
       },
     });
   });
+  if (session.status === "draft") await freezeOpenBackfillClock(session.id, performedAt);
   return { ok: true, sessionId: session.id, status };
 }
 

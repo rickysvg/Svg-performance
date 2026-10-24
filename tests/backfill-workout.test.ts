@@ -17,10 +17,10 @@ import {
   type BackfillFormSeed,
   type BackfillPreview,
 } from "@/lib/backfill-workout";
-import { completionListLabel, exerciseSetProgress, historyCountLine } from "@/lib/logged-work";
+import { completionListLabel, exerciseSetProgress, historyCountLine, sessionOpensFinishScreen } from "@/lib/logged-work";
 import { roundHistoryLine } from "@/lib/round-session";
 import { getCalendarSchedule, subtitleShowsPartial } from "@/lib/calendar";
-import { completedLocalDayKeys, listWorkoutSessionsForUser, logBikeRoundsForUser } from "@/lib/workouts";
+import { completedLocalDayKeys, listWorkoutSessionsForUser, logBikeRoundsForUser, reopenCompletedWorkoutForUser } from "@/lib/workouts";
 import { bikeChoiceById, customBikeChoice } from "@/lib/bike-chooser";
 import { backfillDayOptions, performedAtForDayKey, setsForBackfillExercises } from "@/lib/backfill-rules";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
@@ -791,6 +791,33 @@ describe("past log first paint and finish time", () => {
       },
     });
     expect(logged.find((tile) => tile.key === "time")?.value).toBe("20:00");
+
+    const changed = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        title: "Steady ride · 30:00",
+        status: "complete",
+        performedAt: new Date("2026-10-20T18:00:00.000Z"),
+        createdAt: created,
+        updatedAt: updated,
+        elapsedSeconds: 30 * 60 + 6,
+        backfilled: true,
+        sets: [
+          {
+            exerciseName: "Assault bike intervals",
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            completed: true,
+            durationSeconds: 105 * 60,
+            prescriptionKey: `timer#bw:c.${105 * 60}.0.1.0.0`,
+          },
+        ],
+      },
+    });
+    expect(changed.find((tile) => tile.key === "time")?.value).toBe("1:45:00");
+    expect(changed.find((tile) => tile.key === "time")?.value).not.toBe("30:06");
 
     const partialLift = workoutCompleteTiles({
       displayUnit: "lb",
@@ -1940,6 +1967,36 @@ describe("today and past interval logs", () => {
       "lb",
     );
     expect(overCap.sets[0]?.durationSeconds).toBe(5 * 60 * 60);
+    expect(() =>
+      setsForBackfillExercises(
+        [
+          {
+            name: "Hold",
+            sets: 1,
+            done: 1,
+            reps: "300:00",
+            logMode: "timed",
+            durationSeconds: 90 * 60,
+          },
+        ],
+        "lb",
+      ),
+    ).toThrow(/4 hours/);
+    expect(() =>
+      setsForBackfillExercises(
+        [
+          {
+            name: "Hold",
+            sets: 1,
+            done: 1,
+            reps: "6:00:00",
+            logMode: "timed",
+            durationSeconds: 4 * 60 * 60,
+          },
+        ],
+        "lb",
+      ),
+    ).toThrow(/4 hours/);
 
     const days = backfillDayOptions(NOW, TZ);
     const day = days[1]!;
@@ -2101,6 +2158,150 @@ describe("today and past interval logs", () => {
       expect(after.performedAt.toISOString()).toBe(before.performedAt.toISOString());
       expect((await readWorkoutTimerFields(saved.sessionId, prisma)).elapsedSeconds).toBe(ride.seconds);
     }
+  });
+
+  it("finishes a draft left by undo when history saves the ride", async () => {
+    const user = await makeUser("backfill-undo-edit@example.com");
+    await onboard(user.id);
+    const saved = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: "2026-10-20",
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "Steady ride · 25:00",
+      notes: "",
+      rpe: null,
+      workSeconds: 25 * 60,
+      restSeconds: 0,
+      roundsPerSet: 1,
+      repeatRounds: 1,
+      doneRounds: 1,
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    const reopened = await reopenCompletedWorkoutForUser(user.id, saved.sessionId);
+    expect(reopened.status).toBe("draft");
+    const loaded = await getBackfillForEdit(user.id, saved.sessionId, NOW);
+    expect(loaded.structure).toMatchObject({ kind: "bike", rounds: 1, done: 1, workSeconds: 25 * 60 });
+    const edited = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: saved.sessionId,
+      dayKey: "2026-10-20",
+      title: "Morning spin",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: loaded.structure,
+    });
+    expect(edited.ok).toBe(true);
+    if (!edited.ok) return;
+    expect(edited.status).toBe("complete");
+    const after = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: saved.sessionId },
+      include: { sets: true },
+    });
+    expect(after.title).toBe("Morning spin");
+    expect(after.status).toBe("complete");
+    expect(sessionOpensFinishScreen(after)).toBe(true);
+    expect(after.sets).toHaveLength(1);
+    const clock = await readWorkoutTimerFields(saved.sessionId, prisma);
+    expect(clock.timerStartedAt).toBeNull();
+    expect(clock.finishedAt).not.toBeNull();
+  });
+
+  it("counts a finished ride's new round count as complete", async () => {
+    const user = await makeUser("backfill-expand-rounds@example.com");
+    await onboard(user.id);
+    async function steady(dayKey: string) {
+      const saved = await createBackfillWorkout({
+        userId: user.id,
+        dayKey,
+        kind: "bike",
+        resolution: "",
+        now: NOW,
+        title: "Steady ride · 25:00",
+        notes: "",
+        rpe: null,
+        workSeconds: 25 * 60,
+        restSeconds: 0,
+        roundsPerSet: 1,
+        repeatRounds: 1,
+        doneRounds: 1,
+      });
+      expect(saved.ok).toBe(true);
+      if (!saved.ok) throw new Error("steady ride did not save");
+      return saved.sessionId;
+    }
+    const thirtyOne = await steady("2026-10-20");
+    const expanded = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: thirtyOne,
+      dayKey: "2026-10-20",
+      title: "Steady ride · 25:00",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 1,
+        rounds: 31,
+        workSeconds: 20,
+        restSeconds: 10,
+        setRestSeconds: 0,
+        done: 1,
+      },
+    });
+    expect(expanded.ok).toBe(true);
+    if (!expanded.ok) return;
+    expect(expanded.status).toBe("complete");
+    const after31 = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: thirtyOne },
+      include: { sets: true },
+    });
+    expect(after31.status).toBe("complete");
+    expect(after31.sets).toHaveLength(31);
+    expect(historyCountLine(after31)).toBe("31/31 rounds · Done");
+
+    const reopenedId = await steady("2026-10-19");
+    await reopenCompletedWorkoutForUser(user.id, reopenedId);
+    const fromDraft = await updateBackfillWorkout({
+      userId: user.id,
+      sessionId: reopenedId,
+      dayKey: "2026-10-19",
+      title: "Steady ride · 25:00",
+      notes: "",
+      rpe: null,
+      exercises: [],
+      confirmed: true,
+      resolution: "",
+      now: NOW,
+      interval: {
+        kind: "bike",
+        sets: 1,
+        rounds: 40,
+        workSeconds: 15,
+        restSeconds: 15,
+        setRestSeconds: 0,
+        done: 1,
+      },
+    });
+    expect(fromDraft.ok).toBe(true);
+    if (!fromDraft.ok) return;
+    expect(fromDraft.status).toBe("complete");
+    const after40 = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: reopenedId },
+      include: { sets: true },
+    });
+    expect(after40.sets).toHaveLength(40);
+    expect(historyCountLine(after40)).toBe("40/40 rounds · Done");
+    expect(historyCountLine(after40)).not.toContain("Partial");
   });
 });
 

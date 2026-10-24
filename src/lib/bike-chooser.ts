@@ -292,6 +292,31 @@ export function bikeChoiceWithRounds(
   };
 }
 
+/** Member-facing title for a choice. A one-round rest-free ride is "Steady ride · …". */
+export function generatedBikeTitle(choice: BikeChoice) {
+  const sets = Math.max(1, Math.round(choice.spec.repeatRounds ?? 1));
+  return formatIntervalDisplay({
+    sets,
+    rounds: Math.max(1, Math.round(choice.spec.roundsPerSet) || 1),
+    workSeconds: choice.spec.workSeconds,
+    restSeconds: choice.spec.restSeconds,
+    setRestSeconds: sets > 1 ? (choice.spec.restBetweenRoundsSeconds ?? 0) : 0,
+  });
+}
+
+/**
+ * A structure change rewrites the title only when it still is the label for
+ * the previous choice. A name the member typed stays.
+ */
+export function nextGeneratedBikeTitle(current: string, previous: BikeChoice | null, next: BikeChoice) {
+  const posted = current.trim();
+  const nextTitle = generatedBikeTitle(next);
+  const generated = !posted || posted === "Steady ride" || posted.startsWith("Steady ride · ");
+  if (!previous) return generated ? nextTitle : posted;
+  if (generated || posted === generatedBikeTitle(previous)) return nextTitle;
+  return posted;
+}
+
 export function customBikeChoice(input: {
   workSeconds: number;
   restSeconds: number;

@@ -204,10 +204,14 @@ export function backfillCompletionStatus(input: {
 function keptSetSeconds(parsed: number | null, saved: number | null) {
   // Anything already stored past the 60-minute hold stays, including a clock
   // longer than the 4-hour session cap. An unchanged edit must not shrink it.
+  // A newly typed hold still cannot grow past 4 hours (300:00, 6:00:00).
   if (saved != null && saved > BACKFILL_MAX_SET_SECONDS) {
     if (parsed == null || parsed === saved) return saved;
-    if (parsed < saved) return Math.max(1, Math.round(parsed));
-    return Math.max(saved, Math.round(parsed));
+    const next = Math.max(1, Math.round(parsed));
+    if (next > BACKFILL_MAX_SESSION_SECONDS) {
+      throw new AppError("WORKOUT", "Hold / round time should be under 4 hours.");
+    }
+    return next;
   }
   const requested = parsed ?? saved ?? 30;
   return Math.min(BACKFILL_MAX_SET_SECONDS, Math.max(1, Math.round(requested)));

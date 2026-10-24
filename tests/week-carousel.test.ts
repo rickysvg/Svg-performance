@@ -78,7 +78,11 @@ describe("week day carousel", () => {
       userGesture: false,
     });
     expect(unplaced).toEqual({ index: 5, restore: false });
-    expect(read("src/components/training/WeekStrip.tsx")).toContain("carouselIndexFromScroll");
+    const strip = read("src/components/training/WeekStrip.tsx");
+    expect(strip).toContain("carouselIndexFromScroll");
+    expect(strip).toContain("clearTimeout(gestureTimer.current)");
+    const sync = strip.slice(strip.indexOf("function syncFromScroll"), strip.indexOf("function goTo"));
+    expect(sync).not.toContain("noteUserGesture");
   });
 
   it("labels two weeks back through two weeks ahead in the member zone", () => {

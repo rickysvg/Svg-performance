@@ -18,6 +18,7 @@ import {
   choiceFromToken,
   customBikeChoice,
   formatBikeRecipe,
+  nextGeneratedBikeTitle,
   parseBikeRecipe,
   prescriptionWithBikeChoice,
   retainBikeChoiceSets,
@@ -296,6 +297,13 @@ describe("bike workout chooser", () => {
     expect(line).toContain("1:45:00 round");
     expect(line).toContain("1:45:00 total");
     expect(line).not.toContain("30:00 round");
+    const previous = customBikeChoice({ workSeconds: 30 * 60, restSeconds: 0, rounds: 1 });
+    expect(nextGeneratedBikeTitle("Steady ride · 30:00", previous, choice!)).toBe("Steady ride · 1:45:00");
+    expect(nextGeneratedBikeTitle("Morning spin", previous, choice!)).toBe("Morning spin");
+    const form = fs.readFileSync("src/components/training/WorkoutLogForm.tsx", "utf8");
+    const applyBike = form.slice(form.indexOf("function applyBikeWorkout"), form.indexOf("function setAddedRest"));
+    expect(applyBike.indexOf("nextGeneratedBikeTitle")).toBeGreaterThan(-1);
+    expect(applyBike.indexOf("nextGeneratedBikeTitle")).toBeLessThan(applyBike.indexOf("syncDraft"));
     const sheet = fs.readFileSync("src/components/training/BikeWorkoutSheet.tsx", "utf8");
     const apply = sheet.slice(sheet.indexOf("function applyCustom"), sheet.indexOf("function selectPicker"));
     expect(apply).toContain("commitShorthand");
