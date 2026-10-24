@@ -52,6 +52,31 @@ describe("session header elapsed clock", () => {
     expect(view.seconds).not.toBe(Math.floor((NOW.getTime() - createdAt.getTime()) / 1000));
   });
 
+  it("keeps a reopened finished session on its stored duration until the clock is resumed", () => {
+    const held = resolveSessionElapsed(
+      {
+        status: "draft",
+        createdAt: new Date(NOW.getTime() - 2 * 60 * 60 * 1000),
+        elapsedSeconds: 90 * 60,
+        timerStartedAt: null,
+      },
+      new Date(NOW.getTime() + 5 * 60 * 1000),
+    );
+    expect(held.ticking).toBe(false);
+    expect(held.seconds).toBe(90 * 60);
+    expect(held.label).toBe("1:30:00");
+    expect(elapsedSecondsToFreeze(
+      {
+        status: "draft",
+        createdAt: new Date(NOW.getTime() - 2 * 60 * 60 * 1000),
+        elapsedSeconds: 90 * 60,
+        timerStartedAt: null,
+      },
+      new Date(NOW.getTime() + 5 * 60 * 1000),
+      90 * 60 + 304,
+    )).toBe(90 * 60);
+  });
+
   it("ticks a live draft and a resumed session from the frozen base", () => {
     const live = resolveSessionElapsed(
       {

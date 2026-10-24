@@ -28,6 +28,7 @@ import {
   parseWeekPlanSwaps,
   pruneAutoRolledSwaps,
   pruneWeekPlanSwaps,
+  sessionHomeWeekday,
   sessionMoveCaution,
   swapSessionsOnPlan,
   swapWeekdays,
@@ -35,7 +36,10 @@ import {
 } from "@/lib/week-plan-swaps";
 import {
   clearCurrentWeekPlanForUser,
+  commitSessionIntentIfNewer,
   moveWorkoutForUser,
+  moveWorkoutHomeForUser,
+  placeSessionIntentForUser,
   restoreWeekPlanForUser,
   swapWeekPlanForUser,
   swapWorkoutForUser,
@@ -384,7 +388,18 @@ describe("Core weekday planner", () => {
     const saturday = new Date(2026, 8, 26, 10, 0, 0);
     const sat = planForDate(prefs, saturday, APP_TIMEZONE, moved);
     expect(sat.outside?.kind).toBe("sparring");
+    expect(sat.summary.split("+")).toContain("Sparring");
     expect(sat.sessions.map((session) => session.sessionKey)).toContain(liftKey);
+    const wednesdayMobility = new Date(2026, 8, 23, 10, 0, 0);
+    const mobilityKey =
+      planForDate(prefs, wednesdayMobility, APP_TIMEZONE).sessions.find(
+        (session) => session.kind === "mobility",
+      )?.sessionKey ?? "";
+    expect(mobilityKey.startsWith("Wednesday:")).toBe(true);
+    const mobilityMoved = moveSessionOnPlan([], start, mobilityKey, "Saturday");
+    const satMobility = planForDate(prefs, saturday, APP_TIMEZONE, mobilityMoved);
+    expect(satMobility.outside?.kind).toBe("sparring");
+    expect(satMobility.summary.split("+")).toEqual(expect.arrayContaining(["Mobility", "Sparring"]));
     expect(futureWorkoutPulledBack(liftKey, "Tuesday", "Tuesday")).toBe(false);
     const fridayPlan = planForDate(prefs, new Date(2026, 8, 25, 10, 0, 0));
     const fridayBag =
@@ -551,6 +566,16 @@ describe("Core planner on Home", () => {
     const today = await getHomeToday(user.id, wednesday);
     expect(today.plannedSessions.some((session) => session.sessionKey === liftKey)).toBe(true);
 
+    await moveWorkoutHomeForUser(user.id, liftKey, start, wednesday);
+    const homed = await getCalendarSchedule(user.id, wednesday, monday);
+    const mondayHome = homed.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    const wednesdayHome = homed.days[2]?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(mondayHome.some((row) => row.sessionKey === liftKey)).toBe(true);
+    expect(wednesdayHome.some((row) => row.sessionKey === liftKey)).toBe(false);
+    await expect(moveWorkoutHomeForUser(user.id, liftKey, start, wednesday)).rejects.toThrow(
+      /already on its original day/,
+    );
+
     await restoreWeekPlanForUser(user.id, JSON.stringify([]), wednesday);
     const back = await getCalendarSchedule(user.id, wednesday, monday);
     const mondayAgain = back.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
@@ -707,5 +732,243 @@ describe("Core planner on Home", () => {
     expect(tuesdayWork.some((row) => row.sessionKey === fridayBag)).toBe(true);
     expect(fridayWork.some((row) => row.sessionKey === fridayBag)).toBe(false);
     expect(tuesdayWork.some((row) => row.sessionKey === mondayLift)).toBe(false);
+  });
+
+  it("keeps the last of three rapid move and undo runs on Cardio — bike", async () => {
+    const user = await makeUser("move-undo-race@example.com");
+    await completeOnboardingForUser(user.id, {
+      displayName: "Race",
+      goalKey: "stronger-for-class",
+      goalNote: "",
+      experienceLevel: "intermediate",
+      primaryFocus: "mma",
+      equipment: ["Heavy bag"],
+      weeklyAvailability: ["Monday", "Wednesday", "Friday"],
+      sessionsPerWeek: 4,
+      preferredUnits: "lb",
+      trainingLimitations: "",
+      foodPreferences: "",
+      allergies: "",
+    });
+    await startedWithProgram(user.id);
+    const saturday = new Date(2026, 9, 24, 12, 0, 0);
+    const bikeDay = new Date(2026, 9, 21, 12, 0, 0);
+    const weekOf = new Date(2026, 9, 19, 12, 0, 0);
+    const start = weekStartKey(saturday, APP_TIMEZONE);
+    const prefs = {
+      primaryFocus: "mma" as const,
+      weeklyAvailability: ["Monday", "Wednesday", "Friday"],
+      sessionsPerWeek: 4,
+      experienceLevel: "intermediate" as const,
+    };
+    const catalog = await findDemoTrainingCatalog();
+    const bike = resolvePlanSessions(planForDate(prefs, bikeDay, APP_TIMEZONE), catalog).find(
+      (session) => session.title === "Cardio — bike",
+    );
+    const sessionKey = bike?.sessionKey ?? "";
+    expect(sessionKey).not.toBe("");
+    const homeDay = sessionHomeWeekday(sessionKey) ?? "";
+    expect(homeDay).toBe("Wednesday");
+
+    function sessionsOn(schedule: Awaited<ReturnType<typeof getCalendarSchedule>>, weekday: string) {
+      const day = schedule.days.find((row) => row.weekday === weekday);
+      return day?.activities.filter((row) => row.kind === "workout") ?? [];
+    }
+
+    let seq = 0;
+    for (let run = 0; run < 3; run += 1) {
+      const cycle: Promise<unknown>[] = [];
+      for (let turn = 0; turn < 12; turn += 1) {
+        const moveSeq = ++seq;
+        const undoSeq = ++seq;
+        cycle.push(
+          placeSessionIntentForUser({
+            userId: user.id,
+            sessionKey,
+            weekStart: start,
+            toDay: "Saturday",
+            intentSeq: moveSeq,
+            now: saturday,
+            intent: "move",
+          }),
+        );
+        cycle.push(
+          placeSessionIntentForUser({
+            userId: user.id,
+            sessionKey,
+            weekStart: start,
+            toDay: homeDay,
+            intentSeq: undoSeq,
+            now: saturday,
+            intent: "restore",
+          }),
+        );
+      }
+      await Promise.all(cycle);
+      const restored = await getCalendarSchedule(user.id, saturday, weekOf);
+      expect(sessionsOn(restored, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(false);
+      expect(sessionsOn(restored, "Wednesday").some((row) => row.title === "Cardio — bike")).toBe(true);
+    }
+
+    const stale = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart: start,
+      toDay: "Saturday",
+      intentSeq: 1,
+      now: saturday,
+      intent: "move",
+    });
+    expect(stale.applied).toBe(false);
+    const afterStale = await getCalendarSchedule(user.id, saturday, weekOf);
+    expect(sessionsOn(afterStale, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(false);
+    expect(sessionsOn(afterStale, "Wednesday").some((row) => row.title === "Cardio — bike")).toBe(true);
+
+    const lastMove = ++seq;
+    const moved = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart: start,
+      toDay: "Saturday",
+      intentSeq: lastMove,
+      now: saturday,
+      intent: "move",
+    });
+    expect(moved.applied).toBe(true);
+    const afterMove = await getCalendarSchedule(user.id, saturday, weekOf);
+    expect(sessionsOn(afterMove, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(true);
+    expect(sessionsOn(afterMove, "Wednesday").some((row) => row.sessionKey === sessionKey)).toBe(false);
+  }, 30_000);
+
+  it("keeps a higher sequence when an older write finishes after it", async () => {
+    const user = await makeUser("move-seq-order@example.com");
+    await completeOnboardingForUser(user.id, {
+      displayName: "Order",
+      goalKey: "stronger-for-class",
+      goalNote: "",
+      experienceLevel: "intermediate",
+      primaryFocus: "mma",
+      equipment: ["Heavy bag"],
+      weeklyAvailability: ["Monday", "Wednesday", "Friday"],
+      sessionsPerWeek: 4,
+      preferredUnits: "lb",
+      trainingLimitations: "",
+      foodPreferences: "",
+      allergies: "",
+    });
+    await startedWithProgram(user.id);
+    const saturday = new Date(2026, 9, 24, 12, 0, 0);
+    const bikeDay = new Date(2026, 9, 21, 12, 0, 0);
+    const weekOf = new Date(2026, 9, 19, 12, 0, 0);
+    const start = weekStartKey(saturday, APP_TIMEZONE);
+    const prefs = {
+      primaryFocus: "mma" as const,
+      weeklyAvailability: ["Monday", "Wednesday", "Friday"],
+      sessionsPerWeek: 4,
+      experienceLevel: "intermediate" as const,
+    };
+    const catalog = await findDemoTrainingCatalog();
+    const bike = resolvePlanSessions(planForDate(prefs, bikeDay, APP_TIMEZONE), catalog).find(
+      (session) => session.title === "Cardio — bike",
+    );
+    const sessionKey = bike?.sessionKey ?? "";
+    expect(sessionKey).not.toBe("");
+    const homeDay = sessionHomeWeekday(sessionKey);
+    expect(homeDay).toBe("Wednesday");
+    if (homeDay !== "Wednesday") throw new Error("Cardio — bike is not on Wednesday.");
+
+    await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart: start,
+      toDay: "Saturday",
+      intentSeq: 22,
+      now: saturday,
+      intent: "move",
+    });
+    const observed = await prisma.profile.findUnique({
+      where: { userId: user.id },
+      select: { weekPlanSwapsJson: true, weekPlanIntentSeqJson: true },
+    });
+    const homeSwaps = JSON.stringify(
+      moveSessionOnPlan(parseWeekPlanSwaps(observed?.weekPlanSwapsJson), start, sessionKey, homeDay),
+    );
+    const saturdaySwaps = observed?.weekPlanSwapsJson ?? "[]";
+    const seqJson = (seq: number) => JSON.stringify({ [sessionKey]: seq });
+
+    const higherFirst = await commitSessionIntentIfNewer({
+      userId: user.id,
+      sessionKey,
+      intentSeq: 24,
+      swapsJson: homeSwaps,
+      seqJson: seqJson(24),
+    });
+    const olderAfter = await commitSessionIntentIfNewer({
+      userId: user.id,
+      sessionKey,
+      intentSeq: 23,
+      swapsJson: saturdaySwaps,
+      seqJson: seqJson(23),
+    });
+    expect(higherFirst).toBe(true);
+    expect(olderAfter).toBe(false);
+
+    const sameSeq = await commitSessionIntentIfNewer({
+      userId: user.id,
+      sessionKey,
+      intentSeq: 24,
+      swapsJson: saturdaySwaps,
+      seqJson: seqJson(24),
+    });
+    expect(sameSeq).toBe(false);
+
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { weekPlanSwapsJson: saturdaySwaps, weekPlanIntentSeqJson: seqJson(22) },
+    });
+    const [lower, higher] = await Promise.all([
+      commitSessionIntentIfNewer({
+        userId: user.id,
+        sessionKey,
+        intentSeq: 23,
+        swapsJson: saturdaySwaps,
+        seqJson: seqJson(23),
+      }),
+      commitSessionIntentIfNewer({
+        userId: user.id,
+        sessionKey,
+        intentSeq: 24,
+        swapsJson: homeSwaps,
+        seqJson: seqJson(24),
+      }),
+    ]);
+    expect(higher).toBe(true);
+    expect(lower || higher).toBe(true);
+    const row = await prisma.profile.findUnique({
+      where: { userId: user.id },
+      select: { weekPlanIntentSeqJson: true },
+    });
+    expect(JSON.parse(row?.weekPlanIntentSeqJson ?? "{}")[sessionKey]).toBe(24);
+    const schedule = await getCalendarSchedule(user.id, saturday, weekOf);
+    const saturdayRows =
+      schedule.days.find((day) => day.weekday === "Saturday")?.activities.filter((item) => item.kind === "workout") ??
+      [];
+    const wednesdayRows =
+      schedule.days.find((day) => day.weekday === "Wednesday")?.activities.filter((item) => item.kind === "workout") ??
+      [];
+    expect(saturdayRows.some((item) => item.sessionKey === sessionKey)).toBe(false);
+    expect(wednesdayRows.some((item) => item.title === "Cardio — bike")).toBe(true);
+
+    const replayed = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart: start,
+      toDay: "Saturday",
+      intentSeq: 23,
+      now: saturday,
+      intent: "move",
+    });
+    expect(replayed.applied).toBe(false);
+    expect(replayed.seq).toBe(24);
   });
 });

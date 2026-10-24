@@ -2,8 +2,9 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie, zonedParts } from "@/lib/timezone";
-import { getSparringLog, sparringDateError } from "@/lib/outside-log";
+import { getSparringLog, listSparringLogs, sparringDateError, sparringLogDateLabel, sparringMinutes } from "@/lib/outside-log";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
+import { SparringLogList } from "@/components/training/SparringLogList";
 import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
 import { resolveAiCoach } from "@/lib/coaches";
 
@@ -27,7 +28,10 @@ export default async function SparringPage({
   const requested = params.day && /^\d{4}-\d{2}-\d{2}$/.test(params.day) ? params.day : today;
   const future = sparringDateError(requested, new Date(), timeZone);
   const dateKey = future ? today : requested;
-  const saved = await getSparringLog(user.id, dateKey);
+  const [saved, logs] = await Promise.all([
+    getSparringLog(user.id, dateKey),
+    listSparringLogs(user.id),
+  ]);
   const coach = resolveAiCoach(profile?.aiCoachId);
 
   return (
@@ -71,6 +75,13 @@ export default async function SparringPage({
         coachName={coach.name}
         coachImage={coach.circle}
         anyDay
+      />
+      <SparringLogList
+        logs={logs.map((log) => ({
+          dateKey: log.dateKey,
+          label: sparringLogDateLabel(log),
+          detail: `${log.rounds} × ${log.minutesPerRound} min (${sparringMinutes(log)} min)${log.partner ? ` · ${log.partner}` : ""}`,
+        }))}
       />
       <Link href="/home" className="text-sm text-muted">
         Home

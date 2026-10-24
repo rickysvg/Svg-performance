@@ -326,6 +326,16 @@ export async function deleteBodyMetricForUser(metricId: string, userId: string) 
   await prisma.bodyMetric.delete({ where: { id: metricId } });
 }
 
+export async function updateBodyMetricValueForUser(userId: string, metricId: string, value: number) {
+  const row = await getBodyMetricForUser(metricId, userId);
+  const unit = row.kind === "weight" || row.kind === "leanMass" ? "lb" : row.unit;
+  const data = validateBodyMetricInput({ kind: row.kind, value, unit });
+  return prisma.bodyMetric.update({
+    where: { id: row.id },
+    data: { value: data.value, unit: data.unit },
+  });
+}
+
 export async function listPhotoPlaceholdersForUser(userId: string) {
   return prisma.bodyPhotoPlaceholder.findMany({
     where: { userId },

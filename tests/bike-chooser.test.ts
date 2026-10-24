@@ -1,5 +1,10 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { bikeSessionForLogger, DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
+import { historyCountLine } from "@/lib/logged-work";
+import { bikeHistoryStatusLine } from "@/lib/session-progress";
+import { workoutCompleteTiles } from "@/lib/workout-complete";
+import { roundHistoryLine } from "@/lib/round-session";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { exercisesFromLoggerGroups } from "@/lib/my-workout-plan";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
@@ -16,6 +21,7 @@ import {
   choiceFromToken,
   customBikeChoice,
   formatBikeRecipe,
+  nextGeneratedBikeTitle,
   parseBikeRecipe,
   prescriptionWithBikeChoice,
   retainBikeChoiceSets,
@@ -63,10 +69,13 @@ describe("bike workout chooser", () => {
     expect(parseBikeRecipe(formatBikeRecipe(custom!))?.spec.warmupSeconds).toBe(60);
     expect(customBikeChoice({ workSeconds: 0, restSeconds: 10, rounds: 4 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 4, restSeconds: 10, rounds: 4 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })?.spec.restSeconds).toBe(0);
+    expect(customBikeChoice({ workSeconds: 300, restSeconds: 0, rounds: 8 })?.spec.workSeconds).toBe(300);
+    expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })?.spec.workSeconds).toBe(4 * 60 * 60);
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })?.spec.roundsPerSet).toBe(31);
+    expect(customBikeChoice({ workSeconds: 15 * 60, restSeconds: 60, rounds: 40 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 20, restSeconds: 10, rounds: 8, warmupSeconds: 660 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 16 * 60, restSeconds: 15, rounds: 4 })).toBeNull();
     expect(choiceFromToken("c.14400.0.1.0.0")?.spec).toMatchObject({
       workSeconds: 4 * 60 * 60,
       restSeconds: 0,
@@ -76,7 +85,11 @@ describe("bike workout chooser", () => {
     expect(choiceFromToken("c.3540.0.1.0.0")?.spec.workSeconds).toBe(59 * 60);
     expect(choiceFromToken("c.3601.0.1.0.0")?.spec.workSeconds).toBe(3601);
     expect(bikeChoiceFromKey("timer#bw:c.14400.0.1.0.0")?.spec.workSeconds).toBe(4 * 60 * 60);
-    expect(choiceFromToken("c.15.0.8.0.0")).toBeNull();
+    expect(choiceFromToken("c.15.0.8.0.0")?.spec).toMatchObject({
+      workSeconds: 15,
+      restSeconds: 0,
+      roundsPerSet: 8,
+    });
     expect(choiceFromToken("c.14401.0.1.0.0")).toBeNull();
     expect(choiceFromToken("c.15.15.8.0.0")?.spec).toMatchObject({ workSeconds: 15, restSeconds: 15, roundsPerSet: 8 });
   });
@@ -127,17 +140,26 @@ describe("bike workout chooser", () => {
       warmupSeconds: 60,
       cooldownSeconds: 120,
     });
+    expect(
+      customBikeChoice({
+        workSeconds: 120,
+        restSeconds: 180,
+        rounds: 30,
+        repeatRounds: 10,
+        restBetweenRoundsSeconds: 300,
+      }),
+    ).toBeNull();
     const longest = customBikeChoice({
       workSeconds: 120,
-      restSeconds: 180,
-      rounds: 30,
+      restSeconds: 60,
+      rounds: 8,
       warmupSeconds: 600,
       cooldownSeconds: 600,
-      repeatRounds: 10,
-      restBetweenRoundsSeconds: 300,
+      repeatRounds: 2,
+      restBetweenRoundsSeconds: 60,
     })!;
     const packed = prescriptionWithBikeChoice("added|old", "Assault bike intervals", longest).slice(0, 160);
-    expect(bikeChoiceFromKey(packed)?.spec.repeatRounds).toBe(10);
+    expect(bikeChoiceFromKey(packed)?.spec.repeatRounds).toBe(2);
     expect(compactBikeReps(formatBikeRecipe(longest)).startsWith("bw c.")).toBe(true);
   });
 
@@ -252,6 +274,95 @@ describe("bike workout chooser", () => {
       "Row",
     ]);
     expect(bikeChoiceFromKey(bike[0]!.prescriptionKey)?.id).toBe("tabata");
+  });
+
+  it("stores the new work on each kept set so history matches the structure", () => {
+    const choice = customBikeChoice({ workSeconds: 105 * 60, restSeconds: 0, rounds: 1 });
+    expect(choice).not.toBeNull();
+    const sets = retainBikeChoiceSets(
+      [
+        {
+          exerciseName: "Assault bike intervals",
+          completed: true,
+          setNumber: 1,
+          prescriptionKey: "day|assault bike intervals::30:00",
+          durationSeconds: 1800,
+        },
+      ],
+      "Assault bike intervals",
+      choice!,
+    );
+    expect(sets[0]?.durationSeconds).toBe(105 * 60);
+    const line = roundHistoryLine({
+      elapsedSeconds: 1800,
+      sets: sets.map((set) => ({ ...set, logMode: "timed_round" })),
+    });
+    expect(line).toContain("1:45:00 round");
+    expect(line).toContain("1:45:00 total");
+    expect(line).not.toContain("30:00 round");
+    const previous = customBikeChoice({ workSeconds: 30 * 60, restSeconds: 0, rounds: 1 });
+    expect(nextGeneratedBikeTitle("Steady ride · 30:00", previous, choice!)).toBe("Steady ride · 1:45:00");
+    expect(nextGeneratedBikeTitle("Morning spin", previous, choice!)).toBe("Morning spin");
+    const form = fs.readFileSync("src/components/training/WorkoutLogForm.tsx", "utf8");
+    const applyBike = form.slice(form.indexOf("function applyBikeWorkout"), form.indexOf("function setAddedRest"));
+    expect(applyBike.indexOf("nextGeneratedBikeTitle")).toBeGreaterThan(-1);
+    expect(applyBike.indexOf("nextGeneratedBikeTitle")).toBeLessThan(applyBike.indexOf("syncDraft"));
+    const sheet = fs.readFileSync("src/components/training/BikeWorkoutSheet.tsx", "utf8");
+    const apply = sheet.slice(sheet.indexOf("function applyCustom"), sheet.indexOf("function selectPicker"));
+    expect(apply).toContain("commitShorthand");
+    expect(apply).toContain("if (committed.error)");
+    expect(apply.indexOf("commitShorthand")).toBeLessThan(apply.indexOf("customBikeChoice"));
+  });
+
+  it("logs every round of a finished ride that changes to 31 or 40", () => {
+    const steady = {
+      exerciseName: "Assault bike intervals",
+      completed: true,
+      setNumber: 1,
+      prescriptionKey: "timer#bw:c.1500.0.1.0.0",
+      durationSeconds: 25 * 60,
+    };
+    const cases = [
+      { rounds: 31, work: 20, rest: 10, time: "15:30" },
+      { rounds: 40, work: 15, rest: 15, time: "20:00" },
+    ];
+    for (const item of cases) {
+      const choice = customBikeChoice({ workSeconds: item.work, restSeconds: item.rest, rounds: item.rounds });
+      expect(choice).not.toBeNull();
+      expect(bikeSetDurationSeconds(choice!.spec)).toBe(item.rounds * (item.work + item.rest));
+      const sets = retainBikeChoiceSets([steady], steady.exerciseName, choice!);
+      expect(sets).toHaveLength(item.rounds);
+      expect(sets.every((set) => set.completed)).toBe(true);
+      const session = {
+        status: "complete" as const,
+        sets: sets.map((set) => ({
+          ...set,
+          logMode: "timed_round" as const,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb" as const,
+        })),
+      };
+      const line = `${item.rounds}/${item.rounds} rounds · Done`;
+      expect(historyCountLine(session)).toBe(line);
+      expect(bikeHistoryStatusLine(session).text).toBe(line);
+      expect(historyCountLine(session)).not.toContain("Partial");
+      expect(bikeHistoryStatusLine(session).text).not.toContain("Partial");
+      const tiles = workoutCompleteTiles({
+        displayUnit: "lb",
+        newPrCount: 0,
+        session: {
+          title: "Steady ride · 25:00",
+          status: "complete",
+          performedAt: new Date("2026-10-21T18:00:00.000Z"),
+          elapsedSeconds: 25 * 60,
+          sets: session.sets,
+        },
+      });
+      expect(tiles.find((tile) => tile.key === "time")?.value).toBe(item.time);
+      expect(tiles.find((tile) => tile.key === "time")?.value).not.toBe("25:00");
+      expect(roundHistoryLine({ elapsedSeconds: 25 * 60, sets: session.sets })).toContain(item.time);
+    }
   });
 
   it("keeps a saved workout recipe inside the added prescription key", () => {

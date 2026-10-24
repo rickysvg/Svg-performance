@@ -52,6 +52,7 @@ import {
 } from "@/lib/training-scale";
 import { DELOAD_LABEL } from "@/lib/training-cycle";
 import { memberFacingTitle } from "@/lib/member-copy";
+import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
 import { visibleDoseForSession, namedSetRows } from "@/lib/finish-plan";
 import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
@@ -1228,7 +1229,13 @@ export async function recordWorkoutActivityForUser(input: {
   }
   const now = input.now ?? new Date();
   const timer = await readWorkoutTimerFields(existing.id, prisma);
-  const base = resumeStoredElapsed(timer.elapsedSeconds) ?? 0;
+  const stored = resumeStoredElapsed(timer.elapsedSeconds);
+  // A draft with a stored clock and no running segment stays put.
+  // A heartbeat must not credit the gap since create or start a new segment.
+  if (!timer.timerStartedAt && stored != null) {
+    return { elapsedSeconds: stored, timerStartedAt: null };
+  }
+  const base = stored ?? 0;
   const anchor = timer.timerStartedAt ?? existing.createdAt;
   const view = resolveSessionElapsed(
     {
@@ -1409,9 +1416,20 @@ export async function continuePartialWorkoutForUser(input: {
     // The short save already holds the rows it was started with. Filling from
     // the profile scale on top of those rows stacks a second catalog.
     const alreadyHeld = storedPlan != null && lockedSets.length >= storedPlan;
+    const loggedBike = lockedSets.some(
+      (set) => isBikeIntervalName(set.exerciseName) || textIsBikeWorkout(set.exerciseName),
+    );
     const create: Prisma.WorkoutSetCreateManyInput[] = [];
     let prescribedTotal = 0;
     for (const exercise of alreadyHeld ? [] : visible) {
+      // "Assault bike intervals" already is the plan's Daru row. A second
+      // empty plan set is the same ride under the catalog name.
+      if (
+        loggedBike &&
+        (isBikeIntervalName(exercise.name) || textIsBikeWorkout(exercise.name))
+      ) {
+        continue;
+      }
       const prescribed = Math.max(0, Math.round(exercise.sets));
       prescribedTotal += prescribed;
       const key = gymExerciseKey(exercise.name);
@@ -1682,8 +1700,13 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.exerciseName.length > 80) {
       throw new AppError("WORKOUT", "Exercise name is too long.");
     }
-    if (set.setNumber < 1 || set.setNumber > 20) {
-      throw new AppError("WORKOUT", "Set numbers should be between 1 and 20.");
+    const roundRow = set.logMode === "timed_round" || isBikeIntervalName(set.exerciseName);
+    const numberCap = roundRow ? 80 : 20;
+    if (set.setNumber < 1 || set.setNumber > numberCap) {
+      throw new AppError(
+        "WORKOUT",
+        roundRow ? "Round numbers should be between 1 and 80." : "Set numbers should be between 1 and 20.",
+      );
     }
     if (set.reps != null && (set.reps < 0 || set.reps > 200)) {
       throw new AppError("WORKOUT", "Reps should be between 0 and 200.");
@@ -1691,8 +1714,11 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.loadValue != null && (set.loadValue < 0 || set.loadValue > 2000)) {
       throw new AppError("WORKOUT", "Load should be between 0 and 2000.");
     }
-    if (set.durationSeconds != null && (set.durationSeconds < 0 || set.durationSeconds > 3600)) {
-      throw new AppError("WORKOUT", "Hold / round time should be under 60 minutes.");
+    if (
+      set.durationSeconds != null &&
+      (set.durationSeconds < 0 || set.durationSeconds > SESSION_DURATION_CAP_SECONDS)
+    ) {
+      throw new AppError("WORKOUT", "Hold / round time should be under 4 hours.");
     }
     if (set.logMode && !isLogMode(set.logMode)) {
       throw new AppError("WORKOUT", "Unknown logging mode.");
@@ -2132,6 +2158,14 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
     .filter((row) => {
       // Resume starts a live segment today. Do not close it out from under the member.
       if (stillOpenToday(row)) return false;
+      // Undo finish keeps the stored clock and does not start a segment. A row
+      // touched today stays open until the member leaves it.
+      const held =
+        !row.timerStartedAt &&
+        resumeStoredElapsed(row.elapsedSeconds) != null &&
+        row.updatedAt != null &&
+        dayKey(row.updatedAt, timeZone) >= today;
+      if (held) return false;
       return true;
     })
     .filter((row) => {
@@ -2211,18 +2245,54 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
   // Keep a real saved clock, including one that already sits on the 4 hour cap.
+  // Undo finish starts a new segment from that clock so the logger keeps counting.
+  // A heartbeat still ignores a draft whose timerStartedAt is empty.
   const elapsed = resumeStoredElapsed(stored.elapsedSeconds);
-  const timerStartedAt = new Date();
+  const startedAt = new Date();
   const updated = await prisma.workoutSession.update({
     where: { id: existing.id },
     data: {
       status: "draft",
-      ...(timerColumns ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt } : {}),
+      ...(timerColumns
+        ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: startedAt }
+        : {}),
     },
     include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
   });
   if (!timerColumns) return attachWorkoutTimer(updated, prisma);
-  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt };
+  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: startedAt };
+}
+
+/**
+ * Start the clock on a held draft. Undo finish already sets timerStartedAt.
+ * This is the explicit Resume for a draft that was opened without a segment.
+ */
+export async function resumeHeldSessionClockForUser(input: { userId: string; workoutId: string }) {
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: input.workoutId },
+    select: { id: true, userId: true, status: true },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    throw new NotFoundError("Workout not found.");
+  }
+  if (existing.status !== "draft") {
+    throw new AppError("WORKOUT", "Resume the workout before starting the clock.");
+  }
+  if (!(await workoutTimerColumnsAvailable(prisma))) {
+    return { elapsedSeconds: null as number | null, timerStartedAt: null as Date | null };
+  }
+  const stored = await readWorkoutTimerFields(existing.id, prisma);
+  if (stored.timerStartedAt) {
+    return { elapsedSeconds: resumeStoredElapsed(stored.elapsedSeconds), timerStartedAt: stored.timerStartedAt };
+  }
+  const now = new Date();
+  const elapsedSeconds = resumeStoredElapsed(stored.elapsedSeconds);
+  await prisma.$executeRaw`
+    UPDATE "WorkoutSession"
+    SET "elapsedSeconds" = ${elapsedSeconds}, "timerStartedAt" = ${now}, "finishedAt" = NULL
+    WHERE "id" = ${existing.id} AND "userId" = ${input.userId} AND "status" = 'draft'
+  `;
+  return { elapsedSeconds, timerStartedAt: now };
 }
 
 /**

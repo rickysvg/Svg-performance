@@ -24,6 +24,9 @@ import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
+import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { formatSessionElapsed } from "@/lib/session-elapsed";
+import { readTimerFieldsByIds } from "@/lib/workout-timer-columns";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
@@ -69,6 +72,8 @@ export type CalendarActivity = {
   sessionKey?: string;
   /** Calendar weekday this card is sitting on. */
   weekday?: string;
+  /** Clock for a logged ride, H:MM:SS at an hour. */
+  durationLabel?: string;
   /** Lift, hard bag, or hard conditioning. */
   heavy?: boolean;
   /** "4 sets" or "1/4 sets". Empty when the plan has no prescribed sets. */
@@ -99,6 +104,8 @@ export type CalendarDay = {
   movedFrom?: string;
   /** Set when this civil day has a saved workout applied. */
   revertKey?: string;
+  /** Weekday name used to place a moved session before the server list catches up. */
+  weekday?: string;
 };
 
 export type ProgramDaySummary = {
@@ -190,6 +197,7 @@ export function buildCalendarDays(input: {
   const days: CalendarDay[] = dates.map((date) => ({
     date,
     heading: formatCalendarHeading(date, input.now, timeZone),
+    weekday: weekdayName(date, timeZone),
     isToday: sameLocalDay(date, input.now, timeZone),
     activities: [],
     summary: "",
@@ -291,6 +299,21 @@ type LoggedPlanSession = {
 function doseSetLabel(dose: number) {
   const count = Math.max(0, Math.round(dose));
   return `${count} ${count === 1 ? "set" : "sets"}`;
+}
+
+function rideDurationLabel(seconds: number | null | undefined) {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return undefined;
+  return formatSessionElapsed(Math.round(seconds));
+}
+
+function loggedRideSeconds(
+  log: LoggedPlanSession,
+  timers: Map<string, { elapsedSeconds: number | null }>,
+) {
+  const elapsed = timers.get(log.id)?.elapsedSeconds;
+  if (elapsed != null && elapsed > 0) return Math.round(elapsed);
+  const work = log.sets.reduce((sum, set) => sum + Math.max(0, set.durationSeconds ?? 0), 0);
+  return work > 0 ? work : 0;
 }
 
 function prescribedSetCount(exercises: readonly { sets?: number | null }[] | null | undefined) {
@@ -505,6 +528,10 @@ async function loadCalendarSchedule(
       (session.status === "complete" || session.status === "partial" || session.status === "draft") &&
       tickedSetCount(session.sets) > 0,
   );
+  const rideTimers = await readTimerFieldsByIds(
+    loggedSessions.map((session) => session.id),
+    prisma,
+  );
   const loggedTitles = new Map<string, string[]>();
   for (const session of loggedSessions) {
     const key = performedDayKey(session, tz);
@@ -532,6 +559,7 @@ async function loadCalendarSchedule(
   const days: CalendarDay[] = dates.map((date) => ({
     date,
     heading: formatCalendarHeading(date, now, tz),
+    weekday: weekdayName(date, tz),
     isToday: sameLocalDay(date, now, tz),
     activities: [],
     summary: "",
@@ -662,14 +690,19 @@ async function loadCalendarSchedule(
         weekday: calendarWeekday,
         heavy: Boolean(session.heavy),
         setCountLabel,
+        durationLabel:
+          session.kind === "conditioning" && matched
+            ? rideDurationLabel(loggedRideSeconds(matched, rideTimers))
+            : undefined,
         exercises: exerciseRows.length > 0 ? exerciseRows : undefined,
       });
     }
     for (const log of dayLogs) {
       if (matchedLogIds.has(log.id) || log.dayPlanId) continue;
-      if (!log.programDayId) {
+        if (!log.programDayId) {
         const title = log.savedWorkout?.name?.trim() || memberFacingTitle(log.title) || log.title;
         const view = sessionProgress(log);
+        const bike = log.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) || isBikeIntervalName(title);
         day.activities.push({
           kind: "workout",
           title,
@@ -678,6 +711,7 @@ async function loadCalendarSchedule(
           status: view.done ? "complete" : "scheduled",
           weekday: calendarWeekday,
           setCountLabel: view.text,
+          durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
         });
         continue;
       }
@@ -701,6 +735,8 @@ async function loadCalendarSchedule(
         names: visible.names,
         exercises: visible.exercises,
       });
+      const bike =
+        log.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) || isBikeIntervalName(title);
       day.activities.push({
         kind: "workout",
         title,
@@ -710,6 +746,7 @@ async function loadCalendarSchedule(
         programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel: view.text,
+        durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
         exercises: (() => {
           if (view.ticked <= 0) return undefined;
           const rows = visibleCalendarExercises(view.rows, view.done);

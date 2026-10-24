@@ -250,7 +250,7 @@ export function emptyHomeToday(selectedDay = new Date(), timeZone = APP_TIMEZONE
     suggestionCopy:
       "Training days are not loaded on this preview yet. Your account and logs still work.",
     draft: undefined,
-    resumeByDay: {} as Record<string, { id: string; partial: boolean }>,
+    resumeByDay: {} as Record<string, { id: string; partial: boolean; ticked?: number; planned?: number }>,
     completedDayIds: [] as string[],
     partialDayIds: [] as string[],
     loggedOnSelected: null,
@@ -469,17 +469,24 @@ export async function getHomeToday(
     ]),
   ];
   const finishedToday = new Set(completedDayIds);
-  const resumeByDay: Record<string, { id: string; partial: boolean }> = {};
+  const resumeByDay: Record<string, { id: string; partial: boolean; ticked?: number; planned?: number }> = {};
   if (sameLocalDay(selected, now, tz)) {
     for (const [dayId, log] of openLogsByProgramDay(resumable, todayKey, tz, planByDay, {
       edits,
       anchor: profile?.onboardingCompletedAt ?? null,
     })) {
       if (finishedToday.has(dayId) && !log.partial) continue;
-      resumeByDay[dayId] = { id: log.id, partial: log.partial };
+      resumeByDay[dayId] = { id: log.id, partial: log.partial, ticked: log.ticked, planned: log.planned };
     }
     const custom = openCustomLog(resumable, todayKey, tz);
-    if (custom) resumeByDay[CUSTOM_HOME_RESUME] = { id: custom.id, partial: custom.partial };
+    if (custom) {
+      resumeByDay[CUSTOM_HOME_RESUME] = {
+        id: custom.id,
+        partial: custom.partial,
+        ticked: custom.ticked,
+        planned: custom.planned,
+      };
+    }
     for (const plan of homePlans) {
       if (plan.complete || !plan.draftId) continue;
       resumeByDay[homePlanDayId(plan.id)] = { id: plan.draftId, partial: plan.partial };

@@ -4,6 +4,7 @@ import { bikeLoggerHref } from "@/lib/timer-session";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { getTodayGuide } from "@/lib/today";
+import { visiblePartialLabel } from "@/lib/finish-plan";
 
 type Guide = Awaited<ReturnType<typeof getTodayGuide>>;
 
@@ -76,7 +77,14 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
             </a>
             {!nextDone && (nextPartial || customResume?.partial || otherResume?.partial) ? (
               <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-                Partial
+                {visiblePartialLabel(
+                  (next?.dayId ? guide.today.resumeByDay?.[next.dayId] : customResume)?.ticked ??
+                    customResume?.ticked ??
+                    otherResume?.ticked,
+                  (next?.dayId ? guide.today.resumeByDay?.[next.dayId] : customResume)?.planned ??
+                    customResume?.planned ??
+                    otherResume?.planned,
+                )}
               </p>
             ) : nextDone ? (
               <p data-session-done className="mt-4 font-display text-xs uppercase tracking-wide text-accent">
@@ -99,7 +107,14 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           <>
             {!nextDone && (nextPartial || customResume?.partial || otherResume?.partial) ? (
               <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-                Partial
+                {visiblePartialLabel(
+                  (next?.dayId ? guide.today.resumeByDay?.[next.dayId] : customResume)?.ticked ??
+                    customResume?.ticked ??
+                    otherResume?.ticked,
+                  (next?.dayId ? guide.today.resumeByDay?.[next.dayId] : customResume)?.planned ??
+                    customResume?.planned ??
+                    otherResume?.planned,
+                )}
               </p>
             ) : null}
             {customResume ? (
@@ -178,7 +193,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
             </p>
           ) : firstPartial || resume?.partial ? (
             <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-              Partial
+              {visiblePartialLabel(resume?.ticked, resume?.planned)}
             </p>
           ) : null}
           {resume ? <ResumeButton log={resume} className={resumeClass} /> : null}
@@ -227,7 +242,7 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
         <>
           {firstPartial || resume?.partial ? (
             <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-              Partial
+              {visiblePartialLabel(resume?.ticked, resume?.planned)}
             </p>
           ) : null}
           {resume ? (

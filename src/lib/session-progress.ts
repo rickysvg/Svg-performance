@@ -95,12 +95,15 @@ function roundPlanFromExercises(session: ProgressSession, exercises: { name?: st
   return prescribedSetTotal(rows);
 }
 
+function unitWord(count: number, unit: "sets" | "rounds") {
+  if (unit === "rounds") return count === 1 ? "round" : "rounds";
+  return count === 1 ? "set" : "sets";
+}
+
 function progressCount(ticked: number, planned: number, unit: "sets" | "rounds") {
-  const noun = unit === "rounds" ? "rounds" : "sets";
-  if (planned > 0) return `${ticked}/${planned} ${noun}`;
+  if (planned > 0) return `${ticked}/${planned} ${unitWord(planned, unit)}`;
   const count = Math.max(0, ticked);
-  if (unit === "rounds") return `${count} ${count === 1 ? "round" : "rounds"}`;
-  return `${count} ${count === 1 ? "set" : "sets"}`;
+  return `${count} ${unitWord(count, unit)}`;
 }
 
 function progressText(ticked: number, planned: number, done: boolean, unit: "sets" | "rounds") {
@@ -157,7 +160,7 @@ function mixedProgressText(
   if (setsTicked <= 0 || roundsTicked <= 0) return null;
   const setsTarget = Math.max(setsPlanned, setsTicked);
   const roundsTarget = Math.max(roundsPlanned, roundsTicked);
-  return `${setsTicked}/${setsTarget} sets · ${roundsTicked}/${roundsTarget} rounds · ${done ? "Done" : "Partial"}`;
+  return `${setsTicked}/${setsTarget} ${unitWord(setsTarget, "sets")} · ${roundsTicked}/${roundsTarget} ${unitWord(roundsTarget, "rounds")} · ${done ? "Done" : "Partial"}`;
 }
 
 export function sessionProgress(session: ProgressSession, dose?: ProgressDose | null): SessionProgress {
@@ -170,24 +173,32 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
 
   let planned = 0;
   let rows: ExerciseSetProgress[] = [];
+  let counted = ticked;
 
   if (roundOrBikeSession(session)) {
     const fromPlan = roundPlanFromExercises(session, programExercises) || (catalogDose > 0 && programExercises.length === 1 ? catalogDose : 0);
     const configured = configuredRoundTotal(session.sets);
-    // The interval structure is the round count. A plan set-count of 1 must not
-    // paint 16 finished rounds as 16/1.
-    planned = Math.max(fromPlan, configured, stored > ticked ? stored : 0, ticked);
+    // A finished ride keeps the new structure. One stored row against a
+    // 31-round token is still the whole ride, not 1/31.
+    if (session.status === "complete" && configured > ticked && configured > 0) counted = configured;
+    // The interval token is the round count. A newer structure (6 sets) replaces
+    // a stale plan total. A plan set-count of 1 must not paint 16 finished
+    // rounds as 16/1, so logged rounds still count.
+    planned =
+      configured > 0
+        ? Math.max(configured, counted)
+        : Math.max(fromPlan, stored > counted ? stored : 0, counted);
     const name =
       session.sets.find((set) => set.completed && (set.exerciseName ?? "").trim())?.exerciseName?.trim() ||
       session.sets[0]?.exerciseName?.trim() ||
       "Rounds";
-    const rowPlanned = planned > 0 ? planned : ticked;
+    const rowPlanned = planned > 0 ? planned : counted;
     rows = [
       {
         name,
-        ticked,
+        ticked: counted,
         planned: rowPlanned,
-        state: ticked <= 0 ? "open" : planned > 0 && ticked >= planned ? "complete" : "partial",
+        state: counted <= 0 ? "open" : planned > 0 && counted >= planned ? "complete" : "partial",
       },
     ];
   } else if (hasProgram) {
@@ -201,17 +212,17 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
 
   const names = planNames(dose, programExercises);
   const done =
-    ticked > 0 &&
+    counted > 0 &&
     planned > 0 &&
-    ticked >= planned &&
+    counted >= planned &&
     (names.length === 0 || namesAreCovered(session, names) || session.sets.every((set) => setIsTicked(set)));
   const unit = roundOrBikeSession(session) ? "rounds" : "sets";
   const mixed = mixedProgressText(session, programExercises, done);
   return {
-    ticked,
+    ticked: counted,
     planned,
     done,
-    text: mixed ?? progressText(ticked, planned, done, unit),
+    text: mixed ?? progressText(counted, planned, done, unit),
     rows,
   };
 }

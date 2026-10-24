@@ -17,6 +17,7 @@ export function CheckInForm({
   sessionTitles,
   sparringSummary,
   storageNotice,
+  priorScores,
 }: {
   suggestedWeight: number | null;
   suggestedBodyFat?: number | null;
@@ -25,14 +26,15 @@ export function CheckInForm({
   sessionTitles: string[];
   sparringSummary: string;
   storageNotice: string | null;
+  priorScores?: { sleep: number | null; energy: number | null; stress: number | null } | null;
 }) {
   const [state, action, pending] = useActionState(
     submitWeeklyCheckInAction,
     {} as CheckInActionState,
   );
-  const [sleep, setSleep] = useState<number | null>(null);
-  const [energy, setEnergy] = useState<number | null>(null);
-  const [stress, setStress] = useState<number | null>(null);
+  const [sleep, setSleep] = useState<number | null>(priorScores?.sleep ?? 3);
+  const [energy, setEnergy] = useState<number | null>(priorScores?.energy ?? 3);
+  const [stress, setStress] = useState<number | null>(priorScores?.stress ?? 3);
   const [regions, setRegions] = useState<BodyRegionId[]>([]);
   const [localError, setLocalError] = useState("");
   const [duration, setDuration] = useState("");
@@ -179,6 +181,17 @@ export function CheckInForm({
           rows={2}
           maxLength={600}
           placeholder="What got in the way?"
+          className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805] px-4 py-3 text-base"
+        />
+      </label>
+      <label className="block text-sm font-semibold">
+        Notes
+        <textarea
+          data-testid="checkin-notes"
+          name="memberNotes"
+          rows={3}
+          maxLength={600}
+          placeholder="Anything else Ricky should know this week?"
           className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] text-[#f3f4ef] caret-[#CBF805] focus:border-[#CBF805] px-4 py-3 text-base"
         />
       </label>

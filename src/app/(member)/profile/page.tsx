@@ -12,7 +12,7 @@ import { isDashboardAdmin } from "@/lib/admin-access";
 import { formCheckLockedFor, isFormCheckReviewer } from "@/lib/form-check-access";
 import { FormCheckLockedTrigger } from "@/components/form-check/FormCheckLockedSheet";
 import { isFeedbackAdmin } from "@/lib/feedback-access";
-import { getOrCreateReminderPrefs, isSmtpReminderDeliveryEnabled } from "@/lib/reminders";
+import { getOrCreateReminderPrefs } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 import { MEMBER_PRO_DAYS } from "@/lib/pricing";
@@ -84,10 +84,7 @@ export default async function ProfilePage() {
       <details className="rounded-2xl border border-line bg-card">
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Reminders</summary>
         <div className="px-4 pb-4">
-          <ReminderPrefsForm
-            prefs={prefs}
-            smtpConfigured={isSmtpReminderDeliveryEnabled()}
-          />
+          <ReminderPrefsForm prefs={prefs} />
         </div>
       </details>
 

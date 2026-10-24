@@ -1,9 +1,29 @@
+"use client";
+
 import Link from "next/link";
-import { weekSessionTally, type CalendarActivity, type CalendarDay } from "@/lib/calendar";
+import type { CalendarActivity, CalendarDay } from "@/lib/calendar";
+import { applySessionPlacements } from "@/lib/calendar-placements";
 import { exerciseProgressStateWord } from "@/lib/logged-work";
 import { isBikeLoggerHref } from "@/lib/timer-session";
-import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
+import { HoldToMove, useWorkoutMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
+
+function weekSessionTally(days: CalendarDay[]) {
+  let done = 0;
+  let partial = 0;
+  let total = 0;
+  for (const day of days) {
+    for (const activity of day.activities) {
+      if (activity.kind !== "workout") continue;
+      total += 1;
+      if (activity.status === "complete") done += 1;
+      else if ((activity.subtitle ?? "").includes("· Partial") || (activity.subtitle ?? "").startsWith("Partial")) {
+        partial += 1;
+      }
+    }
+  }
+  return { done, partial, total };
+}
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { RevertDayButton } from "@/components/training/RevertDayButton";
 
@@ -80,6 +100,11 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
               {activity.setCountLabel}
             </span>
           ) : null}
+          {activity.durationLabel ? (
+            <span data-ride-duration className="mt-0.5 block text-sm font-medium tabular-nums">
+              {activity.durationLabel}
+            </span>
+          ) : null}
           {activity.exercises && activity.exercises.length > 0 ? (
             <span className="mt-1 block space-y-0.5 text-xs text-muted" data-exercise-progress>
               {activity.exercises.map((exercise) => (
@@ -132,7 +157,9 @@ export function CalendarList({
   /** Carousel label for the week these rows belong to. */
   weekLabel?: string;
 }) {
-  const tally = weekSessionTally(days);
+  const move = useWorkoutMove();
+  const shown = applySessionPlacements(days, move?.placements ?? {}) as CalendarDay[];
+  const tally = weekSessionTally(shown);
   return (
     <div className="space-y-4">
       {tally.total > 0 ? (
@@ -147,7 +174,7 @@ export function CalendarList({
         </div>
       ) : null}
     <ol className="space-y-6">
-      {days.map((day) => (
+      {shown.map((day) => (
         <li key={day.heading} data-calendar-day={day.heading} className="space-y-3">
           <h2 className="flex items-center gap-2 text-sm text-foreground">
             {day.isToday ? (

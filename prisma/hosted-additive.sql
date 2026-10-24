@@ -317,6 +317,16 @@ BEGIN
     ALTER TABLE "Profile" ADD COLUMN "weekPlanSwapsJson" TEXT NOT NULL DEFAULT '[]';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Profile'
+      AND column_name = 'weekPlanIntentSeqJson'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "weekPlanIntentSeqJson" TEXT NOT NULL DEFAULT '{}';
+  END IF;
+
   IF to_regclass('public."GymdeskRateLimit"') IS NULL THEN
     CREATE TABLE "GymdeskRateLimit" (
       "id" TEXT NOT NULL,
@@ -1055,5 +1065,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'WorkoutSession' AND column_name = 'backfilled'
   ) THEN
     ALTER TABLE "WorkoutSession" ADD COLUMN "backfilled" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+END $$;
+
+-- Weekly check-in notes. Idempotent. No-ops until the WeeklyCheckIn table exists.
+DO $$
+BEGIN
+  IF to_regclass('public."WeeklyCheckIn"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'WeeklyCheckIn' AND column_name = 'memberNotes'
+  ) THEN
+    ALTER TABLE "WeeklyCheckIn" ADD COLUMN "memberNotes" TEXT NOT NULL DEFAULT '';
   END IF;
 END $$;

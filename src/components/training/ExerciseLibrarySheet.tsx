@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useSheetBehavior } from "@/components/useSheetBehavior";
 import {
@@ -63,11 +63,6 @@ export function ExerciseLibrarySheet({
   );
   const choice = picked ? libraryExercise(picked) : null;
 
-  useEffect(() => {
-    if (!choice) return;
-    confirmRef.current?.scrollIntoView({ block: "nearest" });
-  }, [choice]);
-
   return createPortal(
     <div
       ref={panelRef}
@@ -76,12 +71,12 @@ export function ExerciseLibrarySheet({
       aria-label={title}
       tabIndex={-1}
       data-testid={variant === "swap" ? "training-swap-sheet" : "training-add-sheet"}
-      className="fixed inset-0 z-[80] flex w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground outline-none"
+      className="fixed inset-0 z-[80] flex h-dvh max-h-[100dvh] w-full max-w-[100vw] min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground outline-none"
       {...(variant === "swap"
         ? { "data-swap-sheet": sheetName ?? "" }
         : { "data-add-sheet": "true" })}
     >
-      <header className="flex items-center gap-2 border-b border-line px-4 py-3">
+      <header className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-3">
         <button type="button" data-testid={closeTestId} onClick={onClose} className="touch-target text-2xl leading-none" aria-label="Close">
           ×
         </button>
@@ -90,7 +85,7 @@ export function ExerciseLibrarySheet({
           {subtitle ? <p className="truncate text-sm">{subtitle}</p> : null}
         </div>
       </header>
-      <div className="space-y-3 border-b border-line px-4 py-3">
+      <div className="shrink-0 space-y-3 border-b border-line px-4 py-3">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -182,7 +177,7 @@ export function ExerciseLibrarySheet({
         <div
           ref={confirmRef}
           data-library-confirm
-          className="shrink-0 space-y-2 border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="sticky bottom-0 z-10 shrink-0 space-y-2 border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <div className={pending ? "pointer-events-none opacity-60" : undefined}>{footer(choice)}</div>

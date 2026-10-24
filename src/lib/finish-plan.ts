@@ -121,6 +121,14 @@ export function visibleFinishDose(input: {
  * Dose for one logged or planned session.
  * Edits are only the rows for this program day. No slug leaves the catalog count.
  */
+/** Tile copy for a short save. "2/22 · Partial" when the visible dose is known. */
+export function visiblePartialLabel(ticked?: number | null, planned?: number | null) {
+  if (ticked != null && planned != null && planned > 0 && ticked >= 0) {
+    return `${ticked}/${planned} · Partial`;
+  }
+  return "Partial";
+}
+
 export function visibleDoseForSession(input: {
   exercises: readonly { name?: string | null; sets?: number | null }[];
   catalogDose?: number;

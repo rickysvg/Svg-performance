@@ -21,8 +21,8 @@ export default async function CoachPage() {
   const coach = resolveAiCoach(profile?.aiCoachId);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const recovery = await recentRecoveryCheckIn(user.id, new Date(), tz);
+  const trial = await getTrialState(user.id);
   if (!chatAllowed) {
-    const trial = await getTrialState(user.id);
     return (
       <main data-coach-locked="1" className="space-y-6">
         <h1 className="font-display text-2xl uppercase tracking-wide">{COACH_PUBLIC_NAME}</h1>
@@ -70,12 +70,14 @@ export default async function CoachPage() {
           </div>
           <p className="mt-0.5 truncate text-[11px] text-white/70">{style.label} style</p>
         </div>
-        <Link
-          href="/clips"
-          className="shrink-0 rounded-full border border-[#cbf805]/50 px-2.5 py-1 text-[11px] font-medium text-[#CBF805]"
-        >
-          VIP Coaching
-        </Link>
+        {trial.trialActive ? null : (
+          <Link
+            href="/clips"
+            className="shrink-0 rounded-full border border-[#cbf805]/50 px-2.5 py-1 text-[11px] font-medium text-[#CBF805]"
+          >
+            VIP Coaching
+          </Link>
+        )}
       </header>
       {coachChat.freeDaysLeft != null && coachChat.freeDaysLeft > 0 ? (
         <p

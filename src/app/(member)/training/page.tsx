@@ -49,6 +49,7 @@ import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainWeekFollow } from "@/components/training/TrainWeekFollow";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { MoveBackButton } from "@/components/training/MoveBackButton";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
@@ -63,7 +64,7 @@ import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam } from "@/lib/home";
-import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { getSessionIntentSeqForUser, getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { getSparringLog, sparringDateError } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
@@ -91,12 +92,13 @@ export default async function TrainingPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [catalog, sessionCount, conditioning, profile, swaps] = await Promise.all([
+  const [catalog, sessionCount, conditioning, profile, swaps, intentSeqs] = await Promise.all([
     findDemoTrainingCatalog(),
     countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
+    getSessionIntentSeqForUser(user.id),
   ]);
   const tzEarly = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   await finalizePastLoggedDrafts(user.id, now, tzEarly);
@@ -411,7 +413,12 @@ export default async function TrainingPage({
         </Link>
       ) : null}
 
-      <TrainWeekFollow initialWeekStart={viewedWeek} level={levelOverride} moves={moves}>
+      <TrainWeekFollow
+        initialWeekStart={viewedWeek}
+        level={levelOverride}
+        moves={moves}
+        intentSeqs={intentSeqs}
+      >
       <WeekStrip
         days={markedWeeks.find((week) => week.offset === 0)?.days ?? []}
         weeks={markedWeeks}
@@ -584,6 +591,15 @@ export default async function TrainingPage({
               }
               dateLabel={planDateLabel}
             />
+            {session.sessionKey && session.sourceWeekday && session.sourceWeekday !== dayPlan.weekday ? (
+              <div className="mt-2">
+                <MoveBackButton
+                  sessionKey={session.sessionKey}
+                  weekStart={focus.weekStart}
+                  home={session.sourceWeekday}
+                />
+              </div>
+            ) : null}
           </div>
         ))}
         {focus.dayPlans.map((plan) => (

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canAddIntervalRound,
   clampIntervalStructure,
   commitShorthand,
   commitStructure,
@@ -91,6 +92,24 @@ describe("interval shorthand", () => {
     expect(commitStructure({ sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 }).shorthand).toBe(
       "2x8 @ 15/15 r60",
     );
+  });
+
+  it("accepts every round count that still fits the session cap", () => {
+    expect(parseIntervalShorthand("31x20/10")).toMatchObject({
+      ok: true,
+      value: { sets: 1, rounds: 31, workSeconds: 20, restSeconds: 10 },
+    });
+    expect(parseIntervalShorthand("500x20/10")).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("Max 4:00:00"),
+    });
+    expect(
+      clampIntervalStructure({ sets: 1, rounds: 31, workSeconds: 20, restSeconds: 10, setRestSeconds: 0 }).rounds,
+    ).toBe(31);
+    const steady = { sets: 1, rounds: 1, workSeconds: 4 * 60 * 60, restSeconds: 0, setRestSeconds: 0 };
+    expect(canAddIntervalRound(steady, "bike")).toBe(false);
+    expect(canAddIntervalRound({ ...base, rounds: 30 }, "bike")).toBe(true);
+    expect(canAddIntervalRound({ ...base, rounds: 31 }, "bike")).toBe(true);
   });
 
   it("accepts one continuous round up to 4 hours and keeps 15:00 for more rounds", () => {
