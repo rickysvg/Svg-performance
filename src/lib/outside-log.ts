@@ -110,6 +110,40 @@ export async function getSparringLog(userId: string, dateKey: string) {
   return row ? toLog(row) : null;
 }
 
+export function sparringLogDateLabel(log: { dateKey: string; weekday: string }) {
+  const [year, month, day] = log.dateKey.split("-").map(Number);
+  if (!year || !month || !day) return log.weekday || log.dateKey;
+  const date = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+  return log.weekday ? `${log.weekday}, ${date}` : date;
+}
+
+/** Newest first. The sparring page lists these so a log can be opened or removed. */
+export async function listSparringLogs(userId: string, take = 40) {
+  const rows = await prisma.outsideSessionLog.findMany({
+    where: { userId },
+    orderBy: { dateKey: "desc" },
+    take,
+  });
+  return rows.map(toLog);
+}
+
+export async function deleteSparringLog(userId: string, dateKey: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    throw new AppError("LOG", "Pick a sparring log to delete.");
+  }
+  const existing = await prisma.outsideSessionLog.findUnique({
+    where: { userId_dateKey: { userId, dateKey } },
+  });
+  if (!existing) {
+    throw new AppError("LOG", "That sparring log is already gone.");
+  }
+  await prisma.outsideSessionLog.delete({ where: { id: existing.id } });
+}
+
 export async function saveSparringLog(
   userId: string,
   input: {

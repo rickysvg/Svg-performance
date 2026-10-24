@@ -36,6 +36,7 @@ import {
 import {
   clearCurrentWeekPlanForUser,
   moveWorkoutForUser,
+  moveWorkoutHomeForUser,
   restoreWeekPlanForUser,
   swapWeekPlanForUser,
   swapWorkoutForUser,
@@ -384,7 +385,18 @@ describe("Core weekday planner", () => {
     const saturday = new Date(2026, 8, 26, 10, 0, 0);
     const sat = planForDate(prefs, saturday, APP_TIMEZONE, moved);
     expect(sat.outside?.kind).toBe("sparring");
+    expect(sat.summary.split("+")).toContain("Sparring");
     expect(sat.sessions.map((session) => session.sessionKey)).toContain(liftKey);
+    const wednesdayMobility = new Date(2026, 8, 23, 10, 0, 0);
+    const mobilityKey =
+      planForDate(prefs, wednesdayMobility, APP_TIMEZONE).sessions.find(
+        (session) => session.kind === "mobility",
+      )?.sessionKey ?? "";
+    expect(mobilityKey.startsWith("Wednesday:")).toBe(true);
+    const mobilityMoved = moveSessionOnPlan([], start, mobilityKey, "Saturday");
+    const satMobility = planForDate(prefs, saturday, APP_TIMEZONE, mobilityMoved);
+    expect(satMobility.outside?.kind).toBe("sparring");
+    expect(satMobility.summary.split("+")).toEqual(expect.arrayContaining(["Mobility", "Sparring"]));
     expect(futureWorkoutPulledBack(liftKey, "Tuesday", "Tuesday")).toBe(false);
     const fridayPlan = planForDate(prefs, new Date(2026, 8, 25, 10, 0, 0));
     const fridayBag =
@@ -550,6 +562,16 @@ describe("Core planner on Home", () => {
 
     const today = await getHomeToday(user.id, wednesday);
     expect(today.plannedSessions.some((session) => session.sessionKey === liftKey)).toBe(true);
+
+    await moveWorkoutHomeForUser(user.id, liftKey, start, wednesday);
+    const homed = await getCalendarSchedule(user.id, wednesday, monday);
+    const mondayHome = homed.days[0]?.activities.filter((row) => row.kind === "workout") ?? [];
+    const wednesdayHome = homed.days[2]?.activities.filter((row) => row.kind === "workout") ?? [];
+    expect(mondayHome.some((row) => row.sessionKey === liftKey)).toBe(true);
+    expect(wednesdayHome.some((row) => row.sessionKey === liftKey)).toBe(false);
+    await expect(moveWorkoutHomeForUser(user.id, liftKey, start, wednesday)).rejects.toThrow(
+      /already on its original day/,
+    );
 
     await restoreWeekPlanForUser(user.id, JSON.stringify([]), wednesday);
     const back = await getCalendarSchedule(user.id, wednesday, monday);

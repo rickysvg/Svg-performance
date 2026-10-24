@@ -1339,8 +1339,19 @@ export function WorkoutLogForm({
           <div className="flex items-center gap-2 px-4 py-2">
             <Link
               href={cancelHref}
-              onClick={() => discardIfEmpty()}
-              className="touch-target inline-flex items-center text-sm font-medium text-muted"
+              aria-disabled={loggerOpen ? undefined : true}
+              tabIndex={loggerOpen ? undefined : -1}
+              data-logger-cancel={loggerOpen ? "open" : "hold"}
+              onClick={(event) => {
+                if (!loggerOpen) {
+                  event.preventDefault();
+                  return;
+                }
+                discardIfEmpty();
+              }}
+              className={`touch-target inline-flex items-center text-sm font-medium text-muted ${
+                loggerOpen ? "" : "pointer-events-none opacity-40"
+              }`}
             >
               Cancel
             </Link>

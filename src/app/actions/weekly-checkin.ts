@@ -57,6 +57,7 @@ export async function submitWeeklyCheckInAction(
       sorenessNotes: String(formData.get("sorenessNotes") ?? ""),
       wins: String(formData.get("wins") ?? ""),
       struggles: String(formData.get("struggles") ?? ""),
+      memberNotes: String(formData.get("memberNotes") ?? ""),
       bodyFatPercent: optionalBodyFatPercent(formData.get("bodyFatPercent")),
       video,
     });

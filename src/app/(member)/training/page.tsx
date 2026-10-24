@@ -49,6 +49,7 @@ import { WeekStrip } from "@/components/training/WeekStrip";
 import { TrainWeekFollow } from "@/components/training/TrainWeekFollow";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { PlanSessionCard } from "@/components/training/PlanSessionCard";
+import { MoveBackButton } from "@/components/training/MoveBackButton";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
@@ -584,6 +585,15 @@ export default async function TrainingPage({
               }
               dateLabel={planDateLabel}
             />
+            {session.sessionKey && session.sourceWeekday && session.sourceWeekday !== dayPlan.weekday ? (
+              <div className="mt-2">
+                <MoveBackButton
+                  sessionKey={session.sessionKey}
+                  weekStart={focus.weekStart}
+                  home={session.sourceWeekday}
+                />
+              </div>
+            ) : null}
           </div>
         ))}
         {focus.dayPlans.map((plan) => (

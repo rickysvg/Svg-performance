@@ -83,7 +83,12 @@ describe("home aggregation and weekly activity", () => {
     expect(activity.daysActive).toBe(1);
 
     const today = await getHomeToday(user.id);
-    expect(today.suggestedDay).toBeTruthy();
+    // Saturday sparring has no catalog session, so there is nothing to suggest.
+    if (today.outsideKind === "sparring" && today.plannedSessions.length === 0) {
+      expect(today.suggestedDay).toBeNull();
+    } else {
+      expect(today.suggestedDay).toBeTruthy();
+    }
     expect(today.foodNudge).toBeNull();
     expect(today.incompleteLesson).toBeTruthy();
     expect(today.targets.calories).toBe(2200);
