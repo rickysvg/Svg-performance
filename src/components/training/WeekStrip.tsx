@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -24,7 +25,15 @@ import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
-import { carouselIndexFromScroll, nextSelectedDay, weekChipHref, weekScrollLeft } from "@/lib/week-carousel";
+import {
+  carouselIndexFromScroll,
+  nextSelectedDay,
+  reduceScrollGesture,
+  scrollGestureOpen,
+  weekChipHref,
+  weekScrollLeft,
+  type ScrollGestureState,
+} from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number] & {
@@ -771,6 +780,7 @@ function WeekDayCarousel({
   const indexRef = useRef(initialIndex);
   const intendedIndex = useRef(initialIndex);
   const userScroll = useRef(false);
+  const gesture = useRef<ScrollGestureState>({ phase: "idle", idleAt: null });
   const gestureTimer = useRef<number | null>(null);
   const placing = useRef(false);
   const placeFrame = useRef<number | null>(null);
@@ -807,32 +817,77 @@ function WeekDayCarousel({
     setSelectedDay(dayParam);
   }
 
-  function noteUserGesture() {
-    userScroll.current = true;
+  const clearGestureTimer = useCallback(() => {
     if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
-    gestureTimer.current = window.setTimeout(() => {
-      userScroll.current = false;
+    gestureTimer.current = null;
+  }, []);
+
+  const armGestureIdle = useCallback(() => {
+    clearGestureTimer();
+    const idleAt = gesture.current.idleAt;
+    if (gesture.current.phase !== "momentum" || idleAt == null) return;
+    const tick = () => {
       gestureTimer.current = null;
-    }, 400);
+      const now = Date.now();
+      if (gesture.current.phase === "contact") return;
+      const nextIdle = gesture.current.idleAt;
+      if (gesture.current.phase === "momentum" && nextIdle != null && now < nextIdle) {
+        gestureTimer.current = window.setTimeout(tick, Math.max(0, nextIdle - Date.now()));
+        return;
+      }
+      gesture.current = { phase: "idle", idleAt: null };
+      userScroll.current = false;
+    };
+    gestureTimer.current = window.setTimeout(tick, Math.max(0, idleAt - Date.now()));
+  }, [clearGestureTimer]);
+
+  function beginContact() {
+    gesture.current = reduceScrollGesture(gesture.current, { type: "pointerdown", at: Date.now() });
+    userScroll.current = true;
+    clearGestureTimer();
   }
 
-  function holdPlace() {
+  function endContact() {
+    const at = Date.now();
+    gesture.current = reduceScrollGesture(gesture.current, { type: "pointerup", at });
+    userScroll.current = scrollGestureOpen(gesture.current, at);
+    armGestureIdle();
+  }
+
+  function noteWheel() {
+    const at = Date.now();
+    gesture.current = reduceScrollGesture(gesture.current, { type: "wheel", at });
+    userScroll.current = scrollGestureOpen(gesture.current, at);
+    armGestureIdle();
+  }
+
+  function noteScrollActivity(at: number) {
+    if (!scrollGestureOpen(gesture.current, at)) {
+      userScroll.current = false;
+      return;
+    }
+    gesture.current = reduceScrollGesture(gesture.current, { type: "scroll", at });
+    userScroll.current = true;
+    armGestureIdle();
+  }
+
+  const finishMomentum = useCallback(() => {
+    const at = Date.now();
+    gesture.current = reduceScrollGesture(gesture.current, { type: "scrollend", at });
+    userScroll.current = scrollGestureOpen(gesture.current, at);
+    if (gesture.current.phase !== "momentum") clearGestureTimer();
+  }, [clearGestureTimer]);
+
+  const holdPlace = useCallback(() => {
     placing.current = true;
     if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
     placeFrame.current = window.requestAnimationFrame(() => {
       placing.current = false;
       placeFrame.current = null;
     });
-  }
-
-  useEffect(() => {
-    return () => {
-      if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
-      if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
-    };
   }, []);
 
-  function scrollToIndex(index: number, behavior: ScrollBehavior) {
+  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior) => {
     const el = scrollerRef.current;
     if (!el) return false;
     const last = Math.max(0, weeksRef.current.length - 1);
@@ -845,7 +900,14 @@ function WeekDayCarousel({
     if (behavior === "auto") el.scrollLeft = left;
     else el.scrollTo({ left, behavior });
     return true;
-  }
+  }, [holdPlace]);
+
+  useEffect(() => {
+    return () => {
+      if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
+      if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const index = Math.max(
@@ -857,7 +919,7 @@ function WeekDayCarousel({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex((current) => (current === index ? current : index));
     if (placed) setReady(true);
-  }, [focusOffset, weeks]);
+  }, [focusOffset, weeks, scrollToIndex]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -870,9 +932,14 @@ function WeekDayCarousel({
       const placed = scrollToIndex(indexRef.current, "auto");
       if (placed) setReady(true);
     });
+    const onScrollEnd = () => finishMomentum();
+    el.addEventListener("scrollend", onScrollEnd);
     observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("scrollend", onScrollEnd);
+    };
+  }, [finishMomentum, scrollToIndex]);
 
   useEffect(() => {
     if (jumpingToToday.current) return;
@@ -942,6 +1009,7 @@ function WeekDayCarousel({
   function syncFromScroll() {
     const el = scrollerRef.current;
     if (!el || placing.current) return;
+    noteScrollActivity(Date.now());
     const decision = carouselIndexFromScroll({
       scrollLeft: el.scrollLeft,
       panelWidth: el.clientWidth,
@@ -1090,8 +1158,13 @@ function WeekDayCarousel({
         aria-roledescription="carousel"
         aria-label="Training weeks. Left and right arrow keys change the week."
         onKeyDown={onKeyDown}
-        onPointerDown={noteUserGesture}
-        onWheel={noteUserGesture}
+        onPointerDown={beginContact}
+        onPointerUp={endContact}
+        onPointerCancel={endContact}
+        onTouchStart={beginContact}
+        onTouchEnd={endContact}
+        onTouchCancel={endContact}
+        onWheel={noteWheel}
         onScroll={syncFromScroll}
       >
         {weeks.map((week, index) => (

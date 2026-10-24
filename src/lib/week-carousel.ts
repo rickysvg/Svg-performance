@@ -141,6 +141,73 @@ export function weekScrollLeft(index: number, panelWidth: number) {
  * member was looking at and put the panel back. A real swipe, wheel, or fling
  * still changes the week, including back to the first one.
  */
+/**
+ * How long a coast can sit still before it stops counting as the member's gesture.
+ * The finger itself has no timer. Momentum ends on scrollend or this idle gap.
+ */
+export const SCROLL_GESTURE_IDLE_MS = 150;
+
+export type ScrollGesturePhase = "idle" | "contact" | "momentum";
+
+export type ScrollGestureState = {
+  phase: ScrollGesturePhase;
+  /** Moment the coast closes if no further scroll arrives. Null while the finger is down. */
+  idleAt: number | null;
+};
+
+export type ScrollGestureEvent = {
+  type: "pointerdown" | "pointerup" | "wheel" | "scroll" | "scrollend";
+  at: number;
+};
+
+export function scrollGestureOpen(state: ScrollGestureState, at: number) {
+  if (state.phase === "contact") return true;
+  if (state.phase !== "momentum") return false;
+  if (state.idleAt == null) return true;
+  return at < state.idleAt;
+}
+
+/** Finger down through release, then the coast, with no fixed window from the first touch. */
+export function reduceScrollGesture(
+  state: ScrollGestureState,
+  event: ScrollGestureEvent,
+  idleMs = SCROLL_GESTURE_IDLE_MS,
+): ScrollGestureState {
+  const current: ScrollGestureState = scrollGestureOpen(state, event.at)
+    ? state
+    : { phase: "idle", idleAt: null };
+  if (event.type === "pointerdown") return { phase: "contact", idleAt: null };
+  if (event.type === "pointerup") {
+    if (current.phase !== "contact") return current;
+    return { phase: "momentum", idleAt: event.at + idleMs };
+  }
+  if (event.type === "wheel") {
+    if (current.phase === "contact") return current;
+    return { phase: "momentum", idleAt: event.at + idleMs };
+  }
+  if (event.type === "scroll") {
+    if (current.phase === "contact") return current;
+    if (current.phase === "momentum") return { phase: "momentum", idleAt: event.at + idleMs };
+    return current;
+  }
+  if (current.phase === "contact") return current;
+  return { phase: "idle", idleAt: null };
+}
+
+/** Whether a scroll at `at` still belongs to the gesture described by `events`. */
+export function scrollGestureAt(
+  events: readonly ScrollGestureEvent[],
+  at: number,
+  idleMs = SCROLL_GESTURE_IDLE_MS,
+) {
+  let state: ScrollGestureState = { phase: "idle", idleAt: null };
+  for (const event of events) {
+    if (event.at > at) break;
+    state = reduceScrollGesture(state, event, idleMs);
+  }
+  return scrollGestureOpen(state, at);
+}
+
 export function carouselIndexFromScroll(input: {
   scrollLeft: number;
   panelWidth: number;
