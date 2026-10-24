@@ -1,14 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import {
-  createContext,
-  useContext,
-  useRef,
-  useState,
-  useTransition,
-  type ReactNode,
-} from "react";
+import { usePathname } from "next/navigation";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import {
   moveWorkoutAction,
   restoreWeekPlanAction,
@@ -59,7 +52,6 @@ export function WorkoutMoveProvider({
   days: MoveDayChoice[];
   children: ReactNode;
 }) {
-  const router = useRouter();
   const pathname = usePathname() ?? "";
   const swapSessionTestId = pathname.startsWith("/training/calendar")
     ? "workout-move-session-btn-2"
@@ -70,10 +62,11 @@ export function WorkoutMoveProvider({
   const [caution, setCaution] = useState<PendingCaution | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string; undo: string } | null>(null);
   const toastSerial = useRef(0);
-  const [pending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
   function close() {
-    if (pending) return;
+    if (saving) return;
     setTarget(null);
     setError(null);
     setCaution(null);
@@ -87,44 +80,54 @@ export function WorkoutMoveProvider({
     setError(null);
     setCaution(null);
     if (undo) setToast({ id: ++toastSerial.current, message, undo });
-    router.refresh();
   }
 
-  function commitMove(sessionKey: string, toDay: string, message: string) {
+  async function commitMove(sessionKey: string, toDay: string, message: string) {
+    if (saving) return;
     setError(null);
-    startTransition(async () => {
+    setSaving(true);
+    try {
       const result = await moveWorkoutAction(sessionKey, toDay, weekStart);
       if (result.error) {
         setError(result.error);
         return;
       }
       finish(message, result.undo);
-    });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function commitSwap(fromDay: string, toDay: string) {
+  async function commitSwap(fromDay: string, toDay: string) {
+    if (saving) return;
     setError(null);
-    startTransition(async () => {
+    setSaving(true);
+    try {
       const result = await swapCalendarDaysAction(fromDay, toDay, weekStart);
       if (result.error) {
         setError(result.error);
         return;
       }
       finish(`Swapped ${fromDay} and ${toDay}.`, result.undo);
-    });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function commitSessionSwap(otherKey: string, otherTitle: string) {
-    if (!target) return;
+  async function commitSessionSwap(otherKey: string, otherTitle: string) {
+    if (!target || saving) return;
     setError(null);
-    startTransition(async () => {
+    setSaving(true);
+    try {
       const result = await swapWorkoutAction(target.sessionKey, otherKey, weekStart);
       if (result.error) {
         setError(result.error);
         return;
       }
       finish(`Swapped with ${otherTitle}.`, result.undo);
-    });
+    } finally {
+      setSaving(false);
+    }
   }
 
   function landingCaution(heavy: boolean, day: MoveDayChoice) {
@@ -163,19 +166,20 @@ export function WorkoutMoveProvider({
     guarded(note, () => commitSessionSwap(session.sessionKey, session.title));
   }
 
-  function undo() {
-    if (!toast || pending) return;
+  async function undo() {
+    if (!toast || undoing) return;
     const payload = toast.undo;
     setToast(null);
-    startTransition(async () => {
+    setUndoing(true);
+    try {
       const result = await restoreWeekPlanAction(payload);
       if (result.error) {
         setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
         return;
       }
-      setToast(null);
-      router.refresh();
-    });
+    } finally {
+      setUndoing(false);
+    }
   }
 
   const today = days.find((day) => day.isToday);
@@ -189,6 +193,7 @@ export function WorkoutMoveProvider({
           .map((session) => ({ day, session })),
       )
     : [];
+  const pending = saving || undoing;
 
   return (
     <WorkoutMoveContext.Provider
@@ -204,6 +209,19 @@ export function WorkoutMoveProvider({
       }}
     >
       {children}
+      {pending ? (
+        <div
+          role="status"
+          data-plan-pending
+          className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-black px-4 py-3 text-sm font-semibold text-white"
+        >
+          <span
+            className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-[#CBF805]"
+            aria-hidden
+          />
+          Updating the week…
+        </div>
+      ) : null}
       {target ? (
         <div
           className="fixed inset-0 z-50 flex items-end overflow-x-hidden bg-black/50"
@@ -232,7 +250,7 @@ export function WorkoutMoveProvider({
                 <button
                   type="button"
                   data-move-today
-                  disabled={pending}
+                  disabled={saving}
                   onClick={() => requestMove(today.weekday, "Moved to today.")}
                   className="flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
                 >
@@ -278,7 +296,7 @@ export function WorkoutMoveProvider({
                     data-testid="training-move-anyway"
                     type="button"
                     data-move-anyway
-                    disabled={pending}
+                    disabled={saving}
                     onClick={() => {
                       const run = caution.run;
                       setCaution(null);
@@ -291,7 +309,7 @@ export function WorkoutMoveProvider({
                   <button
                     type="button"
                     data-move-dismiss
-                    disabled={pending}
+                    disabled={saving}
                     onClick={() => setCaution(null)}
                     className="inline-flex min-h-11 items-center rounded-full border border-white/40 px-4 text-sm font-semibold text-white disabled:opacity-60"
                   >
@@ -313,7 +331,7 @@ export function WorkoutMoveProvider({
                     const pastDay = day.isPast && !day.isToday;
                     const blocked =
                       pastDay || futureWorkoutPulledBack(target.sessionKey, day.weekday, todayName);
-                    const disabled = pending || current || blocked;
+                    const disabled = saving || current || blocked;
                     return (
                       <li key={day.weekday}>
                         <button
@@ -349,7 +367,7 @@ export function WorkoutMoveProvider({
                           type="button"
                           data-testid={`${swapSessionTestId}-${session.sessionKey.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}`}
                           data-swap-session={session.sessionKey}
-                          disabled={pending || blocked}
+                          disabled={saving || blocked}
                           onClick={() => requestSessionSwap(session, day)}
                           className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-line px-3 py-2 text-left disabled:opacity-45"
                         >
@@ -373,10 +391,10 @@ export function WorkoutMoveProvider({
               type="button"
               data-testid="workout-move-cancel"
               onClick={close}
-              disabled={pending}
+              disabled={saving}
               className="mt-3 min-h-11 w-full rounded-full border border-line text-sm font-semibold disabled:opacity-60"
             >
-              {pending ? "Saving…" : "Cancel"}
+              {saving ? "Saving…" : "Cancel"}
             </button>
           </div>
         </div>
@@ -395,7 +413,7 @@ export function WorkoutMoveProvider({
               ? {
                   label: "Undo",
                   attrs: { "data-move-undo": "" },
-                  disabled: pending,
+                  disabled: undoing,
                   onClick: undo,
                 }
               : undefined

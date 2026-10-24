@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { CalendarList } from "@/components/training/CalendarList";
-import { CalendarWeekFollow, type CalendarMoveBundle } from "@/components/training/CalendarWeekFollow";
+import {
+  CalendarFocusGate,
+  CalendarWeekFollow,
+  type CalendarMoveBundle,
+} from "@/components/training/CalendarWeekFollow";
 import type { WeekCarouselWeek } from "@/components/training/WeekStrip";
 import { TrainingLevelToggle } from "@/components/training/TrainingLevelToggle";
 import { requireUser } from "@/lib/session";
@@ -37,7 +41,7 @@ import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/trai
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
-import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
+import { campPlanWeekIndex, getActiveCampSnapshot } from "@/lib/fight-camp";
 import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
@@ -89,11 +93,6 @@ export default async function TrainingCalendarPage({
     planAnchor: profile?.onboardingCompletedAt ?? null,
     forcedWeekIndex: campWeekIndex,
   };
-  const corePlan = planForDate(prefs, selected, tz, swaps);
-  const dayPlan =
-    camp && camp.weightClass.trim() && camp.phase !== "complete" && camp.phase !== "pre-camp"
-      ? shapeDayPlan(corePlan, camp.phase)
-      : corePlan;
   const weekIndex = campWeekIndex ?? planWeekIndex(selected, tz, profile?.onboardingCompletedAt ?? null);
   const scaledCatalog = scaleDemoCatalog(catalog, {
     experienceLevel: band,
@@ -143,7 +142,6 @@ export default async function TrainingCalendarPage({
     offPlan,
   });
   const markedWeeks = withOverlaySessionIds(chipWeeks, marks.sessionIdsByDay);
-  const selectedWeekday = weekdayName(selected, tz);
   const levelQuery = levelOverride ? `&level=${levelOverride}` : "";
   const todayHref = `/training/calendar?day=${todayKey}${levelQuery}`;
   const logPastDayKeys = [
@@ -157,20 +155,6 @@ export default async function TrainingCalendarPage({
   const panels = markedWeeks.map((week, index) => {
     const weekSchedule = weekSchedules[index];
     if (!weekSchedule) return null;
-    const focus =
-      weekSchedule.days.find((day) => weekdayName(day.date, tz) === selectedWeekday) ??
-      weekSchedule.days[0];
-    const focusPlan = focus ? planForDate(prefs, focus.date, tz, swaps) : dayPlan;
-    const workouts = focus?.activities.filter((item) => item.kind === "workout") ?? [];
-    const focusKey = focus ? formatDayParam(focus.date, tz) : dayParam;
-    const statusSuffix = calendarFocusStatusSuffix({
-      workouts,
-      past: focusKey < todayKey,
-      active: focus?.active ?? focusPlan.active,
-    });
-    const loggedSessions = workouts.filter(
-      (item) => item.status === "complete" || subtitleShowsPartial(item.subtitle),
-    );
     const missedWorkouts = weekSchedule.days.reduce(
       (count, day) => count + day.activities.filter((item) => subtitleCountsAsMissed(item.subtitle)).length,
       0,
@@ -201,44 +185,61 @@ export default async function TrainingCalendarPage({
         inert={visible ? undefined : true}
         className="space-y-6"
       >
-        <section data-selected-day-plan className="space-y-2">
-          <p className="font-display text-xs uppercase tracking-wide text-accent">
-            {focus ? formatCalendarHeading(focus.date, now, tz) : formatCalendarHeading(selected, now, tz)}
-            {statusSuffix}
-            {focus?.movedFrom || focusPlan.movedFrom
-              ? ` · ${(focus?.movedFrom || focusPlan.movedFrom)}’s workout`
-              : ""}
-            {focusPlan.mesoLabel ? ` · ${focusPlan.mesoLabel}` : ""}
-          </p>
-          <h2 className="text-lg" data-calendar-day-summary>
-            {focus?.summary || focusPlan.summary}
-          </h2>
-          {focus?.movedFrom || focusPlan.movedFrom ? (
-            <p className="text-sm text-muted" data-moved-workout>
-              {(focus?.movedFrom || focusPlan.movedFrom)}’s workout, on {focusPlan.weekday} this week.
-            </p>
-          ) : null}
-          {loggedSessions.map((item, index) => (
-            <p
-              key={`${item.title}-${item.subtitle}-${index}`}
-              className="text-sm text-muted"
-              data-completed-summary
-            >
-              {loggedSessionCardLine(item)}
-            </p>
-          ))}
-          {focusPlan.skipReason && !(focus?.active ?? focusPlan.active) ? (
-            <p className="text-sm text-muted">{focusPlan.skipReason}</p>
-          ) : null}
-          {backfillDayState(focusKey, now, tz) === "ok" ? (
-            <LogPastWorkoutButton
-              dayKey={focusKey}
-              entry="calendar"
-              label={focusKey === dayKey(now, tz) ? "Log a workout" : "Log a completed workout"}
-              timeZone={tz}
-            />
-          ) : null}
-        </section>
+        {weekSchedule.days.map((focus) => {
+          const focusPlan = planForDate(prefs, focus.date, tz, swaps);
+          const workouts = focus.activities.filter((item) => item.kind === "workout");
+          const focusKey = formatDayParam(focus.date, tz);
+          const statusSuffix = calendarFocusStatusSuffix({
+            workouts,
+            past: focusKey < todayKey,
+            active: focus.active ?? focusPlan.active,
+          });
+          const loggedSessions = workouts.filter(
+            (item) => item.status === "complete" || subtitleShowsPartial(item.subtitle),
+          );
+          return (
+            <CalendarFocusGate key={focusKey} dayParam={focusKey}>
+              <section data-selected-day-plan className="space-y-2">
+                <p className="font-display text-xs uppercase tracking-wide text-accent">
+                  {formatCalendarHeading(focus.date, now, tz)}
+                  {statusSuffix}
+                  {focus.movedFrom || focusPlan.movedFrom
+                    ? ` · ${(focus.movedFrom || focusPlan.movedFrom)}’s workout`
+                    : ""}
+                  {focusPlan.mesoLabel ? ` · ${focusPlan.mesoLabel}` : ""}
+                </p>
+                <h2 className="text-lg" data-calendar-day-summary>
+                  {focus.summary || focusPlan.summary}
+                </h2>
+                {focus.movedFrom || focusPlan.movedFrom ? (
+                  <p className="text-sm text-muted" data-moved-workout>
+                    {(focus.movedFrom || focusPlan.movedFrom)}’s workout, on {focusPlan.weekday} this week.
+                  </p>
+                ) : null}
+                {loggedSessions.map((item, itemIndex) => (
+                  <p
+                    key={`${item.title}-${item.subtitle}-${itemIndex}`}
+                    className="text-sm text-muted"
+                    data-completed-summary
+                  >
+                    {loggedSessionCardLine(item)}
+                  </p>
+                ))}
+                {focusPlan.skipReason && !(focus.active ?? focusPlan.active) ? (
+                  <p className="text-sm text-muted">{focusPlan.skipReason}</p>
+                ) : null}
+                {backfillDayState(focusKey, now, tz) === "ok" ? (
+                  <LogPastWorkoutButton
+                    dayKey={focusKey}
+                    entry="calendar"
+                    label={focusKey === dayKey(now, tz) ? "Log a workout" : "Log a completed workout"}
+                    timeZone={tz}
+                  />
+                ) : null}
+              </section>
+            </CalendarFocusGate>
+          );
+        })}
 
         {weekSchedule.days.every((day) => day.activities.every((item) => item.kind !== "workout")) ? (
           <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">
@@ -297,6 +298,7 @@ export default async function TrainingCalendarPage({
         focusOffset={focusOffset}
         todayHref={todayHref}
         initialWeekStart={viewedWeek}
+        initialDay={dayParam}
         logPastDayKeys={logPastDayKeys}
         timeZone={tz}
         level={levelOverride}

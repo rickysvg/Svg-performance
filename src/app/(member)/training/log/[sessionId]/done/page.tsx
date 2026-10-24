@@ -22,6 +22,11 @@ import { sessionProgress } from "@/lib/session-progress";
 import { calendarPlanDoses } from "@/lib/plan-doses";
 import { getOwnWorkoutSessionOrNull } from "@/lib/workouts";
 import { prisma } from "@/lib/prisma";
+import { visibleFinishDose } from "@/lib/finish-plan";
+import { listSwapsForDay } from "@/lib/exercise-swap-store";
+import { listRemovalsForDay, listRemovalsForSession } from "@/lib/exercise-removal-store";
+import { trainingBlockKey, type SwapRecord } from "@/lib/exercise-swap";
+import type { RemovalRecord } from "@/lib/exercise-removal";
 
 export default async function WorkoutDonePage({
   params,
@@ -60,10 +65,55 @@ export default async function WorkoutDonePage({
     ? await calendarPlanDoses(user.id, view.session.performedAt)
     : null;
   const plan = view.session.programDayId ? doses?.get(view.session.programDayId) : undefined;
+  const program = view.session.programDay;
+  const baseExercises = (
+    plan?.exercises && plan.exercises.length > 0
+      ? plan.exercises
+      : program?.exercises ?? []
+  )
+    .map((exercise) => ({
+      name: (exercise.name ?? "").trim(),
+      sets: Math.max(0, Math.round(exercise.sets ?? 0)),
+    }))
+    .filter((exercise) => exercise.name.length > 0);
+  let swaps: SwapRecord[] = [];
+  let removals: RemovalRecord[] = [];
+  if (program) {
+    [swaps, removals] = await Promise.all([
+      listSwapsForDay({
+        userId: user.id,
+        programSlug: program.program.slug,
+        dayNumber: program.dayNumber,
+      }),
+      listRemovalsForDay({
+        userId: user.id,
+        programSlug: program.program.slug,
+        dayNumber: program.dayNumber,
+      }),
+    ]);
+  } else {
+    removals = await listRemovalsForSession(user.id, view.session.id);
+  }
+  const visible =
+    baseExercises.length > 0
+      ? visibleFinishDose({
+          exercises: baseExercises,
+          swaps,
+          removals,
+          sessionId: view.session.id,
+          blockKey: trainingBlockKey(
+            view.session.performedAt,
+            tz,
+            profile?.onboardingCompletedAt ?? null,
+          ),
+          catalogDose: plan?.dose,
+          loggedSets: view.session.sets,
+        })
+      : null;
   const progress = sessionProgress(view.session, {
-    dose: plan?.dose,
-    names: plan?.names,
-    exercises: plan?.exercises ?? view.session.programDay?.exercises,
+    dose: visible?.dose ?? plan?.dose,
+    names: visible?.names ?? plan?.names,
+    exercises: visible?.exercises ?? plan?.exercises ?? view.session.programDay?.exercises,
   });
   const partial = !progress.done;
   const unit = profile?.preferredUnits ?? "lb";
@@ -84,7 +134,7 @@ export default async function WorkoutDonePage({
     session: view.session,
     displayUnit: unit,
     newPrCount: newPrExerciseCount(prs),
-    planExercises: plan?.exercises ?? view.session.programDay?.exercises,
+    planExercises: visible?.exercises ?? plan?.exercises ?? view.session.programDay?.exercises,
   });
   const performed = civilDayInstant(view.session.performedAt, tz);
   const whenLabel =

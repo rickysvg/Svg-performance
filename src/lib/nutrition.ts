@@ -8,6 +8,7 @@ import {
   addZonedDays,
   dayKey as zonedDayKey,
   endOfZonedDay,
+  formatDateTimeLocal,
   startOfZonedDay,
 } from "@/lib/timezone";
 
@@ -142,6 +143,19 @@ export async function createNutritionEntryForUser(
   return entry;
 }
 
+/**
+ * When the correction form is left alone, the submitted clock is the same
+ * wall-clock minute as the saved meal. Keep that instant, including seconds.
+ * A different minute is an explicit When change and is stored.
+ */
+export function correctionEatenAt(existing: Date, submitted: Date, timeZone: string) {
+  if (Number.isNaN(submitted.getTime())) return existing;
+  if (formatDateTimeLocal(existing, timeZone) === formatDateTimeLocal(submitted, timeZone)) {
+    return existing;
+  }
+  return submitted;
+}
+
 export async function updateNutritionEntryForUser(
   entryId: string,
   userId: string,
@@ -157,15 +171,13 @@ export async function updateNutritionEntryForUser(
     notes?: string;
     eatenAt: Date;
   },
+  timeZone = APP_TIMEZONE,
 ) {
-  await getNutritionEntryForUser(entryId, userId);
+  const existing = await getNutritionEntryForUser(entryId, userId);
   const data = validateNutritionInput(input);
-  if (Number.isNaN(input.eatenAt.getTime())) {
-    throw new AppError("NUTRITION", "Enter a valid date.");
-  }
   return prisma.nutritionEntry.update({
     where: { id: entryId },
-    data: { ...data, eatenAt: input.eatenAt },
+    data: { ...data, eatenAt: correctionEatenAt(existing.eatenAt, input.eatenAt, timeZone) },
   });
 }
 

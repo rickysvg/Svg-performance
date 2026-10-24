@@ -11,7 +11,10 @@ import { bikeHistoryLine } from "@/lib/bike-chooser";
 import { historyDetailBesideCount, roundHistoryLine } from "@/lib/round-session";
 import { calendarPlanDoses } from "@/lib/plan-doses";
 import { sessionProgress } from "@/lib/session-progress";
-import { dayKey, mondayOfZoned } from "@/lib/timezone";
+import { visibleDoseForSession } from "@/lib/finish-plan";
+import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
+import { trainingBlockKey } from "@/lib/exercise-swap";
+import { dayKey, formatMemberDateTime, mondayOfZoned } from "@/lib/timezone";
 import { DeleteWorkoutButton } from "@/components/training/DeleteWorkoutButton";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { backfillFormSeed } from "@/lib/backfill-workout";
@@ -35,11 +38,12 @@ export default async function HistoryPage() {
     const week = dayKey(mondayOfZoned(performed, timeZone), timeZone);
     if (!weeks.has(week)) weeks.set(week, performed);
   }
-  const doseByWeek = new Map(
-    await Promise.all(
+  const [doseByWeek, edits] = await Promise.all([
+    Promise.all(
       [...weeks].map(async ([week, date]) => [week, await calendarPlanDoses(user.id, date)] as const),
-    ),
-  );
+    ).then((rows) => new Map(rows)),
+    loadMemberExerciseEdits(user.id),
+  ]);
 
   return (
     <main className="space-y-6">
@@ -90,14 +94,30 @@ export default async function HistoryPage() {
           {sessions.map((session) => {
             const week = dayKey(mondayOfZoned(new Date(session.performedAt), timeZone), timeZone);
             const plan = session.programDayId ? doseByWeek.get(week)?.get(session.programDayId) : undefined;
+            const programmed =
+              plan?.exercises && plan.exercises.length > 0
+                ? plan.exercises
+                : (session.programDay?.exercises ?? []);
+            const visible = session.programDay
+              ? visibleDoseForSession({
+                  exercises: programmed,
+                  catalogDose: plan?.dose,
+                  sessionId: session.id,
+                  blockKey: trainingBlockKey(
+                    new Date(session.performedAt),
+                    timeZone,
+                    profile?.onboardingCompletedAt ?? null,
+                  ),
+                  programSlug: session.programDay.program.slug,
+                  dayNumber: session.programDay.dayNumber,
+                  edits,
+                  loggedSets: session.sets,
+                })
+              : null;
             const progress = sessionProgress(
               session,
-              plan
-                ? {
-                    dose: plan.dose,
-                    names: plan.names,
-                    exercises: plan.exercises ?? session.programDay?.exercises,
-                  }
+              visible
+                ? { dose: visible.dose, names: visible.names, exercises: visible.exercises }
                 : { exercises: session.programDay?.exercises },
             );
             const countLine = progress.text;
@@ -129,7 +149,7 @@ export default async function HistoryPage() {
                   </p>
                 ) : null}
                 <p className="mt-1 text-sm text-muted" data-history-when={timeZone}>
-                  {new Date(session.performedAt).toLocaleString("en-US", { timeZone })} ·{" "}
+                  {formatMemberDateTime(new Date(session.performedAt), timeZone)} ·{" "}
                   <span data-session-progress>{countLine}</span>
                   {detailLine ? ` · ${detailLine}` : ""}
                   {difficultyLabel(session.difficultyRating)

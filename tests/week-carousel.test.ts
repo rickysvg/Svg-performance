@@ -488,11 +488,13 @@ describe("week day carousel", () => {
     const calendar = read("src/components/training/CalendarWeekFollow.tsx");
     const train = read("src/components/training/TrainWeekFollow.tsx");
     const strip = read("src/components/training/WeekStrip.tsx");
-    for (const source of [calendar, train]) {
-      expect(source).toContain("initialWeekStart !== trackedWeek");
-      expect(source).toContain("setWeekStart(initialWeekStart)");
-      expect(source).toContain("if (week.preserveUrl) return;");
-    }
+    expect(train).toContain("initialWeekStart !== trackedWeek");
+    expect(train).toContain("setWeekStart(initialWeekStart)");
+    expect(train).toContain("if (week.preserveUrl) return;");
+    expect(calendar).toContain("initialWeekStart !== seenWeek");
+    expect(calendar).toContain("setWeekStart(initialWeekStart)");
+    expect(calendar).toContain("setDayParam(initialDay)");
+    expect(calendar).toContain("if (week.preserveUrl) return;");
     expect(strip).toContain("preserveUrl: jumping");
     expect(strip).not.toContain("if (jumping) return;");
   });

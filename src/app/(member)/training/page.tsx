@@ -53,6 +53,9 @@ import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
 import { openLogsByProgramDay, todayStartAction } from "@/lib/today-start";
+import { withVisiblePlanExercises } from "@/lib/finish-plan";
+import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
+import { trainingBlockKey } from "@/lib/exercise-swap";
 import { TodaySummary } from "@/components/training/TodaySummary";
 import { campPlanWeekIndex, getActiveCampSnapshot, shapeDayPlan } from "@/lib/fight-camp";
 import { FightCampOptIn } from "@/components/training/FightCampOptIn";
@@ -152,8 +155,18 @@ export default async function TrainingPage({
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const dayParam = formatDayParam(selected, tz);
   const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
-  const planByDay = await calendarPlanDoses(user.id, now);
-  const openToday = openLogsByProgramDay(resumable, formatDayParam(now, tz), tz, planByDay);
+  const [planByDay, edits] = await Promise.all([
+    calendarPlanDoses(user.id, now),
+    loadMemberExerciseEdits(user.id),
+  ]);
+  const visibleEdits = { edits, anchor: profile?.onboardingCompletedAt ?? null };
+  const openToday = openLogsByProgramDay(
+    resumable,
+    formatDayParam(now, tz),
+    tz,
+    planByDay,
+    visibleEdits,
+  );
   const todayBase = planForDate(prefs, now, tz, swaps);
   const todayShaped =
     campOn && camp && camp.phase !== "complete" ? shapeDayPlan(todayBase, camp.phase) : todayBase;
@@ -248,7 +261,21 @@ export default async function TrainingPage({
       const focusPlanned = resolvePlanSessions(focusPlan, focusCatalog);
       const focusDayPlans = savedDayPlans.filter((plan) => plan.dayKey === focusParam);
       const overlay = applyPlansToProgramCards(focusPlanned, focusDayPlans);
-      const openOnDay = openLogsByProgramDay(resumable, focusParam, tz, planByDay);
+      const openOnDay = openLogsByProgramDay(resumable, focusParam, tz, planByDay, visibleEdits);
+      const cards = overlay.cards.map((session) => {
+        const openId = session.dayId ? openOnDay.get(session.dayId)?.id : undefined;
+        const logged = resumable.find(
+          (row) =>
+            Boolean(session.dayId) &&
+            row.programDayId === session.dayId &&
+            sessionCompletionDay(row, tz) === focusParam,
+        );
+        return withVisiblePlanExercises(session, {
+          edits,
+          blockKey: trainingBlockKey(date, tz, profile?.onboardingCompletedAt ?? null),
+          sessionId: openId ?? logged?.id ?? "",
+        });
+      });
       const plyo =
         focusPlanned.some((session) => session.kind === "strength") && focusPlan.active
           ? profile?.experienceLevel === "beginner"
@@ -278,7 +305,7 @@ export default async function TrainingPage({
         dateLabel: formatCalendarHeading(date, now, tz),
         dayPlan: focusPlan,
         checkIn: eased.checkIn,
-        cards: overlay.cards,
+        cards,
         replaced: overlay.replaced,
         dayPlans: focusDayPlans,
         openOnDay,

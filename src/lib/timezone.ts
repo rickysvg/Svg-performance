@@ -168,6 +168,24 @@ export function formatMemberDate(date: Date, timeZone: string) {
   }).format(date);
 }
 
+/**
+ * Friendly date and time in the member's zone.
+ * Daylight time and standard time both come from the zone, so October in
+ * Denver stays on MDT instead of reading an hour early.
+ */
+export function formatMemberDateTime(date: Date, timeZone: string) {
+  const zone = isValidTimeZone(timeZone) ? timeZone : "UTC";
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: zone,
+  }).format(date);
+}
+
 /** `datetime-local` value for an instant in the member's zone, not the server zone. */
 export function formatDateTimeLocal(date: Date, timeZone: string) {
   const parts = zonedParts(date, timeZone);

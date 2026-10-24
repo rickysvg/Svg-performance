@@ -80,6 +80,18 @@ export async function listSwapsForDay(input: {
   return rows.map(toRecord);
 }
 
+export async function listSwapsForUser(userId: string) {
+  const rows = await prisma.exerciseSwap.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+  });
+  return rows.map((row) => ({
+    programSlug: row.programSlug,
+    dayNumber: row.dayNumber,
+    record: toRecord(row),
+  }));
+}
+
 export { cleanSwapName, swapAlreadyInWorkoutMessage };
 
 /**
@@ -456,6 +468,23 @@ export async function applyExerciseSwap(input: {
     });
     sets = updated.sets;
     updatedAt = updated.updatedAt.toISOString();
+    const delta = Math.round(prescription.sets) - Math.round(input.source.sets);
+    if (delta !== 0) {
+      const counted = await prisma.workoutSession.findUnique({
+        where: { id: input.workoutSessionId },
+        select: { plannedSetCount: true, userId: true },
+      });
+      if (
+        counted &&
+        counted.userId === input.userId &&
+        typeof counted.plannedSetCount === "number"
+      ) {
+        await prisma.workoutSession.update({
+          where: { id: input.workoutSessionId },
+          data: { plannedSetCount: Math.max(0, counted.plannedSetCount + delta) },
+        });
+      }
+    }
   }
 
   return { prescription, sets, retiredNames: [...retired], updatedAt };

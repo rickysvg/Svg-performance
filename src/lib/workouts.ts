@@ -53,6 +53,8 @@ import {
 import { DELOAD_LABEL } from "@/lib/training-cycle";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
+import { visibleDoseForSession, namedSetRows } from "@/lib/finish-plan";
+import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
 import { bindPendingSwaps, listSwapsForDay } from "@/lib/exercise-swap-store";
 import { omitRemovedSlots } from "@/lib/exercise-removal";
 import {
@@ -398,10 +400,14 @@ export async function completedProgramDayIdsOnDay(
       sets: loggedSetSome,
     },
     select: {
+      id: true,
       status: true,
       programDayId: true,
       performedAt: true,
       plannedSetCount: true,
+      programDay: {
+        select: { dayNumber: true, program: { select: { slug: true } } },
+      },
       sets: {
         select: {
           exerciseName: true,
@@ -409,12 +415,19 @@ export async function completedProgramDayIdsOnDay(
           reps: true,
           loadValue: true,
           durationSeconds: true,
+          prescriptionKey: true,
+          logMode: true,
         },
       },
     },
   });
-  const targets = await plannedTargetsByDay(ids);
-  const doses = await calendarPlanDoses(userId, day);
+  const [targets, doses, edits, profile] = await Promise.all([
+    plannedTargetsByDay(ids),
+    calendarPlanDoses(userId, day),
+    loadMemberExerciseEdits(userId),
+    getProfileForUser(userId),
+  ]);
+  const anchor = profile?.onboardingCompletedAt ?? null;
   const key = dayKey(day, timeZone);
   return [
     ...new Set(
@@ -425,11 +438,33 @@ export async function completedProgramDayIdsOnDay(
           const names =
             plan && plan.names.length > 0 ? [...plan.names] : (targets.names.get(row.programDayId) ?? []);
           const dose = plan && plan.dose > 0 ? plan.dose : (targets.doses.get(row.programDayId) ?? 0);
-          return sessionProgress(row, {
-            dose,
-            names,
-            exercises: plan?.exercises,
-          }).done;
+          const programmed = namedSetRows(plan?.exercises);
+          const visible =
+            programmed.length > 0
+              ? visibleDoseForSession({
+                  exercises: programmed,
+                  catalogDose: dose,
+                  sessionId: row.id,
+                  blockKey: trainingBlockKey(row.performedAt, timeZone, anchor),
+                  programSlug: row.programDay?.program.slug,
+                  dayNumber: row.programDay?.dayNumber,
+                  edits,
+                  loggedSets: row.sets,
+                })
+              : null;
+          return sessionProgress(
+            {
+              status: row.status,
+              programDayId: row.programDayId,
+              plannedSetCount: row.plannedSetCount,
+              sets: row.sets,
+            },
+            {
+              dose: visible?.dose ?? dose,
+              names: visible?.names ?? names,
+              exercises: visible?.exercises ?? plan?.exercises,
+            },
+          ).done;
         })
         .map((row) => row.programDayId)
         .filter((id): id is string => Boolean(id)),
