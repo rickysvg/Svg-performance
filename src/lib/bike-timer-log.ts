@@ -16,6 +16,7 @@ import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { highestSetNumber } from "@/lib/logger-insert";
 import type { LoadUnit } from "@/lib/units";
 import type { LogMode } from "@/lib/exercise-log-mode";
+import { INTERVAL_SESSION_MAX_SECONDS } from "@/lib/interval-shorthand";
 import {
   roundTargetFromExercises,
   type RoundExercise,
@@ -36,8 +37,11 @@ export function loggerChoiceFromSession(session: {
   repeatRounds?: number;
   restBetweenRoundsSeconds?: number;
   blocks?: number;
+  /** Defaults to the logger's 60-minute hold. Backfill passes the 4-hour session cap. */
+  workMax?: number;
 }): BikeChoice {
-  const workSeconds = Math.min(3600, Math.max(1, Math.round(session.workSeconds) || 15));
+  const workCap = Math.min(INTERVAL_SESSION_MAX_SECONDS, Math.max(1, Math.round(session.workMax ?? 60 * 60)));
+  const workSeconds = Math.min(workCap, Math.max(1, Math.round(session.workSeconds) || 15));
   const restSeconds = Math.min(3600, Math.max(0, Math.round(session.restSeconds) || 0));
   const roundsPerSet = Math.min(50, Math.max(1, Math.round(session.roundsPerSet) || 1));
   const repeatRounds = Math.min(20, Math.max(1, Math.round(session.repeatRounds ?? 1) || 1));
@@ -92,6 +96,7 @@ export function choiceForBackfill(input: {
       cooldownSeconds: input.cooldownSeconds,
       repeatRounds: input.repeatRounds,
       restBetweenRoundsSeconds: input.restBetweenRoundsSeconds,
+      workMax: INTERVAL_SESSION_MAX_SECONDS,
     })
   );
 }

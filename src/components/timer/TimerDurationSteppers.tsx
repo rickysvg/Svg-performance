@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type MouseEvent, type PointerEvent } from "react";
-import { formatDurationPick, stepDurationSeconds } from "@/lib/round-timer";
+import { formatDurationPick, stepDurationSeconds, stepSetRestSeconds } from "@/lib/round-timer";
 
 const WORK_MAX = 15 * 60;
 const REST_MAX = 10 * 60;
@@ -99,8 +99,10 @@ export function TimerDurationSteppers({
           label="Set rest"
           value={formatDurationPick(setRestSeconds)}
           disabled={sets <= 1}
-          onDec={() => onSets({ sets, setRestSeconds: Math.max(0, setRestSeconds - 15) })}
-          onInc={() => onSets({ sets, setRestSeconds: Math.min(600, setRestSeconds + 15) })}
+          decDisabled={setRestSeconds <= 0}
+          incDisabled={setRestSeconds >= REST_MAX}
+          onDec={() => onSets({ sets, setRestSeconds: stepSetRestSeconds(setRestSeconds, -1, stepSeconds) })}
+          onInc={() => onSets({ sets, setRestSeconds: stepSetRestSeconds(setRestSeconds, 1, stepSeconds) })}
         />
       </div>
     ) : null}
@@ -166,6 +168,8 @@ export function Stepper({
   label,
   value,
   disabled = false,
+  decDisabled = false,
+  incDisabled = false,
   onDec,
   onInc,
 }: {
@@ -173,6 +177,8 @@ export function Stepper({
   label: string;
   value: string;
   disabled?: boolean;
+  decDisabled?: boolean;
+  incDisabled?: boolean;
   onDec: () => void;
   onInc: () => void;
 }) {
@@ -209,6 +215,8 @@ export function Stepper({
       },
     };
   }
+  const decreaseDisabled = disabled || decDisabled;
+  const increaseDisabled = disabled || incDisabled;
   return (
     <div
       data-timer-step={field}
@@ -225,9 +233,11 @@ export function Stepper({
           type="button"
           aria-label={`Decrease ${label}`}
           data-timer-step-dec={field}
-          disabled={disabled}
+          disabled={decreaseDisabled}
           {...press(onDec, decPointer)}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
+          className={`flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none ${
+            decreaseDisabled && !disabled ? "opacity-40" : ""
+          }`}
         >
           −
         </button>
@@ -235,9 +245,11 @@ export function Stepper({
           type="button"
           aria-label={`Increase ${label}`}
           data-timer-step-inc={field}
-          disabled={disabled}
+          disabled={increaseDisabled}
           {...press(onInc, incPointer)}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none"
+          className={`flex h-11 w-11 items-center justify-center rounded-full border border-line text-lg leading-none ${
+            increaseDisabled && !disabled ? "opacity-40" : ""
+          }`}
         >
           +
         </button>

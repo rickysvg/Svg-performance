@@ -288,6 +288,11 @@ type LoggedPlanSession = {
   } | null;
 };
 
+function doseSetLabel(dose: number) {
+  const count = Math.max(0, Math.round(dose));
+  return `${count} ${count === 1 ? "set" : "sets"}`;
+}
+
 function prescribedSetCount(exercises: readonly { sets?: number | null }[] | null | undefined) {
   return prescribedSetTotal(exercises ? [...exercises] : undefined);
 }
@@ -606,7 +611,7 @@ async function loadCalendarSchedule(
         : null;
       const sessionDone = Boolean(view?.done);
       const ticked = view?.ticked ?? 0;
-      const setCountLabel = view && ticked > 0 ? view.text : dose > 0 ? `${dose} sets` : "";
+      const setCountLabel = view && ticked > 0 ? view.text : dose > 0 ? doseSetLabel(dose) : "";
       const exerciseRows =
         view && ticked > 0 ? visibleCalendarExercises(view.rows, view.done) : [];
       const partial = Boolean(view && !view.done && ticked > 0);

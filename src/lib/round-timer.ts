@@ -65,6 +65,11 @@ export function stepDurationSeconds(
   return Math.min(max, Math.max(min, next));
 }
 
+/** Set rest uses the same step as work and rest, and can sit on 0. The cap stays 10:00. */
+export function stepSetRestSeconds(current: number, direction: -1 | 1, step = 5) {
+  return stepDurationSeconds(current, direction, step, 0, 10 * 60);
+}
+
 /** Five-second steps for work and rest pickers. Includes the current value when it falls off the step. */
 export function secondSteps(min: number, max: number, current?: number, step = 5) {
   const start = Math.max(step, Math.ceil(min / step) * step);

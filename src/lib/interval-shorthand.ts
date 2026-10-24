@@ -35,6 +35,28 @@ const WORK_MAX = INTERVAL_WORK_MAX;
 const REST_MAX = INTERVAL_REST_MAX;
 const SET_REST_MAX = INTERVAL_SET_REST_MAX;
 
+/**
+ * Bike keeps the rest after the last sprint. Bag, pads, sparring, grappling,
+ * and shadow stop on the last work interval.
+ */
+export type IntervalClockKind = "bike" | "round";
+
+export function intervalClockKind(type: string): IntervalClockKind {
+  return type === "bike" ? "bike" : "round";
+}
+
+/**
+ * One continuous round with no rest may run up to the session cap.
+ * Every other interval keeps the live timer's 15:00 work cap.
+ */
+export function intervalWorkMax(spec: { sets: number; rounds: number; restSeconds: number }) {
+  const sets = Math.max(1, Math.round(spec.sets) || 1);
+  const rounds = Math.max(1, Math.round(spec.rounds) || 1);
+  const rest = Math.max(0, Math.round(spec.restSeconds) || 0);
+  if (sets === 1 && rounds === 1 && rest === 0) return INTERVAL_SESSION_MAX_SECONDS;
+  return WORK_MAX;
+}
+
 /** `1:05` is a clock. `1:5` is not. `15m` is minutes. A spaced `15 m` is not. */
 const DURATION = String.raw`\d+:\d{2}|\d+[sm]?`;
 const SET_REST = String.raw`(?:\s*(?:r|\+)\s*(${DURATION})|\s*\/\s*(${DURATION}))?`;
@@ -87,7 +109,7 @@ export function intervalDurationCapMessage(totalSeconds: number) {
   return `That workout is ${formatIntervalClock(totalSeconds)}. Max 4:00:00.`;
 }
 
-function fail(): IntervalShorthandResult {
+function fail(): { ok: false; error: string } {
   return { ok: false, error: HINT };
 }
 
@@ -95,19 +117,29 @@ function inRange(value: number, min: number, max: number) {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
-/** Full block, stopping on the last work interval. Matches a bag, pads, sparring, or grappling save. */
-function configuredSeconds(spec: {
-  sets: number;
-  rounds: number;
-  workSeconds: number;
-  restSeconds: number;
-  setRestSeconds: number;
-}) {
+/**
+ * Full configured clock for one interval type.
+ * Bike includes the rest after every sprint. Other types stop on the last work interval.
+ */
+export function intervalConfiguredSeconds(
+  kind: IntervalClockKind,
+  spec: {
+    sets: number;
+    rounds: number;
+    workSeconds: number;
+    restSeconds: number;
+    setRestSeconds: number;
+  },
+) {
   const sets = Math.max(1, Math.round(spec.sets));
   const rounds = Math.max(1, Math.round(spec.rounds));
   const work = Math.max(0, Math.round(spec.workSeconds));
   const rest = Math.max(0, Math.round(spec.restSeconds));
   const setRest = sets > 1 ? Math.max(0, Math.round(spec.setRestSeconds)) : 0;
+  if (kind === "bike") {
+    const perSet = rest <= 0 ? rounds * work : rounds * (work + rest);
+    return sets * perSet + Math.max(0, sets - 1) * setRest;
+  }
   let remaining = sets * rounds;
   let total = 0;
   for (let set = 0; set < sets && remaining > 0; set += 1) {
@@ -119,13 +151,18 @@ function configuredSeconds(spec: {
   return total;
 }
 
+type BuiltLine =
+  | { ok: false; error: string }
+  | { ok: true; value: IntervalShorthand; totalSeconds: number };
+
 function finish(
+  mode: IntervalClockKind,
   sets: number,
   rounds: number,
   workRaw: string,
   restRaw: string,
   setRestRaw: string | undefined,
-): IntervalShorthandResult {
+): BuiltLine {
   const workSeconds = parseShorthandDuration(workRaw);
   const restSeconds = parseShorthandDuration(restRaw);
   if (workSeconds == null || restSeconds == null) return fail();
@@ -133,30 +170,42 @@ function finish(
   if (setRestRaw && setRestSeconds == null) return fail();
   if (!inRange(sets, 1, SETS_MAX)) return fail();
   if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
-  if (!inRange(workSeconds, WORK_MIN, WORK_MAX)) return fail();
+  const workMax = intervalWorkMax({ sets, rounds, restSeconds });
+  if (!inRange(workSeconds, WORK_MIN, workMax)) {
+    if (workMax === INTERVAL_SESSION_MAX_SECONDS && workSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+      return { ok: false, error: intervalDurationCapMessage(workSeconds) };
+    }
+    return fail();
+  }
   if (!inRange(restSeconds, 0, REST_MAX)) return fail();
   if (setRestSeconds != null && !inRange(setRestSeconds, 0, SET_REST_MAX)) return fail();
-  const totalSeconds = configuredSeconds({
-    sets,
-    rounds,
-    workSeconds,
-    restSeconds,
-    setRestSeconds: setRestSeconds ?? 0,
-  });
-  if (totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
-    return { ok: false, error: intervalDurationCapMessage(totalSeconds) };
-  }
+  const value = { sets, rounds, workSeconds, restSeconds, setRestSeconds };
   return {
     ok: true,
-    value: { sets, rounds, workSeconds, restSeconds, setRestSeconds },
+    value,
+    totalSeconds: intervalConfiguredSeconds(mode, {
+      sets,
+      rounds,
+      workSeconds,
+      restSeconds,
+      setRestSeconds: setRestSeconds ?? 0,
+    }),
   };
 }
 
-export function parseIntervalShorthand(text: string): IntervalShorthandResult {
+function rejectOverCap(built: BuiltLine): IntervalShorthandResult {
+  if (!built.ok) return built;
+  if (built.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    return { ok: false, error: intervalDurationCapMessage(built.totalSeconds) };
+  }
+  return { ok: true, value: built.value };
+}
+
+export function parseIntervalShorthand(text: string, mode: IntervalClockKind = "round"): IntervalShorthandResult {
   const raw = text.trim().replace(/\s+/g, " ");
   if (!raw) return fail();
   if (/^tabata$/i.test(raw)) {
-    return finish(1, 8, "20", "10", undefined);
+    return rejectOverCap(finish(mode, 1, 8, "20", "10", undefined));
   }
   const emom = /^emom\s+(\d+)$/i.exec(raw);
   if (emom) {
@@ -169,11 +218,11 @@ export function parseIntervalShorthand(text: string): IntervalShorthandResult {
   }
   const full = FULL.exec(raw);
   if (full) {
-    return finish(Number(full[1]), Number(full[2]), full[3] ?? "", full[4] ?? "", full[5] || full[6]);
+    return rejectOverCap(finish(mode, Number(full[1]), Number(full[2]), full[3] ?? "", full[4] ?? "", full[5] || full[6]));
   }
   const single = SINGLE.exec(raw);
   if (single) {
-    return finish(1, Number(single[1]), single[2] ?? "", single[3] ?? "", single[4] || single[5]);
+    return rejectOverCap(finish(mode, 1, Number(single[1]), single[2] ?? "", single[3] ?? "", single[4] || single[5]));
   }
   return fail();
 }
@@ -210,15 +259,20 @@ export function formatIntervalDisplay(spec: {
 }) {
   const sets = Math.max(1, Math.round(spec.sets) || 1);
   const rounds = Math.max(1, Math.round(spec.rounds) || 1);
-  const pair = `${formatShorthandDuration(spec.workSeconds)}/${formatShorthandDuration(spec.restSeconds)}`;
+  const restSeconds = Math.max(0, Math.round(spec.restSeconds) || 0);
+  if (sets === 1 && rounds === 1 && restSeconds === 0) {
+    return `Steady ride · ${formatIntervalClock(spec.workSeconds)}`;
+  }
+  const pair = `${formatShorthandDuration(spec.workSeconds)}/${formatShorthandDuration(restSeconds)}`;
+  const roundsLabel = formatIntervalTotal(rounds);
   if (sets > 1) {
     const between =
       spec.setRestSeconds != null && spec.setRestSeconds > 0
         ? ` · ${Math.round(spec.setRestSeconds)}s between sets`
         : "";
-    return `${sets} × ${rounds} rounds · ${pair}${between}`;
+    return `${sets} × ${roundsLabel} · ${pair}${between}`;
   }
-  return `${rounds} rounds · ${pair}`;
+  return `${roundsLabel} · ${pair}`;
 }
 
 export function formatIntervalTotal(totalRounds: number) {
@@ -250,16 +304,31 @@ export type IntervalStructure = {
 export function clampIntervalStructure(spec: IntervalStructure): IntervalStructure {
   const sets = Math.min(SETS_MAX, Math.max(1, Math.round(spec.sets) || 1));
   const rounds = Math.min(ROUNDS_MAX, Math.max(1, Math.round(spec.rounds) || 1));
-  const workSeconds = Math.min(WORK_MAX, Math.max(WORK_MIN, Math.round(spec.workSeconds) || WORK_MIN));
   const restSeconds = Math.min(REST_MAX, Math.max(0, Math.round(spec.restSeconds) || 0));
+  const workMax = intervalWorkMax({ sets, rounds, restSeconds });
+  const workSeconds = Math.min(workMax, Math.max(WORK_MIN, Math.round(spec.workSeconds) || WORK_MIN));
   const setRestSeconds = Math.min(SET_REST_MAX, Math.max(0, Math.round(spec.setRestSeconds) || 0));
   return { sets, rounds, workSeconds, restSeconds, setRestSeconds };
 }
 
-/** A bad line keeps the steppers. A good line updates them and keeps an omitted set rest. */
-export function commitShorthand(text: string, current: IntervalStructure) {
-  const parsed = parseIntervalShorthand(text);
-  if (!parsed.ok) return { structure: current, error: parsed.error };
+function sameStructure(left: IntervalStructure, right: IntervalStructure) {
+  return (
+    left.sets === right.sets &&
+    left.rounds === right.rounds &&
+    left.workSeconds === right.workSeconds &&
+    left.restSeconds === right.restSeconds &&
+    left.setRestSeconds === right.setRestSeconds
+  );
+}
+
+function interpretShorthand(text: string, current: IntervalStructure, mode: IntervalClockKind) {
+  const raw = text.trim().replace(/\s+/g, " ");
+  if (!raw) return fail();
+  const built = /^tabata$/i.test(raw)
+    ? finish(mode, 1, 8, "20", "10", undefined)
+    : null;
+  const parsed = built ?? parseBuilt(raw, mode);
+  if (!parsed.ok) return parsed;
   const structure = clampIntervalStructure({
     sets: parsed.value.sets,
     rounds: parsed.value.rounds,
@@ -267,11 +336,68 @@ export function commitShorthand(text: string, current: IntervalStructure) {
     restSeconds: parsed.value.restSeconds,
     setRestSeconds: parsed.value.setRestSeconds ?? current.setRestSeconds,
   });
-  const totalSeconds = configuredSeconds(structure);
-  if (totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
-    return { structure: current, error: intervalDurationCapMessage(totalSeconds) };
+  const totalSeconds = intervalConfiguredSeconds(mode, structure);
+  return { ok: true as const, structure, totalSeconds };
+}
+
+function parseBuilt(raw: string, mode: IntervalClockKind): BuiltLine {
+  const emom = /^emom\s+(\d+)$/i.exec(raw);
+  if (emom) {
+    const rounds = Number(emom[1]);
+    if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
+    const value = { sets: 1, rounds, workSeconds: 60, restSeconds: 0, setRestSeconds: null };
+    return {
+      ok: true,
+      value,
+      totalSeconds: intervalConfiguredSeconds(mode, { ...value, setRestSeconds: 0 }),
+    };
   }
-  return { structure, error: "" };
+  const full = FULL.exec(raw);
+  if (full) {
+    return finish(mode, Number(full[1]), Number(full[2]), full[3] ?? "", full[4] ?? "", full[5] || full[6]);
+  }
+  const single = SINGLE.exec(raw);
+  if (single) {
+    return finish(mode, 1, Number(single[1]), single[2] ?? "", single[3] ?? "", single[4] || single[5]);
+  }
+  return fail();
+}
+
+/**
+ * Whether the field can be saved. A rejected line blocks Save even when the
+ * steppers still show the previous structure. `matches` is true when that
+ * line is the structure already on the steppers.
+ */
+export function shorthandLineState(text: string, current: IntervalStructure, mode: IntervalClockKind = "round") {
+  const read = interpretShorthand(text, current, mode);
+  if (!read.ok) return { error: read.error, matches: false, blocked: true };
+  if (read.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    return {
+      error: intervalDurationCapMessage(read.totalSeconds),
+      matches: sameStructure(read.structure, current),
+      blocked: true,
+    };
+  }
+  const matches = sameStructure(read.structure, current);
+  return { error: "", matches, blocked: !matches };
+}
+
+/** A bad line keeps the steppers. A good line updates them and keeps an omitted set rest. */
+export function commitShorthand(text: string, current: IntervalStructure, mode: IntervalClockKind = "round") {
+  const read = interpretShorthand(text, current, mode);
+  if (!read.ok) return { structure: current, error: read.error };
+  if (read.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    return { structure: current, error: intervalDurationCapMessage(read.totalSeconds) };
+  }
+  return { structure: read.structure, error: "" };
+}
+
+/** Digits typed into Done. Empty counts as zero so the message can show while the field is being edited. */
+export function draftCount(raw: string): number | null {
+  const text = raw.trim();
+  if (text === "") return 0;
+  if (!/^\d+$/.test(text)) return null;
+  return Number(text);
 }
 
 export function commitStructure(next: IntervalStructure) {

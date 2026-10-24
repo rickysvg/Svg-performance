@@ -13,6 +13,7 @@ import {
   bikeHistoryFromSessions,
   bikeHistoryLine,
   compactBikeReps,
+  choiceFromToken,
   customBikeChoice,
   formatBikeRecipe,
   parseBikeRecipe,
@@ -65,6 +66,19 @@ describe("bike workout chooser", () => {
     expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 20, restSeconds: 10, rounds: 8, warmupSeconds: 660 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })).toBeNull();
+    expect(choiceFromToken("c.14400.0.1.0.0")?.spec).toMatchObject({
+      workSeconds: 4 * 60 * 60,
+      restSeconds: 0,
+      roundsPerSet: 1,
+    });
+    expect(choiceFromToken("c.1320.0.1.0.0")?.spec.workSeconds).toBe(22 * 60);
+    expect(choiceFromToken("c.3540.0.1.0.0")?.spec.workSeconds).toBe(59 * 60);
+    expect(choiceFromToken("c.3601.0.1.0.0")?.spec.workSeconds).toBe(3601);
+    expect(bikeChoiceFromKey("timer#bw:c.14400.0.1.0.0")?.spec.workSeconds).toBe(4 * 60 * 60);
+    expect(choiceFromToken("c.15.0.8.0.0")).toBeNull();
+    expect(choiceFromToken("c.14401.0.1.0.0")).toBeNull();
+    expect(choiceFromToken("c.15.15.8.0.0")?.spec).toMatchObject({ workSeconds: 15, restSeconds: 15, roundsPerSet: 8 });
   });
 
   it("repeats any workout for N rounds and keeps that on the prescription key", () => {

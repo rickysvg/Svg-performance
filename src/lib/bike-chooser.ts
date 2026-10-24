@@ -15,7 +15,11 @@ import {
   type BikeIntervalSpec,
 } from "@/lib/bike-interval-timer";
 import { addedPrescriptionKey, parseAddedPlan } from "@/lib/logger-insert";
-import { formatIntervalDisplay, formatIntervalTotal } from "@/lib/interval-shorthand";
+import {
+  formatIntervalDisplay,
+  formatIntervalTotal,
+  INTERVAL_SESSION_MAX_SECONDS,
+} from "@/lib/interval-shorthand";
 
 export type BikeGoal = "power" | "anaerobic" | "aerobic" | "fight-sim";
 export type BikeLevel = "beginner" | "intermediate" | "advanced";
@@ -418,18 +422,70 @@ export function choiceToken(choice: BikeChoice) {
   return `${choice.id}.${rounds}.${between}`;
 }
 
-export function choiceFromToken(token: string): BikeChoice | null {
-  if (token.startsWith("c.")) {
-    const [work, rest, rounds, warmup, cooldown, repeat, between] = token.slice(2).split(".").map(Number);
-    return customBikeChoice({
-      workSeconds: work ?? Number.NaN,
-      restSeconds: rest ?? Number.NaN,
-      rounds: rounds ?? Number.NaN,
+/**
+ * A saved one-round ride with no rest. `customBikeChoice` still rejects rest 0
+ * and work past 2 minutes, so the live picker does not offer these clocks.
+ * History has to read the token back or the edit falls off the interval path.
+ */
+function steadyRideChoice(parts: number[]): BikeChoice | null {
+  const work = integerPart(parts[0]);
+  const rest = integerPart(parts[1]);
+  const rounds = integerPart(parts[2]);
+  if (work == null || rest == null || rounds == null) return null;
+  if (rest !== 0 || rounds !== 1) return null;
+  if (work < 5 || work > INTERVAL_SESSION_MAX_SECONDS) return null;
+  const repeat = parts.length > 5 ? integerPart(parts[5]) : 1;
+  const between = parts.length > 6 ? integerPart(parts[6]) : 0;
+  if (repeat !== 1 || between !== 0) return null;
+  const warmup = parts.length > 3 && Number.isFinite(parts[3]) ? integerPart(parts[3]) : 0;
+  const cooldown = parts.length > 4 && Number.isFinite(parts[4]) ? integerPart(parts[4]) : 0;
+  if (warmup == null || cooldown == null) return null;
+  if (warmup < 0 || warmup > 600 || cooldown < 0 || cooldown > 600) return null;
+  const display = formatIntervalDisplay({
+    sets: 1,
+    rounds: 1,
+    workSeconds: work,
+    restSeconds: 0,
+    setRestSeconds: 0,
+  });
+  return {
+    id: "custom",
+    name: display,
+    description: "Your work, rest, and rounds. Repeat the block for extra sets.",
+    goal: "anaerobic",
+    level: "intermediate",
+    plain: display,
+    spec: {
+      workSeconds: work,
+      restSeconds: 0,
+      roundsPerSet: 1,
       warmupSeconds: warmup,
       cooldownSeconds: cooldown,
-      repeatRounds: Number.isFinite(repeat) ? repeat : undefined,
-      restBetweenRoundsSeconds: Number.isFinite(between) ? between : undefined,
-    });
+      repeatRounds: 1,
+      restBetweenRoundsSeconds: 0,
+    },
+  };
+}
+
+function integerPart(value: number | undefined) {
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+export function choiceFromToken(token: string): BikeChoice | null {
+  if (token.startsWith("c.")) {
+    const parts = token.slice(2).split(".").map(Number);
+    const [work, rest, rounds, warmup, cooldown, repeat, between] = parts;
+    return (
+      customBikeChoice({
+        workSeconds: work ?? Number.NaN,
+        restSeconds: rest ?? Number.NaN,
+        rounds: rounds ?? Number.NaN,
+        warmupSeconds: warmup,
+        cooldownSeconds: cooldown,
+        repeatRounds: Number.isFinite(repeat) ? repeat : undefined,
+        restBetweenRoundsSeconds: Number.isFinite(between) ? between : undefined,
+      }) ?? steadyRideChoice(parts)
+    );
   }
   const [id, roundsRaw, betweenRaw] = token.split(".");
   const base = bikeChoiceById(id ?? "");

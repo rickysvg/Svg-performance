@@ -12,9 +12,10 @@ import {
   type ExerciseSetProgress,
 } from "@/lib/logged-work";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
+import { formatIntervalClock } from "@/lib/interval-shorthand";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { bikeCardioDurationSeconds } from "@/lib/workout-complete";
-import { completedWorkRounds, formatTimerClock, type TimerPhase } from "@/lib/round-timer";
+import { completedWorkRounds, type TimerPhase } from "@/lib/round-timer";
 import { SESSION_DURATION_CAP_SECONDS } from "@/lib/share-card";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import type { LoadUnit } from "@/lib/units";
@@ -573,9 +574,9 @@ export function roundHistoryLine(session: {
         : (block ?? roundSessionDuration(sets.length, work, rest));
   const parts = [
     `${sets.length} round${sets.length === 1 ? "" : "s"}`,
-    `${formatTimerClock(work)} round`,
-    `${formatTimerClock(rest)} rest`,
-    `${formatTimerClock(total)} total`,
+    `${formatIntervalClock(work)} round`,
+    `${formatIntervalClock(rest)} rest`,
+    `${formatIntervalClock(total)} total`,
   ];
   if (session.sessionRpe != null) parts.push(`RPE ${session.sessionRpe}`);
   return parts.join(" · ");

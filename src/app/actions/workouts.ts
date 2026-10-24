@@ -141,6 +141,7 @@ function choiceFromBikeLoggerForm(formData: FormData) {
     restSeconds: Number.isFinite(restSeconds) ? restSeconds : 0,
     roundsPerSet,
     repeatRounds: Number(formData.get("repeatRounds") ?? 1),
+    workMax: 60 * 60,
   });
 }
 

@@ -196,6 +196,26 @@ export function backfillCompletionStatus(input: {
   throw new AppError("WORKOUT", "Log at least one set, then save.");
 }
 
+/**
+ * A set already saved past the 60-minute hold keeps that length.
+ * An unchanged edit must not rewrite 4:00:00 down to 1:00:00.
+ * A new hold still stops at 60 minutes.
+ */
+function keptSetSeconds(parsed: number | null, saved: number | null) {
+  const savedLong =
+    saved != null && saved > BACKFILL_MAX_SET_SECONDS && saved <= BACKFILL_MAX_SESSION_SECONDS
+      ? saved
+      : null;
+  if (savedLong != null) {
+    const next = parsed ?? savedLong;
+    if (next === savedLong) return savedLong;
+    if (next > savedLong) return Math.min(BACKFILL_MAX_SESSION_SECONDS, Math.max(1, Math.round(next)));
+    return Math.max(1, Math.round(next));
+  }
+  const requested = parsed ?? saved ?? 30;
+  return Math.min(BACKFILL_MAX_SET_SECONDS, Math.max(1, Math.round(requested)));
+}
+
 export function setsForBackfillExercises(
   exercises: BackfillExerciseInput[],
   unit: LoadUnit,
@@ -219,13 +239,11 @@ export function setsForBackfillExercises(
       exercise.storedReps != null && exercise.storedReps > 0 ? Math.round(exercise.storedReps) : null;
     const reps = timed ? null : (defaultLoggedReps(repsText) ?? storedReps ?? 8);
     const parsedDuration = timed ? parseDurationSeconds(repsText) : null;
-    const storedDuration =
+    const savedDuration =
       timed && exercise.durationSeconds != null && exercise.durationSeconds > 0
-        ? Math.min(BACKFILL_MAX_SET_SECONDS, Math.round(exercise.durationSeconds))
+        ? Math.round(exercise.durationSeconds)
         : null;
-    const durationSeconds = timed
-      ? Math.min(BACKFILL_MAX_SET_SECONDS, Math.max(1, parsedDuration ?? storedDuration ?? 30))
-      : null;
+    const durationSeconds = timed ? keptSetSeconds(parsedDuration, savedDuration) : null;
     plannedNames.push(name);
     plannedSetCount += planned;
     const prescriptionKey = prescriptionKeyFor?.(exercise) ?? (exercise.prescriptionKey ?? "").trim();

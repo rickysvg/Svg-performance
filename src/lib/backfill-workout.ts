@@ -21,15 +21,15 @@ import {
   INTERVAL_SESSION_MAX_SECONDS,
   INTERVAL_SETS_MAX,
   INTERVAL_SET_REST_MAX,
-  INTERVAL_WORK_MAX,
   INTERVAL_WORK_MIN,
   formatIntervalDisplay,
+  intervalConfiguredSeconds,
+  intervalWorkMax,
 } from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
 import {
   exerciseMatchesRoundType,
   restSecondsFromRoundKey,
-  roundBlockDuration,
   ROUND_SESSION_TITLES,
   roundLogSets,
   roundSaveStatus,
@@ -893,27 +893,7 @@ function configuredIntervalSeconds(input: {
   restSeconds: number;
   setRestSeconds: number;
 }) {
-  const sets = Math.max(1, Math.round(input.sets) || 1);
-  const rounds = Math.max(1, Math.round(input.rounds) || 1);
-  const setRest = sets > 1 ? Math.max(0, Math.round(input.setRestSeconds)) : 0;
-  if (input.kind === "bike") {
-    const choice = choiceForBackfill({
-      workSeconds: input.workSeconds,
-      restSeconds: input.restSeconds,
-      roundsPerSet: rounds,
-      repeatRounds: sets,
-      restBetweenRoundsSeconds: setRest,
-    });
-    return bikeTimerSessionSeconds(choice, sets * rounds);
-  }
-  return roundBlockDuration({
-    sets,
-    rounds,
-    workSeconds: input.workSeconds,
-    restSeconds: input.restSeconds,
-    setRestSeconds: setRest,
-    done: sets * rounds,
-  });
+  return intervalConfiguredSeconds(input.kind === "bike" ? "bike" : "round", input);
 }
 
 function assertSavableInterval(input: {
@@ -926,7 +906,11 @@ function assertSavableInterval(input: {
 }) {
   assertCount(input.sets, 1, INTERVAL_SETS_MAX, "Sets");
   assertCount(input.rounds, 1, INTERVAL_ROUNDS_MAX, "Rounds");
-  assertCount(input.workSeconds, INTERVAL_WORK_MIN, INTERVAL_WORK_MAX, "Work");
+  const workMax = intervalWorkMax(input);
+  if (workMax === INTERVAL_SESSION_MAX_SECONDS && input.workSeconds > INTERVAL_SESSION_MAX_SECONDS) {
+    throw new AppError("WORKOUT", "That workout is longer than 4 hours.");
+  }
+  assertCount(input.workSeconds, INTERVAL_WORK_MIN, workMax, "Work");
   assertCount(input.restSeconds, 0, INTERVAL_REST_MAX, "Rest");
   assertCount(input.setRestSeconds, 0, INTERVAL_SET_REST_MAX, "Set rest");
   if (input.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {

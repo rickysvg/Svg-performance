@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampIntervalStructure,
   commitShorthand,
   commitStructure,
+  draftCount,
   formatIntervalClock,
+  formatIntervalDisplay,
   formatIntervalShorthand,
   formatSessionSummary,
   intervalDurationCapMessage,
+  intervalWorkMax,
   parseIntervalShorthand,
+  shorthandLineState,
   stepSeconds,
 } from "@/lib/interval-shorthand";
 
@@ -86,6 +91,66 @@ describe("interval shorthand", () => {
     expect(commitStructure({ sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 }).shorthand).toBe(
       "2x8 @ 15/15 r60",
     );
+  });
+
+  it("accepts one continuous round up to 4 hours and keeps 15:00 for more rounds", () => {
+    expect(parseIntervalShorthand("1x22:00/0")).toMatchObject({
+      ok: true,
+      value: { sets: 1, rounds: 1, workSeconds: 22 * 60, restSeconds: 0 },
+    });
+    expect(parseIntervalShorthand("1x240:00/0")).toMatchObject({
+      ok: true,
+      value: { workSeconds: 4 * 60 * 60, restSeconds: 0 },
+    });
+    expect(parseIntervalShorthand("1x240:01/0")).toMatchObject({
+      ok: false,
+      error: "That workout is 4:00:01. Max 4:00:00.",
+    });
+    expect(parseIntervalShorthand("2x1 @ 22:00/0").ok).toBe(false);
+    expect(parseIntervalShorthand("1x22:00/10").ok).toBe(false);
+    expect(intervalWorkMax({ sets: 1, rounds: 1, restSeconds: 0 })).toBe(4 * 60 * 60);
+    expect(intervalWorkMax({ sets: 2, rounds: 1, restSeconds: 0 })).toBe(15 * 60);
+    expect(
+      clampIntervalStructure({ sets: 1, rounds: 1, workSeconds: 22 * 60, restSeconds: 0, setRestSeconds: 0 }).workSeconds,
+    ).toBe(22 * 60);
+    expect(
+      clampIntervalStructure({ sets: 1, rounds: 2, workSeconds: 22 * 60, restSeconds: 0, setRestSeconds: 0 }).workSeconds,
+    ).toBe(15 * 60);
+    expect(
+      formatIntervalDisplay({ sets: 1, rounds: 1, workSeconds: 4 * 60 * 60, restSeconds: 0, setRestSeconds: 0 }),
+    ).toBe("Steady ride · 4:00:00");
+    expect(formatIntervalDisplay({ sets: 1, rounds: 1, workSeconds: 22 * 60, restSeconds: 0 })).toBe(
+      "Steady ride · 22:00",
+    );
+    expect(formatIntervalDisplay({ sets: 1, rounds: 1, workSeconds: 15, restSeconds: 15 })).toBe("1 round · 15/15");
+    expect(formatIntervalDisplay({ sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 })).toBe(
+      "2 × 8 rounds · 15/15 · 60s between sets",
+    );
+  });
+
+  it("uses the bike total, including rest after the last sprint, for the line cap", () => {
+    expect(parseIntervalShorthand("10x1 @ 15:00/10:00 r600", "round").ok).toBe(true);
+    expect(parseIntervalShorthand("10x1 @ 15:00/10:00 r600", "bike")).toEqual({
+      ok: false,
+      error: "That workout is 5:40:00. Max 4:00:00.",
+    });
+    const current = { sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 };
+    const kept = commitShorthand("10x1 @ 15:00/10:00 r600", current, "bike");
+    expect(kept.structure).toEqual(current);
+    expect(kept.error).toBe("That workout is 5:40:00. Max 4:00:00.");
+    const blocked = shorthandLineState("10x30 @ 60/60 r120", current, "bike");
+    expect(blocked.blocked).toBe(true);
+    expect(blocked.matches).toBe(false);
+    expect(blocked.error).toContain("Max 4:00:00");
+    const same = shorthandLineState("2x8 @ 15/15 r60", current);
+    expect(same).toEqual({ error: "", matches: true, blocked: false });
+  });
+
+  it("reads a typed Done of 0 before the field blurs", () => {
+    expect(draftCount("0")).toBe(0);
+    expect(draftCount("")).toBe(0);
+    expect(draftCount("12")).toBe(12);
+    expect(draftCount("1a")).toBeNull();
   });
 
   it("steps by 5 under a minute and lands on 60", () => {

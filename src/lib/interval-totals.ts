@@ -1,7 +1,7 @@
 import { bikeTimerRoundCount, customBikeChoice } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
 import { bikeTimerSessionSeconds, loggerChoiceFromSession } from "@/lib/bike-timer-log";
-import { INTERVAL_ROUNDS_MAX, INTERVAL_SETS_MAX } from "@/lib/interval-shorthand";
+import { INTERVAL_ROUNDS_MAX, INTERVAL_SESSION_MAX_SECONDS, INTERVAL_SETS_MAX } from "@/lib/interval-shorthand";
 import { roundBlockDuration, type RoundSessionType } from "@/lib/round-session";
 
 export type IntervalTotalType = RoundSessionType | "shadow";
@@ -42,6 +42,7 @@ export function intervalTotals(type: IntervalTotalType, spec: IntervalTotalSpec,
         roundsPerSet: spec.rounds,
         repeatRounds: spec.sets,
         restBetweenRoundsSeconds: spec.sets > 1 ? spec.setRestSeconds : 0,
+        workMax: INTERVAL_SESSION_MAX_SECONDS,
       });
     const totalRounds = bikeTimerRoundCount(choice);
     const done = clamp(doneRounds, 0, totalRounds);
