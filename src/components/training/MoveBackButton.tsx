@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { moveWorkoutHomeAction } from "@/app/actions/move-home";
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { nextIntentSeq } from "@/lib/plan-intent";
+import { submitPlanIntent } from "@/lib/plan-intent-outbox";
 
 export function MoveBackButton({
   sessionKey,
@@ -29,7 +29,13 @@ export function MoveBackButton({
           setPending(true);
           const run = move
             ? move.moveHome(sessionKey, weekStart, home)
-            : moveWorkoutHomeAction(sessionKey, weekStart, nextIntentSeq(sessionKey));
+            : submitPlanIntent({
+                sessionKey,
+                weekStart,
+                toDay: home,
+                intentSeq: nextIntentSeq(sessionKey),
+                intent: "restore",
+              });
           void run
             .then((result) => {
               if (result.error) setError(result.error);

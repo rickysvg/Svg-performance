@@ -1,14 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
-import { moveWorkoutHomeAction } from "@/app/actions/move-home";
+import { createContext, useContext, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  moveWorkoutAction,
   restoreWeekPlanAction,
   swapCalendarDaysAction,
   swapWorkoutAction,
-  undoSessionMoveAction,
 } from "@/app/actions/week-plan";
 import { placementAfterMoveBack } from "@/lib/calendar-placements";
 import {
@@ -18,6 +15,12 @@ import {
   readSessionUndoTarget,
   sessionUndoTarget,
 } from "@/lib/plan-intent";
+import {
+  planIntentOutboxSize,
+  submitPlanIntent,
+  subscribePlanIntentOutbox,
+  type PlanIntentResult,
+} from "@/lib/plan-intent-outbox";
 import type { MoveDayChoice, MoveSessionChoice } from "@/lib/week-plan";
 import { Toast } from "@/components/Toast";
 import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
@@ -76,6 +79,7 @@ export function WorkoutMoveProvider({
   children: ReactNode;
 }) {
   for (const [key, floor] of Object.entries(intentFloor ?? {})) noteIntentFloor(key, floor);
+  const intentPending = useSyncExternalStore(subscribePlanIntentOutbox, planIntentOutboxSize, () => 0);
   const pathname = usePathname() ?? "";
   const swapSessionTestId = pathname.startsWith("/training/calendar")
     ? "workout-move-session-btn-2"
@@ -135,6 +139,16 @@ export function WorkoutMoveProvider({
     if (typeof seq === "number") noteIntentFloor(sessionKey, seq);
   }
 
+  function refreshIfSettled() {
+    if (planIntentOutboxSize() === 0) onCommitted?.();
+  }
+
+  function acceptIntent(sessionKey: string, seq: number, result: PlanIntentResult) {
+    const stillLatest = latestIntentSeq(sessionKey) === seq;
+    noteServerSeq(sessionKey, result.seq);
+    return stillLatest && !result.superseded;
+  }
+
   function placeDaySwap(fromDay: string, toDay: string) {
     const next = { ...placementsRef.current };
     const undo: { key: string; from: string }[] = [];
@@ -178,10 +192,14 @@ export function WorkoutMoveProvider({
     setError(null);
     beginSaving();
     try {
-      const result = await moveWorkoutAction(sessionKey, toDay, weekStart, seq);
-      const stillLatest = latestIntentSeq(sessionKey) === seq;
-      noteServerSeq(sessionKey, result.seq);
-      if (!stillLatest) return;
+      const result = await submitPlanIntent({
+        sessionKey,
+        weekStart,
+        toDay,
+        intentSeq: seq,
+        intent: "move",
+      });
+      if (!acceptIntent(sessionKey, seq, result)) return;
       if (result.error) {
         placementsRef.current = previous;
         setPlacements(previous);
@@ -190,14 +208,14 @@ export function WorkoutMoveProvider({
       }
       if (result.applied === false) {
         clearPlacement(sessionKey);
-        onCommitted?.();
+        refreshIfSettled();
         return;
       }
       finish(
         message,
         from ? sessionUndoTarget({ sessionKey, weekStart, toDay: from }) : undefined,
       );
-      onCommitted?.();
+      refreshIfSettled();
     } finally {
       endSaving();
     }
@@ -297,17 +315,21 @@ export function WorkoutMoveProvider({
     const next = placementAfterMoveBack(previous, sessionKey, home);
     placementsRef.current = next;
     setPlacements(next);
-    const result = await moveWorkoutHomeAction(sessionKey, targetWeek, seq);
-    const stillLatest = latestIntentSeq(sessionKey) === seq;
-    noteServerSeq(sessionKey, result.seq);
-    if (!stillLatest) return result;
+    const result = await submitPlanIntent({
+      sessionKey,
+      weekStart: targetWeek,
+      toDay: home,
+      intentSeq: seq,
+      intent: "restore",
+    });
+    if (!acceptIntent(sessionKey, seq, result)) return result;
     if (result.error) {
       placementsRef.current = previous;
       setPlacements(previous);
       return result;
     }
     if (result.applied === false) clearPlacement(sessionKey);
-    onCommitted?.();
+    refreshIfSettled();
     return result;
   }
 
@@ -322,15 +344,14 @@ export function WorkoutMoveProvider({
       setToast(null);
       setUndoing(true);
       try {
-        const result = await undoSessionMoveAction(
-          targetDay.sessionKey,
-          targetDay.toDay,
-          targetDay.weekStart,
-          seq,
-        );
-        const stillLatest = latestIntentSeq(targetDay.sessionKey) === seq;
-        noteServerSeq(targetDay.sessionKey, result.seq);
-        if (!stillLatest) return;
+        const result = await submitPlanIntent({
+          sessionKey: targetDay.sessionKey,
+          weekStart: targetDay.weekStart,
+          toDay: targetDay.toDay,
+          intentSeq: seq,
+          intent: "restore",
+        });
+        if (!acceptIntent(targetDay.sessionKey, seq, result)) return;
         if (result.error) {
           placementsRef.current = previous;
           setPlacements(previous);
@@ -338,7 +359,7 @@ export function WorkoutMoveProvider({
           return;
         }
         if (result.applied === false) clearPlacement(targetDay.sessionKey);
-        onCommitted?.();
+        refreshIfSettled();
       } finally {
         setUndoing(false);
       }
@@ -382,7 +403,7 @@ export function WorkoutMoveProvider({
           .map((session) => ({ day, session })),
       )
     : [];
-  const pending = saving || undoing;
+  const pending = saving || undoing || intentPending > 0;
 
   return (
     <WorkoutMoveContext.Provider
@@ -410,7 +431,7 @@ export function WorkoutMoveProvider({
             className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-[#CBF805]"
             aria-hidden
           />
-          Updating the week…
+          Saving…
         </div>
       ) : null}
       {target ? (

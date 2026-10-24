@@ -352,7 +352,13 @@ describe("Oct 23 QA fixes", () => {
     expect(move).toContain("saving || undoing");
     expect(move).not.toContain("useTransition");
     expect(move).toContain("placementAfterMoveBack");
-    expect(move).toContain("undoSessionMoveAction");
+    expect(move).toContain("submitPlanIntent");
+    expect(move).toContain("Saving…");
+    expect(move).not.toContain("moveWorkoutAction");
+    const outbox = read("src/lib/plan-intent-outbox.ts");
+    expect(outbox).toContain("keepalive: true");
+    expect(outbox).toContain("sendBeacon");
+    expect(outbox).toContain("pagehide");
     const moveBack = read("src/components/training/MoveBackButton.tsx");
     expect(moveBack).toContain("moveHome");
     expect(moveBack).not.toContain("useTransition");
