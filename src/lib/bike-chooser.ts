@@ -625,6 +625,19 @@ export function retainBikeChoiceSets<
     }) as T;
   const mine = sets.filter((set) => set.exerciseName === exerciseName);
   const completed = mine.filter((set) => set.completed);
+  const finished = mine.length > 0 && completed.length === mine.length;
+  // A finished ride's new structure is the whole ride. One stored round must
+  // not stay "1/31" after the member changes the workout.
+  if (finished) {
+    const rounds = bikeTimerRoundCount(choice);
+    const template = completed[0]!;
+    const expanded = Array.from({ length: rounds }, (_, index) =>
+      stamped({ ...template, completed: true, setNumber: index + 1 }),
+    );
+    const before = sets.slice(0, first).filter((set) => set.exerciseName !== exerciseName);
+    const after = sets.slice(first).filter((set) => set.exerciseName !== exerciseName);
+    return [...before, ...expanded, ...after];
+  }
   const open = mine.find((set) => !set.completed) ?? (completed.length === 0 ? mine[0] : undefined);
   const kept = completed.map((set) => stamped(set));
   if (open && !open.completed) {

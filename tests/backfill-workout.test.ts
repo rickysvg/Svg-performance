@@ -29,6 +29,7 @@ import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
 import { chipAfterDayPreview, keepIntervalDraftOnDayChange, LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { bikeHistoryStatusLine } from "@/lib/session-progress";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
 
 const NOW = new Date("2026-10-22T18:00:00.000Z");
@@ -2268,6 +2269,21 @@ describe("today and past interval logs", () => {
     expect(after31.status).toBe("complete");
     expect(after31.sets).toHaveLength(31);
     expect(historyCountLine(after31)).toBe("31/31 rounds · Done");
+    expect(bikeHistoryStatusLine(after31).text).toBe("31/31 rounds · Done");
+    expect(bikeHistoryStatusLine(after31).text).not.toContain("Partial");
+    const clock31 = await readWorkoutTimerFields(thirtyOne, prisma);
+    const tiles31 = workoutCompleteTiles({
+      displayUnit: "lb",
+      newPrCount: 0,
+      session: {
+        ...after31,
+        elapsedSeconds: 25 * 60,
+        backfilled: true,
+      },
+    });
+    expect(tiles31.find((tile) => tile.key === "time")?.value).not.toBe("25:00");
+    expect(tiles31.find((tile) => tile.key === "time")?.value).toBe("15:30");
+    expect(clock31.elapsedSeconds).not.toBe(25 * 60);
 
     const reopenedId = await steady("2026-10-19");
     await reopenCompletedWorkoutForUser(user.id, reopenedId);

@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { bikeSessionForLogger, DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
+import { historyCountLine } from "@/lib/logged-work";
+import { bikeHistoryStatusLine } from "@/lib/session-progress";
+import { workoutCompleteTiles } from "@/lib/workout-complete";
 import { roundHistoryLine } from "@/lib/round-session";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
 import { exercisesFromLoggerGroups } from "@/lib/my-workout-plan";
@@ -309,6 +312,57 @@ describe("bike workout chooser", () => {
     expect(apply).toContain("commitShorthand");
     expect(apply).toContain("if (committed.error)");
     expect(apply.indexOf("commitShorthand")).toBeLessThan(apply.indexOf("customBikeChoice"));
+  });
+
+  it("logs every round of a finished ride that changes to 31 or 40", () => {
+    const steady = {
+      exerciseName: "Assault bike intervals",
+      completed: true,
+      setNumber: 1,
+      prescriptionKey: "timer#bw:c.1500.0.1.0.0",
+      durationSeconds: 25 * 60,
+    };
+    const cases = [
+      { rounds: 31, work: 20, rest: 10, time: "15:30" },
+      { rounds: 40, work: 15, rest: 15, time: "20:00" },
+    ];
+    for (const item of cases) {
+      const choice = customBikeChoice({ workSeconds: item.work, restSeconds: item.rest, rounds: item.rounds });
+      expect(choice).not.toBeNull();
+      expect(bikeSetDurationSeconds(choice!.spec)).toBe(item.rounds * (item.work + item.rest));
+      const sets = retainBikeChoiceSets([steady], steady.exerciseName, choice!);
+      expect(sets).toHaveLength(item.rounds);
+      expect(sets.every((set) => set.completed)).toBe(true);
+      const session = {
+        status: "complete" as const,
+        sets: sets.map((set) => ({
+          ...set,
+          logMode: "timed_round" as const,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb" as const,
+        })),
+      };
+      const line = `${item.rounds}/${item.rounds} rounds · Done`;
+      expect(historyCountLine(session)).toBe(line);
+      expect(bikeHistoryStatusLine(session).text).toBe(line);
+      expect(historyCountLine(session)).not.toContain("Partial");
+      expect(bikeHistoryStatusLine(session).text).not.toContain("Partial");
+      const tiles = workoutCompleteTiles({
+        displayUnit: "lb",
+        newPrCount: 0,
+        session: {
+          title: "Steady ride · 25:00",
+          status: "complete",
+          performedAt: new Date("2026-10-21T18:00:00.000Z"),
+          elapsedSeconds: 25 * 60,
+          sets: session.sets,
+        },
+      });
+      expect(tiles.find((tile) => tile.key === "time")?.value).toBe(item.time);
+      expect(tiles.find((tile) => tile.key === "time")?.value).not.toBe("25:00");
+      expect(roundHistoryLine({ elapsedSeconds: 25 * 60, sets: session.sets })).toContain(item.time);
+    }
   });
 
   it("keeps a saved workout recipe inside the added prescription key", () => {

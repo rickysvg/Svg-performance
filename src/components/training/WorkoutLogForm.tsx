@@ -88,7 +88,7 @@ import {
 } from "@/lib/session-elapsed";
 import { exerciseUsesBikeLogger, textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
-import { restoreLoggerSets } from "@/lib/logger-sets";
+import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import { planWorkFromText, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
 import {
@@ -258,13 +258,17 @@ function prescribedRowId(sessionId: string, exerciseName: string, setNumber: num
 
 function setsForLogger(session: Session, draft: LoggerDraft | null = null): WorkoutSet[] {
   const base = setsInLb(session.sets);
-  const prescriptions = session.programDay?.exercises ?? [];
-  return restoreLoggerSets(
+  const plannedRows = session.programDay?.exercises ?? [];
+  const prescriptions = planRowsForLoggedSets(
+    plannedRows.map((row) => ({ name: row.name, sets: row.sets })),
+    base,
+  );
+  const restored = restoreLoggerSets(
     base,
     draft,
-    prescriptions.map((row) => ({ name: row.name, sets: row.sets })),
+    prescriptions,
     (exerciseName, setNumber) => {
-      const planned = prescriptions.find(
+      const planned = plannedRows.find(
         (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
       );
       const name = planned?.name ?? exerciseName;
@@ -285,6 +289,7 @@ function setsForLogger(session: Session, draft: LoggerDraft | null = null): Work
     },
     gymExerciseKey,
   );
+  return dropEmptyPlanBikeRows(restored, [...base, ...(draft?.sets ?? [])]);
 }
 
 const SAVE_FAILED =

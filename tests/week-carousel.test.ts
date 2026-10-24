@@ -9,6 +9,8 @@ import {
   carouselFocusOffset,
   carouselIndexFromScroll,
   carouselLoggedRange,
+  initialStripGesture,
+  reduceStripGesture,
   carouselWeekAnchors,
   carouselWeekStrips,
   packCarouselWeeks,
@@ -59,7 +61,7 @@ describe("week day carousel", () => {
       panelWidth: 400,
       weekCount: 8,
       intendedIndex: 5,
-      userGesture: false,
+      gestureSincePlace: false,
     });
     expect(current).toEqual({ index: 5, restore: true });
     const swiped = carouselIndexFromScroll({
@@ -67,7 +69,7 @@ describe("week day carousel", () => {
       panelWidth: 400,
       weekCount: 8,
       intendedIndex: 5,
-      userGesture: true,
+      gestureSincePlace: true,
     });
     expect(swiped).toEqual({ index: 0, restore: false });
     const unplaced = carouselIndexFromScroll({
@@ -75,14 +77,82 @@ describe("week day carousel", () => {
       panelWidth: 0,
       weekCount: 8,
       intendedIndex: 5,
-      userGesture: false,
+      gestureSincePlace: false,
     });
     expect(unplaced).toEqual({ index: 5, restore: false });
     const strip = read("src/components/training/WeekStrip.tsx");
     expect(strip).toContain("carouselIndexFromScroll");
-    expect(strip).toContain("clearTimeout(gestureTimer.current)");
+    expect(strip).toContain("reduceStripGesture");
+    expect(strip).toContain("scrollend");
+    expect(strip).not.toContain("noteUserGesture");
+    expect(strip).not.toContain(", 400)");
     const sync = strip.slice(strip.indexOf("function syncFromScroll"), strip.indexOf("function goTo"));
     expect(sync).not.toContain("noteUserGesture");
+    expect(sync).toContain("gestureSincePlace");
+  });
+
+  it("keeps a slow drag and a long fling on the week the finger reached", () => {
+    const placed = reduceStripGesture(initialStripGesture(), { type: "place", at: 0 });
+    const dragging = reduceStripGesture(
+      reduceStripGesture(placed, { type: "pointerdown", at: 0 }),
+      { type: "scroll", at: 600 },
+    );
+    expect(dragging.active).toBe(true);
+    expect(dragging.sincePlace).toBe(true);
+    expect(dragging.pointerDown).toBe(true);
+    expect(
+      carouselIndexFromScroll({
+        scrollLeft: 400,
+        panelWidth: 400,
+        weekCount: 8,
+        intendedIndex: 5,
+        gestureSincePlace: dragging.sincePlace,
+      }),
+    ).toEqual({ index: 1, restore: false });
+
+    let flung = reduceStripGesture(placed, { type: "pointerdown", at: 0 });
+    flung = reduceStripGesture(flung, { type: "pointerup", at: 40 });
+    flung = reduceStripGesture(flung, { type: "scroll", at: 200 });
+    flung = reduceStripGesture(flung, { type: "scroll", at: 600 });
+    expect(flung.pointerDown).toBe(false);
+    expect(flung.active).toBe(true);
+    expect(flung.sincePlace).toBe(true);
+    expect(
+      carouselIndexFromScroll({
+        scrollLeft: 800,
+        panelWidth: 400,
+        weekCount: 8,
+        intendedIndex: 5,
+        gestureSincePlace: flung.sincePlace,
+      }),
+    ).toEqual({ index: 2, restore: false });
+    const ended = reduceStripGesture(flung, { type: "scrollend", at: 620 });
+    expect(ended.active).toBe(false);
+    expect(ended.sincePlace).toBe(true);
+    const settled = reduceStripGesture(flung, { type: "settle", at: 600 + 150 });
+    expect(settled.active).toBe(false);
+    expect(settled.sincePlace).toBe(true);
+    const stillMoving = reduceStripGesture(flung, { type: "settle", at: 600 + 149 });
+    expect(stillMoving.active).toBe(true);
+
+    const layout = reduceStripGesture(reduceStripGesture(placed, { type: "scroll", at: 50 }), {
+      type: "scroll",
+      at: 80,
+    });
+    expect(layout.sincePlace).toBe(false);
+    expect(
+      carouselIndexFromScroll({
+        scrollLeft: 0,
+        panelWidth: 400,
+        weekCount: 8,
+        intendedIndex: 5,
+        gestureSincePlace: layout.sincePlace,
+      }),
+    ).toEqual({ index: 5, restore: true });
+    const wheeled = reduceStripGesture(placed, { type: "wheel", at: 0 });
+    const wheeledScroll = reduceStripGesture(wheeled, { type: "scroll", at: 600 });
+    expect(wheeledScroll.sincePlace).toBe(true);
+    expect(wheeledScroll.active).toBe(true);
   });
 
   it("labels two weeks back through two weeks ahead in the member zone", () => {

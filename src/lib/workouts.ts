@@ -1700,8 +1700,13 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.exerciseName.length > 80) {
       throw new AppError("WORKOUT", "Exercise name is too long.");
     }
-    if (set.setNumber < 1 || set.setNumber > 20) {
-      throw new AppError("WORKOUT", "Set numbers should be between 1 and 20.");
+    const roundRow = set.logMode === "timed_round" || isBikeIntervalName(set.exerciseName);
+    const numberCap = roundRow ? 80 : 20;
+    if (set.setNumber < 1 || set.setNumber > numberCap) {
+      throw new AppError(
+        "WORKOUT",
+        roundRow ? "Round numbers should be between 1 and 80." : "Set numbers should be between 1 and 20.",
+      );
     }
     if (set.reps != null && (set.reps < 0 || set.reps > 200)) {
       throw new AppError("WORKOUT", "Reps should be between 0 and 200.");

@@ -7,6 +7,7 @@ import { makeUser, resetDatabase } from "./helpers";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
 import { choiceToken, customBikeChoice } from "@/lib/bike-chooser";
+import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { resolveSessionElapsed, SESSION_DURATION_CAP_SECONDS } from "@/lib/session-elapsed";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
@@ -1521,5 +1522,124 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
     expect(resumed.sets.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
     expect(resumed.sets.every((set) => set.exerciseName !== "Daru alactic power bike")).toBe(true);
+  });
+
+  it("keeps undo finish of a plan ride free of an empty Daru row and saves it complete", async () => {
+    const user = await makeUser("daru-undo-save@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 5);
+    expect(day?.exercises[0]?.name).toBe("Daru alactic power bike");
+    const choice = customBikeChoice({ workSeconds: 10, restSeconds: 50, rounds: 3 });
+    expect(choice).not.toBeNull();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: day!.id,
+        title: "Cardio",
+        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        status: "complete",
+        plannedSetCount: 1,
+        sets: {
+          create: [
+            {
+              exerciseName: "Assault bike intervals",
+              setNumber: 1,
+              sortOrder: 0,
+              logMode: "timed_round",
+              durationSeconds: 10,
+              completed: true,
+              prescriptionKey: `timer#bw:${choiceToken(choice!)}`,
+            },
+          ],
+        },
+      },
+    });
+    const reopened = await reopenCompletedWorkoutForUser(user.id, session.id);
+    expect(reopened.status).toBe("draft");
+    const logged = reopened.sets.map((set) => ({
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      completed: set.completed,
+      durationSeconds: set.durationSeconds,
+      reps: set.reps,
+      loadValue: set.loadValue,
+      prescriptionKey: set.prescriptionKey,
+      logMode: set.logMode,
+      notes: set.notes,
+      loadUnit: "lb" as const,
+      rir: "",
+    }));
+    const prescriptions = (day?.exercises ?? []).map((row) => ({ name: row.name, sets: row.sets }));
+    expect(planRowsForLoggedSets(prescriptions, logged).some((row) => row.name === "Daru alactic power bike")).toBe(
+      false,
+    );
+    const withEmptyPlanRow = restoreLoggerSets(
+      logged,
+      {
+        sets: [
+          ...logged,
+          {
+            exerciseName: "Daru alactic power bike",
+            setNumber: 1,
+            completed: false,
+            durationSeconds: null,
+          },
+        ],
+      },
+      prescriptions,
+      (name, setNumber) => ({
+        exerciseName: name,
+        setNumber,
+        completed: false,
+        durationSeconds: null,
+        reps: null,
+        loadValue: null,
+        prescriptionKey: "",
+        logMode: "timed_round",
+        notes: "",
+        loadUnit: "lb" as const,
+        rir: "",
+      }),
+    );
+    const restored = dropEmptyPlanBikeRows(withEmptyPlanRow, logged);
+    expect(restored.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    expect(restored.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
+    const sets = restored
+      .filter((set) => set.completed || (set.durationSeconds ?? 0) > 0)
+      .map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb" as const,
+        logMode: "timed_round" as const,
+        durationSeconds: set.durationSeconds,
+        completed: true,
+        notes: "",
+        prescriptionKey: set.prescriptionKey ?? "",
+        rir: "",
+      }));
+    const drafted = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: "Cardio",
+      performedAt: reopened.performedAt,
+      notes: "",
+      status: "draft",
+      sets,
+    });
+    expect(drafted.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    const saved = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: "Cardio",
+      performedAt: reopened.performedAt,
+      notes: "",
+      status: "complete",
+      sets,
+    });
+    expect(saved.status).toBe("complete");
+    expect(saved.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    expect(saved.sets.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
   });
 });

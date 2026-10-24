@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -24,7 +25,15 @@ import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
-import { carouselIndexFromScroll, nextSelectedDay, weekChipHref, weekScrollLeft } from "@/lib/week-carousel";
+import {
+  carouselIndexFromScroll,
+  initialStripGesture,
+  nextSelectedDay,
+  reduceStripGesture,
+  STRIP_GESTURE_SETTLE_MS,
+  weekChipHref,
+  weekScrollLeft,
+} from "@/lib/week-carousel";
 import type { weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number] & {
@@ -768,8 +777,8 @@ function WeekDayCarousel({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const indexRef = useRef(initialIndex);
   const intendedIndex = useRef(initialIndex);
-  const userScroll = useRef(false);
-  const gestureTimer = useRef<number | null>(null);
+  const gesture = useRef(initialStripGesture());
+  const settleTimer = useRef<number | null>(null);
   const placing = useRef(false);
   const placeFrame = useRef<number | null>(null);
   const restoredOnce = useRef(false);
@@ -805,32 +814,32 @@ function WeekDayCarousel({
     setSelectedDay(dayParam);
   }
 
-  function noteUserGesture() {
-    userScroll.current = true;
-    if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
-    gestureTimer.current = window.setTimeout(() => {
-      userScroll.current = false;
-      gestureTimer.current = null;
-    }, 400);
+  function clearSettle() {
+    if (settleTimer.current != null) window.clearTimeout(settleTimer.current);
+    settleTimer.current = null;
   }
 
-  function holdPlace() {
-    placing.current = true;
-    if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
-    placeFrame.current = window.requestAnimationFrame(() => {
-      placing.current = false;
-      placeFrame.current = null;
-    });
+  function armSettle() {
+    clearSettle();
+    settleTimer.current = window.setTimeout(() => {
+      settleTimer.current = null;
+      gesture.current = reduceStripGesture(gesture.current, { type: "settle", at: performance.now() });
+    }, STRIP_GESTURE_SETTLE_MS);
   }
 
-  useEffect(() => {
-    return () => {
-      if (gestureTimer.current != null) window.clearTimeout(gestureTimer.current);
-      if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
-    };
-  }, []);
+  function notePointerDown() {
+    gesture.current = reduceStripGesture(gesture.current, { type: "pointerdown", at: performance.now() });
+  }
 
-  function scrollToIndex(index: number, behavior: ScrollBehavior) {
+  function notePointerUp() {
+    gesture.current = reduceStripGesture(gesture.current, { type: "pointerup", at: performance.now() });
+  }
+
+  function noteWheel() {
+    gesture.current = reduceStripGesture(gesture.current, { type: "wheel", at: performance.now() });
+  }
+
+  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior) => {
     const el = scrollerRef.current;
     if (!el) return false;
     const last = Math.max(0, weeksRef.current.length - 1);
@@ -838,12 +847,39 @@ function WeekDayCarousel({
     intendedIndex.current = safe;
     const left = weekScrollLeft(safe, el.clientWidth);
     if (el.clientWidth <= 0) return false;
+    gesture.current = reduceStripGesture(gesture.current, { type: "place", at: performance.now() });
+    if (settleTimer.current != null) {
+      window.clearTimeout(settleTimer.current);
+      settleTimer.current = null;
+    }
     restoredOnce.current = false;
-    holdPlace();
+    placing.current = true;
+    if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
+    placeFrame.current = window.requestAnimationFrame(() => {
+      placing.current = false;
+      placeFrame.current = null;
+    });
     if (behavior === "auto") el.scrollLeft = left;
     else el.scrollTo({ left, behavior });
     return true;
-  }
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    const onEnd = () => {
+      gesture.current = reduceStripGesture(gesture.current, { type: "scrollend", at: performance.now() });
+      if (settleTimer.current != null) {
+        window.clearTimeout(settleTimer.current);
+        settleTimer.current = null;
+      }
+    };
+    el?.addEventListener("scrollend", onEnd);
+    return () => {
+      el?.removeEventListener("scrollend", onEnd);
+      if (settleTimer.current != null) window.clearTimeout(settleTimer.current);
+      if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const index = Math.max(
@@ -855,7 +891,7 @@ function WeekDayCarousel({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex((current) => (current === index ? current : index));
     if (placed) setReady(true);
-  }, [focusOffset, weeks]);
+  }, [focusOffset, weeks, scrollToIndex]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -870,7 +906,7 @@ function WeekDayCarousel({
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [scrollToIndex]);
 
   useEffect(() => {
     if (jumpingToToday.current) return;
@@ -940,18 +976,26 @@ function WeekDayCarousel({
   function syncFromScroll() {
     const el = scrollerRef.current;
     if (!el || placing.current) return;
+    const nextGesture = reduceStripGesture(gesture.current, { type: "scroll", at: performance.now() });
+    gesture.current = nextGesture;
+    if (nextGesture.active && nextGesture.lastScrollAt != null) armSettle();
     const decision = carouselIndexFromScroll({
       scrollLeft: el.scrollLeft,
       panelWidth: el.clientWidth,
       weekCount: weeksRef.current.length,
       intendedIndex: intendedIndex.current,
-      userGesture: userScroll.current,
+      gestureSincePlace: nextGesture.sincePlace,
     });
     if (decision.restore) {
       // One correction. A snap fighting the write must not schedule another.
       if (restoredOnce.current) return;
       restoredOnce.current = true;
-      holdPlace();
+      placing.current = true;
+      if (placeFrame.current != null) window.cancelAnimationFrame(placeFrame.current);
+      placeFrame.current = window.requestAnimationFrame(() => {
+        placing.current = false;
+        placeFrame.current = null;
+      });
       const left = weekScrollLeft(decision.index, el.clientWidth);
       if (el.clientWidth > 0 && el.scrollLeft !== left) el.scrollLeft = left;
       return;
@@ -1088,8 +1132,13 @@ function WeekDayCarousel({
         aria-roledescription="carousel"
         aria-label="Training weeks. Left and right arrow keys change the week."
         onKeyDown={onKeyDown}
-        onPointerDown={noteUserGesture}
-        onWheel={noteUserGesture}
+        onPointerDown={notePointerDown}
+        onPointerUp={notePointerUp}
+        onPointerCancel={notePointerUp}
+        onTouchStart={notePointerDown}
+        onTouchEnd={notePointerUp}
+        onTouchCancel={notePointerUp}
+        onWheel={noteWheel}
         onScroll={syncFromScroll}
       >
         {weeks.map((week, index) => (

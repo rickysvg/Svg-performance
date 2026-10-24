@@ -234,25 +234,31 @@ export function WorkoutMoveProvider({
   async function undo() {
     if (!toast || undoing) return;
     const payload = toast.undo;
+    const previous = placementStack.current.pop() ?? null;
+    const snapshot = placementsRef.current;
+    if (previous) {
+      const next = { ...snapshot };
+      for (const step of previous) next[step.key] = step.from;
+      placementsRef.current = next;
+      setPlacements(next);
+    }
     setToast(null);
     setUndoing(true);
     try {
       const result = await restoreWeekPlanAction(payload);
       if (result.error) {
+        if (previous) {
+          placementStack.current.push(previous);
+          placementsRef.current = snapshot;
+          setPlacements(snapshot);
+        }
         setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
         return;
       }
-      const previous = placementStack.current.pop();
-      if (previous) {
-        const next = { ...placementsRef.current };
-        for (const step of previous) next[step.key] = step.from;
-        placementsRef.current = next;
-        setPlacements(next);
-      }
-      onCommitted?.();
     } finally {
       setUndoing(false);
     }
+    onCommitted?.();
   }
 
   const today = days.find((day) => day.isToday);

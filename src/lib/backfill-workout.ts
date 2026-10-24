@@ -1438,16 +1438,23 @@ async function updateIntervalBackfill(input: {
   const oldConfigured = Math.max(1, input.decoded.sets * input.decoded.rounds);
   const previouslyFinished =
     input.session.status === "complete" || input.decoded.done >= oldConfigured;
+  const structureChanged =
+    posted.sets !== input.decoded.sets ||
+    posted.rounds !== input.decoded.rounds ||
+    posted.workSeconds !== input.decoded.workSeconds ||
+    posted.restSeconds !== input.decoded.restSeconds ||
+    posted.setRestSeconds !== input.decoded.setRestSeconds;
   // A finished ride's new structure is the whole ride. Done left at the old
   // count (1 of a steady ride, including after Undo finish) is not a partial.
   let done = Math.min(configured, requestedDone);
-  if (previouslyFinished && done === input.decoded.done && done < configured) done = configured;
-  const sameStructure =
-    posted.sets === input.decoded.sets &&
-    posted.rounds === input.decoded.rounds &&
-    posted.workSeconds === input.decoded.workSeconds &&
-    posted.restSeconds === input.decoded.restSeconds &&
-    posted.setRestSeconds === input.decoded.setRestSeconds;
+  if (
+    previouslyFinished &&
+    done < configured &&
+    (structureChanged || done === input.decoded.done)
+  ) {
+    done = configured;
+  }
+  const sameStructure = !structureChanged;
   const doneUnchanged = done === input.decoded.done;
   const sameDay = sessionCompletionDay({ performedAt: input.session.performedAt }, input.timeZone) === input.dayKey;
   const performedAt = sameDay
