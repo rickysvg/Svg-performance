@@ -358,6 +358,17 @@ function sessionIsFridayConditioning(session: PlanSessionSlot) {
   return session.dayNumber != null && isGppStrengthDay(session.dayNumber);
 }
 
+function summaryWithOutside(
+  summary: string,
+  outside: DayPlan["outside"],
+) {
+  if (outside?.kind !== "sparring") return summary;
+  const parts = summary.split("+").filter((part) => part && part !== "Off" && part !== "Rest");
+  if (parts.includes("Sparring")) return parts.join("+");
+  if (parts.length === 0) return "Sparring";
+  return `${parts.join("+")}+Sparring`;
+}
+
 function summaryForSessions(sessions: PlanSessionSlot[], weekday: PlanWeekday, active: boolean) {
   if (!active) return "Off";
   const hasBag = sessions.some((session) => session.kind === "skill");
@@ -538,7 +549,10 @@ function arrangeCalendarDay(
     weekday: calendarWeekday,
     active: true,
     optionalDay: training.every((slot) => slot.optional),
-    summary: summaryForSessions(training, calendarWeekday, true),
+    summary: summaryWithOutside(
+      summaryForSessions(training, calendarWeekday, true),
+      template.outside,
+    ),
     sessions: training,
     skipReason: undefined,
     movedFrom: only && only !== calendarWeekday ? only : undefined,

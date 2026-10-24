@@ -9,7 +9,6 @@ import { StatusBanner } from "@/components/StatusBanner";
 
 export function ReminderPrefsForm({
   prefs,
-  smtpConfigured,
 }: {
   prefs: {
     workoutEnabled: boolean;
@@ -19,7 +18,6 @@ export function ReminderPrefsForm({
     preferredHour: number;
     timezoneOffsetMinutes: number;
   };
-  smtpConfigured: boolean;
 }) {
   const [state, action, pending] = useActionState(
     saveReminderPrefsAction,
@@ -34,13 +32,7 @@ export function ReminderPrefsForm({
       <h2 className="text-lg">Reminders</h2>
       <p className="text-sm text-muted">
         Home shows a due reminder once per day after your preferred hour. Turn
-        any type off anytime. True mobile push is later — this preview is in-app
-        on Home, plus email if SMTP is set.
-      </p>
-      <p className="text-xs text-muted">
-        {smtpConfigured
-          ? "SMTP is configured, so a matching email can go out with the in-app note."
-          : "SMTP is not configured. Reminders stay in-app on Home only."}
+        any type off anytime.
       </p>
       <StatusBanner error={state.error} success={state.success} />
       <input type="hidden" name="timezoneOffsetMinutes" value={offset} />
@@ -50,6 +42,7 @@ export function ReminderPrefsForm({
           type="checkbox"
           name="workoutEnabled"
           defaultChecked={prefs.workoutEnabled}
+          className="h-5 w-5 accent-[#CBF805]"
         />
         Workout log reminder
       </label>
@@ -59,6 +52,7 @@ export function ReminderPrefsForm({
           type="checkbox"
           name="foodEnabled"
           defaultChecked={prefs.foodEnabled}
+          className="h-5 w-5 accent-[#CBF805]"
         />
         Food log reminder
       </label>
@@ -68,8 +62,9 @@ export function ReminderPrefsForm({
           type="checkbox"
           name="quoteEnabled"
           defaultChecked={prefs.quoteEnabled}
+          className="h-5 w-5 accent-[#CBF805]"
         />
-        Daily quote reminder (Performance+ / paid catalog)
+        Daily quote reminder
       </label>
       <label className="flex items-center gap-3 text-sm">
         <input
@@ -77,6 +72,7 @@ export function ReminderPrefsForm({
           type="checkbox"
           name="bookingEnabled"
           defaultChecked={prefs.bookingEnabled}
+          className="h-5 w-5 accent-[#CBF805]"
         />
         Open Book with Ricky request reminder
       </label>

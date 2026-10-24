@@ -68,8 +68,7 @@ export default async function WorkoutLogPage({
   }
   const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
   // A finished plan opens the recap. A short save stays on the rows already
-  // stored. Resume and Start are the only paths that add the missing rows.
-  let correcting = false;
+  // stored, read-only until Resume workout. Resume and Start add missing rows.
   if (session.status === "complete") {
     const doses = session.programDayId ? await calendarPlanDoses(user.id, session.performedAt) : null;
     const plan = session.programDayId ? doses?.get(session.programDayId) : undefined;
@@ -104,9 +103,8 @@ export default async function WorkoutLogPage({
     if (progress.done) {
       redirect(`/training/log/${session.id}/done`);
     }
-    correcting = true;
   }
-  const finishedView = session.status === "complete" && !correcting;
+  const finishedView = session.status === "complete";
   const band = scaleBandFromPrefs(scale);
   const planned = await activePlanWeekIndex(
     user.id,
@@ -276,10 +274,11 @@ export default async function WorkoutLogPage({
           <HrWorkoutForm workoutSessionId={session.id} defaultStartedAt={startedInput} />
         )
       ) : null}
+      <fieldset disabled={finishedView} className="min-w-0 border-0 p-0 disabled:opacity-100">
       <WorkoutLogForm
         key={`${session.id}:${session.status}`}
         session={loggedSession}
-        correctable={correcting}
+        correctable={false}
         previousLoads={previousLoads}
         notes={notes}
         coachId={resolveAiCoach(profile?.aiCoachId).id}
@@ -300,6 +299,7 @@ export default async function WorkoutLogPage({
           removedNames,
         }}
       />
+      </fieldset>
     </main>
   );
 }

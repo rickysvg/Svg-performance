@@ -204,6 +204,7 @@ export type CheckInSubmitInput = {
   sorenessNotes: string;
   wins: string;
   struggles: string;
+  memberNotes?: string;
   bodyFatPercent?: number | null;
   video?: {
     bytes: Uint8Array;
@@ -228,6 +229,7 @@ export async function submitWeeklyCheckIn(input: CheckInSubmitInput) {
   const sorenessNotes = input.sorenessNotes.trim().slice(0, 400);
   const wins = input.wins.trim().slice(0, 600);
   const struggles = input.struggles.trim().slice(0, 600);
+  const memberNotes = (input.memberNotes ?? "").trim().slice(0, 600);
   const bodyFatPercent =
     input.bodyFatPercent == null
       ? null
@@ -279,6 +281,7 @@ export async function submitWeeklyCheckIn(input: CheckInSubmitInput) {
         sparringSummary: snapshot.sparringSummary,
         wins,
         struggles,
+        memberNotes,
         aiFlagsJson: JSON.stringify(detectCheckInFlags(scores)),
         submittedAt: input.now,
       },
@@ -345,6 +348,23 @@ export async function submitWeeklyCheckIn(input: CheckInSubmitInput) {
     },
   });
   return row;
+}
+
+/** Sleep, energy, and stress from the last check-in before this week. */
+export async function previousCheckInScores(userId: string, now: Date, timeZone: string) {
+  const weekKey = await weekKeyForUser(userId, now, timeZone);
+  const row = await prisma.weeklyCheckIn.findFirst({
+    where: { userId, weekKey: { not: weekKey } },
+    orderBy: { submittedAt: "desc" },
+    select: { sleepQuality: true, energy: true, stress: true },
+  });
+  if (!row) return null;
+  const score = (value: number) => (value >= 1 && value <= 5 ? value : null);
+  return {
+    sleep: score(row.sleepQuality),
+    energy: score(row.energy),
+    stress: score(row.stress),
+  };
 }
 
 export async function getCurrentCheckIn(userId: string, now: Date, timeZone: string) {

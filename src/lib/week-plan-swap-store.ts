@@ -17,6 +17,7 @@ import {
   moveSessionOnPlan,
   parseWeekPlanSwaps,
   placedWeekdayForSession,
+  sessionHomeWeekday,
   pruneAutoRolledSwaps,
   pruneWeekPlanSwaps,
   shiftDayKey,
@@ -264,6 +265,41 @@ export async function moveWorkoutForUser(
   assertSessionsOpen(done, [sessionKey]);
   const next = pruneWeekPlanSwaps(
     moveSessionOnPlan(existing, weekStart, sessionKey, toDay),
+    weekStartKey(now, timeZone),
+  );
+  await writeWeekPlanSwaps(userId, next);
+  return next;
+}
+
+/**
+ * Put a moved workout back on its home weekday.
+ * The Move sheet blocks past days, so this is the way back after Undo expires.
+ */
+export async function moveWorkoutHomeForUser(
+  userId: string,
+  sessionKey: string,
+  weekStart: string,
+  now = new Date(),
+) {
+  if (!isSessionKey(sessionKey)) {
+    throw new AppError("PLAN", "That workout cannot be moved.");
+  }
+  const home = sessionHomeWeekday(sessionKey);
+  if (!home) {
+    throw new AppError("PLAN", "That workout cannot be moved back.");
+  }
+  const timeZone = await timeZoneForUser(userId);
+  assertEditableWeek(weekStart, now, timeZone);
+  const existing = await getWeekPlanSwapsForUser(userId);
+  const row = existing.find((item) => item.weekStart === weekStart);
+  const placed = placedWeekdayForSession(row?.sourceByDay ?? {}, row?.sessionDays, sessionKey);
+  if (placed === home) {
+    throw new AppError("PLAN", "That workout is already on its original day.");
+  }
+  const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
+  assertSessionsOpen(done, [sessionKey]);
+  const next = pruneWeekPlanSwaps(
+    moveSessionOnPlan(existing, weekStart, sessionKey, home),
     weekStartKey(now, timeZone),
   );
   await writeWeekPlanSwaps(userId, next);

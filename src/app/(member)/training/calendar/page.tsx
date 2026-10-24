@@ -42,11 +42,12 @@ import { normalizeWeightAccess } from "@/lib/weight-access";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot } from "@/lib/fight-camp";
-import { isPlanWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
+import { isPlanWeekday, sessionHomeWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
 import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { MoveBackButton } from "@/components/training/MoveBackButton";
 import { backfillDayState } from "@/lib/backfill-rules";
 import { dayKey } from "@/lib/timezone";
 
@@ -225,6 +226,18 @@ export default async function TrainingCalendarPage({
                     {loggedSessionCardLine(item)}
                   </p>
                 ))}
+                {workouts.map((item) => {
+                  const home = item.sessionKey ? sessionHomeWeekday(item.sessionKey) : null;
+                  if (!item.sessionKey || !home || home === focusPlan.weekday) return null;
+                  return (
+                    <MoveBackButton
+                      key={item.sessionKey}
+                      sessionKey={item.sessionKey}
+                      weekStart={week.weekStart}
+                      home={home}
+                    />
+                  );
+                })}
                 {focusPlan.skipReason && !(focus.active ?? focusPlan.active) ? (
                   <p className="text-sm text-muted">{focusPlan.skipReason}</p>
                 ) : null}

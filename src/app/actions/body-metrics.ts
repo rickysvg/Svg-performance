@@ -7,6 +7,7 @@ import { publicErrorMessage } from "@/lib/errors";
 import {
   createBodyMetricForUser,
   deleteBodyMetricForUser,
+  updateBodyMetricValueForUser,
   deletePhotoPlaceholderForUser,
   optionalBodyFatPercent,
   parseOneDecimal,
@@ -71,6 +72,26 @@ export async function saveBodyMetricAction(
       success: bodyMetricSaveMessage(kind, bodyFatPercent),
       savedAt: Date.now(),
     };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function updateBodyMetricAction(
+  _prev: BodyMetricActionState,
+  formData: FormData,
+): Promise<BodyMetricActionState> {
+  try {
+    const user = await requireUserOrThrow();
+    await updateBodyMetricValueForUser(
+      user.id,
+      String(formData.get("metricId") ?? ""),
+      parseOneDecimal(formData.get("value")),
+    );
+    revalidatePath("/progress");
+    revalidatePath("/home");
+    revalidatePath("/checkin");
+    return { success: "Weigh-in updated.", savedAt: Date.now() };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

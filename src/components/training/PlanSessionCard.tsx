@@ -16,7 +16,7 @@ const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
   strength: "Strength",
   conditioning: "Conditioning",
   rest: "Rest",
-  mobility: "Recovery",
+  mobility: "Mobility",
 };
 
 type DayExercise = {

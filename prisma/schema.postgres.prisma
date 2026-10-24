@@ -1342,6 +1342,8 @@ model WeeklyCheckIn {
   sparringSummary      String    @default("")
   wins                 String    @default("")
   struggles            String    @default("")
+  /** Optional note that is not a win, a struggle, or a soreness comment. */
+  memberNotes          String    @default("")
   videoStorageKey      String    @default("")
   videoStorageKind     String    @default("")
   videoMimeType        String    @default("")

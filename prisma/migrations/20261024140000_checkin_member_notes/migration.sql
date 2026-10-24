@@ -1,0 +1,1 @@
+ALTER TABLE "WeeklyCheckIn" ADD COLUMN "memberNotes" TEXT NOT NULL DEFAULT '';
