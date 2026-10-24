@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import {
@@ -24,6 +24,7 @@ function refreshPlan() {
   revalidatePath("/training");
   revalidatePath("/training/calendar");
   revalidatePath("/home");
+  refresh();
 }
 
 export async function swapCalendarDaysAction(

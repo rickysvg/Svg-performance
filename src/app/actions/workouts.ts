@@ -9,6 +9,7 @@ import {
   getOwnWorkoutSessionOrNull,
   rateWorkoutSessionForUser,
   continuePartialWorkoutForUser,
+  resumeHeldSessionClockForUser,
   recordWorkoutActivityForUser,
   reopenCompletedWorkoutForUser,
   completeBikeLoggerSession,
@@ -367,6 +368,8 @@ export async function syncWorkoutDraftAction(input: {
       baseUpdatedAt: input.baseUpdatedAt,
     });
     revalidatePath("/training");
+    revalidatePath("/training/history");
+    revalidatePath("/training/history/bike");
     revalidatePath("/home");
     return { ok: true, updatedAt: saved.updatedAt.toISOString() };
   } catch (error) {
@@ -451,6 +454,13 @@ export async function continuePartialWorkoutAction(formData: FormData) {
   revalidatePath("/progress");
   revalidatePath(`/training/log/${sessionId}`);
   redirect(`/training/log/${sessionId}`);
+}
+
+/** Start the clock on a finished log that was opened without resuming. */
+export async function resumeHeldSessionClockAction(workoutId: string) {
+  const user = await requireUserOrThrow();
+  await resumeHeldSessionClockForUser({ userId: user.id, workoutId });
+  revalidatePath(`/training/log/${workoutId}`);
 }
 
 /** Undo an accidental finish and return to the same logger, sets intact. */

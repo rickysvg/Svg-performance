@@ -159,6 +159,11 @@ export function chipAfterDayPreview<T extends string>(picked: T | null, hasPlan:
   return hasPlan ? "plan" : "bike";
 }
 
+/** A Bike or Bag draft stays put when the member only changes the day. */
+export function keepIntervalDraftOnDayChange(picked: string | null) {
+  return picked != null && picked !== "plan";
+}
+
 function planHint(preview: Preview, kind: BackfillKind | null) {
   if (!kind) return "";
   if (kind === "program") {
@@ -329,7 +334,7 @@ function LogPastWorkoutSheet({
   const chipPick = useRef<{ dayKey: string; chip: BackfillKind | "plan" | null }>({ dayKey, chip: null });
 
   function selectDay(nextKey: string) {
-    chipPick.current = { dayKey: nextKey, chip: null };
+    chipPick.current = { dayKey: nextKey, chip };
     setDayKey(nextKey);
   }
 
@@ -399,15 +404,18 @@ function LogPastWorkoutSheet({
         const picked = chipPick.current.dayKey === requestedDay ? chipPick.current.chip : null;
         const nextChip = chipAfterDayPreview(picked, planned != null);
         const nextKind = nextChip === "plan" ? (planned ?? "bike") : nextChip;
+        const keepDraft = keepIntervalDraftOnDayChange(picked);
         setChip(nextChip);
         setProgramId(loaded.programs[0]?.programDayId ?? "");
         setSavedId(loaded.saved[0]?.id ?? "");
-        setRows(rowsFor(nextKind, loaded, loaded.programs[0]?.programDayId ?? "", loaded.saved[0]?.id ?? ""));
-        if (isStructureKind(nextKind) || nextKind === "shadow") {
-          const next = structureFor(nextKind, loaded);
-          setStructure(next);
-          setShorthand(formatIntervalShorthand(next));
-          setDone(next.sets * next.rounds);
+        if (!keepDraft) {
+          setRows(rowsFor(nextKind, loaded, loaded.programs[0]?.programDayId ?? "", loaded.saved[0]?.id ?? ""));
+          if (isStructureKind(nextKind) || nextKind === "shadow") {
+            const next = structureFor(nextKind, loaded);
+            setStructure(next);
+            setShorthand(formatIntervalShorthand(next));
+            setDone(next.sets * next.rounds);
+          }
         }
         if (loaded.shadowWeight != null) setShadowWeight(String(loaded.shadowWeight));
       })
@@ -492,6 +500,8 @@ function LogPastWorkoutSheet({
     ? shorthandLineState(draft, structure, intervalClockKind(intervalType))
     : { error: "", matches: true, blocked: false };
   const lineBlocked = lineState.blocked && !lineState.matches;
+  const defaultsReady = Boolean(dayKey) && showingInterval && !overDuration && !needsOneSet && !lineBlocked;
+  const waitingForPreview = mode === "create" && !preview && !defaultsReady;
   const saveText = pending
     ? "Saving…"
     : mode === "edit"
@@ -946,7 +956,7 @@ function LogPastWorkoutSheet({
                 <button
                   type="submit"
                   data-testid="log-past-workout-save"
-                  disabled={pending || overDuration || needsOneSet || lineBlocked || (mode === "create" && !preview)}
+                  disabled={pending || overDuration || needsOneSet || lineBlocked || waitingForPreview}
                   className="font-display h-12 w-full rounded-full bg-[#CBF805] text-sm uppercase text-black disabled:opacity-60"
                 >
                   {saveText}

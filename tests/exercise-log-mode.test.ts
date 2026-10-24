@@ -97,6 +97,8 @@ describe("exercise log modes", () => {
   it("parses clocks and written seconds", () => {
     expect(parseDurationSeconds("3:00")).toBe(180);
     expect(parseDurationSeconds("2:30")).toBe(150);
+    expect(parseDurationSeconds("300:00")).toBe(18000);
+    expect(parseDurationSeconds("1:23:20")).toBe(5000);
     expect(parseDurationSeconds("45")).toBe(45);
     expect(parseDurationSeconds("30–45 sec")).toBe(30);
     expect(parseDurationSeconds("2:00 rounds")).toBe(120);

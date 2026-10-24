@@ -95,12 +95,15 @@ function roundPlanFromExercises(session: ProgressSession, exercises: { name?: st
   return prescribedSetTotal(rows);
 }
 
+function unitWord(count: number, unit: "sets" | "rounds") {
+  if (unit === "rounds") return count === 1 ? "round" : "rounds";
+  return count === 1 ? "set" : "sets";
+}
+
 function progressCount(ticked: number, planned: number, unit: "sets" | "rounds") {
-  const noun = unit === "rounds" ? "rounds" : "sets";
-  if (planned > 0) return `${ticked}/${planned} ${noun}`;
+  if (planned > 0) return `${ticked}/${planned} ${unitWord(planned, unit)}`;
   const count = Math.max(0, ticked);
-  if (unit === "rounds") return `${count} ${count === 1 ? "round" : "rounds"}`;
-  return `${count} ${count === 1 ? "set" : "sets"}`;
+  return `${count} ${unitWord(count, unit)}`;
 }
 
 function progressText(ticked: number, planned: number, done: boolean, unit: "sets" | "rounds") {
@@ -157,7 +160,7 @@ function mixedProgressText(
   if (setsTicked <= 0 || roundsTicked <= 0) return null;
   const setsTarget = Math.max(setsPlanned, setsTicked);
   const roundsTarget = Math.max(roundsPlanned, roundsTicked);
-  return `${setsTicked}/${setsTarget} sets · ${roundsTicked}/${roundsTarget} rounds · ${done ? "Done" : "Partial"}`;
+  return `${setsTicked}/${setsTarget} ${unitWord(setsTarget, "sets")} · ${roundsTicked}/${roundsTarget} ${unitWord(roundsTarget, "rounds")} · ${done ? "Done" : "Partial"}`;
 }
 
 export function sessionProgress(session: ProgressSession, dose?: ProgressDose | null): SessionProgress {
@@ -174,9 +177,13 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
   if (roundOrBikeSession(session)) {
     const fromPlan = roundPlanFromExercises(session, programExercises) || (catalogDose > 0 && programExercises.length === 1 ? catalogDose : 0);
     const configured = configuredRoundTotal(session.sets);
-    // The interval structure is the round count. A plan set-count of 1 must not
-    // paint 16 finished rounds as 16/1.
-    planned = Math.max(fromPlan, configured, stored > ticked ? stored : 0, ticked);
+    // The interval token is the round count. A newer structure (6 sets) replaces
+    // a stale plan total. A plan set-count of 1 must not paint 16 finished
+    // rounds as 16/1, so logged rounds still count.
+    planned =
+      configured > 0
+        ? Math.max(configured, ticked)
+        : Math.max(fromPlan, stored > ticked ? stored : 0, ticked);
     const name =
       session.sets.find((set) => set.completed && (set.exerciseName ?? "").trim())?.exerciseName?.trim() ||
       session.sets[0]?.exerciseName?.trim() ||

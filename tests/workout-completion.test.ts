@@ -1112,11 +1112,11 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.status).toBe("draft");
     expect(resumed.finishedAt).toBeNull();
     expect(resumed.elapsedSeconds).toBe(70 * 60 + 25);
-    expect(resumed.timerStartedAt).not.toBeNull();
-    const ticking = resolveSessionElapsed(resumed, new Date(resumed.timerStartedAt!.getTime() + 30_000));
-    expect(ticking.ticking).toBe(true);
-    expect(ticking.seconds).toBe(70 * 60 + 25 + 30);
-    expect(ticking.label).toBe("1:10:55");
+    expect(resumed.timerStartedAt).toBeNull();
+    const held = resolveSessionElapsed(resumed, new Date(Date.now() + 5 * 60 * 1000));
+    expect(held.ticking).toBe(false);
+    expect(held.seconds).toBe(70 * 60 + 25);
+    expect(held.label).toBe("1:10:25");
   });
 
   it("keeps a capped clock on resume and credits activity gaps from that clock", async () => {
@@ -1402,15 +1402,17 @@ describe("a workout is complete only after a logged save", () => {
     });
     const resumed = await reopenCompletedWorkoutForUser(user.id, session.id);
     expect(resumed.status).toBe("draft");
+    expect(resumed.timerStartedAt).toBeNull();
     expect(await finalizePastLoggedDrafts(user.id, new Date(), APP_TIMEZONE)).toBe(0);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
     const timer = await readWorkoutTimerFields(session.id, prisma);
     expect(row.status).toBe("draft");
     expect(timer.elapsedSeconds).toBe(70 * 60 + 25);
     expect(timer.finishedAt).toBeNull();
-    const ticking = resolveSessionElapsed({ ...row, ...timer }, new Date(timer.timerStartedAt!.getTime() + 5_000));
-    expect(ticking.ticking).toBe(true);
-    expect(ticking.label).toBe("1:10:30");
+    expect(timer.timerStartedAt).toBeNull();
+    const held = resolveSessionElapsed({ ...row, ...timer }, new Date(Date.now() + 5_000));
+    expect(held.ticking).toBe(false);
+    expect(held.label).toBe("1:10:25");
   });
 
   it("does not store a multi-day gap when a finished workout is reopened", async () => {

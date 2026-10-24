@@ -30,6 +30,8 @@ type WorkoutMoveContextValue = {
   editable: boolean;
   open: (target: OpenMove) => void;
   swapDays: (fromDay: string, toDay: string) => void;
+  /** Session key → weekday while a move is ahead of the server list. */
+  placements: Record<string, string>;
 };
 
 const WorkoutMoveContext = createContext<WorkoutMoveContextValue | null>(null);
@@ -45,11 +47,14 @@ export function WorkoutMoveProvider({
   editable,
   weekStart,
   days,
+  onCommitted,
   children,
 }: {
   editable: boolean;
   weekStart: string;
   days: MoveDayChoice[];
+  /** Parent refreshes the list. Undo stays available while that refresh is in flight. */
+  onCommitted?: () => void;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? "";
@@ -64,6 +69,45 @@ export function WorkoutMoveProvider({
   const toastSerial = useRef(0);
   const [saving, setSaving] = useState(false);
   const [undoing, setUndoing] = useState(false);
+  const [placements, setPlacements] = useState<Record<string, string>>({});
+  const placementsRef = useRef<Record<string, string>>({});
+  const placementStack = useRef<{ key: string; from: string }[][]>([]);
+
+  function rememberPlacements(next: Record<string, string>, undo: { key: string; from: string }[]) {
+    placementStack.current.push(undo);
+    placementsRef.current = next;
+    setPlacements(next);
+  }
+
+  function sittingWeekday(sessionKey: string) {
+    const over = placementsRef.current[sessionKey];
+    if (over) return over;
+    return days.find((day) => day.sessions.some((session) => session.sessionKey === sessionKey))?.weekday;
+  }
+
+  function placeSession(sessionKey: string, weekday: string) {
+    const from = sittingWeekday(sessionKey);
+    if (!from || from === weekday) return;
+    rememberPlacements({ ...placementsRef.current, [sessionKey]: weekday }, [{ key: sessionKey, from }]);
+  }
+
+  function placeDaySwap(fromDay: string, toDay: string) {
+    const next = { ...placementsRef.current };
+    const undo: { key: string; from: string }[] = [];
+    for (const day of days) {
+      for (const session of day.sessions) {
+        const sitting = sittingWeekday(session.sessionKey);
+        if (sitting === fromDay) {
+          next[session.sessionKey] = toDay;
+          undo.push({ key: session.sessionKey, from: sitting });
+        } else if (sitting === toDay) {
+          next[session.sessionKey] = fromDay;
+          undo.push({ key: session.sessionKey, from: sitting });
+        }
+      }
+    }
+    if (undo.length > 0) rememberPlacements(next, undo);
+  }
 
   function close() {
     if (saving) return;
@@ -92,7 +136,9 @@ export function WorkoutMoveProvider({
         setError(result.error);
         return;
       }
+      placeSession(sessionKey, toDay);
       finish(message, result.undo);
+      onCommitted?.();
     } finally {
       setSaving(false);
     }
@@ -108,7 +154,9 @@ export function WorkoutMoveProvider({
         setError(result.error);
         return;
       }
+      placeDaySwap(fromDay, toDay);
       finish(`Swapped ${fromDay} and ${toDay}.`, result.undo);
+      onCommitted?.();
     } finally {
       setSaving(false);
     }
@@ -124,7 +172,24 @@ export function WorkoutMoveProvider({
         setError(result.error);
         return;
       }
+      const from = sittingWeekday(target.sessionKey) ?? target.fromWeekday;
+      const otherDay = days.find((day) => day.sessions.some((session) => session.sessionKey === otherKey));
+      const otherFrom = sittingWeekday(otherKey) ?? otherDay?.weekday;
+      if (otherFrom && from) {
+        rememberPlacements(
+          {
+            ...placementsRef.current,
+            [target.sessionKey]: otherFrom,
+            [otherKey]: from,
+          },
+          [
+            { key: target.sessionKey, from },
+            { key: otherKey, from: otherFrom },
+          ],
+        );
+      }
       finish(`Swapped with ${otherTitle}.`, result.undo);
+      onCommitted?.();
     } finally {
       setSaving(false);
     }
@@ -177,6 +242,14 @@ export function WorkoutMoveProvider({
         setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
         return;
       }
+      const previous = placementStack.current.pop();
+      if (previous) {
+        const next = { ...placementsRef.current };
+        for (const step of previous) next[step.key] = step.from;
+        placementsRef.current = next;
+        setPlacements(next);
+      }
+      onCommitted?.();
     } finally {
       setUndoing(false);
     }
@@ -206,6 +279,7 @@ export function WorkoutMoveProvider({
           setTarget(next);
         },
         swapDays: (fromDay, toDay) => commitSwap(fromDay, toDay),
+        placements,
       }}
     >
       {children}

@@ -18,7 +18,14 @@ import { addedPrescriptionKey, parseAddedPlan } from "@/lib/logger-insert";
 import {
   formatIntervalDisplay,
   formatIntervalTotal,
+  INTERVAL_REST_MAX,
+  INTERVAL_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
+  INTERVAL_SET_REST_MAX,
+  INTERVAL_SETS_MAX,
+  INTERVAL_WORK_MIN,
+  intervalConfiguredSeconds,
+  intervalWorkMax,
 } from "@/lib/interval-shorthand";
 
 export type BikeGoal = "power" | "anaerobic" | "aerobic" | "fight-sim";
@@ -294,13 +301,24 @@ export function customBikeChoice(input: {
   repeatRounds?: number;
   restBetweenRoundsSeconds?: number;
 }): BikeChoice | null {
-  const workSeconds = clampInt(input.workSeconds, 5, 120);
-  const restSeconds = clampInt(input.restSeconds, 5, 180);
-  const rounds = clampInt(input.rounds, 1, 30);
+  const repeatGuess = input.repeatRounds == null ? 1 : Math.round(input.repeatRounds);
+  const roundGuess = Math.round(input.rounds);
+  const restGuess = Math.round(input.restSeconds);
+  const workMax = intervalWorkMax({
+    sets: Number.isFinite(repeatGuess) && repeatGuess > 0 ? repeatGuess : 1,
+    rounds: Number.isFinite(roundGuess) && roundGuess > 0 ? roundGuess : 1,
+    restSeconds: Number.isFinite(restGuess) && restGuess > 0 ? restGuess : 0,
+  });
+  const workSeconds = clampInt(input.workSeconds, INTERVAL_WORK_MIN, workMax);
+  const restSeconds = clampInt(input.restSeconds, 0, INTERVAL_REST_MAX);
+  const rounds = clampInt(input.rounds, 1, INTERVAL_ROUNDS_MAX);
   const warmupSeconds = clampInt(input.warmupSeconds ?? 0, 0, 600);
   const cooldownSeconds = clampInt(input.cooldownSeconds ?? 0, 0, 600);
-  const repeatRounds = input.repeatRounds == null ? 1 : clampInt(input.repeatRounds, 1, 10);
-  const between = input.restBetweenRoundsSeconds == null ? 0 : clampInt(input.restBetweenRoundsSeconds, 0, 600);
+  const repeatRounds = input.repeatRounds == null ? 1 : clampInt(input.repeatRounds, 1, INTERVAL_SETS_MAX);
+  const between =
+    input.restBetweenRoundsSeconds == null
+      ? 0
+      : clampInt(input.restBetweenRoundsSeconds, 0, INTERVAL_SET_REST_MAX);
   if (
     workSeconds == null ||
     restSeconds == null ||
@@ -313,6 +331,14 @@ export function customBikeChoice(input: {
     return null;
   }
   const shownBetween = repeatRounds > 1 ? between : 0;
+  const totalSeconds = intervalConfiguredSeconds("bike", {
+    sets: repeatRounds,
+    rounds,
+    workSeconds,
+    restSeconds,
+    setRestSeconds: shownBetween,
+  });
+  if (totalSeconds > INTERVAL_SESSION_MAX_SECONDS) return null;
   const display = formatIntervalDisplay({
     sets: repeatRounds,
     rounds,
@@ -423,8 +449,7 @@ export function choiceToken(choice: BikeChoice) {
 }
 
 /**
- * A saved one-round ride with no rest. `customBikeChoice` still rejects rest 0
- * and work past 2 minutes, so the live picker does not offer these clocks.
+ * A saved one-round ride with no rest that the live caps still have to read.
  * History has to read the token back or the edit falls off the interval path.
  */
 function steadyRideChoice(parts: number[]): BikeChoice | null {

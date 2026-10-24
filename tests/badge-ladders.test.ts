@@ -338,7 +338,7 @@ describe("badge ladders", () => {
         ],
       },
     });
-    expect(tiles.find((row) => row.key === "time")?.value).toBe("60:00");
+    expect(tiles.find((row) => row.key === "time")?.value).toBe("1:00:00");
     expect(tiles.find((row) => row.key === "setsRounds")).toEqual({
       key: "setsRounds",
       label: "Sets",

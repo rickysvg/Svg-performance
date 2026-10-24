@@ -2132,6 +2132,14 @@ export async function finalizePastLoggedDrafts(userId: string, now: Date, timeZo
     .filter((row) => {
       // Resume starts a live segment today. Do not close it out from under the member.
       if (stillOpenToday(row)) return false;
+      // Undo finish keeps the stored clock and does not start a segment. A row
+      // touched today stays open until the member leaves it.
+      const held =
+        !row.timerStartedAt &&
+        resumeStoredElapsed(row.elapsedSeconds) != null &&
+        row.updatedAt != null &&
+        dayKey(row.updatedAt, timeZone) >= today;
+      if (held) return false;
       return true;
     })
     .filter((row) => {
@@ -2211,18 +2219,50 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const stored = await readWorkoutTimerFields(existing.id, prisma);
   // Keep a real saved clock, including one that already sits on the 4 hour cap.
+  // Opening the logger does not start a new segment. Resume does that.
   const elapsed = resumeStoredElapsed(stored.elapsedSeconds);
-  const timerStartedAt = new Date();
   const updated = await prisma.workoutSession.update({
     where: { id: existing.id },
     data: {
       status: "draft",
-      ...(timerColumns ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt } : {}),
+      ...(timerColumns ? { finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: null } : {}),
     },
     include: { sets: { orderBy: [{ sortOrder: "asc" }, { setNumber: "asc" }] } },
   });
   if (!timerColumns) return attachWorkoutTimer(updated, prisma);
-  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt };
+  return { ...updated, finishedAt: null, elapsedSeconds: elapsed, timerStartedAt: null };
+}
+
+/**
+ * Start the clock on a finished log the member reopened. Viewing and Undo
+ * finish leave timerStartedAt empty so a later save keeps the stored duration.
+ */
+export async function resumeHeldSessionClockForUser(input: { userId: string; workoutId: string }) {
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: input.workoutId },
+    select: { id: true, userId: true, status: true },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    throw new NotFoundError("Workout not found.");
+  }
+  if (existing.status !== "draft") {
+    throw new AppError("WORKOUT", "Resume the workout before starting the clock.");
+  }
+  if (!(await workoutTimerColumnsAvailable(prisma))) {
+    return { elapsedSeconds: null as number | null, timerStartedAt: null as Date | null };
+  }
+  const stored = await readWorkoutTimerFields(existing.id, prisma);
+  if (stored.timerStartedAt) {
+    return { elapsedSeconds: resumeStoredElapsed(stored.elapsedSeconds), timerStartedAt: stored.timerStartedAt };
+  }
+  const now = new Date();
+  const elapsedSeconds = resumeStoredElapsed(stored.elapsedSeconds);
+  await prisma.$executeRaw`
+    UPDATE "WorkoutSession"
+    SET "elapsedSeconds" = ${elapsedSeconds}, "timerStartedAt" = ${now}, "finishedAt" = NULL
+    WHERE "id" = ${existing.id} AND "userId" = ${input.userId} AND "status" = 'draft'
+  `;
+  return { elapsedSeconds, timerStartedAt: now };
 }
 
 /**

@@ -107,6 +107,14 @@ export function parseDurationSeconds(value: string | number | null | undefined):
   }
   const raw = String(value ?? "").trim();
   if (!raw) return null;
+  const hms = raw.match(/(\d+)\s*:\s*(\d{1,2})\s*:\s*(\d{1,2})/);
+  if (hms) {
+    const minutes = Number(hms[2]);
+    const seconds = Number(hms[3]);
+    if (minutes > 59 || seconds > 59) return null;
+    const total = Number(hms[1]) * 3600 + minutes * 60 + seconds;
+    return total > 0 ? total : null;
+  }
   const clock = raw.match(/(\d+)\s*:\s*(\d{1,2})/);
   if (clock) {
     return Number(clock[1]) * 60 + Number(clock[2]);

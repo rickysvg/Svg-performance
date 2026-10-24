@@ -421,7 +421,11 @@ export function BikeWorkoutChooser({
                 totalType="bike"
                 presets={[]}
                 showDone={false}
-                onShorthandCommit={setCustomLine}
+                onShorthandCommit={(line) => {
+                  setCustomLine(line);
+                  setError("");
+                }}
+                onDraft={() => setError("")}
                 onLiveStructure={(next) => {
                   setSprint(next.workSeconds);
                   setRest(next.restSeconds);

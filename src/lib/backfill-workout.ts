@@ -1059,7 +1059,8 @@ async function payloadFromKind(
     return {
       title: cleanTitle(input.title, generatedName),
       notes: notesWithBikeMetrics(input.notes, input.calories ?? null, input.distance ?? null),
-      programDayId: target?.programDayId ?? input.programDayId ?? null,
+      // A posted lift day must not become this ride. Only the scheduled bike day attaches.
+      programDayId: target?.programDayId ?? null,
       savedWorkoutId: null,
       sets,
       plannedSetCount: daySetCount ?? plannedRounds,

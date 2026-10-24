@@ -93,8 +93,8 @@ export const SESSION_DURATION_CAP_SECONDS = 4 * 60 * 60;
 export function formatShareDuration(totalSeconds: number) {
   const safe = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(safe / 3600);
-  // Under two hours the win screen uses the clock ("60:00"). The 4 hour cap stays "4:00:00".
-  if (hours >= 2) {
+  // An hour or more uses H:MM:SS ("1:05:00"). The 4 hour cap stays "4:00:00".
+  if (hours >= 1) {
     const minutes = Math.floor((safe % 3600) / 60);
     const seconds = safe % 60;
     return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -164,15 +164,15 @@ export function selectShareStats(input: {
   if (kind === "lift") {
     push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume), unit: shareVolumeUnit(unit) } : null);
     push(sets > 0 ? { key: "sets", label: "Sets", value: String(sets) } : null);
-    push(seconds > 0 ? { key: "time", label: "Time", value: formatClock(seconds) } : null);
+    push(seconds > 0 ? { key: "time", label: "Time", value: formatShareDuration(seconds) } : null);
   } else if (kind === "rounds") {
     push(rounds > 0 ? { key: "rounds", label: "Rounds", value: String(rounds) } : null);
-    push(seconds > 0 ? { key: "time", label: "Time", value: formatClock(seconds) } : null);
+    push(seconds > 0 ? { key: "time", label: "Time", value: formatShareDuration(seconds) } : null);
     push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume), unit: shareVolumeUnit(unit) } : null);
   } else {
     push(rounds > 0 ? { key: "rounds", label: "Rounds", value: String(rounds) } : null);
     push(volume > 0 ? { key: "volume", label: "Volume", value: formatShareVolume(volume), unit: shareVolumeUnit(unit) } : null);
-    push(seconds > 0 ? { key: "time", label: "Time", value: formatClock(seconds) } : null);
+    push(seconds > 0 ? { key: "time", label: "Time", value: formatShareDuration(seconds) } : null);
   }
   if (streak > 0) {
     push({

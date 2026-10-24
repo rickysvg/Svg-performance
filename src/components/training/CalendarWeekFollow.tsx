@@ -10,7 +10,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { WeekStrip, type WeekCarouselWeek, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
@@ -101,6 +101,7 @@ export function CalendarWeekFollow({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [seenWeek, setSeenWeek] = useState(initialWeekStart);
   const [dayParam, setDayParam] = useState(initialDay);
@@ -155,6 +156,9 @@ export function CalendarWeekFollow({
         editable={Boolean(move?.editable)}
         weekStart={weekStart}
         days={move?.days ?? []}
+        onCommitted={() => {
+          router.refresh();
+        }}
       >
         <WeekStrip
           days={weeks.find((week) => week.offset === 0)?.days ?? []}

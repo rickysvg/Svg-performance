@@ -8,7 +8,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { TrainWeekChangeContext, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
@@ -56,6 +56,7 @@ export function TrainWeekFollow({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [trackedWeek, setTrackedWeek] = useState(initialWeekStart);
   if (initialWeekStart !== trackedWeek) {
@@ -87,6 +88,9 @@ export function TrainWeekFollow({
         editable={Boolean(move?.editable)}
         weekStart={weekStart}
         days={move?.days ?? []}
+        onCommitted={() => {
+          router.refresh();
+        }}
       >
         {panels}
       </WorkoutMoveProvider>

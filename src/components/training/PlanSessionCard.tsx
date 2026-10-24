@@ -10,6 +10,7 @@ import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { OpenProgramLog } from "@/lib/today-start";
+import { visiblePartialLabel } from "@/lib/finish-plan";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
   skill: "Skill",
@@ -202,7 +203,7 @@ export function PlanSessionCard({
       ) : null}
       {partial && !completed ? (
         <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
-          Partial
+          {visiblePartialLabel(resume?.ticked, resume?.planned)}
         </p>
       ) : null}
       {partial && resume?.progress ? (

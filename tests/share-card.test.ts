@@ -59,7 +59,7 @@ describe("shareable workout card stats", () => {
     expect(stats[0]?.unit).toBe("lbs");
     expect(stats[0]?.unit).not.toBe("kg");
     expect(stats[1]?.value).toBe("3");
-    expect(stats[2]?.value).toBe("65:00");
+    expect(stats[2]?.value).toBe("1:05:00");
     expect(stats[3]?.value).toBe("4 days");
   });
 

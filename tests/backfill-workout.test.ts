@@ -28,7 +28,7 @@ import { formatDayParam, getWeeklyActivity } from "@/lib/home";
 import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { addZonedDays, dayKey, startOfZonedDay } from "@/lib/timezone";
-import { chipAfterDayPreview, LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import { chipAfterDayPreview, keepIntervalDraftOnDayChange, LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { workoutCompleteTiles } from "@/lib/workout-complete";
 
 const NOW = new Date("2026-10-22T18:00:00.000Z");
@@ -660,6 +660,9 @@ describe("past log first paint and finish time", () => {
     expect(chipAfterDayPreview(null, false)).toBe("bike");
     expect(chipAfterDayPreview("bag", true)).toBe("bag");
     expect(chipAfterDayPreview("bike", true)).toBe("bike");
+    expect(keepIntervalDraftOnDayChange("bike")).toBe(true);
+    expect(keepIntervalDraftOnDayChange("plan")).toBe(false);
+    expect(keepIntervalDraftOnDayChange(null)).toBe(false);
 
     const zeroDone: BackfillFormSeed = {
       title: "2 × 8 rounds · 15/15 · 60s between sets",
@@ -963,6 +966,47 @@ describe("today and past interval logs", () => {
     expect(beside.sessionId).not.toBe(lift.sessionId);
     const squat = await prisma.workoutSession.findUnique({ where: { id: lift.sessionId } });
     expect(squat?.title).toBe("Squat day");
+  });
+
+  it("creates a second bike ride and does not fall back to a lift session", async () => {
+    const user = await makeUser("backfill-second-bike@example.com");
+    await onboard(user.id);
+    const day = "2026-10-21";
+    const first = await rickyBike(user.id, day, 8);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const liftDay = await prisma.programDay.findFirst({
+      where: { title: { contains: "Lift" } },
+      select: { id: true },
+    });
+    const second = await createBackfillWorkout({
+      userId: user.id,
+      dayKey: day,
+      kind: "bike",
+      resolution: "",
+      now: NOW,
+      title: "Steady spin",
+      notes: "",
+      rpe: null,
+      workSeconds: 20 * 60,
+      restSeconds: 0,
+      roundsPerSet: 1,
+      repeatRounds: 1,
+      doneRounds: 1,
+      programDayId: liftDay?.id ?? "lift-day",
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.sessionId).not.toBe(first.sessionId);
+    const ride = await prisma.workoutSession.findUnique({
+      where: { id: second.sessionId },
+      include: { sets: true },
+    });
+    expect(ride?.programDayId).not.toBe(liftDay?.id ?? "lift-day");
+    expect(ride?.sets.length).toBeGreaterThan(0);
+    expect(ride?.sets.every((set) => /bike/i.test(set.exerciseName))).toBe(true);
+    expect(ride?.sets.some((set) => /squat|bench|deadlift/i.test(set.exerciseName))).toBe(false);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
   });
 
   it("saves shadow rounds with a weight, and without one when the member has no weights", async () => {
@@ -1872,6 +1916,20 @@ describe("today and past interval logs", () => {
       "lb",
     );
     expect(fresh.sets[0]?.durationSeconds).toBe(60 * 60);
+    const overCap = setsForBackfillExercises(
+      [
+        {
+          name: "Hold",
+          sets: 1,
+          done: 1,
+          reps: "5:00:00",
+          logMode: "timed",
+          durationSeconds: 5 * 60 * 60,
+        },
+      ],
+      "lb",
+    );
+    expect(overCap.sets[0]?.durationSeconds).toBe(5 * 60 * 60);
 
     const days = backfillDayOptions(NOW, TZ);
     const day = days[1]!;

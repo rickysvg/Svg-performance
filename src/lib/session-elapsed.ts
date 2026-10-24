@@ -189,7 +189,21 @@ export function resolveSessionElapsed(
   // A stored cap is a real clock. Resume keeps it. The open gap still cannot
   // push the total past four hours.
   const base = stored != null && stored > 0 ? Math.min(stored, cap) : 0;
-  const anchor = toMs(session.timerStartedAt) ?? created;
+  const started = toMs(session.timerStartedAt);
+  // A finished log reopened as a draft keeps its stored duration. Counting
+  // starts again only after the member resumes and timerStartedAt is set.
+  // A partial left from an earlier day still follows the stale-draft path.
+  if (session.status === "draft" && started == null && base > 0) {
+    const seconds = Math.min(base, cap);
+    return {
+      seconds,
+      ticking: false,
+      stale: false,
+      capped: seconds >= cap,
+      label: formatSessionElapsed(seconds),
+    };
+  }
+  const anchor = started ?? created;
   const rawSegment = Math.max(0, Math.floor((nowMs - anchor) / 1000));
 
   if (rawSegment >= STALE_DRAFT_SECONDS) {
@@ -253,6 +267,8 @@ export function elapsedSecondsToFreeze(
   const reported = reportedElapsed(reportedSeconds, cap);
   const live = resolveSessionElapsed({ ...session, status: "draft" }, now, cap);
   const anchorMs = toMs(session.timerStartedAt);
+  const kept = resumeStoredElapsed(session.elapsedSeconds, cap);
+  if (anchorMs == null && kept != null) return kept;
   if (anchorMs == null) {
     if (reported == null) return Math.min(live.seconds, cap);
     return reported;

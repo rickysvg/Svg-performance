@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
 import { getHomeToday, getWeeklyActivity, hasActivityOnLocalDay, weeklyActivityCopy } from "@/lib/home";
@@ -18,7 +18,13 @@ import { listRuntimeKnowledgeFiles, loadKnowledgeBase } from "@/lib/coach/knowle
 
 describe("home aggregation and weekly activity", () => {
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-21T18:00:00.000Z"));
     await resetDatabase();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   afterAll(async () => {

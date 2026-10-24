@@ -63,10 +63,12 @@ describe("bike workout chooser", () => {
     expect(parseBikeRecipe(formatBikeRecipe(custom!))?.spec.warmupSeconds).toBe(60);
     expect(customBikeChoice({ workSeconds: 0, restSeconds: 10, rounds: 4 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 4, restSeconds: 10, rounds: 4 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 0, rounds: 4 })?.spec.restSeconds).toBe(0);
+    expect(customBikeChoice({ workSeconds: 300, restSeconds: 0, rounds: 8 })?.spec.workSeconds).toBe(300);
+    expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })?.spec.workSeconds).toBe(4 * 60 * 60);
     expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 20, restSeconds: 10, rounds: 8, warmupSeconds: 660 })).toBeNull();
-    expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })).toBeNull();
+    expect(customBikeChoice({ workSeconds: 16 * 60, restSeconds: 15, rounds: 4 })).toBeNull();
     expect(choiceFromToken("c.14400.0.1.0.0")?.spec).toMatchObject({
       workSeconds: 4 * 60 * 60,
       restSeconds: 0,
@@ -76,7 +78,11 @@ describe("bike workout chooser", () => {
     expect(choiceFromToken("c.3540.0.1.0.0")?.spec.workSeconds).toBe(59 * 60);
     expect(choiceFromToken("c.3601.0.1.0.0")?.spec.workSeconds).toBe(3601);
     expect(bikeChoiceFromKey("timer#bw:c.14400.0.1.0.0")?.spec.workSeconds).toBe(4 * 60 * 60);
-    expect(choiceFromToken("c.15.0.8.0.0")).toBeNull();
+    expect(choiceFromToken("c.15.0.8.0.0")?.spec).toMatchObject({
+      workSeconds: 15,
+      restSeconds: 0,
+      roundsPerSet: 8,
+    });
     expect(choiceFromToken("c.14401.0.1.0.0")).toBeNull();
     expect(choiceFromToken("c.15.15.8.0.0")?.spec).toMatchObject({ workSeconds: 15, restSeconds: 15, roundsPerSet: 8 });
   });
@@ -127,17 +133,26 @@ describe("bike workout chooser", () => {
       warmupSeconds: 60,
       cooldownSeconds: 120,
     });
+    expect(
+      customBikeChoice({
+        workSeconds: 120,
+        restSeconds: 180,
+        rounds: 30,
+        repeatRounds: 10,
+        restBetweenRoundsSeconds: 300,
+      }),
+    ).toBeNull();
     const longest = customBikeChoice({
       workSeconds: 120,
-      restSeconds: 180,
-      rounds: 30,
+      restSeconds: 60,
+      rounds: 8,
       warmupSeconds: 600,
       cooldownSeconds: 600,
-      repeatRounds: 10,
-      restBetweenRoundsSeconds: 300,
+      repeatRounds: 2,
+      restBetweenRoundsSeconds: 60,
     })!;
     const packed = prescriptionWithBikeChoice("added|old", "Assault bike intervals", longest).slice(0, 160);
-    expect(bikeChoiceFromKey(packed)?.spec.repeatRounds).toBe(10);
+    expect(bikeChoiceFromKey(packed)?.spec.repeatRounds).toBe(2);
     expect(compactBikeReps(formatBikeRecipe(longest)).startsWith("bw c.")).toBe(true);
   });
 

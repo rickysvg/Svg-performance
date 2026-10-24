@@ -17,7 +17,7 @@ import {
 } from "@/lib/workout-complete";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
 import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
-import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, sessionHasLoggedWork, sessionOpensFinishScreen } from "@/lib/logged-work";
 import { sessionProgress } from "@/lib/session-progress";
 import { calendarPlanDoses } from "@/lib/plan-doses";
 import { getOwnWorkoutSessionOrNull } from "@/lib/workouts";
@@ -38,7 +38,8 @@ export default async function WorkoutDonePage({
   const user = await requireUser();
   const { sessionId } = await params;
   const query = await searchParams;
-  const owned = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  let owned = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  if (!owned) owned = await getOwnWorkoutSessionOrNull(sessionId, user.id);
   if (!owned) notFound();
   if (owned.status === "partial" && !sessionHasLoggedWork(owned.sets)) {
     return (
@@ -57,7 +58,10 @@ export default async function WorkoutDonePage({
       </main>
     );
   }
-  const view = await getShareCardView(user.id, sessionId);
+  let view = await getShareCardView(user.id, sessionId);
+  if (!view && sessionOpensFinishScreen(owned) && sessionHasLoggedWork(owned.sets)) {
+    view = await getShareCardView(user.id, sessionId);
+  }
   if (!view) notFound();
   const profile = await getProfileForUser(user.id);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { recordWorkoutActivityAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
+import { recordWorkoutActivityAction, resumeHeldSessionClockAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
@@ -526,6 +527,9 @@ export function WorkoutLogForm({
   correctable?: boolean;
 }) {
   const loggerOpen = session.status !== "complete" || correctable;
+  const router = useRouter();
+  const clockHeld =
+    session.status === "draft" && !session.timerStartedAt && (session.elapsedSeconds ?? 0) > 0;
   const [activeName, setActiveName] = useState<string | null>(null);
   const [restByName, setRestByName] = useState<Record<string, number>>({});
   const [programmedName, setProgrammedName] = useState<Record<string, string>>({});
@@ -1367,6 +1371,20 @@ export function WorkoutLogForm({
                 elapsedSeconds={session.elapsedSeconds}
                 timerStartedAt={session.timerStartedAt}
               />
+              {clockHeld ? (
+                <button
+                  type="button"
+                  data-resume-session-clock
+                  className="text-xs font-semibold text-[#CBF805]"
+                  onClick={() => {
+                    void resumeHeldSessionClockAction(session.id).then(() => {
+                      router.refresh();
+                    });
+                  }}
+                >
+                  Resume
+                </button>
+              ) : null}
             </div>
             <RoundTimerButton
               mode={headerTimer.mode}
