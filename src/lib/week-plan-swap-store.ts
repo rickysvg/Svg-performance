@@ -35,10 +35,9 @@ const weekPlanTail = new Map<string, Promise<void>>();
 const weekPlanActive = new Set<string>();
 
 /**
- * One member's plan writes run in the order they were requested.
- * A move and the Undo 0.3s later share this queue, so the later request
- * reads the plan the earlier one already saved. A call from inside the
- * turn runs immediately, so the snapshot and the write stay one step.
+ * Swaps and week clears for one member run in request order.
+ * Move and Undo do not use this queue. Each carries a sequence, so a
+ * write that finishes late cannot replace the member's latest day.
  */
 export function enqueueWeekPlan<T>(userId: string, task: () => Promise<T>): Promise<T> {
   if (weekPlanActive.has(userId)) return task();
@@ -106,6 +105,150 @@ async function writeWeekPlanSwaps(userId: string, swaps: WeekPlanSwap[]) {
     where: { userId },
     data: { weekPlanSwapsJson: JSON.stringify(swaps) },
   });
+}
+
+const INTENT_ATTEMPTS = 48;
+
+function parseIntentSeq(raw: string | null | undefined): Record<string, number> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<string, number> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!isSessionKey(key)) continue;
+      if (typeof value !== "number" || !Number.isInteger(value) || value < 0) continue;
+      out[key] = value;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function stableIntentJson(map: Record<string, number>) {
+  const sorted: Record<string, number> = {};
+  for (const key of Object.keys(map).sort()) sorted[key] = map[key] ?? 0;
+  return JSON.stringify(sorted);
+}
+
+async function readIntentRow(userId: string) {
+  const row = await prisma.profile.findUnique({
+    where: { userId },
+    select: { weekPlanSwapsJson: true, weekPlanIntentSeqJson: true },
+  });
+  if (!row) throw new NotFoundError("Profile not found.");
+  return row;
+}
+
+/** Highest accepted move/undo sequence for each session. The page starts the next click above this. */
+export async function getSessionIntentSeqForUser(userId: string): Promise<Record<string, number>> {
+  const row = await prisma.profile.findUnique({
+    where: { userId },
+    select: { weekPlanIntentSeqJson: true },
+  });
+  return parseIntentSeq(row?.weekPlanIntentSeqJson);
+}
+
+/** Next sequence for a caller that did not send one. A lost race retries instead of reusing a number. */
+export async function claimNextSessionIntent(userId: string, sessionKey: string) {
+  if (!isSessionKey(sessionKey)) {
+    throw new AppError("PLAN", "That workout cannot be moved.");
+  }
+  for (let attempt = 0; attempt < INTENT_ATTEMPTS; attempt += 1) {
+    const row = await readIntentRow(userId);
+    const map = parseIntentSeq(row.weekPlanIntentSeqJson);
+    const next = (map[sessionKey] ?? 0) + 1;
+    map[sessionKey] = next;
+    const updated = await prisma.profile.updateMany({
+      where: { userId, weekPlanIntentSeqJson: row.weekPlanIntentSeqJson },
+      data: { weekPlanIntentSeqJson: stableIntentJson(map) },
+    });
+    if (updated.count === 1) return next;
+  }
+  throw new AppError("PLAN", "That move did not save. Try again.");
+}
+
+export type SessionIntentKind = "move" | "restore";
+
+/**
+ * Put one session on an explicit weekday if this sequence is still the latest.
+ * A lower sequence is ignored, even when its request finishes last.
+ * Restore may land on a past home day. Move still stays on today or later.
+ */
+export async function placeSessionIntentForUser(input: {
+  userId: string;
+  sessionKey: string;
+  weekStart: string;
+  toDay: string;
+  intentSeq: number;
+  now?: Date;
+  intent: SessionIntentKind;
+}): Promise<{ applied: boolean; swaps: WeekPlanSwap[]; seq: number }> {
+  const { userId, sessionKey, weekStart, toDay, intentSeq, intent } = input;
+  const now = input.now ?? new Date();
+  if (!Number.isInteger(intentSeq) || intentSeq < 1) {
+    throw new AppError("PLAN", "That move did not save. Try again.");
+  }
+  if (!isSessionKey(sessionKey)) {
+    throw new AppError("PLAN", "That workout cannot be moved.");
+  }
+  if (!isPlanWeekday(toDay)) {
+    throw new AppError("PLAN", "Pick a day this week.");
+  }
+  const timeZone = await timeZoneForUser(userId);
+  assertEditableWeek(weekStart, now, timeZone);
+  if (intent === "move") {
+    const destination = shiftDayKey(weekStart, WEEKDAYS.indexOf(toDay));
+    if (destination < dayKey(now, timeZone)) {
+      throw new AppError("PLAN", "Move it to today or a later day.");
+    }
+    if (futureWorkoutPulledBack(sessionKey, toDay, weekdayInZone(now, timeZone))) {
+      throw new AppError("PLAN", "A future workout stays on its own day.");
+    }
+  }
+  const anchor = weekStartKey(now, timeZone);
+  const [year, month, day] = weekStart.split("-").map(Number);
+  const monday = zonedCivilToUtc(year, month, day, timeZone);
+  const completedThisWeek = await prisma.workoutSession.count({
+    where: {
+      userId,
+      status: "complete",
+      performedAt: { gte: monday, lt: addZonedDays(monday, 7, timeZone) },
+      sets: loggedSetSome,
+    },
+  });
+  for (let attempt = 0; attempt < INTENT_ATTEMPTS; attempt += 1) {
+    const row = await readIntentRow(userId);
+    const existing = pruneWeekPlanSwaps(
+      pruneAutoRolledSwaps(parseWeekPlanSwaps(row.weekPlanSwapsJson)),
+      anchor,
+    );
+    const seqMap = parseIntentSeq(row.weekPlanIntentSeqJson);
+    const stored = seqMap[sessionKey] ?? 0;
+    if (intentSeq < stored) {
+      return { applied: false, swaps: existing, seq: stored };
+    }
+    const next = pruneWeekPlanSwaps(moveSessionOnPlan(existing, weekStart, sessionKey, toDay), anchor);
+    if (completedThisWeek > 0 && JSON.stringify(next) !== JSON.stringify(existing)) {
+      const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
+      assertSessionsOpen(done, [sessionKey]);
+    }
+    seqMap[sessionKey] = intentSeq;
+    const updated = await prisma.profile.updateMany({
+      where: {
+        userId,
+        weekPlanSwapsJson: row.weekPlanSwapsJson,
+        weekPlanIntentSeqJson: row.weekPlanIntentSeqJson,
+      },
+      data: {
+        weekPlanSwapsJson: JSON.stringify(next),
+        weekPlanIntentSeqJson: stableIntentJson(seqMap),
+      },
+    });
+    if (updated.count === 1) return { applied: true, swaps: next, seq: intentSeq };
+  }
+  throw new AppError("PLAN", "That move did not save. Try again.");
 }
 
 function prefsFromProfile(
@@ -285,34 +428,17 @@ export async function moveWorkoutForUser(
   weekStart: string,
   now = new Date(),
 ): Promise<WeekPlanSwap[]> {
-  if (!inWeekPlanTurn(userId)) {
-    return enqueueWeekPlan(userId, () => moveWorkoutForUser(userId, sessionKey, toDay, weekStart, now));
-  }
-  if (!isSessionKey(sessionKey)) {
-    throw new AppError("PLAN", "That workout cannot be moved.");
-  }
-  if (!isPlanWeekday(toDay)) {
-    throw new AppError("PLAN", "Pick a day this week.");
-  }
-  const timeZone = await timeZoneForUser(userId);
-  assertEditableWeek(weekStart, now, timeZone);
-  const index = WEEKDAYS.indexOf(toDay);
-  const destination = shiftDayKey(weekStart, index);
-  if (destination < dayKey(now, timeZone)) {
-    throw new AppError("PLAN", "Move it to today or a later day.");
-  }
-  if (futureWorkoutPulledBack(sessionKey, toDay, weekdayInZone(now, timeZone))) {
-    throw new AppError("PLAN", "A future workout stays on its own day.");
-  }
-  const existing = await getWeekPlanSwapsForUser(userId);
-  const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
-  assertSessionsOpen(done, [sessionKey]);
-  const next = pruneWeekPlanSwaps(
-    moveSessionOnPlan(existing, weekStart, sessionKey, toDay),
-    weekStartKey(now, timeZone),
-  );
-  await writeWeekPlanSwaps(userId, next);
-  return next;
+  const intentSeq = await claimNextSessionIntent(userId, sessionKey);
+  const placed = await placeSessionIntentForUser({
+    userId,
+    sessionKey,
+    weekStart,
+    toDay,
+    intentSeq,
+    now,
+    intent: "move",
+  });
+  return placed.swaps;
 }
 
 /**
@@ -325,9 +451,6 @@ export async function moveWorkoutHomeForUser(
   weekStart: string,
   now = new Date(),
 ): Promise<WeekPlanSwap[]> {
-  if (!inWeekPlanTurn(userId)) {
-    return enqueueWeekPlan(userId, () => moveWorkoutHomeForUser(userId, sessionKey, weekStart, now));
-  }
   if (!isSessionKey(sessionKey)) {
     throw new AppError("PLAN", "That workout cannot be moved.");
   }
@@ -339,18 +462,21 @@ export async function moveWorkoutHomeForUser(
   assertEditableWeek(weekStart, now, timeZone);
   const existing = await getWeekPlanSwapsForUser(userId);
   const row = existing.find((item) => item.weekStart === weekStart);
-  const placed = placedWeekdayForSession(row?.sourceByDay ?? {}, row?.sessionDays, sessionKey);
-  if (placed === home) {
+  const sitting = placedWeekdayForSession(row?.sourceByDay ?? {}, row?.sessionDays, sessionKey);
+  if (sitting === home) {
     throw new AppError("PLAN", "That workout is already on its original day.");
   }
-  const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
-  assertSessionsOpen(done, [sessionKey]);
-  const next = pruneWeekPlanSwaps(
-    moveSessionOnPlan(existing, weekStart, sessionKey, home),
-    weekStartKey(now, timeZone),
-  );
-  await writeWeekPlanSwaps(userId, next);
-  return next;
+  const intentSeq = await claimNextSessionIntent(userId, sessionKey);
+  const saved = await placeSessionIntentForUser({
+    userId,
+    sessionKey,
+    weekStart,
+    toDay: home,
+    intentSeq,
+    now,
+    intent: "restore",
+  });
+  return saved.swaps;
 }
 
 /** Trade one session with a session that sits on another day this week. */

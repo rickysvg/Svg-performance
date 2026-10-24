@@ -39,7 +39,7 @@ import {
 } from "@/lib/week-carousel";
 import { scaleBandFromPrefs, scaleDemoCatalog, type ScaleBand } from "@/lib/training-scale";
 import { normalizeWeightAccess } from "@/lib/weight-access";
-import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
+import { getSessionIntentSeqForUser, getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easeWeekStripDays } from "@/lib/recovery-ease";
 import { campPlanWeekIndex, getActiveCampSnapshot } from "@/lib/fight-camp";
 import { isPlanWeekday, sessionHomeWeekday, weekStartInRange, weekStartKey } from "@/lib/week-plan-swaps";
@@ -69,9 +69,10 @@ export default async function TrainingCalendarPage({
   const profile = await getProfileForUser(user.id);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const selected = parseDayParam(params.day, now, tz);
-  const [swaps, catalog] = await Promise.all([
+  const [swaps, catalog, intentSeqs] = await Promise.all([
     getWeekPlanSwapsForUser(user.id),
     findDemoTrainingCatalog(),
+    getSessionIntentSeqForUser(user.id),
   ]);
   const levelOverride = parseLevelParam(params.level);
   const profileBand = scaleBandFromPrefs({
@@ -316,6 +317,7 @@ export default async function TrainingCalendarPage({
         timeZone={tz}
         level={levelOverride}
         moves={moves}
+        intentSeqs={intentSeqs}
         rearrange={canEditWeek}
       >
         {fromProfile ? null : (

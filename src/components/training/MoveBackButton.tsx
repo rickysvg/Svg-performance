@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { moveWorkoutHomeAction } from "@/app/actions/move-home";
+import { useWorkoutMove } from "@/components/training/WorkoutMove";
+import { nextIntentSeq } from "@/lib/plan-intent";
 
 export function MoveBackButton({
   sessionKey,
@@ -12,8 +14,9 @@ export function MoveBackButton({
   weekStart: string;
   home: string;
 }) {
+  const move = useWorkoutMove();
   const [error, setError] = useState("");
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
   return (
     <div data-move-back-row={sessionKey}>
@@ -23,10 +26,15 @@ export function MoveBackButton({
         disabled={pending}
         onClick={() => {
           setError("");
-          startTransition(async () => {
-            const result = await moveWorkoutHomeAction(sessionKey, weekStart);
-            if (result.error) setError(result.error);
-          });
+          setPending(true);
+          const run = move
+            ? move.moveHome(sessionKey, weekStart, home)
+            : moveWorkoutHomeAction(sessionKey, weekStart, nextIntentSeq(sessionKey));
+          void run
+            .then((result) => {
+              if (result.error) setError(result.error);
+            })
+            .finally(() => setPending(false));
         }}
         className="text-sm font-semibold text-[#CBF805] underline-offset-4 hover:underline disabled:opacity-60"
       >

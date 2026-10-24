@@ -77,6 +77,7 @@ export function CalendarWeekFollow({
   initialWeekStart,
   level,
   moves,
+  intentSeqs = {},
   rearrange,
   logPastDayKeys = [],
   timeZone,
@@ -92,6 +93,8 @@ export function CalendarWeekFollow({
   initialWeekStart: string;
   level: string | null;
   moves: Record<string, CalendarMoveBundle>;
+  /** Highest accepted move/undo sequence per session. Later clicks outrank it. */
+  intentSeqs?: Record<string, number>;
   /** Kept for the page that still decides whether the viewed week can be edited. */
   rearrange?: boolean;
   logPastDayKeys?: string[];
@@ -156,6 +159,7 @@ export function CalendarWeekFollow({
         editable={Boolean(move?.editable)}
         weekStart={weekStart}
         days={move?.days ?? []}
+        intentFloor={intentSeqs}
         onCommitted={() => {
           router.refresh();
         }}

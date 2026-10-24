@@ -48,11 +48,14 @@ export function TrainWeekFollow({
   initialWeekStart,
   level,
   moves,
+  intentSeqs = {},
   children,
 }: {
   initialWeekStart: string;
   level: string | null;
   moves: Record<string, TrainMoveBundle>;
+  /** Highest accepted move/undo sequence per session. Later clicks outrank it. */
+  intentSeqs?: Record<string, number>;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -88,6 +91,7 @@ export function TrainWeekFollow({
         editable={Boolean(move?.editable)}
         weekStart={weekStart}
         days={move?.days ?? []}
+        intentFloor={intentSeqs}
         onCommitted={() => {
           router.refresh();
         }}

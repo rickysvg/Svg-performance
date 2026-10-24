@@ -28,6 +28,7 @@ import {
   parseWeekPlanSwaps,
   pruneAutoRolledSwaps,
   pruneWeekPlanSwaps,
+  sessionHomeWeekday,
   sessionMoveCaution,
   swapSessionsOnPlan,
   swapWeekdays,
@@ -35,9 +36,9 @@ import {
 } from "@/lib/week-plan-swaps";
 import {
   clearCurrentWeekPlanForUser,
-  getWeekPlanSwapsForUser,
   moveWorkoutForUser,
   moveWorkoutHomeForUser,
+  placeSessionIntentForUser,
   restoreWeekPlanForUser,
   swapWeekPlanForUser,
   swapWorkoutForUser,
@@ -732,7 +733,7 @@ describe("Core planner on Home", () => {
     expect(tuesdayWork.some((row) => row.sessionKey === mondayLift)).toBe(false);
   });
 
-  it("keeps the last of a rapid move and undo on Cardio — bike", async () => {
+  it("keeps the last of three rapid move and undo runs on Cardio — bike", async () => {
     const user = await makeUser("move-undo-race@example.com");
     await completeOnboardingForUser(user.id, {
       displayName: "Race",
@@ -751,6 +752,7 @@ describe("Core planner on Home", () => {
     await startedWithProgram(user.id);
     const saturday = new Date(2026, 9, 24, 12, 0, 0);
     const bikeDay = new Date(2026, 9, 21, 12, 0, 0);
+    const weekOf = new Date(2026, 9, 19, 12, 0, 0);
     const start = weekStartKey(saturday, APP_TIMEZONE);
     const prefs = {
       primaryFocus: "mma" as const,
@@ -764,31 +766,76 @@ describe("Core planner on Home", () => {
     );
     const sessionKey = bike?.sessionKey ?? "";
     expect(sessionKey).not.toBe("");
-    const home = JSON.stringify(await getWeekPlanSwapsForUser(user.id));
+    const homeDay = sessionHomeWeekday(sessionKey) ?? "";
+    expect(homeDay).toBe("Wednesday");
 
     function sessionsOn(schedule: Awaited<ReturnType<typeof getCalendarSchedule>>, weekday: string) {
       const day = schedule.days.find((row) => row.weekday === weekday);
       return day?.activities.filter((row) => row.kind === "workout") ?? [];
     }
 
-    const undoLast: Promise<unknown>[] = [];
-    for (let cycle = 0; cycle < 12; cycle += 1) {
-      undoLast.push(moveWorkoutForUser(user.id, sessionKey, "Saturday", start, saturday));
-      undoLast.push(restoreWeekPlanForUser(user.id, home, saturday));
+    let seq = 0;
+    for (let run = 0; run < 3; run += 1) {
+      const cycle: Promise<unknown>[] = [];
+      for (let turn = 0; turn < 12; turn += 1) {
+        const moveSeq = ++seq;
+        const undoSeq = ++seq;
+        cycle.push(
+          placeSessionIntentForUser({
+            userId: user.id,
+            sessionKey,
+            weekStart: start,
+            toDay: "Saturday",
+            intentSeq: moveSeq,
+            now: saturday,
+            intent: "move",
+          }),
+        );
+        cycle.push(
+          placeSessionIntentForUser({
+            userId: user.id,
+            sessionKey,
+            weekStart: start,
+            toDay: homeDay,
+            intentSeq: undoSeq,
+            now: saturday,
+            intent: "restore",
+          }),
+        );
+      }
+      await Promise.all(cycle);
+      const restored = await getCalendarSchedule(user.id, saturday, weekOf);
+      expect(sessionsOn(restored, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(false);
+      expect(sessionsOn(restored, "Wednesday").some((row) => row.title === "Cardio — bike")).toBe(true);
     }
-    await Promise.all(undoLast);
-    const restored = await getCalendarSchedule(user.id, saturday, new Date(2026, 9, 19, 12, 0, 0));
-    expect(sessionsOn(restored, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(false);
-    expect(sessionsOn(restored, "Wednesday").some((row) => row.title === "Cardio — bike")).toBe(true);
 
-    const moveLast: Promise<unknown>[] = [];
-    for (let cycle = 0; cycle < 12; cycle += 1) {
-      moveLast.push(restoreWeekPlanForUser(user.id, home, saturday));
-      moveLast.push(moveWorkoutForUser(user.id, sessionKey, "Saturday", start, saturday));
-    }
-    await Promise.all(moveLast);
-    const moved = await getCalendarSchedule(user.id, saturday, new Date(2026, 9, 19, 12, 0, 0));
-    expect(sessionsOn(moved, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(true);
-    expect(sessionsOn(moved, "Wednesday").some((row) => row.sessionKey === sessionKey)).toBe(false);
-  });
+    const stale = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart: start,
+      toDay: "Saturday",
+      intentSeq: 1,
+      now: saturday,
+      intent: "move",
+    });
+    expect(stale.applied).toBe(false);
+    const afterStale = await getCalendarSchedule(user.id, saturday, weekOf);
+    expect(sessionsOn(afterStale, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(false);
+    expect(sessionsOn(afterStale, "Wednesday").some((row) => row.title === "Cardio — bike")).toBe(true);
+
+    const lastMove = ++seq;
+    const moved = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart: start,
+      toDay: "Saturday",
+      intentSeq: lastMove,
+      now: saturday,
+      intent: "move",
+    });
+    expect(moved.applied).toBe(true);
+    const afterMove = await getCalendarSchedule(user.id, saturday, weekOf);
+    expect(sessionsOn(afterMove, "Saturday").some((row) => row.sessionKey === sessionKey)).toBe(true);
+    expect(sessionsOn(afterMove, "Wednesday").some((row) => row.sessionKey === sessionKey)).toBe(false);
+  }, 30_000);
 });

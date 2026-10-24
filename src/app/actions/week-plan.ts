@@ -8,14 +8,26 @@ import {
   clearWeekPlanForUser,
   enqueueWeekPlan,
   getWeekPlanSwapsForUser,
-  moveWorkoutForUser,
+  placeSessionIntentForUser,
   restoreWeekPlanForUser,
   swapWorkoutForUser,
   swapCurrentWeekForUser,
   swapWeekOnDateForUser,
 } from "@/lib/week-plan-swap-store";
 
-export type WeekPlanActionState = { error?: string; undo?: string };
+export type WeekPlanActionState = {
+  error?: string;
+  undo?: string;
+  applied?: boolean;
+  seq?: number;
+};
+
+function intentSeqOrError(intentSeq: number): WeekPlanActionState | null {
+  if (!Number.isInteger(intentSeq) || intentSeq < 1) {
+    return { error: "That move did not save. Try again." };
+  }
+  return null;
+}
 
 async function snapshot(userId: string) {
   return JSON.stringify(await getWeekPlanSwapsForUser(userId));
@@ -93,16 +105,48 @@ export async function moveWorkoutAction(
   sessionKey: string,
   toDay: string,
   weekStart: string,
+  intentSeq: number,
 ): Promise<WeekPlanActionState> {
+  const invalid = intentSeqOrError(intentSeq);
+  if (invalid) return invalid;
   try {
     const user = await requireUserOrThrow();
-    const undo = await enqueueWeekPlan(user.id, async () => {
-      const prior = await snapshot(user.id);
-      await moveWorkoutForUser(user.id, sessionKey, toDay, weekStart);
-      return prior;
+    const placed = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart,
+      toDay,
+      intentSeq,
+      intent: "move",
     });
     refreshPlan();
-    return { undo };
+    return { applied: placed.applied, seq: placed.seq };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+/** Put the session back on the day Undo names. A lower sequence is ignored. */
+export async function undoSessionMoveAction(
+  sessionKey: string,
+  toDay: string,
+  weekStart: string,
+  intentSeq: number,
+): Promise<WeekPlanActionState> {
+  const invalid = intentSeqOrError(intentSeq);
+  if (invalid) return invalid;
+  try {
+    const user = await requireUserOrThrow();
+    const placed = await placeSessionIntentForUser({
+      userId: user.id,
+      sessionKey,
+      weekStart,
+      toDay,
+      intentSeq,
+      intent: "restore",
+    });
+    refreshPlan();
+    return { applied: placed.applied, seq: placed.seq };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

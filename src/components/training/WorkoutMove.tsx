@@ -2,12 +2,22 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { moveWorkoutHomeAction } from "@/app/actions/move-home";
 import {
   moveWorkoutAction,
   restoreWeekPlanAction,
   swapCalendarDaysAction,
   swapWorkoutAction,
+  undoSessionMoveAction,
 } from "@/app/actions/week-plan";
+import { placementAfterMoveBack } from "@/lib/calendar-placements";
+import {
+  latestIntentSeq,
+  nextIntentSeq,
+  noteIntentFloor,
+  readSessionUndoTarget,
+  sessionUndoTarget,
+} from "@/lib/plan-intent";
 import type { MoveDayChoice, MoveSessionChoice } from "@/lib/week-plan";
 import { Toast } from "@/components/Toast";
 import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
@@ -32,6 +42,11 @@ type WorkoutMoveContextValue = {
   swapDays: (fromDay: string, toDay: string) => void;
   /** Session key → weekday while a move is ahead of the server list. */
   placements: Record<string, string>;
+  moveHome: (
+    sessionKey: string,
+    weekStart: string,
+    home: string,
+  ) => Promise<{ error?: string; applied?: boolean }>;
 };
 
 const WorkoutMoveContext = createContext<WorkoutMoveContextValue | null>(null);
@@ -47,16 +62,20 @@ export function WorkoutMoveProvider({
   editable,
   weekStart,
   days,
+  intentFloor,
   onCommitted,
   children,
 }: {
   editable: boolean;
   weekStart: string;
   days: MoveDayChoice[];
+  /** Highest sequence the server has stored. Clicks on this page start above it. */
+  intentFloor?: Record<string, number>;
   /** Parent refreshes the list. Undo stays available while that refresh is in flight. */
   onCommitted?: () => void;
   children: ReactNode;
 }) {
+  for (const [key, floor] of Object.entries(intentFloor ?? {})) noteIntentFloor(key, floor);
   const pathname = usePathname() ?? "";
   const swapSessionTestId = pathname.startsWith("/training/calendar")
     ? "workout-move-session-btn-2"
@@ -67,8 +86,7 @@ export function WorkoutMoveProvider({
   const [caution, setCaution] = useState<PendingCaution | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string; undo: string } | null>(null);
   const toastSerial = useRef(0);
-  const planQueue = useRef<Promise<void>>(Promise.resolve());
-  const planEpoch = useRef(0);
+  const moveInflight = useRef(0);
   const [saving, setSaving] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [placements, setPlacements] = useState<Record<string, string>>({});
@@ -87,10 +105,34 @@ export function WorkoutMoveProvider({
     return days.find((day) => day.sessions.some((session) => session.sessionKey === sessionKey))?.weekday;
   }
 
-  function placeSession(sessionKey: string, weekday: string) {
+  function setPlacement(sessionKey: string, weekday: string) {
     const from = sittingWeekday(sessionKey);
     if (!from || from === weekday) return;
-    rememberPlacements({ ...placementsRef.current, [sessionKey]: weekday }, [{ key: sessionKey, from }]);
+    const next = { ...placementsRef.current, [sessionKey]: weekday };
+    placementsRef.current = next;
+    setPlacements(next);
+  }
+
+  function clearPlacement(sessionKey: string) {
+    if (!(sessionKey in placementsRef.current)) return;
+    const next = { ...placementsRef.current };
+    delete next[sessionKey];
+    placementsRef.current = next;
+    setPlacements(next);
+  }
+
+  function beginSaving() {
+    moveInflight.current += 1;
+    setSaving(true);
+  }
+
+  function endSaving() {
+    moveInflight.current = Math.max(0, moveInflight.current - 1);
+    setSaving(moveInflight.current > 0);
+  }
+
+  function noteServerSeq(sessionKey: string, seq: number | undefined) {
+    if (typeof seq === "number") noteIntentFloor(sessionKey, seq);
   }
 
   function placeDaySwap(fromDay: string, toDay: string) {
@@ -120,15 +162,6 @@ export function WorkoutMoveProvider({
   }
   const panelRef = useSheetBehavior(close, Boolean(target));
 
-  function enqueuePlan(task: () => Promise<void>) {
-    const run = planQueue.current.then(task, task);
-    planQueue.current = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
-  }
-
   function finish(message: string, undo?: string) {
     setTarget(null);
     setMode("move");
@@ -138,84 +171,87 @@ export function WorkoutMoveProvider({
   }
 
   async function commitMove(sessionKey: string, toDay: string, message: string) {
-    if (saving) return;
-    const epoch = planEpoch.current;
+    const from = sittingWeekday(sessionKey);
+    const seq = nextIntentSeq(sessionKey);
+    const previous = placementsRef.current;
+    if (from) setPlacement(sessionKey, toDay);
     setError(null);
-    setSaving(true);
+    beginSaving();
     try {
-      await enqueuePlan(async () => {
-        const result = await moveWorkoutAction(sessionKey, toDay, weekStart);
-        if (epoch !== planEpoch.current) return;
-        if (result.error) {
-          setError(result.error);
-          return;
-        }
-        placeSession(sessionKey, toDay);
-        finish(message, result.undo);
+      const result = await moveWorkoutAction(sessionKey, toDay, weekStart, seq);
+      const stillLatest = latestIntentSeq(sessionKey) === seq;
+      noteServerSeq(sessionKey, result.seq);
+      if (!stillLatest) return;
+      if (result.error) {
+        placementsRef.current = previous;
+        setPlacements(previous);
+        setError(result.error);
+        return;
+      }
+      if (result.applied === false) {
+        clearPlacement(sessionKey);
         onCommitted?.();
-      });
+        return;
+      }
+      finish(
+        message,
+        from ? sessionUndoTarget({ sessionKey, weekStart, toDay: from }) : undefined,
+      );
+      onCommitted?.();
     } finally {
-      setSaving(false);
+      endSaving();
     }
   }
 
   async function commitSwap(fromDay: string, toDay: string) {
     if (saving) return;
-    const epoch = planEpoch.current;
     setError(null);
-    setSaving(true);
+    beginSaving();
     try {
-      await enqueuePlan(async () => {
-        const result = await swapCalendarDaysAction(fromDay, toDay, weekStart);
-        if (epoch !== planEpoch.current) return;
-        if (result.error) {
-          setError(result.error);
-          return;
-        }
-        placeDaySwap(fromDay, toDay);
-        finish(`Swapped ${fromDay} and ${toDay}.`, result.undo);
-        onCommitted?.();
-      });
+      const result = await swapCalendarDaysAction(fromDay, toDay, weekStart);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      placeDaySwap(fromDay, toDay);
+      finish(`Swapped ${fromDay} and ${toDay}.`, result.undo);
+      onCommitted?.();
     } finally {
-      setSaving(false);
+      endSaving();
     }
   }
 
   async function commitSessionSwap(otherKey: string, otherTitle: string) {
     if (!target || saving) return;
-    const epoch = planEpoch.current;
     const moving = target;
     setError(null);
-    setSaving(true);
+    beginSaving();
     try {
-      await enqueuePlan(async () => {
-        const result = await swapWorkoutAction(moving.sessionKey, otherKey, weekStart);
-        if (epoch !== planEpoch.current) return;
-        if (result.error) {
-          setError(result.error);
-          return;
-        }
-        const from = sittingWeekday(moving.sessionKey) ?? moving.fromWeekday;
-        const otherDay = days.find((day) => day.sessions.some((session) => session.sessionKey === otherKey));
-        const otherFrom = sittingWeekday(otherKey) ?? otherDay?.weekday;
-        if (otherFrom && from) {
-          rememberPlacements(
-            {
-              ...placementsRef.current,
-              [moving.sessionKey]: otherFrom,
-              [otherKey]: from,
-            },
-            [
-              { key: moving.sessionKey, from },
-              { key: otherKey, from: otherFrom },
-            ],
-          );
-        }
-        finish(`Swapped with ${otherTitle}.`, result.undo);
-        onCommitted?.();
-      });
+      const result = await swapWorkoutAction(moving.sessionKey, otherKey, weekStart);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      const from = sittingWeekday(moving.sessionKey) ?? moving.fromWeekday;
+      const otherDay = days.find((day) => day.sessions.some((session) => session.sessionKey === otherKey));
+      const otherFrom = sittingWeekday(otherKey) ?? otherDay?.weekday;
+      if (otherFrom && from) {
+        rememberPlacements(
+          {
+            ...placementsRef.current,
+            [moving.sessionKey]: otherFrom,
+            [otherKey]: from,
+          },
+          [
+            { key: moving.sessionKey, from },
+            { key: otherKey, from: otherFrom },
+          ],
+        );
+      }
+      finish(`Swapped with ${otherTitle}.`, result.undo);
+      onCommitted?.();
     } finally {
-      setSaving(false);
+      endSaving();
     }
   }
 
@@ -255,10 +291,59 @@ export function WorkoutMoveProvider({
     guarded(note, () => commitSessionSwap(session.sessionKey, session.title));
   }
 
+  async function moveHome(sessionKey: string, targetWeek: string, home: string) {
+    const seq = nextIntentSeq(sessionKey);
+    const previous = placementsRef.current;
+    const next = placementAfterMoveBack(previous, sessionKey, home);
+    placementsRef.current = next;
+    setPlacements(next);
+    const result = await moveWorkoutHomeAction(sessionKey, targetWeek, seq);
+    const stillLatest = latestIntentSeq(sessionKey) === seq;
+    noteServerSeq(sessionKey, result.seq);
+    if (!stillLatest) return result;
+    if (result.error) {
+      placementsRef.current = previous;
+      setPlacements(previous);
+      return result;
+    }
+    if (result.applied === false) clearPlacement(sessionKey);
+    onCommitted?.();
+    return result;
+  }
+
   async function undo() {
     if (!toast || undoing) return;
-    planEpoch.current += 1;
     const payload = toast.undo;
+    const targetDay = readSessionUndoTarget(payload);
+    if (targetDay) {
+      const seq = nextIntentSeq(targetDay.sessionKey);
+      const previous = placementsRef.current;
+      setPlacement(targetDay.sessionKey, targetDay.toDay);
+      setToast(null);
+      setUndoing(true);
+      try {
+        const result = await undoSessionMoveAction(
+          targetDay.sessionKey,
+          targetDay.toDay,
+          targetDay.weekStart,
+          seq,
+        );
+        const stillLatest = latestIntentSeq(targetDay.sessionKey) === seq;
+        noteServerSeq(targetDay.sessionKey, result.seq);
+        if (!stillLatest) return;
+        if (result.error) {
+          placementsRef.current = previous;
+          setPlacements(previous);
+          setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
+          return;
+        }
+        if (result.applied === false) clearPlacement(targetDay.sessionKey);
+        onCommitted?.();
+      } finally {
+        setUndoing(false);
+      }
+      return;
+    }
     const previous = placementStack.current.pop() ?? null;
     const snapshot = placementsRef.current;
     if (previous) {
@@ -270,19 +355,17 @@ export function WorkoutMoveProvider({
     setToast(null);
     setUndoing(true);
     try {
-      await enqueuePlan(async () => {
-        const result = await restoreWeekPlanAction(payload);
-        if (result.error) {
-          if (previous) {
-            placementStack.current.push(previous);
-            placementsRef.current = snapshot;
-            setPlacements(snapshot);
-          }
-          setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
-          return;
+      const result = await restoreWeekPlanAction(payload);
+      if (result.error) {
+        if (previous) {
+          placementStack.current.push(previous);
+          placementsRef.current = snapshot;
+          setPlacements(snapshot);
         }
-        onCommitted?.();
-      });
+        setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
+        return;
+      }
+      onCommitted?.();
     } finally {
       setUndoing(false);
     }
@@ -313,6 +396,7 @@ export function WorkoutMoveProvider({
         },
         swapDays: (fromDay, toDay) => commitSwap(fromDay, toDay),
         placements,
+        moveHome,
       }}
     >
       {children}

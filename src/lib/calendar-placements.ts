@@ -12,6 +12,16 @@ export type PlacementDay<T extends PlacementActivity> = {
  * Move workout cards onto the weekday a move or undo just committed.
  * The server list can lag. Cards already sitting on the target day stay put.
  */
+/** Pull a moved card back onto its home weekday while the server list is still on today. */
+export function placementAfterMoveBack(
+  placements: Record<string, string>,
+  sessionKey: string,
+  home: string,
+) {
+  if (placements[sessionKey] === home) return placements;
+  return { ...placements, [sessionKey]: home };
+}
+
 export function applySessionPlacements<T extends PlacementActivity>(
   days: PlacementDay<T>[],
   placements: Record<string, string>,
