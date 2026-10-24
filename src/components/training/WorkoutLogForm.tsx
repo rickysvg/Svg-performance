@@ -452,7 +452,14 @@ function SessionTimer({
     const created = new Date(createdAt).getTime();
     return Number.isFinite(created) ? created : 0;
   })();
-  const live = sessionRecordsActivity(status);
+  // A finished log reopened as a draft keeps its stored duration. The created-at
+  // fallback would credit the gap and a later save would store that longer time.
+  const held =
+    status === "draft" &&
+    !timerStartedAt &&
+    typeof elapsedSeconds === "number" &&
+    elapsedSeconds > 0;
+  const live = sessionRecordsActivity(status) && !held;
   // Server and the hydration render share the anchor. A live draft picks up the wall clock after that.
   const now = useSyncExternalStore(
     live ? subscribeSessionClock : subscribeFrozenClock,
@@ -854,7 +861,7 @@ export function WorkoutLogForm({
   }, []);
 
   useEffect(() => {
-    if (!sessionRecordsActivity(session.status)) return;
+    if (!sessionRecordsActivity(session.status) || clockHeld) return;
     noteLoggerActivity(session.id);
     const beat = () => {
       if (document.visibilityState !== "visible") return;
@@ -862,7 +869,7 @@ export function WorkoutLogForm({
     };
     const timer = window.setInterval(beat, ACTIVITY_HEARTBEAT_MS);
     return () => window.clearInterval(timer);
-  }, [session.id, session.status]);
+  }, [session.id, session.status, clockHeld]);
 
   useEffect(() => {
     if (!state.error) return;

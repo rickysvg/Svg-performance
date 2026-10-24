@@ -1228,7 +1228,13 @@ export async function recordWorkoutActivityForUser(input: {
   }
   const now = input.now ?? new Date();
   const timer = await readWorkoutTimerFields(existing.id, prisma);
-  const base = resumeStoredElapsed(timer.elapsedSeconds) ?? 0;
+  const stored = resumeStoredElapsed(timer.elapsedSeconds);
+  // Undo finish and opening /training/log/<id> leave the clock stopped.
+  // A heartbeat must not credit the gap since create or start a new segment.
+  if (!timer.timerStartedAt && stored != null) {
+    return { elapsedSeconds: stored, timerStartedAt: null };
+  }
+  const base = stored ?? 0;
   const anchor = timer.timerStartedAt ?? existing.createdAt;
   const view = resolveSessionElapsed(
     {

@@ -243,8 +243,8 @@ export function sessionElapsedState(
 ): "live" | "paused" | "frozen" | "capped" {
   if (view.ticking) return "live";
   if (view.stale) return "paused";
-  if (status === "complete") return "frozen";
-  return "capped";
+  if (view.capped && status !== "complete") return "capped";
+  return "frozen";
 }
 
 function reportedElapsed(value: number | null | undefined, cap: number): number | null {

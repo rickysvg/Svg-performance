@@ -28,6 +28,10 @@ import { listRemovalsForDay, listRemovalsForSession } from "@/lib/exercise-remov
 import { trainingBlockKey, type SwapRecord } from "@/lib/exercise-swap";
 import type { RemovalRecord } from "@/lib/exercise-removal";
 
+// A prefetch while the session is still a draft used to cache this URL as
+// not-found. Reload then painted "Workout not found" until the fresh payload arrived.
+export const dynamic = "force-dynamic";
+
 export default async function WorkoutDonePage({
   params,
   searchParams,

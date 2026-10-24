@@ -17,6 +17,7 @@ import {
   deleteWorkoutSessionForUser,
   continuePartialWorkoutForUser,
   recordWorkoutActivityForUser,
+  resumeHeldSessionClockForUser,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
   startWorkoutFromDay,
@@ -1240,6 +1241,51 @@ describe("a workout is complete only after a logged save", () => {
     });
     expect(away.elapsedSeconds).toBe(600 + 10 * 60);
     expect((await readWorkoutTimerFields(fresh.id, prisma)).elapsedSeconds).toBe(600 + 10 * 60);
+  });
+
+  it("leaves a reopened finished draft on its stored clock until Resume", async () => {
+    const user = await makeUser("held-clock@example.com");
+    const createdAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Bike",
+        performedAt: createdAt,
+        status: "draft",
+        createdAt,
+      },
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { elapsedSeconds: 90 * 60, timerStartedAt: null, finishedAt: null },
+    });
+    const lookedAt = new Date();
+    const viewed = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: session.id,
+      now: lookedAt,
+    });
+    expect(viewed.elapsedSeconds).toBe(90 * 60);
+    expect(viewed.timerStartedAt).toBeNull();
+    const held = await readWorkoutTimerFields(session.id, prisma);
+    expect(held.elapsedSeconds).toBe(90 * 60);
+    expect(held.timerStartedAt).toBeNull();
+
+    const before = Date.now();
+    const resumed = await resumeHeldSessionClockForUser({
+      userId: user.id,
+      workoutId: session.id,
+    });
+    expect(resumed.elapsedSeconds).toBe(90 * 60);
+    expect(resumed.timerStartedAt).not.toBeNull();
+    expect(resumed.timerStartedAt!.getTime()).toBeGreaterThanOrEqual(before - 2000);
+    const after = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: session.id,
+      now: new Date(resumed.timerStartedAt!.getTime() + 20_000),
+    });
+    expect(after.elapsedSeconds).toBe(90 * 60 + 20);
+    expect(after.timerStartedAt).not.toBeNull();
   });
 
   it("keeps a partial or complete log's time when it is only viewed", async () => {

@@ -735,6 +735,8 @@ async function loadCalendarSchedule(
         names: visible.names,
         exercises: visible.exercises,
       });
+      const bike =
+        log.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) || isBikeIntervalName(title);
       day.activities.push({
         kind: "workout",
         title,
@@ -744,6 +746,7 @@ async function loadCalendarSchedule(
         programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel: view.text,
+        durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
         exercises: (() => {
           if (view.ticked <= 0) return undefined;
           const rows = visibleCalendarExercises(view.rows, view.done);
