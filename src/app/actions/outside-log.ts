@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { saveSparringLog } from "@/lib/outside-log";
+import { deleteSparringLog, saveSparringLog } from "@/lib/outside-log";
 import { writeRecoveryCheckIn } from "@/lib/recovery-ease";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
@@ -61,6 +61,24 @@ export async function saveSparringLogAction(
       intensity: log.intensity,
       partner: log.partner,
     };
+  } catch (error) {
+    return { error: publicErrorMessage(error) };
+  }
+}
+
+export async function deleteSparringLogAction(
+  _prev: { error?: string },
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
+    const user = await requireUserOrThrow();
+    await deleteSparringLog(user.id, String(formData.get("dateKey") ?? ""));
+    revalidatePath("/home");
+    revalidatePath("/sparring");
+    revalidatePath("/training");
+    revalidatePath("/training/calendar");
+    revalidatePath("/progress");
+    return {};
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }

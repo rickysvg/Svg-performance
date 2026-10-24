@@ -16,7 +16,7 @@ const KIND_LABEL = {
   strength: "Strength",
   conditioning: "Conditioning",
   rest: "Rest",
-  mobility: "Recovery",
+  mobility: "Mobility",
 } as const;
 
 function SessionCta({

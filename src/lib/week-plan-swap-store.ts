@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { AppError, NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -17,6 +18,7 @@ import {
   moveSessionOnPlan,
   parseWeekPlanSwaps,
   placedWeekdayForSession,
+  sessionHomeWeekday,
   pruneAutoRolledSwaps,
   pruneWeekPlanSwaps,
   shiftDayKey,
@@ -29,6 +31,33 @@ import {
 } from "@/lib/week-plan-swaps";
 
 const WEEK_START = /^\d{4}-\d{2}-\d{2}$/;
+
+const weekPlanTurn = new AsyncLocalStorage<string>();
+const weekPlanTail = new Map<string, Promise<void>>();
+
+/**
+ * One member's plan writes run in the order they were requested.
+ * A move and the Undo 0.3s later share this queue, so the later request
+ * reads the plan the earlier one already saved.
+ */
+export function enqueueWeekPlan<T>(userId: string, task: () => Promise<T>): Promise<T> {
+  if (weekPlanTurn.getStore() === userId) return task();
+  const previous = weekPlanTail.get(userId) ?? Promise.resolve();
+  const run = previous.then(() => weekPlanTurn.run(userId, task));
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  weekPlanTail.set(userId, settled);
+  void settled.then(() => {
+    if (weekPlanTail.get(userId) === settled) weekPlanTail.delete(userId);
+  });
+  return run;
+}
+
+function inWeekPlanTurn(userId: string) {
+  return weekPlanTurn.getStore() === userId;
+}
 
 export async function getWeekPlanSwapsForUser(userId: string): Promise<WeekPlanSwap[]> {
   const row = await prisma.profile.findUnique({
@@ -176,7 +205,10 @@ export async function swapWeekPlanForUser(
   a: PlanWeekday,
   b: PlanWeekday,
   pruneAnchor = weekStart,
-) {
+): Promise<WeekPlanSwap[]> {
+  if (!inWeekPlanTurn(userId)) {
+    return enqueueWeekPlan(userId, () => swapWeekPlanForUser(userId, weekStart, a, b, pruneAnchor));
+  }
   if (!WEEK_START.test(weekStart)) {
     throw new AppError("PLAN", "That week is not valid.");
   }
@@ -218,7 +250,10 @@ export async function clearWeekPlanForUser(
   userId: string,
   weekStart: string,
   now = new Date(),
-) {
+): Promise<WeekPlanSwap[]> {
+  if (!inWeekPlanTurn(userId)) {
+    return enqueueWeekPlan(userId, () => clearWeekPlanForUser(userId, weekStart, now));
+  }
   const timeZone = await timeZoneForUser(userId);
   assertEditableWeek(weekStart, now, timeZone);
   const existing = await getWeekPlanSwapsForUser(userId);
@@ -242,7 +277,10 @@ export async function moveWorkoutForUser(
   toDay: string,
   weekStart: string,
   now = new Date(),
-) {
+): Promise<WeekPlanSwap[]> {
+  if (!inWeekPlanTurn(userId)) {
+    return enqueueWeekPlan(userId, () => moveWorkoutForUser(userId, sessionKey, toDay, weekStart, now));
+  }
   if (!isSessionKey(sessionKey)) {
     throw new AppError("PLAN", "That workout cannot be moved.");
   }
@@ -270,6 +308,44 @@ export async function moveWorkoutForUser(
   return next;
 }
 
+/**
+ * Put a moved workout back on its home weekday.
+ * The Move sheet blocks past days, so this is the way back after Undo expires.
+ */
+export async function moveWorkoutHomeForUser(
+  userId: string,
+  sessionKey: string,
+  weekStart: string,
+  now = new Date(),
+): Promise<WeekPlanSwap[]> {
+  if (!inWeekPlanTurn(userId)) {
+    return enqueueWeekPlan(userId, () => moveWorkoutHomeForUser(userId, sessionKey, weekStart, now));
+  }
+  if (!isSessionKey(sessionKey)) {
+    throw new AppError("PLAN", "That workout cannot be moved.");
+  }
+  const home = sessionHomeWeekday(sessionKey);
+  if (!home) {
+    throw new AppError("PLAN", "That workout cannot be moved back.");
+  }
+  const timeZone = await timeZoneForUser(userId);
+  assertEditableWeek(weekStart, now, timeZone);
+  const existing = await getWeekPlanSwapsForUser(userId);
+  const row = existing.find((item) => item.weekStart === weekStart);
+  const placed = placedWeekdayForSession(row?.sourceByDay ?? {}, row?.sessionDays, sessionKey);
+  if (placed === home) {
+    throw new AppError("PLAN", "That workout is already on its original day.");
+  }
+  const done = await loggedSessionKeys(userId, weekStart, existing, timeZone);
+  assertSessionsOpen(done, [sessionKey]);
+  const next = pruneWeekPlanSwaps(
+    moveSessionOnPlan(existing, weekStart, sessionKey, home),
+    weekStartKey(now, timeZone),
+  );
+  await writeWeekPlanSwaps(userId, next);
+  return next;
+}
+
 /** Trade one session with a session that sits on another day this week. */
 export async function swapWorkoutForUser(
   userId: string,
@@ -277,7 +353,12 @@ export async function swapWorkoutForUser(
   otherKey: string,
   weekStart: string,
   now = new Date(),
-) {
+): Promise<WeekPlanSwap[]> {
+  if (!inWeekPlanTurn(userId)) {
+    return enqueueWeekPlan(userId, () =>
+      swapWorkoutForUser(userId, sessionKey, otherKey, weekStart, now),
+    );
+  }
   if (!isSessionKey(sessionKey) || !isSessionKey(otherKey) || sessionKey === otherKey) {
     throw new AppError("PLAN", "Pick two different sessions.");
   }
@@ -314,7 +395,14 @@ export async function swapWorkoutForUser(
 }
 
 /** Replace the saved week with a previously stored snapshot. Used by Undo. */
-export async function restoreWeekPlanForUser(userId: string, raw: string, now = new Date()) {
+export async function restoreWeekPlanForUser(
+  userId: string,
+  raw: string,
+  now = new Date(),
+): Promise<WeekPlanSwap[]> {
+  if (!inWeekPlanTurn(userId)) {
+    return enqueueWeekPlan(userId, () => restoreWeekPlanForUser(userId, raw, now));
+  }
   const timeZone = await timeZoneForUser(userId);
   const next = pruneAutoRolledSwaps(
     pruneWeekPlanSwaps(parseWeekPlanSwaps(raw), weekStartKey(now, timeZone)),

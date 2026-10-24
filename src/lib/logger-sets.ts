@@ -53,20 +53,6 @@ function logScore(set: RestorableSet) {
   return score;
 }
 
-function loggedPatch(set: RestorableSet): Partial<RestorableSet> {
-  return {
-    reps: set.reps,
-    loadValue: set.loadValue,
-    loadUnit: set.loadUnit,
-    logMode: set.logMode,
-    durationSeconds: set.durationSeconds,
-    completed: set.completed,
-    notes: set.notes,
-    prescriptionKey: set.prescriptionKey,
-    rir: set.rir,
-  };
-}
-
 function applyDraft<T extends RestorableSet>(base: T, snap: LoggerDraftSet, exerciseName: string): T {
   return {
     ...base,

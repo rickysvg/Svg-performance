@@ -137,19 +137,83 @@ export function weekScrollLeft(index: number, panelWidth: number) {
 /**
  * Which week a scroll position means.
  * A refresh can leave the scroller at 0 before layout catches up. That is the
- * oldest week in the strip, so a scroll with no gesture since the last
- * programmatic place must stay on the week the member was looking at and put
- * the panel back. A finger swipe, wheel, or fling — including one whose scroll
- * lands long after the touch — still changes the week, including back to the
- * first one.
+ * oldest week in the strip, so a non-gesture scroll must stay on the week the
+ * member was looking at and put the panel back. A real swipe, wheel, or fling
+ * still changes the week, including back to the first one.
  */
+/**
+ * How long a coast can sit still before it stops counting as the member's gesture.
+ * The finger itself has no timer. Momentum ends on scrollend or this idle gap.
+ */
+export const SCROLL_GESTURE_IDLE_MS = 150;
+
+export type ScrollGesturePhase = "idle" | "contact" | "momentum";
+
+export type ScrollGestureState = {
+  phase: ScrollGesturePhase;
+  /** Moment the coast closes if no further scroll arrives. Null while the finger is down. */
+  idleAt: number | null;
+};
+
+export type ScrollGestureEvent = {
+  type: "pointerdown" | "pointerup" | "wheel" | "scroll" | "scrollend";
+  at: number;
+};
+
+export function scrollGestureOpen(state: ScrollGestureState, at: number) {
+  if (state.phase === "contact") return true;
+  if (state.phase !== "momentum") return false;
+  if (state.idleAt == null) return true;
+  return at < state.idleAt;
+}
+
+/** Finger down through release, then the coast, with no fixed window from the first touch. */
+export function reduceScrollGesture(
+  state: ScrollGestureState,
+  event: ScrollGestureEvent,
+  idleMs = SCROLL_GESTURE_IDLE_MS,
+): ScrollGestureState {
+  const current: ScrollGestureState = scrollGestureOpen(state, event.at)
+    ? state
+    : { phase: "idle", idleAt: null };
+  if (event.type === "pointerdown") return { phase: "contact", idleAt: null };
+  if (event.type === "pointerup") {
+    if (current.phase !== "contact") return current;
+    return { phase: "momentum", idleAt: event.at + idleMs };
+  }
+  if (event.type === "wheel") {
+    if (current.phase === "contact") return current;
+    return { phase: "momentum", idleAt: event.at + idleMs };
+  }
+  if (event.type === "scroll") {
+    if (current.phase === "contact") return current;
+    if (current.phase === "momentum") return { phase: "momentum", idleAt: event.at + idleMs };
+    return current;
+  }
+  if (current.phase === "contact") return current;
+  return { phase: "idle", idleAt: null };
+}
+
+/** Whether a scroll at `at` still belongs to the gesture described by `events`. */
+export function scrollGestureAt(
+  events: readonly ScrollGestureEvent[],
+  at: number,
+  idleMs = SCROLL_GESTURE_IDLE_MS,
+) {
+  let state: ScrollGestureState = { phase: "idle", idleAt: null };
+  for (const event of events) {
+    if (event.at > at) break;
+    state = reduceScrollGesture(state, event, idleMs);
+  }
+  return scrollGestureOpen(state, at);
+}
+
 export function carouselIndexFromScroll(input: {
   scrollLeft: number;
   panelWidth: number;
   weekCount: number;
   intendedIndex: number;
-  /** True when a finger or wheel has moved the strip since the last place. */
-  gestureSincePlace: boolean;
+  userGesture: boolean;
 }): { index: number; restore: boolean } {
   const count = Number.isFinite(input.weekCount) ? Math.max(0, Math.floor(input.weekCount)) : 0;
   const last = Math.max(0, count - 1);
@@ -161,62 +225,8 @@ export function carouselIndexFromScroll(input: {
   }
   const raw = Number.isFinite(input.scrollLeft) ? Math.round(input.scrollLeft / input.panelWidth) : intended;
   const index = Math.max(0, Math.min(last, raw));
-  if (!input.gestureSincePlace && index !== intended) return { index: intended, restore: true };
+  if (!input.userGesture && index !== intended) return { index: intended, restore: true };
   return { index, restore: false };
-}
-
-/** Idle time after the last momentum scroll before the gesture is finished. */
-export const STRIP_GESTURE_SETTLE_MS = 150;
-
-export type StripGestureState = {
-  /** Finger, wheel, or the momentum after release is still driving the strip. */
-  active: boolean;
-  /** Pointer is still down. Momentum has not started. */
-  pointerDown: boolean;
-  /** A gesture happened after the last programmatic place. */
-  sincePlace: boolean;
-  /** Time of the last scroll that belonged to this gesture. */
-  lastScrollAt: number | null;
-};
-
-export type StripGestureEvent = {
-  type: "pointerdown" | "pointerup" | "wheel" | "scroll" | "scrollend" | "settle" | "place";
-  at: number;
-};
-
-export function initialStripGesture(): StripGestureState {
-  return { active: false, pointerDown: false, sincePlace: false, lastScrollAt: null };
-}
-
-/**
- * A gesture runs from pointerdown or wheel through release and the momentum
- * scroll. It stays open until scrollend, or until scrolling has been still for
- * about 150ms. A layout scroll does not start one. place() is the programmatic
- * refresh, and only a scroll with no gesture since that place is put back.
- */
-export function reduceStripGesture(state: StripGestureState, event: StripGestureEvent): StripGestureState {
-  switch (event.type) {
-    case "pointerdown":
-      return { active: true, pointerDown: true, sincePlace: true, lastScrollAt: state.lastScrollAt };
-    case "pointerup":
-      return { ...state, pointerDown: false, active: true, sincePlace: true };
-    case "wheel":
-      return { ...state, active: true, sincePlace: true };
-    case "scroll":
-      if (!state.pointerDown && !state.active) return state;
-      return { ...state, active: true, sincePlace: true, lastScrollAt: event.at };
-    case "scrollend":
-      if (state.pointerDown) return state;
-      return { ...state, active: false };
-    case "settle":
-      if (state.pointerDown || state.lastScrollAt == null) return state;
-      if (event.at - state.lastScrollAt >= STRIP_GESTURE_SETTLE_MS) return { ...state, active: false };
-      return state;
-    case "place":
-      return initialStripGesture();
-    default:
-      return state;
-  }
 }
 
 /** The day summary that matches the chip the member tapped. */

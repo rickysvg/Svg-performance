@@ -568,7 +568,7 @@ describe("a workout is complete only after a logged save", () => {
           elapsedSeconds: resumed.elapsedSeconds,
           timerStartedAt: resumed.timerStartedAt,
         },
-        new Date(Date.now() + 10_000),
+        new Date(resumed.timerStartedAt!.getTime() + 10_000),
       );
       expect(view.seconds).toBe(expected + 10);
       await updateWorkoutSessionForUser({
@@ -647,7 +647,7 @@ describe("a workout is complete only after a logged save", () => {
           elapsedSeconds: resumed.elapsedSeconds,
           timerStartedAt: resumed.timerStartedAt,
         },
-        new Date(Date.now() + 10_000),
+        new Date(resumed.timerStartedAt!.getTime() + 10_000),
       ).seconds,
     ).toBe(100);
   });
@@ -1116,7 +1116,10 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.finishedAt).toBeNull();
     expect(resumed.elapsedSeconds).toBe(70 * 60 + 25);
     expect(resumed.timerStartedAt).toBeInstanceOf(Date);
-    const held = resolveSessionElapsed(resumed, new Date(Date.now() + 5 * 60 * 1000));
+    const held = resolveSessionElapsed(
+      resumed,
+      new Date(resumed.timerStartedAt!.getTime() + 5 * 60 * 1000),
+    );
     expect(held.ticking).toBe(true);
     expect(held.seconds).toBe(70 * 60 + 25 + 5 * 60);
     expect(held.label).toBe("1:15:25");
@@ -1458,10 +1461,12 @@ describe("a workout is complete only after a logged save", () => {
     expect(timer.elapsedSeconds).toBe(70 * 60 + 25);
     expect(timer.finishedAt).toBeNull();
     expect(timer.timerStartedAt).toBeInstanceOf(Date);
-    const held = resolveSessionElapsed({ ...row, ...timer }, new Date(Date.now() + 5_000));
+    const held = resolveSessionElapsed(
+      { ...row, ...timer },
+      new Date(timer.timerStartedAt!.getTime() + 5_000),
+    );
     expect(held.ticking).toBe(true);
-    expect(held.seconds).toBeGreaterThanOrEqual(70 * 60 + 25);
-    expect(held.seconds).toBeLessThan(70 * 60 + 25 + 30);
+    expect(held.seconds).toBe(70 * 60 + 25 + 5);
   });
 
   it("does not store a multi-day gap when a finished workout is reopened", async () => {

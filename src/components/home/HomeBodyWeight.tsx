@@ -193,7 +193,7 @@ export function HomeBodyWeight({
                 aria-label="Body fat percent, optional"
                 data-progress-body-fat-field
                 onChange={(event) => setFatDraft(event.target.value)}
-                className="mt-1 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base text-black outline-none"
+                className="mt-1 w-full rounded-2xl border border-line bg-[#0c0e11] px-4 py-3 text-base text-[#f3f4ef] caret-[#CBF805] outline-none focus:border-[#CBF805]"
               />
             </label>
           ) : null}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TelemetryChart } from "@/components/design/TelemetryChart";
-import { SORE_SPOT_LABELS, sparringMinutes, type SparringLog } from "@/lib/outside-log";
+import { SORE_SPOT_LABELS, sparringLogDateLabel, sparringMinutes, type SparringLog } from "@/lib/outside-log";
 
 function dayLabel(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
@@ -87,7 +87,7 @@ export function SparringTrend({ logs }: { logs: SparringLog[] }) {
                 {log.bodyRating != null && log.bodyRating <= 2 ? (
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-signal align-middle" aria-hidden />
                 ) : null}
-                {log.weekday || log.dateKey}
+                {sparringLogDateLabel(log)}
                 <span className="font-normal text-muted">
                   {" "}
                   · {log.rounds} × {log.minutesPerRound} min ({sparringMinutes(log)} min)

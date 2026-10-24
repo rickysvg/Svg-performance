@@ -13,6 +13,7 @@ import {
   getCheckInPrefs,
   getCurrentCheckIn,
   markCoachRepliesSeen,
+  previousCheckInScores,
   unseenCoachReply,
   weekTrainingSnapshot,
   weeklyCheckInAllowed,
@@ -72,11 +73,12 @@ export default async function CheckInPage({
     canUseFeature(user.id, "ai_feedback", now),
   ]);
   const trialState = await getTrialState(user.id);
-  const [current, unseenReply, snapshot, prefs] = await Promise.all([
+  const [current, unseenReply, snapshot, prefs, priorScores] = await Promise.all([
     getCurrentCheckIn(user.id, now, timeZone),
     unseenCoachReply(user.id),
     weekTrainingSnapshot(user.id, now, timeZone),
     getCheckInPrefs(user.id),
+    previousCheckInScores(user.id, now, timeZone),
   ]);
   await markCoachRepliesSeen(user.id, now);
   const replyRows = [unseenReply, current?.coachStatus === "sent" ? current : null].flatMap((row) =>
@@ -132,6 +134,7 @@ export default async function CheckInPage({
           sparringSummary={current.sparringSummary}
           wins={current.wins}
           struggles={current.struggles}
+          memberNotes={current.memberNotes}
           regions={parseRegionIds(current.sorenessRegionsJson)}
           sorenessNotes={current.sorenessNotes}
           summary={aiFeedback ? current.aiSummary : ""}
@@ -151,6 +154,7 @@ export default async function CheckInPage({
           sessionTitles={snapshot.sessionTitles}
           sparringSummary={snapshot.sparringSummary}
           storageNotice={formCheckStorageNotice()}
+          priorScores={priorScores}
         />
       )}
 
@@ -170,6 +174,7 @@ function SubmittedCheckIn({
   sparringSummary,
   wins,
   struggles,
+  memberNotes,
   regions,
   sorenessNotes,
   summary,
@@ -189,6 +194,7 @@ function SubmittedCheckIn({
   sparringSummary: string;
   wins: string;
   struggles: string;
+  memberNotes: string;
   regions: string[];
   sorenessNotes: string;
   summary: string;
@@ -233,13 +239,13 @@ function SubmittedCheckIn({
           </div>
         </div>
       ) : null}
-      <dl className="grid grid-cols-2 gap-2 text-sm">
+      <dl className="grid grid-cols-2 items-start gap-2 text-sm">
         <Item label="Weight" value={bodyweightLb != null ? `${formatOneDecimal(bodyweightLb)} lb` : "—"} />
         <Item label="Sleep" value={`${sleepQuality}/5`} />
         <Item label="Energy" value={`${energy}/5`} />
         <Item label="Stress" value={`${stress}/5`} />
         <Item label="Sessions" value={`${sessionsCompleted} of ${sessionsPlanned}`} />
-        <Item label="Sparring" value={sparringSummary || "None logged"} />
+        <Item label="Sparring" value={sparringSummary || "—"} />
       </dl>
       {regions.length > 0 ? (
         <p className="text-sm">Sore: {regions.map((region) => regionLabel(region)).join(", ")}</p>
@@ -247,6 +253,7 @@ function SubmittedCheckIn({
       {sorenessNotes ? <p className="text-sm text-muted">{sorenessNotes}</p> : null}
       {wins ? <p className="text-sm">Win: {wins}</p> : null}
       {struggles ? <p className="text-sm">Struggle: {struggles}</p> : null}
+      {memberNotes ? <p className="text-sm">Notes: {memberNotes}</p> : null}
       {hasVideo ? (
         <a href={`/api/checkins/${id}/video`} className="inline-flex min-h-11 items-center text-sm underline">
           Your form video
@@ -257,10 +264,11 @@ function SubmittedCheckIn({
 }
 
 function Item({ label, value }: { label: string; value: string }) {
+  const text = value.trim() || "—";
   return (
-    <div className="rounded-2xl bg-card px-3 py-2">
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd>{value}</dd>
+    <div className="rounded-2xl bg-[#0c0e11] px-3 py-2 text-[#f3f4ef]">
+      <dt className="text-[11px] uppercase tracking-wide text-[#9aa394]">{label}</dt>
+      <dd className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-[#CBF805]">{text}</dd>
     </div>
   );
 }

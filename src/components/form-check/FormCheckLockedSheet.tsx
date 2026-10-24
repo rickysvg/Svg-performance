@@ -58,8 +58,7 @@ export function FormCheckLockedSheet({
         data-testid="form-check-locked-sheet"
         className="hc-carbon relative z-10 w-full max-w-md rounded-t-3xl border border-[#FF3B3B]/80 px-5 pt-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white shadow-xl outline-none sm:rounded-3xl sm:pb-6"
       >
-        <div className="flex items-start justify-between gap-3">
-          <p className="font-display text-xs uppercase tracking-[0.14em] text-[#FF3B3B]">Locked</p>
+        <div className="flex items-start justify-end gap-3">
           <button
             type="button"
             data-testid="form-check-locked-close"
@@ -128,7 +127,6 @@ export function FormCheckLockedView({ initialOpen = true }: { initialOpen?: bool
         <FormCheckLockIcon placement="inline" />
         <span>
           <span className="font-display text-xl uppercase tracking-wide">Form check</span>
-          <span className="mt-1 block text-sm text-white/80">{FORM_CHECK_LOCKED_BODY}</span>
         </span>
       </button>
       <FormCheckLockedSheet open={open} onClose={() => setOpen(false)} />

@@ -6,6 +6,7 @@ import { requireUserOrThrow } from "@/lib/session";
 import {
   clearCurrentWeekPlanForUser,
   clearWeekPlanForUser,
+  enqueueWeekPlan,
   getWeekPlanSwapsForUser,
   moveWorkoutForUser,
   restoreWeekPlanForUser,
@@ -34,12 +35,15 @@ export async function swapCalendarDaysAction(
 ): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    const undo = await snapshot(user.id);
-    if (weekStart) {
-      await swapWeekOnDateForUser(user.id, fromDay, toDay, weekStart);
-    } else {
-      await swapCurrentWeekForUser(user.id, fromDay, toDay);
-    }
+    const undo = await enqueueWeekPlan(user.id, async () => {
+      const prior = await snapshot(user.id);
+      if (weekStart) {
+        await swapWeekOnDateForUser(user.id, fromDay, toDay, weekStart);
+      } else {
+        await swapCurrentWeekForUser(user.id, fromDay, toDay);
+      }
+      return prior;
+    });
     refreshPlan();
     return { undo };
   } catch (error) {
@@ -52,11 +56,13 @@ export async function resetCalendarWeekAction(
 ): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    if (weekStart) {
-      await clearWeekPlanForUser(user.id, weekStart);
-    } else {
-      await clearCurrentWeekPlanForUser(user.id);
-    }
+    await enqueueWeekPlan(user.id, async () => {
+      if (weekStart) {
+        await clearWeekPlanForUser(user.id, weekStart);
+      } else {
+        await clearCurrentWeekPlanForUser(user.id);
+      }
+    });
     refreshPlan();
     return {};
   } catch (error) {
@@ -71,8 +77,11 @@ export async function swapWorkoutAction(
 ): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    const undo = await snapshot(user.id);
-    await swapWorkoutForUser(user.id, sessionKey, otherKey, weekStart);
+    const undo = await enqueueWeekPlan(user.id, async () => {
+      const prior = await snapshot(user.id);
+      await swapWorkoutForUser(user.id, sessionKey, otherKey, weekStart);
+      return prior;
+    });
     refreshPlan();
     return { undo };
   } catch (error) {
@@ -87,8 +96,11 @@ export async function moveWorkoutAction(
 ): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    const undo = await snapshot(user.id);
-    await moveWorkoutForUser(user.id, sessionKey, toDay, weekStart);
+    const undo = await enqueueWeekPlan(user.id, async () => {
+      const prior = await snapshot(user.id);
+      await moveWorkoutForUser(user.id, sessionKey, toDay, weekStart);
+      return prior;
+    });
     refreshPlan();
     return { undo };
   } catch (error) {
@@ -99,7 +111,7 @@ export async function moveWorkoutAction(
 export async function restoreWeekPlanAction(undo: string): Promise<WeekPlanActionState> {
   try {
     const user = await requireUserOrThrow();
-    await restoreWeekPlanForUser(user.id, undo);
+    await enqueueWeekPlan(user.id, () => restoreWeekPlanForUser(user.id, undo));
     refreshPlan();
     return {};
   } catch (error) {

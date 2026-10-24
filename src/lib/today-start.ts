@@ -174,7 +174,7 @@ const MODALITY: Record<string, string> = {
   skill: "Skill",
   strength: "Strength",
   conditioning: "Conditioning",
-  mobility: "Recovery",
+  mobility: "Mobility",
   rest: "Rest",
 };
 

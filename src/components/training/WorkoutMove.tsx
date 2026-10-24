@@ -67,6 +67,8 @@ export function WorkoutMoveProvider({
   const [caution, setCaution] = useState<PendingCaution | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string; undo: string } | null>(null);
   const toastSerial = useRef(0);
+  const planQueue = useRef<Promise<void>>(Promise.resolve());
+  const planEpoch = useRef(0);
   const [saving, setSaving] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [placements, setPlacements] = useState<Record<string, string>>({});
@@ -118,6 +120,15 @@ export function WorkoutMoveProvider({
   }
   const panelRef = useSheetBehavior(close, Boolean(target));
 
+  function enqueuePlan(task: () => Promise<void>) {
+    const run = planQueue.current.then(task, task);
+    planQueue.current = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   function finish(message: string, undo?: string) {
     setTarget(null);
     setMode("move");
@@ -128,17 +139,21 @@ export function WorkoutMoveProvider({
 
   async function commitMove(sessionKey: string, toDay: string, message: string) {
     if (saving) return;
+    const epoch = planEpoch.current;
     setError(null);
     setSaving(true);
     try {
-      const result = await moveWorkoutAction(sessionKey, toDay, weekStart);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      placeSession(sessionKey, toDay);
-      finish(message, result.undo);
-      onCommitted?.();
+      await enqueuePlan(async () => {
+        const result = await moveWorkoutAction(sessionKey, toDay, weekStart);
+        if (epoch !== planEpoch.current) return;
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        placeSession(sessionKey, toDay);
+        finish(message, result.undo);
+        onCommitted?.();
+      });
     } finally {
       setSaving(false);
     }
@@ -146,17 +161,21 @@ export function WorkoutMoveProvider({
 
   async function commitSwap(fromDay: string, toDay: string) {
     if (saving) return;
+    const epoch = planEpoch.current;
     setError(null);
     setSaving(true);
     try {
-      const result = await swapCalendarDaysAction(fromDay, toDay, weekStart);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      placeDaySwap(fromDay, toDay);
-      finish(`Swapped ${fromDay} and ${toDay}.`, result.undo);
-      onCommitted?.();
+      await enqueuePlan(async () => {
+        const result = await swapCalendarDaysAction(fromDay, toDay, weekStart);
+        if (epoch !== planEpoch.current) return;
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        placeDaySwap(fromDay, toDay);
+        finish(`Swapped ${fromDay} and ${toDay}.`, result.undo);
+        onCommitted?.();
+      });
     } finally {
       setSaving(false);
     }
@@ -164,32 +183,37 @@ export function WorkoutMoveProvider({
 
   async function commitSessionSwap(otherKey: string, otherTitle: string) {
     if (!target || saving) return;
+    const epoch = planEpoch.current;
+    const moving = target;
     setError(null);
     setSaving(true);
     try {
-      const result = await swapWorkoutAction(target.sessionKey, otherKey, weekStart);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      const from = sittingWeekday(target.sessionKey) ?? target.fromWeekday;
-      const otherDay = days.find((day) => day.sessions.some((session) => session.sessionKey === otherKey));
-      const otherFrom = sittingWeekday(otherKey) ?? otherDay?.weekday;
-      if (otherFrom && from) {
-        rememberPlacements(
-          {
-            ...placementsRef.current,
-            [target.sessionKey]: otherFrom,
-            [otherKey]: from,
-          },
-          [
-            { key: target.sessionKey, from },
-            { key: otherKey, from: otherFrom },
-          ],
-        );
-      }
-      finish(`Swapped with ${otherTitle}.`, result.undo);
-      onCommitted?.();
+      await enqueuePlan(async () => {
+        const result = await swapWorkoutAction(moving.sessionKey, otherKey, weekStart);
+        if (epoch !== planEpoch.current) return;
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        const from = sittingWeekday(moving.sessionKey) ?? moving.fromWeekday;
+        const otherDay = days.find((day) => day.sessions.some((session) => session.sessionKey === otherKey));
+        const otherFrom = sittingWeekday(otherKey) ?? otherDay?.weekday;
+        if (otherFrom && from) {
+          rememberPlacements(
+            {
+              ...placementsRef.current,
+              [moving.sessionKey]: otherFrom,
+              [otherKey]: from,
+            },
+            [
+              { key: moving.sessionKey, from },
+              { key: otherKey, from: otherFrom },
+            ],
+          );
+        }
+        finish(`Swapped with ${otherTitle}.`, result.undo);
+        onCommitted?.();
+      });
     } finally {
       setSaving(false);
     }
@@ -233,6 +257,7 @@ export function WorkoutMoveProvider({
 
   async function undo() {
     if (!toast || undoing) return;
+    planEpoch.current += 1;
     const payload = toast.undo;
     const previous = placementStack.current.pop() ?? null;
     const snapshot = placementsRef.current;
@@ -245,20 +270,22 @@ export function WorkoutMoveProvider({
     setToast(null);
     setUndoing(true);
     try {
-      const result = await restoreWeekPlanAction(payload);
-      if (result.error) {
-        if (previous) {
-          placementStack.current.push(previous);
-          placementsRef.current = snapshot;
-          setPlacements(snapshot);
+      await enqueuePlan(async () => {
+        const result = await restoreWeekPlanAction(payload);
+        if (result.error) {
+          if (previous) {
+            placementStack.current.push(previous);
+            placementsRef.current = snapshot;
+            setPlacements(snapshot);
+          }
+          setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
+          return;
         }
-        setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
-        return;
-      }
+        onCommitted?.();
+      });
     } finally {
       setUndoing(false);
     }
-    onCommitted?.();
   }
 
   const today = days.find((day) => day.isToday);

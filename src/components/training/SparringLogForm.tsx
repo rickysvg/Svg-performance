@@ -88,13 +88,26 @@ export function SparringLogForm({
       action={action}
       className="space-y-3 rounded-2xl border border-line bg-card p-4"
       data-sparring-log
+      noValidate
       onSubmit={(event) => {
-        if (sessionRating && bodyRating) {
+        const data = new FormData(event.currentTarget);
+        const rounds = Number(String(data.get("rounds") ?? "").trim());
+        const minutes = Number(String(data.get("minutesPerRound") ?? "").trim());
+        const complete =
+          Number.isInteger(rounds) &&
+          rounds >= 1 &&
+          Number.isInteger(minutes) &&
+          minutes >= 1 &&
+          Boolean(sessionRating) &&
+          Boolean(bodyRating);
+        if (complete) {
           setRatingError("");
           return;
         }
         event.preventDefault();
-        setRatingError("Pick a session rating and a body rating.");
+        setRatingError(
+          "Enter rounds, minutes, a session rating, and a body rating. Nothing was saved.",
+        );
       }}
     >
       <div>
@@ -120,7 +133,6 @@ export function SparringLogForm({
             type="number"
             min={1}
             max={30}
-            required
             defaultValue={saved?.rounds ?? ""}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           />
@@ -133,7 +145,6 @@ export function SparringLogForm({
             type="number"
             min={1}
             max={15}
-            required
             defaultValue={saved?.minutesPerRound ?? ""}
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
           />
