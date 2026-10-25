@@ -17,6 +17,7 @@ import { decodeInterval, type DecodedInterval } from "@/lib/interval-decode";
 export { decodeInterval, type DecodedInterval };
 import {
   INTERVAL_REST_MAX,
+  BIKE_ROUNDS_MAX,
   INTERVAL_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
   INTERVAL_SETS_MAX,
@@ -912,9 +913,10 @@ function assertSavableInterval(input: {
   restSeconds: number;
   setRestSeconds: number;
   totalSeconds: number;
+  roundsMax?: number;
 }) {
   assertCount(input.sets, 1, INTERVAL_SETS_MAX, "Sets");
-  assertCount(input.rounds, 1, INTERVAL_ROUNDS_MAX, "Rounds");
+  assertCount(input.rounds, 1, input.roundsMax ?? INTERVAL_ROUNDS_MAX, "Rounds");
   const workMax = intervalWorkMax(input);
   if (workMax === INTERVAL_SESSION_MAX_SECONDS && input.workSeconds > INTERVAL_SESSION_MAX_SECONDS) {
     throw new AppError("WORKOUT", "That workout is longer than 4 hours.");
@@ -1030,6 +1032,7 @@ async function payloadFromKind(
       workSeconds,
       restSeconds,
       setRestSeconds: shownSetRest,
+      roundsMax: BIKE_ROUNDS_MAX,
       totalSeconds: configuredIntervalSeconds({
         kind: "bike",
         sets: repeatRounds,
@@ -1484,6 +1487,7 @@ async function updateIntervalBackfill(input: {
     workSeconds: posted.workSeconds,
     restSeconds: posted.restSeconds,
     setRestSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
+    roundsMax: kind === "bike" ? BIKE_ROUNDS_MAX : undefined,
     totalSeconds: configuredIntervalSeconds({
       kind,
       sets: posted.sets,

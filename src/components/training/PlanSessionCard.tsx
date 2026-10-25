@@ -69,8 +69,9 @@ export function PlanSessionCard({
   const structure = planStructureLine(groups);
   const estimated = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const minutes = loggedView && loggedView.minutes > 0 ? loggedView.minutes : estimated;
-  const minuteLabel =
-    loggedView && loggedView.minutes > 0
+  const minuteLabel = loggedView?.rideLabel
+    ? loggedView.rideLabel
+    : loggedView && loggedView.minutes > 0
       ? `${loggedView.minutes} min`
       : minutes > 0
         ? `est. ${minutes} min`

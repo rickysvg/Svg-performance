@@ -249,6 +249,21 @@ function liveBikeFinishSeconds(session: ShareSessionLike) {
   return structure;
 }
 
+/**
+ * The Time tile Done shows for a bike. Train, Calendar, and the detail page
+ * use this same string so a 1:21 ride is not also "2 min" or "01:47".
+ */
+export function doneRideTimeLabel(session: ShareSessionLike): string | null {
+  if (!isBikeCardioSession(session)) return null;
+  const tile = workoutCompleteTiles({
+    session,
+    displayUnit: "lb",
+    newPrCount: 0,
+  }).find((row) => row.key === "time");
+  if (!tile || tile.value === "0:00") return null;
+  return tile.value;
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;

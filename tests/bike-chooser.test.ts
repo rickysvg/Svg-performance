@@ -73,6 +73,8 @@ describe("bike workout chooser", () => {
     expect(customBikeChoice({ workSeconds: 300, restSeconds: 0, rounds: 8 })?.spec.workSeconds).toBe(300);
     expect(customBikeChoice({ workSeconds: 4 * 60 * 60, restSeconds: 0, rounds: 1 })?.spec.workSeconds).toBe(4 * 60 * 60);
     expect(customBikeChoice({ workSeconds: 15, restSeconds: 10, rounds: 31 })?.spec.roundsPerSet).toBe(31);
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 15, rounds: 40 })?.spec.roundsPerSet).toBe(40);
+    expect(customBikeChoice({ workSeconds: 15, restSeconds: 15, rounds: 41 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 15 * 60, restSeconds: 60, rounds: 40 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 20, restSeconds: 10, rounds: 8, warmupSeconds: 660 })).toBeNull();
     expect(customBikeChoice({ workSeconds: 16 * 60, restSeconds: 15, rounds: 4 })).toBeNull();

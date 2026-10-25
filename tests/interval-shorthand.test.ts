@@ -110,6 +110,14 @@ describe("interval shorthand", () => {
     expect(canAddIntervalRound(steady, "bike")).toBe(false);
     expect(canAddIntervalRound({ ...base, rounds: 30 }, "bike")).toBe(true);
     expect(canAddIntervalRound({ ...base, rounds: 31 }, "bike")).toBe(true);
+    expect(canAddIntervalRound({ ...base, rounds: 39, setRestSeconds: 0 }, "bike")).toBe(true);
+    expect(canAddIntervalRound({ ...base, rounds: 40, setRestSeconds: 0 }, "bike")).toBe(false);
+    expect(parseIntervalShorthand("40x15/15", "bike")).toMatchObject({ ok: true, value: { rounds: 40 } });
+    expect(parseIntervalShorthand("41x15/15", "bike")).toMatchObject({
+      ok: false,
+      error: "Rounds stop at 40.",
+    });
+    expect(parseIntervalShorthand("41x15/15")).toMatchObject({ ok: true, value: { rounds: 41 } });
   });
 
   it("accepts one continuous round up to 4 hours and keeps 15:00 for more rounds", () => {

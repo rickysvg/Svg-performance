@@ -218,15 +218,28 @@ export default async function TrainingCalendarPage({
                     {(focus.movedFrom || focusPlan.movedFrom)}’s workout, on {focusPlan.weekday} this week.
                   </p>
                 ) : null}
-                {loggedSessions.map((item, itemIndex) => (
-                  <p
-                    key={`${item.title}-${item.subtitle}-${itemIndex}`}
-                    className="text-sm text-muted"
-                    data-completed-summary
-                  >
-                    {loggedSessionCardLine(item)}
-                  </p>
-                ))}
+                {loggedSessions.map((item, itemIndex) => {
+                  const line = loggedSessionCardLine(item);
+                  const opensLog = item.href.includes("on=") || item.href.startsWith("/training/log/");
+                  return opensLog ? (
+                    <Link
+                      key={`${item.title}-${item.subtitle}-${itemIndex}`}
+                      href={item.href}
+                      className="block text-sm text-muted"
+                      data-completed-summary
+                    >
+                      {line}
+                    </Link>
+                  ) : (
+                    <p
+                      key={`${item.title}-${item.subtitle}-${itemIndex}`}
+                      className="text-sm text-muted"
+                      data-completed-summary
+                    >
+                      {line}
+                    </p>
+                  );
+                })}
                 {workouts.map((item) => {
                   const home = item.sessionKey ? sessionHomeWeekday(item.sessionKey) : null;
                   if (!item.sessionKey || !home || home === focusPlan.weekday) return null;

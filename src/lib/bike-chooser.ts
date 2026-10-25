@@ -19,7 +19,7 @@ import {
   formatIntervalDisplay,
   formatIntervalTotal,
   INTERVAL_REST_MAX,
-  INTERVAL_ROUNDS_MAX,
+  BIKE_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
   INTERVAL_SET_REST_MAX,
   INTERVAL_SETS_MAX,
@@ -336,7 +336,7 @@ export function customBikeChoice(input: {
   });
   const workSeconds = clampInt(input.workSeconds, INTERVAL_WORK_MIN, workMax);
   const restSeconds = clampInt(input.restSeconds, 0, INTERVAL_REST_MAX);
-  const rounds = clampInt(input.rounds, 1, INTERVAL_ROUNDS_MAX);
+  const rounds = clampInt(input.rounds, 1, BIKE_ROUNDS_MAX);
   const warmupSeconds = clampInt(input.warmupSeconds ?? 0, 0, 600);
   const cooldownSeconds = clampInt(input.cooldownSeconds ?? 0, 0, 600);
   const repeatRounds = input.repeatRounds == null ? 1 : clampInt(input.repeatRounds, 1, INTERVAL_SETS_MAX);

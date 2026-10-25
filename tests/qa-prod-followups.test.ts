@@ -6,7 +6,7 @@ import { templateDaySummary, type DaySummaryFacts } from "@/lib/coach/day-summar
 import { loggedSessionView } from "@/lib/logged-session-view";
 import { zonedCivilToUtc } from "@/lib/timezone";
 import { weekChipDateLabel } from "@/lib/week-plan";
-import { liveBikeLoggedSeconds, workoutCompleteTiles } from "@/lib/workout-complete";
+import { doneRideTimeLabel, liveBikeLoggedSeconds, workoutCompleteTiles } from "@/lib/workout-complete";
 import { REMOVE_TOAST_MS } from "@/components/training/RemoveToast";
 
 function read(path: string) {
@@ -243,6 +243,60 @@ describe("prod QA follow-ups", () => {
     expect(calendarLoggedHref("/training/day-1", { status: "draft", done: true, dayKey: "2026-10-19" })).toBe(
       "/training/day-1",
     );
+    expect(
+      calendarLoggedHref("/training/day-1", {
+        status: "draft",
+        done: false,
+        dayKey: "2026-10-19",
+        matchesPlan: true,
+      }),
+    ).toBe("/training/day-1?on=2026-10-19");
+    expect(
+      calendarLoggedHref("/training/day-1?half=1", {
+        status: "partial",
+        done: false,
+        dayKey: "2026-10-19",
+      }),
+    ).toBe("/training/day-1?half=1&on=2026-10-19");
+    const calendarPage = read("src/app/(member)/training/calendar/page.tsx");
+    expect(calendarPage).toContain("data-completed-summary");
+    expect(calendarPage).toContain("opensLog");
+    expect(read("src/app/(member)/training/[dayId]/page.tsx")).toContain('"draft"');
+  });
+
+  it("shows the saved ride clock Done uses on the other screens", () => {
+    const performedAt = new Date("2026-10-19T18:00:00.000Z");
+    const session = {
+      title: "Cardio — bike",
+      status: "complete" as const,
+      performedAt,
+      createdAt: performedAt,
+      updatedAt: new Date(performedAt.getTime() + 107 * 1000),
+      elapsedSeconds: 107,
+      backfilled: false,
+      sets: [
+        {
+          exerciseName: "Jamieson cardiac output bike",
+          completed: true,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb" as const,
+          durationSeconds: 81,
+          prescriptionKey: "demo-strength-base:8|jamieson cardiac output bike::25:00",
+        },
+      ],
+    };
+    const done = workoutCompleteTiles({ session, displayUnit: "lb", newPrCount: 0 }).find(
+      (tile) => tile.key === "time",
+    )?.value;
+    expect(done).toBe("1:21");
+    expect(doneRideTimeLabel(session)).toBe("1:21");
+    const view = loggedSessionView(session);
+    expect(view?.rideLabel).toBe("1:21");
+    expect(view?.minutes).toBe(2);
+    expect(read("src/components/training/PlanSessionCard.tsx")).toContain("loggedView?.rideLabel");
+    expect(read("src/components/training/DaySessionMeta.tsx")).toContain("timeLabel");
+    expect(read("src/lib/calendar.ts")).toContain("doneRideTimeLabel");
   });
 
   it("labels the first calendar chip and a month change", () => {

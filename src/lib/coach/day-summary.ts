@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { bagFocusFor, bagMinutesForBand, type BagWeekday } from "@/lib/bag-sessions";
-import { pickBikeSessionForPlan, type ScaleBand } from "@/lib/bike-sessions";
+import { BIKE_SESSIONS, pickBikeSessionForPlan, planBikeDose, type ScaleBand } from "@/lib/bike-sessions";
 import { normalizeWeightAccess } from "@/lib/weight-access";
 import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 import { completeCoachText } from "@/lib/coach/llm";
@@ -234,6 +234,31 @@ function tidy(text: string) {
     .trim();
 }
 
+/** A sentence that only repeats the focus dose is not a second instruction. */
+function bikeCueBeyondFocus(focus: string, notes: string) {
+  const focusSpoken = speakCue(focus).toLowerCase();
+  const focusNumbers: string[] = focus.match(/\d+/g) ?? [];
+  const sentences = spokenNote(notes)
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const sentence of sentences) {
+    const asSpoken = speakCue(sentence).replace(/[.\s]+$/, "").trim();
+    const lower = asSpoken.toLowerCase();
+    if (!lower || focusSpoken.includes(lower)) continue;
+    const numbers: string[] = sentence.match(/\d+/g) ?? [];
+    const onlyDose =
+      numbers.length > 0 &&
+      numbers.every((value) => focusNumbers.includes(value)) &&
+      !/\b(stop|slower|quality|conversational|nasal|heart|between|block|taper|longer|steady)\b/i.test(
+        sentence,
+      );
+    if (onlyDose) continue;
+    return asSpoken.charAt(0).toUpperCase() + asSpoken.slice(1);
+  }
+  return "";
+}
+
 function sessionKind(session: { kind: string }): SummarySessionKind {
   if (session.kind === "skill") return "bag";
   if (session.kind === "strength") return "lift";
@@ -366,15 +391,20 @@ export function buildDaySummaryFacts(input: {
       cues.push("Main lifts stop at four sets. Accessories stop at three. Last rep can slow down and still stay clean.");
       lines.push("Main lifts: 4 sets max. Accessories: 3 sets max. Last rep can slow down and still stay clean.");
     } else if (kind === "cardio") {
-      const bikeDay = input.plan.weekday === "Sunday" ? "Sunday" : "Wednesday";
-      if (/bike/i.test(`${session.label} ${session.title}`)) {
-        const bike = pickBikeSessionForPlan(bikeDay, input.weekIndex ?? 0);
-        const bikeLine = bike.focus.replace(/—/g, ",").replace(/(\d+)s\b/g, "$1 seconds");
+      const namedBike =
+        session.dayNumber != null
+          ? (BIKE_SESSIONS.find((row) => row.programDayNumber === session.dayNumber) ?? null)
+          : null;
+      if (namedBike || /bike/i.test(`${session.label} ${session.title}`)) {
+        const home = session.sourceWeekday === "Sunday" ? "Sunday" : "Wednesday";
+        const picked = namedBike ?? pickBikeSessionForPlan(home, input.weekIndex ?? 0);
+        const dosed = planBikeDose(picked, scaleBand(input.experienceLevel), input.weekIndex ?? 0);
+        const bikeLine = dosed.focus.replace(/—/g, ",").replace(/(\d+)s\b/g, "$1 seconds");
         cues.push(bikeLine);
         lines.push(bikeLine);
-        const note = spokenNote(bike.notes.split(". ").slice(0, 2).join(". "));
-        if (note.length > 12) {
-          const sentence = note.endsWith(".") ? note : `${note}.`;
+        const extra = bikeCueBeyondFocus(dosed.focus, dosed.notes);
+        if (extra.length > 12) {
+          const sentence = extra.endsWith(".") ? extra : `${extra}.`;
           cues.push(sentence);
           lines.push(sentence);
         }
