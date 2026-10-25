@@ -1,5 +1,6 @@
 import { setIsTicked } from "@/lib/logged-work";
 import { SESSION_DURATION_CAP_SECONDS, sessionDurationSeconds, type ShareSessionLike } from "@/lib/share-card";
+import { doneRideTimeLabel } from "@/lib/workout-complete";
 
 type LoggedSet = {
   exerciseName?: string | null;
@@ -8,11 +9,15 @@ type LoggedSet = {
   loadValue?: number | null;
   loadUnit?: string | null;
   durationSeconds?: number | null;
+  prescriptionKey?: string | null;
+  logMode?: string | null;
 };
 
 export type LoggedSessionView = {
   names: string[];
   minutes: number;
+  /** Saved ride clock, same M:SS Done uses. Absent for lifts. */
+  rideLabel?: string | null;
 };
 
 /**
@@ -22,6 +27,8 @@ export type LoggedSessionView = {
 export function loggedSessionView(session: {
   status?: string | null;
   elapsedSeconds?: number | null;
+  backfilled?: boolean | null;
+  title?: string | null;
   performedAt: Date;
   createdAt?: Date | null;
   updatedAt?: Date | null;
@@ -43,12 +50,13 @@ export function loggedSessionView(session: {
       ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.round(stored))
       : null;
   const share: ShareSessionLike = {
-    title: "",
+    title: session.title ?? "",
     status: session.status === "partial" ? "partial" : "complete",
     performedAt: session.performedAt,
     createdAt: session.createdAt ?? session.performedAt,
     updatedAt: session.updatedAt ?? session.performedAt,
     elapsedSeconds: session.elapsedSeconds ?? null,
+    backfilled: session.backfilled ?? false,
     sets: session.sets.map((set) => ({
       exerciseName: set.exerciseName ?? "",
       reps: set.reps ?? null,
@@ -56,11 +64,15 @@ export function loggedSessionView(session: {
       loadUnit: set.loadUnit === "kg" ? "kg" : "lb",
       completed: Boolean(set.completed),
       durationSeconds: set.durationSeconds ?? null,
+      prescriptionKey: set.prescriptionKey ?? null,
+      logMode: set.logMode ?? null,
     })),
   };
   const seconds = clock ?? sessionDurationSeconds(share);
+  const rideLabel = doneRideTimeLabel(share);
   return {
     names,
     minutes: seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 0,
+    ...(rideLabel ? { rideLabel } : {}),
   };
 }

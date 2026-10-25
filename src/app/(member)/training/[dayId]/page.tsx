@@ -10,6 +10,7 @@ import { calendarPlanDoses } from "@/lib/calendar";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import { planWeekIndex } from "@/lib/week-plan";
 import { loggedSessionView } from "@/lib/logged-session-view";
+import { loggedNameMatchesPlanned, setIsTicked } from "@/lib/logged-work";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { prisma } from "@/lib/prisma";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
@@ -135,7 +136,7 @@ export default async function TrainingDayPage({
         where: {
           userId: user.id,
           programDayId: day.id,
-          status: { in: ["complete", "partial"] },
+          status: { in: ["complete", "partial", "draft"] },
         },
         orderBy: { performedAt: "desc" },
         take: 12,
@@ -145,19 +146,33 @@ export default async function TrainingDayPage({
           createdAt: true,
           updatedAt: true,
           elapsedSeconds: true,
+          backfilled: true,
           sets: {
             select: {
               exerciseName: true,
               completed: true,
               reps: true,
               loadValue: true,
+              loadUnit: true,
               durationSeconds: true,
+              prescriptionKey: true,
+              logMode: true,
             },
           },
         },
       })
     : [];
-  const loggedMatch = loggedRows.find((row) => sessionCompletionDay(row, tz) === onDay) ?? null;
+  const plannedNames = exercises.map((exercise) => exercise.name);
+  const loggedMatch =
+    loggedRows.find((row) => {
+      if (sessionCompletionDay(row, tz) !== onDay) return false;
+      if (row.status !== "draft") return true;
+      return row.sets.some(
+        (set) =>
+          setIsTicked(set) &&
+          plannedNames.some((name) => loggedNameMatchesPlanned(name, set.exerciseName ?? "")),
+      );
+    }) ?? null;
   const loggedView = loggedMatch ? loggedSessionView(loggedMatch) : null;
   if (loggedView) {
     exercises = loggedView.names.map((name, index) => {
@@ -277,7 +292,8 @@ export default async function TrainingDayPage({
           kind={kind}
           minutes={minutes}
           exerciseCount={exercises.length}
-          estimated={!(loggedView && loggedView.minutes > 0)}
+          estimated={!(loggedView && (loggedView.rideLabel || loggedView.minutes > 0))}
+          timeLabel={loggedView?.rideLabel}
         />
         <MethodExplainer />
 

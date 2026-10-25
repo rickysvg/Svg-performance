@@ -993,7 +993,7 @@ export async function completeBikeLoggerSession(input: {
   rpe?: number | null;
 }) {
   const roundsCompleted = Math.round(input.roundsCompleted);
-  if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1 || roundsCompleted > 80) {
+  if (!Number.isInteger(roundsCompleted) || roundsCompleted < 1 || roundsCompleted > 40) {
     throw new AppError("WORKOUT", "Finish a round before logging.");
   }
   const existing = assertOwnSession(
@@ -1709,12 +1709,17 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.exerciseName.length > 80) {
       throw new AppError("WORKOUT", "Exercise name is too long.");
     }
-    const roundRow = set.logMode === "timed_round" || isBikeIntervalName(set.exerciseName);
-    const numberCap = roundRow ? 80 : 20;
+    const bikeRow = isBikeIntervalName(set.exerciseName);
+    const roundRow = set.logMode === "timed_round" || bikeRow;
+    const numberCap = bikeRow ? 40 : roundRow ? 80 : 20;
     if (set.setNumber < 1 || set.setNumber > numberCap) {
       throw new AppError(
         "WORKOUT",
-        roundRow ? "Round numbers should be between 1 and 80." : "Set numbers should be between 1 and 20.",
+        bikeRow
+          ? "Round numbers should be between 1 and 40."
+          : roundRow
+            ? "Round numbers should be between 1 and 80."
+            : "Set numbers should be between 1 and 20.",
       );
     }
     if (set.reps != null && (set.reps < 0 || set.reps > 200)) {

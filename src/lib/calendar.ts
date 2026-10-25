@@ -25,8 +25,8 @@ import { startOfLocalDay } from "@/lib/nutrition";
 import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
-import { formatSessionElapsed } from "@/lib/session-elapsed";
 import { loggedSessionView } from "@/lib/logged-session-view";
+import { doneRideTimeLabel } from "@/lib/workout-complete";
 import { readTimerFieldsByIds } from "@/lib/workout-timer-columns";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
@@ -73,14 +73,18 @@ export function calendarLoggedExercises<T extends { ticked: number }>(rows: read
  */
 export function calendarLoggedHref(
   href: string | undefined,
-  input: { status: string; done: boolean; dayKey: string },
+  input: { status: string; done: boolean; dayKey: string; matchesPlan?: boolean },
 ): string | undefined {
   if (!href) return href;
-  if (input.status === "draft") return href;
   const saved = input.done || input.status === "partial" || input.status === "complete";
-  if (!saved) return href;
-  if (!href.startsWith("/training/") || href.includes("?")) return href;
+  // A draft that is this plan's own partial work opens the log. A squat draft
+  // sitting on a bike day does not, so that card stays the scheduled ride.
+  const openPartial = input.status === "draft" && input.matchesPlan === true;
+  if (input.status === "draft" && !openPartial) return href;
+  if (!saved && !openPartial) return href;
+  if (!href.startsWith("/training/") || href.includes("on=")) return href;
   const dayKey = input.dayKey;
+  if (href.includes("?")) return `${href}&on=${dayKey}`;
   return `${href}?on=${dayKey}`;
 }
 
@@ -307,12 +311,16 @@ type LoggedPlanSession = {
   createdAt?: Date | null;
   plannedSetCount?: number | null;
   savedWorkout?: { name: string } | null;
+  backfilled?: boolean | null;
   sets: {
     exerciseName?: string | null;
     completed?: boolean | null;
     reps: number | null;
     loadValue: number | null;
+    loadUnit?: string | null;
     durationSeconds: number | null;
+    prescriptionKey?: string | null;
+    logMode?: string | null;
   }[];
   programDay: {
     dayNumber: number;
@@ -331,19 +339,31 @@ function sessionClockSeconds(id: string, timers: Map<string, { elapsedSeconds: n
   return typeof elapsed === "number" && Number.isFinite(elapsed) && elapsed > 0 ? Math.round(elapsed) : null;
 }
 
-function rideDurationLabel(seconds: number | null | undefined) {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return undefined;
-  return formatSessionElapsed(Math.round(seconds));
-}
-
-function loggedRideSeconds(
+function rideClockLabel(
   log: LoggedPlanSession,
   timers: Map<string, { elapsedSeconds: number | null }>,
 ) {
-  const elapsed = timers.get(log.id)?.elapsedSeconds;
-  if (elapsed != null && elapsed > 0) return Math.round(elapsed);
-  const work = log.sets.reduce((sum, set) => sum + Math.max(0, set.durationSeconds ?? 0), 0);
-  return work > 0 ? work : 0;
+  return (
+    doneRideTimeLabel({
+      title: log.title,
+      status: log.status,
+      performedAt: log.performedAt,
+      createdAt: log.createdAt ?? log.performedAt,
+      updatedAt: log.performedAt,
+      elapsedSeconds: sessionClockSeconds(log.id, timers),
+      backfilled: Boolean(log.backfilled),
+      sets: log.sets.map((set) => ({
+        exerciseName: set.exerciseName ?? "",
+        reps: set.reps,
+        loadValue: set.loadValue,
+        loadUnit: set.loadUnit === "kg" ? "kg" : "lb",
+        completed: Boolean(set.completed),
+        durationSeconds: set.durationSeconds,
+        prescriptionKey: set.prescriptionKey ?? null,
+        logMode: set.logMode ?? null,
+      })),
+    }) ?? undefined
+  );
 }
 
 function prescribedSetCount(exercises: readonly { sets?: number | null }[] | null | undefined) {
@@ -682,10 +702,17 @@ async function loadCalendarSchedule(
       const opened =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
+      const plannedNames =
+        visible.names.length > 0
+          ? [...visible.names]
+          : scaledExercises
+              .map((exercise) => (exercise.name ?? "").trim())
+              .filter((name) => name.length > 0);
       const href = calendarLoggedHref(opened, {
         status: matched?.status ?? "draft",
         done: Boolean(matched) && sessionDone,
         dayKey,
+        matchesPlan: Boolean(matched && namesOverlap(matched, plannedNames)),
       });
       if (!href) continue;
       const missed = past && !sessionDone && !partial && !dayHasPartialWork;
@@ -730,7 +757,7 @@ async function loadCalendarSchedule(
         setCountLabel,
         durationLabel:
           session.kind === "conditioning" && matched
-            ? rideDurationLabel(loggedRideSeconds(matched, rideTimers))
+            ? rideClockLabel(matched, rideTimers)
             : undefined,
         minutesLabel:
           loggedView && loggedView.minutes > 0 && session.kind !== "conditioning"
@@ -753,7 +780,7 @@ async function loadCalendarSchedule(
           status: view.done ? "complete" : "scheduled",
           weekday: calendarWeekday,
           setCountLabel: view.text,
-          durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
+          durationLabel: bike ? rideClockLabel(log, rideTimers) : undefined,
         });
         continue;
       }
@@ -784,6 +811,9 @@ async function loadCalendarSchedule(
       const bike =
         log.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) || isBikeIntervalName(title);
       const loggedRows = view.ticked > 0 ? calendarLoggedExercises(view.rows) : [];
+      const planNames = (Array.isArray(exercises) ? exercises : [])
+        .map((exercise) => (exercise.name ?? "").trim())
+        .filter((name) => name.length > 0);
       day.activities.push({
         kind: "workout",
         title,
@@ -793,12 +823,13 @@ async function loadCalendarSchedule(
             status: log.status,
             done: view.done,
             dayKey,
+            matchesPlan: namesOverlap(log, planNames),
           }) ?? `/training/${log.programDayId}`,
         status: view.done ? "complete" : "scheduled",
         programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel: view.text,
-        durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
+        durationLabel: bike ? rideClockLabel(log, rideTimers) : undefined,
         minutesLabel:
           loggedView && loggedView.minutes > 0 && !bike ? `${loggedView.minutes} min` : undefined,
         exercises: loggedRows.length > 0 ? loggedRows : undefined,

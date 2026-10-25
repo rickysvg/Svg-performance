@@ -38,18 +38,25 @@ export function DaySessionMeta({
   minutes,
   exerciseCount,
   estimated = true,
+  timeLabel,
 }: {
   kind: string;
   minutes: number;
   exerciseCount: number;
   /** False when the minutes are the logged session, not the plan estimate. */
   estimated?: boolean;
+  /** Saved ride clock. Replaces the minute line so it matches Done. */
+  timeLabel?: string | null;
 }) {
   const rows = [
     { icon: "kind" as const, label: kind },
     {
       icon: "time" as const,
-      label: minutes > 0 ? `${estimated ? "est. " : ""}${minutes} min` : "est. —",
+      label: timeLabel
+        ? timeLabel
+        : minutes > 0
+          ? `${estimated ? "est. " : ""}${minutes} min`
+          : "est. —",
     },
     { icon: "count" as const, label: exerciseCountLabel(exerciseCount) },
   ];

@@ -31,6 +31,8 @@ export const INTERVAL_SESSION_MAX_SECONDS = 4 * 60 * 60;
  * this count. A shorter cap (30) rejected rides the session clock still allows.
  */
 export const INTERVAL_ROUNDS_MAX = Math.floor(INTERVAL_SESSION_MAX_SECONDS / INTERVAL_WORK_MIN);
+/** Bike rides stop at 40 rounds. 41 is not a ride. Bag and pad rounds keep the session cap. */
+export const BIKE_ROUNDS_MAX = 40;
 
 const SETS_MAX = INTERVAL_SETS_MAX;
 const ROUNDS_MAX = INTERVAL_ROUNDS_MAX;
@@ -59,7 +61,8 @@ export function canAddIntervalRound(
   mode: IntervalClockKind = "round",
 ) {
   const rounds = Math.round(structure.rounds) + 1;
-  if (!inRange(rounds, 1, INTERVAL_ROUNDS_MAX)) return false;
+  const roundsMax = mode === "bike" ? BIKE_ROUNDS_MAX : INTERVAL_ROUNDS_MAX;
+  if (!inRange(rounds, 1, roundsMax)) return false;
   const workMax = intervalWorkMax({
     sets: structure.sets,
     rounds,
@@ -190,6 +193,7 @@ function finish(
   const setRestSeconds = setRestRaw ? parseShorthandDuration(setRestRaw) : null;
   if (setRestRaw && setRestSeconds == null) return fail();
   if (!inRange(sets, 1, SETS_MAX)) return fail();
+  if (mode === "bike" && rounds > BIKE_ROUNDS_MAX) return { ok: false, error: "Rounds stop at 40." };
   if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
   const workMax = intervalWorkMax({ sets, rounds, restSeconds });
   if (!inRange(workSeconds, WORK_MIN, workMax)) {
@@ -215,6 +219,7 @@ function finish(
 }
 
 function emomBuilt(mode: IntervalClockKind, rounds: number): BuiltLine {
+  if (mode === "bike" && rounds > BIKE_ROUNDS_MAX) return { ok: false, error: "Rounds stop at 40." };
   if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
   const value = { sets: 1, rounds, workSeconds: 60, restSeconds: 0, setRestSeconds: null };
   return {

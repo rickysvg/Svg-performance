@@ -139,6 +139,30 @@ describe("today's coach summary script", () => {
   });
 });
 
+describe("a bike moved onto Friday", () => {
+  it("says the ride dose once", () => {
+    const facts = buildDaySummaryFacts({
+      plan: plan({ weekday: "Friday", summary: "Conditioning+Cardio" }),
+      sessions: [
+        session({
+          kind: "conditioning",
+          title: "Cardio — bike",
+          label: "Cardio — bike",
+          dayNumber: 5,
+          sourceWeekday: "Wednesday",
+        }),
+      ],
+      weekIndex: 0,
+      experienceLevel: "intermediate",
+    });
+    const lines = facts.sessions.flatMap((row) => row.lines);
+    const dose = lines.filter((line) => /10 seconds all-out/.test(line) || /50 seconds easy/.test(line));
+    expect(dose).toHaveLength(1);
+    expect(lines.join(" ")).not.toMatch(/pedaling/i);
+    expect(lines.join(" ")).not.toMatch(/10 seconds all-out[\s\S]*10 seconds all-out/);
+  });
+});
+
 describe("today's coach summary cache", () => {
   beforeEach(async () => {
     await resetDatabase();
