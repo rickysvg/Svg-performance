@@ -7,7 +7,11 @@ import { getProgramDayById } from "@/lib/programs";
 import { listResumableSessionsForUser, sessionMatchesPlannedDay } from "@/lib/workouts";
 import { openLogsByProgramDay } from "@/lib/today-start";
 import { calendarPlanDoses } from "@/lib/calendar";
-import { dayKey } from "@/lib/timezone";
+import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
+import { planWeekIndex } from "@/lib/week-plan";
+import { loggedSessionView } from "@/lib/logged-session-view";
+import { sessionCompletionDay } from "@/lib/performed-at";
+import { prisma } from "@/lib/prisma";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { activePlanWeekIndex, campPlanWeekIndex } from "@/lib/fight-camp";
@@ -56,12 +60,12 @@ export default async function TrainingDayPage({
   searchParams,
 }: {
   params: Promise<{ dayId: string }>;
-  searchParams: Promise<{ half?: string }>;
+  searchParams: Promise<{ half?: string; on?: string }>;
 }) {
   const user = await requireUser();
   const profile = await getProfileForUser(user.id);
   const { dayId } = await params;
-  const { half } = await searchParams;
+  const { half, on } = await searchParams;
   const easedHalf = half === "1";
   const band = scaleBandFromPrefs({
     experienceLevel: profile?.experienceLevel,
@@ -69,10 +73,17 @@ export default async function TrainingDayPage({
   });
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   const now = new Date();
+  const onDay = typeof on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(on) ? on : null;
+  const onParts = onDay ? onDay.split("-").map(Number) : [];
+  const scaleMoment =
+    onParts.length === 3 && onParts.every((part) => Number.isFinite(part))
+      ? zonedCivilToUtc(onParts[0]!, onParts[1]!, onParts[2]!, tz)
+      : now;
   const planned = await activePlanWeekIndex(user.id, now, tz, profile?.onboardingCompletedAt ?? null);
-  const weekIndex = planned.weekIndex;
   const camp = planned.camp;
   const campWeek = camp && camp.weightClass.trim() ? campPlanWeekIndex(camp) : null;
+  const weekIndex =
+    campWeek ?? planWeekIndex(scaleMoment, tz, profile?.onboardingCompletedAt ?? null);
   let day;
   try {
     const raw = await getProgramDayById(dayId);
@@ -104,7 +115,7 @@ export default async function TrainingDayPage({
   });
   const swapped = applySwapsToExercises(day.exercises, swaps, {
     sessionId: draft?.id,
-    blockKey: trainingBlockKey(now, tz, profile?.onboardingCompletedAt ?? null, weekIndex),
+    blockKey: trainingBlockKey(scaleMoment, tz, profile?.onboardingCompletedAt ?? null, weekIndex),
     includePending: !draft,
   });
   const removals = await listRemovalsForDay({
@@ -116,13 +127,70 @@ export default async function TrainingDayPage({
     sessionId: draft?.id,
     includePending: !draft,
   });
-  const exercises = easedHalf
+  let exercises = easedHalf
     ? omitted.shown.map((exercise) => ({ ...exercise, sets: halvedSetCount(exercise.sets) }))
     : omitted.shown;
+  const loggedRows = onDay
+    ? await prisma.workoutSession.findMany({
+        where: {
+          userId: user.id,
+          programDayId: day.id,
+          status: { in: ["complete", "partial"] },
+        },
+        orderBy: { performedAt: "desc" },
+        take: 12,
+        select: {
+          status: true,
+          performedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          elapsedSeconds: true,
+          sets: {
+            select: {
+              exerciseName: true,
+              completed: true,
+              reps: true,
+              loadValue: true,
+              durationSeconds: true,
+            },
+          },
+        },
+      })
+    : [];
+  const loggedMatch = loggedRows.find((row) => sessionCompletionDay(row, tz) === onDay) ?? null;
+  const loggedView = loggedMatch ? loggedSessionView(loggedMatch) : null;
+  if (loggedView) {
+    exercises = loggedView.names.map((name, index) => {
+      const match = exercises.find((exercise) => exercise.name === name);
+      if (match) return match;
+      const count = loggedMatch!.sets.filter(
+        (set) => (set.exerciseName ?? "").trim() === name && set.completed,
+      ).length;
+      const donor = exercises[0];
+      return {
+        ...(donor ?? {
+          reps: "",
+          loadText: "",
+          restSeconds: 0,
+          notes: "",
+          logMode: "load_reps",
+          formVideoUrl: "",
+          formVideoPending: false,
+        }),
+        id: `logged-${index}`,
+        name,
+        sets: Math.max(1, count),
+        notes: "",
+      };
+    });
+  }
   const startHref = `/training/${day.id}/start${easedHalf ? "?half=1" : ""}`;
-  const slots = swapSlotsFor(omitted.programmed, omitted.shown);
+  const slots = loggedView
+    ? swapSlotsFor(exercises, exercises)
+    : swapSlotsFor(omitted.programmed, omitted.shown);
   const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
-  const minutes = estimateSessionMinutes(exercises);
+  const minutes =
+    loggedView && loggedView.minutes > 0 ? loggedView.minutes : estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = matched ? "Resume" : "Start Now";
   const deload = campWeek == null && isDeloadWeekIndex(weekIndex);
@@ -209,6 +277,7 @@ export default async function TrainingDayPage({
           kind={kind}
           minutes={minutes}
           exerciseCount={exercises.length}
+          estimated={!(loggedView && loggedView.minutes > 0)}
         />
         <MethodExplainer />
 

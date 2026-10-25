@@ -196,7 +196,13 @@ export function workoutCompleteTiles(input: {
   if (isBikeCardioSession(input.session)) {
     const sets = loggedSets(input.session.sets);
     const effort = bikeCardioEffort(sets);
-    const seconds = bikeCardioDurationSeconds(input.session);
+    // Live sessions show the clock. Structure time stays on backfilled and edited rides.
+    const wall = sessionDurationSeconds(input.session);
+    const seconds = input.session.backfilled
+      ? bikeCardioDurationSeconds(input.session)
+      : wall > 0
+        ? wall
+        : bikeCardioDurationSeconds(input.session);
     const intervals = sessionRoundCount(sets) || sets.length;
     return applyFinishTime(
       [

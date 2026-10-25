@@ -21,7 +21,7 @@ export function ScorePicker({
         {label}
         <span className="mt-0.5 block text-xs font-normal text-muted">{hint}</span>
       </legend>
-      <div className="mt-2 grid grid-cols-5 gap-2">
+      <div className="mt-2 grid min-w-0 grid-cols-5 gap-1.5 [&>*]:min-w-0">
         {SCORES.map((score) => {
           const selected = value === score;
           return (
@@ -31,7 +31,7 @@ export function ScorePicker({
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(score)}
-              className={`touch-target rounded-2xl border text-lg ${
+              className={`touch-target min-w-0! w-full px-0 rounded-2xl border text-lg ${
                 selected
                   ? "border-black bg-accent text-black"
                   : "border-line bg-white text-foreground"

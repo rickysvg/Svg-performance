@@ -10,10 +10,9 @@ import {
   listSavedMealsForUser,
   mealTypeForZonedNow,
 } from "@/lib/nutrition";
-import { NutritionEntryForm } from "@/components/nutrition/NutritionEntryForm";
+import { FuelBoard } from "@/components/nutrition/FuelBoard";
 import { SavedMealForm } from "@/components/nutrition/SavedMealForm";
-import { EmptyState } from "@/components/EmptyState";
-import { formatDateTimeLocal, formatMemberDateTime } from "@/lib/timezone";
+import { formatDateTimeLocal } from "@/lib/timezone";
 
 export default async function NutritionPage() {
   const user = await requireUser();
@@ -43,7 +42,7 @@ export default async function NutritionPage() {
   const defaultMeal = mealTypeForZonedNow(new Date(), timeZone);
 
   return (
-    <main className="space-y-6">
+    <main className="min-w-0 space-y-6">
       <div>
         <h1 className="text-2xl">Nutrition</h1>
         <p className="mt-1 text-sm text-muted">Your estimates. Not medical advice.</p>
@@ -56,20 +55,23 @@ export default async function NutritionPage() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <h2>Today (manual estimates)</h2>
-        <p className="mt-2 text-sm text-muted">
-          {today.entryCount} item{today.entryCount === 1 ? "" : "s"} ·{" "}
-          {Math.round(today.calories)} kcal · P {Math.round(today.proteinG)}g · C{" "}
-          {Math.round(today.carbsG)}g · F {Math.round(today.fatG)}g
-        </p>
-      </section>
-
-      <NutritionEntryForm
+      <FuelBoard
+        today={today}
         savedMeals={saved}
         defaultMeal={defaultMeal}
         timeZone={timeZone}
         defaultEatenAt={formatDateTimeLocal(new Date(), timeZone)}
+        entries={entries.map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          mealType: entry.mealType,
+          calories: entry.calories,
+          proteinG: entry.proteinG,
+          carbsG: entry.carbsG,
+          fatG: entry.fatG,
+          eatenAt: new Date(entry.eatenAt).toISOString(),
+          source: entry.source,
+        }))}
       />
       <details className="rounded-2xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer font-semibold">More</summary>
@@ -83,32 +85,6 @@ export default async function NutritionPage() {
         </div>
       </details>
 
-      <section className="space-y-3" data-coach-clear>
-        <h2 className="text-lg">Your log</h2>
-      {entries.length === 0 ? (
-          <EmptyState title="No meals yet">
-            Search a food or type an estimate above. Numbers stay yours to correct.
-          </EmptyState>
-        ) : (
-          <ul className="space-y-3">
-            {entries.map((entry) => (
-              <li key={entry.id}>
-                <Link
-                  data-testid={`nutrition-entry-${entry.id}`}
-                  href={`/nutrition/${entry.id}`}
-                  className="block rounded-2xl border border-line bg-card p-4 hover:border-accent"
-                >
-                  <p className="font-semibold">{entry.name}</p>
-                  <p className="text-sm text-muted">
-                    {entry.mealType} · {formatMemberDateTime(new Date(entry.eatenAt), timeZone)} ·{" "}
-                    {Math.round(entry.calories)} kcal · source: {entry.source.replace("_", " ")}
-                  </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </main>
   );
 }

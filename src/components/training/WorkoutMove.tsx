@@ -1,13 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   restoreWeekPlanAction,
   swapCalendarDaysAction,
   swapWorkoutAction,
 } from "@/app/actions/week-plan";
 import { placementAfterMoveBack } from "@/lib/calendar-placements";
+import {
+  getPlanPlacements,
+  getServerPlanPlacements,
+  replacePlanPlacements,
+  subscribePlanPlacements,
+} from "@/lib/plan-placement-store";
 import {
   latestIntentSeq,
   nextIntentSeq,
@@ -58,6 +64,11 @@ export function useWorkoutMove() {
   return useContext(WorkoutMoveContext);
 }
 
+/** Optimistic weekday for a session. Survives the refresh that follows a save. */
+export function usePlanPlacements() {
+  return useSyncExternalStore(subscribePlanPlacements, getPlanPlacements, getServerPlanPlacements);
+}
+
 const HOLD_MS = 450;
 const SCROLL_CANCEL_PX = 10;
 
@@ -93,14 +104,18 @@ export function WorkoutMoveProvider({
   const moveInflight = useRef(0);
   const [saving, setSaving] = useState(false);
   const [undoing, setUndoing] = useState(false);
-  const [placements, setPlacements] = useState<Record<string, string>>({});
-  const placementsRef = useRef<Record<string, string>>({});
+  const placements = usePlanPlacements();
+  const placementsRef = useRef<Record<string, string>>(getPlanPlacements());
   const placementStack = useRef<{ key: string; from: string }[][]>([]);
+
+  function commitPlacements(next: Record<string, string>) {
+    placementsRef.current = next;
+    replacePlanPlacements(next);
+  }
 
   function rememberPlacements(next: Record<string, string>, undo: { key: string; from: string }[]) {
     placementStack.current.push(undo);
-    placementsRef.current = next;
-    setPlacements(next);
+    commitPlacements(next);
   }
 
   function sittingWeekday(sessionKey: string) {
@@ -113,16 +128,14 @@ export function WorkoutMoveProvider({
     const from = sittingWeekday(sessionKey);
     if (!from || from === weekday) return;
     const next = { ...placementsRef.current, [sessionKey]: weekday };
-    placementsRef.current = next;
-    setPlacements(next);
+    commitPlacements(next);
   }
 
   function clearPlacement(sessionKey: string) {
     if (!(sessionKey in placementsRef.current)) return;
     const next = { ...placementsRef.current };
     delete next[sessionKey];
-    placementsRef.current = next;
-    setPlacements(next);
+    commitPlacements(next);
   }
 
   function beginSaving() {
@@ -142,6 +155,20 @@ export function WorkoutMoveProvider({
   function refreshIfSettled() {
     if (planIntentOutboxSize() === 0) onCommitted?.();
   }
+
+  useEffect(() => {
+    const current = placementsRef.current;
+    const keys = Object.keys(current);
+    if (keys.length === 0) return;
+    let next: Record<string, string> | null = null;
+    for (const key of keys) {
+      const sitting = days.find((day) => day.sessions.some((session) => session.sessionKey === key))?.weekday;
+      if (!sitting || sitting !== current[key]) continue;
+      next = next ?? { ...current };
+      delete next[key];
+    }
+    if (next) commitPlacements(next);
+  }, [days]);
 
   function acceptIntent(sessionKey: string, seq: number, result: PlanIntentResult) {
     const stillLatest = latestIntentSeq(sessionKey) === seq;
@@ -201,8 +228,7 @@ export function WorkoutMoveProvider({
       });
       if (!acceptIntent(sessionKey, seq, result)) return;
       if (result.error) {
-        placementsRef.current = previous;
-        setPlacements(previous);
+        commitPlacements(previous);
         setError(result.error);
         return;
       }
@@ -313,24 +339,31 @@ export function WorkoutMoveProvider({
     const seq = nextIntentSeq(sessionKey);
     const previous = placementsRef.current;
     const next = placementAfterMoveBack(previous, sessionKey, home);
-    placementsRef.current = next;
-    setPlacements(next);
-    const result = await submitPlanIntent({
-      sessionKey,
-      weekStart: targetWeek,
-      toDay: home,
-      intentSeq: seq,
-      intent: "restore",
-    });
-    if (!acceptIntent(sessionKey, seq, result)) return result;
-    if (result.error) {
-      placementsRef.current = previous;
-      setPlacements(previous);
+    commitPlacements(next);
+    beginSaving();
+    try {
+      const result = await submitPlanIntent({
+        sessionKey,
+        weekStart: targetWeek,
+        toDay: home,
+        intentSeq: seq,
+        intent: "restore",
+      });
+      if (!acceptIntent(sessionKey, seq, result)) return result;
+      if (result.error) {
+        commitPlacements(previous);
+        return result;
+      }
+      if (result.applied === false) {
+        clearPlacement(sessionKey);
+        refreshIfSettled();
+        return result;
+      }
+      refreshIfSettled();
       return result;
+    } finally {
+      endSaving();
     }
-    if (result.applied === false) clearPlacement(sessionKey);
-    refreshIfSettled();
-    return result;
   }
 
   async function undo() {
@@ -353,8 +386,7 @@ export function WorkoutMoveProvider({
         });
         if (!acceptIntent(targetDay.sessionKey, seq, result)) return;
         if (result.error) {
-          placementsRef.current = previous;
-          setPlacements(previous);
+          commitPlacements(previous);
           setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
           return;
         }
@@ -370,8 +402,7 @@ export function WorkoutMoveProvider({
     if (previous) {
       const next = { ...snapshot };
       for (const step of previous) next[step.key] = step.from;
-      placementsRef.current = next;
-      setPlacements(next);
+      commitPlacements(next);
     }
     setToast(null);
     setUndoing(true);
@@ -380,8 +411,7 @@ export function WorkoutMoveProvider({
       if (result.error) {
         if (previous) {
           placementStack.current.push(previous);
-          placementsRef.current = snapshot;
-          setPlacements(snapshot);
+          commitPlacements(snapshot);
         }
         setToast({ id: ++toastSerial.current, message: result.error, undo: payload });
         return;

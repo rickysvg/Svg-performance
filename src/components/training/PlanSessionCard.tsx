@@ -11,6 +11,7 @@ import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { OpenProgramLog } from "@/lib/today-start";
 import { visiblePartialLabel } from "@/lib/finish-plan";
+import type { LoggedSessionView } from "@/lib/logged-session-view";
 
 const KIND_LABEL: Record<ResolvedPlanSession["kind"], string> = {
   skill: "Skill",
@@ -42,6 +43,8 @@ export function PlanSessionCard({
   calendarWeekday,
   completed = false,
   dateLabel,
+  loggedView = null,
+  dayKey,
 }: {
   session: ResolvedPlanSession;
   highlight?: boolean;
@@ -55,12 +58,27 @@ export function PlanSessionCard({
   completed?: boolean;
   /** Civil date this card belongs to, so a swipe does not make it look like another week. */
   dateLabel?: string;
+  /** Ticked work for this civil day. The card shows this instead of the template. */
+  loggedView?: LoggedSessionView | null;
+  /** Civil day, so the detail page opens the same logged session. */
+  dayKey?: string;
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
-  const groups = planStructureGroups(exercises);
+  const groups = loggedView ? [] : planStructureGroups(exercises);
   const structure = planStructureLine(groups);
-  const minutes = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
+  const estimated = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
+  const minutes = loggedView && loggedView.minutes > 0 ? loggedView.minutes : estimated;
+  const minuteLabel =
+    loggedView && loggedView.minutes > 0
+      ? `${loggedView.minutes} min`
+      : minutes > 0
+        ? `est. ${minutes} min`
+        : "";
+  const previewHref =
+    session.href && dayKey
+      ? `${session.href}${session.href.includes("?") ? "&" : "?"}on=${dayKey}`
+      : session.href;
   const count = exercises.length;
   const partial = Boolean(resume?.partial);
   const href = session.href;
@@ -75,7 +93,7 @@ export function PlanSessionCard({
 
   const article = (
     <article
-      className={`rounded-2xl p-5 ${
+      className={`min-w-0 max-w-full rounded-2xl p-5 ${
         highlight
           ? "bg-black text-white"
           : "border border-line bg-card text-foreground"
@@ -98,13 +116,22 @@ export function PlanSessionCard({
       >
         {structure || `Session ${session.slot} · ${kind}`}
         {session.optional ? " · optional" : ""}
-        {minutes > 0 ? ` · est. ${minutes} min` : ""}
+        {minuteLabel ? ` · ${minuteLabel}` : ""}
       </p>
-      <h3 className="mt-1 text-lg leading-tight">{session.title}</h3>
+      <h3 className="mt-1 break-words text-lg leading-tight">{session.title}</h3>
       <p className={`mt-1 text-sm ${highlight ? "text-white/70" : "text-muted"}`}>
         {session.subtitle}
         {count > 0 ? ` · ${exerciseCountLabel(count)}` : ""}
       </p>
+      {loggedView && loggedView.names.length > 0 ? (
+        <ul className="mt-3 space-y-1 text-sm" data-logged-session>
+          {loggedView.names.map((name) => (
+            <li key={name} className="font-medium">
+              {name}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {groups.length > 0 ? (
         <div className="mt-3 space-y-3" data-plan-structure={structure}>
           {groups.map((group) => (
@@ -133,7 +160,7 @@ export function PlanSessionCard({
                           formVideoPending={form.pending}
                           size={48}
                         />
-                        <span>
+                        <span className="min-w-0 break-words">
                           <span className="font-medium">{exercise.name}</span>
                           <span className={`block ${highlight ? "text-white/60" : "text-muted"}`}>
                             {plannedSetLine({
@@ -223,7 +250,7 @@ export function PlanSessionCard({
           className="above-dock mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center"
         >
           <Link
-            href={session.href}
+            href={previewHref ?? session.href}
             data-preview-session
             className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
               highlight ? "border border-white/30 text-white" : "border border-line"

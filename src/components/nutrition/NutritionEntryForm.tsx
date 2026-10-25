@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   saveNutritionEntryAction,
   type NutritionActionState,
+  type NutritionSavedValues,
 } from "@/app/actions/nutrition";
 import { StatusBanner } from "@/components/StatusBanner";
 import { MEAL_TYPES } from "@/lib/nutrition";
@@ -39,6 +40,7 @@ export function NutritionEntryForm({
   defaultMeal,
   timeZone = APP_TIMEZONE,
   defaultEatenAt,
+  onSaved,
 }: {
   savedMeals: Saved[];
   /** Meal for the member's clock, computed on the server so SSR matches. */
@@ -60,6 +62,8 @@ export function NutritionEntryForm({
     notes: string;
     eatenAt: Date | string;
   };
+  /** Fired after a save so the fuel page can update totals and the list in place. */
+  onSaved?: (saved: NutritionSavedValues, celebrate: boolean) => void;
 }) {
   const [state, action, pending] = useActionState(
     saveNutritionEntryAction,
@@ -81,6 +85,12 @@ export function NutritionEntryForm({
   const [formKey, setFormKey] = useState(0);
   const [mealType, setMealType] = useState(entry?.mealType ?? defaultMeal ?? "breakfast");
   const [appliedSave, setAppliedSave] = useState<number | undefined>();
+  const onSavedRef = useRef(onSaved);
+  onSavedRef.current = onSaved;
+  useEffect(() => {
+    if (!state.savedAt || !state.saved) return;
+    onSavedRef.current?.(state.saved, Boolean(state.celebrate));
+  }, [state.savedAt, state.saved, state.celebrate]);
   if (state.savedAt && state.saved && appliedSave !== state.savedAt) {
     setAppliedSave(state.savedAt);
     if (entry) {
@@ -254,7 +264,7 @@ export function NutritionEntryForm({
           />
         </label>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid min-w-0 grid-cols-3 gap-2 [&>*]:min-w-0">
         <label className="block text-sm">
           Protein g
           <input
@@ -299,7 +309,7 @@ export function NutritionEntryForm({
           name="eatenAt"
           type="datetime-local"
           defaultValue={eatenAtValue}
-          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+          className="mt-1 w-full min-w-0 max-w-full rounded-xl border border-line bg-background px-3 py-3"
         />
       </label>
       <label className="block text-sm">

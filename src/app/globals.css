@@ -149,6 +149,15 @@ textarea:focus-visible {
   min-width: 44px;
 }
 
+/* Number and clock fields have a large intrinsic width. Keep them in the column. */
+input[type="number"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* Keep bag Start and the first session controls above the fixed bottom dock. */
 .above-dock {
   scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom));

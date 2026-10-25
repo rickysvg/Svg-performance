@@ -392,8 +392,11 @@ describe("start today", () => {
     expect(form).toContain("loggerCardLine");
     expect(form).toContain("<RirHint />");
     expect(form).toContain("data-use-previous");
-    expect(form).toContain("grid-cols-[1.75rem_minmax(7.5rem,1fr)_3.5rem_3.5rem_1.75rem]");
-    expect(form).toContain("whitespace-nowrap");
+    expect(form).toContain(
+      "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3.25rem)_minmax(0,3.25rem)_1.5rem]",
+    );
+    expect(form).toContain("min-w-0 truncate");
+    expect(form).not.toContain("whitespace-nowrap");
     expect(form).toContain("data-prescribed-rest");
     expect(form).toContain("restBannerSeconds");
     expect(form).toContain("data-rest-countdown");

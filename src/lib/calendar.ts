@@ -26,6 +26,7 @@ import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { formatSessionElapsed } from "@/lib/session-elapsed";
+import { loggedSessionView } from "@/lib/logged-session-view";
 import { readTimerFieldsByIds } from "@/lib/workout-timer-columns";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
@@ -74,6 +75,8 @@ export type CalendarActivity = {
   weekday?: string;
   /** Clock for a logged ride, H:MM:SS at an hour. */
   durationLabel?: string;
+  /** Logged lift or conditioning length, in minutes. */
+  minutesLabel?: string;
   /** Lift, hard bag, or hard conditioning. */
   heavy?: boolean;
   /** "4 sets" or "1/4 sets". Empty when the plan has no prescribed sets. */
@@ -640,15 +643,28 @@ async function loadCalendarSchedule(
       const sessionDone = Boolean(view?.done);
       const ticked = view?.ticked ?? 0;
       const setCountLabel = view && ticked > 0 ? view.text : dose > 0 ? doseSetLabel(dose) : "";
-      const exerciseRows =
-        view && ticked > 0 ? visibleCalendarExercises(view.rows, view.done) : [];
+      const loggedView = matched ? loggedSessionView(matched) : null;
+      const exerciseRows = loggedView
+        ? loggedView.names.map((name) => ({
+            name,
+            ticked: 1,
+            planned: 1,
+            state: "complete" as const,
+          }))
+        : view && ticked > 0
+          ? visibleCalendarExercises(view.rows, view.done)
+          : [];
       const partial = Boolean(view && !view.done && ticked > 0);
       const dayHasPartialWork = dayLogs.some((log) =>
         logIsOpenPartial(log, planByDay, edits, tz, profile?.onboardingCompletedAt ?? null),
       );
-      const href =
+      const opened =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
+      const href =
+        opened && matched && opened.startsWith("/training/") && !opened.includes("?")
+          ? `${opened}?on=${dayKey}`
+          : opened;
       if (!href) continue;
       const missed = past && !sessionDone && !partial && !dayHasPartialWork;
       // Other partial work must not leave this plan sounding like it is still ahead.
@@ -694,6 +710,10 @@ async function loadCalendarSchedule(
           session.kind === "conditioning" && matched
             ? rideDurationLabel(loggedRideSeconds(matched, rideTimers))
             : undefined,
+        minutesLabel:
+          loggedView && loggedView.minutes > 0 && session.kind !== "conditioning"
+            ? `${loggedView.minutes} min`
+            : undefined,
         exercises: exerciseRows.length > 0 ? exerciseRows : undefined,
       });
     }
@@ -735,23 +755,33 @@ async function loadCalendarSchedule(
         names: visible.names,
         exercises: visible.exercises,
       });
+      const loggedView = loggedSessionView(log);
       const bike =
         log.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) || isBikeIntervalName(title);
       day.activities.push({
         kind: "workout",
         title,
         subtitle: view.done ? title : view.text,
-        href: `/training/${log.programDayId}`,
+        href: `/training/${log.programDayId}?on=${dayKey}`,
         status: view.done ? "complete" : "scheduled",
         programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel: view.text,
         durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
-        exercises: (() => {
-          if (view.ticked <= 0) return undefined;
-          const rows = visibleCalendarExercises(view.rows, view.done);
-          return rows.length > 0 ? rows : undefined;
-        })(),
+        minutesLabel:
+          loggedView && loggedView.minutes > 0 && !bike ? `${loggedView.minutes} min` : undefined,
+        exercises: loggedView
+          ? loggedView.names.map((name) => ({
+              name,
+              ticked: 1,
+              planned: 1,
+              state: "complete" as const,
+            }))
+          : (() => {
+              if (view.ticked <= 0) return undefined;
+              const rows = visibleCalendarExercises(view.rows, view.done);
+              return rows.length > 0 ? rows : undefined;
+            })(),
       });
     }
   }

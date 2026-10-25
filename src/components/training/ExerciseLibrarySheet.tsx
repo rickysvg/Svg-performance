@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useSheetBehavior } from "@/components/useSheetBehavior";
 import {
@@ -62,6 +62,18 @@ export function ExerciseLibrarySheet({
     [query, category, equipment, excludeName, nearName],
   );
   const choice = picked ? libraryExercise(picked) : null;
+
+  useLayoutEffect(() => {
+    if (!picked) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+    const footer = confirmRef.current;
+    if (!footer) return;
+    footer.scrollTop = footer.scrollHeight;
+    footer
+      .querySelector<HTMLElement>("[data-swap-scope='session']")
+      ?.scrollIntoView({ block: "end", inline: "nearest" });
+  }, [picked]);
 
   return createPortal(
     <div
@@ -177,7 +189,7 @@ export function ExerciseLibrarySheet({
         <div
           ref={confirmRef}
           data-library-confirm
-          className="sticky bottom-0 z-10 shrink-0 space-y-2 border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="sticky bottom-0 z-10 max-h-[46dvh] shrink-0 space-y-2 overflow-y-auto border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <div className={pending ? "pointer-events-none opacity-60" : undefined}>{footer(choice)}</div>

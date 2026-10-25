@@ -330,8 +330,8 @@ function toDraftSet(set: WorkoutSet): DraftSetSnapshot {
 
 function previousChipClass(hasPrevious: boolean) {
   return hasPrevious
-    ? "flex h-11 w-full items-center whitespace-nowrap rounded-lg bg-accent px-2 text-left text-sm font-semibold leading-none text-black"
-    : "flex h-11 w-full items-center whitespace-nowrap rounded-lg px-1 text-left text-sm leading-none text-muted";
+    ? "flex h-11 w-full min-w-0 items-center truncate rounded-lg bg-accent px-2 text-left text-sm font-semibold leading-none text-black"
+    : "flex h-11 w-full min-w-0 items-center truncate rounded-lg px-1 text-left text-sm leading-none text-muted";
 }
 
 function serverRest(session: { restExerciseName: string; restEndsAt: Date | null }, now = Date.now()): RestTimerState | null {
@@ -1343,7 +1343,7 @@ export function WorkoutLogForm({
       <form
         ref={formRef}
         action={action}
-        className="space-y-5"
+        className="min-w-0 max-w-full space-y-5"
         onKeyDown={(event) => {
           if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
           const target = event.target;
@@ -1667,14 +1667,14 @@ export function WorkoutLogForm({
           const layout = loggerRowLayout(mode, name);
           const columns =
             layout === "bag"
-              ? "grid-cols-[5.5rem_1fr_2.75rem]"
+              ? "grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_1.5rem]"
               : layout === "weighted_shadow"
-                ? "grid-cols-[1fr_4.75rem_2.75rem]"
+                ? "grid-cols-[minmax(0,1fr)_minmax(0,4.75rem)_1.5rem]"
                 : bike
-                  ? "grid-cols-[2rem_1fr_2rem]"
+                  ? "grid-cols-[1.5rem_minmax(0,1fr)_1.5rem]"
                   : hidesLoad(mode)
-                    ? "grid-cols-[2rem_1fr_5.5rem_2rem]"
-                    : "grid-cols-[1.75rem_minmax(7.5rem,1fr)_3.5rem_3.5rem_1.75rem]";
+                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3rem)_1.5rem]"
+                    : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3.25rem)_minmax(0,3.25rem)_1.5rem]";
           const hint = modeHint(mode, name);
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);
@@ -1699,7 +1699,7 @@ export function WorkoutLogForm({
               data-exercise-block={name}
               data-log-row={layout}
               data-current-exercise={current ? "true" : undefined}
-              className={`scroll-mt-52 rounded-2xl border p-4 ${
+              className={`min-w-0 max-w-full scroll-mt-52 rounded-2xl border p-4 ${
                 current
                   ? "border-[#CBF805] bg-card shadow-[0_0_0_2px_#CBF805]"
                   : "border-line bg-card"
@@ -1970,7 +1970,7 @@ export function WorkoutLogForm({
                 </p>
               ) : null}
 
-              <div className={`mt-3 grid ${columns} items-center gap-2 text-xs text-muted`}>
+              <div className={`mt-3 grid min-w-0 ${columns} items-center gap-1.5 text-xs text-muted [&>*]:min-w-0`}>
                 {layout === "bag" ? (
                   <>
                     <span>Round</span>
@@ -2017,7 +2017,7 @@ export function WorkoutLogForm({
                           {previousLabel}
                         </button>
                       ) : null}
-                      <div className={`grid ${columns} items-center gap-2`}>
+                      <div className={`grid min-w-0 ${columns} items-center gap-1.5 [&>*]:min-w-0`}>
                       <input
                         data-testid={`training-log-set-exercise-${set.id}`}
                         type="hidden"
@@ -2094,7 +2094,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-14 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center text-lg"
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
                           />
                         </label>
                       ) : (
@@ -2113,7 +2113,7 @@ export function WorkoutLogForm({
                                 reps: event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-14 w-full scroll-mt-52 rounded-lg border border-line bg-background px-2 text-center text-lg"
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
                           />
                         </label>
                       )}
@@ -2138,7 +2138,7 @@ export function WorkoutLogForm({
                                   event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-14 w-full rounded-lg border border-line bg-background px-2 text-center text-lg"
+                            className="h-11 w-full min-w-0 rounded-lg border border-line bg-background px-1 text-center text-base"
                           />
                         </label>
                       )}
