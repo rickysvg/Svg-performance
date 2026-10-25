@@ -37,14 +37,20 @@ export function DaySessionMeta({
   kind,
   minutes,
   exerciseCount,
+  estimated = true,
 }: {
   kind: string;
   minutes: number;
   exerciseCount: number;
+  /** False when the minutes are the logged session, not the plan estimate. */
+  estimated?: boolean;
 }) {
   const rows = [
     { icon: "kind" as const, label: kind },
-    { icon: "time" as const, label: minutes > 0 ? `est. ${minutes} min` : "est. —" },
+    {
+      icon: "time" as const,
+      label: minutes > 0 ? `${estimated ? "est. " : ""}${minutes} min` : "est. —",
+    },
     { icon: "count" as const, label: exerciseCountLabel(exerciseCount) },
   ];
 

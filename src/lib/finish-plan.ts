@@ -75,6 +75,7 @@ export function visibleSessionDose(input: {
   catalogDose?: number;
   /** Logged rows. Interval keys raise a rounds-only plan to sets × rounds. */
   loggedSets?: readonly VisibleDoseSet[];
+  includePending?: boolean;
 }): { dose: number; names: string[]; exercises: NamedSets[] } {
   const programmed = namedSetRows(input.exercises).map((exercise) => ({
     ...exercise,
@@ -84,7 +85,7 @@ export function visibleSessionDose(input: {
   const swapped = applySwapsToExercises(programmed, input.swaps, {
     sessionId: input.sessionId,
     blockKey: input.blockKey,
-    includePending: false,
+    includePending: input.includePending,
   });
   const shown = omitRemovedSlots(programmed, swapped, input.removals, {
     sessionId: input.sessionId,
@@ -138,6 +139,7 @@ export function visibleDoseForSession(input: {
   dayNumber?: number | null;
   edits?: MemberExerciseEdits | null;
   loggedSets?: readonly VisibleDoseSet[];
+  includePending?: boolean;
 }) {
   const key =
     input.programSlug && input.dayNumber != null
@@ -152,6 +154,7 @@ export function visibleDoseForSession(input: {
     blockKey: input.blockKey,
     catalogDose: input.catalogDose,
     loggedSets: input.loggedSets,
+    includePending: input.includePending,
   });
 }
 
@@ -181,6 +184,7 @@ export function withVisiblePlanExercises<
     blockKey: string;
     sessionId?: string | null;
     catalogDose?: number;
+    includePending?: boolean;
   },
 ): T {
   const exercises = session.day?.exercises;
@@ -193,6 +197,7 @@ export function withVisiblePlanExercises<
     programSlug: session.programSlug,
     dayNumber: session.dayNumber,
     edits: input.edits,
+    includePending: input.includePending,
   });
   const same =
     visible.exercises.length === exercises.length &&

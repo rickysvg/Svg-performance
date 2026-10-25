@@ -72,7 +72,11 @@ export function TodaySummaryView({
             data-summary-session={session.kind}
             className="rounded-2xl border border-line bg-card px-4 py-4"
           >
-            <p className="text-xs uppercase tracking-wide text-muted">{KIND_LABEL[session.kind]}</p>
+            <p className="text-xs uppercase tracking-wide text-muted">
+              {session.kind === "cardio" && !/^conditioning$/i.test(session.title) && /cardio|bike/i.test(session.title)
+                ? "Cardio"
+                : KIND_LABEL[session.kind]}
+            </p>
             <h2 className="mt-1 text-lg">{session.title}</h2>
             <ul data-summary-chips className="mt-3 flex flex-wrap gap-2">
               {(session.lines.length ? session.lines : session.cues).map((line) => (

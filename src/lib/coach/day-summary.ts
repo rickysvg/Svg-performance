@@ -23,6 +23,7 @@ import { roundFinishProgress } from "@/lib/round-session";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { easePlanForUser } from "@/lib/recovery-ease";
+import { FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import {
   planForDate,
   planWeekIndex,
@@ -450,12 +451,26 @@ function opener(facts: DaySummaryFacts) {
   return `Cole. ${facts.weekday}. We are on this.`;
 }
 
-function kindWord(kind: SummarySessionKind) {
-  if (kind === "bag") return "bag work";
-  if (kind === "lift") return "a lift";
-  if (kind === "cardio") return "cardio";
-  if (kind === "mobility") return "mobility";
-  return kind;
+function isConditioningTitle(title: string) {
+  const name = title.trim();
+  return name === FRIDAY_CONDITIONING_LABEL || name === "Friday circuit";
+}
+
+function kindWord(session: Pick<DaySummarySession, "kind" | "title">) {
+  if (session.kind === "bag") return "bag work";
+  if (session.kind === "lift") return "a lift";
+  if (session.kind === "cardio") return isConditioningTitle(session.title) ? "conditioning" : "cardio";
+  if (session.kind === "mobility") return "mobility";
+  return session.kind;
+}
+
+function lineupWords(sessions: DaySummarySession[]) {
+  const words: string[] = [];
+  for (const session of sessions) {
+    const word = kindWord(session);
+    if (!words.includes(word)) words.push(word);
+  }
+  return words;
 }
 
 function joinList(items: string[]) {
@@ -472,7 +487,10 @@ function sessionLine(session: DaySummarySession, index: number) {
     const name = session.title.replace(/^Strength — /, "");
     return `${lead}Lift. ${name}. ${cues}`;
   }
-  if (session.kind === "cardio") return `${lead}Cardio. ${cues || session.title}`;
+  if (session.kind === "cardio") {
+    const word = isConditioningTitle(session.title) ? "Conditioning" : "Cardio";
+    return `${lead}${word}. ${cues || session.title}`;
+  }
   if (session.kind === "mobility") return `${lead}Mobility. ${cues || session.title}`;
   return `${lead}${session.title}. ${cues}`;
 }
@@ -490,7 +508,7 @@ export function templateDaySummary(facts: DaySummaryFacts) {
     const note = facts.sessions[0]?.cues.join(" ") ?? "Log your rounds after you spar.";
     return tidy(`${opener(facts)} Today is sparring. ${note} ${close}`);
   }
-  const lineup = joinList(facts.sessions.map((session) => kindWord(session.kind)));
+  const lineup = joinList(lineupWords(facts.sessions));
   const body = facts.sessions.map(sessionLine).join(" ");
   return tidy(`${opener(facts)} You have ${lineup}. ${body} ${close}`);
 }

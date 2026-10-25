@@ -23,7 +23,7 @@ import {
 import { useWorkoutMove } from "@/components/training/WorkoutMove";
 import { chipMarkForDay, type ChipMark } from "@/lib/chip-mark";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
-import { dayKey } from "@/lib/timezone";
+import { APP_TIMEZONE, dayKey } from "@/lib/timezone";
 import { FRIDAY_CONDITIONING_CHIP_WORD, FRIDAY_CONDITIONING_LABEL } from "@/lib/mesocycle";
 import {
   carouselIndexFromScroll,
@@ -34,7 +34,7 @@ import {
   weekScrollLeft,
   type ScrollGestureState,
 } from "@/lib/week-carousel";
-import type { weekStrip } from "@/lib/week-plan";
+import { weekChipDateLabel, type weekStrip } from "@/lib/week-plan";
 
 type Item = ReturnType<typeof weekStrip>[number] & {
   logHref?: string;
@@ -444,6 +444,7 @@ function WeekChipList({
   basePath,
   rearrange,
   weekStart,
+  timeZone = APP_TIMEZONE,
   completedDays,
   completedByDay,
   partialDays,
@@ -493,10 +494,18 @@ function WeekChipList({
   onSelectDay?: (dayParam: string) => void;
   /** Calendar handles the day itself. The link must not reload the old day. */
   lockChipNavigation?: boolean;
+  timeZone?: string;
 }) {
   return (
-    <ol data-week-strip className="grid grid-cols-7 gap-1">
-      {days.map((day) => {
+    <ol data-week-strip className="grid w-full min-w-0 grid-cols-7 gap-1">
+      {days.map((day, index) => {
+        const dateText = weekChipDateLabel(
+          day.date,
+          day.dateLabel,
+          index,
+          index > 0 ? days[index - 1]!.date : undefined,
+          timeZone,
+        );
         const href = weekChipHref(day, basePath);
         const selected = selectedDay ? day.dayParam === selectedDay : day.isSelected;
         const activities = weekChipActivities(day.summary);
@@ -526,7 +535,7 @@ function WeekChipList({
           ? held
             ? `${day.weekday}, selected to move. Tap another day to swap.`
             : `Swap ${source?.weekday} with ${day.weekday}`
-          : `${day.weekday} ${day.dateLabel}, ${spokenSummary(day.summary)}${movedLabel}${historyLabel}`;
+          : `${day.weekday} ${dateText}, ${spokenSummary(day.summary)}${movedLabel}${historyLabel}`;
         return (
           <li key={day.dayParam} className="min-w-0">
             <Link
@@ -561,7 +570,7 @@ function WeekChipList({
                 if (lockChipNavigation) event.preventDefault();
                 onSelectDay?.(day.dayParam);
               }}
-              className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center text-foreground transition-colors ${
+              className={`flex h-[5.5rem] w-full min-w-0 flex-col items-center justify-center overflow-hidden rounded-2xl px-0.5 py-1.5 text-center text-foreground transition-colors ${
                 rearrange ? "touch-manipulation select-none" : ""
               } ${
                 day.isToday
@@ -580,9 +589,11 @@ function WeekChipList({
               </span>
               <span
                 data-week-chip-date
-                className="font-display mt-1 text-base leading-none text-foreground"
+                className={`font-display mt-1 max-w-full truncate leading-none text-foreground ${
+                  dateText === day.dateLabel ? "text-base" : "text-[10px]"
+                }`}
               >
-                {day.dateLabel}
+                {dateText}
               </span>
               {inProgressDay && day.dayParam === inProgressDay ? (
                 <span
@@ -1194,6 +1205,7 @@ function WeekDayCarousel({
               onChipClick={swap.onChipClick}
               onContextMenu={swap.onContextMenu}
               lockChipNavigation={Boolean(onDayChange)}
+              timeZone={timeZone}
               onSelectDay={(dayParam) => {
                 const next = nextSelectedDay({ type: "chip", dayParam });
                 applySelected(next);
@@ -1229,6 +1241,7 @@ function SingleWeekStrip({
   completedByDay,
   partialDays,
   inProgressDay,
+  timeZone,
 }: {
   days: Item[];
   basePath: string;
@@ -1238,6 +1251,7 @@ function SingleWeekStrip({
   completedByDay: Record<string, string[]>;
   partialDays: string[];
   inProgressDay?: string;
+  timeZone?: string;
 }) {
   const swap = useWeekSwap(weekStart);
   return (
@@ -1257,6 +1271,7 @@ function SingleWeekStrip({
         onPointerUp={swap.onPointerUp}
         onChipClick={swap.onChipClick}
         onContextMenu={swap.onContextMenu}
+        timeZone={timeZone}
       />
       <WeekLegend days={days} />
       <RearrangeChrome
@@ -1353,6 +1368,7 @@ export function WeekStrip({
       completedByDay={completedByDay}
       partialDays={partialDays}
       inProgressDay={inProgressDay}
+      timeZone={timeZone}
     />
   );
 }

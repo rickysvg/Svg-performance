@@ -53,6 +53,7 @@ import { MoveBackButton } from "@/components/training/MoveBackButton";
 import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
+import { loggedSessionView } from "@/lib/logged-session-view";
 import { openLogsByProgramDay, todayStartAction } from "@/lib/today-start";
 import { withVisiblePlanExercises } from "@/lib/finish-plan";
 import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
@@ -272,11 +273,15 @@ export default async function TrainingPage({
             row.programDayId === session.dayId &&
             sessionCompletionDay(row, tz) === focusParam,
         );
-        return withVisiblePlanExercises(session, {
-          edits,
-          blockKey: trainingBlockKey(date, tz, profile?.onboardingCompletedAt ?? null),
-          sessionId: openId ?? logged?.id ?? "",
-        });
+        return {
+          ...withVisiblePlanExercises(session, {
+            edits,
+            blockKey: trainingBlockKey(date, tz, profile?.onboardingCompletedAt ?? null),
+            sessionId: openId ?? logged?.id ?? "",
+            includePending: !openId,
+          }),
+          loggedView: logged ? loggedSessionView(logged) : null,
+        };
       });
       const plyo =
         focusPlanned.some((session) => session.kind === "strength") && focusPlan.active
@@ -366,9 +371,9 @@ export default async function TrainingPage({
   ];
 
   return (
-    <main className="min-w-0 space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <main className="min-w-0 max-w-full space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]" data-coach-page>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl">Training</h1>
           <p className="mt-1 text-sm text-muted">
             {campOn && camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
@@ -382,7 +387,7 @@ export default async function TrainingPage({
         <Link
           href="/training/my-workouts"
           data-my-workouts-link
-          className="touch-target inline-flex shrink-0 items-center rounded-full border border-line bg-card px-4 text-sm font-semibold"
+          className="touch-target inline-flex min-w-0 shrink items-center whitespace-normal rounded-full border border-line bg-card px-3 text-center text-sm font-semibold leading-tight"
         >
           My Workouts
         </Link>
@@ -590,6 +595,8 @@ export default async function TrainingPage({
                   : false
               }
               dateLabel={planDateLabel}
+              loggedView={session.loggedView}
+              dayKey={focus.dayParam}
             />
             {session.sessionKey && session.sourceWeekday && session.sourceWeekday !== dayPlan.weekday ? (
               <div className="mt-2">

@@ -89,8 +89,8 @@ export default async function CheckInPage({
   );
 
   return (
-    <main className="space-y-5">
-      <section className="-mx-4 -mt-6 bg-black px-4 pb-6 pt-5 text-white">
+    <main className="min-w-0 max-w-full space-y-5 break-words">
+      <section className="-mx-4 -mt-6 min-w-0 bg-black px-4 pb-6 pt-5 text-white">
         <div className="flex items-center gap-3">
           <PageBackLink href="/home" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -104,7 +104,7 @@ export default async function CheckInPage({
           />
           <p className="font-display text-xs uppercase tracking-[0.14em] text-highlighter">Coach Ricky</p>
         </div>
-        <h1 className="mt-3 text-4xl text-white">Weekly check-in</h1>
+        <h1 className="mt-3 max-w-full text-3xl text-white sm:text-4xl">Weekly check-in</h1>
         <p className="mt-2 text-sm text-white/80">
           One form. About two minutes. {timeZone}.
         </p>
@@ -206,7 +206,7 @@ function SubmittedCheckIn({
   id: string;
 }) {
   return (
-    <section className="space-y-3 rounded-3xl border border-line bg-white px-4 py-4">
+    <section className="min-w-0 space-y-3 break-words rounded-3xl border border-line bg-white px-4 py-4">
       <p className="text-xs uppercase tracking-wide text-muted">This week</p>
       <h2 className="text-2xl">Check-in sent</h2>
       {waiting ? (

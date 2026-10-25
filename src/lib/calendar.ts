@@ -26,6 +26,7 @@ import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { formatSessionElapsed } from "@/lib/session-elapsed";
+import { loggedSessionView } from "@/lib/logged-session-view";
 import { readTimerFieldsByIds } from "@/lib/workout-timer-columns";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { summaryAfterDayPlans, withDayPlans } from "@/lib/my-workout-plan";
@@ -61,6 +62,28 @@ export function visibleCalendarExercises<T extends { state: string }>(rows: T[],
   return rows.filter((row) => row.state !== "open");
 }
 
+/** Logged exercises keep their real tick counts. Unticked plan rows stay off the card. */
+export function calendarLoggedExercises<T extends { ticked: number }>(rows: readonly T[]): T[] {
+  return rows.filter((row) => row.ticked > 0);
+}
+
+/**
+ * A saved partial or complete day opens the log. A draft on that program day
+ * stays on the plan, so a strength draft does not replace a scheduled bike.
+ */
+export function calendarLoggedHref(
+  href: string | undefined,
+  input: { status: string; done: boolean; dayKey: string },
+): string | undefined {
+  if (!href) return href;
+  if (input.status === "draft") return href;
+  const saved = input.done || input.status === "partial" || input.status === "complete";
+  if (!saved) return href;
+  if (!href.startsWith("/training/") || href.includes("?")) return href;
+  const dayKey = input.dayKey;
+  return `${href}?on=${dayKey}`;
+}
+
 export type CalendarActivity = {
   kind: CalendarActivityKind;
   title: string;
@@ -74,6 +97,8 @@ export type CalendarActivity = {
   weekday?: string;
   /** Clock for a logged ride, H:MM:SS at an hour. */
   durationLabel?: string;
+  /** Logged lift or conditioning length, in minutes. */
+  minutesLabel?: string;
   /** Lift, hard bag, or hard conditioning. */
   heavy?: boolean;
   /** "4 sets" or "1/4 sets". Empty when the plan has no prescribed sets. */
@@ -299,6 +324,11 @@ type LoggedPlanSession = {
 function doseSetLabel(dose: number) {
   const count = Math.max(0, Math.round(dose));
   return `${count} ${count === 1 ? "set" : "sets"}`;
+}
+
+function sessionClockSeconds(id: string, timers: Map<string, { elapsedSeconds: number | null }>) {
+  const elapsed = timers.get(id)?.elapsedSeconds;
+  return typeof elapsed === "number" && Number.isFinite(elapsed) && elapsed > 0 ? Math.round(elapsed) : null;
 }
 
 function rideDurationLabel(seconds: number | null | undefined) {
@@ -640,15 +670,23 @@ async function loadCalendarSchedule(
       const sessionDone = Boolean(view?.done);
       const ticked = view?.ticked ?? 0;
       const setCountLabel = view && ticked > 0 ? view.text : dose > 0 ? doseSetLabel(dose) : "";
+      const loggedView = matched
+        ? loggedSessionView({ ...matched, elapsedSeconds: sessionClockSeconds(matched.id, rideTimers) })
+        : null;
       const exerciseRows =
-        view && ticked > 0 ? visibleCalendarExercises(view.rows, view.done) : [];
+        view && ticked > 0 ? calendarLoggedExercises(view.rows) : [];
       const partial = Boolean(view && !view.done && ticked > 0);
       const dayHasPartialWork = dayLogs.some((log) =>
         logIsOpenPartial(log, planByDay, edits, tz, profile?.onboardingCompletedAt ?? null),
       );
-      const href =
+      const opened =
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
+      const href = calendarLoggedHref(opened, {
+        status: matched?.status ?? "draft",
+        done: Boolean(matched) && sessionDone,
+        dayKey,
+      });
       if (!href) continue;
       const missed = past && !sessionDone && !partial && !dayHasPartialWork;
       // Other partial work must not leave this plan sounding like it is still ahead.
@@ -694,6 +732,10 @@ async function loadCalendarSchedule(
           session.kind === "conditioning" && matched
             ? rideDurationLabel(loggedRideSeconds(matched, rideTimers))
             : undefined,
+        minutesLabel:
+          loggedView && loggedView.minutes > 0 && session.kind !== "conditioning"
+            ? `${loggedView.minutes} min`
+            : undefined,
         exercises: exerciseRows.length > 0 ? exerciseRows : undefined,
       });
     }
@@ -735,23 +777,31 @@ async function loadCalendarSchedule(
         names: visible.names,
         exercises: visible.exercises,
       });
+      const loggedView = loggedSessionView({
+        ...log,
+        elapsedSeconds: sessionClockSeconds(log.id, rideTimers),
+      });
       const bike =
         log.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) || isBikeIntervalName(title);
+      const loggedRows = view.ticked > 0 ? calendarLoggedExercises(view.rows) : [];
       day.activities.push({
         kind: "workout",
         title,
         subtitle: view.done ? title : view.text,
-        href: `/training/${log.programDayId}`,
+        href:
+          calendarLoggedHref(`/training/${log.programDayId}`, {
+            status: log.status,
+            done: view.done,
+            dayKey,
+          }) ?? `/training/${log.programDayId}`,
         status: view.done ? "complete" : "scheduled",
         programDayId: log.programDayId,
         weekday: calendarWeekday,
         setCountLabel: view.text,
         durationLabel: bike ? rideDurationLabel(loggedRideSeconds(log, rideTimers)) : undefined,
-        exercises: (() => {
-          if (view.ticked <= 0) return undefined;
-          const rows = visibleCalendarExercises(view.rows, view.done);
-          return rows.length > 0 ? rows : undefined;
-        })(),
+        minutesLabel:
+          loggedView && loggedView.minutes > 0 && !bike ? `${loggedView.minutes} min` : undefined,
+        exercises: loggedRows.length > 0 ? loggedRows : undefined,
       });
     }
   }

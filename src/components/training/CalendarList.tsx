@@ -5,7 +5,7 @@ import type { CalendarActivity, CalendarDay } from "@/lib/calendar";
 import { applySessionPlacements } from "@/lib/calendar-placements";
 import { exerciseProgressStateWord } from "@/lib/logged-work";
 import { isBikeLoggerHref } from "@/lib/timer-session";
-import { HoldToMove, useWorkoutMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
+import { HoldToMove, usePlanPlacements, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 
 function weekSessionTally(days: CalendarDay[]) {
@@ -105,6 +105,11 @@ function ActivityCard({ activity }: { activity: CalendarActivity }) {
               {activity.durationLabel}
             </span>
           ) : null}
+          {activity.minutesLabel ? (
+            <span data-logged-minutes className="mt-0.5 block text-sm font-medium tabular-nums">
+              {activity.minutesLabel}
+            </span>
+          ) : null}
           {activity.exercises && activity.exercises.length > 0 ? (
             <span className="mt-1 block space-y-0.5 text-xs text-muted" data-exercise-progress>
               {activity.exercises.map((exercise) => (
@@ -157,8 +162,8 @@ export function CalendarList({
   /** Carousel label for the week these rows belong to. */
   weekLabel?: string;
 }) {
-  const move = useWorkoutMove();
-  const shown = applySessionPlacements(days, move?.placements ?? {}) as CalendarDay[];
+  const placements = usePlanPlacements();
+  const shown = applySessionPlacements(days, placements) as CalendarDay[];
   const tally = weekSessionTally(shown);
   return (
     <div className="space-y-4">

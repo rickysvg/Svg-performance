@@ -186,6 +186,69 @@ function plannedFromExercises(
   }, 0);
 }
 
+function bikeLoggedFullStructure(session: ShareSessionLike) {
+  const sets = loggedSets(session.sets);
+  const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
+  const prescribed = choice ? bikeTimerRoundCount(choice) : 0;
+  return Boolean(choice && prescribed > 0 && sets.length >= prescribed);
+}
+
+function finiteRideSeconds(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  return Math.max(1, Math.round(value));
+}
+
+/**
+ * Seconds stored on a bike set from the train logger.
+ * A running interval clock is the ride. Otherwise the session clock is.
+ * A past log keeps the planned ride.
+ */
+export function liveBikeLoggedSeconds(input: {
+  plannedSeconds: number;
+  /** Elapsed on the set interval clock. Null or 0 when that clock never left idle. */
+  timerElapsed?: number | null;
+  /** Session header clock. Null or 0 when it has not started. */
+  sessionElapsed?: number | null;
+  backfilled?: boolean | null;
+}) {
+  const planned = Math.min(
+    3600,
+    Math.max(1, Math.round(Number.isFinite(input.plannedSeconds) ? input.plannedSeconds : 1)),
+  );
+  if (input.backfilled) return planned;
+  const timer = finiteRideSeconds(input.timerElapsed);
+  if (timer != null) return Math.min(3600, timer);
+  const session = finiteRideSeconds(input.sessionElapsed);
+  if (session != null) return Math.min(3600, session);
+  return planned;
+}
+
+/** Logged set time for a plan-day ride. A timer# choice keeps the structure path. */
+function planDayRideSeconds(session: ShareSessionLike) {
+  const sets = loggedSets(session.sets);
+  const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
+  if (choice) return null;
+  const effort = bikeCardioEffort(sets).totalSeconds;
+  return effort > 0 ? effort : null;
+}
+
+/**
+ * Live finish clock. A one-second freeze and an edited ride keep the structure.
+ * A real clock that finished under the plan (a 2:15 ride on a 20:00 structure)
+ * shows the elapsed time. A plan-day ride shows the seconds that were ridden,
+ * even when the logger was open longer than that ride. Backfill is handled by
+ * the caller.
+ */
+function liveBikeFinishSeconds(session: ShareSessionLike) {
+  const structure = bikeCardioDurationSeconds(session);
+  const wall = sessionDurationSeconds(session);
+  if (wall <= 1) return structure;
+  if (bikeLoggedFullStructure(session) && wall > 0 && wall < structure) return wall;
+  const ridden = planDayRideSeconds(session);
+  if (ridden != null && wall > ridden) return ridden;
+  return structure;
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;
@@ -196,7 +259,11 @@ export function workoutCompleteTiles(input: {
   if (isBikeCardioSession(input.session)) {
     const sets = loggedSets(input.session.sets);
     const effort = bikeCardioEffort(sets);
-    const seconds = bikeCardioDurationSeconds(input.session);
+    // Live sessions show a real elapsed clock. Structure time stays on a
+    // one-second freeze, an edited ride, and a backfilled ride.
+    const seconds = input.session.backfilled
+      ? bikeCardioDurationSeconds(input.session)
+      : liveBikeFinishSeconds(input.session);
     const intervals = sessionRoundCount(sets) || sets.length;
     return applyFinishTime(
       [

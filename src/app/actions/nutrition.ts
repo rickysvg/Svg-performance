@@ -17,6 +17,7 @@ import { timeZoneForUser } from "@/lib/profile";
 import { parseDateTimeLocal } from "@/lib/timezone";
 
 export type NutritionSavedValues = {
+  id: string;
   name: string;
   mealType: string;
   servings: number;
@@ -27,6 +28,7 @@ export type NutritionSavedValues = {
   fatG: number;
   notes: string;
   eatenAt: string;
+  source: string;
 };
 
 export type NutritionActionState = {
@@ -34,6 +36,8 @@ export type NutritionActionState = {
   success?: string;
   savedAt?: number;
   saved?: NutritionSavedValues;
+  /** First log of the local day. The page shows the streak copy in place. */
+  celebrate?: boolean;
 };
 
 async function requireNutritionUser() {
@@ -71,6 +75,7 @@ function parseEntry(formData: FormData, timeZone: string) {
 }
 
 function savedValues(row: {
+  id: string;
   name: string;
   mealType: string;
   servings: number;
@@ -81,8 +86,10 @@ function savedValues(row: {
   fatG: number;
   notes: string;
   eatenAt: Date;
+  source: string;
 }): NutritionSavedValues {
   return {
+    id: row.id,
     name: row.name,
     mealType: row.mealType,
     servings: row.servings,
@@ -93,6 +100,7 @@ function savedValues(row: {
     fatG: row.fatG,
     notes: row.notes,
     eatenAt: row.eatenAt.toISOString(),
+    source: row.source,
   };
 }
 
@@ -114,17 +122,15 @@ export async function saveNutritionEntryAction(
       : await createNutritionEntryForUser(user.id, payload);
     revalidatePath("/nutrition");
     revalidatePath("/home");
-    if (!celebrateStreak) {
-      return {
-        success: "Food log saved. These numbers are your manual estimates.",
-        savedAt: Date.now(),
-        saved: savedValues(saved),
-      };
-    }
+    return {
+      success: "Food log saved. These numbers are your manual estimates.",
+      savedAt: Date.now(),
+      saved: savedValues(saved),
+      celebrate: celebrateStreak,
+    };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/nutrition?celebrate=streak");
 }
 
 export async function deleteNutritionEntryAction(formData: FormData) {

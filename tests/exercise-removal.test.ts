@@ -652,6 +652,8 @@ describe("persisted session removal", () => {
       userId: user.id,
       choice: choice!,
       roundsCompleted: 2,
+      // Monday has no scheduled bike, so the free-timer plan count stays the round plan.
+      now: new Date("2026-10-19T18:00:00.000Z"),
     });
     const bikeRows = bike.sets.filter((set) => set.exerciseName === BIKE_TIMER_EXERCISE).length;
     expect(bikeRows).toBeGreaterThan(0);

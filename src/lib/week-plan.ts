@@ -583,6 +583,36 @@ export function nextActiveDate(
   return null;
 }
 
+const CHIP_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** Calendar chip date. The month shows on the first day and when the week crosses a month. */
+export function weekChipDateLabel(
+  date: Date,
+  dateLabel: string,
+  index: number,
+  previousDate: Date | undefined,
+  timeZone = APP_TIMEZONE,
+) {
+  const month = CHIP_MONTHS[zonedParts(date, timeZone).month - 1] ?? "";
+  const previous =
+    previousDate != null ? CHIP_MONTHS[zonedParts(previousDate, timeZone).month - 1] ?? "" : "";
+  if (index === 0 || month !== previous) return `${month} ${dateLabel}`;
+  return dateLabel;
+}
+
 export function nextActiveWeekday(
   prefs: PlannerPrefs,
   from: Date,

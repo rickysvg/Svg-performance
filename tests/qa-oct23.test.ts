@@ -63,11 +63,13 @@ describe("Oct 23 QA fixes", () => {
     );
 
     const history = read("src/app/(member)/training/history/page.tsx");
-    const nutrition = read("src/app/(member)/nutrition/page.tsx");
+    const nutrition = read("src/components/nutrition/FuelBoard.tsx");
+    const nutritionPage = read("src/app/(member)/nutrition/page.tsx");
     expect(history).toContain("formatMemberDateTime");
     expect(nutrition).toContain("formatMemberDateTime");
     expect(history).not.toContain("toLocaleString");
     expect(nutrition).not.toContain("toLocaleString");
+    expect(nutritionPage).not.toContain("toLocaleString");
   });
 
   it("keeps the original eaten time when a correction is saved, and shows a spinner", () => {

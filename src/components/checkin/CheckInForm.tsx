@@ -149,7 +149,7 @@ export function CheckInForm({
           does not change when you log rounds.
         </p>
         {sessionTitles.length > 0 ? (
-          <p className="mt-1 text-muted">{sessionTitles.join(" · ")}</p>
+          <p className="mt-1 break-words text-muted">{sessionTitles.join(" · ")}</p>
         ) : (
           <p className="mt-1 text-muted">Nothing saved in the logger yet.</p>
         )}
