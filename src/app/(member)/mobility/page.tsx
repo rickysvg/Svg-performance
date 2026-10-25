@@ -21,7 +21,7 @@ export default async function MobilityPage() {
           Six short routines. Holds, sets, and rounds — log what you actually did. Warm up before the long holds.
         </p>
         <p className="mt-2 text-xs text-muted" data-mobility-legend>
-          Included is in every plan. Pro opens on a trial or Pro.
+          Included routines are in every plan. Pro routines open with a Pro trial or Pro.
         </p>
       </div>
 

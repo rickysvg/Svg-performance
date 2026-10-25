@@ -6,6 +6,8 @@ import { APP_TIMEZONE } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 import { sessionCountsAsPlannedCompletion } from "@/lib/logged-work";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
+import { choiceToken, customBikeChoice } from "@/lib/bike-chooser";
+import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { resolveSessionElapsed, SESSION_DURATION_CAP_SECONDS } from "@/lib/session-elapsed";
 import { readWorkoutTimerFields } from "@/lib/workout-timer-columns";
 import {
@@ -17,6 +19,7 @@ import {
   deleteWorkoutSessionForUser,
   continuePartialWorkoutForUser,
   recordWorkoutActivityForUser,
+  resumeHeldSessionClockForUser,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
   startWorkoutFromDay,
@@ -565,7 +568,7 @@ describe("a workout is complete only after a logged save", () => {
           elapsedSeconds: resumed.elapsedSeconds,
           timerStartedAt: resumed.timerStartedAt,
         },
-        new Date(Date.now() + 10_000),
+        new Date(resumed.timerStartedAt!.getTime() + 10_000),
       );
       expect(view.seconds).toBe(expected + 10);
       await updateWorkoutSessionForUser({
@@ -644,7 +647,7 @@ describe("a workout is complete only after a logged save", () => {
           elapsedSeconds: resumed.elapsedSeconds,
           timerStartedAt: resumed.timerStartedAt,
         },
-        new Date(Date.now() + 10_000),
+        new Date(resumed.timerStartedAt!.getTime() + 10_000),
       ).seconds,
     ).toBe(100);
   });
@@ -1112,11 +1115,14 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.status).toBe("draft");
     expect(resumed.finishedAt).toBeNull();
     expect(resumed.elapsedSeconds).toBe(70 * 60 + 25);
-    expect(resumed.timerStartedAt).not.toBeNull();
-    const ticking = resolveSessionElapsed(resumed, new Date(resumed.timerStartedAt!.getTime() + 30_000));
-    expect(ticking.ticking).toBe(true);
-    expect(ticking.seconds).toBe(70 * 60 + 25 + 30);
-    expect(ticking.label).toBe("1:10:55");
+    expect(resumed.timerStartedAt).toBeInstanceOf(Date);
+    const held = resolveSessionElapsed(
+      resumed,
+      new Date(resumed.timerStartedAt!.getTime() + 5 * 60 * 1000),
+    );
+    expect(held.ticking).toBe(true);
+    expect(held.seconds).toBe(70 * 60 + 25 + 5 * 60);
+    expect(held.label).toBe("1:15:25");
   });
 
   it("keeps a capped clock on resume and credits activity gaps from that clock", async () => {
@@ -1240,6 +1246,51 @@ describe("a workout is complete only after a logged save", () => {
     });
     expect(away.elapsedSeconds).toBe(600 + 10 * 60);
     expect((await readWorkoutTimerFields(fresh.id, prisma)).elapsedSeconds).toBe(600 + 10 * 60);
+  });
+
+  it("leaves a reopened finished draft on its stored clock until Resume", async () => {
+    const user = await makeUser("held-clock@example.com");
+    const createdAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Bike",
+        performedAt: createdAt,
+        status: "draft",
+        createdAt,
+      },
+    });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { elapsedSeconds: 90 * 60, timerStartedAt: null, finishedAt: null },
+    });
+    const lookedAt = new Date();
+    const viewed = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: session.id,
+      now: lookedAt,
+    });
+    expect(viewed.elapsedSeconds).toBe(90 * 60);
+    expect(viewed.timerStartedAt).toBeNull();
+    const held = await readWorkoutTimerFields(session.id, prisma);
+    expect(held.elapsedSeconds).toBe(90 * 60);
+    expect(held.timerStartedAt).toBeNull();
+
+    const before = Date.now();
+    const resumed = await resumeHeldSessionClockForUser({
+      userId: user.id,
+      workoutId: session.id,
+    });
+    expect(resumed.elapsedSeconds).toBe(90 * 60);
+    expect(resumed.timerStartedAt).not.toBeNull();
+    expect(resumed.timerStartedAt!.getTime()).toBeGreaterThanOrEqual(before - 2000);
+    const after = await recordWorkoutActivityForUser({
+      userId: user.id,
+      workoutId: session.id,
+      now: new Date(resumed.timerStartedAt!.getTime() + 20_000),
+    });
+    expect(after.elapsedSeconds).toBe(90 * 60 + 20);
+    expect(after.timerStartedAt).not.toBeNull();
   });
 
   it("keeps a partial or complete log's time when it is only viewed", async () => {
@@ -1402,15 +1453,20 @@ describe("a workout is complete only after a logged save", () => {
     });
     const resumed = await reopenCompletedWorkoutForUser(user.id, session.id);
     expect(resumed.status).toBe("draft");
+    expect(resumed.timerStartedAt).toBeInstanceOf(Date);
     expect(await finalizePastLoggedDrafts(user.id, new Date(), APP_TIMEZONE)).toBe(0);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
     const timer = await readWorkoutTimerFields(session.id, prisma);
     expect(row.status).toBe("draft");
     expect(timer.elapsedSeconds).toBe(70 * 60 + 25);
     expect(timer.finishedAt).toBeNull();
-    const ticking = resolveSessionElapsed({ ...row, ...timer }, new Date(timer.timerStartedAt!.getTime() + 5_000));
-    expect(ticking.ticking).toBe(true);
-    expect(ticking.label).toBe("1:10:30");
+    expect(timer.timerStartedAt).toBeInstanceOf(Date);
+    const held = resolveSessionElapsed(
+      { ...row, ...timer },
+      new Date(timer.timerStartedAt!.getTime() + 5_000),
+    );
+    expect(held.ticking).toBe(true);
+    expect(held.seconds).toBe(70 * 60 + 25 + 5);
   });
 
   it("does not store a multi-day gap when a finished workout is reopened", async () => {
@@ -1430,5 +1486,165 @@ describe("a workout is complete only after a logged save", () => {
     expect(resumed.status).toBe("draft");
     expect(resumed.elapsedSeconds == null || resumed.elapsedSeconds === 0).toBe(true);
     expect(resumed.elapsedSeconds).not.toBe(4 * 60 * 60);
+  });
+
+  it("does not add an empty Daru row onto a plan ride that is already logged", async () => {
+    const user = await makeUser("daru-empty-row@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 5);
+    expect(day?.exercises[0]?.name).toBe("Daru alactic power bike");
+    const choice = customBikeChoice({ workSeconds: 10, restSeconds: 50, rounds: 3 });
+    expect(choice).not.toBeNull();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: day!.id,
+        title: "Assault bike intervals",
+        performedAt: new Date("2026-10-22T18:00:00.000Z"),
+        status: "partial",
+        plannedSetCount: 8,
+        sets: {
+          create: [
+            {
+              exerciseName: "Assault bike intervals",
+              setNumber: 1,
+              sortOrder: 0,
+              logMode: "timed_round",
+              durationSeconds: 10,
+              completed: true,
+              prescriptionKey: `timer#bw:${choiceToken(choice!)}`,
+            },
+          ],
+        },
+      },
+      include: { sets: true },
+    });
+    const resumed = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: session.id,
+      preferredUnits: "lb",
+    });
+    expect(resumed.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    expect(resumed.sets.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
+    expect(resumed.sets.every((set) => set.exerciseName !== "Daru alactic power bike")).toBe(true);
+  });
+
+  it("keeps undo finish of a plan ride free of an empty Daru row and saves it complete", async () => {
+    const user = await makeUser("daru-undo-save@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 5);
+    expect(day?.exercises[0]?.name).toBe("Daru alactic power bike");
+    const choice = customBikeChoice({ workSeconds: 10, restSeconds: 50, rounds: 3 });
+    expect(choice).not.toBeNull();
+    const session = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        programDayId: day!.id,
+        title: "Cardio",
+        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        status: "complete",
+        plannedSetCount: 1,
+        sets: {
+          create: [
+            {
+              exerciseName: "Assault bike intervals",
+              setNumber: 1,
+              sortOrder: 0,
+              logMode: "timed_round",
+              durationSeconds: 10,
+              completed: true,
+              prescriptionKey: `timer#bw:${choiceToken(choice!)}`,
+            },
+          ],
+        },
+      },
+    });
+    const reopened = await reopenCompletedWorkoutForUser(user.id, session.id);
+    expect(reopened.status).toBe("draft");
+    const logged = reopened.sets.map((set) => ({
+      exerciseName: set.exerciseName,
+      setNumber: set.setNumber,
+      completed: set.completed,
+      durationSeconds: set.durationSeconds,
+      reps: set.reps,
+      loadValue: set.loadValue,
+      prescriptionKey: set.prescriptionKey,
+      logMode: set.logMode,
+      notes: set.notes,
+      loadUnit: "lb" as const,
+      rir: "",
+    }));
+    const prescriptions = (day?.exercises ?? []).map((row) => ({ name: row.name, sets: row.sets }));
+    expect(planRowsForLoggedSets(prescriptions, logged).some((row) => row.name === "Daru alactic power bike")).toBe(
+      false,
+    );
+    const withEmptyPlanRow = restoreLoggerSets(
+      logged,
+      {
+        sets: [
+          ...logged,
+          {
+            exerciseName: "Daru alactic power bike",
+            setNumber: 1,
+            completed: false,
+            durationSeconds: null,
+          },
+        ],
+      },
+      prescriptions,
+      (name, setNumber) => ({
+        exerciseName: name,
+        setNumber,
+        completed: false,
+        durationSeconds: null,
+        reps: null,
+        loadValue: null,
+        prescriptionKey: "",
+        logMode: "timed_round",
+        notes: "",
+        loadUnit: "lb" as const,
+        rir: "",
+      }),
+    );
+    const restored = dropEmptyPlanBikeRows(withEmptyPlanRow, logged);
+    expect(restored.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    expect(restored.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
+    const sets = restored
+      .filter((set) => set.completed || (set.durationSeconds ?? 0) > 0)
+      .map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb" as const,
+        logMode: "timed_round" as const,
+        durationSeconds: set.durationSeconds,
+        completed: true,
+        notes: "",
+        prescriptionKey: set.prescriptionKey ?? "",
+        rir: "",
+      }));
+    const drafted = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: "Cardio",
+      performedAt: reopened.performedAt,
+      notes: "",
+      status: "draft",
+      sets,
+    });
+    expect(drafted.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    const saved = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: "Cardio",
+      performedAt: reopened.performedAt,
+      notes: "",
+      status: "complete",
+      sets,
+    });
+    expect(saved.status).toBe("complete");
+    expect(saved.sets.some((set) => set.exerciseName === "Daru alactic power bike")).toBe(false);
+    expect(saved.sets.some((set) => set.exerciseName === "Assault bike intervals" && set.completed)).toBe(true);
   });
 });

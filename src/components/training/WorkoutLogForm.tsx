@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { recordWorkoutActivityAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
+import { recordWorkoutActivityAction, resumeHeldSessionClockAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
 import { primeUnlockAudio } from "@/lib/badge-sfx";
 import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
@@ -23,6 +24,7 @@ import {
   bikeChoiceFromKey,
   choiceToken,
   formatBikeRecipe,
+  nextGeneratedBikeTitle,
   parseBikeRecipe,
   rememberBikeChoice,
   retainBikeChoiceSets,
@@ -86,7 +88,7 @@ import {
 } from "@/lib/session-elapsed";
 import { exerciseUsesBikeLogger, textIsBikeWorkout, timerEntryModeFromText } from "@/lib/timer-session";
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
-import { restoreLoggerSets } from "@/lib/logger-sets";
+import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import { planWorkFromText, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
 import {
@@ -256,13 +258,17 @@ function prescribedRowId(sessionId: string, exerciseName: string, setNumber: num
 
 function setsForLogger(session: Session, draft: LoggerDraft | null = null): WorkoutSet[] {
   const base = setsInLb(session.sets);
-  const prescriptions = session.programDay?.exercises ?? [];
-  return restoreLoggerSets(
+  const plannedRows = session.programDay?.exercises ?? [];
+  const prescriptions = planRowsForLoggedSets(
+    plannedRows.map((row) => ({ name: row.name, sets: row.sets })),
+    base,
+  );
+  const restored = restoreLoggerSets(
     base,
     draft,
-    prescriptions.map((row) => ({ name: row.name, sets: row.sets })),
+    prescriptions,
     (exerciseName, setNumber) => {
-      const planned = prescriptions.find(
+      const planned = plannedRows.find(
         (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
       );
       const name = planned?.name ?? exerciseName;
@@ -283,6 +289,7 @@ function setsForLogger(session: Session, draft: LoggerDraft | null = null): Work
     },
     gymExerciseKey,
   );
+  return dropEmptyPlanBikeRows(restored, [...base, ...(draft?.sets ?? [])]);
 }
 
 const SAVE_FAILED =
@@ -451,7 +458,14 @@ function SessionTimer({
     const created = new Date(createdAt).getTime();
     return Number.isFinite(created) ? created : 0;
   })();
-  const live = sessionRecordsActivity(status);
+  // A finished log reopened as a draft keeps its stored duration. The created-at
+  // fallback would credit the gap and a later save would store that longer time.
+  const held =
+    status === "draft" &&
+    !timerStartedAt &&
+    typeof elapsedSeconds === "number" &&
+    elapsedSeconds > 0;
+  const live = sessionRecordsActivity(status) && !held;
   // Server and the hydration render share the anchor. A live draft picks up the wall clock after that.
   const now = useSyncExternalStore(
     live ? subscribeSessionClock : subscribeFrozenClock,
@@ -526,6 +540,9 @@ export function WorkoutLogForm({
   correctable?: boolean;
 }) {
   const loggerOpen = session.status !== "complete" || correctable;
+  const router = useRouter();
+  const clockHeld =
+    session.status === "draft" && !session.timerStartedAt && (session.elapsedSeconds ?? 0) > 0;
   const [activeName, setActiveName] = useState<string | null>(null);
   const [restByName, setRestByName] = useState<Record<string, number>>({});
   const [programmedName, setProgrammedName] = useState<Record<string, string>>({});
@@ -850,7 +867,7 @@ export function WorkoutLogForm({
   }, []);
 
   useEffect(() => {
-    if (!sessionRecordsActivity(session.status)) return;
+    if (!sessionRecordsActivity(session.status) || clockHeld) return;
     noteLoggerActivity(session.id);
     const beat = () => {
       if (document.visibilityState !== "visible") return;
@@ -858,7 +875,7 @@ export function WorkoutLogForm({
     };
     const timer = window.setInterval(beat, ACTIVITY_HEARTBEAT_MS);
     return () => window.clearInterval(timer);
-  }, [session.id, session.status]);
+  }, [session.id, session.status, clockHeld]);
 
   useEffect(() => {
     if (!state.error) return;
@@ -1235,6 +1252,13 @@ export function WorkoutLogForm({
   }
 
   function applyBikeWorkout(exerciseName: string, choice: BikeChoice) {
+    const previous =
+      setsRef.current
+        .filter((set) => set.exerciseName === exerciseName)
+        .map((set) => bikeChoiceFromKey(set.prescriptionKey))
+        .find((row) => row != null) ?? null;
+    const titleField = formRef.current?.querySelector<HTMLTextAreaElement>("[data-workout-title]");
+    if (titleField) titleField.value = nextGeneratedBikeTitle(titleField.value, previous, choice);
     setRestByName((current) => ({ ...current, [exerciseName]: 0 }));
     const nextRest = restTimer?.exerciseName === exerciseName ? null : restTimer;
     if (nextRest !== restTimer) setRestTimer(nextRest);
@@ -1339,8 +1363,19 @@ export function WorkoutLogForm({
           <div className="flex items-center gap-2 px-4 py-2">
             <Link
               href={cancelHref}
-              onClick={() => discardIfEmpty()}
-              className="touch-target inline-flex items-center text-sm font-medium text-muted"
+              aria-disabled={loggerOpen ? undefined : true}
+              tabIndex={loggerOpen ? undefined : -1}
+              data-logger-cancel={loggerOpen ? "open" : "hold"}
+              onClick={(event) => {
+                if (!loggerOpen) {
+                  event.preventDefault();
+                  return;
+                }
+                discardIfEmpty();
+              }}
+              className={`touch-target inline-flex items-center text-sm font-medium text-muted ${
+                loggerOpen ? "" : "pointer-events-none opacity-40"
+              }`}
             >
               Cancel
             </Link>
@@ -1367,6 +1402,20 @@ export function WorkoutLogForm({
                 elapsedSeconds={session.elapsedSeconds}
                 timerStartedAt={session.timerStartedAt}
               />
+              {clockHeld ? (
+                <button
+                  type="button"
+                  data-resume-session-clock
+                  className="text-xs font-semibold text-[#CBF805]"
+                  onClick={() => {
+                    void resumeHeldSessionClockAction(session.id).then(() => {
+                      router.refresh();
+                    });
+                  }}
+                >
+                  Resume
+                </button>
+              ) : null}
             </div>
             <RoundTimerButton
               mode={headerTimer.mode}

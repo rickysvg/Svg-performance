@@ -42,10 +42,13 @@ describe("timer session routing", () => {
       path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"),
       "utf8",
     );
-    const beatStart = form.indexOf("if (!sessionRecordsActivity(session.status)) return;");
+    const beatStart = form.indexOf(
+      "if (!sessionRecordsActivity(session.status) || clockHeld) return;",
+    );
     const beat = form.slice(beatStart, form.indexOf("ACTIVITY_HEARTBEAT_MS", beatStart));
     expect(beat.indexOf("noteLoggerActivity(session.id)")).toBeGreaterThan(-1);
     expect(beat.indexOf("noteLoggerActivity(session.id)")).toBeLessThan(beat.indexOf("setInterval"));
+    expect(timer).toContain("sessionRecordsActivity(status) && !held");
     const subscribe = form.slice(form.indexOf("function subscribeSessionClock"), form.indexOf("function subscribeFrozenClock"));
     const kick = subscribe.slice(subscribe.indexOf("const kick"), subscribe.indexOf("const timer"));
     expect(kick).toContain("noteLoggerActivity(activitySessionId)");

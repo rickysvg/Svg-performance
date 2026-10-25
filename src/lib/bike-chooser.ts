@@ -18,7 +18,14 @@ import { addedPrescriptionKey, parseAddedPlan } from "@/lib/logger-insert";
 import {
   formatIntervalDisplay,
   formatIntervalTotal,
+  INTERVAL_REST_MAX,
+  INTERVAL_ROUNDS_MAX,
   INTERVAL_SESSION_MAX_SECONDS,
+  INTERVAL_SET_REST_MAX,
+  INTERVAL_SETS_MAX,
+  INTERVAL_WORK_MIN,
+  intervalConfiguredSeconds,
+  intervalWorkMax,
 } from "@/lib/interval-shorthand";
 
 export type BikeGoal = "power" | "anaerobic" | "aerobic" | "fight-sim";
@@ -285,6 +292,31 @@ export function bikeChoiceWithRounds(
   };
 }
 
+/** Member-facing title for a choice. A one-round rest-free ride is "Steady ride · …". */
+export function generatedBikeTitle(choice: BikeChoice) {
+  const sets = Math.max(1, Math.round(choice.spec.repeatRounds ?? 1));
+  return formatIntervalDisplay({
+    sets,
+    rounds: Math.max(1, Math.round(choice.spec.roundsPerSet) || 1),
+    workSeconds: choice.spec.workSeconds,
+    restSeconds: choice.spec.restSeconds,
+    setRestSeconds: sets > 1 ? (choice.spec.restBetweenRoundsSeconds ?? 0) : 0,
+  });
+}
+
+/**
+ * A structure change rewrites the title only when it still is the label for
+ * the previous choice. A name the member typed stays.
+ */
+export function nextGeneratedBikeTitle(current: string, previous: BikeChoice | null, next: BikeChoice) {
+  const posted = current.trim();
+  const nextTitle = generatedBikeTitle(next);
+  const generated = !posted || posted === "Steady ride" || posted.startsWith("Steady ride · ");
+  if (!previous) return generated ? nextTitle : posted;
+  if (generated || posted === generatedBikeTitle(previous)) return nextTitle;
+  return posted;
+}
+
 export function customBikeChoice(input: {
   workSeconds: number;
   restSeconds: number;
@@ -294,13 +326,24 @@ export function customBikeChoice(input: {
   repeatRounds?: number;
   restBetweenRoundsSeconds?: number;
 }): BikeChoice | null {
-  const workSeconds = clampInt(input.workSeconds, 5, 120);
-  const restSeconds = clampInt(input.restSeconds, 5, 180);
-  const rounds = clampInt(input.rounds, 1, 30);
+  const repeatGuess = input.repeatRounds == null ? 1 : Math.round(input.repeatRounds);
+  const roundGuess = Math.round(input.rounds);
+  const restGuess = Math.round(input.restSeconds);
+  const workMax = intervalWorkMax({
+    sets: Number.isFinite(repeatGuess) && repeatGuess > 0 ? repeatGuess : 1,
+    rounds: Number.isFinite(roundGuess) && roundGuess > 0 ? roundGuess : 1,
+    restSeconds: Number.isFinite(restGuess) && restGuess > 0 ? restGuess : 0,
+  });
+  const workSeconds = clampInt(input.workSeconds, INTERVAL_WORK_MIN, workMax);
+  const restSeconds = clampInt(input.restSeconds, 0, INTERVAL_REST_MAX);
+  const rounds = clampInt(input.rounds, 1, INTERVAL_ROUNDS_MAX);
   const warmupSeconds = clampInt(input.warmupSeconds ?? 0, 0, 600);
   const cooldownSeconds = clampInt(input.cooldownSeconds ?? 0, 0, 600);
-  const repeatRounds = input.repeatRounds == null ? 1 : clampInt(input.repeatRounds, 1, 10);
-  const between = input.restBetweenRoundsSeconds == null ? 0 : clampInt(input.restBetweenRoundsSeconds, 0, 600);
+  const repeatRounds = input.repeatRounds == null ? 1 : clampInt(input.repeatRounds, 1, INTERVAL_SETS_MAX);
+  const between =
+    input.restBetweenRoundsSeconds == null
+      ? 0
+      : clampInt(input.restBetweenRoundsSeconds, 0, INTERVAL_SET_REST_MAX);
   if (
     workSeconds == null ||
     restSeconds == null ||
@@ -313,6 +356,14 @@ export function customBikeChoice(input: {
     return null;
   }
   const shownBetween = repeatRounds > 1 ? between : 0;
+  const totalSeconds = intervalConfiguredSeconds("bike", {
+    sets: repeatRounds,
+    rounds,
+    workSeconds,
+    restSeconds,
+    setRestSeconds: shownBetween,
+  });
+  if (totalSeconds > INTERVAL_SESSION_MAX_SECONDS) return null;
   const display = formatIntervalDisplay({
     sets: repeatRounds,
     rounds,
@@ -423,8 +474,7 @@ export function choiceToken(choice: BikeChoice) {
 }
 
 /**
- * A saved one-round ride with no rest. `customBikeChoice` still rejects rest 0
- * and work past 2 minutes, so the live picker does not offer these clocks.
+ * A saved one-round ride with no rest that the live caps still have to read.
  * History has to read the token back or the edit falls off the interval path.
  */
 function steadyRideChoice(parts: number[]): BikeChoice | null {
@@ -561,28 +611,39 @@ export function retainBikeChoiceSets<
     completed: boolean;
     setNumber: number;
     prescriptionKey: string;
+    durationSeconds?: number | null;
   },
 >(sets: T[], exerciseName: string, choice: BikeChoice): T[] {
   const first = sets.findIndex((set) => set.exerciseName === exerciseName);
   if (first < 0) return sets;
+  const workSeconds = Math.max(1, Math.round(choice.spec.workSeconds));
+  const stamped = (set: T): T =>
+    ({
+      ...set,
+      durationSeconds: workSeconds,
+      prescriptionKey: prescriptionWithBikeChoice(set.prescriptionKey, exerciseName, choice),
+    }) as T;
   const mine = sets.filter((set) => set.exerciseName === exerciseName);
   const completed = mine.filter((set) => set.completed);
+  const finished = mine.length > 0 && completed.length === mine.length;
+  // A finished ride's new structure is the whole ride. One stored round must
+  // not stay "1/31" after the member changes the workout.
+  if (finished) {
+    const rounds = bikeTimerRoundCount(choice);
+    const template = completed[0]!;
+    const expanded = Array.from({ length: rounds }, (_, index) =>
+      stamped({ ...template, completed: true, setNumber: index + 1 }),
+    );
+    const before = sets.slice(0, first).filter((set) => set.exerciseName !== exerciseName);
+    const after = sets.slice(first).filter((set) => set.exerciseName !== exerciseName);
+    return [...before, ...expanded, ...after];
+  }
   const open = mine.find((set) => !set.completed) ?? (completed.length === 0 ? mine[0] : undefined);
-  const kept = completed.map((set) => ({
-    ...set,
-    prescriptionKey: prescriptionWithBikeChoice(set.prescriptionKey, exerciseName, choice),
-  }));
+  const kept = completed.map((set) => stamped(set));
   if (open && !open.completed) {
-    kept.push({
-      ...open,
-      prescriptionKey: prescriptionWithBikeChoice(open.prescriptionKey, exerciseName, choice),
-    });
+    kept.push(stamped(open));
   } else if (!open && mine[0] && completed.length === 0) {
-    kept.push({
-      ...mine[0],
-      completed: false,
-      prescriptionKey: prescriptionWithBikeChoice(mine[0].prescriptionKey, exerciseName, choice),
-    });
+    kept.push(stamped({ ...mine[0], completed: false }));
   }
   const renumbered = kept.map((set, index) => ({ ...set, setNumber: index + 1 }));
   const before = sets.slice(0, first).filter((set) => set.exerciseName !== exerciseName);

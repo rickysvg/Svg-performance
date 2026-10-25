@@ -35,7 +35,8 @@ import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion"
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
-import { sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
+import { sparringLogDateLabel, sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
+import { WeighInList } from "@/components/progress/WeighInList";
 import { SparringTrend } from "@/components/progress/SparringTrend";
 import { formatWorkoutCompleteDate } from "@/lib/workout-complete";
 import { civilDayInstant } from "@/lib/performed-at";
@@ -89,6 +90,18 @@ export default async function ProgressPage() {
   });
   const chartNow = new Date().toISOString();
   const shownWeights = weightHistory.map((row) => displayBodyMetric(row));
+  const weighInDate = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: tz,
+  });
+  const weighIns = shownWeights.map((row) => ({
+    id: row.id,
+    label: weighInDate.format(row.recordedAt),
+    value: row.value,
+    unit: row.unit,
+  }));
   const massLine = massCaption(shownWeights[0] ?? null, shownWeights[1] ?? null, tz);
   const massGauge = massGaugeScale({
     value: shownWeights[0]?.value ?? null,
@@ -222,6 +235,8 @@ export default async function ProgressPage() {
         )}
       </section>
 
+      <WeighInList rows={weighIns} />
+
       <HomeTelemetry data={telemetry} title={telemetryTitle} compact />
 
       <section className="hc-panel px-2.5 py-2" data-sparring-week>
@@ -237,7 +252,7 @@ export default async function ProgressPage() {
           <ul className="mt-2 space-y-0.5 text-sm">
             {sparringWeek.logs.map((log) => (
               <li key={log.dateKey}>
-                {log.weekday || log.dateKey}: {log.rounds} × {log.minutesPerRound} min
+                {sparringLogDateLabel(log)}: {log.rounds} × {log.minutesPerRound} min
                 {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
                 {log.partner ? ` · ${log.partner}` : ""}
                 {log.sessionRating ? ` · session ${log.sessionRating}/5` : ""}

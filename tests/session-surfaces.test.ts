@@ -74,6 +74,13 @@ describe("History, Calendar, and the finish screen share one progress line", () 
       sets: [1, 2, 3].map(() => bikeSet),
     };
     expect(historySessionText(doneRounds)).toBe("3/3 rounds · Done");
+    expect(
+      historySessionText({
+        status: "complete",
+        plannedSetCount: 1,
+        sets: [bikeSet],
+      }),
+    ).toBe("1/1 round · Done");
     expect(calendarSessionText(doneRounds)).toBe(finishSessionText(doneRounds));
 
     const squat = {

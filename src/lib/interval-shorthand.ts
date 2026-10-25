@@ -18,15 +18,19 @@ export type IntervalShorthandResult =
 
 const HINT = "Try 2x8 @ 15/15";
 
-/** Live timer steppers: 30 rounds, 10 sets, 15 min work, 10 min rest and set rest. */
+/** Live timer steppers: 10 sets, 15 min work, 10 min rest and set rest. */
 export const INTERVAL_SETS_MAX = 10;
-export const INTERVAL_ROUNDS_MAX = 30;
 export const INTERVAL_WORK_MIN = 5;
 export const INTERVAL_WORK_MAX = 15 * 60;
 export const INTERVAL_REST_MAX = 10 * 60;
 export const INTERVAL_SET_REST_MAX = 10 * 60;
 /** A logged interval longer than this is rejected, matching the session clock cap. */
 export const INTERVAL_SESSION_MAX_SECONDS = 4 * 60 * 60;
+/**
+ * Most rounds that can still fit. One 5s effort per round fills 4 hours at
+ * this count. A shorter cap (30) rejected rides the session clock still allows.
+ */
+export const INTERVAL_ROUNDS_MAX = Math.floor(INTERVAL_SESSION_MAX_SECONDS / INTERVAL_WORK_MIN);
 
 const SETS_MAX = INTERVAL_SETS_MAX;
 const ROUNDS_MAX = INTERVAL_ROUNDS_MAX;
@@ -48,7 +52,24 @@ export function intervalClockKind(type: string): IntervalClockKind {
 /**
  * One continuous round with no rest may run up to the session cap.
  * Every other interval keeps the live timer's 15:00 work cap.
+ * The next round still has to fit that work cap and the 4 hour session.
  */
+export function canAddIntervalRound(
+  structure: IntervalStructure,
+  mode: IntervalClockKind = "round",
+) {
+  const rounds = Math.round(structure.rounds) + 1;
+  if (!inRange(rounds, 1, INTERVAL_ROUNDS_MAX)) return false;
+  const workMax = intervalWorkMax({
+    sets: structure.sets,
+    rounds,
+    restSeconds: structure.restSeconds,
+  });
+  if (structure.workSeconds > workMax) return false;
+  const total = intervalConfiguredSeconds(mode, { ...structure, rounds });
+  return total <= INTERVAL_SESSION_MAX_SECONDS;
+}
+
 export function intervalWorkMax(spec: { sets: number; rounds: number; restSeconds: number }) {
   const sets = Math.max(1, Math.round(spec.sets) || 1);
   const rounds = Math.max(1, Math.round(spec.rounds) || 1);
@@ -193,6 +214,16 @@ function finish(
   };
 }
 
+function emomBuilt(mode: IntervalClockKind, rounds: number): BuiltLine {
+  if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
+  const value = { sets: 1, rounds, workSeconds: 60, restSeconds: 0, setRestSeconds: null };
+  return {
+    ok: true,
+    value,
+    totalSeconds: intervalConfiguredSeconds(mode, { ...value, setRestSeconds: 0 }),
+  };
+}
+
 function rejectOverCap(built: BuiltLine): IntervalShorthandResult {
   if (!built.ok) return built;
   if (built.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
@@ -208,14 +239,7 @@ export function parseIntervalShorthand(text: string, mode: IntervalClockKind = "
     return rejectOverCap(finish(mode, 1, 8, "20", "10", undefined));
   }
   const emom = /^emom\s+(\d+)$/i.exec(raw);
-  if (emom) {
-    const rounds = Number(emom[1]);
-    if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
-    return {
-      ok: true,
-      value: { sets: 1, rounds, workSeconds: 60, restSeconds: 0, setRestSeconds: null },
-    };
-  }
+  if (emom) return rejectOverCap(emomBuilt(mode, Number(emom[1])));
   const full = FULL.exec(raw);
   if (full) {
     return rejectOverCap(finish(mode, Number(full[1]), Number(full[2]), full[3] ?? "", full[4] ?? "", full[5] || full[6]));
@@ -342,16 +366,7 @@ function interpretShorthand(text: string, current: IntervalStructure, mode: Inte
 
 function parseBuilt(raw: string, mode: IntervalClockKind): BuiltLine {
   const emom = /^emom\s+(\d+)$/i.exec(raw);
-  if (emom) {
-    const rounds = Number(emom[1]);
-    if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
-    const value = { sets: 1, rounds, workSeconds: 60, restSeconds: 0, setRestSeconds: null };
-    return {
-      ok: true,
-      value,
-      totalSeconds: intervalConfiguredSeconds(mode, { ...value, setRestSeconds: 0 }),
-    };
-  }
+  if (emom) return emomBuilt(mode, Number(emom[1]));
   const full = FULL.exec(raw);
   if (full) {
     return finish(mode, Number(full[1]), Number(full[2]), full[3] ?? "", full[4] ?? "", full[5] || full[6]);

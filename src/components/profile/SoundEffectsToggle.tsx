@@ -22,13 +22,13 @@ export function SoundEffectsToggle() {
       <p className="text-sm text-muted">
         Finish stings, badge unlocks, and rest-timer cues. Off by choice; default is on.
       </p>
-      <label className="flex items-start gap-3 rounded-xl border border-line bg-white p-3">
+      <label className="flex items-start gap-3 rounded-xl border border-line bg-[#0c0e11] p-3 text-[#f3f4ef]">
         <input
           data-testid="profile-checkbox-2"
           type="checkbox"
           checked={on}
           onChange={(event) => toggle(event.target.checked)}
-          className="mt-1 h-5 w-5 accent-accent"
+          className="mt-1 h-5 w-5 accent-[#CBF805]"
         />
         <span className="text-sm">Sound effects on</span>
       </label>

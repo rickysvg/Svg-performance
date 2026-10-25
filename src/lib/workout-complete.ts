@@ -86,8 +86,17 @@ function bikeCardioEffort(sets: ShareSetLike[]) {
  * clock still counts.
  */
 export function bikeCardioDurationSeconds(session: ShareSessionLike) {
-  const effort = bikeCardioEffort(loggedSets(session.sets));
+  const sets = loggedSets(session.sets);
+  const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
+  const prescribed = choice ? bikeTimerRoundCount(choice) : 0;
+  const effort = bikeCardioEffort(sets);
   const wall = sessionDurationSeconds(session);
+  // Every logged round of the structure is the ride. The session clock is the
+  // timer from before the change and must not replace that structure.
+  if (choice && prescribed > 0 && sets.length >= prescribed) {
+    const full = bikeEffortSeconds(choice.spec).totalSeconds;
+    if (full > 0) return full;
+  }
   if (effort.totalSeconds > 0 && wall < effort.totalSeconds) return effort.totalSeconds;
   return wall > 0 ? wall : effort.totalSeconds;
 }
@@ -112,8 +121,14 @@ export function backfillFinishDurationSeconds(session: ShareSessionLike): number
 }
 
 function applyBackfillTime(tiles: WorkoutCompleteTile[], session: ShareSessionLike) {
-  const seconds = backfillFinishDurationSeconds(session);
-  if (seconds == null) return tiles;
+  const stored = backfillFinishDurationSeconds(session);
+  if (stored == null) return tiles;
+  // A custom ride can leave the session clock behind the new structure.
+  // History already prefers that structure. The finish Time tile matches it
+  // when the stored clock is the shorter one, and still keeps a longer typed clock.
+  const seconds = isBikeCardioSession(session)
+    ? bikeCardioDurationSeconds({ ...session, status: "complete", elapsedSeconds: stored })
+    : stored;
   if (seconds <= 0) return tiles.filter((tile) => tile.key !== "time");
   return tiles.map((tile) =>
     tile.key === "time" ? { ...tile, value: formatShareDuration(seconds) } : tile,

@@ -7,7 +7,10 @@ import {
   WEEK_CAROUSEL_PAST_WEEKS,
   carouselBackfillPastWeeks,
   carouselFocusOffset,
+  carouselIndexFromScroll,
   carouselLoggedRange,
+  SCROLL_GESTURE_IDLE_MS,
+  scrollGestureAt,
   carouselWeekAnchors,
   carouselWeekStrips,
   packCarouselWeeks,
@@ -52,6 +55,98 @@ function read(rel: string) {
 const prefs = { primaryFocus: "mma" as const, weeklyAvailability: ["Monday", "Wednesday", "Friday"] };
 
 describe("week day carousel", () => {
+  it("keeps a non-gesture scroll on the week the member is viewing", () => {
+    const current = carouselIndexFromScroll({
+      scrollLeft: 0,
+      panelWidth: 400,
+      weekCount: 8,
+      intendedIndex: 5,
+      userGesture: false,
+    });
+    expect(current).toEqual({ index: 5, restore: true });
+    const swiped = carouselIndexFromScroll({
+      scrollLeft: 0,
+      panelWidth: 400,
+      weekCount: 8,
+      intendedIndex: 5,
+      userGesture: true,
+    });
+    expect(swiped).toEqual({ index: 0, restore: false });
+    const unplaced = carouselIndexFromScroll({
+      scrollLeft: 0,
+      panelWidth: 0,
+      weekCount: 8,
+      intendedIndex: 5,
+      userGesture: false,
+    });
+    expect(unplaced).toEqual({ index: 5, restore: false });
+    const strip = read("src/components/training/WeekStrip.tsx");
+    expect(strip).toContain("carouselIndexFromScroll");
+    expect(strip).toContain("reduceScrollGesture");
+    expect(strip).toContain("scrollend");
+    expect(strip).toContain("clearTimeout(gestureTimer.current)");
+    expect(strip).not.toContain("}, 400);");
+    const sync = strip.slice(strip.indexOf("function syncFromScroll"), strip.indexOf("function goTo"));
+    expect(sync).not.toContain("noteUserGesture");
+  });
+
+  it("keeps a slow drag open past the old 400ms window", () => {
+    const events = [
+      { type: "pointerdown" as const, at: 0 },
+      { type: "scroll" as const, at: 600 },
+    ];
+    expect(scrollGestureAt(events, 600)).toBe(true);
+    expect(
+      carouselIndexFromScroll({
+        scrollLeft: 0,
+        panelWidth: 400,
+        weekCount: 8,
+        intendedIndex: 5,
+        userGesture: scrollGestureAt(events, 600),
+      }),
+    ).toEqual({ index: 0, restore: false });
+  });
+
+  it("keeps a long fling open until the coast is idle", () => {
+    const events = [
+      { type: "pointerdown" as const, at: 0 },
+      { type: "pointerup" as const, at: 40 },
+      { type: "scroll" as const, at: 160 },
+      { type: "scroll" as const, at: 300 },
+      { type: "scroll" as const, at: 440 },
+      { type: "scroll" as const, at: 580 },
+      { type: "scroll" as const, at: 600 },
+    ];
+    expect(scrollGestureAt(events, 600)).toBe(true);
+    expect(
+      carouselIndexFromScroll({
+        scrollLeft: 400,
+        panelWidth: 400,
+        weekCount: 8,
+        intendedIndex: 5,
+        userGesture: scrollGestureAt(events, 600),
+      }),
+    ).toEqual({ index: 1, restore: false });
+    expect(scrollGestureAt(events, 600 + SCROLL_GESTURE_IDLE_MS)).toBe(false);
+    expect(
+      carouselIndexFromScroll({
+        scrollLeft: 0,
+        panelWidth: 400,
+        weekCount: 8,
+        intendedIndex: 5,
+        userGesture: scrollGestureAt(events, 600 + SCROLL_GESTURE_IDLE_MS),
+      }),
+    ).toEqual({ index: 5, restore: true });
+    const ended = [
+      { type: "pointerdown" as const, at: 0 },
+      { type: "pointerup" as const, at: 20 },
+      { type: "scroll" as const, at: 80 },
+      { type: "scrollend" as const, at: 90 },
+      { type: "scroll" as const, at: 600 },
+    ];
+    expect(scrollGestureAt(ended, 600)).toBe(false);
+  });
+
   it("labels two weeks back through two weeks ahead in the member zone", () => {
     expect(WEEK_CAROUSEL_PAST_WEEKS).toBe(2);
     expect(WEEK_CAROUSEL_FUTURE_WEEKS).toBe(2);

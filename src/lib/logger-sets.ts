@@ -1,4 +1,6 @@
+import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { setHasLoggedWork } from "@/lib/logged-work";
+import { textIsBikeWorkout } from "@/lib/timer-session";
 
 export type PrescriptionSetCount = {
   name: string;
@@ -51,20 +53,6 @@ function logScore(set: RestorableSet) {
   return score;
 }
 
-function loggedPatch(set: RestorableSet): Partial<RestorableSet> {
-  return {
-    reps: set.reps,
-    loadValue: set.loadValue,
-    loadUnit: set.loadUnit,
-    logMode: set.logMode,
-    durationSeconds: set.durationSeconds,
-    completed: set.completed,
-    notes: set.notes,
-    prescriptionKey: set.prescriptionKey,
-    rir: set.rir,
-  };
-}
-
 function applyDraft<T extends RestorableSet>(base: T, snap: LoggerDraftSet, exerciseName: string): T {
   return {
     ...base,
@@ -80,6 +68,50 @@ function applyDraft<T extends RestorableSet>(base: T, snap: LoggerDraftSet, exer
     prescriptionKey: snap.prescriptionKey || base.prescriptionKey,
     rir: snap.rir || base.rir,
   };
+}
+
+function isBikeRow(name: string) {
+  return isBikeIntervalName(name) || textIsBikeWorkout(name);
+}
+
+function rowHasWork(set: {
+  completed?: boolean;
+  reps?: number | null;
+  loadValue?: number | null;
+  durationSeconds?: number | null;
+}) {
+  return Boolean(set.completed) || setHasLoggedWork(set);
+}
+
+/**
+ * A plan ride that already has a logged bike interval does not also need the
+ * plan's bike row. "Daru alactic power bike" and "Assault bike intervals" are
+ * the same ride, and an empty Daru row must not be created on Undo finish.
+ */
+export function planRowsForLoggedSets<T extends { exerciseName: string; completed?: boolean; reps?: number | null; loadValue?: number | null; durationSeconds?: number | null }>(
+  prescriptions: PrescriptionSetCount[],
+  logged: readonly T[],
+): PrescriptionSetCount[] {
+  const loggedBike = logged.some((set) => isBikeRow(set.exerciseName) && rowHasWork(set));
+  if (!loggedBike) return prescriptions;
+  return prescriptions.filter((row) => !isBikeRow(row.name));
+}
+
+/** Drop an empty plan-bike row when the logged bike exercise already has a name. */
+export function dropEmptyPlanBikeRows<T extends { exerciseName: string; completed?: boolean; reps?: number | null; loadValue?: number | null; durationSeconds?: number | null }>(
+  rows: T[],
+  logged: readonly { exerciseName: string; completed?: boolean; reps?: number | null; loadValue?: number | null; durationSeconds?: number | null }[],
+): T[] {
+  const keep = new Set(
+    logged.filter((set) => isBikeRow(set.exerciseName) && rowHasWork(set)).map((set) => set.exerciseName),
+  );
+  if (keep.size === 0) return rows;
+  return rows.filter((row) => {
+    if (!isBikeRow(row.exerciseName)) return true;
+    if (keep.has(row.exerciseName)) return true;
+    if (rowHasWork(row)) return true;
+    return false;
+  });
 }
 
 /** The set count printed on the exercise card, capped like the save validator. */

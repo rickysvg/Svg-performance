@@ -202,14 +202,14 @@ describe("custom bike logger", () => {
             loadValue: null,
             loadUnit: "lb",
             logMode: "timed",
-            durationSeconds: 5400,
+            durationSeconds: 4 * 60 * 60 + 1,
             completed: true,
           },
         ],
         rest: null,
         timeZone: "America/Denver",
       }),
-    ).rejects.toThrow(/60 minutes/);
+    ).rejects.toThrow(/4 hours/);
 
     const choice = loggerChoiceFromSession({
       name: "Custom bike",

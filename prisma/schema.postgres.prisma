@@ -194,6 +194,8 @@ model Profile {
   obstaclesJson              String    @default("[]")
   /** Voluntary swaps for one week. The default weekday plan is unchanged. */
   weekPlanSwapsJson          String    @default("[]")
+  /** Latest accepted move/undo sequence per session key. Lower sequences are ignored. */
+  weekPlanIntentSeqJson      String    @default("{}")
   /** none | force_on. Admin override so a non-coaching account can test weekly check-ins. */
   weeklyCheckInOverride      String    @default("none")
   calorieTarget          Int      @default(2200)
@@ -1342,6 +1344,8 @@ model WeeklyCheckIn {
   sparringSummary      String    @default("")
   wins                 String    @default("")
   struggles            String    @default("")
+  /** Optional note that is not a win, a struggle, or a soreness comment. */
+  memberNotes          String    @default("")
   videoStorageKey      String    @default("")
   videoStorageKind     String    @default("")
   videoMimeType        String    @default("")

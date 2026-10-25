@@ -10,7 +10,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { WeekStrip, type WeekCarouselWeek, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
@@ -77,6 +77,7 @@ export function CalendarWeekFollow({
   initialWeekStart,
   level,
   moves,
+  intentSeqs = {},
   rearrange,
   logPastDayKeys = [],
   timeZone,
@@ -92,6 +93,8 @@ export function CalendarWeekFollow({
   initialWeekStart: string;
   level: string | null;
   moves: Record<string, CalendarMoveBundle>;
+  /** Highest accepted move/undo sequence per session. Later clicks outrank it. */
+  intentSeqs?: Record<string, number>;
   /** Kept for the page that still decides whether the viewed week can be edited. */
   rearrange?: boolean;
   logPastDayKeys?: string[];
@@ -101,6 +104,7 @@ export function CalendarWeekFollow({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [seenWeek, setSeenWeek] = useState(initialWeekStart);
   const [dayParam, setDayParam] = useState(initialDay);
@@ -155,6 +159,10 @@ export function CalendarWeekFollow({
         editable={Boolean(move?.editable)}
         weekStart={weekStart}
         days={move?.days ?? []}
+        intentFloor={intentSeqs}
+        onCommitted={() => {
+          router.refresh();
+        }}
       >
         <WeekStrip
           days={weeks.find((week) => week.offset === 0)?.days ?? []}

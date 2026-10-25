@@ -4,7 +4,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { IntervalStructureFields } from "@/components/training/IntervalStructureFields";
-import { formatIntervalShorthand, type IntervalStructure } from "@/lib/interval-shorthand";
+import { commitShorthand, formatIntervalShorthand, type IntervalStructure } from "@/lib/interval-shorthand";
 import {
   BIKE_BETWEEN_SECONDS,
   BIKE_CHOICES,
@@ -269,6 +269,7 @@ export function BikeWorkoutChooser({
     setRestSeconds: between,
   };
   const [customLine, setCustomLine] = useState(() => formatIntervalShorthand(customStructure));
+  const [customDraft, setCustomDraft] = useState<string | null>(null);
 
   function close() {
     setOpen(false);
@@ -302,6 +303,7 @@ export function BikeWorkoutChooser({
       }),
     );
     setCustomOpen(true);
+    setCustomDraft(null);
     setError("");
   }
 
@@ -312,14 +314,20 @@ export function BikeWorkoutChooser({
   }
 
   function applyCustom() {
+    const committed = commitShorthand(customDraft ?? customLine, customStructure, "bike");
+    if (committed.error) {
+      setError(committed.error);
+      return;
+    }
+    const structure = committed.structure;
     const next = customBikeChoice({
-      workSeconds: sprint,
-      restSeconds: rest,
-      rounds: sprints,
+      workSeconds: structure.workSeconds,
+      restSeconds: structure.restSeconds,
+      rounds: structure.rounds,
       warmupSeconds: warmup * 60,
       cooldownSeconds: cooldown * 60,
-      repeatRounds: rounds,
-      restBetweenRoundsSeconds: between,
+      repeatRounds: structure.sets,
+      restBetweenRoundsSeconds: structure.setRestSeconds,
     });
     if (!next) {
       setError("Pick work, rest, and rounds from the lists.");
@@ -421,7 +429,15 @@ export function BikeWorkoutChooser({
                 totalType="bike"
                 presets={[]}
                 showDone={false}
-                onShorthandCommit={setCustomLine}
+                onShorthandCommit={(line) => {
+                  setCustomLine(line);
+                  setCustomDraft(null);
+                  setError("");
+                }}
+                onDraft={(text) => {
+                  setCustomDraft(text);
+                  setError("");
+                }}
                 onLiveStructure={(next) => {
                   setSprint(next.workSeconds);
                   setRest(next.restSeconds);
@@ -437,6 +453,7 @@ export function BikeWorkoutChooser({
                   setRounds(next.sets);
                   setBetween(next.setRestSeconds);
                   setCustomLine(formatIntervalShorthand(next));
+                  setCustomDraft(null);
                   setError("");
                 }}
                 onDone={() => {}}
