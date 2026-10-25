@@ -138,6 +138,7 @@ export function BikeSetTimer({
   canStart,
   onSetComplete,
   onFinishedRounds,
+  onRideSeconds,
   bell,
   vibrate,
 }: {
@@ -146,6 +147,8 @@ export function BikeSetTimer({
   onSetComplete: () => void;
   /** Called with the number of work rounds that have fully elapsed. */
   onFinishedRounds?: (count: number) => void;
+  /** Seconds the interval clock has been running. 0 while it is idle. */
+  onRideSeconds?: (seconds: number) => void;
   bell?: boolean;
   vibrate?: boolean;
 }) {
@@ -155,6 +158,7 @@ export function BikeSetTimer({
   const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
   const finishedRef = useRef(onFinishedRounds);
+  const rideRef = useRef(onRideSeconds);
   const pendingRounds = useRef(0);
   const pendingComplete = useRef(false);
   const countdown = useGoCountdown();
@@ -172,6 +176,20 @@ export function BikeSetTimer({
   useEffect(() => {
     finishedRef.current = onFinishedRounds;
   }, [onFinishedRounds]);
+
+  useEffect(() => {
+    rideRef.current = onRideSeconds;
+  }, [onRideSeconds]);
+
+  useEffect(() => {
+    const riding =
+      clock.phase === "work" ||
+      clock.phase === "rest" ||
+      clock.phase === "warmup" ||
+      clock.phase === "cooldown" ||
+      clock.phase === "moderate";
+    rideRef.current?.(riding ? clock.elapsedSeconds : 0);
+  }, [clock]);
 
   useEffect(() => {
     const count = Math.max(completedBikeLogRounds(clock), pendingRounds.current);

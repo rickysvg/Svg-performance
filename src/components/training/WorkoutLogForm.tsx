@@ -32,6 +32,7 @@ import {
   type BikeChoice,
 } from "@/lib/bike-chooser";
 import { bikeSetDurationSeconds } from "@/lib/bike-interval-timer";
+import { liveBikeLoggedSeconds } from "@/lib/workout-complete";
 import { CoachCredit } from "@/components/training/CoachCredit";
 import { creditForExercise } from "@/lib/coach-credits";
 import { BagFocusList } from "@/components/training/BagFocusList";
@@ -435,6 +436,17 @@ function subscribeFrozenClock() {
   return () => {};
 }
 
+/** Header clock the member is looking at. The interval clock wins when it is running. */
+function readLiveSessionSeconds(): number | null {
+  if (typeof document !== "undefined") {
+    const raw = document.querySelector("[data-session-elapsed]")?.getAttribute("data-session-elapsed");
+    const parsed = raw == null ? Number.NaN : Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  if (activityLive && activityElapsed > 0) return activityElapsed;
+  return null;
+}
+
 function SessionTimer({
   sessionId,
   status,
@@ -589,6 +601,7 @@ export function WorkoutLogForm({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [appliedPhase, setAppliedPhase] = useState<"server" | "client">("server");
   const formRef = useRef<HTMLFormElement>(null);
+  const bikeRideSeconds = useRef(new Map<string, number>());
   const saveErrorRef = useRef<HTMLDivElement>(null);
   const setsRef = useRef<WorkoutSet[]>([]);
   const pendingRef = useRef(false);
@@ -1050,6 +1063,20 @@ export function WorkoutLogForm({
     commitSets(next);
   }
 
+  function bikeRideElapsed(exerciseName: string) {
+    const seconds = bikeRideSeconds.current.get(exerciseName);
+    return typeof seconds === "number" && seconds > 0 ? seconds : null;
+  }
+
+  function loggedBikeSeconds(exerciseName: string, prescriptionKey: string | null | undefined) {
+    return liveBikeLoggedSeconds({
+      plannedSeconds: bikeDurationFor(exerciseName, prescriptionKey),
+      timerElapsed: bikeRideElapsed(exerciseName),
+      sessionElapsed: readLiveSessionSeconds(),
+      backfilled: session.backfilled,
+    });
+  }
+
   function bikeDurationFor(exerciseName: string, prescriptionKey: string | null | undefined) {
     const planned = session.programDay?.exercises.find(
       (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
@@ -1092,12 +1119,7 @@ export function WorkoutLogForm({
     ) {
       return;
     }
-    const rawDuration =
-      bike && completed
-        ? target?.durationSeconds && target.durationSeconds > 0
-          ? target.durationSeconds
-          : bikeDurationFor(exerciseName, target?.prescriptionKey)
-        : undefined;
+    const rawDuration = bike && completed ? loggedBikeSeconds(exerciseName, target?.prescriptionKey) : undefined;
     const durationSeconds = rawDuration == null ? undefined : Math.min(3600, Math.max(1, rawDuration));
     const planned = session.programDay?.exercises.find(
       (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
@@ -1767,6 +1789,9 @@ export function WorkoutLogForm({
                       key={`${name}-${bikeChoice?.id ?? "plan"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}-${bikeSession.blocks ?? 1}-${bikeSession.warmupSeconds ?? 0}-${bikeSession.cooldownSeconds ?? 0}-${bikeSession.repeatRounds ?? 1}-${bikeSession.restBetweenRoundsSeconds ?? 0}`}
                       session={bikeSession}
                       canStart={group.some((set) => !set.completed)}
+                      onRideSeconds={(seconds) => {
+                        bikeRideSeconds.current.set(name, seconds);
+                      }}
                       onSetComplete={() => {
                         noteLoggerActivity(session.id);
                         const current = setsRef.current;

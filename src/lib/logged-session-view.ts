@@ -1,5 +1,5 @@
 import { setIsTicked } from "@/lib/logged-work";
-import { sessionDurationSeconds, type ShareSessionLike } from "@/lib/share-card";
+import { SESSION_DURATION_CAP_SECONDS, sessionDurationSeconds, type ShareSessionLike } from "@/lib/share-card";
 
 type LoggedSet = {
   exerciseName?: string | null;
@@ -37,6 +37,11 @@ export function loggedSessionView(session: {
     names.push(name);
   }
   if (names.length === 0) return null;
+  const stored = session.elapsedSeconds;
+  const clock =
+    typeof stored === "number" && Number.isFinite(stored) && stored > 0
+      ? Math.min(SESSION_DURATION_CAP_SECONDS, Math.round(stored))
+      : null;
   const share: ShareSessionLike = {
     title: "",
     status: session.status === "partial" ? "partial" : "complete",
@@ -53,7 +58,7 @@ export function loggedSessionView(session: {
       durationSeconds: set.durationSeconds ?? null,
     })),
   };
-  const seconds = sessionDurationSeconds(share);
+  const seconds = clock ?? sessionDurationSeconds(share);
   return {
     names,
     minutes: seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 0,

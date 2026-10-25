@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { calendarLoggedExercises, calendarLoggedHref } from "@/lib/calendar";
 import { applySessionPlacements } from "@/lib/calendar-placements";
 import { templateDaySummary, type DaySummaryFacts } from "@/lib/coach/day-summary";
 import { loggedSessionView } from "@/lib/logged-session-view";
 import { zonedCivilToUtc } from "@/lib/timezone";
 import { weekChipDateLabel } from "@/lib/week-plan";
-import { workoutCompleteTiles } from "@/lib/workout-complete";
+import { liveBikeLoggedSeconds, workoutCompleteTiles } from "@/lib/workout-complete";
 import { REMOVE_TOAST_MS } from "@/components/training/RemoveToast";
 
 function read(path: string) {
@@ -89,6 +90,61 @@ describe("prod QA follow-ups", () => {
     expect(backfilled.find((tile) => tile.key === "time")?.value).not.toBe("2:15");
   });
 
+  it("saves a live plan-day bike as the ridden seconds and keeps the plan on a past log", () => {
+    expect(liveBikeLoggedSeconds({ plannedSeconds: 1500, sessionElapsed: 95 })).toBe(95);
+    expect(liveBikeLoggedSeconds({ plannedSeconds: 1500, timerElapsed: 60, sessionElapsed: 635 })).toBe(60);
+    expect(liveBikeLoggedSeconds({ plannedSeconds: 1500, timerElapsed: 0, sessionElapsed: 635 })).toBe(635);
+    expect(
+      liveBikeLoggedSeconds({ plannedSeconds: 1500, timerElapsed: 60, sessionElapsed: 95, backfilled: true }),
+    ).toBe(1500);
+
+    const created = new Date("2026-10-25T16:00:00.000Z");
+    const key = "demo-strength-base:8|jamieson cardiac output bike::25:00";
+    const ride = (elapsedSeconds: number, durationSeconds: number, backfilled = false) =>
+      workoutCompleteTiles({
+        displayUnit: "lb",
+        newPrCount: 0,
+        session: {
+          title: "Cardio — bike",
+          status: "complete",
+          performedAt: created,
+          createdAt: created,
+          updatedAt: new Date(created.getTime() + elapsedSeconds * 1000),
+          elapsedSeconds,
+          backfilled,
+          sets: [
+            {
+              exerciseName: "Jamieson cardiac output bike",
+              reps: null,
+              loadValue: null,
+              loadUnit: "lb",
+              completed: true,
+              durationSeconds,
+              prescriptionKey: key,
+            },
+          ],
+        },
+      });
+
+    const short = ride(95, 95);
+    expect(short.find((tile) => tile.key === "time")?.value).toBe("1:35");
+    expect(short.find((tile) => tile.key === "volume")?.value).toBe("1:35");
+    expect(short.find((tile) => tile.key === "time")?.value).not.toBe("25:00");
+
+    const started = ride(635, 60);
+    expect(started.find((tile) => tile.key === "time")?.value).toBe("1:00");
+    expect(started.find((tile) => tile.key === "volume")?.value).toBe("1:00");
+    expect(started.find((tile) => tile.key === "time")?.value).not.toBe("25:00");
+
+    const past = ride(95, 1500, true);
+    expect(past.find((tile) => tile.key === "time")?.value).toBe("25:00");
+
+    const form = read("src/components/training/WorkoutLogForm.tsx");
+    expect(form).toContain("liveBikeLoggedSeconds");
+    expect(form).toContain("onRideSeconds");
+    expect(read("src/components/training/BikeSetTimer.tsx")).toContain("onRideSeconds");
+  });
+
   it("says conditioning and cardio once each", () => {
     const facts: DaySummaryFacts = {
       coachId: "ricky",
@@ -122,12 +178,71 @@ describe("prod QA follow-ups", () => {
       ],
     });
     expect(view).toEqual({ names: ["Sit-to-stand", "Trap-bar DL"], minutes: 47 });
+
+    const performedAt = new Date("2026-10-19T15:00:00.000Z");
+    const sets = [
+      { exerciseName: "Goblet squat", completed: true, reps: 8 },
+      { exerciseName: "Goblet squat", completed: true, reps: 8 },
+      { exerciseName: "Goblet squat", completed: true, reps: 8 },
+    ];
+    for (const status of ["partial", "complete"] as const) {
+      expect(
+        loggedSessionView({
+          status,
+          elapsedSeconds: 657,
+          performedAt,
+          createdAt: performedAt,
+          updatedAt: new Date(performedAt.getTime() + 23 * 60 * 1000),
+          sets,
+        })?.minutes,
+      ).toBe(11);
+    }
+    expect(
+      loggedSessionView({
+        status: "partial",
+        elapsedSeconds: null,
+        performedAt,
+        createdAt: performedAt,
+        updatedAt: new Date(performedAt.getTime() + 23 * 60 * 1000),
+        sets,
+      })?.minutes,
+    ).toBe(23);
+    const list = read("src/lib/workouts.ts");
+    const resumable = list.slice(
+      list.indexOf("export async function listResumableSessionsForUser"),
+      list.indexOf("export async function countWorkoutSessionsForUser"),
+    );
+    expect(resumable).toContain("readTimerFieldsByIds");
+    expect(read("src/lib/calendar.ts")).toContain("sessionClockSeconds");
     const detail = read("src/app/(member)/training/[dayId]/page.tsx");
     const card = read("src/components/training/PlanSessionCard.tsx");
     expect(detail).toContain("loggedSessionView");
     expect(detail).toContain("onDay");
     expect(card).toContain("data-logged-session");
     expect(read("src/lib/calendar.ts")).toContain("?on=${dayKey}");
+    expect(read("src/lib/calendar.ts")).not.toContain("ticked: 1");
+    expect(
+      calendarLoggedExercises([
+        { name: "Goblet squat", ticked: 3, planned: 4, state: "partial" as const },
+        { name: "Row", ticked: 1, planned: 4, state: "partial" as const },
+        { name: "Carry", ticked: 0, planned: 3, state: "open" as const },
+      ]),
+    ).toEqual([
+      { name: "Goblet squat", ticked: 3, planned: 4, state: "partial" },
+      { name: "Row", ticked: 1, planned: 4, state: "partial" },
+    ]);
+    expect(
+      calendarLoggedHref("/training/day-1", { status: "partial", done: false, dayKey: "2026-10-19" }),
+    ).toBe("/training/day-1?on=2026-10-19");
+    expect(
+      calendarLoggedHref("/training/day-1", { status: "complete", done: false, dayKey: "2026-10-19" }),
+    ).toBe("/training/day-1?on=2026-10-19");
+    expect(
+      calendarLoggedHref("/training/day-1", { status: "draft", done: false, dayKey: "2026-10-19" }),
+    ).toBe("/training/day-1");
+    expect(calendarLoggedHref("/training/day-1", { status: "draft", done: true, dayKey: "2026-10-19" })).toBe(
+      "/training/day-1",
+    );
   });
 
   it("labels the first calendar chip and a month change", () => {

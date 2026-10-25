@@ -89,6 +89,7 @@ import {
 import {
   attachWorkoutTimer,
   readDraftTimerFields,
+  readTimerFieldsByIds,
   readWorkoutTimerFields,
   workoutTimerColumnsAvailable,
   type WorkoutTimerFields,
@@ -201,9 +202,17 @@ export async function listResumableSessionsForUser(userId: string, take = 40) {
       },
     },
   });
-  return rows
+  const kept = rows
     .filter((row) => row.status !== "draft" || draftHasResumeWork(row.sets))
     .slice(0, take);
+  const timers = await readTimerFieldsByIds(
+    kept.map((row) => row.id),
+    prisma,
+  );
+  return kept.map((row) => {
+    const timer = timers.get(row.id);
+    return timer ? { ...row, ...timer } : row;
+  });
 }
 
 export async function countWorkoutSessionsForUser(userId: string) {
