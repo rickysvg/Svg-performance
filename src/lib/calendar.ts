@@ -662,7 +662,11 @@ async function loadCalendarSchedule(
         sessionOpenHref(session, sessionDone) ??
         (session.dayId ? `/training/${session.dayId}` : undefined);
       const href =
-        opened && matched && opened.startsWith("/training/") && !opened.includes("?")
+        opened &&
+        matched &&
+        sessionDone &&
+        opened.startsWith("/training/") &&
+        !opened.includes("?")
           ? `${opened}?on=${dayKey}`
           : opened;
       if (!href) continue;
@@ -762,7 +766,9 @@ async function loadCalendarSchedule(
         kind: "workout",
         title,
         subtitle: view.done ? title : view.text,
-        href: `/training/${log.programDayId}?on=${dayKey}`,
+        href: view.done
+          ? `/training/${log.programDayId}?on=${dayKey}`
+          : `/training/${log.programDayId}`,
         status: view.done ? "complete" : "scheduled",
         programDayId: log.programDayId,
         weekday: calendarWeekday,

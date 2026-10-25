@@ -86,9 +86,13 @@ export function NutritionEntryForm({
   const [mealType, setMealType] = useState(entry?.mealType ?? defaultMeal ?? "breakfast");
   const [appliedSave, setAppliedSave] = useState<number | undefined>();
   const onSavedRef = useRef(onSaved);
-  onSavedRef.current = onSaved;
+  const reportedSave = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!state.savedAt || !state.saved) return;
+    onSavedRef.current = onSaved;
+  }, [onSaved]);
+  useEffect(() => {
+    if (!state.savedAt || !state.saved || reportedSave.current === state.savedAt) return;
+    reportedSave.current = state.savedAt;
     onSavedRef.current?.(state.saved, Boolean(state.celebrate));
   }, [state.savedAt, state.saved, state.celebrate]);
   if (state.savedAt && state.saved && appliedSave !== state.savedAt) {

@@ -186,6 +186,26 @@ function plannedFromExercises(
   }, 0);
 }
 
+function bikeLoggedFullStructure(session: ShareSessionLike) {
+  const sets = loggedSets(session.sets);
+  const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
+  const prescribed = choice ? bikeTimerRoundCount(choice) : 0;
+  return Boolean(choice && prescribed > 0 && sets.length >= prescribed);
+}
+
+/**
+ * Live finish clock. A one-second freeze and an edited ride keep the structure.
+ * A real clock that finished under the plan (a 2:15 ride on a 20:00 structure)
+ * shows the elapsed time. Backfill is handled by the caller.
+ */
+function liveBikeFinishSeconds(session: ShareSessionLike) {
+  const structure = bikeCardioDurationSeconds(session);
+  const wall = sessionDurationSeconds(session);
+  if (wall <= 1) return structure;
+  if (bikeLoggedFullStructure(session) && wall > 0 && wall < structure) return wall;
+  return structure;
+}
+
 export function workoutCompleteTiles(input: {
   session: ShareSessionLike;
   displayUnit: LoadUnit;
@@ -196,13 +216,11 @@ export function workoutCompleteTiles(input: {
   if (isBikeCardioSession(input.session)) {
     const sets = loggedSets(input.session.sets);
     const effort = bikeCardioEffort(sets);
-    // Live sessions show the clock. Structure time stays on backfilled and edited rides.
-    const wall = sessionDurationSeconds(input.session);
+    // Live sessions show a real elapsed clock. Structure time stays on a
+    // one-second freeze, an edited ride, and a backfilled ride.
     const seconds = input.session.backfilled
       ? bikeCardioDurationSeconds(input.session)
-      : wall > 0
-        ? wall
-        : bikeCardioDurationSeconds(input.session);
+      : liveBikeFinishSeconds(input.session);
     const intervals = sessionRoundCount(sets) || sets.length;
     return applyFinishTime(
       [
