@@ -9,9 +9,11 @@ import {
   buildWeekArchive,
   currentWeekKey,
   emptyMetrics,
+  formatDeltaBadge,
   isMondayKey,
   loadReportHistory,
   metricCards,
+  monthBuckets,
   periodDelta,
   summarizePeriod,
   type ReportHistory,
@@ -457,6 +459,139 @@ describe("report history ownership", () => {
     expect(archive.find((row) => row.weekStartKey === "2026-10-19")?.sessions).toBe(2);
     expect(archive.some((row) => row.trainingLoad === 1000)).toBe(false);
   });
+
+  it("does not load sessions after the week being shown", async () => {
+    const owner = await makeUser("report-bound@example.com");
+    await prisma.profile.update({ where: { userId: owner.id }, data: { timeZone: TZ } });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "In week",
+        performedAt: zonedCivilToUtc(2026, 10, 20, TZ),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 50, completed: true }] },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "Later",
+        performedAt: zonedCivilToUtc(2026, 10, 27, TZ),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 80, completed: true }] },
+      },
+    });
+    const now = zonedCivilToUtc(2026, 11, 2, TZ);
+    const bounded = await loadReportHistory(owner.id, now, { weekStartKey: "2026-10-19" });
+    expect(bounded.sessions.map((row) => row.title)).toEqual(["In week"]);
+    const open = await loadReportHistory(owner.id, now);
+    expect(open.sessions.map((row) => row.title).sort()).toEqual(["In week", "Later"]);
+  });
+});
+
+describe("report qa fixes", () => {
+  it("says New when the previous total is zero and writes time in hours and minutes", () => {
+    expect(formatDeltaBadge(periodDelta(7190, 0), "percent", "number").text).toBe("New");
+    expect(formatDeltaBadge(periodDelta(5940, 0), "percent", "time").text).toBe("New");
+    expect(formatDeltaBadge(periodDelta(3600, 600), "count", "time").text).toBe("▲50m");
+    expect(formatDeltaBadge(periodDelta(2, 4), "percent", "count").text).toBe("▼50%");
+  });
+
+  it("labels month weeks by the days inside the month and keeps the comparison week’s own name", () => {
+    const september = monthBuckets("2026-09", TZ);
+    const october = monthBuckets("2026-10", TZ);
+    expect(september[0]?.detail).toBe("Sep 1–6, 2026");
+    expect(september.some((bucket) => bucket.detail.includes("Aug"))).toBe(false);
+    expect(october.at(-1)?.detail).toBe("Oct 26–31, 2026");
+    const report = buildPeriodReport(
+      history({
+        now: zonedCivilToUtc(2026, 10, 26, TZ),
+        sessions: [
+          session({
+            performedAt: zonedCivilToUtc(2026, 9, 2, TZ),
+            sets: [
+              {
+                exerciseName: "Goblet squat",
+                reps: 5,
+                loadValue: 40,
+                loadUnit: "lb",
+                logMode: "load_reps",
+                durationSeconds: null,
+                completed: true,
+                prescriptionKey: "",
+              },
+            ],
+          }),
+          session({
+            performedAt: zonedCivilToUtc(2026, 10, 27, TZ),
+            sets: [
+              {
+                exerciseName: "Goblet squat",
+                reps: 5,
+                loadValue: 50,
+                loadUnit: "lb",
+                logMode: "load_reps",
+                durationSeconds: null,
+                completed: true,
+                prescriptionKey: "",
+              },
+            ],
+          }),
+        ],
+      }),
+      "month",
+      "2026-10",
+      "2026-09",
+      "all",
+    );
+    const last = report?.charts[0]?.points.at(-1);
+    expect(last?.detail).toBe("Oct 26–31, 2026");
+    expect(last?.baselineDetail).toBe("Sep 28–30, 2026");
+    expect(last?.baselineDetail).not.toContain("Oct 26");
+  });
+
+  it("splits a mixed session’s time across lower and upper by set count", () => {
+    const mixed = session({
+      performedAt: zonedCivilToUtc(2026, 10, 20, TZ),
+      elapsedSeconds: 1000,
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          reps: 5,
+          loadValue: 50,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          durationSeconds: null,
+          completed: true,
+          prescriptionKey: "",
+        },
+        {
+          exerciseName: "Dumbbell bench press",
+          reps: 5,
+          loadValue: 40,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          durationSeconds: null,
+          completed: true,
+          prescriptionKey: "",
+        },
+        {
+          exerciseName: "Goblet squat",
+          reps: 5,
+          loadValue: 50,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          durationSeconds: null,
+          completed: true,
+          prescriptionKey: "",
+        },
+      ],
+    });
+    const lower = summarizePeriod({ sessions: [mixed], outside: [], focus: "lower", displayUnit: "lb" });
+    const upper = summarizePeriod({ sessions: [mixed], outside: [], focus: "upper", displayUnit: "lb" });
+    expect(lower.trainingSeconds).toBe(667);
+    expect(upper.trainingSeconds).toBe(333);
+  });
 });
 
 describe("round type copy", () => {
@@ -472,7 +607,11 @@ describe("round type copy", () => {
       "src/app/actions/outside-log.ts",
     ];
     const form = fs.readFileSync(path.join(process.cwd(), "src/components/training/SparringLogForm.tsx"), "utf8");
-    expect(form).toContain("Round type");
+    expect(form).toContain("Round type (optional)");
+    const bars = fs.readFileSync(path.join(process.cwd(), "src/components/report/CompareBars.tsx"), "utf8");
+    expect(bars).toContain("report-sr");
+    expect(bars).not.toContain("? LIME : LIME");
+    expect(bars).toContain("#5ee0ff");
     expect(form).toContain(">Unspecified</option>");
     expect(form).toContain(">Amateur</option>");
     expect(form).toContain(">Pro</option>");

@@ -3,6 +3,7 @@ import { DeltaBadge } from "@/components/report/DeltaBadge";
 import { formatTelemetryNumber } from "@/lib/home-telemetry";
 import {
   buildWeekArchive,
+  currentWeekKey,
   formatTrainingTime,
   loadReportHistory,
   type WeekArchiveRow,
@@ -21,6 +22,7 @@ export default async function WeekArchivePage() {
   const user = await requireUser();
   const history = await loadReportHistory(user.id);
   const rows = buildWeekArchive(history);
+  const currentKey = currentWeekKey(history.now, history.timeZone);
   return (
     <main className="min-w-0 space-y-4" data-week-archive>
       <div>
@@ -38,7 +40,7 @@ export default async function WeekArchivePage() {
             return (
               <li key={row.weekStartKey} className="border-b border-white/10 last:border-0">
                 <Link
-                  href={`/report/${row.weekStartKey}`}
+                  href={row.weekStartKey === currentKey ? "/report" : `/report/${row.weekStartKey}`}
                   className="flex min-h-11 items-center justify-between gap-3 px-3 py-3"
                 >
                   <span className="min-w-0">

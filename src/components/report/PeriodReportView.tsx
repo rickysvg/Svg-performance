@@ -26,7 +26,7 @@ export function PeriodReportView({
       compareKey: model.baselineKey,
     });
   return (
-    <main className="min-w-0 space-y-4" data-report-page data-report-kind={model.kind} data-report-key={model.key}>
+    <main className="min-w-0 max-w-full space-y-4 overflow-x-clip" data-report-page data-report-kind={model.kind} data-report-key={model.key}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Progress report</p>
@@ -88,7 +88,7 @@ export function PeriodReportView({
         </button>
       </form>
 
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Focus">
+      <div className="-mx-1 flex max-w-full min-w-0 gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Focus">
         {REPORT_FOCUSES.map((item) => (
           <Link
             key={item.id}

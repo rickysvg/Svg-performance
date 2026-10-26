@@ -49,12 +49,11 @@ export async function getWeeklyProgressReport(userId: string, now = new Date()) 
   );
   const strengthNote =
     weekLoads.length > 0
-      ? `Logged loads this window on ${weekLoads.length} exercise${
-          weekLoads.length === 1 ? "" : "s"
-        }. Example: ${weekLoads[0]!.exerciseName} ${weekLoads[0]!.bestLoad} ${weekLoads[0]!.unit}.`
-      : records.loadRecords[0]
-        ? `No new load PRs in this window. Best on file: ${records.loadRecords[0].exerciseName} ${records.loadRecords[0].bestLoad} ${records.loadRecords[0].unit}.`
-        : "No loads logged yet, so there is no strength signal.";
+      ? `Logged this week: ${weekLoads
+          .slice(0, 3)
+          .map((row) => `${row.exerciseName} ${row.bestLoad} ${row.unit}`)
+          .join(", ")}.`
+      : "No load logged in this Monday–Sunday week.";
   const weekSessions = await prisma.workoutSession.findMany({
     where: {
       userId,

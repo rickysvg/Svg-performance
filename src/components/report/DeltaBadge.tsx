@@ -1,4 +1,4 @@
-import { periodDelta, type MetricCard, type PeriodDelta } from "@/lib/report-history";
+import { formatDeltaBadge, periodDelta, type MetricCard, type PeriodDelta } from "@/lib/report-history";
 
 export function DeltaBadge({
   card,
@@ -18,19 +18,10 @@ export function DeltaBadge({
   }
   const up = delta.direction === "up";
   const color = up ? "#CBF805" : "#FF3B3B";
-  const arrow = up ? "▲" : "▼";
-  const text =
-    resolvedMode === "percent" && delta.percent != null ? `${arrow}${delta.percent}%` : `${arrow}${delta.absolute}`;
-  const words = up ? "Up" : "Down";
-  const detail =
-    resolvedMode === "percent" && delta.percent != null
-      ? `${words} ${delta.percent} percent`
-      : delta.percent == null
-        ? `${words} ${delta.absolute}. No earlier total for a percent`
-        : `${words} ${delta.absolute}`;
+  const badge = formatDeltaBadge(delta, resolvedMode, card?.deltaFormat ?? "count");
   return (
-    <span className="font-telemetry text-sm leading-none" style={{ color }} aria-label={detail}>
-      {text}
+    <span className="font-telemetry text-sm leading-none" style={{ color }} aria-label={badge.label}>
+      {badge.text}
     </span>
   );
 }

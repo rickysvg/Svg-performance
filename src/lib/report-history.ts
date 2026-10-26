@@ -115,6 +115,8 @@ export type MetricCard = {
   current: number;
   baseline: number;
   mode: "count" | "percent";
+  /** How an absolute delta is written. Time is hours and minutes, never raw seconds. */
+  deltaFormat?: "count" | "time" | "number";
   places?: number;
   hint?: string;
   /** False when one side has no rating, so a missing score is not a zero. */
@@ -124,6 +126,8 @@ export type MetricCard = {
 export type ChartPoint = {
   label: string;
   detail: string;
+  baselineLabel: string;
+  baselineDetail: string;
   current: number;
   baseline: number;
 };
@@ -131,6 +135,8 @@ export type ChartPoint = {
 export type SparringChartPoint = {
   label: string;
   detail: string;
+  baselineLabel: string;
+  baselineDetail: string;
   amateur: number;
   pro: number;
   unspecified: number;
@@ -176,6 +182,33 @@ export function periodDelta(current: number, baseline: number, places = 0): Peri
   const direction = raw > 0 ? "up" : "down";
   const percent = base === 0 ? null : Math.round((Math.abs(raw) / Math.abs(base)) * 100);
   return { direction, absolute: Math.abs(raw), percent };
+}
+
+export function formatDeltaBadge(
+  delta: PeriodDelta,
+  mode: "count" | "percent",
+  format: "count" | "time" | "number" = "count",
+): { text: string; label: string } {
+  if (delta.direction === "flat") return { text: "Same", label: "Same" };
+  const up = delta.direction === "up";
+  const arrow = up ? "▲" : "▼";
+  const words = up ? "Up" : "Down";
+  if (up && delta.percent == null) {
+    return { text: "New", label: "New. No earlier total to compare" };
+  }
+  if (mode === "percent" && delta.percent != null) {
+    return { text: `${arrow}${delta.percent}%`, label: `${words} ${delta.percent} percent` };
+  }
+  const amount =
+    format === "time"
+      ? formatTrainingTime(delta.absolute)
+      : format === "number"
+        ? formatTelemetryNumber(delta.absolute)
+        : String(delta.absolute);
+  return {
+    text: `${arrow}${amount}`,
+    label: `${words} ${amount}`,
+  };
 }
 
 export function formatTrainingTime(seconds: number) {
@@ -242,6 +275,22 @@ export function formatWeekRange(weekStartKey: string, timeZone: string) {
       ? `${monthOf(start)} ${startParts.day}–${endParts.day}`
       : `${monthOf(start)} ${startParts.day} – ${monthOf(end)} ${endParts.day}`;
   return `${range}, ${endParts.year}`;
+}
+
+function formatDaySpan(firstKey: string, lastKey: string, timeZone: string) {
+  const start = zonedCivilToUtc(Number(firstKey.slice(0, 4)), Number(firstKey.slice(5, 7)), Number(firstKey.slice(8, 10)), timeZone);
+  const end = zonedCivilToUtc(Number(lastKey.slice(0, 4)), Number(lastKey.slice(5, 7)), Number(lastKey.slice(8, 10)), timeZone);
+  const startParts = zonedParts(start, timeZone);
+  const endParts = zonedParts(end, timeZone);
+  const monthOf = (date: Date) => new Intl.DateTimeFormat("en-US", { month: "short", timeZone }).format(date);
+  const label = `${monthOf(start)} ${startParts.day}`;
+  const range =
+    firstKey === lastKey
+      ? label
+      : startParts.month === endParts.month && startParts.year === endParts.year
+        ? `${monthOf(start)} ${startParts.day}–${endParts.day}`
+        : `${monthOf(start)} ${startParts.day} – ${monthOf(end)} ${endParts.day}`;
+  return { label, detail: `${range}, ${endParts.year}` };
 }
 
 export function formatMonthLabel(monthKey: string, timeZone: string) {
@@ -333,10 +382,10 @@ function bikeSecondsForSession(session: ReportSession) {
 function regionSeconds(session: ReportSession, region: LiftRegion) {
   const logged = session.sets.filter((set) => setHasLoggedWork(set));
   const matching = logged.filter((set) => liftRegionForExercise(set.exerciseName) === region);
-  if (matching.length === 0) return 0;
-  if (logged.every((set) => liftRegionForExercise(set.exerciseName) === region)) {
-    return sessionDurationSeconds(asShare(session));
-  }
+  if (matching.length === 0 || logged.length === 0) return 0;
+  const whole = sessionDurationSeconds(asShare(session));
+  if (logged.every((set) => liftRegionForExercise(set.exerciseName) === region)) return whole;
+  if (whole > 0) return Math.round((whole * matching.length) / logged.length);
   return matching.reduce(
     (sum, set) => sum + (set.durationSeconds != null && set.durationSeconds > 0 ? set.durationSeconds : 0),
     0,
@@ -512,16 +561,11 @@ export function monthBuckets(monthKey: string, timeZone: string): DayBucket[] {
     if (mondayKey > last) break;
     const dayKeys = weekDayKeys(mondayKey, timeZone).filter((key) => key >= first && key <= last);
     if (dayKeys.length > 0) {
-      const labelDate = zonedCivilToUtc(
-        Number(mondayKey.slice(0, 4)),
-        Number(mondayKey.slice(5, 7)),
-        Number(mondayKey.slice(8, 10)),
-        timeZone,
-      );
+      const span = formatDaySpan(dayKeys[0]!, dayKeys[dayKeys.length - 1]!, timeZone);
       buckets.push({
         key: mondayKey,
-        label: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone }).format(labelDate),
-        detail: formatWeekRange(mondayKey, timeZone),
+        label: span.label,
+        detail: span.detail,
         dayKeys,
       });
     }
@@ -628,8 +672,10 @@ function comparePoints(
         })
       : emptyMetrics();
     points.push({
-      label: current[i]?.label ?? baseline[i]!.label,
-      detail: current[i]?.detail ?? baseline[i]!.detail,
+      label: current[i]?.label ?? baseline[i]?.label ?? "",
+      detail: current[i]?.detail ?? baseline[i]?.detail ?? "",
+      baselineLabel: baseline[i]?.label ?? "",
+      baselineDetail: baseline[i]?.detail ?? "",
       current: chartValue(currentMetrics, metric),
       baseline: chartValue(baselineMetrics, metric),
     });
@@ -662,8 +708,10 @@ function sparringPoints(
       : emptyMetrics();
     const bucket = current[i] ?? baseline[i]!;
     points.push({
-      label: bucket.label,
-      detail: bucket.detail,
+      label: current[i]?.label ?? baseline[i]?.label ?? bucket.label,
+      detail: current[i]?.detail ?? baseline[i]?.detail ?? bucket.detail,
+      baselineLabel: baseline[i]?.label ?? "",
+      baselineDetail: baseline[i]?.detail ?? "",
       amateur: currentMetrics.sparring.amateur,
       pro: currentMetrics.sparring.pro,
       unspecified: currentMetrics.sparring.unspecified,
@@ -703,6 +751,7 @@ export function metricCards(
     current: current.trainingSeconds,
     baseline: baseline.trainingSeconds,
     mode: "percent",
+    deltaFormat: "time",
     hint: focus === "bike" ? "Inferred from logged assault-bike sets. There is no separate bike log." : undefined,
   });
   if (focus !== "bike") {
@@ -721,6 +770,7 @@ export function metricCards(
       current: current.volume,
       baseline: baseline.volume,
       mode: "percent",
+      deltaFormat: "number",
       hint: unit === "kg" ? "kg" : "lb",
     });
   }
@@ -758,6 +808,7 @@ export function metricCards(
       current: current.bikeSeconds,
       baseline: baseline.bikeSeconds,
       mode: "percent",
+      deltaFormat: "time",
       hint: "Inferred from logged assault-bike sets. There is no separate bike log.",
     });
   }
@@ -1196,13 +1247,39 @@ export function buildPeriodReport(
   };
 }
 
-export async function loadReportHistory(userId: string, now = new Date()): Promise<ReportHistory> {
+export type ReportLoadScope = {
+  /** Inclusive Monday key. Sessions after that week are not loaded. */
+  weekStartKey?: string;
+  /** YYYY-MM. Null means the current month. Sessions after that month are not loaded. */
+  monthKey?: string | null;
+};
+
+function historyUpperBound(now: Date, timeZone: string, scope?: ReportLoadScope) {
+  const currentWeekEnd = weekBounds(currentWeekKey(now, timeZone), timeZone)?.endExclusive ?? now;
+  if (scope && Object.prototype.hasOwnProperty.call(scope, "monthKey")) {
+    const key = scope.monthKey || currentMonthKey(now, timeZone);
+    return monthBounds(key, timeZone)?.endExclusive ?? currentWeekEnd;
+  }
+  if (scope?.weekStartKey) {
+    const end = weekBounds(scope.weekStartKey, timeZone)?.endExclusive;
+    if (end && end.getTime() < currentWeekEnd.getTime()) return end;
+  }
+  return currentWeekEnd;
+}
+
+export async function loadReportHistory(
+  userId: string,
+  now = new Date(),
+  scope?: ReportLoadScope,
+): Promise<ReportHistory> {
   const profile = await getProfileForUser(userId);
   const timeZone = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const displayUnit: LoadUnit = profile?.preferredUnits === "kg" ? "kg" : "lb";
+  const through = historyUpperBound(now, timeZone, scope);
+  const lastDay = dayKey(new Date(through.getTime() - 1), timeZone);
   const [sessions, outside] = await Promise.all([
     prisma.workoutSession.findMany({
-      where: { userId, status: { in: ["complete", "partial"] } },
+      where: { userId, status: { in: ["complete", "partial"] }, performedAt: { lt: through } },
       select: {
         id: true,
         performedAt: true,
@@ -1228,7 +1305,7 @@ export async function loadReportHistory(userId: string, now = new Date()): Promi
       },
     }),
     prisma.outsideSessionLog.findMany({
-      where: { userId },
+      where: { userId, dateKey: { lte: lastDay } },
       select: {
         dateKey: true,
         rounds: true,

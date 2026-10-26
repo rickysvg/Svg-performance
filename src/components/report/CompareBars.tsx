@@ -5,7 +5,7 @@ const LIME = "#CBF805";
 const DOWN = "#FF3B3B";
 const GHOST = "#5c6560";
 const PRO = "#f3f4ef";
-const UNSPECIFIED = "#8d9384";
+const UNSPECIFIED = "#5ee0ff";
 
 function PlotFrame({
   title,
@@ -25,7 +25,7 @@ function PlotFrame({
   table: ReactNode;
 }) {
   return (
-    <figure className="min-w-0 rounded-2xl border border-[#cbf805]/20 bg-black/50 px-3 py-3">
+    <figure className="min-w-0 max-w-full overflow-x-clip rounded-2xl border border-[#cbf805]/20 bg-black/50 px-3 py-3">
       <figcaption className="mb-2 flex items-end justify-between gap-3">
         <span>
           <span className="block font-display text-sm uppercase tracking-wide">{title}</span>
@@ -89,27 +89,31 @@ export function CompareBars({
         </ul>
       }
       table={
-        <table className="sr-only">
-          <caption>
-            {title}. This period and the comparison, in {unit}.
-          </caption>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>This period</th>
-              <th>Comparison</th>
-            </tr>
-          </thead>
-          <tbody>
-            {points.map((point) => (
-              <tr key={`${point.detail}-${point.label}`}>
-                <th>{point.detail}</th>
-                <td>{point.current}</td>
-                <td>{point.baseline}</td>
+        <div className="report-sr">
+          <table>
+            <caption>
+              {title}. This period and the comparison, in {unit}.
+            </caption>
+            <thead>
+              <tr>
+                <th>This period</th>
+                <th>Amount</th>
+                <th>Comparison period</th>
+                <th>Comparison</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {points.map((point) => (
+                <tr key={`${point.detail}-${point.baselineDetail}-${point.label}`}>
+                  <th>{point.detail}</th>
+                  <td>{point.current}</td>
+                  <th>{point.baselineDetail || "—"}</th>
+                  <td>{point.baseline}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       }
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full" role="img" aria-hidden>
@@ -133,7 +137,7 @@ export function CompareBars({
                 y={padT + innerH - currentH}
                 width={limeW}
                 height={Math.max(point.current > 0 ? 2 : 0, currentH)}
-                fill={point.current < point.baseline ? LIME : LIME}
+                fill={LIME}
                 rx="1"
               />
               {point.current > 0 ? (
@@ -212,29 +216,33 @@ export function SparringBars({
         </ul>
       }
       table={
-        <table className="sr-only">
-          <caption>{title}. Amateur, pro, unspecified, and the comparison total.</caption>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Amateur</th>
-              <th>Pro</th>
-              <th>Unspecified</th>
-              <th>Comparison</th>
-            </tr>
-          </thead>
-          <tbody>
-            {points.map((point) => (
-              <tr key={`${point.detail}-${point.label}`}>
-                <th>{point.detail}</th>
-                <td>{point.amateur}</td>
-                <td>{point.pro}</td>
-                <td>{point.unspecified}</td>
-                <td>{point.baseline}</td>
+        <div className="report-sr">
+          <table>
+            <caption>{title}. Amateur, pro, unspecified, and the comparison total.</caption>
+            <thead>
+              <tr>
+                <th>This period</th>
+                <th>Amateur</th>
+                <th>Pro</th>
+                <th>Unspecified</th>
+                <th>Comparison period</th>
+                <th>Comparison</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {points.map((point) => (
+                <tr key={`${point.detail}-${point.baselineDetail}-${point.label}`}>
+                  <th>{point.detail}</th>
+                  <td>{point.amateur}</td>
+                  <td>{point.pro}</td>
+                  <td>{point.unspecified}</td>
+                  <th>{point.baselineDetail || "—"}</th>
+                  <td>{point.baseline}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       }
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full" aria-hidden>

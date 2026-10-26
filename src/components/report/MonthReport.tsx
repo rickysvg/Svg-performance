@@ -23,7 +23,7 @@ export async function MonthReport({
   compare?: string;
   focus?: string;
 }) {
-  const history = await loadReportHistory(userId);
+  const history = await loadReportHistory(userId, new Date(), { monthKey });
   const key = monthKey ?? currentMonthKey(history.now, history.timeZone);
   const model = buildPeriodReport(history, "month", key, compare, parseReportFocus(focus));
   if (!model) notFound();
