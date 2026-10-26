@@ -294,16 +294,52 @@ export function isGoodSwapMatch(name: string, exercise: LibraryExercise) {
   return Boolean(exercise.swapsWith?.includes(current) || exercise.swapsWith?.includes(raw));
 }
 
-/** The lime Best badge. An alphabetical leftover, or an empty list, does not get one. */
+/**
+ * Finer than the library category. Hip switches stay with hip openers,
+ * squats stay with squats, and a push-up stays with presses.
+ */
+export function movementTarget(name: string): string {
+  const canonical = canonicalExerciseName(name);
+  const n = canonical.toLowerCase();
+  if (/90\/90|hip circle|hip switch|butterfly|\bpigeon\b/.test(n)) return "hip-rotation";
+  if (/frog|couch stretch|deep squat hold|knee to chest|leg raise/.test(n)) return "hip-opener";
+  if (/half split|straddle lean|wall hang/.test(n)) return "hamstring";
+  if (/\bankle\b/.test(n)) return "ankle";
+  if (/shoulder circle|child's pose|^hang$/.test(n)) return "shoulder";
+  if (/\bneck\b/.test(n)) return "neck";
+  if (/squat jump|broad jump|plyo/.test(n)) return "explosive";
+  if (/sit-to-stand|\bsquat\b/.test(n)) return "squat";
+  if (/hinge|deadlift|\brdl\b|glute bridge|hip thrust/.test(n)) return "hinge";
+  if (/lunge|step-up|split squat/.test(n)) return "lunge";
+  if (/pike|overhead/.test(n)) return "overhead-push";
+  if (/push-?up|\bbench\b|floor press|landmine press|chest pass/.test(n)) return "horizontal-push";
+  if (/\brow\b|pulldown|pull-apart|chin-up|face pull|pullover/.test(n)) return "pull";
+  if (/plank|dead bug|hollow|bird dog|pallof|woodchop/.test(n)) return "core";
+  const category = libraryExercise(canonical)?.category;
+  return category ?? "general";
+}
+
+/** Body region used for the Best badge. Hip openers share a region; a squat does not. */
+export function movementRegion(name: string): string {
+  const target = movementTarget(name);
+  if (target === "hip-rotation" || target === "hip-opener" || target === "hamstring") return "hip";
+  if (target === "horizontal-push" || target === "overhead-push") return "push";
+  if (target === "squat" || target === "hinge" || target === "lunge" || target === "lower") return "lower";
+  return target;
+}
+
+/** The lime Best badge. Region and pattern both have to match. */
 export function showBestSwapBadge(name: string, suggestions: readonly LibraryExercise[]) {
   const top = suggestions[0];
-  return Boolean(top && isGoodSwapMatch(name, top));
+  const { near } = swapSource(name);
+  if (!top || !near || top.category !== near.category) return false;
+  return movementRegion(near.name) === movementRegion(top.name);
 }
 
 /**
  * The three replacements a member can tap without searching.
- * Movement pattern comes first. Bodyweight still fits a gym member.
- * Logged lifts only reorder inside that pattern. No pattern means no suggestion.
+ * Body region comes first, then pattern, then equipment.
+ * Bodyweight still fits a gym member. Logged lifts only reorder inside that region.
  */
 export function bestSwapReplacements(input: {
   name: string;
@@ -325,29 +361,39 @@ export function bestSwapReplacements(input: {
     const clean = canonicalExerciseName(name);
     if (!loggedRank.has(clean)) loggedRank.set(clean, index);
   }
-  return EXERCISE_LIBRARY.filter((exercise) => {
+  const sourceTarget = movementTarget(near?.name ?? current);
+  const sourceRegion = movementRegion(near?.name ?? current);
+  const ranked = EXERCISE_LIBRARY.filter((exercise) => {
     if (exercise.memberHidden) return false;
-    if (exercise.name === current || exercise.name === raw) return false;
+    if (exercise.name === raw) return false;
+    if (exercise.name === current && raw === current) return false;
     if (!equipmentFits(exercise, input.equipment)) return false;
     return isGoodSwapMatch(input.name, exercise);
   })
     .map((exercise) => {
       let score = 0;
       const samePattern = Boolean(near && exercise.category === near.category);
+      const sameTarget = movementTarget(exercise.name) === sourceTarget;
+      const sameRegion = movementRegion(exercise.name) === sourceRegion;
       if (preferred.has(exercise.name)) score += 80;
       if (samePattern) score += 40;
       const shared = tagsForExercise(exercise.name).filter((tag) => sourceTags.has(tag.toLowerCase())).length;
       score += shared * 15;
       const logged = loggedRank.get(exercise.name);
       if (logged != null) score += Math.max(8, 28 - logged * 4);
-      return { exercise, score, samePattern };
+      const equipmentRank =
+        near && exercise.equipment === near.equipment ? 0 : exercise.equipment === "both" || near?.equipment === "both" ? 1 : 2;
+      return { exercise, score, samePattern, sameTarget, sameRegion, equipmentRank };
     })
     .sort(
       (a, b) =>
+        Number(b.sameTarget) - Number(a.sameTarget) ||
+        Number(b.sameRegion) - Number(a.sameRegion) ||
         Number(b.samePattern) - Number(a.samePattern) ||
         b.score - a.score ||
+        a.equipmentRank - b.equipmentRank ||
         a.exercise.name.localeCompare(b.exercise.name),
-    )
-    .slice(0, limit)
-    .map((row) => row.exercise);
+    );
+  const regional = ranked.filter((row) => row.sameRegion);
+  return (regional.length > 0 ? regional : ranked).slice(0, limit).map((row) => row.exercise);
 }
