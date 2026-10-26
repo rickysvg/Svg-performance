@@ -23,7 +23,7 @@ import { dayKey as zonedDayKey } from "@/lib/timezone";
 import { HomeBodyWeight } from "@/components/home/HomeBodyWeight";
 import { WeighInDisclosure } from "@/components/progress/WeighInDisclosure";
 import { DeleteBodyMetricButton } from "@/components/progress/DeleteBodyMetricButton";
-import { listProgressPhotosForUser } from "@/lib/progress-photos";
+import { countProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
 import { getPersonalRecordsForUser } from "@/lib/records";
 import { PersonalRecordsBoard } from "@/components/progress/PersonalRecordsBoard";
@@ -62,13 +62,13 @@ function MetricTile({
 
 export default async function ProgressPage() {
   const user = await requireUser();
-  const [profile, sessions, latestMetrics, weightHistory, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
+  const [profile, sessions, latestMetrics, weightHistory, photoCount, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
       getProfileForUser(user.id),
       listRecentSessionsForUser(user.id, PROGRESS_SESSION_TAKE),
       getLatestBodyMetricsForUser(user.id),
       listBodyMetricsForUser(user.id, "weight"),
-      listProgressPhotosForUser(user.id),
+      countProgressPhotosForUser(user.id),
       getNutritionSummaryForDay(user.id),
       getRecentNutritionDays(user.id, 7),
       getProgressHeartTiles(user.id),
@@ -199,7 +199,7 @@ export default async function ProgressPage() {
             Body fat {fat ? `${fat.value}%` : "—"}
           </p>
           <p className="mt-1 text-xs text-muted">
-            {weight ? "Typed by you. The line is every weigh-in." : "Log a weigh-in below."}
+            {weight ? "Typed by you. The line is your recent weigh-ins." : "Log a weigh-in below."}
           </p>
         </div>
         <BodyWeightChart
@@ -298,9 +298,9 @@ export default async function ProgressPage() {
         <span>
           <span className="block font-semibold">Progress photos</span>
           <span className="text-sm text-muted">
-            {photos.length === 0
+            {photoCount === 0
               ? "Upload a date-stamped photo"
-              : `${photos.length} saved · private to you`}
+              : `${photoCount} saved · private to you`}
           </span>
         </span>
         <span aria-hidden className="text-muted">

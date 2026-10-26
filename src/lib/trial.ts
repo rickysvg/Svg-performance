@@ -201,7 +201,15 @@ export async function dismissThirdWorkoutCard(userId: string, now = new Date()) 
   });
 }
 
-export async function countCompleteWorkoutsForUser(userId: string) {
+export async function countCompleteWorkoutsForUser(userId: string, take?: number) {
+  if (take != null) {
+    const rows = await prisma.workoutSession.findMany({
+      where: { userId, status: "complete", sets: loggedSetSome },
+      select: { id: true },
+      take,
+    });
+    return rows.length;
+  }
   return prisma.workoutSession.count({
     where: { userId, status: "complete", sets: loggedSetSome },
   });
@@ -219,7 +227,7 @@ export async function shouldShowThirdWorkoutCard(
   if (state.trialUsed || state.thirdWorkoutCardDismissedAt) {
     return false;
   }
-  const sessions = await countCompleteWorkoutsForUser(userId);
+  const sessions = await countCompleteWorkoutsForUser(userId, 3);
   return sessions >= 3;
 }
 

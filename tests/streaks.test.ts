@@ -71,6 +71,31 @@ describe("training streak (scheduled days)", () => {
     expect(dots[6]?.scheduled).toBe(true);
   });
 
+  it("keeps a recent streak when a 2015 log is also present", () => {
+    const thursday = new Date("2026-09-17T18:00:00.000Z");
+    const sunday = new Date("2026-09-20T18:00:00.000Z");
+    const tz = "America/Denver";
+    const keys = ["2015-06-15", dayKey(thursday, tz), dayKey(sunday, tz)];
+    const started = performance.now();
+    expect(currentTrainingStreak(keys, prefs, sunday, tz)).toBe(2);
+    expect(longestTrainingStreak(keys, prefs, sunday, tz)).toBe(2);
+    expect(performance.now() - started).toBeLessThan(100);
+  });
+
+  it("does not walk back to 2015 when that is the only log", () => {
+    const now = new Date("2026-10-26T18:00:00.000Z");
+    const started = performance.now();
+    const streak = buildTrainingStreak({
+      completedDates: [new Date("2015-06-15T18:00:00.000Z")],
+      prefs,
+      now,
+      timeZone: "America/Denver",
+    });
+    expect(performance.now() - started).toBeLessThan(100);
+    expect(streak.current).toBe(0);
+    expect(streak.longest).toBe(0);
+  });
+
   it("says the streak is safe on a scheduled rest day", () => {
     const saturday = new Date("2026-09-26T18:00:00.000Z");
     const thursday = new Date("2026-09-24T18:00:00.000Z");

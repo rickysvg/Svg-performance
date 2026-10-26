@@ -3,7 +3,7 @@ import { AppError } from "@/lib/errors";
 import { getProfileForUser } from "@/lib/profile";
 import { getTrialState } from "@/lib/trial";
 import { APP_TIMEZONE, mondayOfZoned } from "@/lib/timezone";
-import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
+import { buildTrainingStreak, plannerPrefsFromProfile, streakQuerySince } from "@/lib/streaks";
 import { loggedSetSome } from "@/lib/logged-work";
 import { billingPlanFromStored, catalogPlanFromStored } from "@/lib/pro-annual-record";
 import {
@@ -351,7 +351,12 @@ async function upsellSignals(userId: string, now: Date): Promise<VipUpsellSignal
         },
       }),
       prisma.workoutSession.findMany({
-        where: { userId, status: "complete", sets: loggedSetSome },
+        where: {
+          userId,
+          status: "complete",
+          sets: loggedSetSome,
+          performedAt: { gte: streakQuerySince(now) },
+        },
         select: { performedAt: true },
       }),
       getTrialState(userId, now),

@@ -249,43 +249,66 @@ export async function markPathStepComplete(userId: string, pathSlug: string, ste
 }
 
 async function autoCompleteHints(userId: string, path: TrainingPath) {
-  const [program, sessions, lessons, progress, journalCount, bookings] = await Promise.all([
+  const minWorkouts = path.steps.reduce((max, step) => Math.max(max, step.minWorkouts ?? 0), 0);
+  const [program, workoutSample, ratedRow, progress, journal, booking] = await Promise.all([
     findDemoProgram(),
     prisma.workoutSession.findMany({
       where: { userId, status: "complete", sets: loggedSetSome },
-      select: { programDayId: true, difficultyRating: true },
+      select: { id: true },
+      take: Math.max(minWorkouts, 1),
     }),
-    listPublishedLessons(),
+    prisma.workoutSession.findFirst({
+      where: {
+        userId,
+        status: "complete",
+        sets: loggedSetSome,
+        NOT: { difficultyRating: "" },
+      },
+      select: { id: true },
+    }),
     listLessonProgressForUser(userId),
-    prisma.journalEntry.count({ where: { userId } }),
-    prisma.bookingRequest.count({ where: { userId } }),
+    prisma.journalEntry.findFirst({ where: { userId }, select: { id: true } }),
+    prisma.bookingRequest.findFirst({ where: { userId }, select: { id: true } }),
   ]);
-  const completedDayNumbers = new Set(
-    sessions
-      .map((row) => program?.days.find((day) => day.id === row.programDayId)?.dayNumber)
-      .filter((n): n is number => n != null),
+  const neededDays = [
+    ...new Set(
+      path.steps.flatMap((step) => (step.programDayNumber ? [step.programDayNumber] : [])),
+    ),
+  ];
+  const dayHits = await Promise.all(
+    neededDays.map(async (dayNumber) => {
+      const dayId = program?.days.find((day) => day.dayNumber === dayNumber)?.id;
+      if (!dayId) return null;
+      const hit = await prisma.workoutSession.findFirst({
+        where: { userId, status: "complete", sets: loggedSetSome, programDayId: dayId },
+        select: { id: true },
+      });
+      return hit ? dayNumber : null;
+    }),
   );
+  const completedDayNumbers = new Set(dayHits.filter((dayNumber): dayNumber is number => dayNumber != null));
   const completedLessons = progress.filter((row) => row.completed).length;
-  const rated = sessions.some((row) => row.difficultyRating);
+  const hasJournal = Boolean(journal);
+  const hasBooking = Boolean(booking);
   const newly: string[] = [];
   for (const step of path.steps) {
     let done = false;
     if (step.programDayNumber && completedDayNumbers.has(step.programDayNumber)) {
       done = true;
     }
-    if (step.minWorkouts && sessions.length >= step.minWorkouts) {
+    if (step.minWorkouts && workoutSample.length >= step.minWorkouts) {
       done = true;
     }
     if (step.lessonHint && completedLessons > 0) {
       done = true;
     }
-    if (step.journalHint && journalCount > 0) {
+    if (step.journalHint && hasJournal) {
       done = true;
     }
-    if (step.checkinHint && (journalCount > 0 || bookings > 0)) {
+    if (step.checkinHint && (hasJournal || hasBooking)) {
       done = true;
     }
-    if (step.key === "rate-feel" && rated) {
+    if (step.key === "rate-feel" && ratedRow) {
       done = true;
     }
     if (done) {

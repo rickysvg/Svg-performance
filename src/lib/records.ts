@@ -1,8 +1,7 @@
-import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
-import type { WorkoutSession, WorkoutSet } from "@prisma/client";
+import { streakQuerySince, STREAK_LOOKBACK_DAYS } from "@/lib/streaks";
 import { timeZoneForUser } from "@/lib/profile";
 import {
   APP_TIMEZONE,
@@ -65,15 +64,28 @@ export function currentConsecutiveDays(
   }
   let streak = 0;
   let cursor = startOfZonedDay(now, timeZone);
-  while (set.has(zonedDayKey(cursor, timeZone))) {
+  for (let step = 0; step < STREAK_LOOKBACK_DAYS; step += 1) {
+    if (!set.has(zonedDayKey(cursor, timeZone))) break;
     streak += 1;
     cursor = addZonedDays(cursor, -1, timeZone);
   }
   return streak;
 }
 
+type RecordSession = {
+  status: string;
+  performedAt: Date;
+  sets: Array<{
+    exerciseName: string;
+    loadValue: number | null;
+    loadUnit: string;
+    reps?: number | null;
+    durationSeconds?: number | null;
+  }>;
+};
+
 export function loadRecordsFromSessions(
-  sessions: Array<WorkoutSession & { sets: WorkoutSet[] }>,
+  sessions: RecordSession[],
   displayUnit: LoadUnit,
 ): LoadRecord[] {
   const bests = new Map<string, LoadRecord>();
@@ -98,7 +110,7 @@ export function loadRecordsFromSessions(
 }
 
 export function buildPersonalRecords(input: {
-  sessions: Array<WorkoutSession & { sets: WorkoutSet[] }>;
+  sessions: RecordSession[];
   activityDates: Date[];
   displayUnit: LoadUnit;
   now?: Date;
@@ -124,16 +136,38 @@ export async function getPersonalRecordsForUser(
   timeZone?: string,
 ) {
   const tz = timeZone ?? (await timeZoneForUser(userId));
+  const since = streakQuerySince(now);
   const [sessions, foods] = await Promise.all([
-    listWorkoutSessionsForUser(userId),
+    prisma.workoutSession.findMany({
+      where: {
+        userId,
+        status: "complete",
+        sets: loggedSetSome,
+        performedAt: { gte: since },
+      },
+      orderBy: { performedAt: "desc" },
+      select: {
+        status: true,
+        performedAt: true,
+        sets: {
+          select: {
+            exerciseName: true,
+            loadValue: true,
+            loadUnit: true,
+            reps: true,
+            durationSeconds: true,
+          },
+        },
+      },
+    }),
     prisma.nutritionEntry.findMany({
-      where: { userId },
+      where: { userId, eatenAt: { gte: since } },
       select: { eatenAt: true },
     }),
   ]);
   const activityDates = [
     ...sessions
-      .filter((row) => row.status === "complete" && sessionHasLoggedWork(row.sets))
+      .filter((row) => sessionHasLoggedWork(row.sets))
       .map((row) => row.performedAt),
     ...foods.map((row) => row.eatenAt),
   ];

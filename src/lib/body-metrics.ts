@@ -203,10 +203,18 @@ export async function recordWeightEntryForUser(
   return weight;
 }
 
-export async function listBodyMetricsForUser(userId: string, kind?: BodyMetricKind) {
+/** Newest rows the progress chart reads. Older weigh-ins stay in the database. */
+export const BODY_METRIC_LIST_TAKE = 400;
+
+export async function listBodyMetricsForUser(
+  userId: string,
+  kind?: BodyMetricKind,
+  take = BODY_METRIC_LIST_TAKE,
+) {
   return prisma.bodyMetric.findMany({
     where: { userId, ...(kind ? { kind } : {}) },
     orderBy: { recordedAt: "desc" },
+    take,
   });
 }
 
@@ -303,15 +311,18 @@ export async function getRecentBodyFatForUser(userId: string, take = 2) {
 }
 
 export async function getLatestBodyMetricsForUser(userId: string) {
-  const rows = await prisma.bodyMetric.findMany({
-    where: { userId },
-    orderBy: { recordedAt: "desc" },
-  });
-  const latest = new Map<string, (typeof rows)[number]>();
+  const rows = await Promise.all(
+    BODY_METRIC_KINDS.map((kind) =>
+      prisma.bodyMetric.findFirst({
+        where: { userId, kind },
+        orderBy: { recordedAt: "desc" },
+      }),
+    ),
+  );
+  const latest = new Map<string, NonNullable<(typeof rows)[number]>>();
   for (const row of rows) {
-    if (!latest.has(row.kind)) {
-      latest.set(row.kind, displayBodyMetric(row));
-    }
+    if (!row || latest.has(row.kind)) continue;
+    latest.set(row.kind, displayBodyMetric(row));
   }
   return latest;
 }

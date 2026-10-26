@@ -16,36 +16,47 @@ import {
   type DetectedPr,
 } from "@/lib/personal-bests";
 import { getProfileForUser, timeZoneForUser, type ProfileRecord } from "@/lib/profile";
-import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
+import { buildTrainingStreak, plannerPrefsFromProfile, streakQuerySince } from "@/lib/streaks";
 import { type LoadUnit } from "@/lib/units";
 import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
 import { civilDayInstant } from "@/lib/performed-at";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
 import { getLatestBodyMetricsForUser } from "@/lib/body-metrics";
 
-export async function datedSetsForUser(userId: string, excludeSessionId?: string) {
-  const sessions = await prisma.workoutSession.findMany({
+const PROGRESS_SET_SELECT = {
+  exerciseName: true,
+  reps: true,
+  loadValue: true,
+  loadUnit: true,
+  durationSeconds: true,
+  logMode: true,
+  completed: true,
+} as const;
+
+function listCompleteSessionsInWindow(input: {
+  userId: string;
+  now: Date;
+  excludeSessionId?: string;
+}) {
+  return prisma.workoutSession.findMany({
     where: {
-      userId,
+      userId: input.userId,
       status: "complete",
       sets: loggedSetSome,
-      ...(excludeSessionId ? { id: { not: excludeSessionId } } : {}),
+      performedAt: { gte: streakQuerySince(input.now) },
+      ...(input.excludeSessionId ? { id: { not: input.excludeSessionId } } : {}),
     },
+    orderBy: { performedAt: "desc" },
     select: {
+      id: true,
+      status: true,
       performedAt: true,
-      sets: {
-        select: {
-          exerciseName: true,
-          reps: true,
-          loadValue: true,
-          loadUnit: true,
-          durationSeconds: true,
-          logMode: true,
-          completed: true,
-        },
-      },
+      sets: { select: PROGRESS_SET_SELECT },
     },
   });
+}
+
+export async function datedSetsForUser(userId: string, excludeSessionId?: string, now = new Date()) {
+  const sessions = await listCompleteSessionsInWindow({ userId, now, excludeSessionId });
   const dated: DatedSetLike[] = [];
   for (const session of sessions) {
     for (const set of session.sets) {
@@ -81,7 +92,7 @@ export { newPrExerciseCount };
 export async function getCompanionProgress(userId: string, displayUnit: LoadUnit, now = new Date()) {
   const [profile, sessions, tz] = await Promise.all([
     getProfileForUser(userId),
-    listWorkoutSessionsForUser(userId),
+    listCompleteSessionsInWindow({ userId, now }),
     timeZoneForUser(userId),
   ]);
   const complete = sessions.filter(
@@ -137,7 +148,7 @@ export async function evaluateBadgesForUser(
 ) {
   const [profile, sessions, tz] = await Promise.all([
     getProfileForUser(userId),
-    listWorkoutSessionsForUser(userId),
+    listCompleteSessionsInWindow({ userId, now, excludeSessionId }),
     timeZoneForUser(userId),
   ]);
   const complete = sessions.filter(
