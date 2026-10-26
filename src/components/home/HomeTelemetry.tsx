@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { TelemetryChart } from "@/components/design/TelemetryChart";
 import {
   formatTelemetryNumber,
@@ -100,7 +101,15 @@ export function HomeTelemetry({
             This week
           </h2>
         </div>
-        <p className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-muted">Mon–Sun</p>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <p className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-muted">Mon–Sun</p>
+          <Link
+            href="/progress/weeks"
+            className="font-telemetry text-[10px] uppercase tracking-[0.16em] text-[#CBF805] underline"
+          >
+            Week history
+          </Link>
+        </div>
       </div>
 
       <div className={`grid grid-cols-2 ${compact ? "mt-2 gap-1.5" : "mt-4 gap-2"}`}>

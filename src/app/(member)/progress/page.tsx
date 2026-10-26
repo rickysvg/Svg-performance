@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { PROGRESS_SESSION_TAKE, listRecentSessionsForUser } from "@/lib/workouts";
+import { listWorkoutSessionsForUser, PROGRESS_HISTORY_DAYS } from "@/lib/workouts";
 import { buildProgressSummary, sessionAppearsOnProgress } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
@@ -35,7 +35,7 @@ import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion"
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
-import { sparringLogDateLabel, sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
+import { roundTypeLabel, sparringLogDateLabel, sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
 import { WeighInList } from "@/components/progress/WeighInList";
 import { SparringTrend } from "@/components/progress/SparringTrend";
 import { formatWorkoutCompleteDate } from "@/lib/workout-complete";
@@ -65,7 +65,7 @@ export default async function ProgressPage() {
   const [profile, sessions, latestMetrics, weightHistory, photoCount, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
       getProfileForUser(user.id),
-      listRecentSessionsForUser(user.id, PROGRESS_SESSION_TAKE),
+      listWorkoutSessionsForUser(user.id, { recentDays: PROGRESS_HISTORY_DAYS }),
       getLatestBodyMetricsForUser(user.id),
       listBodyMetricsForUser(user.id, "weight"),
       countProgressPhotosForUser(user.id),
@@ -253,6 +253,7 @@ export default async function ProgressPage() {
             {sparringWeek.logs.map((log) => (
               <li key={log.dateKey}>
                 {sparringLogDateLabel(log)}: {log.rounds} × {log.minutesPerRound} min
+                {roundTypeLabel(log.roundType) ? ` · ${roundTypeLabel(log.roundType)}` : ""}
                 {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
                 {log.partner ? ` · ${log.partner}` : ""}
                 {log.sessionRating ? ` · session ${log.sessionRating}/5` : ""}
