@@ -133,7 +133,7 @@ describe("Timmy Oct 19 sparring and coach surfaces", () => {
 
     await prisma.profile.update({
       where: { userId: user.id },
-        data: { trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), aiCoachId: "ricky" },
+      data: { trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), aiCoachId: "ricky" },
     });
     const saved = await saveSparringLog(user.id, {
       dateKey: "2026-10-17",

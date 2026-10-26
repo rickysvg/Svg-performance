@@ -66,7 +66,6 @@ export function SparringLogForm({
   anyDay?: boolean;
 }) {
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
-  const [intensity, setIntensity] = useState(saved?.intensity ?? "");
   const [partner, setPartner] = useState(saved?.partner ?? "");
   const [sessionRating, setSessionRating] = useState(
     saved?.sessionRating == null ? "" : String(saved.sessionRating),
@@ -76,12 +75,16 @@ export function SparringLogForm({
   const [trackedSave, setTrackedSave] = useState(state);
   if (state !== trackedSave) {
     setTrackedSave(state);
-    if (state.saved) {
-      if (typeof state.intensity === "string") setIntensity(state.intensity);
-      if (typeof state.partner === "string") setPartner(state.partner);
-    }
+    if (state.saved && typeof state.partner === "string") setPartner(state.partner);
   }
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
+  const roundTypeValue =
+    state.saved && typeof state.roundType === "string"
+      ? state.roundType === "amateur" || state.roundType === "pro"
+        ? state.roundType
+        : ""
+      : (saved?.roundType ?? "");
+  const intensityValue = state.saved && typeof state.intensity === "string" ? state.intensity : (saved?.intensity ?? "");
 
   return (
     <form
@@ -151,11 +154,26 @@ export function SparringLogForm({
         </label>
       </div>
       <label className="block text-sm">
+        Round type (optional)
+        <select
+          key={`round-type-${roundTypeValue}`}
+          name="roundType"
+          aria-label="Round type (optional)"
+          defaultValue={roundTypeValue}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        >
+          <option value="">Unspecified</option>
+          <option value="amateur">Amateur</option>
+          <option value="pro">Pro</option>
+        </select>
+      </label>
+      <label className="block text-sm">
         Intensity (optional)
         <select
+          key={`intensity-${intensityValue}`}
           name="intensity"
-          value={intensity}
-          onChange={(event) => setIntensity(event.target.value)}
+          aria-label="Intensity (optional)"
+          defaultValue={intensityValue}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           <option value="">Skip</option>

@@ -1068,6 +1068,21 @@ BEGIN
   END IF;
 END $$;
 
+-- Optional amateur/pro mark on a sparring log. Blank stays unspecified.
+DO $$
+BEGIN
+  IF to_regclass('public."OutsideSessionLog"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'OutsideSessionLog' AND column_name = 'roundType'
+  ) THEN
+    ALTER TABLE "OutsideSessionLog" ADD COLUMN "roundType" TEXT NOT NULL DEFAULT '';
+  END IF;
+END $$;
+
 -- Weekly check-in notes. Idempotent. No-ops until the WeeklyCheckIn table exists.
 DO $$
 BEGIN

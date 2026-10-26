@@ -58,6 +58,7 @@ describe("sparring session and body ratings", () => {
       bodyRating: 2,
       soreSpots: ["head", "shins", "nope"],
     });
+    expect(saved.roundType).toBe("");
     expect(saved.sessionRating).toBe(4);
     expect(saved.bodyRating).toBe(2);
     expect(saved.soreSpots).toEqual(["head", "shins"]);

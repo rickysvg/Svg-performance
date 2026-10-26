@@ -6,6 +6,7 @@ import {
   APP_TIMEZONE,
   addZonedDays,
   dayKey as zonedDayKey,
+  mondayOfZoned,
   startOfZonedDay,
 } from "@/lib/timezone";
 
@@ -29,6 +30,14 @@ export function lastSevenLocalDays(now = new Date(), timeZone = APP_TIMEZONE) {
   return { from, to, endExclusive };
 }
 
+/** Monday 00:00 through the next Monday, in the member's zone. Coach comments use this key. */
+export function mondayWeekBounds(now = new Date(), timeZone = APP_TIMEZONE) {
+  const from = mondayOfZoned(now, timeZone);
+  const to = addZonedDays(from, 6, timeZone);
+  const endExclusive = addZonedDays(from, 7, timeZone);
+  return { from, to, endExclusive };
+}
+
 export function weeklyWrappedCopy(input: {
   daysTrained: number;
   workoutsLogged: number;
@@ -47,9 +56,10 @@ export async function getWeeklyWrapped(
   userId: string,
   now = new Date(),
   timeZone?: string,
+  bounds?: { from: Date; to: Date; endExclusive: Date },
 ): Promise<WeeklyWrapped> {
   const tz = timeZone ?? (await timeZoneForUser(userId));
-  const { from, to, endExclusive } = lastSevenLocalDays(now, tz);
+  const { from, to, endExclusive } = bounds ?? lastSevenLocalDays(now, tz);
   const [workouts, meals, lessons] = await Promise.all([
     prisma.workoutSession.findMany({
       where: {

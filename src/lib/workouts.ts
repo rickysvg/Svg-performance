@@ -132,11 +132,25 @@ const WORKOUT_LIST_INCLUDE = {
 export const RECENT_SESSION_TAKE = 20;
 export const DRAFT_SESSION_TAKE = 8;
 export const PROGRESS_SESSION_TAKE = 40;
+/** Progress charts use this window instead of every session the member has ever saved. */
+export const PROGRESS_HISTORY_DAYS = 52 * 7;
 
-export async function listWorkoutSessionsForUser(userId: string) {
+export async function listWorkoutSessionsForUser(
+  userId: string,
+  range?: { since?: Date; take?: number; recentDays?: number },
+) {
+  const since =
+    range?.since ??
+    (range?.recentDays != null
+      ? new Date(Date.now() - range.recentDays * 86_400_000)
+      : undefined);
   return prisma.workoutSession.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(since ? { performedAt: { gte: since } } : {}),
+    },
     orderBy: { performedAt: "desc" },
+    ...(range?.take != null ? { take: range.take } : {}),
     include: WORKOUT_LIST_INCLUDE,
   });
 }

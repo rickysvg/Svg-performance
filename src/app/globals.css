@@ -39,6 +39,21 @@ html {
   color-scheme: dark;
 }
 
+/* Visually hidden, including data tables. A plain sr-only table still
+   contributes its min-content width and pans the report sideways. */
+.report-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 html,
 body {
   background: var(--background);
