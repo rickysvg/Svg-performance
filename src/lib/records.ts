@@ -1,4 +1,5 @@
-import { loggedSetSome, sessionHasLoggedWork } from "@/lib/logged-work";
+import { allTimePeakSets } from "@/lib/lifetime-stats";
+import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import { streakQuerySince, STREAK_LOOKBACK_DAYS } from "@/lib/streaks";
@@ -84,29 +85,51 @@ type RecordSession = {
   }>;
 };
 
+export function loadRecordsFromSets(
+  sets: Array<{
+    exerciseName: string;
+    loadValue: number | null;
+    loadUnit: string;
+    performedAt: Date;
+  }>,
+  displayUnit: LoadUnit,
+): LoadRecord[] {
+  const bests = new Map<string, LoadRecord>();
+  for (const set of sets) {
+    if (set.loadValue == null) continue;
+    const load = volumeInUnit(1, set.loadValue, set.loadUnit, displayUnit);
+    const name = set.exerciseName.trim();
+    if (!name) continue;
+    const current = bests.get(name);
+    if (!current || load > current.bestLoad) {
+      bests.set(name, {
+        exerciseName: name,
+        bestLoad: Math.round(load * 10) / 10,
+        unit: displayUnit,
+        date: set.performedAt,
+      });
+    }
+  }
+  return [...bests.values()].sort((a, b) => a.exerciseName.localeCompare(b.exerciseName));
+}
+
 export function loadRecordsFromSessions(
   sessions: RecordSession[],
   displayUnit: LoadUnit,
 ): LoadRecord[] {
-  const bests = new Map<string, LoadRecord>();
-  for (const session of sessions.filter((row) => row.status === "complete")) {
-    for (const set of session.sets) {
-      if (set.loadValue == null) continue;
-      const load = volumeInUnit(1, set.loadValue, set.loadUnit, displayUnit);
-      const name = set.exerciseName.trim();
-      if (!name) continue;
-      const current = bests.get(name);
-      if (!current || load > current.bestLoad) {
-        bests.set(name, {
-          exerciseName: name,
-          bestLoad: Math.round(load * 10) / 10,
-          unit: displayUnit,
-          date: session.performedAt,
-        });
-      }
-    }
-  }
-  return [...bests.values()].sort((a, b) => a.exerciseName.localeCompare(b.exerciseName));
+  return loadRecordsFromSets(
+    sessions
+      .filter((row) => row.status === "complete")
+      .flatMap((session) =>
+        session.sets.map((set) => ({
+          exerciseName: set.exerciseName,
+          loadValue: set.loadValue,
+          loadUnit: set.loadUnit,
+          performedAt: session.performedAt,
+        })),
+      ),
+    displayUnit,
+  );
 }
 
 export function buildPersonalRecords(input: {
@@ -137,7 +160,7 @@ export async function getPersonalRecordsForUser(
 ) {
   const tz = timeZone ?? (await timeZoneForUser(userId));
   const since = streakQuerySince(now);
-  const [sessions, foods] = await Promise.all([
+  const [sessions, foods, peaks] = await Promise.all([
     prisma.workoutSession.findMany({
       where: {
         userId,
@@ -145,31 +168,25 @@ export async function getPersonalRecordsForUser(
         sets: loggedSetSome,
         performedAt: { gte: since },
       },
-      orderBy: { performedAt: "desc" },
-      select: {
-        status: true,
-        performedAt: true,
-        sets: {
-          select: {
-            exerciseName: true,
-            loadValue: true,
-            loadUnit: true,
-            reps: true,
-            durationSeconds: true,
-          },
-        },
-      },
+      select: { performedAt: true },
     }),
     prisma.nutritionEntry.findMany({
       where: { userId, eatenAt: { gte: since } },
       select: { eatenAt: true },
     }),
+    allTimePeakSets(userId),
   ]);
   const activityDates = [
-    ...sessions
-      .filter((row) => sessionHasLoggedWork(row.sets))
-      .map((row) => row.performedAt),
+    ...sessions.map((row) => row.performedAt),
     ...foods.map((row) => row.eatenAt),
   ];
-  return buildPersonalRecords({ sessions, activityDates, displayUnit, now, timeZone: tz });
+  const keys = uniqueActiveDayKeys(activityDates, tz);
+  const loadRecords = loadRecordsFromSets(peaks, displayUnit);
+  const longestActiveStreak = longestConsecutiveDays(keys);
+  return {
+    loadRecords,
+    longestActiveStreak,
+    currentActiveStreak: currentConsecutiveDays(keys, now, tz),
+    empty: loadRecords.length === 0 && longestActiveStreak === 0,
+  };
 }

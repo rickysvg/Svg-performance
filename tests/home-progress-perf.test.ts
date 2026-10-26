@@ -139,7 +139,10 @@ describe("home and progress with a 2015 session", () => {
     const progressMs = performance.now() - progressStarted;
 
     const squat = progress.records.loadRecords.find((row) => row.exerciseName === "Back squat");
-    expect(squat?.bestLoad).toBe(135);
+    expect(squat?.bestLoad).toBe(225);
+    const companionSquat = progress.companion.records.find((row) => row.exerciseName === "Back squat");
+    expect(companionSquat?.primary.kind).toBe("heaviest");
+    expect(companionSquat?.primary.value).toBe(225);
     expect(progress.companion.streak.current).toBeGreaterThanOrEqual(0);
     expect(homeMs).toBeLessThan(500);
     expect(progressMs).toBeLessThan(500);
