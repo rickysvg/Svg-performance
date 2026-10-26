@@ -105,12 +105,58 @@ function isStructureKind(kind: string): kind is RoundKind {
   return isRoundKind(kind);
 }
 
-function defaultStructure(kind: string, bagRounds: number): IntervalStructure {
+/** The assault-bike case members backfill most often: 2 sets × 8 rounds @ 15s/15s. */
+export const ASSAULT_2X8_STRUCTURE: IntervalStructure = {
+  sets: 2,
+  rounds: 8,
+  workSeconds: 15,
+  restSeconds: 15,
+  setRestSeconds: 60,
+};
+
+const ASSAULT_2X8_PRESET: IntervalFieldPreset = {
+  id: "assault-2x8",
+  label: "2×8 @ 15/15",
+  structure: ASSAULT_2X8_STRUCTURE,
+};
+
+function sameStructure(left: IntervalStructure, right: IntervalStructure) {
+  return (
+    left.sets === right.sets &&
+    left.rounds === right.rounds &&
+    left.workSeconds === right.workSeconds &&
+    left.restSeconds === right.restSeconds &&
+    left.setRestSeconds === right.setRestSeconds
+  );
+}
+
+/**
+ * Taps once the day is already on screen.
+ * A 2×8 plan, or a day with no plan, is open + Save. The bike default is that ride.
+ * A different structure is open + the 2×8 preset + Save.
+ * A non-bike plan is open + Bike + Save, because Bike applies the 2×8 default.
+ * When that day still has a different bike target, the preset is a fourth tap.
+ * History opens on yesterday. Each step further back is one more tap.
+ */
+export function bikeBackfillTapCount(input: {
+  planIsAssault2x8: boolean;
+  mustPickBike: boolean;
+  bikeTargetNeedsPreset?: boolean;
+  historyDaySteps?: number;
+}) {
+  const steps = Math.max(0, Math.round(input.historyDaySteps ?? 0));
+  if (input.planIsAssault2x8) return 2 + steps;
+  if (input.mustPickBike && input.bikeTargetNeedsPreset) return 4 + steps;
+  return 3 + steps;
+}
+
+function defaultStructure(kind: string, _bagRounds: number): IntervalStructure {
   if (kind === "bag") return { sets: 1, rounds: 5, workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "pads") return { sets: 1, rounds: 5, workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "sparring") return { sets: 1, rounds: 3, workSeconds: 180, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "grappling") return { sets: 1, rounds: 5, workSeconds: 300, restSeconds: 60, setRestSeconds: 60 };
   if (kind === "shadow") return { sets: 1, rounds: 2, workSeconds: 180, restSeconds: 60, setRestSeconds: 0 };
+  if (kind === "bike") return { ...ASSAULT_2X8_STRUCTURE };
   return { sets: 1, rounds: 8, workSeconds: 20, restSeconds: 10, setRestSeconds: 60 };
 }
 
@@ -199,6 +245,7 @@ export function LogPastWorkoutButton({
   label,
   sessionId,
   compact = false,
+  fullWidth = false,
   timeZone = APP_TIMEZONE,
   seed,
   defaultOpen = false,
@@ -209,6 +256,7 @@ export function LogPastWorkoutButton({
   label: string;
   sessionId?: string;
   compact?: boolean;
+  fullWidth?: boolean;
   timeZone?: string;
   seed?: BackfillFormSeed;
   /** Tests open the dialog on the first render. Members open it from the button. */
@@ -235,8 +283,8 @@ export function LogPastWorkoutButton({
         onClick={() => setOpen(true)}
         className={
           compact
-            ? "touch-target inline-flex min-h-11 items-center rounded-full border border-[#CBF805]/50 px-3 text-sm font-semibold text-[#CBF805]"
-            : "touch-target inline-flex min-h-11 items-center justify-center rounded-full bg-[#CBF805] px-4 text-sm font-semibold text-black"
+            ? `touch-target inline-flex min-h-11 items-center rounded-full border border-[#CBF805]/50 px-3 text-sm font-semibold text-[#CBF805] ${fullWidth ? "w-full justify-center" : ""}`
+            : `touch-target inline-flex min-h-11 items-center justify-center rounded-full bg-[#CBF805] px-4 text-sm font-semibold text-black ${fullWidth ? "w-full" : ""}`
         }
       >
         {label}
@@ -514,10 +562,11 @@ function LogPastWorkoutSheet({
           : "Save workout";
   const last = isRoundKind(kind) || kind === "shadow" ? preview?.lastUsed[kind] : undefined;
   const presets = [
+    ...(kind === "bike" ? [ASSAULT_2X8_PRESET] : []),
     ...(last
       ? [{ id: "last", label: last.label, structure: structureFor(kind, { ...preview!, roundTargets: {} }) }]
       : []),
-    ...PRESETS,
+    ...PRESETS.filter((preset) => !(kind === "bike" && sameStructure(preset.structure, ASSAULT_2X8_STRUCTURE))),
   ];
   const bareShadow = preview?.weightAccess === "none";
 

@@ -71,6 +71,7 @@ const CANONICAL_NAMES: Record<string, string> = {
   "Lateral bound or side step-over": "Lateral bound",
   "Jump rope or easy bike intervals": "Jump rope",
   "Jump rope intervals": "Jump rope",
+  "Sit-to-stand": "Air squat",
 };
 
 export function canonicalExerciseName(name: string) {

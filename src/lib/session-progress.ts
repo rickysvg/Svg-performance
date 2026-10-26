@@ -60,6 +60,18 @@ function namesAreCovered(session: ProgressSession, names: string[]) {
   );
 }
 
+/**
+ * Every logged set is ticked, so a same-kind swap can finish the dose.
+ * A push-up on a bike day stays open even when that dose is one set.
+ */
+function tickedSwapCoversDose(session: ProgressSession, names: string[]) {
+  if (session.sets.length === 0 || !session.sets.every((set) => setIsTicked(set))) return false;
+  const planIsBike = names.some((name) => isBikeIntervalName(name));
+  const loggedIsBike = session.sets.some((set) => isBikeIntervalName(set.exerciseName ?? ""));
+  if (planIsBike && !loggedIsBike) return false;
+  return true;
+}
+
 function storedPlan(session: ProgressSession) {
   return typeof session.plannedSetCount === "number" && session.plannedSetCount > 0
     ? Math.round(session.plannedSetCount)
@@ -215,7 +227,7 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
     counted > 0 &&
     planned > 0 &&
     counted >= planned &&
-    (names.length === 0 || namesAreCovered(session, names) || session.sets.every((set) => setIsTicked(set)));
+    (names.length === 0 || namesAreCovered(session, names) || tickedSwapCoversDose(session, names));
   const unit = roundOrBikeSession(session) ? "rounds" : "sets";
   const mixed = mixedProgressText(session, programExercises, done);
   return {

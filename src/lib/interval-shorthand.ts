@@ -133,7 +133,7 @@ export function intervalDurationCapMessage(totalSeconds: number) {
   return `That workout is ${formatIntervalClock(totalSeconds)}. Max 4:00:00.`;
 }
 
-function fail(): { ok: false; error: string } {
+function fail(): { ok: false; error: string; clamp?: undefined } {
   return { ok: false, error: HINT };
 }
 
@@ -175,8 +175,16 @@ export function intervalConfiguredSeconds(
   return total;
 }
 
+type RoundClamp = {
+  sets: number;
+  rounds: number;
+  workSeconds: number;
+  restSeconds: number;
+  setRestSeconds: number | null;
+};
+
 type BuiltLine =
-  | { ok: false; error: string }
+  | { ok: false; error: string; clamp?: RoundClamp }
   | { ok: true; value: IntervalShorthand; totalSeconds: number };
 
 function finish(
@@ -193,7 +201,13 @@ function finish(
   const setRestSeconds = setRestRaw ? parseShorthandDuration(setRestRaw) : null;
   if (setRestRaw && setRestSeconds == null) return fail();
   if (!inRange(sets, 1, SETS_MAX)) return fail();
-  if (mode === "bike" && rounds > BIKE_ROUNDS_MAX) return { ok: false, error: "Rounds stop at 40." };
+  if (mode === "bike" && rounds > BIKE_ROUNDS_MAX) {
+    return {
+      ok: false,
+      error: "Rounds stop at 40.",
+      clamp: { sets, rounds: BIKE_ROUNDS_MAX, workSeconds, restSeconds, setRestSeconds },
+    };
+  }
   if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
   const workMax = intervalWorkMax({ sets, rounds, restSeconds });
   if (!inRange(workSeconds, WORK_MIN, workMax)) {
@@ -219,7 +233,13 @@ function finish(
 }
 
 function emomBuilt(mode: IntervalClockKind, rounds: number): BuiltLine {
-  if (mode === "bike" && rounds > BIKE_ROUNDS_MAX) return { ok: false, error: "Rounds stop at 40." };
+  if (mode === "bike" && rounds > BIKE_ROUNDS_MAX) {
+    return {
+      ok: false,
+      error: "Rounds stop at 40.",
+      clamp: { sets: 1, rounds: BIKE_ROUNDS_MAX, workSeconds: 60, restSeconds: 0, setRestSeconds: null },
+    };
+  }
   if (!inRange(rounds, 1, ROUNDS_MAX)) return fail();
   const value = { sets: 1, rounds, workSeconds: 60, restSeconds: 0, setRestSeconds: null };
   return {
@@ -384,9 +404,9 @@ function parseBuilt(raw: string, mode: IntervalClockKind): BuiltLine {
 }
 
 /**
- * Whether the field can be saved. A rejected line blocks Save even when the
- * steppers still show the previous structure. `matches` is true when that
- * line is the structure already on the steppers.
+ * Whether the field can be saved. A rejected line blocks Save. Bike rounds
+ * past 40 move the steppers to 40, and the line still has to be accepted.
+ * `matches` is true when that line is the structure already on the steppers.
  */
 export function shorthandLineState(text: string, current: IntervalStructure, mode: IntervalClockKind = "round") {
   const read = interpretShorthand(text, current, mode);
@@ -402,10 +422,24 @@ export function shorthandLineState(text: string, current: IntervalStructure, mod
   return { error: "", matches, blocked: !matches };
 }
 
-/** A bad line keeps the steppers. A good line updates them and keeps an omitted set rest. */
+/** A bad line keeps the steppers. Bike rounds past 40 keep the error and snap the steppers to 40. A good line updates them and keeps an omitted set rest. */
 export function commitShorthand(text: string, current: IntervalStructure, mode: IntervalClockKind = "round") {
   const read = interpretShorthand(text, current, mode);
-  if (!read.ok) return { structure: current, error: read.error };
+  if (!read.ok) {
+    if (read.clamp) {
+      return {
+        structure: clampIntervalStructure({
+          sets: read.clamp.sets,
+          rounds: read.clamp.rounds,
+          workSeconds: read.clamp.workSeconds,
+          restSeconds: read.clamp.restSeconds,
+          setRestSeconds: read.clamp.setRestSeconds ?? current.setRestSeconds,
+        }),
+        error: read.error,
+      };
+    }
+    return { structure: current, error: read.error };
+  }
   if (read.totalSeconds > INTERVAL_SESSION_MAX_SECONDS) {
     return { structure: current, error: intervalDurationCapMessage(read.totalSeconds) };
   }
