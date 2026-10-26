@@ -4,13 +4,13 @@ import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "rea
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { anchorPopover } from "@/lib/popover-anchor";
-import { swapExerciseAction } from "@/app/actions/exercise-swap";
+import { swapExerciseAction, undoExerciseSwapAction } from "@/app/actions/exercise-swap";
 import {
   removeExerciseAction,
   undoExerciseRemovalAction,
 } from "@/app/actions/exercise-removal";
 import type { LibraryExercise } from "@/lib/exercise-library";
-import { cleanSwapName, swapAlreadyInWorkoutMessage } from "@/lib/exercise-swap";
+import { bestSwapReplacements, cleanSwapName, swapAlreadyInWorkoutMessage } from "@/lib/exercise-swap";
 import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
 import { ExerciseLibrarySheet } from "@/components/training/ExerciseLibrarySheet";
@@ -55,6 +55,7 @@ export function ExerciseCardMenu({
   snapshotSets,
   onSetsReplaced,
   onSwapped,
+  loggedNames = [],
 }: {
   programSlug: string;
   dayNumber: number;
@@ -79,6 +80,8 @@ export function ExerciseCardMenu({
       notes: string;
     },
   ) => void;
+  /** Names this member has logged, most recent first. Best replacements prefer them. */
+  loggedNames?: string[];
 }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -87,6 +90,7 @@ export function ExerciseCardMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   const [open, setOpen] = useState(false);
+  const [scope, setScope] = useState<"session" | "block">("session");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -135,9 +139,17 @@ export function ExerciseCardMenu({
     else router.refresh();
   }
 
-  function confirm(scope: "session" | "block", choice: LibraryExercise) {
+  const suggestions = bestSwapReplacements({
+    name: currentName,
+    equipment: weightAccess,
+    loggedNames,
+  });
+
+  function confirm(nextScope: "session" | "block", choice: LibraryExercise) {
     const replacementName = choice.name;
     const currentSets = getCurrentSets?.() ?? [];
+    const before = snapshotSets?.().map((set) => ({ ...set })) ?? null;
+    const previousName = currentName;
     const already = currentSets.some(
       (set) =>
         cleanSwapName(set.exerciseName) === cleanSwapName(replacementName) &&
@@ -152,7 +164,7 @@ export function ExerciseCardMenu({
         originalName,
         currentName,
         replacementName,
-        scope,
+        scope: nextScope,
         workoutSessionId,
         source,
         currentSets,
@@ -164,9 +176,33 @@ export function ExerciseCardMenu({
       closeSheet();
       onSwapped?.(result.replacementName, result.prescription);
       applySets(result.sets, result.replacementName, result.updatedAt);
-      if (already) {
-        showRemoveToast({ message: swapAlreadyInWorkoutMessage(result.replacementName) });
-      }
+      const setDelta = result.prescription.sets - source.sets;
+      showRemoveToast({
+        message: already
+          ? swapAlreadyInWorkoutMessage(result.replacementName)
+          : `Swapped to ${result.replacementName}.`,
+        undo: async () => {
+          if (before) applySets(before);
+          const restored = await undoExerciseSwapAction({
+            programSlug,
+            dayNumber,
+            programDayId,
+            originalName,
+            restoredName: previousName,
+            undoneName: result.replacementName,
+            scope: nextScope,
+            workoutSessionId,
+            currentSets: before ? before.map(removalSetInput) : undefined,
+            setDelta,
+          });
+          if (!restored.ok) {
+            applySets(result.sets);
+            showRemoveToast({ message: restored.error });
+            return;
+          }
+          applySets(restored.sets ?? before);
+        },
+      });
     });
   }
 
@@ -255,6 +291,7 @@ export function ExerciseCardMenu({
               data-swap={currentName}
               onClick={() => {
                 setMenuOpen(false);
+                setScope("session");
                 setOpen(true);
               }}
               className="flex min-h-11 w-full items-center px-3 text-left text-sm font-semibold"
@@ -293,6 +330,11 @@ export function ExerciseCardMenu({
           nearName={currentName}
           pending={pending}
           error={error}
+          suggestions={suggestions}
+          scope={scope}
+          allowBlock={Boolean(programSlug)}
+          onScope={setScope}
+          onQuickPick={(choice) => confirm(scope, choice)}
           onClose={closeSheet}
           footer={(choice) => (
             <>

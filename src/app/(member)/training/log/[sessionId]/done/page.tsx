@@ -16,6 +16,7 @@ import {
   workoutCompleteTiles,
 } from "@/lib/workout-complete";
 import { WorkoutWinScreen } from "@/components/training/WorkoutWinScreen";
+import { backfillFormSeed } from "@/lib/backfill-workout";
 import { buildSessionSummary, summaryExercises } from "@/lib/session-summary";
 import { loggedSetSome, sessionHasLoggedWork, sessionOpensFinishScreen } from "@/lib/logged-work";
 import { sessionProgress } from "@/lib/session-progress";
@@ -188,6 +189,8 @@ export default async function WorkoutDonePage({
         summary={summary}
         partial={partial}
         statusLabel={progress.text}
+        editSeed={owned.backfilled ? backfillFormSeed(owned, tz) : null}
+        timeZone={tz}
       />
     </main>
   );

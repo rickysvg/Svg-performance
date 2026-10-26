@@ -438,6 +438,17 @@ describe("mid-timer round saves", () => {
     expect(roundHistoryLine({ elapsedSeconds: 45, sets: bikeSets })).toBe(
       "1 round · 0:20 round · 0:10 rest · 0:45 total",
     );
+    const ridden = [
+      {
+        exerciseName: "Assault bike intervals",
+        completed: true,
+        durationSeconds: 71,
+        logMode: "timed",
+        prescriptionKey: null,
+      },
+    ];
+    expect(roundHistoryLine({ elapsedSeconds: 72, sets: ridden })).toContain("1:11 total");
+    expect(roundHistoryLine({ elapsedSeconds: 72, sets: ridden })).not.toContain("1:12");
 
     const mixed = roundFinishProgress({
       plannedExercises: [
