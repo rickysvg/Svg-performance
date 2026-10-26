@@ -10,7 +10,8 @@ import { createBackfillWorkout, previewBackfillDay } from "@/lib/backfill-workou
 import { performedAtForDayKey } from "@/lib/backfill-rules";
 import { attachBikeChoice, bikeHistoryLine, choiceToken, customBikeChoice } from "@/lib/bike-chooser";
 import { isLogMode, loggerCardLine } from "@/lib/exercise-log-mode";
-import { bestSwapReplacements, trainingBlockKey } from "@/lib/exercise-swap";
+import { bestSwapReplacements, showBestSwapBadge, trainingBlockKey } from "@/lib/exercise-swap";
+import { libraryExercise } from "@/lib/exercise-library";
 import { applyExerciseSwap, undoExerciseSwap } from "@/lib/exercise-swap-store";
 import { formatDayParam } from "@/lib/home";
 import { prisma } from "@/lib/prisma";
@@ -87,6 +88,34 @@ describe("best replacements and the finish Edit button", () => {
       loggedNames: ["Deficit push-up"],
     });
     expect(boosted[0]?.name).toBe("Deficit push-up");
+  });
+
+  it("keeps a gym member's mobility swap inside mobility, including bodyweight", () => {
+    const picks = bestSwapReplacements({ name: "90/90 hip switches", equipment: "gym" });
+    expect(picks.length).toBeGreaterThan(0);
+    expect(picks.every((row) => row.category === "mobility")).toBe(true);
+    expect(picks.some((row) => row.equipment === "none")).toBe(true);
+    for (const name of ["4-way neck machine", "45-degree back extension", "Ab wheel rollout"]) {
+      expect(picks.some((row) => row.name === name)).toBe(false);
+    }
+    expect(showBestSwapBadge("90/90 hip switches", picks)).toBe(true);
+
+    const neck = libraryExercise("4-way neck machine");
+    expect(neck).toBeTruthy();
+    expect(showBestSwapBadge("90/90 hip switches", [neck!])).toBe(false);
+    expect(bestSwapReplacements({ name: "Not a library move", equipment: "gym" })).toEqual([]);
+    expect(showBestSwapBadge("Not a library move", [])).toBe(false);
+  });
+
+  it("puts finish Edit above the fold", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/components/training/WorkoutWinScreen.tsx"), "utf8");
+    const body = source.slice(source.indexOf("return ("));
+    const edit = body.indexOf("<FinishEdit");
+    const done = body.indexOf('data-win-done="1"');
+    const recap = body.indexOf("<SessionRecap");
+    expect(edit).toBeGreaterThan(-1);
+    expect(edit).toBeLessThan(done);
+    expect(edit).toBeLessThan(recap);
   });
 
   it("puts Edit on the recap in one control", () => {

@@ -8,7 +8,6 @@ import {
   canonicalExerciseName,
   categoryLabel,
   EXERCISE_LIBRARY,
-  filterExerciseLibrary,
   libraryExercise,
   type ExerciseCategory,
   type LibraryExercise,
@@ -275,13 +274,36 @@ export function describeSwap(exercise: LibraryExercise) {
 }
 
 function equipmentFits(exercise: LibraryExercise, equipment: "gym" | "none") {
-  if (equipment === "gym") return exercise.equipment !== "none";
-  return exercise.equipment !== "gym";
+  // Bodyweight and no-equipment work in a gym. Gym-only gear does not fit a no-weights session.
+  if (exercise.equipment === "none" || exercise.equipment === "both") return true;
+  return equipment === "gym";
+}
+
+function swapSource(name: string) {
+  const raw = name.trim();
+  const current = canonicalExerciseName(raw);
+  const near = libraryExercise(current) ?? libraryExercise(raw);
+  return { raw, current, near };
+}
+
+/** Same movement pattern, or an explicit swap either way. A shared tag is not enough. */
+export function isGoodSwapMatch(name: string, exercise: LibraryExercise) {
+  const { raw, current, near } = swapSource(name);
+  if (near && exercise.category === near.category) return true;
+  if (near?.swapsWith?.includes(exercise.name)) return true;
+  return Boolean(exercise.swapsWith?.includes(current) || exercise.swapsWith?.includes(raw));
+}
+
+/** The lime Best badge. An alphabetical leftover, or an empty list, does not get one. */
+export function showBestSwapBadge(name: string, suggestions: readonly LibraryExercise[]) {
+  const top = suggestions[0];
+  return Boolean(top && isGoodSwapMatch(name, top));
 }
 
 /**
  * The three replacements a member can tap without searching.
- * Same pattern or muscle group, gear they have, and lifts they already log come first.
+ * Movement pattern comes first. Bodyweight still fits a gym member.
+ * Logged lifts only reorder inside that pattern. No pattern means no suggestion.
  */
 export function bestSwapReplacements(input: {
   name: string;
@@ -290,13 +312,12 @@ export function bestSwapReplacements(input: {
   limit?: number;
 }): LibraryExercise[] {
   const limit = Math.max(1, input.limit ?? 3);
-  const current = canonicalExerciseName(input.name.trim());
-  const near = libraryExercise(current) ?? libraryExercise(input.name.trim());
+  const { raw, current, near } = swapSource(input.name);
   const sourceTags = new Set(tagsForExercise(near?.name ?? current).map((tag) => tag.toLowerCase()));
   const preferred = new Set<string>([
     ...(near?.swapsWith ?? []),
     ...EXERCISE_LIBRARY.filter(
-      (exercise) => exercise.swapsWith?.includes(current) || exercise.swapsWith?.includes(input.name.trim()),
+      (exercise) => exercise.swapsWith?.includes(current) || exercise.swapsWith?.includes(raw),
     ).map((exercise) => exercise.name),
   ]);
   const loggedRank = new Map<string, number>();
@@ -304,34 +325,29 @@ export function bestSwapReplacements(input: {
     const clean = canonicalExerciseName(name);
     if (!loggedRank.has(clean)) loggedRank.set(clean, index);
   }
-  const ranked = EXERCISE_LIBRARY.filter((exercise) => {
+  return EXERCISE_LIBRARY.filter((exercise) => {
     if (exercise.memberHidden) return false;
-    if (exercise.name === current || exercise.name === input.name.trim()) return false;
-    return equipmentFits(exercise, input.equipment);
+    if (exercise.name === current || exercise.name === raw) return false;
+    if (!equipmentFits(exercise, input.equipment)) return false;
+    return isGoodSwapMatch(input.name, exercise);
   })
     .map((exercise) => {
       let score = 0;
+      const samePattern = Boolean(near && exercise.category === near.category);
       if (preferred.has(exercise.name)) score += 80;
-      if (near && exercise.category === near.category) score += 40;
+      if (samePattern) score += 40;
       const shared = tagsForExercise(exercise.name).filter((tag) => sourceTags.has(tag.toLowerCase())).length;
       score += shared * 15;
       const logged = loggedRank.get(exercise.name);
       if (logged != null) score += Math.max(8, 28 - logged * 4);
-      return { exercise, score };
+      return { exercise, score, samePattern };
     })
-    .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || a.exercise.name.localeCompare(b.exercise.name));
-  const picked = ranked.slice(0, limit).map((row) => row.exercise);
-  if (picked.length < limit) {
-    for (const exercise of filterExerciseLibrary({
-      equipment: input.equipment,
-      nearName: current,
-      excludeName: current,
-    })) {
-      if (picked.length >= limit) break;
-      if (picked.some((row) => row.name === exercise.name)) continue;
-      picked.push(exercise);
-    }
-  }
-  return picked;
+    .sort(
+      (a, b) =>
+        Number(b.samePattern) - Number(a.samePattern) ||
+        b.score - a.score ||
+        a.exercise.name.localeCompare(b.exercise.name),
+    )
+    .slice(0, limit)
+    .map((row) => row.exercise);
 }

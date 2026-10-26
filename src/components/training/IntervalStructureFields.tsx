@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from "react";
 import {
+  BIKE_ROUNDS_MAX,
   canAddIntervalRound,
   clampIntervalStructure,
   commitShorthand,
@@ -99,11 +100,24 @@ export function IntervalStructureFields({
     setLine(text);
     onDraft?.(text);
     const next = commitShorthand(text, structure, mode);
-    if (!next.error) (onLiveStructure ?? onStructure)(next.structure);
+    const changed =
+      next.structure.sets !== structure.sets ||
+      next.structure.rounds !== structure.rounds ||
+      next.structure.workSeconds !== structure.workSeconds ||
+      next.structure.restSeconds !== structure.restSeconds ||
+      next.structure.setRestSeconds !== structure.setRestSeconds;
+    if (!next.error) {
+      (onLiveStructure ?? onStructure)(next.structure);
+      return;
+    }
+    // Keep the rejected line (and its error) and move the steppers to the clamped value.
+    if (changed) onLiveStructure?.(next.structure);
   }
 
   function patch(partial: Partial<IntervalStructure>) {
-    onStructure(clampIntervalStructure({ ...structure, ...partial }));
+    const next = clampIntervalStructure({ ...structure, ...partial });
+    if (mode === "bike") next.rounds = Math.min(BIKE_ROUNDS_MAX, next.rounds);
+    onStructure(next);
   }
 
   function commitDone(value: number) {

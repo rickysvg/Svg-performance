@@ -11,6 +11,7 @@ import {
   type LibraryExercise,
 } from "@/lib/exercise-library";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
+import { showBestSwapBadge } from "@/lib/exercise-swap";
 
 /**
  * The member swap picker. Hidden library rows (unreviewed or untrimmed clips)
@@ -73,6 +74,7 @@ export function ExerciseLibrarySheet({
     [query, category, equipment, excludeName, nearName],
   );
   const choice = picked ? libraryExercise(picked) : null;
+  const markBest = Boolean(nearName && showBestSwapBadge(nearName, suggestions));
 
   useLayoutEffect(() => {
     if (!picked) return;
@@ -137,29 +139,33 @@ export function ExerciseLibrarySheet({
             </button>
           </div>
           <ul className="space-y-2">
-            {suggestions.map((exercise, index) => (
-              <li key={exercise.name}>
-                <button
-                  type="button"
-                  data-best-replacement={exercise.name}
-                  disabled={pending}
-                  onClick={() => onQuickPick?.(exercise)}
-                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left disabled:opacity-60 ${
-                    index === 0 ? "bg-[#CBF805] text-black" : "border border-[#CBF805]/50 bg-black text-white"
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span className="block font-semibold">{exercise.name}</span>
-                    <span className={`mt-0.5 block text-xs ${index === 0 ? "text-black/70" : "text-white/60"}`}>
-                      {categoryLabel(exercise.category)}
+            {suggestions.map((exercise, index) => {
+              const best = markBest && index === 0;
+              return (
+                <li key={exercise.name}>
+                  <button
+                    type="button"
+                    data-best-replacement={exercise.name}
+                    data-best-badge={best ? "yes" : "no"}
+                    disabled={pending}
+                    onClick={() => onQuickPick?.(exercise)}
+                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left disabled:opacity-60 ${
+                      best ? "bg-[#CBF805] text-black" : "border border-[#CBF805]/50 bg-black text-white"
+                    }`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block font-semibold">{exercise.name}</span>
+                      <span className={`mt-0.5 block text-xs ${best ? "text-black/70" : "text-white/60"}`}>
+                        {categoryLabel(exercise.category)}
+                      </span>
                     </span>
-                  </span>
-                  <span className={`shrink-0 text-xs ${index === 0 ? "text-black/80" : "text-[#CBF805]"}`}>
-                    {index === 0 ? "Best" : "Swap"}
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span className={`shrink-0 text-xs ${best ? "text-black/80" : "text-[#CBF805]"}`}>
+                      {best ? "Best" : "Swap"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

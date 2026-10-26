@@ -172,6 +172,9 @@ export function WorkoutWinScreen({
         >
           {statusLabel}
         </p>
+        <div className="mt-4 w-full">
+          <FinishEdit workoutId={workoutId} seed={editSeed} timeZone={timeZone} />
+        </div>
         {exerciseProgress.length > 0 ? (
           <ul data-exercise-progress className="mt-4 w-full space-y-1 text-left text-sm">
             {exerciseProgress.map((exercise) => (
@@ -217,13 +220,7 @@ export function WorkoutWinScreen({
             <p className="font-display mt-1 text-xl uppercase tracking-wide text-[#cbf805]">{badgeTitle}</p>
           </div>
         ) : null}
-        {summary ? (
-          <SessionRecap summary={summary}>
-            <FinishEdit workoutId={workoutId} seed={editSeed} timeZone={timeZone} />
-          </SessionRecap>
-        ) : (
-          <FinishEdit workoutId={workoutId} seed={editSeed} timeZone={timeZone} />
-        )}
+        {summary ? <SessionRecap summary={summary} /> : null}
         <button
           type="button"
           onClick={() => void onShare()}
