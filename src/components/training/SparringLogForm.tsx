@@ -67,6 +67,7 @@ export function SparringLogForm({
 }) {
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
   const [intensity, setIntensity] = useState(saved?.intensity ?? "");
+  const [boutClass, setBoutClass] = useState(saved?.boutClass ?? "");
   const [partner, setPartner] = useState(saved?.partner ?? "");
   const [sessionRating, setSessionRating] = useState(
     saved?.sessionRating == null ? "" : String(saved.sessionRating),
@@ -79,6 +80,7 @@ export function SparringLogForm({
     if (state.saved) {
       if (typeof state.intensity === "string") setIntensity(state.intensity);
       if (typeof state.partner === "string") setPartner(state.partner);
+      if (typeof state.boutClass === "string") setBoutClass(state.boutClass === "amateur" || state.boutClass === "pro" ? state.boutClass : "");
     }
   }
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
@@ -150,6 +152,19 @@ export function SparringLogForm({
           />
         </label>
       </div>
+      <label className="block text-sm">
+        Bout (optional)
+        <select
+          name="boutClass"
+          value={boutClass}
+          onChange={(event) => setBoutClass(event.target.value === "amateur" || event.target.value === "pro" ? event.target.value : "")}
+          className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
+        >
+          <option value="">Unspecified</option>
+          <option value="amateur">Amateur</option>
+          <option value="pro">Pro</option>
+        </select>
+      </label>
       <label className="block text-sm">
         Intensity (optional)
         <select

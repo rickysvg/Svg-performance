@@ -1,4 +1,4 @@
-import { getWeeklyWrapped, weeklyWrappedCopy, lastSevenLocalDays } from "@/lib/wrapped";
+import { getWeeklyWrapped, mondayWeekBounds } from "@/lib/wrapped";
 import { getPersonalRecordsForUser } from "@/lib/records";
 import { getProfileForUser } from "@/lib/profile";
 import { getPathProgress } from "@/lib/paths";
@@ -24,17 +24,18 @@ export function automatedReportCopy(input: {
   nextFocus: string;
 }) {
   if (input.workoutsLogged === 0) {
-    return "Automated SVG summary: a quiet seven days. That is okay. Counts stay at zero until you log something. This is not a report card.";
+    return "Automated SVG summary: a quiet week. That is okay. Counts stay at zero until you log something. This is not a report card.";
   }
-  return "Automated SVG summary. Built from workouts, loads, and ratings you logged. Not a message from Ricky.";
+  return "Automated SVG summary. Built from workouts, loads, and ratings you logged this Monday–Sunday week. Not a message from Ricky.";
 }
 
 export async function getWeeklyProgressReport(userId: string, now = new Date()) {
   const profile = await getProfileForUser(userId);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const units = profile?.preferredUnits ?? "lb";
+  const bounds = mondayWeekBounds(now, tz);
   const [wrap, records, path, planId, comment] = await Promise.all([
-    getWeeklyWrapped(userId, now, tz),
+    getWeeklyWrapped(userId, now, tz, bounds),
     getPersonalRecordsForUser(userId, units, now, tz),
     getPathProgress(userId),
     getEffectivePlanId(userId),
@@ -42,7 +43,7 @@ export async function getWeeklyProgressReport(userId: string, now = new Date()) 
       where: { userId_weekStartKey: { userId, weekStartKey: weekStartKey(now, tz) } },
     }),
   ]);
-  const { from, endExclusive } = lastSevenLocalDays(now, tz);
+  const { from, endExclusive } = bounds;
   const weekLoads = records.loadRecords.filter(
     (row) => row.date >= from && row.date < endExclusive,
   );

@@ -26,6 +26,22 @@ export const SORE_SPOT_LABELS: Record<SoreSpot, string> = {
   other: "Other",
 };
 
+export const BOUT_CLASSES = ["", "amateur", "pro"] as const;
+export type BoutClass = (typeof BOUT_CLASSES)[number];
+
+export function parseBoutClass(value: string | null | undefined): BoutClass {
+  const trimmed = (value ?? "").trim().toLowerCase();
+  if (trimmed === "amateur" || trimmed === "pro") return trimmed;
+  if (trimmed === "" || trimmed === "unspecified") return "";
+  throw new AppError("LOG", "Bout should be amateur, pro, or left blank.");
+}
+
+export function boutClassLabel(value: string | null | undefined) {
+  if (value === "amateur") return "Amateur";
+  if (value === "pro") return "Pro";
+  return "";
+}
+
 export type SparringLog = {
   dateKey: string;
   weekday: string;
@@ -34,6 +50,8 @@ export type SparringLog = {
   intensity: string;
   notes: string;
   partner: string;
+  /** Blank when the member did not mark amateur or pro. */
+  boutClass: BoutClass;
   sessionRating: number | null;
   bodyRating: number | null;
   soreSpots: SoreSpot[];
@@ -122,11 +140,12 @@ export function sparringLogDateLabel(log: { dateKey: string; weekday: string }) 
 }
 
 /** Newest first. The sparring page lists these so a log can be opened or removed. */
-export async function listSparringLogs(userId: string, take = 40) {
+/** Newest first. Omit `take` so a history page is not cut off at 40 logs. */
+export async function listSparringLogs(userId: string, take?: number) {
   const rows = await prisma.outsideSessionLog.findMany({
     where: { userId },
     orderBy: { dateKey: "desc" },
-    take,
+    ...(take != null ? { take } : {}),
   });
   return rows.map(toLog);
 }
@@ -154,6 +173,7 @@ export async function saveSparringLog(
     intensity?: string;
     notes?: string;
     partner?: string;
+    boutClass?: string;
     sessionRating: number;
     bodyRating: number;
     soreSpots?: string[];
@@ -188,6 +208,7 @@ export async function saveSparringLog(
   const soreSpots = parseSoreSpots(input.soreSpots ?? []);
   const notes = (input.notes ?? "").trim().slice(0, 400);
   const partner = (input.partner ?? "").trim().slice(0, 80);
+  const boutClass = parseBoutClass(input.boutClass);
   const row = await prisma.outsideSessionLog.upsert({
     where: { userId_dateKey: { userId, dateKey: input.dateKey } },
     create: {
@@ -199,6 +220,7 @@ export async function saveSparringLog(
       intensity,
       notes,
       partner,
+      boutClass,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -211,6 +233,7 @@ export async function saveSparringLog(
       intensity,
       notes,
       partner,
+      boutClass,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -263,6 +286,7 @@ function toLog(row: {
   intensity: string;
   notes: string;
   partner?: string | null;
+  boutClass?: string | null;
   sessionRating?: number | null;
   bodyRating?: number | null;
   soreSpots?: string | null;
@@ -276,6 +300,7 @@ function toLog(row: {
     intensity: row.intensity,
     notes: row.notes,
     partner: row.partner ?? "",
+    boutClass: row.boutClass === "amateur" || row.boutClass === "pro" ? row.boutClass : "",
     sessionRating: row.sessionRating ?? null,
     bodyRating: row.bodyRating ?? null,
     soreSpots: parseSoreSpots(row.soreSpots ?? "[]"),

@@ -259,6 +259,11 @@ model OutsideSessionLog {
   notes           String   @default("")
   /** Optional training partner. Blank when the member skips it. */
   partner         String   @default("")
+  /**
+   * Amateur or pro rounds. Blank means unspecified — older logs and skipped
+   * answers stay blank so a report does not invent a class.
+   */
+  boutClass       String   @default("")
   /** 1–5, how the sparring session went. Null on logs saved before ratings. */
   sessionRating   Int?
   /** 1–5, how the body feels. 1–2 eases the next day. */
