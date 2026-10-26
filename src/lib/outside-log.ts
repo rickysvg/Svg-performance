@@ -139,13 +139,36 @@ export function sparringLogDateLabel(log: { dateKey: string; weekday: string }) 
   return log.weekday ? `${log.weekday}, ${date}` : date;
 }
 
-/** Newest first. The sparring page lists these so a log can be opened or removed. */
-/** Newest first. Omit `take` so a history page is not cut off at 40 logs. */
-export async function listSparringLogs(userId: string, take?: number) {
+/** Default sparring list window. Older logs stay on their day page. */
+export const SPARRING_LOG_LIST_DAYS = 26 * 7;
+export const SPARRING_LOG_LIST_TAKE = 80;
+
+function defaultSparringSinceKey(now = new Date()) {
+  return dayKey(addZonedDays(now, -SPARRING_LOG_LIST_DAYS, APP_TIMEZONE), APP_TIMEZONE);
+}
+
+/**
+ * Newest first. Defaults to the last 26 weeks and 80 logs so the sparring
+ * list does not scan the whole history. Pass `sinceDateKey` to widen or
+ * narrow the range.
+ */
+export async function listSparringLogs(
+  userId: string,
+  options?: number | { take?: number; sinceDateKey?: string; throughDateKey?: string },
+) {
+  const take = typeof options === "number" ? options : (options?.take ?? SPARRING_LOG_LIST_TAKE);
+  const sinceDateKey = typeof options === "number" ? defaultSparringSinceKey() : (options?.sinceDateKey ?? defaultSparringSinceKey());
+  const throughDateKey = typeof options === "number" ? undefined : options?.throughDateKey;
   const rows = await prisma.outsideSessionLog.findMany({
-    where: { userId },
+    where: {
+      userId,
+      dateKey: {
+        gte: sinceDateKey,
+        ...(throughDateKey ? { lte: throughDateKey } : {}),
+      },
+    },
     orderBy: { dateKey: "desc" },
-    ...(take != null ? { take } : {}),
+    take,
   });
   return rows.map(toLog);
 }

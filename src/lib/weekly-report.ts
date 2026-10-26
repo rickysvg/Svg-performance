@@ -1,5 +1,4 @@
 import { getWeeklyWrapped, mondayWeekBounds } from "@/lib/wrapped";
-import { getPersonalRecordsForUser } from "@/lib/records";
 import { getProfileForUser } from "@/lib/profile";
 import { getPathProgress } from "@/lib/paths";
 import { loggedSetSome } from "@/lib/logged-work";
@@ -11,6 +10,7 @@ import { getEffectivePlanId } from "@/lib/entitlements";
 import { planHasCoachReview, planHasEliteReview } from "@/lib/plans";
 import { AppError } from "@/lib/errors";
 import { assertCanViewMemberTrend } from "@/lib/reports";
+import { convertLoad, isLoadUnit, type LoadUnit } from "@/lib/units";
 
 export function weekStartKey(now = new Date(), timeZone = APP_TIMEZONE) {
   return dayKey(mondayOf(now, timeZone), timeZone);
@@ -29,31 +29,96 @@ export function automatedReportCopy(input: {
   return "Automated SVG summary. Built from workouts, loads, and ratings you logged this Monday–Sunday week. Not a message from Ricky.";
 }
 
+export type PeriodLoad = {
+  exerciseName: string;
+  bestLoad: number;
+  unit: LoadUnit;
+};
+
+function formatLoadAmount(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+/** Heaviest logged load for each exercise whose session falls in [from, endExclusive). */
+export async function heaviestLoadsInPeriod(input: {
+  userId: string;
+  from: Date;
+  endExclusive: Date;
+  displayUnit: LoadUnit;
+}): Promise<PeriodLoad[]> {
+  const sessions = await prisma.workoutSession.findMany({
+    where: {
+      userId: input.userId,
+      status: "complete",
+      performedAt: { gte: input.from, lt: input.endExclusive },
+    },
+    select: {
+      sets: {
+        select: { exerciseName: true, loadValue: true, loadUnit: true, completed: true },
+      },
+    },
+  });
+  const bests = new Map<string, PeriodLoad>();
+  for (const session of sessions) {
+    for (const set of session.sets) {
+      if (set.completed === false || set.loadValue == null || set.loadValue <= 0) continue;
+      if (!isLoadUnit(set.loadUnit)) continue;
+      const name = set.exerciseName.trim();
+      if (!name) continue;
+      const load = Math.round(convertLoad(set.loadValue, set.loadUnit, input.displayUnit) * 10) / 10;
+      const current = bests.get(name);
+      if (!current || load > current.bestLoad) {
+        bests.set(name, { exerciseName: name, bestLoad: load, unit: input.displayUnit });
+      }
+    }
+  }
+  return [...bests.values()].sort((a, b) => a.exerciseName.localeCompare(b.exerciseName));
+}
+
+export function formatStrengthNote(loads: PeriodLoad[], period: "week" | "month") {
+  if (loads.length === 0) {
+    return period === "week"
+      ? "No load logged in this Monday–Sunday week."
+      : "No load logged in this month.";
+  }
+  const list = loads.map((row) => `${row.exerciseName} ${formatLoadAmount(row.bestLoad)} ${row.unit}`).join(", ");
+  return period === "week" ? `Logged this week: ${list}.` : `Logged this month: ${list}.`;
+}
+
+export async function strengthNoteForPeriod(input: {
+  userId: string;
+  from: Date;
+  endExclusive: Date;
+  displayUnit: LoadUnit;
+  period: "week" | "month";
+}) {
+  const loads = await heaviestLoadsInPeriod(input);
+  return formatStrengthNote(loads, input.period);
+}
+
 export async function getWeeklyProgressReport(userId: string, now = new Date()) {
   const profile = await getProfileForUser(userId);
   const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
   const units = profile?.preferredUnits ?? "lb";
+  const displayUnit: LoadUnit = units === "kg" ? "kg" : "lb";
   const bounds = mondayWeekBounds(now, tz);
-  const [wrap, records, path, planId, comment] = await Promise.all([
+  const [wrap, path, planId, comment, strengthNote] = await Promise.all([
     getWeeklyWrapped(userId, now, tz, bounds),
-    getPersonalRecordsForUser(userId, units, now, tz),
     getPathProgress(userId),
     getEffectivePlanId(userId),
     prisma.weeklyCoachComment.findUnique({
       where: { userId_weekStartKey: { userId, weekStartKey: weekStartKey(now, tz) } },
     }),
+    strengthNoteForPeriod({
+      userId,
+      from: bounds.from,
+      endExclusive: bounds.endExclusive,
+      displayUnit,
+      period: "week",
+    }),
   ]);
   const { from, endExclusive } = bounds;
-  const weekLoads = records.loadRecords.filter(
-    (row) => row.date >= from && row.date < endExclusive,
-  );
-  const strengthNote =
-    weekLoads.length > 0
-      ? `Logged this week: ${weekLoads
-          .slice(0, 3)
-          .map((row) => `${row.exerciseName} ${row.bestLoad} ${row.unit}`)
-          .join(", ")}.`
-      : "No load logged in this Monday–Sunday week.";
   const weekSessions = await prisma.workoutSession.findMany({
     where: {
       userId,

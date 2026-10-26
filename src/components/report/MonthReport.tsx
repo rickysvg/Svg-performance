@@ -11,6 +11,8 @@ import {
   monthBuckets,
   parseReportFocus,
 } from "@/lib/report-history";
+import { strengthNoteForPeriod } from "@/lib/weekly-report";
+import { zonedCivilToUtc } from "@/lib/timezone";
 
 export async function MonthReport({
   userId,
@@ -23,11 +25,30 @@ export async function MonthReport({
   compare?: string;
   focus?: string;
 }) {
-  const history = await loadReportHistory(userId, new Date(), { monthKey });
+  const history = await loadReportHistory(userId, new Date(), { monthKey, compareKey: compare ?? null });
   const key = monthKey ?? currentMonthKey(history.now, history.timeZone);
   const model = buildPeriodReport(history, "month", key, compare, parseReportFocus(focus));
   if (!model) notFound();
-  const showCoachSlot = planHasCoachReview(await getEffectivePlanId(userId));
+  const match = /^(\d{4})-(\d{2})$/.exec(key);
+  const year = Number(match?.[1]);
+  const month = Number(match?.[2]);
+  const from = zonedCivilToUtc(year, month, 1, history.timeZone);
+  const endExclusive = zonedCivilToUtc(
+    month === 12 ? year + 1 : year,
+    month === 12 ? 1 : month + 1,
+    1,
+    history.timeZone,
+  );
+  const [showCoachSlot, strengthNote] = await Promise.all([
+    getEffectivePlanId(userId).then((planId) => planHasCoachReview(planId)),
+    strengthNoteForPeriod({
+      userId,
+      from,
+      endExclusive,
+      displayUnit: history.displayUnit,
+      period: "month",
+    }),
+  ]);
   const buckets = monthBuckets(key, history.timeZone);
   const comments = showCoachSlot
     ? await prisma.weeklyCoachComment.findMany({
@@ -37,6 +58,13 @@ export async function MonthReport({
     : [];
   return (
     <PeriodReportView model={model}>
+      <section className="rounded-2xl border border-white/10 bg-black/50 px-4 py-4">
+        <h2>This month</h2>
+        <p className="mt-2 text-sm">
+          <span className="text-muted">Strength. </span>
+          {strengthNote}
+        </p>
+      </section>
       <section className="rounded-2xl border border-white/10 bg-black/50 px-4 py-4">
         <h2>Coach comments</h2>
         {showCoachSlot ? (

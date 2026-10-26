@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { dayKey, memberDayTimeZone, readTimeZoneCookie, zonedParts } from "@/lib/timezone";
-import { getSparringLog, listSparringLogs, roundTypeLabel, sparringDateError, sparringLogDateLabel, sparringMinutes } from "@/lib/outside-log";
+import { addZonedDays, dayKey, memberDayTimeZone, readTimeZoneCookie, zonedParts } from "@/lib/timezone";
+import { getSparringLog, listSparringLogs, roundTypeLabel, SPARRING_LOG_LIST_DAYS, sparringDateError, sparringLogDateLabel, sparringMinutes } from "@/lib/outside-log";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { SparringLogList } from "@/components/training/SparringLogList";
 import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
@@ -30,7 +30,9 @@ export default async function SparringPage({
   const dateKey = future ? today : requested;
   const [saved, logs] = await Promise.all([
     getSparringLog(user.id, dateKey),
-    listSparringLogs(user.id),
+    listSparringLogs(user.id, {
+      sinceDateKey: dayKey(addZonedDays(new Date(), -SPARRING_LOG_LIST_DAYS, timeZone), timeZone),
+    }),
   ]);
   const coach = resolveAiCoach(profile?.aiCoachId);
 

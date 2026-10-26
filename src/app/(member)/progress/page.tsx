@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { listWorkoutSessionsForUser } from "@/lib/workouts";
+import { listWorkoutSessionsForUser, PROGRESS_HISTORY_DAYS } from "@/lib/workouts";
 import { buildProgressSummary, sessionAppearsOnProgress } from "@/lib/progress";
 import { ProgressBars } from "@/components/progress/ProgressBars";
 import { EmptyState } from "@/components/EmptyState";
@@ -65,7 +65,9 @@ export default async function ProgressPage() {
   const [profile, sessions, latestMetrics, weightHistory, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
       getProfileForUser(user.id),
-      listWorkoutSessionsForUser(user.id),
+      listWorkoutSessionsForUser(user.id, {
+        since: new Date(Date.now() - PROGRESS_HISTORY_DAYS * 86_400_000),
+      }),
       getLatestBodyMetricsForUser(user.id),
       listBodyMetricsForUser(user.id, "weight"),
       listProgressPhotosForUser(user.id),

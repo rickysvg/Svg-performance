@@ -20,7 +20,10 @@ import {
   type ReportSession,
 } from "@/lib/report-history";
 import { mondayWeekBounds as mondayBounds } from "@/lib/wrapped";
-import { APP_TIMEZONE, zonedCivilToUtc } from "@/lib/timezone";
+import { getWeeklyProgressReport, strengthNoteForPeriod } from "@/lib/weekly-report";
+import { listSparringLogs, SPARRING_LOG_LIST_DAYS } from "@/lib/outside-log";
+import { listWorkoutSessionsForUser, PROGRESS_HISTORY_DAYS } from "@/lib/workouts";
+import { addZonedDays, APP_TIMEZONE, dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 
 const TZ = "America/Denver";
@@ -481,11 +484,38 @@ describe("report history ownership", () => {
         sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 80, completed: true }] },
       },
     });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "Ancient",
+        performedAt: zonedCivilToUtc(2014, 6, 2, TZ),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 40, completed: true }] },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "Old compare",
+        performedAt: zonedCivilToUtc(2024, 1, 2, TZ),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 60, completed: true }] },
+      },
+    });
     const now = zonedCivilToUtc(2026, 11, 2, TZ);
     const bounded = await loadReportHistory(owner.id, now, { weekStartKey: "2026-10-19" });
-    expect(bounded.sessions.map((row) => row.title)).toEqual(["In week"]);
+    expect(bounded.sessions.map((row) => row.title).sort()).toEqual(["In week"]);
+    expect(bounded.sessions.map((row) => row.title)).not.toContain("Later");
+    expect(bounded.sessions.map((row) => row.title)).not.toContain("Ancient");
+    expect(bounded.sessions.map((row) => row.title)).not.toContain("Old compare");
+    const compared = await loadReportHistory(owner.id, now, {
+      weekStartKey: "2026-10-19",
+      compareKey: "2024-01-01",
+    });
+    expect(compared.sessions.map((row) => row.title).sort()).toEqual(["In week", "Old compare"]);
     const open = await loadReportHistory(owner.id, now);
-    expect(open.sessions.map((row) => row.title).sort()).toEqual(["In week", "Later"]);
+    expect(open.sessions.map((row) => row.title).sort()).toEqual(["In week", "Later", "Old compare"]);
+    expect(open.sessions.map((row) => row.title)).not.toContain("Ancient");
   });
 });
 
@@ -544,15 +574,33 @@ describe("report qa fixes", () => {
       "2026-09",
       "all",
     );
-    const last = report?.charts[0]?.points.at(-1);
-    expect(last?.detail).toBe("Oct 26–31, 2026");
-    expect(last?.baselineDetail).toBe("Sep 28–30, 2026");
-    expect(last?.baselineDetail).not.toContain("Oct 26");
+    const octoberPoints = report?.charts[0]?.points ?? [];
+    const sharedOctober = octoberPoints.find((point) => point.detail === "Oct 1–4, 2026");
+    expect(sharedOctober?.baselineDetail).toBe("Sep 28–30, 2026");
+    expect(octoberPoints.at(-1)?.detail).toBe("Oct 26–31, 2026");
+    expect(octoberPoints.every((point) => !point.baselineDetail.includes("Oct 26"))).toBe(true);
     const septemberReport = buildPeriodReport(
       history({
         now: zonedCivilToUtc(2026, 10, 26, TZ),
         sessions: [
           session({
+            id: "aug-31",
+            performedAt: zonedCivilToUtc(2026, 8, 31, TZ),
+            sets: [
+              {
+                exerciseName: "Goblet squat",
+                reps: 5,
+                loadValue: 200,
+                loadUnit: "lb",
+                logMode: "load_reps",
+                durationSeconds: null,
+                completed: true,
+                prescriptionKey: "",
+              },
+            ],
+          }),
+          session({
+            id: "sep-2",
             performedAt: zonedCivilToUtc(2026, 9, 2, TZ),
             sets: [
               {
@@ -575,10 +623,18 @@ describe("report qa fixes", () => {
       "all",
     );
     const points = septemberReport?.charts[0]?.points ?? [];
-    expect(points).toHaveLength(september.length);
-    expect(points.map((point) => point.detail)).toEqual(september.map((bucket) => bucket.detail));
-    expect(points.some((point) => point.detail.includes("Aug") || point.label.includes("Aug"))).toBe(false);
-    expect(points.at(-1)?.baselineDetail).toBe("Aug 24–30, 2026");
+    const august = monthBuckets("2026-08", TZ);
+    const unionKeys = new Set([...september.map((bucket) => bucket.key), ...august.map((bucket) => bucket.key)]);
+    expect(points).toHaveLength(unionKeys.size);
+    const boundary = points.find((point) => point.baselineDetail === "Aug 31, 2026");
+    expect(boundary?.detail).toBe("Sep 1–6, 2026");
+    expect(boundary?.label).toBe("Sep 1");
+    expect(boundary?.current).toBeGreaterThan(0);
+    expect(boundary?.baseline).toBeGreaterThan(0);
+    expect(points.some((point) => point.detail.includes("Aug 31–Sep") || point.detail.includes("Aug 31 – Sep"))).toBe(
+      false,
+    );
+    expect(points.some((point) => point.baselineDetail === "Aug 24–30, 2026" && point.detail === "")).toBe(true);
   });
 
   it("splits a mixed session’s time across lower and upper by set count", () => {
@@ -650,5 +706,119 @@ describe("round type copy", () => {
       const text = fs.readFileSync(path.join(process.cwd(), file), "utf8");
       expect(text).not.toMatch(/\bbout\b/i);
     }
+  });
+});
+
+describe("period strength loads", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("uses the heaviest load logged in the week or month, not a later all-time best", async () => {
+    const user = await makeUser("period-loads@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { timeZone: TZ, preferredUnits: "lb" },
+    });
+    async function log(year: number, month: number, day: number, exerciseName: string, loadValue: number) {
+      await prisma.workoutSession.create({
+        data: {
+          userId: user.id,
+          title: exerciseName,
+          performedAt: zonedCivilToUtc(year, month, day, TZ),
+          status: "complete",
+          sets: {
+            create: [{ exerciseName, setNumber: 1, reps: 5, loadValue, loadUnit: "lb", completed: true }],
+          },
+        },
+      });
+    }
+    await log(2026, 9, 30, "Goblet squat", 200);
+    await log(2026, 10, 6, "Goblet squat", 225);
+    await log(2026, 10, 7, "DB bench press", 135);
+    await log(2026, 10, 20, "Goblet squat", 300);
+    await log(2026, 10, 21, "DB bench press", 135);
+
+    const oct5 = await getWeeklyProgressReport(user.id, zonedCivilToUtc(2026, 10, 7, TZ));
+    expect(oct5.strengthNote).toContain("Goblet squat 225 lb");
+    expect(oct5.strengthNote).toContain("DB bench press 135 lb");
+    expect(oct5.strengthNote).not.toContain("300");
+    expect(oct5.strengthNote).not.toMatch(/No load logged/);
+
+    const oct19 = await getWeeklyProgressReport(user.id, zonedCivilToUtc(2026, 10, 21, TZ));
+    expect(oct19.strengthNote).toContain("DB bench press 135 lb");
+    expect(oct19.strengthNote).toContain("Goblet squat 300 lb");
+    expect(oct19.strengthNote).not.toContain("225");
+
+    const sep28 = await getWeeklyProgressReport(user.id, zonedCivilToUtc(2026, 9, 30, TZ));
+    expect(sep28.strengthNote).toContain("Goblet squat 200 lb");
+    expect(sep28.strengthNote).not.toContain("225");
+    expect(sep28.strengthNote).not.toContain("300");
+
+    const october = await strengthNoteForPeriod({
+      userId: user.id,
+      from: zonedCivilToUtc(2026, 10, 1, TZ),
+      endExclusive: zonedCivilToUtc(2026, 11, 1, TZ),
+      displayUnit: "lb",
+      period: "month",
+    });
+    expect(october).toContain("Goblet squat 300 lb");
+    expect(october).toContain("DB bench press 135 lb");
+    expect(october).not.toContain("200");
+  });
+});
+
+describe("bounded history lists", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("limits the sparring list to the default date range", async () => {
+    const user = await makeUser("sparring-range@example.com");
+    const recent = dayKey(new Date(), APP_TIMEZONE);
+    const old = dayKey(addZonedDays(new Date(), -(SPARRING_LOG_LIST_DAYS + 21), APP_TIMEZONE), APP_TIMEZONE);
+    await prisma.outsideSessionLog.create({
+      data: { userId: user.id, dateKey: recent, rounds: 2, minutesPerRound: 3, roundType: "pro" },
+    });
+    await prisma.outsideSessionLog.create({
+      data: { userId: user.id, dateKey: old, rounds: 4, minutesPerRound: 3, roundType: "amateur" },
+    });
+    const listed = await listSparringLogs(user.id);
+    expect(listed.map((row) => row.dateKey)).toEqual([recent]);
+  });
+
+  it("limits progress session loading to the requested start date", async () => {
+    const user = await makeUser("progress-range@example.com");
+    const since = new Date(Date.now() - PROGRESS_HISTORY_DAYS * 86_400_000);
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Recent",
+        performedAt: new Date(),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 50, completed: true }] },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Old",
+        performedAt: new Date(since.getTime() - 7 * 86_400_000),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 40, completed: true }] },
+      },
+    });
+    const windowed = await listWorkoutSessionsForUser(user.id, { since });
+    expect(windowed.map((row) => row.title)).toEqual(["Recent"]);
+    const all = await listWorkoutSessionsForUser(user.id);
+    expect(all.map((row) => row.title).sort()).toEqual(["Old", "Recent"]);
   });
 });

@@ -20,7 +20,7 @@ export default async function PastWeekReportPage({
 }) {
   const user = await requireUser();
   const [{ weekStartKey }, query] = await Promise.all([params, searchParams]);
-  const history = await loadReportHistory(user.id, new Date(), { weekStartKey });
+  const history = await loadReportHistory(user.id, new Date(), { weekStartKey, compareKey: query.compare ?? null });
   const model = buildPeriodReport(
     history,
     "week",
