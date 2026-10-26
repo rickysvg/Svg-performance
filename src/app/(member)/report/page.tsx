@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { PeriodReportView } from "@/components/report/PeriodReportView";
 import { WeekNarrative } from "@/components/report/WeekNarrative";
 import {
@@ -20,7 +21,7 @@ export default async function WeeklyReportPage({
   const history = await loadReportHistory(user.id);
   const key = currentWeekKey(history.now, history.timeZone);
   const model = buildPeriodReport(history, "week", key, query.compare, parseReportFocus(query.focus));
-  if (!model) return null;
+  if (!model) notFound();
   const narrative = await getWeeklyProgressReport(
     user.id,
     anchorForWeek(key, history.timeZone, history.now),

@@ -136,8 +136,55 @@ describe("progress report history", () => {
     const gap = rows.find((row) => row.weekStartKey === "2026-10-12");
     const later = rows.find((row) => row.weekStartKey === "2026-10-19");
     expect(gap?.sessions).toBe(0);
+    expect(later?.trainingLoad).toBe(500);
     expect(later?.delta?.direction).toBe("up");
-    expect(later?.delta?.percent).not.toBeNull();
+    expect(later?.delta?.absolute).toBe(500);
+    expect(later?.delta?.percent).toBeNull();
+    const compared = buildPeriodReport(
+      history({
+        sessions: [
+          session({
+            id: "early",
+            performedAt: zonedCivilToUtc(2026, 10, 6, TZ),
+            sets: [
+              {
+                exerciseName: "Goblet squat",
+                reps: 5,
+                loadValue: 50,
+                loadUnit: "lb",
+                logMode: "load_reps",
+                durationSeconds: null,
+                completed: true,
+                prescriptionKey: "",
+              },
+            ],
+          }),
+          session({
+            id: "later",
+            performedAt: zonedCivilToUtc(2026, 10, 20, TZ),
+            sets: [
+              {
+                exerciseName: "Goblet squat",
+                reps: 5,
+                loadValue: 100,
+                loadUnit: "lb",
+                logMode: "load_reps",
+                durationSeconds: null,
+                completed: true,
+                prescriptionKey: "",
+              },
+            ],
+          }),
+        ],
+      }),
+      "week",
+      "2026-10-19",
+      "2026-10-05",
+      "all",
+    );
+    expect(compared?.baselineKey).toBe("2026-10-05");
+    expect(compared?.cards.find((card) => card.id === "volume")?.current).toBe(500);
+    expect(compared?.cards.find((card) => card.id === "volume")?.baseline).toBe(250);
   });
 
   it("does not invent a percent when the previous period is empty", () => {
@@ -290,7 +337,21 @@ describe("progress report history", () => {
     expect(report?.sparring?.cards.map((card) => card.id)).toEqual(
       expect.arrayContaining(["sparring-total", "sparring-amateur", "sparring-pro"]),
     );
-    expect(report?.baselineKey).toBe("2026-10-05");
+    expect(report?.baselineKey).toBe("2026-10-12");
+    const kept = buildPeriodReport(
+      history({
+        sessions: [],
+        outside: [
+          { dateKey: "2026-10-20", rounds: 5, minutesPerRound: 3, sessionRating: 5, boutClass: "pro" },
+          { dateKey: "2026-10-06", rounds: 1, minutesPerRound: 3, sessionRating: 3, boutClass: "amateur" },
+        ],
+      }),
+      "week",
+      "2026-10-19",
+      "2026-10-05",
+      "all",
+    );
+    expect(kept?.baselineKey).toBe("2026-10-05");
     expect(buildPeriodReport(history(), "week", "2026-10-21", null, "all")).toBeNull();
     expect(buildPeriodReport(history(), "week", "2026-11-02", null, "all")).toBeNull();
     expect(isMondayKey("2026-10-19", TZ)).toBe(true);
