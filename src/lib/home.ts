@@ -382,7 +382,7 @@ export async function getHomeToday(
       listRecentSessionsForUser(userId),
       listDraftSessionsForUser(userId),
       listResumableSessionsForUser(userId),
-      calendarPlanDoses(userId, now),
+      calendarPlanDoses(userId, selected),
       getNutritionSummaryForDay(userId, selected, tz),
       listPublishedLessons(),
       listLessonProgressForUser(userId),

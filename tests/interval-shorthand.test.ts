@@ -118,6 +118,21 @@ describe("interval shorthand", () => {
       error: "Rounds stop at 40.",
     });
     expect(parseIntervalShorthand("41x15/15")).toMatchObject({ ok: true, value: { rounds: 41 } });
+    const current = { sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 };
+    const clamped = commitShorthand("41x15/15", current, "bike");
+    expect(clamped.error).toBe("Rounds stop at 40.");
+    expect(clamped.structure).toEqual({
+      sets: 1,
+      rounds: 40,
+      workSeconds: 15,
+      restSeconds: 15,
+      setRestSeconds: 60,
+    });
+    expect(shorthandLineState("41x15/15", clamped.structure, "bike").blocked).toBe(true);
+    const multi = commitShorthand("2x41 @ 15/15 r60", current, "bike");
+    expect(multi.error).toBe("Rounds stop at 40.");
+    expect(multi.structure).toMatchObject({ sets: 2, rounds: 40, setRestSeconds: 60 });
+    expect(commitShorthand("41x15/15", current, "round").structure.rounds).toBe(41);
   });
 
   it("accepts one continuous round up to 4 hours and keeps 15:00 for more rounds", () => {

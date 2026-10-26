@@ -6,9 +6,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
 import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
 import { resumeWorkoutAction } from "@/app/actions/workouts";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { SessionFeelPicker } from "@/components/training/SessionFeelPicker";
 import { SessionRecap } from "@/components/training/SessionRecap";
+import type { BackfillFormSeed } from "@/lib/backfill-workout";
 import type { SessionSummary } from "@/lib/session-summary";
 import { exerciseProgressStateWord } from "@/lib/logged-work";
 import { workoutCompleteHeadline, type WorkoutCompleteTile } from "@/lib/workout-complete";
@@ -41,6 +43,8 @@ export function WorkoutWinScreen({
   exerciseProgress = [],
   partial = false,
   statusLabel,
+  editSeed = null,
+  timeZone,
 }: {
   dateLine: string;
   sessionNumber: number;
@@ -57,6 +61,9 @@ export function WorkoutWinScreen({
   partial?: boolean;
   /** Same progress line History and Calendar use. */
   statusLabel: string;
+  /** Logged-later sessions edit in the past-workout sheet. A live finish reopens the logger. */
+  editSeed?: BackfillFormSeed | null;
+  timeZone?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -165,6 +172,9 @@ export function WorkoutWinScreen({
         >
           {statusLabel}
         </p>
+        <div className="mt-4 w-full">
+          <FinishEdit workoutId={workoutId} seed={editSeed} timeZone={timeZone} />
+        </div>
         {exerciseProgress.length > 0 ? (
           <ul data-exercise-progress className="mt-4 w-full space-y-1 text-left text-sm">
             {exerciseProgress.map((exercise) => (
@@ -230,5 +240,43 @@ export function WorkoutWinScreen({
         </Link>
       </div>
     </div>
+  );
+}
+
+function FinishEdit({
+  workoutId,
+  seed,
+  timeZone,
+}: {
+  workoutId: string;
+  seed?: BackfillFormSeed | null;
+  timeZone?: string;
+}) {
+  if (seed) {
+    return (
+      <div data-recap-edit data-win-edit className="w-full">
+        <LogPastWorkoutButton
+          entry="edit"
+          sessionId={workoutId}
+          label="Edit"
+          compact
+          fullWidth
+          timeZone={timeZone}
+          seed={seed}
+          dayKey={seed.dayKey}
+        />
+      </div>
+    );
+  }
+  return (
+    <form action={resumeWorkoutAction} data-recap-edit data-win-edit className="w-full">
+      <input type="hidden" name="workoutId" value={workoutId} />
+      <button
+        type="submit"
+        className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[#CBF805] px-3 text-sm font-semibold text-[#CBF805]"
+      >
+        Edit
+      </button>
+    </form>
   );
 }

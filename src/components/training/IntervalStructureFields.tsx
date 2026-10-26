@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent, type MouseEvent } from "react";
 import {
+  BIKE_ROUNDS_MAX,
   canAddIntervalRound,
   clampIntervalStructure,
   commitShorthand,
@@ -99,11 +100,24 @@ export function IntervalStructureFields({
     setLine(text);
     onDraft?.(text);
     const next = commitShorthand(text, structure, mode);
-    if (!next.error) (onLiveStructure ?? onStructure)(next.structure);
+    const changed =
+      next.structure.sets !== structure.sets ||
+      next.structure.rounds !== structure.rounds ||
+      next.structure.workSeconds !== structure.workSeconds ||
+      next.structure.restSeconds !== structure.restSeconds ||
+      next.structure.setRestSeconds !== structure.setRestSeconds;
+    if (!next.error) {
+      (onLiveStructure ?? onStructure)(next.structure);
+      return;
+    }
+    // Keep the rejected line (and its error) and move the steppers to the clamped value.
+    if (changed) onLiveStructure?.(next.structure);
   }
 
   function patch(partial: Partial<IntervalStructure>) {
-    onStructure(clampIntervalStructure({ ...structure, ...partial }));
+    const next = clampIntervalStructure({ ...structure, ...partial });
+    if (mode === "bike") next.rounds = Math.min(BIKE_ROUNDS_MAX, next.rounds);
+    onStructure(next);
   }
 
   function commitDone(value: number) {
@@ -142,16 +156,28 @@ export function IntervalStructureFields({
       ) : null}
       {presets.length > 0 ? (
         <div className="flex gap-2 overflow-x-auto pb-1" data-testid="interval-presets">
-          {presets.map((preset) => (
+          {presets.map((preset) => {
+            const selected =
+              preset.structure.sets === structure.sets &&
+              preset.structure.rounds === structure.rounds &&
+              preset.structure.workSeconds === structure.workSeconds &&
+              preset.structure.restSeconds === structure.restSeconds &&
+              preset.structure.setRestSeconds === structure.setRestSeconds;
+            return (
             <button
               key={preset.id}
               type="button"
+              data-interval-preset={preset.id}
+              aria-pressed={selected}
               onClick={() => onStructure(preset.structure)}
-              className="inline-flex h-10 shrink-0 items-center rounded-full border border-line px-3 text-sm text-white"
+              className={`inline-flex h-10 shrink-0 items-center rounded-full px-3 text-sm font-semibold ${
+                selected ? "bg-[#CBF805] text-black" : "border border-line text-white"
+              }`}
             >
               {preset.label}
             </button>
-          ))}
+            );
+          })}
         </div>
       ) : null}
       <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">

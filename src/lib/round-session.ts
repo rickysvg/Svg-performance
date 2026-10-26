@@ -550,7 +550,17 @@ export function roundHistoryLine(session: {
         })
       : null;
   const bikeOnly = sets.every((set) => isBikeIntervalName(set.exerciseName ?? ""));
-  const total = bikeOnly
+  const rideSeconds = bike
+    ? bikeClockSeconds(bike, sets.length)
+    : sets.reduce(
+        (sum, set) => sum + (set.durationSeconds != null && set.durationSeconds > 0 ? set.durationSeconds : 0),
+        0,
+      );
+  const wallSeconds =
+    typeof session.elapsedSeconds === "number" && session.elapsedSeconds > 0
+      ? Math.round(session.elapsedSeconds)
+      : 0;
+  const structureSeconds = bikeOnly
     ? bikeCardioDurationSeconds({
         title: sets[0]?.exerciseName ?? "Bike",
         performedAt: new Date(0),
@@ -567,11 +577,17 @@ export function roundHistoryLine(session: {
           prescriptionKey: set.prescriptionKey,
         })),
       })
-    : session.elapsedSeconds && session.elapsedSeconds > 0
-      ? session.elapsedSeconds
+    : wallSeconds > 0
+      ? wallSeconds
       : bike
         ? bikeClockSeconds(bike, sets.length)
         : (block ?? roundSessionDuration(sets.length, work, rest));
+  // A session clock one second past the set's ride (1:12 vs 1:11) is the same ride.
+  // A clock that ran meaningfully longer still wins.
+  const total =
+    bikeOnly && rideSeconds > 0 && wallSeconds > 0 && Math.abs(wallSeconds - rideSeconds) <= 1
+      ? rideSeconds
+      : structureSeconds;
   const parts = [
     `${sets.length} round${sets.length === 1 ? "" : "s"}`,
     `${formatIntervalClock(work)} round`,
