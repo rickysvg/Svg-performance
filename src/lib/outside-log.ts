@@ -26,17 +26,17 @@ export const SORE_SPOT_LABELS: Record<SoreSpot, string> = {
   other: "Other",
 };
 
-export const BOUT_CLASSES = ["", "amateur", "pro"] as const;
-export type BoutClass = (typeof BOUT_CLASSES)[number];
+export const ROUND_TYPES = ["", "amateur", "pro"] as const;
+export type RoundType = (typeof ROUND_TYPES)[number];
 
-export function parseBoutClass(value: string | null | undefined): BoutClass {
+export function parseRoundType(value: string | null | undefined): RoundType {
   const trimmed = (value ?? "").trim().toLowerCase();
   if (trimmed === "amateur" || trimmed === "pro") return trimmed;
   if (trimmed === "" || trimmed === "unspecified") return "";
-  throw new AppError("LOG", "Bout should be amateur, pro, or left blank.");
+  throw new AppError("LOG", "Round type should be Amateur, Pro, or left blank.");
 }
 
-export function boutClassLabel(value: string | null | undefined) {
+export function roundTypeLabel(value: string | null | undefined) {
   if (value === "amateur") return "Amateur";
   if (value === "pro") return "Pro";
   return "";
@@ -50,8 +50,8 @@ export type SparringLog = {
   intensity: string;
   notes: string;
   partner: string;
-  /** Blank when the member did not mark amateur or pro. */
-  boutClass: BoutClass;
+  /** Blank when the member left round type unspecified. */
+  roundType: RoundType;
   sessionRating: number | null;
   bodyRating: number | null;
   soreSpots: SoreSpot[];
@@ -173,7 +173,7 @@ export async function saveSparringLog(
     intensity?: string;
     notes?: string;
     partner?: string;
-    boutClass?: string;
+    roundType?: string;
     sessionRating: number;
     bodyRating: number;
     soreSpots?: string[];
@@ -208,7 +208,7 @@ export async function saveSparringLog(
   const soreSpots = parseSoreSpots(input.soreSpots ?? []);
   const notes = (input.notes ?? "").trim().slice(0, 400);
   const partner = (input.partner ?? "").trim().slice(0, 80);
-  const boutClass = parseBoutClass(input.boutClass);
+  const roundType = parseRoundType(input.roundType);
   const row = await prisma.outsideSessionLog.upsert({
     where: { userId_dateKey: { userId, dateKey: input.dateKey } },
     create: {
@@ -220,7 +220,7 @@ export async function saveSparringLog(
       intensity,
       notes,
       partner,
-      boutClass,
+      roundType,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -233,7 +233,7 @@ export async function saveSparringLog(
       intensity,
       notes,
       partner,
-      boutClass,
+      roundType,
       sessionRating: input.sessionRating,
       bodyRating: input.bodyRating,
       soreSpots: JSON.stringify(soreSpots),
@@ -286,7 +286,7 @@ function toLog(row: {
   intensity: string;
   notes: string;
   partner?: string | null;
-  boutClass?: string | null;
+  roundType?: string | null;
   sessionRating?: number | null;
   bodyRating?: number | null;
   soreSpots?: string | null;
@@ -300,7 +300,7 @@ function toLog(row: {
     intensity: row.intensity,
     notes: row.notes,
     partner: row.partner ?? "",
-    boutClass: row.boutClass === "amateur" || row.boutClass === "pro" ? row.boutClass : "",
+    roundType: row.roundType === "amateur" || row.roundType === "pro" ? row.roundType : "",
     sessionRating: row.sessionRating ?? null,
     bodyRating: row.bodyRating ?? null,
     soreSpots: parseSoreSpots(row.soreSpots ?? "[]"),

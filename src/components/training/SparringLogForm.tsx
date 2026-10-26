@@ -67,7 +67,7 @@ export function SparringLogForm({
 }) {
   const [state, action, pending] = useActionState(saveSparringLogAction, {} as SparringLogState);
   const [intensity, setIntensity] = useState(saved?.intensity ?? "");
-  const [boutClass, setBoutClass] = useState(saved?.boutClass ?? "");
+  const [roundType, setRoundType] = useState(saved?.roundType ?? "");
   const [partner, setPartner] = useState(saved?.partner ?? "");
   const [sessionRating, setSessionRating] = useState(
     saved?.sessionRating == null ? "" : String(saved.sessionRating),
@@ -80,7 +80,7 @@ export function SparringLogForm({
     if (state.saved) {
       if (typeof state.intensity === "string") setIntensity(state.intensity);
       if (typeof state.partner === "string") setPartner(state.partner);
-      if (typeof state.boutClass === "string") setBoutClass(state.boutClass === "amateur" || state.boutClass === "pro" ? state.boutClass : "");
+      if (typeof state.roundType === "string") setRoundType(state.roundType === "amateur" || state.roundType === "pro" ? state.roundType : "");
     }
   }
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
@@ -153,11 +153,12 @@ export function SparringLogForm({
         </label>
       </div>
       <label className="block text-sm">
-        Bout (optional)
+        Round type
         <select
-          name="boutClass"
-          value={boutClass}
-          onChange={(event) => setBoutClass(event.target.value === "amateur" || event.target.value === "pro" ? event.target.value : "")}
+          name="roundType"
+          aria-label="Round type"
+          value={roundType}
+          onChange={(event) => setRoundType(event.target.value === "amateur" || event.target.value === "pro" ? event.target.value : "")}
           className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-3"
         >
           <option value="">Unspecified</option>

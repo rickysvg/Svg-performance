@@ -1068,7 +1068,7 @@ BEGIN
   END IF;
 END $$;
 
--- Optional amateur/pro class on a sparring log. Blank stays unspecified.
+-- Optional amateur/pro mark on a sparring log. Blank stays unspecified.
 DO $$
 BEGIN
   IF to_regclass('public."OutsideSessionLog"') IS NULL THEN
@@ -1077,9 +1077,9 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'OutsideSessionLog' AND column_name = 'boutClass'
+    WHERE table_schema = 'public' AND table_name = 'OutsideSessionLog' AND column_name = 'roundType'
   ) THEN
-    ALTER TABLE "OutsideSessionLog" ADD COLUMN "boutClass" TEXT NOT NULL DEFAULT '';
+    ALTER TABLE "OutsideSessionLog" ADD COLUMN "roundType" TEXT NOT NULL DEFAULT '';
   END IF;
 END $$;
 

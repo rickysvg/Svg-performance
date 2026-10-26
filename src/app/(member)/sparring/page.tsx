@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie, zonedParts } from "@/lib/timezone";
-import { boutClassLabel, getSparringLog, listSparringLogs, sparringDateError, sparringLogDateLabel, sparringMinutes } from "@/lib/outside-log";
+import { getSparringLog, listSparringLogs, roundTypeLabel, sparringDateError, sparringLogDateLabel, sparringMinutes } from "@/lib/outside-log";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { SparringLogList } from "@/components/training/SparringLogList";
 import { RoundTimerButton } from "@/components/timer/RoundTimerButton";
@@ -80,7 +80,7 @@ export default async function SparringPage({
         logs={logs.map((log) => ({
           dateKey: log.dateKey,
           label: sparringLogDateLabel(log),
-          detail: `${log.rounds} × ${log.minutesPerRound} min (${sparringMinutes(log)} min)${boutClassLabel(log.boutClass) ? ` · ${boutClassLabel(log.boutClass)}` : ""}${log.partner ? ` · ${log.partner}` : ""}`,
+          detail: `${log.rounds} × ${log.minutesPerRound} min (${sparringMinutes(log)} min)${roundTypeLabel(log.roundType) ? ` · ${roundTypeLabel(log.roundType)}` : ""}${log.partner ? ` · ${log.partner}` : ""}`,
         }))}
       />
       <Link href="/home" className="text-sm text-muted">

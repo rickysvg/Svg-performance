@@ -69,7 +69,7 @@ export type ReportOutside = {
   rounds: number;
   minutesPerRound: number;
   sessionRating: number | null;
-  boutClass: string;
+  roundType: string;
 };
 
 export type RoundTotals = Record<RoundKind, number> & { total: number };
@@ -343,7 +343,7 @@ function regionSeconds(session: ReportSession, region: LiftRegion) {
   );
 }
 
-function boutBucket(value: string): "amateur" | "pro" | "unspecified" {
+function roundTypeBucket(value: string): "amateur" | "pro" | "unspecified" {
   if (value === "amateur" || value === "pro") return value;
   return "unspecified";
 }
@@ -405,7 +405,7 @@ export function summarizePeriod(input: {
       metrics.sessions += 1;
       metrics.rounds.sparring += rounds;
       metrics.rounds.total += rounds;
-      metrics.sparring[boutBucket(log.boutClass)] += rounds;
+      metrics.sparring[roundTypeBucket(log.roundType)] += rounds;
       const minutes = Math.max(0, log.rounds) * Math.max(0, log.minutesPerRound);
       metrics.trainingSeconds += minutes * 60;
       if (log.sessionRating != null && log.sessionRating >= 1 && log.sessionRating <= 5) {
@@ -1234,7 +1234,7 @@ export async function loadReportHistory(userId: string, now = new Date()): Promi
         rounds: true,
         minutesPerRound: true,
         sessionRating: true,
-        boutClass: true,
+        roundType: true,
       },
     }),
   ]);

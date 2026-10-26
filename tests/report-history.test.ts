@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { DARU_EXERCISES } from "@/lib/daru-exercises";
 import { liftMetadataKind, liftRegionForExercise, UNMAPPED_EXERCISE_NAMES } from "@/lib/lift-region";
@@ -312,9 +314,9 @@ describe("progress report history", () => {
         }),
       ],
       outside: [
-        { dateKey: "2026-10-18", rounds: 4, minutesPerRound: 3, sessionRating: 4, boutClass: "amateur" },
-        { dateKey: "2026-10-19", rounds: 3, minutesPerRound: 5, sessionRating: null, boutClass: "pro" },
-        { dateKey: "2026-10-17", rounds: 2, minutesPerRound: 3, sessionRating: 3, boutClass: "" },
+        { dateKey: "2026-10-18", rounds: 4, minutesPerRound: 3, sessionRating: 4, roundType: "amateur" },
+        { dateKey: "2026-10-19", rounds: 3, minutesPerRound: 5, sessionRating: null, roundType: "pro" },
+        { dateKey: "2026-10-17", rounds: 2, minutesPerRound: 3, sessionRating: 3, roundType: "" },
       ],
       focus: "all",
       displayUnit: "lb",
@@ -325,8 +327,8 @@ describe("progress report history", () => {
       history({
         sessions: [],
         outside: [
-          { dateKey: "2026-10-20", rounds: 5, minutesPerRound: 3, sessionRating: 5, boutClass: "pro" },
-          { dateKey: "2026-10-13", rounds: 2, minutesPerRound: 3, sessionRating: 4, boutClass: "amateur" },
+          { dateKey: "2026-10-20", rounds: 5, minutesPerRound: 3, sessionRating: 5, roundType: "pro" },
+          { dateKey: "2026-10-13", rounds: 2, minutesPerRound: 3, sessionRating: 4, roundType: "amateur" },
         ],
       }),
       "week",
@@ -342,8 +344,8 @@ describe("progress report history", () => {
       history({
         sessions: [],
         outside: [
-          { dateKey: "2026-10-20", rounds: 5, minutesPerRound: 3, sessionRating: 5, boutClass: "pro" },
-          { dateKey: "2026-10-06", rounds: 1, minutesPerRound: 3, sessionRating: 3, boutClass: "amateur" },
+          { dateKey: "2026-10-20", rounds: 5, minutesPerRound: 3, sessionRating: 5, roundType: "pro" },
+          { dateKey: "2026-10-06", rounds: 1, minutesPerRound: 3, sessionRating: 3, roundType: "amateur" },
         ],
       }),
       "week",
@@ -443,16 +445,40 @@ describe("report history ownership", () => {
         dateKey: "2026-10-20",
         rounds: 3,
         minutesPerRound: 3,
-        boutClass: "",
+        roundType: "",
       },
     });
     const loaded = await loadReportHistory(owner.id, NOW);
     expect(loaded.sessions).toHaveLength(1);
     expect(loaded.sessions[0]?.title).toBe("Yours");
     expect(loaded.outside).toHaveLength(1);
-    expect(loaded.outside[0]?.boutClass).toBe("");
+    expect(loaded.outside[0]?.roundType).toBe("");
     const archive = buildWeekArchive(loaded);
     expect(archive.find((row) => row.weekStartKey === "2026-10-19")?.sessions).toBe(2);
     expect(archive.some((row) => row.trainingLoad === 1000)).toBe(false);
+  });
+});
+
+describe("round type copy", () => {
+  it("labels the sparring field Round type and never says bout", () => {
+    const files = [
+      "src/components/training/SparringLogForm.tsx",
+      "src/components/report/CompareBars.tsx",
+      "src/components/report/PeriodReportView.tsx",
+      "src/app/(member)/sparring/page.tsx",
+      "src/app/(member)/progress/page.tsx",
+      "src/lib/report-history.ts",
+      "src/lib/outside-log.ts",
+      "src/app/actions/outside-log.ts",
+    ];
+    const form = fs.readFileSync(path.join(process.cwd(), "src/components/training/SparringLogForm.tsx"), "utf8");
+    expect(form).toContain("Round type");
+    expect(form).toContain(">Unspecified</option>");
+    expect(form).toContain(">Amateur</option>");
+    expect(form).toContain(">Pro</option>");
+    for (const file of files) {
+      const text = fs.readFileSync(path.join(process.cwd(), file), "utf8");
+      expect(text).not.toMatch(/\bbout\b/i);
+    }
   });
 });

@@ -35,7 +35,7 @@ import { getCompanionProgress, summarizeBadges } from "@/lib/progress-companion"
 import { StreakHero } from "@/components/progress/StreakHero";
 import { BadgesGrid } from "@/components/progress/BadgesGrid";
 import { RecordsList } from "@/components/progress/RecordsList";
-import { boutClassLabel, sparringLogDateLabel, sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
+import { roundTypeLabel, sparringLogDateLabel, sparringLogsForWeek, sparringMinutes, sparringTrend } from "@/lib/outside-log";
 import { WeighInList } from "@/components/progress/WeighInList";
 import { SparringTrend } from "@/components/progress/SparringTrend";
 import { formatWorkoutCompleteDate } from "@/lib/workout-complete";
@@ -253,7 +253,7 @@ export default async function ProgressPage() {
             {sparringWeek.logs.map((log) => (
               <li key={log.dateKey}>
                 {sparringLogDateLabel(log)}: {log.rounds} × {log.minutesPerRound} min
-                {boutClassLabel(log.boutClass) ? ` · ${boutClassLabel(log.boutClass)}` : ""}
+                {roundTypeLabel(log.roundType) ? ` · ${roundTypeLabel(log.roundType)}` : ""}
                 {log.intensity ? ` · ${log.intensity}` : ""} ({sparringMinutes(log)} min)
                 {log.partner ? ` · ${log.partner}` : ""}
                 {log.sessionRating ? ` · session ${log.sessionRating}/5` : ""}
