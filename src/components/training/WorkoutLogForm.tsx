@@ -1878,6 +1878,7 @@ export function WorkoutLogForm({
                         currentName={name}
                         source={swapSource(name, group, planned, restSeconds, mode, swap?.slots)}
                         weightAccess={swap?.weightAccess ?? "gym"}
+                        loggedNames={Object.keys(previousLoads)}
                         workoutSessionId={session.id}
                         canRemove={grouped.length > 1}
                         getCurrentSets={() => setsRef.current.map(toSetInput)}

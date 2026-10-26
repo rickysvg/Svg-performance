@@ -19,6 +19,7 @@ import { setHasLoggedWork } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
 import { scaleBandFromPrefs, scaleProgramDay, type ScalePrefs } from "@/lib/training-scale";
+import type { WorkoutSet } from "@prisma/client";
 import type { WorkoutSetInput } from "@/lib/workouts";
 
 export type { SwapRecord, SwapScope };
@@ -488,6 +489,88 @@ export async function applyExerciseSwap(input: {
   }
 
   return { prescription, sets, retiredNames: [...retired], updatedAt };
+}
+
+/**
+ * Puts a swap back the way the toast promised.
+ * The session row is removed when this was the first swap for that exercise.
+ */
+export async function undoExerciseSwap(input: {
+  userId: string;
+  programSlug: string;
+  dayNumber: number;
+  originalName: string;
+  restoredName: string;
+  undoneName: string;
+  scope: SwapScope;
+  workoutSessionId?: string;
+  blockKey: string;
+  currentSets?: WorkoutSetInput[];
+  setDelta?: number;
+}) {
+  const originalName = input.originalName.trim();
+  const restoredName = input.restoredName.trim();
+  const undoneName = input.undoneName.trim();
+  if (input.programSlug) {
+    const row = await prisma.exerciseSwap.findFirst({
+      where: {
+        userId: input.userId,
+        programSlug: input.programSlug,
+        dayNumber: input.dayNumber,
+        originalName,
+        scope: input.scope,
+        workoutSessionId: input.scope === "session" ? input.workoutSessionId ?? "" : "",
+        blockKey: input.scope === "block" ? input.blockKey : "",
+      },
+    });
+    if (row && row.replacementName !== undoneName) {
+      return { sets: null as WorkoutSet[] | null, reverted: false };
+    }
+    if (row) {
+      if (!restoredName || restoredName === originalName) {
+        await prisma.exerciseSwap.delete({ where: { id: row.id } });
+      } else {
+        const retired = parseRetired(row.retiredNamesJson).filter((name) => name !== restoredName);
+        if (undoneName && undoneName !== originalName && !retired.includes(undoneName)) retired.push(undoneName);
+        await prisma.exerciseSwap.update({
+          where: { id: row.id },
+          data: {
+            replacementName: restoredName,
+            retiredNamesJson: JSON.stringify(retired),
+          },
+        });
+      }
+    }
+  }
+
+  if (!input.workoutSessionId || !input.currentSets || input.currentSets.length === 0) {
+    return { sets: null as WorkoutSet[] | null, reverted: true };
+  }
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: input.workoutSessionId },
+    include: { sets: true },
+  });
+  if (!session) throw new AppError("WORKOUT", "Workout not found.");
+  if (session.userId !== input.userId) throw new ForbiddenError("You cannot change another member's workout.");
+  if (session.status === "complete") throw new AppError("WORKOUT", "This session is already finished.");
+  const delta = Math.round(input.setDelta ?? 0);
+  const planned =
+    typeof session.plannedSetCount === "number" && delta !== 0
+      ? Math.max(0, session.plannedSetCount - delta)
+      : undefined;
+  const { updateWorkoutSessionForUser } = await import("@/lib/workouts");
+  const updated = await updateWorkoutSessionForUser({
+    userId: input.userId,
+    workoutId: session.id,
+    title: session.title,
+    performedAt: session.performedAt,
+    notes: session.notes,
+    status: "draft",
+    sets: input.currentSets,
+    plannedSetCount: planned,
+    retainEmptySets: true,
+  });
+  return { sets: updated.sets, reverted: true };
 }
 
 export async function alignWorkoutWithSwaps<

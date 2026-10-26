@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import type { SessionSummary } from "@/lib/session-summary";
 
-export function SessionRecap({ summary }: { summary: SessionSummary }) {
+export function SessionRecap({ summary, children }: { summary: SessionSummary; children?: ReactNode }) {
   return (
     <section
       data-session-summary={summary.kind}
@@ -22,6 +23,7 @@ export function SessionRecap({ summary }: { summary: SessionSummary }) {
         ))}
       </ul>
       <p className="mt-3 text-sm leading-snug text-white/75">{summary.payoff}</p>
+      {children ? <div className="mt-3">{children}</div> : null}
     </section>
   );
 }

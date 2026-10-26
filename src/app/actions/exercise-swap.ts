@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { publicErrorMessage } from "@/lib/errors";
-import { applyExerciseSwap } from "@/lib/exercise-swap-store";
+import { applyExerciseSwap, undoExerciseSwap } from "@/lib/exercise-swap-store";
 import { trainingBlockKey, type SwapScope } from "@/lib/exercise-swap";
 import { isLogMode, type LogMode } from "@/lib/exercise-log-mode";
 import type { WorkoutSet } from "@prisma/client";
@@ -98,6 +98,51 @@ export async function swapExerciseAction(input: SwapExerciseInput): Promise<Swap
         notes: applied.prescription.notes,
       },
     };
+  } catch (error) {
+    return { ok: false, error: publicErrorMessage(error) };
+  }
+}
+
+export async function undoExerciseSwapAction(input: {
+  programSlug: string;
+  dayNumber: number;
+  programDayId?: string;
+  originalName: string;
+  restoredName: string;
+  undoneName: string;
+  scope: SwapScope;
+  workoutSessionId?: string;
+  currentSets?: WorkoutSetInput[];
+  setDelta?: number;
+}): Promise<{ ok: true; sets: WorkoutSet[] | null } | { ok: false; error: string }> {
+  try {
+    const user = await requireUserOrThrow();
+    const profile = await getProfileForUser(user.id);
+    const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
+    const scope: SwapScope = input.scope === "block" ? "block" : "session";
+    const undone = await undoExerciseSwap({
+      userId: user.id,
+      programSlug: input.programSlug.trim(),
+      dayNumber: Number.isFinite(input.dayNumber) ? input.dayNumber : 0,
+      originalName: input.originalName,
+      restoredName: input.restoredName,
+      undoneName: input.undoneName,
+      scope,
+      workoutSessionId: input.workoutSessionId || undefined,
+      blockKey: trainingBlockKey(new Date(), timeZone, profile?.onboardingCompletedAt ?? null),
+      currentSets: input.currentSets,
+      setDelta: input.setDelta,
+    });
+    if (!undone.reverted) {
+      return { ok: false, error: "That swap was already changed." };
+    }
+    revalidatePath("/training");
+    if (input.programDayId) revalidatePath(`/training/${input.programDayId}`);
+    if (input.workoutSessionId) {
+      revalidatePath(`/training/log/${input.workoutSessionId}`);
+      revalidatePath(`/training/log/${input.workoutSessionId}/done`);
+    }
+    return { ok: true, sets: undone.sets };
   } catch (error) {
     return { ok: false, error: publicErrorMessage(error) };
   }

@@ -7,10 +7,13 @@ import { bikeWeekIndex, memberWeekIndex } from "@/lib/bike-sessions";
 import {
   canonicalExerciseName,
   categoryLabel,
+  EXERCISE_LIBRARY,
+  filterExerciseLibrary,
   libraryExercise,
   type ExerciseCategory,
   type LibraryExercise,
 } from "@/lib/exercise-library";
+import { tagsForExercise } from "@/lib/exercise-tags";
 import { isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode";
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { mesoBlockForWeekIndex } from "@/lib/mesocycle";
@@ -269,4 +272,66 @@ export function retiredNamesFromSwaps(swaps: SwapRecord[], shownNames: string[])
 
 export function describeSwap(exercise: LibraryExercise) {
   return `${categoryLabel(exercise.category)} · ${exercise.sets} × ${exercise.reps}`;
+}
+
+function equipmentFits(exercise: LibraryExercise, equipment: "gym" | "none") {
+  if (equipment === "gym") return exercise.equipment !== "none";
+  return exercise.equipment !== "gym";
+}
+
+/**
+ * The three replacements a member can tap without searching.
+ * Same pattern or muscle group, gear they have, and lifts they already log come first.
+ */
+export function bestSwapReplacements(input: {
+  name: string;
+  equipment: "gym" | "none";
+  loggedNames?: readonly string[];
+  limit?: number;
+}): LibraryExercise[] {
+  const limit = Math.max(1, input.limit ?? 3);
+  const current = canonicalExerciseName(input.name.trim());
+  const near = libraryExercise(current) ?? libraryExercise(input.name.trim());
+  const sourceTags = new Set(tagsForExercise(near?.name ?? current).map((tag) => tag.toLowerCase()));
+  const preferred = new Set<string>([
+    ...(near?.swapsWith ?? []),
+    ...EXERCISE_LIBRARY.filter(
+      (exercise) => exercise.swapsWith?.includes(current) || exercise.swapsWith?.includes(input.name.trim()),
+    ).map((exercise) => exercise.name),
+  ]);
+  const loggedRank = new Map<string, number>();
+  for (const [index, name] of (input.loggedNames ?? []).entries()) {
+    const clean = canonicalExerciseName(name);
+    if (!loggedRank.has(clean)) loggedRank.set(clean, index);
+  }
+  const ranked = EXERCISE_LIBRARY.filter((exercise) => {
+    if (exercise.memberHidden) return false;
+    if (exercise.name === current || exercise.name === input.name.trim()) return false;
+    return equipmentFits(exercise, input.equipment);
+  })
+    .map((exercise) => {
+      let score = 0;
+      if (preferred.has(exercise.name)) score += 80;
+      if (near && exercise.category === near.category) score += 40;
+      const shared = tagsForExercise(exercise.name).filter((tag) => sourceTags.has(tag.toLowerCase())).length;
+      score += shared * 15;
+      const logged = loggedRank.get(exercise.name);
+      if (logged != null) score += Math.max(8, 28 - logged * 4);
+      return { exercise, score };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score || a.exercise.name.localeCompare(b.exercise.name));
+  const picked = ranked.slice(0, limit).map((row) => row.exercise);
+  if (picked.length < limit) {
+    for (const exercise of filterExerciseLibrary({
+      equipment: input.equipment,
+      nearName: current,
+      excludeName: current,
+    })) {
+      if (picked.length >= limit) break;
+      if (picked.some((row) => row.name === exercise.name)) continue;
+      picked.push(exercise);
+    }
+  }
+  return picked;
 }

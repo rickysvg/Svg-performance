@@ -142,16 +142,28 @@ export function IntervalStructureFields({
       ) : null}
       {presets.length > 0 ? (
         <div className="flex gap-2 overflow-x-auto pb-1" data-testid="interval-presets">
-          {presets.map((preset) => (
+          {presets.map((preset) => {
+            const selected =
+              preset.structure.sets === structure.sets &&
+              preset.structure.rounds === structure.rounds &&
+              preset.structure.workSeconds === structure.workSeconds &&
+              preset.structure.restSeconds === structure.restSeconds &&
+              preset.structure.setRestSeconds === structure.setRestSeconds;
+            return (
             <button
               key={preset.id}
               type="button"
+              data-interval-preset={preset.id}
+              aria-pressed={selected}
               onClick={() => onStructure(preset.structure)}
-              className="inline-flex h-10 shrink-0 items-center rounded-full border border-line px-3 text-sm text-white"
+              className={`inline-flex h-10 shrink-0 items-center rounded-full px-3 text-sm font-semibold ${
+                selected ? "bg-[#CBF805] text-black" : "border border-line text-white"
+              }`}
             >
               {preset.label}
             </button>
-          ))}
+            );
+          })}
         </div>
       ) : null}
       <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">

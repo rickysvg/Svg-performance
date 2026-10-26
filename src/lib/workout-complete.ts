@@ -186,6 +186,17 @@ function plannedFromExercises(
   }, 0);
 }
 
+/** One set stays a count. Two or more sets show the structure, such as 2×8. */
+function bikeIntervalTileValue(sets: ShareSetLike[]) {
+  const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
+  const count = sessionRoundCount(sets) || sets.length;
+  if (!choice) return String(count);
+  const groups = Math.max(1, Math.round(choice.spec.repeatRounds ?? 1));
+  const perSet = Math.max(1, Math.round(choice.spec.roundsPerSet));
+  if (groups > 1) return `${groups}×${perSet}`;
+  return String(count);
+}
+
 function bikeLoggedFullStructure(session: ShareSessionLike) {
   const sets = loggedSets(session.sets);
   const choice = sets.map((set) => bikeChoiceFromKey(set.prescriptionKey)).find((row) => row != null) ?? null;
@@ -279,11 +290,11 @@ export function workoutCompleteTiles(input: {
     const seconds = input.session.backfilled
       ? bikeCardioDurationSeconds(input.session)
       : liveBikeFinishSeconds(input.session);
-    const intervals = sessionRoundCount(sets) || sets.length;
+    const intervals = bikeIntervalTileValue(sets);
     return applyFinishTime(
       [
         { key: "time", label: "Time", value: seconds > 0 ? formatShareDuration(seconds) : "0:00" },
-        { key: "setsRounds", label: "Intervals", value: String(intervals) },
+        { key: "setsRounds", label: "Intervals", value: intervals },
         { key: "volume", label: "Work", value: effort.workSeconds > 0 ? formatShareDuration(effort.workSeconds) : "0:00" },
         { key: "prs", label: "New PRs", value: "0" },
       ],

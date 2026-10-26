@@ -276,6 +276,9 @@ export function loggerCardLine(input: {
   const effort = rir ? ` @ ${rir}` : "";
   if (isBikeIntervalName(name)) {
     const reps = visibleBikeReps(input.reps || bikeIntervalReps());
+    // A stored choice already names the sets and rounds. Prefixing the logged
+    // row count turned "2 × 8 rounds · 15/15" into "16 rounds · 2 × 8 rounds".
+    if (/\brounds?\b/i.test(reps) || /^steady ride/i.test(reps)) return `${reps}${effort}`;
     return `${countLabel(input.sets, "round")} · ${reps}${effort}`;
   }
   if (mode === "timed_round") {

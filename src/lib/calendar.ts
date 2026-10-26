@@ -756,7 +756,10 @@ async function loadCalendarSchedule(
         heavy: Boolean(session.heavy),
         setCountLabel,
         durationLabel:
-          session.kind === "conditioning" && matched
+          matched &&
+          (session.kind === "conditioning" ||
+            matched.sets.some((set) => isBikeIntervalName(set.exerciseName ?? "")) ||
+            isBikeIntervalName(matched.title))
             ? rideClockLabel(matched, rideTimers)
             : undefined,
         minutesLabel:

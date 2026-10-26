@@ -26,6 +26,11 @@ export function ExerciseLibrarySheet({
   nearName,
   pending = false,
   error = "",
+  suggestions = [],
+  scope = "session",
+  allowBlock = true,
+  onScope,
+  onQuickPick,
   onClose,
   closeTestId = "training-library-close",
   footer,
@@ -39,6 +44,12 @@ export function ExerciseLibrarySheet({
   nearName?: string;
   pending?: boolean;
   error?: string;
+  suggestions?: LibraryExercise[];
+  scope?: "session" | "block";
+  allowBlock?: boolean;
+  onScope?: (scope: "session" | "block") => void;
+  /** One tap applies the current scope. Search below still opens the confirm footer. */
+  onQuickPick?: (choice: LibraryExercise) => void;
   onClose: () => void;
   closeTestId?: string;
   footer: (choice: LibraryExercise) => ReactNode;
@@ -97,6 +108,61 @@ export function ExerciseLibrarySheet({
           {subtitle ? <p className="truncate text-sm">{subtitle}</p> : null}
         </div>
       </header>
+      {variant === "swap" && suggestions.length > 0 ? (
+        <div className="shrink-0 space-y-3 border-b border-line bg-black px-4 py-3" data-best-replacements>
+          <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Best replacements</p>
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Swap applies to" data-swap-scope-picker>
+            <button
+              type="button"
+              data-swap-scope="session"
+              aria-pressed={scope === "session"}
+              onClick={() => onScope?.("session")}
+              className={`min-h-11 rounded-full text-sm font-semibold ${
+                scope === "session" ? "bg-[#CBF805] text-black" : "border border-line text-white"
+              }`}
+            >
+              This session
+            </button>
+            <button
+              type="button"
+              data-swap-scope="block"
+              aria-pressed={scope === "block"}
+              disabled={!allowBlock || pending}
+              onClick={() => onScope?.("block")}
+              className={`min-h-11 rounded-full text-sm font-semibold disabled:opacity-40 ${
+                scope === "block" ? "bg-[#CBF805] text-black" : "border border-line text-white"
+              }`}
+            >
+              Rest of the block
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {suggestions.map((exercise, index) => (
+              <li key={exercise.name}>
+                <button
+                  type="button"
+                  data-best-replacement={exercise.name}
+                  disabled={pending}
+                  onClick={() => onQuickPick?.(exercise)}
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left disabled:opacity-60 ${
+                    index === 0 ? "bg-[#CBF805] text-black" : "border border-[#CBF805]/50 bg-black text-white"
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{exercise.name}</span>
+                    <span className={`mt-0.5 block text-xs ${index === 0 ? "text-black/70" : "text-white/60"}`}>
+                      {categoryLabel(exercise.category)}
+                    </span>
+                  </span>
+                  <span className={`shrink-0 text-xs ${index === 0 ? "text-black/80" : "text-[#CBF805]"}`}>
+                    {index === 0 ? "Best" : "Swap"}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="shrink-0 space-y-3 border-b border-line px-4 py-3">
         <input
           value={query}
@@ -107,8 +173,8 @@ export function ExerciseLibrarySheet({
           placeholder="Search exercises"
           aria-label="Search exercises"
           enterKeyHint="search"
-          className="w-full rounded-xl border border-line bg-background px-3 py-3 text-base"
-          autoFocus
+          className="w-full rounded-xl border border-line bg-black px-3 py-3 text-base text-white"
+          autoFocus={suggestions.length === 0}
         />
         <div className="flex gap-2" role="group" aria-label="Equipment">
           {(

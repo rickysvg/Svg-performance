@@ -494,7 +494,7 @@ describe("past log first paint and finish time", () => {
     expect(createHtml).toContain(`value="${sample!.key}"`);
     expect(createHtml).toContain(sample!.label);
     expect(createHtml).toContain("Log a past workout");
-    expect(createHtml).toContain("8x20/10");
+    expect(createHtml).toContain("2x8 @ 15/15");
     expect(createHtml).toContain("text-base");
     const days = backfillDayOptions(new Date(), TZ);
     const homeHtml = renderToStaticMarkup(
