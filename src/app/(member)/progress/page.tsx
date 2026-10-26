@@ -65,9 +65,7 @@ export default async function ProgressPage() {
   const [profile, sessions, latestMetrics, weightHistory, photos, foodToday, foodWeek, heartTiles, showCharts, trial] =
     await Promise.all([
       getProfileForUser(user.id),
-      listWorkoutSessionsForUser(user.id, {
-        since: new Date(Date.now() - PROGRESS_HISTORY_DAYS * 86_400_000),
-      }),
+      listWorkoutSessionsForUser(user.id, { recentDays: PROGRESS_HISTORY_DAYS }),
       getLatestBodyMetricsForUser(user.id),
       listBodyMetricsForUser(user.id, "weight"),
       listProgressPhotosForUser(user.id),

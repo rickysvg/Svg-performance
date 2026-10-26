@@ -50,7 +50,7 @@ export async function heaviestLoadsInPeriod(input: {
   const sessions = await prisma.workoutSession.findMany({
     where: {
       userId: input.userId,
-      status: "complete",
+      status: { in: ["complete", "partial"] },
       performedAt: { gte: input.from, lt: input.endExclusive },
     },
     select: {

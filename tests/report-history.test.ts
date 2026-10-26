@@ -15,10 +15,13 @@ import {
   metricCards,
   monthBuckets,
   periodDelta,
+  streakAt,
   summarizePeriod,
   type ReportHistory,
   type ReportSession,
 } from "@/lib/report-history";
+import { sessionCompletionDay } from "@/lib/performed-at";
+import { currentTrainingStreak } from "@/lib/streaks";
 import { mondayWeekBounds as mondayBounds } from "@/lib/wrapped";
 import { getWeeklyProgressReport, strengthNoteForPeriod } from "@/lib/weekly-report";
 import { listSparringLogs, SPARRING_LOG_LIST_DAYS } from "@/lib/outside-log";
@@ -101,7 +104,7 @@ describe("progress report history", () => {
     expect(rows.map((row) => row.weekStartKey)).toEqual([...rows.map((row) => row.weekStartKey)].sort().reverse());
   });
 
-  it("keeps an empty week between logged weeks and colors the load change", () => {
+  it("skips an empty week between logged weeks and still compares against it", () => {
     const rows = buildWeekArchive(
       history({
         sessions: [
@@ -140,9 +143,9 @@ describe("progress report history", () => {
         ],
       }),
     );
-    const gap = rows.find((row) => row.weekStartKey === "2026-10-12");
     const later = rows.find((row) => row.weekStartKey === "2026-10-19");
-    expect(gap?.sessions).toBe(0);
+    expect(rows.map((row) => row.weekStartKey)).not.toContain("2026-10-12");
+    expect(rows.some((row) => row.weekStartKey === currentWeekKey(NOW, TZ))).toBe(true);
     expect(later?.trainingLoad).toBe(500);
     expect(later?.delta?.direction).toBe("up");
     expect(later?.delta?.absolute).toBe(500);
@@ -361,6 +364,9 @@ describe("progress report history", () => {
     expect(kept?.baselineKey).toBe("2026-10-05");
     expect(buildPeriodReport(history(), "week", "2026-10-21", null, "all")).toBeNull();
     expect(buildPeriodReport(history(), "week", "2026-11-02", null, "all")).toBeNull();
+    expect(buildPeriodReport(history(), "week", "2015-03-09", null, "all")).toBeNull();
+    expect(buildPeriodReport(history(), "month", "2015-03", null, "all")).toBeNull();
+    expect(buildPeriodReport(history(), "month", "2015-13", null, "all")).toBeNull();
     expect(isMondayKey("2026-10-19", TZ)).toBe(true);
     expect(isMondayKey("2026-10-20", TZ)).toBe(false);
   });
@@ -517,6 +523,39 @@ describe("report history ownership", () => {
     expect(open.sessions.map((row) => row.title).sort()).toEqual(["In week", "Later", "Old compare"]);
     expect(open.sessions.map((row) => row.title)).not.toContain("Ancient");
   });
+
+  it("rejects an adversarial compare instead of loading that year", async () => {
+    const owner = await makeUser("report-adversarial@example.com");
+    await prisma.profile.update({ where: { userId: owner.id }, data: { timeZone: TZ } });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "Ancient compare",
+        performedAt: zonedCivilToUtc(2015, 3, 10, TZ),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 40, completed: true }] },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "In week",
+        performedAt: zonedCivilToUtc(2026, 10, 20, TZ),
+        status: "complete",
+        sets: { create: [{ exerciseName: "Squat", setNumber: 1, reps: 5, loadValue: 50, completed: true }] },
+      },
+    });
+    const now = zonedCivilToUtc(2026, 11, 2, TZ);
+    const started = performance.now();
+    const loaded = await loadReportHistory(owner.id, now, {
+      weekStartKey: "2026-10-19",
+      compareKey: "2015-03-09",
+    });
+    const report = buildPeriodReport(loaded, "week", "2026-10-19", "2015-03-09", "all");
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(loaded.sessions.map((row) => row.title)).toEqual(["In week"]);
+    expect(report?.baselineKey).toBe("2026-10-12");
+  });
 });
 
 describe("report qa fixes", () => {
@@ -575,10 +614,14 @@ describe("report qa fixes", () => {
       "all",
     );
     const octoberPoints = report?.charts[0]?.points ?? [];
+    expect(octoberPoints.map((point) => point.detail)).toEqual(october.map((bucket) => bucket.detail));
     const sharedOctober = octoberPoints.find((point) => point.detail === "Oct 1–4, 2026");
-    expect(sharedOctober?.baselineDetail).toBe("Sep 28–30, 2026");
+    expect(sharedOctober?.baselineDetail).toBe("Sep 1–6, 2026");
+    expect(sharedOctober?.baseline).toBeGreaterThan(0);
     expect(octoberPoints.at(-1)?.detail).toBe("Oct 26–31, 2026");
+    expect(octoberPoints.at(-1)?.baselineDetail).toBe("Sep 28–30, 2026");
     expect(octoberPoints.every((point) => !point.baselineDetail.includes("Oct 26"))).toBe(true);
+    expect(octoberPoints[0]?.label.startsWith("Oct")).toBe(true);
     const septemberReport = buildPeriodReport(
       history({
         now: zonedCivilToUtc(2026, 10, 26, TZ),
@@ -624,17 +667,26 @@ describe("report qa fixes", () => {
     );
     const points = septemberReport?.charts[0]?.points ?? [];
     const august = monthBuckets("2026-08", TZ);
-    const unionKeys = new Set([...september.map((bucket) => bucket.key), ...august.map((bucket) => bucket.key)]);
-    expect(points).toHaveLength(unionKeys.size);
-    const boundary = points.find((point) => point.baselineDetail === "Aug 31, 2026");
-    expect(boundary?.detail).toBe("Sep 1–6, 2026");
-    expect(boundary?.label).toBe("Sep 1");
-    expect(boundary?.current).toBeGreaterThan(0);
-    expect(boundary?.baseline).toBeGreaterThan(0);
+    expect(points).toHaveLength(Math.max(september.length, august.length));
+    expect(points[0]?.detail).toBe("Sep 1–6, 2026");
+    expect(points[0]?.label).toBe("Sep 1");
+    expect(points[0]?.baselineDetail).toBe("Aug 1–2, 2026");
+    expect(points[0]?.current).toBeGreaterThan(0);
+    expect(points[0]?.baseline).toBe(0);
+    expect(points.slice(0, september.length).every((point) => point.detail.startsWith("Sep"))).toBe(true);
+    const trail = points.find((point) => point.baselineDetail === "Aug 31, 2026");
+    expect(trail?.detail).toBe("");
+    expect(trail?.current).toBe(0);
+    expect(trail?.baseline).toBeGreaterThan(0);
     expect(points.some((point) => point.detail.includes("Aug 31–Sep") || point.detail.includes("Aug 31 – Sep"))).toBe(
       false,
     );
-    expect(points.some((point) => point.baselineDetail === "Aug 24–30, 2026" && point.detail === "")).toBe(true);
+    expect(points.some((point) => point.baselineDetail === "Aug 24–30, 2026" && point.detail === "Sep 28–30, 2026")).toBe(
+      true,
+    );
+    const volume = septemberReport?.cards.find((card) => card.id === "volume");
+    expect(volume?.current).toBe(200);
+    expect(volume?.baseline).toBe(1000);
   });
 
   it("splits a mixed session’s time across lower and upper by set count", () => {
@@ -769,6 +821,25 @@ describe("period strength loads", () => {
     expect(october).toContain("Goblet squat 300 lb");
     expect(october).toContain("DB bench press 135 lb");
     expect(october).not.toContain("200");
+
+    await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Partial bench",
+        performedAt: zonedCivilToUtc(2026, 10, 8, TZ),
+        status: "partial",
+        sets: {
+          create: [
+            { exerciseName: "DB row", setNumber: 1, reps: 5, loadValue: 95, loadUnit: "lb", completed: true },
+            { exerciseName: "Goblet squat", setNumber: 1, reps: 5, loadValue: 400, loadUnit: "lb", completed: false },
+          ],
+        },
+      },
+    });
+    const withPartial = await getWeeklyProgressReport(user.id, zonedCivilToUtc(2026, 10, 7, TZ));
+    expect(withPartial.strengthNote).toContain("DB row 95 lb");
+    expect(withPartial.strengthNote).toContain("Goblet squat 225 lb");
+    expect(withPartial.strengthNote).not.toContain("400");
   });
 });
 
@@ -818,7 +889,95 @@ describe("bounded history lists", () => {
     });
     const windowed = await listWorkoutSessionsForUser(user.id, { since });
     expect(windowed.map((row) => row.title)).toEqual(["Recent"]);
+    const byDays = await listWorkoutSessionsForUser(user.id, { recentDays: PROGRESS_HISTORY_DAYS });
+    expect(byDays.map((row) => row.title)).toEqual(["Recent"]);
     const all = await listWorkoutSessionsForUser(user.id);
     expect(all.map((row) => row.title).sort()).toEqual(["Old", "Recent"]);
+  });
+});
+
+const loggedLift = {
+  exerciseName: "Goblet squat",
+  reps: 5,
+  loadValue: 50,
+  loadUnit: "lb",
+  logMode: "load_reps",
+  durationSeconds: null,
+  completed: true,
+  prescriptionKey: "",
+};
+
+describe("report performance", () => {
+  it("groups a sparse archive once and ignores a compare before the window", () => {
+    const origin = zonedCivilToUtc(2025, 5, 19, TZ);
+    const sessions = Array.from({ length: 9 }, (_, index) =>
+      session({
+        id: `sparse-${index}`,
+        performedAt: addZonedDays(origin, index * 9 * 7, TZ),
+        sets: [{ ...loggedLift, loadValue: 40 + index }],
+      }),
+    );
+    sessions.push(
+      session({
+        id: "ancient",
+        performedAt: zonedCivilToUtc(2015, 3, 10, TZ),
+        sets: [loggedLift],
+      }),
+    );
+    const data = history({ sessions });
+    const started = performance.now();
+    const rows = buildWeekArchive(data);
+    const report = buildPeriodReport(data, "week", "2026-10-19", "2015-03-09", "all");
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(rows).toHaveLength(10);
+    expect(rows.some((row) => row.weekStartKey === "2015-03-09")).toBe(false);
+    expect(rows.filter((row) => row.sessions === 0).map((row) => row.weekStartKey)).toEqual([
+      currentWeekKey(NOW, TZ),
+    ]);
+    expect(report?.baselineKey).toBe("2026-10-12");
+    expect(report?.baselineKey).not.toBe("2015-03-09");
+  });
+
+  it("counts a long streak once instead of rebuilding the week plan per day", () => {
+    const end = zonedCivilToUtc(2026, 10, 20, TZ);
+    const sessions = Array.from({ length: 400 }, (_, index) =>
+      session({
+        id: `day-${index}`,
+        performedAt: addZonedDays(end, -index, TZ),
+        sets: [loggedLift],
+      }),
+    );
+    const data = history({ sessions });
+    const started = performance.now();
+    const streak = streakAt(data, NOW);
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(streak).toBeGreaterThan(20);
+    const rows = buildWeekArchive(data);
+    expect(rows.length).toBeGreaterThan(50);
+    expect(rows.length).toBeLessThan(80);
+  });
+
+  it("matches the scheduled-day streak as of the period end", () => {
+    const sessions = [
+      session({ id: "mon", performedAt: zonedCivilToUtc(2026, 10, 19, TZ), sets: [loggedLift] }),
+      session({ id: "tue", performedAt: zonedCivilToUtc(2026, 10, 20, TZ), sets: [loggedLift] }),
+    ];
+    const data = history({ sessions });
+    const keys = sessions.map((row) => sessionCompletionDay(row, TZ));
+    expect(streakAt(data, NOW)).toBe(currentTrainingStreak(keys, data.prefs, NOW, TZ));
+  });
+
+  it("matches the scheduled-day streak across the November daylight change", () => {
+    const end = zonedCivilToUtc(2026, 11, 3, TZ);
+    const sessions = Array.from({ length: 21 }, (_, index) =>
+      session({
+        id: `dst-${index}`,
+        performedAt: addZonedDays(end, -index, TZ),
+        sets: [loggedLift],
+      }),
+    );
+    const data = history({ sessions, now: end });
+    const keys = sessions.map((row) => sessionCompletionDay(row, TZ));
+    expect(streakAt(data, end)).toBe(currentTrainingStreak(keys, data.prefs, end, TZ));
   });
 });

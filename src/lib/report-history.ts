@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { sessionAppearsOnProgress } from "@/lib/progress";
 import { exerciseMatchesRoundType } from "@/lib/round-session";
 import { sessionDurationSeconds } from "@/lib/share-card";
-import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
+import { isScheduledTrainingDay, plannerPrefsFromProfile } from "@/lib/streaks";
 import type { PlannerPrefs } from "@/lib/week-plan";
 import { exerciseUsesBikeLogger } from "@/lib/timer-session";
 import {
@@ -597,20 +597,65 @@ function monthBounds(monthKey: string, timeZone: string) {
   return { from, endExclusive, dayKeys: days };
 }
 
+const scheduledWeekdaysByHistory = new WeakMap<ReportHistory, Set<string>>();
+
+/** Training days repeat by weekday. One week of the plan covers the whole streak walk. */
+function scheduledWeekdays(history: ReportHistory, at: Date) {
+  const cached = scheduledWeekdaysByHistory.get(history);
+  if (cached) return cached;
+  const monday = mondayOfZoned(at, history.timeZone);
+  const scheduled = new Set<string>();
+  for (let index = 0; index < 7; index += 1) {
+    const date = addZonedDays(monday, index, history.timeZone);
+    if (isScheduledTrainingDay(history.prefs, date, history.timeZone)) {
+      scheduled.add(weekdayInZone(date, history.timeZone));
+    }
+  }
+  scheduledWeekdaysByHistory.set(history, scheduled);
+  return scheduled;
+}
+
+const CIVIL_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+
+function previousCivilDay(year: number, month: number, day: number, weekday: (typeof CIVIL_WEEKDAYS)[number]) {
+  const shifted = new Date(Date.UTC(year, month - 1, day - 1));
+  const index = CIVIL_WEEKDAYS.indexOf(weekday);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+    weekday: CIVIL_WEEKDAYS[(index + 6) % 7]!,
+  };
+}
+
+function civilKey(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export function streakAt(history: ReportHistory, at: Date) {
-  const dates = history.sessions
-    .filter((session) => session.status === "complete" && session.performedAt.getTime() <= at.getTime())
-    .map((session) => {
-      const key = sessionCompletionDay(session, history.timeZone);
-      const [year, month, day] = key.split("-").map(Number);
-      return zonedCivilToUtc(year!, month!, day!, history.timeZone);
-    });
-  return buildTrainingStreak({
-    completedDates: dates,
-    prefs: history.prefs,
-    now: at,
-    timeZone: history.timeZone,
-  }).current;
+  const scheduled = scheduledWeekdays(history, at);
+  const done = new Set<string>();
+  for (const session of history.sessions) {
+    if (session.status !== "complete" || session.performedAt.getTime() > at.getTime()) continue;
+    done.add(sessionCompletionDay(session, history.timeZone));
+  }
+  const today = zonedParts(at, history.timeZone);
+  let cursor = { year: today.year, month: today.month, day: today.day, weekday: today.weekday };
+  if (scheduled.has(cursor.weekday) && !done.has(civilKey(cursor.year, cursor.month, cursor.day))) {
+    cursor = previousCivilDay(cursor.year, cursor.month, cursor.day, cursor.weekday);
+  }
+  let streak = 0;
+  for (let index = 0; index < 800; index += 1) {
+    const key = civilKey(cursor.year, cursor.month, cursor.day);
+    if (!scheduled.has(cursor.weekday)) {
+      cursor = previousCivilDay(cursor.year, cursor.month, cursor.day, cursor.weekday);
+      continue;
+    }
+    if (!done.has(key)) break;
+    streak += 1;
+    cursor = previousCivilDay(cursor.year, cursor.month, cursor.day, cursor.weekday);
+  }
+  return streak;
 }
 
 function metricsForDays(
@@ -644,14 +689,20 @@ function chartValue(metrics: PeriodMetrics, metric: ChartMetric) {
   return metrics.sessions;
 }
 
-function pairedBuckets(current: DayBucket[], baseline: DayBucket[], align: "index" | "union") {
-  if (align === "index") {
-    return current.map((bucket, index) => ({ current: bucket, baseline: baseline[index] }));
+type BucketAlign = "index" | "index-trail";
+
+function pairedBuckets(current: DayBucket[], baseline: DayBucket[], align: BucketAlign) {
+  const pairs: Array<{ current?: DayBucket; baseline?: DayBucket }> = current.map((bucket, index) => ({
+    current: bucket,
+    baseline: baseline[index],
+  }));
+  if (align === "index-trail") {
+    for (let index = current.length; index < baseline.length; index += 1) {
+      const previous = baseline[index];
+      if (previous) pairs.push({ baseline: previous });
+    }
   }
-  const currentBy = new Map(current.map((bucket) => [bucket.key, bucket]));
-  const baselineBy = new Map(baseline.map((bucket) => [bucket.key, bucket]));
-  const keys = [...new Set([...currentBy.keys(), ...baselineBy.keys()])].sort();
-  return keys.map((key) => ({ current: currentBy.get(key), baseline: baselineBy.get(key) }));
+  return pairs;
 }
 
 function comparePoints(
@@ -661,7 +712,7 @@ function comparePoints(
   baseline: DayBucket[],
   focus: ReportFocus,
   metric: ChartMetric,
-  align: "index" | "union",
+  align: BucketAlign,
 ): ChartPoint[] {
   return pairedBuckets(current, baseline, align).map(({ current: bucket, baseline: previous }) => {
     const currentMetrics = bucket
@@ -694,7 +745,7 @@ function sparringPoints(
   index: ReturnType<typeof indexHistory>,
   current: DayBucket[],
   baseline: DayBucket[],
-  align: "index" | "union",
+  align: BucketAlign,
 ): SparringChartPoint[] {
   return pairedBuckets(current, baseline, align).map(({ current: bucket, baseline: previous }) => {
     const currentMetrics = bucket
@@ -862,7 +913,7 @@ function chartsFor(
   current: PeriodMetrics,
   baseline: PeriodMetrics,
   focus: ReportFocus,
-  align: "index" | "union",
+  align: BucketAlign,
 ): ChartModel[] {
   const unit = history.displayUnit;
   const specs: Array<{ id: string; title: string; description: string; unit: string; metric: ChartMetric; show: boolean }> = [];
@@ -1038,44 +1089,53 @@ function archiveDelta(current: PeriodMetrics, previous: PeriodMetrics) {
   return { delta: null, deltaMode: "count" as const, deltaLabel: "" };
 }
 
+function weekKeyForDay(day: string, timeZone: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const instant = zonedCivilToUtc(
+    Number(day.slice(0, 4)),
+    Number(day.slice(5, 7)),
+    Number(day.slice(8, 10)),
+    timeZone,
+  );
+  if (dayKey(instant, timeZone) !== day) return null;
+  return dayKey(mondayOfZoned(instant, timeZone), timeZone);
+}
+
 export function buildWeekArchive(history: ReportHistory): WeekArchiveRow[] {
   const index = indexHistory(history);
-  const dayKeys = [
-    ...index.sessionsByDay.keys(),
-    ...index.outsideByDay.keys(),
-  ].filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key));
-  const currentKey = currentWeekKey(history.now, history.timeZone);
-  const earliest = dayKeys.sort()[0];
-  const earliestInstant = earliest
-    ? zonedCivilToUtc(
-        Number(earliest.slice(0, 4)),
-        Number(earliest.slice(5, 7)),
-        Number(earliest.slice(8, 10)),
-        history.timeZone,
-      )
-    : null;
-  const startKey = earliestInstant
-    ? dayKey(mondayOfZoned(earliestInstant, history.timeZone), history.timeZone)
-    : currentKey;
-  const keys: string[] = [];
-  let cursor = startKey > currentKey ? currentKey : startKey;
-  while (cursor <= currentKey && keys.length < 520) {
-    keys.push(cursor);
-    const next = shiftWeekKey(cursor, 1, history.timeZone);
-    if (!next || next === cursor) break;
-    cursor = next;
+  const bounds = archiveBounds(history.now, history.timeZone);
+  const grouped = new Map<string, { sessions: ReportSession[]; outside: ReportOutside[] }>();
+  const bucketFor = (day: string) => {
+    const week = weekKeyForDay(day, history.timeZone);
+    if (!week || week < bounds.floorKey || week > bounds.currentKey) return null;
+    let bucket = grouped.get(week);
+    if (!bucket) {
+      bucket = { sessions: [], outside: [] };
+      grouped.set(week, bucket);
+    }
+    return bucket;
+  };
+  for (const [day, sessions] of index.sessionsByDay) {
+    bucketFor(day)?.sessions.push(...sessions);
   }
+  for (const [day, logs] of index.outsideByDay) {
+    bucketFor(day)?.outside.push(...logs);
+  }
+  if (!grouped.has(bounds.currentKey)) grouped.set(bounds.currentKey, { sessions: [], outside: [] });
+
   const metricsByWeek = new Map<string, PeriodMetrics>();
-  for (const key of keys) {
-    const bounds = weekBounds(key, history.timeZone);
+  for (const [key, rows] of grouped) {
     metricsByWeek.set(
       key,
-      bounds
-        ? metricsForDays(history, index, bounds.dayKeys, "all", bounds.endExclusive)
-        : emptyMetrics(),
+      summarizePeriod({
+        sessions: rows.sessions,
+        outside: rows.outside,
+        focus: "all",
+        displayUnit: history.displayUnit,
+      }),
     );
   }
-  return [...keys].reverse().map((key) => {
+  return [...grouped.keys()].sort((left, right) => (left < right ? 1 : -1)).map((key) => {
     const metrics = metricsByWeek.get(key) ?? emptyMetrics();
     const previousKey = shiftWeekKey(key, -1, history.timeZone);
     const previous = previousKey ? metricsByWeek.get(previousKey) ?? emptyMetrics() : emptyMetrics();
@@ -1174,8 +1234,8 @@ export function buildPeriodReport(
   const timeZone = history.timeZone;
   const currentKey = kind === "week" ? currentWeekKey(history.now, timeZone) : currentMonthKey(history.now, timeZone);
   if (kind === "week") {
-    if (!isMondayKey(key, timeZone) || key > currentKey) return null;
-  } else if (!isMonthKey(key) || key > currentKey) {
+    if (!weekInWindow(key, history.now, timeZone)) return null;
+  } else if (!monthInWindow(key, history.now, timeZone)) {
     return null;
   }
   const bounds = kind === "week" ? weekBounds(key, timeZone) : monthBounds(key, timeZone);
@@ -1192,7 +1252,7 @@ export function buildPeriodReport(
   const baseline = metricsForDays(history, index, compareBounds.dayKeys, focus, compareBounds.endExclusive);
   const currentBuckets = kind === "week" ? weekBuckets(key, timeZone) : monthBuckets(key, timeZone);
   const baselineBuckets = kind === "week" ? weekBuckets(compareKey, timeZone) : monthBuckets(compareKey, timeZone);
-  const align = kind === "month" ? "union" : "index";
+  const align: BucketAlign = kind === "month" ? "index-trail" : "index";
   const nextKey = kind === "week" ? shiftWeekKey(key, 1, timeZone) : shiftMonthKey(key, 1);
   const prevKey = previousKey;
   const weekTarget = kind === "week" ? key : key === currentMonthKey(history.now, timeZone) ? currentWeekKey(history.now, timeZone) : firstMondayInMonth(key, timeZone);
@@ -1270,38 +1330,65 @@ function earlierInstant(left?: Date | null, right?: Date | null) {
   return left.getTime() <= right.getTime() ? left : right;
 }
 
-function historyWindow(now: Date, timeZone: string, scope?: ReportLoadScope) {
-  const currentWeek = weekBounds(currentWeekKey(now, timeZone), timeZone);
-  const currentWeekEnd = currentWeek?.endExclusive ?? now;
-  const archiveFrom = currentWeek
+function archiveBounds(now: Date, timeZone: string) {
+  const currentKey = currentWeekKey(now, timeZone);
+  const currentWeek = weekBounds(currentKey, timeZone);
+  const through = currentWeek?.endExclusive ?? now;
+  const from = currentWeek
     ? addZonedDays(currentWeek.from, -7 * ARCHIVE_WEEK_SPAN, timeZone)
     : new Date(now.getTime() - ARCHIVE_WEEK_SPAN * 7 * 86_400_000);
+  const floorKey = currentWeek ? dayKey(from, timeZone) : currentKey;
+  return { from, through, floorKey, currentKey };
+}
+
+function weekInWindow(key: string, now: Date, timeZone: string) {
+  if (!isMondayKey(key, timeZone)) return false;
+  const bounds = archiveBounds(now, timeZone);
+  return key >= bounds.floorKey && key <= bounds.currentKey;
+}
+
+function monthInWindow(key: string, now: Date, timeZone: string) {
+  if (!isMonthKey(key)) return false;
+  const bounds = archiveBounds(now, timeZone);
+  return key >= bounds.floorKey.slice(0, 7) && key <= currentMonthKey(now, timeZone);
+}
+
+function historyWindow(now: Date, timeZone: string, scope?: ReportLoadScope) {
+  const archive = archiveBounds(now, timeZone);
+  const clampFrom = (value: Date) => (value.getTime() < archive.from.getTime() ? archive.from : value);
+  const empty = { from: archive.through, through: archive.through };
   if (scope && Object.prototype.hasOwnProperty.call(scope, "monthKey")) {
     const key = scope.monthKey || currentMonthKey(now, timeZone);
+    if (!monthInWindow(key, now, timeZone)) return empty;
     const shown = monthBounds(key, timeZone);
-    const requested = scope.compareKey && isMonthKey(scope.compareKey) && scope.compareKey < key ? scope.compareKey : null;
-    const compare = monthBounds(requested ?? shiftMonthKey(key, -1) ?? key, timeZone);
-    const through = shown?.endExclusive ?? currentWeekEnd;
-    const chartFrom = earlierInstant(shown?.from, compare?.from);
-    const from = earlierInstant(chartFrom, addZonedDays(through, -STREAK_LOOKBACK_DAYS, timeZone)) ?? archiveFrom;
-    return { from, through };
-  }
-  if (scope?.weekStartKey && isMondayKey(scope.weekStartKey, timeZone)) {
-    const shown = weekBounds(scope.weekStartKey, timeZone);
     const requested =
-      scope.compareKey &&
-      isMondayKey(scope.compareKey, timeZone) &&
-      scope.compareKey < scope.weekStartKey
+      scope.compareKey && monthInWindow(scope.compareKey, now, timeZone) && scope.compareKey < key
         ? scope.compareKey
         : null;
-    const compare = weekBounds(requested ?? shiftWeekKey(scope.weekStartKey, -1, timeZone) ?? scope.weekStartKey, timeZone);
-    let through = shown?.endExclusive ?? currentWeekEnd;
-    if (through.getTime() > currentWeekEnd.getTime()) through = currentWeekEnd;
+    const compare = monthBounds(requested ?? shiftMonthKey(key, -1) ?? key, timeZone);
+    const through = shown?.endExclusive ?? archive.through;
     const chartFrom = earlierInstant(shown?.from, compare?.from);
-    const from = earlierInstant(chartFrom, addZonedDays(through, -STREAK_LOOKBACK_DAYS, timeZone)) ?? archiveFrom;
+    const from = clampFrom(earlierInstant(chartFrom, addZonedDays(through, -STREAK_LOOKBACK_DAYS, timeZone)) ?? archive.from);
     return { from, through };
   }
-  return { from: archiveFrom, through: currentWeekEnd };
+  if (scope?.weekStartKey) {
+    if (!weekInWindow(scope.weekStartKey, now, timeZone)) return empty;
+    const shown = weekBounds(scope.weekStartKey, timeZone);
+    const requested =
+      scope.compareKey && weekInWindow(scope.compareKey, now, timeZone) && scope.compareKey < scope.weekStartKey
+        ? scope.compareKey
+        : null;
+    const compare = weekBounds(
+      requested ?? shiftWeekKey(scope.weekStartKey, -1, timeZone) ?? scope.weekStartKey,
+      timeZone,
+    );
+    let through = shown?.endExclusive ?? archive.through;
+    if (through.getTime() > archive.through.getTime()) through = archive.through;
+    const chartFrom = earlierInstant(shown?.from, compare?.from);
+    const from = clampFrom(earlierInstant(chartFrom, addZonedDays(through, -STREAK_LOOKBACK_DAYS, timeZone)) ?? archive.from);
+    return { from, through };
+  }
+  return { from: archive.from, through: archive.through };
 }
 
 export async function loadReportHistory(
