@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { loggedSetSome, setHasLoggedWork } from "@/lib/logged-work";
 import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { getProfileForUser } from "@/lib/profile";
-import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
+import { buildTrainingStreak, plannerPrefsFromProfile, streakQuerySince } from "@/lib/streaks";
 import { addZonedDays, dayKey, mondayOfZoned, zonedCivilToUtc, APP_TIMEZONE } from "@/lib/timezone";
 import { bagworkTrainingLoadFromSession } from "@/lib/bagwork";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
@@ -203,7 +203,12 @@ export async function getHomeTelemetry(input: {
       select: { dateKey: true, rounds: true },
     }),
     prisma.workoutSession.findMany({
-      where: { userId: input.userId, status: "complete", sets: loggedSetSome },
+      where: {
+        userId: input.userId,
+        status: "complete",
+        sets: loggedSetSome,
+        performedAt: { gte: streakQuerySince(now) },
+      },
       select: { performedAt: true, createdAt: true },
     }),
   ]);

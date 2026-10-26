@@ -115,10 +115,18 @@ function assertOwnPhoto<T extends { userId: string }>(row: T | null, userId: str
   return row;
 }
 
-export async function listProgressPhotosForUser(userId: string) {
+/** Newest photos the timeline renders. The progress count uses countProgressPhotosForUser. */
+export const PROGRESS_PHOTO_LIST_TAKE = 80;
+
+export async function countProgressPhotosForUser(userId: string) {
+  return prisma.progressPhoto.count({ where: { userId } });
+}
+
+export async function listProgressPhotosForUser(userId: string, take = PROGRESS_PHOTO_LIST_TAKE) {
   return prisma.progressPhoto.findMany({
     where: { userId },
     orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
+    take,
   });
 }
 

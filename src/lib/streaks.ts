@@ -4,6 +4,9 @@ import {
   dayKey,
   mondayOfZoned,
   startOfZonedDay,
+  weekdayInZone,
+  zonedParts,
+  type ZonedWeekday,
 } from "@/lib/timezone";
 import {
   planForDate,
@@ -11,6 +14,119 @@ import {
 } from "@/lib/week-plan";
 
 export const WEEK_DOT_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+
+/**
+ * Current streak already stopped after 800 calendar days. Longest uses the
+ * same window so a session from 2015 does not walk every day since then.
+ */
+export const STREAK_LOOKBACK_DAYS = 800;
+
+const CIVIL_WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const satisfies readonly ZonedWeekday[];
+
+type CivilDay = {
+  year: number;
+  month: number;
+  day: number;
+  weekday: ZonedWeekday;
+};
+
+export function streakWindowStart(now = new Date(), timeZone = APP_TIMEZONE) {
+  return addZonedDays(startOfZonedDay(now, timeZone), -(STREAK_LOOKBACK_DAYS - 1), timeZone);
+}
+
+/** SQL floor for streak reads. Two extra days cover a civil day that starts before this UTC instant. */
+export function streakHistorySince(now = new Date(), timeZone = APP_TIMEZONE) {
+  return addZonedDays(streakWindowStart(now, timeZone), -2, timeZone);
+}
+
+/**
+ * Zone-independent query floor. A member's civil window starts at most a day
+ * away from UTC, so this stays a lower bound without reading the profile first.
+ */
+export function streakQuerySince(now = new Date()) {
+  return new Date(now.getTime() - (STREAK_LOOKBACK_DAYS + 3) * 86_400_000);
+}
+
+function civilKey(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function nextCivilDay(cursor: CivilDay): CivilDay {
+  const shifted = new Date(Date.UTC(cursor.year, cursor.month - 1, cursor.day + 1));
+  const index = CIVIL_WEEKDAYS.indexOf(cursor.weekday);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+    weekday: CIVIL_WEEKDAYS[(index + 1) % 7]!,
+  };
+}
+
+/**
+ * Training days repeat by weekday. One week of the plan covers the streak
+ * walk, so the window does not rebuild a plan for every calendar day.
+ */
+function scheduledWeekdays(prefs: PlannerPrefs, now: Date, timeZone: string) {
+  const monday = mondayOfZoned(now, timeZone);
+  const scheduled = new Set<ZonedWeekday>();
+  for (let index = 0; index < 7; index += 1) {
+    const date = addZonedDays(monday, index, timeZone);
+    if (isScheduledTrainingDay(prefs, date, timeZone)) {
+      scheduled.add(weekdayInZone(date, timeZone));
+    }
+  }
+  return scheduled;
+}
+
+/** Current and longest streaks in one pass over the lookback window. */
+export function trainingStreakCounts(
+  completedKeys: Iterable<string>,
+  prefs: PlannerPrefs,
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+) {
+  const scheduled = scheduledWeekdays(prefs, now, timeZone);
+  const today = zonedParts(startOfZonedDay(now, timeZone), timeZone);
+  const todayKey = civilKey(today.year, today.month, today.day);
+  const windowStart = streakWindowStart(now, timeZone);
+  const window = zonedParts(windowStart, timeZone);
+  const windowKey = civilKey(window.year, window.month, window.day);
+  const done = new Set<string>();
+  for (const key of completedKeys) {
+    if (key >= windowKey && key <= todayKey) done.add(key);
+  }
+
+  let cursor: CivilDay = {
+    year: window.year,
+    month: window.month,
+    day: window.day,
+    weekday: window.weekday,
+  };
+  let run = 0;
+  let best = 0;
+  for (let step = 0; step < STREAK_LOOKBACK_DAYS; step += 1) {
+    const key = civilKey(cursor.year, cursor.month, cursor.day);
+    if (scheduled.has(cursor.weekday)) {
+      if (done.has(key)) {
+        run += 1;
+        if (run > best) best = run;
+      } else if (key !== todayKey) {
+        run = 0;
+      }
+    }
+    if (key === todayKey) break;
+    cursor = nextCivilDay(cursor);
+  }
+  return { current: run, longest: Math.max(best, run) };
+}
 
 export type WeekStreakDot = {
   key: string;
@@ -30,11 +146,6 @@ export type TrainingStreak = {
   todayScheduled: boolean;
   weekDots: WeekStreakDot[];
 };
-
-function parseDayKey(key: string) {
-  const [year, month, date] = key.split("-").map(Number);
-  return Date.UTC(year, (month ?? 1) - 1, date ?? 1);
-}
 
 export function completedDaySet(dates: Date[], timeZone = APP_TIMEZONE) {
   return new Set(dates.map((value) => dayKey(value, timeZone)));
@@ -60,30 +171,7 @@ export function currentTrainingStreak(
   now = new Date(),
   timeZone = APP_TIMEZONE,
 ) {
-  const done = completedKeys instanceof Set ? completedKeys : new Set(completedKeys);
-  const today = startOfZonedDay(now, timeZone);
-  const todayKey = dayKey(today, timeZone);
-  let cursor = today;
-  if (isScheduledTrainingDay(prefs, today, timeZone) && !done.has(todayKey)) {
-    cursor = addZonedDays(today, -1, timeZone);
-  }
-
-  let streak = 0;
-  for (let i = 0; i < 800; i += 1) {
-    const scheduled = isScheduledTrainingDay(prefs, cursor, timeZone);
-    const key = dayKey(cursor, timeZone);
-    if (!scheduled) {
-      cursor = addZonedDays(cursor, -1, timeZone);
-      continue;
-    }
-    if (done.has(key)) {
-      streak += 1;
-      cursor = addZonedDays(cursor, -1, timeZone);
-      continue;
-    }
-    break;
-  }
-  return streak;
+  return trainingStreakCounts(completedKeys, prefs, now, timeZone).current;
 }
 
 export function longestTrainingStreak(
@@ -92,29 +180,7 @@ export function longestTrainingStreak(
   now = new Date(),
   timeZone = APP_TIMEZONE,
 ) {
-  const keys = [...completedKeys].sort();
-  if (keys.length === 0) return 0;
-
-  const first = new Date(parseDayKey(keys[0]!));
-  const start = startOfZonedDay(first, timeZone);
-  const end = startOfZonedDay(now, timeZone);
-  const done = new Set(keys);
-
-  let best = 0;
-  let run = 0;
-  let cursor = start;
-  while (cursor.getTime() <= end.getTime()) {
-    if (isScheduledTrainingDay(prefs, cursor, timeZone)) {
-      if (done.has(dayKey(cursor, timeZone))) {
-        run += 1;
-        if (run > best) best = run;
-      } else {
-        run = 0;
-      }
-    }
-    cursor = addZonedDays(cursor, 1, timeZone);
-  }
-  return best;
+  return trainingStreakCounts(completedKeys, prefs, now, timeZone).longest;
 }
 
 export function weekStreakDots(
@@ -168,12 +234,12 @@ export function buildTrainingStreak(input: {
 }): TrainingStreak {
   const timeZone = input.timeZone ?? APP_TIMEZONE;
   const now = input.now ?? new Date();
-  const keys = completedDaySet(input.completedDates, timeZone);
-  const current = currentTrainingStreak(keys, input.prefs, now, timeZone);
-  const longest = Math.max(
-    current,
-    longestTrainingStreak(keys, input.prefs, now, timeZone),
+  const sinceMs = streakHistorySince(now, timeZone).getTime();
+  const keys = completedDaySet(
+    input.completedDates.filter((date) => date.getTime() >= sinceMs),
+    timeZone,
   );
+  const { current, longest } = trainingStreakCounts(keys, input.prefs, now, timeZone);
   const { nextTarget, daysToNext } = nextStreakTarget(current);
   const weekDots = weekStreakDots(keys, input.prefs, now, timeZone);
   const today = weekDots.find((dot) => dot.isToday);

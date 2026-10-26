@@ -15,7 +15,7 @@ import {
 import { hasRirCue } from "@/lib/rir";
 import { loggedSetSome, setHasLoggedWork } from "@/lib/logged-work";
 import { getProfileForUser } from "@/lib/profile";
-import { buildTrainingStreak, plannerPrefsFromProfile } from "@/lib/streaks";
+import { buildTrainingStreak, plannerPrefsFromProfile, streakQuerySince } from "@/lib/streaks";
 import {
   addZonedDays,
   dayKey,
@@ -225,7 +225,12 @@ async function weekFacts(userId: string, now: Date, timeZone: string, sundayKey:
   }
 
   const all = await prisma.workoutSession.findMany({
-    where: { userId, status: "complete", sets: loggedSetSome },
+    where: {
+      userId,
+      status: "complete",
+      sets: loggedSetSome,
+      performedAt: { gte: streakQuerySince(now) },
+    },
     select: { performedAt: true },
   });
   const streak = buildTrainingStreak({
