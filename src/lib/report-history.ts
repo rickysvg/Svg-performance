@@ -652,18 +652,14 @@ function comparePoints(
   focus: ReportFocus,
   metric: ChartMetric,
 ): ChartPoint[] {
-  const length = Math.max(current.length, baseline.length);
   const points: ChartPoint[] = [];
-  for (let i = 0; i < length; i += 1) {
-    const bucket = current[i] ?? baseline[i];
-    if (!bucket) continue;
-    const currentMetrics = current[i]
-      ? summarizePeriod({
-          ...rowsForDays(index, current[i]!.dayKeys),
-          focus,
-          displayUnit: history.displayUnit,
-        })
-      : emptyMetrics();
+  for (let i = 0; i < current.length; i += 1) {
+    const bucket = current[i]!;
+    const currentMetrics = summarizePeriod({
+      ...rowsForDays(index, bucket.dayKeys),
+      focus,
+      displayUnit: history.displayUnit,
+    });
     const baselineMetrics = baseline[i]
       ? summarizePeriod({
           ...rowsForDays(index, baseline[i]!.dayKeys),
@@ -672,8 +668,8 @@ function comparePoints(
         })
       : emptyMetrics();
     points.push({
-      label: current[i]?.label ?? baseline[i]?.label ?? "",
-      detail: current[i]?.detail ?? baseline[i]?.detail ?? "",
+      label: bucket.label,
+      detail: bucket.detail,
       baselineLabel: baseline[i]?.label ?? "",
       baselineDetail: baseline[i]?.detail ?? "",
       current: chartValue(currentMetrics, metric),
@@ -689,16 +685,14 @@ function sparringPoints(
   current: DayBucket[],
   baseline: DayBucket[],
 ): SparringChartPoint[] {
-  const length = Math.max(current.length, baseline.length);
   const points: SparringChartPoint[] = [];
-  for (let i = 0; i < length; i += 1) {
-    const currentMetrics = current[i]
-      ? summarizePeriod({
-          ...rowsForDays(index, current[i]!.dayKeys),
-          focus: "all",
-          displayUnit: history.displayUnit,
-        })
-      : emptyMetrics();
+  for (let i = 0; i < current.length; i += 1) {
+    const bucket = current[i]!;
+    const currentMetrics = summarizePeriod({
+      ...rowsForDays(index, bucket.dayKeys),
+      focus: "all",
+      displayUnit: history.displayUnit,
+    });
     const baselineMetrics = baseline[i]
       ? summarizePeriod({
           ...rowsForDays(index, baseline[i]!.dayKeys),
@@ -706,10 +700,9 @@ function sparringPoints(
           displayUnit: history.displayUnit,
         })
       : emptyMetrics();
-    const bucket = current[i] ?? baseline[i]!;
     points.push({
-      label: current[i]?.label ?? baseline[i]?.label ?? bucket.label,
-      detail: current[i]?.detail ?? baseline[i]?.detail ?? bucket.detail,
+      label: bucket.label,
+      detail: bucket.detail,
       baselineLabel: baseline[i]?.label ?? "",
       baselineDetail: baseline[i]?.detail ?? "",
       amateur: currentMetrics.sparring.amateur,

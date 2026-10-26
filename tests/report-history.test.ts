@@ -548,6 +548,37 @@ describe("report qa fixes", () => {
     expect(last?.detail).toBe("Oct 26–31, 2026");
     expect(last?.baselineDetail).toBe("Sep 28–30, 2026");
     expect(last?.baselineDetail).not.toContain("Oct 26");
+    const septemberReport = buildPeriodReport(
+      history({
+        now: zonedCivilToUtc(2026, 10, 26, TZ),
+        sessions: [
+          session({
+            performedAt: zonedCivilToUtc(2026, 9, 2, TZ),
+            sets: [
+              {
+                exerciseName: "Goblet squat",
+                reps: 5,
+                loadValue: 40,
+                loadUnit: "lb",
+                logMode: "load_reps",
+                durationSeconds: null,
+                completed: true,
+                prescriptionKey: "",
+              },
+            ],
+          }),
+        ],
+      }),
+      "month",
+      "2026-09",
+      "2026-08",
+      "all",
+    );
+    const points = septemberReport?.charts[0]?.points ?? [];
+    expect(points).toHaveLength(september.length);
+    expect(points.map((point) => point.detail)).toEqual(september.map((bucket) => bucket.detail));
+    expect(points.some((point) => point.detail.includes("Aug") || point.label.includes("Aug"))).toBe(false);
+    expect(points.at(-1)?.baselineDetail).toBe("Aug 24–30, 2026");
   });
 
   it("splits a mixed session’s time across lower and upper by set count", () => {
