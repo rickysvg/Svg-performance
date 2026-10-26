@@ -6,7 +6,7 @@ import { getHomeTelemetry } from "@/lib/home-telemetry";
 import { getTodayGuide } from "@/lib/today";
 import { presentVipUpsell } from "@/lib/vip-store";
 import { shouldShowThirdWorkoutCard } from "@/lib/trial";
-import { PROGRESS_SESSION_TAKE, listRecentSessionsForUser } from "@/lib/workouts";
+import { listWorkoutSessionsForUser, PROGRESS_HISTORY_DAYS } from "@/lib/workouts";
 import { getLatestBodyMetricsForUser, listBodyMetricsForUser } from "@/lib/body-metrics";
 import { countProgressPhotosForUser } from "@/lib/progress-photos";
 import { getNutritionSummaryForDay, getRecentNutritionDays } from "@/lib/nutrition";
@@ -30,7 +30,7 @@ async function loadHome(userId: string) {
 
 async function loadProgress(userId: string) {
   await Promise.all([
-    listRecentSessionsForUser(userId, PROGRESS_SESSION_TAKE),
+    listWorkoutSessionsForUser(userId, { recentDays: PROGRESS_HISTORY_DAYS }),
     getLatestBodyMetricsForUser(userId),
     listBodyMetricsForUser(userId, "weight"),
     countProgressPhotosForUser(userId),
