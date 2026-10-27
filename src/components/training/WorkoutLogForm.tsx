@@ -20,6 +20,7 @@ import {
   DEFAULT_BIKE_SESSION,
   isBikeIntervalName,
 } from "@/lib/bike-sessions";
+import { clampSetRestSeconds, DEFAULT_SET_REST_SECONDS, MAX_SET_REST_SECONDS } from "@/lib/set-rest";
 import {
   bikeChoiceFromKey,
   choiceToken,
@@ -53,6 +54,7 @@ import {
   modeHint,
   prescribedLbLabel,
   resolveLogMode,
+  resolveLoggedSetMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
@@ -206,7 +208,12 @@ function toSetInput(set: WorkoutSet): WorkoutSetInput {
     reps: set.reps,
     loadValue: set.loadValue,
     loadUnit: "lb",
-    logMode: resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
+    logMode: resolveLoggedSetMode({
+      logMode: set.logMode,
+      name: set.exerciseName,
+      reps: set.reps,
+      durationSeconds: set.durationSeconds,
+    }),
     durationSeconds: set.durationSeconds,
     completed: set.completed,
     notes: set.notes,
@@ -733,12 +740,14 @@ export function WorkoutLogForm({
   }, [groupKey]);
 
   function restForName(name: string, plannedRest: number | undefined, mode: LogMode) {
-    return prescribedRestSeconds({
+    const raw = prescribedRestSeconds({
       override: restByName[name],
       slot: swap?.slots.find((row) => row.currentName === name)?.restSeconds,
       planned: plannedRest,
-      fallback: isBikeIntervalName(name) ? 60 : mode === "timed_round" ? 90 : 60,
+      fallback: isBikeIntervalName(name) ? 60 : mode === "timed_round" ? 90 : DEFAULT_SET_REST_SECONDS,
     });
+    if (mode === "timed_round" && !isBikeIntervalName(name)) return raw;
+    return clampSetRestSeconds(raw);
   }
 
   function exerciseRestSeconds(name: string) {
@@ -759,7 +768,7 @@ export function WorkoutLogForm({
     const addedRest = restByName[name] ?? storedPlan?.restSeconds;
     const addedPlan =
       added && (library || storedPlan)
-        ? { restSeconds: addedRest ?? library?.restSeconds ?? 60 }
+        ? { restSeconds: clampSetRestSeconds(addedRest ?? library?.restSeconds ?? DEFAULT_SET_REST_SECONDS) }
         : undefined;
     const planned = plannedMatch ?? (overlay ? { restSeconds: overlay.restSeconds } : addedPlan);
     const mode = resolveLogMode({
@@ -1293,7 +1302,7 @@ export function WorkoutLogForm({
   }
 
   function setAddedRest(name: string, raw: number) {
-    const rest = Math.max(0, Math.min(600, Number.isFinite(raw) ? Math.round(raw) : 0));
+    const rest = clampSetRestSeconds(Number.isFinite(raw) ? raw : 0);
     setRestByName((current) => ({ ...current, [name]: rest }));
     const next = setsRef.current.map((set) => {
       if (set.exerciseName !== name) return set;
@@ -1636,7 +1645,7 @@ export function WorkoutLogForm({
                   sets: group.length,
                   reps: overlay?.reps || storedPlan?.reps || library?.reps || "",
                   loadText: overlay?.loadText || storedPlan?.loadText || library?.loadText || "",
-                  restSeconds: addedRest ?? library?.restSeconds ?? 60,
+                  restSeconds: clampSetRestSeconds(addedRest ?? library?.restSeconds ?? DEFAULT_SET_REST_SECONDS),
                   logMode: overlay?.logMode || group[0]?.logMode || library?.logMode || "",
                   notes: overlay?.notes || storedPlan?.notes || library?.notes || "",
                   formVideoUrl: "",
@@ -1970,7 +1979,7 @@ export function WorkoutLogForm({
                       data-testid={`training-log-rest-${name}`}
                       type="number"
                       min={0}
-                      max={600}
+                      max={MAX_SET_REST_SECONDS}
                       inputMode="numeric"
                       aria-label={`Rest for ${title}`}
                       value={restSeconds}

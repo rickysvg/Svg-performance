@@ -1,4 +1,5 @@
 import { combatFormVideoSeeds } from "@/lib/combat-library";
+import { fighterFormVideoSeeds } from "@/lib/fighter-library";
 
 /**
  * Curated YouTube form-reference catalog for the DEMO strength + skill programs.
@@ -834,6 +835,11 @@ for (const [name, seed] of Object.entries(combatFormVideoSeeds())) {
     title: seed.title,
     seconds: seed.seconds,
   };
+}
+
+for (const [name, seed] of Object.entries(fighterFormVideoSeeds())) {
+  if (DEMO_FORM_VIDEOS[name]) continue;
+  DEMO_FORM_VIDEOS[name] = seed;
 }
 
 export function mobilityVideoUrl(name: string) {

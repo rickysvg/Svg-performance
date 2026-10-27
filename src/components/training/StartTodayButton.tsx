@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import { todayStartLabel, type TodayStartAction } from "@/lib/today-start";
@@ -32,33 +32,28 @@ export function StartTodayButton({
 
   if (action.draftId) {
     return (
-      <Link data-testid={`home-training-log-${action.draftId}`} href={`/training/log/${action.draftId}`} data-start-today data-prime-coach-audio className={buttonClass}>
-        {text}
-      </Link>
+      <PendingWorkoutLink data-testid={`home-training-log-${action.draftId}`} href={`/training/log/${action.draftId}`} label={text} data-start-today data-prime-coach-audio className={buttonClass} />
     );
   }
 
   if (action.dayId) {
     return (
-      <Link
+      <PendingWorkoutLink
         href={action.startHref ?? action.logHref ?? bikeLoggerHref(action.dayId)}
         prefetch={false}
+        label={text}
         data-testid="home-start-today"
         data-start-today
         data-open-bike-logger={action.logHref ? "today" : undefined}
         data-prime-coach-audio
         className={buttonClass}
-      >
-        {text}
-      </Link>
+      />
     );
   }
 
   if (action.href) {
     return (
-      <Link data-testid={`home-start-today-2-${action.href.split("/").filter(Boolean).join("-")}`} href={action.href} data-start-today data-prime-coach-audio className={buttonClass}>
-        {text}
-      </Link>
+      <PendingWorkoutLink data-testid={`home-start-today-2-${action.href.split("/").filter(Boolean).join("-")}`} href={action.href} label={text} data-start-today data-prime-coach-audio className={buttonClass} />
     );
   }
 

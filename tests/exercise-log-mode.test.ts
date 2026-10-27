@@ -5,6 +5,7 @@ import {
   loggerRowLayout,
   parseDurationSeconds,
   loggerCardLine,
+  modeColumnLabel,
   plannedSetLine,
   prescribedLbLabel,
   resolveLogMode,
@@ -67,7 +68,26 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Band pull-apart or face pull")).toBe("load_reps");
     expect(fallbackLogMode("Straight-arm pulldown")).toBe("load_reps");
     expect(fallbackLogMode("Cable or band Pallof press")).toBe("load_reps");
-    expect(fallbackLogMode("Dead bug", "8 / side")).toBe("timed");
+    expect(fallbackLogMode("Dead bug", "8 / side")).toBe("reps_only");
+    expect(fallbackLogMode("90/90 hip switches", "6 / side")).toBe("reps_only");
+    expect(fallbackLogMode("Side plank with reach", "6 / side")).toBe("reps_only");
+    expect(fallbackLogMode("Side plank", "20 sec / side")).toBe("timed");
+    expect(fallbackLogMode("Burpees", "8")).toBe("reps_only");
+    expect(fallbackLogMode("Air squat", "10")).toBe("reps_only");
+    expect(fallbackLogMode("Push-up", "8")).toBe("reps_only");
+    expect(fallbackLogMode("Box step-up", "8")).toBe("reps_only");
+    expect(fallbackLogMode("Sled row", "20 sec")).toBe("timed");
+    expect(fallbackLogMode("Rowing machine pieces", "45 sec")).toBe("timed");
+    expect(fallbackLogMode("Banded kettlebell swing", "10")).toBe("load_reps");
+    expect(
+      modeColumnLabel(
+        resolveLogMode({ logMode: "timed", name: "90/90 hip switches", reps: "6 / side" }),
+      ),
+    ).toBe("Reps");
+    expect(resolveLogMode({ logMode: "timed", name: "Goblet squat" })).toBe("timed");
+    expect(resolveLogMode({ logMode: "timed_round", name: "Jab–cross (1–2)", reps: "3:00" })).toBe(
+      "timed_round",
+    );
     expect(fallbackLogMode("Plyo push-up")).toBe("reps_only");
     expect(fallbackLogMode("Squat jump or box step-up")).toBe("reps_only");
     expect(fallbackLogMode("Lateral bound or side step-over")).toBe("reps_only");

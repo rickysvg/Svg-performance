@@ -39,6 +39,7 @@ import {
 import { prescribeGymExercise } from "@/lib/gym-exercise";
 import { effortLoadText, mergeLoadText } from "@/lib/rir";
 import { capSetsForRole, exerciseSetRole, isConditioningIntervalName } from "@/lib/set-budget";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import { memberCopy } from "@/lib/member-copy";
 import { normalizeWeightAccess, type WeightAccess } from "@/lib/weight-access";
 
@@ -169,13 +170,13 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     sets: 4,
     reps: "5–6",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy — last rep slows but stays clean",
-    restSeconds: 120,
+    restSeconds: 90,
   },
   "Romanian deadlift": {
     sets: 4,
     reps: "5",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy hinge — flat back",
-    restSeconds: 120,
+    restSeconds: 90,
   },
   "Reverse lunge": {
     sets: 3,
@@ -197,7 +198,7 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     sets: 4,
     reps: "8–10",
     loadText: "0-2 RIR · ~80% of a 5-rep max · Heavy dumbbells",
-    restSeconds: 120,
+    restSeconds: 90,
   },
   "One-arm row": {
     sets: 4,
@@ -323,9 +324,9 @@ function floorStrengthRest(name: string, rest: number) {
   if (/neck|pallof|plank|woodchop|landmine rotation|lateral bound|squat jump|med-ball|medicine ball/i.test(name)) {
     return rest;
   }
-  if (/trap-bar deadlift/i.test(name)) return Math.max(rest, 150);
+  if (/trap-bar deadlift/i.test(name)) return Math.max(rest, 90);
   if (/bench press|overhead press|goblet squat|walking lunge|pause goblet/i.test(name)) {
-    return Math.max(rest, 120);
+    return Math.max(rest, 90);
   }
   if (/farmer|suitcase/i.test(name)) return Math.max(rest, 75);
   if (/row|pulldown|deadlift|rdl|step-up|landmine press|\blunge\b/i.test(name)) {
@@ -437,8 +438,15 @@ export function scaleExercise(
   };
   const scaled = scaleNamedExercise(named, input);
   const withVideo = gym.renamed ? { ...scaled, ...formVideoFieldsFor(gym.name) } : scaled;
-  if (input.weightAccess !== "none") return withVideo;
-  return applyNoWeightVariant(withVideo);
+  const next = input.weightAccess !== "none" ? withVideo : applyNoWeightVariant(withVideo);
+  return capDisplayedSetRest(next);
+}
+
+/** Between-set rest on lifts and bike blocks. Round-timer rest stays on its own clock. */
+function capDisplayedSetRest<T extends ScaleableExercise>(exercise: T): T {
+  if (exercise.restSeconds <= 0) return exercise;
+  if (exercise.logMode === "timed_round" && !isBikeIntervalName(exercise.name)) return exercise;
+  return { ...exercise, restSeconds: clampSetRestSeconds(exercise.restSeconds) };
 }
 
 function replaceRir(loadText: string, rir: string, extra?: string) {

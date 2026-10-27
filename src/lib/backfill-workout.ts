@@ -28,6 +28,7 @@ import {
   intervalWorkMax,
 } from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import {
   exerciseMatchesRoundType,
   restSecondsFromRoundKey,
@@ -1024,7 +1025,7 @@ async function payloadFromKind(
     const repeatRounds = Math.round(input.repeatRounds ?? 1);
     const workSeconds = Math.round(input.workSeconds ?? 0);
     const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
-    const setRest = Math.max(0, Math.round(input.restBetweenRoundsSeconds ?? 0));
+    const setRest = clampSetRestSeconds(input.restBetweenRoundsSeconds ?? 0);
     const shownSetRest = repeatRounds > 1 ? setRest : 0;
     assertSavableInterval({
       sets: repeatRounds,
@@ -1104,7 +1105,7 @@ async function payloadFromKind(
     const repeatRounds = Math.round(input.repeatRounds ?? 1);
     const workSeconds = Math.round(input.workSeconds ?? 180);
     const restSeconds = Math.max(0, Math.round(input.restSeconds ?? 0));
-    const setRest = Math.max(0, Math.round(input.restBetweenRoundsSeconds ?? 0));
+    const setRest = clampSetRestSeconds(input.restBetweenRoundsSeconds ?? 0);
     const shownSetRest = repeatRounds > 1 ? setRest : 0;
     assertSavableInterval({
       sets: repeatRounds,
@@ -1481,12 +1482,13 @@ async function updateIntervalBackfill(input: {
     return { ok: true as const, sessionId: input.session.id, status };
   }
   const kind = posted.kind;
+  const setRestSeconds = clampSetRestSeconds(posted.sets > 1 ? posted.setRestSeconds : 0);
   assertSavableInterval({
     sets: posted.sets,
     rounds: posted.rounds,
     workSeconds: posted.workSeconds,
     restSeconds: posted.restSeconds,
-    setRestSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
+    setRestSeconds,
     roundsMax: kind === "bike" ? BIKE_ROUNDS_MAX : undefined,
     totalSeconds: configuredIntervalSeconds({
       kind,
@@ -1494,7 +1496,7 @@ async function updateIntervalBackfill(input: {
       rounds: posted.rounds,
       workSeconds: posted.workSeconds,
       restSeconds: posted.restSeconds,
-      setRestSeconds: posted.setRestSeconds,
+      setRestSeconds,
     }),
   });
   let sets: BackfillSetDraft[];
@@ -1505,7 +1507,7 @@ async function updateIntervalBackfill(input: {
       restSeconds: posted.restSeconds,
       roundsPerSet: posted.rounds,
       repeatRounds: posted.sets,
-      restBetweenRoundsSeconds: posted.sets > 1 ? posted.setRestSeconds : 0,
+      restBetweenRoundsSeconds: setRestSeconds,
     });
     sets = bikeTimerLogSets(choice, input.units, done).map((set) => ({
       ...set,
@@ -1524,7 +1526,7 @@ async function updateIntervalBackfill(input: {
     });
     const key = roundStructureKey(kind, posted.restSeconds, {
       sets: posted.sets,
-      setRestSeconds: posted.setRestSeconds,
+      setRestSeconds,
       roundsPerSet: posted.rounds,
     });
     sets = logged.map((set) => ({
@@ -1546,7 +1548,7 @@ async function updateIntervalBackfill(input: {
         rounds: posted.rounds,
         workSeconds: posted.workSeconds,
         restSeconds: posted.restSeconds,
-        setRestSeconds: posted.setRestSeconds,
+        setRestSeconds,
       },
       done,
     ).totalSeconds;

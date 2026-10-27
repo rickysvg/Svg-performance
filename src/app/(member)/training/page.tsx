@@ -22,6 +22,7 @@ import { blockWeekLabel } from "@/lib/plan-structure";
 import { isDeloadWeekIndex, isTestingWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
@@ -497,17 +498,16 @@ export default async function TrainingPage({
           primary
         />
       ) : trainCta ? (
-        <Link
+        <PendingWorkoutLink
           href={trainCta.href}
-          prefetch={trainCta.verb === "Start" ? false : undefined}
+          prefetch={false}
+          label={trainCta.verb}
           data-primary-train-cta
           data-resume-workout={trainCta.verb === "Resume" ? "true" : undefined}
           data-start-today={trainCta.verb === "Start" ? "true" : undefined}
           data-prime-coach-audio
           className="relative z-30 flex w-full touch-target scroll-mt-20 items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
-        >
-          {trainCta.verb}
-        </Link>
+        />
       ) : null}
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">

@@ -42,7 +42,6 @@ export const UNMAPPED_EXERCISE_NAMES = [
   "Neck isometric — left",
   "Neck isometric — right",
   "Banded DB front-rack march",
-  "Mountain climber",
   "Mountain climbers",
 ] as const;
 

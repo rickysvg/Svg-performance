@@ -151,7 +151,7 @@ describe("lift set caps", () => {
     expect(advanced.sets).toBe(4);
     expect(advanced.loadText).toMatch(/0-2 RIR/);
     expect(advanced.loadText).toMatch(/~80% of a 5-rep max/);
-    expect(advanced.restSeconds).toBe(120);
+    expect(advanced.restSeconds).toBe(90);
     expect(advanced.reps).toBe("5–6");
   });
 });

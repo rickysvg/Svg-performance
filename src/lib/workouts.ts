@@ -38,11 +38,13 @@ import { isBikeIntervalName, memberWeekIndex } from "@/lib/bike-sessions";
 import { halvedSetCount } from "@/lib/recovery-ease";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 import { getActiveCampSnapshot } from "@/lib/fight-camp";
+import { STREAK_LOOKBACK_DAYS } from "@/lib/streaks";
 import {
   hidesLoad,
   isDurationMode,
   isLogMode,
   resolveLogMode,
+  resolveLoggedSetMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
 import {
@@ -274,6 +276,11 @@ function toPreviousSet(set: {
   };
 }
 
+/** Previous-column history. Older than the streak window is not worth scanning on open. */
+function previousLoadSince(now = new Date()) {
+  return new Date(now.getTime() - (STREAK_LOOKBACK_DAYS + 3) * 86_400_000);
+}
+
 /**
  * Last completed session per exercise name for this member only.
  * Used for the Previous column on the logger. Empty for first-time moves.
@@ -292,6 +299,7 @@ export async function getPreviousLoadsForUser(
     where: {
       userId,
       status: { in: ["complete", "partial"] },
+      performedAt: { gte: previousLoadSince() },
       ...(excludeWorkoutId ? { id: { not: excludeWorkoutId } } : {}),
       sets: { some: { exerciseName: { in: unique } } },
     },
@@ -347,6 +355,7 @@ export async function getPreviousLoadsForSlots(
     where: {
       userId,
       status: { in: ["complete", "partial"] },
+      performedAt: { gte: previousLoadSince() },
       ...(excludeWorkoutId ? { id: { not: excludeWorkoutId } } : {}),
       sets: {
         some: {
@@ -1525,7 +1534,19 @@ export async function startWorkoutFromDay(input: {
   const weekIndex =
     input.scale?.weekIndex ??
     memberWeekIndex(now, input.planAnchor ?? now, zone);
-  const camp = await getActiveCampSnapshot(input.userId, now, zone);
+  const [camp, swaps, removals] = await Promise.all([
+    getActiveCampSnapshot(input.userId, now, zone),
+    listSwapsForDay({
+      userId: input.userId,
+      programSlug: rawDay.program.slug,
+      dayNumber: rawDay.dayNumber,
+    }),
+    listRemovalsForDay({
+      userId: input.userId,
+      programSlug: rawDay.program.slug,
+      dayNumber: rawDay.dayNumber,
+    }),
+  ]);
   const day = scaleProgramDay(
     {
       ...rawDay,
@@ -1543,11 +1564,6 @@ export async function startWorkoutFromDay(input: {
     },
   );
   const blockKey = trainingBlockKey(now, input.timeZone || APP_TIMEZONE, input.planAnchor);
-  const swaps = await listSwapsForDay({
-    userId: input.userId,
-    programSlug: rawDay.program.slug,
-    dayNumber: rawDay.dayNumber,
-  });
   const swapped = applySwapsToExercises(day.exercises, swaps, {
     blockKey,
     includePending: true,
@@ -1555,31 +1571,15 @@ export async function startWorkoutFromDay(input: {
   const pendingNames = day.exercises
     .filter((exercise, index) => swapped[index]?.name !== exercise.name)
     .map((exercise) => exercise.name);
-  const removals = await listRemovalsForDay({
-    userId: input.userId,
-    programSlug: rawDay.program.slug,
-    dayNumber: rawDay.dayNumber,
-  });
   const visible = omitRemovedSlots(day.exercises, swapped, removals, {
     includePending: true,
   }).shown;
-  const sameDay = await findSameDayProgramSession(
-    prisma,
-    input.userId,
-    rawDay.id,
-    now,
-    zone,
-    visible.map((exercise) => exercise.name),
-  );
+  const plannedNames = visible.map((exercise) => exercise.name);
+  const [sameDay, shortComplete] = await Promise.all([
+    findSameDayProgramSession(prisma, input.userId, rawDay.id, now, zone, plannedNames),
+    findCompletedSameDaySession(prisma, input.userId, rawDay.id, now, zone, plannedNames),
+  ]);
   if (sameDay) return sameDay;
-  const shortComplete = await findCompletedSameDaySession(
-    prisma,
-    input.userId,
-    rawDay.id,
-    now,
-    zone,
-    visible.map((exercise) => exercise.name),
-  );
   if (shortComplete) {
     const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
     const progress = sessionProgress(shortComplete, {
@@ -2077,9 +2077,11 @@ export async function updateWorkoutSessionForUser(input: {
           : {}),
         sets: {
           create: writing.map((set, index) => {
-            const mode = resolveLogMode({
+            const mode = resolveLoggedSetMode({
               logMode: set.logMode,
               name: set.exerciseName,
+              reps: set.reps,
+              durationSeconds: set.durationSeconds,
             });
             const timed = isDurationMode(mode);
             return {

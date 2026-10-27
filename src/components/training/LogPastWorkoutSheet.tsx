@@ -16,6 +16,7 @@ import type { BackfillKind } from "@/lib/backfill-rules";
 import { backfillDayOptions } from "@/lib/backfill-rules";
 import type { BackfillFormSeed, BackfillPreview } from "@/lib/backfill-workout";
 import { decodeSeedInterval } from "@/lib/interval-decode";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import {
   formatIntervalClock,
   formatIntervalShorthand,
@@ -178,7 +179,7 @@ function structureFor(kind: string, preview: Preview | null): IntervalStructure 
         rounds: Math.max(1, target.rounds),
         workSeconds: Math.max(5, target.workSeconds),
         restSeconds: Math.max(0, target.restSeconds),
-        setRestSeconds: Math.max(0, target.setRestSeconds),
+        setRestSeconds: clampSetRestSeconds(target.setRestSeconds),
       };
     }
   }
@@ -190,7 +191,7 @@ function structureFor(kind: string, preview: Preview | null): IntervalStructure 
       rounds: Math.max(1, last.rounds),
       workSeconds: Math.max(5, last.workSeconds),
       restSeconds: Math.max(0, last.restSeconds),
-      setRestSeconds: Math.max(0, last.setRestSeconds),
+      setRestSeconds: clampSetRestSeconds(last.setRestSeconds),
     };
   }
   return defaultStructure(kind, preview?.bagRounds ?? 5);
@@ -344,7 +345,7 @@ function LogPastWorkoutSheet({
         rounds: seededInterval.rounds,
         workSeconds: seededInterval.workSeconds,
         restSeconds: seededInterval.restSeconds,
-        setRestSeconds: seededInterval.setRestSeconds,
+        setRestSeconds: clampSetRestSeconds(seededInterval.setRestSeconds),
       }
     : structureFor(openingKind, initialPreview);
   const [structure, setStructure] = useState<IntervalStructure>(openingStructure);
@@ -421,7 +422,7 @@ function LogPastWorkoutSheet({
             rounds: loaded.structure.rounds,
             workSeconds: loaded.structure.workSeconds,
             restSeconds: loaded.structure.restSeconds,
-            setRestSeconds: loaded.structure.setRestSeconds,
+            setRestSeconds: clampSetRestSeconds(loaded.structure.setRestSeconds),
           };
           setEditingInterval(true);
           setIntervalKind(loaded.structure.kind);

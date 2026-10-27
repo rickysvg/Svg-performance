@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IntervalStructureFields } from "@/components/training/IntervalStructureFields";
-import { intervalConfiguredSeconds, intervalDurationCapMessage } from "@/lib/interval-shorthand";
+import { intervalConfiguredSeconds } from "@/lib/interval-shorthand";
 import { intervalTotals } from "@/lib/interval-totals";
 
 describe("interval totals", () => {
@@ -69,7 +69,8 @@ describe("interval totals", () => {
       300,
     );
     expect(html).toContain("Max 4:00:00");
-    expect(html).toContain(intervalDurationCapMessage(configured.totalSeconds));
+    expect(configured.totalSeconds).toBeGreaterThan(4 * 60 * 60);
+    expect(html).toContain("That workout is 123:33:30. Max 4:00:00.");
     expect(html).toContain(`data-testid="interval-total-time">Max 4:00:00`);
     expect(html).not.toContain("240:00");
     expect(html).not.toContain("7490:00");

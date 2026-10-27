@@ -385,6 +385,7 @@ describe("progress report history", () => {
     expect(liftRegionForExercise("Bent-over DB shrug")).toBe("upper");
     expect(liftRegionForExercise("Sled hamstring drag")).toBe("lower");
     expect(liftMetadataKind("Farmer's carry")).toBe("other");
+    expect(liftMetadataKind("Mountain climber")).toBe("other");
     for (const name of UNMAPPED_EXERCISE_NAMES) {
       expect(liftMetadataKind(name)).toBe("unmapped");
     }

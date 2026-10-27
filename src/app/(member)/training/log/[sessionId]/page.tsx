@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { resumeWorkoutAction } from "@/app/actions/workouts";
+import { PendingSubmitButton } from "@/components/training/PendingWorkoutControl";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -48,11 +49,11 @@ export default async function WorkoutLogPage({
   searchParams: Promise<{ celebrate?: string; rate?: string }>;
 }) {
   const user = await requireUser();
-  const { sessionId } = await params;
-  const query = await searchParams;
-  const profile = await getProfileForUser(user.id);
-
-  const loaded = await getOwnWorkoutSessionOrNull(sessionId, user.id);
+  const [{ sessionId }, query] = await Promise.all([params, searchParams]);
+  const [profile, loaded] = await Promise.all([
+    getProfileForUser(user.id),
+    getOwnWorkoutSessionOrNull(sessionId, user.id),
+  ]);
   if (!loaded) {
     notFound();
   }
@@ -63,10 +64,13 @@ export default async function WorkoutLogPage({
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
   };
+  let session = opened;
   if (opened.programDay && opened.status !== "complete") {
-    await alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null);
+    const aligned = await alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null);
+    if (aligned !== opened) {
+      session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
+    }
   }
-  const session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
   // A finished plan opens the recap. A short save stays on the rows already
   // stored, read-only until Resume workout. Resume and Start add missing rows.
   if (session.status === "complete") {
@@ -235,13 +239,11 @@ export default async function WorkoutLogPage({
         <div className="space-y-2">
           <form action={resumeWorkoutAction}>
             <input type="hidden" name="workoutId" value={session.id} />
-            <button
-              type="submit"
+            <PendingSubmitButton
+              label="Resume workout"
               data-resume-workout="1"
               className="touch-target flex w-full items-center justify-center rounded-full bg-accent px-4 text-sm text-black"
-            >
-              Resume workout
-            </button>
+            />
           </form>
           <Link
             href={`/training/log/${session.id}/done`}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { exerciseCountLabel } from "@/lib/my-workout-plan";
 import type { DayPlanView } from "@/lib/my-workouts";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
@@ -29,14 +30,13 @@ export function CustomWorkoutCard({ plan }: { plan: DayPlanView }) {
             planId={plan.id}
           />
         ) : (
-          <Link
+          <PendingWorkoutLink
             data-testid={`training-resume-custom-${plan.id}`}
             href={`/training/log/${plan.draftId}`}
+            label="Resume"
             data-resume-plan={plan.id}
             className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-black"
-          >
-            Resume
-          </Link>
+          />
         )
       ) : null}
       <Link

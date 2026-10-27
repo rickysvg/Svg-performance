@@ -110,16 +110,16 @@ export const BIKE_CHOICES: readonly BikeChoice[] = [
   choice(
     "ten-twenty-thirty",
     "Bike 10-20-30",
-    "Three 5-minute blocks, 2 minutes easy between. Each minute is 30s easy, 20s moderate, 10s sprint.",
+    "Three 5-minute blocks, 90 seconds easy between. Each minute is 30s easy, 20s moderate, 10s sprint.",
     "aerobic",
     "intermediate",
-    "3 × 5 min · 30s easy / 20s moderate / 10s sprint · 2 min between",
+    "3 × 5 min · 30s easy / 20s moderate / 10s sprint · 90s between",
     {
       workSeconds: 10,
       restSeconds: 50,
       roundsPerSet: 5,
       blocks: 3,
-      restBetweenBlocksSeconds: 120,
+      restBetweenBlocksSeconds: 90,
       pattern: "ten-twenty-thirty",
     },
   ),
@@ -144,16 +144,16 @@ export const BIKE_CHOICES: readonly BikeChoice[] = [
   choice(
     "threshold-5",
     "3 × 5 min threshold",
-    "Three 5-minute pieces at a hard, steady pace. 2 minutes easy between.",
+    "Three 5-minute pieces at a hard, steady pace. 90 seconds easy between.",
     "aerobic",
     "intermediate",
-    "5 min work / 2 min easy × 3",
+    "5 min work / 90s easy × 3",
     {
       workSeconds: 300,
       restSeconds: 0,
       roundsPerSet: 1,
       blocks: 3,
-      restBetweenBlocksSeconds: 120,
+      restBetweenBlocksSeconds: 90,
     },
   ),
   choice(
@@ -184,16 +184,16 @@ export const BIKE_CHOICES: readonly BikeChoice[] = [
   choice(
     "norwegian-4x4",
     "Norwegian 4×4",
-    "Four 4-minute efforts near 90% of max heart rate, 3 minutes easy between. Warm up first.",
+    "Four 4-minute efforts near 90% of max heart rate, 90 seconds easy between. Warm up first.",
     "aerobic",
     "intermediate",
-    "4 × 4 min hard / 3 min easy",
+    "4 × 4 min hard / 90s easy",
     {
       workSeconds: 240,
       restSeconds: 0,
       roundsPerSet: 1,
       blocks: 4,
-      restBetweenBlocksSeconds: 180,
+      restBetweenBlocksSeconds: 90,
     },
   ),
   choice(
@@ -255,7 +255,7 @@ export const BIKE_SPRINT_SECONDS = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 9
 export const BIKE_REST_SECONDS = [5, 10, 15, 20, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180] as const;
 export const BIKE_SPRINT_COUNTS = Array.from({ length: 30 }, (_, index) => index + 1);
 export const BIKE_ROUND_COUNTS = Array.from({ length: 10 }, (_, index) => index + 1);
-export const BIKE_BETWEEN_SECONDS = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300] as const;
+export const BIKE_BETWEEN_SECONDS = [0, 15, 30, 45, 60, 90] as const;
 export const BIKE_PREP_MINUTES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 const REPEAT_SUFFIX = / · \d+ × .*$| · \d+ rounds(?: · \d+s between)?$/;

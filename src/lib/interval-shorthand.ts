@@ -18,12 +18,12 @@ export type IntervalShorthandResult =
 
 const HINT = "Try 2x8 @ 15/15";
 
-/** Live timer steppers: 10 sets, 15 min work, 10 min rest and set rest. */
+/** Live timer steppers: 10 sets, 15 min work, 10 min interval rest, 90s between sets. */
 export const INTERVAL_SETS_MAX = 10;
 export const INTERVAL_WORK_MIN = 5;
 export const INTERVAL_WORK_MAX = 15 * 60;
 export const INTERVAL_REST_MAX = 10 * 60;
-export const INTERVAL_SET_REST_MAX = 10 * 60;
+export const INTERVAL_SET_REST_MAX = 90;
 /** A logged interval longer than this is rejected, matching the session clock cap. */
 export const INTERVAL_SESSION_MAX_SECONDS = 4 * 60 * 60;
 /**
@@ -217,8 +217,9 @@ function finish(
     return fail();
   }
   if (!inRange(restSeconds, 0, REST_MAX)) return fail();
-  if (setRestSeconds != null && !inRange(setRestSeconds, 0, SET_REST_MAX)) return fail();
-  const value = { sets, rounds, workSeconds, restSeconds, setRestSeconds };
+  const cappedSetRest =
+    setRestSeconds == null ? null : Math.min(SET_REST_MAX, Math.max(0, setRestSeconds));
+  const value = { sets, rounds, workSeconds, restSeconds, setRestSeconds: cappedSetRest };
   return {
     ok: true,
     value,
@@ -227,7 +228,7 @@ function finish(
       rounds,
       workSeconds,
       restSeconds,
-      setRestSeconds: setRestSeconds ?? 0,
+      setRestSeconds: cappedSetRest ?? 0,
     }),
   };
 }

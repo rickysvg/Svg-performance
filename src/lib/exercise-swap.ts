@@ -300,6 +300,8 @@ export function isGoodSwapMatch(name: string, exercise: LibraryExercise) {
  */
 export function movementTarget(name: string): string {
   const canonical = canonicalExerciseName(name);
+  const listed = libraryExercise(canonical)?.pattern;
+  if (listed) return listed;
   const n = canonical.toLowerCase();
   if (/90\/90|hip circle|hip switch|butterfly|\bpigeon\b/.test(n)) return "hip-rotation";
   if (/frog|couch stretch|deep squat hold|knee to chest|leg raise/.test(n)) return "hip-opener";
@@ -321,6 +323,8 @@ export function movementTarget(name: string): string {
 
 /** Body region used for the Best badge. Hip openers share a region; a squat does not. */
 export function movementRegion(name: string): string {
+  const listed = libraryExercise(canonicalExerciseName(name))?.region;
+  if (listed) return listed;
   const target = movementTarget(name);
   if (target === "hip-rotation" || target === "hip-opener" || target === "hamstring") return "hip";
   if (target === "horizontal-push" || target === "overhead-push") return "push";
@@ -383,7 +387,8 @@ export function bestSwapReplacements(input: {
       if (logged != null) score += Math.max(8, 28 - logged * 4);
       const equipmentRank =
         near && exercise.equipment === near.equipment ? 0 : exercise.equipment === "both" || near?.equipment === "both" ? 1 : 2;
-      return { exercise, score, samePattern, sameTarget, sameRegion, equipmentRank };
+      const gearRank = near?.gear && exercise.gear ? (exercise.gear === near.gear ? 0 : 1) : 0;
+      return { exercise, score, samePattern, sameTarget, sameRegion, equipmentRank, gearRank };
     })
     .sort(
       (a, b) =>
@@ -392,6 +397,7 @@ export function bestSwapReplacements(input: {
         Number(b.samePattern) - Number(a.samePattern) ||
         b.score - a.score ||
         a.equipmentRank - b.equipmentRank ||
+        a.gearRank - b.gearRank ||
         a.exercise.name.localeCompare(b.exercise.name),
     );
   const regional = ranked.filter((row) => row.sameRegion);

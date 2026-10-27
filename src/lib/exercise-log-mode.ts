@@ -16,9 +16,22 @@ const ROUND_NAME =
   /\b(bag|pads|sparring|grappling|rolling|jab|cross|hook|teep|kick|clinch|knee|sprawl|shot|guard|shrimp|mount|ground-and-pound|g&p|level change|double-leg|frame|boxing)\b/i;
 const BODYWEIGHT_COUNT_NAME =
   /\b(chin-up|pull-up|push-up|air squat|sit-up|crunch|lateral bound|side step-over|box step-up|squat jump|broad jump|pike|\bdip\b)\b/i;
+/**
+ * Bodyweight patterns the lift regex would otherwise treat as loaded
+ * (sissy squat, curl-up, a band-assisted pull-up).
+ */
+const UNLOADED_BODYWEIGHT_EXCEPTION =
+  /\b(sissy squat|stability-ball leg curl|stability ball leg curl|reverse nordic|mcgill curl-up|plyo bulgarian|band-assisted pull-up|assisted pull-up|assisted chin-up)\b/i;
+/** Gym staples whose names omit “dumbbell” or “cable” but still track a load. */
+const LOADED_STAPLE_NAME =
+  /\b(pushdowns?|triceps extensions?|skull crushers?|leg[-\s]?press|calf raises?|hip thrusts?|woodchops?|pallof|pec-?deck|arnold|block pulls?|step-?ups?|wall balls?|devil press|man makers?|harness|medicine[-\s]?balls?)\b/i;
+/** Conditioning pieces logged in seconds, even when the name says “row” or “machine”. */
+const TIMED_IMPLEMENT_NAME = /\b(sleds?|prowlers?|rowing machines?|rowing ergs?|rowers?)\b/i;
 /** Bands, cables, dumbbells, and the pulls/presses that use them. Pounds stay on. */
 const LOADED_GEAR_NAME =
-  /\b(bands?|banded|cables?|dumbbells?|barbells?|kettlebells?|pulldowns?|pull-?aparts?|face pulls?|machines?|landmines?|trap-?bars?|med-?balls?|medicine balls?)\b/i;
+  /\b(bands?|banded|cables?|dumbbells?|barbells?|kettlebells?|pulldowns?|pull-?aparts?|face pulls?|machines?|landmines?|trap-?bars?|med-?balls?|medicine[-\s]?balls?|ez-?bars?|smith|plates?)\b/i;
+const DURATION_REPS = /\b(sec|secs|seconds?|min|mins|minutes?)\b|\d+\s*:\s*\d|\d+\s*s\b/i;
+const DISTANCE_REPS = /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i;
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
 const WEIGHTED_LIFT_NAME =
@@ -46,6 +59,37 @@ export function isEmptyShadowRound(name: string) {
   return isShadowName(name) && !isWeightedShadowName(name) && !/\bcool/i.test(name);
 }
 
+/** "6", "6 / side", "8–12", "× 6". Clocks, seconds, and meter carries are not reps. */
+export function prescriptionIsRepCount(reps: string) {
+  const raw = reps.trim();
+  if (!raw) return false;
+  if (DURATION_REPS.test(raw) || DISTANCE_REPS.test(raw)) return false;
+  return /\d/.test(raw);
+}
+
+function loadedMovementName(name: string) {
+  return (
+    LOADED_GEAR_NAME.test(name) ||
+    LOADED_CARRY_NAME.test(name) ||
+    WEIGHTED_LIFT_NAME.test(name) ||
+    LOADED_STAPLE_NAME.test(name) ||
+    /\bweighted\b/i.test(name)
+  );
+}
+
+/** Air squat, push-up, chin-up, and the named bodyweight exceptions. Gear in the name keeps the load. */
+function unloadedRepName(name: string) {
+  if (UNLOADED_BODYWEIGHT_EXCEPTION.test(name)) return true;
+  if (!BODYWEIGHT_COUNT_NAME.test(name)) return false;
+  if (LOADED_OPTION_NAME.test(name) || LOADED_GEAR_NAME.test(name) || /\bweighted\b/i.test(name)) return false;
+  return true;
+}
+
+function tracksLoad(name: string) {
+  if (unloadedRepName(name)) return false;
+  return loadedMovementName(name);
+}
+
 /**
  * Pounds on lifts and loaded accessories (bands, cables, dumbbells, pulls, presses).
  * A written “bodyweight” or “no lbs” line does not remove that column.
@@ -54,17 +98,26 @@ export function isEmptyShadowRound(name: string) {
 export function fallbackLogMode(name: string, reps = ""): LogMode {
   if (isBikeIntervalName(name)) return "timed_round";
   if (isWeightedShadowName(name)) return "load_timed";
-  if (LOADED_CARRY_NAME.test(name)) return "load_timed";
+  if (TIMED_IMPLEMENT_NAME.test(name)) return "timed";
+  if (LOADED_CARRY_NAME.test(name)) {
+    return prescriptionIsRepCount(reps) ? "load_reps" : "load_timed";
+  }
+  // A written rep count logs reps even when the name looks like a hold or a flow.
+  // Unloaded patterns (air squat, push-up) stay reps-only ahead of the squat/curl regex.
+  if (prescriptionIsRepCount(reps)) {
+    return tracksLoad(name) ? "load_reps" : "reps_only";
+  }
   if (/\bbanded kettlebell swing\b/i.test(name)) return "timed";
+  if (isHoldName(name) && tracksLoad(name)) return "load_timed";
   if (isHoldName(name)) return "timed";
-  if (CARDIO_TIMED_NAME.test(name)) return "timed";
   if (ROUND_NAME.test(name)) return "timed_round";
+  if (DURATION_REPS.test(reps)) return tracksLoad(name) ? "load_timed" : "timed";
+  if (CARDIO_TIMED_NAME.test(name)) return "timed";
   if (LOADED_GEAR_NAME.test(name)) return "load_reps";
   if (BODYWEIGHT_COUNT_NAME.test(name) && !LOADED_OPTION_NAME.test(name)) {
     return "reps_only";
   }
   if (WEIGHTED_LIFT_NAME.test(name)) return "load_reps";
-  if (/\bsec\b/i.test(reps) || /^\s*\d+\s*:\s*\d{1,2}/.test(reps)) return "timed";
   return "timed";
 }
 
@@ -82,7 +135,34 @@ export function resolveLogMode(input: {
   if (input.logMode === "reps_only" && (inferred === "load_reps" || inferred === "load_timed")) {
     return inferred;
   }
+  // A stored "timed" mode from an old seed still has to show Reps when the dose is a count.
+  if (
+    (input.logMode === "timed" || input.logMode === "timed_round") &&
+    prescriptionIsRepCount(input.reps ?? "") &&
+    (inferred === "reps_only" || inferred === "load_reps")
+  ) {
+    return inferred;
+  }
   return input.logMode;
+}
+
+/**
+ * A save that posts reps or seconds, even when the stored mode is a stale "timed".
+ * Omitted numbers keep the stored mode. Goblet squat stored as timed stays timed.
+ */
+export function resolveLoggedSetMode(input: {
+  logMode?: string | null;
+  name?: string;
+  reps?: number | null;
+  durationSeconds?: number | null;
+}): LogMode {
+  const reps =
+    typeof input.reps === "number" && Number.isFinite(input.reps)
+      ? String(input.reps)
+      : typeof input.durationSeconds === "number" && input.durationSeconds > 0
+        ? `${input.durationSeconds} sec`
+        : "";
+  return resolveLogMode({ logMode: input.logMode, name: input.name, reps });
 }
 
 export function isDurationMode(mode: LogMode) {

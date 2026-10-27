@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { CUSTOM_HOME_RESUME } from "@/lib/today-start";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
@@ -22,14 +23,13 @@ function ResumeButton({
     return <ContinueWorkoutButton workoutId={log.id} label="Resume" className={className} />;
   }
   return (
-    <Link
+    <PendingWorkoutLink
       href={`/training/log/${log.id}`}
+      label="Resume"
       data-prime-coach-audio
       data-resume-workout
       className={className}
-    >
-      Resume
-    </Link>
+    />
   );
 }
 
@@ -134,23 +134,21 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
                 Done
               </p>
             ) : nextPartial ? null : next?.dayId ? (
-          <Link
+          <PendingWorkoutLink
             href={next.startHref ?? next.logHref ?? bikeLoggerHref(next.dayId)}
             prefetch={false}
+            label="Start next session"
             data-testid="home-prime-coach-audio"
             data-prime-coach-audio
             data-open-bike-logger={next.logHref ? "home" : undefined}
             className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          >
-            Start next session
-          </Link>
+          />
         ) : next?.href ? (
-          <Link
+          <PendingWorkoutLink
             href={next.href}
+            label="Start next session"
             className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-          >
-            Start next session
-          </Link>
+          />
         ) : (
           <Link
             href="/training"
@@ -248,23 +246,21 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
           {resume ? (
             <ResumeButton log={resume} className={resumeClass} />
           ) : firstPartial ? null : first.dayId ? (
-            <Link
+            <PendingWorkoutLink
               href={first.startHref ?? first.logHref ?? bikeLoggerHref(first.dayId)}
               prefetch={false}
+              label="Start"
               data-testid="home-prime-coach-audio-2"
               data-prime-coach-audio
               data-open-bike-logger={first.logHref ? "home" : undefined}
               className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-            >
-              Start
-            </Link>
+            />
           ) : first.href ? (
-            <Link
+            <PendingWorkoutLink
               href={first.href}
+              label="Start"
               className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-            >
-              Start
-            </Link>
+            />
           ) : (
             <Link
               href="/training"

@@ -11,6 +11,7 @@ import raw from "@/data/combat-exercise-library.json";
 import trimsFile from "@/data/combat-clip-trims.json";
 import type { ExerciseCategory, EquipmentAccess, LibraryExercise } from "@/lib/exercise-library";
 import type { LogMode } from "@/lib/exercise-log-mode";
+import { clampSetRestSeconds, DEFAULT_SET_REST_SECONDS } from "@/lib/set-rest";
 
 export type CombatConfidence = "high" | "medium" | "low";
 
@@ -249,7 +250,8 @@ function parsePrescription(text: string) {
   const reps = (text.match(/x\s*([^@,]+)/i)?.[1] ?? "8").trim().replace(/(\d+)\s*\/\s*/g, "$1 / ");
   const rir = text.match(/(\d+\s*-\s*\d+|\d+)\s*RIR/i)?.[1]?.replace(/\s+/g, "");
   const rest = Number(text.match(/(\d+)\s*s\b/i)?.[1] ?? 60);
-  return { sets: Number.isFinite(sets) ? sets : 3, reps, rir, restSeconds: Number.isFinite(rest) ? rest : 60 };
+  const restSeconds = clampSetRestSeconds(Number.isFinite(rest) ? rest : DEFAULT_SET_REST_SECONDS);
+  return { sets: Number.isFinite(sets) ? sets : 3, reps, rir, restSeconds };
 }
 
 function equipmentAccess(equipment: string): EquipmentAccess {

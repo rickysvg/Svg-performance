@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
 import type { NextTrainAction } from "@/lib/train-next";
@@ -25,38 +25,34 @@ export function NextSessionCta({ action }: { action: NextTrainAction }) {
 
   if (action.draftId) {
     return (
-      <Link
+      <PendingWorkoutLink
         data-testid={`training-log-${action.draftId}`}
         href={`/training/log/${action.draftId}`}
+        label={label}
         data-next-session
         data-prime-coach-audio
         className={`${buttonClass} ${stickyClass}`}
-      >
-        {label}
-      </Link>
+      />
     );
   }
 
   if (action.dayId) {
     return (
-      <Link
+      <PendingWorkoutLink
         href={action.startHref ?? bikeLoggerHref(action.dayId)}
         prefetch={false}
+        label={label}
         data-testid="training-next-session"
         data-next-session
         data-prime-coach-audio
         className={`${buttonClass} ${stickyClass}`}
-      >
-        {label}
-      </Link>
+      />
     );
   }
 
   if (action.href) {
     return (
-      <Link data-testid={`training-next-session-2-${action.href.split("/").filter(Boolean).join("-")}`} href={action.href} data-next-session data-prime-coach-audio className={`${buttonClass} ${stickyClass}`}>
-        {label}
-      </Link>
+      <PendingWorkoutLink data-testid={`training-next-session-2-${action.href.split("/").filter(Boolean).join("-")}`} href={action.href} label={label} data-next-session data-prime-coach-audio className={`${buttonClass} ${stickyClass}`} />
     );
   }
 
