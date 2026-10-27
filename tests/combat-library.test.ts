@@ -35,14 +35,14 @@ describe("combat swap library", () => {
       expect(row.videoEnd! - row.videoStart).toBeLessThanOrEqual(60);
       expect(row.videoEnd).toBeGreaterThan(row.videoStart);
     }
-    expect(queue.live).toBe(187);
-    expect(queue.held).toBe(16);
-    expect(queue.needsTrim).toHaveLength(6);
+    expect(queue.live).toBe(189);
+    expect(queue.held).toBe(14);
+    expect(queue.needsTrim).toHaveLength(4);
     expect(queue.needsReview.map((row) => row.id)).toContain("gi-pull-up");
     expect(memberSwappable(COMBAT_LIBRARY.find((row) => row.id === "gi-pull-up")!)).toBe(false);
   });
 
-  it("publishes 32 high and 7 medium trims and leaves six clips plus the gi pull-up in review", () => {
+  it("publishes 32 high and 7 medium trims and leaves four long clips plus the gi pull-up in review", () => {
     const mediumIds = [
       "belt-squat",
       "pistol-squat",
@@ -76,8 +76,8 @@ describe("combat swap library", () => {
       expect(memberSwappable(row)).toBe(false);
     }
     const live = preview.filter(memberSwappable).length;
-    expect(live).toBe(187);
-    expect(preview.length - live).toBe(16);
+    expect(live).toBe(189);
+    expect(preview.length - live).toBe(14);
     expect(withClipTrim(COMBAT_LIBRARY.find((row) => row.id === "rope-climb")!, { videoStart: 0, videoEnd: 30 }).videoEnd).toBeNull();
     const zercher = COMBAT_LIBRARY.find((row) => row.id === "zercher-squat")!;
     const rejected = withClipTrim(zercher, { videoStart: 0, videoEnd: 90 });
@@ -85,12 +85,13 @@ describe("combat swap library", () => {
     expect(rejected.videoEnd).toBe(zercher.videoEnd);
   });
 
-  it("hides low-confidence clips and the six untrimmed long clips", () => {
+  it("hides low-confidence clips and the four untrimmed long clips", () => {
     const hidden = COMBAT_LIBRARY.filter((row) => !memberSwappable(row)).map((row) => row.name);
     expect(hidden).toContain("Gi pull-up");
     expect(hidden).toContain("Rope climb");
     expect(hidden).toContain("Banded neck flexion");
-    expect(hidden).toContain("Sledgehammer tire strike");
+    expect(hidden).not.toContain("Sledgehammer tire strike");
+    expect(hidden).not.toContain("Band-resisted penetration shot");
     expect(hidden).not.toContain("Zercher squat");
     expect(hidden).not.toContain("Pull-up");
     const meadows = COMBAT_LIBRARY.find((row) => row.name === "Meadows row")!;

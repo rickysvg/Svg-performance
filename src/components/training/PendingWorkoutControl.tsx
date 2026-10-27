@@ -2,20 +2,43 @@
 
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
 export function pendingWorkoutLabel(label: string) {
   return /resume/i.test(label) ? "Resuming…" : "Starting…";
 }
 
+/** How long a click may sit before we treat the navigation as cancelled. */
+const NAV_GRACE_MS = 1500;
+
+/**
+ * Pending only after a click that was not cancelled. A touch that turns into a
+ * scroll never clicks, so the label stays put. If the route does not start,
+ * the label returns.
+ */
+function useClickPending(navigating: boolean) {
+  const [activated, setActivated] = useState(false);
+  useEffect(() => {
+    if (!activated || navigating) return;
+    const timer = window.setTimeout(() => setActivated(false), NAV_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [activated, navigating]);
+  return {
+    busy: navigating || activated,
+    onClick(event: MouseEvent) {
+      if (event.defaultPrevented) return;
+      setActivated(true);
+    },
+  };
+}
+
 function PendingLabel({ label }: { label: string }) {
   const { pending } = useLinkStatus();
-  const [pressed, setPressed] = useState(false);
-  const busy = pending || pressed;
+  const click = useClickPending(pending);
   return (
-    <span aria-busy={busy} onPointerDown={() => setPressed(true)}>
-      {busy ? pendingWorkoutLabel(label) : label}
+    <span aria-busy={click.busy} onClick={click.onClick}>
+      {click.busy ? pendingWorkoutLabel(label) : label}
     </span>
   );
 }
@@ -40,21 +63,20 @@ export function PendingWorkoutLink({
 type ButtonProps = ComponentProps<"button"> & { label: string; pendingLabel?: string };
 
 /** Submit inside a start/resume form. useFormStatus only sees a parent form. */
-export function PendingSubmitButton({ label, pendingLabel, onPointerDown, ...props }: ButtonProps) {
+export function PendingSubmitButton({ label, pendingLabel, onClick, ...props }: ButtonProps) {
   const { pending } = useFormStatus();
-  const [pressed, setPressed] = useState(false);
-  const busy = pending || pressed;
+  const click = useClickPending(pending);
   return (
     <button
       {...props}
       type="submit"
-      aria-busy={busy}
-      onPointerDown={(event) => {
-        setPressed(true);
-        onPointerDown?.(event);
+      aria-busy={click.busy}
+      onClick={(event) => {
+        onClick?.(event);
+        click.onClick(event);
       }}
     >
-      {busy ? (pendingLabel ?? pendingWorkoutLabel(label)) : label}
+      {click.busy ? (pendingLabel ?? pendingWorkoutLabel(label)) : label}
     </button>
   );
 }

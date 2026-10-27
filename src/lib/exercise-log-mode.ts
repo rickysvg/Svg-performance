@@ -30,7 +30,8 @@ const TIMED_IMPLEMENT_NAME = /\b(sleds?|prowlers?|rowing machines?|rowing ergs?|
 /** Bands, cables, dumbbells, and the pulls/presses that use them. Pounds stay on. */
 const LOADED_GEAR_NAME =
   /\b(bands?|banded|cables?|dumbbells?|barbells?|kettlebells?|pulldowns?|pull-?aparts?|face pulls?|machines?|landmines?|trap-?bars?|med-?balls?|medicine[-\s]?balls?|ez-?bars?|smith|plates?)\b/i;
-const DURATION_REPS = /\b(sec|secs|seconds?|min|mins|minutes?)\b|\d+\s*:\s*\d|\d+\s*s\b/i;
+const DURATION_REPS =
+  /\b(sec|secs|seconds?|min|mins|minutes?)\b|\d+\s*:\s*\d|\d+\s*s(?:ec(?:ond)?s?)?\b/i;
 const DISTANCE_REPS = /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i;
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
@@ -130,8 +131,18 @@ export function resolveLogMode(input: {
   name?: string;
   reps?: string;
 }): LogMode {
-  const inferred = fallbackLogMode(input.name ?? "", input.reps ?? "");
+  const reps = input.reps ?? "";
+  const inferred = fallbackLogMode(input.name ?? "", reps);
   if (!isLogMode(input.logMode)) return inferred;
+  // A stored rep column on a hold written as "45s" or "10 sec / side" is seconds.
+  if (
+    (input.logMode === "reps_only" || input.logMode === "load_reps") &&
+    (DURATION_REPS.test(reps) || DISTANCE_REPS.test(reps)) &&
+    !prescriptionIsRepCount(reps) &&
+    (inferred === "timed" || inferred === "load_timed")
+  ) {
+    return inferred;
+  }
   if (input.logMode === "reps_only" && (inferred === "load_reps" || inferred === "load_timed")) {
     return inferred;
   }

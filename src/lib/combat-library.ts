@@ -5,7 +5,7 @@
  *
  * Trim windows live in src/data/combat-clip-trims.json, keyed by exercise id:
  * `{ "belt-squat": { "videoStart": 12, "videoEnd": 48 } }`.
- * A window has to be 60 seconds or under. The six untrimmed ids below are ignored.
+ * A window has to be 60 seconds or under. The four untrimmed ids below are ignored.
  */
 import raw from "@/data/combat-exercise-library.json";
 import trimsFile from "@/data/combat-clip-trims.json";
@@ -83,9 +83,7 @@ function asCombat(row: (typeof raw)[number]): CombatExercise {
 /** Left untrimmed on purpose. They stay in the admin Content queue. */
 export const UNTRIMMED_CLIP_IDS = [
   "rope-climb",
-  "sledgehammer-tire-strike",
   "turkish-get-up",
-  "band-resisted-penetration-shot",
   "penetration-step",
   "granby-roll",
 ] as const;
@@ -261,8 +259,15 @@ function equipmentAccess(equipment: string): EquipmentAccess {
 }
 
 function logModeFor(row: CombatExercise, reps: string): LogMode {
-  if (/\b(sec|min|climb|hold)\b/i.test(reps) || /\bhold\b/i.test(row.name)) {
-    if (/\b(carry|farmer|suitcase|yoke|sandbag)\b/i.test(row.name)) return "load_timed";
+  const distance = /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i.test(reps);
+  const loadedCarry = /\b(carry|farmer|suitcase|yoke|sandbag)\b/i.test(row.name);
+  if (
+    distance ||
+    /\b(sec|secs|seconds?|min|mins|minutes?|climb|hold)\b/i.test(reps) ||
+    /\d+\s*s(?:ec(?:ond)?s?)?\b/i.test(reps) ||
+    /\bhold\b/i.test(row.name)
+  ) {
+    if (loadedCarry) return "load_timed";
     return "timed";
   }
   if (equipmentAccess(row.equipment) === "both" && !/\b(dumbbell|barbell|kettlebell|cable|sandbag|band)\b/i.test(row.equipment)) {

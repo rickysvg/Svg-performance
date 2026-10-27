@@ -137,7 +137,7 @@ const BASE_LIBRARY: LibraryExercise[] = [
     4,
     "6 / side",
     "2-3 RIR · Brace. Don’t let the torso rotate.",
-    120,
+    90,
     "load_reps",
     "One dumbbell. Brace. Don’t let the torso rotate. Work one side, then the other.",
   ),

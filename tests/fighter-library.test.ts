@@ -21,6 +21,8 @@ describe("fighter exercise library", () => {
       expect(row.region, row.name).toBeTruthy();
       expect(row.pattern, row.name).toBeTruthy();
       expect(row.gear, row.name).toBeTruthy();
+      expect(row.startSeconds, row.name).toBeGreaterThanOrEqual(0);
+      expect(row.startSeconds, row.name).toBeLessThan(FORM_VIDEO_SHORT_MAX_SECONDS);
       expect(row.restSeconds, row.name).toBeLessThanOrEqual(90);
       expect(row.restSeconds, row.name).toBeGreaterThanOrEqual(0);
       counts[row.category] += 1;

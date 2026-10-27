@@ -568,8 +568,9 @@ function scaleNamedExercise(
   }
 
   if (exercise.lockWeek) {
-    const { lockWeek: _locked, ...rest } = exercise;
-    return finishLockedWeek({ ...rest, logMode: mode }, meta, input);
+    const next = { ...exercise, logMode: mode };
+    delete next.lockWeek;
+    return finishLockedWeek(next, meta, input);
   }
 
   if (slug === DEMO_SKILL_PROGRAM_SLUG || slug === "skill") {

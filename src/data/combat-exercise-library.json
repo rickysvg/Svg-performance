@@ -2217,15 +2217,15 @@
    "Wrist stacked",
    "Press slowly"
   ],
-  "videoUrl": "https://www.youtube.com/watch?v=rxZqZJ9A3Lc",
+  "videoUrl": "https://www.youtube.com/watch?v=k5PcL_WIx94",
   "videoStart": 0,
   "videoEnd": null,
-  "durationSec": 59,
-  "channel": "Testosterone Nation",
+  "durationSec": 19,
+  "channel": "Onnit Academy",
   "embeddable": true,
-  "verifyMethod": "auto-transcript names the move; title/desc match 2/3; channel Testosterone Nation (177000); oEmbed 200; playable_in_embed=True; age_limit=0",
+  "verifyMethod": "oEmbed 200; title matches bottoms-up kettlebell press; channel Onnit Academy; clip 19s",
   "confidence": "high",
-  "videoTitle": "The Bottoms-Up Press For Shoulder Health"
+  "videoTitle": "Kettlebell Bottom's Up Press"
  },
  {
   "id": "seated-dumbbell-shoulder-press",
@@ -3600,15 +3600,15 @@
    "Strike with the hips",
    "Alternate sides"
   ],
-  "videoUrl": "https://www.youtube.com/watch?v=--yQfMAIDKc",
+  "videoUrl": "https://www.youtube.com/watch?v=3iNnZ8Lo-Uo",
   "videoStart": 0,
   "videoEnd": null,
-  "durationSec": 85,
-  "channel": "Ross Enamait",
+  "durationSec": 43,
+  "channel": "Krav HIIT (KravHIIT)",
   "embeddable": true,
-  "verifyMethod": "no matching transcript; title/desc match 2/3; channel Ross Enamait (47900); oEmbed 200; playable_in_embed=True; age_limit=0. Title or length suggests a demo/overview rather than a ≤60s technique clip.",
-  "confidence": "low",
-  "videoTitle": "Sledgehammer Training Update"
+  "verifyMethod": "oEmbed 200; title matches sledge hits on a tire; channel Krav HIIT; clip 43s",
+  "confidence": "high",
+  "videoTitle": "How-To: Sledge Hits on a Tire – KravHIIT.fit"
  },
  {
   "id": "half-kneeling-pallof-press",
@@ -4968,15 +4968,15 @@
    "Drive off the back foot",
    "Head up"
   ],
-  "videoUrl": "https://www.youtube.com/watch?v=e2rirTsTglA",
+  "videoUrl": "https://www.youtube.com/watch?v=tiZRPGIUQTE",
   "videoStart": 0,
   "videoEnd": null,
-  "durationSec": 63,
-  "channel": "Bully Dog Fitness Equipment",
+  "durationSec": 30,
+  "channel": "Brian Jones",
   "embeddable": true,
-  "verifyMethod": "no matching transcript; manually chosen from search results by title/channel; channel Bully Dog Fitness Equipment (94); oEmbed 200; playable_in_embed=True; age_limit=0. Equipment-brand clip of Sam Stout drilling shots on a resisted 'Takedown' device, 94 subs. A product demo.",
-  "confidence": "low",
-  "videoTitle": "Sam Stout drills shots with The Takedown"
+  "verifyMethod": "oEmbed 200; title matches resisted shots for wrestling and MMA; channel Brian Jones; clip 30s",
+  "confidence": "high",
+  "videoTitle": "Resisted shots for wrestling and MMA | Drfbands.com |"
  },
  {
   "id": "banded-broad-jump",
@@ -6348,15 +6348,15 @@
    "Drive hard",
    "Breathe"
   ],
-  "videoUrl": "https://www.youtube.com/watch?v=4zWu1yuJ0_g",
+  "videoUrl": "https://www.youtube.com/watch?v=1oMacNz9Q6s",
   "videoStart": 0,
   "videoEnd": null,
-  "durationSec": 113,
-  "channel": "concept2usa",
+  "durationSec": 77,
+  "channel": "DEUCE Gym",
   "embeddable": true,
-  "verifyMethod": "auto-transcript names the move; manually chosen from search results by title/channel; channel concept2usa (26300); oEmbed 200; playable_in_embed=True; age_limit=0. Concept2 technique, 113s",
+  "verifyMethod": "oEmbed 200; title matches rowing sprint start technique; channel DEUCE Gym; clip 77s; form window 16-72",
   "confidence": "medium",
-  "videoTitle": "Correct Rowing Machine Technique, Improve Your Rowing  | Concept2"
+  "videoTitle": "Rowing Sprint Start Technique: Tips for Speed and Power"
  },
  {
   "id": "ski-erg-intervals",

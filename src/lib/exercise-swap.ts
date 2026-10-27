@@ -17,6 +17,7 @@ import { isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { mesoBlockForWeekIndex } from "@/lib/mesocycle";
 import { mergeLoadText, rirFromLoadText } from "@/lib/rir";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import { dayKey, mondayOfZoned } from "@/lib/timezone";
 
 export type SwapScope = "session" | "block";
@@ -119,7 +120,7 @@ function libraryPrescription(exercise: LibraryExercise): SwapPrescription {
     sets: clampSets(exercise.sets),
     reps: exercise.reps,
     loadText: exercise.loadText,
-    restSeconds: Math.max(0, exercise.restSeconds),
+    restSeconds: clampSetRestSeconds(exercise.restSeconds),
     logMode: exercise.logMode,
     notes: exercise.notes,
     category: exercise.category,
@@ -177,7 +178,7 @@ export function sensiblePrescription(
     sets: clampSets(source.sets),
     reps,
     loadText,
-    restSeconds: Math.max(0, source.restSeconds),
+    restSeconds: clampSetRestSeconds(source.restSeconds),
   };
 }
 
@@ -232,7 +233,7 @@ export function applySwapsToExercises<T extends Swappable>(
       sets: swap.sets,
       reps: swap.reps,
       loadText: swap.loadText,
-      restSeconds: swap.restSeconds,
+      restSeconds: clampSetRestSeconds(swap.restSeconds),
       logMode: mode,
       notes: swap.notes,
       formVideoUrl: video.formVideoUrl,
@@ -250,7 +251,7 @@ export function swapSlotsFor(programmed: Swappable[], shown: Swappable[]): SwapS
       sets: current.sets,
       reps: current.reps,
       loadText: current.loadText ?? "",
-      restSeconds: current.restSeconds,
+      restSeconds: clampSetRestSeconds(current.restSeconds),
       logMode: current.logMode ?? resolveLogMode({ name: current.name, reps: current.reps }),
       notes: current.notes ?? "",
     };

@@ -5,6 +5,7 @@ import {
   completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
+  isPastEmptyDraft,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
 } from "@/lib/workouts";
@@ -65,7 +66,7 @@ import { FightCampOptIn } from "@/components/training/FightCampOptIn";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
-import { formatDayParam, parseDayParam } from "@/lib/home";
+import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getSessionIntentSeqForUser, getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { getSparringLog, sparringDateError } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
@@ -211,12 +212,26 @@ export default async function TrainingPage({
   const todayKey = dayKey(now, tz);
   const draftsOn = (day: string) => drafts.filter((row) => sessionCompletionDay(row, tz) === day);
   const todayDrafts = draftsOn(todayKey);
+  const todayPlanDayIds = new Set(
+    todaySessions.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+  );
   const resumeDraft =
     todayDrafts.find(
       (row) => draftHasResumeWork(row.sets) && (!row.programDayId || !doneToday.has(row.programDayId)),
     ) ?? null;
+  const openPlanDraft =
+    drafts.find(
+      (row) =>
+        row.programDayId != null &&
+        todayPlanDayIds.has(row.programDayId) &&
+        !doneToday.has(row.programDayId) &&
+        !isPastEmptyDraft(row, todayKey, tz) &&
+        (sessionCompletionDay(row, tz) === todayKey || sameLocalDay(row.performedAt, now, tz)),
+    ) ?? null;
   const resumeId =
-    todayAction?.verb === "Resume" && todayAction.draftId ? todayAction.draftId : resumeDraft?.id;
+    todayAction?.verb === "Resume" && todayAction.draftId
+      ? todayAction.draftId
+      : (resumeDraft?.id ?? openPlanDraft?.id);
   const inProgressDay = resumeDraft ? sessionCompletionDay(resumeDraft, tz) : undefined;
   const loggedRange = carouselLoggedRange(now, tz);
   const carouselKeys = weeks.flatMap((week) => week.days.map((day) => day.dayParam));

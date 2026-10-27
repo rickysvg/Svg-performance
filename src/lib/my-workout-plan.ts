@@ -3,6 +3,7 @@
  * Applying a list changes one civil day. It does not move week index or other days.
  */
 import { isDurationMode, resolveLogMode } from "@/lib/exercise-log-mode";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import { parseAddedPlan } from "@/lib/logger-insert";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { rirFromLoadText } from "@/lib/rir";
@@ -87,7 +88,7 @@ export function sanitizeSavedExercises(raw: unknown): SavedExercise[] {
       sets: clampInt(item.sets, 1, 12, 1),
       reps,
       loadText: text(item.loadText, 80),
-      restSeconds: clampInt(item.restSeconds, 0, 600, 60),
+      restSeconds: clampSetRestSeconds(clampInt(item.restSeconds, 0, 600, 60)),
       rir: text(item.rir, 24),
       logMode: resolveLogMode({ logMode: text(item.logMode, 20), name, reps }),
       notes: text(item.notes, 200),

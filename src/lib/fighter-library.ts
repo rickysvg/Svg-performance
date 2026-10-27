@@ -18,6 +18,8 @@ export type FighterExercise = {
   logMode: LogMode;
   notes: string;
   videoId: string;
+  /** Seconds into the upload where the form demo starts. Zero when the clip opens on the movement. */
+  startSeconds: number;
   seconds: number;
   channel: string;
   videoTitle: string;
@@ -61,12 +63,18 @@ export function fighterFormVideoSeeds(): Record<string, FormVideoSeed> {
   const seeds: Record<string, FormVideoSeed> = {};
   for (const row of ROWS) {
     if (!row.videoId || !row.videoTitle) continue;
+    const start = Number.isFinite(row.startSeconds) ? Math.max(0, Math.round(row.startSeconds)) : 0;
+    const window = Math.max(1, row.seconds);
+    const url =
+      start > 0
+        ? `https://www.youtube.com/watch?v=${row.videoId}&t=${start}&end=${start + window}`
+        : `https://www.youtube.com/watch?v=${row.videoId}`;
     seeds[row.name] = {
-      url: `https://www.youtube.com/watch?v=${row.videoId}`,
+      url,
       pending: false,
       channel: row.channel,
       title: row.videoTitle,
-      seconds: row.seconds,
+      seconds: window,
     };
   }
   return seeds;

@@ -11,6 +11,7 @@ import {
   resolveLogMode,
 } from "@/lib/exercise-log-mode";
 import { previousSetLabel } from "@/lib/exercise-media";
+import { libraryExercise } from "@/lib/exercise-library";
 
 describe("exercise log modes", () => {
   it("uses the stored field first, then name heuristics", () => {
@@ -88,6 +89,36 @@ describe("exercise log modes", () => {
     expect(resolveLogMode({ logMode: "timed_round", name: "Jab–cross (1–2)", reps: "3:00" })).toBe(
       "timed_round",
     );
+    expect(
+      resolveLogMode({ logMode: "load_reps", name: "Cable Pallof press", reps: "10 sec / side" }),
+    ).toBe("load_timed");
+    expect(
+      modeColumnLabel(
+        resolveLogMode({ logMode: "load_reps", name: "Cable Pallof press", reps: "10 sec / side" }),
+      ),
+    ).toBe("Sec");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Wall sit", reps: "45s" })).toBe("timed");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Wall sit", reps: "45sec" })).toBe("timed");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Copenhagen plank", reps: "20s/side" })).toBe(
+      "timed",
+    );
+    expect(resolveLogMode({ logMode: "reps_only", name: "L-sit", reps: "10-20s" })).toBe("timed");
+    expect(
+      modeColumnLabel(resolveLogMode({ logMode: "reps_only", name: "L-sit", reps: "10 sec / side" })),
+    ).toBe("Sec");
+    expect(
+      resolveLogMode({
+        logMode: "timed_round",
+        name: "Assault bike intervals",
+        reps: "10s sprint / 50s easy",
+      }),
+    ).toBe("timed_round");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Goblet squat", reps: "8" })).toBe("load_reps");
+    expect(resolveLogMode({ logMode: "timed", name: "Goblet squat" })).toBe("timed");
+    expect(libraryExercise("Wall sit")?.logMode).toBe("timed");
+    expect(libraryExercise("Wall sit")?.reps).toMatch(/45s/);
+    expect(libraryExercise("Copenhagen plank")?.logMode).toBe("timed");
+    expect(libraryExercise("L-sit")?.logMode).toBe("timed");
     expect(fallbackLogMode("Plyo push-up")).toBe("reps_only");
     expect(fallbackLogMode("Squat jump or box step-up")).toBe("reps_only");
     expect(fallbackLogMode("Lateral bound or side step-over")).toBe("reps_only");
@@ -373,5 +404,20 @@ describe("exercise log modes", () => {
       "weighted_shadow",
     );
     expect(loggerRowLayout("load_timed", "Farmer carry")).toBe("standard");
+  });
+
+  it("logs metre carries, sleds, and crawls in seconds", () => {
+    expect(resolveLogMode({ logMode: "load_reps", name: "Farmer carry", reps: "30 m" })).toBe("load_timed");
+    expect(modeColumnLabel(resolveLogMode({ logMode: "load_reps", name: "Suitcase carry", reps: "20 m / side" }))).toBe(
+      "Sec",
+    );
+    expect(resolveLogMode({ logMode: "load_reps", name: "Sled push", reps: "20m" })).toBe("timed");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Bear crawl", reps: "20m" })).toBe("timed");
+    expect(modeColumnLabel(resolveLogMode({ logMode: "reps_only", name: "Lateral bear crawl", reps: "15 m" }))).toBe(
+      "Sec",
+    );
+    expect(resolveLogMode({ logMode: "reps_only", name: "Bear crawl", reps: "8" })).toBe("reps_only");
+    expect(libraryExercise("Zercher carry")?.logMode).toBe("load_timed");
+    expect(libraryExercise("Bear crawl")?.logMode).toBe("timed");
   });
 });
