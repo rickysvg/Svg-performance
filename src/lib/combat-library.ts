@@ -5,12 +5,13 @@
  *
  * Trim windows live in src/data/combat-clip-trims.json, keyed by exercise id:
  * `{ "belt-squat": { "videoStart": 12, "videoEnd": 48 } }`.
- * A window has to be 60 seconds or under. The six untrimmed ids below are ignored.
+ * A window has to be 60 seconds or under. The four untrimmed ids below are ignored.
  */
 import raw from "@/data/combat-exercise-library.json";
 import trimsFile from "@/data/combat-clip-trims.json";
 import type { ExerciseCategory, EquipmentAccess, LibraryExercise } from "@/lib/exercise-library";
 import type { LogMode } from "@/lib/exercise-log-mode";
+import { clampSetRestSeconds, DEFAULT_SET_REST_SECONDS } from "@/lib/set-rest";
 
 export type CombatConfidence = "high" | "medium" | "low";
 
@@ -82,9 +83,7 @@ function asCombat(row: (typeof raw)[number]): CombatExercise {
 /** Left untrimmed on purpose. They stay in the admin Content queue. */
 export const UNTRIMMED_CLIP_IDS = [
   "rope-climb",
-  "sledgehammer-tire-strike",
   "turkish-get-up",
-  "band-resisted-penetration-shot",
   "penetration-step",
   "granby-roll",
 ] as const;
@@ -249,7 +248,8 @@ function parsePrescription(text: string) {
   const reps = (text.match(/x\s*([^@,]+)/i)?.[1] ?? "8").trim().replace(/(\d+)\s*\/\s*/g, "$1 / ");
   const rir = text.match(/(\d+\s*-\s*\d+|\d+)\s*RIR/i)?.[1]?.replace(/\s+/g, "");
   const rest = Number(text.match(/(\d+)\s*s\b/i)?.[1] ?? 60);
-  return { sets: Number.isFinite(sets) ? sets : 3, reps, rir, restSeconds: Number.isFinite(rest) ? rest : 60 };
+  const restSeconds = clampSetRestSeconds(Number.isFinite(rest) ? rest : DEFAULT_SET_REST_SECONDS);
+  return { sets: Number.isFinite(sets) ? sets : 3, reps, rir, restSeconds };
 }
 
 function equipmentAccess(equipment: string): EquipmentAccess {
@@ -259,8 +259,15 @@ function equipmentAccess(equipment: string): EquipmentAccess {
 }
 
 function logModeFor(row: CombatExercise, reps: string): LogMode {
-  if (/\b(sec|min|climb|hold)\b/i.test(reps) || /\bhold\b/i.test(row.name)) {
-    if (/\b(carry|farmer|suitcase|yoke|sandbag)\b/i.test(row.name)) return "load_timed";
+  const distance = /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i.test(reps);
+  const loadedCarry = /\b(carry|farmer|suitcase|yoke|sandbag)\b/i.test(row.name);
+  if (
+    distance ||
+    /\b(sec|secs|seconds?|min|mins|minutes?|climb|hold)\b/i.test(reps) ||
+    /\d+\s*s(?:ec(?:ond)?s?)?\b/i.test(reps) ||
+    /\bhold\b/i.test(row.name)
+  ) {
+    if (loadedCarry) return "load_timed";
     return "timed";
   }
   if (equipmentAccess(row.equipment) === "both" && !/\b(dumbbell|barbell|kettlebell|cable|sandbag|band)\b/i.test(row.equipment)) {

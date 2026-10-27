@@ -14,6 +14,7 @@ import { loggedNameMatchesPlanned, setIsTicked } from "@/lib/logged-work";
 import { sessionCompletionDay } from "@/lib/performed-at";
 import { prisma } from "@/lib/prisma";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { scaleBandFromPrefs, scaleCopy, scaleProgramDay } from "@/lib/training-scale";
 import { activePlanWeekIndex, campPlanWeekIndex } from "@/lib/fight-camp";
 import { DEMO_PROGRAM_SLUG, DEMO_SKILL_PROGRAM_SLUG } from "@/lib/programs";
@@ -315,23 +316,21 @@ export default async function TrainingDayPage({
             />
           </div>
         ) : draft ? (
-          <Link
+          <PendingWorkoutLink
             href={`/training/log/${draft.id}`}
+            label="Resume"
             data-prime-coach-audio
             data-session-continue="draft"
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
-          >
-            Resume
-          </Link>
+          />
         ) : (
-          <Link
+          <PendingWorkoutLink
             href={startHref}
+            label={startLabel}
             prefetch={false}
             data-prime-coach-audio
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
-          >
-            {startLabel}
-          </Link>
+          />
         )}
 
         <SessionDetails>
@@ -456,27 +455,25 @@ export default async function TrainingDayPage({
           data-start-bar
           className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
         >
-          <Link
+          <PendingWorkoutLink
             href={`/training/log/${draft.id}`}
+            label="Resume"
             data-prime-coach-audio
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
-          >
-            Resume
-          </Link>
+          />
         </div>
       ) : (
         <div
           data-start-bar
           className="sticky bottom-0 z-10 mt-auto border-t border-line bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
         >
-          <Link
+          <PendingWorkoutLink
             href={startHref}
+            label={startLabel}
             prefetch={false}
             data-prime-coach-audio
             className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-base text-black"
-          >
-            {startLabel}
-          </Link>
+          />
         </div>
       )}
     </main>

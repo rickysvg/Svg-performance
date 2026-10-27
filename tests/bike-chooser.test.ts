@@ -44,8 +44,8 @@ describe("bike workout chooser", () => {
     }
     expect(bikeChoiceById("tabata")?.spec).toMatchObject({ workSeconds: 20, restSeconds: 10, roundsPerSet: 8 });
     expect(bikeChoiceMinutes(bikeChoiceById("tabata")!)).toBe(4);
-    expect(bikeChoiceMinutes(bikeChoiceById("norwegian-4x4")!)).toBe(25);
-    expect(bikeChoiceMinutes(bikeChoiceById("ten-twenty-thirty")!)).toBe(19);
+    expect(bikeChoiceMinutes(bikeChoiceById("norwegian-4x4")!)).toBe(21);
+    expect(bikeChoiceMinutes(bikeChoiceById("ten-twenty-thirty")!)).toBe(18);
     expect(bikeChoiceMinutes(bikeChoiceById("fight-rounds")!)).toBe(19);
     expect(bikeChoiceMinutes(bikeChoiceById("sprint-ladder")!)).toBe(9);
   });

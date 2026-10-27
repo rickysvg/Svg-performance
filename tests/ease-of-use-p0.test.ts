@@ -134,6 +134,20 @@ describe("best replacements and the finish Edit button", () => {
     expect(sit.some((row) => row.name === "Ankle circles" || row.name === "Push-up")).toBe(false);
   });
 
+  it("swaps a dumbbell lateral raise with no equipment to band delt work", () => {
+    const picks = bestSwapReplacements({ name: "Dumbbell lateral raise", equipment: "none" });
+    expect(picks.map((row) => row.name)).toEqual(["Band lateral raise", "Band pull-apart", "Band face pull"]);
+    for (const name of ["Handstand hold", "Wall walk", "Pseudo planche push-up"]) {
+      expect(picks.some((row) => row.name === name)).toBe(false);
+    }
+    const gym = bestSwapReplacements({ name: "Dumbbell lateral raise", equipment: "gym" });
+    expect(gym.map((row) => row.name)).toEqual([
+      "Bent-over dumbbell reverse fly",
+      "Dumbbell front raise",
+      "Dumbbell Y-raise",
+    ]);
+  });
+
   it("puts finish Edit above the fold", () => {
     const source = fs.readFileSync(path.join(process.cwd(), "src/components/training/WorkoutWinScreen.tsx"), "utf8");
     const body = source.slice(source.indexOf("return ("));

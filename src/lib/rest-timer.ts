@@ -1,4 +1,5 @@
 import { soundFxEnabled } from "@/lib/badge-sfx";
+import { clampSetRestSeconds, MAX_SET_REST_SECONDS } from "@/lib/set-rest";
 import { noteCoachBeep } from "@/lib/coach/motivation-clock";
 import { playEndCue, playWarningCue, primeMediaOutput, vibratePattern } from "@/lib/media-output";
 
@@ -13,7 +14,7 @@ export function startRestTimer(
   durationSeconds: number,
   nowMs = Date.now(),
 ): RestTimerState {
-  const duration = Math.max(0, Math.round(durationSeconds));
+  const duration = clampSetRestSeconds(durationSeconds);
   return {
     exerciseName,
     durationSeconds: duration,
@@ -69,10 +70,12 @@ export function formatRestPill(seconds: number): string {
 
 export function addRestSeconds(timer: RestTimerState, seconds: number): RestTimerState {
   const extra = Math.round(seconds);
+  const durationSeconds = Math.max(0, Math.min(MAX_SET_REST_SECONDS, timer.durationSeconds + extra));
+  const applied = durationSeconds - timer.durationSeconds;
   return {
     ...timer,
-    durationSeconds: Math.max(0, timer.durationSeconds + extra),
-    endsAtMs: timer.endsAtMs + extra * 1000,
+    durationSeconds,
+    endsAtMs: timer.endsAtMs + applied * 1000,
   };
 }
 

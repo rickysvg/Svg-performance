@@ -61,7 +61,7 @@ describe("interval shorthand", () => {
     });
     expect(parseIntervalShorthand("2x8 @ 15m/15").ok).toBe(false);
     const kept = commitShorthand("2x8 @ 14:50/10", { ...base, setRestSeconds: 600 });
-    expect(kept.error).toBe("That workout is 4:09:40. Max 4:00:00.");
+    expect(kept.error).toBe("That workout is 4:01:10. Max 4:00:00.");
     expect(kept.error).not.toBe("Try 2x8 @ 15/15");
     expect(kept.structure).toEqual({ ...base, setRestSeconds: 600 });
   });
@@ -174,12 +174,12 @@ describe("interval shorthand", () => {
     expect(parseIntervalShorthand("10x1 @ 15:00/10:00 r600", "round").ok).toBe(true);
     expect(parseIntervalShorthand("10x1 @ 15:00/10:00 r600", "bike")).toEqual({
       ok: false,
-      error: "That workout is 5:40:00. Max 4:00:00.",
+      error: "That workout is 4:23:30. Max 4:00:00.",
     });
     const current = { sets: 2, rounds: 8, workSeconds: 15, restSeconds: 15, setRestSeconds: 60 };
     const kept = commitShorthand("10x1 @ 15:00/10:00 r600", current, "bike");
     expect(kept.structure).toEqual(current);
-    expect(kept.error).toBe("That workout is 5:40:00. Max 4:00:00.");
+    expect(kept.error).toBe("That workout is 4:23:30. Max 4:00:00.");
     const blocked = shorthandLineState("10x30 @ 60/60 r120", current, "bike");
     expect(blocked.blocked).toBe(true);
     expect(blocked.matches).toBe(false);

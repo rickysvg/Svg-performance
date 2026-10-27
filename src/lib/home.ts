@@ -491,6 +491,13 @@ export async function getHomeToday(
       if (plan.complete || !plan.draftId) continue;
       resumeByDay[homePlanDayId(plan.id)] = { id: plan.draftId, partial: plan.partial };
     }
+    // A draft with no logged sets is still today's session. Resume it instead of Start.
+    for (const row of drafts) {
+      if (!row.programDayId || finishedToday.has(row.programDayId) || resumeByDay[row.programDayId]) continue;
+      if (isPastEmptyDraft(row, todayKey, tz)) continue;
+      if (!sameLocalDay(row.performedAt, now, tz)) continue;
+      resumeByDay[row.programDayId] = { id: row.id, partial: false };
+    }
   }
   const draft =
     drafts.find(

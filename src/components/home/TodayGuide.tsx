@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import type { getTodayGuide } from "@/lib/today";
 import { bikeLoggerHref } from "@/lib/timer-session";
 import {
@@ -34,25 +35,23 @@ function SessionCta({
 }) {
   if (draftId) {
     return (
-      <Link
+      <PendingWorkoutLink
         href={`/training/log/${draftId}`}
+        label={resumeLabel}
         data-prime-coach-audio
         className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-      >
-        {resumeLabel}
-      </Link>
+      />
     );
   }
   if (dayId) {
     return (
-      <Link
+      <PendingWorkoutLink
         href={startHref ?? bikeLoggerHref(dayId)}
+        label={startLabel}
         prefetch={false}
         data-prime-coach-audio
         className="touch-target mt-6 inline-flex items-center rounded-full bg-accent px-5 text-sm text-black"
-      >
-        {startLabel}
-      </Link>
+      />
     );
   }
   return (

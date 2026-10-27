@@ -306,6 +306,10 @@ describe("my workouts", () => {
       name: "Camp arms",
       timeZone: APP_TIMEZONE,
     });
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { performedAt: new Date("2026-09-01T18:00:00.000Z") },
+    });
 
     const now = new Date();
     const today = formatDayParam(now, APP_TIMEZONE);

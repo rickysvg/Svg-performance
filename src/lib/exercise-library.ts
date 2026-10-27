@@ -4,6 +4,7 @@
  */
 import type { LogMode } from "@/lib/exercise-log-mode";
 import { combatAsLibraryRows } from "@/lib/combat-library";
+import { fighterAsLibraryRows } from "@/lib/fighter-library";
 
 export const EXERCISE_CATEGORIES = [
   "lower",
@@ -30,6 +31,12 @@ export type LibraryExercise = {
   restSeconds: number;
   logMode: LogMode;
   notes: string;
+  /** Body region for swap ranking. Name heuristics run when this is empty. */
+  region?: string;
+  /** Movement pattern for swap ranking. Name heuristics run when this is empty. */
+  pattern?: string;
+  /** Equipment piece. Tie-break only, after the existing equipment rank. */
+  gear?: string;
   /** Mobility position figure. Counts as the image when there is no clip. */
   figureKey?: string;
   /** Low-confidence or untrimmed clips stay out of the member swap picker. */
@@ -102,8 +109,8 @@ function row(
 const EASY = "Easy range. Stop if a joint pinches.";
 
 const BASE_LIBRARY: LibraryExercise[] = [
-  row("Goblet squat", "lower", "gym", 4, "6", "0-2 RIR · Own the bottom.", 120, "load_reps", "Dumbbell or kettlebell at the chest."),
-  row("Pause goblet squat", "lower", "gym", 4, "5", "1-3 RIR · Pause at the bottom.", 120, "load_reps", "Two-count pause. No bounce."),
+  row("Goblet squat", "lower", "gym", 4, "6", "0-2 RIR · Own the bottom.", 90, "load_reps", "Dumbbell or kettlebell at the chest."),
+  row("Pause goblet squat", "lower", "gym", 4, "5", "1-3 RIR · Pause at the bottom.", 90, "load_reps", "Two-count pause. No bounce."),
   row("Romanian deadlift", "lower", "gym", 3, "6", "1-3 RIR · Flat back, hamstrings on every rep.", 90, "load_reps", "Soft knees. This is a hinge, not a squat."),
   row("Dumbbell Romanian deadlift", "lower", "gym", 3, "8", "1-3 RIR · Bells stay close to the legs.", 90, "load_reps", "Hinge until the hamstrings load."),
   row("Reverse lunge", "lower", "gym", 3, "8 / leg", "2-4 RIR · Front knee tracks over the toes.", 75, "load_reps", "Step back. Do not bounce out of the bottom."),
@@ -113,7 +120,7 @@ const BASE_LIBRARY: LibraryExercise[] = [
   row("Box step-up", "lower", "both", 3, "8 / leg", "2-4 RIR · Quiet step.", 60, "reps_only", "Low box. Control the way down."),
   row("Dumbbell hip thrust", "lower", "gym", 3, "8", "1-3 RIR · Ribs down, squeeze at the top.", 75, "load_reps", "Shoulders on a bench. Chin tucked."),
   row("Dumbbell lateral lunge", "lower", "gym", 3, "8 / side", "2-4 RIR · Sit into the hip.", 60, "load_reps", "Toes stay forward. The trail leg stays long."),
-  row("Trap-bar deadlift", "lower", "gym", 4, "5", "0-2 RIR · Flat back.", 120, "load_reps", "Hinge tester. Log reps and lbs."),
+  row("Trap-bar deadlift", "lower", "gym", 4, "5", "0-2 RIR · Flat back.", 90, "load_reps", "Hinge tester. Log reps and lbs."),
   row("Hip hinge", "lower", "none", 3, "8", "2-4 RIR · Push the hips back.", 60, "reps_only", "Hands on the hips. Shins stay nearly vertical."),
   row("Air squat", "lower", "none", 3, "10", "2-4 RIR · Whole foot down.", 60, "reps_only", "Sit between the hips. Knees track over the toes."),
   row("Pause air squat", "lower", "none", 3, "8", "2-4 RIR · Two-count pause.", 60, "reps_only", "Hold the bottom and stand without a bounce."),
@@ -122,7 +129,7 @@ const BASE_LIBRARY: LibraryExercise[] = [
   row("Single-leg glute bridge", "lower", "none", 3, "8 / leg", "2-4 RIR · Hips stay level.", 45, "reps_only", "One foot down. Pause at the top."),
   row("Lateral lunge", "lower", "none", 3, "8 / side", "2-4 RIR · Sit into the working hip.", 45, "reps_only", "Trail leg stays straight. Chest stays up."),
 
-  row("Dumbbell bench press", "upper_push", "gym", 4, "8", "0-2 RIR · Last rep slow and clean.", 120, "load_reps", "Two dumbbells. Do not bounce off the chest."),
+  row("Dumbbell bench press", "upper_push", "gym", 4, "8", "0-2 RIR · Last rep slow and clean.", 90, "load_reps", "Two dumbbells. Do not bounce off the chest."),
   row(
     "Single-arm dumbbell bench press",
     "upper_push",
@@ -130,11 +137,11 @@ const BASE_LIBRARY: LibraryExercise[] = [
     4,
     "6 / side",
     "2-3 RIR · Brace. Don’t let the torso rotate.",
-    120,
+    90,
     "load_reps",
     "One dumbbell. Brace. Don’t let the torso rotate. Work one side, then the other.",
   ),
-  row("Barbell bench press", "upper_push", "gym", 4, "6", "0-2 RIR · Bar to the lower chest.", 120, "load_reps", "Shoulder blades pinned. Feet drive the floor. Do not bounce the bar."),
+  row("Barbell bench press", "upper_push", "gym", 4, "6", "0-2 RIR · Bar to the lower chest.", 90, "load_reps", "Shoulder blades pinned. Feet drive the floor. Do not bounce the bar."),
   row("Overhead press", "upper_push", "gym", 3, "6", "1-3 RIR · Ribs down, lockout clean.", 90, "load_reps", "Bells or a bar. No lean-back to finish."),
   row("Single-arm overhead press", "upper_push", "gym", 3, "6 / side", "1-3 RIR · Brace, no side bend.", 75, "load_reps", "One bell. The ribs stay stacked."),
   row("Floor press", "upper_push", "gym", 4, "6", "1-3 RIR · Upper arms to the floor.", 90, "load_reps", "Limited range. Pause on the floor."),
@@ -174,7 +181,7 @@ const BASE_LIBRARY: LibraryExercise[] = [
   row("Plyo push-up", "explosive", "none", 3, "5", "3-5 RIR · Hands leave the floor.", 60, "reps_only", "Drop to the knees if the landing is loud."),
   row("Med-ball chest pass", "explosive", "gym", 3, "8", "3-5 RIR · Light ball, fast pass.", 60, "load_reps", "Pass into a wall. No pause at the chest."),
   row("Kettlebell swing", "explosive", "gym", 5, "8", "3-5 RIR · Snap the hips. Do not squat the bell.", 60, "load_reps", "Arms are a rope. The hips do the work."),
-  row("Banded kettlebell swing", "explosive", "gym", 4, "10", "3-5 RIR · Band behind you, hips snap.", 60, "timed", "Posterior power. Quality dies, the set ends."),
+  row("Banded kettlebell swing", "explosive", "gym", 4, "10", "3-5 RIR · Band behind you, hips snap.", 60, "load_reps", "Posterior power. Quality dies, the set ends."),
   row("Dumbbell high pull", "explosive", "gym", 3, "6", "3-5 RIR · Elbows high, light bells.", 60, "load_reps", "Jump a little. Do not turn it into an upright row grind."),
 
   row("Front plank", "core", "both", 3, "30 sec", "Hold — no weight", 45, "timed", "Ribs down, glutes on. Log the hold."),
@@ -216,8 +223,16 @@ const COMBAT_ROWS = combatAsLibraryRows().filter(
   (exercise) => !BASE_LIBRARY.some((existing) => existing.name === exercise.name),
 );
 
-/** App swaps plus the combat library. Hidden rows stay in the map for admin and for a direct lookup. */
-export const EXERCISE_LIBRARY: LibraryExercise[] = [...BASE_LIBRARY, ...COMBAT_ROWS];
+const TAKEN_NAMES = new Set(
+  [...BASE_LIBRARY, ...COMBAT_ROWS].map((exercise) => exercise.name.toLowerCase()),
+);
+
+const FIGHTER_ROWS = fighterAsLibraryRows().filter(
+  (exercise) => !TAKEN_NAMES.has(exercise.name.toLowerCase()),
+);
+
+/** App swaps, the combat library, and the general gym catalog. Hidden rows stay in the map for admin and for a direct lookup. */
+export const EXERCISE_LIBRARY: LibraryExercise[] = [...BASE_LIBRARY, ...COMBAT_ROWS, ...FIGHTER_ROWS];
 
 const BY_NAME = new Map(EXERCISE_LIBRARY.map((exercise) => [exercise.name, exercise]));
 

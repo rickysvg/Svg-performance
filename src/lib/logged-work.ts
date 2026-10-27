@@ -148,6 +148,12 @@ export function leadingPlanCount(text: string | null | undefined) {
 }
 
 const PLAN_TIME_UNIT = "(minutes|minute|mins|min|seconds|second|secs|sec)";
+/** A metre or yard walk is not a rep count. Empty timed logs use this hold. */
+const DISTANCE_HOLD_SECONDS = 30;
+
+function isDistanceDose(text: string) {
+  return /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i.test(text);
+}
 
 function secondsForUnit(count: number, unit: string) {
   const safe = Math.min(200, count);
@@ -160,6 +166,7 @@ function secondsForUnit(count: number, unit: string) {
  * "6 / side" is 6 reps. "3x5" and "3×5" are 5 reps, not 3.
  * "3:00" is 180 seconds. "1.5 min" is 90. "2 x 30 sec" is 30 seconds per set.
  * "1 min" is 60 seconds. A range such as "30–40 sec" uses the low end.
+ * "20m" is a distance walk, logged as 30 seconds rather than 20 reps.
  */
 export function planWorkFromText(text: string | null | undefined): {
   reps: number | null;
@@ -188,6 +195,7 @@ export function planWorkFromText(text: string | null | undefined): {
       return { reps: null, seconds: secondsForUnit(count, timed[2] ?? "") };
     }
   }
+  if (isDistanceDose(raw)) return { reps: null, seconds: DISTANCE_HOLD_SECONDS };
   const setsByReps = raw.match(/(\d+)\s*[x×]\s*(\d+)/i);
   if (setsByReps) {
     const reps = leadingPlanCount(setsByReps[2]);

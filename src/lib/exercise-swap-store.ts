@@ -15,6 +15,7 @@ import {
   type SwapScope,
 } from "@/lib/exercise-swap";
 import { highestSetNumber } from "@/lib/logger-insert";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import { setHasLoggedWork } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
@@ -57,7 +58,7 @@ function toRecord(row: {
     sets: row.sets,
     reps: row.reps,
     loadText: row.loadText,
-    restSeconds: row.restSeconds,
+    restSeconds: clampSetRestSeconds(row.restSeconds),
     logMode: row.logMode,
     notes: row.notes,
     retiredNames: parseRetired(row.retiredNamesJson),

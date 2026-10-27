@@ -140,7 +140,7 @@ describe("harder fighter lift days", () => {
     expect(heavy.reps).toBe("3");
     expect(rirFromLoadText(heavy.loadText)).toBe("0-1 RIR");
     expect(heavy.loadText).toMatch(/88%/);
-    expect(heavy.restSeconds).toBe(150);
+    expect(heavy.restSeconds).toBe(90);
     expect(heavy.notes).not.toMatch(/@@weeks/);
 
     const thursday = exercisesFor(11).find((row) => row.name === "Single-leg RDL")!;

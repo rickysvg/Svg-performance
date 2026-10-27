@@ -10,6 +10,7 @@ import { formatStoredTags, tagsForExercise } from "../src/lib/exercise-tags";
 import { formVideoFieldsFor } from "../src/lib/form-videos";
 import { LEARN_CATALOG, lessonSeedFromCatalog } from "../src/lib/learn-catalog";
 import { fallbackLogMode, isWeightedShadowName } from "../src/lib/exercise-log-mode";
+import { clampSetRestSeconds } from "../src/lib/set-rest";
 
 function bikeProgramDay(session: (typeof BIKE_SESSIONS)[number]) {
   const scaled = scaleBikeSession(session, "beginner");
@@ -201,6 +202,9 @@ async function tagSeededExerciseModes() {
           data.reps = "2:00";
           data.restSeconds = 90;
         }
+        const nextRest = data.restSeconds ?? exercise.restSeconds;
+        const roundRest = logMode === "timed_round" && !isBikeIntervalName(exercise.name);
+        if (!roundRest) data.restSeconds = clampSetRestSeconds(nextRest);
         await prisma.programExercise.update({ where: { id: exercise.id }, data });
       }
     }

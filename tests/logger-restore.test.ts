@@ -139,6 +139,9 @@ describe("save payload", () => {
     expect(planWorkFromText("1.5min")).toEqual({ reps: null, seconds: 90 });
     expect(planWorkFromText("2 x 30 sec")).toEqual({ reps: null, seconds: 30 });
     expect(planWorkFromText("2x30sec")).toEqual({ reps: null, seconds: 30 });
+    expect(planWorkFromText("20m")).toEqual({ reps: null, seconds: 30 });
+    expect(planWorkFromText("20 m / side")).toEqual({ reps: null, seconds: 30 });
+    expect(planWorkFromText("30 sec")).toEqual({ reps: null, seconds: 30 });
     const minuteKey = prescriptionSlotKey({
       exerciseName: "Plank",
       reps: "1 min",

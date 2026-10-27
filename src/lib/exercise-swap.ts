@@ -17,6 +17,7 @@ import { isLogMode, resolveLogMode, type LogMode } from "@/lib/exercise-log-mode
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { mesoBlockForWeekIndex } from "@/lib/mesocycle";
 import { mergeLoadText, rirFromLoadText } from "@/lib/rir";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import { dayKey, mondayOfZoned } from "@/lib/timezone";
 
 export type SwapScope = "session" | "block";
@@ -119,7 +120,7 @@ function libraryPrescription(exercise: LibraryExercise): SwapPrescription {
     sets: clampSets(exercise.sets),
     reps: exercise.reps,
     loadText: exercise.loadText,
-    restSeconds: Math.max(0, exercise.restSeconds),
+    restSeconds: clampSetRestSeconds(exercise.restSeconds),
     logMode: exercise.logMode,
     notes: exercise.notes,
     category: exercise.category,
@@ -177,7 +178,7 @@ export function sensiblePrescription(
     sets: clampSets(source.sets),
     reps,
     loadText,
-    restSeconds: Math.max(0, source.restSeconds),
+    restSeconds: clampSetRestSeconds(source.restSeconds),
   };
 }
 
@@ -232,7 +233,7 @@ export function applySwapsToExercises<T extends Swappable>(
       sets: swap.sets,
       reps: swap.reps,
       loadText: swap.loadText,
-      restSeconds: swap.restSeconds,
+      restSeconds: clampSetRestSeconds(swap.restSeconds),
       logMode: mode,
       notes: swap.notes,
       formVideoUrl: video.formVideoUrl,
@@ -250,7 +251,7 @@ export function swapSlotsFor(programmed: Swappable[], shown: Swappable[]): SwapS
       sets: current.sets,
       reps: current.reps,
       loadText: current.loadText ?? "",
-      restSeconds: current.restSeconds,
+      restSeconds: clampSetRestSeconds(current.restSeconds),
       logMode: current.logMode ?? resolveLogMode({ name: current.name, reps: current.reps }),
       notes: current.notes ?? "",
     };
@@ -286,6 +287,21 @@ function swapSource(name: string) {
   return { raw, current, near };
 }
 
+/**
+ * Band and bodyweight shoulder abduction. Neck lateral flexion is a different region.
+ * Used when a no-equipment lateral raise would otherwise fall through to handstands.
+ */
+function isShoulderDeltAlternative(exercise: LibraryExercise) {
+  if (exercise.region === "neck" || exercise.pattern === "neck" || /\bneck\b/i.test(exercise.name)) return false;
+  if (exercise.pattern === "shoulder-raise") return true;
+  return /face pull|pull-apart|lateral raise|rear delt|y-raise/i.test(exercise.name);
+}
+
+function isOverheadOrHorizontalPress(exercise: LibraryExercise) {
+  const pattern = exercise.pattern || movementTarget(exercise.name);
+  return pattern === "overhead-push" || pattern === "horizontal-push";
+}
+
 /** Same movement pattern, or an explicit swap either way. A shared tag is not enough. */
 export function isGoodSwapMatch(name: string, exercise: LibraryExercise) {
   const { raw, current, near } = swapSource(name);
@@ -300,6 +316,8 @@ export function isGoodSwapMatch(name: string, exercise: LibraryExercise) {
  */
 export function movementTarget(name: string): string {
   const canonical = canonicalExerciseName(name);
+  const listed = libraryExercise(canonical)?.pattern;
+  if (listed) return listed;
   const n = canonical.toLowerCase();
   if (/90\/90|hip circle|hip switch|butterfly|\bpigeon\b/.test(n)) return "hip-rotation";
   if (/frog|couch stretch|deep squat hold|knee to chest|leg raise/.test(n)) return "hip-opener";
@@ -321,6 +339,8 @@ export function movementTarget(name: string): string {
 
 /** Body region used for the Best badge. Hip openers share a region; a squat does not. */
 export function movementRegion(name: string): string {
+  const listed = libraryExercise(canonicalExerciseName(name))?.region;
+  if (listed) return listed;
   const target = movementTarget(name);
   if (target === "hip-rotation" || target === "hip-opener" || target === "hamstring") return "hip";
   if (target === "horizontal-push" || target === "overhead-push") return "push";
@@ -363,18 +383,21 @@ export function bestSwapReplacements(input: {
   }
   const sourceTarget = movementTarget(near?.name ?? current);
   const sourceRegion = movementRegion(near?.name ?? current);
+  const noneShoulderRaise = input.equipment === "none" && sourceTarget === "shoulder-raise";
   const ranked = EXERCISE_LIBRARY.filter((exercise) => {
     if (exercise.memberHidden) return false;
     if (exercise.name === raw) return false;
     if (exercise.name === current && raw === current) return false;
     if (!equipmentFits(exercise, input.equipment)) return false;
+    if (noneShoulderRaise && isShoulderDeltAlternative(exercise)) return true;
     return isGoodSwapMatch(input.name, exercise);
   })
     .map((exercise) => {
       let score = 0;
       const samePattern = Boolean(near && exercise.category === near.category);
-      const sameTarget = movementTarget(exercise.name) === sourceTarget;
-      const sameRegion = movementRegion(exercise.name) === sourceRegion;
+      const delt = noneShoulderRaise && isShoulderDeltAlternative(exercise);
+      const sameTarget = movementTarget(exercise.name) === sourceTarget || delt;
+      const sameRegion = movementRegion(exercise.name) === sourceRegion || delt;
       if (preferred.has(exercise.name)) score += 80;
       if (samePattern) score += 40;
       const shared = tagsForExercise(exercise.name).filter((tag) => sourceTags.has(tag.toLowerCase())).length;
@@ -383,7 +406,8 @@ export function bestSwapReplacements(input: {
       if (logged != null) score += Math.max(8, 28 - logged * 4);
       const equipmentRank =
         near && exercise.equipment === near.equipment ? 0 : exercise.equipment === "both" || near?.equipment === "both" ? 1 : 2;
-      return { exercise, score, samePattern, sameTarget, sameRegion, equipmentRank };
+      const gearRank = near?.gear && exercise.gear ? (exercise.gear === near.gear ? 0 : 1) : 0;
+      return { exercise, score, samePattern, sameTarget, sameRegion, equipmentRank, gearRank };
     })
     .sort(
       (a, b) =>
@@ -392,8 +416,13 @@ export function bestSwapReplacements(input: {
         Number(b.samePattern) - Number(a.samePattern) ||
         b.score - a.score ||
         a.equipmentRank - b.equipmentRank ||
+        a.gearRank - b.gearRank ||
         a.exercise.name.localeCompare(b.exercise.name),
     );
   const regional = ranked.filter((row) => row.sameRegion);
-  return (regional.length > 0 ? regional : ranked).slice(0, limit).map((row) => row.exercise);
+  const pool = regional.length > 0 ? regional : ranked;
+  const delts = noneShoulderRaise
+    ? pool.filter((row) => isShoulderDeltAlternative(row.exercise) && !isOverheadOrHorizontalPress(row.exercise))
+    : [];
+  return (delts.length > 0 ? delts : pool).slice(0, limit).map((row) => row.exercise);
 }

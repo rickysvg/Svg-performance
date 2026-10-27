@@ -35,6 +35,41 @@ const lunge = {
 };
 
 describe("exercise swap prescriptions", () => {
+  it("caps a swapped rest that was written above 90 seconds", () => {
+    const capped = sensiblePrescription(
+      { ...lunge, restSeconds: 120 },
+      "Walking lunge",
+    );
+    expect(capped?.restSeconds).toBe(90);
+    const library = sensiblePrescription(
+      { ...lunge, name: "Air squat", logMode: "reps_only", restSeconds: 120 },
+      "Trap-bar deadlift",
+    );
+    expect(library?.restSeconds).toBeLessThanOrEqual(90);
+    expect(libraryExercise("Single-arm dumbbell bench press")?.restSeconds).toBeLessThanOrEqual(90);
+    const shown = applySwapsToExercises(
+      [{ ...lunge, name: "Reverse lunge" }],
+      [
+        {
+          originalName: "Reverse lunge",
+          replacementName: "Walking lunge",
+          scope: "block",
+          workoutSessionId: "",
+          blockKey: "2026-10-12:A",
+          sets: 3,
+          reps: "8 / leg",
+          loadText: lunge.loadText,
+          restSeconds: 180,
+          logMode: "load_reps",
+          notes: "",
+          retiredNames: [],
+        },
+      ],
+      { blockKey: "2026-10-12:A" },
+    );
+    expect(shown[0]?.restSeconds).toBe(90);
+  });
+
   it("keeps sets, RIR, and rest for the same kind of work", () => {
     const same = sensiblePrescription(lunge, "Walking lunge");
     expect(same).toMatchObject({

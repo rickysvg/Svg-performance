@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getDayPlanForUser } from "@/lib/my-workouts";
@@ -45,15 +46,14 @@ export default async function DayPlanPreviewPage({
           </li>
         ))}
       </ul>
-      <Link
+      <PendingWorkoutLink
         href={startHref}
+        label={verb}
         prefetch={false}
         data-start-custom
         data-prime-coach-audio
         className="touch-target flex w-full items-center justify-center rounded-full bg-accent font-semibold text-black"
-      >
-        {verb}
-      </Link>
+      />
     </main>
   );
 }

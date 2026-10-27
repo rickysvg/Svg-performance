@@ -1,4 +1,5 @@
 import { continuePartialWorkoutAction } from "@/app/actions/workouts";
+import { PendingSubmitButton } from "@/components/training/PendingWorkoutControl";
 
 export function ContinueWorkoutButton({
   workoutId,
@@ -23,8 +24,8 @@ export function ContinueWorkoutButton({
   return (
     <form action={continuePartialWorkoutAction} className="relative z-30 block w-full scroll-mt-20">
       <input type="hidden" name="workoutId" value={workoutId} />
-      <button
-        type="submit"
+      <PendingSubmitButton
+        label={label}
         data-resume-workout
         data-session-continue="partial"
         data-prime-coach-audio
@@ -34,9 +35,7 @@ export function ContinueWorkoutButton({
         data-testid={testId}
         data-resume-plan={planId}
         className={`relative z-30 block w-full ${className}`}
-      >
-        {label}
-      </button>
+      />
     </form>
   );
 }

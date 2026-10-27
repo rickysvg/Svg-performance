@@ -1915,9 +1915,9 @@ describe("today and past interval logs", () => {
       where: { id: saved.sessionId },
       include: { sets: { orderBy: { setNumber: "asc" } } },
     });
-    expect(row.sets[0]?.prescriptionKey).toBe("round:bag:60:2:120:3");
-    expect(roundHistoryLine({ sets: row.sets })).toBe("6 rounds · 3:00 round · 1:00 rest · 24:00 total");
-    expect((await readWorkoutTimerFields(saved.sessionId, prisma)).elapsedSeconds).toBe(1440);
+    expect(row.sets[0]?.prescriptionKey).toBe("round:bag:60:2:90:3");
+    expect(roundHistoryLine({ sets: row.sets })).toBe("6 rounds · 3:00 round · 1:00 rest · 23:30 total");
+    expect((await readWorkoutTimerFields(saved.sessionId, prisma)).elapsedSeconds).toBe(1410);
   });
 
   it("keeps a one-round ride's duration when the edit is saved unchanged", async () => {

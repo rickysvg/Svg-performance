@@ -5,6 +5,7 @@ import {
   completedProgramDayIdsOnDay,
   countWorkoutSessionsForUser,
   finalizePastLoggedDrafts,
+  isPastEmptyDraft,
   listDraftSessionsForUser,
   listResumableSessionsForUser,
 } from "@/lib/workouts";
@@ -22,6 +23,7 @@ import { blockWeekLabel } from "@/lib/plan-structure";
 import { isDeloadWeekIndex, isTestingWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import { bikeZoneForDayNumber, emphasisAccessoryLine } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
 import { normalizeWeightAccess } from "@/lib/weight-access";
@@ -64,7 +66,7 @@ import { FightCampOptIn } from "@/components/training/FightCampOptIn";
 import { dayKey, memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
 import { ProPill } from "@/components/pro/ProPill";
 import { formatCalendarHeading } from "@/lib/calendar";
-import { formatDayParam, parseDayParam } from "@/lib/home";
+import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getSessionIntentSeqForUser, getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { getSparringLog, sparringDateError } from "@/lib/outside-log";
 import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
@@ -210,12 +212,26 @@ export default async function TrainingPage({
   const todayKey = dayKey(now, tz);
   const draftsOn = (day: string) => drafts.filter((row) => sessionCompletionDay(row, tz) === day);
   const todayDrafts = draftsOn(todayKey);
+  const todayPlanDayIds = new Set(
+    todaySessions.flatMap((session) => (session.dayId ? [session.dayId] : [])),
+  );
   const resumeDraft =
     todayDrafts.find(
       (row) => draftHasResumeWork(row.sets) && (!row.programDayId || !doneToday.has(row.programDayId)),
     ) ?? null;
+  const openPlanDraft =
+    drafts.find(
+      (row) =>
+        row.programDayId != null &&
+        todayPlanDayIds.has(row.programDayId) &&
+        !doneToday.has(row.programDayId) &&
+        !isPastEmptyDraft(row, todayKey, tz) &&
+        (sessionCompletionDay(row, tz) === todayKey || sameLocalDay(row.performedAt, now, tz)),
+    ) ?? null;
   const resumeId =
-    todayAction?.verb === "Resume" && todayAction.draftId ? todayAction.draftId : resumeDraft?.id;
+    todayAction?.verb === "Resume" && todayAction.draftId
+      ? todayAction.draftId
+      : (resumeDraft?.id ?? openPlanDraft?.id);
   const inProgressDay = resumeDraft ? sessionCompletionDay(resumeDraft, tz) : undefined;
   const loggedRange = carouselLoggedRange(now, tz);
   const carouselKeys = weeks.flatMap((week) => week.days.map((day) => day.dayParam));
@@ -497,17 +513,16 @@ export default async function TrainingPage({
           primary
         />
       ) : trainCta ? (
-        <Link
+        <PendingWorkoutLink
           href={trainCta.href}
-          prefetch={trainCta.verb === "Start" ? false : undefined}
+          prefetch={false}
+          label={trainCta.verb}
           data-primary-train-cta
           data-resume-workout={trainCta.verb === "Resume" ? "true" : undefined}
           data-start-today={trainCta.verb === "Start" ? "true" : undefined}
           data-prime-coach-audio
           className="relative z-30 flex w-full touch-target scroll-mt-20 items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
-        >
-          {trainCta.verb}
-        </Link>
+        />
       ) : null}
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">

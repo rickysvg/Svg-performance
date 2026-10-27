@@ -61,8 +61,9 @@ describe("round countdown and seconds steppers", () => {
     expect(stepSetRestSeconds(15, 1, 5)).toBe(20);
     expect(stepSetRestSeconds(20, -1, 5)).toBe(15);
     expect(stepSetRestSeconds(0, -1, 5)).toBe(0);
-    expect(stepSetRestSeconds(595, 1, 5)).toBe(600);
-    expect(stepSetRestSeconds(600, 1, 5)).toBe(600);
+    expect(stepSetRestSeconds(595, 1, 5)).toBe(90);
+    expect(stepSetRestSeconds(600, 1, 5)).toBe(90);
+    expect(stepSetRestSeconds(90, 1, 5)).toBe(90);
     expect(read("src/components/timer/TimerDurationSteppers.tsx")).toContain("stepSetRestSeconds(setRestSeconds, -1, stepSeconds)");
     const setRest = (setRestSeconds: number) =>
       renderToStaticMarkup(

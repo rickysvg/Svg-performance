@@ -124,12 +124,12 @@ describe("training scale bands", () => {
     });
     expect(intermediate.sets).toBe(4);
     expect(intermediate.loadText).toMatch(/last reps should slow/i);
-    expect(intermediate.restSeconds).toBeGreaterThanOrEqual(120);
-    expect(beginner.restSeconds).toBeGreaterThanOrEqual(120);
+    expect(intermediate.restSeconds).toBeGreaterThanOrEqual(90);
+    expect(beginner.restSeconds).toBeGreaterThanOrEqual(90);
     expect(advanced.sets).toBe(4);
     expect(advanced.reps).toBe("5–6");
     expect(advanced.loadText).toMatch(/heavy/i);
-    expect(advanced.restSeconds).toBe(120);
+    expect(advanced.restSeconds).toBe(90);
 
     const plank = scaleExercise(
       {

@@ -13,6 +13,7 @@ import {
   type MesoBlock,
 } from "@/lib/mesocycle";
 import { effortLoadText } from "@/lib/rir";
+import { clampSetRestSeconds } from "@/lib/set-rest";
 import {
   encodeWeekNotes,
   type CatalogSlot,
@@ -31,7 +32,7 @@ function dose(input: {
     sets: input.sets,
     reps: input.reps,
     loadText: effortLoadText(input.rir, input.note, input.percent),
-    restSeconds: input.rest,
+    restSeconds: clampSetRestSeconds(input.rest),
   };
 }
 
@@ -248,14 +249,14 @@ function monday(block: MesoBlock) {
           slot: "strength",
           main: true,
           notes: "Main lift. Pair it with the jump. Week 3 is the heavy week.",
-          weeks: mainWave(menu.mainReps, 150),
+          weeks: mainWave(menu.mainReps, 90),
         }),
         lift({
           sortOrder: 4,
           name: "Broad jump",
           intent: "Stick it",
           slot: "contrast",
-          notes: "Contrast for intermediate and advanced. Rest with the main lift, 2–3 min.",
+          notes: "Contrast for intermediate and advanced. Rest with the main lift, 90s.",
           weeks: same(4, "2", "3-5", "Bodyweight. Stick the landing.", 60),
         }),
         lift({
@@ -359,7 +360,7 @@ function tuesday(block: MesoBlock) {
                   120,
                   ["~75% of a 6-rep max", "~80% of a 6-rep max", "~85% of a 6-rep max"],
                 )
-              : mainWave(menu.pressReps, 120),
+              : mainWave(menu.pressReps, 90),
         }),
         lift({
           sortOrder: 5,

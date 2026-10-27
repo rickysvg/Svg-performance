@@ -12,7 +12,7 @@ import {
   withoutExerciseName,
 } from "@/lib/exercise-removal";
 import { listRemovalsForDay, removeSessionExercise, undoExerciseRemoval } from "@/lib/exercise-removal-store";
-import { applySwapsToExercises, trainingBlockKey } from "@/lib/exercise-swap";
+import { applySwapsToExercises, sensiblePrescription, trainingBlockKey } from "@/lib/exercise-swap";
 import { applyExerciseSwap, listSwapsForDay } from "@/lib/exercise-swap-store";
 import { visibleSessionDose } from "@/lib/finish-plan";
 import { isLogMode } from "@/lib/exercise-log-mode";
@@ -704,6 +704,10 @@ describe("persisted session removal", () => {
 
   it("stores the visible set count when a swap changes the set count and the card is removed", async () => {
     const user = await makeUser("swap-count@example.com");
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { experienceLevel: "intermediate" },
+    });
     const program = await getDemoProgram();
     const day = program.days.find((row) => row.dayNumber === 1)!;
     const scaled = scaleProgramDay(day, {
@@ -711,7 +715,22 @@ describe("persisted session removal", () => {
       programSlug: DEMO_PROGRAM_SLUG,
       weightAccess: "gym",
     });
-    const source = scaled.exercises.find((exercise) => exercise.sets !== 1) ?? scaled.exercises[0]!;
+    const source = scaled.exercises.find((exercise) => {
+      const next = sensiblePrescription(
+        {
+          name: exercise.name,
+          sets: exercise.sets,
+          reps: exercise.reps,
+          loadText: exercise.loadText,
+          restSeconds: exercise.restSeconds,
+          logMode: exercise.logMode,
+        },
+        "Hip circles",
+      );
+      return next != null && next.sets !== exercise.sets;
+    });
+    expect(source).toBeTruthy();
+    if (!source) throw new Error("missing swap source");
     const started = await startWorkoutFromDay({
       userId: user.id,
       programDayId: day.id,
