@@ -418,6 +418,8 @@ describe("exercise log modes", () => {
     );
     expect(resolveLogMode({ logMode: "reps_only", name: "Bear crawl", reps: "8" })).toBe("reps_only");
     expect(libraryExercise("Zercher carry")?.logMode).toBe("load_timed");
+    expect(libraryExercise("Zercher carry")?.reps).toBe("30 sec");
+    expect(libraryExercise("Zercher carry")?.restSeconds).toBe(90);
     expect(libraryExercise("Bear crawl")?.logMode).toBe("timed");
   });
 });

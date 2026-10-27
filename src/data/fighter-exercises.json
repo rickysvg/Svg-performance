@@ -240,11 +240,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Cable from low. Hinge the elbows only.",
-    "videoId": "sDxcKjCqXAo",
+    "videoId": "q-mZQep-LMI",
     "startSeconds": 0,
-    "seconds": 26,
-    "channel": "PureGym",
-    "videoTitle": "How To Do Skull Crushers"
+    "seconds": 41,
+    "channel": "josh cowan",
+    "videoTitle": "Exercise Tutorial - Cable Skull Crusher"
   },
   {
     "name": "V-bar triceps pushdown",
@@ -487,11 +487,11 @@
     "restSeconds": 90,
     "logMode": "load_reps",
     "notes": "Bench around 30 degrees. Bar to the upper chest.",
-    "videoId": "_NrQUYg7Nlc",
+    "videoId": "2jFFCy8JBU8",
     "startSeconds": 0,
     "seconds": 16,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Incline Dumbbell Bench Press"
+    "channel": "PureGym",
+    "videoTitle": "How To Do A Barbell Incline Bench Press"
   },
   {
     "name": "Decline dumbbell press",
@@ -798,6 +798,25 @@
     "videoTitle": "Onnit Tutorials | Dumbbell Lateral Raise Exercise"
   },
   {
+    "name": "Band lateral raise",
+    "category": "upper_push",
+    "equipment": "both",
+    "region": "shoulders",
+    "pattern": "shoulder-raise",
+    "gear": "band",
+    "sets": 3,
+    "reps": "12",
+    "loadText": "2-4 RIR · Clean reps.",
+    "restSeconds": 45,
+    "logMode": "load_reps",
+    "notes": "Stand on the band. Lead with the elbows. Stop at shoulder height.",
+    "videoId": "b9a9vsQzGxk",
+    "startSeconds": 0,
+    "seconds": 32,
+    "channel": "SKLZ",
+    "videoTitle": "Resistance Band Lateral Raises"
+  },
+  {
     "name": "Cable lateral raise",
     "category": "upper_push",
     "equipment": "gym",
@@ -867,11 +886,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Hold the machine and lean. A longer range at the bottom.",
-    "videoId": "XPPfnSEATJA",
+    "videoId": "lq7eLC30b9w",
     "startSeconds": 0,
-    "seconds": 19,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Dumbbell Lateral Raise"
+    "seconds": 10,
+    "channel": "Renaissance Periodization",
+    "videoTitle": "Leaning Cable Lateral Raise"
   },
   {
     "name": "Dumbbell front raise",
@@ -1684,11 +1703,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Palms up. Squeeze at the top.",
-    "videoId": "t2BmBSmcjco",
+    "videoId": "cBSD6mQIPQk",
     "startSeconds": 0,
-    "seconds": 18,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Dumbbell Preacher Curl"
+    "seconds": 36,
+    "channel": "Nuffield Health",
+    "videoTitle": "Dumbbell Bicep Curl | Nuffield Health"
   },
   {
     "name": "Incline dumbbell curl",
@@ -1855,11 +1874,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Neutral rope. Keep the thumbs up.",
-    "videoId": "nL3SedGG7X0",
+    "videoId": "1Quc_tOv97I",
     "startSeconds": 0,
-    "seconds": 19,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Dumbbell Hammer Curl"
+    "seconds": 88,
+    "channel": "ScottHermanFitness",
+    "videoTitle": "How To: Rope Hammer Curl"
   },
   {
     "name": "Zottman curl",
@@ -2330,11 +2349,11 @@
     "restSeconds": 45,
     "logMode": "load_timed",
     "notes": "Bell locked overhead. Ribs down.",
-    "videoId": "28BIZccT5fs",
+    "videoId": "zc31dJLJKYA",
     "startSeconds": 0,
-    "seconds": 9,
-    "channel": "OPEX Fitness",
-    "videoTitle": "Single Arm Farmers Carry - OPEX Exercise Library"
+    "seconds": 11,
+    "channel": "Reuben Ferguson",
+    "videoTitle": "Single Arm Kettlebell Overhead Carry (Waiter's Carry)"
   },
   {
     "name": "Pause back squat",
@@ -2349,11 +2368,11 @@
     "restSeconds": 90,
     "logMode": "load_reps",
     "notes": "Two-count pause in the hole. Stand without a bounce.",
-    "videoId": "39546_F-BGk",
+    "videoId": "nknf16JJTZo",
     "startSeconds": 0,
-    "seconds": 59,
-    "channel": "Catalyst Athletics",
-    "videoTitle": "Pause Quarter Back Squat | Olympic Weightlifting Exercise Library"
+    "seconds": 49,
+    "channel": "Barbell Logic",
+    "videoTitle": "The Paused Squat: Gym Shorts (How To)"
   },
   {
     "name": "Tempo back squat",
@@ -2387,11 +2406,11 @@
     "restSeconds": 75,
     "logMode": "load_reps",
     "notes": "Back on the pad. Knees track over the toes.",
-    "videoId": "zZj-ibOLJHs",
+    "videoId": "scs5XcsZuc8",
     "startSeconds": 0,
-    "seconds": 12,
+    "seconds": 25,
     "channel": "PureGym",
-    "videoTitle": "How To Do Smith Machine Hack Squats"
+    "videoTitle": "How To Do Hack Squats On The Hack Squat Machine"
   },
   {
     "name": "Pendulum squat machine",
@@ -2615,11 +2634,11 @@
     "restSeconds": 90,
     "logMode": "load_reps",
     "notes": "Pause just below the knees. Then stand.",
-    "videoId": "2bmuYtv4HbQ",
+    "videoId": "BMFm9PbmDCE",
     "startSeconds": 0,
-    "seconds": 17,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Romanian Deadlift"
+    "seconds": 15,
+    "channel": "E3 Rehab Exercise Library",
+    "videoTitle": "Conventional Barbell Romanian Deadlift with Pause"
   },
   {
     "name": "Cable Romanian deadlift",
@@ -2634,11 +2653,11 @@
     "restSeconds": 60,
     "logMode": "load_reps",
     "notes": "Cable from low. Hinge until the hamstrings load.",
-    "videoId": "QFbZevA7dps",
+    "videoId": "R6IQ-p560xE",
     "startSeconds": 0,
-    "seconds": 31,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Dumbbell Romanian Deadlift | Proper Form & Technique | NASM"
+    "seconds": 15,
+    "channel": "Profectus Performance",
+    "videoTitle": "Straight Bar Cable Romanian Deadlift"
   },
   {
     "name": "Kettlebell Romanian deadlift",
@@ -2729,11 +2748,11 @@
     "restSeconds": 90,
     "logMode": "load_reps",
     "notes": "Stand on a small plate. Same pull, longer range.",
-    "videoId": "TN3DHmd1Fe8",
+    "videoId": "PzoxegwRlOw",
     "startSeconds": 0,
     "seconds": 14,
-    "channel": "OPEX Fitness",
-    "videoTitle": "Conventional Deadlift - OPEX Exercise Library"
+    "channel": "Functional Bodybuilding",
+    "videoTitle": "Deficit Deadlift"
   },
   {
     "name": "Safety-bar good morning",
@@ -2748,11 +2767,11 @@
     "restSeconds": 75,
     "logMode": "load_reps",
     "notes": "Safety bar on the back. Hinge, do not squat it.",
-    "videoId": "Daq-wJMUnes",
+    "videoId": "zpE5bjEBu-8",
     "startSeconds": 0,
-    "seconds": 25,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to Do the Good Mornings"
+    "seconds": 17,
+    "channel": "Central Athlete",
+    "videoTitle": "Safety Bar Good Morning"
   },
   {
     "name": "Single-leg cable pull-through",
@@ -2881,11 +2900,11 @@
     "restSeconds": 75,
     "logMode": "load_reps",
     "notes": "Squeeze and pause at the top. Chin stays tucked.",
-    "videoId": "n2ADBoWmIGg",
+    "videoId": "9KaWTcE-sxk",
     "startSeconds": 0,
-    "seconds": 57,
-    "channel": "Bret Contreras Glute Guy",
-    "videoTitle": "Hip Thrust - Rest Pause Method"
+    "seconds": 14,
+    "channel": "AussieFitAthlete",
+    "videoTitle": "Pause Barbell Hip Thrust"
   },
   {
     "name": "Seated machine leg curl",
@@ -2919,11 +2938,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "One leg. The hip stays still.",
-    "videoId": "T0QNAcjnMuY",
+    "videoId": "b2t0LN9NiJQ",
     "startSeconds": 0,
-    "seconds": 29,
-    "channel": "Green Way Of Health iRnsca",
-    "videoTitle": "Standing Cable Hamstring Curl"
+    "seconds": 21,
+    "channel": "Gymleco",
+    "videoTitle": "HOW TO USE GYM MACHINES: Standing Leg Curl"
   },
   {
     "name": "Lying machine leg curl",
@@ -3507,12 +3526,12 @@
     "loadText": "2-4 RIR · Clean reps.",
     "restSeconds": 45,
     "logMode": "load_reps",
-    "notes": "Half-kneeling. Chop down across the body.",
-    "videoId": "fYVKVAbbFTM",
+    "notes": "Tall kneeling. Both knees down. Chop down across the body.",
+    "videoId": "JkfDvCjhheM",
     "startSeconds": 0,
-    "seconds": 36,
-    "channel": "Eric Cressey",
-    "videoTitle": "HighPerformanceHandbook.com: Half-Kneeling Cable Chop"
+    "seconds": 22,
+    "channel": "Matt Fisher",
+    "videoTitle": "High Kneeling Cable Woodchop"
   },
   {
     "name": "Dumbbell woodchop",
@@ -3641,11 +3660,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Band at chest height. Turn the hips, not the low back.",
-    "videoId": "SPeinjTytxM",
+    "videoId": "vjaa46lhPos",
     "startSeconds": 0,
-    "seconds": 24,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Activation Standing Shoulder Ext Rotation"
+    "seconds": 18,
+    "channel": "Joshua Chewning",
+    "videoTitle": "Standing Trunk Rotation w/ Band"
   },
   {
     "name": "Half-kneeling band rotation",
@@ -3660,11 +3679,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Band at chest height. Inside knee down.",
-    "videoId": "LpBNsIv2olo",
+    "videoId": "zzokBioky_E",
     "startSeconds": 0,
-    "seconds": 32,
-    "channel": "TurnFit - Vancouver Personal Trainers",
-    "videoTitle": "How to do a Half Kneeling Pallof Press"
+    "seconds": 33,
+    "channel": "Milestone Health and Performance",
+    "videoTitle": "Half Kneel Band Rotations"
   },
   {
     "name": "Split-stance Pallof press",
@@ -3774,11 +3793,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Press the band out and step away from the anchor.",
-    "videoId": "sToLSTEjsrk",
+    "videoId": "ZyaEVfglDZ8",
     "startSeconds": 0,
-    "seconds": 16,
-    "channel": "Upside Strength",
-    "videoTitle": "Cable Pallof Walkout - Upside Strength Exercise Library"
+    "seconds": 12,
+    "channel": "A-Z trening",
+    "videoTitle": "Banded pallof press walk out"
   },
   {
     "name": "Weighted Russian twist",
@@ -3945,11 +3964,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Pad on the chest. Curl, do not yank the handles.",
-    "videoId": "lrqfw0n_GXI",
+    "videoId": "VtrDTzDvNFU",
     "startSeconds": 0,
-    "seconds": 21,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Core Ball Crunch"
+    "seconds": 66,
+    "channel": "Club Connect",
+    "videoTitle": "Abdominal Crunch Technogym Element"
   },
   {
     "name": "Decline sit-up",
@@ -4116,11 +4135,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Hold the end of the bar. Bend to the side.",
-    "videoId": "ltVi1F5SBkE",
+    "videoId": "CelMjCqEEKg",
     "startSeconds": 0,
-    "seconds": 25,
-    "channel": "Rachel Scheer",
-    "videoTitle": "How to: Dumbbell Side Bends"
+    "seconds": 23,
+    "channel": "Fitness Wild",
+    "videoTitle": "Landmine Side Bends Instructional"
   },
   {
     "name": "Dead bug with dumbbell",
@@ -4135,11 +4154,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Bell over the chest. Reach the free arm and the opposite leg.",
-    "videoId": "9RK9UUgKIQE",
+    "videoId": "oSExv5Iiu80",
     "startSeconds": 0,
-    "seconds": 11,
-    "channel": "PureGym",
-    "videoTitle": "How To Do Deadbugs"
+    "seconds": 25,
+    "channel": "Shift Human Performance - Coach Jen Kates",
+    "videoTitle": "Dead Bug with Dumbbell"
   },
   {
     "name": "Cable side bend",
@@ -4458,11 +4477,11 @@
     "restSeconds": 60,
     "logMode": "reps_only",
     "notes": "Step off a low box. Stick the landing. Do not rebound yet.",
-    "videoId": "1gwF8c3ZlD0",
+    "videoId": "GZLyZCqF8BQ",
     "startSeconds": 0,
-    "seconds": 17,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Depth Jump Transverse"
+    "seconds": 66,
+    "channel": "Catalyst Athletics",
+    "videoTitle": "Depth Drop - Olympic Weightlifting Exercise Library"
   },
   {
     "name": "Skater hop",
@@ -5161,11 +5180,11 @@
     "restSeconds": 20,
     "logMode": "reps_only",
     "notes": "Foot on a low box. Rock the hips, do not bounce the knee.",
-    "videoId": "ksd36rrxgtE",
+    "videoId": "7JzW8z2Z0n4",
     "startSeconds": 0,
-    "seconds": 25,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Activation Medial Hamstring"
+    "seconds": 49,
+    "channel": "probaseballstrength",
+    "videoTitle": "Standing Hamstring Floss"
   },
   {
     "name": "Cat-camel",
@@ -5826,11 +5845,11 @@
     "restSeconds": 45,
     "logMode": "reps_only",
     "notes": "Chest down, stand, then a long jump. Soft landing.",
-    "videoId": "UTO-GzRXF-Q",
+    "videoId": "q7FF-rVgSa0",
     "startSeconds": 0,
-    "seconds": 79,
-    "channel": "Wolverson Fitness",
-    "videoTitle": "Get The CORRECT Burpee Broad Jump Form for HYROX / Top Pro Tips"
+    "seconds": 17,
+    "channel": "Marcus Filly",
+    "videoTitle": "Burpee Broad Jump"
   },
   {
     "name": "Hack squat",

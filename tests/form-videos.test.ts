@@ -7,6 +7,7 @@ import { findSkillProgram, getDemoProgram } from "@/lib/programs";
 import {
   DEMO_FORM_VIDEOS,
   FORM_VIDEO_SHORT_MAX_SECONDS,
+  formClipWindow,
   isYoutubeFormUrl,
   isYoutubeWatchUrl,
   lookupFormVideo,
@@ -84,6 +85,14 @@ describe("DEMO form videos", () => {
         expect(entry.seconds, name).toBeLessThanOrEqual(FORM_VIDEO_SHORT_MAX_SECONDS);
         expect(entry.seconds, name).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it("trims the two long mobility clips to a 90 second window", () => {
+    for (const name of ["Chair-supported slow roundhouse", "Head-to-toe joint circles"]) {
+      const entry = DEMO_FORM_VIDEOS[name];
+      expect(entry?.seconds, name).toBe(90);
+      expect(formClipWindow(entry?.url ?? ""), name).toEqual({ start: 0, end: 90 });
     }
   });
 

@@ -799,10 +799,10 @@ const MOBILITY_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   "Hip circles": clip("https://youtu.be/J0oKshD0Ky8", 42, "Dr Christopher Notley", "Hip circles"),
   "Side leg raise": clip("https://youtu.be/6b1hu6iSqok", 22, "Joanna Soh", "Side leg raise"),
   "Back leg raise": clip("https://youtu.be/pn2EZjEE_ZU", 49, "Leap Fitness", "Back leg raise"),
-  // TODO: human review — 198s, low-subscriber channel. Start at 0 so the short-clip rule passes.
+  // Opening 90s of the 198s upload. Chapter markers were not available.
   "Chair-supported slow roundhouse": clip(
-    "https://youtu.be/Wzb88YW3_Ro?t=0",
-    198,
+    "https://youtu.be/Wzb88YW3_Ro?t=0&end=90",
+    90,
     "The House Of Muay Thai",
     "Chair roundhouse",
   ),
@@ -821,10 +821,10 @@ const MOBILITY_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   // TODO: human review — plow end only. Advanced.
   "Quadruped twist to plow": clip("https://youtu.be/cVOCI43RjH4", 49, "Happy Back Yoga", "Plow"),
   "Slow nasal breathing": clip("https://youtu.be/Mg2ar-7_HfA", 78, "NewYork-Presbyterian Hospital", "Diaphragmatic breathing"),
-  // TODO: human review — 126s, low-subscriber channel.
+  // Opening 90s of the 126s head-to-toe flow. Chapter markers were not available.
   "Head-to-toe joint circles": clip(
-    "https://youtu.be/3301wCeUx0c?t=0",
-    126,
+    "https://youtu.be/3301wCeUx0c?t=0&end=90",
+    90,
     "Stephen Reiners",
     "Joint circles",
   ),

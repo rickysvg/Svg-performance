@@ -287,6 +287,21 @@ function swapSource(name: string) {
   return { raw, current, near };
 }
 
+/**
+ * Band and bodyweight shoulder abduction. Neck lateral flexion is a different region.
+ * Used when a no-equipment lateral raise would otherwise fall through to handstands.
+ */
+function isShoulderDeltAlternative(exercise: LibraryExercise) {
+  if (exercise.region === "neck" || exercise.pattern === "neck" || /\bneck\b/i.test(exercise.name)) return false;
+  if (exercise.pattern === "shoulder-raise") return true;
+  return /face pull|pull-apart|lateral raise|rear delt|y-raise/i.test(exercise.name);
+}
+
+function isOverheadOrHorizontalPress(exercise: LibraryExercise) {
+  const pattern = exercise.pattern || movementTarget(exercise.name);
+  return pattern === "overhead-push" || pattern === "horizontal-push";
+}
+
 /** Same movement pattern, or an explicit swap either way. A shared tag is not enough. */
 export function isGoodSwapMatch(name: string, exercise: LibraryExercise) {
   const { raw, current, near } = swapSource(name);
@@ -368,18 +383,21 @@ export function bestSwapReplacements(input: {
   }
   const sourceTarget = movementTarget(near?.name ?? current);
   const sourceRegion = movementRegion(near?.name ?? current);
+  const noneShoulderRaise = input.equipment === "none" && sourceTarget === "shoulder-raise";
   const ranked = EXERCISE_LIBRARY.filter((exercise) => {
     if (exercise.memberHidden) return false;
     if (exercise.name === raw) return false;
     if (exercise.name === current && raw === current) return false;
     if (!equipmentFits(exercise, input.equipment)) return false;
+    if (noneShoulderRaise && isShoulderDeltAlternative(exercise)) return true;
     return isGoodSwapMatch(input.name, exercise);
   })
     .map((exercise) => {
       let score = 0;
       const samePattern = Boolean(near && exercise.category === near.category);
-      const sameTarget = movementTarget(exercise.name) === sourceTarget;
-      const sameRegion = movementRegion(exercise.name) === sourceRegion;
+      const delt = noneShoulderRaise && isShoulderDeltAlternative(exercise);
+      const sameTarget = movementTarget(exercise.name) === sourceTarget || delt;
+      const sameRegion = movementRegion(exercise.name) === sourceRegion || delt;
       if (preferred.has(exercise.name)) score += 80;
       if (samePattern) score += 40;
       const shared = tagsForExercise(exercise.name).filter((tag) => sourceTags.has(tag.toLowerCase())).length;
@@ -402,5 +420,9 @@ export function bestSwapReplacements(input: {
         a.exercise.name.localeCompare(b.exercise.name),
     );
   const regional = ranked.filter((row) => row.sameRegion);
-  return (regional.length > 0 ? regional : ranked).slice(0, limit).map((row) => row.exercise);
+  const pool = regional.length > 0 ? regional : ranked;
+  const delts = noneShoulderRaise
+    ? pool.filter((row) => isShoulderDeltAlternative(row.exercise) && !isOverheadOrHorizontalPress(row.exercise))
+    : [];
+  return (delts.length > 0 ? delts : pool).slice(0, limit).map((row) => row.exercise);
 }
