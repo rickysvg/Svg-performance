@@ -14,6 +14,7 @@ import {
 } from "@/lib/workouts";
 import { scaleProgramDay } from "@/lib/training-scale";
 import { APP_TIMEZONE } from "@/lib/timezone";
+import { withPrescribedHold } from "@/lib/logged-work";
 
 describe("swap search must not finish the workout", () => {
   it("treats Enter in a text field as an accidental SAVE", () => {
@@ -27,6 +28,33 @@ describe("swap search must not finish the workout", () => {
 });
 
 describe("mid-workout swap", () => {
+  it("prefills a planned side plank and keeps a logged hold", () => {
+    expect(
+      withPrescribedHold(
+        { exerciseName: "Side plank", durationSeconds: null, logMode: "timed" },
+        "20 sec / side",
+      ).durationSeconds,
+    ).toBe(20);
+    expect(
+      withPrescribedHold(
+        { exerciseName: "Side plank", durationSeconds: 45, logMode: "timed" },
+        "20 sec / side",
+      ).durationSeconds,
+    ).toBe(45);
+    expect(
+      withPrescribedHold(
+        { exerciseName: "Suitcase carry", durationSeconds: null, logMode: "load_timed" },
+        "20 m / side",
+      ).durationSeconds,
+    ).toBeNull();
+    expect(
+      withPrescribedHold(
+        { exerciseName: "Zercher carry", durationSeconds: null, logMode: "load_timed" },
+        "30 sec",
+      ).durationSeconds,
+    ).toBe(30);
+  });
+
   it("prefills the prescribed seconds on every swapped timed set", () => {
     const merged = mergeReplacementSets(
       [1, 2, 3].map((setNumber) => ({

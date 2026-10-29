@@ -139,17 +139,25 @@ export const PROGRESS_HISTORY_DAYS = 52 * 7;
 
 export async function listWorkoutSessionsForUser(
   userId: string,
-  range?: { since?: Date; take?: number; recentDays?: number },
+  range?: { since?: Date; until?: Date; take?: number; recentDays?: number },
 ) {
   const since =
     range?.since ??
     (range?.recentDays != null
       ? new Date(Date.now() - range.recentDays * 86_400_000)
       : undefined);
+  const until = range?.until;
   return prisma.workoutSession.findMany({
     where: {
       userId,
-      ...(since ? { performedAt: { gte: since } } : {}),
+      ...(since || until
+        ? {
+            performedAt: {
+              ...(since ? { gte: since } : {}),
+              ...(until ? { lt: until } : {}),
+            },
+          }
+        : {}),
     },
     orderBy: { performedAt: "desc" },
     ...(range?.take != null ? { take: range.take } : {}),

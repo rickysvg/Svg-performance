@@ -204,9 +204,28 @@ export function planWorkFromText(text: string | null | undefined): {
   return { reps: leadingPlanCount(raw), seconds: null };
 }
 
+/** Seconds to show in a timed set row before the member edits it. A logged hold stays. */
+export function withPrescribedHold<
+  T extends {
+    exerciseName: string;
+    durationSeconds?: number | null;
+    logMode?: string | null;
+    prescriptionKey?: string | null;
+  },
+>(set: T, plannedReps?: string | null): T {
+  if (set.durationSeconds != null && set.durationSeconds > 0) return set;
+  const reps = plannedReps || repsTextFromPrescriptionKey(set.prescriptionKey);
+  const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName, reps });
+  if (mode !== "timed" && mode !== "load_timed") return set;
+  const hold = prescribedHoldSeconds(reps, mode);
+  if (hold == null) return set;
+  return { ...set, durationSeconds: hold };
+}
+
 /** Seconds to show in a timed set row before the member edits it. */
 export function prescribedHoldSeconds(reps: string | null | undefined, logMode?: string | null) {
   if (logMode !== "timed" && logMode !== "load_timed" && logMode !== "timed_round") return null;
+  if (isDistanceDose(String(reps ?? ""))) return null;
   const seconds = planWorkFromText(reps).seconds;
   if (seconds == null || seconds <= 0) return null;
   return seconds;

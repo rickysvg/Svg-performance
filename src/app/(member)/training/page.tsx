@@ -450,6 +450,8 @@ export default async function TrainingPage({
         level={levelOverride}
         moves={moves}
         intentSeqs={intentSeqs}
+        selectedDay={dayParam}
+        weeks={markedWeeks}
       >
       <WeekStrip
         days={markedWeeks.find((week) => week.offset === 0)?.days ?? []}
