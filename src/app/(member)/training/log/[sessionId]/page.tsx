@@ -64,12 +64,32 @@ export default async function WorkoutLogPage({
     competitionStatus: profile?.competitionStatus,
     weightAccess: profile?.weightAccess,
   };
+  const swapsPromise = opened.programDay
+    ? listSwapsForDay({
+        userId: user.id,
+        programSlug: opened.programDay.program.slug,
+        dayNumber: opened.programDay.dayNumber,
+      })
+    : Promise.resolve([]);
+  const removalsPromise = opened.programDay
+    ? listRemovalsForDay({
+        userId: user.id,
+        programSlug: opened.programDay.program.slug,
+        dayNumber: opened.programDay.dayNumber,
+      })
+    : listRemovalsForSession(user.id, opened.id);
+  const [aligned, swapsEarly, removalsEarly] = await Promise.all([
+    opened.programDay && opened.status !== "complete"
+      ? alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null)
+      : Promise.resolve(opened),
+    swapsPromise,
+    removalsPromise,
+  ]);
   let session = opened;
-  if (opened.programDay && opened.status !== "complete") {
-    const aligned = await alignWorkoutWithSwaps(opened, scale, tz, profile?.onboardingCompletedAt ?? null);
-    if (aligned !== opened) {
-      session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
-    }
+  if (aligned !== opened) {
+    session = (await getOwnWorkoutSessionOrNull(sessionId, user.id)) ?? opened;
+  } else {
+    session = aligned;
   }
   // A finished plan opens the recap. A short save stays on the rows already
   // stored, read-only until Resume workout. Resume and Start add missing rows.
@@ -131,14 +151,7 @@ export default async function WorkoutLogPage({
         },
       )
     : null;
-  const swaps =
-    session.programDay && scaledDay
-      ? await listSwapsForDay({
-          userId: user.id,
-          programSlug: session.programDay.program.slug,
-          dayNumber: session.programDay.dayNumber,
-        })
-      : [];
+  const swaps = session.programDay && scaledDay ? swapsEarly : [];
   const swappedExercises = scaledDay
     ? applySwapsToExercises(scaledDay.exercises, swaps, {
         sessionId: session.id,
@@ -151,13 +164,7 @@ export default async function WorkoutLogPage({
         includePending: false,
       })
     : [];
-  const removals = session.programDay
-    ? await listRemovalsForDay({
-        userId: user.id,
-        programSlug: session.programDay.program.slug,
-        dayNumber: session.programDay.dayNumber,
-      })
-    : await listRemovalsForSession(user.id, session.id);
+  const removals = removalsEarly;
   const removalScope = { sessionId: session.id, includePending: false };
   const omitted = scaledDay
     ? omitRemovedSlots(scaledDay.exercises, swappedExercises, removals, removalScope)
@@ -193,11 +200,11 @@ export default async function WorkoutLogPage({
   const promptRating =
     finishedView &&
     (query.rate === "1" || !session.difficultyRating);
-  const hrLog = await getWorkoutHrForLoggedSession(session.id, user.id);
+  const hrLog = finishedView ? await getWorkoutHrForLoggedSession(session.id, user.id) : null;
   const performed = new Date(session.performedAt);
   const pad = (n: number) => String(n).padStart(2, "0");
   const startedInput = `${performed.getFullYear()}-${pad(performed.getMonth() + 1)}-${pad(performed.getDate())}T${pad(performed.getHours())}:${pad(performed.getMinutes())}`;
-  const [slotLoads, namedLoads, exerciseNotes] = await Promise.all([
+  const [slotLoads, namedLoads, exerciseNotes, coachChatLocked, trial] = await Promise.all([
     getPreviousLoadsForSlots(
       user.id,
       [...session.sets, ...loggedSession.sets].map((set) => ({
@@ -211,16 +218,14 @@ export default async function WorkoutLogPage({
       exerciseNames: historyNames,
       programDayId: session.programDayId,
     }),
+    canUseCoachChat(user).then((allowed) => !allowed),
+    getTrialState(user.id),
   ]);
   const previousLoads = {
     ...rekeyGymRecord(namedLoads, band),
     ...rekeyGymRecord(slotLoads, band),
   };
   const notes = rekeyGymRecord(exerciseNotes, band);
-  const [coachChatLocked, trial] = await Promise.all([
-    canUseCoachChat(user).then((allowed) => !allowed),
-    getTrialState(user.id),
-  ]);
 
   return (
     <main data-hypercar-logger className="space-y-6">

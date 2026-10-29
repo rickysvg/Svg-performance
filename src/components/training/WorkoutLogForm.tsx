@@ -1389,9 +1389,9 @@ export function WorkoutLogForm({
       >
         <header
           data-logger-chrome
-          className="sticky top-0 z-30 -mx-4 overflow-hidden border-b border-line bg-background pt-[env(safe-area-inset-top)] backdrop-blur md:top-[calc(env(safe-area-inset-top)+3.5rem)] md:z-10 md:pt-0"
+          className="sticky top-0 z-20 -mx-4 overflow-hidden border-b border-line bg-background pt-[env(safe-area-inset-top)] md:top-[calc(env(safe-area-inset-top)+3.5rem)] md:z-10 md:pt-0"
         >
-          <div className="flex items-center gap-2 px-4 py-2">
+          <div className="flex items-center gap-2 px-3 py-1">
             <Link
               href={cancelHref}
               aria-disabled={loggerOpen ? undefined : true}
@@ -1455,7 +1455,7 @@ export function WorkoutLogForm({
               bikeDayId={headerTimer.bikeSession ? session.programDayId : null}
               workoutSessionId={headerTimer.bikeSession ? session.id : null}
             />
-            <div className="flex flex-col items-end">
+            <div className="flex items-center gap-2">
               {COACH_WORKOUT_MOTIVATION_ENABLED ? (
                 <WorkoutCoachCues
                   initialEnabled={coachMotivation}
@@ -1466,7 +1466,7 @@ export function WorkoutLogForm({
               <button
                 type="button"
                 onClick={() => setShowNotes((open) => !open)}
-                className="touch-target text-sm font-medium underline-offset-4 hover:underline"
+                className="text-sm font-medium underline-offset-4 hover:underline"
               >
                 Notes
               </button>
@@ -1545,7 +1545,7 @@ export function WorkoutLogForm({
                 type="button"
                 data-start-rest
                 onClick={beginRest}
-                className="touch-target min-h-14 w-full rounded-full bg-accent font-display text-base uppercase tracking-wide text-black"
+                className="min-h-11 w-full rounded-full bg-accent font-display text-sm uppercase tracking-wide text-black"
               >
                 Start rest {formatRestPill(currentRestSeconds)}
               </button>

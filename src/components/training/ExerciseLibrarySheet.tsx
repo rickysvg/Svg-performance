@@ -96,7 +96,7 @@ export function ExerciseLibrarySheet({
       aria-label={title}
       tabIndex={-1}
       data-testid={variant === "swap" ? "training-swap-sheet" : "training-add-sheet"}
-      className="fixed inset-0 z-[80] flex h-dvh max-h-[100dvh] w-full max-w-[100vw] min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground outline-none"
+      className="fixed inset-0 z-[100] flex h-dvh max-h-[100dvh] w-full max-w-[100vw] min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground outline-none"
       {...(variant === "swap"
         ? { "data-swap-sheet": sheetName ?? "" }
         : { "data-add-sheet": "true" })}
@@ -218,7 +218,10 @@ export function ExerciseLibrarySheet({
           ))}
         </div>
       </div>
-      <ul className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <p className="shrink-0 px-4 pt-3 text-xs text-muted" data-library-count>
+        {results.length === 1 ? "1 exercise" : `${results.length} exercises`}
+      </p>
+      <ul className="pointer-events-auto relative z-10 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         {results.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted">No exercises match that search.</li>
         ) : (
@@ -261,7 +264,7 @@ export function ExerciseLibrarySheet({
         <div
           ref={confirmRef}
           data-library-confirm
-          className="sticky bottom-0 z-10 max-h-[46dvh] shrink-0 space-y-2 overflow-y-auto border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="pointer-events-auto relative z-20 max-h-[46dvh] shrink-0 space-y-2 overflow-y-auto border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <div className={pending ? "pointer-events-none opacity-60" : undefined}>{footer(choice)}</div>

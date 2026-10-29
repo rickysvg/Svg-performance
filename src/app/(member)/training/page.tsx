@@ -69,7 +69,7 @@ import { formatCalendarHeading } from "@/lib/calendar";
 import { formatDayParam, parseDayParam, sameLocalDay } from "@/lib/home";
 import { getSessionIntentSeqForUser, getWeekPlanSwapsForUser } from "@/lib/week-plan-swap-store";
 import { getSparringLog, sparringDateError } from "@/lib/outside-log";
-import { easePlanForUser, easeWeekStripDays } from "@/lib/recovery-ease";
+import { easePlanForUser, easePlansForUser, easeWeekStripDays } from "@/lib/recovery-ease";
 import { SparringLogForm } from "@/components/training/SparringLogForm";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { resolveAiCoach } from "@/lib/coaches";
@@ -95,19 +95,24 @@ export default async function TrainingPage({
   const user = await requireUser();
   const params = await searchParams;
   const now = new Date();
-  const [catalog, sessionCount, conditioning, profile, swaps, intentSeqs] = await Promise.all([
+  const [catalog, sessionCount, conditioning, profile, swaps, intentSeqs, timeZoneCookie] = await Promise.all([
     findDemoTrainingCatalog(),
     countWorkoutSessionsForUser(user.id),
     canUseFeature(user.id, "conditioning"),
     getProfileForUser(user.id),
     getWeekPlanSwapsForUser(user.id),
     getSessionIntentSeqForUser(user.id),
+    readTimeZoneCookie(),
   ]);
   const tzEarly = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   await finalizePastLoggedDrafts(user.id, now, tzEarly);
-  const [drafts, resumable] = await Promise.all([
+  const selectedEarly = parseDayParam(params.day, now, tzEarly);
+  const [drafts, resumable, camp, planByDay, edits] = await Promise.all([
     listDraftSessionsForUser(user.id),
     listResumableSessionsForUser(user.id),
+    getActiveCampSnapshot(user.id, selectedEarly, tzEarly),
+    calendarPlanDoses(user.id, now),
+    loadMemberExerciseEdits(user.id),
   ]);
   const prefs = {
     primaryFocus: profile?.primaryFocus,
@@ -122,7 +127,7 @@ export default async function TrainingPage({
     forcedWeekIndex: null as number | null,
   };
   const tz = tzEarly;
-  const selected = parseDayParam(params.day, now, tz);
+  const selected = selectedEarly;
   const levelOverride = parseLevelParam(params.level);
   const profileBand = scaleBandFromPrefs({
     experienceLevel: profile?.experienceLevel,
@@ -130,7 +135,6 @@ export default async function TrainingPage({
   });
   const band = levelOverride ?? profileBand;
   const fromProfile = Boolean(profile?.experienceLevel) && !levelOverride;
-  const camp = await getActiveCampSnapshot(user.id, selected, tz);
   const campOn = Boolean(camp && camp.weightClass.trim());
   const campWeekIndex = campPlanWeekIndex(camp);
   if (campWeekIndex != null) prefs.forcedWeekIndex = campWeekIndex;
@@ -144,6 +148,13 @@ export default async function TrainingPage({
     campPhase: campOn && camp ? camp.phase : null,
   });
   const builtWeeks = carouselWeekStrips(prefs, now, tz, selected, swaps);
+  const loggedRange = carouselLoggedRange(now, tz);
+  const chipHistory = Promise.all([
+    completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
+    partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
+    partialProgramIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
+    offPlanMarksByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
+  ]);
   const linkedWeeks = withBikeChipLogHrefs(
     await easeWeekStripDays(user.id, prefs, builtWeeks.days, tz, swaps),
     prefs,
@@ -159,11 +170,7 @@ export default async function TrainingPage({
   const testing = isTestingWeekIndex(weekIndex);
   const emphasis = profile?.trainingEmphasis ?? "balanced";
   const dayParam = formatDayParam(selected, tz);
-  const memberTz = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
-  const [planByDay, edits] = await Promise.all([
-    calendarPlanDoses(user.id, now),
-    loadMemberExerciseEdits(user.id),
-  ]);
+  const memberTz = memberDayTimeZone(profile?.timeZone ?? null, timeZoneCookie);
   const visibleEdits = { edits, anchor: profile?.onboardingCompletedAt ?? null };
   const openToday = openLogsByProgramDay(
     resumable,
@@ -233,13 +240,9 @@ export default async function TrainingPage({
       ? todayAction.draftId
       : (resumeDraft?.id ?? openPlanDraft?.id);
   const inProgressDay = resumeDraft ? sessionCompletionDay(resumeDraft, tz) : undefined;
-  const loggedRange = carouselLoggedRange(now, tz);
   const carouselKeys = weeks.flatMap((week) => week.days.map((day) => day.dayParam));
-  const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans] = await Promise.all([
-    completedSessionIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, now),
-    partialLocalDayKeys(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
-    partialProgramIdsByLocalDay(user.id, loggedRange.from, loggedRange.to, tz, planByDay),
-    offPlanMarksByLocalDay(user.id, loggedRange.from, loggedRange.to, tz),
+  const [[completedByDay, partialDays, partialByDay, offPlan], carouselPlans] = await Promise.all([
+    chipHistory,
     listDayPlansForUser(user.id, carouselKeys),
   ]);
   const marks = chipMarksAfterPlans({
@@ -256,17 +259,26 @@ export default async function TrainingPage({
     const day = week.days.find((item) => item.weekday === selectedWeekday) ?? week.days[0]!;
     return { weekStart: week.weekStart, day };
   });
+  const viewedWeek = weekStartKey(selected, tz);
+  const detailDays = focusDays.filter((focus) => focus.weekStart === viewedWeek);
   const savedDayPlans = carouselPlans.filter((plan) =>
-    focusDays.some((focus) => focus.day.dayParam === plan.dayKey),
+    detailDays.some((focus) => focus.day.dayParam === plan.dayKey),
   );
-  const focusModels = await Promise.all(
-    focusDays.map(async (focus) => {
-      const date = focus.day.date;
-      const focusParam = focus.day.dayParam;
-      const core = planForDate(prefs, date, tz, swaps);
+  const focusEased = await easePlansForUser(
+    user.id,
+    tz,
+    detailDays.map((focus) => {
+      const core = planForDate(prefs, focus.day.date, tz, swaps);
       const shaped =
         campOn && camp && camp.phase !== "complete" ? shapeDayPlan(core, camp.phase) : core;
-      const eased = await easePlanForUser(user.id, date, tz, shaped);
+      return { date: focus.day.date, plan: shaped };
+    }),
+  );
+  const focusModels = await Promise.all(
+    detailDays.map(async (focus, index) => {
+      const date = focus.day.date;
+      const focusParam = focus.day.dayParam;
+      const eased = focusEased[index]!;
       const focusPlan = eased.plan;
       const focusWeekIndex =
         campWeekIndex ?? planWeekIndex(date, tz, profile?.onboardingCompletedAt);
@@ -376,7 +388,6 @@ export default async function TrainingPage({
       : [{ href: "/mobility/drills", label: "Hip and kick drills" }]),
   ];
 
-  const viewedWeek = weekStartKey(selected, tz);
   const coach = resolveAiCoach(profile?.aiCoachId);
   const logPastDayKeys = [
     ...new Set(

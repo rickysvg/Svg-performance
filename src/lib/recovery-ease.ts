@@ -239,6 +239,55 @@ export async function writeRecoveryCheckIn(userId: string, log: SparringLog) {
   };
 }
 
+/** One sparring lookup for every day on a training or calendar render. */
+export async function easePlansForUser(
+  userId: string,
+  timeZone: string,
+  plans: Array<{ date: Date; plan: DayPlan }>,
+): Promise<Array<{ plan: DayPlan; checkIn: RecoveryCheckIn | null }>> {
+  if (plans.length === 0) return [];
+  if (!(await canUseFeature(userId, "rir_auto"))) {
+    return plans.map(({ plan }) => ({ plan, checkIn: null }));
+  }
+  const keys = [
+    ...new Set(plans.map(({ date }) => dayKey(addZonedDays(date, -1, timeZone), timeZone))),
+  ];
+  const rows = await prisma.outsideSessionLog.findMany({
+    where: { userId, dateKey: { in: keys } },
+  });
+  const byKey = new Map(rows.map((row) => [row.dateKey, row]));
+  const profile = rows.length > 0 ? await getProfileForUser(userId) : null;
+  const coach = resolveAiCoach(profile?.aiCoachId);
+  return plans.map(({ date, plan }) => {
+    const previous = byKey.get(dayKey(addZonedDays(date, -1, timeZone), timeZone));
+    if (
+      !previous ||
+      !sparringNeedsEase({
+        bodyRating: previous.bodyRating,
+        sessionRating: previous.sessionRating,
+        soreSpots: parseStoredSpots(previous.soreSpots),
+      })
+    ) {
+      return { plan, checkIn: null };
+    }
+    const spots = parseStoredSpots(previous.soreSpots);
+    const eased = easeDayPlan(plan, recoveryEaseReason({ bodyRating: previous.bodyRating, soreSpots: spots }));
+    const message =
+      previous.coachCheckIn ||
+      recoveryCheckInCopy({
+        coachId: coach.id,
+        bodyRating: previous.bodyRating,
+        head: spots.includes("head"),
+        nextWeekday: eased.plan.weekday,
+        easedTo: eased.easedTo,
+      });
+    return {
+      plan: eased.plan,
+      checkIn: { name: coach.name, image: coach.circle, message },
+    };
+  });
+}
+
 export async function easePlanForUser(
   userId: string,
   date: Date,

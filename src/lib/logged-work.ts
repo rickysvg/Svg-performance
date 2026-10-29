@@ -204,6 +204,14 @@ export function planWorkFromText(text: string | null | undefined): {
   return { reps: leadingPlanCount(raw), seconds: null };
 }
 
+/** Seconds to show in a timed set row before the member edits it. */
+export function prescribedHoldSeconds(reps: string | null | undefined, logMode?: string | null) {
+  if (logMode !== "timed" && logMode !== "load_timed" && logMode !== "timed_round") return null;
+  const seconds = planWorkFromText(reps).seconds;
+  if (seconds == null || seconds <= 0) return null;
+  return seconds;
+}
+
 /** Rep scheme stored on a programmed set, after the exercise name. */
 export function repsTextFromPrescriptionKey(key: string | null | undefined) {
   const raw = String(key ?? "").trim();
@@ -407,22 +415,27 @@ type ResumeSet = TickedSet & {
  */
 export function setIsUntickedPrefill(set: ResumeSet) {
   if (set.completed) return false;
-  const plan = parseAddedPlan(set.prescriptionKey);
-  if (!plan) return false;
+  if (set.loadValue != null) return false;
+  if ((set.notes ?? "").trim().length > 0) return false;
+  const added = parseAddedPlan(set.prescriptionKey);
+  const repsText = added?.reps || repsTextFromPrescriptionKey(set.prescriptionKey);
+  if (!repsText) return false;
   const mode = resolveLogMode({
     logMode: set.logMode,
     name: set.exerciseName ?? "",
-    reps: plan.reps,
+    reps: repsText,
   });
   const timed = isDurationMode(mode);
-  const reps = timed ? null : defaultLoggedReps(plan.reps);
-  const duration = timed ? parseDurationSeconds(plan.reps) : null;
-  return (
-    (set.reps ?? null) === reps &&
-    (set.durationSeconds ?? null) === duration &&
-    set.loadValue == null &&
-    (set.notes ?? "").trim().length === 0
-  );
+  if (!added && !timed) return false;
+  const reps = timed ? null : defaultLoggedReps(repsText);
+  const planned = prescribedHoldSeconds(repsText, timed ? mode : null);
+  const parsed = timed ? parseDurationSeconds(repsText) : null;
+  const duration = set.durationSeconds ?? null;
+  const durationMatches =
+    !timed || duration == null
+      ? duration == null
+      : duration === planned || duration === parsed;
+  return (set.reps ?? null) === reps && durationMatches && (timed ? duration != null : true);
 }
 
 /** A draft can Resume when a set was ticked or the member changed one. */
