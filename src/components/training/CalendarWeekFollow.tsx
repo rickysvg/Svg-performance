@@ -6,7 +6,9 @@ import {
   createContext,
   isValidElement,
   useContext,
+  useEffect,
   useState,
+  useTransition,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -61,6 +63,15 @@ export function replaceCalendarSearch(
   return href;
 }
 
+function calendarWeekHref(pathname: string, week: WeekChange, level: string | null) {
+  const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  params.set("week", week.weekStart);
+  params.set("day", week.dayParam);
+  if (level) params.set("level", level);
+  else params.delete("level");
+  return `${pathname}?${params.toString()}`;
+}
+
 function panelWeek(child: ReactNode) {
   if (!isValidElement(child)) return null;
   const props = child.props as { "data-calendar-panel"?: string };
@@ -109,6 +120,7 @@ export function CalendarWeekFollow({
   const [seenWeek, setSeenWeek] = useState(initialWeekStart);
   const [dayParam, setDayParam] = useState(initialDay);
   const [seenDay, setSeenDay] = useState(initialDay);
+  const [isPending, startTransition] = useTransition();
   if (initialWeekStart !== seenWeek) {
     setSeenWeek(initialWeekStart);
     setWeekStart(initialWeekStart);
@@ -119,15 +131,33 @@ export function CalendarWeekFollow({
   }
   const move = moves[weekStart];
 
+  useEffect(() => {
+    const index = weeks.findIndex((week) => week.weekStart === weekStart);
+    for (const neighbor of [weeks[index - 1], weeks[index + 1]]) {
+      const day = neighbor?.days[0];
+      if (!neighbor || !day) continue;
+      const params = new URLSearchParams({ week: neighbor.weekStart, day: day.dayParam });
+      if (level) params.set("level", level);
+      router.prefetch(`${pathname}?${params.toString()}`);
+    }
+  }, [level, pathname, router, weekStart, weeks]);
+
   function onWeekChange(week: WeekChange) {
-    setWeekStart(week.weekStart);
-    setDayParam(week.dayParam);
-    if (week.preserveUrl) return;
-    const href = replaceCalendarSearch(pathname, week, level);
     const rendered =
       typeof document !== "undefined" &&
       document.querySelector(`[data-calendar-panel="${week.weekStart}"]`);
-    if (!rendered) router.push(href);
+    if (rendered || week.preserveUrl) {
+      setWeekStart(week.weekStart);
+      setDayParam(week.dayParam);
+    }
+    if (week.preserveUrl) return;
+    if (rendered) {
+      replaceCalendarSearch(pathname, week, level);
+      return;
+    }
+    startTransition(() => {
+      router.replace(calendarWeekHref(pathname, week, level));
+    });
   }
 
   function onDayChange(nextDay: string) {
@@ -185,7 +215,24 @@ export function CalendarWeekFollow({
           logPastDayKeys={logPastDayKeys}
           timeZone={timeZone}
         />
-        {panels}
+        <div className="relative">
+          {panels}
+          {isPending ? (
+            <div
+              data-calendar-week-loading
+              aria-busy="true"
+              className="absolute inset-0 z-10 bg-background/80 p-1"
+            >
+              <p className="font-display text-xs uppercase tracking-wide text-accent">Loading week</p>
+              <div className="mt-3 space-y-3">
+                <div className="h-4 w-40 animate-pulse rounded bg-line" />
+                <div className="h-16 animate-pulse rounded-2xl bg-line" />
+                <div className="h-16 animate-pulse rounded-2xl bg-line" />
+                <div className="h-16 animate-pulse rounded-2xl bg-line" />
+              </div>
+            </div>
+          ) : null}
+        </div>
       </WorkoutMoveProvider>
     </CalendarDayContext.Provider>
   );

@@ -93,7 +93,13 @@ import { exerciseUsesBikeLogger, textIsBikeWorkout, timerEntryModeFromText } fro
 import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
-import { planWorkFromText, repsTextFromPrescriptionKey, setHasLoggedWork } from "@/lib/logged-work";
+import {
+  planWorkFromText,
+  repsTextFromPrescriptionKey,
+  setHasLoggedWork,
+  setIsUntickedPrefill,
+  withPrescribedHold,
+} from "@/lib/logged-work";
 import {
   applyPreviousToSet,
   copyPreviousOntoExercise,
@@ -285,19 +291,27 @@ function setsForLogger(session: Session, draft: LoggerDraft | null = null): Work
         name,
         reps: planned?.reps,
       });
+      const hold = withPrescribedHold(
+        { exerciseName: name, durationSeconds: null, logMode: mode },
+        planned?.reps,
+      ).durationSeconds;
       return newClientSet(
         session.id,
         name,
         setNumber,
         "lb",
         mode,
-        null,
+        hold,
         prescribedRowId(session.id, name, setNumber),
       );
     },
     gymExerciseKey,
   );
-  return dropEmptyPlanBikeRows(restored, [...base, ...(draft?.sets ?? [])]);
+  const withHolds = restored.map((set) => {
+    const planned = plannedRows.find((row) => gymExerciseKey(row.name) === gymExerciseKey(set.exerciseName));
+    return withPrescribedHold(set, planned?.reps);
+  });
+  return dropEmptyPlanBikeRows(withHolds, [...base, ...(draft?.sets ?? [])]);
 }
 
 const SAVE_FAILED =
@@ -906,9 +920,9 @@ export function WorkoutLogForm({
 
   function discardIfEmpty() {
     if (pendingRef.current || session.status === "complete") return;
-    if (setsRef.current.some(setHasLoggedWork)) return;
+    if (setsRef.current.some((set) => setHasLoggedWork(set) && !setIsUntickedPrefill(set))) return;
     const stored = readLoggerDraft(session.id);
-    if (stored?.sets.some(setHasLoggedWork)) return;
+    if (stored?.sets.some((set) => setHasLoggedWork(set) && !setIsUntickedPrefill(set))) return;
     clearLoggerDraft(session.id);
     const body = JSON.stringify({ workoutId: session.id, explicit: true });
     void fetch("/api/workouts/discard-empty", {
@@ -1466,7 +1480,7 @@ export function WorkoutLogForm({
               <button
                 type="button"
                 onClick={() => setShowNotes((open) => !open)}
-                className="text-sm font-medium underline-offset-4 hover:underline"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium underline-offset-4 hover:underline"
               >
                 Notes
               </button>

@@ -111,7 +111,7 @@ export function ExerciseLibrarySheet({
         </div>
       </header>
       {variant === "swap" && suggestions.length > 0 ? (
-        <div className="shrink-0 space-y-3 border-b border-line bg-black px-4 py-3" data-best-replacements>
+        <div className="shrink-0 space-y-2 border-b border-line bg-black px-4 py-2" data-best-replacements>
           <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Best replacements</p>
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Swap applies to" data-swap-scope-picker>
             <button
@@ -138,11 +138,11 @@ export function ExerciseLibrarySheet({
               Rest of the block
             </button>
           </div>
-          <ul className="space-y-2">
+          <ul className="flex gap-2 overflow-x-auto pb-1">
             {suggestions.map((exercise, index) => {
               const best = markBest && index === 0;
               return (
-                <li key={exercise.name}>
+                <li key={exercise.name} className="min-w-[11rem] shrink-0">
                   <button
                     type="button"
                     data-best-replacement={exercise.name}
@@ -169,7 +169,7 @@ export function ExerciseLibrarySheet({
           </ul>
         </div>
       ) : null}
-      <div className="shrink-0 space-y-3 border-b border-line px-4 py-3">
+      <div className="shrink-0 space-y-2 border-b border-line px-4 py-2">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -221,7 +221,7 @@ export function ExerciseLibrarySheet({
       <p className="shrink-0 px-4 pt-3 text-xs text-muted" data-library-count>
         {results.length === 1 ? "1 exercise" : `${results.length} exercises`}
       </p>
-      <ul className="pointer-events-auto relative z-10 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <ul className="pointer-events-auto relative z-10 min-h-0 min-w-0 flex-1 basis-0 overflow-x-hidden overflow-y-auto">
         {results.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted">No exercises match that search.</li>
         ) : (
@@ -264,7 +264,7 @@ export function ExerciseLibrarySheet({
         <div
           ref={confirmRef}
           data-library-confirm
-          className="pointer-events-auto relative z-20 max-h-[46dvh] shrink-0 space-y-2 overflow-y-auto border-t border-line bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="pointer-events-auto relative z-20 max-h-[46dvh] shrink-0 space-y-2 overflow-y-auto border-t border-line bg-background px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         >
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <div className={pending ? "pointer-events-none opacity-60" : undefined}>{footer(choice)}</div>

@@ -5,6 +5,7 @@ import {
   cloneElement,
   isValidElement,
   useState,
+  useTransition,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -67,15 +68,19 @@ export function TrainWeekFollow({
     setWeekStart(initialWeekStart);
   }
   const move = moves[weekStart];
+  const [isPending, startTransition] = useTransition();
 
   function onWeekChange(week: WeekChange) {
-    setWeekStart(week.weekStart);
-    if (week.preserveUrl) return;
-    const href = replaceTrainSearch(pathname, week.dayParam, level);
     const rendered =
       typeof document !== "undefined" &&
       document.querySelector(`[data-train-panel="${week.weekStart}"]`);
-    if (!rendered) router.push(href);
+    if (rendered || week.preserveUrl) setWeekStart(week.weekStart);
+    if (week.preserveUrl) return;
+    const href = replaceTrainSearch(pathname, week.dayParam, level);
+    if (rendered) return;
+    startTransition(() => {
+      router.replace(href);
+    });
   }
 
   const panels = Children.map(children, (child) => {
@@ -100,7 +105,19 @@ export function TrainWeekFollow({
           router.refresh();
         }}
       >
-        {panels}
+        <div className="relative">
+          {panels}
+          {isPending ? (
+            <div
+              data-train-week-loading
+              aria-busy="true"
+              className="absolute inset-0 z-10 bg-background/80 p-1"
+            >
+              <p className="font-display text-xs uppercase tracking-wide text-accent">Loading week</p>
+              <div className="mt-3 h-40 animate-pulse rounded-[1.75rem] bg-line" />
+            </div>
+          ) : null}
+        </div>
       </WorkoutMoveProvider>
     </TrainWeekChangeContext.Provider>
   );

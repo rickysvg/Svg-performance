@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { nocookieEmbedSrc, youtubeThumbSrcs, youtubeVideoId } from "@/lib/form-videos";
 
 function FormSheet({ name, url, onClose }: { name: string; url: string; onClose: () => void }) {
+  const [failed, setFailed] = useState(false);
   const src = nocookieEmbedSrc(url);
   const still = youtubeThumbSrcs(url)[0] ?? "";
   const clipMissing = !src || !youtubeVideoId(url);
@@ -45,7 +46,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
             Close
           </button>
         </div>
-        {clipMissing ? (
+        {failed || clipMissing ? (
           <div className="space-y-3">
             {still ? (
               // Still from the clip. Not an outbound YouTube link.
@@ -57,14 +58,19 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
             </p>
           </div>
         ) : (
-          <div className="aspect-video overflow-hidden rounded-xl bg-black">
+          <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
+            {still ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={still} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : null}
             <iframe
               key={url}
               title={`Form: ${name}`}
               src={src}
-              className="h-full w-full"
+              className="relative h-full w-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               referrerPolicy="strict-origin-when-cross-origin"
+              onError={() => setFailed(true)}
             />
           </div>
         )}

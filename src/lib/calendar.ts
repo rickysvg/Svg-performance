@@ -549,38 +549,7 @@ function logMatchesPlanned(
   return !owned;
 }
 
-const scheduleSessions = cache((userId: string) =>
-  listWorkoutSessionsForUser(userId, { recentDays: 400 }),
-);
-
-type ScheduleSessions = Awaited<ReturnType<typeof listWorkoutSessionsForUser>>;
-type ScheduleSwaps = Awaited<ReturnType<typeof getWeekPlanSwapsForUser>>;
-type ScheduleEdits = Awaited<ReturnType<typeof loadMemberExerciseEdits>>;
-
-/** One member read shared by every week built in the same calendar render. */
-let sharedSchedule: {
-  userId: string;
-  sessions: ScheduleSessions;
-  swaps: ScheduleSwaps;
-  edits: ScheduleEdits;
-} | null = null;
-
-export async function getCalendarSchedules(userId: string, now: Date, weekAnchors: Date[]) {
-  if (weekAnchors.length === 0) return [];
-  return withCalendarScaleMemory(async () => {
-    const [sessions, swaps, edits] = await Promise.all([
-      scheduleSessions(userId),
-      scheduleSwaps(userId),
-      scheduleEdits(userId),
-    ]);
-    sharedSchedule = { userId, sessions, swaps, edits };
-    try {
-      return await Promise.all(weekAnchors.map((anchor) => getCalendarSchedule(userId, now, anchor)));
-    } finally {
-      if (sharedSchedule?.userId === userId) sharedSchedule = null;
-    }
-  });
-}
+const scheduleSessions = cache((userId: string) => listWorkoutSessionsForUser(userId));
 const scheduleSwaps = cache((userId: string) => getWeekPlanSwapsForUser(userId));
 const scheduleEdits = cache((userId: string) => loadMemberExerciseEdits(userId));
 const scheduleFinalize = cache((userId: string, iso: string, tz: string) =>
@@ -603,16 +572,15 @@ async function loadCalendarSchedule(
   now = new Date(),
   weekAnchor?: Date,
 ) {
-  const shared = sharedSchedule?.userId === userId ? sharedSchedule : null;
   const [scale, swaps, account, edits] = await Promise.all([
     calendarScaleContext(userId, weekAnchor ?? now),
-    shared ? Promise.resolve(shared.swaps) : scheduleSwaps(userId),
+    scheduleSwaps(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
-    shared ? Promise.resolve(shared.edits) : scheduleEdits(userId),
+    scheduleEdits(userId),
   ]);
   const { profile, tz, strength, skill } = scale;
   await scheduleFinalize(userId, now.toISOString(), tz);
-  const sessions = shared?.sessions ?? (await scheduleSessions(userId));
+  const sessions = await scheduleSessions(userId);
   const challenge = await scheduleChallenge(userId, tz);
   const loggedSessions = sessions.filter(
     (session) =>
