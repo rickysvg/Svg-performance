@@ -288,6 +288,20 @@ export function nextSelectedDay(
   return next?.dayParam ?? event.previousDayParam;
 }
 
+/** The same weekday in another week, matching a week-swipe's day param. */
+export function sameWeekdayDayParam(
+  weeks: readonly { days: readonly CarouselChipDay[] }[],
+  week: { days: readonly CarouselChipDay[] },
+  selectedDayParam: string,
+) {
+  const selected = weeks.flatMap((item) => item.days).find((day) => day.dayParam === selectedDayParam);
+  return (
+    week.days.find((day) => day.weekday === selected?.weekday)?.dayParam ??
+    week.days[0]?.dayParam ??
+    selectedDayParam
+  );
+}
+
 /** Shallow Train URL. The plan for this day is already on the page. */
 export function trainDayHref(
   pathname: string,

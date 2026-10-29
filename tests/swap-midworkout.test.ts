@@ -41,6 +41,18 @@ describe("mid-workout swap", () => {
         "20 sec / side",
       ).durationSeconds,
     ).toBe(45);
+    expect(
+      withPrescribedHold(
+        { exerciseName: "Suitcase carry", durationSeconds: null, logMode: "load_timed" },
+        "20 m / side",
+      ).durationSeconds,
+    ).toBeNull();
+    expect(
+      withPrescribedHold(
+        { exerciseName: "Zercher carry", durationSeconds: null, logMode: "load_timed" },
+        "30 sec",
+      ).durationSeconds,
+    ).toBe(30);
   });
 
   it("prefills the prescribed seconds on every swapped timed set", () => {

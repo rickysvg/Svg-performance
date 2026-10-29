@@ -225,6 +225,7 @@ export function withPrescribedHold<
 /** Seconds to show in a timed set row before the member edits it. */
 export function prescribedHoldSeconds(reps: string | null | undefined, logMode?: string | null) {
   if (logMode !== "timed" && logMode !== "load_timed" && logMode !== "timed_round") return null;
+  if (isDistanceDose(String(reps ?? ""))) return null;
   const seconds = planWorkFromText(reps).seconds;
   if (seconds == null || seconds <= 0) return null;
   return seconds;

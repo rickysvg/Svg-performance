@@ -549,7 +549,9 @@ function logMatchesPlanned(
   return !owned;
 }
 
-const scheduleSessions = cache((userId: string) => listWorkoutSessionsForUser(userId));
+const scheduleSessions = cache((userId: string, sinceMs: number, untilMs: number) =>
+  listWorkoutSessionsForUser(userId, { since: new Date(sinceMs), until: new Date(untilMs) }),
+);
 const scheduleSwaps = cache((userId: string) => getWeekPlanSwapsForUser(userId));
 const scheduleEdits = cache((userId: string) => loadMemberExerciseEdits(userId));
 const scheduleFinalize = cache((userId: string, iso: string, tz: string) =>
@@ -580,7 +582,14 @@ async function loadCalendarSchedule(
   ]);
   const { profile, tz, strength, skill } = scale;
   await scheduleFinalize(userId, now.toISOString(), tz);
-  const sessions = await scheduleSessions(userId);
+  const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
+  const first = dates[0] ?? now;
+  const last = dates[dates.length - 1] ?? first;
+  const parts = zonedParts(first, tz);
+  const utcMidnight = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  const since = utcMidnight.getTime() < first.getTime() ? utcMidnight : first;
+  const until = addZonedDays(last, 1, tz);
+  const sessions = await scheduleSessions(userId, since.getTime(), until.getTime());
   const challenge = await scheduleChallenge(userId, tz);
   const loggedSessions = sessions.filter(
     (session) =>
@@ -613,7 +622,6 @@ async function loadCalendarSchedule(
   };
   const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
-  const dates = weekAnchor ? listWeekDates(weekAnchor, tz) : listCalendarDates(now, 8, tz);
   const todayKey = formatDayParam(now, tz);
   const days: CalendarDay[] = dates.map((date) => ({
     date,

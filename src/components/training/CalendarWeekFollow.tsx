@@ -16,7 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { WeekStrip, type WeekCarouselWeek, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
-import { calendarFocusMatches } from "@/lib/week-carousel";
+import { calendarFocusMatches, sameWeekdayDayParam } from "@/lib/week-carousel";
 
 const CalendarDayContext = createContext("");
 
@@ -134,13 +134,13 @@ export function CalendarWeekFollow({
   useEffect(() => {
     const index = weeks.findIndex((week) => week.weekStart === weekStart);
     for (const neighbor of [weeks[index - 1], weeks[index + 1]]) {
-      const day = neighbor?.days[0];
-      if (!neighbor || !day) continue;
-      const params = new URLSearchParams({ week: neighbor.weekStart, day: day.dayParam });
+      if (!neighbor) continue;
+      const day = sameWeekdayDayParam(weeks, neighbor, dayParam);
+      const params = new URLSearchParams({ week: neighbor.weekStart, day });
       if (level) params.set("level", level);
       router.prefetch(`${pathname}?${params.toString()}`);
     }
-  }, [level, pathname, router, weekStart, weeks]);
+  }, [dayParam, level, pathname, router, weekStart, weeks]);
 
   function onWeekChange(week: WeekChange) {
     const rendered =

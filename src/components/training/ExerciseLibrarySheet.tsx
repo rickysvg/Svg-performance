@@ -82,10 +82,12 @@ export function ExerciseLibrarySheet({
     if (active instanceof HTMLElement) active.blur();
     const footer = confirmRef.current;
     if (!footer) return;
-    footer.scrollTop = footer.scrollHeight;
     footer
       .querySelector<HTMLElement>("[data-swap-scope='session']")
-      ?.scrollIntoView({ block: "end", inline: "nearest" });
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    footer
+      .querySelector<HTMLElement>("[data-swap-scope='block']")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [picked]);
 
   return createPortal(

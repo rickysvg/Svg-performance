@@ -4,6 +4,7 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  useEffect,
   useState,
   useTransition,
   type ReactElement,
@@ -13,7 +14,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { TrainWeekChangeContext, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
-import { trainDayHref } from "@/lib/week-carousel";
+import { sameWeekdayDayParam, trainDayHref, type CarouselChipDay } from "@/lib/week-carousel";
 
 export type TrainMoveBundle = {
   editable: boolean;
@@ -50,6 +51,8 @@ export function TrainWeekFollow({
   level,
   moves,
   intentSeqs = {},
+  weeks = [],
+  selectedDay = "",
   children,
 }: {
   initialWeekStart: string;
@@ -57,6 +60,9 @@ export function TrainWeekFollow({
   moves: Record<string, TrainMoveBundle>;
   /** Highest accepted move/undo sequence per session. Later clicks outrank it. */
   intentSeqs?: Record<string, number>;
+  weeks?: readonly { weekStart: string; days: readonly CarouselChipDay[] }[];
+  /** Civil day the page opened on. Prefetch follows a later chip tap via the URL. */
+  selectedDay?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -69,6 +75,19 @@ export function TrainWeekFollow({
   }
   const move = moves[weekStart];
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (weeks.length === 0) return;
+    const selected =
+      (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("day") : null) ||
+      selectedDay;
+    const index = weeks.findIndex((week) => week.weekStart === weekStart);
+    for (const neighbor of [weeks[index - 1], weeks[index + 1]]) {
+      if (!neighbor) continue;
+      const day = sameWeekdayDayParam(weeks, neighbor, selected);
+      router.prefetch(trainDayHref(pathname, window.location.search, day, level));
+    }
+  }, [level, pathname, router, selectedDay, weekStart, weeks]);
 
   function onWeekChange(week: WeekChange) {
     const rendered =
