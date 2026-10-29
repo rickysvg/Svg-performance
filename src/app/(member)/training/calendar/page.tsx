@@ -127,13 +127,13 @@ export default async function TrainingCalendarPage({
   const loggedWindow = carouselLoggedRange(now, tz, pastWeeks);
   const planByDay = await calendarPlanDoses(user.id, now);
   const carouselKeys = chipWeeks.flatMap((week) => week.days.map((day) => day.dayParam));
-  const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans, weekSchedules] = await Promise.all([
+  const [completedByDay, partialDays, partialByDay, offPlan, carouselPlans, viewedSchedule] = await Promise.all([
     completedSessionIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, now),
     partialLocalDayKeys(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
     partialProgramIdsByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz, planByDay),
     offPlanMarksByLocalDay(user.id, loggedWindow.from, loggedWindow.to, tz),
     listDayPlansForUser(user.id, carouselKeys),
-    Promise.all(chipWeeks.map((week) => getCalendarSchedule(user.id, now, week.days[0]?.date ?? now))),
+    getCalendarSchedule(user.id, now, chipWeeks.find((week) => week.weekStart === viewedWeek)?.days[0]?.date ?? selected),
   ]);
   const marks = chipMarksAfterPlans({
     days: chipDayRefs(chipWeeks),
@@ -154,9 +154,16 @@ export default async function TrainingCalendarPage({
     ),
   ];
   const moves: Record<string, CalendarMoveBundle> = {};
-  const panels = markedWeeks.map((week, index) => {
-    const weekSchedule = weekSchedules[index];
-    if (!weekSchedule) return null;
+  for (const week of markedWeeks) {
+    if (week.weekStart === viewedWeek) continue;
+    moves[week.weekStart] = {
+      editable: Boolean(week.rearrange),
+      days: moveDayChoices(prefs, now, tz, week.days[0]?.date ?? selected, swaps),
+    };
+  }
+  const panels = markedWeeks.flatMap((week) => {
+    if (week.weekStart !== viewedWeek) return [];
+    const weekSchedule = viewedSchedule;
     const missedWorkouts = weekSchedule.days.reduce(
       (count, day) => count + day.activities.filter((item) => subtitleCountsAsMissed(item.subtitle)).length,
       0,

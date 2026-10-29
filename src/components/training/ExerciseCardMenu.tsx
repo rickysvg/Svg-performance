@@ -283,7 +283,7 @@ export function ExerciseCardMenu({
               visibility: menuPos ? "visible" : "hidden",
               width: "11rem",
             }}
-            className="z-50 w-44 max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-line bg-card shadow-lg"
+            className="pointer-events-auto z-[90] w-44 max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-line bg-card shadow-lg"
           >
             <button
               type="button"

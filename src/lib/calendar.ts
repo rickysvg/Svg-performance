@@ -1,6 +1,7 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { sparringLogsForWeek } from "@/lib/outside-log";
-import { easePlanForUser } from "@/lib/recovery-ease";
+import { easePlansForUser } from "@/lib/recovery-ease";
 import { resolveAiCoach } from "@/lib/coaches";
 import type { SparringLog } from "@/lib/outside-log";
 import { finalizePastLoggedDrafts, listWorkoutSessionsForUser } from "@/lib/workouts";
@@ -548,6 +549,45 @@ function logMatchesPlanned(
   return !owned;
 }
 
+const scheduleSessions = cache((userId: string) =>
+  listWorkoutSessionsForUser(userId, { recentDays: 400 }),
+);
+
+type ScheduleSessions = Awaited<ReturnType<typeof listWorkoutSessionsForUser>>;
+type ScheduleSwaps = Awaited<ReturnType<typeof getWeekPlanSwapsForUser>>;
+type ScheduleEdits = Awaited<ReturnType<typeof loadMemberExerciseEdits>>;
+
+/** One member read shared by every week built in the same calendar render. */
+let sharedSchedule: {
+  userId: string;
+  sessions: ScheduleSessions;
+  swaps: ScheduleSwaps;
+  edits: ScheduleEdits;
+} | null = null;
+
+export async function getCalendarSchedules(userId: string, now: Date, weekAnchors: Date[]) {
+  if (weekAnchors.length === 0) return [];
+  return withCalendarScaleMemory(async () => {
+    const [sessions, swaps, edits] = await Promise.all([
+      scheduleSessions(userId),
+      scheduleSwaps(userId),
+      scheduleEdits(userId),
+    ]);
+    sharedSchedule = { userId, sessions, swaps, edits };
+    try {
+      return await Promise.all(weekAnchors.map((anchor) => getCalendarSchedule(userId, now, anchor)));
+    } finally {
+      if (sharedSchedule?.userId === userId) sharedSchedule = null;
+    }
+  });
+}
+const scheduleSwaps = cache((userId: string) => getWeekPlanSwapsForUser(userId));
+const scheduleEdits = cache((userId: string) => loadMemberExerciseEdits(userId));
+const scheduleFinalize = cache((userId: string, iso: string, tz: string) =>
+  finalizePastLoggedDrafts(userId, new Date(iso), tz),
+);
+const scheduleChallenge = cache((userId: string, tz: string) => getChallengeProgressForUser(userId, tz));
+
 export function getCalendarSchedule(
   userId: string,
   now = new Date(),
@@ -563,16 +603,17 @@ async function loadCalendarSchedule(
   now = new Date(),
   weekAnchor?: Date,
 ) {
+  const shared = sharedSchedule?.userId === userId ? sharedSchedule : null;
   const [scale, swaps, account, edits] = await Promise.all([
     calendarScaleContext(userId, weekAnchor ?? now),
-    getWeekPlanSwapsForUser(userId),
+    shared ? Promise.resolve(shared.swaps) : scheduleSwaps(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
-    loadMemberExerciseEdits(userId),
+    shared ? Promise.resolve(shared.edits) : scheduleEdits(userId),
   ]);
   const { profile, tz, strength, skill } = scale;
-  await finalizePastLoggedDrafts(userId, now, tz);
-  const sessions = await listWorkoutSessionsForUser(userId);
-  const challenge = await getChallengeProgressForUser(userId, tz);
+  await scheduleFinalize(userId, now.toISOString(), tz);
+  const sessions = shared?.sessions ?? (await scheduleSessions(userId));
+  const challenge = await scheduleChallenge(userId, tz);
   const loggedSessions = sessions.filter(
     (session) =>
       (session.status === "complete" || session.status === "partial" || session.status === "draft") &&
@@ -616,17 +657,26 @@ async function loadCalendarSchedule(
     active: false,
   }));
 
-  for (const day of days) {
+  const dayScales = await Promise.all(days.map((day) => calendarScaleContext(userId, day.date)));
+  const shapedPlans = days.map((day, index) => {
+    const dayScale = dayScales[index]!;
+    const built = planForDate({ ...prefs, forcedWeekIndex: dayScale.campWeek }, day.date, tz, swaps);
+    const camp = dayScale.camp;
+    return camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
+      ? shapeDayPlan(built, camp.phase)
+      : built;
+  });
+  const easedPlans = await easePlansForUser(
+    userId,
+    tz,
+    days.map((day, index) => ({ date: day.date, plan: shapedPlans[index]! })),
+  );
+  for (const [index, day] of days.entries()) {
     // Each civil day uses the dose for its own week. The default 8-day list
     // crosses a Monday, so it cannot reuse today's scale for every row.
-    const dayScale = await calendarScaleContext(userId, day.date);
-    const { camp, planByDay } = dayScale;
-    const built = planForDate({ ...prefs, forcedWeekIndex: dayScale.campWeek }, day.date, tz, swaps);
-    const shaped =
-      camp && camp.phase !== "complete" && camp.phase !== "pre-camp"
-        ? shapeDayPlan(built, camp.phase)
-        : built;
-    const eased = await easePlanForUser(userId, day.date, tz, shaped);
+    const dayScale = dayScales[index]!;
+    const { planByDay } = dayScale;
+    const eased = easedPlans[index]!;
     const plan = eased.plan;
     day.summary = plan.summary;
     day.active = plan.active;

@@ -71,7 +71,11 @@ export function TrainWeekFollow({
   function onWeekChange(week: WeekChange) {
     setWeekStart(week.weekStart);
     if (week.preserveUrl) return;
-    replaceTrainSearch(pathname, week.dayParam, level);
+    const href = replaceTrainSearch(pathname, week.dayParam, level);
+    const rendered =
+      typeof document !== "undefined" &&
+      document.querySelector(`[data-train-panel="${week.weekStart}"]`);
+    if (!rendered) router.push(href);
   }
 
   const panels = Children.map(children, (child) => {

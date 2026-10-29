@@ -123,7 +123,11 @@ export function CalendarWeekFollow({
     setWeekStart(week.weekStart);
     setDayParam(week.dayParam);
     if (week.preserveUrl) return;
-    replaceCalendarSearch(pathname, week, level);
+    const href = replaceCalendarSearch(pathname, week, level);
+    const rendered =
+      typeof document !== "undefined" &&
+      document.querySelector(`[data-calendar-panel="${week.weekStart}"]`);
+    if (!rendered) router.push(href);
   }
 
   function onDayChange(nextDay: string) {

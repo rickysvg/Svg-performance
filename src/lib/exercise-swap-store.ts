@@ -16,7 +16,7 @@ import {
 } from "@/lib/exercise-swap";
 import { highestSetNumber } from "@/lib/logger-insert";
 import { clampSetRestSeconds } from "@/lib/set-rest";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { prescribedHoldSeconds, setHasLoggedWork } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { rirFromLoadText } from "@/lib/rir";
 import { scaleBandFromPrefs, scaleProgramDay, type ScalePrefs } from "@/lib/training-scale";
@@ -152,6 +152,7 @@ export function mergeReplacementSets(
       ),
       writtenName,
     );
+    const hold = prescribedHoldSeconds(replacement.reps, replacement.logMode);
     return (index: number, copy: WorkoutSetInput | undefined): WorkoutSetInput => ({
     exerciseName: writtenName,
     setNumber: start + index + 1,
@@ -159,7 +160,8 @@ export function mergeReplacementSets(
     loadValue: copy?.loadValue ?? null,
     loadUnit: place.loadUnit,
     logMode: replacement.logMode,
-    durationSeconds: copy?.durationSeconds ?? null,
+    durationSeconds:
+      copy?.durationSeconds != null && copy.durationSeconds > 0 ? copy.durationSeconds : hold,
     completed: Boolean(copy?.completed),
     notes: copy?.notes ?? "",
     prescriptionKey: prescriptionSlotKey({

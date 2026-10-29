@@ -27,6 +27,33 @@ describe("swap search must not finish the workout", () => {
 });
 
 describe("mid-workout swap", () => {
+  it("prefills the prescribed seconds on every swapped timed set", () => {
+    const merged = mergeReplacementSets(
+      [1, 2, 3].map((setNumber) => ({
+        exerciseName: "Farmer carry",
+        setNumber,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb" as const,
+        logMode: "load_timed" as const,
+        durationSeconds: setNumber === 1 ? 45 : null,
+        completed: setNumber === 1,
+      })),
+      ["Farmer carry"],
+      {
+        name: "Zercher carry",
+        sets: 4,
+        reps: "30 sec",
+        loadText: "Bar in the elbow crease",
+        logMode: "load_timed",
+      },
+      { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
+    );
+    const rows = merged.filter((set) => set.exerciseName === "Zercher carry");
+    expect(rows.map((set) => set.durationSeconds)).toEqual([45, 30, 30, 30]);
+    expect(rows.every((set) => set.logMode === "load_timed")).toBe(true);
+  });
+
   beforeEach(async () => {
     await resetDatabase();
   });
