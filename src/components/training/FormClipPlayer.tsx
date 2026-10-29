@@ -1,11 +1,9 @@
 "use client";
 
-import { type PointerEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FORM_PLAYER_READY_MS, releaseFormPlayer } from "@/lib/form-player";
 import { nocookieEmbedSrc, youtubeThumbSrcs, youtubeVideoId } from "@/lib/form-videos";
-
-/** How long the still stays up before we treat the embed as blocked or missing. */
-const FORM_PLAYER_READY_MS = 8000;
 
 type YTPlayer = { destroy?: () => void };
 
@@ -67,32 +65,42 @@ function loadYouTubeApi() {
 }
 
 function FormSheet({ name, url, onClose }: { name: string; url: string; onClose: () => void }) {
-  const reactId = useId();
-  const hostId = `form-player-${reactId.replace(/:/g, "")}`;
+  const mountRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<"loading" | "ready" | "failed">("loading");
-  const playerRef = useRef<YTPlayer | null>(null);
   const src = nocookieEmbedSrc(url);
   const clipMissing = !src || !youtubeVideoId(url);
   const still = youtubeThumbSrcs(url)[0] ?? "";
   const failed = phase === "failed" || clipMissing;
 
   useEffect(() => {
-    if (clipMissing) return;
+    const mount = mountRef.current;
+    if (!mount || clipMissing) return;
     let cancelled = false;
-    let ready = false;
-    const timeout = window.setTimeout(() => {
-      if (!cancelled && !ready) setPhase("failed");
-    }, FORM_PLAYER_READY_MS);
+    let settled = false;
+    const slot = document.createElement("div");
+    slot.className = "h-full w-full";
+    mount.appendChild(slot);
+    let player: YTPlayer | null = null;
+    const finish = (next: "ready" | "failed") => {
+      if (cancelled || settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      if (next === "failed") {
+        releaseFormPlayer(mount, player);
+        player = null;
+      }
+      setPhase(next);
+    };
+    const timeout = window.setTimeout(() => finish("failed"), FORM_PLAYER_READY_MS);
     const videoId = youtubeVideoId(url);
-    const start = new URL(src!).searchParams.get("start");
-    const end = new URL(src!).searchParams.get("end");
+    const parsed = new URL(src!);
+    const start = parsed.searchParams.get("start");
+    const end = parsed.searchParams.get("end");
     loadYouTubeApi()
       .then(() => {
         const Player = youtubeWindow().YT?.Player;
-        if (cancelled || !Player) return;
-        const host = document.getElementById(hostId);
-        if (!host) return;
-        playerRef.current = new Player(host, {
+        if (cancelled || settled || !Player) return;
+        player = new Player(slot, {
           videoId: videoId ?? undefined,
           playerVars: {
             start: start ? Number(start) : 0,
@@ -103,36 +111,19 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
             enablejsapi: 1,
           },
           events: {
-            onReady: () => {
-              ready = true;
-              window.clearTimeout(timeout);
-              if (!cancelled) setPhase("ready");
-            },
-            onError: () => {
-              ready = true;
-              window.clearTimeout(timeout);
-              if (!cancelled) setPhase("failed");
-            },
+            onReady: () => finish("ready"),
+            onError: () => finish("failed"),
           },
         });
       })
-      .catch(() => {
-        if (!cancelled) setPhase("failed");
-      });
+      .catch(() => finish("failed"));
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
-      const player = playerRef.current;
-      playerRef.current = null;
-      window.setTimeout(() => {
-        try {
-          player?.destroy?.();
-        } catch {
-          // The dialog is already gone. A late destroy must not block close.
-        }
-      }, 0);
+      releaseFormPlayer(mount, player);
+      player = null;
     };
-  }, [clipMissing, hostId, src, url]);
+  }, [clipMissing, src, url]);
 
   function shut(event: PointerEvent) {
     event.preventDefault();
@@ -170,31 +161,23 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
             Close
           </button>
         </div>
-        {failed ? (
-          <div className="space-y-3" data-form-still>
-            {still ? (
-              // Still from the clip. Not an outbound YouTube link.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={still} alt="" className="aspect-video w-full rounded-xl bg-black object-cover" />
-            ) : null}
-            <p className="text-sm text-muted">
-              This clip did not load. Use the still and the written cues on the exercise.
-            </p>
-          </div>
-        ) : (
-          <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
-            <div id={hostId} className="h-full w-full" />
-            {phase !== "ready" && still ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={still}
-                alt=""
-                data-form-still
-                className="absolute inset-0 z-10 h-full w-full object-cover"
-              />
-            ) : null}
-          </div>
-        )}
+        <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
+          <div ref={mountRef} data-form-player-mount className="h-full w-full" />
+          {phase !== "ready" ? (
+            <div className="absolute inset-0 z-10 space-y-3 bg-black" data-form-still>
+              {still ? (
+                // Still from the clip. Not an outbound YouTube link.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={still} alt="" className="aspect-video w-full object-cover" />
+              ) : null}
+              {failed ? (
+                <p className="px-1 text-sm text-muted">
+                  This clip did not load. Use the still and the written cues on the exercise.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
