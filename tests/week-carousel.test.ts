@@ -61,10 +61,10 @@ describe("week day carousel", () => {
     expect(neighborWeekDayParams("2026-03-01")).toEqual(["2026-02-22", "2026-03-08"]);
     const train = read("src/components/training/TrainWeekFollow.tsx");
     const calendar = read("src/components/training/CalendarWeekFollow.tsx");
-    expect(train).toContain("prefetchAround(week.dayParam)");
-    expect(calendar).toContain("prefetchAround(week.dayParam)");
-    expect(train).toContain("PrefetchKind.FULL");
-    expect(calendar).toContain("PrefetchKind.FULL");
+    expect(train).toContain("scheduleWeekPrefetch");
+    expect(calendar).toContain("scheduleWeekPrefetch");
+    expect(train).not.toContain("next/dist/client");
+    expect(calendar).not.toContain("next/dist/client");
     expect(train).toContain("neighborWeekDayParams");
     expect(calendar).toContain("neighborWeekDayParams");
   });

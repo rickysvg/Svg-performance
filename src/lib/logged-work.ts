@@ -140,6 +140,8 @@ export function offPlanSessionDone(
 
 /** Logger reps field. Above this is rejected on save. */
 export const MAX_LOGGED_REPS = 100;
+/** Distance carries store meters in the reps column. A long walk is not a rep count. */
+export const MAX_DISTANCE_METERS = 5000;
 
 export function loggedRepsFromInput(raw: string): { value: number | null; error: string } {
   const text = raw.trim();
@@ -147,8 +149,51 @@ export function loggedRepsFromInput(raw: string): { value: number | null; error:
   if (!/^\d+$/.test(text)) return { value: null, error: "Reps max is 100." };
   const value = Number(text);
   if (!Number.isFinite(value) || value < 0) return { value: null, error: "Reps max is 100." };
-  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: "" };
+  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: "Reps max is 100." };
   return { value, error: "" };
+}
+
+export function prescriptionTextForSet(key: string | null | undefined) {
+  const added = parseAddedPlan(key);
+  if (added?.reps) return added.reps;
+  return repsTextFromPrescriptionKey(key);
+}
+
+/** Meters logged on a distance carry, including a draft that is already over the rep cap. */
+export function isDistanceLoggedSet(set: {
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+  exerciseName?: string | null;
+  durationSeconds?: number | null;
+}) {
+  if (isDistanceDose(prescriptionTextForSet(set.prescriptionKey))) return true;
+  if (set.logMode !== "load_timed") return false;
+  if (set.durationSeconds != null && set.durationSeconds > 0) return false;
+  const name = set.exerciseName ?? "";
+  return /\b(carry|farmer)\b/i.test(name) && !/\bzercher\b/i.test(name);
+}
+
+export function loggedCountCap(set: {
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+  exerciseName?: string | null;
+  durationSeconds?: number | null;
+}) {
+  return isDistanceLoggedSet(set) ? MAX_DISTANCE_METERS : MAX_LOGGED_REPS;
+}
+
+export function loggedCountMessage(set: {
+  reps?: number | null;
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+  exerciseName?: string | null;
+  durationSeconds?: number | null;
+}) {
+  if (set.reps == null || !Number.isFinite(set.reps)) return null;
+  const cap = loggedCountCap(set);
+  if (set.reps >= 0 && set.reps <= cap) return null;
+  if (isDistanceLoggedSet(set)) return `Distance should be between 0 and ${MAX_DISTANCE_METERS} m.`;
+  return `Reps should be between 0 and ${MAX_LOGGED_REPS}.`;
 }
 
 /** First positive integer in a plan rep string, capped at 200. */

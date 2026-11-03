@@ -4,7 +4,6 @@ import {
   Children,
   cloneElement,
   isValidElement,
-  useCallback,
   useEffect,
   useState,
   useTransition,
@@ -12,11 +11,11 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { TrainWeekChangeContext, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
 import { neighborWeekDayParams, sameWeekdayDayParam, trainDayHref, type CarouselChipDay } from "@/lib/week-carousel";
+import { prefetchWeekRoute, scheduleWeekPrefetch, type WeekPrefetchRouter } from "@/lib/week-prefetch";
 
 export type TrainMoveBundle = {
   editable: boolean;
@@ -78,34 +77,31 @@ export function TrainWeekFollow({
   const move = moves[weekStart];
   const [isPending, startTransition] = useTransition();
 
-  const prefetchAround = useCallback((dayParam: string) => {
-    if (!dayParam) return;
-    const targets = new Set(neighborWeekDayParams(dayParam));
-    const index = weeks.findIndex((week) => week.weekStart === weekStart);
-    const around =
-      index >= 0
-        ? index
-        : weeks.findIndex((week) => week.days.some((day) => day.dayParam === dayParam));
-    for (const neighbor of [weeks[around - 1], weeks[around + 1]]) {
-      if (!neighbor) continue;
-      targets.add(sameWeekdayDayParam(weeks, neighbor, dayParam));
-    }
-    const search = typeof window === "undefined" ? "" : window.location.search;
-    for (const day of targets) {
-      if (!day || day === dayParam) continue;
-      router.prefetch(trainDayHref(pathname, search, day, level), { kind: PrefetchKind.FULL });
-    }
-  }, [level, pathname, router, weekStart, weeks]);
-
   useEffect(() => {
     const selected =
       (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("day") : null) ||
       selectedDay;
-    prefetchAround(selected);
-  }, [prefetchAround, selectedDay]);
+    if (!selected) return;
+    const targets = new Set(neighborWeekDayParams(selected));
+    const index = weeks.findIndex((week) => week.weekStart === weekStart);
+    const around =
+      index >= 0
+        ? index
+        : weeks.findIndex((week) => week.days.some((day) => day.dayParam === selected));
+    for (const neighbor of [weeks[around - 1], weeks[around + 1]]) {
+      if (!neighbor) continue;
+      targets.add(sameWeekdayDayParam(weeks, neighbor, selected));
+    }
+    const search = typeof window === "undefined" ? "" : window.location.search;
+    const hrefs = [...targets]
+      .filter((day) => day && day !== selected)
+      .map((day) => trainDayHref(pathname, search, day, level));
+    return scheduleWeekPrefetch(hrefs, (href) =>
+      prefetchWeekRoute(router as unknown as WeekPrefetchRouter, href),
+    );
+  }, [level, pathname, router, selectedDay, weekStart, weeks]);
 
   function onWeekChange(week: WeekChange) {
-    prefetchAround(week.dayParam);
     const rendered =
       typeof document !== "undefined" &&
       document.querySelector(`[data-train-panel="${week.weekStart}"]`);

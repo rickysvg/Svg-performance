@@ -75,6 +75,7 @@ describe("form clip fallback", () => {
     noteFormEmbedResult("failed");
     expect(formEmbedBlocked()).toBe(true);
     expect(formClipFallbackLimitMs(formEmbedBlocked())).toBe(FORM_PLAYER_RETRY_MS);
+    expect(FORM_PLAYER_RETRY_MS).toBe(4000);
     expect(FORM_PLAYER_RETRY_MS).toBeLessThan(FORM_PLAYER_READY_MS);
     noteFormEmbedResult("ready");
     expect(formEmbedBlocked()).toBe(false);

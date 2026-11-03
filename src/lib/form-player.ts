@@ -1,7 +1,7 @@
 /** How long the still stays up before we treat the embed as blocked or missing. */
 export const FORM_PLAYER_READY_MS = 8000;
-/** A later clip still tries the embed. A short limit avoids another full wait. */
-export const FORM_PLAYER_RETRY_MS = 1500;
+/** A later clip still tries the embed, with enough time for a slow but working network. */
+export const FORM_PLAYER_RETRY_MS = 4000;
 
 let embedBlocked = false;
 

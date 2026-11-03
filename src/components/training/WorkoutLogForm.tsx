@@ -2260,7 +2260,7 @@ export function WorkoutLogForm({
                 })}
               </div>
 
-              {repsError && activeName === name && group.some((row) => (row.reps ?? 0) > MAX_LOGGED_REPS) ? (
+              {repsError && activeName === name ? (
                 <p role="alert" data-reps-error className="mt-2 text-sm text-danger">
                   {repsError}
                 </p>
