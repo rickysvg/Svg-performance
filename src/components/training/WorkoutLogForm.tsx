@@ -94,6 +94,7 @@ import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import {
+  bindRepsCapInput,
   isDistanceDose,
   loggedRepsFromInput,
   MAX_LOGGED_REPS,
@@ -2193,6 +2194,9 @@ export function WorkoutLogForm({
                             inputMode="numeric"
                             aria-invalid={repsError ? true : undefined}
                             value={set.reps ?? ""}
+                            ref={(node) => {
+                              bindRepsCapInput(node, () => setRepsError(""));
+                            }}
                             onChange={(event) => {
                               const parsed = loggedRepsFromInput(event.target.value);
                               setRepsError(parsed.error);

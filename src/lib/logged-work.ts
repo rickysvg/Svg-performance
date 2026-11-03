@@ -143,13 +143,46 @@ export const MAX_LOGGED_REPS = 100;
 /** Distance carries store meters in the reps column. A long walk is not a rep count. */
 export const MAX_DISTANCE_METERS = 5000;
 
+export const REPS_MAX_MESSAGE = "Reps max is 100.";
+
+/** The note shows only while the typed integer is over the cap. 100 and below hide it. */
+export function repsCapMessage(raw: string) {
+  const text = raw.trim();
+  if (!/^\d+$/.test(text)) return "";
+  return Number(text) > MAX_LOGGED_REPS ? REPS_MAX_MESSAGE : "";
+}
+
+type RepsCapInput = {
+  value: string;
+  addEventListener: (type: string, listener: () => void) => void;
+  removeEventListener: (type: string, listener: () => void) => void;
+};
+
+const repsCapListeners = new WeakMap<RepsCapInput, () => void>();
+
+/**
+ * Clear the cap note when the field is set back to 100 or below.
+ * A controlled number input already showing the clamped 100 does not emit
+ * React's onChange for that same value, so this listens on the element.
+ */
+export function bindRepsCapInput(node: RepsCapInput | null, clear: () => void) {
+  if (!node) return;
+  const previous = repsCapListeners.get(node);
+  if (previous) node.removeEventListener("input", previous);
+  const onInput = () => {
+    if (!repsCapMessage(node.value)) clear();
+  };
+  repsCapListeners.set(node, onInput);
+  node.addEventListener("input", onInput);
+}
+
 export function loggedRepsFromInput(raw: string): { value: number | null; error: string } {
   const text = raw.trim();
   if (!text) return { value: null, error: "" };
-  if (!/^\d+$/.test(text)) return { value: null, error: "Reps max is 100." };
+  if (!/^\d+$/.test(text)) return { value: null, error: "" };
   const value = Number(text);
-  if (!Number.isFinite(value) || value < 0) return { value: null, error: "Reps max is 100." };
-  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: "Reps max is 100." };
+  if (!Number.isFinite(value) || value < 0) return { value: null, error: "" };
+  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: repsCapMessage(text) };
   return { value, error: "" };
 }
 
