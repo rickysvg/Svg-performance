@@ -46,8 +46,8 @@ export async function saveBodyMetricAction(
         ? parseOneDecimal(rawValue)
         : Number(rawValue);
     const unit = String(formData.get("unit") ?? "");
-    const bodyFatPercent =
-      kind === "weight" ? optionalBodyFatPercent(formData.get("bodyFatPercent")) : null;
+    const fatFieldPresent = kind === "weight" && formData.has("bodyFatPercent");
+    const bodyFatPercent = fatFieldPresent ? optionalBodyFatPercent(formData.get("bodyFatPercent")) : null;
     if (kind === "weight") {
       await recordWeightEntryForUser(user.id, {
         value,
@@ -55,6 +55,7 @@ export async function saveBodyMetricAction(
         recordedAt,
         notes,
         bodyFatPercent,
+        clearBodyFat: fatFieldPresent && bodyFatPercent == null,
       });
     } else {
       await createBodyMetricForUser(user.id, {

@@ -2,7 +2,14 @@
 
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FORM_PLAYER_READY_MS, releaseFormPlayer } from "@/lib/form-player";
+import {
+  FORM_PLAYER_READY_MS,
+  formClipFallbackLimitMs,
+  formEmbedBlocked,
+  noteFormEmbedResult,
+  releaseFormPlayer,
+} from "@/lib/form-player";
+import { useSheetBehavior } from "@/components/useSheetBehavior";
 import { nocookieEmbedSrc, youtubeThumbSrcs, youtubeVideoId } from "@/lib/form-videos";
 
 type YTPlayer = { destroy?: () => void };
@@ -66,7 +73,10 @@ function loadYouTubeApi() {
 
 function FormSheet({ name, url, onClose }: { name: string; url: string; onClose: () => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<"loading" | "ready" | "failed">("loading");
+  const panelRef = useSheetBehavior(onClose, true);
+  const [phase, setPhase] = useState<"loading" | "ready" | "failed">(() =>
+    formEmbedBlocked() ? "failed" : "loading",
+  );
   const src = nocookieEmbedSrc(url);
   const clipMissing = !src || !youtubeVideoId(url);
   const still = youtubeThumbSrcs(url)[0] ?? "";
@@ -74,7 +84,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
 
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount || clipMissing) return;
+    if (!mount || clipMissing || formEmbedBlocked()) return;
     let cancelled = false;
     let settled = false;
     const slot = document.createElement("div");
@@ -85,13 +95,14 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       if (cancelled || settled) return;
       settled = true;
       window.clearTimeout(timeout);
+      noteFormEmbedResult(next);
       if (next === "failed") {
         releaseFormPlayer(mount, player);
         player = null;
       }
       setPhase(next);
     };
-    const timeout = window.setTimeout(() => finish("failed"), FORM_PLAYER_READY_MS);
+    const timeout = window.setTimeout(() => finish("failed"), formClipFallbackLimitMs(false));
     const videoId = youtubeVideoId(url);
     const parsed = new URL(src!);
     const start = parsed.searchParams.get("start");
@@ -142,6 +153,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       }}
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-label={`Watch form: ${name}`}
         className="max-h-[85dvh] w-full rounded-t-3xl bg-card px-4 pb-6 pt-3"

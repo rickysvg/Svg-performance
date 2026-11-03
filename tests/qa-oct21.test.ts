@@ -44,7 +44,7 @@ describe("QA Oct 21 rules", () => {
     expect(readFileSync("src/components/progress/SparringTrend.tsx", "utf8")).toContain("compact");
   });
 
-  it("keeps a done set with blank reps done when that exercise is swapped", () => {
+  it("clears a done tick when that exercise is swapped", () => {
     const merged = mergeReplacementSets(
       [
         {
@@ -69,8 +69,9 @@ describe("QA Oct 21 rules", () => {
     );
     expect(merged[0]).toMatchObject({
       exerciseName: "Goblet squat",
-      completed: true,
+      completed: false,
       reps: null,
+      loadValue: null,
     });
   });
 });

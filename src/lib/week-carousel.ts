@@ -288,6 +288,22 @@ export function nextSelectedDay(
   return next?.dayParam ?? event.previousDayParam;
 }
 
+/** Civil date plus or minus whole days. Week neighbors are seven days away. */
+export function shiftCivilDay(dayParam: string, days: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayParam.trim());
+  if (!match) return dayParam;
+  const utc = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days));
+  const year = utc.getUTCFullYear();
+  const month = String(utc.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(utc.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Previous and next week, same weekday, including weeks outside the rendered strip. */
+export function neighborWeekDayParams(dayParam: string) {
+  return [shiftCivilDay(dayParam, -7), shiftCivilDay(dayParam, 7)];
+}
+
 /** The same weekday in another week, matching a week-swipe's day param. */
 export function sameWeekdayDayParam(
   weeks: readonly { days: readonly CarouselChipDay[] }[],

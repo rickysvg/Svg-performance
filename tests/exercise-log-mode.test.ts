@@ -421,5 +421,14 @@ describe("exercise log modes", () => {
     expect(libraryExercise("Zercher carry")?.reps).toBe("30 sec");
     expect(libraryExercise("Zercher carry")?.restSeconds).toBe(90);
     expect(libraryExercise("Bear crawl")?.logMode).toBe("timed");
+    expect(libraryExercise("Farmer carry")?.reps).toBe("30 m");
+    expect(libraryExercise("Suitcase carry")?.reps).toMatch(/m/);
+    expect(libraryExercise("Side plank")?.reps).toMatch(/sec/i);
+    expect(libraryExercise("Dumbbell farmer carry")?.reps).toBe("30 m");
+    expect(libraryExercise("Goblet squat")?.restSeconds).toBe(45);
+    expect(parseDurationSeconds("30 m")).toBeNull();
+    expect(parseDurationSeconds("20 m / side")).toBeNull();
+    expect(parseDurationSeconds("30 sec")).toBe(30);
+    expect(parseDurationSeconds("20 sec / side")).toBe(20);
   });
 });

@@ -96,6 +96,25 @@ export async function listSwapsForUser(userId: string) {
 
 export { cleanSwapName, swapAlreadyInWorkoutMessage };
 
+/** True when this slot already has a tick or a typed number. A swap must not keep those. */
+export function exerciseSlotHasLoggedSets(
+  sets: ReadonlyArray<{
+    exerciseName: string;
+    completed?: boolean | null;
+    reps?: number | null;
+    loadValue?: number | null;
+    durationSeconds?: number | null;
+  }>,
+  name: string,
+) {
+  const key = cleanSwapName(name);
+  return sets.some(
+    (set) =>
+      cleanSwapName(set.exerciseName) === key &&
+      (Boolean(set.completed) || setHasLoggedWork(set)),
+  );
+}
+
 /**
  * Prefer the logger's current rows, but never drop an exercise the server
  * still has if the client payload forgot it. Swap is not a delete.
@@ -138,7 +157,6 @@ export function mergeReplacementSets(
   place: { programSlug: string; dayNumber: number; loadUnit: "lb" },
 ): WorkoutSetInput[] {
   const from = new Set(fromNames.map(cleanSwapName));
-  const prior = existing.filter((set) => from.has(cleanSwapName(set.exerciseName)));
   const name = cleanSwapName(replacement.name);
   const targetAlready = existing.some(
     (set) => cleanSwapName(set.exerciseName) === name && !from.has(cleanSwapName(set.exerciseName)),
@@ -153,24 +171,23 @@ export function mergeReplacementSets(
       writtenName,
     );
     const hold = prescribedHoldSeconds(replacement.reps, replacement.logMode);
-    return (index: number, copy: WorkoutSetInput | undefined): WorkoutSetInput => ({
+    return (index: number): WorkoutSetInput => ({
     exerciseName: writtenName,
     setNumber: start + index + 1,
-    reps: copy?.reps ?? null,
-    loadValue: copy?.loadValue ?? null,
+    reps: null,
+    loadValue: null,
     loadUnit: place.loadUnit,
     logMode: replacement.logMode,
-    durationSeconds:
-      copy?.durationSeconds != null && copy.durationSeconds > 0 ? copy.durationSeconds : hold,
-    completed: Boolean(copy?.completed),
-    notes: copy?.notes ?? "",
+    durationSeconds: hold,
+    completed: false,
+    notes: "",
     prescriptionKey: prescriptionSlotKey({
       exerciseName: name,
       reps: replacement.reps,
       programSlug: place.programSlug,
       dayNumber: place.dayNumber,
     }),
-    rir: planRir || copy?.rir || "",
+    rir: planRir,
   });
   };
   if (targetAlready) {
@@ -180,16 +197,9 @@ export function mergeReplacementSets(
       name,
     );
     const slot = slotFor(distinct);
-    const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
-      const previous = prior[index];
-      const copy = previous && (setHasLoggedWork(previous) || previous.completed) ? previous : undefined;
-      return slot(index, copy);
-    });
-    for (let index = replacement.sets; index < prior.length; index += 1) {
-      const previous = prior[index];
-      if (!previous || !setHasLoggedWork(previous)) continue;
-      created.push(slot(created.length, previous));
-    }
+    const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) =>
+      slot(index),
+    );
     const next: WorkoutSetInput[] = [];
     let inserted = false;
     for (const set of existing) {
@@ -206,17 +216,10 @@ export function mergeReplacementSets(
     return next;
   }
   const slot = slotFor(name);
-  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) => {
-    const previous = prior[index];
-    const copy = previous && (setHasLoggedWork(previous) || previous.completed) ? previous : undefined;
-    return slot(index, copy);
-  });
-  // A shorter plan must not throw away a set the member already logged.
-  for (let index = replacement.sets; index < prior.length; index += 1) {
-    const previous = prior[index];
-    if (!previous || !setHasLoggedWork(previous)) continue;
-    created.push(slot(created.length, previous));
-  }
+  // Logged numbers stay off the new exercise. Carried sets were counting as a first PR.
+  const created: WorkoutSetInput[] = Array.from({ length: replacement.sets }, (_, index) =>
+    slot(index),
+  );
   const next: WorkoutSetInput[] = [];
   let inserted = false;
   for (const set of existing) {

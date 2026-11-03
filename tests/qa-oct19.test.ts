@@ -124,7 +124,7 @@ describe("start today estimate", () => {
 });
 
 describe("exercise swap keeps the session", () => {
-  it("preserves logged sets and does not collapse the exercise count", () => {
+  it("clears logged sets on the swapped slot and keeps the other exercise", () => {
     const existing = [
       {
         exerciseName: "Sit-to-stand",
@@ -157,10 +157,10 @@ describe("exercise swap keeps the session", () => {
       },
       { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
     );
-    const swapped = merged.find((set) => set.reps === 8);
-    expect(swapped?.exerciseName).toBe("Goblet squat · 2");
+    const swapped = merged.find((set) => set.exerciseName === "Goblet squat · 2");
     expect(swapped?.exerciseName).not.toMatch(/\(2\)/);
-    expect(swapped?.completed).toBe(true);
+    expect(swapped?.reps).toBeNull();
+    expect(swapped?.completed).toBe(false);
     expect(merged.some((set) => set.exerciseName === "Goblet squat" && set.loadValue === 25)).toBe(
       true,
     );

@@ -6,6 +6,7 @@ import {
   createContext,
   isValidElement,
   useContext,
+  useCallback,
   useEffect,
   useState,
   useTransition,
@@ -16,7 +17,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { WeekStrip, type WeekCarouselWeek, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
-import { calendarFocusMatches, sameWeekdayDayParam } from "@/lib/week-carousel";
+import { calendarFocusMatches, neighborWeekDayParams, sameWeekdayDayParam } from "@/lib/week-carousel";
 
 const CalendarDayContext = createContext("");
 
@@ -131,18 +132,34 @@ export function CalendarWeekFollow({
   }
   const move = moves[weekStart];
 
-  useEffect(() => {
+  const prefetchAround = useCallback((day: string) => {
+    if (!day) return;
+    const targets = new Set(neighborWeekDayParams(day));
     const index = weeks.findIndex((week) => week.weekStart === weekStart);
-    for (const neighbor of [weeks[index - 1], weeks[index + 1]]) {
+    const around =
+      index >= 0 ? index : weeks.findIndex((week) => week.days.some((item) => item.dayParam === day));
+    for (const neighbor of [weeks[around - 1], weeks[around + 1]]) {
       if (!neighbor) continue;
-      const day = sameWeekdayDayParam(weeks, neighbor, dayParam);
-      const params = new URLSearchParams({ week: neighbor.weekStart, day });
+      targets.add(sameWeekdayDayParam(weeks, neighbor, day));
+    }
+    for (const nextDay of targets) {
+      if (!nextDay || nextDay === day) continue;
+      const neighbor = weeks.find((week) => week.days.some((item) => item.dayParam === nextDay));
+      const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+      if (neighbor) params.set("week", neighbor.weekStart);
+      params.set("day", nextDay);
       if (level) params.set("level", level);
+      else params.delete("level");
       router.prefetch(`${pathname}?${params.toString()}`);
     }
-  }, [dayParam, level, pathname, router, weekStart, weeks]);
+  }, [level, pathname, router, weekStart, weeks]);
+
+  useEffect(() => {
+    prefetchAround(dayParam);
+  }, [dayParam, prefetchAround]);
 
   function onWeekChange(week: WeekChange) {
+    prefetchAround(week.dayParam);
     const rendered =
       typeof document !== "undefined" &&
       document.querySelector(`[data-calendar-panel="${week.weekStart}"]`);

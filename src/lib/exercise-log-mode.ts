@@ -198,6 +198,7 @@ export function parseDurationSeconds(value: string | number | null | undefined):
   }
   const raw = String(value ?? "").trim();
   if (!raw || raw.startsWith("-")) return null;
+  if (DISTANCE_REPS.test(raw) && !DURATION_REPS.test(raw)) return null;
   const colons = raw.match(/:/g)?.length ?? 0;
   if (colons > 2) return null;
   if (colons === 2) {

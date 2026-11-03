@@ -15,6 +15,7 @@ import {
   carouselWeekStrips,
   packCarouselWeeks,
   weekCarouselLabel,
+  neighborWeekDayParams,
   nextSelectedDay,
   trainDayHref,
   weekChipHref,
@@ -55,6 +56,17 @@ function read(rel: string) {
 const prefs = { primaryFocus: "mma" as const, weeklyAvailability: ["Monday", "Wednesday", "Friday"] };
 
 describe("week day carousel", () => {
+  it("names the previous and next week for prefetch on every week change", () => {
+    expect(neighborWeekDayParams("2026-10-21")).toEqual(["2026-10-14", "2026-10-28"]);
+    expect(neighborWeekDayParams("2026-03-01")).toEqual(["2026-02-22", "2026-03-08"]);
+    const train = read("src/components/training/TrainWeekFollow.tsx");
+    const calendar = read("src/components/training/CalendarWeekFollow.tsx");
+    expect(train).toContain("prefetchAround(week.dayParam)");
+    expect(calendar).toContain("prefetchAround(week.dayParam)");
+    expect(train).toContain("neighborWeekDayParams");
+    expect(calendar).toContain("neighborWeekDayParams");
+  });
+
   it("keeps a non-gesture scroll on the week the member is viewing", () => {
     const current = carouselIndexFromScroll({
       scrollLeft: 0,

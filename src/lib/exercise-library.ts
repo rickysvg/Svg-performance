@@ -5,6 +5,7 @@
 import type { LogMode } from "@/lib/exercise-log-mode";
 import { combatAsLibraryRows } from "@/lib/combat-library";
 import { fighterAsLibraryRows } from "@/lib/fighter-library";
+import { catalogRestSeconds } from "@/lib/set-rest";
 
 export const EXERCISE_CATEGORIES = [
   "lower",
@@ -103,7 +104,18 @@ function row(
   notes: string,
   figureKey?: string,
 ): Row {
-  return { name, category, equipment, sets, reps, loadText, restSeconds, logMode, notes, figureKey };
+  return {
+    name,
+    category,
+    equipment,
+    sets,
+    reps,
+    loadText,
+    restSeconds: catalogRestSeconds(restSeconds),
+    logMode,
+    notes,
+    figureKey,
+  };
 }
 
 const EASY = "Easy range. Stop if a joint pinches.";
@@ -194,8 +206,8 @@ const BASE_LIBRARY: LibraryExercise[] = [
   row("Jump rope", "conditioning", "both", 6, "30 sec", "Smooth — no lbs", 30, "timed", "Stay tall. Misses mean the rope is too fast."),
   row("Easy bike intervals", "conditioning", "gym", 6, "30 sec", "Easy pace. Nasal breathing if you can.", 30, "timed", "Spin. This is not the assault-bike menu."),
   row("Burpees", "conditioning", "none", 4, "8", "3-5 RIR · Step back if the jump is sloppy.", 45, "reps_only", "Chest to the floor, stand, small jump."),
-  row("Farmer carry", "conditioning", "gym", 4, "30 sec", "2-3 RIR · Heavy — walk tall.", 60, "load_timed", "Heavy bells. Do not lean."),
-  row("Suitcase carry", "conditioning", "gym", 3, "30 sec / side", "2-3 RIR · One bell, no side bend.", 45, "load_timed", "The free arm stays quiet."),
+  row("Farmer carry", "conditioning", "gym", 4, "30 m", "2-3 RIR · Heavy — walk tall.", 60, "load_timed", "Heavy bells. Do not lean."),
+  row("Suitcase carry", "conditioning", "gym", 3, "20 m / side", "2-3 RIR · One bell, no side bend.", 45, "load_timed", "The free arm stays quiet."),
   row("Sled push", "conditioning", "gym", 4, "20 sec", "3-5 RIR · Forward lean, long steps.", 60, "timed", "Hips down. Push the ground away."),
 
   row("Hip circles", "mobility", "none", 1, "3 / side", EASY, 15, "reps_only", "Stand on one leg and draw a slow circle with the knee.", "hip-cars"),

@@ -138,6 +138,19 @@ export function offPlanSessionDone(
   return true;
 }
 
+/** Logger reps field. Above this is rejected on save. */
+export const MAX_LOGGED_REPS = 100;
+
+export function loggedRepsFromInput(raw: string): { value: number | null; error: string } {
+  const text = raw.trim();
+  if (!text) return { value: null, error: "" };
+  if (!/^\d+$/.test(text)) return { value: null, error: "Reps max is 100." };
+  const value = Number(text);
+  if (!Number.isFinite(value) || value < 0) return { value: null, error: "Reps max is 100." };
+  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: "Reps max is 100." };
+  return { value, error: "" };
+}
+
 /** First positive integer in a plan rep string, capped at 200. */
 export function leadingPlanCount(text: string | null | undefined) {
   const match = String(text ?? "").match(/\d+/);

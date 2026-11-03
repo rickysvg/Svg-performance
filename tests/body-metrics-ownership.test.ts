@@ -4,6 +4,8 @@ import { ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 import {
   createBodyMetricForUser,
+  clearLatestBodyFatForUser,
+  deleteBodyFatAlongsideWeight,
   deleteBodyMetricForUser,
   deletePhotoPlaceholderForUser,
   getBodyMetricForUser,
@@ -124,6 +126,46 @@ describe("body metric and photo placeholder ownership", () => {
         now: new Date("2026-10-22T18:00:00.000Z"),
       }),
     ).rejects.toMatchObject({ code: "BODY_METRIC" });
+  });
+
+  it("removes body fat when the weigh-in is deleted or the field is cleared", async () => {
+    const user = await makeUser("clear-fat@example.com");
+    const recordedAt = new Date("2026-10-21T15:00:00.000Z");
+    const weight = await recordWeightEntryForUser(user.id, {
+      value: 180,
+      unit: "lb",
+      recordedAt,
+      bodyFatPercent: 15,
+    });
+    await deleteBodyMetricForUser(weight.id, user.id);
+    expect(await prisma.bodyMetric.count({ where: { userId: user.id, kind: "bodyFat" } })).toBe(0);
+    expect(await prisma.bodyMetric.count({ where: { userId: user.id, kind: "weight" } })).toBe(0);
+
+    const kept = await recordWeightEntryForUser(user.id, {
+      value: 181,
+      unit: "lb",
+      recordedAt: new Date("2026-10-22T15:00:00.000Z"),
+      bodyFatPercent: 15,
+    });
+    const older = await recordWeightEntryForUser(user.id, {
+      value: 179,
+      unit: "lb",
+      recordedAt: new Date("2026-10-20T15:00:00.000Z"),
+      bodyFatPercent: 14,
+    });
+    await deleteBodyFatAlongsideWeight(user.id, kept);
+    const fats = await prisma.bodyMetric.findMany({ where: { userId: user.id, kind: "bodyFat" } });
+    expect(fats.map((row) => row.value)).toEqual([14]);
+    expect(older.id).toBeTruthy();
+
+    await recordWeightEntryForUser(user.id, {
+      value: 178,
+      unit: "lb",
+      recordedAt: new Date("2026-10-23T15:00:00.000Z"),
+      clearBodyFat: true,
+    });
+    expect(await prisma.bodyMetric.count({ where: { userId: user.id, kind: "bodyFat" } })).toBe(0);
+    expect(await clearLatestBodyFatForUser(user.id)).toBeNull();
   });
 
   it("rejects fake wearable-looking kinds and empty values", async () => {

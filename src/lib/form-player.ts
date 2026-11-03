@@ -1,6 +1,25 @@
 /** How long the still stays up before we treat the embed as blocked or missing. */
 export const FORM_PLAYER_READY_MS = 8000;
 
+let embedBlocked = false;
+
+/** A blocked embed should not make the next clip wait another full timeout. */
+export function formEmbedBlocked() {
+  return embedBlocked;
+}
+
+export function noteFormEmbedResult(result: "ready" | "failed") {
+  embedBlocked = result === "failed";
+}
+
+export function resetFormEmbedBlocked() {
+  embedBlocked = false;
+}
+
+export function formClipFallbackLimitMs(previousBlocked = false) {
+  return previousBlocked ? 0 : FORM_PLAYER_READY_MS;
+}
+
 export function formClipFallbackPhase(input: {
   ready: boolean;
   errored: boolean;

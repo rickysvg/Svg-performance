@@ -116,8 +116,28 @@ export function FormCheckLockedTrigger({
 
 export function FormCheckLockedView({ initialOpen = true }: { initialOpen?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
+  function close() {
+    setOpen(false);
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    }
+  }
   return (
     <>
+      <section
+        data-testid="form-check-locked-upgrade"
+        className="rounded-[1.5rem] border border-[#FF3B3B]/70 bg-black px-4 py-4 text-white"
+      >
+        <h2 className="font-display text-xl uppercase tracking-wide">{FORM_CHECK_LOCKED_TITLE}</h2>
+        <p className="mt-2 text-sm text-white/80">{FORM_CHECK_LOCKED_BODY}</p>
+        <Link
+          href={FORM_CHECK_APPLY_PATH}
+          data-testid="form-check-locked-upgrade-cta"
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[#CBF805] px-4 text-sm font-semibold text-black"
+        >
+          Apply for VIP Coaching
+        </Link>
+      </section>
       <button
         type="button"
         data-testid="form-check-locked-trigger-page"
@@ -129,7 +149,7 @@ export function FormCheckLockedView({ initialOpen = true }: { initialOpen?: bool
           <span className="font-display text-xl uppercase tracking-wide">Form check</span>
         </span>
       </button>
-      <FormCheckLockedSheet open={open} onClose={() => setOpen(false)} />
+      <FormCheckLockedSheet open={open} onClose={close} />
     </>
   );
 }

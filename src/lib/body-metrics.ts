@@ -178,6 +178,8 @@ export async function recordWeightEntryForUser(
     recordedAt: Date;
     notes?: string;
     bodyFatPercent?: number | null;
+    /** Empty body-fat field on a weigh-in. Removes the reading Progress shows. */
+    clearBodyFat?: boolean;
   },
 ) {
   const weight = await createBodyMetricForUser(userId, {
@@ -187,6 +189,9 @@ export async function recordWeightEntryForUser(
     recordedAt: input.recordedAt,
     notes: input.notes,
   });
+  if (input.clearBodyFat && input.bodyFatPercent == null) {
+    await clearLatestBodyFatForUser(userId);
+  }
   if (input.bodyFatPercent == null) return weight;
   try {
     await createBodyMetricForUser(userId, {
@@ -332,9 +337,49 @@ export async function getBodyMetricForUser(metricId: string, userId: string) {
   return assertOwnMetric(row, userId);
 }
 
+/** Body fat saved with a weigh-in, from that timestamp until the next weight. */
+export async function deleteBodyFatAlongsideWeight(
+  userId: string,
+  weight: { id: string; recordedAt: Date },
+) {
+  const nextWeight = await prisma.bodyMetric.findFirst({
+    where: {
+      userId,
+      kind: "weight",
+      id: { not: weight.id },
+      recordedAt: { gt: weight.recordedAt },
+    },
+    orderBy: { recordedAt: "asc" },
+  });
+  await prisma.bodyMetric.deleteMany({
+    where: {
+      userId,
+      kind: "bodyFat",
+      recordedAt: {
+        gte: weight.recordedAt,
+        ...(nextWeight ? { lt: nextWeight.recordedAt } : {}),
+      },
+    },
+  });
+}
+
+/** The number Progress shows. Clearing the field removes that reading. */
+export async function clearLatestBodyFatForUser(userId: string) {
+  const latest = await prisma.bodyMetric.findFirst({
+    where: { userId, kind: "bodyFat" },
+    orderBy: { recordedAt: "desc" },
+  });
+  if (!latest) return null;
+  await prisma.bodyMetric.delete({ where: { id: latest.id } });
+  return latest.id;
+}
+
 export async function deleteBodyMetricForUser(metricId: string, userId: string) {
-  await getBodyMetricForUser(metricId, userId);
-  await prisma.bodyMetric.delete({ where: { id: metricId } });
+  const row = await getBodyMetricForUser(metricId, userId);
+  if (row.kind === "weight") {
+    await deleteBodyFatAlongsideWeight(userId, row);
+  }
+  await prisma.bodyMetric.delete({ where: { id: row.id } });
 }
 
 export async function updateBodyMetricValueForUser(userId: string, metricId: string, value: number) {

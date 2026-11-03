@@ -247,7 +247,7 @@ function parsePrescription(text: string) {
   const sets = Number(text.match(/^(\d+)\s*x/i)?.[1] ?? 3);
   const reps = (text.match(/x\s*([^@,]+)/i)?.[1] ?? "8").trim().replace(/(\d+)\s*\/\s*/g, "$1 / ");
   const rir = text.match(/(\d+\s*-\s*\d+|\d+)\s*RIR/i)?.[1]?.replace(/\s+/g, "");
-  const rest = Number(text.match(/(\d+)\s*s\b/i)?.[1] ?? 60);
+  const rest = Number(text.match(/(\d+)\s*s\b/i)?.[1] ?? DEFAULT_SET_REST_SECONDS);
   const restSeconds = clampSetRestSeconds(Number.isFinite(rest) ? rest : DEFAULT_SET_REST_SECONDS);
   return { sets: Number.isFinite(sets) ? sets : 3, reps, rir, restSeconds };
 }

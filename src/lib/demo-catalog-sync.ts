@@ -9,7 +9,7 @@ import {
 import { demoBagSkillDays, demoStrengthDays } from "@/lib/demo-week-seed";
 import { formatStoredTags, tagsForExercise } from "@/lib/exercise-tags";
 import { fallbackLogMode, isWeightedShadowName } from "@/lib/exercise-log-mode";
-import { clampSetRestSeconds } from "@/lib/set-rest";
+import { clampSetRestSeconds, DEFAULT_SET_REST_SECONDS } from "@/lib/set-rest";
 import { formVideoFieldsFor } from "@/lib/form-videos";
 
 const SKILL_SLUG = "demo-combat-skills";
@@ -135,11 +135,9 @@ export function normalizeCatalogExercise(
   }
   if (logMode === "timed_round" && !isBikeIntervalName(exercise.name) && programSlug !== SKILL_SLUG) {
     reps = "2:00";
-    restSeconds = 90;
+    if (!Number.isFinite(restSeconds) || restSeconds <= 0) restSeconds = DEFAULT_SET_REST_SECONDS;
   }
-  if (logMode !== "timed_round" || isBikeIntervalName(exercise.name)) {
-    restSeconds = clampSetRestSeconds(restSeconds);
-  }
+  restSeconds = clampSetRestSeconds(restSeconds);
   return {
     sortOrder: exercise.sortOrder,
     name: exercise.name,
