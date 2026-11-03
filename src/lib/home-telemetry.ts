@@ -64,11 +64,13 @@ export function loggedSetVolume(
     loadValue?: number | null;
     loadUnit?: string | null;
     durationSeconds?: number | null;
+    logMode?: string | null;
   }>,
   displayUnit: LoadUnit,
 ) {
   return sets.reduce((sum, set) => {
     if (!setHasLoggedWork(set)) return sum;
+    if (set.logMode === "load_timed") return sum;
     if (set.loadValue == null) return sum;
     const reps = set.reps != null && set.reps > 0 ? set.reps : 1;
     return sum + volumeInUnit(reps, set.loadValue, set.loadUnit || displayUnit, displayUnit);

@@ -12,6 +12,7 @@ import {
 } from "@/lib/exercise-log-mode";
 import { previousSetLabel } from "@/lib/exercise-media";
 import { libraryExercise } from "@/lib/exercise-library";
+import { catalogRestSeconds } from "@/lib/set-rest";
 
 describe("exercise log modes", () => {
   it("uses the stored field first, then name heuristics", () => {
@@ -430,5 +431,33 @@ describe("exercise log modes", () => {
     expect(parseDurationSeconds("20 m / side")).toBeNull();
     expect(parseDurationSeconds("30 sec")).toBe(30);
     expect(parseDurationSeconds("20 sec / side")).toBe(20);
+    expect(previousSetLabel({ reps: 30, loadValue: 50, loadUnit: "lb", logMode: "load_timed" })).toBe(
+      "30 m × 50 lbs",
+    );
+    const squat = libraryExercise("Back squat");
+    const zercher = libraryExercise("Zercher carry");
+    expect(squat?.restSeconds).toBeGreaterThan(45);
+    expect(catalogRestSeconds(squat?.restSeconds ?? 0)).toBe(45);
+    expect(catalogRestSeconds(zercher?.restSeconds ?? 0)).toBe(45);
+    expect(
+      plannedSetLine({
+        sets: squat?.sets ?? 4,
+        reps: squat?.reps ?? "5",
+        restSeconds: catalogRestSeconds(squat?.restSeconds ?? 90),
+        logMode: squat?.logMode,
+        name: squat?.name,
+        loadText: squat?.loadText,
+      }),
+    ).toContain("45s rest");
+    expect(
+      plannedSetLine({
+        sets: zercher?.sets ?? 4,
+        reps: zercher?.reps ?? "30 sec",
+        restSeconds: catalogRestSeconds(zercher?.restSeconds ?? 90),
+        logMode: zercher?.logMode,
+        name: zercher?.name,
+        loadText: zercher?.loadText,
+      }),
+    ).toContain("45s rest");
   });
 });

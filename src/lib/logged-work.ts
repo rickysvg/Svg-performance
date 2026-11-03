@@ -147,7 +147,7 @@ export function loggedRepsFromInput(raw: string): { value: number | null; error:
   if (!/^\d+$/.test(text)) return { value: null, error: "Reps max is 100." };
   const value = Number(text);
   if (!Number.isFinite(value) || value < 0) return { value: null, error: "Reps max is 100." };
-  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: "Reps max is 100." };
+  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: "" };
   return { value, error: "" };
 }
 
@@ -164,7 +164,7 @@ const PLAN_TIME_UNIT = "(minutes|minute|mins|min|seconds|second|secs|sec)";
 /** A metre or yard walk is not a rep count. Empty timed logs use this hold. */
 const DISTANCE_HOLD_SECONDS = 30;
 
-function isDistanceDose(text: string) {
+export function isDistanceDose(text: string) {
   return /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i.test(text);
 }
 
@@ -259,7 +259,9 @@ export function repsTextFromPrescriptionKey(key: string | null | undefined) {
  */
 export function withTickedPlanWork<T extends PersistSet>(set: T): T {
   if (!set.completed || setHasLoggedWork(set)) return set;
-  const work = planWorkFromText(repsTextFromPrescriptionKey(set.prescriptionKey));
+  const repsText = repsTextFromPrescriptionKey(set.prescriptionKey);
+  if (isDistanceDose(repsText)) return set;
+  const work = planWorkFromText(repsText);
   const timed = set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed";
   if (timed) {
     const seconds = work.seconds ?? work.reps;

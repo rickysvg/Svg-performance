@@ -12,6 +12,7 @@ import {
 } from "@/lib/exercise-library";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
 import { showBestSwapBadge } from "@/lib/exercise-swap";
+import { catalogRestSeconds } from "@/lib/set-rest";
 
 /**
  * The member swap picker. Hidden library rows (unreviewed or untrimmed clips)
@@ -250,7 +251,7 @@ export function ExerciseLibrarySheet({
                     {plannedSetLine({
                       sets: exercise.sets,
                       reps: exercise.reps,
-                      restSeconds: exercise.restSeconds,
+                      restSeconds: catalogRestSeconds(exercise.restSeconds),
                       logMode: exercise.logMode,
                       name: exercise.name,
                       loadText: exercise.loadText,

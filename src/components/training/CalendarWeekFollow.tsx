@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { WeekStrip, type WeekCarouselWeek, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
@@ -150,7 +151,7 @@ export function CalendarWeekFollow({
       params.set("day", nextDay);
       if (level) params.set("level", level);
       else params.delete("level");
-      router.prefetch(`${pathname}?${params.toString()}`);
+      router.prefetch(`${pathname}?${params.toString()}`, { kind: PrefetchKind.FULL });
     }
   }, [level, pathname, router, weekStart, weeks]);
 
@@ -178,6 +179,7 @@ export function CalendarWeekFollow({
   }
 
   function onDayChange(nextDay: string) {
+    prefetchAround(nextDay);
     setDayParam(nextDay);
     const week = weeks.find((item) => item.days.some((day) => day.dayParam === nextDay));
     if (!week) return;

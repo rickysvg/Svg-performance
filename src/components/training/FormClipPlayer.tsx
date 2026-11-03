@@ -4,6 +4,7 @@ import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "
 import { createPortal } from "react-dom";
 import {
   FORM_PLAYER_READY_MS,
+  FORM_PLAYER_RETRY_MS,
   formClipFallbackLimitMs,
   formEmbedBlocked,
   noteFormEmbedResult,
@@ -38,6 +39,10 @@ function youtubeWindow() {
 function loadYouTubeApi() {
   const host = youtubeWindow();
   if (host.YT?.Player) return Promise.resolve();
+  const retrying = formEmbedBlocked();
+  if (retrying) {
+    document.querySelector('script[src="https://www.youtube.com/iframe_api"]')?.remove();
+  }
   return new Promise<void>((resolve, reject) => {
     const done = () => {
       if (youtubeWindow().YT?.Player) resolve();
@@ -67,16 +72,14 @@ function loadYouTubeApi() {
       window.clearInterval(timer);
       if (youtubeWindow().YT?.Player) resolve();
       else reject(new Error("YouTube IFrame API timed out"));
-    }, FORM_PLAYER_READY_MS);
+    }, retrying ? FORM_PLAYER_RETRY_MS : FORM_PLAYER_READY_MS);
   });
 }
 
 function FormSheet({ name, url, onClose }: { name: string; url: string; onClose: () => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const panelRef = useSheetBehavior(onClose, true);
-  const [phase, setPhase] = useState<"loading" | "ready" | "failed">(() =>
-    formEmbedBlocked() ? "failed" : "loading",
-  );
+  const [phase, setPhase] = useState<"loading" | "ready" | "failed">("loading");
   const src = nocookieEmbedSrc(url);
   const clipMissing = !src || !youtubeVideoId(url);
   const still = youtubeThumbSrcs(url)[0] ?? "";
@@ -84,7 +87,8 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
 
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount || clipMissing || formEmbedBlocked()) return;
+    if (!mount || clipMissing) return;
+    const retryLimit = formClipFallbackLimitMs(formEmbedBlocked());
     let cancelled = false;
     let settled = false;
     const slot = document.createElement("div");
@@ -102,7 +106,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       }
       setPhase(next);
     };
-    const timeout = window.setTimeout(() => finish("failed"), formClipFallbackLimitMs(false));
+    const timeout = window.setTimeout(() => finish("failed"), retryLimit);
     const videoId = youtubeVideoId(url);
     const parsed = new URL(src!);
     const start = parsed.searchParams.get("start");

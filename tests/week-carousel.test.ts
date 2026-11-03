@@ -63,6 +63,8 @@ describe("week day carousel", () => {
     const calendar = read("src/components/training/CalendarWeekFollow.tsx");
     expect(train).toContain("prefetchAround(week.dayParam)");
     expect(calendar).toContain("prefetchAround(week.dayParam)");
+    expect(train).toContain("PrefetchKind.FULL");
+    expect(calendar).toContain("PrefetchKind.FULL");
     expect(train).toContain("neighborWeekDayParams");
     expect(calendar).toContain("neighborWeekDayParams");
   });

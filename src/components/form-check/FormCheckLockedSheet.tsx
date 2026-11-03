@@ -5,8 +5,10 @@ import { useState, type PropsWithChildren } from "react";
 import { onSheetBackdropMouseDown, useSheetBehavior } from "@/components/useSheetBehavior";
 import {
   FORM_CHECK_APPLY_PATH,
+  FORM_CHECK_HOME_PATH,
   FORM_CHECK_LOCKED_BODY,
   FORM_CHECK_LOCKED_TITLE,
+  formCheckCloseTarget,
 } from "@/lib/form-check-shared";
 
 function LockSvg() {
@@ -118,9 +120,14 @@ export function FormCheckLockedView({ initialOpen = true }: { initialOpen?: bool
   const [open, setOpen] = useState(initialOpen);
   function close() {
     setOpen(false);
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-    }
+    if (typeof window === "undefined") return;
+    const target = formCheckCloseTarget({
+      historyLength: window.history.length,
+      referrer: document.referrer,
+      origin: window.location.origin,
+    });
+    if (target === "back") window.history.back();
+    else if (target === "home") window.location.assign(FORM_CHECK_HOME_PATH);
   }
   return (
     <>

@@ -94,6 +94,7 @@ import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import {
+  isDistanceDose,
   loggedRepsFromInput,
   MAX_LOGGED_REPS,
   planWorkFromText,
@@ -1152,6 +1153,9 @@ export function WorkoutLogForm({
     const fromPlan = planWorkFromText(planned?.reps);
     const fromKey = planWorkFromText(repsTextFromPrescriptionKey(target?.prescriptionKey));
     const planWork = fromPlan.reps != null || fromPlan.seconds != null ? fromPlan : fromKey;
+    const distancePlan =
+      isDistanceDose(planned?.reps || "") ||
+      isDistanceDose(repsTextFromPrescriptionKey(target?.prescriptionKey));
     const timedFill = isDurationMode(mode) || bike;
     const emptyTick =
       completed &&
@@ -1162,7 +1166,8 @@ export function WorkoutLogForm({
       });
     const fillReps = emptyTick && !timedFill && planWork.reps != null;
     const fillSeconds = planWork.seconds ?? (timedFill ? planWork.reps : null);
-    const fillTime = emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
+    const fillTime =
+      !distancePlan && emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
     setActiveName(exerciseName);
     const nextSets = sets.map((set) =>
       set.id === setId
@@ -1713,6 +1718,8 @@ export function WorkoutLogForm({
             ? bikeSession?.notes || ""
             : planned?.notes || bikeSession?.notes || "";
           const timed = isDurationMode(mode) && !bike;
+          const distance = isDistanceDose(doseReps || planned?.reps || "");
+          const workLabel = distance ? "m" : modeColumnLabel(mode);
           const restSeconds = exerciseRestSeconds(name);
           const layout = loggerRowLayout(mode, name);
           const columns =
@@ -2039,7 +2046,7 @@ export function WorkoutLogForm({
                   <>
                     <span>{bike || mode !== "timed_round" ? "Set" : "Rd"}</span>
                     <span>Previous</span>
-                    {bike ? null : <span>{modeColumnLabel(mode)}</span>}
+                    {bike ? null : <span>{workLabel}</span>}
                     {bike || hidesLoad(mode) ? null : <span>{loadHeader}</span>}
                   </>
                 )}
@@ -2127,6 +2134,29 @@ export function WorkoutLogForm({
                               : ""
                           }
                         />
+                      ) : timed && distance ? (
+                        <label className="block">
+                          <span className="sr-only">Distance in meters</span>
+                          <input type="hidden" name={`sets.${index}.durationSeconds`} value="" />
+                          <input
+                            name={`sets.${index}.reps`}
+                            data-set-field={set.id}
+                            data-distance-meters={set.id}
+                            type="number"
+                            min={0}
+                            max={5000}
+                            inputMode="numeric"
+                            value={set.reps ?? ""}
+                            onChange={(event) =>
+                              updateSet(set.id, {
+                                reps: event.target.value === "" ? null : Number(event.target.value),
+                                durationSeconds: null,
+                                logMode: mode,
+                              })
+                            }
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                          />
+                        </label>
                       ) : timed ? (
                         <label className="block">
                           <span className="sr-only">
@@ -2230,7 +2260,7 @@ export function WorkoutLogForm({
                 })}
               </div>
 
-              {repsError && activeName === name ? (
+              {repsError && activeName === name && group.some((row) => (row.reps ?? 0) > MAX_LOGGED_REPS) ? (
                 <p role="alert" data-reps-error className="mt-2 text-sm text-danger">
                   {repsError}
                 </p>

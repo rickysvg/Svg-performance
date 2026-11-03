@@ -2,6 +2,22 @@ export const FORM_CHECK_LOCKED_TITLE = "Form Check is locked — VIP Coaching me
 export const FORM_CHECK_LOCKED_BODY =
   "VIP Coaching includes coach form checks with a 48-hour response.";
 export const FORM_CHECK_APPLY_PATH = "/vip/apply";
+export const FORM_CHECK_HOME_PATH = "/home";
+
+/** In-app back, otherwise home. A fresh tab stays on the upgrade. */
+export function formCheckCloseTarget(input: {
+  historyLength: number;
+  referrer: string;
+  origin: string;
+}): "back" | "home" | "stay" {
+  if (input.historyLength <= 1) return "stay";
+  try {
+    if (input.referrer && new URL(input.referrer).origin === input.origin) return "back";
+  } catch {
+    // Referrer was not a URL. Treat it as outside the app.
+  }
+  return "home";
+}
 
 export const FORM_CHECK_MONTHLY_LIMIT = 2;
 export const FORM_CHECK_MAX_BYTES = 24 * 1024 * 1024;

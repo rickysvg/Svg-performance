@@ -20,6 +20,7 @@ import {
   FORM_CHECK_APPLY_PATH,
   FORM_CHECK_LOCKED_BODY,
   FORM_CHECK_LOCKED_TITLE,
+  formCheckCloseTarget,
 } from "@/lib/form-check-shared";
 import { createFormCheckForUser } from "@/lib/form-check";
 import { HomeQuickActions } from "@/components/home/HomeQuickActions";
@@ -364,5 +365,25 @@ describe("form check is VIP Coaching only", () => {
     expect(readFileSync("src/app/(member)/profile/page.tsx", "utf8")).toContain(
       "form-check-locked-trigger-profile",
     );
+  });
+
+  it("sends a locked form check home when the previous page is outside the app", () => {
+    expect(
+      formCheckCloseTarget({ historyLength: 1, referrer: "", origin: "https://svg-performance.vercel.app" }),
+    ).toBe("stay");
+    expect(
+      formCheckCloseTarget({
+        historyLength: 2,
+        referrer: "https://svg-performance.vercel.app/home",
+        origin: "https://svg-performance.vercel.app",
+      }),
+    ).toBe("back");
+    expect(
+      formCheckCloseTarget({
+        historyLength: 2,
+        referrer: "https://example.com/article",
+        origin: "https://svg-performance.vercel.app",
+      }),
+    ).toBe("home");
   });
 });

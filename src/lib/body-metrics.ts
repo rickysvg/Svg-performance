@@ -155,6 +155,14 @@ export async function createBodyMetricForUser(
   });
 }
 
+/**
+ * A blank optional field leaves stored body fat alone.
+ * Clear only when that field was prefilled and the member emptied it.
+ */
+export function shouldClearBodyFat(wasSet: boolean, bodyFatPercent: number | null) {
+  return wasSet && bodyFatPercent == null;
+}
+
 /** Blank is optional. A typed value uses the body-fat rules (percent, above 0, at most 70). */
 export function optionalBodyFatPercent(raw: unknown): number | null {
   const text = String(raw ?? "").trim();
@@ -189,7 +197,7 @@ export async function recordWeightEntryForUser(
     recordedAt: input.recordedAt,
     notes: input.notes,
   });
-  if (input.clearBodyFat && input.bodyFatPercent == null) {
+  if (shouldClearBodyFat(Boolean(input.clearBodyFat), input.bodyFatPercent ?? null)) {
     await clearLatestBodyFatForUser(userId);
   }
   if (input.bodyFatPercent == null) return weight;

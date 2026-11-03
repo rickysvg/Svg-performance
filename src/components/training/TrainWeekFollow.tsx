@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { TrainWeekChangeContext, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
@@ -92,7 +93,7 @@ export function TrainWeekFollow({
     const search = typeof window === "undefined" ? "" : window.location.search;
     for (const day of targets) {
       if (!day || day === dayParam) continue;
-      router.prefetch(trainDayHref(pathname, search, day, level));
+      router.prefetch(trainDayHref(pathname, search, day, level), { kind: PrefetchKind.FULL });
     }
   }, [level, pathname, router, weekStart, weeks]);
 

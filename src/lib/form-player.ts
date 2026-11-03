@@ -1,9 +1,11 @@
 /** How long the still stays up before we treat the embed as blocked or missing. */
 export const FORM_PLAYER_READY_MS = 8000;
+/** A later clip still tries the embed. A short limit avoids another full wait. */
+export const FORM_PLAYER_RETRY_MS = 1500;
 
 let embedBlocked = false;
 
-/** A blocked embed should not make the next clip wait another full timeout. */
+/** The previous clip failed. The next one still mounts a player. */
 export function formEmbedBlocked() {
   return embedBlocked;
 }
@@ -17,7 +19,7 @@ export function resetFormEmbedBlocked() {
 }
 
 export function formClipFallbackLimitMs(previousBlocked = false) {
-  return previousBlocked ? 0 : FORM_PLAYER_READY_MS;
+  return previousBlocked ? FORM_PLAYER_RETRY_MS : FORM_PLAYER_READY_MS;
 }
 
 export function formClipFallbackPhase(input: {

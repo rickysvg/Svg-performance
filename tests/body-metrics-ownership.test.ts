@@ -12,6 +12,7 @@ import {
   getPhotoPlaceholderForUser,
   listBodyMetricsForUser,
   optionalBodyFatPercent,
+  shouldClearBodyFat,
   recordBodyFatAlongsideTodayWeight,
   recordWeightEntryForUser,
   upsertPhotoPlaceholderForUser,
@@ -158,6 +159,15 @@ describe("body metric and photo placeholder ownership", () => {
     expect(fats.map((row) => row.value)).toEqual([14]);
     expect(older.id).toBeTruthy();
 
+    await recordWeightEntryForUser(user.id, {
+      value: 177,
+      unit: "lb",
+      recordedAt: new Date("2026-10-19T15:00:00.000Z"),
+    });
+    expect(await prisma.bodyMetric.count({ where: { userId: user.id, kind: "bodyFat" } })).toBe(1);
+    expect(shouldClearBodyFat(false, null)).toBe(false);
+    expect(shouldClearBodyFat(true, 15)).toBe(false);
+    expect(shouldClearBodyFat(true, null)).toBe(true);
     await recordWeightEntryForUser(user.id, {
       value: 178,
       unit: "lb",

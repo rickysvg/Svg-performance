@@ -153,6 +153,7 @@ export function ExerciseCardMenu({
   function requestSwap(nextScope: "session" | "block", choice: LibraryExercise) {
     const currentSets = getCurrentSets?.() ?? [];
     if (exerciseSlotHasLoggedSets(currentSets, currentName)) {
+      setOpen(false);
       setClearPrompt({ scope: nextScope, choice });
       return;
     }
@@ -383,8 +384,9 @@ export function ExerciseCardMenu({
           )}
         />
       ) : null}
-      {clearPrompt ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center">
+      {clearPrompt && typeof document !== "undefined"
+        ? createPortal(
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center">
           <div
             role="dialog"
             aria-modal="true"
@@ -422,7 +424,8 @@ export function ExerciseCardMenu({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   );
