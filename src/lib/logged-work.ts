@@ -145,35 +145,18 @@ export const MAX_DISTANCE_METERS = 5000;
 
 export const REPS_MAX_MESSAGE = "Reps max is 100.";
 
+export type RepsField = {
+  reps: number | null;
+  error: string;
+  /** What the input shows after this entry. A clamp displays 100, not the typed number. */
+  display: string;
+};
+
 /** The note shows only while the typed integer is over the cap. 100 and below hide it. */
 export function repsCapMessage(raw: string) {
   const text = raw.trim();
   if (!/^\d+$/.test(text)) return "";
   return Number(text) > MAX_LOGGED_REPS ? REPS_MAX_MESSAGE : "";
-}
-
-type RepsCapInput = {
-  value: string;
-  addEventListener: (type: string, listener: () => void) => void;
-  removeEventListener: (type: string, listener: () => void) => void;
-};
-
-const repsCapListeners = new WeakMap<RepsCapInput, () => void>();
-
-/**
- * Clear the cap note when the field is set back to 100 or below.
- * A controlled number input already showing the clamped 100 does not emit
- * React's onChange for that same value, so this listens on the element.
- */
-export function bindRepsCapInput(node: RepsCapInput | null, clear: () => void) {
-  if (!node) return;
-  const previous = repsCapListeners.get(node);
-  if (previous) node.removeEventListener("input", previous);
-  const onInput = () => {
-    if (!repsCapMessage(node.value)) clear();
-  };
-  repsCapListeners.set(node, onInput);
-  node.addEventListener("input", onInput);
 }
 
 export function loggedRepsFromInput(raw: string): { value: number | null; error: string } {
@@ -184,6 +167,23 @@ export function loggedRepsFromInput(raw: string): { value: number | null; error:
   if (!Number.isFinite(value) || value < 0) return { value: null, error: "" };
   if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: repsCapMessage(text) };
   return { value, error: "" };
+}
+
+/** One keystroke. The result replaces the field; it does not wait for the previous clamp. */
+export function nextRepsEntry(raw: string): RepsField {
+  const parsed = loggedRepsFromInput(raw);
+  return {
+    reps: parsed.value,
+    error: parsed.error,
+    display: parsed.value == null ? "" : String(parsed.value),
+  };
+}
+
+/** Apply entries in order. Typing 99 after a clamp to 100 shows 99. */
+export function applyRepsEntries(raws: readonly string[]): RepsField {
+  let field: RepsField = { reps: null, error: "", display: "" };
+  for (const raw of raws) field = nextRepsEntry(raw);
+  return field;
 }
 
 export function prescriptionTextForSet(key: string | null | undefined) {

@@ -94,10 +94,9 @@ import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import {
-  bindRepsCapInput,
   isDistanceDose,
-  loggedRepsFromInput,
   MAX_LOGGED_REPS,
+  nextRepsEntry,
   planWorkFromText,
   repsTextFromPrescriptionKey,
   setHasLoggedWork,
@@ -2194,13 +2193,13 @@ export function WorkoutLogForm({
                             inputMode="numeric"
                             aria-invalid={repsError ? true : undefined}
                             value={set.reps ?? ""}
-                            ref={(node) => {
-                              bindRepsCapInput(node, () => setRepsError(""));
-                            }}
                             onChange={(event) => {
-                              const parsed = loggedRepsFromInput(event.target.value);
-                              setRepsError(parsed.error);
-                              updateSet(set.id, { reps: parsed.value });
+                              const next = nextRepsEntry(event.currentTarget.value);
+                              if (event.currentTarget.value !== next.display) {
+                                event.currentTarget.value = next.display;
+                              }
+                              setRepsError(next.error);
+                              updateSet(set.id, { reps: next.reps });
                             }}
                             className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
                           />

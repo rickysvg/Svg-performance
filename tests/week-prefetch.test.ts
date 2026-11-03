@@ -1,12 +1,15 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { addedPrescriptionKey } from "@/lib/logger-insert";
-import { bindRepsCapInput, loggedCountMessage, loggedRepsFromInput, repsCapMessage } from "@/lib/logged-work";
+import { applyRepsEntries, loggedCountMessage, loggedRepsFromInput, nextRepsEntry, repsCapMessage } from "@/lib/logged-work";
 import {
   WEEK_PREFETCH_STALE_MS,
   freshPrefetchHrefs,
   prefetchWeekRoute,
   resetWeekPrefetchState,
   scheduleWeekPrefetch,
+  type PrefetchTask,
   type TimerHost,
 } from "@/lib/week-prefetch";
 
@@ -67,7 +70,7 @@ describe("week prefetch", () => {
           resolve = settle;
         });
         gates.push(resolve);
-        return { done, abort: () => resolve(false) };
+        return { done, cancel: () => resolve(false) };
       },
       { delayMs: 1500, now: clock.now, timers: clock.timers },
     );
@@ -88,7 +91,7 @@ describe("week prefetch", () => {
     const again: string[] = [];
     scheduleWeekPrefetch(["/training?day=a", "/training?day=c"], (href) => {
       again.push(href);
-      return { done: Promise.resolve(true), abort() {} };
+      return { done: Promise.resolve(true), cancel() {} };
     }, { delayMs: 1500, now: clock.now, timers: clock.timers });
     await clock.advance(1500);
     await flush();
@@ -96,10 +99,10 @@ describe("week prefetch", () => {
     expect(freshPrefetchHrefs(["/training?day=c", ""], clock.now())).toEqual([]);
   });
 
-  it("aborts the in-flight prefetch and does not start the next week", async () => {
+  it("stops the chain without aborting, and a rejection is fetched again", async () => {
     const clock = manualClock();
     const calls: string[] = [];
-    const aborts: string[] = [];
+    const cancels: string[] = [];
     const stop = scheduleWeekPrefetch(["/training?day=a", "/training?day=b"], (href) => {
       calls.push(href);
       let resolve: (completed: boolean) => void = () => undefined;
@@ -108,8 +111,8 @@ describe("week prefetch", () => {
       });
       return {
         done,
-        abort() {
-          aborts.push(href);
+        cancel() {
+          cancels.push(href);
           resolve(false);
         },
       };
@@ -118,10 +121,22 @@ describe("week prefetch", () => {
     await clock.advance(1500);
     expect(calls).toEqual(["/training?day=a"]);
     stop();
-    expect(aborts).toEqual(["/training?day=a"]);
+    expect(cancels).toEqual(["/training?day=a"]);
     await flush();
     await clock.advance(5000);
     expect(calls).toEqual(["/training?day=a"]);
+    expect(freshPrefetchHrefs(["/training?day=a"], clock.now())).toEqual(["/training?day=a"]);
+
+    const retried: string[] = [];
+    scheduleWeekPrefetch(["/training?day=a", "/training?day=b"], (href) => {
+      retried.push(href);
+      const failed = href.endsWith("a");
+      return { done: Promise.resolve(!failed), cancel() {} };
+    }, { delayMs: 1500, now: clock.now, timers: clock.timers });
+    await clock.advance(1500);
+    await flush();
+    expect(retried).toEqual(["/training?day=a", "/training?day=b"]);
+    expect(freshPrefetchHrefs(["/training?day=a", "/training?day=b"], clock.now())).toEqual(["/training?day=a"]);
   });
 
   it("prefetches a week again once the client cache window has passed", async () => {
@@ -129,7 +144,7 @@ describe("week prefetch", () => {
     const calls: string[] = [];
     scheduleWeekPrefetch(["/training?day=a"], (href) => {
       calls.push(href);
-      return { done: Promise.resolve(true), abort() {} };
+      return { done: Promise.resolve(true), cancel() {} };
     }, { delayMs: 1500, now: clock.now, timers: clock.timers });
     await clock.advance(1500);
     await flush();
@@ -137,7 +152,7 @@ describe("week prefetch", () => {
 
     scheduleWeekPrefetch(["/training?day=a"], (href) => {
       calls.push(href);
-      return { done: Promise.resolve(true), abort() {} };
+      return { done: Promise.resolve(true), cancel() {} };
     }, { delayMs: 1500, now: clock.now, timers: clock.timers });
     await clock.advance(1500);
     expect(calls).toEqual(["/training?day=a"]);
@@ -145,105 +160,64 @@ describe("week prefetch", () => {
     clock.set(clock.now() + WEEK_PREFETCH_STALE_MS);
     scheduleWeekPrefetch(["/training?day=a"], (href) => {
       calls.push(href);
-      return { done: Promise.resolve(true), abort() {} };
+      return { done: Promise.resolve(true), cancel() {} };
     }, { delayMs: 1500, now: clock.now, timers: clock.timers });
     await clock.advance(1500);
     await flush();
     expect(calls).toEqual(["/training?day=a", "/training?day=a"]);
   });
 
-  it("waits for the full week body, and abort drops a follow-up prefetch", async () => {
-    const previousWindow = (globalThis as { window?: unknown }).window;
-    const pending: Array<{
-      init: RequestInit;
-      push: (chunk: Uint8Array | null) => void;
-    }> = [];
-    const fakeFetch: typeof fetch = async (_input, init) => {
-      let push: (chunk: Uint8Array | null) => void = () => undefined;
-      const body = new ReadableStream<Uint8Array>({
-        start(controller) {
-          push = (chunk) => {
-            if (chunk == null) controller.close();
-            else controller.enqueue(chunk);
-          };
-        },
-      });
-      pending.push({ init: init ?? {}, push });
-      return new Response(body, { status: 200, headers: { "content-type": "text/x-component" } });
-    };
-    const win = {
-      location: { origin: "http://localhost:3000" },
-      fetch: fakeFetch,
-      setTimeout: globalThis.setTimeout.bind(globalThis),
-      clearTimeout: globalThis.clearTimeout.bind(globalThis),
-    };
-    (globalThis as { window: typeof win }).window = win;
-    const href = "/training?day=2026-11-10";
-    try {
-      let settled = false;
-      const task = prefetchWeekRoute(
-        {
-          prefetch(target) {
-            void win.fetch(target, {
-              headers: { rsc: "1", "next-router-prefetch": "1" },
-              priority: "low",
-            }).then(async (response) => {
-              const reader = response.body?.getReader();
-              if (!reader) return;
-              while (!(await reader.read()).done) {
-                /* drain */
-              }
-            });
-            queueMicrotask(() => {
-              void win.fetch(target, { headers: { rsc: "1" }, priority: "low" }).then(async (response) => {
-                const reader = response.body?.getReader();
-                if (!reader) return;
-                while (!(await reader.read()).done) {
-                  /* drain */
-                }
-              });
-            });
-          },
-        },
-        href,
-      );
-      void task.done.then(() => {
-        settled = true;
-      });
-      await flush();
-      expect(pending).toHaveLength(2);
-      pending[0]?.push(new Uint8Array([1]));
-      pending[0]?.push(null);
-      await flush();
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      expect(settled).toBe(false);
+  it("does not abort, wrap fetch, or remember a rejected prefetch", async () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/lib/week-prefetch.ts"), "utf8");
+    expect(source).not.toContain("AbortController");
+    expect(source).not.toMatch(/window\.fetch\s*=/);
+    expect(source).not.toContain("next/dist");
 
-      pending[1]?.push(new Uint8Array([2]));
-      pending[1]?.push(null);
-      await expect(task.done).resolves.toBe(true);
-
-      const follow = prefetchWeekRoute(
-        {
-          prefetch(target) {
-            void win.fetch(target, { headers: { rsc: "1" }, priority: "low" });
-          },
+    const clock = manualClock();
+    const calls: string[] = [];
+    const task = prefetchWeekRoute(
+      {
+        prefetch(href, options) {
+          calls.push(href);
+          expect(options).toEqual({ kind: "full" });
         },
-        href,
-      );
-      await flush();
-      const open = pending.length;
-      follow.abort();
-      await expect(follow.done).resolves.toBe(false);
-      await expect(
-        win.fetch(href, { headers: { rsc: "1" }, priority: "low" }),
-      ).rejects.toThrow(/abort/i);
-      const navigation = await win.fetch(href, { headers: { rsc: "1" }, priority: "auto" });
-      expect(navigation.ok).toBe(true);
-      expect(pending.length).toBe(open + 1);
-    } finally {
-      if (previousWindow === undefined) delete (globalThis as { window?: unknown }).window;
-      else (globalThis as { window: unknown }).window = previousWindow;
-    }
+      },
+      "/training?day=a",
+      { gapMs: 1500, timers: clock.timers },
+    );
+    expect(calls).toEqual(["/training?day=a"]);
+    let settled: boolean | "pending" = "pending";
+    void task.done.then((ok) => {
+      settled = ok;
+    });
+    await clock.advance(1499);
+    expect(settled).toBe("pending");
+    task.cancel();
+    await flush();
+    expect(settled).toBe(false);
+    expect(calls).toEqual(["/training?day=a"]);
+
+    const rejected = prefetchWeekRoute(
+      {
+        prefetch() {
+          throw new Error("prefetch failed");
+        },
+      },
+      "/training?day=b",
+      { timers: clock.timers },
+    );
+    await expect(rejected.done).resolves.toBe(false);
+
+    const remembered: string[] = [];
+    scheduleWeekPrefetch(["/training?day=b"], (href) => {
+      remembered.push(href);
+      const result: PrefetchTask = { done: Promise.resolve(false), cancel() {} };
+      return result;
+    }, { delayMs: 0, now: clock.now, timers: clock.timers });
+    await clock.advance(0);
+    await flush();
+    expect(remembered).toEqual(["/training?day=b"]);
+    expect(freshPrefetchHrefs(["/training?day=b"], clock.now())).toEqual(["/training?day=b"]);
   });
 });
 
@@ -304,31 +278,23 @@ describe("distance carries are not rep-capped", () => {
     expect(repsCapMessage("100.")).toBe("");
   });
 
-  it("hides the cap note when the field is set back to 100", () => {
-    let notice = repsCapMessage("150");
-    const listeners = new Set<() => void>();
-    const node = {
-      value: "150",
-      addEventListener(_type: string, listener: () => void) {
-        listeners.add(listener);
-      },
-      removeEventListener(_type: string, listener: () => void) {
-        listeners.delete(listener);
-      },
-    };
-    bindRepsCapInput(node, () => {
-      notice = "";
+  it("applies 150 then 99 immediately and hides the note at 100", () => {
+    expect(nextRepsEntry("150")).toEqual({
+      reps: 100,
+      error: "Reps max is 100.",
+      display: "100",
     });
-    expect(notice).toBe("Reps max is 100.");
-    node.value = "100";
-    for (const listener of listeners) listener();
-    expect(notice).toBe("");
-    notice = repsCapMessage("101");
-    node.value = "101";
-    for (const listener of listeners) listener();
-    expect(notice).toBe("Reps max is 100.");
-    node.value = "99";
-    for (const listener of listeners) listener();
-    expect(notice).toBe("");
+    expect(applyRepsEntries(["150", "99"])).toEqual({
+      reps: 99,
+      error: "",
+      display: "99",
+    });
+    expect(applyRepsEntries(["150", "100"])).toEqual({
+      reps: 100,
+      error: "",
+      display: "100",
+    });
+    expect(repsCapMessage("100")).toBe("");
+    expect(repsCapMessage("99")).toBe("");
   });
 });
