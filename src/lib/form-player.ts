@@ -1,5 +1,26 @@
 /** How long the still stays up before we treat the embed as blocked or missing. */
 export const FORM_PLAYER_READY_MS = 8000;
+/** A later clip still tries the embed, with enough time for a slow but working network. */
+export const FORM_PLAYER_RETRY_MS = 4000;
+
+let embedBlocked = false;
+
+/** The previous clip failed. The next one still mounts a player. */
+export function formEmbedBlocked() {
+  return embedBlocked;
+}
+
+export function noteFormEmbedResult(result: "ready" | "failed") {
+  embedBlocked = result === "failed";
+}
+
+export function resetFormEmbedBlocked() {
+  embedBlocked = false;
+}
+
+export function formClipFallbackLimitMs(previousBlocked = false) {
+  return previousBlocked ? FORM_PLAYER_RETRY_MS : FORM_PLAYER_READY_MS;
+}
 
 export function formClipFallbackPhase(input: {
   ready: boolean;

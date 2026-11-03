@@ -20,7 +20,7 @@ import {
   DEFAULT_BIKE_SESSION,
   isBikeIntervalName,
 } from "@/lib/bike-sessions";
-import { clampSetRestSeconds, DEFAULT_SET_REST_SECONDS, MAX_SET_REST_SECONDS } from "@/lib/set-rest";
+import { catalogRestSeconds, clampSetRestSeconds, DEFAULT_SET_REST_SECONDS, MAX_SET_REST_SECONDS } from "@/lib/set-rest";
 import {
   bikeChoiceFromKey,
   choiceToken,
@@ -94,6 +94,9 @@ import { APP_TIMEZONE, formatDateTimeLocal } from "@/lib/timezone";
 import { dropEmptyPlanBikeRows, planRowsForLoggedSets, restoreLoggerSets } from "@/lib/logger-sets";
 import { gymExerciseKey } from "@/lib/gym-exercise";
 import {
+  isDistanceDose,
+  MAX_LOGGED_REPS,
+  nextRepsEntry,
   planWorkFromText,
   repsTextFromPrescriptionKey,
   setHasLoggedWork,
@@ -613,6 +616,7 @@ export function WorkoutLogForm({
     return () => window.clearTimeout(timer);
   }, [draftNotice]);
   const [sets, setSets] = useState(() => setsForLogger(session));
+  const [repsError, setRepsError] = useState("");
   const [showNotes, setShowNotes] = useState(Boolean(session.notes));
   const [pickerIndex, setPickerIndex] = useState<number | null>(null);
   const [addedNames, setAddedNames] = useState<Set<string>>(() => new Set());
@@ -753,14 +757,13 @@ export function WorkoutLogForm({
     return () => observer.disconnect();
   }, [groupKey]);
 
-  function restForName(name: string, plannedRest: number | undefined, mode: LogMode) {
+  function restForName(name: string, plannedRest: number | undefined) {
     const raw = prescribedRestSeconds({
       override: restByName[name],
       slot: swap?.slots.find((row) => row.currentName === name)?.restSeconds,
       planned: plannedRest,
-      fallback: isBikeIntervalName(name) ? 60 : mode === "timed_round" ? 90 : DEFAULT_SET_REST_SECONDS,
+      fallback: isBikeIntervalName(name) ? 60 : DEFAULT_SET_REST_SECONDS,
     });
-    if (mode === "timed_round" && !isBikeIntervalName(name)) return raw;
     return clampSetRestSeconds(raw);
   }
 
@@ -782,15 +785,15 @@ export function WorkoutLogForm({
     const addedRest = restByName[name] ?? storedPlan?.restSeconds;
     const addedPlan =
       added && (library || storedPlan)
-        ? { restSeconds: clampSetRestSeconds(addedRest ?? library?.restSeconds ?? DEFAULT_SET_REST_SECONDS) }
+        ? {
+            restSeconds:
+              addedRest != null
+                ? clampSetRestSeconds(addedRest)
+                : catalogRestSeconds(library?.restSeconds ?? DEFAULT_SET_REST_SECONDS),
+          }
         : undefined;
     const planned = plannedMatch ?? (overlay ? { restSeconds: overlay.restSeconds } : addedPlan);
-    const mode = resolveLogMode({
-      logMode: group?.[0]?.logMode ?? overlay?.logMode ?? plannedMatch?.logMode,
-      name,
-      reps: overlay?.reps || storedPlan?.reps || plannedMatch?.reps,
-    });
-    return restForName(name, planned?.restSeconds, mode);
+    return restForName(name, planned?.restSeconds);
   }
 
   const currentRestSeconds = cursor.done ? 0 : exerciseRestSeconds(cursor.exerciseName);
@@ -1150,6 +1153,9 @@ export function WorkoutLogForm({
     const fromPlan = planWorkFromText(planned?.reps);
     const fromKey = planWorkFromText(repsTextFromPrescriptionKey(target?.prescriptionKey));
     const planWork = fromPlan.reps != null || fromPlan.seconds != null ? fromPlan : fromKey;
+    const distancePlan =
+      isDistanceDose(planned?.reps || "") ||
+      isDistanceDose(repsTextFromPrescriptionKey(target?.prescriptionKey));
     const timedFill = isDurationMode(mode) || bike;
     const emptyTick =
       completed &&
@@ -1160,7 +1166,8 @@ export function WorkoutLogForm({
       });
     const fillReps = emptyTick && !timedFill && planWork.reps != null;
     const fillSeconds = planWork.seconds ?? (timedFill ? planWork.reps : null);
-    const fillTime = emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
+    const fillTime =
+      !distancePlan && emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
     setActiveName(exerciseName);
     const nextSets = sets.map((set) =>
       set.id === setId
@@ -1659,7 +1666,10 @@ export function WorkoutLogForm({
                   sets: group.length,
                   reps: overlay?.reps || storedPlan?.reps || library?.reps || "",
                   loadText: overlay?.loadText || storedPlan?.loadText || library?.loadText || "",
-                  restSeconds: clampSetRestSeconds(addedRest ?? library?.restSeconds ?? DEFAULT_SET_REST_SECONDS),
+                  restSeconds:
+                    addedRest != null
+                      ? clampSetRestSeconds(addedRest)
+                      : catalogRestSeconds(library?.restSeconds ?? DEFAULT_SET_REST_SECONDS),
                   logMode: overlay?.logMode || group[0]?.logMode || library?.logMode || "",
                   notes: overlay?.notes || storedPlan?.notes || library?.notes || "",
                   formVideoUrl: "",
@@ -1708,6 +1718,8 @@ export function WorkoutLogForm({
             ? bikeSession?.notes || ""
             : planned?.notes || bikeSession?.notes || "";
           const timed = isDurationMode(mode) && !bike;
+          const distance = isDistanceDose(doseReps || planned?.reps || "");
+          const workLabel = distance ? "m" : modeColumnLabel(mode);
           const restSeconds = exerciseRestSeconds(name);
           const layout = loggerRowLayout(mode, name);
           const columns =
@@ -2034,7 +2046,7 @@ export function WorkoutLogForm({
                   <>
                     <span>{bike || mode !== "timed_round" ? "Set" : "Rd"}</span>
                     <span>Previous</span>
-                    {bike ? null : <span>{modeColumnLabel(mode)}</span>}
+                    {bike ? null : <span>{workLabel}</span>}
                     {bike || hidesLoad(mode) ? null : <span>{loadHeader}</span>}
                   </>
                 )}
@@ -2122,6 +2134,29 @@ export function WorkoutLogForm({
                               : ""
                           }
                         />
+                      ) : timed && distance ? (
+                        <label className="block">
+                          <span className="sr-only">Distance in meters</span>
+                          <input type="hidden" name={`sets.${index}.durationSeconds`} value="" />
+                          <input
+                            name={`sets.${index}.reps`}
+                            data-set-field={set.id}
+                            data-distance-meters={set.id}
+                            type="number"
+                            min={0}
+                            max={5000}
+                            inputMode="numeric"
+                            value={set.reps ?? ""}
+                            onChange={(event) =>
+                              updateSet(set.id, {
+                                reps: event.target.value === "" ? null : Number(event.target.value),
+                                durationSeconds: null,
+                                logMode: mode,
+                              })
+                            }
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                          />
+                        </label>
                       ) : timed ? (
                         <label className="block">
                           <span className="sr-only">
@@ -2154,14 +2189,18 @@ export function WorkoutLogForm({
                             data-set-field={set.id}
                             type="number"
                             min={0}
-                            max={200}
+                            max={MAX_LOGGED_REPS}
                             inputMode="numeric"
+                            aria-invalid={repsError ? true : undefined}
                             value={set.reps ?? ""}
-                            onChange={(event) =>
-                              updateSet(set.id, {
-                                reps: event.target.value === "" ? null : Number(event.target.value),
-                              })
-                            }
+                            onChange={(event) => {
+                              const next = nextRepsEntry(event.currentTarget.value);
+                              if (event.currentTarget.value !== next.display) {
+                                event.currentTarget.value = next.display;
+                              }
+                              setRepsError(next.error);
+                              updateSet(set.id, { reps: next.reps });
+                            }}
                             className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
                           />
                         </label>
@@ -2223,6 +2262,12 @@ export function WorkoutLogForm({
                   );
                 })}
               </div>
+
+              {repsError && activeName === name ? (
+                <p role="alert" data-reps-error className="mt-2 text-sm text-danger">
+                  {repsError}
+                </p>
+              ) : null}
 
               <button
                 type="button"

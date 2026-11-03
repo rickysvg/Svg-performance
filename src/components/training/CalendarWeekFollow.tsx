@@ -16,7 +16,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { WeekStrip, type WeekCarouselWeek, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
-import { calendarFocusMatches, sameWeekdayDayParam } from "@/lib/week-carousel";
+import { calendarFocusMatches, neighborWeekDayParams, sameWeekdayDayParam } from "@/lib/week-carousel";
+import { prefetchWeekRoute, scheduleWeekPrefetch, type WeekPrefetchRouter } from "@/lib/week-prefetch";
 
 const CalendarDayContext = createContext("");
 
@@ -132,14 +133,29 @@ export function CalendarWeekFollow({
   const move = moves[weekStart];
 
   useEffect(() => {
+    if (!dayParam) return;
+    const targets = new Set(neighborWeekDayParams(dayParam));
     const index = weeks.findIndex((week) => week.weekStart === weekStart);
-    for (const neighbor of [weeks[index - 1], weeks[index + 1]]) {
+    const around =
+      index >= 0 ? index : weeks.findIndex((week) => week.days.some((item) => item.dayParam === dayParam));
+    for (const neighbor of [weeks[around - 1], weeks[around + 1]]) {
       if (!neighbor) continue;
-      const day = sameWeekdayDayParam(weeks, neighbor, dayParam);
-      const params = new URLSearchParams({ week: neighbor.weekStart, day });
-      if (level) params.set("level", level);
-      router.prefetch(`${pathname}?${params.toString()}`);
+      targets.add(sameWeekdayDayParam(weeks, neighbor, dayParam));
     }
+    const hrefs: string[] = [];
+    for (const nextDay of targets) {
+      if (!nextDay || nextDay === dayParam) continue;
+      const neighbor = weeks.find((week) => week.days.some((item) => item.dayParam === nextDay));
+      const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+      if (neighbor) params.set("week", neighbor.weekStart);
+      params.set("day", nextDay);
+      if (level) params.set("level", level);
+      else params.delete("level");
+      hrefs.push(`${pathname}?${params.toString()}`);
+    }
+    return scheduleWeekPrefetch(hrefs, (href) =>
+      prefetchWeekRoute(router as unknown as WeekPrefetchRouter, href),
+    );
   }, [dayParam, level, pathname, router, weekStart, weeks]);
 
   function onWeekChange(week: WeekChange) {

@@ -2,7 +2,7 @@ import raw from "@/data/fighter-exercises.json";
 import type { ExerciseCategory, EquipmentAccess, LibraryExercise } from "@/lib/exercise-library";
 import type { LogMode } from "@/lib/exercise-log-mode";
 import type { FormVideoSeed } from "@/lib/form-videos";
-import { clampSetRestSeconds } from "@/lib/set-rest";
+import { catalogRestSeconds } from "@/lib/set-rest";
 
 export type FighterExercise = {
   name: string;
@@ -27,6 +27,14 @@ export type FighterExercise = {
 
 const ROWS = raw as FighterExercise[];
 
+/** Walks are distance. Zercher holds and planks stay on the clock. */
+function catalogCarryReps(name: string, reps: string) {
+  if (/\b(zercher|plank)\b/i.test(name)) return reps;
+  if (!/\b(carry|farmer)\b/i.test(name)) return reps;
+  if (/\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i.test(reps)) return reps;
+  return reps.replace(/\s*sec(?:ond)?s?\b/i, " m").replace(/\s{2,}/g, " ").trim();
+}
+
 export function fighterExercises() {
   return ROWS;
 }
@@ -50,9 +58,9 @@ export function fighterAsLibraryRows(): LibraryExercise[] {
     pattern: row.pattern,
     gear: row.gear,
     sets: row.sets,
-    reps: row.reps,
+    reps: catalogCarryReps(row.name, row.reps),
     loadText: row.loadText,
-    restSeconds: clampSetRestSeconds(row.restSeconds),
+    restSeconds: catalogRestSeconds(row.restSeconds),
     logMode: row.logMode,
     notes: row.notes,
     figureKey: row.category === "mobility" ? (MOBILITY_FIGURE[row.pattern] ?? "hip-cars") : undefined,

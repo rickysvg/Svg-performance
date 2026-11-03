@@ -138,6 +138,97 @@ export function offPlanSessionDone(
   return true;
 }
 
+/** Logger reps field. Above this is rejected on save. */
+export const MAX_LOGGED_REPS = 100;
+/** Distance carries store meters in the reps column. A long walk is not a rep count. */
+export const MAX_DISTANCE_METERS = 5000;
+
+export const REPS_MAX_MESSAGE = "Reps max is 100.";
+
+export type RepsField = {
+  reps: number | null;
+  error: string;
+  /** What the input shows after this entry. A clamp displays 100, not the typed number. */
+  display: string;
+};
+
+/** The note shows only while the typed integer is over the cap. 100 and below hide it. */
+export function repsCapMessage(raw: string) {
+  const text = raw.trim();
+  if (!/^\d+$/.test(text)) return "";
+  return Number(text) > MAX_LOGGED_REPS ? REPS_MAX_MESSAGE : "";
+}
+
+export function loggedRepsFromInput(raw: string): { value: number | null; error: string } {
+  const text = raw.trim();
+  if (!text) return { value: null, error: "" };
+  if (!/^\d+$/.test(text)) return { value: null, error: "" };
+  const value = Number(text);
+  if (!Number.isFinite(value) || value < 0) return { value: null, error: "" };
+  if (value > MAX_LOGGED_REPS) return { value: MAX_LOGGED_REPS, error: repsCapMessage(text) };
+  return { value, error: "" };
+}
+
+/** One keystroke. The result replaces the field; it does not wait for the previous clamp. */
+export function nextRepsEntry(raw: string): RepsField {
+  const parsed = loggedRepsFromInput(raw);
+  return {
+    reps: parsed.value,
+    error: parsed.error,
+    display: parsed.value == null ? "" : String(parsed.value),
+  };
+}
+
+/** Apply entries in order. Typing 99 after a clamp to 100 shows 99. */
+export function applyRepsEntries(raws: readonly string[]): RepsField {
+  let field: RepsField = { reps: null, error: "", display: "" };
+  for (const raw of raws) field = nextRepsEntry(raw);
+  return field;
+}
+
+export function prescriptionTextForSet(key: string | null | undefined) {
+  const added = parseAddedPlan(key);
+  if (added?.reps) return added.reps;
+  return repsTextFromPrescriptionKey(key);
+}
+
+/** Meters logged on a distance carry, including a draft that is already over the rep cap. */
+export function isDistanceLoggedSet(set: {
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+  exerciseName?: string | null;
+  durationSeconds?: number | null;
+}) {
+  if (isDistanceDose(prescriptionTextForSet(set.prescriptionKey))) return true;
+  if (set.logMode !== "load_timed") return false;
+  if (set.durationSeconds != null && set.durationSeconds > 0) return false;
+  const name = set.exerciseName ?? "";
+  return /\b(carry|farmer)\b/i.test(name) && !/\bzercher\b/i.test(name);
+}
+
+export function loggedCountCap(set: {
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+  exerciseName?: string | null;
+  durationSeconds?: number | null;
+}) {
+  return isDistanceLoggedSet(set) ? MAX_DISTANCE_METERS : MAX_LOGGED_REPS;
+}
+
+export function loggedCountMessage(set: {
+  reps?: number | null;
+  logMode?: string | null;
+  prescriptionKey?: string | null;
+  exerciseName?: string | null;
+  durationSeconds?: number | null;
+}) {
+  if (set.reps == null || !Number.isFinite(set.reps)) return null;
+  const cap = loggedCountCap(set);
+  if (set.reps >= 0 && set.reps <= cap) return null;
+  if (isDistanceLoggedSet(set)) return `Distance should be between 0 and ${MAX_DISTANCE_METERS} m.`;
+  return `Reps should be between 0 and ${MAX_LOGGED_REPS}.`;
+}
+
 /** First positive integer in a plan rep string, capped at 200. */
 export function leadingPlanCount(text: string | null | undefined) {
   const match = String(text ?? "").match(/\d+/);
@@ -151,7 +242,7 @@ const PLAN_TIME_UNIT = "(minutes|minute|mins|min|seconds|second|secs|sec)";
 /** A metre or yard walk is not a rep count. Empty timed logs use this hold. */
 const DISTANCE_HOLD_SECONDS = 30;
 
-function isDistanceDose(text: string) {
+export function isDistanceDose(text: string) {
   return /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i.test(text);
 }
 
@@ -246,7 +337,9 @@ export function repsTextFromPrescriptionKey(key: string | null | undefined) {
  */
 export function withTickedPlanWork<T extends PersistSet>(set: T): T {
   if (!set.completed || setHasLoggedWork(set)) return set;
-  const work = planWorkFromText(repsTextFromPrescriptionKey(set.prescriptionKey));
+  const repsText = repsTextFromPrescriptionKey(set.prescriptionKey);
+  if (isDistanceDose(repsText)) return set;
+  const work = planWorkFromText(repsText);
   const timed = set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed";
   if (timed) {
     const seconds = work.seconds ?? work.reps;

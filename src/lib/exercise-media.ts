@@ -278,6 +278,11 @@ export function previousSetLabel(input: {
     return `${clock} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
   }
   if (clock) return clock;
+  if (input.reps != null && input.logMode === "load_timed") {
+    const meters = `${input.reps} m`;
+    if (input.loadValue != null) return `${meters} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
+    return meters;
+  }
   if (input.reps != null && input.loadValue != null) {
     return `${input.reps} × ${previousLoadText(input.loadValue, input.loadUnit)}`;
   }

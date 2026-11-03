@@ -4,7 +4,9 @@ import { makeUser, resetDatabase } from "./helpers";
 import { DEMO_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import { formVideoFieldsFor } from "@/lib/form-videos";
 import { trainingBlockKey } from "@/lib/exercise-swap";
-import { applyExerciseSwap, mergeReplacementSets } from "@/lib/exercise-swap-store";
+import { applyExerciseSwap, exerciseSlotHasLoggedSets, mergeReplacementSets } from "@/lib/exercise-swap-store";
+import { detectNewPrs, newPrExerciseCount } from "@/lib/personal-bests";
+import { sessionSetCount, sessionVolume } from "@/lib/share-card";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import { isLogMode } from "@/lib/exercise-log-mode";
 import {
@@ -28,6 +30,51 @@ describe("swap search must not finish the workout", () => {
 });
 
 describe("mid-workout swap", () => {
+  it("does not turn carried load into a PR or extra volume", () => {
+    const merged = mergeReplacementSets(
+      [
+        {
+          exerciseName: "Dumbbell bench press",
+          setNumber: 1,
+          reps: 5,
+          loadValue: 135,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          completed: true,
+        },
+        {
+          exerciseName: "One-arm row",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          completed: true,
+        },
+      ],
+      ["Dumbbell bench press"],
+      {
+        name: "Overhead press",
+        sets: 3,
+        reps: "6",
+        loadText: "1-3 RIR",
+        logMode: "load_reps",
+      },
+      { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
+    );
+    const press = merged.filter((set) => set.exerciseName === "Overhead press");
+    expect(press).toHaveLength(3);
+    expect(press.every((set) => set.reps == null && set.loadValue == null && !set.completed)).toBe(true);
+    expect(exerciseSlotHasLoggedSets(merged, "Overhead press")).toBe(false);
+    expect(exerciseSlotHasLoggedSets(merged, "One-arm row")).toBe(true);
+    const dated = merged.map((set) => ({ ...set, performedAt: new Date("2026-10-21T16:00:00.000Z") }));
+    const prs = detectNewPrs([], dated, "lb");
+    expect(prs.some((row) => row.exerciseName === "Overhead press")).toBe(false);
+    expect(newPrExerciseCount(prs)).toBe(1);
+    expect(sessionVolume(merged, "lb")).toBe(320);
+    expect(sessionSetCount(merged)).toBe(1);
+  });
+
   it("prefills a planned side plank and keeps a logged hold", () => {
     expect(
       withPrescribedHold(
@@ -78,7 +125,8 @@ describe("mid-workout swap", () => {
       { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
     );
     const rows = merged.filter((set) => set.exerciseName === "Zercher carry");
-    expect(rows.map((set) => set.durationSeconds)).toEqual([45, 30, 30, 30]);
+    expect(rows.map((set) => set.durationSeconds)).toEqual([30, 30, 30, 30]);
+    expect(rows.every((set) => set.completed === false && set.loadValue == null)).toBe(true);
     expect(rows.every((set) => set.logMode === "load_timed")).toBe(true);
   });
 
@@ -144,7 +192,9 @@ describe("mid-workout swap", () => {
     const original = merged.filter((set) => set.exerciseName === "One-arm row");
     const swapped = merged.filter((set) => set.exerciseName === "One-arm row · 2");
     expect(original.some((set) => set.loadValue === 30)).toBe(true);
-    expect(swapped.some((set) => set.loadValue === 40 && set.reps === 8)).toBe(true);
+    expect(swapped.every((set) => set.loadValue == null && set.reps == null && set.completed === false)).toBe(
+      true,
+    );
     expect(new Set(merged.map((set) => set.exerciseName)).size).toBe(3);
   });
 
@@ -225,7 +275,7 @@ describe("mid-workout swap", () => {
     expect(fresh.sets.some((set) => set.exerciseName === "Dumbbell bench press")).toBe(false);
     const barbell = fresh.sets.filter((set) => set.exerciseName === "Barbell bench press");
     expect(barbell.length).toBeGreaterThan(0);
-    expect(barbell.some((set) => set.reps === 8 && set.loadValue === 45 && set.completed)).toBe(true);
+    expect(barbell.some((set) => set.reps === 8 || set.loadValue === 45 || set.completed)).toBe(false);
     expect(barbell.map((set) => set.exerciseName).join(" ")).not.toMatch(/\(2\)|\(second\)/i);
     const kept = fresh.sets.find((set) => set.exerciseName === neighbor!.exerciseName);
     expect(kept?.reps).toBe(6);
@@ -268,7 +318,7 @@ describe("mid-workout swap", () => {
     const reopened = await reopenCompletedWorkoutForUser(user.id, session.id);
     expect(reopened.status).toBe("draft");
     expect(reopened.sets.some((set) => set.exerciseName === "Barbell bench press" && set.reps === 8)).toBe(
-      true,
+      false,
     );
     expect(reopened.sets.some((set) => set.exerciseName === neighbor!.exerciseName && set.reps === 6)).toBe(
       true,

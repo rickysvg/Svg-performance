@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { anchorPopover } from "@/lib/popover-anchor";
 import { swapExerciseAction, undoExerciseSwapAction } from "@/app/actions/exercise-swap";
+import { exerciseSlotHasLoggedSets } from "@/lib/exercise-swap-store";
 import {
   removeExerciseAction,
   undoExerciseRemovalAction,
@@ -93,6 +94,10 @@ export function ExerciseCardMenu({
   const [scope, setScope] = useState<"session" | "block">("session");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const [clearPrompt, setClearPrompt] = useState<{
+    scope: "session" | "block";
+    choice: LibraryExercise;
+  } | null>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -144,6 +149,16 @@ export function ExerciseCardMenu({
     equipment: weightAccess,
     loggedNames,
   });
+
+  function requestSwap(nextScope: "session" | "block", choice: LibraryExercise) {
+    const currentSets = getCurrentSets?.() ?? [];
+    if (exerciseSlotHasLoggedSets(currentSets, currentName)) {
+      setOpen(false);
+      setClearPrompt({ scope: nextScope, choice });
+      return;
+    }
+    confirm(nextScope, choice);
+  }
 
   function confirm(nextScope: "session" | "block", choice: LibraryExercise) {
     const replacementName = choice.name;
@@ -334,7 +349,7 @@ export function ExerciseCardMenu({
           scope={scope}
           allowBlock={Boolean(programSlug)}
           onScope={setScope}
-          onQuickPick={(choice) => confirm(scope, choice)}
+          onQuickPick={(choice) => requestSwap(scope, choice)}
           onClose={closeSheet}
           footer={(choice) => (
             <>
@@ -342,7 +357,7 @@ export function ExerciseCardMenu({
                 <span className="font-semibold">{choice.name}</span>
                 <span className="text-muted">
                   {" "}
-                  keeps a prescription that fits it. Same kind of work holds onto today&apos;s sets, RIR, and rest.
+                  keeps a prescription that fits it. Logged sets on this exercise start over.
                 </span>
               </p>
               <div className="flex min-w-0 flex-row gap-2" data-swap-confirm>
@@ -350,7 +365,7 @@ export function ExerciseCardMenu({
                   type="button"
                   disabled={pending}
                   data-swap-scope="session"
-                  onClick={() => confirm("session", choice)}
+                  onClick={() => requestSwap("session", choice)}
                   className="touch-target flex-1 rounded-full bg-accent text-sm font-semibold text-black disabled:opacity-60"
                 >
                   This session
@@ -359,7 +374,7 @@ export function ExerciseCardMenu({
                   type="button"
                   disabled={pending || !programSlug}
                   data-swap-scope="block"
-                  onClick={() => confirm("block", choice)}
+                  onClick={() => requestSwap("block", choice)}
                   className="touch-target flex-1 rounded-full border border-line text-sm font-semibold disabled:opacity-60"
                 >
                   Rest of the block
@@ -368,6 +383,49 @@ export function ExerciseCardMenu({
             </>
           )}
         />
+      ) : null}
+      {clearPrompt && typeof document !== "undefined"
+        ? createPortal(
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 px-4 pb-6 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="swap-clear-title"
+            data-swap-clear
+            className="w-full max-w-sm rounded-3xl bg-card px-5 py-5"
+          >
+            <p id="swap-clear-title" className="font-display text-lg uppercase tracking-wide">
+              Swap and clear logged sets?
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              {currentName} already has logged sets. {clearPrompt.choice.name} starts empty.
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                type="button"
+                data-swap-clear-confirm
+                disabled={pending}
+                onClick={() => {
+                  const next = clearPrompt;
+                  setClearPrompt(null);
+                  confirm(next.scope, next.choice);
+                }}
+                className="touch-target w-full rounded-full bg-accent text-base font-semibold text-black disabled:opacity-60"
+              >
+                Swap and clear logged sets
+              </button>
+              <button
+                type="button"
+                data-swap-clear-cancel
+                onClick={() => setClearPrompt(null)}
+                className="touch-target w-full rounded-full border border-line text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   );

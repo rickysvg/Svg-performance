@@ -68,6 +68,7 @@ import {
 } from "@/lib/exercise-removal-store";
 import {
   draftHasResumeWork,
+  loggedCountMessage,
   loggedSetSome,
   offPlanSessionDone,
   prescribedSetTotal,
@@ -1744,8 +1745,9 @@ function validateSets(sets: WorkoutSetInput[]) {
             : "Set numbers should be between 1 and 20.",
       );
     }
-    if (set.reps != null && (set.reps < 0 || set.reps > 200)) {
-      throw new AppError("WORKOUT", "Reps should be between 0 and 200.");
+    const countMessage = loggedCountMessage(set);
+    if (countMessage) {
+      throw new AppError("WORKOUT", countMessage);
     }
     if (set.loadValue != null && (set.loadValue < 0 || set.loadValue > 2000)) {
       throw new AppError("WORKOUT", "Load should be between 0 and 2000.");

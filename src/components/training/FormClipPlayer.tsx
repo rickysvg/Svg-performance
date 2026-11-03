@@ -2,7 +2,15 @@
 
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FORM_PLAYER_READY_MS, releaseFormPlayer } from "@/lib/form-player";
+import {
+  FORM_PLAYER_READY_MS,
+  FORM_PLAYER_RETRY_MS,
+  formClipFallbackLimitMs,
+  formEmbedBlocked,
+  noteFormEmbedResult,
+  releaseFormPlayer,
+} from "@/lib/form-player";
+import { useSheetBehavior } from "@/components/useSheetBehavior";
 import { nocookieEmbedSrc, youtubeThumbSrcs, youtubeVideoId } from "@/lib/form-videos";
 
 type YTPlayer = { destroy?: () => void };
@@ -31,6 +39,10 @@ function youtubeWindow() {
 function loadYouTubeApi() {
   const host = youtubeWindow();
   if (host.YT?.Player) return Promise.resolve();
+  const retrying = formEmbedBlocked();
+  if (retrying) {
+    document.querySelector('script[src="https://www.youtube.com/iframe_api"]')?.remove();
+  }
   return new Promise<void>((resolve, reject) => {
     const done = () => {
       if (youtubeWindow().YT?.Player) resolve();
@@ -60,12 +72,13 @@ function loadYouTubeApi() {
       window.clearInterval(timer);
       if (youtubeWindow().YT?.Player) resolve();
       else reject(new Error("YouTube IFrame API timed out"));
-    }, FORM_PLAYER_READY_MS);
+    }, retrying ? FORM_PLAYER_RETRY_MS : FORM_PLAYER_READY_MS);
   });
 }
 
 function FormSheet({ name, url, onClose }: { name: string; url: string; onClose: () => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const panelRef = useSheetBehavior(onClose, true);
   const [phase, setPhase] = useState<"loading" | "ready" | "failed">("loading");
   const src = nocookieEmbedSrc(url);
   const clipMissing = !src || !youtubeVideoId(url);
@@ -75,6 +88,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount || clipMissing) return;
+    const retryLimit = formClipFallbackLimitMs(formEmbedBlocked());
     let cancelled = false;
     let settled = false;
     const slot = document.createElement("div");
@@ -85,13 +99,14 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       if (cancelled || settled) return;
       settled = true;
       window.clearTimeout(timeout);
+      noteFormEmbedResult(next);
       if (next === "failed") {
         releaseFormPlayer(mount, player);
         player = null;
       }
       setPhase(next);
     };
-    const timeout = window.setTimeout(() => finish("failed"), FORM_PLAYER_READY_MS);
+    const timeout = window.setTimeout(() => finish("failed"), retryLimit);
     const videoId = youtubeVideoId(url);
     const parsed = new URL(src!);
     const start = parsed.searchParams.get("start");
@@ -142,6 +157,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
       }}
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-label={`Watch form: ${name}`}
         className="max-h-[85dvh] w-full rounded-t-3xl bg-card px-4 pb-6 pt-3"

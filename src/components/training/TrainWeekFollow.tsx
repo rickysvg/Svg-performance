@@ -14,7 +14,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { TrainWeekChangeContext, type WeekChange } from "@/components/training/WeekStrip";
 import { WorkoutMoveProvider } from "@/components/training/WorkoutMove";
 import type { MoveDayChoice } from "@/lib/week-plan";
-import { sameWeekdayDayParam, trainDayHref, type CarouselChipDay } from "@/lib/week-carousel";
+import { neighborWeekDayParams, sameWeekdayDayParam, trainDayHref, type CarouselChipDay } from "@/lib/week-carousel";
+import { prefetchWeekRoute, scheduleWeekPrefetch, type WeekPrefetchRouter } from "@/lib/week-prefetch";
 
 export type TrainMoveBundle = {
   editable: boolean;
@@ -77,16 +78,27 @@ export function TrainWeekFollow({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (weeks.length === 0) return;
     const selected =
       (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("day") : null) ||
       selectedDay;
+    if (!selected) return;
+    const targets = new Set(neighborWeekDayParams(selected));
     const index = weeks.findIndex((week) => week.weekStart === weekStart);
-    for (const neighbor of [weeks[index - 1], weeks[index + 1]]) {
+    const around =
+      index >= 0
+        ? index
+        : weeks.findIndex((week) => week.days.some((day) => day.dayParam === selected));
+    for (const neighbor of [weeks[around - 1], weeks[around + 1]]) {
       if (!neighbor) continue;
-      const day = sameWeekdayDayParam(weeks, neighbor, selected);
-      router.prefetch(trainDayHref(pathname, window.location.search, day, level));
+      targets.add(sameWeekdayDayParam(weeks, neighbor, selected));
     }
+    const search = typeof window === "undefined" ? "" : window.location.search;
+    const hrefs = [...targets]
+      .filter((day) => day && day !== selected)
+      .map((day) => trainDayHref(pathname, search, day, level));
+    return scheduleWeekPrefetch(hrefs, (href) =>
+      prefetchWeekRoute(router as unknown as WeekPrefetchRouter, href),
+    );
   }, [level, pathname, router, selectedDay, weekStart, weeks]);
 
   function onWeekChange(week: WeekChange) {

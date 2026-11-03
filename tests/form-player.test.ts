@@ -1,5 +1,15 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FORM_PLAYER_READY_MS, formClipFallbackPhase, releaseFormPlayer } from "@/lib/form-player";
+import {
+  FORM_PLAYER_READY_MS,
+  FORM_PLAYER_RETRY_MS,
+  formClipFallbackLimitMs,
+  formClipFallbackPhase,
+  formEmbedBlocked,
+  noteFormEmbedResult,
+  releaseFormPlayer,
+  resetFormEmbedBlocked,
+} from "@/lib/form-player";
 
 type Node = {
   parent: Node | null;
@@ -57,6 +67,24 @@ describe("form clip fallback", () => {
     expect(formClipFallbackPhase({ ready: false, errored: false, elapsedMs: FORM_PLAYER_READY_MS })).toBe("failed");
     expect(formClipFallbackPhase({ ready: true, errored: false, elapsedMs: FORM_PLAYER_READY_MS })).toBe("ready");
     expect(formClipFallbackPhase({ ready: true, errored: true, elapsedMs: 0 })).toBe("failed");
+  });
+
+  it("retries the next clip on a shorter limit after one embed fails", () => {
+    resetFormEmbedBlocked();
+    expect(formClipFallbackLimitMs(formEmbedBlocked())).toBe(FORM_PLAYER_READY_MS);
+    noteFormEmbedResult("failed");
+    expect(formEmbedBlocked()).toBe(true);
+    expect(formClipFallbackLimitMs(formEmbedBlocked())).toBe(FORM_PLAYER_RETRY_MS);
+    expect(FORM_PLAYER_RETRY_MS).toBe(4000);
+    expect(FORM_PLAYER_RETRY_MS).toBeLessThan(FORM_PLAYER_READY_MS);
+    noteFormEmbedResult("ready");
+    expect(formEmbedBlocked()).toBe(false);
+    const player = readFileSync("src/components/training/FormClipPlayer.tsx", "utf8");
+    expect(player).toContain("data-form-player-mount");
+    expect(player).toContain("releaseFormPlayer");
+    expect(player).toContain("new Player");
+    expect(player).not.toContain("formEmbedBlocked()) return");
+    expect(player).toContain("useSheetBehavior");
   });
 
   it("unmounts after YouTube replaces the player node", () => {

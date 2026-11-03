@@ -52,12 +52,10 @@ export function buildProgressSummary(
   const points: ProgressPoint[] = [...completed]
     .sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime())
     .map((session) => {
-      const lifting = session.sets.reduce(
-        (sum, set) =>
-          sum +
-          volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit),
-        0,
-      );
+      const lifting = session.sets.reduce((sum, set) => {
+        if (set.logMode === "load_timed") return sum;
+        return sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit);
+      }, 0);
       const volume = lifting + bagworkTrainingLoadFromSession(session);
       return {
         id: session.id,

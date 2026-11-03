@@ -199,6 +199,7 @@ export function HomeBodyWeight({
           ) : null}
         </div>
       )}
+      {savedFat != null ? <input type="hidden" name="bodyFatWasSet" value="1" /> : null}
       <input type="hidden" name="kind" value="weight" />
       <input type="hidden" name="unit" value={unit === "kg" ? "lb" : unit || "lb"} />
       <input type="hidden" name="recordedAt" value={recordedAt} />

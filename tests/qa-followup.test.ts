@@ -78,7 +78,7 @@ describe("member-facing titles", () => {
 });
 
 describe("swap keeps the plan", () => {
-  it("carries a matching log, keeps the plan set count and RIR, and skips the (2) suffix", () => {
+  it("clears a matching log, keeps the plan set count and RIR, and skips the (2) suffix", () => {
     const merged = mergeReplacementSets(
       [
         {
@@ -115,8 +115,9 @@ describe("swap keeps the plan", () => {
     expect(merged).toHaveLength(3);
     expect(merged.every((set) => set.exerciseName === "Bodyweight squat")).toBe(true);
     expect(merged.map((set) => set.exerciseName).join(" ")).not.toMatch(/\(2\)/);
-    expect(merged[0]?.reps).toBe(8);
-    expect(merged[0]?.completed).toBe(true);
+    expect(merged[0]?.reps).toBeNull();
+    expect(merged[0]?.completed).toBe(false);
+    expect(merged[0]?.loadValue).toBeNull();
     expect(merged.every((set) => set.rir === "2-3 RIR")).toBe(true);
   });
 });

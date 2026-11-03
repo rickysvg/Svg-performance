@@ -5,6 +5,7 @@
 import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 import { distinctExerciseName } from "@/lib/exercise-swap";
 import type { LibraryExercise } from "@/lib/exercise-library";
+import { catalogRestSeconds } from "@/lib/set-rest";
 
 export function exerciseNamesInOrder<T extends { exerciseName: string }>(sets: T[]): string[] {
   const names: string[] = [];
@@ -91,7 +92,7 @@ export function defaultLoggedReps(reps: string): number | null {
   const match = String(reps).match(/(\d+)/);
   if (!match) return null;
   const n = Number(match[1]);
-  if (!Number.isFinite(n) || n <= 0 || n > 200) return null;
+  if (!Number.isFinite(n) || n <= 0 || n > 100) return null;
   return n;
 }
 
@@ -137,7 +138,7 @@ export function draftsForLibraryExercise(
   const reps = timed ? null : defaultLoggedReps(exercise.reps);
   const durationSeconds = timed ? parseDurationSeconds(exercise.reps) : null;
   const count = defaultSetCount(exercise.sets);
-  const restSeconds = Math.max(0, Math.round(exercise.restSeconds) || 0);
+  const restSeconds = catalogRestSeconds(exercise.restSeconds);
   return Array.from({ length: count }, (_, index) => ({
     exerciseName,
     setNumber: start + index + 1,
