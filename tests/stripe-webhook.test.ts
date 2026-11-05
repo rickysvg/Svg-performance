@@ -269,4 +269,93 @@ describe("stripe webhook path", () => {
     ).toMatchObject({ status: "canceled" });
     expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
   });
+
+  it("waits for async payment success and then grants the plan", async () => {
+    const user = await makeUser("async-pay@example.com");
+    await applyStripeEvent({
+      id: "evt_async_unpaid",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_async",
+          metadata: { userId: user.id, plan: "performance_monthly", priceId: "price_pro_mo" },
+          client_reference_id: user.id,
+          subscription: "sub_async",
+          payment_status: "unpaid",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
+
+    await applyStripeEvent({
+      id: "evt_async_paid",
+      type: "checkout.session.async_payment_succeeded",
+      data: {
+        object: {
+          id: "cs_async",
+          metadata: { userId: user.id, plan: "performance_monthly", priceId: "price_pro_mo" },
+          client_reference_id: user.id,
+          subscription: "sub_async",
+          customer: "cus_async",
+          payment_status: "paid",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+    const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
+    expect(row).toMatchObject({
+      plan: "performance",
+      status: "active",
+      stripePriceId: "price_pro_mo",
+    });
+  });
+
+  it("grants a trial checkout when no payment is required and drops it on delete", async () => {
+    const user = await makeUser("trial-checkout@example.com");
+    await applyStripeEvent({
+      id: "evt_trial_checkout",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          metadata: { userId: user.id, plan: "performance_year", priceId: "price_pro_yr" },
+          subscription: "sub_trial_checkout",
+          payment_status: "no_payment_required",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+
+    await applyStripeEvent({
+      id: "evt_trial_checkout_deleted",
+      type: "customer.subscription.deleted",
+      data: {
+        object: {
+          id: "sub_trial_checkout",
+          metadata: { userId: user.id, plan: "performance_year" },
+          status: "canceled",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
+  });
+
+  it("updates the stored plan when a subscription changes", async () => {
+    const user = await makeUser("sub-updated@example.com");
+    await applyStripeEvent({
+      id: "evt_sub_created",
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_updated",
+          metadata: { userId: user.id, plan: "coaching_monthly" },
+          customer: "cus_updated",
+          status: "trialing",
+          items: { data: [{ price: { id: "price_vip" } }] },
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+    const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
+    expect(row).toMatchObject({ plan: "coaching", status: "active", stripePriceId: "price_vip" });
+  });
 });

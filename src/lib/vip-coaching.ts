@@ -5,6 +5,7 @@
 
 import { COACHING_MONTHLY, PERFORMANCE_ANNUAL, PERFORMANCE_MONTHLY, usd } from "@/lib/pricing";
 import { normalizePlanId } from "@/lib/plans";
+import { randomLetterSuffix } from "@/lib/stripe-prices";
 
 export const VIP_LABEL = "VIP Coaching";
 export const VIP_ACTIVE_CAP = 20;
@@ -294,7 +295,7 @@ export function resolveVipAdjustment(quote: VipQuote, env: VipEnv = process.env)
 }
 
 export type VipCheckoutDraft = {
-  priceEnv: "STRIPE_PRICE_COACHING_MONTHLY";
+  priceEnv: "STRIPE_PRICE_VIP_MONTHLY" | "STRIPE_PRICE_COACHING_MONTHLY";
   priceId: string | null;
   adjustment: VipAdjustment;
   metadata: Record<string, string>;
@@ -307,9 +308,11 @@ export function buildVipCheckoutDraft(input: {
 }): VipCheckoutDraft {
   const env = input.env ?? process.env;
   const adjustment = resolveVipAdjustment(input.quote, env);
-  const priceId = envValue(env, "STRIPE_PRICE_COACHING_MONTHLY") || null;
+  const vipPrice = envValue(env, "STRIPE_PRICE_VIP_MONTHLY");
+  const legacyPrice = envValue(env, "STRIPE_PRICE_COACHING_MONTHLY");
+  const priceId = vipPrice || legacyPrice || null;
   return {
-    priceEnv: "STRIPE_PRICE_COACHING_MONTHLY",
+    priceEnv: vipPrice ? "STRIPE_PRICE_VIP_MONTHLY" : "STRIPE_PRICE_COACHING_MONTHLY",
     priceId,
     adjustment,
     metadata: {
@@ -347,7 +350,11 @@ export function vipCheckoutParams(input: {
     cancel_url: input.cancelUrl,
     line_items: [{ price: input.draft.priceId, quantity: 1 }],
     metadata: input.draft.metadata,
-    subscription_data: { metadata: input.draft.metadata },
+    subscription_data: {
+      metadata: input.draft.metadata,
+      trial_period_days: 7,
+    },
+    integration_identifier: `svg_vip_${randomLetterSuffix()}`,
   };
   if (input.draft.adjustment.mode === "coupon" && input.draft.adjustment.couponId) {
     params.discounts = [{ coupon: input.draft.adjustment.couponId }];

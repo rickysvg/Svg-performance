@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CheckoutButton } from "@/components/billing/CheckoutButton";
+import { VipCheckoutButton } from "@/components/vip/VipCheckoutButton";
 import { WaitlistButton } from "@/components/billing/WaitlistButton";
 import {
   ACADEMY_EXPECT,
@@ -8,6 +10,7 @@ import {
   COACHING_MONTHLY,
   MEMBER_PRO_DAYS,
   NONMEMBER_TRIAL_DAYS,
+  PERFORMANCE_ANNUAL,
   PERFORMANCE_MONTHLY,
   performanceAnnualLine,
   PRO_ADDS,
@@ -23,48 +26,44 @@ import { PricingLadder } from "@/components/pricing/PricingLadder";
 
 function PlanCheckoutButton({
   canStartTrial,
-  checkoutLive,
   verified,
+  userLoggedIn,
 }: {
   canStartTrial: boolean;
-  checkoutLive: boolean;
   verified: boolean;
+  userLoggedIn: boolean;
 }) {
-  if (checkoutLive) {
-    return (
-      <button
-        type="button"
-        disabled
-        className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed"
-      >
-        Coming soon
-      </button>
-    );
-  }
-  if (canStartTrial) {
-    return (
-      <form data-testid="pricing-form-2" action={startTrialAction}>
-        <input type="hidden" name="next" value="/home" />
-        <button
-          data-testid="pricing-plan-action"
-          type="submit"
-          data-plan-action="trial"
-          className="touch-target w-full rounded-full bg-accent text-black"
-        >
-          {verified ? `Start ${MEMBER_PRO_DAYS} days of free Pro` : "Start 7-day free trial"}
-        </button>
-      </form>
-    );
-  }
   return (
-    <button
-      type="button"
-      disabled
-      data-plan-action="subscribe"
-      className="touch-target w-full rounded-full bg-accent text-black disabled:cursor-not-allowed"
-    >
-      Subscribe — opening Nov 16
-    </button>
+    <div className="space-y-3">
+      {canStartTrial ? (
+        <form data-testid="pricing-form-2" action={startTrialAction}>
+          <input type="hidden" name="next" value="/home" />
+          <button
+            data-testid="pricing-plan-action"
+            type="submit"
+            data-plan-action="trial"
+            className="touch-target w-full rounded-full bg-accent text-black"
+          >
+            {verified ? `Start ${MEMBER_PRO_DAYS} days of free Pro` : "Start 7-day free trial"}
+          </button>
+        </form>
+      ) : null}
+      {userLoggedIn ? (
+        <>
+          <CheckoutButton plan="performance_monthly" label={`Subscribe · ${usd(PERFORMANCE_MONTHLY)}/mo`} />
+          <CheckoutButton plan="performance_year" label={`Subscribe · ${usd(PERFORMANCE_ANNUAL)}/yr`} />
+          <p className="text-xs text-foreground">Pro checkout includes a 7-day trial before the first charge.</p>
+        </>
+      ) : (
+        <Link
+          href="/login"
+          data-plan-action="subscribe"
+          className="touch-target flex w-full items-center justify-center rounded-full bg-accent text-black"
+        >
+          Log in to subscribe
+        </Link>
+      )}
+    </div>
   );
 }
 
@@ -111,14 +110,7 @@ function VipPlanButton({
     );
   }
   if (phase === "checkout") {
-    return (
-      <Link
-        href="/vip/checkout"
-        className="touch-target flex w-full items-center justify-center rounded-full bg-[#CBF805] font-semibold text-black"
-      >
-        Checkout
-      </Link>
-    );
+    return <VipCheckoutButton label={`Subscribe · ${usd(COACHING_MONTHLY)}/mo`} />;
   }
   if (phase === "waitlist") {
     if (!userLoggedIn) {
@@ -153,13 +145,11 @@ export function PricingCatalog({
   vipPhase = "apply",
   userLoggedIn,
   canStartTrial = false,
-  checkoutLive = false,
 }: {
   verified: boolean;
   vipPhase?: VipPricingPhase;
   userLoggedIn: boolean;
   canStartTrial?: boolean;
-  checkoutLive?: boolean;
 }) {
   const coaching = PLAN_CATALOG.coaching;
 
@@ -211,8 +201,8 @@ export function PricingCatalog({
         <div className="mt-5">
           <PlanCheckoutButton
             canStartTrial={canStartTrial}
-            checkoutLive={checkoutLive}
             verified={verified}
+            userLoggedIn={userLoggedIn}
           />
         </div>
       </article>

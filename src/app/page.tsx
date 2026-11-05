@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
+import { LegalLinks } from "@/components/LegalLinks";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/session";
 import { NONMEMBER_TRIAL_DAYS, proAccessSummary } from "@/lib/pricing";
@@ -100,7 +101,7 @@ export default async function MarketingPage({
             </li>
             <li>
               Pro is $9.99/mo or $72.99/yr. {proAccessSummary()} VIP Coaching is $249/mo and
-              includes Pro. Limited spots. Checkout is coming soon.
+              includes Pro. Subscribe from pricing. Pro checkout includes a 7-day trial.
             </li>
             <li>
               SVG Coach chat is free for your first week from signup, no card. After that week
@@ -110,6 +111,7 @@ export default async function MarketingPage({
               services are not sold here.
             </li>
           </ul>
+          <LegalLinks className="mt-5" />
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/pricing" className="text-sm text-accent underline-offset-4 hover:underline">
               See pricing

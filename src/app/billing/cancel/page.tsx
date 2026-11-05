@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
+import { LegalLinks } from "@/components/LegalLinks";
 import { getCurrentUser } from "@/lib/session";
 
 export default async function BillingCancelPage() {
@@ -13,6 +14,7 @@ export default async function BillingCancelPage() {
           No access change was made. Failed or canceled TEST payments never
           grant a plan — including Affirm or Klarna.
         </p>
+        <LegalLinks className="mt-6" />
         <Link href="/pricing" className="mt-6 inline-flex text-accent underline">
           Back to pricing
         </Link>

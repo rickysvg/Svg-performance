@@ -16,14 +16,16 @@ describe("QA-approved access and surface fixes", () => {
     expect(access).toMatch(/Missing Stripe keys do not unlock those tools/);
   });
 
-  it("shows Paid plans coming soon instead of Stripe TEST key copy", () => {
+  it("shows live checkout instead of Stripe TEST key copy", () => {
     const pricing = read("src/app/pricing/page.tsx");
     const checkout = read("src/components/billing/CheckoutButton.tsx");
     const billing = read("src/lib/billing.ts");
-    expect(pricing).toContain("Paid checkout opens Nov 16");
+    expect(pricing).toContain("Pro checkout includes a 7-day trial");
+    expect(pricing).not.toContain("Nov 16");
     expect(pricing).not.toMatch(/Stripe TEST keys are not in this environment/);
     expect(checkout).toContain("disabled");
-    expect(billing).toContain("Paid plans coming soon.");
+    expect(billing).toContain("Stripe is not configured.");
+    expect(billing).not.toContain("Paid plans coming soon.");
     const history = read("src/components/upgrade/UpgradePreview.tsx");
     const chart = read("src/components/progress/ExerciseChart.tsx");
     expect(history).toContain("Pro is $9.99/mo or $72.99/yr, save 39%.");

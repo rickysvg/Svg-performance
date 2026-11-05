@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { getProfileForUser } from "@/lib/profile";
-import { isStripeConfigured } from "@/lib/access";
 import { ensureCreditsForPlan } from "@/lib/credits";
 import { isPlanAtCap } from "@/lib/waitlist";
 import {
@@ -16,17 +15,19 @@ import {
   isCheckoutSkuId,
   PLAN_CATALOG,
 } from "@/lib/plans";
+import { readPriceEnv } from "@/lib/stripe-prices";
+import { getVipCheckoutView } from "@/lib/vip-store";
 
 export { PLANS, isPlanId, isCheckoutSkuId } from "@/lib/plans";
 export type { CheckoutSkuId as PlanId } from "@/lib/plans";
 
 export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId) {
-  if (!isStripeConfigured()) {
-    throw new AppError("BILLING", "Paid plans coming soon.");
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new AppError("BILLING", "Stripe is not configured.");
   }
   const sku = CHECKOUT_SKUS[plan];
   if (!sku.checkoutEnabled) {
-    throw new AppError("BILLING", "Paid plans coming soon.");
+    throw new AppError("BILLING", "That plan is not available for checkout.");
   }
   if (sku.requiresGymVerify) {
     const profile = await getProfileForUser(userId);
@@ -36,8 +37,16 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
       );
     }
   }
-  if (!process.env[sku.envPrice]) {
+  if (!readPriceEnv(sku.envPrice)) {
     throw new AppError("BILLING", `${sku.envPrice} is not set.`);
+  }
+  if (plan === "coaching_monthly") {
+    const vip = await getVipCheckoutView(userId);
+    if (!vip) {
+      throw new ForbiddenError(
+        "Checkout stays locked until Ricky approves your VIP Coaching application.",
+      );
+    }
   }
   if (await isPlanAtCap(sku.catalogId)) {
     throw new AppError(
@@ -49,7 +58,7 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
 
 export function priceIdForPlan(plan: CheckoutSkuId) {
   const envName = CHECKOUT_SKUS[plan].envPrice;
-  const value = process.env[envName];
+  const value = readPriceEnv(envName);
   if (!value) {
     throw new AppError("BILLING", `${envName} is not set.`);
   }
@@ -105,11 +114,19 @@ type StripeLikeObject = {
   customer?: string;
   subscription?: string;
   status?: string;
+  payment_status?: string;
   current_period_end?: number;
   items?: { data?: { price?: { id?: string } }[] };
   /** Ignored: card vs Affirm/Klarna does not change access. Loan details are never stored. */
   payment_method_types?: string[];
 };
+
+/** Paid, or a subscription trial that does not charge yet. Unpaid waits for the async event. */
+function checkoutSessionGrantsAccess(object: StripeLikeObject) {
+  const status = object.payment_status;
+  if (!status) return true;
+  return status === "paid" || status === "no_payment_required";
+}
 
 function mapSubscriptionStatus(status: string | undefined) {
   if (status === "active" || status === "trialing") return "active";
@@ -144,7 +161,7 @@ export async function applyStripeEvent(event: {
   const userId =
     object.metadata?.userId || object.client_reference_id || "";
   const planRaw = object.metadata?.plan || "standalone";
-  const stripePriceId = object.items?.data?.[0]?.price?.id;
+  const stripePriceId = object.items?.data?.[0]?.price?.id || object.metadata?.priceId;
   const incoming = { plan: planRaw, stripePriceId };
   const catalogPlan = isCheckoutSkuId(planRaw)
     ? CHECKOUT_SKUS[planRaw].catalogId
@@ -162,9 +179,12 @@ export async function applyStripeEvent(event: {
     where: { userId },
     orderBy: { updatedAt: "desc" },
   });
+  const isCheckoutGrantEvent =
+    event.type === "checkout.session.completed" ||
+    event.type === "checkout.session.async_payment_succeeded";
   const isFirstInvoicePaid = event.type === "invoice.paid" && !existingSub;
   const isGymActivation =
-    event.type === "checkout.session.completed" ||
+    (isCheckoutGrantEvent && checkoutSessionGrantsAccess(object)) ||
     event.type === "customer.subscription.created" ||
     isFirstInvoicePaid;
 
@@ -192,8 +212,10 @@ export async function applyStripeEvent(event: {
         typeof object.subscription === "string" ? object.subscription : object.id,
       currentPeriodEnd: periodEnd,
     });
+  } else if (isCheckoutGrantEvent && !checkoutSessionGrantsAccess(object)) {
+    result = null;
   } else if (
-    event.type === "checkout.session.completed" ||
+    (isCheckoutGrantEvent && checkoutSessionGrantsAccess(object)) ||
     event.type === "invoice.paid" ||
     event.type === "customer.subscription.created"
   ) {

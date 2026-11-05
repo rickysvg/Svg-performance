@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
+import { LegalLinks } from "@/components/LegalLinks";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { PricingCatalog } from "@/components/pricing/PricingCatalog";
 import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
+import { getLatestSubscription } from "@/lib/access";
+import { subscriptionStatusLabel } from "@/lib/subscription-copy";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
 import {
@@ -22,7 +24,6 @@ export default async function PricingPage() {
   const profile = user ? await getProfileForUser(user.id) : null;
   const subscription = user ? await getLatestSubscription(user.id) : null;
   const currentPlan = user ? await getEffectivePlanId(user.id) : null;
-  const configured = isStripeConfigured();
   const verified = Boolean(profile?.gymMembershipVerified);
   const trial = user ? await getTrialState(user.id) : null;
   const canStartTrial = Boolean(trial?.canStartTrial);
@@ -48,7 +49,11 @@ export default async function PricingPage() {
                 planLabel: PLAN_CATALOG[currentPlan].label,
               })}
             </strong>
-            {subscription ? ` · recorded ${subscription.plan} / ${subscription.status}` : ""}.{" "}
+            {`${
+              subscription && !trial?.trialActive
+                ? ` · ${subscriptionStatusLabel(subscription.status)}`
+                : ""
+            }. `}
             <Link href="/plan" className="text-accent underline">
               See your plan
             </Link>
@@ -57,13 +62,13 @@ export default async function PricingPage() {
         <p className="mt-4 rounded-xl border border-accent bg-card p-4 text-sm text-foreground" data-pricing-banner>
           {canStartTrial
             ? verified
-              ? `Your ${MEMBER_PRO_DAYS} days of free Pro are ready, no card. You are never auto-billed. Paid checkout opens Nov 16.`
-              : `The ${NONMEMBER_TRIAL_DAYS}-day Pro trial is open now, no card. Paid checkout opens Nov 16.`
-            : "Paid checkout opens Nov 16. A trial can be used once per account."}
+              ? `Your ${MEMBER_PRO_DAYS} days of free Pro are ready, no card. You are never auto-billed.`
+              : `The ${NONMEMBER_TRIAL_DAYS}-day Pro trial is open now, no card.`
+            : "A no-card trial can be used once per account."}{" "}
+          Pro checkout includes a 7-day trial before the first charge.
           {verified && !canStartTrial
             ? ` Your verified academy membership includes the core app and ${MEMBER_PRO_DAYS} days of Pro free.`
             : ""}
-          {configured ? " TEST billing stubs do not turn the buttons on." : ""}
         </p>
 
         <div className="mt-8">
@@ -72,7 +77,6 @@ export default async function PricingPage() {
             vipPhase={vipPhase}
             userLoggedIn={Boolean(user)}
             canStartTrial={canStartTrial}
-            checkoutLive={false}
           />
         </div>
 
@@ -91,6 +95,7 @@ export default async function PricingPage() {
           </ul>
         </section>
 
+        <LegalLinks className="mt-8" />
         <div className="mt-8 flex flex-wrap gap-4">
           <Link href={user ? "/home" : "/"} className="text-accent underline-offset-4 hover:underline">
             Back

@@ -24,6 +24,7 @@ import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggl
 import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { prisma } from "@/lib/prisma";
 import { shortBuildSha } from "@/lib/build-info";
+import { LegalLinks } from "@/components/LegalLinks";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
 export default async function ProfilePage() {
@@ -275,6 +276,10 @@ export default async function ProfilePage() {
           <p>SVG writes its own sessions. These are public ideas, not their programs.</p>
         </div>
       </details>
+      <section className="space-y-2">
+        <h2 className="text-lg">Legal</h2>
+        <LegalLinks />
+      </section>
       <p className="text-xs text-muted" data-build-sha>
         Build {shortBuildSha() || "local"}
       </p>

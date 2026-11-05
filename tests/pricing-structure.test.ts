@@ -33,6 +33,10 @@ describe("owner-approved three-plan pricing", () => {
     delete process.env.STRIPE_SECRET_KEY;
     delete process.env.STRIPE_WEBHOOK_SECRET;
     delete process.env.STRIPE_PRICE_STANDALONE;
+    delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+    delete process.env.STRIPE_PRICE_PRO_YEARLY;
+    delete process.env.STRIPE_PRICE_VIP_MONTHLY;
+    delete process.env.STRIPE_PRICE_PERFORMANCE_YEAR;
   });
 
   afterAll(async () => {
@@ -90,17 +94,19 @@ describe("owner-approved three-plan pricing", () => {
     expect(PLAN_CATALOG.performance.summary).toMatch(/save 39%/);
   });
 
-  it("keeps new checkout SKUs inactive and does not pair member and nonmember prices on the page", () => {
-    expect(CHECKOUT_SKUS.performance_monthly.checkoutEnabled).toBe(false);
+  it("keeps Pro and VIP checkout SKUs live and does not pair member and nonmember prices on the page", () => {
+    expect(CHECKOUT_SKUS.performance_monthly.checkoutEnabled).toBe(true);
     expect(CHECKOUT_SKUS.performance_monthly.amountCents).toBe(999);
     expect(CHECKOUT_SKUS.performance_year.amountCents).toBe(7299);
     expect(CHECKOUT_SKUS.coaching_monthly.amountCents).toBe(24900);
     expect(Object.keys(CHECKOUT_SKUS).some((id) => id.includes("founding"))).toBe(false);
     expect(CHECKOUT_SKUS.coaching_monthly.id).toBe("coaching_monthly");
-    expect(CHECKOUT_SKUS.coaching_monthly.envPrice).toBe("STRIPE_PRICE_COACHING_MONTHLY");
+    expect(CHECKOUT_SKUS.performance_monthly.envPrice).toBe("STRIPE_PRICE_PRO_MONTHLY");
+    expect(CHECKOUT_SKUS.performance_year.envPrice).toBe("STRIPE_PRICE_PRO_YEARLY");
+    expect(CHECKOUT_SKUS.coaching_monthly.envPrice).toBe("STRIPE_PRICE_VIP_MONTHLY");
     expect(CHECKOUT_SKUS.coaching_monthly.catalogId).toBe("coaching");
     expect(SKU_AMOUNT_CENTS.performance_monthly).toBe(999);
-    expect(publicSkusForPlan("coaching")).toEqual([]);
+    expect(publicSkusForPlan("coaching").map((sku) => sku.id)).toEqual(["coaching_monthly"]);
     const files = [
       "src/lib/pricing.ts",
       "src/components/pricing/PricingCatalog.tsx",
@@ -170,31 +176,39 @@ describe("owner-approved three-plan pricing", () => {
     expect(catalog).toContain('tone="add"');
     expect(catalog).toContain("text-accent");
     expect(catalog).toContain("Start 7-day free trial");
-    expect(catalog).toContain("Subscribe — opening Nov 16");
+    expect(catalog).toContain("performance_monthly");
+    expect(catalog).toContain("VipCheckoutButton");
+    expect(catalog).not.toContain("opening Nov 16");
+    expect(catalog).not.toContain("Coming soon");
     expect(catalog).toContain("performanceAnnualLine()");
     expect(performanceAnnualLine()).toBe("or $72.99/yr, save 39%");
     expect(catalog).toContain("In-person intensives and VIP");
     expect(catalog).toContain("Book with Ricky");
     expect(catalog).not.toContain("data-pricing-toggle");
-    expect(read("src/app/pricing/page.tsx")).toContain("Paid checkout opens Nov 16");
+    expect(read("src/app/pricing/page.tsx")).toContain("Pro checkout includes a 7-day trial");
+    expect(read("src/app/pricing/page.tsx")).not.toContain("Nov 16");
+    expect(read("src/app/pricing/page.tsx")).not.toContain("recorded ");
     expect(read("src/app/pricing/page.tsx")).toContain("academy members and Pro subscribers");
     expect(read("src/app/pricing/page.tsx")).toContain("Gymdesk dues");
-    expect(read("src/lib/billing.ts")).toContain("Paid plans coming soon.");
+    expect(read("src/lib/billing.ts")).toContain("Stripe is not configured.");
+    expect(read("src/lib/billing.ts")).not.toContain("Paid plans coming soon.");
   });
 
-  it("refuses checkout on the new SKUs even when Stripe TEST keys exist", async () => {
+  it("allows Pro and VIP checkout when the price env is set", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_dummy";
-    process.env.STRIPE_PRICE_STANDALONE = "price_standalone";
-    process.env.STRIPE_PRICE_PERFORMANCE_YEAR = "price_year";
-    const user = await makeUser("inactive-sku@example.com");
-    await expect(assertCanCheckoutPlan(user.id, "performance_year")).rejects.toMatchObject({
-      code: "BILLING",
-      message: "Paid plans coming soon.",
-    });
+    process.env.STRIPE_PRICE_PRO_MONTHLY = "price_month";
+    process.env.STRIPE_PRICE_PERFORMANCE_YEAR = "price_year_legacy";
+    process.env.STRIPE_PRICE_VIP_MONTHLY = "price_vip";
+    const user = await makeUser("live-sku@example.com");
+    await expect(assertCanCheckoutPlan(user.id, "performance_monthly")).resolves.toBeUndefined();
+    await expect(assertCanCheckoutPlan(user.id, "performance_year")).resolves.toBeUndefined();
     await expect(assertCanCheckoutPlan(user.id, "coaching_monthly")).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(assertCanCheckoutPlan(user.id, "performance_annual_non")).rejects.toMatchObject({
       code: "BILLING",
-      message: "Paid plans coming soon.",
+      message: "That plan is not available for checkout.",
     });
   });
 });

@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { assertCanCheckoutPlan, isPlanId } from "@/lib/billing";
-import { createBnplCheckoutSession, getStripe } from "@/lib/stripe";
+import { CHECKOUT_SKUS } from "@/lib/plans";
+import {
+  appBaseUrl,
+  createBnplCheckoutSession,
+  createSubscriptionCheckoutSession,
+  getStripe,
+} from "@/lib/stripe";
 import { AppError } from "@/lib/errors";
 import { publicErrorMessage } from "@/lib/errors";
 import { joinWaitlist } from "@/lib/waitlist";
@@ -29,13 +35,17 @@ export async function startCheckoutAction(
         "Stripe TEST is not configured. No card or Affirm/Klarna charge will be created.",
       );
     }
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
-    const session = await createBnplCheckoutSession(stripe, {
+    const appUrl = appBaseUrl();
+    const urls = {
       userId: user.id,
       plan: planRaw,
       successUrl: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${appUrl}/billing/cancel`,
-    });
+    };
+    const session =
+      CHECKOUT_SKUS[planRaw].checkoutMode === "subscription"
+        ? await createSubscriptionCheckoutSession(stripe, { ...urls, email: user.email })
+        : await createBnplCheckoutSession(stripe, urls);
     if (!session.url) {
       throw new AppError("BILLING", "Stripe did not return a checkout URL.");
     }

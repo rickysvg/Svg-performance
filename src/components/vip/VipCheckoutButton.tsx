@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { startVipCheckoutAction, type VipActionState } from "@/app/actions/vip";
 import { StatusBanner } from "@/components/StatusBanner";
 
-export function VipCheckoutButton() {
+export function VipCheckoutButton({ label = "Continue to checkout" }: { label?: string }) {
   const [state, action, pending] = useActionState(startVipCheckoutAction, {} as VipActionState);
   return (
     <form data-testid="vip-checkout-vip-checkout" action={action} className="space-y-3" data-vip-checkout="1">
@@ -15,7 +15,7 @@ export function VipCheckoutButton() {
         disabled={pending}
         className="touch-target w-full rounded-full bg-[#CBF805] font-semibold text-black disabled:opacity-60"
       >
-        {pending ? "Opening…" : "Continue to checkout"}
+        {pending ? "Opening…" : label}
       </button>
     </form>
   );

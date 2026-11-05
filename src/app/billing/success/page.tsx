@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
+import { LegalLinks } from "@/components/LegalLinks";
 import { getCurrentUser } from "@/lib/session";
 import { getLatestSubscription } from "@/lib/access";
+import { subscriptionFace } from "@/lib/subscription-copy";
 
 export default async function BillingSuccessPage() {
   const user = await getCurrentUser();
@@ -18,9 +20,10 @@ export default async function BillingSuccessPage() {
           pay-over-time. We do not store loan details.
         </p>
         <p className="mt-4 text-sm">
-          Current recorded status:{" "}
-          {subscription ? `${subscription.plan} / ${subscription.status}` : "none yet"}
+          Your plan:{" "}
+          {subscription ? subscriptionFace(subscription.plan, subscription.status) : "waiting on Stripe"}
         </p>
+        <LegalLinks className="mt-6" />
         <Link href="/home" className="mt-6 inline-flex text-accent underline">
           Home
         </Link>

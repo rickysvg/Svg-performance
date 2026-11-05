@@ -4,9 +4,11 @@ import { getMemberEntitlements } from "@/lib/entitlements";
 import { creditsForCurrentPlan } from "@/lib/credits";
 import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
+import { subscriptionFace } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { LegalLinks } from "@/components/LegalLinks";
 
 export default async function PlanPage() {
   const user = await requireUser();
@@ -46,26 +48,17 @@ export default async function PlanPage() {
             : trial.trialActive
               ? `Your ${trial.trialLengthDays}-day Pro trial is active. No card. When it ends, Pro keeps the app open. Your past data stays viewable and exportable.`
             : subscription
-              ? `${subscription.plan} / ${subscription.status}${
-                  subscription.source === "admin" ? " · admin override" : " · webhook"
+              ? `${subscriptionFace(subscription.plan, subscription.status)}${
+                  subscription.source === "admin" ? " · set by an SVG admin" : ""
                 }`
               : "Your trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data."}
         </p>
-        {!configured ? (
-          <p className="mt-3 text-sm text-muted">
-            Paid plans coming soon.{" "}
-            <Link href="/pricing" className="text-accent underline">
-              Open pricing
-            </Link>
-          </p>
-        ) : (
-          <Link
-            href="/pricing"
-            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
-          >
-            Upgrade on Pricing
-          </Link>
-        )}
+        <Link
+          href="/pricing"
+          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
+        >
+          Subscribe on Pricing
+        </Link>
       </section>
 
       <FinancingNote configured={configured} />
@@ -102,6 +95,7 @@ export default async function PlanPage() {
         </ul>
       </section>
 
+      <LegalLinks />
       <p className="text-sm">
         <Link href="/book" className="text-accent underline-offset-4 hover:underline">
           Book with Ricky

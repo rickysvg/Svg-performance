@@ -1,14 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { billingPlanFromStored, referencesRetiredAnnual } from "@/lib/pro-annual-record";
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
+import { stripeBillingEnvPresent } from "@/lib/stripe-prices";
 import { isTrialActive } from "@/lib/trial";
 
 export function isStripeConfigured() {
-  return Boolean(
-    process.env.STRIPE_SECRET_KEY &&
-      process.env.STRIPE_WEBHOOK_SECRET &&
-      process.env.STRIPE_PRICE_STANDALONE,
-  );
+  return Boolean(process.env.STRIPE_WEBHOOK_SECRET && stripeBillingEnvPresent());
 }
 
 export async function getLatestSubscription(userId: string) {

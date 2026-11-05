@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireDashboardAdminOrThrow } from "@/lib/admin-access";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
-import { getStripe } from "@/lib/stripe";
+import { appBaseUrl, getStripe } from "@/lib/stripe";
 import { parseVipApplication, applyVipBilling, type VipBillingClient } from "@/lib/vip-coaching";
 import {
   dismissVipUpsell,
@@ -95,7 +95,7 @@ export async function startVipCheckoutAction(
   const user = await requireUserOrThrow();
   const view = await getVipCheckoutView(user.id);
   if (!view) return { error: "Checkout stays locked until Ricky approves your application." };
-  const origin = process.env.APP_URL || "http://localhost:3000";
+  const origin = appBaseUrl();
   let stripe = null;
   try {
     stripe = getStripe();
@@ -105,7 +105,7 @@ export async function startVipCheckoutAction(
   const result = await applyVipBilling({
     stripe: stripe ? (stripe as unknown as VipBillingClient) : null,
     draft: view.draft,
-    successUrl: `${origin}/vip/checkout?paid=1`,
+    successUrl: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${origin}/vip/checkout`,
   });
   if (result.url) redirect(result.url);
@@ -115,7 +115,7 @@ export async function startVipCheckoutAction(
   }
   return {
     message:
-      "Your approval is saved. Checkout is not live until STRIPE_PRICE_COACHING_MONTHLY is set. No charge was made.",
+      "Your approval is saved. Set STRIPE_PRICE_VIP_MONTHLY before checkout can open. No charge was made.",
   };
 }
 

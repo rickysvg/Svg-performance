@@ -1,7 +1,7 @@
 /**
  * Public app prices. One Pro price for everyone, academy members included.
- * Stripe price IDs come from env (STRIPE_PRICE_PERFORMANCE_MONTHLY / _YEAR,
- * STRIPE_PRICE_COACHING_MONTHLY). Nothing here creates Stripe products.
+ * Stripe price IDs come from env (STRIPE_PRICE_PRO_MONTHLY, STRIPE_PRICE_PRO_YEARLY,
+ * STRIPE_PRICE_VIP_MONTHLY). Nothing here creates Stripe products.
  */
 
 export const PRO_LABEL = "SVG Pro";

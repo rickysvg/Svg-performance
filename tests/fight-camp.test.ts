@@ -201,7 +201,7 @@ describe("fight camp access", () => {
         NOW,
         ZONE,
       ),
-    ).rejects.toMatchObject({ code: "PLAN", message: expect.stringMatching(/Paid plans coming soon/) });
+    ).rejects.toMatchObject({ code: "PLAN", message: expect.stringMatching(/Subscribe to Pro/) });
 
     const trial = await makeUser("camp-trial@example.com");
     await startTrialForUser(trial.id, NOW);
