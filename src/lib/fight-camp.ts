@@ -478,7 +478,7 @@ async function assertFightCampAccess(userId: string, now: Date) {
   if (!allowed) {
     throw new AppError(
       "PLAN",
-      "Fight camp is on Performance. Paid plans coming soon.",
+      "Fight camp is on SVG Pro. Subscribe to Pro to open it.",
     );
   }
 }

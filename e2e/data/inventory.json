@@ -5332,7 +5332,7 @@
     "kind": "button",
     "file": "src/components/pricing/PricingCatalog.tsx",
     "line": 35,
-    "label": "\"Coming soon\"",
+    "label": "\"Log in to subscribe\"",
     "expect": "UNCLEAR",
     "unsafe": false,
     "id": "PRICIN-006"
@@ -5359,7 +5359,7 @@
     "kind": "button",
     "file": "src/components/pricing/PricingCatalog.tsx",
     "line": 59,
-    "label": "\"Subscribe — opening Nov 16\"",
+    "label": "\"Subscribe\"",
     "expect": "UNCLEAR",
     "unsafe": true,
     "id": "PRICIN-009"

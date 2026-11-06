@@ -12,6 +12,7 @@ import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { recentRecoveryCheckIn } from "@/lib/recovery-ease";
 import { RecoveryNotice } from "@/components/training/RecoveryNotice";
 import { COACH_PUBLIC_NAME } from "@/lib/coach/topics";
+import { getEffectivePlanId } from "@/lib/entitlements";
 
 export default async function CoachPage() {
   const user = await requireUser();
@@ -43,6 +44,8 @@ export default async function CoachPage() {
     );
   }
   const style = resolveCoachingStyle(profile?.coachingStyle);
+  const planId = await getEffectivePlanId(user.id);
+  const showVipCoaching = planId === "coaching";
   const thread = await getMemberCoachThread(user.id);
   const remainingLabel = aiRemainingLabel(await getAiAllowance(user.id));
 
@@ -70,14 +73,15 @@ export default async function CoachPage() {
           </div>
           <p className="mt-0.5 truncate text-[11px] text-white/70">{style.label} style</p>
         </div>
-        {trial.trialActive ? null : (
+        {showVipCoaching ? (
           <Link
             href="/clips"
+            data-vip-coaching-pill
             className="shrink-0 rounded-full border border-[#cbf805]/50 px-2.5 py-1 text-[11px] font-medium text-[#CBF805]"
           >
             VIP Coaching
           </Link>
-        )}
+        ) : null}
       </header>
       {coachChat.freeDaysLeft != null && coachChat.freeDaysLeft > 0 ? (
         <p

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import { continueFreePlanAction, startTrialAction } from "@/app/actions/trial";
 
 export function PlanChoiceForm({
@@ -35,8 +36,10 @@ export function PlanChoiceForm({
             {canStartTrial ? `Start my ${trialDays} days of free Pro` : "Continue"}
           </button>
         </form>
+        <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
+        <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
         <p className="text-sm text-muted">
-          Pro is $9.99/mo or $72.99/yr. Want VIP Coaching?{" "}
+          Pro checkout includes a 7-day trial. Want VIP Coaching?{" "}
           <Link href="/pricing" className="text-accent underline">
             See pricing
           </Link>
@@ -79,8 +82,10 @@ export function PlanChoiceForm({
         </Link>
       )}
 
+      <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
+      <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
       <p className="text-sm text-muted">
-        Checkout is coming soon. You can look at pricing anytime from Profile.
+        Pro checkout includes a 7-day trial. You can compare plans anytime from Profile.
       </p>
     </div>
   );

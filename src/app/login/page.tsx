@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { LegalLinks } from "@/components/LegalLinks";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { getCurrentUser } from "@/lib/session";
 
@@ -26,6 +27,7 @@ export default async function LoginPage({
           Welcome back. Your workouts stay on this account.
         </p>
         <LoginForm notice={notice} />
+        <LegalLinks className="mt-8" />
         <p className="mt-6 text-sm text-muted">
           New here?{" "}
           <Link href="/register" className="text-accent underline-offset-4 hover:underline">

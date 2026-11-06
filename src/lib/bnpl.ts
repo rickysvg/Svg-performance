@@ -17,7 +17,7 @@ export const BNPL_COPY = {
   whenAvailable:
     "Pay over time with Affirm or Klarna when available. Affirm or Klarna decide approval — SVG does not store loan details. Not everyone qualifies. Higher-ticket plans and intensives are the main use case.",
   comingSoon:
-    "Affirm / Klarna at checkout is coming soon. It turns on when Stripe TEST keys are set and Affirm and Klarna are enabled in the Stripe Dashboard (TEST). We do not fake a successful buy.",
+    "Affirm and Klarna appear in Checkout when they are enabled in the Stripe Dashboard. We do not fake a successful buy.",
   keysOn:
     "TEST checkout can offer Affirm, Klarna, or similar pay-over-time when the amount, currency, and Stripe Dashboard payment methods allow. Still TEST — no live charges. Approval is theirs, not SVG’s.",
 } as const;

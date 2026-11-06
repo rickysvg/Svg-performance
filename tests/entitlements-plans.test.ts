@@ -51,7 +51,7 @@ describe("M5 entitlements, caps, and booking credits", () => {
     expect((await canUseMemberTools(user.id)).reason).toBe("paywall");
     await expect(assertCanCheckoutPlan(user.id, "standalone")).rejects.toMatchObject({
       code: "BILLING",
-      message: "Paid plans coming soon.",
+      message: "Stripe is not configured.",
     });
 
     const admin = await makeUser("admin-no-stripe@example.com", false, "admin");

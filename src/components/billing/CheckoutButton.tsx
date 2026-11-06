@@ -40,6 +40,7 @@ export function CheckoutButton({
       <input type="hidden" name="plan" value={plan} />
       <button
         type="submit"
+        data-checkout-plan={plan}
         disabled={pending}
         className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
       >

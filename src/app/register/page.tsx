@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { LegalLinks } from "@/components/LegalLinks";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 import { getCurrentUser } from "@/lib/session";
 
@@ -18,6 +19,7 @@ export default async function RegisterPage() {
           records, or a coach verifies you.
         </p>
         <RegisterForm />
+        <LegalLinks className="mt-8" />
         <p className="mt-6 text-sm text-muted">
           Already have an account?{" "}
           <Link href="/login" className="text-accent underline-offset-4 hover:underline">

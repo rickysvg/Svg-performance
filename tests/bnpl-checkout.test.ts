@@ -77,8 +77,9 @@ describe("Affirm / Klarna TEST checkout helpers", () => {
     expect(BNPL_COPY.whenAvailable).toContain("Pay over time with Affirm or Klarna when available");
     expect(BNPL_COPY.whenAvailable).toContain("SVG does not store loan details");
     expect(BNPL_COPY.whenAvailable).toContain("Not everyone qualifies");
-    expect(BNPL_COPY.comingSoon).toContain("coming soon");
+    expect(BNPL_COPY.comingSoon).toContain("Stripe Dashboard");
     expect(BNPL_COPY.comingSoon).toContain("We do not fake a successful buy");
+    expect(BNPL_COPY.comingSoon.toLowerCase()).not.toContain("coming soon");
   });
 
   it("detects BNPL payment-method Stripe errors without swallowing unrelated ones", () => {
