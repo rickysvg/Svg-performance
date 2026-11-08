@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { getLatestSubscription } from "@/lib/access";
+import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { getAppTier } from "@/lib/entitlements";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
 import {
@@ -93,11 +94,11 @@ export async function weeklyCheckInReviewed(userId: string, now = new Date()) {
       select: { weeklyCheckInOverride: true },
     }),
   ]);
-  const active =
-    subscription?.status === "active" &&
-    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < now);
+  const active = Boolean(
+    subscription && subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd, now),
+  );
   return memberHasWeeklyCheckInAccess({
-    planId: active ? subscription.plan : null,
+    planId: active && subscription ? subscription.plan : null,
     override: profile?.weeklyCheckInOverride,
   });
 }

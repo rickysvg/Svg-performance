@@ -6,7 +6,6 @@ import { PricingCatalog } from "@/components/pricing/PricingCatalog";
 import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { getLatestSubscription } from "@/lib/access";
-import { subscriptionStatusLabel } from "@/lib/subscription-copy";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
 import {
@@ -47,13 +46,10 @@ export default async function PricingPage() {
                 trialActive: Boolean(trial?.trialActive),
                 trialDaysLeft: trial?.trialDaysLeft ?? 0,
                 planLabel: PLAN_CATALOG[currentPlan].label,
+                subscription,
               })}
             </strong>
-            {`${
-              subscription && !trial?.trialActive
-                ? ` · ${subscriptionStatusLabel(subscription.status)}`
-                : ""
-            }. `}
+            {". "}
             <Link href="/plan" className="text-accent underline">
               See your plan
             </Link>
@@ -65,7 +61,7 @@ export default async function PricingPage() {
               ? `Your ${MEMBER_PRO_DAYS} days of free Pro are ready, no card. You are never auto-billed.`
               : `The ${NONMEMBER_TRIAL_DAYS}-day Pro trial is open now, no card.`
             : "A no-card trial can be used once per account."}{" "}
-          Pro checkout includes a 7-day trial before the first charge.
+          One Pro trial per person. Checkout bills today if that trial already started. VIP Coaching is billed today with no trial.
           {verified && !canStartTrial
             ? ` Your verified academy membership includes the core app and ${MEMBER_PRO_DAYS} days of Pro free.`
             : ""}
@@ -83,13 +79,13 @@ export default async function PricingPage() {
         <section className="mt-10 rounded-2xl border border-line bg-card p-6">
           <h2 className="text-lg text-foreground">Pricing FAQ</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground">
-            <li>Nonmembers get a {NONMEMBER_TRIAL_DAYS}-day Pro trial with no card. After it ends, Pro ($9.99/mo or $72.99/yr, save 39%) keeps the app open. You can always view and export your past data.</li>
+            <li>Nonmembers get a {NONMEMBER_TRIAL_DAYS}-day Pro trial with no card. After it ends unpaid, history and progress stay viewable (read-only). Training, logging, timers, the AI coach, and downloads stay off until you subscribe. Pro is $9.99/mo or $72.99/yr.</li>
             <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed. AI coach chat is not part of the academy tier after the first week.</li>
             <li>AI coach chat is free for your first week from signup, no card. After that week it stays open on Pro, VIP Coaching, and an active {NONMEMBER_TRIAL_DAYS}-day Pro trial. The academy Pro grant does not extend chat.</li>
             <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
             <li>Pro fair use: {PRO_AI_MESSAGES_PER_DAY} AI messages a day.</li>
             <li>VIP Coaching is $249/month and includes Pro. Limited spots. Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30. Ricky replies within 48 hours.</li>
-            <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the {NONMEMBER_TRIAL_DAYS}-day trial, then subscribe to Pro to keep training. Past data stays viewable and exportable.</li>
+            <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the {NONMEMBER_TRIAL_DAYS}-day trial. After that, history stays viewable (read-only) until they subscribe.</li>
             <li>Academy Gymdesk dues are billed by the gym and are not changed here.</li>
             <li>Weight-cut services are not sold here.</li>
           </ul>

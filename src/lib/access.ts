@@ -3,6 +3,7 @@ import { billingPlanFromStored, referencesRetiredAnnual } from "@/lib/pro-annual
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
 import { stripeBillingEnvPresent } from "@/lib/stripe-prices";
 import { isTrialActive } from "@/lib/trial";
+import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 
 export function isStripeConfigured() {
   return Boolean(process.env.STRIPE_WEBHOOK_SECRET && stripeBillingEnvPresent());
@@ -20,13 +21,7 @@ export async function getLatestSubscription(userId: string) {
 
 export async function hasWebhookGrantedAccess(userId: string) {
   const subscription = await getLatestSubscription(userId);
-  if (subscription?.status !== "active") {
-    return false;
-  }
-  if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) {
-    return false;
-  }
-  return true;
+  return subscriptionGrantsAccess(subscription?.status, subscription?.currentPeriodEnd);
 }
 
 /**
@@ -41,8 +36,8 @@ export async function canUseMemberTools(userId: string): Promise<{
 }> {
   const subscription = await getLatestSubscription(userId);
   if (
-    subscription?.status === "active" &&
-    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < new Date()) &&
+    subscription &&
+    subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd) &&
     planHasFeature(normalizePlanId(subscription.plan), "nutrition")
   ) {
     return { allowed: true, reason: "subscribed" };

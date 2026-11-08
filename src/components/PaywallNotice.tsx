@@ -10,7 +10,7 @@ export function PaywallNotice({ feature }: { feature: string }) {
       </p>
       <h1 className="mt-2 text-2xl">{feature}</h1>
       <p className="mt-2 text-sm text-muted">
-        This opens on Pro ($9.99/mo or $72.99/yr). {proAccessSummary()} Checkout includes a 7-day trial.
+        This opens on Pro ($9.99/mo or $72.99/yr). {proAccessSummary()} Checkout bills today if that trial already started.
       </p>
       <div className="mt-4 space-y-3">
         <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />

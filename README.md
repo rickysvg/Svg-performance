@@ -80,7 +80,7 @@ See `.env.example`. Names only — put real values in your private `.env`:
 | `ADMIN_EMAILS` | Optional. Comma-separated emails that can open the form-check review queue, along with any account whose role is already admin |
 | `OPENAI_API_KEY` `OPENAI_MODEL` | Required for live SVG Coach. Empty means members get short built-in answers only. `OPENAI_MODEL` defaults to `gpt-4o-mini` |
 | `COACH_LLM_TIMEOUT_MS` | Optional. First-byte timeout for the live coach call, in milliseconds. Default `20000` |
-| `STRIPE_SECRET_KEY` | Optional. Stripe **TEST** secret only (`sk_test_...`) |
+| `STRIPE_SECRET_KEY` | Stripe secret. Test keys (`sk_test_` / `rk_test_`) everywhere except production. Live keys (`sk_live_` / `rk_live_`) work only when `VERCEL_ENV=production` |
 | `STRIPE_WEBHOOK_SECRET` | Optional. Needed to verify webhooks |
 | `STRIPE_PRICE_GYM` | Optional. TEST price id for SVG Performance gym monthly ($19) |
 | `STRIPE_PRICE_STANDALONE` | Optional. TEST price id for SVG Performance nonmember monthly ($29) |
@@ -114,11 +114,11 @@ If Polar keys are missing: Heart rate still works with Apple Health import, manu
 
 The $249/mo plan is VIP Coaching (`coaching` / `coaching_monthly`). Athletes apply with five questions. Ricky approves or declines in `/admin/vip`, and only an approval unlocks checkout for that person. Public pages say "Limited spots". Caps (20 active, 3 new in a week, 4 in fight camp) stay on the admin desk. A full cap pauses intake and offers the waitlist a 72-hour hold when a seat opens.
 
-Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30 for unused Pro time. Those two offers do not combine. The app does not create Stripe products, prices, or coupons. Set the ids below in the Stripe Dashboard (TEST only) and leave them empty for a no-op:
+Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30 for unused Pro time. Those two offers do not combine. VIP Coaching has no free trial. The app does not create Stripe products, prices, or coupons. Set the ids in the Stripe Dashboard (test mode for Preview, live mode for production) and leave them empty for a no-op:
 
 | Name | What it is for |
 | --- | --- |
-| `STRIPE_PRICE_COACHING_MONTHLY` | TEST price id for VIP Coaching at $249/mo. Empty = checkout does not call Stripe and nobody is charged |
+| `STRIPE_PRICE_COACHING_MONTHLY` | Legacy alias for `STRIPE_PRICE_VIP_MONTHLY` ($249/mo). Empty, with the VIP name also empty, means checkout does not call Stripe |
 | `STRIPE_COUPON_VIP_ACADEMY_INTRO` | Once coupon, $100 off, so the first invoice is $149 and renewal stays $249. Empty = academy members are quoted $149 in the app and Stripe is not given a coupon |
 | `STRIPE_COUPON_VIP_PRO_CREDIT` | Once coupon for the $30 cap. Applied only when the computed credit is exactly $30 |
 | `STRIPE_COUPON_VIP_CREDIT_<cents>` | Optional once coupon for an exact credit, such as `STRIPE_COUPON_VIP_CREDIT_999` for $9.99 |

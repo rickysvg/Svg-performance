@@ -5,6 +5,9 @@ import { redirect } from "next/navigation";
 import { requireDashboardAdminOrThrow } from "@/lib/admin-access";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
+import { getLatestSubscription } from "@/lib/access";
+import { normalizePlanId } from "@/lib/plans";
+import { subscriptionBlocksCheckout } from "@/lib/subscription-access";
 import { appBaseUrl, getStripe } from "@/lib/stripe";
 import { parseVipApplication, applyVipBilling, type VipBillingClient } from "@/lib/vip-coaching";
 import {
@@ -93,6 +96,14 @@ export async function startVipCheckoutAction(
   void prev;
   void formData;
   const user = await requireUserOrThrow();
+  const existing = await getLatestSubscription(user.id);
+  if (
+    existing &&
+    normalizePlanId(existing.plan) === "coaching" &&
+    subscriptionBlocksCheckout(existing.status)
+  ) {
+    return { error: "You're already on VIP Coaching. Manage billing from Plan to update your card." };
+  }
   const view = await getVipCheckoutView(user.id);
   if (!view) return { error: "Checkout stays locked until Ricky approves your application." };
   const origin = appBaseUrl();
@@ -105,6 +116,8 @@ export async function startVipCheckoutAction(
   const result = await applyVipBilling({
     stripe: stripe ? (stripe as unknown as VipBillingClient) : null,
     draft: view.draft,
+    email: user.email,
+    customerId: existing?.stripeCustomerId,
     successUrl: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${origin}/vip/checkout`,
   });

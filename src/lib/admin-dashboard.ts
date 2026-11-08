@@ -38,15 +38,18 @@ export function memberPlanSnapshot(input: {
 }) {
   const now = input.now ?? new Date();
   const subLive =
-    input.status === "active" && (!input.periodEnd || input.periodEnd.getTime() >= now.getTime());
-  if (subLive && input.plan) {
+    (input.status === "active" || input.status === "trialing") &&
+    (!input.periodEnd || input.periodEnd.getTime() >= now.getTime());
+  const billingProblem =
+    input.status === "past_due" || input.status === "unpaid" || input.status === "canceled";
+  if ((subLive || billingProblem) && input.plan) {
     const planId = catalogPlanFromStored({ plan: input.plan });
     if (planId !== "member_access" && planId !== "academy") {
       return {
         planId,
         label: PLAN_CATALOG[planId].label,
         academy: input.verified,
-        trial: false,
+        trial: input.status === "trialing",
       };
     }
   }

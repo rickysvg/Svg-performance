@@ -15,8 +15,10 @@ import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { getLatestSubscription } from "@/lib/access";
+import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { MEMBER_PRO_DAYS } from "@/lib/pricing";
-import { getEffectivePlanId } from "@/lib/entitlements";
+import { getEffectivePlanId, tierForPlan } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
 import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
@@ -29,7 +31,7 @@ import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [profile, prefs, trial, verifiedEvent, planId] = await Promise.all([
+  const [profile, prefs, trial, verifiedEvent, planId, subscription] = await Promise.all([
     getProfileForUser(user.id),
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
@@ -38,6 +40,7 @@ export default async function ProfilePage() {
       orderBy: { at: "desc" },
     }),
     getEffectivePlanId(user.id),
+    getLatestSubscription(user.id),
   ]);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   if (!profile) {
@@ -65,6 +68,7 @@ export default async function ProfilePage() {
               trialLengthDays: trial.trialLengthDays,
               verified: trial.verified,
               planLabel: PLAN_CATALOG[planId].label,
+              subscription,
             })}
           </strong>
         </p>
@@ -92,6 +96,16 @@ export default async function ProfilePage() {
       <details className="rounded-2xl border border-line bg-card">
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Account</summary>
         <div className="space-y-6 px-4 pb-4">
+      {subscription?.stripeCustomerId ? (
+        <div className="pt-2">
+          <p className="text-sm text-muted">
+            Add a card, set the default, see invoices, or cancel at period end. The card on an open subscription stays on file.
+          </p>
+          <div className="mt-3">
+            <ManageBillingButton />
+          </div>
+        </div>
+      ) : null}
       <details className="rounded-2xl border border-line bg-background">
         <summary className="cursor-pointer px-4 py-3 font-semibold">Academy</summary>
         <div className="space-y-3 px-4 pb-4">
@@ -157,7 +171,7 @@ export default async function ProfilePage() {
           </button>
         </form>
       </section>
-      <YourDataSection />
+      <YourDataSection locked={tierForPlan(planId) === "locked" && user.role === "member"} />
 
       <section className="space-y-3">
         <h2 className="text-lg">More</h2>

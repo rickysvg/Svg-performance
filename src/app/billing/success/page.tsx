@@ -16,8 +16,7 @@ export default async function BillingSuccessPage() {
         <p className="mt-3 text-sm text-muted">
           This page does <strong className="text-foreground">not</strong> unlock
           paid tools by itself. Access changes only after Stripe sends a
-          verified webhook — the same for card, Affirm, Klarna, or similar
-          pay-over-time. We do not store loan details.
+          verified webhook. No refunds except billing errors.
         </p>
         <p className="mt-4 text-sm">
           Your plan:{" "}

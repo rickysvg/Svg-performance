@@ -43,7 +43,7 @@ export async function toggleBookmarkAction(formData: FormData) {
   const user = await requireUserOrThrow();
   const allowed = await canUseFeature(user.id, "learn_beginner");
   if (!allowed) {
-    throw new AppError("PAYWALL", "Learn is locked until Stripe TEST confirms payment.");
+    throw new AppError("PAYWALL", "Learn stays locked until your plan includes it.");
   }
   await toggleLessonBookmark(user.id, String(formData.get("lessonId") ?? ""));
   revalidatePath("/learn");
@@ -53,7 +53,7 @@ export async function toggleCompleteAction(formData: FormData) {
   const user = await requireUserOrThrow();
   const allowed = await canUseFeature(user.id, "learn_beginner");
   if (!allowed) {
-    throw new AppError("PAYWALL", "Learn is locked until Stripe TEST confirms payment.");
+    throw new AppError("PAYWALL", "Learn stays locked until your plan includes it.");
   }
   const row = await toggleLessonComplete(user.id, String(formData.get("lessonId") ?? ""));
   const slug = String(formData.get("slug") ?? "").trim();

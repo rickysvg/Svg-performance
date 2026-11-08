@@ -21,9 +21,8 @@ export function TrialEndedPaywall() {
         Your {NONMEMBER_TRIAL_DAYS}-day trial ended
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Subscribe to Pro to keep training. Logging, timers, and class programming stay open
-        for academy members and Pro subscribers. After the {NONMEMBER_TRIAL_DAYS}-day trial,
-        past data stays viewable and exportable.
+        Subscribe to keep training. History and progress stay visible. Training, logging, timers,
+        the AI coach, and downloads stay off. Academy members keep the core app with their dues.
       </p>
       <p className="font-display stat-display mt-4 text-3xl text-black">
         {usd(PERFORMANCE_MONTHLY)}/mo
@@ -34,19 +33,15 @@ export function TrialEndedPaywall() {
       <div className="mt-5 space-y-3">
         <CheckoutButton plan="performance_monthly" label={`Subscribe · ${usd(PERFORMANCE_MONTHLY)}/mo`} />
         <CheckoutButton plan="performance_year" label={`Subscribe · ${usd(PERFORMANCE_ANNUAL)}/yr`} />
-        <p className="text-xs text-muted">Pro checkout includes a 7-day trial before the first charge.</p>
+        <p className="text-xs text-muted">
+          Your free trial is over, so checkout bills today. No refunds except billing errors. No downloads while unpaid.
+        </p>
         <Link
           href="/progress"
           className="touch-target inline-flex w-full items-center justify-center rounded-full border border-black bg-white font-semibold text-black"
         >
-          View my past data
+          View history
         </Link>
-        <a
-          href="/api/account/export"
-          className="touch-target inline-flex w-full items-center justify-center rounded-full border border-line bg-white text-sm text-black"
-        >
-          Export my data
-        </a>
       </div>
       <p className="mt-4 text-xs text-muted">
         Train at SVG Academy? Verified members get the core app with their dues.

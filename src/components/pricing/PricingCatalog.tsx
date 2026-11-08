@@ -52,7 +52,9 @@ function PlanCheckoutButton({
         <>
           <CheckoutButton plan="performance_monthly" label={`Subscribe · ${usd(PERFORMANCE_MONTHLY)}/mo`} />
           <CheckoutButton plan="performance_year" label={`Subscribe · ${usd(PERFORMANCE_ANNUAL)}/yr`} />
-          <p className="text-xs text-foreground">Pro checkout includes a 7-day trial before the first charge.</p>
+          <p className="text-xs text-foreground">
+            One trial per person. If your free trial already started, checkout bills today.
+          </p>
         </>
       ) : (
         <Link
@@ -192,7 +194,7 @@ export function PricingCatalog({
           Same price for athletes anywhere, academy members included.{" "}
           {verified
             ? `Your dues include the core app, and Pro is free for your first ${MEMBER_PRO_DAYS} days, no card, never auto-billed.`
-            : `New here? Start with a ${NONMEMBER_TRIAL_DAYS}-day Pro trial, no card. After the trial, Pro keeps the app open. Your past data stays viewable and exportable.`}
+            : `New here? Start with a ${NONMEMBER_TRIAL_DAYS}-day Pro trial, no card. After it ends unpaid, history stays read-only until you subscribe.`}
         </p>
         <TierList items={PRO_ADDS} tone="add" />
         <p className="mt-3 text-xs text-foreground" data-fair-use>
@@ -228,6 +230,9 @@ export function PricingCatalog({
         </p>
         <p className="mt-1 text-sm text-white" data-coaching-spots>
           Limited spots
+        </p>
+        <p className="mt-1 text-sm text-white" data-vip-no-trial>
+          Billed today. No free trial.
         </p>
         <p className="mt-3 text-sm font-medium text-white" data-plan-expect>
           {COACHING_EXPECT}

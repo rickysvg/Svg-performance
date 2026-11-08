@@ -2,12 +2,13 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getMemberEntitlements } from "@/lib/entitlements";
 import { creditsForCurrentPlan } from "@/lib/credits";
-import { getLatestSubscription, isStripeConfigured } from "@/lib/access";
+import { getLatestSubscription } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { subscriptionFace } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
-import { FinancingNote } from "@/components/billing/FinancingNote";
+import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { LegalLinks } from "@/components/LegalLinks";
 
 export default async function PlanPage() {
@@ -18,8 +19,10 @@ export default async function PlanPage() {
     getLatestSubscription(user.id),
     getTrialState(user.id),
   ]);
-  const configured = isStripeConfigured();
   const plan = entitlements.plan;
+  const subscriptionLive = Boolean(
+    subscription && subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd),
+  );
 
   return (
     <main className="space-y-6">
@@ -32,6 +35,7 @@ export default async function PlanPage() {
             trialLengthDays: trial.trialLengthDays,
             verified: trial.verified,
             planLabel: plan.label,
+            subscription,
           })}
         </h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
@@ -41,17 +45,17 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
-          {trial.verified && trial.trialActive && !subscription
+          {subscription && (subscriptionLive || subscription.status !== "incomplete")
+            ? `${subscriptionFace(subscription.plan, subscription.status)}${
+                subscription.source === "admin" ? " · set by an SVG admin" : ""
+              }. No refunds except billing errors.`
+            : trial.verified && trial.trialActive && !subscription
             ? `Verified SVG Academy member. Your ${trial.trialLengthDays} days of free Pro are active. After they end you go back to the core app included with your dues. You are never auto-billed.`
             : trial.verified && entitlements.planId === "academy"
               ? "Verified SVG Academy member. The core app is included with your dues. AI coach chat is free for your first week, then it is on Pro. Pro is $9.99/mo or $72.99/yr."
             : trial.trialActive
-              ? `Your ${trial.trialLengthDays}-day Pro trial is active. No card. When it ends, Pro keeps the app open. Your past data stays viewable and exportable.`
-            : subscription
-              ? `${subscriptionFace(subscription.plan, subscription.status)}${
-                  subscription.source === "admin" ? " · set by an SVG admin" : ""
-                }`
-              : "Your trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data."}
+              ? `Your ${trial.trialLengthDays}-day Pro trial is active. No card. When it ends unpaid, history stays read-only and training locks until you subscribe.`
+            : "Your trial ended. Subscribe to keep training. History and progress stay visible. Downloads stay off."}
         </p>
         <Link
           href="/pricing"
@@ -61,7 +65,17 @@ export default async function PlanPage() {
         </Link>
       </section>
 
-      <FinancingNote configured={configured} />
+      {subscription?.stripeCustomerId ? (
+        <section className="rounded-2xl border border-line bg-card p-5">
+          <h2>Billing</h2>
+          <p className="mt-2 text-sm text-muted">
+            Update your card, see invoices, or cancel at the end of the period. You can add a card and make it the default. The card on an open subscription stays on file. No refunds except billing errors.
+          </p>
+          <div className="mt-4">
+            <ManageBillingButton />
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>This billing month&apos;s credits</h2>
@@ -102,7 +116,7 @@ export default async function PlanPage() {
         </Link>
         {" · "}
         <Link href="/pricing" className="text-accent underline-offset-4 hover:underline">
-          All draft prices
+          Pricing
         </Link>
       </p>
     </main>

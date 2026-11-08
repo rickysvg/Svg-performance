@@ -45,6 +45,8 @@ export async function resetDatabase() {
   await prisma.bodyPhotoPlaceholder.deleteMany();
   await prisma.bodyMetric.deleteMany();
   await prisma.metricEvent.deleteMany();
+  await prisma.cardFingerprint.deleteMany();
+  await prisma.billingEvent.deleteMany();
   await prisma.stripeEventLog.deleteMany();
   await prisma.helpRequest.deleteMany();
   await prisma.coachAssignment.deleteMany();

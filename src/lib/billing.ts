@@ -12,11 +12,17 @@ import {
 import {
   CHECKOUT_SKUS,
   type CheckoutSkuId,
-  isCheckoutSkuId,
+  normalizePlanId,
   PLAN_CATALOG,
+  planAtLeast,
 } from "@/lib/plans";
 import { readPriceEnv } from "@/lib/stripe-prices";
+import { getLatestSubscription } from "@/lib/access";
+import { subscriptionBlocksCheckout } from "@/lib/subscription-access";
 import { getVipCheckoutView } from "@/lib/vip-store";
+import { upsertSubscriptionFromWebhook } from "@/lib/stripe-webhook";
+
+export { applyStripeEvent, upsertSubscriptionFromWebhook } from "@/lib/stripe-webhook";
 
 export { PLANS, isPlanId, isCheckoutSkuId } from "@/lib/plans";
 export type { CheckoutSkuId as PlanId } from "@/lib/plans";
@@ -48,6 +54,19 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
       );
     }
   }
+  const existing = await getLatestSubscription(userId);
+  if (existing && subscriptionBlocksCheckout(existing.status)) {
+    const current = normalizePlanId(existing.plan);
+    const target = sku.catalogId;
+    const alreadyCovered =
+      current === target || (target === "performance" && planAtLeast(current, "performance"));
+    if (alreadyCovered) {
+      throw new AppError(
+        "BILLING",
+        "You already have a subscription. Use Manage billing to update your card. Paid features stay locked until the payment succeeds.",
+      );
+    }
+  }
   if (await isPlanAtCap(sku.catalogId)) {
     throw new AppError(
       "WAITLIST",
@@ -65,219 +84,6 @@ export function priceIdForPlan(plan: CheckoutSkuId) {
   return value;
 }
 
-export async function upsertSubscriptionFromWebhook(input: {
-  userId: string;
-  plan: string;
-  status: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  stripePriceId?: string;
-  currentPeriodEnd?: Date | null;
-  source?: string;
-}) {
-  const existing = input.stripeSubscriptionId
-    ? await prisma.subscription.findFirst({
-        where: { stripeSubscriptionId: input.stripeSubscriptionId },
-      })
-    : await prisma.subscription.findFirst({
-        where: { userId: input.userId },
-        orderBy: { updatedAt: "desc" },
-      });
-
-  // Keep Stripe ids when a later event (payment failed, cancel) omits them.
-  // An explicit empty price clears a stale id. Omitting the field keeps the stored one.
-  // Leave the unused seat column as stored. Do not set or clear it.
-  const stripePriceId =
-    input.stripePriceId !== undefined ? input.stripePriceId : (existing?.stripePriceId ?? "");
-
-  const data = {
-    userId: input.userId,
-    plan: input.plan,
-    status: input.status,
-    stripeCustomerId: input.stripeCustomerId || existing?.stripeCustomerId || "",
-    stripeSubscriptionId: input.stripeSubscriptionId || existing?.stripeSubscriptionId || "",
-    stripePriceId,
-    currentPeriodEnd: input.currentPeriodEnd ?? null,
-    source: input.source ?? "webhook",
-  };
-
-  if (existing) {
-    return prisma.subscription.update({ where: { id: existing.id }, data });
-  }
-  return prisma.subscription.create({ data });
-}
-
-type StripeLikeObject = {
-  id?: string;
-  metadata?: Record<string, string>;
-  client_reference_id?: string;
-  customer?: string;
-  subscription?: string;
-  status?: string;
-  payment_status?: string;
-  current_period_end?: number;
-  items?: { data?: { price?: { id?: string } }[] };
-  /** Ignored: card vs Affirm/Klarna does not change access. Loan details are never stored. */
-  payment_method_types?: string[];
-};
-
-/** Paid, or a subscription trial that does not charge yet. Unpaid waits for the async event. */
-function checkoutSessionGrantsAccess(object: StripeLikeObject) {
-  const status = object.payment_status;
-  if (!status) return true;
-  return status === "paid" || status === "no_payment_required";
-}
-
-function mapSubscriptionStatus(status: string | undefined) {
-  if (status === "active" || status === "trialing") return "active";
-  if (status === "past_due") return "past_due";
-  if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
-    return "canceled";
-  }
-  return "incomplete";
-}
-
-function requiresGymVerify(planRaw: string) {
-  if (planRaw === "gym") return true;
-  if (isCheckoutSkuId(planRaw)) return CHECKOUT_SKUS[planRaw].requiresGymVerify;
-  return false;
-}
-
-export async function applyStripeEvent(event: {
-  id?: string;
-  type: string;
-  data: { object: StripeLikeObject };
-}) {
-  if (event.id) {
-    const existing = await prisma.stripeEventLog.findUnique({
-      where: { stripeEventId: event.id },
-    });
-    if (existing) {
-      return { skipped: true, reason: "duplicate" as const };
-    }
-  }
-
-  const object = event.data.object;
-  const userId =
-    object.metadata?.userId || object.client_reference_id || "";
-  const planRaw = object.metadata?.plan || "standalone";
-  const stripePriceId = object.items?.data?.[0]?.price?.id || object.metadata?.priceId;
-  const incoming = { plan: planRaw, stripePriceId };
-  const catalogPlan = isCheckoutSkuId(planRaw)
-    ? CHECKOUT_SKUS[planRaw].catalogId
-    : catalogPlanFromStored(incoming);
-  // A retired seat id is recorded as Pro annual. A current price keeps the current plan.
-  const recordedPlan = referencesRetiredAnnual(incoming)
-    ? billingPlanFromStored(incoming)
-    : catalogPlan;
-
-  if (!userId) {
-    throw new AppError("BILLING", "Webhook event is missing the member id.");
-  }
-
-  const existingSub = await prisma.subscription.findFirst({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-  });
-  const isCheckoutGrantEvent =
-    event.type === "checkout.session.completed" ||
-    event.type === "checkout.session.async_payment_succeeded";
-  const isFirstInvoicePaid = event.type === "invoice.paid" && !existingSub;
-  const isGymActivation =
-    (isCheckoutGrantEvent && checkoutSessionGrantsAccess(object)) ||
-    event.type === "customer.subscription.created" ||
-    isFirstInvoicePaid;
-
-  if (requiresGymVerify(planRaw) && isGymActivation) {
-    const profile = await getProfileForUser(userId);
-    if (!profile?.gymMembershipVerified) {
-      throw new ForbiddenError(
-        "Webhook refused gym-plan access because this member is not admin-verified.",
-      );
-    }
-  }
-
-  const periodEnd = object.current_period_end
-    ? new Date(object.current_period_end * 1000)
-    : null;
-
-  let result = null;
-
-  if (event.type === "checkout.session.expired") {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: recordedPlan,
-      status: "incomplete",
-      stripeSubscriptionId:
-        typeof object.subscription === "string" ? object.subscription : object.id,
-      currentPeriodEnd: periodEnd,
-    });
-  } else if (isCheckoutGrantEvent && !checkoutSessionGrantsAccess(object)) {
-    result = null;
-  } else if (
-    (isCheckoutGrantEvent && checkoutSessionGrantsAccess(object)) ||
-    event.type === "invoice.paid" ||
-    event.type === "customer.subscription.created"
-  ) {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: recordedPlan,
-      status: "active",
-      stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
-      stripeSubscriptionId:
-        typeof object.subscription === "string"
-          ? object.subscription
-          : object.id,
-      stripePriceId,
-      currentPeriodEnd: periodEnd,
-    });
-    if (result.status === "active") {
-      await ensureCreditsForPlan(userId, catalogPlan);
-    }
-  } else if (event.type === "invoice.payment_failed") {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: recordedPlan,
-      status: "past_due",
-      stripeSubscriptionId:
-        typeof object.subscription === "string" ? object.subscription : object.id,
-      currentPeriodEnd: periodEnd,
-    });
-  } else if (
-    event.type === "customer.subscription.deleted" ||
-    (event.type === "customer.subscription.updated" &&
-      mapSubscriptionStatus(object.status) === "canceled")
-  ) {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: recordedPlan,
-      status: "canceled",
-      stripeSubscriptionId: object.id,
-      currentPeriodEnd: periodEnd,
-    });
-  } else if (event.type === "customer.subscription.updated") {
-    result = await upsertSubscriptionFromWebhook({
-      userId,
-      plan: recordedPlan,
-      status: mapSubscriptionStatus(object.status),
-      stripeCustomerId: typeof object.customer === "string" ? object.customer : "",
-      stripeSubscriptionId: object.id,
-      stripePriceId,
-      currentPeriodEnd: periodEnd,
-    });
-    if (result.status === "active") {
-      await ensureCreditsForPlan(userId, catalogPlan);
-    }
-  }
-
-  if (event.id) {
-    await prisma.stripeEventLog.create({
-      data: { stripeEventId: event.id, eventType: event.type },
-    });
-  }
-
-  return result;
-}
 
 export async function assignPlanForPilot(input: {
   adminUserId: string;
