@@ -80,7 +80,13 @@ type SubRow = {
   status: string;
   currentPeriodEnd: Date | null;
   founding?: boolean;
+  source?: string | null;
 };
+
+/** Comp codes are Pro in the app and are not paid revenue. */
+export function countsAsPaidRevenue(row: { source?: string | null }) {
+  return row.source !== "access_code";
+}
 
 type ProfileRow = {
   userId: string;
@@ -98,7 +104,7 @@ export function revenueSnapshot(input: {
   profiles: ProfileRow[];
 }) {
   const now = input.now ?? new Date();
-  const active = input.subscriptions.filter((row) => liveSub(row, now));
+  const active = input.subscriptions.filter((row) => liveSub(row, now) && countsAsPaidRevenue(row));
   const proUsers = new Set(
     active.filter((row) => catalogPlanFromStored(row) === "performance").map((row) => row.userId),
   );
@@ -316,7 +322,7 @@ export async function getRevenueDesk(now = new Date()) {
   const snapshot = revenueSnapshot({ now, subscriptions, profiles });
   const paid = new Set(
     subscriptions
-      .filter((row) => liveSub(row, now))
+      .filter((row) => liveSub(row, now) && countsAsPaidRevenue(row))
       .filter((row) => {
         const planId = catalogPlanFromStored(row);
         return planId !== "member_access" && planId !== "academy";
@@ -324,7 +330,10 @@ export async function getRevenueDesk(now = new Date()) {
       .map((row) => row.userId),
   );
   const pro = subscriptions.filter(
-    (row) => liveSub(row, now) && catalogPlanFromStored(row) === "performance",
+    (row) =>
+      liveSub(row, now) &&
+      countsAsPaidRevenue(row) &&
+      catalogPlanFromStored(row) === "performance",
   );
   const seen = new Set<string>();
   const activeProRows = pro.filter((row) => {
@@ -487,6 +496,7 @@ export async function getAdminDeskCounts(now = new Date()) {
         status: true,
         currentPeriodEnd: true,
         founding: true,
+        source: true,
       },
     }),
     prisma.subscription.count({ where: { status: { in: ["past_due", "unpaid"] } } }),
@@ -520,7 +530,9 @@ export async function getAdminDeskCounts(now = new Date()) {
     if (!liveSub(sub, now)) continue;
     const planId = catalogPlanFromStored(sub);
     if (planId === "coaching") coachingUsers.add(sub.userId);
-    if (planId !== "member_access" && planId !== "academy") paidUsers.add(sub.userId);
+    if (countsAsPaidRevenue(sub) && planId !== "member_access" && planId !== "academy") {
+      paidUsers.add(sub.userId);
+    }
   }
   const coaching = coachingDesk(coachingUsers.size);
   const revenue = revenueSnapshot({ now, subscriptions: subs, profiles });

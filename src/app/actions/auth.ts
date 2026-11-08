@@ -42,6 +42,8 @@ export async function registerAction(
       isAdultConfirmed: formData.get("isAdultConfirmed") === "on",
       claimsGymMembership: formData.get("claimsGymMembership") === "on",
       phone: String(formData.get("phone") ?? ""),
+      accessCode: String(formData.get("accessCode") ?? ""),
+      accessCodeRateKey: `ip:${await resetClientAddress()}`,
     });
     const session = await createSessionRecord(user.id);
     await setSessionCookie(session.token, session.expiresAt);

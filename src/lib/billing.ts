@@ -1,3 +1,4 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError } from "@/lib/errors";
 import { getProfileForUser } from "@/lib/profile";
@@ -279,20 +280,27 @@ export async function applyStripeEvent(event: {
   return result;
 }
 
-export async function assignPlanForPilot(input: {
-  adminUserId: string;
-  targetUserId: string;
-  plan: string;
-}) {
-  const admin = await prisma.user.findUnique({ where: { id: input.adminUserId } });
-  if (!admin || admin.role !== "admin") {
-    throw new ForbiddenError("Only an admin can assign a plan for the pilot.");
-  }
+type PlanGrantDb = Prisma.TransactionClient | PrismaClient;
+
+/**
+ * Pilot plan override. Caps apply to self-serve checkout only.
+ * `days` undefined keeps the 30-day window. `days` null means no end date.
+ * Stripe checkout and webhooks do not call this.
+ */
+export async function grantCatalogPlan(
+  input: {
+    targetUserId: string;
+    plan: string;
+    days?: number | null;
+    source?: string;
+  },
+  db: PlanGrantDb = prisma,
+) {
   const catalogPlan = catalogPlanFromStored({ plan: input.plan });
   const recordedPlan = referencesRetiredAnnual({ plan: input.plan })
     ? billingPlanFromStored({ plan: input.plan })
     : catalogPlan;
-  const existing = await prisma.subscription.findFirst({
+  const existing = await db.subscription.findFirst({
     where: { userId: input.targetUserId },
     orderBy: { updatedAt: "desc" },
   });
@@ -302,17 +310,41 @@ export async function assignPlanForPilot(input: {
     Boolean(existing) &&
     isRetiredAnnualPrice(existing?.stripePriceId) &&
     !referencesRetiredAnnual({ plan: input.plan });
-  // Admin override is the pilot escape hatch — caps apply to self-serve checkout only.
-  const periodEnd = new Date();
-  periodEnd.setUTCDate(periodEnd.getUTCDate() + 30);
-  const row = await upsertSubscriptionFromWebhook({
+  const days = input.days === undefined ? 30 : input.days;
+  let periodEnd: Date | null = null;
+  if (catalogPlan !== "member_access" && days !== null) {
+    periodEnd = new Date();
+    periodEnd.setUTCDate(periodEnd.getUTCDate() + days);
+  }
+  const data = {
     userId: input.targetUserId,
     plan: recordedPlan,
     status: catalogPlan === "member_access" ? "canceled" : "active",
-    currentPeriodEnd: catalogPlan === "member_access" ? null : periodEnd,
-    source: "admin",
-    ...(clearRetiredPrice ? { stripePriceId: "" } : {}),
+    stripeCustomerId: existing?.stripeCustomerId ?? "",
+    stripeSubscriptionId: existing?.stripeSubscriptionId ?? "",
+    stripePriceId: clearRetiredPrice ? "" : (existing?.stripePriceId ?? ""),
+    currentPeriodEnd: periodEnd,
+    source: input.source ?? "admin",
+  };
+  const row = existing
+    ? await db.subscription.update({ where: { id: existing.id }, data })
+    : await db.subscription.create({ data });
+  return { ...row, label: PLAN_CATALOG[catalogPlan].label, catalogPlan };
+}
+
+export async function assignPlanForPilot(input: {
+  adminUserId: string;
+  targetUserId: string;
+  plan: string;
+}) {
+  const admin = await prisma.user.findUnique({ where: { id: input.adminUserId } });
+  if (!admin || admin.role !== "admin") {
+    throw new ForbiddenError("Only an admin can assign a plan for the pilot.");
+  }
+  const row = await grantCatalogPlan({
+    targetUserId: input.targetUserId,
+    plan: input.plan,
   });
-  await ensureCreditsForPlan(input.targetUserId, catalogPlan);
-  return { ...row, label: PLAN_CATALOG[catalogPlan].label };
+  await ensureCreditsForPlan(input.targetUserId, row.catalogPlan);
+  return row;
 }

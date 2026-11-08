@@ -6,11 +6,38 @@ export function PlanChoiceForm({
   verified,
   trialDays,
   canStartTrial = true,
+  accessCodeActive = false,
 }: {
   verified: boolean;
   trialDays: number;
   canStartTrial?: boolean;
+  accessCodeActive?: boolean;
 }) {
+  if (accessCodeActive) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <p className="font-display text-xs uppercase tracking-[0.06em] text-black">Access code</p>
+          <h1 className="font-display mt-2 text-3xl uppercase tracking-wide text-black">
+            Pro is already on
+          </h1>
+          <p className="mt-3 text-sm text-muted">
+            Your access code covers Pro. No card. Your {trialDays}-day free trial stays unused
+            until that code ends. After the code,{" "}
+            {verified
+              ? "you go back to the core app included with academy dues."
+              : "the app goes back to view-only unless you start the free trial or subscribe."}
+          </p>
+        </div>
+        <form action={continueFreePlanAction}>
+          <input type="hidden" name="next" value="/onboarding/deeper" />
+          <button type="submit" className="touch-target w-full rounded-full bg-accent text-black">
+            Continue
+          </button>
+        </form>
+      </div>
+    );
+  }
   if (verified) {
     return (
       <div className="space-y-6">

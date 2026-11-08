@@ -12,6 +12,11 @@ import { assertPasswordResetRateLimit } from "@/lib/password-reset-rate";
 import { isGymdeskSyncEnabled, LOGIN_RECHECK_MS } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { toE164 } from "@/lib/gymdesk/crypto";
+import {
+  assertAccessCodeRateLimit,
+  assertAccessCodeRedeemable,
+  redeemProAccessCode,
+} from "@/lib/access-codes";
 
 export { PASSWORD_RESET_GENERATION, PASSWORD_RESET_NEUTRAL_MESSAGE };
 
@@ -150,6 +155,9 @@ export async function registerAccount(input: {
   isAdultConfirmed: boolean;
   claimsGymMembership: boolean;
   phone?: string;
+  accessCode?: string;
+  /** Extra rate-limit bucket, usually the caller IP. */
+  accessCodeRateKey?: string;
 }): Promise<PublicUser> {
   if (!input.isAdultConfirmed) {
     throw new AppError(
@@ -179,6 +187,15 @@ export async function registerAccount(input: {
     throw new AppError("EMAIL", "An account with that email already exists.");
   }
 
+  const accessCode = input.accessCode?.trim() ?? "";
+  if (accessCode) {
+    await assertAccessCodeRateLimit([
+      `email:${email}`,
+      input.accessCodeRateKey?.trim() || "",
+    ]);
+    await assertAccessCodeRedeemable({ code: accessCode, email });
+  }
+
   const passwordHash = await hashPassword(input.password);
   const user = await prisma.user.create({
     data: {
@@ -202,6 +219,21 @@ export async function registerAccount(input: {
       data: { status: "joined", joinedAt: new Date() },
     })
     .catch(() => undefined);
+
+  if (accessCode) {
+    try {
+      await redeemProAccessCode({
+        userId: user.id,
+        email,
+        code: accessCode,
+        skipRateLimit: true,
+        rateKeys: [],
+      });
+    } catch (error) {
+      await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
+      throw error;
+    }
+  }
 
   return toPublicUser(user);
 }

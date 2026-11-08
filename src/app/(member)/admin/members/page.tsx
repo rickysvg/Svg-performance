@@ -13,14 +13,20 @@ export default async function AdminMembersPage({
   const user = await requireDashboardAdmin();
   const query = (await searchParams).q ?? "";
   const members = await listAdminMembers(query);
-  const toolkit =
-    user.role === "admin"
+  const toolkit = [
+    ...(user.role === "admin"
       ? [
           { href: "/admin/invites", label: "Invites", hint: "Pilot invites" },
           { href: "/admin/plans", label: "Plans and credits", hint: "Assign a plan, mark a credit" },
           { href: "/admin/gymdesk", label: "Gymdesk", hint: "Roster and verify" },
         ]
-      : [];
+      : []),
+    {
+      href: "/admin/access-codes",
+      label: "Pro access codes",
+      hint: "Free Pro for a fighter you pick",
+    },
+  ];
 
   return (
     <AdminScreen kicker="Roster" title="Members" hint="Plan, academy, last active, streak, and this week.">

@@ -26,10 +26,13 @@ import { prisma } from "@/lib/prisma";
 import { shortBuildSha } from "@/lib/build-info";
 import { LegalLinks } from "@/components/LegalLinks";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
+import { getLatestSubscription } from "@/lib/access";
+import { accessCodeStatusLine } from "@/lib/access-codes";
+import { RedeemAccessCodeForm } from "@/components/billing/RedeemAccessCodeForm";
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [profile, prefs, trial, verifiedEvent, planId] = await Promise.all([
+  const [profile, prefs, trial, verifiedEvent, planId, subscription] = await Promise.all([
     getProfileForUser(user.id),
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
@@ -38,7 +41,9 @@ export default async function ProfilePage() {
       orderBy: { at: "desc" },
     }),
     getEffectivePlanId(user.id),
+    getLatestSubscription(user.id),
   ]);
+  const codeLine = subscription ? accessCodeStatusLine(subscription) : null;
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   if (!profile) {
     return (
@@ -59,13 +64,14 @@ export default async function ProfilePage() {
         <p className="mt-3 text-sm" data-current-plan>
           Current plan:{" "}
           <strong>
-            {currentPlanLine({
-              trialActive: trial.trialActive,
-              trialDaysLeft: trial.trialDaysLeft,
-              trialLengthDays: trial.trialLengthDays,
-              verified: trial.verified,
-              planLabel: PLAN_CATALOG[planId].label,
-            })}
+            {codeLine ??
+              currentPlanLine({
+                trialActive: trial.trialActive,
+                trialDaysLeft: trial.trialDaysLeft,
+                trialLengthDays: trial.trialLengthDays,
+                verified: trial.verified,
+                planLabel: PLAN_CATALOG[planId].label,
+              })}
           </strong>
         </p>
       </div>
@@ -88,6 +94,12 @@ export default async function ProfilePage() {
           <ReminderPrefsForm prefs={prefs} />
         </div>
       </details>
+
+      {codeLine ? null : (
+        <section className="rounded-2xl border border-line bg-card p-5">
+          <RedeemAccessCodeForm />
+        </section>
+      )}
 
       <details className="rounded-2xl border border-line bg-card">
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Account</summary>

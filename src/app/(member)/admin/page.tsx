@@ -4,6 +4,7 @@ import { getAdminDeskCounts } from "@/lib/admin-dashboard";
 import { coachingCapacityTone, deskTone } from "@/lib/admin-desk-status";
 import { getVipDesk } from "@/lib/vip-store";
 import { AdminTile } from "@/components/admin/AdminTile";
+import { AdminToolkit } from "@/components/admin/AdminChrome";
 
 export default async function AdminPage() {
   const user = await requireDashboardAdmin();
@@ -153,6 +154,16 @@ export default async function AdminPage() {
           tone="idle"
         />
       </section>
+
+      <AdminToolkit
+        links={[
+          {
+            href: "/admin/access-codes",
+            label: "Pro access codes",
+            hint: "Free Pro for a fighter you pick",
+          },
+        ]}
+      />
     </main>
   );
 }
