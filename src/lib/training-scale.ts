@@ -10,7 +10,7 @@ import {
 } from "@/lib/bag-sessions";
 import { campBikeBand, type CampPhase } from "@/lib/fight-camp";
 import { weekInBlock } from "@/lib/mesocycle";
-import { catalogMeta, catalogSlot, parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
+import { WEEK_MARKER, catalogMeta, catalogSlot, parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
 import { bagFocusLines, formatBagRoundNotes } from "@/lib/bag-themes";
 import {
   alignBikeRestPhrase,
@@ -343,8 +343,10 @@ const NO_WEIGHT_MOVES: Array<{ match: RegExp; name: string; logMode: LogMode }> 
   { match: /pull-up/i, name: "Inverted row", logMode: "reps_only" },
   { match: /push press/i, name: "Pike push-up", logMode: "reps_only" },
   { match: /kettlebell swing/i, name: "Hip hinge", logMode: "reps_only" },
-  { match: /high pull/i, name: "High pull", logMode: "reps_only" },
-  { match: /shrug/i, name: "Shoulder shrug", logMode: "reps_only" },
+  { match: /high pull/i, name: "Bear crawl", logMode: "reps_only" },
+  { match: /shrug/i, name: "Superman", logMode: "reps_only" },
+  { match: /face pull/i, name: "Reverse snow angel", logMode: "reps_only" },
+  { match: /jump rope/i, name: "Jumping jack", logMode: "timed" },
   { match: /trap-bar deadlift/i, name: "Hip hinge", logMode: "reps_only" },
   { match: /pause goblet squat/i, name: "Pause air squat", logMode: "reps_only" },
   { match: /goblet squat/i, name: "Air squat", logMode: "reps_only" },
@@ -388,13 +390,99 @@ function bodyweightNotes(notes: string | undefined) {
     .replace(/\bcables?\b/gi, "body")
     .replace(/landmines?/gi, "bodyweight")
     .replace(/light band or harness/gi, "hand on the forehead")
-    .replace(/\d+\s*[–-]\s*\d+\s*kg ball|med-ball|medicine ball/gi, "no ball");
-  if (/no gym or weights/i.test(text)) return text.trim();
+    .replace(/\d+\s*[–-]\s*\d+\s*kg ball|med-ball|medicine ball/gi, "no ball")
+    .replace(/beginners log the floor version\.\s*/gi, "")
+    .replace(/intermediate and advanced stay on the bench\.?\s*/gi, "")
+    .replace(/bodyweight on (?:a|the) bench\.?\s*/gi, "Feet on a couch or stair. ")
+    .replace(/\bon (?:a|the) bench\b/gi, "on the floor");
+  if (/no gym or weights/i.test(text)) return text.replace(/\s+/g, " ").trim();
   return `${text} No gym or weights.`.replace(/\s+/g, " ").trim();
 }
 
-/** Same v2 slot, done without a gym. Sets, reps, and rest stay. The name is the floor version. */
-function applyNoWeightVariant(exercise: ScaleableExercise): ScaleableExercise {
+type FloorKind = "tempo" | "explosive" | "unilateral" | "density";
+
+const FLOOR_CUE: Record<FloorKind, string> = {
+  tempo: "Tempo. Three seconds down.",
+  explosive: "Explosive. Soft landing. Leave speed in the tank.",
+  unilateral: "One side at a time.",
+  density: "EMOM. One pass each minute. Stop if the shape breaks.",
+};
+
+type FloorProgress = {
+  test: RegExp;
+  intermediate: string;
+  advanced: string;
+  intermediateKind: FloorKind;
+  advancedKind: FloorKind;
+};
+
+/** Harder floor names for intermediate and advanced. Beginners keep the easier map. */
+const FLOOR_PROGRESS: FloorProgress[] = [
+  { test: /dumbbell bench|barbell bench|^push-up$|push-up or dumbbell/i, intermediate: "Decline push-up", advanced: "Archer push-up", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /plyo push-up|explosive dumbbell press|clap push/i, intermediate: "Plyo push-up", advanced: "Clap push-up", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /overhead press|landmine press|push press|pike push-up/i, intermediate: "Tempo pike push-up", advanced: "Hindu push-up", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /trap-bar jump/i, intermediate: "Squat jump", advanced: "Squat jump", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /squat jump/i, intermediate: "Squat jump", advanced: "Tuck jump", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /broad jump/i, intermediate: "Broad jump", advanced: "Broad jump", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /lateral bound/i, intermediate: "Lateral bound", advanced: "Skater hop", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /goblet squat|zercher|sandbag front squat|^air squat$/i, intermediate: "Tempo air squat", advanced: "Pistol squat", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /pause goblet|pause air squat/i, intermediate: "Tempo air squat", advanced: "Pistol squat", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /single-leg rdl|trap-bar deadlift|romanian|nordic|kettlebell swing|^hip hinge$/i, intermediate: "Tempo hip hinge", advanced: "Single-leg hip hinge", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /bulgarian/i, intermediate: "Couch Bulgarian split squat", advanced: "Skater squat", intermediateKind: "unilateral", advancedKind: "unilateral" },
+  { test: /reverse lunge/i, intermediate: "Tempo reverse lunge", advanced: "Skater lunge", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /walking lunge/i, intermediate: "Tempo walking lunge", advanced: "Split jump (jumping lunge)", intermediateKind: "tempo", advancedKind: "explosive" },
+  { test: /step-up/i, intermediate: "Tempo box step-up", advanced: "Pistol squat", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /one-arm row|chest-supported|half-kneeling one-arm row|lat pulldown|pull-up|chin-up|inverted row/i, intermediate: "Tempo inverted row", advanced: "Towel doorframe row", intermediateKind: "tempo", advancedKind: "unilateral" },
+  { test: /farmer carry|farmer march/i, intermediate: "Farmer march", advanced: "Single-arm farmer march", intermediateKind: "density", advancedKind: "density" },
+  { test: /suitcase/i, intermediate: "Suitcase march", advanced: "Suitcase march", intermediateKind: "density", advancedKind: "density" },
+  { test: /med-ball chest pass|chest pass/i, intermediate: "Plyo push-up", advanced: "Clap push-up", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /rotational med-ball|rotational throw/i, intermediate: "Empty-hand woodchop", advanced: "Shadow sprawl", intermediateKind: "explosive", advancedKind: "explosive" },
+  { test: /woodchop|landmine rotation|standing woodchop/i, intermediate: "Tempo woodchop", advanced: "Woodchop to sprawl", intermediateKind: "tempo", advancedKind: "explosive" },
+  { test: /pallof|dead bug/i, intermediate: "Dead bug", advanced: "V-up", intermediateKind: "tempo", advancedKind: "tempo" },
+  { test: /^front plank$/i, intermediate: "Hollow hold", advanced: "Long-lever plank", intermediateKind: "tempo", advancedKind: "tempo" },
+  { test: /^side plank$/i, intermediate: "Side plank", advanced: "Side plank with reach", intermediateKind: "density", advancedKind: "unilateral" },
+  { test: /high pull|bear crawl/i, intermediate: "Bear crawl", advanced: "Sprawl burpee", intermediateKind: "density", advancedKind: "explosive" },
+  { test: /jump rope|jumping jack/i, intermediate: "Jumping jack", advanced: "High knees", intermediateKind: "density", advancedKind: "density" },
+  { test: /shrug|superman|snow angel|face pull/i, intermediate: "Reverse snow angel", advanced: "Superman", intermediateKind: "tempo", advancedKind: "tempo" },
+  { test: /burpee/i, intermediate: "Burpees", advanced: "Sprawl burpee", intermediateKind: "density", advancedKind: "explosive" },
+];
+
+function appendFloorNote(notes: string | undefined, cue: string) {
+  const text = notes ?? "";
+  if (text.includes(cue)) return text;
+  const index = text.indexOf(WEEK_MARKER);
+  if (index < 0) return `${text} ${cue}`.replace(/\s+/g, " ").trim();
+  const body = text.slice(0, index).trim();
+  return `${body} ${cue}\n${text.slice(index)}`;
+}
+
+function floorWorkMode(reps: string): LogMode {
+  if (/\b(sec|secs|seconds?|min|mins|minutes?)\b|\d+\s*:\s*\d|\b(meters?|metres?)\b|\d+\s*m\b/i.test(reps)) {
+    return "timed";
+  }
+  return "reps_only";
+}
+
+function hardenBodyweight(exercise: ScaleableExercise, band: ScaleBand, sourceName: string): ScaleableExercise {
+  if (band === "beginner") return exercise;
+  const progress = FLOOR_PROGRESS.find((row) => row.test.test(sourceName));
+  if (!progress) return exercise;
+  const advanced = band === "advanced";
+  const name = advanced ? progress.advanced : progress.intermediate;
+  const cue = FLOOR_CUE[advanced ? progress.advancedKind : progress.intermediateKind];
+  const loadText = exercise.loadText?.includes(cue) ? exercise.loadText : `${exercise.loadText ?? ""} · ${cue}`.replace(/\s+/g, " ").trim();
+  return {
+    ...exercise,
+    name,
+    logMode: floorWorkMode(exercise.reps),
+    loadText,
+    notes: appendFloorNote(exercise.notes, cue),
+    ...(name !== exercise.name ? formVideoFieldsFor(name) : {}),
+  };
+}
+
+/** Same v2 slot, done without a gym. Sets and rest stay. Intermediate and advanced get a harder floor name. */
+function applyNoWeightVariant(exercise: ScaleableExercise, band: ScaleBand): ScaleableExercise {
   if (isBikeIntervalName(exercise.name) || isWeightedShadowName(exercise.name) || isShadowName(exercise.name)) {
     return exercise;
   }
@@ -404,16 +492,21 @@ function applyNoWeightVariant(exercise: ScaleableExercise): ScaleableExercise {
     /dumbbell|barbell|kettlebell|cable|landmine|trap-bar|pulldown|med-ball|medicine|\bband\b|harness|%/.test(
       `${exercise.name} ${exercise.loadText}`,
     );
-  if (!mapped && !gear) return exercise;
-  const name = mapped?.name ?? exercise.name;
-  const renamed = name !== exercise.name;
+  const floored: ScaleableExercise = mapped || gear
+    ? {
+        ...exercise,
+        name: mapped?.name ?? exercise.name,
+        logMode: mapped?.logMode ?? exercise.logMode,
+        loadText: bodyweightLoadText(exercise.loadText),
+        notes: bodyweightNotes(exercise.notes),
+        ...((mapped?.name ?? exercise.name) !== exercise.name ? formVideoFieldsFor(mapped?.name ?? exercise.name) : {}),
+      }
+    : exercise;
+  const progressed = hardenBodyweight(floored, band, exercise.name);
   return {
-    ...exercise,
-    name,
-    logMode: mapped?.logMode ?? exercise.logMode,
-    loadText: bodyweightLoadText(exercise.loadText),
-    notes: bodyweightNotes(exercise.notes),
-    ...(renamed ? formVideoFieldsFor(name) : {}),
+    ...progressed,
+    logMode: floorWorkMode(progressed.reps),
+    loadText: bodyweightLoadText(progressed.loadText),
   };
 }
 
@@ -438,7 +531,7 @@ export function scaleExercise(
   };
   const scaled = scaleNamedExercise(named, input);
   const withVideo = gym.renamed ? { ...scaled, ...formVideoFieldsFor(gym.name) } : scaled;
-  const next = input.weightAccess !== "none" ? withVideo : applyNoWeightVariant(withVideo);
+  const next = input.weightAccess !== "none" ? withVideo : applyNoWeightVariant(withVideo, input.band);
   return capDisplayedSetRest(next);
 }
 
@@ -1044,7 +1137,11 @@ export function scaleProgramDay<
   const floorNote = noGym
     ? exercises.some((exercise) => isBikeIntervalName(exercise.name))
       ? "No bike: same clock. March or shadow."
-      : "No gym or weights. Same sets and rest as the gym day."
+      : input.band === "advanced"
+        ? "No gym or weights. Advanced bodyweight: explosive, unilateral, and EMOM."
+        : input.band === "intermediate"
+          ? "No gym or weights. Intermediate bodyweight: tempo and harder floor progressions."
+          : "No gym or weights. Same sets and rest as the gym day."
     : "";
   const withFloor = floorNote && !timedFocus.includes(floorNote) ? `${timedFocus} · ${floorNote}` : timedFocus;
   return {

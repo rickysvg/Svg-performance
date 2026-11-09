@@ -118,6 +118,30 @@ function row(
   };
 }
 
+/** Bodyweight row. Gear stays bodyweight unless the move needs a bar. */
+function floor(
+  name: string,
+  category: ExerciseCategory,
+  sets: number,
+  reps: string,
+  loadText: string,
+  restSeconds: number,
+  logMode: LogMode,
+  notes: string,
+  region: string,
+  pattern: string,
+  swapsWith?: string[],
+  gear = "bodyweight",
+): Row {
+  return {
+    ...row(name, category, "none", sets, reps, loadText, restSeconds, logMode, notes),
+    region,
+    pattern,
+    gear,
+    swapsWith,
+  };
+}
+
 const EASY = "Easy range. Stop if a joint pinches.";
 
 const BASE_LIBRARY: LibraryExercise[] = [
@@ -170,7 +194,7 @@ const BASE_LIBRARY: LibraryExercise[] = [
   row("One-arm row", "upper_pull", "gym", 4, "8 / side", "0-2 RIR · Elbow to the hip.", 90, "load_reps", "Support the free hand. Last reps stay clean."),
   row("Chest-supported dumbbell row", "upper_pull", "gym", 3, "8", "1-3 RIR · Chest on the bench.", 75, "load_reps", "Pull toward the hips. No yank from the low back."),
   row("Half-kneeling one-arm row", "upper_pull", "gym", 3, "8 / side", "1-3 RIR · Tall knee, quiet ribs.", 75, "load_reps", "The down knee stays under the hip."),
-  row("Chin-up", "upper_pull", "both", 4, "5", "1-3 RIR · Full hang, control the lower.", 90, "reps_only", "Chin clears the bar. Swap if you need a band or a pulldown."),
+  row("Chin-up", "upper_pull", "both", 4, "5", "1-3 RIR · Full hang, control the lower.", 90, "reps_only", "Full hang. Needs a pull-up bar. No bar: towel doorframe row."),
   row("Band-assisted chin-up", "upper_pull", "both", 3, "6", "2-4 RIR · Band under a knee or foot.", 75, "reps_only", "Same full hang. The band only helps the top."),
   row("Lat pulldown", "upper_pull", "gym", 3, "8", "1-3 RIR · Elbows to the ribs.", 75, "load_reps", "Slight lean. Bar to the upper chest, not the neck."),
   row("Straight-arm pulldown", "upper_pull", "gym", 3, "10", "2-4 RIR · Ribs down, arms nearly straight.", 60, "load_reps", "Lats start the pull. No lean-back."),
@@ -229,6 +253,38 @@ const BASE_LIBRARY: LibraryExercise[] = [
   row("Hang", "mobility", "none", 2, "20 sec", EASY, 20, "timed", "Dead hang from a bar. Shoulders away from the ears.", "hang"),
   row("Child's pose with a lat reach", "mobility", "none", 2, "30 sec / side", EASY, 20, "timed", "Hips toward the heels. Reach one arm long.", "child"),
   row("Neck isometric — flexion", "mobility", "none", 1, "5 sec", "Gentle. Never a max squeeze.", 15, "timed", "Hand on the forehead. Ramp a light push. Skip after a hard spar or a neck injury.", "neck-flex"),
+
+  floor("Wide push-up", "upper_push", 3, "8", "2-4 RIR · Straight body.", 60, "reps_only", "Hands wider than the shoulders. Any level. Easier: hands on a stair. Harder: pause on the floor. Muscles: chest, shoulders.", "chest", "horizontal-push", ["Push-up", "Decline push-up", "Diamond push-up"]),
+  floor("Decline push-up", "upper_push", 3, "6", "2-4 RIR · Body in one line.", 60, "reps_only", "Feet on a couch or stair. Any level. Easier: feet on the floor. Harder: slow the lowering. Muscles: chest, shoulders, triceps.", "chest", "horizontal-push", ["Push-up", "Feet-elevated push-up", "Wide push-up"]),
+  floor("Tempo push-up", "upper_push", 3, "6", "2-4 RIR · Three seconds down.", 60, "reps_only", "Lower for three seconds, no bounce. Any level. Easier: incline the hands. Harder: add a pause. Muscles: chest, shoulders, triceps.", "chest", "horizontal-push", ["Push-up", "Pause push-up", "Decline push-up"]),
+  floor("Tempo pike push-up", "upper_push", 3, "5", "2-4 RIR · Hips high.", 60, "reps_only", "Hips stay high. Three seconds down. Any level. Easier: bend the knees. Harder: feet on a couch. Muscles: shoulders, triceps.", "shoulders", "overhead-push", ["Pike push-up", "Hindu push-up"]),
+  floor("Doorframe row", "upper_pull", 3, "8", "2-4 RIR · Body in one line.", 60, "reps_only", "A towel or both hands on a doorframe. No bar. Any level. Easier: stand more upright. Harder: walk the feet forward. Muscles: upper back, biceps.", "back", "pull", ["Inverted row", "Towel doorframe row", "Chin-up"]),
+  floor("Towel doorframe row", "upper_pull", 3, "8", "2-4 RIR · Elbows to the ribs.", 60, "reps_only", "Loop a towel through a closed door. No bar. Any level. Easier: more upright. Harder: slower lower. Muscles: upper back, biceps, grip.", "back", "pull", ["Doorframe row", "Inverted row", "Pull-up"]),
+  floor("Parallel-bar dip", "upper_push", 3, "6", "2-4 RIR · Shoulders down.", 75, "reps_only", "Needs parallel bars or two sturdy chairs. No surface: close-grip push-up. Any level. Easier: bend the knees and help. Harder: slow the lower. Muscles: chest, triceps, shoulders.", "triceps", "horizontal-push", ["Bench dip", "Close-grip push-up", "Push-up"], "bar"),
+  floor("Tempo air squat", "lower", 3, "8", "2-4 RIR · Three seconds down.", 60, "reps_only", "Whole foot down. Three seconds into the bottom. Any level. Easier: hold a doorframe. Harder: pause at the bottom. Muscles: quads, glutes.", "quads", "squat", ["Air squat", "Pause air squat", "Pistol squat"]),
+  floor("Couch Bulgarian split squat", "lower", 3, "6 / leg", "2-4 RIR · Front heel down.", 60, "reps_only", "Rear foot on a couch or chair. No bench required. Any level. Easier: a lower cushion. Harder: slower lower. Muscles: quads, glutes.", "quads", "lunge", ["Split squat", "Reverse lunge", "Skater squat"]),
+  floor("Skater lunge", "lower", 3, "6 / leg", "2-4 RIR · Rear knee toward the floor.", 60, "reps_only", "Reach the free leg behind you. Any level. Easier: tap the toes. Harder: no tap. Muscles: quads, glutes.", "quads", "lunge", ["Skater squat", "Split squat", "Reverse lunge"]),
+  floor("Jump split lunge", "explosive", 3, "4 / leg", "3-5 RIR · Soft landing.", 60, "reps_only", "Switch the feet in the air. Any level. Easier: step to switch. Harder: stick each landing. Muscles: quads, glutes.", "quads", "explosive", ["Split jump (jumping lunge)", "Squat jump", "Walking lunge"]),
+  floor("Tempo walking lunge", "lower", 3, "6 / leg", "2-4 RIR · Three seconds down.", 60, "reps_only", "Long step. Three seconds down. Any level. Easier: a shorter step. Harder: pause at the bottom. Muscles: quads, glutes.", "quads", "lunge", ["Walking lunge", "Reverse lunge"]),
+  floor("Tempo reverse lunge", "lower", 3, "6 / leg", "2-4 RIR · Three seconds down.", 60, "reps_only", "Step back. Three seconds down. Any level. Easier: a hand on the wall. Harder: pause. Muscles: quads, glutes.", "quads", "lunge", ["Reverse lunge", "Split squat"]),
+  floor("Tempo box step-up", "lower", 3, "6 / leg", "2-4 RIR · Quiet step.", 60, "reps_only", "Low couch or stair. Three seconds down. Any level. Easier: a lower step. Harder: no push off the back foot. Muscles: quads, glutes.", "quads", "lunge", ["Box step-up", "Split squat"]),
+  floor("Tempo hip hinge", "lower", 3, "8", "2-4 RIR · Three seconds back.", 60, "reps_only", "Hands on the hips. Three seconds pushing the hips back. Any level. Easier: a shorter hinge. Harder: one leg. Muscles: hamstrings, glutes.", "hamstrings", "hinge", ["Hip hinge", "Single-leg hip hinge", "Single-leg RDL"]),
+  floor("Single-leg hip hinge", "lower", 3, "6 / leg", "2-4 RIR · Hips square.", 60, "reps_only", "Empty hands. Soft knee. Any level. Easier: tap the toes. Harder: no tap. Muscles: hamstrings, glutes.", "hamstrings", "hinge", ["Hip hinge", "Single-leg RDL", "Tempo hip hinge"]),
+  floor("Tempo inverted row", "upper_pull", 3, "6", "2-4 RIR · Three seconds down.", 60, "reps_only", "Table edge or a low bar. Three seconds down. Any level. Easier: bend the knees. Harder: legs straight. Muscles: upper back, biceps.", "back", "pull", ["Inverted row", "Doorframe row"]),
+  floor("Reverse snow angel", "upper_pull", 3, "8", "2-4 RIR · Thumbs up.", 45, "reps_only", "Face down. Sweep the arms from the hips to overhead. No band. Any level. Easier: a smaller sweep. Harder: a pause at the top. Muscles: rear shoulders, upper back.", "shoulders", "pull", ["Face pull", "Band pull-apart", "Superman"]),
+  floor("Superman", "lower", 3, "8", "2-4 RIR · Long body.", 45, "reps_only", "Arms and legs lift together. Pause at the top. Any level. Easier: arms only. Harder: a longer pause. Muscles: back, glutes.", "back", "hinge", ["Reverse snow angel", "Bird dog", "Glute bridge"]),
+  floor("Sit-up", "core", 3, "10", "2-4 RIR · Ribs to the hips.", 45, "reps_only", "Feet down. No yank from the neck. Any level. Easier: a smaller sit-up. Harder: slower down. Muscles: abs.", "core", "core", ["V-up", "Bicycle crunch", "Dead bug"]),
+  floor("Lying leg raise", "core", 3, "8", "2-4 RIR · Low back down.", 45, "reps_only", "On your back. Legs long. Stop before the back peels up. Any level. Easier: bend the knees. Harder: slower lower. Muscles: abs, hip flexors.", "core", "core", ["V-up", "Hollow hold", "Dead bug"]),
+  floor("Bodyweight Russian twist", "rotational", 3, "8 / side", "2-4 RIR · Ribs quiet.", 45, "reps_only", "Heels down or feet up. Rotate the ribs, not the neck. No med ball. Any level. Easier: feet down. Harder: feet up. Muscles: obliques.", "core", "rotational", ["Dead bug", "Cable woodchop"]),
+  floor("Shadow sprawl", "conditioning", 3, "6", "3-5 RIR · Hands hit, hips in.", 45, "reps_only", "Shadow a level change, then sprawl and stand. No partner. Any level. Easier: step back. Harder: a faster stand-up. Muscles: hips, shoulders, core.", "full", "conditioning", ["Burpees", "Sprawl burpee", "Bear crawl"]),
+  floor("Sprawl burpee", "conditioning", 3, "6", "3-5 RIR · Hips in, then stand.", 45, "reps_only", "Sprawl the hips in, stand, small jump. Any level. Easier: step the feet. Harder: a clap at the top. Muscles: full body.", "full", "conditioning", ["Burpees", "Shadow sprawl"]),
+  floor("Woodchop to sprawl", "conditioning", 3, "5 / side", "3-5 RIR · Turn, then sprawl.", 45, "reps_only", "Empty-hand chop, then a sprawl. Any level. Easier: skip the jump. Harder: stick the stand. Muscles: core, hips, shoulders.", "full", "conditioning", ["Empty-hand woodchop", "Shadow sprawl"]),
+  floor("Empty-hand woodchop", "rotational", 3, "8 / side", "2-4 RIR · Hips turn.", 45, "reps_only", "No band and no cable. Chop from the hip. Any level. Easier: a shorter chop. Harder: a faster turn. Muscles: core, hips.", "core", "rotational", ["Cable woodchop", "Band woodchop", "Tempo woodchop"]),
+  floor("Tempo woodchop", "rotational", 3, "6 / side", "2-4 RIR · Three seconds back.", 45, "reps_only", "Empty hands. Three seconds back to the start. Any level. Easier: a smaller turn. Harder: a longer reach. Muscles: core, hips.", "core", "rotational", ["Empty-hand woodchop", "Cable woodchop"]),
+  floor("Single-arm farmer march", "conditioning", 3, "30 sec / side", "2-4 RIR · No side bend.", 45, "timed", "Empty hands or a backpack in one hand. March tall. Any level. Easier: both arms free. Harder: a slower march. Muscles: core, grip, hips.", "core", "conditioning", ["Farmer march", "Suitcase march"]),
+  floor("Farmer march", "conditioning", 3, "30 sec", "2-4 RIR · Tall walk.", 45, "timed", "Empty hands. Short quick steps. Any level. Easier: a shorter walk. Harder: one arm at a time. Muscles: core, hips, grip.", "core", "conditioning", ["Suitcase march", "Single-arm farmer march"]),
+  floor("Suitcase march", "conditioning", 3, "20 sec / side", "2-4 RIR · Don't lean.", 45, "timed", "One arm loaded with a backpack, or just the empty hand held long. Any level. Muscles: core, obliques.", "core", "conditioning", ["Farmer march", "Suitcase carry"]),
+  floor("Towel crush", "conditioning", 3, "20 sec", "2-4 RIR · Squeeze.", 30, "timed", "Roll a towel and crush it. Grip. Any level. Easier: a shorter hold. Harder: a thicker roll. Muscles: forearms, grip.", "grip", "conditioning"),
 ];
 
 const COMBAT_ROWS = combatAsLibraryRows().filter(
@@ -269,6 +325,36 @@ export type LibraryFilter = {
   nearName?: string;
 };
 
+/** "push ups" / "pushups" / "push-up" all search the same way. */
+function looseSearch(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function searchStems(query: string) {
+  const loose = looseSearch(query);
+  if (!loose) return [];
+  return loose.endsWith("s") ? [loose, loose.slice(0, -1)] : [loose];
+}
+
+function matchesLibraryQuery(exercise: LibraryExercise, query: string) {
+  const stems = searchStems(query);
+  if (stems.length === 0) return true;
+  const hay = [looseSearch(exercise.name), looseSearch(CATEGORY_LABEL[exercise.category])];
+  return hay.some((text) => stems.some((stem) => stem.length > 0 && text.includes(stem)));
+}
+
+/** Push-up names beat triceps pushdowns and push presses when the search is "push". */
+function searchRank(name: string, query: string) {
+  const stems = searchStems(query);
+  if (stems.length === 0) return 1;
+  const loose = looseSearch(name);
+  const stem = stems[stems.length - 1] ?? "";
+  const pushupSearch = stem === "push" || stem.startsWith("pushup");
+  if (stems.some((item) => loose === item) || (pushupSearch && loose.includes("pushup"))) return 0;
+  if (loose.startsWith(stem)) return 1;
+  return 2;
+}
+
 export function filterExerciseLibrary(input: LibraryFilter = {}) {
   const query = (input.query ?? "").trim().toLowerCase();
   const category = input.category ?? "all";
@@ -288,19 +374,17 @@ export function filterExerciseLibrary(input: LibraryFilter = {}) {
     } else if (category !== "all" && exercise.category !== category) {
       return false;
     }
-    if (equipment === "gym") {
-      if (exercise.equipment === "none") return false;
-    } else if (exercise.equipment === "gym") {
-      return false;
-    }
-    if (!query) return true;
-    return (
-      exercise.name.toLowerCase().includes(query) ||
-      CATEGORY_LABEL[exercise.category].toLowerCase().includes(query)
-    );
+    // Bodyweight work belongs in a gym too. "No weights" is the list that drops gym gear.
+    if (equipment === "none" && exercise.equipment === "gym") return false;
+    if (!matchesLibraryQuery(exercise, query)) return false;
+    return true;
   }).sort((a, b) => {
-    const rank = (name: string) => (preferred.has(name) ? 0 : 1);
-    return rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
+    const preferredRank = (name: string) => (preferred.has(name) ? 0 : 1);
+    return (
+      searchRank(a.name, query) - searchRank(b.name, query) ||
+      preferredRank(a.name) - preferredRank(b.name) ||
+      a.name.localeCompare(b.name)
+    );
   });
 }
 

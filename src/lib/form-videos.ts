@@ -848,6 +848,45 @@ for (const [name, seed] of Object.entries(fighterFormVideoSeeds())) {
   DEMO_FORM_VIDEOS[name] = seed;
 }
 
+/** New floor moves with no verified short clip. Empty on purpose, not a pending review. */
+const FLOOR_MOVES_WITHOUT_CLIP = [
+  "Wide push-up",
+  "Decline push-up",
+  "Tempo push-up",
+  "Tempo pike push-up",
+  "Doorframe row",
+  "Towel doorframe row",
+  "Parallel-bar dip",
+  "Tempo air squat",
+  "Couch Bulgarian split squat",
+  "Skater lunge",
+  "Jump split lunge",
+  "Tempo walking lunge",
+  "Tempo reverse lunge",
+  "Tempo box step-up",
+  "Tempo hip hinge",
+  "Single-leg hip hinge",
+  "Tempo inverted row",
+  "Reverse snow angel",
+  "Superman",
+  "Sit-up",
+  "Lying leg raise",
+  "Bodyweight Russian twist",
+  "Shadow sprawl",
+  "Sprawl burpee",
+  "Woodchop to sprawl",
+  "Empty-hand woodchop",
+  "Tempo woodchop",
+  "Single-arm farmer march",
+  "Farmer march",
+  "Suitcase march",
+  "Towel crush",
+];
+for (const name of FLOOR_MOVES_WITHOUT_CLIP) {
+  if (DEMO_FORM_VIDEOS[name]) continue;
+  DEMO_FORM_VIDEOS[name] = NO_FORM_VIDEO;
+}
+
 export function mobilityVideoUrl(name: string) {
   return MOBILITY_FORM_VIDEOS[name]?.url ?? "";
 }

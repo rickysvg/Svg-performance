@@ -115,9 +115,10 @@ describe("no gym or weights", () => {
         expect(day.focus).toMatch(/No gym or weights/);
         expect(day.focus).toMatch(new RegExp(`Block ${block}`));
       }
-      expect(lower.exercises.some((exercise) => exercise.name === "Push-up")).toBe(true);
+      expect(lower.exercises.some((exercise) => exercise.name === "Decline push-up")).toBe(true);
+      expect(lower.exercises.some((exercise) => exercise.name === "Push-up")).toBe(false);
       const bench = gym.exercises.find((exercise) => exercise.name === "Dumbbell bench press");
-      const push = lower.exercises.find((exercise) => exercise.name === "Push-up");
+      const push = lower.exercises.find((exercise) => exercise.name === "Decline push-up");
       expect(push?.sets).toBe(bench?.sets);
       expect(push?.restSeconds).toBe(bench?.restSeconds);
       expect(push?.loadText).toMatch(/RIR/);
@@ -136,6 +137,23 @@ describe("no gym or weights", () => {
       .exercises.map((exercise) => exercise.name)
       .join("|");
     expect(floorA).not.toBe(floorB);
+    const advanced = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "advanced", "none");
+    expect(advanced.exercises.some((exercise) => exercise.name === "Archer push-up")).toBe(true);
+    expect(advanced.exercises.some((exercise) => exercise.name === "Tuck jump")).toBe(true);
+    expect(advanced.focus).toMatch(/EMOM/);
+    const beginner = scaled(STRENGTH_DAY_BY_BLOCK.A.monday, "beginner", "none");
+    expect(beginner.exercises.some((exercise) => exercise.name === "Push-up")).toBe(true);
+    expect(beginner.exercises.some((exercise) => exercise.name === "Decline push-up")).toBe(false);
+    for (const band of ["beginner", "intermediate", "advanced"] as const) {
+      for (const dayNumber of [STRENGTH_DAY_BY_BLOCK.A.monday, STRENGTH_DAY_BY_BLOCK.A.tuesday, STRENGTH_DAY_BY_BLOCK.A.thursday, STRENGTH_DAY_BY_BLOCK.A.friday]) {
+        const day = scaled(dayNumber, band, "none");
+        gearFree(day.exercises.map((exercise) => exercise.name));
+        for (const exercise of day.exercises) {
+          expect(exercise.loadText, `${band} ${exercise.name}`).toMatch(/RIR|Hold|no weight|Bodyweight|Easy|Timed/i);
+          expect(exercise.logMode === "load_reps" || exercise.logMode === "load_timed", exercise.name).toBe(false);
+        }
+      }
+    }
   });
 
   it("keeps the bike clock for a no-gym week and leaves bag themes alone", () => {

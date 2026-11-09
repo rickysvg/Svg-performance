@@ -283,6 +283,11 @@ export function combatAsLibraryRows(): Array<LibraryExercise & { memberHidden?: 
     const loadText = dose.rir
       ? `${dose.rir} RIR · ${intent}`
       : intent;
+    const needsBar = /\bpull-up\b|\bchin-up\b/i.test(row.name)
+      ? " Needs a pull-up bar. No bar: towel doorframe row."
+      : /\bdip\b/i.test(row.name)
+        ? " Needs parallel bars or a sturdy surface."
+        : "";
     return {
       name: row.name,
       category: row.appCategory,
@@ -292,7 +297,7 @@ export function combatAsLibraryRows(): Array<LibraryExercise & { memberHidden?: 
       loadText,
       restSeconds: dose.restSeconds,
       logMode: logModeFor(row, dose.reps),
-      notes: `Intent: ${intent}. ${row.benefit}`,
+      notes: `Intent: ${intent}. ${row.benefit}${needsBar}`,
       memberHidden: !memberSwappable(row),
       swapsWith: row.swapsWith,
     };

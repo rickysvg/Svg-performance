@@ -144,6 +144,19 @@ describe("exercise log modes", () => {
     expect(fallbackLogMode("Weighted shadowboxing")).toBe("load_timed");
     expect(hidesLoad(fallbackLogMode("Shadowbox round 2 — hand weights"))).toBe(false);
     expect(hidesLoad(fallbackLogMode("Shadowbox round 1 — empty hands"))).toBe(true);
+    expect(resolveLogMode({ logMode: "reps_only", name: "Push-up", reps: "8" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Decline push-up", reps: "6" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Walking lunge", reps: "8 / leg" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Inverted row", reps: "8" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Pistol squat", reps: "5 / side" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Towel doorframe row", reps: "8" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Couch Bulgarian split squat", reps: "6 / leg" })).toBe("reps_only");
+    expect(resolveLogMode({ logMode: "timed", name: "Hollow hold", reps: "20 sec" })).toBe("timed");
+    expect(resolveLogMode({ logMode: "timed", name: "Farmer march", reps: "30 sec" })).toBe("timed");
+    expect(resolveLogMode({ logMode: "load_reps", name: "Walking lunge", reps: "8" })).toBe("load_reps");
+    expect(resolveLogMode({ logMode: "reps_only", name: "Goblet squat", reps: "8" })).toBe("load_reps");
+    expect(hidesLoad(resolveLogMode({ logMode: "reps_only", name: "Push-up", reps: "8" }))).toBe(true);
+    expect(hidesLoad(resolveLogMode({ logMode: "timed", name: "Single-arm farmer march", reps: "30 sec" }))).toBe(true);
   });
 
   it("parses clocks and written seconds", () => {
