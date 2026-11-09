@@ -1,5 +1,4 @@
 import { chunkSpeech, pickEnglishVoice } from "@/lib/coach/browser-speech";
-import { primeMediaOutput, sharedAudioContext } from "@/lib/media-output";
 
 /** Short silent clip. Playing it inside a tap unlocks the element on iOS Safari. */
 export const SILENT_WAV =
@@ -37,6 +36,21 @@ let held: { buffer: AudioBuffer; offset: number; onEnded?: () => void } | null =
 let issue: string | null = null;
 let issueToken = 0;
 const issueListeners = new Set<(value: string | null) => void>();
+let audioCtx: AudioContext | null = null;
+
+/**
+ * Created only when the member taps a hear control. Never call this from a
+ * workout start, a set tick, or a timer — opening a context pauses music.
+ */
+function coachAudioContext() {
+  if (typeof window === "undefined") return null;
+  const Ctor =
+    window.AudioContext ||
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  if (!audioCtx || audioCtx.state === "closed") audioCtx = new Ctor();
+  return audioCtx;
+}
 
 export function tuneForCoach(coachId: string) {
   return SPEECH_PITCH[coachId] ?? { pitch: 1, rate: 1 };
@@ -60,15 +74,14 @@ function persistentElement() {
 }
 
 /**
- * Call synchronously inside a user gesture (Start workout, Coach on, speaker,
- * Read it to me). Resumes one shared AudioContext and arms one audio element.
- * Later cues play through that context, so iOS still allows them after an await.
- * Do not swap this element out or change its src as the only way to play.
+ * Call synchronously inside a hear tap (speaker or Read it to me).
+ * Do not call this from Start, a set check, or any other control.
+ * Resumes one context and arms one audio element so iOS still allows the
+ * clip after the speech request returns.
  */
 export function unlockCoachOutput() {
   if (typeof window === "undefined") return false;
-  primeMediaOutput();
-  const ctx = sharedAudioContext();
+  const ctx = coachAudioContext();
   gestureUnlocked = true;
   if (ctx) {
     const pending = ctx.resume();
@@ -112,13 +125,13 @@ function isRunning(ctx: AudioContext) {
 
 export function coachOutputReady() {
   if (!gestureUnlocked || typeof window === "undefined") return false;
-  const ctx = sharedAudioContext();
+  const ctx = coachAudioContext();
   return Boolean(ctx && isRunning(ctx));
 }
 
 export async function whenCoachOutputReady() {
   if (!gestureUnlocked || typeof window === "undefined") return false;
-  const ctx = sharedAudioContext();
+  const ctx = coachAudioContext();
   if (!ctx) return false;
   if (isRunning(ctx)) return true;
   const pending = resumePromise;
@@ -193,7 +206,7 @@ function startBuffer(ctx: AudioContext, buffer: AudioBuffer, offset: number, onE
 }
 
 async function playThroughContext(bytes: ArrayBuffer, onEnded?: () => void) {
-  const ctx = sharedAudioContext();
+  const ctx = coachAudioContext();
   if (!ctx) return false;
   const running = await waitUntilRunning(ctx);
   if (!running) return false;
@@ -281,7 +294,7 @@ export function pauseCoachPlayback() {
 
 export function resumeCoachPlayback() {
   if (held) {
-    const ctx = sharedAudioContext();
+    const ctx = coachAudioContext();
     const next = held;
     held = null;
     if (!ctx || ctx.state !== "running") {

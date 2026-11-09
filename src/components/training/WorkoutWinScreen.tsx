@@ -4,7 +4,6 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CelebrationFx, preloadFxSheets } from "@/components/progress/SpriteFx";
-import { playFinishSfx, primeUnlockAudio, soundFxEnabled } from "@/lib/badge-sfx";
 import { resumeWorkoutAction } from "@/app/actions/workouts";
 import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
@@ -74,16 +73,12 @@ export function WorkoutWinScreen({
 
   useEffect(() => {
     void preloadFxSheets();
-    primeUnlockAudio();
   }, []);
 
   useEffect(() => {
     const buzz = window.setTimeout(() => {
       if (!reduce && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
         navigator.vibrate([28, 22, 48]);
-      }
-      if (soundFxEnabled()) {
-        playFinishSfx();
       }
     }, reduce ? 40 : 700);
     return () => window.clearTimeout(buzz);

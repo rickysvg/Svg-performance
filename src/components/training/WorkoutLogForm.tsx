@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { recordWorkoutActivityAction, resumeHeldSessionClockAction, saveWorkoutAction, type WorkoutActionState } from "@/app/actions/workouts";
-import { primeUnlockAudio } from "@/lib/badge-sfx";
-import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { syncWorkoutDraftAction } from "@/app/actions/workouts";
 import { StatusBanner } from "@/components/StatusBanner";
 import { UpgradePreviewSheet } from "@/components/upgrade/UpgradePreviewSheet";
@@ -69,7 +68,7 @@ import {
   formatRestClock,
   formatRestPill,
   isRestActive,
-  primeRestAudio,
+  REST_GO_HOLD_MS,
   readRestNow,
   remainingRestSeconds,
   restAfterExerciseChange,
@@ -633,7 +632,6 @@ export function WorkoutLogForm({
   const syncChain = useRef(Promise.resolve());
   const draftBaseRef = useRef(new Date(session.updatedAt).toISOString());
   const scrolled = useRef(false);
-  const routeRelease = useRef<(() => void) | null>(null);
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
   const [hydrationStore] = useState(() => createLoggerHydrationStore(session.id));
   const hydration = useSyncExternalStore(
@@ -980,9 +978,6 @@ export function WorkoutLogForm({
   }, [moreOpen]);
 
   function engageRestRoute() {
-    primeMediaOutput();
-    routeRelease.current?.();
-    routeRelease.current = holdMediaRoute();
     void requestSetWakeLock().then((lock) => {
       if (wakeLock.current && wakeLock.current !== lock) releaseSetWakeLock(wakeLock.current);
       wakeLock.current = lock;
@@ -990,25 +985,12 @@ export function WorkoutLogForm({
   }
 
   function disengageRestRoute() {
-    const release = routeRelease.current;
-    routeRelease.current = null;
-    release?.();
     releaseSetWakeLock(wakeLock.current);
     wakeLock.current = null;
   }
 
   useEffect(() => {
-    const node = formRef.current;
-    if (!node) return;
-    const onPointer = () => primeMediaOutput();
-    node.addEventListener("pointerdown", onPointer);
-    return () => node.removeEventListener("pointerdown", onPointer);
-  }, []);
-
-  useEffect(() => {
     return () => {
-      routeRelease.current?.();
-      routeRelease.current = null;
       releaseSetWakeLock(wakeLock.current);
       wakeLock.current = null;
     };
@@ -1028,7 +1010,7 @@ export function WorkoutLogForm({
       setRestGo(true);
       setRestTimer(null);
       disengageRestRoute();
-      window.setTimeout(() => setRestGo(false), 900);
+      window.setTimeout(() => setRestGo(false), REST_GO_HOLD_MS);
     };
     const sample = () => {
       const now = Date.now();
@@ -1183,8 +1165,6 @@ export function WorkoutLogForm({
     setSets(nextSets);
     let nextRest = restTimer;
     if (completed) {
-      primeRestAudio();
-      primeUnlockAudio();
       const started = restTimerAfterSetDone({
         completed,
         exerciseName,
@@ -1212,8 +1192,6 @@ export function WorkoutLogForm({
   function beginRest() {
     noteLoggerActivity(session.id);
     if (!cursor.exerciseName || currentRestSeconds <= 0 || restRunning) return;
-    primeRestAudio();
-    primeMediaOutput();
     setRestGo(false);
     engageRestRoute();
     commitRest(startRestTimer(cursor.exerciseName, currentRestSeconds, readRestNow()));
@@ -1222,12 +1200,11 @@ export function WorkoutLogForm({
   function commitRest(next: RestTimerState | null) {
     noteLoggerActivity(session.id);
     setNowMs(readRestNow());
-    primeMediaOutput();
     if (!next || remainingRestSeconds(next) <= 0) {
       if (next) {
         signalRestComplete();
         setRestGo(true);
-        window.setTimeout(() => setRestGo(false), 900);
+        window.setTimeout(() => setRestGo(false), REST_GO_HOLD_MS);
       }
       disengageRestRoute();
       setRestTimer(null);
@@ -1501,12 +1478,23 @@ export function WorkoutLogForm({
               </button>
             </div>
           </div>
-          {restGo ? (
-            <div data-rest-complete className="bg-black px-4 py-3 text-white">
-              <p className="font-display text-xs uppercase tracking-wide text-[#CBF805]">Rest over</p>
-              <p className="font-display mt-1 text-2xl leading-none text-[#CBF805]">Go</p>
-            </div>
-          ) : null}
+          {restGo && typeof document !== "undefined"
+            ? createPortal(
+                <div
+                  data-rest-complete
+                  role="status"
+                  aria-live="assertive"
+                  className="rest-go-flash pointer-events-none fixed inset-0 z-[80] flex items-start justify-center bg-black/55 px-4 pt-[max(4.5rem,env(safe-area-inset-top))]"
+                >
+                  <div className="w-full max-w-lg rounded-3xl bg-[#CBF805] px-5 py-7 text-center text-black shadow-2xl">
+                    <p className="font-display text-sm uppercase tracking-[0.2em]">Rest over</p>
+                    <p className="font-display mt-1 text-7xl leading-none">Go</p>
+                    <p className="mt-3 text-lg font-semibold">Next set</p>
+                  </div>
+                </div>,
+                document.body,
+              )
+            : null}
           {restRunning ? (
             <div
               data-rest-countdown
@@ -1560,7 +1548,7 @@ export function WorkoutLogForm({
                 </button>
               </div>
             </div>
-          ) : currentRestSeconds > 0 ? (
+          ) : !restGo && currentRestSeconds > 0 ? (
             <div className="px-4 pb-3">
               <button
                 type="button"
@@ -2332,7 +2320,6 @@ export function WorkoutLogForm({
             value="complete"
             data-save-workout
             disabled={pending}
-            onClick={() => primeUnlockAudio()}
             className="touch-target w-full rounded-full bg-accent text-black disabled:opacity-60"
           >
             {pending ? "Saving…" : "SAVE"}

@@ -120,6 +120,7 @@ function FormSheet({ name, url, onClose }: { name: string; url: string; onClose:
           playerVars: {
             start: start ? Number(start) : 0,
             ...(end ? { end: Number(end) } : {}),
+            autoplay: 0,
             playsinline: 1,
             rel: 0,
             modestbranding: 1,

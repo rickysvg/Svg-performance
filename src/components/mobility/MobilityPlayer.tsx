@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { PlayStep } from "@/lib/mobility";
 import { MobilityStepVisual } from "@/components/mobility/MobilityStepVisual";
-import { speakMobilityLine, stopMobilityVoice } from "@/lib/mobility-speech";
 import { advanceCueKind, mobilityVoiceLine, type VoiceCueKind } from "@/lib/mobility-voice";
-
-const VOICE_KEY = "svg-mobility-voice";
 
 function clock(total: number) {
   const safe = Math.max(0, total);
@@ -26,10 +23,8 @@ export function MobilityPlayer({
   const [index, setIndex] = useState(0);
   const [left, setLeft] = useState(steps[0]?.seconds ?? 0);
   const [running, setRunning] = useState(false);
-  const [muted, setMuted] = useState(false);
   const [cue, setCue] = useState("");
   const step = steps[index];
-  const mutedRef = useRef(false);
   const stepsRef = useRef(steps);
   const indexRef = useRef(0);
   const leftRef = useRef(steps[0]?.seconds ?? 0);
@@ -40,25 +35,8 @@ export function MobilityPlayer({
     stepsRef.current = steps;
   }, [steps]);
 
-  useEffect(() => () => stopMobilityVoice(), []);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      try {
-        const off = window.localStorage.getItem(VOICE_KEY) === "off";
-        mutedRef.current = off;
-        if (off) setMuted(true);
-      } catch {
-        /* private mode */
-      }
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, []);
-
-  function speak(kind: VoiceCueKind, target?: { name: string }) {
-    const line = mobilityVoiceLine(kind, target);
-    setCue(line);
-    if (!mutedRef.current) speakMobilityLine(line);
+  function showCue(kind: VoiceCueKind, target?: { name: string }) {
+    setCue(mobilityVoiceLine(kind, target));
   }
 
   useEffect(() => {
@@ -79,9 +57,7 @@ export function MobilityPlayer({
         if (advancedFrom.current === currentIndex) return;
         advancedFrom.current = currentIndex;
         tenFor.current = null;
-        const line = mobilityVoiceLine(advanceCueKind(current, upcoming), upcoming);
-        setCue(line);
-        if (!mutedRef.current) speakMobilityLine(line);
+        setCue(mobilityVoiceLine(advanceCueKind(current, upcoming), upcoming));
         indexRef.current = currentIndex + 1;
         leftRef.current = upcoming.seconds;
         setIndex(currentIndex + 1);
@@ -93,9 +69,7 @@ export function MobilityPlayer({
       setLeft(next);
       if (next === 10 && tenFor.current !== currentIndex && current.seconds > 15) {
         tenFor.current = currentIndex;
-        const line = mobilityVoiceLine("ten");
-        setCue(line);
-        if (!mutedRef.current) speakMobilityLine(line);
+        setCue(mobilityVoiceLine("ten"));
       }
     }, 1000);
     return () => window.clearInterval(id);
@@ -104,7 +78,7 @@ export function MobilityPlayer({
   function go(nextIndex: number) {
     const target = steps[nextIndex];
     if (!target || !step) return;
-    if (nextIndex > indexRef.current) speak(advanceCueKind(step, target), target);
+    if (nextIndex > indexRef.current) showCue(advanceCueKind(step, target), target);
     tenFor.current = null;
     advancedFrom.current = null;
     indexRef.current = nextIndex;
@@ -117,7 +91,6 @@ export function MobilityPlayer({
     if (!step) return;
     if (running) {
       setRunning(false);
-      stopMobilityVoice();
       return;
     }
     const fresh = leftRef.current <= 0 || leftRef.current === step.seconds;
@@ -125,22 +98,8 @@ export function MobilityPlayer({
       leftRef.current = step.seconds;
       setLeft(step.seconds);
     }
-    if (fresh) speak("start", step);
+    if (fresh) showCue("start", step);
     setRunning(true);
-  }
-
-  function toggleMute() {
-    setMuted((value) => {
-      const next = !value;
-      mutedRef.current = next;
-      try {
-        window.localStorage.setItem(VOICE_KEY, next ? "off" : "on");
-      } catch {
-        /* private mode */
-      }
-      if (next) stopMobilityVoice();
-      return next;
-    });
   }
 
   if (!step) {
@@ -148,7 +107,6 @@ export function MobilityPlayer({
   }
 
   const last = index >= steps.length - 1;
-  const voiceLabel = muted ? "Voice off" : cue || "Voice on";
 
   return (
     <section className="space-y-4 rounded-[1.75rem] bg-black px-5 py-6 text-white">
@@ -168,22 +126,9 @@ export function MobilityPlayer({
       <p className="text-base leading-relaxed text-white/90">{step.cues}</p>
       <p className="font-display text-center text-7xl tracking-wide text-accent">{clock(left)}</p>
       <div className="flex items-center justify-between gap-3">
-        <p
-          data-voice-cue={muted ? "off" : cue || "on"}
-          aria-live="polite"
-          className="text-sm text-highlighter"
-        >
-          {voiceLabel}
+        <p data-step-cue={cue || "ready"} aria-live="polite" className="text-sm text-highlighter">
+          {cue || "On screen only. No voice."}
         </p>
-        <button
-          type="button"
-          data-voice-mute
-          aria-pressed={muted}
-          onClick={toggleMute}
-          className="touch-target rounded-full border border-white/30 px-4 text-sm text-white"
-        >
-          {muted ? "Unmute" : "Mute"}
-        </button>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <button

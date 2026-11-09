@@ -24,7 +24,6 @@ import {
   requestSetWakeLock,
   signalBikeIntervalCue,
 } from "@/lib/bike-interval-signals";
-import { holdMediaRoute, primeMediaOutput } from "@/lib/media-output";
 import { formatRestClock } from "@/lib/rest-timer";
 import { CountdownFace } from "@/components/timer/CountdownFace";
 import { useGoCountdown } from "@/components/timer/useGoCountdown";
@@ -139,7 +138,6 @@ export function BikeSetTimer({
   onSetComplete,
   onFinishedRounds,
   onRideSeconds,
-  bell,
   vibrate,
 }: {
   session: BikeSession;
@@ -149,13 +147,11 @@ export function BikeSetTimer({
   onFinishedRounds?: (count: number) => void;
   /** Seconds the interval clock has been running. 0 while it is idle. */
   onRideSeconds?: (seconds: number) => void;
-  bell?: boolean;
   vibrate?: boolean;
 }) {
   const spec = specFromSession(session);
   const [clock, setClock] = useState<BikeIntervalSnapshot>(() => idleBikeInterval(spec));
   const wakeLock = useRef<{ release: () => Promise<void> | void } | null>(null);
-  const routeRelease = useRef<(() => void) | null>(null);
   const completeRef = useRef(onSetComplete);
   const finishedRef = useRef(onFinishedRounds);
   const rideRef = useRef(onRideSeconds);
@@ -213,8 +209,6 @@ export function BikeSetTimer({
           pendingRounds.current = completedBikeLogRounds(snapshot);
           releaseSetWakeLock(wakeLock.current);
           wakeLock.current = null;
-          routeRelease.current?.();
-          routeRelease.current = null;
           return idleBikeInterval(current.spec);
         }
         return snapshot;
@@ -227,8 +221,6 @@ export function BikeSetTimer({
     return () => {
       releaseSetWakeLock(wakeLock.current);
       wakeLock.current = null;
-      routeRelease.current?.();
-      routeRelease.current = null;
     };
   }, []);
 
@@ -238,18 +230,13 @@ export function BikeSetTimer({
   }
 
   function soundPrefs() {
-    if (typeof bell === "boolean" || typeof vibrate === "boolean") {
-      return { bell: bell !== false, vibrate: vibrate !== false };
-    }
+    if (typeof vibrate === "boolean") return { vibrate };
     const stored = parseStoredTimerPrefs(window.localStorage.getItem(TIMER_PREFS_STORAGE_KEY));
-    return { bell: stored.bell, vibrate: stored.vibrate };
+    return { vibrate: stored.vibrate };
   }
 
   function handleStart() {
     if (!canStart || running || countdown.active) return;
-    primeMediaOutput();
-    routeRelease.current?.();
-    routeRelease.current = holdMediaRoute();
     countdown.begin({
       ...soundPrefs(),
       onGo: () => {
@@ -267,7 +254,6 @@ export function BikeSetTimer({
 
   function handleResume() {
     if (countdown.active) return;
-    primeMediaOutput();
     countdown.begin({
       ...soundPrefs(),
       onGo: () => {
@@ -282,8 +268,6 @@ export function BikeSetTimer({
     setClock((current) => stopBikeInterval(current));
     releaseSetWakeLock(wakeLock.current);
     wakeLock.current = null;
-    routeRelease.current?.();
-    routeRelease.current = null;
   }
 
   const workPhase = clock.phase === "work";

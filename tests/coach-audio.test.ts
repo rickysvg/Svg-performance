@@ -112,7 +112,7 @@ describe("cue clip cache", () => {
     expect(fetches).toBe(1);
   });
 
-  it("unlocks on the start and coach controls before playback", () => {
+  it("unlocks audio only from an explicit hear control", () => {
     const cues = fs.readFileSync(
       path.join(process.cwd(), "src/components/training/WorkoutCoachCues.tsx"),
       "utf8",
@@ -122,14 +122,18 @@ describe("cue clip cache", () => {
       "utf8",
     );
     const spoken = fs.readFileSync(path.join(process.cwd(), "src/lib/coach/spoken-audio.ts"), "utf8");
-    expect(cues).toContain("resolveCueClip");
-    expect(cues).toContain("prefetchCueClips");
-    expect(cues).toContain("unlockCoachAudio");
-    expect(prime).toContain("data-prime-coach-audio");
-    expect(prime).toContain("data-coach-motivation");
+    expect(cues).not.toContain("resolveCueClip");
+    expect(cues).not.toContain("playCoachBytes");
+    expect(cues).not.toContain("unlockCoachAudio");
+    expect(prime).not.toContain("data-prime-coach-audio");
+    expect(prime).not.toContain("data-start-bar");
+    expect(prime).not.toContain("data-start-today");
+    expect(prime).not.toContain("data-coach-motivation");
     expect(prime).toContain("data-summary-read");
     expect(prime).toContain("data-coach-speak");
-    expect(spoken).toContain("sharedAudioContext");
+    expect(spoken).toContain("coachAudioContext");
+    expect(spoken).not.toContain("primeMediaOutput");
+    expect(spoken).not.toContain("audioSession");
     expect(spoken).toContain("playCoachBytes");
     expect(spoken).toContain("Coach voice didn't play");
     const route = fs.readFileSync(

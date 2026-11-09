@@ -22,6 +22,7 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/favicon-64.png",
       badge: "/favicon-64.png",
+      silent: true,
       data: { url: data.url },
     }),
   );
