@@ -449,6 +449,19 @@ const pallof = ready({
   channel: "TurnFit - Vancouver Personal Trainers",
   title: "How to do a Standing Banded Pallof Press",
 });
+/** Opens on the cable stack. Window stops at 45s so a longer upload does not play through. */
+const cablePallof = ready({
+  url: "https://www.youtube.com/watch?v=xeFp4MXad98&t=0&end=45",
+  seconds: 45,
+  channel: "FIT.nl",
+  title: "Cable Pallof Press | Proper Form Tutorial for Core Stability",
+});
+const halfKneelingPallof = ready({
+  url: "https://www.youtube.com/watch?v=3yU-y1WiIaE&t=1&end=41",
+  seconds: 40,
+  channel: "Bony to Bombshell",
+  title: "Pallof Half Kneeling Cable Press—How to do It",
+});
 const bandPullApart = ready({
   url: "https://www.youtube.com/watch?v=qi2y-eI_kuI",
   seconds: 25,
@@ -737,9 +750,9 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   Burpees: burpee,
   "Cable or band woodchop": woodchop,
   "Cable woodchop": woodchop,
-  // The old clip is a standing band Pallof. Cable Pallof stays blank until a short cable-stack demo is verified.
-  "Cable or band Pallof press": NO_FORM_VIDEO,
-  "Cable Pallof press": NO_FORM_VIDEO,
+  "Cable or band Pallof press": cablePallof,
+  "Cable Pallof press": cablePallof,
+  "Half-kneeling Pallof press": halfKneelingPallof,
   "Dumbbell high pull": highPull,
   "Straight-arm pulldown": straightArm,
   "Dumbbell pullover": pullover,
@@ -892,12 +905,6 @@ const FLOOR_MOVES_WITHOUT_CLIP = [
   "Single-arm cable curl",
   "Cable glute kickback",
   "Cable rotational punch",
-  "Wide-grip seated cable row",
-  "Half-kneeling cable rotation",
-  "Split-stance Pallof press",
-  "Tall-kneeling Pallof press",
-  "Pallof press walkout",
-  "Half-kneeling Pallof press",
 ];
 for (const name of FLOOR_MOVES_WITHOUT_CLIP) {
   if (DEMO_FORM_VIDEOS[name]) continue;
