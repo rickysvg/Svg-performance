@@ -3636,15 +3636,15 @@
    "Press out, hold 2s",
    "No rotation"
   ],
-  "videoUrl": "https://www.youtube.com/watch?v=Xw7IDn8k-pA",
+  "videoUrl": "",
   "videoStart": 0,
   "videoEnd": null,
   "durationSec": 23,
-  "channel": "The Active Life",
+  "channel": "",
   "embeddable": true,
-  "verifyMethod": "auto-transcript names the move; title/desc match 4/4; channel The Active Life (22900); oEmbed 200; playable_in_embed=True; age_limit=0",
+  "verifyMethod": "Removed. The Active Life clip is a resistance band, not a cable stack.",
   "confidence": "high",
-  "videoTitle": "Half Kneeling Pallof Press"
+  "videoTitle": ""
  },
  {
   "id": "pallof-press-with-overhead-reach",

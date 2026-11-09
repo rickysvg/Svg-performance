@@ -107,6 +107,20 @@ describe("insert an exercise anywhere in the logger", () => {
     }
     expect(filterExerciseLibrary({ equipment: "none", query: "push" }).some((row) => row.name === "Push-up")).toBe(true);
     expect(filterExerciseLibrary({ equipment: "none" }).some((row) => row.name === "Dumbbell bench press")).toBe(false);
+
+    const crossover = filterExerciseLibrary({ equipment: "gym", query: "crossover" }).map((row) => row.name);
+    expect(crossover).toContain("Cable crossover");
+    expect(crossover).toContain("Cable crossover (low to high)");
+    expect(crossover).toContain("Cable crossover (high to low)");
+    expect(crossover).toContain("Single-arm cable crossover (low to high)");
+    expect(crossover[0]).toMatch(/crossover|cable fly/i);
+    for (const query of ["cross over", "cross-over", "cable fly", "flye", "low to high", "low-high"]) {
+      const names = filterExerciseLibrary({ equipment: "gym", query }).map((row) => row.name);
+      expect(names, query).toContain("Cable crossover (low to high)");
+    }
+    expect(filterExerciseLibrary({ equipment: "none", query: "crossover" }).some((row) => row.name === "Cable crossover")).toBe(
+      false,
+    );
   });
 
   it("keeps an inserted exercise in place when the logger reloads", () => {

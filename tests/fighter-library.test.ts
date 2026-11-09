@@ -29,14 +29,19 @@ describe("fighter exercise library", () => {
 
       const clip = DEMO_FORM_VIDEOS[row.name];
       expect(clip?.pending, row.name).not.toBe(true);
-      expect(clip?.url, row.name).toBeTruthy();
-      expect(isYoutubeFormUrl(clip?.url ?? ""), row.name).toBe(true);
-      expect(clip?.seconds, row.name).toBeGreaterThan(0);
-      expect(clip?.seconds, row.name).toBeLessThanOrEqual(FORM_VIDEO_SHORT_MAX_SECONDS);
-      const id = youtubeVideoId(clip?.url ?? "");
-      expect(id, row.name).toBeTruthy();
-      expect(ids.has(id!), `${row.name} reuses ${ids.get(id!)}`).toBe(false);
-      ids.set(id!, row.name);
+      if (!row.videoId) {
+        expect(clip?.omit, row.name).toBe(true);
+        expect(clip?.url ?? "", row.name).toBe("");
+      } else {
+        expect(clip?.url, row.name).toBeTruthy();
+        expect(isYoutubeFormUrl(clip?.url ?? ""), row.name).toBe(true);
+        expect(clip?.seconds, row.name).toBeGreaterThan(0);
+        expect(clip?.seconds, row.name).toBeLessThanOrEqual(FORM_VIDEO_SHORT_MAX_SECONDS);
+        const id = youtubeVideoId(clip?.url ?? "");
+        expect(id, row.name).toBeTruthy();
+        expect(ids.has(id!), `${row.name} reuses ${ids.get(id!)}`).toBe(false);
+        ids.set(id!, row.name);
+      }
 
       const mode = fallbackLogMode(row.name, row.reps);
       expect(mode, row.name).toBe(row.logMode);

@@ -118,7 +118,25 @@ function row(
   };
 }
 
-/** Bodyweight row. Gear stays bodyweight unless the move needs a bar. */
+/** Cable-stack row. Pounds stay on. */
+function cable(
+  name: string,
+  category: ExerciseCategory,
+  reps: string,
+  notes: string,
+  region: string,
+  pattern: string,
+  swapsWith?: string[],
+): Row {
+  return {
+    ...row(name, category, "gym", 3, reps, "2-4 RIR · Clean reps.", 45, "load_reps", notes),
+    region,
+    pattern,
+    gear: "cable",
+    swapsWith,
+  };
+}
+
 function floor(
   name: string,
   category: ExerciseCategory,
@@ -285,6 +303,17 @@ const BASE_LIBRARY: LibraryExercise[] = [
   floor("Farmer march", "conditioning", 3, "30 sec", "2-4 RIR · Tall walk.", 45, "timed", "Empty hands. Short quick steps. Any level. Easier: a shorter walk. Harder: one arm at a time. Muscles: core, hips, grip.", "core", "conditioning", ["Suitcase march", "Single-arm farmer march"]),
   floor("Suitcase march", "conditioning", 3, "20 sec / side", "2-4 RIR · Don't lean.", 45, "timed", "One arm loaded with a backpack, or just the empty hand held long. Any level. Muscles: core, obliques.", "core", "conditioning", ["Farmer march", "Suitcase carry"]),
   floor("Towel crush", "conditioning", 3, "20 sec", "2-4 RIR · Squeeze.", 30, "timed", "Roll a towel and crush it. Grip. Any level. Easier: a shorter hold. Harder: a thicker roll. Muscles: forearms, grip.", "grip", "conditioning"),
+
+  cable("Single-arm cable crossover (high to low)", "upper_push", "10 / side", "One arm. Cable starts high and finishes toward the hip. Any level. Easier: a lighter stack. Harder: a one-second squeeze. Muscles: chest, front shoulders.", "chest", "fly", ["Cable crossover (high to low)", "Cable crossover"]),
+  cable("Single-arm cable crossover (mid)", "upper_push", "10 / side", "One arm. Cable at chest height. Finish in front of the chest. Any level. Easier: a lighter stack. Harder: pause the squeeze. Muscles: chest.", "chest", "fly", ["Cable crossover", "Cable chest fly"]),
+  cable("Single-arm cable crossover (low to high)", "upper_push", "10 / side", "One arm. Cable starts low and finishes in front of the face. Any level. Easier: a lighter stack. Harder: a slower lower. Muscles: upper chest, front shoulders.", "chest", "fly", ["Cable crossover (low to high)", "Cable crossover"]),
+  cable("Kneeling cable fly (high to low)", "upper_push", "12", "Tall kneeling, two arms. Cables start high and finish toward the hips. Any level. Easier: a lighter stack. Harder: pause at the bottom. Muscles: chest.", "chest", "fly", ["Cable crossover (high to low)", "Cable crossover"]),
+  cable("Incline-bench cable fly", "upper_push", "10", "Lie on a shallow incline between the stacks. Cables start low. Any level. Easier: a higher bench. Harder: a deeper stretch. Muscles: upper chest.", "chest", "fly", ["Cable crossover (low to high)", "Cable chest fly"]),
+  cable("Close-grip seated cable row", "upper_pull", "10", "V-bar or close handle. Pull to the belly. Chest stays tall. Any level. Muscles: mid back, biceps.", "back", "pull", ["Seated cable row", "Wide-grip seated cable row", "Single-arm cable row"]),
+  cable("Seated single-arm cable row", "upper_pull", "10 / side", "Seated. One handle. Pull the elbow past the ribs. Any level. Muscles: mid back, biceps.", "back", "pull", ["Single-arm cable row", "Seated cable row"]),
+  cable("Single-arm cable curl", "upper_pull", "10 / side", "One handle from a low stack. Elbow stays by the ribs. Any level. Muscles: biceps.", "biceps", "curl", ["Cable curl", "Rope hammer curl"]),
+  cable("Cable glute kickback", "lower", "12 / side", "Ankle cuff. Kick back without arching the low back. Any level. Muscles: glutes.", "glutes", "hinge", ["Cable pull-through", "Single-leg cable pull-through"]),
+  cable("Cable rotational punch", "rotational", "6 / side", "Handle at the shoulder. Punch across. The hips turn, the fist finishes late. Any level. Stop when the punch gets sloppy. Muscles: core, shoulders.", "core", "rotational", ["Rotational cable press", "Standing cable rotation"]),
 ];
 
 const COMBAT_ROWS = combatAsLibraryRows().filter(
@@ -325,9 +354,30 @@ export type LibraryFilter = {
   nearName?: string;
 };
 
-/** "push ups" / "pushups" / "push-up" all search the same way. */
+/**
+ * Extra words a member might type for a library name.
+ * "crossover" has to find the low-to-high fly, and "cable fly" has to find the crossover.
+ */
+const SEARCH_ALIASES: Record<string, readonly string[]> = {
+  "Cable crossover": ["cable fly", "cable flye", "mid crossover", "chest height", "cross over", "cross-over"],
+  "Cable chest fly": ["cable crossover", "crossover", "cross over", "cable flye", "mid", "chest height"],
+  "Cable crossover (low to high)": ["low-to-high cable fly", "cable fly", "cable flye", "crossover", "cross over", "low-high", "low to high"],
+  "Cable crossover (high to low)": ["high-to-low cable fly", "cable fly", "cable flye", "crossover", "cross over", "high to low"],
+  "Single-arm cable crossover (high to low)": ["cable fly", "cable flye", "crossover", "cross over", "single arm"],
+  "Single-arm cable crossover (mid)": ["cable fly", "cable flye", "crossover", "cross over", "single arm", "chest height"],
+  "Single-arm cable crossover (low to high)": ["cable fly", "cable flye", "crossover", "cross over", "low-high", "low to high", "single arm"],
+  "Kneeling cable fly (high to low)": ["cable crossover", "crossover", "cable flye", "kneeling fly"],
+  "Incline-bench cable fly": ["cable crossover", "crossover", "cable flye", "incline fly"],
+};
+
+/** "push ups" / "pushups" / "push-up", and "flye" / "low-high", all search the same way. */
 function looseSearch(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/flye/g, "fly")
+    .replace(/lowtohigh/g, "lowhigh")
+    .replace(/hightolow/g, "highlow");
 }
 
 function searchStems(query: string) {
@@ -336,10 +386,14 @@ function searchStems(query: string) {
   return loose.endsWith("s") ? [loose, loose.slice(0, -1)] : [loose];
 }
 
+function searchHay(exercise: LibraryExercise) {
+  return [exercise.name, CATEGORY_LABEL[exercise.category], ...(SEARCH_ALIASES[exercise.name] ?? [])].map(looseSearch);
+}
+
 function matchesLibraryQuery(exercise: LibraryExercise, query: string) {
   const stems = searchStems(query);
   if (stems.length === 0) return true;
-  const hay = [looseSearch(exercise.name), looseSearch(CATEGORY_LABEL[exercise.category])];
+  const hay = searchHay(exercise);
   return hay.some((text) => stems.some((stem) => stem.length > 0 && text.includes(stem)));
 }
 
@@ -350,7 +404,11 @@ function searchRank(name: string, query: string) {
   const loose = looseSearch(name);
   const stem = stems[stems.length - 1] ?? "";
   const pushupSearch = stem === "push" || stem.startsWith("pushup");
+  const crossoverSearch = stem === "crossover" || stem === "cablefly" || stem === "fly";
+  const angleSearch = stem === "lowhigh" || stem === "highlow";
   if (stems.some((item) => loose === item) || (pushupSearch && loose.includes("pushup"))) return 0;
+  if (crossoverSearch && (loose.includes("crossover") || loose.includes("cablefly"))) return 0;
+  if (angleSearch && loose.includes(stem)) return 0;
   if (loose.startsWith(stem)) return 1;
   return 2;
 }

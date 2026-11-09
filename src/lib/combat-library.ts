@@ -231,6 +231,7 @@ export function combatFormVideoSeeds(): Record<string, CombatFormSeed> {
   for (const row of COMBAT_LIBRARY) {
     const forced = TEMPLATE_LONG_NAMES.has(row.name);
     if (!memberSwappable(row) && !forced) continue;
+    if (!row.videoUrl) continue;
     const seconds = row.videoEnd != null && row.videoStart >= 0 ? row.videoEnd - row.videoStart : row.durationSec;
     seeds[row.name] = {
       url: combatWatchUrl(row, forced && row.videoStart <= 0),

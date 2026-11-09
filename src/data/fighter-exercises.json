@@ -543,7 +543,7 @@
     "loadText": "2-4 RIR · Clean reps.",
     "restSeconds": 45,
     "logMode": "load_reps",
-    "notes": "Soft elbows. Squeeze in front of the chest.",
+    "notes": "Standing, two arms, cables at chest height (mid). Soft elbows. Same family as Cable crossover.",
     "videoId": "XNf6TBErGys",
     "startSeconds": 0,
     "seconds": 30,
@@ -665,7 +665,7 @@
     "videoTitle": "Wide Grip Bench Press - OPEX Exercise Library"
   },
   {
-    "name": "Low-to-high cable fly",
+    "name": "Cable crossover (low to high)",
     "category": "upper_push",
     "equipment": "gym",
     "region": "chest",
@@ -676,7 +676,7 @@
     "loadText": "2-4 RIR · Clean reps.",
     "restSeconds": 45,
     "logMode": "load_reps",
-    "notes": "Cables start low. Finish in front of the face.",
+    "notes": "Standing, two arms. Cables start low and finish in front of the face. This is the low-to-high crossover.",
     "videoId": "jBDRY89Xt78",
     "startSeconds": 0,
     "seconds": 17,
@@ -703,7 +703,7 @@
     "videoTitle": "How To Do A Neutral Grip Dumbbell Press"
   },
   {
-    "name": "High-to-low cable fly",
+    "name": "Cable crossover (high to low)",
     "category": "upper_push",
     "equipment": "gym",
     "region": "chest",
@@ -714,7 +714,7 @@
     "loadText": "2-4 RIR · Clean reps.",
     "restSeconds": 45,
     "logMode": "load_reps",
-    "notes": "Cables start high. Finish toward the hips.",
+    "notes": "Standing, two arms. Cables start high and finish toward the hips. This is the high-to-low crossover.",
     "videoId": "hhruLxo9yZU",
     "startSeconds": 0,
     "seconds": 12,
@@ -1456,11 +1456,11 @@
     "restSeconds": 60,
     "logMode": "load_reps",
     "notes": "Wide bar. Pull to the lower chest. Do not lean back.",
-    "videoId": "0R9ZQd3aM6s",
+    "videoId": "",
     "startSeconds": 0,
-    "seconds": 17,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Seated Row"
+    "seconds": 0,
+    "channel": "",
+    "videoTitle": ""
   },
   {
     "name": "Single-arm cable row",
@@ -3641,11 +3641,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Inside knee down. Rotate the handle across.",
-    "videoId": "CnF9Bf2pm4s",
+    "videoId": "",
     "startSeconds": 0,
-    "seconds": 29,
-    "channel": "National Academy of Sports Medicine (NASM)",
-    "videoTitle": "How to do a Half-Kneeling Tubing Rotation"
+    "seconds": 0,
+    "channel": "",
+    "videoTitle": ""
   },
   {
     "name": "Band standing rotation",
@@ -3698,11 +3698,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Press out and hold. Do not let the cable turn you.",
-    "videoId": "q_SgHjY4fck",
+    "videoId": "",
     "startSeconds": 0,
-    "seconds": 12,
-    "channel": "OPEX Fitness",
-    "videoTitle": "Banded Split Stance Pallof Press - OPEX Exercise Library"
+    "seconds": 0,
+    "channel": "",
+    "videoTitle": ""
   },
   {
     "name": "Tall-kneeling Pallof press",
@@ -3717,11 +3717,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Both knees down. Press and pause.",
-    "videoId": "K905oB4vPMY",
+    "videoId": "",
     "startSeconds": 0,
-    "seconds": 13,
-    "channel": "OPEX Fitness",
-    "videoTitle": "Banded Tall Kneeling Pallof Press - OPEX Exercise Library"
+    "seconds": 0,
+    "channel": "",
+    "videoTitle": ""
   },
   {
     "name": "Pallof press walkout",
@@ -3736,11 +3736,11 @@
     "restSeconds": 45,
     "logMode": "load_reps",
     "notes": "Press out, then walk away from the stack. Resist the twist.",
-    "videoId": "LkYtiDAgUUM",
+    "videoId": "",
     "startSeconds": 0,
-    "seconds": 16,
-    "channel": "E3 Rehab Exercise Library",
-    "videoTitle": "Pallof Press / Multifidus Walkout (Band)"
+    "seconds": 0,
+    "channel": "",
+    "videoTitle": ""
   },
   {
     "name": "Kneeling med-ball rotational throw",
@@ -5350,7 +5350,7 @@
     "loadText": "2-4 RIR · Clean reps.",
     "restSeconds": 45,
     "logMode": "load_reps",
-    "notes": "Step through. Hands meet in front of the chest.",
+    "notes": "Standing, two arms, cables at chest height (mid). Step through. Hands meet in front of the chest.",
     "videoId": "XY6JrX1wyxk",
     "startSeconds": 0,
     "seconds": 24,
