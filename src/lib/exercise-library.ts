@@ -345,10 +345,12 @@ export function libraryNames() {
   return EXERCISE_LIBRARY.map((exercise) => exercise.name);
 }
 
+export type LibraryEquipment = "all" | "gym" | "none";
+
 export type LibraryFilter = {
   query?: string;
   category?: "all" | "upper" | ExerciseCategory;
-  equipment?: "gym" | "none";
+  equipment?: LibraryEquipment;
   excludeName?: string;
   /** Sort same-pattern swaps ahead of the rest of the category. */
   nearName?: string;
@@ -415,8 +417,10 @@ function searchRank(name: string, query: string) {
 
 export function filterExerciseLibrary(input: LibraryFilter = {}) {
   const query = (input.query ?? "").trim().toLowerCase();
-  const category = input.category ?? "all";
-  const equipment = input.equipment ?? "gym";
+  const searching = query.length > 0;
+  // A typed search always covers the whole catalog. Tabs only narrow a browse.
+  const category = searching ? "all" : (input.category ?? "all");
+  const equipment: LibraryEquipment = searching ? "all" : (input.equipment ?? "gym");
   const near = input.nearName ? libraryExercise(input.nearName) : null;
   const preferred = new Set<string>([
     ...(near?.swapsWith ?? []),
@@ -425,7 +429,7 @@ export function filterExerciseLibrary(input: LibraryFilter = {}) {
     ),
   ]);
   return EXERCISE_LIBRARY.filter((exercise) => {
-    if (exercise.memberHidden) return false;
+    if (!searching && equipment !== "all" && exercise.memberHidden) return false;
     if (input.excludeName && exercise.name === input.excludeName) return false;
     if (category === "upper") {
       if (exercise.category !== "upper_push" && exercise.category !== "upper_pull") return false;
@@ -433,7 +437,8 @@ export function filterExerciseLibrary(input: LibraryFilter = {}) {
       return false;
     }
     // Bodyweight work belongs in a gym too. "No weights" is the list that drops gym gear.
-    if (equipment === "none" && exercise.equipment === "gym") return false;
+    // "All" keeps every exercise, including ones still waiting on a clip review.
+    if (!searching && equipment === "none" && exercise.equipment === "gym") return false;
     if (!matchesLibraryQuery(exercise, query)) return false;
     return true;
   }).sort((a, b) => {

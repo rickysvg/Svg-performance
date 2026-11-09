@@ -119,7 +119,7 @@ describe("insert an exercise anywhere in the logger", () => {
       expect(names, query).toContain("Cable crossover (low to high)");
     }
     expect(filterExerciseLibrary({ equipment: "none", query: "crossover" }).some((row) => row.name === "Cable crossover")).toBe(
-      false,
+      true,
     );
   });
 

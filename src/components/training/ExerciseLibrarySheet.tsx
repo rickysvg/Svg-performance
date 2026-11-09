@@ -15,8 +15,8 @@ import { showBestSwapBadge } from "@/lib/exercise-swap";
 import { catalogRestSeconds } from "@/lib/set-rest";
 
 /**
- * The member swap picker. Hidden library rows (unreviewed or untrimmed clips)
- * stay out. Add-exercise uses the same list.
+ * The member swap picker. Add-exercise uses the same list.
+ * Gym and No weights narrow a browse. All, and any search, show the full catalog.
  */
 export function ExerciseLibrarySheet({
   variant,
@@ -60,7 +60,7 @@ export function ExerciseLibrarySheet({
   const panelRef = useSheetBehavior(onClose);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORY_FILTERS)[number]["id"]>("all");
-  const [equipment, setEquipment] = useState<"gym" | "none">(weightAccess);
+  const [equipment, setEquipment] = useState<"all" | "gym" | "none">(weightAccess);
   const [picked, setPicked] = useState<string | null>(null);
 
   const results = useMemo(
@@ -188,6 +188,7 @@ export function ExerciseLibrarySheet({
         <div className="flex gap-2" role="group" aria-label="Equipment">
           {(
             [
+              ["all", "All"],
               ["gym", "Gym"],
               ["none", "No weights"],
             ] as const
