@@ -101,7 +101,6 @@ import {
   setHasLoggedWork,
   setIsUntickedPrefill,
   withEntryTick,
-  withPrescribedHold,
 } from "@/lib/logged-work";
 import {
   applyPreviousToSet,
@@ -296,27 +295,19 @@ function setsForLogger(session: Session, draft: LoggerDraft | null = null): Work
         name,
         reps: planned?.reps,
       });
-      const hold = withPrescribedHold(
-        { exerciseName: name, durationSeconds: null, logMode: mode },
-        planned?.reps,
-      ).durationSeconds;
       return newClientSet(
         session.id,
         name,
         setNumber,
         "lb",
         mode,
-        hold,
+        null,
         prescribedRowId(session.id, name, setNumber),
       );
     },
     gymExerciseKey,
   );
-  const withHolds = restored.map((set) => {
-    const planned = plannedRows.find((row) => gymExerciseKey(row.name) === gymExerciseKey(set.exerciseName));
-    return withPrescribedHold(set, planned?.reps);
-  });
-  return dropEmptyPlanBikeRows(withHolds, [...base, ...(draft?.sets ?? [])]);
+  return dropEmptyPlanBikeRows(restored, [...base, ...(draft?.sets ?? [])]);
 }
 
 const SAVE_FAILED =

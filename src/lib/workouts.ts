@@ -80,6 +80,7 @@ import {
   setCountsForTotals,
   setHasLoggedWork,
   tickedSetCount,
+  withoutUntouchedTemplate,
   withTickedPlanWork,
 } from "@/lib/logged-work";
 import {
@@ -1840,7 +1841,8 @@ function keepPlannedSets(
     const key = planSlotKey(set);
     if (seen.has(key)) continue;
     if (!setHasLoggedWork(set) && priorNames.has(planNameKey(set)) && !priorKeys.has(key)) continue;
-    merged.push(loggedByKey.get(key) ?? set);
+    // A cleared row stays cleared. An untouched template time is not written back.
+    merged.push(withoutUntouchedTemplate(loggedByKey.get(key) ?? set));
     seen.add(key);
   }
   // A short payload from another tab omitted planned rows. Put those back.
@@ -1850,7 +1852,7 @@ function keepPlannedSets(
     const key = planSlotKey(row);
     if (seen.has(key)) continue;
     if (addedPrescription(row) && !omittedPlanned) continue;
-    merged.push(loggedByKey.get(key) ?? row);
+    merged.push(withoutUntouchedTemplate(loggedByKey.get(key) ?? row));
     seen.add(key);
   }
   for (const set of logged) {

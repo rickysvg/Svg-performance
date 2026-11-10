@@ -57,19 +57,26 @@ export type CountedSet = TickedSet & {
  *
  * - No reps, weight, time, or distance: never counts. Empty inputs are not work.
  * - Deliberately unticked (`skipped`): never counts, even on a finished session.
- * - Checked off, with a value the member entered or confirmed: counts.
- * - A session saved complete: a filled set still counts when the checkbox was
- *   left off. That is the read-path backfill for sessions finished before
- *   auto-tick. New finishes also store `completed` so the row matches.
- * - A template number the member never edited or ticked is not a logged value.
- *   Finish clears it instead of checking the box.
+ * - Checked off, or a value the member typed: counts.
+ * - Deliberately left matching the template, never edited and never ticked: does not count.
+ * - A session saved complete: a value the member actually entered still counts
+ *   when the checkbox was left off. That is the read-path backfill. A template
+ *   default is not an entered value.
  * - A draft or partial save: only a checked set counts.
  */
 export function setCountsForTotals(set: CountedSet, sessionStatus?: string | null) {
   if (set.skipped) return false;
   if (!setHasLoggedWork(set)) return false;
+  if (setIsUntickedPrefill(set)) return false;
   if (set.completed) return true;
   return sessionStatus === "complete";
+}
+
+/** Drop a template number the member never edited or ticked. A deliberate untick keeps its numbers. */
+export function withoutUntouchedTemplate<T extends CountedSet>(set: T): T {
+  if (set.skipped) return set;
+  if (!setIsUntickedPrefill(set)) return set;
+  return { ...set, reps: null, durationSeconds: null, completed: false };
 }
 
 /**
@@ -90,9 +97,8 @@ export function withEntryTick<T extends CountedSet>(set: T): T {
  */
 export function withFinishTick<T extends CountedSet>(set: T): T {
   if (set.skipped) return { ...set, completed: false };
-  if (setIsUntickedPrefill(set)) {
-    return { ...set, completed: false, reps: null, durationSeconds: null };
-  }
+  const plain = withoutUntouchedTemplate(set);
+  if (plain !== set) return plain;
   if (!setHasLoggedWork(set)) return { ...set, completed: false };
   return { ...set, completed: true, skipped: false };
 }
@@ -700,6 +706,7 @@ export function prepareSetsForPersist<T extends PersistSet>(
   }
 
   let rows = order.map((key) => slots.get(key)!);
+  rows = rows.map((row) => withoutUntouchedTemplate(row));
   if (status === "complete") {
     rows = rows.map((row) => withFinishTick(row));
   }

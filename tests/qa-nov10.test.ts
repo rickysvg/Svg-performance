@@ -10,6 +10,8 @@ import { startTrialForUser } from "@/lib/trial";
 import { assignPlanForPilot } from "@/lib/billing";
 import { loggedSetVolume } from "@/lib/home-telemetry";
 import { buildProgressSummary } from "@/lib/progress";
+import { summarizePeriod } from "@/lib/report-history";
+import { workoutCompleteTiles } from "@/lib/workout-complete";
 import { prepareSetsForPersist, setCountsForTotals, withEntryTick, withFinishTick } from "@/lib/logged-work";
 import { prescriptionSlotKey } from "@/lib/prescription-slot";
 import { detectNewPrs } from "@/lib/personal-bests";
@@ -295,6 +297,102 @@ describe("Nov 10 QA — logger, sparring, and calendar rules", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("counts finish, progress, and report sets without untouched Pallof template seconds", () => {
+    const pallofKey = prescriptionSlotKey({
+      exerciseName: "Cable Pallof press",
+      reps: "10 sec / side",
+      programSlug: "demo",
+      dayNumber: 2,
+    });
+    const when = new Date("2026-11-10T18:00:00.000Z");
+    const later = new Date("2026-11-10T19:00:00.000Z");
+    type CountedRow = {
+      exerciseName: string;
+      setNumber: number;
+      reps: number | null;
+      loadValue: number | null;
+      loadUnit: string;
+      logMode: string;
+      durationSeconds: number | null;
+      completed: boolean;
+      skipped: boolean;
+      prescriptionKey: string;
+    };
+    const lift = (name: string, setNumber: number): CountedRow => ({
+      exerciseName: name,
+      setNumber,
+      reps: 8,
+      loadValue: 40,
+      loadUnit: "lb",
+      logMode: "load_reps",
+      durationSeconds: null,
+      completed: true,
+      skipped: false,
+      prescriptionKey: "",
+    });
+    const pallof = (setNumber: number): CountedRow => ({
+      exerciseName: "Cable Pallof press",
+      setNumber,
+      reps: null,
+      loadValue: null,
+      loadUnit: "lb",
+      logMode: "timed",
+      durationSeconds: 10,
+      completed: false,
+      skipped: false,
+      prescriptionKey: pallofKey,
+    });
+    const sessionA: CountedRow[] = [
+      ...[1, 2, 3].map((setNumber) => lift("Goblet squat", setNumber)),
+      ...[1, 2, 3, 4].map(pallof),
+    ];
+    const sessionB: CountedRow[] = [lift("Bench press", 1), ...[1, 2, 3].map(pallof)];
+    const tiles = workoutCompleteTiles({
+      session: { title: "Lift", performedAt: when, status: "complete", sets: sessionA },
+      displayUnit: "lb",
+      newPrCount: 0,
+    });
+    expect(tiles.find((tile) => tile.label === "Sets")?.value).toBe("3");
+    const asReport = (id: string, title: string, sets: typeof sessionA) => ({
+      id,
+      title,
+      performedAt: when,
+      createdAt: when,
+      updatedAt: when,
+      status: "complete",
+      difficultyRating: "",
+      sessionRpe: null,
+      elapsedSeconds: null,
+      backfilled: false,
+      sets: sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        reps: set.reps,
+        loadValue: set.loadValue,
+        loadUnit: set.loadUnit,
+        logMode: set.logMode,
+        durationSeconds: set.durationSeconds,
+        completed: set.completed,
+        skipped: set.skipped,
+        prescriptionKey: set.prescriptionKey,
+      })),
+    });
+    const report = summarizePeriod({
+      sessions: [asReport("a", "Lift", sessionA), asReport("b", "Lift 2", sessionB)],
+      outside: [],
+      focus: "all",
+      displayUnit: "lb",
+    });
+    expect(report.sets).toBe(4);
+    const progress = buildProgressSummary(
+      [
+        { id: "a", title: "Lift", status: "complete", performedAt: when, sets: sessionA },
+        { id: "b", title: "Lift 2", status: "complete", performedAt: later, sets: sessionB },
+      ] as never,
+      "lb",
+    );
+    expect(progress.points.map((point) => point.setCount)).toEqual([3, 1]);
+  });
+
   it("lists only ticked exercises on a history row", () => {
     expect(
       loggedExerciseNamesInOrder([
@@ -342,6 +440,100 @@ describe("Nov 10 QA — logger, sparring, and calendar rules", () => {
     const missedDays = days.filter((day) => day.isPast && day.active && day.canBeMissed).map((day) => day.dayParam);
     expect(missedDays.every((day) => day >= "2026-11-07")).toBe(true);
     expect(days.some((day) => day.dayParam < "2026-11-07" && day.canBeMissed)).toBe(false);
+  });
+});
+
+describe("Nov 10 QA — cleared holds stay empty", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  it("saves a cleared timed set without refilling the template or creating a PR", async () => {
+    const user = await makeUser("cleared-hold@example.com");
+    const neckKey = prescriptionSlotKey({
+      exerciseName: "Neck isometric — flexion",
+      reps: "10 sec",
+      programSlug: "demo",
+      dayNumber: 1,
+    });
+    const created = await prisma.workoutSession.create({
+      data: {
+        userId: user.id,
+        title: "Lift",
+        performedAt: new Date("2026-11-10T18:00:00.000Z"),
+        status: "draft",
+        sets: {
+          create: [1, 2, 3, 4].map((setNumber) => ({
+            exerciseName: "Neck isometric — flexion",
+            setNumber,
+            sortOrder: setNumber,
+            reps: null,
+            loadValue: null,
+            loadUnit: "lb",
+            logMode: "timed",
+            durationSeconds: 10,
+            completed: false,
+            prescriptionKey: neckKey,
+          })),
+        },
+      },
+    });
+    await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: created.id,
+      title: "Lift",
+      performedAt: created.performedAt,
+      notes: "",
+      status: "complete",
+      sets: [
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          durationSeconds: null,
+          completed: true,
+          skipped: false,
+          prescriptionKey: "",
+        },
+        ...[1, 2, 3, 4].map((setNumber) => ({
+          exerciseName: "Neck isometric — flexion",
+          setNumber,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb" as const,
+          logMode: "timed" as const,
+          durationSeconds: setNumber === 1 ? null : 10,
+          completed: false,
+          skipped: false,
+          prescriptionKey: neckKey,
+        })),
+      ],
+    });
+    const reloaded = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: created.id },
+      include: { sets: { orderBy: { setNumber: "asc" } } },
+    });
+    const neck = reloaded.sets.filter((set) => set.exerciseName.startsWith("Neck"));
+    expect(neck.map((set) => set.durationSeconds)).toEqual([null, null, null, null]);
+    expect(neck.every((set) => set.completed === false)).toBe(true);
+    const prs = detectNewPrs(
+      [],
+      reloaded.sets.map((set) => ({
+        ...set,
+        sessionStatus: reloaded.status,
+        performedAt: reloaded.performedAt,
+      })),
+      "lb",
+    );
+    expect(prs.some((row) => row.exerciseName.startsWith("Neck"))).toBe(false);
+    expect(workoutCompleteTiles({
+      session: reloaded,
+      displayUnit: "lb",
+      newPrCount: prs.length,
+    }).find((tile) => tile.label === "Sets")?.value).toBe("1");
   });
 });
 
