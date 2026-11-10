@@ -244,6 +244,14 @@ function parseSets(formData: FormData): WorkoutSetInput[] {
   return sets;
 }
 
+async function assertCanSaveWorkout(user: { id: string; role: string }) {
+  if (user.role === "admin" || user.role === "coach") return;
+  const tier = await getAppTier(user.id);
+  if (tier === "locked") {
+    throw new AppError("PAYWALL", "Subscribe to keep training. Logging stays off until you subscribe.");
+  }
+}
+
 export async function saveWorkoutAction(
   _prev: WorkoutActionState,
   formData: FormData,
@@ -251,6 +259,7 @@ export async function saveWorkoutAction(
   let redirectPath = "";
   try {
     const user = await requireUserOrThrow();
+    await assertCanSaveWorkout(user);
     const profile = await getProfileForUser(user.id);
     const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
     const workoutId = String(formData.get("workoutId") ?? "");
@@ -340,6 +349,7 @@ export async function saveWorkoutAction(
 export async function recordWorkoutActivityAction(workoutId: string) {
   try {
     const user = await requireUserOrThrow();
+    await assertCanSaveWorkout(user);
     await recordWorkoutActivityForUser({ userId: user.id, workoutId });
   } catch {
     return;
@@ -358,6 +368,7 @@ export async function syncWorkoutDraftAction(input: {
 }): Promise<{ ok: true; updatedAt: string } | { ok: false; error: string; stale?: boolean }> {
   try {
     const user = await requireUserOrThrow();
+    await assertCanSaveWorkout(user);
     await extendActiveSession();
     const profile = await getProfileForUser(user.id);
     const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
@@ -439,6 +450,7 @@ export async function rateFinishedWorkoutAction(
 /** Reopen a short save, restore its planned rows, and open that same logger. */
 export async function continuePartialWorkoutAction(formData: FormData) {
   const user = await requireUserOrThrow();
+  await assertCanSaveWorkout(user);
   const workoutId = String(formData.get("workoutId") ?? "");
   const profile = await getProfileForUser(user.id);
   const units: LoadUnit = profile?.preferredUnits === "kg" ? "kg" : "lb";
@@ -467,6 +479,7 @@ export async function continuePartialWorkoutAction(formData: FormData) {
 /** Start the clock on a finished log that was opened without resuming. */
 export async function resumeHeldSessionClockAction(workoutId: string) {
   const user = await requireUserOrThrow();
+  await assertCanSaveWorkout(user);
   await resumeHeldSessionClockForUser({ userId: user.id, workoutId });
   revalidatePath(`/training/log/${workoutId}`);
 }
@@ -474,6 +487,7 @@ export async function resumeHeldSessionClockAction(workoutId: string) {
 /** Undo an accidental finish and return to the same logger, sets intact. */
 export async function resumeWorkoutAction(formData: FormData) {
   const user = await requireUserOrThrow();
+  await assertCanSaveWorkout(user);
   const workoutId = String(formData.get("workoutId") ?? "");
   await reopenCompletedWorkoutForUser(user.id, workoutId);
   revalidatePath("/home");

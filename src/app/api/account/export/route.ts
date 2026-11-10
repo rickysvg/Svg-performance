@@ -5,10 +5,20 @@ import {
   exportAccountDataForUser,
 } from "@/lib/account-data";
 import { AppError, AuthError } from "@/lib/errors";
+import { getAppTier } from "@/lib/entitlements";
 
 export async function GET() {
   const user = await getCurrentUser();
   try {
+    if (user && user.role === "member") {
+      const tier = await getAppTier(user.id);
+      if (tier === "locked") {
+        return NextResponse.json(
+          { error: "Subscribe to keep training. Downloads stay off until you subscribe." },
+          { status: 403 },
+        );
+      }
+    }
     const payload = await exportAccountDataForUser(user);
     const body = JSON.stringify(payload, null, 2);
     return new NextResponse(body, {

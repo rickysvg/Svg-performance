@@ -2,20 +2,19 @@
 export const PATH_HEADER = "x-svg-path";
 
 /**
- * After a nonmember's 7-day trial ends without Pro, these stay open so they can view and
- * export their own past data, manage their account, subscribe, apply for VIP Coaching,
- * and see the Pro upsell on SVG Coach instead of the chat.
+ * After a nonmember's trial ends unpaid, or Pro locks for non-payment, Train, logging,
+ * timers, and the AI coach stay closed. History and progress stay open and read-only.
+ * Downloads and exports stay closed. Academy members are not on this lock.
  */
 const OPEN_WHEN_LOCKED = [
   "/progress",
+  "/training/history",
   "/profile",
   "/plan",
   "/shop",
   "/book",
   "/feedback",
   "/vip",
-  "/coach",
-  "/form-check",
 ];
 
 export function isOpenWhenLocked(pathname: string | null | undefined) {

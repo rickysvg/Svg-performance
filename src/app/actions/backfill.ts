@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUserOrThrow } from "@/lib/session";
-import { publicErrorMessage } from "@/lib/errors";
+import { AppError, publicErrorMessage } from "@/lib/errors";
+import { getAppTier } from "@/lib/entitlements";
 import {
   createBackfillWorkout,
   deleteBackfillWorkout,
@@ -19,6 +20,14 @@ export type BackfillFormState = {
   error?: string;
   conflict?: BackfillExisting[];
 };
+
+async function assertCanLog(user: { id: string; role: string }) {
+  if (user.role === "admin" || user.role === "coach") return;
+  const tier = await getAppTier(user.id);
+  if (tier === "locked") {
+    throw new AppError("PAYWALL", "Subscribe to keep training. Logging stays off until you subscribe.");
+  }
+}
 
 function revalidateTraining() {
   revalidatePath("/home");
@@ -47,6 +56,7 @@ export async function saveBackfillAction(
   let sessionId = "";
   try {
     const user = await requireUserOrThrow();
+    await assertCanLog(user);
     const result = await createBackfillWorkout(readBackfillForm(formData, user.id));
     if (!result.ok) return { conflict: result.conflict };
     sessionId = result.sessionId;
@@ -66,6 +76,7 @@ export async function updateBackfillAction(
   let sessionId = "";
   try {
     const user = await requireUserOrThrow();
+    await assertCanLog(user);
     const resolutionRaw = String(formData.get("resolution") ?? "");
     const resolution = resolutionRaw === "extra" || resolutionRaw === "replace" ? resolutionRaw : "";
     const count = Number(formData.get("exerciseCount") ?? 0);
@@ -124,6 +135,7 @@ export async function deleteBackfillAction(
 ): Promise<BackfillFormState> {
   try {
     const user = await requireUserOrThrow();
+    await assertCanLog(user);
     await deleteBackfillWorkout({
       userId: user.id,
       sessionId: String(formData.get("sessionId") ?? ""),

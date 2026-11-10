@@ -101,7 +101,7 @@ export default async function MarketingPage({
             </li>
             <li>
               Pro is $9.99/mo or $72.99/yr. {proAccessSummary()} VIP Coaching is $249/mo and
-              includes Pro. Subscribe from pricing. Pro checkout includes a 7-day trial.
+              includes Pro. Subscribe from pricing. VIP Coaching is billed today with no trial.
             </li>
             <li>
               SVG Coach chat is free for your first week from signup, no card. After that week

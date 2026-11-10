@@ -1,10 +1,12 @@
 import { loggedSetSome } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
-import { type CatalogPlanId, type CatalogPlan, planAtLeast } from "@/lib/plans";
+import { type CatalogPlanId, type CatalogPlan, normalizePlanId, planAtLeast } from "@/lib/plans";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { recomputeMembership } from "@/lib/gymdesk/recompute";
+import { subscriptionScheduleLine } from "@/lib/subscription-copy";
+import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 
 import {
   LEGACY_MEMBER_PRO_DAYS,
@@ -54,7 +56,7 @@ export function trialLabel(daysLeft: number) {
   return `Trial: ${daysLeft} ${unit} left`;
 }
 
-/** Shared by Profile and Pricing so an active trial is not labeled as paid Pro. */
+/** Shared by Profile, Plan, and Pricing. A Stripe subscription wins over the no-card trial. */
 export function currentPlanLine(input: {
   trialActive: boolean;
   trialDaysLeft: number;
@@ -62,7 +64,27 @@ export function currentPlanLine(input: {
   /** Set when the caller knows which clock is running. */
   trialLengthDays?: number;
   verified?: boolean;
+  subscription?: {
+    plan: string;
+    status: string;
+    currentPeriodEnd?: Date | null;
+    trialEnd?: Date | null;
+    cancelAt?: Date | null;
+    cancelAtPeriodEnd?: boolean;
+  } | null;
 }) {
+  const sub = input.subscription;
+  if (sub) {
+    const planId = normalizePlanId(sub.plan);
+    const paidLabel =
+      planId !== "member_access" &&
+      planId !== "academy" &&
+      (subscriptionGrantsAccess(sub.status, sub.currentPeriodEnd) ||
+        sub.status === "past_due" ||
+        sub.status === "unpaid" ||
+        sub.status === "canceled");
+    if (paidLabel) return subscriptionScheduleLine(sub);
+  }
   if (input.trialActive) {
     const unit = input.trialDaysLeft === 1 ? "day" : "days";
     if (input.verified) {
@@ -88,15 +110,17 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
       thirdWorkoutCardDismissedAt: true,
       memberProStartedAt: true,
       memberProDays: true,
+      proTrialUsedAt: true,
     },
   });
   const verified = Boolean(profile?.gymMembershipVerified);
   const trialStartedAt = profile?.trialStartedAt ?? null;
   const trialEndsAt = profile?.trialEndsAt ?? null;
   // Verified members get one Pro grant even if they used a nonmember trial before.
+  // proTrialUsedAt blocks a second trial after Checkout, cancel, or a reused card.
   const trialUsed = verified
-    ? Boolean(profile?.memberProStartedAt)
-    : Boolean(trialStartedAt || trialEndsAt);
+    ? Boolean(profile?.memberProStartedAt || profile?.proTrialUsedAt)
+    : Boolean(trialStartedAt || trialEndsAt || profile?.proTrialUsedAt);
   const active = isTrialActive(trialEndsAt, now);
   return {
     verified,
@@ -130,6 +154,7 @@ export async function startTrialForUser(userId: string, now = new Date()) {
     data: {
       trialStartedAt: now,
       trialEndsAt,
+      proTrialUsedAt: now,
       planChoiceAt: state.planChoiceAt ?? now,
       ...(state.verified ? { memberProStartedAt: now, memberProDays: days } : {}),
     },
@@ -161,9 +186,39 @@ export async function ensureMemberProMonth(userId: string, now = new Date()) {
       memberProDays: MEMBER_TRIAL_DAYS,
       trialStartedAt: now,
       trialEndsAt: addTrialDays(now, MEMBER_TRIAL_DAYS),
+      proTrialUsedAt: now,
       planChoiceAt: profile.planChoiceAt ?? now,
     },
   });
+}
+
+/** Record the one trial after Stripe confirms a clean card. Does not extend a clock that already started. */
+export async function markProTrialClock(
+  userId: string,
+  input: { verified: boolean; trialEnd?: Date | null; now?: Date },
+) {
+  const now = input.now ?? new Date();
+  const profile = await prisma.profile.findUnique({ where: { userId } });
+  if (!profile) return null;
+  const end = input.trialEnd ?? addTrialDays(now, input.verified ? MEMBER_TRIAL_DAYS : NONMEMBER_TRIAL_DAYS);
+  const data: {
+    proTrialUsedAt?: Date;
+    trialStartedAt?: Date;
+    trialEndsAt?: Date;
+    memberProStartedAt?: Date;
+    memberProDays?: number;
+  } = {};
+  if (!profile.proTrialUsedAt) data.proTrialUsedAt = now;
+  if (!profile.trialStartedAt) {
+    data.trialStartedAt = now;
+    data.trialEndsAt = end;
+  }
+  if (input.verified && !profile.memberProStartedAt) {
+    data.memberProStartedAt = now;
+    data.memberProDays = MEMBER_TRIAL_DAYS;
+  }
+  if (Object.keys(data).length === 0) return profile;
+  return prisma.profile.update({ where: { userId }, data });
 }
 
 /** Days granted for this member Pro period. Missing means the original 30-day grant. */

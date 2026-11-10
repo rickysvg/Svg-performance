@@ -7,8 +7,8 @@ import {
   planHasFeature,
   planIsPro,
 } from "@/lib/plans";
-import { subscriptionPeriodOpen, subscriptionStatusIsCurrent } from "@/lib/subscription-status";
 import { isTrialActive } from "@/lib/trial";
+import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { prisma } from "@/lib/prisma";
 
 /** Missing Stripe keys never grant paid access. Free, trial, and admin rows still apply. */
@@ -18,11 +18,7 @@ export function previewEntitlementsOpen() {
 
 export async function getEffectivePlanId(userId: string, now = new Date()): Promise<CatalogPlanId> {
   const subscription = await getLatestSubscription(userId);
-  if (
-    subscription &&
-    subscriptionStatusIsCurrent(subscription.status) &&
-    subscriptionPeriodOpen(subscription.currentPeriodEnd, now)
-  ) {
+  if (subscription && subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd, now)) {
     const plan = normalizePlanId(subscription.plan);
     if (plan !== "member_access" && plan !== "academy") return plan;
   }
@@ -38,7 +34,7 @@ export async function getEffectivePlanId(userId: string, now = new Date()): Prom
   if (profile?.gymMembershipVerified) {
     return "academy";
   }
-  // Nonmember after the trial: Pro is required. Past data stays viewable and exportable.
+  // Nonmember after the trial, or Pro locked for non-payment: history stays readable. Training does not.
   return "member_access";
 }
 

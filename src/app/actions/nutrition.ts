@@ -46,7 +46,7 @@ async function requireNutritionUser() {
   if (!access.allowed) {
     throw new AppError(
       "PAYWALL",
-      "Nutrition is part of a TEST subscription. Access unlocks only after Stripe confirms payment.",
+      "Nutrition unlocks on Pro after Stripe confirms payment.",
     );
   }
   return user;

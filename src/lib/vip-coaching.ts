@@ -6,6 +6,7 @@
 import { COACHING_MONTHLY, PERFORMANCE_ANNUAL, PERFORMANCE_MONTHLY, usd } from "@/lib/pricing";
 import { normalizePlanId } from "@/lib/plans";
 import { subscriptionPeriodOpen, subscriptionStatusIsCurrent } from "@/lib/subscription-status";
+import { checkoutCustomerFields, SUBSCRIPTION_EXCLUDED_PAYMENT_METHODS } from "@/lib/stripe";
 import { randomLetterSuffix } from "@/lib/stripe-prices";
 
 export const VIP_LABEL = "VIP Coaching";
@@ -83,7 +84,9 @@ export type VipIntakeSummary = {
 };
 
 export function liveCoachingSub(row: VipSubRow, now: Date) {
-  if (!subscriptionStatusIsCurrent(row.status)) return false;
+  // Active covers the Nov 10 inactive statuses. Trialing is a live Stripe subscription.
+  const paying = subscriptionStatusIsCurrent(row.status) || row.status === "trialing";
+  if (!paying) return false;
   if (normalizePlanId(row.plan) !== "coaching") return false;
   if (!subscriptionPeriodOpen(row.currentPeriodEnd, now)) return false;
   return true;
@@ -234,18 +237,18 @@ export function vipPriceCopy(quote: VipQuote) {
   if (quote.intro) {
     return {
       primary: `${usd(quote.firstMonthCents / 100)} first month`,
-      detail: `Then ${usd(quote.recurringCents / 100)}/mo for verified academy members.`,
+      detail: `Then ${usd(quote.recurringCents / 100)}/mo for verified academy members. No free trial. The first charge is today.`,
     };
   }
   if (quote.creditCents > 0) {
     return {
       primary: `${usd(quote.recurringCents / 100)}/mo`,
-      detail: `One-time credit of ${usd(quote.creditCents / 100)} from unused Pro time, then ${usd(quote.recurringCents / 100)}/mo.`,
+      detail: `One-time credit of ${usd(quote.creditCents / 100)} from unused Pro time. No free trial. The first charge is today. Then ${usd(quote.recurringCents / 100)}/mo.`,
     };
   }
   return {
     primary: `${usd(quote.recurringCents / 100)}/mo`,
-    detail: "Full price.",
+    detail: `Billed ${usd(quote.recurringCents / 100)} today. No free trial.`,
   };
 }
 
@@ -343,9 +346,12 @@ export function vipCheckoutParams(input: {
   draft: VipCheckoutDraft;
   successUrl: string;
   cancelUrl: string;
+  email?: string | null;
+  customerId?: string | null;
 }) {
   const params: Record<string, unknown> = {
     mode: "subscription",
+    ...checkoutCustomerFields({ email: input.email, customerId: input.customerId }),
     client_reference_id: input.draft.metadata.userId,
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
@@ -353,8 +359,8 @@ export function vipCheckoutParams(input: {
     metadata: input.draft.metadata,
     subscription_data: {
       metadata: input.draft.metadata,
-      trial_period_days: 7,
     },
+    excluded_payment_method_types: [...SUBSCRIPTION_EXCLUDED_PAYMENT_METHODS],
     integration_identifier: `svg_vip_${randomLetterSuffix()}`,
   };
   if (input.draft.adjustment.mode === "coupon" && input.draft.adjustment.couponId) {
@@ -373,6 +379,8 @@ export async function applyVipBilling(input: {
   draft: VipCheckoutDraft;
   successUrl: string;
   cancelUrl: string;
+  email?: string | null;
+  customerId?: string | null;
   existingSubscriptionId?: string;
   existingItemId?: string;
 }) {
@@ -397,6 +405,8 @@ export async function applyVipBilling(input: {
       draft: input.draft,
       successUrl: input.successUrl,
       cancelUrl: input.cancelUrl,
+      email: input.email,
+      customerId: input.customerId,
     }),
   );
   return {

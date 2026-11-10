@@ -29,13 +29,13 @@ describe("subscription checkout sessions", () => {
     restore(envSnapshot);
   });
 
-  it("opens Pro and VIP checkout on the env price with a 7-day trial and no payment method list", async () => {
+  it("opens Pro checkout with a trial only when asked, and VIP with no trial", async () => {
     process.env.STRIPE_PRICE_PRO_MONTHLY = "price_pro_month";
     process.env.STRIPE_PRICE_PRO_YEARLY = "price_pro_year";
     process.env.STRIPE_PRICE_VIP_MONTHLY = "price_vip_month";
     expect(subscriptionTrialDays("performance_monthly")).toBe(CHECKOUT_TRIAL_DAYS);
     expect(subscriptionTrialDays("performance_year")).toBe(7);
-    expect(subscriptionTrialDays("coaching_monthly")).toBe(7);
+    expect(subscriptionTrialDays("coaching_monthly")).toBeUndefined();
     expect(priceIdForPlan("performance_monthly")).toBe("price_pro_month");
 
     const calls: CheckoutCreateParams[] = [];
@@ -50,11 +50,18 @@ describe("subscription checkout sessions", () => {
       },
     } as unknown as Stripe;
 
-    for (const plan of ["performance_monthly", "performance_year", "coaching_monthly"] as const) {
+    const plans = [
+      ["performance_monthly", 7],
+      ["performance_year", 14],
+      ["coaching_monthly", 0],
+    ] as const;
+    for (const [plan, trialPeriodDays] of plans) {
       await createSubscriptionCheckoutSession(stripe, {
         userId: "user_sub",
         email: "member@example.com",
+        customerId: plan === "performance_year" ? "cus_existing" : "",
         plan,
+        trialPeriodDays,
         successUrl: "http://localhost:3000/billing/success?session_id={CHECKOUT_SESSION_ID}",
         cancelUrl: "http://localhost:3000/billing/cancel",
       });
@@ -66,10 +73,33 @@ describe("subscription checkout sessions", () => {
       "price_pro_year",
       "price_vip_month",
     ]);
+    expect(calls[0]?.subscription_data?.trial_period_days).toBe(7);
+    expect(calls[0]?.customer_email).toBe("member@example.com");
+    expect(calls[0]?.customer).toBeUndefined();
+    expect(calls[1]?.subscription_data?.trial_period_days).toBe(14);
+    expect(calls[1]?.customer).toBe("cus_existing");
+    expect(calls[1]?.customer_email).toBeUndefined();
+    expect(calls[2]?.subscription_data?.trial_period_days).toBeUndefined();
+
+    const trialEnd = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    await createSubscriptionCheckoutSession(stripe, {
+      userId: "user_sub",
+      email: "member@example.com",
+      plan: "performance_monthly",
+      trialPeriodDays: 0,
+      trialEnd,
+      successUrl: "http://localhost:3000/billing/success?session_id={CHECKOUT_SESSION_ID}",
+      cancelUrl: "http://localhost:3000/billing/cancel",
+    });
+    expect(calls[3]?.subscription_data?.trial_end).toBe(Math.floor(trialEnd.getTime() / 1000));
+    expect(calls[3]?.subscription_data?.trial_period_days).toBeUndefined();
     for (const call of calls) {
       expect(call.mode).toBe("subscription");
       expect(call.payment_method_types).toBeUndefined();
-      expect(call.subscription_data?.trial_period_days).toBe(7);
+      expect(call.excluded_payment_method_types).toEqual(
+        expect.arrayContaining(["affirm", "klarna", "afterpay_clearpay"]),
+      );
+      expect(call.excluded_payment_method_types).not.toEqual(expect.arrayContaining(["card", "link"]));
       expect(call.success_url).toContain("/billing/success");
       expect(call.cancel_url).toContain("/billing/cancel");
       expect(call.client_reference_id).toBe("user_sub");
