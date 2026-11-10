@@ -5,7 +5,6 @@ import { applyStripeEvent } from "@/lib/billing";
 import { constructStripeEvent } from "@/lib/stripe";
 import { hasWebhookGrantedAccess } from "@/lib/access";
 import { setGymMembershipVerified } from "@/lib/admin";
-import { ForbiddenError } from "@/lib/errors";
 import { makeUser, resetDatabase } from "./helpers";
 
 const WEBHOOK_SECRET = "whsec_test_svg_performance";
@@ -54,7 +53,7 @@ describe("stripe webhook path", () => {
         type: event.type,
         data: { object: event.data.object as never },
       }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).resolves.toMatchObject({ refused: true });
     expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
   });
 
@@ -356,6 +355,121 @@ describe("stripe webhook path", () => {
     });
     expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
     const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
-    expect(row).toMatchObject({ plan: "coaching", status: "active", stripePriceId: "price_vip" });
+    expect(row).toMatchObject({ plan: "coaching", status: "trialing", stripePriceId: "price_vip" });
+  });
+
+  it("stores a portal cancel at the period end", async () => {
+    const user = await makeUser("cancel-later@example.com");
+    const cancelAt = Math.floor(new Date("2026-11-17T18:00:00.000Z").getTime() / 1000);
+    await applyStripeEvent({
+      id: "evt_cancel_scheduled",
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_cancel_later",
+          metadata: { userId: user.id, plan: "performance_monthly" },
+          status: "active",
+          cancel_at_period_end: true,
+          cancel_at: cancelAt,
+          current_period_end: cancelAt,
+        },
+      },
+    });
+    const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
+    expect(row?.cancelAtPeriodEnd).toBe(true);
+    expect(row?.cancelAt?.toISOString()).toBe("2026-11-17T18:00:00.000Z");
+    expect(row?.status).toBe("active");
+  });
+
+  it("resolves invoice.paid from the stored subscription when the invoice has no member id", async () => {
+    const user = await makeUser("invoice-lookup@example.com");
+    await applyStripeEvent({
+      id: "evt_sub_for_invoice",
+      type: "customer.subscription.created",
+      data: {
+        object: {
+          id: "sub_invoice_lookup",
+          metadata: { userId: user.id, plan: "performance_monthly", priceId: "price_pro_mo" },
+          customer: "cus_invoice_lookup",
+          status: "active",
+        },
+      },
+    });
+    await applyStripeEvent({
+      id: "evt_invoice_paid_no_meta",
+      type: "invoice.paid",
+      data: {
+        object: {
+          id: "in_paid",
+          customer: "cus_invoice_lookup",
+          subscription: "sub_invoice_lookup",
+          amount_paid: 999,
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+    const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
+    expect(row?.stripeSubscriptionId).toBe("sub_invoice_lookup");
+    expect(row?.stripeSubscriptionId.startsWith("cs_")).toBe(false);
+  });
+
+  it("locks access on past_due and returns an ignore for an unknown event", async () => {
+    const user = await makeUser("pastdue-lock@example.com");
+    await applyStripeEvent({
+      id: "evt_paid_then_due",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_paid_then_due",
+          metadata: { userId: user.id, plan: "performance_monthly" },
+          subscription: "sub_paid_then_due",
+          payment_status: "paid",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(true);
+    await applyStripeEvent({
+      id: "evt_invoice_failed_lookup",
+      type: "invoice.payment_failed",
+      data: {
+        object: {
+          id: "in_failed",
+          subscription: "sub_paid_then_due",
+          customer: "",
+        },
+      },
+    });
+    expect(await hasWebhookGrantedAccess(user.id)).toBe(false);
+    const ignored = await applyStripeEvent({
+      id: "evt_unknown_ping",
+      type: "payment_method.attached",
+      data: { object: { id: "pm_1" } },
+    });
+    expect(ignored).toMatchObject({ ignored: true });
+  });
+
+  it("stores the subscription id from checkout, not the session id", async () => {
+    const user = await makeUser("session-id@example.com");
+    await applyStripeEvent({
+      id: "evt_cs_real_sub",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_not_a_sub",
+          metadata: { userId: user.id, plan: "coaching_monthly", priceId: "price_vip" },
+          subscription: { id: "sub_real_vip" },
+          customer: "cus_vip",
+          payment_status: "paid",
+        },
+      },
+    });
+    const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
+    expect(row).toMatchObject({
+      plan: "coaching",
+      billingSku: "coaching_monthly",
+      status: "active",
+      stripeSubscriptionId: "sub_real_vip",
+      stripePriceId: "price_vip",
+    });
   });
 });

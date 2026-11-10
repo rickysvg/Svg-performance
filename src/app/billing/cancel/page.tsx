@@ -11,8 +11,8 @@ export default async function BillingCancelPage() {
       <main className="mx-auto max-w-md px-4 py-10">
         <h1 className="text-2xl">Checkout canceled</h1>
         <p className="mt-3 text-sm text-muted">
-          No access change was made. Failed or canceled TEST payments never
-          grant a plan — including Affirm or Klarna.
+          No access change was made. A canceled checkout does not start a plan.
+          No refunds except billing errors.
         </p>
         <LegalLinks className="mt-6" />
         <Link href="/pricing" className="mt-6 inline-flex text-accent underline">

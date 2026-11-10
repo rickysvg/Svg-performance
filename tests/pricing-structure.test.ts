@@ -185,7 +185,9 @@ describe("owner-approved three-plan pricing", () => {
     expect(catalog).toContain("In-person intensives and VIP");
     expect(catalog).toContain("Book with Ricky");
     expect(catalog).not.toContain("data-pricing-toggle");
-    expect(read("src/app/pricing/page.tsx")).toContain("Pro checkout includes a 7-day trial");
+    expect(read("src/app/pricing/page.tsx")).toContain("One Pro trial per person");
+    expect(read("src/app/pricing/page.tsx")).not.toContain("Pro checkout includes a 7-day trial");
+    expect(read("src/app/terms/page.tsx")).not.toContain("includes a 7-day trial");
     expect(read("src/app/pricing/page.tsx")).not.toContain("Nov 16");
     expect(read("src/app/pricing/page.tsx")).not.toContain("recorded ");
     expect(read("src/app/pricing/page.tsx")).toContain("academy members and Pro subscribers");

@@ -121,7 +121,7 @@ describe("reminder preferences", () => {
     expect(sent.map((row) => row.to)).toEqual([user2.email]);
     expect(sent[0]?.subject).toBe("Your session is waiting");
     expect(sent[0]?.html).toContain(
-      "https://svg-performance.vercel.app/svg-performance-badge-mark.png",
+      "https://svgperformance.app/svg-performance-badge-mark.png",
     );
     expect(sent[0]?.text).toContain("CONQUER THE DAY");
     expect(sent[0]?.text).toContain(

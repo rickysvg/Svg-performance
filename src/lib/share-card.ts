@@ -5,7 +5,7 @@ import { currentConsecutiveDays, uniqueActiveDayKeys } from "@/lib/records";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import { APP_TIMEZONE } from "@/lib/timezone";
 
-export const SHARE_CARD_APP_LINK = "svg-performance.vercel.app";
+export const SHARE_CARD_APP_LINK = "svgperformance.app";
 export const SHARE_CARD_WIDTH = 1080;
 export const SHARE_CARD_HEIGHT = 1920;
 export const SHARE_CARD_STYLES = ["photo", "black", "lime"] as const;

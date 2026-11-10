@@ -20,7 +20,8 @@ describe("QA-approved access and surface fixes", () => {
     const pricing = read("src/app/pricing/page.tsx");
     const checkout = read("src/components/billing/CheckoutButton.tsx");
     const billing = read("src/lib/billing.ts");
-    expect(pricing).toContain("Pro checkout includes a 7-day trial");
+    expect(pricing).toContain("One Pro trial per person");
+    expect(pricing).not.toContain("Pro checkout includes a 7-day trial");
     expect(pricing).not.toContain("Nov 16");
     expect(pricing).not.toMatch(/Stripe TEST keys are not in this environment/);
     expect(checkout).toContain("disabled");

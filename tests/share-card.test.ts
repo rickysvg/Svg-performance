@@ -154,7 +154,7 @@ describe("shareable workout card stats", () => {
   it("keeps the story card size, app link, and worldwide copy", () => {
     expect(SHARE_CARD_WIDTH).toBe(1080);
     expect(SHARE_CARD_HEIGHT).toBe(1920);
-    expect(SHARE_CARD_APP_LINK).toBe("svg-performance.vercel.app");
+    expect(SHARE_CARD_APP_LINK).toBe("svgperformance.app");
     const files = [
       "src/lib/share-card.ts",
       "src/lib/share-card-render.ts",
