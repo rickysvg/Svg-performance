@@ -25,6 +25,8 @@ export async function resetDatabase() {
   await prisma.svgChallenge.deleteMany();
   await prisma.groceryList.deleteMany();
   await prisma.weeklyFocusVideo.deleteMany();
+  await prisma.proAccessCodeAttempt.deleteMany();
+  await prisma.proAccessCode.deleteMany();
   await prisma.pilotInvite.deleteMany();
   await prisma.hrWorkoutSession.deleteMany();
   await prisma.hrRestingSample.deleteMany();

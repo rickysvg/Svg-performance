@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   coachingDesk,
+  countsAsPaidRevenue,
   formatAdminWhen,
   memberMatchesQuery,
   memberPlanSnapshot,
@@ -106,6 +107,23 @@ describe("coach desk access and counters", () => {
       ],
     });
     expect(snapshot).toMatchObject({ activePro: 1, trials: 1, conversions: 2, empty: false });
+    expect(countsAsPaidRevenue({ source: "webhook" })).toBe(true);
+    expect(countsAsPaidRevenue({ source: "access_code" })).toBe(false);
+    expect(
+      revenueSnapshot({
+        now,
+        subscriptions: [
+          {
+            userId: "comp",
+            plan: "performance",
+            status: "active",
+            currentPeriodEnd: null,
+            source: "access_code",
+          },
+        ],
+        profiles: [{ userId: "comp", trialEndsAt: null, trialStartedAt: null }],
+      }),
+    ).toMatchObject({ activePro: 0, trials: 0, conversions: 0, empty: true });
     expect(
       revenueSnapshot({ now, subscriptions: [], profiles: [] }),
     ).toMatchObject({ empty: true, activePro: 0, trials: 0, conversions: 0 });

@@ -4,6 +4,7 @@ import { PlanChoiceForm } from "@/components/onboarding/PlanChoiceForm";
 import { getOnboardingStatus } from "@/lib/onboarding";
 import { requireUser } from "@/lib/session";
 import { getTrialState } from "@/lib/trial";
+import { liveAccessCodeGrant } from "@/lib/access-codes";
 
 export default async function OnboardingPlanPage() {
   const user = await requireUser();
@@ -15,7 +16,10 @@ export default async function OnboardingPlanPage() {
     redirect(status.deepCompleted ? "/home" : "/onboarding/deeper");
   }
 
-  const trial = await getTrialState(user.id);
+  const [trial, accessCode] = await Promise.all([
+    getTrialState(user.id),
+    liveAccessCodeGrant(user.id),
+  ]);
 
   return (
     <div className="min-h-full bg-white">
@@ -25,6 +29,7 @@ export default async function OnboardingPlanPage() {
           verified={trial.verified}
           trialDays={trial.trialLengthDays}
           canStartTrial={trial.canStartTrial}
+          accessCodeActive={Boolean(accessCode)}
         />
       </main>
     </div>

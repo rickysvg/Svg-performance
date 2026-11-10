@@ -8,11 +8,33 @@ export function isStripeConfigured() {
   return Boolean(process.env.STRIPE_WEBHOOK_SECRET && stripeBillingEnvPresent());
 }
 
-export async function getLatestSubscription(userId: string) {
-  const row = await prisma.subscription.findFirst({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-  });
+type SubscriptionPick = {
+  status: string;
+  source: string;
+  currentPeriodEnd: Date | null;
+  updatedAt: Date;
+};
+
+function subscriptionIsLive(row: SubscriptionPick, now: Date) {
+  return row.status === "active" && !(row.currentPeriodEnd && row.currentPeriodEnd < now);
+}
+
+/**
+ * Most recently updated row, except a live paid or admin row wins over an
+ * access-code grant. Buying Pro replaces the code without a second entitlement.
+ */
+export function pickEffectiveSubscription<T extends SubscriptionPick>(rows: T[], now = new Date()): T | null {
+  if (rows.length === 0) return null;
+  const sorted = [...rows].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  const latest = sorted[0];
+  if (latest.source !== "access_code") return latest;
+  const liveOther = sorted.find((row) => row.source !== "access_code" && subscriptionIsLive(row, now));
+  return liveOther ?? latest;
+}
+
+export async function getLatestSubscription(userId: string, now = new Date()) {
+  const rows = await prisma.subscription.findMany({ where: { userId } });
+  const row = pickEffectiveSubscription(rows, now);
   // View only. The stored plan string and boolean stay in the database.
   if (!row || !referencesRetiredAnnual(row)) return row;
   return { ...row, plan: billingPlanFromStored(row) };

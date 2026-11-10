@@ -100,6 +100,21 @@ export function RegisterForm() {
           className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3"
         />
       </label>
+      <label className="block">
+        <span className="text-sm font-medium">Have a code?</span>
+        <input
+          data-testid="register-access-code"
+          name="accessCode"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="SVG-XXXX-XXXX (optional)"
+          className="mt-1 w-full rounded-xl border border-line bg-card px-3 py-3 font-telemetry tracking-wide"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          Optional. An access code from SVG turns on Pro. No card, and it does not start your free trial.
+        </span>
+      </label>
       <label className="flex items-start gap-3 rounded-xl border border-line bg-card p-4">
         <input
           data-testid="register-is-adult-confirmed"

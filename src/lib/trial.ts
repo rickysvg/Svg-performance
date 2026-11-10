@@ -115,6 +115,19 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
 }
 
 export async function startTrialForUser(userId: string, now = new Date()) {
+  const codeGrants = await prisma.proAccessCode.findMany({
+    where: { redeemedById: userId, revokedAt: null },
+    select: { expiresAt: true },
+  });
+  const codeLive = codeGrants.some(
+    (row) => !row.expiresAt || row.expiresAt.getTime() > now.getTime(),
+  );
+  if (codeLive) {
+    throw new AppError(
+      "ACCESS_CODE",
+      "An access code already has Pro on this account. Your free trial stays unused until that code ends.",
+    );
+  }
   if (isGymdeskSyncEnabled()) {
     await matchUserToGymdesk(userId, now);
     await recomputeMembership(userId, now);
@@ -154,6 +167,14 @@ export async function ensureMemberProMonth(userId: string, now = new Date()) {
     select: { gymMembershipVerified: true, memberProStartedAt: true, planChoiceAt: true },
   });
   if (!profile?.gymMembershipVerified || profile.memberProStartedAt) return null;
+  // A redeemed access code must not burn the 14-day member grant. After the
+  // code ends or is revoked, the member stays on the academy core app until
+  // they choose to start that trial themselves.
+  const redeemedCode = await prisma.proAccessCode.findFirst({
+    where: { redeemedById: userId },
+    select: { id: true },
+  });
+  if (redeemedCode) return null;
   return prisma.profile.update({
     where: { userId },
     data: {

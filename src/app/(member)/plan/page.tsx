@@ -8,6 +8,8 @@ import { subscriptionFace } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { FinancingNote } from "@/components/billing/FinancingNote";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { accessCodeStatusLine } from "@/lib/access-codes";
+import { RedeemAccessCodeForm } from "@/components/billing/RedeemAccessCodeForm";
 import { LegalLinks } from "@/components/LegalLinks";
 
 export default async function PlanPage() {
@@ -20,19 +22,21 @@ export default async function PlanPage() {
   ]);
   const configured = isStripeConfigured();
   const plan = entitlements.plan;
+  const codeLine = subscription ? accessCodeStatusLine(subscription) : null;
 
   return (
     <main className="space-y-6">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-accent">Current plan</p>
         <h1 className="text-2xl" data-current-plan>
-          {currentPlanLine({
-            trialActive: trial.trialActive,
-            trialDaysLeft: trial.trialDaysLeft,
-            trialLengthDays: trial.trialLengthDays,
-            verified: trial.verified,
-            planLabel: plan.label,
-          })}
+          {codeLine ??
+            currentPlanLine({
+              trialActive: trial.trialActive,
+              trialDaysLeft: trial.trialDaysLeft,
+              trialLengthDays: trial.trialLengthDays,
+              verified: trial.verified,
+              planLabel: plan.label,
+            })}
         </h1>
         <p className="mt-2 text-sm text-muted">{plan.summary}</p>
         <AiDisclaimer className="mt-2" />
@@ -41,7 +45,9 @@ export default async function PlanPage() {
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
-          {trial.verified && trial.trialActive && !subscription
+          {codeLine
+            ? `${codeLine} Your free trial is still unused. Paid Pro replaces this code only if you subscribe. You are not charged unless you do.`
+            : trial.verified && trial.trialActive && !subscription
             ? `Verified SVG Academy member. Your ${trial.trialLengthDays} days of free Pro are active. After they end you go back to the core app included with your dues. You are never auto-billed.`
             : trial.verified && entitlements.planId === "academy"
               ? "Verified SVG Academy member. The core app is included with your dues. AI coach chat is free for your first week, then it is on Pro. Pro is $9.99/mo or $72.99/yr."
@@ -62,6 +68,12 @@ export default async function PlanPage() {
       </section>
 
       <FinancingNote configured={configured} />
+
+      {codeLine ? null : (
+        <section className="rounded-2xl border border-line bg-card p-5">
+          <RedeemAccessCodeForm />
+        </section>
+      )}
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2>This billing month&apos;s credits</h2>

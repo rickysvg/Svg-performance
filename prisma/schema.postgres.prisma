@@ -49,6 +49,8 @@ model User {
   hrRestingSamples         HrRestingSample[]
   hrWorkoutSessions        HrWorkoutSession[]
   pilotInvitesCreated      PilotInvite[]          @relation("InviteAuthor")
+  proAccessCodesCreated    ProAccessCode[]        @relation("AccessCodeAuthor")
+  proAccessCodesRedeemed   ProAccessCode[]        @relation("AccessCodeRedeemer")
   trainingClips            TrainingClip[]
   clipNotesAuthored        ClipTimestampNote[]    @relation("ClipNoteAuthor")
   challengeEnrollments     ChallengeEnrollment[]
@@ -947,6 +949,40 @@ model PilotInvite {
   joinedAt    DateTime?
 
   @@index([status])
+}
+
+/// One-time Pro grant Ricky hands to a fighter. Not a Stripe subscription.
+model ProAccessCode {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  label          String    @default("")
+  /// Normalized email. Empty means any account may redeem it.
+  emailLock      String    @default("")
+  /// 30, 90, or 180. Null means the grant has no end date.
+  durationDays   Int?
+  createdById    String
+  createdBy      User      @relation("AccessCodeAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  revokedAt      DateTime?
+  redeemedAt     DateTime?
+  redeemedById   String?
+  redeemedBy     User?     @relation("AccessCodeRedeemer", fields: [redeemedById], references: [id], onDelete: SetNull)
+  /// Copied from the grant when redeemed. Null means no end date.
+  expiresAt      DateTime?
+  /// Subscription row written for this grant. Empty until redeem.
+  subscriptionId String    @default("")
+
+  @@index([createdById])
+  @@index([redeemedById])
+  @@index([emailLock])
+}
+
+model ProAccessCodeAttempt {
+  id        String   @id @default(cuid())
+  keyHash   String
+  createdAt DateTime @default(now())
+
+  @@index([keyHash, createdAt])
 }
 
 model TrainingClip {
