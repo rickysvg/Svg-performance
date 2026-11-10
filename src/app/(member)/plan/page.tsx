@@ -7,11 +7,17 @@ import { PLAN_CATALOG } from "@/lib/plans";
 import { subscriptionFace } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
+import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { LegalLinks } from "@/components/LegalLinks";
 
-export default async function PlanPage() {
+export default async function PlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
+  const query = await searchParams;
   const user = await requireUser();
   const [entitlements, creditBundle, subscription, trial] = await Promise.all([
     getMemberEntitlements(user.id),
@@ -66,7 +72,7 @@ export default async function PlanPage() {
       </section>
 
       {subscription?.stripeCustomerId ? (
-        <section className="rounded-2xl border border-line bg-card p-5">
+        <section className="rounded-2xl border border-line bg-card p-5" data-manage-billing="1">
           <h2>Billing</h2>
           <p className="mt-2 text-sm text-muted">
             Update your card, see invoices, or cancel at the end of the period. You can add a card and make it the default. The card on an open subscription stays on file. No refunds except billing errors.
@@ -74,6 +80,11 @@ export default async function PlanPage() {
           <div className="mt-4">
             <ManageBillingButton />
           </div>
+        </section>
+      ) : query.billing === "pending" ? (
+        <section className="rounded-2xl border border-line bg-card p-5">
+          <h2>Billing</h2>
+          <BillingPendingNote />
         </section>
       ) : null}
 

@@ -34,12 +34,68 @@ export const SUBSCRIPTION_EXCLUDED_PAYMENT_METHODS = [
   "zip",
 ] as const;
 
-export function appBaseUrl() {
-  const configured = process.env.APP_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
-  const vercel = process.env.VERCEL_URL?.trim();
-  if (vercel) return `https://${vercel.replace(/^https?:\/\//, "")}`;
+/** Hosts this app is allowed to send a browser back to. Never a foreign origin. */
+export function isAllowedAppHost(host: string) {
+  const bare = host.trim().toLowerCase().split(",")[0]?.trim() ?? "";
+  const hostname = bare.replace(/:\d+$/, "");
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return true;
+  if (hostname === "svg-performance.vercel.app") return true;
+  return /^svg-performance(-[a-z0-9-]+)?\.vercel\.app$/.test(hostname);
+}
+
+function originForHost(host: string, proto: string | null | undefined) {
+  const bare = host.trim().split(",")[0]?.trim() ?? "";
+  const hostname = bare.replace(/:\d+$/, "").toLowerCase();
+  const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  const scheme = local ? (proto === "https" ? "https" : "http") : "https";
+  const port = local && /:\d+$/.test(bare) ? bare.slice(bare.lastIndexOf(":")) : "";
+  return `${scheme}://${hostname}${port}`;
+}
+
+/**
+ * Where Checkout and the billing portal send the browser.
+ * Production uses APP_URL. Previews use the request host when it is ours,
+ * otherwise VERCEL_BRANCH_URL. VERCEL_URL is the immutable deployment host
+ * and must not be used — the session cookie is host-only.
+ */
+export function billingReturnOrigin(input: {
+  host?: string | null;
+  forwardedHost?: string | null;
+  proto?: string | null;
+} = {}) {
+  const env = process.env.VERCEL_ENV;
+  if (env === "production") {
+    const configured = process.env.APP_URL?.trim();
+    if (configured) return configured.replace(/\/$/, "");
+  }
+  const requested = input.forwardedHost?.trim() || input.host?.trim() || "";
+  if (requested && isAllowedAppHost(requested)) {
+    return originForHost(requested, input.proto);
+  }
+  if (env === "preview" || env === "development") {
+    const branch = process.env.VERCEL_BRANCH_URL?.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (branch && isAllowedAppHost(branch)) return `https://${branch}`;
+  }
+  if (!env) {
+    const configured = process.env.APP_URL?.trim();
+    if (configured) return configured.replace(/\/$/, "");
+  }
   return "http://localhost:3000";
+}
+
+export async function billingOriginFromRequest() {
+  const { headers } = await import("next/headers");
+  const headerList = await headers();
+  return billingReturnOrigin({
+    host: headerList.get("host"),
+    forwardedHost: headerList.get("x-forwarded-host"),
+    proto: headerList.get("x-forwarded-proto"),
+  });
+}
+
+/** Non-request callers. Production APP_URL, preview branch URL, otherwise local. Never VERCEL_URL. */
+export function appBaseUrl() {
+  return billingReturnOrigin();
 }
 
 export function checkoutIntegrationId(flow: string) {
@@ -107,6 +163,8 @@ export async function createSubscriptionCheckoutSession(
     cancelUrl: string;
     /** Pass 0 to bill today. Omit to use the plan default (Pro 7, VIP none). */
     trialPeriodDays?: number;
+    /** Exact end of an in-app trial still running. Wins over trialPeriodDays. */
+    trialEnd?: Date | null;
   },
 ) {
   const sku = CHECKOUT_SKUS[input.plan];
@@ -117,8 +175,13 @@ export async function createSubscriptionCheckoutSession(
   if (!price) {
     throw new Error(`${sku.envPrice} is not set.`);
   }
-  const trialDays =
-    input.trialPeriodDays === undefined
+  const trialEndUnix =
+    input.trialEnd && input.trialEnd.getTime() - Date.now() > 48 * 60 * 60 * 1000
+      ? Math.floor(input.trialEnd.getTime() / 1000)
+      : undefined;
+  const trialDays = trialEndUnix
+    ? undefined
+    : input.trialPeriodDays === undefined
       ? subscriptionTrialDays(input.plan)
       : input.trialPeriodDays > 0
         ? input.trialPeriodDays
@@ -138,6 +201,7 @@ export async function createSubscriptionCheckoutSession(
     metadata,
     subscription_data: {
       metadata,
+      ...(trialEndUnix ? { trial_end: trialEndUnix } : {}),
       ...(trialDays ? { trial_period_days: trialDays } : {}),
     },
     excluded_payment_method_types: [...SUBSCRIPTION_EXCLUDED_PAYMENT_METHODS],

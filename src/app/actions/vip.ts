@@ -8,7 +8,7 @@ import { requireUserOrThrow } from "@/lib/session";
 import { getLatestSubscription } from "@/lib/access";
 import { normalizePlanId } from "@/lib/plans";
 import { subscriptionBlocksCheckout } from "@/lib/subscription-access";
-import { appBaseUrl, getStripe } from "@/lib/stripe";
+import { billingOriginFromRequest, getStripe } from "@/lib/stripe";
 import { parseVipApplication, applyVipBilling, type VipBillingClient } from "@/lib/vip-coaching";
 import {
   dismissVipUpsell,
@@ -106,7 +106,7 @@ export async function startVipCheckoutAction(
   }
   const view = await getVipCheckoutView(user.id);
   if (!view) return { error: "Checkout stays locked until Ricky approves your application." };
-  const origin = appBaseUrl();
+  const origin = await billingOriginFromRequest();
   let stripe = null;
   try {
     stripe = getStripe();

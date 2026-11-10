@@ -80,6 +80,19 @@ describe("subscription checkout sessions", () => {
     expect(calls[1]?.customer).toBe("cus_existing");
     expect(calls[1]?.customer_email).toBeUndefined();
     expect(calls[2]?.subscription_data?.trial_period_days).toBeUndefined();
+
+    const trialEnd = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    await createSubscriptionCheckoutSession(stripe, {
+      userId: "user_sub",
+      email: "member@example.com",
+      plan: "performance_monthly",
+      trialPeriodDays: 0,
+      trialEnd,
+      successUrl: "http://localhost:3000/billing/success?session_id={CHECKOUT_SESSION_ID}",
+      cancelUrl: "http://localhost:3000/billing/cancel",
+    });
+    expect(calls[3]?.subscription_data?.trial_end).toBe(Math.floor(trialEnd.getTime() / 1000));
+    expect(calls[3]?.subscription_data?.trial_period_days).toBeUndefined();
     for (const call of calls) {
       expect(call.mode).toBe("subscription");
       expect(call.payment_method_types).toBeUndefined();

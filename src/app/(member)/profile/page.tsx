@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
 import { getLatestSubscription } from "@/lib/access";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
+import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
 import { MEMBER_PRO_DAYS } from "@/lib/pricing";
 import { getEffectivePlanId, tierForPlan } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
@@ -29,7 +30,12 @@ import { shortBuildSha } from "@/lib/build-info";
 import { LegalLinks } from "@/components/LegalLinks";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
+  const query = await searchParams;
   const user = await requireUser();
   const [profile, prefs, trial, verifiedEvent, planId, subscription] = await Promise.all([
     getProfileForUser(user.id),
@@ -97,7 +103,7 @@ export default async function ProfilePage() {
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Account</summary>
         <div className="space-y-6 px-4 pb-4">
       {subscription?.stripeCustomerId ? (
-        <div className="pt-2">
+        <div className="pt-2" data-manage-billing="1">
           <p className="text-sm text-muted">
             Add a card, set the default, see invoices, or cancel at period end. The card on an open subscription stays on file.
           </p>
@@ -105,6 +111,8 @@ export default async function ProfilePage() {
             <ManageBillingButton />
           </div>
         </div>
+      ) : query.billing === "pending" ? (
+        <BillingPendingNote />
       ) : null}
       <details className="rounded-2xl border border-line bg-background">
         <summary className="cursor-pointer px-4 py-3 font-semibold">Academy</summary>

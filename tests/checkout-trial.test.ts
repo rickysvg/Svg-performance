@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   accountTrialAlreadyUsed,
   checkoutTrialPeriodDays,
+  checkoutTrialSpec,
   nonmemberTrialReminderStage,
 } from "@/lib/checkout-trial";
 
@@ -34,6 +35,51 @@ describe("one trial per person", () => {
     expect(accountTrialAlreadyUsed({ memberProStartedAt: new Date() })).toBe(true);
     expect(accountTrialAlreadyUsed({ proTrialUsedAt: new Date() })).toBe(true);
     expect(accountTrialAlreadyUsed({ stripeTrialSeen: true })).toBe(true);
+  });
+
+  it("carries an active in-app trial that is more than 48 hours out", () => {
+    const now = new Date("2026-11-10T12:00:00.000Z");
+    const ends = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const spec = checkoutTrialSpec({
+      plan: "performance_monthly",
+      verified: false,
+      trialAlreadyUsed: true,
+      trialEndsAt: ends,
+      now,
+    });
+    expect(spec).toEqual({ kind: "end", trialEnd: ends });
+  });
+
+  it("bills now when fewer than 48 hours remain, and never trials VIP", () => {
+    const now = new Date("2026-11-10T12:00:00.000Z");
+    const soon = new Date(now.getTime() + 30 * 60 * 60 * 1000);
+    expect(
+      checkoutTrialSpec({
+        plan: "performance_monthly",
+        verified: false,
+        trialAlreadyUsed: true,
+        trialEndsAt: soon,
+        now,
+      }),
+    ).toEqual({ kind: "none" });
+    expect(
+      checkoutTrialSpec({
+        plan: "performance_year",
+        verified: false,
+        trialAlreadyUsed: true,
+        trialEndsAt: new Date(now.getTime() - 1000),
+        now,
+      }),
+    ).toEqual({ kind: "none" });
+    expect(
+      checkoutTrialSpec({
+        plan: "coaching_monthly",
+        verified: false,
+        trialAlreadyUsed: false,
+        trialEndsAt: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000),
+        now,
+      }),
+    ).toEqual({ kind: "none" });
   });
 
   it("reminds a nonmember 2 days and 1 day before the no-card trial ends", () => {

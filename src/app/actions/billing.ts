@@ -6,10 +6,10 @@ import { requireUserOrThrow } from "@/lib/session";
 import { assertCanCheckoutPlan, isPlanId } from "@/lib/billing";
 import { CHECKOUT_SKUS } from "@/lib/plans";
 import { getLatestSubscription } from "@/lib/access";
-import { accountTrialAlreadyUsed, checkoutTrialPeriodDays } from "@/lib/checkout-trial";
+import { accountTrialAlreadyUsed, checkoutTrialSpec } from "@/lib/checkout-trial";
 import { prisma } from "@/lib/prisma";
 import {
-  appBaseUrl,
+  billingOriginFromRequest,
   createBnplCheckoutSession,
   createSubscriptionCheckoutSession,
   getStripe,
@@ -35,7 +35,7 @@ export async function startCheckoutAction(
     if (!stripe) {
       throw new AppError("BILLING", "Billing is not configured. No charge was created.");
     }
-    const appUrl = appBaseUrl();
+    const appUrl = await billingOriginFromRequest();
     const [profile, subscription, prior] = await Promise.all([
       prisma.profile.findUnique({
         where: { userId: user.id },
@@ -53,9 +53,10 @@ export async function startCheckoutAction(
         select: { trialStart: true, trialWillEnd: true, status: true },
       }),
     ]);
-    const trialPeriodDays = checkoutTrialPeriodDays({
+    const trial = checkoutTrialSpec({
       plan: planRaw,
       verified: Boolean(profile?.gymMembershipVerified),
+      trialEndsAt: profile?.trialEndsAt,
       trialAlreadyUsed: accountTrialAlreadyUsed({
         trialStartedAt: profile?.trialStartedAt,
         trialEndsAt: profile?.trialEndsAt,
@@ -78,7 +79,8 @@ export async function startCheckoutAction(
             ...urls,
             email: user.email,
             customerId: subscription?.stripeCustomerId,
-            trialPeriodDays: trialPeriodDays ?? 0,
+            trialPeriodDays: trial.kind === "days" ? trial.days : 0,
+            trialEnd: trial.kind === "end" ? trial.trialEnd : null,
           })
         : await createBnplCheckoutSession(stripe, urls);
     if (!session.url) {

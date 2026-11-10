@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUserOrThrow } from "@/lib/session";
 import { getLatestSubscription } from "@/lib/access";
-import { appBaseUrl, createBillingPortalSession, getStripe } from "@/lib/stripe";
+import { billingOriginFromRequest, createBillingPortalSession, getStripe } from "@/lib/stripe";
 import { publicErrorMessage } from "@/lib/errors";
 
 export async function POST() {
@@ -18,7 +18,7 @@ export async function POST() {
     }
     const session = await createBillingPortalSession(stripe, {
       customerId,
-      returnUrl: `${appBaseUrl()}/plan`,
+      returnUrl: `${await billingOriginFromRequest()}/plan`,
     });
     if (!session.url) {
       return NextResponse.json({ error: "Stripe did not return a billing portal URL." }, { status: 502 });
