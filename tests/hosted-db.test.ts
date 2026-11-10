@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isSqliteFileUrl, resolveHostedPostgresUrl, usesPostgresUrl } from "@/lib/db-provider";
-import { hostedPreparePlan, neonDirectUrl } from "../scripts/postgres-url.mjs";
+import { dbPushRefusedForDataLoss, hostedPreparePlan, neonDirectUrl } from "../scripts/postgres-url.mjs";
 
 describe("hosted preview database selection", () => {
   it("treats postgres URLs as hosted and sqlite files as laptop", () => {
@@ -109,5 +109,18 @@ describe("hosted preview database selection", () => {
     expect(prepare).toContain("hostedDdlUrl");
     expect(postgresUrl).toContain("neonDirectUrl");
     expect(prepare).not.toContain("--accept-data-loss");
+    expect(prepare).toContain('VERCEL_ENV === "preview"');
+    expect(prepare).toContain("pushPreviewSchema");
+  });
+
+  it("treats Prisma's data-loss warning as a refused push and ignores other failures", () => {
+    const warning = [
+      "⚠️  There might be data loss when applying the changes:",
+      "  • You are about to drop the `waitlist_signups` table, which is not empty (1 rows).",
+      "Error: Use the --accept-data-loss flag to ignore the data loss warnings like prisma db push --accept-data-loss",
+    ].join("\n");
+    expect(dbPushRefusedForDataLoss(warning)).toBe(true);
+    expect(dbPushRefusedForDataLoss("P1001: Can't reach database server")).toBe(false);
+    expect(dbPushRefusedForDataLoss("")).toBe(false);
   });
 });
