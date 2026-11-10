@@ -5,6 +5,7 @@
 
 import { COACHING_MONTHLY, PERFORMANCE_ANNUAL, PERFORMANCE_MONTHLY, usd } from "@/lib/pricing";
 import { normalizePlanId } from "@/lib/plans";
+import { subscriptionPeriodOpen, subscriptionStatusIsCurrent } from "@/lib/subscription-status";
 import { checkoutCustomerFields, SUBSCRIPTION_EXCLUDED_PAYMENT_METHODS } from "@/lib/stripe";
 import { randomLetterSuffix } from "@/lib/stripe-prices";
 
@@ -83,9 +84,11 @@ export type VipIntakeSummary = {
 };
 
 export function liveCoachingSub(row: VipSubRow, now: Date) {
-  if (row.status !== "active" && row.status !== "trialing") return false;
+  // Active covers the Nov 10 inactive statuses. Trialing is a live Stripe subscription.
+  const paying = subscriptionStatusIsCurrent(row.status) || row.status === "trialing";
+  if (!paying) return false;
   if (normalizePlanId(row.plan) !== "coaching") return false;
-  if (row.currentPeriodEnd && row.currentPeriodEnd.getTime() < now.getTime()) return false;
+  if (!subscriptionPeriodOpen(row.currentPeriodEnd, now)) return false;
   return true;
 }
 

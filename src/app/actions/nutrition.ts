@@ -117,20 +117,24 @@ export async function saveNutritionEntryAction(
     celebrateStreak = !entryId
       ? !(await hasActivityOnLocalDay(user.id, payload.eatenAt, timeZone))
       : false;
-    const saved = entryId
-      ? await updateNutritionEntryForUser(entryId, user.id, payload, timeZone)
-      : await createNutritionEntryForUser(user.id, payload);
+    if (!entryId) {
+      const saved = await createNutritionEntryForUser(user.id, payload);
+      revalidatePath("/nutrition");
+      revalidatePath("/home");
+      return {
+        success: "Food log saved. These numbers are your manual estimates.",
+        savedAt: Date.now(),
+        saved: savedValues(saved),
+        celebrate: celebrateStreak,
+      };
+    }
+    await updateNutritionEntryForUser(entryId, user.id, payload, timeZone);
     revalidatePath("/nutrition");
     revalidatePath("/home");
-    return {
-      success: "Food log saved. These numbers are your manual estimates.",
-      savedAt: Date.now(),
-      saved: savedValues(saved),
-      celebrate: celebrateStreak,
-    };
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
+  redirect("/nutrition");
 }
 
 export async function deleteNutritionEntryAction(formData: FormData) {

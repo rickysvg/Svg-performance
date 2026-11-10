@@ -23,13 +23,8 @@ import { canUseFeature } from "@/lib/entitlements";
 import { UpgradePreview } from "@/components/upgrade/UpgradePreview";
 import { resolveAiCoach } from "@/lib/coaches";
 
-export default async function CheckInPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ sent?: string }>;
-}) {
+export default async function CheckInPage() {
   const user = await requireUser();
-  const params = await searchParams;
   const allowed = await weeklyCheckInAllowed(user.id);
   const profile = await getProfileForUser(user.id);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
@@ -109,12 +104,6 @@ export default async function CheckInPage({
           One form. About two minutes. {timeZone}.
         </p>
       </section>
-
-      {params.sent === "1" ? (
-        <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-black">
-          {reviewed ? "Sent. Ricky replies within 48 hours." : "Saved. Your check-in is in your history."}
-        </p>
-      ) : null}
 
       {shownReplies.map((row) => (
         <section key={row.id} className="rounded-2xl border border-black bg-black px-4 py-4 text-white">

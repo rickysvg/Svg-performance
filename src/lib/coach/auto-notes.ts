@@ -13,7 +13,7 @@ import {
   type WeekRecapFacts,
 } from "@/lib/coach/auto-copy";
 import { hasRirCue } from "@/lib/rir";
-import { loggedSetSome, setHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, setCountsForTotals, setHasLoggedWork } from "@/lib/logged-work";
 import { getProfileForUser } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile, streakQuerySince } from "@/lib/streaks";
 import {
@@ -151,9 +151,21 @@ async function fightKeyFor(userId: string, nextFightDate: Date | null) {
   return nextFightDate ? civilKey(nextFightDate) : null;
 }
 
-function maxLoad(sets: Array<{ exerciseName: string; loadValue: number | null; loadUnit: string }>) {
+function maxLoad(
+  sets: Array<{
+    exerciseName: string;
+    loadValue: number | null;
+    loadUnit: string;
+    reps?: number | null;
+    durationSeconds?: number | null;
+    completed?: boolean | null;
+    skipped?: boolean | null;
+  }>,
+  sessionStatus: string,
+) {
   const best = new Map<string, { load: number; unit: string; name: string }>();
   for (const set of sets) {
+    if (!setCountsForTotals(set, sessionStatus)) continue;
     if (set.loadValue == null || !Number.isFinite(set.loadValue) || set.loadValue <= 0) continue;
     const key = set.exerciseName.trim().toLowerCase();
     const current = best.get(key);
@@ -196,10 +208,21 @@ async function weekFacts(userId: string, now: Date, timeZone: string, sundayKey:
       loadValue: { not: null },
       session: { userId, status: "complete", performedAt: { lt: monday } },
     },
-    select: { exerciseName: true, loadValue: true, loadUnit: true },
+    select: {
+      exerciseName: true,
+      loadValue: true,
+      loadUnit: true,
+      reps: true,
+      durationSeconds: true,
+      completed: true,
+      skipped: true,
+    },
   });
-  const weekBest = maxLoad(sessions.flatMap((row) => row.sets));
-  const priorBest = maxLoad(prior);
+  const weekBest = maxLoad(
+    sessions.flatMap((row) => row.sets),
+    "complete",
+  );
+  const priorBest = maxLoad(prior, "complete");
   const loadUps: LoadChange[] = [];
   for (const [key, row] of weekBest) {
     const before = priorBest.get(key);
@@ -293,10 +316,18 @@ async function workoutChanges(userId: string, workoutId: string) {
       loadValue: { not: null },
       session: { userId, status: "complete", id: { not: workoutId } },
     },
-    select: { exerciseName: true, loadValue: true, loadUnit: true },
+    select: {
+      exerciseName: true,
+      loadValue: true,
+      loadUnit: true,
+      reps: true,
+      durationSeconds: true,
+      completed: true,
+      skipped: true,
+    },
   });
-  const current = maxLoad(session.sets);
-  const before = maxLoad(prior);
+  const current = maxLoad(session.sets, session.status);
+  const before = maxLoad(prior, "complete");
   const loadUps: LoadChange[] = [];
   for (const [key, row] of current) {
     const previous = before.get(key);
@@ -314,7 +345,9 @@ async function workoutChanges(userId: string, workoutId: string) {
   for (const name of names) {
     if (!rirExercises.has(name.toLowerCase())) continue;
     const logged = session.sets.filter(
-      (set) => set.exerciseName.trim().toLowerCase() === name.toLowerCase() && setHasLoggedWork(set),
+      (set) =>
+        set.exerciseName.trim().toLowerCase() === name.toLowerCase() &&
+        setCountsForTotals(set, session.status),
     );
     if (logged.length > 0 && logged.every((set) => !set.rir.trim())) missedRir.push(name);
   }

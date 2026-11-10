@@ -77,8 +77,10 @@ import {
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   sessionOpensFinishScreen,
+  setCountsForTotals,
   setHasLoggedWork,
   tickedSetCount,
+  withoutUntouchedTemplate,
   withTickedPlanWork,
 } from "@/lib/logged-work";
 import {
@@ -108,6 +110,8 @@ export type WorkoutSetInput = {
   logMode?: LogMode;
   durationSeconds?: number | null;
   completed: boolean;
+  /** Member turned the check off after entering a value. */
+  skipped?: boolean;
   notes?: string;
   prescriptionKey?: string;
   rir?: string;
@@ -325,12 +329,12 @@ export async function getPreviousLoadsForUser(
   const result: PreviousSetLookup = {};
   for (const name of unique) {
     const session = sessions.find((row) =>
-      row.sets.some((set) => set.exerciseName === name && setHasLoggedWork(set)),
+      row.sets.some((set) => set.exerciseName === name && setCountsForTotals(set, row.status)),
     );
     if (!session) continue;
     result[name] = {};
     for (const set of session.sets) {
-      if (set.exerciseName !== name || !setHasLoggedWork(set)) continue;
+      if (set.exerciseName !== name || !setCountsForTotals(set, session.status)) continue;
       result[name][set.setNumber] = toPreviousSet(set);
     }
   }
@@ -395,7 +399,8 @@ export async function getPreviousLoadsForSlots(
     const exact = slot.prescriptionKey
       ? sessions.find((row) =>
           row.sets.some(
-            (set) => set.prescriptionKey === slot.prescriptionKey && setHasLoggedWork(set),
+            (set) =>
+              set.prescriptionKey === slot.prescriptionKey && setCountsForTotals(set, row.status),
           ),
         )
       : undefined;
@@ -404,7 +409,7 @@ export async function getPreviousLoadsForSlots(
         (set) =>
           set.exerciseName === slot.exerciseName &&
           set.prescriptionKey === "" &&
-          setHasLoggedWork(set),
+          setCountsForTotals(set, row.status),
       ),
     );
     const chosen = exact ?? legacy;
@@ -415,7 +420,7 @@ export async function getPreviousLoadsForSlots(
       const matches = keyed
         ? set.prescriptionKey === slot.prescriptionKey
         : set.exerciseName === slot.exerciseName && !set.prescriptionKey;
-      if (!matches || !setHasLoggedWork(set)) continue;
+      if (!matches || !setCountsForTotals(set, chosen.status)) continue;
       result[slot.exerciseName][set.setNumber] = toPreviousSet(set);
     }
   }
@@ -1718,7 +1723,7 @@ export async function startWorkoutFromDay(input: {
   return created;
 }
 
-function validateSets(sets: WorkoutSetInput[]) {
+function validateSets(sets: WorkoutSetInput[], durationExerciseName?: string) {
   if (sets.length === 0) {
     throw new AppError("WORKOUT", "Add at least one set before saving.");
   }
@@ -1752,11 +1757,15 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.loadValue != null && (set.loadValue < 0 || set.loadValue > 2000)) {
       throw new AppError("WORKOUT", "Load should be between 0 and 2000.");
     }
+    const checkDuration =
+      durationExerciseName === undefined || set.exerciseName === durationExerciseName;
     if (
+      checkDuration &&
       set.durationSeconds != null &&
       (set.durationSeconds < 0 || set.durationSeconds > SESSION_DURATION_CAP_SECONDS)
     ) {
-      throw new AppError("WORKOUT", "Hold / round time should be under 4 hours.");
+      const name = set.exerciseName.trim() || "This exercise";
+      throw new AppError("WORKOUT", `${name}: hold / round time should be under 4 hours.`);
     }
     if (set.logMode && !isLogMode(set.logMode)) {
       throw new AppError("WORKOUT", "Unknown logging mode.");
@@ -1832,7 +1841,8 @@ function keepPlannedSets(
     const key = planSlotKey(set);
     if (seen.has(key)) continue;
     if (!setHasLoggedWork(set) && priorNames.has(planNameKey(set)) && !priorKeys.has(key)) continue;
-    merged.push(loggedByKey.get(key) ?? set);
+    // A cleared row stays cleared. An untouched template time is not written back.
+    merged.push(withoutUntouchedTemplate(loggedByKey.get(key) ?? set));
     seen.add(key);
   }
   // A short payload from another tab omitted planned rows. Put those back.
@@ -1842,7 +1852,7 @@ function keepPlannedSets(
     const key = planSlotKey(row);
     if (seen.has(key)) continue;
     if (addedPrescription(row) && !omittedPlanned) continue;
-    merged.push(loggedByKey.get(key) ?? row);
+    merged.push(withoutUntouchedTemplate(loggedByKey.get(key) ?? row));
     seen.add(key);
   }
   for (const set of logged) {
@@ -1902,6 +1912,11 @@ export async function updateWorkoutSessionForUser(input: {
   /** Header seconds the logger was showing when Save was pressed. */
   elapsedSeconds?: number | null;
   /**
+   * Structural edit (remove, swap, undo). A bad hold on a different exercise
+   * must not block it. Omit on a full save so every exercise is checked.
+   */
+  durationExerciseName?: string;
+  /**
    * Leave this row as its own log. A shorter round save must not fold into
    * today's finished session and replace that session's rounds.
    */
@@ -1930,7 +1945,7 @@ export async function updateWorkoutSessionForUser(input: {
         : "Log at least one set, then tap Save. Nothing was marked finished.",
     );
   }
-  validateSets(sets);
+  validateSets(sets, input.durationExerciseName);
 
   const title = input.title.trim().slice(0, 120) || "Workout";
   const notes = input.notes.trim().slice(0, 1000);
@@ -2035,6 +2050,7 @@ export async function updateWorkoutSessionForUser(input: {
           logMode: isLogMode(set.logMode) ? set.logMode : undefined,
           durationSeconds: set.durationSeconds,
           completed: set.completed,
+          skipped: set.skipped,
           notes: set.notes,
           prescriptionKey: set.prescriptionKey,
           rir: set.rir,
@@ -2104,6 +2120,7 @@ export async function updateWorkoutSessionForUser(input: {
               logMode: mode,
               durationSeconds: timed ? set.durationSeconds ?? null : null,
               completed: Boolean(set.completed),
+              skipped: Boolean(set.skipped),
               notes: (set.notes ?? "").slice(0, 200),
               prescriptionKey: (set.prescriptionKey ?? "").trim().slice(0, 160),
               rir: (set.rir ?? "").trim().slice(0, 40),

@@ -1,3 +1,4 @@
+import { setCountsForTotals } from "@/lib/logged-work";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { isHoldName, resolveLogMode } from "@/lib/exercise-log-mode";
 import { convertLoad, formatLoad, isLoadUnit, type LoadUnit } from "@/lib/units";
@@ -14,6 +15,9 @@ export type SetLike = {
   durationSeconds?: number | null;
   logMode?: string | null;
   completed?: boolean;
+  skipped?: boolean | null;
+  /** When "complete", filled sets count even if the old checkbox was left off. */
+  sessionStatus?: string | null;
 };
 
 export type DatedSetLike = SetLike & { performedAt: Date };
@@ -35,7 +39,7 @@ export type DetectedPr = PersonalBest & {
 };
 
 function logged(set: SetLike) {
-  return set.completed !== false;
+  return setCountsForTotals(set, set.sessionStatus);
 }
 
 function loadInUnit(set: SetLike, displayUnit: LoadUnit): number | null {

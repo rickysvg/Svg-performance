@@ -73,9 +73,17 @@ export function SparringLogForm({
   const [bodyRating, setBodyRating] = useState(saved?.bodyRating == null ? "" : String(saved.bodyRating));
   const [ratingError, setRatingError] = useState("");
   const [trackedSave, setTrackedSave] = useState(state);
+  const [showSaved, setShowSaved] = useState(false);
+  const savedOnServer = Boolean(saved);
+  const [trackedSavedOnServer, setTrackedSavedOnServer] = useState(savedOnServer);
   if (state !== trackedSave) {
     setTrackedSave(state);
+    if (state.saved) setShowSaved(true);
     if (state.saved && typeof state.partner === "string") setPartner(state.partner);
+  }
+  if (savedOnServer !== trackedSavedOnServer) {
+    setTrackedSavedOnServer(savedOnServer);
+    if (!savedOnServer) setShowSaved(false);
   }
   const checkIn = state.checkIn || saved?.coachCheckIn || "";
   const roundTypeValue =
@@ -244,7 +252,11 @@ export function SparringLogForm({
         />
       </label>
       {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
-      {state.saved ? <p className="text-sm text-accent">Saved.</p> : null}
+      {showSaved ? (
+        <p className="text-sm text-accent" data-sparring-saved>
+          Saved.
+        </p>
+      ) : null}
       {checkIn ? (
         <RecoveryNotice
           note={state.easeNote}

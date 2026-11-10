@@ -17,25 +17,11 @@ export function exerciseNamesInOrder<T extends { exerciseName: string }>(sets: T
   return names;
 }
 
-/** History lists exercises the member actually logged. Empty planned rows stay out. */
+/** History lists exercises that count. Callers pass sets already chosen by setCountsForTotals. */
 export function loggedExerciseNamesInOrder<
-  T extends {
-    exerciseName: string;
-    completed?: boolean;
-    reps?: number | null;
-    loadValue?: number | null;
-    durationSeconds?: number | null;
-  },
+  T extends { exerciseName: string; completed?: boolean | null },
 >(sets: T[]): string[] {
-  return exerciseNamesInOrder(
-    sets.filter(
-      (set) =>
-        set.completed ||
-        set.reps != null ||
-        set.loadValue != null ||
-        (set.durationSeconds ?? 0) > 0,
-    ),
-  );
+  return exerciseNamesInOrder(sets.filter((set) => set.completed === true));
 }
 
 export function insertSetsAtExercise<T extends { exerciseName: string }>(

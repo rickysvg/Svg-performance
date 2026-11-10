@@ -1,3 +1,4 @@
+import { setCountsForTotals } from "@/lib/logged-work";
 import { convertLoad, isLoadUnit, type LoadUnit, volumeInUnit } from "@/lib/units";
 import { APP_TIMEZONE, addZonedDays, dayKey, mondayOfZoned, startOfZonedDay } from "@/lib/timezone";
 
@@ -13,6 +14,9 @@ export type ChartSetLike = {
   loadValue: number | null;
   loadUnit: string;
   completed?: boolean;
+  skipped?: boolean | null;
+  sessionStatus?: string | null;
+  durationSeconds?: number | null;
   performedAt: Date;
 };
 
@@ -72,7 +76,7 @@ export function weeklyBestLoad(
   const weeks = new Map<string, ChartPoint>();
 
   for (const set of sets) {
-    if (set.completed === false) continue;
+    if (!setCountsForTotals(set, set.sessionStatus)) continue;
     if (set.exerciseName.trim().toLowerCase() !== wanted) continue;
     if (set.loadValue == null || !isLoadUnit(set.loadUnit)) continue;
     const load = Math.round(convertLoad(set.loadValue, set.loadUnit, displayUnit) * 10) / 10;

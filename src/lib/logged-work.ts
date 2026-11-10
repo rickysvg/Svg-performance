@@ -44,6 +44,65 @@ export function setIsTicked(set: TickedSet) {
   return Boolean(set.completed) && setHasLoggedWork(set);
 }
 
+export type CountedSet = TickedSet & {
+  /**
+   * The member turned the check off on purpose. Distinct from an old finished
+   * session whose checkboxes were simply never used.
+   */
+  skipped?: boolean | null;
+};
+
+/**
+ * One rule for volume, load, charts, PRs, history lines, reports, and the finish total.
+ *
+ * - No reps, weight, time, or distance: never counts. Empty inputs are not work.
+ * - Deliberately unticked (`skipped`): never counts, even on a finished session.
+ * - Checked off, or a value the member typed: counts.
+ * - Deliberately left matching the template, never edited and never ticked: does not count.
+ * - A session saved complete: a value the member actually entered still counts
+ *   when the checkbox was left off. That is the read-path backfill. A template
+ *   default is not an entered value.
+ * - A draft or partial save: only a checked set counts.
+ */
+export function setCountsForTotals(set: CountedSet, sessionStatus?: string | null) {
+  if (set.skipped) return false;
+  if (!setHasLoggedWork(set)) return false;
+  if (setIsUntickedPrefill(set)) return false;
+  if (set.completed) return true;
+  return sessionStatus === "complete";
+}
+
+/** Drop a template number the member never edited or ticked. A deliberate untick keeps its numbers. */
+export function withoutUntouchedTemplate<T extends CountedSet>(set: T): T {
+  if (set.skipped) return set;
+  if (!setIsUntickedPrefill(set)) return set;
+  return { ...set, reps: null, durationSeconds: null, completed: false };
+}
+
+/**
+ * Typing a value marks the set done. Clearing every value unticks it.
+ * A deliberate untick stays off until the member ticks the box again.
+ */
+export function withEntryTick<T extends CountedSet>(set: T): T {
+  if (set.skipped) return { ...set, completed: false };
+  if (!setHasLoggedWork(set)) return { ...set, completed: false };
+  if (set.completed) return set;
+  return { ...set, completed: true };
+}
+
+/**
+ * Finish save. A value the member entered or ticked is done.
+ * A deliberate untick stays out. An untouched template prefill is cleared
+ * so it cannot become volume or a PR. An empty set stays empty.
+ */
+export function withFinishTick<T extends CountedSet>(set: T): T {
+  if (set.skipped) return { ...set, completed: false };
+  const plain = withoutUntouchedTemplate(set);
+  if (plain !== set) return plain;
+  if (!setHasLoggedWork(set)) return { ...set, completed: false };
+  return { ...set, completed: true, skipped: false };
+}
+
 export function tickedSetCount(sets: TickedSet[]) {
   return sets.filter(setIsTicked).length;
 }
@@ -568,6 +627,7 @@ type PersistSet = {
   logMode?: string;
   durationSeconds?: number | null;
   completed: boolean;
+  skipped?: boolean | null;
   notes?: string;
   prescriptionKey?: string;
   rir?: string;
@@ -599,7 +659,9 @@ function mergePersist<T extends PersistSet>(current: T, incoming: T): T {
     reps: primary.reps ?? fallback.reps,
     loadValue: primary.loadValue ?? fallback.loadValue,
     durationSeconds: primary.durationSeconds ?? fallback.durationSeconds,
-    completed: primary.completed || fallback.completed,
+    skipped: Boolean(primary.skipped || fallback.skipped),
+    completed:
+      primary.skipped || fallback.skipped ? false : primary.completed || fallback.completed,
     notes: primary.notes?.trim() ? primary.notes : fallback.notes ?? "",
     rir: primary.rir || fallback.rir || "",
     prescriptionKey: primary.prescriptionKey || fallback.prescriptionKey || "",
@@ -644,6 +706,10 @@ export function prepareSetsForPersist<T extends PersistSet>(
   }
 
   let rows = order.map((key) => slots.get(key)!);
+  rows = rows.map((row) => withoutUntouchedTemplate(row));
+  if (status === "complete") {
+    rows = rows.map((row) => withFinishTick(row));
+  }
   // A round save on a mixed day keeps the other exercises' rows, including
   // ones the member has not ticked yet. Lift finishes still drop empty rows.
   if (status !== "draft" && !options?.retainEmptySets) {

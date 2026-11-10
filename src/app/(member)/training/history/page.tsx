@@ -20,6 +20,7 @@ import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet"
 import { backfillFormSeed } from "@/lib/backfill-workout";
 import { SaveWorkoutButton } from "@/components/training/SaveWorkoutButton";
 import { loggedExerciseNamesInOrder } from "@/lib/logger-insert";
+import { setCountsForTotals } from "@/lib/logged-work";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 
@@ -122,7 +123,12 @@ export default async function HistoryPage() {
             );
             const countLine = progress.text;
             const finished = progress.done;
-            const names = loggedExerciseNamesInOrder(session.sets);
+            const names = loggedExerciseNamesInOrder(
+              session.sets.map((set) => ({
+                ...set,
+                completed: setCountsForTotals(set, session.status),
+              })),
+            );
             const liveName = session.savedWorkout?.name?.trim();
             const title = liveName || memberFacingTitle(session.title);
             const bagLine = bagworkHistoryLine(session);

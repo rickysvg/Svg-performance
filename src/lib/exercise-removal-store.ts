@@ -213,6 +213,7 @@ async function saveSets(
   session: WorkoutSession & { sets: WorkoutSet[] },
   sets: WorkoutSetInput[],
   clearRest: boolean,
+  durationExerciseName?: string,
 ) {
   const { updateWorkoutSessionForUser } = await import("@/lib/workouts");
   return updateWorkoutSessionForUser({
@@ -224,6 +225,7 @@ async function saveSets(
     status: "draft",
     sets,
     rest: clearRest ? null : undefined,
+    durationExerciseName,
   });
 }
 
@@ -331,7 +333,12 @@ export async function removeSessionExercise(input: {
   let sets: WorkoutSet[] | null = null;
   try {
     if (session && nextSets.length !== baseSets.length) {
-      const updated = await saveSets(session, nextSets, session.restExerciseName === exerciseName);
+      const updated = await saveSets(
+        session,
+        nextSets,
+        session.restExerciseName === exerciseName,
+        exerciseName,
+      );
       sets = updated.sets;
     } else if (session) {
       sets = session.sets;
@@ -366,7 +373,7 @@ export async function undoExerciseRemoval(input: {
   const base = input.currentSets ?? setsFromRows(session.sets);
   const restored = restoreSnapshotSets(base, snapshot);
   if (restored.length === 0) return { sets: session.sets };
-  const updated = await saveSets(session, restored, false);
+  const updated = await saveSets(session, restored, false, row.exerciseName);
   const addBack = snapshot?.plannedSets ?? 0;
   if (addBack > 0 && typeof session.plannedSetCount === "number") {
     await prisma.workoutSession.update({

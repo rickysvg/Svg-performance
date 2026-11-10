@@ -1,6 +1,6 @@
 import { BAGWORK_PRESCRIPTION, bagworkTrainingLoadFromSession } from "@/lib/bagwork";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
-import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { sessionHasLoggedWork, setCountsForTotals } from "@/lib/logged-work";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import type { WorkoutSession, WorkoutSet } from "@prisma/client";
 
@@ -53,6 +53,7 @@ export function buildProgressSummary(
     .sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime())
     .map((session) => {
       const lifting = session.sets.reduce((sum, set) => {
+        if (!setCountsForTotals(set, session.status)) return sum;
         if (set.logMode === "load_timed") return sum;
         return sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit);
       }, 0);
@@ -62,14 +63,14 @@ export function buildProgressSummary(
         label: session.title,
         performedAt: session.performedAt.toISOString(),
         volume: Math.round(volume),
-        setCount: session.sets.filter((set) => set.completed || set.reps).length,
+        setCount: session.sets.filter((set) => setCountsForTotals(set, session.status)).length,
       };
     });
 
   const bestByExercise = new Map<string, ExerciseBest>();
   for (const session of completed) {
     for (const set of session.sets) {
-      if (set.loadValue == null) {
+      if (!setCountsForTotals(set, session.status) || set.loadValue == null) {
         continue;
       }
       const load = volumeInUnit(1, set.loadValue, set.loadUnit, displayUnit);

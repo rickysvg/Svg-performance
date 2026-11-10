@@ -128,11 +128,21 @@ export async function restoreCredit(input: {
   });
 }
 
+/** Rows left from an old plan stay in the database. Only the current plan's kinds are shown. */
+export function creditsForPlan<T extends { kind: string }>(planId: CatalogPlanId, rows: T[]) {
+  const allotments = PLAN_CATALOG[planId].credits;
+  return rows.filter((row) => isCreditKind(row.kind) && (allotments[row.kind] ?? 0) > 0);
+}
+
 export async function creditsForCurrentPlan(userId: string) {
   const planId = await getEffectivePlanId(userId);
+  const hasCredits = Object.values(PLAN_CATALOG[planId].credits).some((count) => (count ?? 0) > 0);
+  if (!hasCredits) {
+    return { planId, credits: [] };
+  }
   await ensureCreditsForPlan(userId, planId);
   return {
     planId,
-    credits: await listCreditsForUser(userId),
+    credits: creditsForPlan(planId, await listCreditsForUser(userId)),
   };
 }
