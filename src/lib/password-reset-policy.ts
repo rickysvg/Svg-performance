@@ -1,8 +1,10 @@
+import { SUPPORT_EMAIL } from "@/lib/support";
+
 /** Links stored below this generation were issued before the production leak fix. */
 export const PASSWORD_RESET_GENERATION = 2;
 
 export const PASSWORD_RESET_NEUTRAL_MESSAGE =
-  "If an account exists, we'll email a link. Can't get in? Contact support.";
+  `If an account exists, we'll email a link. Can't get in? Email ${SUPPORT_EMAIL}.`;
 
 export const PASSWORD_RESET_RATE_MESSAGE =
   "Too many reset attempts. Wait a few minutes and try again.";

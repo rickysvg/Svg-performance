@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 export type MailInput = {
   to: string;
@@ -47,7 +48,7 @@ export function passwordResetHtml(resetUrl: string) {
     </p>
     <p style="margin:0 0 8px;font-size:14px;line-height:1.5;">If the button does not work, copy this link:</p>
     <p style="margin:0 0 24px;font-size:14px;line-height:1.5;word-break:break-all;"><a href="${href}" style="color:#111111;">${href}</a></p>
-    <p style="margin:0;font-size:14px;line-height:1.5;">If you didn't ask for this, you can ignore this email.</p>
+    <p style="margin:0;font-size:14px;line-height:1.5;">If you didn't ask for this, you can ignore this email. Questions: <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}" style="color:#111111;">${escapeHtml(SUPPORT_EMAIL)}</a></p>
   </div>
 </body>
 </html>`;
