@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthError, AppError } from "@/lib/errors";
 import { SESSION_DAYS } from "@/lib/constants";
 import { isSmtpConfigured, passwordResetHtml, sendMail } from "@/lib/mail";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import {
   PASSWORD_RESET_GENERATION,
   PASSWORD_RESET_NEUTRAL_MESSAGE,
@@ -347,6 +348,7 @@ export async function requestPasswordReset(email: string): Promise<{
         `Reset link (expires in 1 hour): ${resetUrl}`,
         "",
         "If you didn't ask for this, you can ignore this email.",
+        `Questions: ${SUPPORT_EMAIL}`,
       ].join("\n"),
       html: passwordResetHtml(resetUrl),
     });
