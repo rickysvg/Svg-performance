@@ -1718,8 +1718,8 @@ export function WorkoutLogForm({
                 : bike
                   ? "grid-cols-[1.5rem_minmax(0,1fr)_1.5rem]"
                   : hidesLoad(mode)
-                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3rem)_1.5rem]"
-                    : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3.25rem)_minmax(0,3.25rem)_1.5rem]";
+                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(5.25rem,6.5rem)_1.5rem]"
+                    : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(4.75rem,5.75rem)_minmax(4.75rem,5.75rem)_1.5rem]";
           const hint = modeHint(mode, name);
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);

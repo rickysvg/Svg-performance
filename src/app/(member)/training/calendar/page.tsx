@@ -23,6 +23,7 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { formatDayParam, parseDayParam } from "@/lib/home";
 import { findDemoTrainingCatalog } from "@/lib/programs";
 import {
+  dayCanBeMissed,
   moveDayChoices,
   planForDate,
   planWeekIndex,
@@ -200,7 +201,7 @@ export default async function TrainingCalendarPage({
           const focusKey = formatDayParam(focus.date, tz);
           const statusSuffix = calendarFocusStatusSuffix({
             workouts,
-            past: focusKey < todayKey,
+            past: focusKey < todayKey && dayCanBeMissed(focusKey, prefs.planAnchor, tz),
             active: focus.active ?? focusPlan.active,
           });
           const loggedSessions = workouts.filter(

@@ -7,6 +7,7 @@ import {
   planHasFeature,
   planIsPro,
 } from "@/lib/plans";
+import { subscriptionPeriodOpen, subscriptionStatusIsCurrent } from "@/lib/subscription-status";
 import { isTrialActive } from "@/lib/trial";
 import { prisma } from "@/lib/prisma";
 
@@ -18,8 +19,9 @@ export function previewEntitlementsOpen() {
 export async function getEffectivePlanId(userId: string, now = new Date()): Promise<CatalogPlanId> {
   const subscription = await getLatestSubscription(userId);
   if (
-    subscription?.status === "active" &&
-    !(subscription.currentPeriodEnd && subscription.currentPeriodEnd < now)
+    subscription &&
+    subscriptionStatusIsCurrent(subscription.status) &&
+    subscriptionPeriodOpen(subscription.currentPeriodEnd, now)
   ) {
     const plan = normalizePlanId(subscription.plan);
     if (plan !== "member_access" && plan !== "academy") return plan;

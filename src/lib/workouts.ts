@@ -1718,7 +1718,7 @@ export async function startWorkoutFromDay(input: {
   return created;
 }
 
-function validateSets(sets: WorkoutSetInput[]) {
+function validateSets(sets: WorkoutSetInput[], durationExerciseName?: string) {
   if (sets.length === 0) {
     throw new AppError("WORKOUT", "Add at least one set before saving.");
   }
@@ -1752,11 +1752,15 @@ function validateSets(sets: WorkoutSetInput[]) {
     if (set.loadValue != null && (set.loadValue < 0 || set.loadValue > 2000)) {
       throw new AppError("WORKOUT", "Load should be between 0 and 2000.");
     }
+    const checkDuration =
+      durationExerciseName === undefined || set.exerciseName === durationExerciseName;
     if (
+      checkDuration &&
       set.durationSeconds != null &&
       (set.durationSeconds < 0 || set.durationSeconds > SESSION_DURATION_CAP_SECONDS)
     ) {
-      throw new AppError("WORKOUT", "Hold / round time should be under 4 hours.");
+      const name = set.exerciseName.trim() || "This exercise";
+      throw new AppError("WORKOUT", `${name}: hold / round time should be under 4 hours.`);
     }
     if (set.logMode && !isLogMode(set.logMode)) {
       throw new AppError("WORKOUT", "Unknown logging mode.");
@@ -1902,6 +1906,11 @@ export async function updateWorkoutSessionForUser(input: {
   /** Header seconds the logger was showing when Save was pressed. */
   elapsedSeconds?: number | null;
   /**
+   * Structural edit (remove, swap, undo). A bad hold on a different exercise
+   * must not block it. Omit on a full save so every exercise is checked.
+   */
+  durationExerciseName?: string;
+  /**
    * Leave this row as its own log. A shorter round save must not fold into
    * today's finished session and replace that session's rounds.
    */
@@ -1930,7 +1939,7 @@ export async function updateWorkoutSessionForUser(input: {
         : "Log at least one set, then tap Save. Nothing was marked finished.",
     );
   }
-  validateSets(sets);
+  validateSets(sets, input.durationExerciseName);
 
   const title = input.title.trim().slice(0, 120) || "Workout";
   const notes = input.notes.trim().slice(0, 1000);

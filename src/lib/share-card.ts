@@ -68,7 +68,8 @@ export function classifyShareWorkout(session: ShareSessionLike): ShareWorkoutKin
 
 export function sessionVolume(sets: ShareSetLike[], displayUnit: LoadUnit) {
   return Math.round(
-    loggedSets(sets).reduce((sum, set) => {
+    sets.reduce((sum, set) => {
+      if (!set.completed) return sum;
       if (set.logMode === "load_timed") return sum;
       return sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit);
     }, 0),

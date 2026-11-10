@@ -23,7 +23,7 @@ import { shapeDayPlan } from "@/lib/fight-camp";
 import { getChallengeProgressForUser } from "@/lib/challenges";
 import { formatDayParam, sameLocalDay } from "@/lib/home";
 import { startOfLocalDay } from "@/lib/nutrition";
-import { planForDate, resolvePlanSessions } from "@/lib/week-plan";
+import { dayCanBeMissed, planForDate, resolvePlanSessions } from "@/lib/week-plan";
 import { sessionOpenHref } from "@/lib/timer-session";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { loggedSessionView } from "@/lib/logged-session-view";
@@ -620,6 +620,9 @@ async function loadCalendarSchedule(
     outsideTraining: profile?.outsideTraining,
     planAnchor: profile?.onboardingCompletedAt ?? null,
   };
+  // No onboarding date means the account has not started a plan, so older
+  // missed-day behavior stays. Once they join, days before that date are not missed.
+  const membershipStart = profile?.onboardingCompletedAt ?? null;
   const sparringWeek = await sparringLogsForWeek(userId, weekAnchor ?? now, tz);
   const sparringByDay = new Map(sparringWeek.logs.map((log) => [log.dateKey, log]));
   const todayKey = formatDayParam(now, tz);
@@ -741,9 +744,19 @@ async function loadCalendarSchedule(
         matchesPlan: Boolean(matched && namesOverlap(matched, plannedNames)),
       });
       if (!href) continue;
-      const missed = past && !sessionDone && !partial && !dayHasPartialWork;
+      const missed =
+        past &&
+        dayCanBeMissed(dayKey, membershipStart, tz) &&
+        !sessionDone &&
+        !partial &&
+        !dayHasPartialWork;
       // Other partial work must not leave this plan sounding like it is still ahead.
-      const notDoneInstead = past && !sessionDone && !partial && dayHasPartialWork;
+      const notDoneInstead =
+        past &&
+        dayCanBeMissed(dayKey, membershipStart, tz) &&
+        !sessionDone &&
+        !partial &&
+        dayHasPartialWork;
       const insteadNames = [
         ...new Set(
           dayLogs

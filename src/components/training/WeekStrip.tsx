@@ -520,7 +520,7 @@ function WeekChipList({
           dayLogged: completedDays.includes(day.dayParam),
           partial: partialDays.includes(day.dayParam),
         });
-        const missed = mark === "none" && day.isPast && day.active;
+        const missed = mark === "none" && day.isPast && day.active && day.canBeMissed;
         const movedLabel = day.movedFrom ? `, showing ${day.movedFrom}’s workout` : "";
         const historyLabel =
           mark === "complete"

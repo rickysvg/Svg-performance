@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/errors";
+import { getEffectivePlanId } from "@/lib/entitlements";
 import { getProfileForUser } from "@/lib/profile";
 import { getTrialState } from "@/lib/trial";
 import { APP_TIMEZONE, mondayOfZoned } from "@/lib/timezone";
@@ -97,12 +98,13 @@ export async function syncVipHolds(now = new Date()) {
   return offers;
 }
 
+/**
+ * VIP on Pricing must match Profile and Plan. The effective plan is the latest
+ * subscription when it is still current, otherwise the trial. An older row that
+ * still says active does not override a newer canceled, incomplete, or expired one.
+ */
 async function activeVip(userId: string, now: Date) {
-  const rows = await prisma.subscription.findMany({
-    where: { userId, status: "active" },
-    select: { userId: true, plan: true, status: true, currentPeriodEnd: true, createdAt: true },
-  });
-  return rows.some((row) => liveCoachingSub(row, now));
+  return (await getEffectivePlanId(userId, now)) === "coaching";
 }
 
 async function openGrant(userId: string) {

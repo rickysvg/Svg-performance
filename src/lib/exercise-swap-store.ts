@@ -357,6 +357,7 @@ async function rewriteSessionSets(input: {
     status: "draft",
     sets: merged,
     rest: clearRest ? null : undefined,
+    durationExerciseName: input.replacement.name,
   });
 }
 
@@ -575,6 +576,7 @@ export async function undoExerciseSwap(input: {
     sets: input.currentSets,
     plannedSetCount: planned,
     retainEmptySets: true,
+    durationExerciseName: input.restoredName,
   });
   return { sets: updated.sets, reverted: true };
 }

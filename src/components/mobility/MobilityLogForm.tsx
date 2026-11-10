@@ -91,7 +91,7 @@ function LogRow({
             name={`rows.${index}.holdSeconds`}
             inputMode="numeric"
             defaultValue=""
-            className="mt-1 w-full rounded-xl border border-line bg-white px-2 py-3 text-base"
+            className="mt-1 w-full rounded-xl border border-line bg-background text-foreground px-2 py-3 text-base"
           />
         </label>
         <label className="block text-xs font-medium">
@@ -101,7 +101,7 @@ function LogRow({
             name={`rows.${index}.reps`}
             inputMode="numeric"
             defaultValue=""
-            className="mt-1 w-full rounded-xl border border-line bg-white px-2 py-3 text-base"
+            className="mt-1 w-full rounded-xl border border-line bg-background text-foreground px-2 py-3 text-base"
           />
         </label>
         <label className="block text-xs font-medium">
@@ -111,7 +111,7 @@ function LogRow({
             name={`rows.${index}.sets`}
             inputMode="numeric"
             defaultValue=""
-            className="mt-1 w-full rounded-xl border border-line bg-white px-2 py-3 text-base"
+            className="mt-1 w-full rounded-xl border border-line bg-background text-foreground px-2 py-3 text-base"
           />
         </label>
       </div>
@@ -123,7 +123,7 @@ function LogRow({
             name={`rows.${index}.depthValue`}
             inputMode="decimal"
             defaultValue=""
-            className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3 text-base"
+            className="mt-1 w-full rounded-xl border border-line bg-background text-foreground px-3 py-3 text-base"
           />
         </label>
       ) : (
@@ -136,7 +136,7 @@ function LogRow({
             ref={heightRef}
             name={`rows.${index}.heightMark`}
             defaultValue=""
-            className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3 text-base"
+            className="mt-1 w-full rounded-xl border border-line bg-background text-foreground px-3 py-3 text-base"
           >
             <option value="">—</option>
             {KICK_MARKS.map((mark) => (
@@ -192,7 +192,7 @@ export function MobilityLogForm({
           name="effort"
           inputMode="numeric"
           defaultValue=""
-          className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3"
+          className="mt-1 w-full rounded-xl border border-line bg-background text-foreground px-3 py-3"
         />
       </label>
       <label className="flex items-center gap-2 text-sm font-medium">

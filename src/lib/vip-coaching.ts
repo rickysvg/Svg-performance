@@ -5,6 +5,7 @@
 
 import { COACHING_MONTHLY, PERFORMANCE_ANNUAL, PERFORMANCE_MONTHLY, usd } from "@/lib/pricing";
 import { normalizePlanId } from "@/lib/plans";
+import { subscriptionPeriodOpen, subscriptionStatusIsCurrent } from "@/lib/subscription-status";
 import { randomLetterSuffix } from "@/lib/stripe-prices";
 
 export const VIP_LABEL = "VIP Coaching";
@@ -82,9 +83,9 @@ export type VipIntakeSummary = {
 };
 
 export function liveCoachingSub(row: VipSubRow, now: Date) {
-  if (row.status !== "active") return false;
+  if (!subscriptionStatusIsCurrent(row.status)) return false;
   if (normalizePlanId(row.plan) !== "coaching") return false;
-  if (row.currentPeriodEnd && row.currentPeriodEnd.getTime() < now.getTime()) return false;
+  if (!subscriptionPeriodOpen(row.currentPeriodEnd, now)) return false;
   return true;
 }
 

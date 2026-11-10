@@ -9,6 +9,7 @@ import {
   type ZonedWeekday,
 } from "@/lib/timezone";
 import {
+  dayCanBeMissed,
   planForDate,
   type PlannerPrefs,
 } from "@/lib/week-plan";
@@ -199,6 +200,7 @@ export function weekStreakDots(
     const completed = done.has(key);
     const isToday = key === todayKey;
     const past = date.getTime() < startOfZonedDay(now, timeZone).getTime();
+    const joined = prefs.obligationAnchor ?? prefs.planAnchor ?? null;
     return {
       key,
       label,
@@ -206,7 +208,7 @@ export function weekStreakDots(
       scheduled,
       completed,
       isToday,
-      missed: scheduled && !completed && past && !isToday,
+      missed: scheduled && !completed && past && !isToday && dayCanBeMissed(key, joined, timeZone),
     };
   });
 }
