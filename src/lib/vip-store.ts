@@ -339,6 +339,7 @@ async function upsellSignals(userId: string, now: Date): Promise<VipUpsellSignal
       getProfileForUser(userId),
       prisma.workoutSet.findMany({
         where: {
+          skipped: false,
           loadValue: { gt: 0 },
           session: {
             userId,

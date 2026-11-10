@@ -53,14 +53,16 @@ export type CountedSet = TickedSet & {
 };
 
 /**
- * One rule for volume, load, charts, PRs, history lines, and the finish total.
+ * One rule for volume, load, charts, PRs, history lines, reports, and the finish total.
  *
- * - No reps, weight, time, or distance: never counts.
- * - Deliberately unticked (`skipped`): never counts.
- * - Checked off: counts.
+ * - No reps, weight, time, or distance: never counts. Empty inputs are not work.
+ * - Deliberately unticked (`skipped`): never counts, even on a finished session.
+ * - Checked off, with a value the member entered or confirmed: counts.
  * - A session saved complete: a filled set still counts when the checkbox was
  *   left off. That is the read-path backfill for sessions finished before
  *   auto-tick. New finishes also store `completed` so the row matches.
+ * - A template number the member never edited or ticked is not a logged value.
+ *   Finish clears it instead of checking the box.
  * - A draft or partial save: only a checked set counts.
  */
 export function setCountsForTotals(set: CountedSet, sessionStatus?: string | null) {
@@ -70,17 +72,27 @@ export function setCountsForTotals(set: CountedSet, sessionStatus?: string | nul
   return sessionStatus === "complete";
 }
 
-/** Typing a value marks the set done. A deliberate untick stays off. */
+/**
+ * Typing a value marks the set done. Clearing every value unticks it.
+ * A deliberate untick stays off until the member ticks the box again.
+ */
 export function withEntryTick<T extends CountedSet>(set: T): T {
   if (set.skipped) return { ...set, completed: false };
-  if (!setHasLoggedWork(set)) return set;
+  if (!setHasLoggedWork(set)) return { ...set, completed: false };
   if (set.completed) return set;
   return { ...set, completed: true };
 }
 
-/** Finish save: filled sets are done unless the member unticked them. */
+/**
+ * Finish save. A value the member entered or ticked is done.
+ * A deliberate untick stays out. An untouched template prefill is cleared
+ * so it cannot become volume or a PR. An empty set stays empty.
+ */
 export function withFinishTick<T extends CountedSet>(set: T): T {
   if (set.skipped) return { ...set, completed: false };
+  if (setIsUntickedPrefill(set)) {
+    return { ...set, completed: false, reps: null, durationSeconds: null };
+  }
   if (!setHasLoggedWork(set)) return { ...set, completed: false };
   return { ...set, completed: true, skipped: false };
 }

@@ -77,6 +77,7 @@ import {
   sessionCountsAsPlannedCompletion,
   sessionHasLoggedWork,
   sessionOpensFinishScreen,
+  setCountsForTotals,
   setHasLoggedWork,
   tickedSetCount,
   withTickedPlanWork,
@@ -327,12 +328,12 @@ export async function getPreviousLoadsForUser(
   const result: PreviousSetLookup = {};
   for (const name of unique) {
     const session = sessions.find((row) =>
-      row.sets.some((set) => set.exerciseName === name && setHasLoggedWork(set)),
+      row.sets.some((set) => set.exerciseName === name && setCountsForTotals(set, row.status)),
     );
     if (!session) continue;
     result[name] = {};
     for (const set of session.sets) {
-      if (set.exerciseName !== name || !setHasLoggedWork(set)) continue;
+      if (set.exerciseName !== name || !setCountsForTotals(set, session.status)) continue;
       result[name][set.setNumber] = toPreviousSet(set);
     }
   }
@@ -397,7 +398,8 @@ export async function getPreviousLoadsForSlots(
     const exact = slot.prescriptionKey
       ? sessions.find((row) =>
           row.sets.some(
-            (set) => set.prescriptionKey === slot.prescriptionKey && setHasLoggedWork(set),
+            (set) =>
+              set.prescriptionKey === slot.prescriptionKey && setCountsForTotals(set, row.status),
           ),
         )
       : undefined;
@@ -406,7 +408,7 @@ export async function getPreviousLoadsForSlots(
         (set) =>
           set.exerciseName === slot.exerciseName &&
           set.prescriptionKey === "" &&
-          setHasLoggedWork(set),
+          setCountsForTotals(set, row.status),
       ),
     );
     const chosen = exact ?? legacy;
@@ -417,7 +419,7 @@ export async function getPreviousLoadsForSlots(
       const matches = keyed
         ? set.prescriptionKey === slot.prescriptionKey
         : set.exerciseName === slot.exerciseName && !set.prescriptionKey;
-      if (!matches || !setHasLoggedWork(set)) continue;
+      if (!matches || !setCountsForTotals(set, chosen.status)) continue;
       result[slot.exerciseName][set.setNumber] = toPreviousSet(set);
     }
   }

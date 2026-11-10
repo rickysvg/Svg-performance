@@ -1456,7 +1456,7 @@ export async function loadReportHistory(
     .map((session) => ({
       ...session,
       elapsedSeconds: timers.get(session.id)?.elapsedSeconds ?? null,
-      sets: session.sets.map((set) => ({
+        sets: session.sets.map((set) => ({
         exerciseName: set.exerciseName,
         reps: set.reps,
         loadValue: set.loadValue,
@@ -1464,6 +1464,7 @@ export async function loadReportHistory(
         logMode: set.logMode,
         durationSeconds: set.durationSeconds,
         completed: set.completed,
+        skipped: set.skipped,
         prescriptionKey: set.prescriptionKey,
       })),
     }))

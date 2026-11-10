@@ -10,7 +10,9 @@ import { startTrialForUser } from "@/lib/trial";
 import { assignPlanForPilot } from "@/lib/billing";
 import { loggedSetVolume } from "@/lib/home-telemetry";
 import { buildProgressSummary } from "@/lib/progress";
-import { withEntryTick, withFinishTick } from "@/lib/logged-work";
+import { prepareSetsForPersist, setCountsForTotals, withEntryTick, withFinishTick } from "@/lib/logged-work";
+import { prescriptionSlotKey } from "@/lib/prescription-slot";
+import { detectNewPrs } from "@/lib/personal-bests";
 import { sessionVolume } from "@/lib/share-card";
 import { loggedExerciseNamesInOrder } from "@/lib/logger-insert";
 import { dayCanBeMissed, obligationStart, weekStrip } from "@/lib/week-plan";
@@ -185,11 +187,112 @@ describe("Nov 10 QA — logger, sparring, and calendar rules", () => {
     expect(loggedSetVolume(sets, "lb", "partial")).toBe(0);
     expect(withEntryTick({ reps: 8, loadValue: 40, completed: false, skipped: false }).completed).toBe(true);
     expect(withEntryTick({ reps: 8, loadValue: 40, completed: false, skipped: true }).completed).toBe(false);
+    expect(
+      withEntryTick({
+        reps: null,
+        loadValue: null,
+        durationSeconds: null,
+        completed: true,
+        skipped: false,
+      }).completed,
+    ).toBe(false);
     expect(withFinishTick({ reps: 5, loadValue: 20, completed: false, skipped: false }).completed).toBe(true);
     expect(withFinishTick({ reps: 6, loadValue: 30, completed: false, skipped: true }).completed).toBe(false);
     expect(withFinishTick({ reps: null, loadValue: null, durationSeconds: null, completed: false }).completed).toBe(
       false,
     );
+  });
+
+  it("unticks a cleared hold and does not restore the template or mint a PR", () => {
+    const neckKey = prescriptionSlotKey({
+      exerciseName: "Neck isometric — flexion",
+      reps: "10 sec",
+      programSlug: "demo",
+      dayNumber: 1,
+    });
+    const cleared = withEntryTick({
+      exerciseName: "Neck isometric — flexion",
+      reps: null,
+      loadValue: null,
+      durationSeconds: null,
+      logMode: "timed",
+      completed: true,
+      skipped: false,
+      prescriptionKey: neckKey,
+    });
+    expect(cleared.completed).toBe(false);
+    const saved = prepareSetsForPersist(
+      [
+        {
+          exerciseName: "Neck isometric — flexion",
+          setNumber: 1,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb",
+          logMode: "timed",
+          durationSeconds: null,
+          completed: false,
+          skipped: false,
+          prescriptionKey: neckKey,
+        },
+        {
+          exerciseName: "Goblet squat",
+          setNumber: 1,
+          reps: 8,
+          loadValue: 40,
+          loadUnit: "lb",
+          logMode: "load_reps",
+          durationSeconds: null,
+          completed: true,
+          skipped: false,
+          prescriptionKey: "",
+        },
+      ],
+      "complete",
+    );
+    expect(saved.map((set) => set.exerciseName)).toEqual(["Goblet squat"]);
+    const prs = detectNewPrs(
+      [],
+      saved.map((set) => ({ ...set, sessionStatus: "complete", performedAt: new Date("2026-11-10T18:00:00.000Z") })),
+      "lb",
+    );
+    expect(prs.some((row) => row.exerciseName.startsWith("Neck"))).toBe(false);
+  });
+
+  it("does not finish-tick template seconds the member never edited or ticked", () => {
+    const pallofKey = prescriptionSlotKey({
+      exerciseName: "Cable Pallof press",
+      reps: "10 sec / side",
+      programSlug: "demo",
+      dayNumber: 2,
+    });
+    const untouched = {
+      exerciseName: "Cable Pallof press",
+      setNumber: 1,
+      reps: null as number | null,
+      loadValue: null as number | null,
+      loadUnit: "lb",
+      logMode: "timed",
+      durationSeconds: 10,
+      completed: false,
+      skipped: false,
+      prescriptionKey: pallofKey,
+    };
+    const finished = withFinishTick(untouched);
+    expect(finished.completed).toBe(false);
+    expect(finished.durationSeconds).toBeNull();
+    expect(setCountsForTotals(finished, "complete")).toBe(false);
+    const confirmed = withFinishTick({ ...untouched, completed: true });
+    expect(confirmed.completed).toBe(true);
+    expect(confirmed.durationSeconds).toBe(10);
+    const edited = withFinishTick({ ...untouched, durationSeconds: 15 });
+    expect(edited.completed).toBe(true);
+    expect(edited.durationSeconds).toBe(15);
+    const rows = prepareSetsForPersist(
+      [1, 2, 3, 4].map((setNumber) => ({ ...untouched, setNumber })),
+      "complete",
+    );
+    expect(rows).toHaveLength(0);
   });
 
   it("lists only ticked exercises on a history row", () => {

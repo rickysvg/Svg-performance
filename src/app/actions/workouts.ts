@@ -25,7 +25,7 @@ import { TIMER_MODES, type TimerMode } from "@/lib/round-timer";
 import { choiceFromToken } from "@/lib/bike-chooser";
 import { loggerChoiceFromSession } from "@/lib/bike-timer-log";
 import { hasActivityOnLocalDay } from "@/lib/home";
-import { sessionHasLoggedWork } from "@/lib/logged-work";
+import { sessionHasLoggedWork, setHasLoggedWork } from "@/lib/logged-work";
 import { resolveLoggedPerformedAt } from "@/lib/performed-at";
 import { parseDateTimeLocal } from "@/lib/timezone";
 import { isDeloadWeekIndex } from "@/lib/training-cycle";
@@ -220,16 +220,23 @@ function parseSets(formData: FormData): WorkoutSetInput[] {
     const unitRaw = String(formData.get(`sets.${i}.loadUnit`) ?? "lb");
     const durationRaw = String(formData.get(`sets.${i}.durationSeconds`) ?? "").trim();
     const modeRaw = String(formData.get(`sets.${i}.logMode`) ?? "");
+    const reps = repsRaw === "" ? null : Number(repsRaw);
+    const loadValue = loadRaw === "" ? null : Number(loadRaw);
+    const durationSeconds = durationRaw === "" ? null : Number(durationRaw);
+    // An emptied field is not a finished set, and it must not be refilled
+    // from the template on save. Ticking a blank set still writes the plan
+    // value into the field before this form is submitted.
+    const hasWork = setHasLoggedWork({ reps, loadValue, durationSeconds });
     sets.push({
       exerciseName: String(formData.get(`sets.${i}.exerciseName`) ?? ""),
       setNumber: Number(formData.get(`sets.${i}.setNumber`) ?? i + 1),
-      reps: repsRaw === "" ? null : Number(repsRaw),
-      loadValue: loadRaw === "" ? null : Number(loadRaw),
+      reps,
+      loadValue,
       loadUnit: isLoadUnit(unitRaw) ? unitRaw : "lb",
       logMode: isLogMode(modeRaw) ? modeRaw : undefined,
-      durationSeconds: durationRaw === "" ? null : Number(durationRaw),
-      completed: formData.get(`sets.${i}.completed`) === "on",
-      skipped: String(formData.get(`sets.${i}.skipped`) ?? "") === "1",
+      durationSeconds,
+      completed: hasWork && formData.get(`sets.${i}.completed`) === "on",
+      skipped: hasWork && String(formData.get(`sets.${i}.skipped`) ?? "") === "1",
       prescriptionKey: String(formData.get(`sets.${i}.prescriptionKey`) ?? ""),
       rir: String(formData.get(`sets.${i}.rir`) ?? ""),
     });
