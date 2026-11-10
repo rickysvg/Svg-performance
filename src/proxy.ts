@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/constants";
 import { PATH_HEADER } from "@/lib/locked-paths";
 
+// /waitlist and /api/waitlist are public. They are not in this list, so no session
+// and no paywall. /admin/waitlist stays behind the admin session below.
 const PROTECTED = [
   "/home",
   "/training",

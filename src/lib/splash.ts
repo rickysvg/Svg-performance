@@ -26,6 +26,7 @@ export function shouldSkipSplash(stored: string | null) {
 export function isSplashPath(pathname: string | null | undefined) {
   if (!pathname) return false;
   if (pathname === "/api" || pathname.startsWith("/api/")) return false;
+  if (pathname === "/waitlist" || pathname.startsWith("/waitlist/")) return false;
   if (pathname.startsWith("/admin/") && /\/(csv|download)(\/|$)/i.test(pathname)) {
     return false;
   }

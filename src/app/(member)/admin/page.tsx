@@ -152,6 +152,13 @@ export default async function AdminPage() {
           icon="announce"
           tone="idle"
         />
+        <AdminTile
+          href="/admin/waitlist"
+          label="Waitlist"
+          hint="Export the launch list"
+          icon="waitlist"
+          tone="idle"
+        />
       </section>
     </main>
   );
