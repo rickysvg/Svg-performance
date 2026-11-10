@@ -449,6 +449,19 @@ const pallof = ready({
   channel: "TurnFit - Vancouver Personal Trainers",
   title: "How to do a Standing Banded Pallof Press",
 });
+/** Opens on the cable stack. Window stops at 45s so a longer upload does not play through. */
+const cablePallof = ready({
+  url: "https://www.youtube.com/watch?v=xeFp4MXad98&t=0&end=45",
+  seconds: 45,
+  channel: "FIT.nl",
+  title: "Cable Pallof Press | Proper Form Tutorial for Core Stability",
+});
+const halfKneelingPallof = ready({
+  url: "https://www.youtube.com/watch?v=3yU-y1WiIaE&t=1&end=41",
+  seconds: 40,
+  channel: "Bony to Bombshell",
+  title: "Pallof Half Kneeling Cable Press—How to do It",
+});
 const bandPullApart = ready({
   url: "https://www.youtube.com/watch?v=qi2y-eI_kuI",
   seconds: 25,
@@ -737,8 +750,9 @@ export const DEMO_FORM_VIDEOS: Record<string, FormVideoSeed> = {
   Burpees: burpee,
   "Cable or band woodchop": woodchop,
   "Cable woodchop": woodchop,
-  "Cable or band Pallof press": pallof,
-  "Cable Pallof press": pallof,
+  "Cable or band Pallof press": cablePallof,
+  "Cable Pallof press": cablePallof,
+  "Half-kneeling Pallof press": halfKneelingPallof,
   "Dumbbell high pull": highPull,
   "Straight-arm pulldown": straightArm,
   "Dumbbell pullover": pullover,
@@ -846,6 +860,55 @@ for (const [name, seed] of Object.entries(combatFormVideoSeeds())) {
 for (const [name, seed] of Object.entries(fighterFormVideoSeeds())) {
   if (DEMO_FORM_VIDEOS[name]) continue;
   DEMO_FORM_VIDEOS[name] = seed;
+}
+
+/** New floor moves with no verified short clip. Empty on purpose, not a pending review. */
+const FLOOR_MOVES_WITHOUT_CLIP = [
+  "Wide push-up",
+  "Decline push-up",
+  "Tempo push-up",
+  "Tempo pike push-up",
+  "Doorframe row",
+  "Towel doorframe row",
+  "Parallel-bar dip",
+  "Tempo air squat",
+  "Couch Bulgarian split squat",
+  "Skater lunge",
+  "Jump split lunge",
+  "Tempo walking lunge",
+  "Tempo reverse lunge",
+  "Tempo box step-up",
+  "Tempo hip hinge",
+  "Single-leg hip hinge",
+  "Tempo inverted row",
+  "Reverse snow angel",
+  "Superman",
+  "Sit-up",
+  "Lying leg raise",
+  "Bodyweight Russian twist",
+  "Shadow sprawl",
+  "Sprawl burpee",
+  "Woodchop to sprawl",
+  "Empty-hand woodchop",
+  "Tempo woodchop",
+  "Single-arm farmer march",
+  "Farmer march",
+  "Suitcase march",
+  "Towel crush",
+  "Single-arm cable crossover (high to low)",
+  "Single-arm cable crossover (mid)",
+  "Single-arm cable crossover (low to high)",
+  "Kneeling cable fly (high to low)",
+  "Incline-bench cable fly",
+  "Close-grip seated cable row",
+  "Seated single-arm cable row",
+  "Single-arm cable curl",
+  "Cable glute kickback",
+  "Cable rotational punch",
+];
+for (const name of FLOOR_MOVES_WITHOUT_CLIP) {
+  if (DEMO_FORM_VIDEOS[name]) continue;
+  DEMO_FORM_VIDEOS[name] = NO_FORM_VIDEO;
 }
 
 export function mobilityVideoUrl(name: string) {

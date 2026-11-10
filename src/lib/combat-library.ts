@@ -231,6 +231,7 @@ export function combatFormVideoSeeds(): Record<string, CombatFormSeed> {
   for (const row of COMBAT_LIBRARY) {
     const forced = TEMPLATE_LONG_NAMES.has(row.name);
     if (!memberSwappable(row) && !forced) continue;
+    if (!row.videoUrl) continue;
     const seconds = row.videoEnd != null && row.videoStart >= 0 ? row.videoEnd - row.videoStart : row.durationSec;
     seeds[row.name] = {
       url: combatWatchUrl(row, forced && row.videoStart <= 0),
@@ -283,6 +284,11 @@ export function combatAsLibraryRows(): Array<LibraryExercise & { memberHidden?: 
     const loadText = dose.rir
       ? `${dose.rir} RIR · ${intent}`
       : intent;
+    const needsBar = /\bpull-up\b|\bchin-up\b/i.test(row.name)
+      ? " Needs a pull-up bar. No bar: towel doorframe row."
+      : /\bdip\b/i.test(row.name)
+        ? " Needs parallel bars or a sturdy surface."
+        : "";
     return {
       name: row.name,
       category: row.appCategory,
@@ -292,7 +298,7 @@ export function combatAsLibraryRows(): Array<LibraryExercise & { memberHidden?: 
       loadText,
       restSeconds: dose.restSeconds,
       logMode: logModeFor(row, dose.reps),
-      notes: `Intent: ${intent}. ${row.benefit}`,
+      notes: `Intent: ${intent}. ${row.benefit}${needsBar}`,
       memberHidden: !memberSwappable(row),
       swapsWith: row.swapsWith,
     };

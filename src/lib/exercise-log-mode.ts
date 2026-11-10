@@ -78,6 +78,21 @@ function loadedMovementName(name: string) {
   );
 }
 
+/**
+ * Stored reps-only stays reps-only for these names unless the name also names
+ * a dumbbell, bar, band, or other implement. Goblet squat is not in this list.
+ */
+const BODYWEIGHT_LOGGER_NAME =
+  /\b(push-?ups?|air squats?|pistol squats?|skater squats?|skater lunges?|skater hops?|inverted rows?|doorframe rows?|towel doorframe|split squats?|walking lunges?|reverse lunges?|jump split lunges?|split jumps?|jumping lunges?|tempo |decline push|hindu push|archer push|pike push|sit-ups?|leg raises?|russian twists?|snow angels?|supermans?|shadow sprawls?|sprawl burpees?|bear crawls?|tuck jumps?|jumping jacks?|high knees|mountain climbers?|burpees?|\bdips?\b|chin-ups?|pull-ups?|box step-ups?|squat jumps?|broad jumps?|hollow|planks?|dead bugs?|bird dogs?|glute bridges?|hip hinges?|lateral lunges?|cossack|farmer marches?|suitcase marches?|towel crush|woodchops?)\b/i;
+
+function bodyweightLoggerName(name: string) {
+  if (/\b(dumbbell|barbell|kettlebell|cable|trap-bar|goblet|machine|landmine|weighted|plate)\b/i.test(name)) {
+    return false;
+  }
+  if (LOADED_GEAR_NAME.test(name) || LOADED_OPTION_NAME.test(name)) return false;
+  return BODYWEIGHT_LOGGER_NAME.test(name);
+}
+
 /** Air squat, push-up, chin-up, and the named bodyweight exceptions. Gear in the name keeps the load. */
 function unloadedRepName(name: string) {
   if (UNLOADED_BODYWEIGHT_EXCEPTION.test(name)) return true;
@@ -144,6 +159,8 @@ export function resolveLogMode(input: {
     return inferred;
   }
   if (input.logMode === "reps_only" && (inferred === "load_reps" || inferred === "load_timed")) {
+    // A no-equipment dose stays reps-only. Loaded names (goblet, band, dumbbell) still grow a weight box.
+    if (bodyweightLoggerName(input.name ?? "")) return "reps_only";
     return inferred;
   }
   // A stored "timed" mode from an old seed still has to show Reps when the dose is a count.

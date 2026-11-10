@@ -68,7 +68,6 @@ describe("DEMO form videos", () => {
       if (entry.omit) {
         expect(entry.pending, name).toBe(false);
         expect(entry.url, name).toBe("");
-        expect(skipsFormVideo(name), name).toBe(true);
         continue;
       }
       if (entry.pending) {

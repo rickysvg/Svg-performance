@@ -94,6 +94,33 @@ describe("insert an exercise anywhere in the logger", () => {
       expect(floor.some((row) => row.name === exercise.name)).toBe(false);
     }
     expect(gym.some((row) => row.name === "Goblet squat")).toBe(true);
+    expect(gym.some((row) => row.name === "Push-up")).toBe(true);
+    expect(floor.some((row) => row.name === "Push-up")).toBe(true);
+    const push = filterExerciseLibrary({ equipment: "gym", query: "push" }).map((row) => row.name);
+    expect(push).toContain("Push-up");
+    expect(push).toContain("Decline push-up");
+    expect(push).toContain("Diamond push-up");
+    expect(push[0]).toMatch(/push-up/i);
+    expect(push.some((name) => /pushdown/i.test(name) && push.indexOf(name) < push.indexOf("Push-up"))).toBe(false);
+    for (const query of ["pushup", "pushups", "push ups", "push-ups"]) {
+      expect(filterExerciseLibrary({ equipment: "gym", query }).some((row) => row.name === "Push-up"), query).toBe(true);
+    }
+    expect(filterExerciseLibrary({ equipment: "none", query: "push" }).some((row) => row.name === "Push-up")).toBe(true);
+    expect(filterExerciseLibrary({ equipment: "none" }).some((row) => row.name === "Dumbbell bench press")).toBe(false);
+
+    const crossover = filterExerciseLibrary({ equipment: "gym", query: "crossover" }).map((row) => row.name);
+    expect(crossover).toContain("Cable crossover");
+    expect(crossover).toContain("Cable crossover (low to high)");
+    expect(crossover).toContain("Cable crossover (high to low)");
+    expect(crossover).toContain("Single-arm cable crossover (low to high)");
+    expect(crossover[0]).toMatch(/crossover|cable fly/i);
+    for (const query of ["cross over", "cross-over", "cable fly", "flye", "low to high", "low-high"]) {
+      const names = filterExerciseLibrary({ equipment: "gym", query }).map((row) => row.name);
+      expect(names, query).toContain("Cable crossover (low to high)");
+    }
+    expect(filterExerciseLibrary({ equipment: "none", query: "crossover" }).some((row) => row.name === "Cable crossover")).toBe(
+      true,
+    );
   });
 
   it("keeps an inserted exercise in place when the logger reloads", () => {
