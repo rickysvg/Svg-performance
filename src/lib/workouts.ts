@@ -108,6 +108,8 @@ export type WorkoutSetInput = {
   logMode?: LogMode;
   durationSeconds?: number | null;
   completed: boolean;
+  /** Member turned the check off after entering a value. */
+  skipped?: boolean;
   notes?: string;
   prescriptionKey?: string;
   rir?: string;
@@ -2044,6 +2046,7 @@ export async function updateWorkoutSessionForUser(input: {
           logMode: isLogMode(set.logMode) ? set.logMode : undefined,
           durationSeconds: set.durationSeconds,
           completed: set.completed,
+          skipped: set.skipped,
           notes: set.notes,
           prescriptionKey: set.prescriptionKey,
           rir: set.rir,
@@ -2113,6 +2116,7 @@ export async function updateWorkoutSessionForUser(input: {
               logMode: mode,
               durationSeconds: timed ? set.durationSeconds ?? null : null,
               completed: Boolean(set.completed),
+              skipped: Boolean(set.skipped),
               notes: (set.notes ?? "").slice(0, 200),
               prescriptionKey: (set.prescriptionKey ?? "").trim().slice(0, 160),
               rir: (set.rir ?? "").trim().slice(0, 40),

@@ -100,6 +100,7 @@ import {
   repsTextFromPrescriptionKey,
   setHasLoggedWork,
   setIsUntickedPrefill,
+  withEntryTick,
   withPrescribedHold,
 } from "@/lib/logged-work";
 import {
@@ -203,6 +204,7 @@ function newClientSet(
     logMode,
     durationSeconds,
     completed: false,
+    skipped: false,
     notes: "",
     prescriptionKey: prescriptionSlotKey({ exerciseName }),
     rir: "",
@@ -224,6 +226,7 @@ function toSetInput(set: WorkoutSet): WorkoutSetInput {
     }),
     durationSeconds: set.durationSeconds,
     completed: set.completed,
+    skipped: set.skipped,
     notes: set.notes,
     prescriptionKey: set.prescriptionKey,
     rir: set.rir,
@@ -871,6 +874,7 @@ export function WorkoutLogForm({
         logMode: resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
         durationSeconds: set.durationSeconds,
         completed: set.completed,
+        skipped: set.skipped,
         notes: set.notes,
         prescriptionKey: set.prescriptionKey,
         rir: set.rir,
@@ -1036,7 +1040,7 @@ export function WorkoutLogForm({
     const name = sets.find((set) => set.id === id)?.exerciseName;
     if (name) setActiveName(name);
     setSets((current) =>
-      current.map((set) => (set.id === id ? { ...set, ...patch } : set)),
+      current.map((set) => (set.id === id ? withEntryTick({ ...set, ...patch }) : set)),
     );
   }
 
@@ -1156,6 +1160,7 @@ export function WorkoutLogForm({
         ? {
             ...set,
             completed,
+            skipped: !completed,
             ...(durationSeconds != null ? { durationSeconds } : {}),
             ...(fillReps ? { reps: planWork.reps } : {}),
             ...(fillTime ? { durationSeconds: fillSeconds } : {}),
@@ -2220,6 +2225,7 @@ export function WorkoutLogForm({
                       )}
                       <label className="flex items-center justify-center">
                         <span className="sr-only">Done</span>
+                        <input type="hidden" name={`sets.${index}.skipped`} value={set.skipped ? "1" : ""} />
                         <input
                           name={`sets.${index}.completed`}
                           data-set-field={primaryField ? undefined : set.id}
@@ -2237,7 +2243,9 @@ export function WorkoutLogForm({
                             mode === "timed_round" &&
                             !(set.durationSeconds != null && set.durationSeconds > 0)
                               ? "Enter seconds before marking this round done."
-                              : undefined
+                              : set.completed
+                                ? "Untick to leave this set out of the total."
+                                : "Tick when this set counts."
                           }
                           onChange={(event) =>
                             markDone(set.id, name, restSeconds, event.target.checked)

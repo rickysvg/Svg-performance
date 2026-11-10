@@ -1,5 +1,5 @@
 import { allTimePeakSets } from "@/lib/lifetime-stats";
-import { loggedSetSome } from "@/lib/logged-work";
+import { loggedSetSome, setCountsForTotals } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
 import { streakQuerySince, STREAK_LOOKBACK_DAYS } from "@/lib/streaks";
@@ -82,6 +82,8 @@ type RecordSession = {
     loadUnit: string;
     reps?: number | null;
     durationSeconds?: number | null;
+    completed?: boolean | null;
+    skipped?: boolean | null;
   }>;
 };
 
@@ -91,12 +93,17 @@ export function loadRecordsFromSets(
     loadValue: number | null;
     loadUnit: string;
     performedAt: Date;
+    reps?: number | null;
+    durationSeconds?: number | null;
+    completed?: boolean | null;
+    skipped?: boolean | null;
+    sessionStatus?: string | null;
   }>,
   displayUnit: LoadUnit,
 ): LoadRecord[] {
   const bests = new Map<string, LoadRecord>();
   for (const set of sets) {
-    if (set.loadValue == null) continue;
+    if (!setCountsForTotals(set, set.sessionStatus) || set.loadValue == null) continue;
     const load = volumeInUnit(1, set.loadValue, set.loadUnit, displayUnit);
     const name = set.exerciseName.trim();
     if (!name) continue;
@@ -125,6 +132,11 @@ export function loadRecordsFromSessions(
           exerciseName: set.exerciseName,
           loadValue: set.loadValue,
           loadUnit: set.loadUnit,
+          reps: set.reps,
+          durationSeconds: set.durationSeconds,
+          completed: set.completed,
+          skipped: set.skipped,
+          sessionStatus: session.status,
           performedAt: session.performedAt,
         })),
       ),

@@ -1,7 +1,7 @@
 import { getWeeklyWrapped, mondayWeekBounds } from "@/lib/wrapped";
 import { getProfileForUser } from "@/lib/profile";
 import { getPathProgress } from "@/lib/paths";
-import { loggedSetSome } from "@/lib/logged-work";
+import { loggedSetSome, setCountsForTotals } from "@/lib/logged-work";
 import { prisma } from "@/lib/prisma";
 import { mondayOf } from "@/lib/home";
 import { timeZoneForUser } from "@/lib/profile";
@@ -54,15 +54,24 @@ export async function heaviestLoadsInPeriod(input: {
       performedAt: { gte: input.from, lt: input.endExclusive },
     },
     select: {
+      status: true,
       sets: {
-        select: { exerciseName: true, loadValue: true, loadUnit: true, completed: true },
+        select: {
+          exerciseName: true,
+          loadValue: true,
+          loadUnit: true,
+          reps: true,
+          durationSeconds: true,
+          completed: true,
+          skipped: true,
+        },
       },
     },
   });
   const bests = new Map<string, PeriodLoad>();
   for (const session of sessions) {
     for (const set of session.sets) {
-      if (set.completed === false || set.loadValue == null || set.loadValue <= 0) continue;
+      if (!setCountsForTotals(set, session.status) || set.loadValue == null || set.loadValue <= 0) continue;
       if (!isLoadUnit(set.loadUnit)) continue;
       const name = set.exerciseName.trim();
       if (!name) continue;

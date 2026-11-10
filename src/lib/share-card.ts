@@ -1,5 +1,5 @@
 import { formatClock, isShadowName, resolveLogMode } from "@/lib/exercise-log-mode";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { setCountsForTotals } from "@/lib/logged-work";
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { currentConsecutiveDays, uniqueActiveDayKeys } from "@/lib/records";
 import { volumeInUnit, type LoadUnit } from "@/lib/units";
@@ -28,6 +28,7 @@ export type ShareSetLike = {
   logMode?: string | null;
   durationSeconds?: number | null;
   completed: boolean;
+  skipped?: boolean | null;
   prescriptionKey?: string | null;
 };
 
@@ -66,23 +67,28 @@ export function classifyShareWorkout(session: ShareSessionLike): ShareWorkoutKin
   return "lift";
 }
 
-export function sessionVolume(sets: ShareSetLike[], displayUnit: LoadUnit) {
+export function sessionVolume(
+  sets: ShareSetLike[],
+  displayUnit: LoadUnit,
+  sessionStatus?: string | null,
+) {
   return Math.round(
     sets.reduce((sum, set) => {
-      if (!set.completed) return sum;
+      if (!setCountsForTotals(set, sessionStatus)) return sum;
       if (set.logMode === "load_timed") return sum;
       return sum + volumeInUnit(set.reps, set.loadValue, set.loadUnit, displayUnit);
     }, 0),
   );
 }
 
-/** Sets count is ticked sets with a logged number, not every planned row. */
-export function sessionSetCount(sets: ShareSetLike[]) {
-  return sets.filter((set) => set.completed && setHasLoggedWork(set)).length;
+/** Sets count follows setCountsForTotals, not every planned row. */
+export function sessionSetCount(sets: ShareSetLike[], sessionStatus?: string | null) {
+  return sets.filter((set) => setCountsForTotals(set, sessionStatus)).length;
 }
 
-export function sessionRoundCount(sets: ShareSetLike[]) {
-  return loggedSets(sets).filter((set) => {
+export function sessionRoundCount(sets: ShareSetLike[], sessionStatus?: string | null) {
+  return sets.filter((set) => {
+    if (!setCountsForTotals(set, sessionStatus)) return false;
     const mode = resolveLogMode({ logMode: set.logMode, name: set.exerciseName });
     return mode === "timed_round" || isBikeIntervalName(set.exerciseName) || isShadowName(set.exerciseName);
   }).length;
@@ -151,9 +157,9 @@ export function selectShareStats(input: {
 }): ShareStat[] {
   const unit = input.displayUnit ?? "lb";
   const kind = classifyShareWorkout(input.session);
-  const volume = sessionVolume(input.session.sets, unit);
-  const sets = sessionSetCount(input.session.sets);
-  const rounds = sessionRoundCount(input.session.sets);
+  const volume = sessionVolume(input.session.sets, unit, input.session.status);
+  const sets = sessionSetCount(input.session.sets, input.session.status);
+  const rounds = sessionRoundCount(input.session.sets, input.session.status);
   const seconds = sessionDurationSeconds(input.session);
   const streak = input.streakDays ?? 0;
   const stats: ShareStat[] = [];

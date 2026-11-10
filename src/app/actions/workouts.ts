@@ -229,6 +229,7 @@ function parseSets(formData: FormData): WorkoutSetInput[] {
       logMode: isLogMode(modeRaw) ? modeRaw : undefined,
       durationSeconds: durationRaw === "" ? null : Number(durationRaw),
       completed: formData.get(`sets.${i}.completed`) === "on",
+      skipped: String(formData.get(`sets.${i}.skipped`) ?? "") === "1",
       prescriptionKey: String(formData.get(`sets.${i}.prescriptionKey`) ?? ""),
       rir: String(formData.get(`sets.${i}.rir`) ?? ""),
     });

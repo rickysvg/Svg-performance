@@ -8,6 +8,9 @@ import { liveCoachingSub } from "@/lib/vip-coaching";
 import { subscriptionStatusIsCurrent } from "@/lib/subscription-status";
 import { startTrialForUser } from "@/lib/trial";
 import { assignPlanForPilot } from "@/lib/billing";
+import { loggedSetVolume } from "@/lib/home-telemetry";
+import { buildProgressSummary } from "@/lib/progress";
+import { withEntryTick, withFinishTick } from "@/lib/logged-work";
 import { sessionVolume } from "@/lib/share-card";
 import { loggedExerciseNamesInOrder } from "@/lib/logger-insert";
 import { dayCanBeMissed, obligationStart, weekStrip } from "@/lib/week-plan";
@@ -137,16 +140,56 @@ describe("Nov 10 QA — entitlement is the only VIP source", () => {
 
 describe("Nov 10 QA — logger, sparring, and calendar rules", () => {
   it("counts total pounds from ticked sets only", () => {
-    expect(
-      sessionVolume(
-        [
-          { exerciseName: "Shoulder circles", reps: 6, loadValue: null, loadUnit: "lb", completed: true },
-          { exerciseName: "Goblet squat", reps: 8, loadValue: 40, loadUnit: "lb", completed: true },
-          { exerciseName: "Landmine press", reps: 5, loadValue: 45, loadUnit: "lb", completed: false },
-        ],
-        "lb",
-      ),
-    ).toBe(320);
+    const sets = [
+      { exerciseName: "Rotational med-ball throw", reps: 5, loadValue: 20, loadUnit: "lb" as const, completed: true },
+      { exerciseName: "Rotational med-ball throw", reps: 6, loadValue: 30, loadUnit: "lb" as const, completed: false },
+      { exerciseName: "Med-ball chest pass", reps: 7, loadValue: 15, loadUnit: "lb" as const, completed: false },
+    ];
+    expect(sessionVolume(sets, "lb", "partial")).toBe(100);
+    expect(loggedSetVolume(sets, "lb", "partial")).toBe(100);
+    const counted = sets.map((set, index) => ({
+      ...set,
+      id: String(index),
+      workoutSessionId: "s",
+      setNumber: index + 1,
+      sortOrder: index,
+      logMode: "load_reps",
+      durationSeconds: null,
+      notes: "",
+      prescriptionKey: "",
+      rir: "",
+      skipped: index === 0 ? false : true,
+    }));
+    const summary = buildProgressSummary(
+      [
+        {
+          id: "s",
+          title: "Lift",
+          status: "complete",
+          performedAt: new Date("2026-11-10T18:00:00.000Z"),
+          sets: counted,
+        } as never,
+      ],
+      "lb",
+    );
+    expect(summary.points[0]?.volume).toBe(100);
+    expect(loggedSetVolume(sets, "lb", "complete")).toBe(385);
+  });
+
+  it("counts filled sets on a finished session unless they were unticked on purpose", () => {
+    const sets = [
+      { reps: 5, loadValue: 20, loadUnit: "lb", completed: false, logMode: "load_reps" },
+      { reps: 6, loadValue: 30, loadUnit: "lb", completed: false, skipped: true, logMode: "load_reps" },
+    ];
+    expect(loggedSetVolume(sets, "lb", "complete")).toBe(100);
+    expect(loggedSetVolume(sets, "lb", "partial")).toBe(0);
+    expect(withEntryTick({ reps: 8, loadValue: 40, completed: false, skipped: false }).completed).toBe(true);
+    expect(withEntryTick({ reps: 8, loadValue: 40, completed: false, skipped: true }).completed).toBe(false);
+    expect(withFinishTick({ reps: 5, loadValue: 20, completed: false, skipped: false }).completed).toBe(true);
+    expect(withFinishTick({ reps: 6, loadValue: 30, completed: false, skipped: true }).completed).toBe(false);
+    expect(withFinishTick({ reps: null, loadValue: null, durationSeconds: null, completed: false }).completed).toBe(
+      false,
+    );
   });
 
   it("lists only ticked exercises on a history row", () => {

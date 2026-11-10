@@ -17,12 +17,9 @@ export function exerciseNamesInOrder<T extends { exerciseName: string }>(sets: T
   return names;
 }
 
-/** History lists exercises with a Done tick. Entered-but-open rows stay off the line. */
+/** History lists exercises that count. Callers pass sets already chosen by setCountsForTotals. */
 export function loggedExerciseNamesInOrder<
-  T extends {
-    exerciseName: string;
-    completed?: boolean;
-  },
+  T extends { exerciseName: string; completed?: boolean | null },
 >(sets: T[]): string[] {
   return exerciseNamesInOrder(sets.filter((set) => set.completed === true));
 }

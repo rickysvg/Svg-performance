@@ -296,9 +296,9 @@ describe("Oct 22 partial saves", () => {
     expect(
       loggedSetVolume(
         [
-          { reps: null, loadValue: 95, loadUnit: "lb" },
-          { reps: 0, loadValue: 40, loadUnit: "lb" },
-          { reps: null, loadValue: null, loadUnit: "lb" },
+          { reps: null, loadValue: 95, loadUnit: "lb", completed: true },
+          { reps: 0, loadValue: 40, loadUnit: "lb", completed: true },
+          { reps: null, loadValue: null, loadUnit: "lb", completed: true },
         ],
         "lb",
       ),
