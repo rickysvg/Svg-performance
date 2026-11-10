@@ -20,8 +20,8 @@ export default async function TermsPage() {
         <section className="space-y-3 text-sm leading-relaxed">
           <p>
             These terms cover SVG Performance, the training log at{" "}
-            <a href="https://svg-performance.vercel.app" className="text-accent underline">
-              https://svg-performance.vercel.app
+            <a href="https://svgperformance.app" className="text-accent underline">
+              https://svgperformance.app
             </a>
             , operated by SVG &amp; CO. COMBAT SPORTS &amp; FITNESS, LLC. By creating an account
             you agree to them. Contact{" "}

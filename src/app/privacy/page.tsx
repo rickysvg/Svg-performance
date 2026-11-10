@@ -21,8 +21,8 @@ export default async function PrivacyPage() {
           <p>
             SVG Performance is operated by SVG &amp; CO. COMBAT SPORTS &amp; FITNESS, LLC
             (“SVG”, “we”). The app is at{" "}
-            <a href="https://svg-performance.vercel.app" className="text-accent underline">
-              https://svg-performance.vercel.app
+            <a href="https://svgperformance.app" className="text-accent underline">
+              https://svgperformance.app
             </a>
             . Questions about this policy:{" "}
             <a href={`mailto:${supportEmail()}`} className="text-accent underline">

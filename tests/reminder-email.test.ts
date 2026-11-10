@@ -60,7 +60,7 @@ describe("reminder email", () => {
     expect(mail.html).toContain("Session is waiting");
     expect(mail.html).toContain(`src="${REMINDER_LOGO_URL}"`);
     expect(REMINDER_LOGO_URL).toBe(
-      "https://svg-performance.vercel.app/svg-performance-badge-mark.png",
+      "https://svgperformance.app/svg-performance-badge-mark.png",
     );
     expect(mail.html).toContain('alt="SVG Performance"');
     expect(mail.html).not.toMatch(/src="\/svg-performance/);

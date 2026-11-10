@@ -3,12 +3,13 @@ import { nonmemberTrialReminderStage } from "@/lib/checkout-trial";
 import { isSmtpConfigured, sendMail } from "@/lib/mail";
 import { trialDaysLeft } from "@/lib/trial";
 import { subscriptionGrantsAccess } from "@/lib/subscription-access";
+import { performanceAppOrigin } from "@/lib/reminders";
 
 export function nonmemberTrialReminderCopy(stage: "2d" | "1d") {
   const days = stage === "2d" ? "2 days" : "1 day";
   return {
     subject: `${days} left on your Pro trial`,
-    text: `${days} left on your SVG Pro trial. No card is on file, and this trial does not renew. When it ends, history stays visible and training, logging, timers, the coach, and downloads lock until you subscribe. Pro is $9.99/mo or $72.99/yr. Open https://svg-performance.vercel.app/pricing`,
+    text: `${days} left on your SVG Pro trial. No card is on file, and this trial does not renew. When it ends, history stays visible and training, logging, timers, the coach, and downloads lock until you subscribe. Pro is $9.99/mo or $72.99/yr. Open ${performanceAppOrigin()}/pricing`,
   };
 }
 

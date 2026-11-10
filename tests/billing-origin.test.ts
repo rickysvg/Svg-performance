@@ -47,12 +47,30 @@ describe("billing return origin", () => {
 
   it("allowlists this app's hosts only", () => {
     expect(isAllowedAppHost("localhost:3000")).toBe(true);
+    expect(isAllowedAppHost("svgperformance.app")).toBe(true);
+    expect(isAllowedAppHost("www.svgperformance.app")).toBe(true);
+    expect(isAllowedAppHost("WWW.SVGPERFORMANCE.APP")).toBe(true);
     expect(isAllowedAppHost("svg-performance.vercel.app")).toBe(true);
     expect(isAllowedAppHost("svg-performance-git-cursor-launch-billing-df1a-rickysvg.vercel.app")).toBe(
       true,
     );
     expect(isAllowedAppHost("example.vercel.app")).toBe(false);
     expect(isAllowedAppHost("svg-performance.vercel.app.evil.com")).toBe(false);
+    expect(isAllowedAppHost("svgperformance.app.evil.com")).toBe(false);
+    expect(isAllowedAppHost("evil.svgperformance.app")).toBe(false);
+    expect(isAllowedAppHost("notsvgperformance.app")).toBe(false);
+  });
+
+  it("sends a preview return to the custom domain when that is the request host", () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.APP_URL = "https://svg-performance.vercel.app";
+    process.env.VERCEL_URL = "svg-performance-5f6mmv5e0-rickysvg.vercel.app";
+    expect(billingReturnOrigin({ host: "svgperformance.app", proto: "https" })).toBe(
+      "https://svgperformance.app",
+    );
+    expect(billingReturnOrigin({ forwardedHost: "www.svgperformance.app" })).toBe(
+      "https://www.svgperformance.app",
+    );
   });
 
   it("does not set a cookie domain", () => {

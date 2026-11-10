@@ -39,6 +39,7 @@ export function isAllowedAppHost(host: string) {
   const bare = host.trim().toLowerCase().split(",")[0]?.trim() ?? "";
   const hostname = bare.replace(/:\d+$/, "");
   if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return true;
+  if (hostname === "svgperformance.app" || hostname === "www.svgperformance.app") return true;
   if (hostname === "svg-performance.vercel.app") return true;
   return /^svg-performance(-[a-z0-9-]+)?\.vercel\.app$/.test(hostname);
 }
