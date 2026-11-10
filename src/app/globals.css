@@ -438,6 +438,26 @@ body:has(.app-splash.is-visible) {
   text-transform: uppercase;
 }
 
+@keyframes rest-go-in {
+  0%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.rest-go-flash {
+  animation: rest-go-in 3.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rest-go-flash {
+    animation: none;
+  }
+}
+
 @keyframes svg-splash-out {
   to {
     opacity: 0;

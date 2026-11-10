@@ -12,7 +12,7 @@ export function countdownDigitAt(elapsedMs: number): CountdownDigit | null {
   return null;
 }
 
-/** A new digit beeps. Leaving 1 is GO. */
+/** A new digit is a count tick. Leaving 1 is GO. Neither plays audio. */
 export function countdownCue(
   previous: CountdownDigit | null,
   next: CountdownDigit | null,
@@ -22,14 +22,18 @@ export function countdownCue(
   return null;
 }
 
-/** Count beeps and the GO bell follow Bell. Vibration on GO follows Vibrate. */
+/**
+ * Count ticks and GO never play a beep or bell. Vibration follows Vibrate.
+ * `beep` and `bell` stay in the result so older callers cannot turn sound back on.
+ */
 export function countdownSound(
   cue: "beep" | "go",
-  prefs: { bell: boolean; vibrate: boolean },
+  prefs: { vibrate: boolean },
 ) {
   return {
-    beep: cue === "beep" && prefs.bell,
-    bell: cue === "go" && prefs.bell,
-    vibrate: cue === "go" && prefs.vibrate,
+    beep: false,
+    bell: false,
+    vibrate: prefs.vibrate,
+    pattern: cue === "go" ? 160 : 45,
   };
 }

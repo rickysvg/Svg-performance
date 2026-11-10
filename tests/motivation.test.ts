@@ -196,8 +196,9 @@ describe("workout motivation cues", () => {
     expect(logger).toContain("WorkoutCoachCues");
     expect(logger).toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
     expect(cues).toContain("data-coach-motivation");
-    expect(cues).toContain("data-coach-audio");
-    expect(cues).toContain("unlockCoachAudio");
+    expect(cues).not.toContain("playCoachBytes");
+    expect(cues).not.toContain("unlockCoachAudio");
+    expect(cues).not.toContain("speechSynthesis");
     expect(cues).toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
     const thread = fs.readFileSync(
       path.join(process.cwd(), "src/components/coach/CoachLiveThread.tsx"),
@@ -231,15 +232,11 @@ describe("workout motivation cues", () => {
       path.join(process.cwd(), "src/components/coach/CoachSpeakButton.tsx"),
       "utf8",
     );
-    const sounds = fs.readFileSync(
-      path.join(process.cwd(), "src/components/profile/SoundEffectsToggle.tsx"),
-      "utf8",
-    );
     expect(summary).toContain("Read it to me");
     expect(summary).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
     expect(speaker).toContain("data-coach-speak");
     expect(speaker).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
-    expect(sounds).toContain("rest-timer");
-    expect(sounds).not.toContain("COACH_WORKOUT_MOTIVATION_ENABLED");
+    expect(profilePage).not.toContain("SoundEffectsToggle");
+    expect(profilePage).not.toContain("Sound effects");
   });
 });

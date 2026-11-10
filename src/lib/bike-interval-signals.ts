@@ -1,6 +1,5 @@
-import { soundFxEnabled } from "@/lib/badge-sfx";
 import type { BikeIntervalCue } from "@/lib/bike-interval-timer";
-import { playEndCue, playPhaseCue, playWarningCue, vibratePattern } from "@/lib/media-output";
+import { vibratePattern } from "@/lib/media-output";
 
 type WakeLockLike = { release: () => Promise<void> | void };
 
@@ -9,10 +8,6 @@ export function signalBikeIntervalCue(cue: BikeIntervalCue) {
   if (cue === "work-warning") vibratePattern(40);
   else if (cue === "complete") vibratePattern([120, 50, 160]);
   else vibratePattern(80);
-  if (!soundFxEnabled()) return;
-  if (cue === "work-warning") playWarningCue();
-  else if (cue === "complete") playEndCue();
-  else playPhaseCue();
 }
 
 export async function requestSetWakeLock(): Promise<WakeLockLike | null> {

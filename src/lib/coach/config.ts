@@ -6,7 +6,7 @@
  * "Coach motivation during workouts".
  *
  * Set this to true to restore those surfaces. The cue, toggle, and setting
- * code stays in place. Rest-timer sounds do not read this flag.
+ * code stays in place. Rest alerts are vibration and a banner, not speech.
  * Coach chat speech, summary playback, and voice samples use
  * coachVoiceEnabled() instead.
  */

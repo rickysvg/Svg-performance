@@ -30,8 +30,8 @@ function CoachMotivationToggleLive({ enabled }: { enabled: boolean }) {
     <section className="space-y-3 rounded-2xl border border-line bg-card p-5" data-coach-motivation-setting>
       <h2 className="text-lg">Coach motivation during workouts</h2>
       <p className="text-sm text-muted">
-        Short cues from your coach at the start, between exercises, and on the last 10 seconds of
-        rest. On by default. Off stays silent.
+        On-screen notes only. The coach does not speak during a workout, so your music keeps
+        playing.
       </p>
       <button
         data-testid="profile-coach-motivation"

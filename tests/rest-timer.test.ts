@@ -1,22 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { encodeWav } from "@/lib/media-output";
 import {
   addRestSeconds,
   formatRestClock,
   formatRestPill,
   isRestActive,
   REST_ALARM,
+  REST_WARNING_VIBRATE,
   remainingRestSeconds,
   restCueForTick,
   startRestTimer,
 } from "@/lib/rest-timer";
 
 describe("between-set rest timer", () => {
-  it("uses an alarm loud enough to cut through gym music", () => {
-    expect(REST_ALARM.gain).toBeGreaterThanOrEqual(0.25);
-    expect(REST_ALARM.tones.length).toBeGreaterThanOrEqual(3);
+  it("vibrates at the end and does not define a tone", () => {
     expect(REST_ALARM.vibrate.length).toBeGreaterThanOrEqual(3);
     expect(REST_ALARM.vibrate.some((pulse, index) => index % 2 === 1 && pulse > 0)).toBe(true);
+    expect(REST_WARNING_VIBRATE[0]).toBeGreaterThan(0);
+    expect("tones" in REST_ALARM).toBe(false);
+    expect("gain" in REST_ALARM).toBe(false);
   });
 
   it("formats the pill and the header clock", () => {
@@ -81,17 +82,5 @@ describe("between-set rest timer", () => {
     expect(restCueForTick(6, 2)).toBe("warning");
     expect(restCueForTick(null, 90)).toBeNull();
     expect(restCueForTick(null, 3)).toBe("warning");
-  });
-
-  it("builds a playback wav loud enough to survive a headphone buffer", () => {
-    const wav = new Uint8Array(
-      encodeWav([
-        { frequency: 523, seconds: 0.16, gain: 0.7 },
-        { frequency: 784, seconds: 0.28, gain: 0.78 },
-      ]),
-    );
-    expect(String.fromCharCode(wav[0]!, wav[1]!, wav[2]!, wav[3]!)).toBe("RIFF");
-    expect(String.fromCharCode(wav[8]!, wav[9]!, wav[10]!, wav[11]!)).toBe("WAVE");
-    expect(wav.byteLength).toBeGreaterThan(44 + 22050 * 0.4);
   });
 });

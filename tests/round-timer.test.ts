@@ -131,7 +131,7 @@ describe("round timer phase math", () => {
     expect(formatTimerClock(afterResume.remainingSeconds)).toBe("4:48");
   });
 
-  it("beeps at 10 seconds and rings on work/rest edges", () => {
+  it("marks the 10 second warning and the work/rest edges for a vibration", () => {
     expect(shouldPlayWarningBeep(11, 10)).toBe(true);
     expect(shouldPlayWarningBeep(10, 9)).toBe(false);
     expect(shouldPlayWarningBeep(12, 11)).toBe(false);

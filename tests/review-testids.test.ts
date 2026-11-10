@@ -22,8 +22,6 @@ describe("review test ids", () => {
     const source = files.map((file) => readFileSync(file, "utf8")).join("\n");
     for (const id of [
       "toast-action-btn",
-      "round-timer-set-prefs-toggle",
-      "round-timer-set-prefs-toggle-2",
       "round-timer-set-prefs-toggle-3",
       "round-timer-button-on-close-sheet-close",
       "round-timer-button-on-close-sheet-close-2",

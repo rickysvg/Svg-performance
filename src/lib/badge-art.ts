@@ -1,4 +1,4 @@
-import type { BadgeCategoryId, BadgeId } from "@/lib/badges";
+import type { BadgeId } from "@/lib/badges";
 import { isLiftLadderId } from "@/lib/badges";
 import type { LoadUnit } from "@/lib/units";
 
@@ -18,10 +18,3 @@ export function badgeArtSrc(
   if (variant === "hero") return `/badges/${stem}_hero.webp`;
   return `/badges/${stem}.webp`;
 }
-
-export const SFX_BY_CATEGORY: Record<BadgeCategoryId, string> = {
-  lifting: "/sfx/lifting.mp3",
-  cardio: "/sfx/cardio.mp3",
-  martial: "/sfx/martial.mp3",
-  grind: "/sfx/grind.mp3",
-};

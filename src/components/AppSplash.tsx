@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
-  SPLASH_AUDIO_SRC,
   SPLASH_MP4_SRC,
   SPLASH_MP4_TYPE,
   SPLASH_PLAY_GRACE_MS,
@@ -13,7 +12,6 @@ import {
   SPLASH_WEBM_TYPE,
   applySplashVideoSources,
   canDismissSplash,
-  playOriginalSplashSound,
   shouldMountSplashVideo,
   shouldShowSplashOverlay,
   splashTimings,
@@ -36,8 +34,6 @@ export function AppSplash() {
   const [mountVideo, setMountVideo] = useState(false);
   const [useStill, setUseStill] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const soundGen = useRef(0);
   const videoFinished = useRef(false);
   const videoPlaying = useRef(false);
   const appReady = useRef(false);
@@ -46,21 +42,6 @@ export function AppSplash() {
   const reducedRef = useRef(false);
   const exitMsRef = useRef(280);
   const pathRef = useRef(pathname);
-
-  function soundtrack() {
-    if (typeof Audio === "undefined") return null;
-    if (!audioRef.current) {
-      const audio = new Audio(SPLASH_AUDIO_SRC);
-      audio.preload = "auto";
-      audioRef.current = audio;
-    }
-    return audioRef.current;
-  }
-
-  function stopSoundtrack() {
-    soundGen.current += 1;
-    audioRef.current?.pause();
-  }
 
   useEffect(() => {
     // Boot once per mount (root layout). Client navigations must not restart it.
@@ -173,21 +154,11 @@ export function AppSplash() {
     video?.addEventListener("ended", markVideoDone);
     video?.addEventListener("error", markVideoDone);
     video?.addEventListener("playing", markPlaying);
-    const generation = soundGen.current + 1;
-    soundGen.current = generation;
     if (video) {
       applySplashVideoSources(video);
-      const audio = soundtrack();
       startSplashPlayback(video)
-        .then(async (result) => {
-          if (soundGen.current !== generation) return;
-          if (result === "playing") {
-            videoPlaying.current = true;
-            if (audio) {
-              await playOriginalSplashSound(video, audio);
-              if (soundGen.current !== generation) audio.pause();
-            }
-          }
+        .then((result) => {
+          if (result === "playing") videoPlaying.current = true;
           if (result === "stalled") fallbackToStill();
         })
         .catch(() => fallbackToStill());
@@ -195,7 +166,6 @@ export function AppSplash() {
     const grace = window.setTimeout(fallbackToStill, SPLASH_PLAY_GRACE_MS);
     return () => {
       window.clearTimeout(grace);
-      stopSoundtrack();
       video?.removeEventListener("ended", markVideoDone);
       video?.removeEventListener("error", markVideoDone);
       video?.removeEventListener("playing", markPlaying);
@@ -204,7 +174,6 @@ export function AppSplash() {
 
   function skipSplash() {
     userSkipped.current = true;
-    stopSoundtrack();
     window.dispatchEvent(new Event("svg-splash-skip"));
   }
 
@@ -231,6 +200,7 @@ export function AppSplash() {
           autoPlay
           preload="auto"
           disablePictureInPicture
+          disableRemotePlayback
           controls={false}
         >
           <source src={SPLASH_WEBM_SRC} type={SPLASH_WEBM_TYPE} />

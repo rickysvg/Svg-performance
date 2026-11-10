@@ -19,7 +19,6 @@ import { MEMBER_PRO_DAYS } from "@/lib/pricing";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { LeaderboardOptInForm } from "@/components/profile/LeaderboardOptInForm";
-import { SoundEffectsToggle } from "@/components/profile/SoundEffectsToggle";
 import { CoachMotivationToggle } from "@/components/profile/CoachMotivationToggle";
 import { COACH_WORKOUT_MOTIVATION_ENABLED } from "@/lib/coach/config";
 import { prisma } from "@/lib/prisma";
@@ -77,7 +76,6 @@ export default async function ProfilePage() {
           {COACH_WORKOUT_MOTIVATION_ENABLED ? (
             <CoachMotivationToggle enabled={profile.coachMotivation} />
           ) : null}
-          <SoundEffectsToggle />
           <LeaderboardOptInForm optedIn={profile.leaderboardOptIn} />
         </div>
       </details>

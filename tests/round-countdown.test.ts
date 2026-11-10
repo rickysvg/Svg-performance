@@ -32,7 +32,7 @@ function read(rel: string) {
 }
 
 describe("round countdown and seconds steppers", () => {
-  it("counts 3-2-1 and keeps the beep and GO bell on the Bell and Vibrate toggles", () => {
+  it("counts 3-2-1 and vibrates without a beep or bell", () => {
     expect(countdownDigitAt(0)).toBe(3);
     expect(countdownDigitAt(999)).toBe(3);
     expect(countdownDigitAt(1000)).toBe(2);
@@ -42,17 +42,19 @@ describe("round countdown and seconds steppers", () => {
     expect(countdownCue(3, 2)).toBe("beep");
     expect(countdownCue(1, null)).toBe("go");
     expect(countdownCue(1, 1)).toBeNull();
-    expect(countdownSound("beep", { bell: false, vibrate: true })).toEqual({
+    expect(countdownSound("beep", { vibrate: true })).toEqual({
+      beep: false,
+      bell: false,
+      vibrate: true,
+      pattern: 45,
+    });
+    expect(countdownSound("go", { vibrate: false })).toEqual({
       beep: false,
       bell: false,
       vibrate: false,
+      pattern: 160,
     });
-    expect(countdownSound("go", { bell: true, vibrate: false })).toEqual({
-      beep: false,
-      bell: true,
-      vibrate: false,
-    });
-    expect(countdownSound("go", { bell: false, vibrate: true }).vibrate).toBe(true);
+    expect(countdownSound("go", { vibrate: true }).vibrate).toBe(true);
 
     expect(DURATION_STEP_SECONDS).toBe(15);
     expect(stepDurationSeconds(180, -1)).toBe(165);

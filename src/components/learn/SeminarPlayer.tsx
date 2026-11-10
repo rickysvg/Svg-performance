@@ -19,6 +19,7 @@ import {
 
 type YTPlayer = {
   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  mute: () => void;
   playVideo: () => void;
   loadVideoById: (opts: { videoId: string; startSeconds?: number; endSeconds?: number }) => void;
   destroy: () => void;
@@ -116,6 +117,7 @@ function embedPlayerSrc(videoId: string, start: number, end: number | null) {
     playsinline: "1",
     modestbranding: "1",
     autoplay: "1",
+    mute: "1",
     origin,
     widget_referrer: origin,
   });
@@ -303,6 +305,7 @@ export function SeminarPlayer() {
     }
     endBoundRef.current = null;
     player.seekTo(startSeconds, true);
+    player.mute();
     player.playVideo();
   }, [model.videoId]);
 
@@ -348,12 +351,14 @@ export function SeminarPlayer() {
                   };
                   if (next.clip.endSeconds != null) opts.endSeconds = next.clip.endSeconds;
                   event.target.loadVideoById(opts);
+                  event.target.mute();
                   return;
                 }
               } else if (next.kind === "time") {
                 const covered = frame != null && iframeHasWindow(frame, next.seconds, null);
                 if (!covered) event.target.seekTo(next.seconds, true);
               }
+              event.target.mute();
               event.target.playVideo();
             },
             onStateChange: (event) => {

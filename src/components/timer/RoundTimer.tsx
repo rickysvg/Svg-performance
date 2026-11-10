@@ -22,7 +22,6 @@ import {
   parseStoredTimerPrefs,
   resolveTimer,
   sanitizeTimerConfig,
-  shouldPlayPhaseBell,
   shouldPlayWarningBeep,
 } from "@/lib/round-timer";
 import {
@@ -34,7 +33,7 @@ import {
   sessionWithChoice,
 } from "@/lib/bike-chooser";
 import { DEFAULT_BIKE_SESSION } from "@/lib/bike-sessions";
-import { holdMediaRoute, playSynthCue, primeMediaOutput } from "@/lib/media-output";
+import { vibratePattern } from "@/lib/media-output";
 import { launchRoundLogFromClock, roundLiveElapsed, roundLogFromClock } from "@/lib/round-session";
 import { TimerDurationSteppers } from "@/components/timer/TimerDurationSteppers";
 import { CountdownFace } from "@/components/timer/CountdownFace";
@@ -55,15 +54,6 @@ const BIKE_PRESETS = [
   ["fight-rounds", "Fight sim", "5 rounds"],
   ["custom", "Custom", "Set your own"],
 ] as const;
-
-function playBell() {
-  playSynthCue(660, 0.12, 0.7);
-  window.setTimeout(() => playSynthCue(880, 0.16, 0.74), 90);
-}
-
-function playWarning() {
-  playSynthCue(980, 0.14, 0.7);
-}
 
 async function requestWakeLock() {
   try {
@@ -199,7 +189,6 @@ export function RoundTimer({
   }, [notes, rpe]);
   const prev = useRef<{ remaining: number; phase: TimerPhase }>({ remaining: 0, phase: "idle" });
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
-  const routeRelease = useRef<(() => void) | null>(null);
   const {
     active: countdownActive,
     digit: countdownDigit,
@@ -224,7 +213,6 @@ export function RoundTimer({
       const id = window.setTimeout(() => {
         setHydrated(true);
         beginCountdown({
-          bell: true,
           vibrate: true,
           onGo: () => {
             const stamp = Date.now();
@@ -378,19 +366,6 @@ export function RoundTimer({
   }, [running]);
 
   useEffect(() => {
-    if (resolved.phase !== "done") return;
-    routeRelease.current?.();
-    routeRelease.current = null;
-  }, [resolved.phase]);
-
-  useEffect(() => {
-    return () => {
-      routeRelease.current?.();
-      routeRelease.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!running) {
       void wakeLock.current?.release();
       wakeLock.current = null;
@@ -407,27 +382,16 @@ export function RoundTimer({
 
   useEffect(() => {
     const previous = prev.current;
-    if (startedAtMs != null) {
-      if (prefs.warningBeep && shouldPlayWarningBeep(previous.remaining, resolved.remainingSeconds)) {
-        playWarning();
+    if (startedAtMs != null && prefs.vibrate) {
+      if (shouldPlayWarningBeep(previous.remaining, resolved.remainingSeconds)) {
+        vibratePattern(80);
       }
-      if (
-        prefs.bell &&
-        previous.phase !== "idle" &&
-        shouldPlayPhaseBell(previous.phase, resolved.phase)
-      ) {
-        playBell();
-      }
-      if (prefs.vibrate && previous.phase !== "idle" && previous.phase !== resolved.phase && resolved.phase !== "idle") {
-        try {
-          navigator.vibrate?.(resolved.phase === "rest" ? [80, 40, 80] : 120);
-        } catch {
-          /* optional */
-        }
+      if (previous.phase !== "idle" && previous.phase !== resolved.phase && resolved.phase !== "idle") {
+        vibratePattern(resolved.phase === "rest" ? [80, 40, 80] : 120);
       }
     }
     prev.current = { remaining: resolved.remainingSeconds, phase: resolved.phase };
-  }, [prefs.bell, prefs.vibrate, prefs.warningBeep, resolved.phase, resolved.remainingSeconds, startedAtMs]);
+  }, [prefs.vibrate, resolved.phase, resolved.remainingSeconds, startedAtMs]);
 
   function goLive(resume: boolean, pausedAt: number | null) {
     const stamp = Date.now();
@@ -445,10 +409,8 @@ export function RoundTimer({
 
   const startOrPause = useCallback(() => {
     if (countdownActive) return;
-    primeMediaOutput();
-    if (!routeRelease.current) routeRelease.current = holdMediaRoute();
     const stamp = Date.now();
-    const cues = { bell: prefs.bell, vibrate: prefs.vibrate };
+    const cues = { vibrate: prefs.vibrate };
     if (startedAtMs == null || resolved.phase === "done") {
       beginCountdown({ ...cues, onGo: () => goLive(false, null) });
       return;
@@ -460,12 +422,10 @@ export function RoundTimer({
     }
     const paused = pausedAtMs;
     beginCountdown({ ...cues, onGo: () => goLive(true, paused) });
-  }, [beginCountdown, countdownActive, pausedAtMs, prefs.bell, prefs.vibrate, resolved.phase, startedAtMs]);
+  }, [beginCountdown, countdownActive, pausedAtMs, prefs.vibrate, resolved.phase, startedAtMs]);
 
   function reset() {
     cancelCountdown();
-    routeRelease.current?.();
-    routeRelease.current = null;
     setStartedAtMs(null);
     setPausedAtMs(null);
     setPauseAccumulatedMs(0);
@@ -801,7 +761,6 @@ export function RoundTimer({
           key={`${bikeChoice?.id ?? "bike"}-${bikeSession.workSeconds}-${bikeSession.restSeconds}-${bikeSession.roundsPerSet}-${bikeSession.repeatRounds}-${bikeSession.restBetweenRoundsSeconds}`}
           session={bikeSession}
           canStart
-          bell={prefs.bell}
           vibrate={prefs.vibrate}
           onSetComplete={() => {}}
           onFinishedRounds={noteBikeRounds}
@@ -863,18 +822,6 @@ export function RoundTimer({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Toggle
-          testId="round-timer-set-prefs-toggle"
-          label="10-second warning beep"
-          on={prefs.warningBeep}
-          onClick={() => setPrefs((current) => ({ ...current, warningBeep: !current.warningBeep }))}
-        />
-        <Toggle
-          testId="round-timer-set-prefs-toggle-2"
-          label="Bell start/end"
-          on={prefs.bell}
-          onClick={() => setPrefs((current) => ({ ...current, bell: !current.bell }))}
-        />
         <Toggle
           testId="round-timer-set-prefs-toggle-3"
           label="Vibrate"

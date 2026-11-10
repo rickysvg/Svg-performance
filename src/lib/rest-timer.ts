@@ -1,7 +1,5 @@
-import { soundFxEnabled } from "@/lib/badge-sfx";
 import { clampSetRestSeconds, MAX_SET_REST_SECONDS } from "@/lib/set-rest";
-import { noteCoachBeep } from "@/lib/coach/motivation-clock";
-import { playEndCue, playWarningCue, primeMediaOutput, vibratePattern } from "@/lib/media-output";
+import { vibratePattern } from "@/lib/media-output";
 
 export type RestTimerState = {
   exerciseName: string;
@@ -79,20 +77,19 @@ export function addRestSeconds(timer: RestTimerState, seconds: number): RestTime
   };
 }
 
+/** How long the "Go" banner stays up after rest ends. No sound plays. */
+export const REST_GO_HOLD_MS = 3200;
+
 /**
- * Loudness spec for the end cue. Playback is a media-element clip so it follows
- * Bluetooth headphones, not a fresh AudioContext on the handset speaker.
+ * Vibration for the end of rest. Android Chrome honors navigator.vibrate.
+ * iPhone Safari does not, so the banner is the cue there.
  */
 export const REST_ALARM = {
-  gain: 0.32,
   vibrate: [220, 90, 220, 90, 380],
-  tones: [
-    { frequency: 523.25, seconds: 0.16, at: 0 },
-    { frequency: 659.25, seconds: 0.16, at: 0.18 },
-    { frequency: 783.99, seconds: 0.18, at: 0.36 },
-    { frequency: 1046.5, seconds: 0.36, at: 0.56 },
-  ],
 } as const;
+
+/** Short pulse as the clock enters 3, then 2, then 1. */
+export const REST_WARNING_VIBRATE = [80] as const;
 
 export function clockNow() {
   return Date.now();
@@ -102,7 +99,7 @@ export type RestCue = "warning" | "complete";
 
 /**
  * One warning as the clock enters 3, then 2, then 1. Zero is the end cue.
- * A jump that skips the last seconds still ends once, and does not stack beeps.
+ * A jump that skips the last seconds still ends once, and does not stack pulses.
  */
 export function restCueForTick(previous: number | null, next: number): RestCue | null {
   if (previous != null && previous <= 0 && next <= 0) return null;
@@ -111,22 +108,12 @@ export function restCueForTick(previous: number | null, next: number): RestCue |
   return null;
 }
 
-/** Call from the set-complete tap so the later alarm is allowed to play. */
-export function primeRestAudio() {
-  primeMediaOutput();
-}
-
 export function signalRestWarning() {
-  noteCoachBeep(450);
   if (typeof window === "undefined") return;
-  if (!soundFxEnabled()) return;
-  playWarningCue();
+  vibratePattern([...REST_WARNING_VIBRATE]);
 }
 
 export function signalRestComplete() {
-  noteCoachBeep(800);
   if (typeof window === "undefined") return;
   vibratePattern([...REST_ALARM.vibrate]);
-  if (!soundFxEnabled()) return;
-  playEndCue();
 }
