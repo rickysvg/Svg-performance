@@ -53,7 +53,7 @@ function PlanCheckoutButton({
           <CheckoutButton plan="performance_monthly" label={`Subscribe · ${usd(PERFORMANCE_MONTHLY)}/mo`} />
           <CheckoutButton plan="performance_year" label={`Subscribe · ${usd(PERFORMANCE_ANNUAL)}/yr`} />
           <p className="text-xs text-foreground">
-            One trial per person. If your free trial already started, checkout bills today.
+            One trial per person. Subscribing during your trial keeps the remaining days when more than 48 hours remain. VIP has no trial.
           </p>
         </>
       ) : (

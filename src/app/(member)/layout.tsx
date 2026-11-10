@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { TrialEndedPaywall } from "@/components/upgrade/TrialEndedPaywall";
 import { MemberProReminderBanner } from "@/components/upgrade/MemberProReminderBanner";
 import { NonmemberTrialReminderBanner } from "@/components/upgrade/NonmemberTrialReminderBanner";
+import { StripeTrialBanner } from "@/components/upgrade/StripeTrialBanner";
 import { BillingProblemBanner } from "@/components/billing/BillingProblemBanner";
 import { getAppTier } from "@/lib/entitlements";
 import { ensureMemberProMonth, getTrialState } from "@/lib/trial";
@@ -68,6 +69,9 @@ export default async function MemberLayout({
         {accountLocked ? <SubscribeToTrainBanner /> : null}
         {subscription && subscriptionNeedsBillingBanner(subscription.status) && subscription.stripeCustomerId ? (
           <BillingProblemBanner status={subscription.status} />
+        ) : null}
+        {pathname === "/home" && subscription?.status === "trialing" && subscription.trialEnd ? (
+          <StripeTrialBanner trialEnd={subscription.trialEnd} />
         ) : null}
         {!trial.verified &&
         trial.trialActive &&

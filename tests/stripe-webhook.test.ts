@@ -358,6 +358,29 @@ describe("stripe webhook path", () => {
     expect(row).toMatchObject({ plan: "coaching", status: "trialing", stripePriceId: "price_vip" });
   });
 
+  it("stores a portal cancel at the period end", async () => {
+    const user = await makeUser("cancel-later@example.com");
+    const cancelAt = Math.floor(new Date("2026-11-17T18:00:00.000Z").getTime() / 1000);
+    await applyStripeEvent({
+      id: "evt_cancel_scheduled",
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_cancel_later",
+          metadata: { userId: user.id, plan: "performance_monthly" },
+          status: "active",
+          cancel_at_period_end: true,
+          cancel_at: cancelAt,
+          current_period_end: cancelAt,
+        },
+      },
+    });
+    const row = await prisma.subscription.findFirst({ where: { userId: user.id } });
+    expect(row?.cancelAtPeriodEnd).toBe(true);
+    expect(row?.cancelAt?.toISOString()).toBe("2026-11-17T18:00:00.000Z");
+    expect(row?.status).toBe("active");
+  });
+
   it("resolves invoice.paid from the stored subscription when the invoice has no member id", async () => {
     const user = await makeUser("invoice-lookup@example.com");
     await applyStripeEvent({

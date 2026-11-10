@@ -4,12 +4,12 @@ import { getMemberEntitlements } from "@/lib/entitlements";
 import { creditsForCurrentPlan } from "@/lib/credits";
 import { getLatestSubscription } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
-import { subscriptionFace } from "@/lib/subscription-copy";
+import { subscriptionScheduleLine } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
-import { subscriptionGrantsAccess } from "@/lib/subscription-access";
+import { subscriptionBlocksCheckout, subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { LegalLinks } from "@/components/LegalLinks";
 
 export default async function PlanPage({
@@ -52,7 +52,7 @@ export default async function PlanPage({
         <h2>Status</h2>
         <p className="mt-2 text-sm text-muted">
           {subscription && (subscriptionLive || subscription.status !== "incomplete")
-            ? `${subscriptionFace(subscription.plan, subscription.status)}${
+            ? `${subscriptionScheduleLine(subscription)}${
                 subscription.source === "admin" ? " · set by an SVG admin" : ""
               }. No refunds except billing errors.`
             : trial.verified && trial.trialActive && !subscription
@@ -63,12 +63,15 @@ export default async function PlanPage({
               ? `Your ${trial.trialLengthDays}-day Pro trial is active. No card. When it ends unpaid, history stays read-only and training locks until you subscribe.`
             : "Your trial ended. Subscribe to keep training. History and progress stay visible. Downloads stay off."}
         </p>
-        <Link
-          href="/pricing"
-          className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
-        >
-          Subscribe on Pricing
-        </Link>
+        {subscription &&
+        (subscriptionLive || subscriptionBlocksCheckout(subscription.status)) ? null : (
+          <Link
+            href="/pricing"
+            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
+          >
+            Subscribe on Pricing
+          </Link>
+        )}
       </section>
 
       {subscription?.stripeCustomerId ? (

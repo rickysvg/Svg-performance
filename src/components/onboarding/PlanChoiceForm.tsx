@@ -39,7 +39,7 @@ export function PlanChoiceForm({
         <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
         <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
         <p className="text-sm text-muted">
-          One trial per person. Checkout bills today if that trial already started. Want VIP Coaching?{" "}
+          One trial per person. Subscribing during your trial keeps the remaining days when more than 48 hours remain. Want VIP Coaching?{" "}
           <Link href="/pricing" className="text-accent underline">
             See pricing
           </Link>
@@ -85,7 +85,7 @@ export function PlanChoiceForm({
       <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
       <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
       <p className="text-sm text-muted">
-        Checkout bills today if your free trial already started. You can compare plans anytime from Profile.
+        Subscribing during your trial keeps the remaining days when more than 48 hours remain. You can compare plans anytime from Profile.
       </p>
     </div>
   );

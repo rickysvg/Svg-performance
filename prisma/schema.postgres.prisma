@@ -659,6 +659,10 @@ model Subscription {
   trialEnd             DateTime?
   /// Set when customer.subscription.trial_will_end arrives. No email is sent for that event.
   trialWillEnd         Boolean  @default(false)
+  /// Stripe cancel_at_period_end. Access stays until the period ends.
+  cancelAtPeriodEnd    Boolean  @default(false)
+  /// Stripe cancel_at. When set, the subscription ends at this time.
+  cancelAt             DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

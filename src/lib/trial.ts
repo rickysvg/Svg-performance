@@ -5,7 +5,7 @@ import { type CatalogPlanId, type CatalogPlan, normalizePlanId, planAtLeast } fr
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { recomputeMembership } from "@/lib/gymdesk/recompute";
-import { subscriptionFace } from "@/lib/subscription-copy";
+import { subscriptionScheduleLine } from "@/lib/subscription-copy";
 import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 
 import {
@@ -68,6 +68,9 @@ export function currentPlanLine(input: {
     plan: string;
     status: string;
     currentPeriodEnd?: Date | null;
+    trialEnd?: Date | null;
+    cancelAt?: Date | null;
+    cancelAtPeriodEnd?: boolean;
   } | null;
 }) {
   const sub = input.subscription;
@@ -80,7 +83,7 @@ export function currentPlanLine(input: {
         sub.status === "past_due" ||
         sub.status === "unpaid" ||
         sub.status === "canceled");
-    if (paidLabel) return subscriptionFace(sub.plan, sub.status);
+    if (paidLabel) return subscriptionScheduleLine(sub);
   }
   if (input.trialActive) {
     const unit = input.trialDaysLeft === 1 ? "day" : "days";

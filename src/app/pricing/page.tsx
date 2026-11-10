@@ -61,7 +61,7 @@ export default async function PricingPage() {
               ? `Your ${MEMBER_PRO_DAYS} days of free Pro are ready, no card. You are never auto-billed.`
               : `The ${NONMEMBER_TRIAL_DAYS}-day Pro trial is open now, no card.`
             : "A no-card trial can be used once per account."}{" "}
-          One Pro trial per person. Checkout bills today if that trial already started. VIP Coaching is billed today with no trial.
+          One Pro trial per person. Subscribing during your trial keeps the days that are left when more than 48 hours remain. VIP Coaching is billed today with no trial.
           {verified && !canStartTrial
             ? ` Your verified academy membership includes the core app and ${MEMBER_PRO_DAYS} days of Pro free.`
             : ""}

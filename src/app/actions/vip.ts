@@ -118,7 +118,7 @@ export async function startVipCheckoutAction(
     draft: view.draft,
     email: user.email,
     customerId: existing?.stripeCustomerId,
-    successUrl: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+    successUrl: `${origin}/api/stripe/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${origin}/vip/checkout`,
   });
   if (result.url) redirect(result.url);

@@ -70,7 +70,7 @@ export async function startCheckoutAction(
     const urls = {
       userId: user.id,
       plan: planRaw,
-      successUrl: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${appUrl}/api/stripe/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${appUrl}/billing/cancel`,
     };
     const session =

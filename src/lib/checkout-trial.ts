@@ -29,11 +29,10 @@ export function accountTrialAlreadyUsed(input: {
 }
 
 /**
- * Stripe trial days for this checkout.
- * VIP never gets one. A used in-app trial, a used Stripe trial, or a cancel
- * and resubscribe all return no trial so checkout bills today.
- * Someone who has never had a trial gets the full remaining allowance:
- * 7 days for a new member, 14 for a verified academy member.
+ * Full-length Stripe trial days only.
+ * Returns nothing when checkout uses a carried trial_end, when the plan is VIP,
+ * or when this person already used their one trial.
+ * Someone who has never had a trial gets 7 days, or 14 when academy-verified.
  */
 export function checkoutTrialPeriodDays(input: {
   plan: CheckoutSkuId;

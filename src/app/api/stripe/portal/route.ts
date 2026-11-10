@@ -18,7 +18,7 @@ export async function POST() {
     }
     const session = await createBillingPortalSession(stripe, {
       customerId,
-      returnUrl: `${await billingOriginFromRequest()}/plan`,
+      returnUrl: `${await billingOriginFromRequest()}/api/stripe/portal-return`,
     });
     if (!session.url) {
       return NextResponse.json({ error: "Stripe did not return a billing portal URL." }, { status: 502 });

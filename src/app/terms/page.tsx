@@ -45,7 +45,7 @@ export default async function TermsPage() {
               Athletes who are not verified SVG Academy members can start one Pro trial in the app with no card. It lasts 7 days. After it ends unpaid, or if Pro locks for non-payment, Train, workout logging, timers, the AI coach, and every workout download stay off. Workout history and progress stay viewable (read-only). There is no export while unpaid. Academy members keep the core app.
             </li>
             <li>
-              One Pro trial per person. It is not stacked, and it is not offered again after you cancel and subscribe again. If you have never started a trial and you begin at checkout, that checkout can include the one trial (7 days, or 14 days for a verified academy member). If any part of the trial already started, checkout bills today.
+              One Pro trial per person. It is not stacked, and it is not offered again after you cancel and subscribe again. If you have never started a trial and you begin at checkout, that checkout can include the one trial (7 days, or 14 days for a verified academy member). Subscribing while that trial is still running keeps the remaining days when more than 48 hours are left. VIP Coaching has no trial.
             </li>
             <li>
               Pro is $9.99 per month or $72.99 per year. You can cancel in Manage billing at the end of the current period. No refunds, except when we made a billing error.

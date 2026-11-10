@@ -24,6 +24,8 @@ type StripeLikeObject = {
   current_period_end?: number;
   trial_start?: number | null;
   trial_end?: number | null;
+  cancel_at?: number | null;
+  cancel_at_period_end?: boolean;
   amount_paid?: number;
   currency?: string;
   livemode?: boolean;
@@ -145,6 +147,8 @@ export async function upsertSubscriptionFromWebhook(
     trialStart?: Date | null;
     trialEnd?: Date | null;
     trialWillEnd?: boolean;
+    cancelAtPeriodEnd?: boolean;
+    cancelAt?: Date | null;
     source?: string;
   },
   db: Db = prisma as unknown as Db,
@@ -178,6 +182,11 @@ export async function upsertSubscriptionFromWebhook(
     trialStart: input.trialStart ?? existing?.trialStart ?? null,
     trialEnd: input.trialEnd ?? existing?.trialEnd ?? null,
     trialWillEnd: input.trialWillEnd === true ? true : (existing?.trialWillEnd ?? false),
+    cancelAtPeriodEnd:
+      input.cancelAtPeriodEnd !== undefined
+        ? input.cancelAtPeriodEnd
+        : (existing?.cancelAtPeriodEnd ?? false),
+    cancelAt: input.cancelAt !== undefined ? input.cancelAt : (existing?.cancelAt ?? null),
     source: input.source ?? existing?.source ?? "webhook",
   };
   if (existing) return db.subscription.update({ where: { id: existing.id }, data });
@@ -328,6 +337,12 @@ async function applyInner(
     ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
     ...(trialStart ? { trialStart } : {}),
     ...(trialEnd ? { trialEnd } : {}),
+    ...(event.type.startsWith("customer.subscription.")
+      ? {
+          cancelAtPeriodEnd: Boolean(object.cancel_at_period_end),
+          cancelAt: object.cancel_at ? unixDate(object.cancel_at) : null,
+        }
+      : {}),
   };
 
   if (event.type === "checkout.session.expired") {

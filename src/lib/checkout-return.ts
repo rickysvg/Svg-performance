@@ -10,6 +10,8 @@ type SubLike = {
   metadata?: Record<string, string> | null;
   trial_start?: number | null;
   trial_end?: number | null;
+  cancel_at?: number | null;
+  cancel_at_period_end?: boolean;
   current_period_end?: number;
   items?: { data?: { price?: { id?: string }; current_period_end?: number }[] };
 };
@@ -106,6 +108,8 @@ export async function fulfillCheckoutSession(input: {
         },
         trial_start: subscription.trial_start,
         trial_end: subscription.trial_end,
+        cancel_at: subscription.cancel_at,
+        cancel_at_period_end: subscription.cancel_at_period_end,
         current_period_end: subscription.current_period_end,
         items: subscription.items,
       },
