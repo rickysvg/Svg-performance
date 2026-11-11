@@ -10,7 +10,8 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Public. No session. Mailchimp when configured, Postgres backup either way. */
+/** Public. No session. Mailchimp when configured, Postgres backup either way.
+ *  A new signup also gets the welcome email when SMTP is configured. */
 export async function POST(request: Request) {
   let body: unknown;
   try {

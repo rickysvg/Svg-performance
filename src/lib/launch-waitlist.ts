@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { AppError, isUniqueConstraintError } from "@/lib/errors";
+import { sendWaitlistWelcomeEmail } from "@/lib/waitlist-welcome";
 import {
   honeypotFilled,
   parseWaitlistBody,
@@ -241,20 +242,30 @@ export async function joinLaunchWaitlist(input: {
     }
   }
 
+  let created = false;
   try {
     const saved = await saveSignup(value);
     if (saved === "duplicate" || mailchimp === "exists") {
       return { status: "already", firstName: value.firstName };
     }
+    created = true;
   } catch (error) {
     console.error("waitlist backup failed");
     if (mailchimp === "created") {
-      return { status: "subscribed", firstName: value.firstName };
-    }
-    if (mailchimp === "exists") {
+      created = true;
+    } else if (mailchimp === "exists") {
       return { status: "already", firstName: value.firstName };
+    } else {
+      throw error;
     }
-    throw error;
+  }
+
+  if (created) {
+    try {
+      await sendWaitlistWelcomeEmail({ to: value.email, firstName: value.firstName });
+    } catch {
+      console.error("waitlist welcome email failed");
+    }
   }
 
   return { status: "subscribed", firstName: value.firstName };

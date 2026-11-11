@@ -5,6 +5,7 @@ export type MailInput = {
   subject: string;
   text: string;
   html?: string;
+  replyTo?: string;
 };
 
 export type MailResult = {
@@ -218,6 +219,7 @@ async function defaultSendMail(input: MailInput): Promise<MailResult> {
       subject: input.subject,
       text: input.text,
       html: input.html,
+      ...(input.replyTo ? { replyTo: input.replyTo } : {}),
     });
     if (!recipientAccepted(info.accepted, input.to)) {
       console.error("SMTP send was not accepted for recipient");

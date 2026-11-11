@@ -1,8 +1,4 @@
--- Columns that already exist on the hosted database.
--- SQLite tests need the same shape so db push does not try to drop them.
-ALTER TABLE "Subscription" ADD COLUMN "billingSku" TEXT NOT NULL DEFAULT '';
-ALTER TABLE "Subscription" ADD COLUMN "cancelAt" DATETIME;
-ALTER TABLE "Subscription" ADD COLUMN "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "Subscription" ADD COLUMN "trialStart" DATETIME;
-ALTER TABLE "Subscription" ADD COLUMN "trialEnd" DATETIME;
-ALTER TABLE "Subscription" ADD COLUMN "trialWillEnd" BOOLEAN NOT NULL DEFAULT false;
+-- Billing and cancel columns are added by 20261108000000_launch_billing
+-- and 20261110120000_subscription_cancel_at. This file stays so databases
+-- that already recorded the migration keep a matching history. No new columns.
+SELECT 1;

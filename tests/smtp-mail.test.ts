@@ -74,11 +74,36 @@ describe("smtp mail", () => {
         html,
       }),
     );
+    expect(sendMailMock.mock.calls[0]?.[0]).not.toHaveProperty("replyTo");
     expect(html).toContain("background:#ffffff");
     expect(html).toContain("#CBF805");
     expect(html).toContain(">Reset password<");
     expect(html).toContain(
       "https://svg-performance.vercel.app/reset-password?token=abc",
+    );
+  });
+
+  it("forwards replyTo when the message sets it", async () => {
+    setSmtpEnv();
+    sendMailMock.mockResolvedValue({
+      accepted: ["fighter@example.com"],
+      rejected: [],
+    });
+
+    const result = await sendMail({
+      to: "fighter@example.com",
+      subject: "You're in. Stay ready.",
+      text: "Hey fighter,",
+      replyTo: "support@svgperformance.app",
+    });
+
+    expect(result).toEqual({ sent: true, reason: "sent" });
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: FROM,
+        to: "fighter@example.com",
+        replyTo: "support@svgperformance.app",
+      }),
     );
   });
 
