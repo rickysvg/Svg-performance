@@ -63,7 +63,7 @@ const REMINDER_BODY_FONT = "Arial,Helvetica,sans-serif";
  * cannot load a relative path.
  */
 export const REMINDER_LOGO_URL =
-  "https://svg-performance.vercel.app/svg-performance-badge-mark.png";
+  "https://svgperformance.app/svg-performance-badge-mark.png";
 
 export type ReminderEmailItem = {
   label: string;

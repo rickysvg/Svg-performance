@@ -32,6 +32,7 @@ const PROGRESS_SET_SELECT = {
   durationSeconds: true,
   logMode: true,
   completed: true,
+  skipped: true,
 } as const;
 
 function listCompleteSessionsInWindow(input: {
@@ -62,7 +63,7 @@ export async function datedSetsForUser(userId: string, excludeSessionId?: string
   const dated: DatedSetLike[] = [];
   for (const session of sessions) {
     for (const set of session.sets) {
-      dated.push({ ...set, performedAt: session.performedAt });
+      dated.push({ ...set, sessionStatus: session.status, performedAt: session.performedAt });
     }
   }
   return dated;
@@ -101,6 +102,7 @@ export async function detectNewPrsForSession(
   ]);
   const current: DatedSetLike[] = session.sets.map((set) => ({
     ...set,
+    sessionStatus: session.status,
     performedAt: session.performedAt,
   }));
   const prior = [...priorWindow, ...peaks];
@@ -143,7 +145,7 @@ export async function getCompanionProgress(userId: string, displayUnit: LoadUnit
   const datedSets: DatedSetLike[] = [];
   for (const session of complete) {
     for (const set of session.sets) {
-      datedSets.push({ ...set, performedAt: session.performedAt });
+      datedSets.push({ ...set, sessionStatus: session.status, performedAt: session.performedAt });
     }
   }
   const badges = evaluateBadges({

@@ -57,8 +57,14 @@ function groupCompletedSets(userId: string, excludeSessionId?: string) {
   return prisma.workoutSet.groupBy({
     by: ["exerciseName", "logMode", "loadUnit"],
     where: {
-      completed: true,
+      skipped: false,
       session: completeSessionWhere(userId, excludeSessionId),
+      OR: [
+        { completed: true },
+        { reps: { not: null } },
+        { loadValue: { not: null } },
+        { durationSeconds: { gt: 0 } },
+      ],
     },
     _count: { _all: true },
     _max: { loadValue: true, durationSeconds: true },
@@ -73,6 +79,7 @@ type PeakRow = {
   logMode: string;
   durationSeconds: number | null;
   completed: boolean;
+  skipped: boolean;
   session: { performedAt: Date };
 };
 
@@ -85,6 +92,8 @@ function toDated(row: PeakRow): DatedSetLike {
     durationSeconds: row.durationSeconds,
     logMode: row.logMode,
     completed: row.completed,
+    skipped: row.skipped,
+    sessionStatus: "complete",
     performedAt: row.session.performedAt,
   };
 }
@@ -152,20 +161,18 @@ async function peakSetsFromGroups(
       exerciseName: row.exerciseName,
       loadUnit: row.loadUnit,
       loadValue: row.loadValue,
-      completed: true,
       session,
     })),
     ...[...holdWinners.values()].map((row) => ({
       exerciseName: row.exerciseName,
       durationSeconds: row.durationSeconds,
-      completed: true,
       session,
     })),
   ];
   if (or.length === 0) return [] as DatedSetLike[];
 
   const rows = await prisma.workoutSet.findMany({
-    where: { OR: or },
+    where: { skipped: false, OR: or },
     select: {
       exerciseName: true,
       loadValue: true,
@@ -174,6 +181,7 @@ async function peakSetsFromGroups(
       logMode: true,
       durationSeconds: true,
       completed: true,
+      skipped: true,
       session: { select: { performedAt: true } },
     },
   });

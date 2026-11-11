@@ -9,10 +9,12 @@ function SparringLogRow({
   dateKey,
   label,
   detail,
+  notes,
 }: {
   dateKey: string;
   label: string;
   detail: string;
+  notes?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(deleteSparringLogAction, {});
@@ -22,7 +24,14 @@ function SparringLogRow({
     <li className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 py-3 first:border-0 first:pt-0">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-[#f3f4ef]">{label}</p>
-        <p className="text-xs text-[#9aa394]">{detail}</p>
+        <p className="text-xs text-[#9aa394]" data-sparring-detail>
+          {detail}
+        </p>
+        {notes ? (
+          <p className="mt-1 text-xs text-[#f3f4ef]" data-sparring-notes>
+            {notes}
+          </p>
+        ) : null}
       </div>
       <div className="flex items-center gap-3">
         <Link
@@ -95,7 +104,7 @@ function SparringLogRow({
 export function SparringLogList({
   logs,
 }: {
-  logs: Array<{ dateKey: string; label: string; detail: string }>;
+  logs: Array<{ dateKey: string; label: string; detail: string; notes?: string }>;
 }) {
   return (
     <section

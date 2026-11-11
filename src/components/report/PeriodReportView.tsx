@@ -88,19 +88,21 @@ export function PeriodReportView({
         </button>
       </form>
 
-      <div className="-mx-1 flex max-w-full min-w-0 gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Focus">
-        {REPORT_FOCUSES.map((item) => (
-          <Link
-            key={item.id}
-            href={focusHref(item.id)}
-            role="tab"
-            aria-selected={model.focus === item.id}
-            className={chipClass(model.focus === item.id)}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
+      {model.quiet ? null : (
+        <div className="-mx-1 flex max-w-full min-w-0 gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Focus">
+          {REPORT_FOCUSES.map((item) => (
+            <Link
+              key={item.id}
+              href={focusHref(item.id)}
+              role="tab"
+              aria-selected={model.focus === item.id}
+              className={chipClass(model.focus === item.id)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {model.quiet ? (
         <section className="hc-panel hc-carbon px-4 py-5" data-report-quiet>

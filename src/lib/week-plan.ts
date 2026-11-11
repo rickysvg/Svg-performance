@@ -98,9 +98,32 @@ export type PlannerPrefs = {
   outsideTraining?: OutsideDay[] | null;
   /** Member start. Week 0 is their first week, so a new member is not dropped onto Day 17. */
   planAnchor?: Date | null;
+  /**
+   * First day a missed session can count. Later of signup and onboarding.
+   * Days before this are on the calendar, and they are not missed.
+   */
+  obligationAnchor?: Date | null;
   /** Fight camp week. When set, this picks the 3-week block instead of the join date. */
   forcedWeekIndex?: number | null;
 };
+
+/** The later of signup and onboarding. A plan day before that is not a missed obligation. */
+export function obligationStart(input: {
+  onboardingCompletedAt?: Date | null;
+  createdAt?: Date | null;
+}) {
+  const stamps = [input.onboardingCompletedAt, input.createdAt].filter(
+    (value): value is Date => value instanceof Date && !Number.isNaN(value.getTime()),
+  );
+  if (stamps.length === 0) return null;
+  return new Date(Math.max(...stamps.map((value) => value.getTime())));
+}
+
+/** True when this civil day is on or after the member joined. No anchor means every day can be missed. */
+export function dayCanBeMissed(dayParam: string, anchor: Date | null | undefined, timeZone: string) {
+  if (!anchor || Number.isNaN(anchor.getTime())) return true;
+  return dayParam >= formatDayParam(anchor, timeZone);
+}
 
 export function planWeekIndex(date: Date, timeZone: string, anchor?: Date | null) {
   if (anchor && !Number.isNaN(anchor.getTime())) return memberWeekIndex(date, anchor, timeZone);
@@ -635,6 +658,7 @@ export function weekStrip(
   const todayKey = formatDayParam(now, timeZone);
   const selectedKey = selected ? formatDayParam(selected, timeZone) : todayKey;
   const anchor = weekAnchor ?? now;
+  const obligation = prefs.obligationAnchor ?? prefs.planAnchor ?? null;
   const monday = mondayOfZoned(anchor, timeZone);
   const weekStart = weekStartKey(anchor, timeZone);
   const built = buildCoreWeekPlan(prefs, weekIndexFor(prefs, anchor, timeZone));
@@ -653,6 +677,7 @@ export function weekStrip(
       // week must not light up this week's Thursday.
       isSelected: dayParam === selectedKey,
       isPast: dayParam < todayKey,
+      canBeMissed: dayCanBeMissed(dayParam, obligation, timeZone),
       active: plan.active,
       summary: plan.summary,
       sessionCount: plan.active ? plan.sessions.length : 0,

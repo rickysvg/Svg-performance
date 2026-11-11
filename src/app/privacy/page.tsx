@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { LegalLinks } from "@/components/LegalLinks";
 import { getCurrentUser } from "@/lib/session";
+import { supportEmail } from "@/lib/support";
 
 export const metadata = {
   title: "Privacy policy · SVG Performance",
@@ -15,17 +16,17 @@ export default async function PrivacyPage() {
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">Legal</p>
         <h1 className="text-3xl">Privacy policy</h1>
-        <p className="text-sm text-muted">Last updated November 5, 2026.</p>
+        <p className="text-sm text-muted">Last updated November 8, 2026.</p>
         <section className="space-y-3 text-sm leading-relaxed">
           <p>
             SVG Performance is operated by SVG &amp; CO. COMBAT SPORTS &amp; FITNESS, LLC
             (“SVG”, “we”). The app is at{" "}
-            <a href="https://svg-performance.vercel.app" className="text-accent underline">
-              https://svg-performance.vercel.app
+            <a href="https://svgperformance.app" className="text-accent underline">
+              https://svgperformance.app
             </a>
             . Questions about this policy:{" "}
-            <a href="mailto:manager@svgmmaacademy.com" className="text-accent underline">
-              manager@svgmmaacademy.com
+            <a href={`mailto:${supportEmail()}`} className="text-accent underline">
+              {supportEmail()}
             </a>
             .
           </p>
@@ -60,9 +61,10 @@ export default async function PrivacyPage() {
           </p>
           <h2 className="pt-2 text-lg">How long we keep it</h2>
           <p>
-            We keep account and training data while your account is open. You can export your data
-            from Profile and delete the account there. Deleting the account removes your SVG
-            Performance data from the app. Stripe may keep billing records it is required to keep.
+            We keep account and training data while your account is open. Profile can download a copy
+            while Pro or the academy core app is open. Downloads stay off while a nonmember trial has
+            ended unpaid or Pro is locked. You can delete the account from Profile. Deleting the account
+            removes your SVG Performance data from the app. Stripe may keep billing records it is required to keep.
           </p>
           <h2 className="pt-2 text-lg">Your choices</h2>
           <p>
@@ -73,8 +75,8 @@ export default async function PrivacyPage() {
           <h2 className="pt-2 text-lg">Contact</h2>
           <p>
             SVG &amp; CO. COMBAT SPORTS &amp; FITNESS, LLC ·{" "}
-            <a href="mailto:manager@svgmmaacademy.com" className="text-accent underline">
-              manager@svgmmaacademy.com
+            <a href={`mailto:${supportEmail()}`} className="text-accent underline">
+              {supportEmail()}
             </a>
           </p>
         </section>

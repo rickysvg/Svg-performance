@@ -393,7 +393,7 @@ describe("start today", () => {
     expect(form).toContain("<RirHint />");
     expect(form).toContain("data-use-previous");
     expect(form).toContain(
-      "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3.25rem)_minmax(0,3.25rem)_1.5rem]",
+      "grid-cols-[1.25rem_minmax(0,1fr)_minmax(4.75rem,5.75rem)_minmax(4.75rem,5.75rem)_1.5rem]",
     );
     expect(form).toContain("min-w-0");
     expect(form).toContain("truncate");

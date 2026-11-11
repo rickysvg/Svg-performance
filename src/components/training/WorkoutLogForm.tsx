@@ -100,7 +100,7 @@ import {
   repsTextFromPrescriptionKey,
   setHasLoggedWork,
   setIsUntickedPrefill,
-  withPrescribedHold,
+  withEntryTick,
 } from "@/lib/logged-work";
 import {
   applyPreviousToSet,
@@ -203,6 +203,7 @@ function newClientSet(
     logMode,
     durationSeconds,
     completed: false,
+    skipped: false,
     notes: "",
     prescriptionKey: prescriptionSlotKey({ exerciseName }),
     rir: "",
@@ -224,6 +225,7 @@ function toSetInput(set: WorkoutSet): WorkoutSetInput {
     }),
     durationSeconds: set.durationSeconds,
     completed: set.completed,
+    skipped: set.skipped,
     notes: set.notes,
     prescriptionKey: set.prescriptionKey,
     rir: set.rir,
@@ -293,27 +295,19 @@ function setsForLogger(session: Session, draft: LoggerDraft | null = null): Work
         name,
         reps: planned?.reps,
       });
-      const hold = withPrescribedHold(
-        { exerciseName: name, durationSeconds: null, logMode: mode },
-        planned?.reps,
-      ).durationSeconds;
       return newClientSet(
         session.id,
         name,
         setNumber,
         "lb",
         mode,
-        hold,
+        null,
         prescribedRowId(session.id, name, setNumber),
       );
     },
     gymExerciseKey,
   );
-  const withHolds = restored.map((set) => {
-    const planned = plannedRows.find((row) => gymExerciseKey(row.name) === gymExerciseKey(set.exerciseName));
-    return withPrescribedHold(set, planned?.reps);
-  });
-  return dropEmptyPlanBikeRows(withHolds, [...base, ...(draft?.sets ?? [])]);
+  return dropEmptyPlanBikeRows(restored, [...base, ...(draft?.sets ?? [])]);
 }
 
 const SAVE_FAILED =
@@ -871,6 +865,7 @@ export function WorkoutLogForm({
         logMode: resolveLogMode({ logMode: set.logMode, name: set.exerciseName }),
         durationSeconds: set.durationSeconds,
         completed: set.completed,
+        skipped: set.skipped,
         notes: set.notes,
         prescriptionKey: set.prescriptionKey,
         rir: set.rir,
@@ -1036,7 +1031,7 @@ export function WorkoutLogForm({
     const name = sets.find((set) => set.id === id)?.exerciseName;
     if (name) setActiveName(name);
     setSets((current) =>
-      current.map((set) => (set.id === id ? { ...set, ...patch } : set)),
+      current.map((set) => (set.id === id ? withEntryTick({ ...set, ...patch }) : set)),
     );
   }
 
@@ -1156,6 +1151,7 @@ export function WorkoutLogForm({
         ? {
             ...set,
             completed,
+            skipped: !completed,
             ...(durationSeconds != null ? { durationSeconds } : {}),
             ...(fillReps ? { reps: planWork.reps } : {}),
             ...(fillTime ? { durationSeconds: fillSeconds } : {}),
@@ -1718,8 +1714,8 @@ export function WorkoutLogForm({
                 : bike
                   ? "grid-cols-[1.5rem_minmax(0,1fr)_1.5rem]"
                   : hidesLoad(mode)
-                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3rem)_1.5rem]"
-                    : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,3.25rem)_minmax(0,3.25rem)_1.5rem]";
+                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(5.25rem,6.5rem)_1.5rem]"
+                    : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(4.75rem,5.75rem)_minmax(4.75rem,5.75rem)_1.5rem]";
           const hint = modeHint(mode, name);
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);
@@ -2220,6 +2216,7 @@ export function WorkoutLogForm({
                       )}
                       <label className="flex items-center justify-center">
                         <span className="sr-only">Done</span>
+                        <input type="hidden" name={`sets.${index}.skipped`} value={set.skipped ? "1" : ""} />
                         <input
                           name={`sets.${index}.completed`}
                           data-set-field={primaryField ? undefined : set.id}
@@ -2237,7 +2234,9 @@ export function WorkoutLogForm({
                             mode === "timed_round" &&
                             !(set.durationSeconds != null && set.durationSeconds > 0)
                               ? "Enter seconds before marking this round done."
-                              : undefined
+                              : set.completed
+                                ? "Untick to leave this set out of the total."
+                                : "Tick when this set counts."
                           }
                           onChange={(event) =>
                             markDone(set.id, name, restSeconds, event.target.checked)

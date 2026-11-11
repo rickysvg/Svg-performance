@@ -39,7 +39,7 @@ export function PlanChoiceForm({
         <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
         <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
         <p className="text-sm text-muted">
-          Pro checkout includes a 7-day trial. Want VIP Coaching?{" "}
+          One trial per person. Subscribing during your trial keeps the remaining days when more than 48 hours remain. Want VIP Coaching?{" "}
           <Link href="/pricing" className="text-accent underline">
             See pricing
           </Link>
@@ -57,9 +57,9 @@ export function PlanChoiceForm({
           Try Pro for {trialDays} days
         </h1>
         <p className="mt-3 text-sm text-muted">
-          A {trialDays}-day Pro trial opens the full app. No card. After it ends, Pro is
-          $9.99/mo or $72.99/yr to keep using the app. Your past data stays viewable and
-          exportable. Train at SVG Academy? Verified members get the core app with their dues.
+          A {trialDays}-day Pro trial opens the full app. No card. After it ends unpaid, history
+          stays read-only and training locks until you subscribe. Pro is $9.99/mo or $72.99/yr.
+          Train at SVG Academy? Verified members keep the core app with their dues.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ export function PlanChoiceForm({
       <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
       <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
       <p className="text-sm text-muted">
-        Pro checkout includes a 7-day trial. You can compare plans anytime from Profile.
+        Subscribing during your trial keeps the remaining days when more than 48 hours remain. You can compare plans anytime from Profile.
       </p>
     </div>
   );

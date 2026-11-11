@@ -30,7 +30,7 @@ jobs:
           code="$(curl -sS -o /tmp/checkin-cron.json -w "%{http_code}" \
             -X POST \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://svg-performance.vercel.app/api/cron/checkins")"
+            "https://svgperformance.app/api/cron/checkins")"
           cat /tmp/checkin-cron.json
           echo
           if [ "${code}" -lt 200 ] || [ "${code}" -ge 300 ]; then

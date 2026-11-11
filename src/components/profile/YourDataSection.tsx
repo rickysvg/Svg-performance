@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { supportEmail } from "@/lib/support";
 
-export function YourDataSection() {
+export function YourDataSection({ locked = false }: { locked?: boolean }) {
   return (
     <section
       data-your-data
@@ -12,17 +13,20 @@ export function YourDataSection() {
         </p>
         <h2 className="mt-1 text-2xl">Your data</h2>
         <p className="mt-2 text-sm text-muted">
-          Download a copy of everything this account stores, or delete the account
-          for good. This is your record — not anyone else’s.
+          {locked
+            ? `Downloads stay off while training is locked. Email ${supportEmail()} to ask for a copy of your data. You can still delete the account.`
+            : "Download a copy of everything this account stores, or delete the account for good. This is your record — not anyone else’s."}
         </p>
       </div>
       <div className="flex flex-col gap-3">
-        <a
-          href="/api/account/export"
-          className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base text-black"
-        >
-          Download my data
-        </a>
+        {locked ? null : (
+          <a
+            href="/api/account/export"
+            className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base text-black"
+          >
+            Download my data
+          </a>
+        )}
         <Link
           href="/profile/delete"
           className="touch-target inline-flex items-center justify-center rounded-full bg-danger px-5 text-base font-semibold text-white"

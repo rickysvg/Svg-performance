@@ -128,6 +128,29 @@ export async function getSparringLog(userId: string, dateKey: string) {
   return row ? toLog(row) : null;
 }
 
+/** Saved-row copy. Ratings and notes stay visible without opening Edit. */
+export function sparringLogDetail(log: {
+  rounds: number;
+  minutesPerRound: number;
+  roundType?: string | null;
+  partner?: string | null;
+  sessionRating?: number | null;
+  bodyRating?: number | null;
+  notes?: string | null;
+}) {
+  const parts = [`${log.rounds} × ${log.minutesPerRound} min (${sparringMinutes(log)} min)`];
+  const type = roundTypeLabel(log.roundType);
+  if (type) parts.push(type);
+  const partner = log.partner?.trim();
+  if (partner) parts.push(partner);
+  if (log.sessionRating != null) parts.push(`Session ${log.sessionRating}/5`);
+  if (log.bodyRating != null) parts.push(`Body ${log.bodyRating}/5`);
+  return {
+    summary: parts.join(" · "),
+    notes: log.notes?.trim() ?? "",
+  };
+}
+
 export function sparringLogDateLabel(log: { dateKey: string; weekday: string }) {
   const [year, month, day] = log.dateKey.split("-").map(Number);
   if (!year || !month || !day) return log.weekday || log.dateKey;

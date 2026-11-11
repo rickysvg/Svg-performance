@@ -3,7 +3,7 @@ import { textIsBikeWorkout } from "@/lib/timer-session";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
 import { isShadowName, resolveLogMode } from "@/lib/exercise-log-mode";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { setCountsForTotals } from "@/lib/logged-work";
 import {
   formatShareDuration,
   formatShareVolume,
@@ -302,13 +302,13 @@ export function workoutCompleteTiles(input: {
     );
   }
   const seconds = sessionDurationSeconds(input.session);
-  const sets = sessionSetCount(input.session.sets);
-  const rounds = sessionRoundCount(input.session.sets);
-  const volume = sessionVolume(input.session.sets, input.displayUnit);
+  const sets = sessionSetCount(input.session.sets, input.session.status);
+  const rounds = sessionRoundCount(input.session.sets, input.session.status);
+  const volume = sessionVolume(input.session.sets, input.displayUnit, input.session.status);
   const roundRows = input.session.sets.filter((set) => isRoundTileSet(set));
   const liftRows = input.session.sets.filter((set) => !isRoundTileSet(set));
-  const roundDone = sessionRoundCount(roundRows);
-  const liftDone = liftRows.filter((set) => set.completed && setHasLoggedWork(set)).length;
+  const roundDone = sessionRoundCount(roundRows, input.session.status);
+  const liftDone = liftRows.filter((set) => setCountsForTotals(set, input.session.status)).length;
   if (roundDone > 0 && liftDone > 0) {
     const liftPlanned = Math.max(liftRows.length, plannedFromExercises(input.planExercises, false), liftDone);
     const roundPlanned = Math.max(roundRows.length, plannedFromExercises(input.planExercises, true), roundDone);

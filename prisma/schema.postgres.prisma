@@ -158,6 +158,8 @@ model Profile {
   onboardingDeepCompletedAt  DateTime?
   trialStartedAt             DateTime?
   trialEndsAt                DateTime?
+  /// Set once when this person starts their one Pro trial (in-app or Stripe). Never cleared.
+  proTrialUsedAt             DateTime?
   /// Start of the free Pro grant for a verified academy member. Set once.
   memberProStartedAt         DateTime?
   /// Days granted when the Pro period started. Null means the original 30-day grant.
@@ -437,6 +439,8 @@ model WorkoutSet {
   logMode          String         @default("load_reps")
   durationSeconds  Int?
   completed        Boolean        @default(true)
+  /// Member turned the check off after entering a value. Old finished sessions leave this false.
+  skipped          Boolean        @default(false)
   notes            String         @default("")
   /** Program day + exercise + rep scheme. A 5×5 day does not share history with 8–12. */
   prescriptionKey  String         @default("")
@@ -656,6 +660,18 @@ model Subscription {
   trialWillEnd         Boolean   @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")
+  /// Checkout SKU when known: performance_monthly, performance_year, coaching_monthly.
+  billingSku           String   @default("")
+  /// Stripe subscription trial_start. Kept once seen. Not cleared by later events.
+  trialStart           DateTime?
+  /// Stripe subscription trial_end. Kept once seen. Not cleared by later events.
+  trialEnd             DateTime?
+  /// Set when customer.subscription.trial_will_end arrives. No email is sent for that event.
+  trialWillEnd         Boolean  @default(false)
+  /// Stripe cancel_at_period_end. Access stays until the period ends.
+  cancelAtPeriodEnd    Boolean  @default(false)
+  /// Stripe cancel_at. When set, the subscription ends at this time.
+  cancelAt             DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -712,6 +728,38 @@ model StripeEventLog {
   stripeEventId String   @unique
   eventType     String
   processedAt   DateTime @default(now())
+}
+
+/// Append-only webhook history. Not tied to the user row, so a deleted account does not erase it.
+model BillingEvent {
+  id                   String   @id @default(cuid())
+  stripeEventId        String   @unique
+  eventType            String
+  userId               String   @default("")
+  stripeCustomerId     String   @default("")
+  stripeSubscriptionId String   @default("")
+  stripePriceId        String   @default("")
+  billingSku           String   @default("")
+  status               String   @default("")
+  amountCents          Int?
+  currency             String   @default("")
+  livemode             Boolean  @default(false)
+  occurredAt           DateTime
+  note                 String   @default("")
+  createdAt            DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType, occurredAt])
+  @@index([stripeSubscriptionId])
+}
+
+/// Card fingerprint seen on a trial or subscription. The first account keeps it.
+model CardFingerprint {
+  fingerprint String   @id
+  userId      String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
 }
 
 model MetricEvent {

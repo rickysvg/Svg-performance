@@ -26,6 +26,8 @@ import { mondayWeekBounds as mondayBounds } from "@/lib/wrapped";
 import { getWeeklyProgressReport, strengthNoteForPeriod } from "@/lib/weekly-report";
 import { listSparringLogs, SPARRING_LOG_LIST_DAYS } from "@/lib/outside-log";
 import { listWorkoutSessionsForUser, PROGRESS_HISTORY_DAYS } from "@/lib/workouts";
+import { buildProgressSummary } from "@/lib/progress";
+import { getHomeTelemetry, trainingLoadForDay } from "@/lib/home-telemetry";
 import { addZonedDays, APP_TIMEZONE, dayKey, zonedCivilToUtc } from "@/lib/timezone";
 import { makeUser, resetDatabase } from "./helpers";
 
@@ -468,6 +470,62 @@ describe("report history ownership", () => {
     const archive = buildWeekArchive(loaded);
     expect(archive.find((row) => row.weekStartKey === "2026-10-19")?.sessions).toBe(2);
     expect(archive.some((row) => row.trainingLoad === 1000)).toBe(false);
+  });
+
+  it("gives progress, the week archive, and the week and month reports the same total", async () => {
+    const owner = await makeUser("report-same-total@example.com");
+    await prisma.profile.update({ where: { userId: owner.id }, data: { timeZone: TZ, preferredUnits: "lb" } });
+    const counted = { completed: true, skipped: false, loadUnit: "lb" as const };
+    const excluded = { completed: false, skipped: true, loadUnit: "lb" as const };
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "Lift",
+        performedAt: zonedCivilToUtc(2026, 10, 20, TZ),
+        status: "complete",
+        sets: {
+          create: [
+            { exerciseName: "Goblet squat", setNumber: 1, reps: 5, loadValue: 40, ...counted },
+            { exerciseName: "One-arm row", setNumber: 1, reps: 6, loadValue: 30, ...excluded },
+          ],
+        },
+      },
+    });
+    await prisma.workoutSession.create({
+      data: {
+        userId: owner.id,
+        title: "Lift 2",
+        performedAt: zonedCivilToUtc(2026, 10, 21, TZ),
+        status: "complete",
+        sets: {
+          create: [
+            { exerciseName: "Bench press", setNumber: 1, reps: 5, loadValue: 57, ...counted },
+            { exerciseName: "One-arm row", setNumber: 1, reps: 7, loadValue: 15, ...excluded },
+          ],
+        },
+      },
+    });
+
+    const loaded = await loadReportHistory(owner.id, NOW);
+    const skipped = loaded.sessions.flatMap((row) => row.sets).filter((set) => set.skipped);
+    expect(skipped).toHaveLength(2);
+    const weekRow = buildWeekArchive(loaded).find((row) => row.weekStartKey === "2026-10-19");
+    const weekReport = buildPeriodReport(loaded, "week", "2026-10-19", null, "all");
+    const monthReport = buildPeriodReport(loaded, "month", "2026-10", null, "all");
+    const weekVolume = weekReport?.cards.find((card) => card.id === "volume")?.current;
+    const monthVolume = monthReport?.cards.find((card) => card.id === "volume")?.current;
+    const sessions = await listWorkoutSessionsForUser(owner.id, { recentDays: PROGRESS_HISTORY_DAYS });
+    const progressVolume = buildProgressSummary(sessions, "lb").points.reduce((sum, point) => sum + point.volume, 0);
+    const telemetry = await getHomeTelemetry({ userId: owner.id, now: NOW, timeZone: TZ, displayUnit: "lb" });
+    const progressLoad = telemetry.days.reduce((sum, day) => sum + trainingLoadForDay(day), 0);
+
+    expect(progressVolume).toBe(485);
+    expect(progressLoad).toBe(485);
+    expect(weekRow?.trainingLoad).toBe(485);
+    expect(weekRow?.sessions).toBe(2);
+    expect(weekVolume).toBe(485);
+    expect(monthVolume).toBe(485);
+    expect(weekReport?.cards.find((card) => card.id === "sets")?.current).toBe(2);
   });
 
   it("does not load sessions after the week being shown", async () => {

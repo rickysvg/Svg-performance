@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { loggedSetSome, setHasLoggedWork } from "@/lib/logged-work";
+import { loggedSetSome, setCountsForTotals } from "@/lib/logged-work";
 import { sessionCivilDay, sessionCompletionDay } from "@/lib/performed-at";
 import { getProfileForUser } from "@/lib/profile";
 import { buildTrainingStreak, plannerPrefsFromProfile, streakQuerySince } from "@/lib/streaks";
@@ -39,11 +39,15 @@ export function sparringRoundsFromSets(
     exerciseName?: string | null;
     prescriptionKey?: string | null;
     completed?: boolean | null;
+    skipped?: boolean | null;
+    reps?: number | null;
+    loadValue?: number | null;
     durationSeconds?: number | null;
   }>,
+  sessionStatus?: string | null,
 ) {
   return sets.reduce((sum, set) => {
-    if (set.completed === false) return sum;
+    if (!setCountsForTotals(set, sessionStatus)) return sum;
     const key = set.prescriptionKey ?? "";
     const name = set.exerciseName ?? "";
     const sparring = key.startsWith("round:sparring:") || /\bspar/i.test(name);
@@ -65,11 +69,14 @@ export function loggedSetVolume(
     loadUnit?: string | null;
     durationSeconds?: number | null;
     logMode?: string | null;
+    completed?: boolean | null;
+    skipped?: boolean | null;
   }>,
   displayUnit: LoadUnit,
+  sessionStatus?: string | null,
 ) {
   return sets.reduce((sum, set) => {
-    if (!setHasLoggedWork(set)) return sum;
+    if (!setCountsForTotals(set, sessionStatus)) return sum;
     if (set.logMode === "load_timed") return sum;
     if (set.loadValue == null) return sum;
     const reps = set.reps != null && set.reps > 0 ? set.reps : 1;
@@ -186,6 +193,7 @@ export async function getHomeTelemetry(input: {
       select: {
         performedAt: true,
         createdAt: true,
+        status: true,
         sessionRpe: true,
         sets: {
           select: {
@@ -196,6 +204,7 @@ export async function getHomeTelemetry(input: {
             exerciseName: true,
             durationSeconds: true,
             completed: true,
+            skipped: true,
           },
         },
       },
@@ -217,7 +226,7 @@ export async function getHomeTelemetry(input: {
 
   const sessions = weekSessions.map((session) => {
     const key = sessionCivilDay(session, timeZone);
-    const volume = loggedSetVolume(session.sets, displayUnit);
+    const volume = loggedSetVolume(session.sets, displayUnit, session.status);
     return { dayKey: key, volume, bagLoad: bagworkTrainingLoadFromSession(session) };
   });
   const streak = buildTrainingStreak({
@@ -237,7 +246,7 @@ export async function getHomeTelemetry(input: {
     rounds: [
       ...roundRows.map((row) => ({ dayKey: row.dateKey, rounds: row.rounds })),
       ...weekSessions.flatMap((session) => {
-        const rounds = sparringRoundsFromSets(session.sets);
+        const rounds = sparringRoundsFromSets(session.sets, session.status);
         if (rounds < 1) return [];
         return [{ dayKey: sessionCivilDay(session, timeZone), rounds }];
       }),

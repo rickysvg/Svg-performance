@@ -51,7 +51,10 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     expect(isOpenWhenLocked("/vip/checkout")).toBe(true);
     expect(isOpenWhenLocked("/home")).toBe(false);
     expect(isOpenWhenLocked("/training")).toBe(false);
-    expect(isOpenWhenLocked("/coach")).toBe(true);
+    expect(isOpenWhenLocked("/training/history")).toBe(true);
+    expect(isOpenWhenLocked("/timer")).toBe(false);
+    expect(isOpenWhenLocked("/coach")).toBe(false);
+    expect(isOpenWhenLocked("/form-check")).toBe(false);
   });
 
   it("gives verified members Pro for 14 days, then the included academy tier", async () => {

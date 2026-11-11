@@ -72,15 +72,20 @@ export async function extendActiveSession() {
   }
 }
 
-export async function setSessionCookie(token: string, expiresAt: Date) {
-  const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
+/** Host-only. Do not set Domain, especially not .vercel.app, or previews share a cookie. */
+export function sessionCookieOptions(expiresAt: Date) {
+  return {
+    httpOnly: true as const,
+    sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
     expires: expiresAt,
-  });
+  };
+}
+
+export async function setSessionCookie(token: string, expiresAt: Date) {
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
 }
 
 export async function clearSessionCookie() {

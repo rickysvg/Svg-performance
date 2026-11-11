@@ -256,6 +256,9 @@ describe("VIP Coaching rules", () => {
       cancelUrl: "https://app.test/cancel",
     });
     expect(created[0]?.["discounts"]).toEqual([{ coupon: "coupon_intro" }]);
+    expect(
+      (created[0]?.["subscription_data"] as { trial_period_days?: number } | undefined)?.trial_period_days,
+    ).toBeUndefined();
 
     const capped = quoteVipPrice({ academyMember: false, proUnusedCents: 8000 });
     expect(

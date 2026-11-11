@@ -65,7 +65,7 @@ export async function submitWeeklyCheckInAction(
   } catch (error) {
     return { error: publicErrorMessage(error) };
   }
-  redirect("/checkin?sent=1");
+  redirect("/checkin");
 }
 
 export async function saveCheckInPrefsAction(

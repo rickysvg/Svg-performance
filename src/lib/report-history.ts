@@ -1,7 +1,7 @@
 import { BAGWORK_PRESCRIPTION, bagworkTrainingLoadFromSession } from "@/lib/bagwork";
 import { DIFFICULTY_RATINGS, difficultyScore } from "@/lib/difficulty";
 import { liftRegionForExercise, type LiftRegion } from "@/lib/lift-region";
-import { setHasLoggedWork } from "@/lib/logged-work";
+import { setCountsForTotals, setHasLoggedWork } from "@/lib/logged-work";
 import { formatTelemetryNumber, loggedSetVolume } from "@/lib/home-telemetry";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
@@ -47,6 +47,7 @@ export type ReportSet = {
   logMode: string;
   durationSeconds: number | null;
   completed: boolean;
+  skipped?: boolean | null;
   prescriptionKey: string;
 };
 
@@ -424,16 +425,18 @@ export function summarizePeriod(input: {
   const counted: ReportSession[] = [];
   for (const session of input.sessions) {
     if (!sessionAppearsOnProgress(session)) continue;
-    const sets = session.sets.filter((set) => set.completed !== false && setMatchesFocus(set, input.focus));
+    const sets = session.sets.filter(
+      (set) => setCountsForTotals(set, session.status) && setMatchesFocus(set, input.focus),
+    );
     if (input.focus !== "all" && sets.length === 0) continue;
     counted.push(session);
     metrics.sessions += 1;
-    metrics.sets += sets.filter((set) => set.completed !== false).length;
-    metrics.volume += loggedSetVolume(sets, input.displayUnit);
+    metrics.sets += sets.length;
+    metrics.volume += loggedSetVolume(sets, input.displayUnit, session.status);
     if (input.focus === "all") {
       metrics.trainingSeconds += sessionDurationSeconds(asShare(session));
       metrics.bagLoad += bagworkTrainingLoadFromSession(session);
-      for (const set of session.sets) {
+      for (const set of sets) {
         const kind = roundKindOf(set);
         if (!kind) continue;
         metrics.rounds[kind] += 1;
@@ -1428,6 +1431,7 @@ export async function loadReportHistory(
             logMode: true,
             durationSeconds: true,
             completed: true,
+            skipped: true,
             prescriptionKey: true,
           },
         },
@@ -1452,7 +1456,7 @@ export async function loadReportHistory(
     .map((session) => ({
       ...session,
       elapsedSeconds: timers.get(session.id)?.elapsedSeconds ?? null,
-      sets: session.sets.map((set) => ({
+        sets: session.sets.map((set) => ({
         exerciseName: set.exerciseName,
         reps: set.reps,
         loadValue: set.loadValue,
@@ -1460,6 +1464,7 @@ export async function loadReportHistory(
         logMode: set.logMode,
         durationSeconds: set.durationSeconds,
         completed: set.completed,
+        skipped: set.skipped,
         prescriptionKey: set.prescriptionKey,
       })),
     }))

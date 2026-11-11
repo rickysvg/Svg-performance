@@ -23,7 +23,7 @@ export async function generateGroceryListAction(
     const user = await requireUserOrThrow();
     const access = await canUseMemberTools(user.id);
     if (!access.allowed) {
-      throw new AppError("PAYWALL", "Meal-prep is part of Nutrition on a TEST subscription.");
+      throw new AppError("PAYWALL", "Meal-prep is part of Nutrition on Pro.");
     }
     const saved = await listSavedMealsForUser(user.id);
     const lines: MealPrepLine[] = [];

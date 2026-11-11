@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { assertCanCheckoutPlan, isPlanId } from "@/lib/billing";
 import { CHECKOUT_SKUS } from "@/lib/plans";
+import { getLatestSubscription } from "@/lib/access";
+import { accountTrialAlreadyUsed, checkoutTrialSpec } from "@/lib/checkout-trial";
+import { prisma } from "@/lib/prisma";
 import {
-  appBaseUrl,
+  billingOriginFromRequest,
   createBnplCheckoutSession,
   createSubscriptionCheckoutSession,
   getStripe,
@@ -30,21 +33,55 @@ export async function startCheckoutAction(
     await assertCanCheckoutPlan(user.id, planRaw);
     const stripe = getStripe();
     if (!stripe) {
-      throw new AppError(
-        "BILLING",
-        "Stripe TEST is not configured. No card or Affirm/Klarna charge will be created.",
-      );
+      throw new AppError("BILLING", "Billing is not configured. No charge was created.");
     }
-    const appUrl = appBaseUrl();
+    const appUrl = await billingOriginFromRequest();
+    const [profile, subscription, prior] = await Promise.all([
+      prisma.profile.findUnique({
+        where: { userId: user.id },
+        select: {
+          gymMembershipVerified: true,
+          trialStartedAt: true,
+          trialEndsAt: true,
+          memberProStartedAt: true,
+          proTrialUsedAt: true,
+        },
+      }),
+      getLatestSubscription(user.id),
+      prisma.subscription.findMany({
+        where: { userId: user.id },
+        select: { trialStart: true, trialWillEnd: true, status: true },
+      }),
+    ]);
+    const trial = checkoutTrialSpec({
+      plan: planRaw,
+      verified: Boolean(profile?.gymMembershipVerified),
+      trialEndsAt: profile?.trialEndsAt,
+      trialAlreadyUsed: accountTrialAlreadyUsed({
+        trialStartedAt: profile?.trialStartedAt,
+        trialEndsAt: profile?.trialEndsAt,
+        memberProStartedAt: profile?.memberProStartedAt,
+        proTrialUsedAt: profile?.proTrialUsedAt,
+        stripeTrialSeen: prior.some(
+          (row) => row.trialStart || row.trialWillEnd || row.status === "trialing",
+        ),
+      }),
+    });
     const urls = {
       userId: user.id,
       plan: planRaw,
-      successUrl: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${appUrl}/api/stripe/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${appUrl}/billing/cancel`,
     };
     const session =
       CHECKOUT_SKUS[planRaw].checkoutMode === "subscription"
-        ? await createSubscriptionCheckoutSession(stripe, { ...urls, email: user.email })
+        ? await createSubscriptionCheckoutSession(stripe, {
+            ...urls,
+            email: user.email,
+            customerId: subscription?.stripeCustomerId,
+            trialPeriodDays: trial.kind === "days" ? trial.days : 0,
+            trialEnd: trial.kind === "end" ? trial.trialEnd : null,
+          })
         : await createBnplCheckoutSession(stripe, urls);
     if (!session.url) {
       throw new AppError("BILLING", "Stripe did not return a checkout URL.");

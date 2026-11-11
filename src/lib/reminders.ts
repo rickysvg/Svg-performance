@@ -203,7 +203,7 @@ export async function markRemindersShown(
   await recordMetric(METRIC_NAMES.reminderShown, userId);
 }
 
-export const PERFORMANCE_APP_ORIGIN = "https://svg-performance.vercel.app";
+export const PERFORMANCE_APP_ORIGIN = "https://svgperformance.app";
 
 const REMINDER_FOOTER = "Turn these off any time under Profile → Reminders.";
 const REMINDER_HONESTY =

@@ -7,6 +7,7 @@ import {
   type BagSide,
   type FigurePart,
 } from "@/lib/bag-body";
+import { setCountsForTotals } from "@/lib/logged-work";
 import { clampDurationSeconds, clampRounds, type TimerConfig } from "@/lib/round-timer";
 
 export { BAG_REGIONS, formatBagRegions, parseBagRegions, partIsLit };
@@ -483,39 +484,47 @@ export function bagworkRoundsFromSets(
     prescriptionKey?: string | null;
     durationSeconds?: number | null;
     completed?: boolean | null;
+    skipped?: boolean | null;
+    reps?: number | null;
+    loadValue?: number | null;
   }>,
+  sessionStatus?: string | null,
 ) {
   return sets.filter(
     (set) =>
       set.prescriptionKey === BAGWORK_PRESCRIPTION &&
-      set.completed !== false &&
+      setCountsForTotals(set, sessionStatus) &&
       (set.durationSeconds ?? 0) > 0,
   );
 }
 
 export function bagworkTrainingLoadFromSession(session: {
+  status?: string | null;
   sessionRpe?: number | null;
   sets: ReadonlyArray<{
     prescriptionKey?: string | null;
     durationSeconds?: number | null;
     completed?: boolean | null;
+    skipped?: boolean | null;
   }>;
 }) {
-  const rounds = bagworkRoundsFromSets(session.sets);
+  const rounds = bagworkRoundsFromSets(session.sets, session.status);
   if (rounds.length === 0) return 0;
   return bagworkTrainingLoad(rounds.length, rounds[0]?.durationSeconds ?? 0, session.sessionRpe ?? null);
 }
 
 export function bagworkHistoryLine(session: {
+  status?: string | null;
   sessionRpe?: number | null;
   notes?: string | null;
   sets: ReadonlyArray<{
     prescriptionKey?: string | null;
     durationSeconds?: number | null;
     completed?: boolean | null;
+    skipped?: boolean | null;
   }>;
 }) {
-  const rounds = bagworkRoundsFromSets(session.sets);
+  const rounds = bagworkRoundsFromSets(session.sets, session.status);
   if (rounds.length === 0) return null;
   const minutes = Math.max(1, Math.round((rounds[0]?.durationSeconds ?? 0) / 60));
   const rpe = session.sessionRpe;
