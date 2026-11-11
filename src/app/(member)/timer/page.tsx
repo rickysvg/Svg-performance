@@ -4,9 +4,12 @@ import { RoundTimer } from "@/components/timer/RoundTimer";
 import type { BagworkQuery } from "@/lib/bagwork";
 import { resolveBagworkLaunch } from "@/lib/bagwork-store";
 import { bikeSessionForLogger, isBikeIntervalName, type BikeSession } from "@/lib/bike-sessions";
+import { activePlanWeekIndex } from "@/lib/fight-camp";
+import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { getProgramDayById } from "@/lib/programs";
 import { requireUser } from "@/lib/session";
 import { isTimerMode } from "@/lib/timer-session";
+import { scaleBandFromPrefs, scaleProgramDay } from "@/lib/training-scale";
 
 type TimerQuery = BagworkQuery & {
   mode?: string;
@@ -14,10 +17,27 @@ type TimerQuery = BagworkQuery & {
   day?: string;
 };
 
-async function bikePlanFromDay(dayId?: string): Promise<BikeSession | null> {
+async function bikePlanFromDay(userId: string, dayId?: string): Promise<BikeSession | null> {
   if (!dayId) return null;
   try {
-    const day = await getProgramDayById(dayId);
+    const [raw, profile] = await Promise.all([getProgramDayById(dayId), getProfileForUser(userId)]);
+    const tz = await timeZoneForUser(userId, profile?.timeZone ?? null);
+    const doseWeek = await activePlanWeekIndex(
+      userId,
+      new Date(),
+      tz,
+      profile?.onboardingCompletedAt ?? null,
+    );
+    const day = scaleProgramDay(raw, {
+      band: scaleBandFromPrefs({
+        experienceLevel: profile?.experienceLevel,
+        competitionStatus: profile?.competitionStatus,
+      }),
+      programSlug: raw.program.slug,
+      weightAccess: profile?.weightAccess,
+      weekIndex: doseWeek.weekIndex,
+      campPhase: doseWeek.camp?.phase ?? null,
+    });
     const exercise = day.exercises.find((row) => isBikeIntervalName(row.name));
     if (!exercise) return null;
     return bikeSessionForLogger(exercise.name, {
@@ -37,7 +57,7 @@ export default async function TimerPage({
   const user = await requireUser();
   const query = await searchParams;
   if (query.mode === "bike" && query.day) {
-    const plan = await bikePlanFromDay(query.day);
+    const plan = await bikePlanFromDay(user.id, query.day);
     return (
       <main>
         <BikeClockScreen token={query.workout ?? null} session={plan} dayId={query.day ?? null} />

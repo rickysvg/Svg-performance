@@ -6,6 +6,8 @@ import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
 import { civilDayInstant } from "@/lib/performed-at";
 import { dayKey } from "@/lib/timezone";
 import { memberFacingTitle } from "@/lib/member-copy";
+import { prescribedDayFocus, scaleBandFromPrefs } from "@/lib/training-scale";
+import { activePlanWeekIndex } from "@/lib/fight-camp";
 import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
@@ -155,11 +157,33 @@ export default async function WorkoutDonePage({
           day: "numeric",
           timeZone: tz,
         });
+  const programDay = view.session.programDay;
+  const doseWeek = programDay
+    ? await activePlanWeekIndex(
+        user.id,
+        view.session.performedAt,
+        tz,
+        profile?.onboardingCompletedAt ?? null,
+      )
+    : null;
+  const programDayFocus =
+    programDay && doseWeek
+      ? prescribedDayFocus(programDay, {
+          band: scaleBandFromPrefs({
+            experienceLevel: profile?.experienceLevel,
+            competitionStatus: profile?.competitionStatus,
+          }),
+          programSlug: programDay.program.slug,
+          weightAccess: profile?.weightAccess,
+          weekIndex: doseWeek.weekIndex,
+          campPhase: doseWeek.camp?.phase ?? null,
+        })
+      : programDay?.focus;
   const summary = {
     ...buildSessionSummary({
       title: memberFacingTitle(view.session.title),
-      programDayTitle: view.session.programDay?.title,
-      programDayFocus: view.session.programDay?.focus,
+      programDayTitle: programDay?.title,
+      programDayFocus,
       exercises: summaryExercises(view.session),
     }),
     whenLabel,
