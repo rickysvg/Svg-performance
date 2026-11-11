@@ -1540,3 +1540,20 @@ model VipUpsellEvent {
   @@index([userId, trigger, createdAt])
   @@index([userId, createdAt])
 }
+
+/**
+ * Public pre-launch waitlist. Mailchimp is the audience; this table is the backup
+ * and the admin export. Email is stored lowercase.
+ */
+model WaitlistSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String   @map("first_name")
+  train     String   @default("")
+  member    String   @default("No")
+  createdAt DateTime @default(now()) @map("created_at")
+  source    String   @default("waitlist")
+
+  @@index([createdAt])
+  @@map("waitlist_signups")
+}

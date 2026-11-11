@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { DeskTone } from "@/lib/admin-desk-status";
 import { DeskCheck } from "@/components/admin/DeskStatus";
 
-export type AdminTileIcon = "revenue" | "feedback" | "announce";
+export type AdminTileIcon = "revenue" | "feedback" | "announce" | "waitlist";
 
 function Glyph({ icon }: { icon: AdminTileIcon }) {
   if (icon === "revenue") {
@@ -20,6 +20,14 @@ function Glyph({ icon }: { icon: AdminTileIcon }) {
         <path d="M14 8h14l8 8v24H14V8z" fill="none" stroke="#CBF805" strokeWidth="2" />
         <path d="M28 8v8h8" fill="none" stroke="#CBF805" strokeWidth="2" />
         <path d="M20 28h12M20 34h8" stroke="#CBF805" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (icon === "waitlist") {
+    return (
+      <svg viewBox="0 0 48 48" width="52" height="52" aria-hidden>
+        <path d="M14 8h20v32H14V8z" fill="none" stroke="#CBF805" strokeWidth="2" />
+        <path d="M20 18h8M20 26h8M20 34h5" stroke="#CBF805" strokeWidth="2" strokeLinecap="round" />
       </svg>
     );
   }
