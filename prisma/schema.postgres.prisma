@@ -651,13 +651,6 @@ model Subscription {
   stripePriceId        String   @default("")
   /// Retained so existing rows are not dropped. App writes do not clear it. Access uses the current plan or price, not this flag by itself.
   founding             Boolean  @default(false)
-  /// Hosted rows already store these. Kept so db push does not drop them.
-  billingSku           String    @default("")
-  cancelAt             DateTime?
-  cancelAtPeriodEnd    Boolean   @default(false)
-  trialStart           DateTime?
-  trialEnd             DateTime?
-  trialWillEnd         Boolean   @default(false)
   currentPeriodEnd     DateTime?
   source               String   @default("webhook")
   /// Checkout SKU when known: performance_monthly, performance_year, coaching_monthly.
