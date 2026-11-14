@@ -1,8 +1,11 @@
 import {
+  alignBikeRestPhrase,
   bikeWeekIndex,
   easyBikeProgramDayNumber,
+  isBikeIntervalName,
   memberWeekIndex,
   moderateBikeProgramDayNumber,
+  parseBikeIntervalReps,
   pickBikeSessionForPlan,
 } from "@/lib/bike-sessions";
 import { bikeLoggerHref, isBikePlanSession } from "@/lib/timer-session";
@@ -142,7 +145,7 @@ export type CatalogDayLike = {
   dayNumber: number;
   title: string;
   focus: string;
-  exercises: Array<{ name?: string; sets: number; restSeconds: number }>;
+  exercises: Array<{ name?: string; sets: number; restSeconds: number; reps?: string }>;
 };
 
 export type ResolvedPlanSession = {
@@ -688,6 +691,25 @@ export function weekStrip(
   });
 }
 
+/** First clause of a bike day's focus, rewritten to the reps actually prescribed. */
+function bikeDoseLine(day: CatalogDayLike | null | undefined) {
+  if (!day?.focus) return null;
+  const exercises = day.exercises;
+  const bike = exercises.find((exercise) => exercise.reps && isBikeIntervalName(exercise.name ?? ""));
+  if (!bike?.reps) return null;
+  const parsed = parseBikeIntervalReps(bike.reps);
+  const focus =
+    parsed && parsed.restSeconds > 0
+      ? alignBikeRestPhrase(day.focus, parsed.workSeconds, parsed.restSeconds)
+      : day.focus;
+  const head = memberCopy(focus)
+    .split("·")
+    .map((part) => part.trim())
+    .find(Boolean);
+  if (!head || !/\d+\s*s\b/i.test(head)) return null;
+  return head;
+}
+
 export function resolvePlanSessions(
   dayPlan: DayPlan,
   catalog: {
@@ -722,7 +744,8 @@ export function resolvePlanSessions(
         : null;
     const slotLetter = (["A", "B", "C"] as const)[Math.min(resolved.length, 2)];
     const title = session.title ?? (day?.title ? memberCopy(day.title) : session.label);
-    const subtitle = session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label);
+    const doseLine = bikeDoseLine(day);
+    const subtitle = doseLine ?? session.detail ?? (day?.focus ? memberCopy(day.focus) : session.label);
     const bike = Boolean(day?.id) && isBikePlanSession({ title, label: session.label, day });
     const half = session.halved ? "?half=1" : "";
     const startHref = day?.id ? `${bikeLoggerHref(day.id)}${half}` : undefined;

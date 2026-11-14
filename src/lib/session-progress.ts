@@ -5,6 +5,7 @@ import {
   exerciseSetProgress,
   loggedNameMatchesPlanned,
   prescribedSetTotal,
+  progressTotals,
   setIsTicked,
   tickedSetCount,
   type ExerciseSetProgress,
@@ -223,18 +224,34 @@ export function sessionProgress(session: ProgressSession, dose?: ProgressDose | 
   }
 
   const names = planNames(dose, programExercises);
-  const done =
-    counted > 0 &&
-    planned > 0 &&
-    counted >= planned &&
-    (names.length === 0 || namesAreCovered(session, names) || tickedSwapCoversDose(session, names));
+  const totals = progressTotals(rows);
+  // Exercises the member added are not on the template dose. A leftover 1-set
+  // bike target must not stay the headline after those rows are the session.
+  // A same-size swap still finishes the dose, so it does not take this path.
+  const extraPlanned = rows.reduce((sum, row) => {
+    const listed = programExercises.some((exercise) =>
+      loggedNameMatchesPlanned(exercise.name ?? "", row.name),
+    );
+    return listed ? sum : sum + row.planned;
+  }, 0);
+  const followRows = extraPlanned > planned;
+  const headlinePlanned = followRows ? totals.planned : planned;
+  const headlineTicked = followRows ? totals.ticked : counted;
+  const shownTicked = headlinePlanned > 0 ? Math.min(headlineTicked, headlinePlanned) : headlineTicked;
+  const rowsComplete =
+    rows.length > 0 && rows.every((row) => row.planned <= 0 || row.state === "complete");
+  const covered =
+    names.length === 0 || namesAreCovered(session, names) || tickedSwapCoversDose(session, names);
+  const done = followRows
+    ? shownTicked > 0 && headlinePlanned > 0 && rowsComplete
+    : counted > 0 && planned > 0 && counted >= planned && covered;
   const unit = roundOrBikeSession(session) ? "rounds" : "sets";
   const mixed = mixedProgressText(session, programExercises, done);
   return {
-    ticked: counted,
-    planned,
+    ticked: shownTicked,
+    planned: headlinePlanned,
     done,
-    text: mixed ?? progressText(counted, planned, done, unit),
+    text: mixed ?? progressText(shownTicked, headlinePlanned, done, unit),
     rows,
   };
 }
