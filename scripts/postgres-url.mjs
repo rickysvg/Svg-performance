@@ -43,6 +43,14 @@ export function hostedPreparePlan({ onVercel = false, vercelEnv = "", env = {} }
   return { action: "fail" };
 }
 
+/**
+ * `prisma db push` prints this and exits when the diff would drop or narrow data.
+ * The push is not applied. This repo does not pass a data-loss override.
+ */
+export function dbPushRefusedForDataLoss(output = "") {
+  return /might be data loss|data loss warning/i.test(String(output));
+}
+
 export function hostedDdlUrl(env = {}, resolvedUrl = "") {
   const directEnv = String(env.DIRECT_URL ?? "").trim();
   if (isPostgresUrl(directEnv)) return neonDirectUrl(directEnv);

@@ -6,7 +6,7 @@ import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { getCurrentUser } from "@/lib/session";
 import { getLatestSubscription } from "@/lib/access";
-import { subscriptionScheduleLine } from "@/lib/subscription-copy";
+import { currentPlanLine, getTrialState } from "@/lib/trial";
 
 export default async function BillingSuccessPage({
   searchParams,
@@ -20,7 +20,19 @@ export default async function BillingSuccessPage({
   }
   const user = await getCurrentUser();
   const subscription = user ? await getLatestSubscription(user.id) : null;
+  const trial = user ? await getTrialState(user.id) : null;
   const pending = Boolean(sessionId) && !subscription?.stripeCustomerId;
+  // Same plan line as Profile and Plan. An incomplete VIP checkout does not replace a Pro trial.
+  const planLine = user
+    ? currentPlanLine({
+        trialActive: Boolean(trial?.trialActive),
+        trialDaysLeft: trial?.trialDaysLeft ?? 0,
+        trialLengthDays: trial?.trialLengthDays,
+        verified: trial?.verified,
+        planLabel: "waiting on Stripe",
+        subscription,
+      })
+    : "waiting on Stripe";
 
   return (
     <div className="min-h-full">
@@ -33,7 +45,7 @@ export default async function BillingSuccessPage({
         </p>
         <p className="mt-4 text-sm" data-billing-plan>
           Your plan:{" "}
-          {subscription ? subscriptionScheduleLine(subscription) : "waiting on Stripe"}
+          {planLine}
         </p>
         {pending ? <BillingPendingNote /> : null}
         {subscription?.stripeCustomerId ? (

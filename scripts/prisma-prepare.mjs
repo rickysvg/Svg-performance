@@ -9,7 +9,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { hostedDdlUrl, hostedPreparePlan } from "./postgres-url.mjs";
+import { dbPushRefusedForDataLoss, hostedDdlUrl, hostedPreparePlan } from "./postgres-url.mjs";
 
 const root = process.cwd();
 const sqliteSchema = path.join(root, "prisma", "schema.prisma");
@@ -56,6 +56,46 @@ function run(command, extraEnv = {}) {
     env: { ...process.env, ...extraEnv },
     cwd: root,
   });
+}
+
+const DB_PUSH =
+  "npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate";
+
+/**
+ * Preview shares one database across open PRs. A push that would drop another
+ * branch's table (for example waitlist_signups) is refused and skipped.
+ * Production still fails on that warning. Nothing is dropped.
+ */
+function pushPreviewSchema(pushUrl) {
+  console.log("Prisma: db push (preview skips a destructive push; no data-loss flag).");
+  let stdout = "";
+  let stderr = "";
+  try {
+    stdout = execSync(DB_PUSH, {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, DATABASE_URL: pushUrl },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    stdout = String(error.stdout ?? "");
+    stderr = String(error.stderr ?? "");
+    const combined = `${stdout}\n${stderr}\n${error.message ?? ""}`;
+    if (stdout) process.stdout.write(stdout.endsWith("\n") ? stdout : `${stdout}\n`);
+    if (stderr) process.stderr.write(stderr.endsWith("\n") ? stderr : `${stderr}\n`);
+    if (dbPushRefusedForDataLoss(combined)) {
+      console.warn(
+        [
+          "Prisma: skipped a destructive db push on preview.",
+          "Prisma warned this push would drop data. Another open preview may own tables this branch does not.",
+          "No rows were changed. The build continues.",
+        ].join(" "),
+      );
+      return;
+    }
+    throw error;
+  }
+  if (stdout) process.stdout.write(stdout.endsWith("\n") ? stdout : `${stdout}\n`);
 }
 
 function applyHostedAdditiveSql(databaseUrl) {
@@ -141,10 +181,12 @@ if (plan.action === "postgres") {
       console.log("Prisma: db push / additive SQL use the direct (non-pooler) URL.");
     }
     applyHostedAdditiveSql(pushUrl);
-    console.log("Prisma: db push (empty Neon/Vercel Postgres is OK; no data-loss flag).");
-    run("npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate", {
-      DATABASE_URL: pushUrl,
-    });
+    if (process.env.VERCEL_ENV === "preview") {
+      pushPreviewSchema(pushUrl);
+    } else {
+      console.log("Prisma: db push (empty Neon/Vercel Postgres is OK; no data-loss flag).");
+      run(DB_PUSH, { DATABASE_URL: pushUrl });
+    }
     run("npx tsx scripts/invalidate-password-reset-tokens.ts", {
       DATABASE_URL: pushUrl,
     });
