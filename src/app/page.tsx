@@ -1,9 +1,44 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { LegalLinks } from "@/components/LegalLinks";
 import { Logo } from "@/components/Logo";
+import { PublicHome } from "@/components/marketing/PublicHome";
 import { getCurrentUser } from "@/lib/session";
 import { NONMEMBER_TRIAL_DAYS, proAccessSummary } from "@/lib/pricing";
+
+const PUBLIC_TITLE = "SVG Performance | Strength and conditioning built for fighters";
+const PUBLIC_DESCRIPTION =
+  "Strength, conditioning and fight training built for combat athletes. Train on the web. Open it on your phone, no download needed.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const user = await getCurrentUser();
+  if (user) return {};
+  return {
+    title: { absolute: PUBLIC_TITLE },
+    description: PUBLIC_DESCRIPTION,
+    alternates: { canonical: "/" },
+    openGraph: {
+      title: PUBLIC_TITLE,
+      description: PUBLIC_DESCRIPTION,
+      url: "/",
+      siteName: "SVG Performance",
+      type: "website",
+      images: [
+        {
+          url: "/svg-performance-badge.webp",
+          alt: "SVG Performance logo, lime ring on black",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: PUBLIC_TITLE,
+      description: PUBLIC_DESCRIPTION,
+      images: ["/svg-performance-badge.webp"],
+    },
+  };
+}
 
 export default async function MarketingPage({
   searchParams,
@@ -13,6 +48,10 @@ export default async function MarketingPage({
   const user = await getCurrentUser();
   const query = await searchParams;
   const deleted = query.deleted === "1";
+
+  if (!user) {
+    return <PublicHome deleted={deleted} />;
+  }
 
   return (
     <div className="min-h-full">
