@@ -20,14 +20,17 @@ import {
 } from "@/lib/bike-sessions";
 import { creditForExercise } from "@/lib/coach-credits";
 import { fallbackLogMode, plannedSetLine } from "@/lib/exercise-log-mode";
+import { buildSessionSummary } from "@/lib/session-summary";
+import { sessionTheme } from "@/lib/today-start";
 import { getDemoProgram } from "@/lib/programs";
-import { scaleBandFromPrefs, scaleExercise, scaleProgramDay } from "@/lib/training-scale";
+import { prescribedDayFocus, scaleBandFromPrefs, scaleExercise, scaleProgramDay } from "@/lib/training-scale";
 import {
   buildCoreWeekPlan,
   coreSkeletonSessions,
   planForDate,
   resolvePlanSessions,
   weekStrip,
+  type DayPlan,
 } from "@/lib/week-plan";
 import { startWorkoutFromDay } from "@/lib/workouts";
 import { makeUser, resetDatabase } from "./helpers";
@@ -112,6 +115,78 @@ describe("assault bike catalog", () => {
     expect(scaled.exercises[0]?.reps).toBe("10s work / 40s rest × 8");
     expect(scaled.focus).toMatch(/40s easy/);
     expect(scaled.focus).not.toMatch(/50s/);
+
+    const todayFocus = prescribedDayFocus(
+      {
+        dayNumber: 5,
+        title: alactic.title,
+        focus: alactic.focus,
+        exercises: [
+          {
+            name: alactic.name,
+            sets: 1,
+            reps: bikeIntervalReps(alactic),
+            loadText: alactic.loadText,
+            restSeconds: 0,
+            logMode: "timed_round",
+            notes: alactic.notes,
+          },
+        ],
+      },
+      { band: "intermediate", programSlug: "demo-strength-base", weekIndex: 1 },
+    );
+    expect(sessionTheme(todayFocus, "Cardio")).toBe("Alactic power — 10s all-out / 40s easy");
+    const summary = buildSessionSummary({
+      title: alactic.title,
+      programDayTitle: alactic.title,
+      programDayFocus: todayFocus,
+      exercises: [{ name: alactic.name }],
+    });
+    expect(summary.goal).toMatch(/40s easy/);
+    expect(summary.goal).not.toMatch(/50s/);
+
+    const wednesday = {
+      weekday: "Wednesday",
+      active: true,
+      optionalDay: false,
+      summary: "Cardio",
+      sessions: [
+        {
+          kind: "conditioning" as const,
+          label: "Cardio — bike",
+          title: "Cardio — bike",
+          detail: "Sprint bike. The harder session of this week's pair.",
+          programSlug: "demo-strength-base" as const,
+          dayNumber: 5,
+        },
+      ],
+      deload: false,
+      testingWeek: false,
+      mesoBlock: "A" as const,
+      mesoLabel: "Block A",
+    } satisfies DayPlan;
+    const resolved = resolvePlanSessions(wednesday, {
+      strength: {
+        days: [
+          {
+            id: "day-5",
+            dayNumber: 5,
+            title: alactic.title,
+            focus: todayFocus,
+            exercises: [
+              {
+                name: alactic.name,
+                sets: 1,
+                restSeconds: 0,
+                reps: "10s work / 40s rest × 8",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(resolved[0]?.subtitle).toBe("Alactic power — 10s all-out / 40s easy");
+    expect(resolved[0]?.subtitle).not.toMatch(/50s/);
   });
 
   it("keeps Wednesday alactic and rotates the Sunday aerobic bike", () => {

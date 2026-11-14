@@ -1152,6 +1152,25 @@ export function scaleProgramDay<
   };
 }
 
+/**
+ * Member-facing day focus. The catalog phrase can still say "50s easy" after
+ * the week dose moved the easy spin. The scaled reps are the prescription.
+ */
+export function prescribedDayFocus<
+  T extends { dayNumber: number; focus: string; title?: string; exercises: ScaleableExercise[] },
+>(
+  day: T,
+  input: {
+    band: ScaleBand;
+    programSlug?: string;
+    weightAccess?: string | null;
+    weekIndex?: number | null;
+    campPhase?: CampPhase | null;
+  },
+) {
+  return scaleProgramDay(day, input).focus;
+}
+
 /** Day subtitle rest follows the scaled bike dose, not the catalog phrase. */
 function alignScaledBikeFocus(focus: string, exercises: Array<{ name: string; reps: string }>) {
   const bike = exercises.find((exercise) => isBikeIntervalName(exercise.name));
