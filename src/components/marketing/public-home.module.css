@@ -530,7 +530,6 @@
   box-shadow:
     0 12px 34px rgba(0, 0, 0, 0.6),
     inset 0 0 0 1px #000;
-  container-type: inline-size;
 }
 
 .phone::before {
@@ -546,16 +545,27 @@
   z-index: 2;
 }
 
-.screen {
+.shot {
+  position: relative;
   width: 100%;
   aspect-ratio: 3 / 5;
   border-radius: 20px;
-  background: #000;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  font-size: 8cqw;
-  color: #fff;
+  background: #000;
+}
+
+.shotImg {
+  object-fit: cover;
+  object-position: 50% 0;
+}
+
+.shotImgSm {
+  object-position: 50% 100%;
+}
+
+.shotImgHome {
+  object-fit: contain;
+  object-position: 50% 0;
 }
 
 .phoneSm {
@@ -567,7 +577,7 @@
   display: none;
 }
 
-.phoneSm .screen {
+.shotSm {
   border-radius: 13px;
 }
 
@@ -618,204 +628,6 @@
   color: var(--lime);
   margin: 4px 0 0;
   font-weight: 900;
-}
-
-.screenBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 8px 4px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  font-size: 0.72em;
-}
-
-.screenBar b {
-  color: var(--lime);
-}
-
-.screenBar i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--lime);
-  box-shadow: 0 0 8px rgba(203, 248, 5, 0.7);
-}
-
-.screenKicker {
-  display: block;
-  padding: 2px 8px 0;
-  color: var(--lime);
-  font-size: 0.68em;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.bubbles {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 8px 0;
-  flex: 1;
-}
-
-.bubble {
-  display: block;
-  height: 16%;
-  min-height: 12px;
-  max-height: 26px;
-  width: 78%;
-  border-radius: 8px;
-  background: #1c1c1c;
-}
-
-.bubbleOut {
-  align-self: flex-end;
-  width: 58%;
-  background: var(--lime);
-}
-
-.ask {
-  margin: 8px;
-  border: 1px solid #3a3a3a;
-  color: #9a9a9a;
-  font-size: 0.68em;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 6px 8px;
-}
-
-.ringWrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-}
-
-.ring {
-  width: 72%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  border: 3px solid var(--lime);
-  box-shadow: 0 0 18px rgba(203, 248, 5, 0.28);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.ring b {
-  color: var(--lime);
-  font-size: 0.62em;
-  letter-spacing: 0.16em;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.ring strong {
-  color: #fff;
-  font-size: 1.15em;
-  letter-spacing: 0.08em;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  padding: 8px 8px 0;
-}
-
-.days i {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #262626;
-  color: #9a9a9a;
-  font-style: normal;
-  font-weight: 900;
-  font-size: 0.58em;
-}
-
-.days i.on {
-  background: var(--lime);
-  color: #050505;
-  border-color: var(--lime);
-}
-
-.block {
-  display: block;
-  margin: 8px 8px 0;
-  height: 18%;
-  min-height: 18px;
-  background: #141414;
-  border-left: 3px solid var(--lime);
-}
-
-.blockShort {
-  width: 72%;
-  height: 12%;
-}
-
-.metric {
-  display: block;
-  margin: 6px 8px 0;
-  color: #fff;
-  font-size: 0.68em;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.chart {
-  width: calc(100% - 16px);
-  height: 22%;
-  margin: 4px 8px 2px;
-  display: block;
-}
-
-.screenDay {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 4px;
-  padding: 8px;
-  background: #050505;
-}
-
-.dayTile {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: #111;
-}
-
-.dayShade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.05) 58%);
-  z-index: 1;
-}
-
-.dayLabel {
-  position: absolute;
-  left: 5px;
-  right: 5px;
-  bottom: 5px;
-  z-index: 2;
-  color: #fff;
-  font-size: 0.62em;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
 }
 
 .publicHome .quote {

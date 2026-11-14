@@ -1,22 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { LOGO_BADGE_SRC } from "@/components/Logo";
 import { supportEmail } from "@/lib/support";
 import styles from "./public-home.module.css";
 
-/**
- * Signed-out homepage. Phone frames are stand-ins until final screen
- * captures land: home uses the app's own tile photos; the other frames
- * are brand chrome with no stats.
- */
-
-const DAY_TILES = [
-  { src: "/tiles/train.webp", label: "Train" },
-  { src: "/tiles/bagwork.webp", label: "Bagwork" },
-  { src: "/tiles/coach.webp", label: "Coach" },
-  { src: "/tiles/progress.webp", label: "Progress" },
-] as const;
+const HERO_LOGO_SRC = "/marketing/svg-app-logo-poster.webp";
+const SHOT_COACH = "/marketing/svg-app-v3-ai-coach-v2.webp";
+const SHOT_BAG = "/marketing/svg-app-v3-bag-rounds.webp";
+const SHOT_PLAN = "/marketing/svg-app-v3-program-block.webp";
+const SHOT_LOGGER = "/marketing/svg-app-v3-logger-rir.webp";
+const SHOT_PROGRESS = "/marketing/svg-app-v3-progress.webp";
+const SHOT_HOME = "/marketing/svg-app-home-dark.webp";
 
 function cn(...names: Array<string | false | undefined>) {
   return names.filter(Boolean).join(" ");
@@ -42,121 +36,28 @@ function Brand({ priority = false }: { priority?: boolean }) {
   );
 }
 
-function PhoneFrame({
-  label,
+function PhoneShot({
+  src,
+  alt,
   small = false,
-  children,
+  home = false,
 }: {
-  label: string;
+  src: string;
+  alt: string;
   small?: boolean;
-  children: ReactNode;
+  home?: boolean;
 }) {
   return (
-    <div className={cn(styles.phone, small && styles.phoneSm)} role="img" aria-label={label}>
-      {children}
-    </div>
-  );
-}
-
-function ScreenBar() {
-  return (
-    <span className={styles.screenBar}>
-      <b>SVG</b>
-      <i />
-    </span>
-  );
-}
-
-function CoachScreen() {
-  return (
-    <div className={styles.screen} aria-hidden="true">
-      <ScreenBar />
-      <span className={styles.screenKicker}>Coach</span>
-      <span className={styles.bubbles}>
-        <span className={styles.bubble} />
-        <span className={cn(styles.bubble, styles.bubbleOut)} />
-        <span className={styles.bubble} />
-      </span>
-      <span className={styles.ask}>Ask</span>
-    </div>
-  );
-}
-
-function BagScreen() {
-  return (
-    <div className={styles.screen} aria-hidden="true">
-      <ScreenBar />
-      <div className={styles.ringWrap}>
-        <div className={styles.ring}>
-          <b>Focus</b>
-          <strong>Jab</strong>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlanScreen() {
-  return (
-    <div className={styles.screen} aria-hidden="true">
-      <ScreenBar />
-      <span className={styles.screenKicker}>Week</span>
-      <span className={styles.days}>
-        <i>M</i>
-        <i className={styles.on}>T</i>
-        <i>W</i>
-        <i>T</i>
-        <i>F</i>
-        <i>S</i>
-        <i>S</i>
-      </span>
-      <span className={styles.block} />
-      <span className={cn(styles.block, styles.blockShort)} />
-    </div>
-  );
-}
-
-function LoggerScreen() {
-  return (
-    <div className={styles.screen} aria-hidden="true">
-      <ScreenBar />
-      <span className={styles.screenKicker}>RIR</span>
-      <span className={styles.block} />
-      <span className={styles.block} />
-      <span className={cn(styles.block, styles.blockShort)} />
-    </div>
-  );
-}
-
-function ProgressScreen() {
-  return (
-    <div className={styles.screen} aria-hidden="true">
-      <ScreenBar />
-      <span className={styles.metric}>Streak</span>
-      <svg className={styles.chart} viewBox="0 0 120 48" preserveAspectRatio="none" aria-hidden="true">
-        <polyline
-          points="0,40 18,34 36,36 54,22 72,26 90,14 120,8"
-          fill="none"
-          stroke="#CBF805"
-          strokeWidth="3"
+    <div className={cn(styles.phone, small && styles.phoneSm)}>
+      <div className={cn(styles.shot, small && styles.shotSm)}>
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={small ? "(max-width: 767px) 112px, 170px" : "(max-width: 759px) 58vw, 220px"}
+          className={cn(styles.shotImg, small && styles.shotImgSm, home && styles.shotImgHome)}
         />
-      </svg>
-      <span className={styles.metric}>Weigh-in</span>
-      <span className={styles.metric}>Sessions</span>
-    </div>
-  );
-}
-
-function DayScreen() {
-  return (
-    <div className={cn(styles.screen, styles.screenDay)} aria-hidden="true">
-      {DAY_TILES.map((tile) => (
-        <div key={tile.label} className={styles.dayTile}>
-          <Image src={tile.src} alt="" fill sizes="160px" className={styles.logoImg} />
-          <span className={styles.dayShade} />
-          <span className={styles.dayLabel}>{tile.label}</span>
-        </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -201,7 +102,7 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
           <div className={styles.in}>
             <div className={styles.logo}>
               <Image
-                src={LOGO_BADGE_SRC}
+                src={HERO_LOGO_SRC}
                 alt="SVG Performance logo, lime ring on black"
                 fill
                 priority
@@ -318,9 +219,11 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                   goals.
                 </small>
               </div>
-              <PhoneFrame small label="Preview of AI coach chat">
-                <CoachScreen />
-              </PhoneFrame>
+              <PhoneShot
+                small
+                src={SHOT_COACH}
+                alt="AI coach Skye explaining reps in reserve in the app chat"
+              />
             </div>
 
             <div className={cn(styles.feature, styles.fight)}>
@@ -341,16 +244,16 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                   Themed bag rounds. Clock’s running. Punch to hide the kick.
                 </small>
               </div>
-              <PhoneFrame small label="Preview of a themed bag-round timer">
-                <BagScreen />
-              </PhoneFrame>
+              <PhoneShot
+                small
+                src={SHOT_BAG}
+                alt="Themed bag-round timer, round 1 of 4"
+              />
             </div>
 
             <ul className={styles.phones} aria-label="A look inside the app">
               <li>
-                <PhoneFrame label="Preview of a training week">
-                  <PlanScreen />
-                </PhoneFrame>
+                <PhoneShot src={SHOT_PLAN} alt="Training week in a 3-week block" />
                 <span className={styles.lbl}>Your plan</span>
                 <span className={styles.sub}>
                   Fighter-first programming. A new training block every 3 weeks so your body never
@@ -358,9 +261,7 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                 </span>
               </li>
               <li>
-                <PhoneFrame label="Preview of the set logger with an RIR target">
-                  <LoggerScreen />
-                </PhoneFrame>
+                <PhoneShot src={SHOT_LOGGER} alt="Workout logger with an RIR target on every set" />
                 <span className={styles.lbl}>Know how heavy</span>
                 <span className={styles.sub}>
                   Every set has a target. RIR tells you how hard to go. No guessing, no ego
@@ -368,18 +269,14 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                 </span>
               </li>
               <li>
-                <PhoneFrame label="Preview of progress">
-                  <ProgressScreen />
-                </PhoneFrame>
+                <PhoneShot src={SHOT_PROGRESS} alt="Day streak, last session and body-weight chart" />
                 <span className={styles.lbl}>Your progress</span>
                 <span className={styles.sub}>
                   Streaks, weigh-ins, sessions. The scoreboard doesn’t lie.
                 </span>
               </li>
               <li>
-                <PhoneFrame label="Preview of the home screen">
-                  <DayScreen />
-                </PhoneFrame>
+                <PhoneShot home src={SHOT_HOME} alt="Dark home screen with weight, body fat and training tiles" />
                 <span className={styles.lbl}>Your day</span>
                 <span className={styles.sub}>Walk in. Check your numbers. Get to work.</span>
               </li>
