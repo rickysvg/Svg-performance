@@ -1,0 +1,1164 @@
+/*
+  Signed-out homepage. Scoped to this module so member routes keep their type.
+  Kickers, headings, and buttons are sentence case in the markup and render
+  uppercase here. Sharp corners except the logo and phone frames.
+*/
+.publicHome {
+  --lime: #cbf805;
+  --bg: #050505;
+  --alt: #0b0b0b;
+  --line: #262626;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: #fff;
+  font-family: Helvetica, Arial, sans-serif;
+  font-synthesis: weight;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.publicHome *,
+.publicHome *::before,
+.publicHome *::after {
+  box-sizing: border-box;
+}
+
+.publicHome img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.publicHome ul,
+.publicHome ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.publicHome a {
+  color: var(--lime);
+}
+
+.publicHome h1,
+.publicHome h2,
+.publicHome h3 {
+  font-family: Helvetica, Arial, sans-serif;
+  font-weight: 900;
+  font-synthesis: weight;
+  -webkit-font-synthesis: weight;
+  text-transform: uppercase;
+  margin: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: wrap;
+}
+
+.publicHome h2 {
+  font-size: clamp(34px, 7vw, 64px);
+  line-height: 0.95;
+  letter-spacing: -1.5px;
+  margin: 0 0 16px;
+}
+
+.publicHome h2 span,
+.publicHome .quote span {
+  color: var(--lime);
+}
+
+.publicHome h3 {
+  font-size: 20px;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px;
+}
+
+.publicHome p {
+  color: #c7c7c7;
+  font-size: 17px;
+  margin: 0 0 14px;
+}
+
+.sec {
+  padding: 56px 6%;
+  scroll-margin-top: 72px;
+}
+
+.alt {
+  background: var(--alt);
+}
+
+.in {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.kicker {
+  display: block;
+  color: var(--lime);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+}
+
+.publicHome .lead {
+  max-width: 640px;
+}
+
+.btns {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 15px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 2px solid transparent;
+  border-radius: 0;
+  text-align: center;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  background: var(--lime);
+  color: #050505;
+  border-color: var(--lime);
+}
+
+.btnPrimary:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #050505;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.btnSecondary:hover {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+
+.publicHome .btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.publicHome .btnPrimary:focus-visible {
+  outline-color: #050505;
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(5, 5, 5, 0.92);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid #1d1d1d;
+}
+
+.top .in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 6%;
+  max-width: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.brand b {
+  color: var(--lime);
+}
+
+.brandMark {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 14px rgba(203, 248, 5, 0.3);
+}
+
+.logoImg {
+  object-fit: cover;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.lnk {
+  display: none;
+  color: #fff;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.lnk:hover {
+  color: var(--lime);
+}
+
+.top .btn {
+  min-height: 40px;
+  padding: 9px 14px;
+  font-size: 12px;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid #1d1d1d;
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(203, 248, 5, 0.16), transparent 55%),
+    #050505;
+  padding-top: 28px;
+}
+
+.hero .in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.hero .in > * {
+  min-width: 0;
+}
+
+.logo {
+  position: relative;
+  width: min(38vw, 170px);
+  aspect-ratio: 1 / 1;
+  margin: 0 0 10px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 50px rgba(203, 248, 5, 0.22);
+}
+
+.hero .kicker {
+  font-size: 13px;
+  letter-spacing: 4px;
+  margin: 0 0 16px;
+  padding-top: 12px;
+  border-top: 2px solid var(--lime);
+  width: max-content;
+  max-width: 100%;
+}
+
+.publicHome .h1 {
+  font-size: min(80px, 18vw);
+  line-height: 0.86;
+  letter-spacing: -2px;
+  margin: 0 0 16px;
+}
+
+.publicHome .h1 span {
+  color: var(--lime);
+}
+
+.publicHome .hook {
+  font-size: 19px;
+  line-height: 1.35;
+  color: #cfcfcf;
+  max-width: 540px;
+  margin: 0;
+}
+
+.publicHome .hook strong {
+  color: #fff;
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.status {
+  display: flex;
+  align-items: stretch;
+  margin: 20px 0 22px;
+  border: 2px solid var(--lime);
+  width: max-content;
+  max-width: 100%;
+}
+
+.statusChip {
+  background: var(--lime);
+  color: #050505;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.statusChip b {
+  font-size: 26px;
+  letter-spacing: -0.5px;
+}
+
+.statusChip small {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  font-weight: 900;
+}
+
+.statusTxt {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.25;
+}
+
+.statusTxt b {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+}
+
+.statusTxt em {
+  font-style: normal;
+  color: var(--lime);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.publicHome .webLine {
+  font-size: 15px;
+  color: #e6e6e6;
+  margin: 14px 0 0;
+  font-weight: 700;
+}
+
+.publicHome .webLine::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--lime);
+  margin-right: 9px;
+  vertical-align: 1px;
+}
+
+.path {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.path li {
+  background: #050505;
+  border: 1px solid var(--line);
+  padding: 16px 14px 14px;
+}
+
+.path li b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: #050505;
+  font-size: 15px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.path li:last-child {
+  border-color: var(--lime);
+  background: linear-gradient(160deg, rgba(203, 248, 5, 0.14), #050505 60%);
+}
+
+.path h3 {
+  font-size: 18px;
+  margin: 0 0 4px;
+  line-height: 1.05;
+}
+
+.path p {
+  font-size: 14px;
+  color: #bdbdbd;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.tiles li {
+  background: #0d0d0d;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--lime);
+  padding: 14px 16px;
+}
+
+.tiles h3 {
+  font-size: 19px;
+  margin: 0 0 4px;
+  line-height: 1.05;
+}
+
+.tiles p {
+  font-size: 15px;
+  margin: 0;
+  color: #cfcfcf;
+  line-height: 1.4;
+}
+
+.feature {
+  display: grid;
+  grid-template-columns: 1fr 112px;
+  gap: 12px 14px;
+  align-items: center;
+  margin: 10px 0 0;
+  padding: 14px 16px;
+  background: #050505;
+}
+
+.coach {
+  border: 1px dashed #3a3a3a;
+}
+
+.fight {
+  border: 1px solid var(--line);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.badgeLime {
+  background: var(--lime);
+  color: #050505;
+}
+
+.badgeWhite {
+  background: #fff;
+  color: #050505;
+  letter-spacing: 2px;
+}
+
+.feature p {
+  margin: 0;
+  font-size: 15px;
+  color: #e6e6e6;
+}
+
+.fight p {
+  font-size: 14px;
+  color: #bdbdbd;
+  line-height: 1.45;
+  margin: 0 0 6px;
+}
+
+.fight p b {
+  color: #fff;
+}
+
+.cap {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 8px;
+  color: var(--lime);
+  font-weight: 700;
+}
+
+.phone {
+  position: relative;
+  background: #111;
+  border: 2px solid #2b2b2b;
+  border-radius: 28px;
+  padding: 8px;
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px #000;
+  container-type: inline-size;
+}
+
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34%;
+  height: 11px;
+  border-radius: 10px;
+  background: #000;
+  z-index: 2;
+}
+
+.screen {
+  width: 100%;
+  aspect-ratio: 3 / 5;
+  border-radius: 20px;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: 8cqw;
+  color: #fff;
+}
+
+.phoneSm {
+  padding: 5px;
+  border-radius: 18px;
+}
+
+.phoneSm::before {
+  display: none;
+}
+
+.phoneSm .screen {
+  border-radius: 13px;
+}
+
+.phones {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  margin: 22px -6% 0;
+  padding: 6px 6% 10px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.phones::-webkit-scrollbar {
+  display: none;
+}
+
+.phones li {
+  flex: 0 0 58%;
+  scroll-snap-align: center;
+}
+
+.lbl {
+  display: block;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 9px;
+}
+
+.sub {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #a9a9a9;
+  text-align: center;
+  margin-top: 5px;
+}
+
+.publicHome .swipe {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--lime);
+  margin: 4px 0 0;
+  font-weight: 900;
+}
+
+.screenBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px 4px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  font-size: 0.72em;
+}
+
+.screenBar b {
+  color: var(--lime);
+}
+
+.screenBar i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 8px rgba(203, 248, 5, 0.7);
+}
+
+.screenKicker {
+  display: block;
+  padding: 2px 8px 0;
+  color: var(--lime);
+  font-size: 0.68em;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 0;
+  flex: 1;
+}
+
+.bubble {
+  display: block;
+  height: 16%;
+  min-height: 12px;
+  max-height: 26px;
+  width: 78%;
+  border-radius: 8px;
+  background: #1c1c1c;
+}
+
+.bubbleOut {
+  align-self: flex-end;
+  width: 58%;
+  background: var(--lime);
+}
+
+.ask {
+  margin: 8px;
+  border: 1px solid #3a3a3a;
+  color: #9a9a9a;
+  font-size: 0.68em;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+}
+
+.ringWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.ring {
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid var(--lime);
+  box-shadow: 0 0 18px rgba(203, 248, 5, 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ring b {
+  color: var(--lime);
+  font-size: 0.62em;
+  letter-spacing: 0.16em;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ring strong {
+  color: #fff;
+  font-size: 1.15em;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 8px 8px 0;
+}
+
+.days i {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #262626;
+  color: #9a9a9a;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 0.58em;
+}
+
+.days i.on {
+  background: var(--lime);
+  color: #050505;
+  border-color: var(--lime);
+}
+
+.block {
+  display: block;
+  margin: 8px 8px 0;
+  height: 18%;
+  min-height: 18px;
+  background: #141414;
+  border-left: 3px solid var(--lime);
+}
+
+.blockShort {
+  width: 72%;
+  height: 12%;
+}
+
+.metric {
+  display: block;
+  margin: 6px 8px 0;
+  color: #fff;
+  font-size: 0.68em;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chart {
+  width: calc(100% - 16px);
+  height: 22%;
+  margin: 4px 8px 2px;
+  display: block;
+}
+
+.screenDay {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  padding: 8px;
+  background: #050505;
+}
+
+.dayTile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #111;
+}
+
+.dayShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.05) 58%);
+  z-index: 1;
+}
+
+.dayLabel {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 5px;
+  z-index: 2;
+  color: #fff;
+  font-size: 0.62em;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.publicHome .quote {
+  color: #fff;
+  font-size: clamp(24px, 6.4vw, 44px);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+  margin: 0 0 16px;
+  max-width: 900px;
+}
+
+.publicHome .body {
+  font-size: 16px;
+  color: #cfcfcf;
+  max-width: 640px;
+}
+
+.apps {
+  background: var(--lime);
+}
+
+.apps .kicker,
+.apps h2,
+.apps .bandLead,
+.apps .small {
+  color: #050505;
+}
+
+.publicHome .bandLead {
+  font-size: 18px;
+  font-weight: 700;
+  max-width: 640px;
+  margin: 0 0 20px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.cards li {
+  background: #050505;
+  color: #fff;
+  padding: 14px;
+}
+
+.cards li b {
+  display: block;
+  color: var(--lime);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.cards li strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.apps .btnPrimary {
+  background: #050505;
+  border-color: #050505;
+  color: var(--lime);
+}
+
+.apps .btnPrimary:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #050505;
+}
+
+.apps .btnSecondary {
+  border-color: #050505;
+  color: #050505;
+}
+
+.apps .btnSecondary:hover {
+  background: #050505;
+  color: var(--lime);
+}
+
+.apps .btnPrimary:focus-visible,
+.apps .btnSecondary:focus-visible {
+  outline-color: #050505;
+}
+
+.publicHome .small {
+  color: #050505;
+  font-size: 14px;
+  margin: 16px 0 0;
+}
+
+.final {
+  border-top: 4px solid var(--lime);
+}
+
+.footer {
+  background: #000;
+  border-top: 1px solid #1d1d1d;
+  padding: 36px 6% 40px;
+}
+
+.footer .in {
+  display: grid;
+  gap: 18px;
+}
+
+.footer .brand {
+  font-size: 12px;
+}
+
+.footer p {
+  font-size: 14px;
+  color: #a9a9a9;
+  margin: 0;
+}
+
+.footer ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+}
+
+.footer ul a {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.footer ul a:hover {
+  color: var(--lime);
+}
+
+.mail {
+  color: var(--lime);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  word-break: break-all;
+}
+
+.footer .footerNote {
+  margin-top: 10px;
+}
+
+.footer .footerCopy {
+  margin-top: 12px;
+}
+
+.deleted {
+  background: var(--lime);
+  color: #050505;
+  padding: 18px 6%;
+}
+
+.deleted .kicker,
+.deleted p,
+.deletedTitle {
+  color: #050505;
+}
+
+.publicHome .deletedTitle {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
+.deleted p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@media (min-width: 600px) {
+  .lnk {
+    display: inline;
+  }
+}
+
+@media (min-width: 760px) {
+  .sec {
+    padding: 90px 7%;
+  }
+
+  .top .in {
+    padding: 12px 7%;
+  }
+
+  .btn {
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    padding: 17px 28px;
+  }
+
+  .btns {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .btns .btn {
+    min-width: 280px;
+  }
+
+  .top .btn {
+    min-width: 0;
+    font-size: 12px;
+    padding: 9px 16px;
+  }
+
+  .hero {
+    padding-top: 56px;
+    padding-bottom: 64px;
+  }
+
+  .hero .in {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 48px;
+  }
+
+  .logo {
+    order: 2;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .publicHome .h1 {
+    font-size: clamp(80px, 8.6vw, 120px);
+    letter-spacing: -3px;
+  }
+
+  .path {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .phones {
+    overflow: visible;
+    margin: 28px 0 0;
+    padding: 6px 0 0;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .phones li {
+    flex: 0 1 220px;
+  }
+
+  .publicHome .swipe {
+    display: none;
+  }
+
+  .cards {
+    max-width: 760px;
+  }
+
+  .footer .in {
+    grid-template-columns: 1.2fr 1fr 1fr;
+    align-items: start;
+  }
+
+  .deleted {
+    padding: 22px 7%;
+  }
+}
+
+@media (min-width: 768px) {
+  .feature {
+    grid-template-columns: 1fr 170px;
+    gap: 12px 24px;
+    padding: 18px 22px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .tiles {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Beat the base link color so labels stay readable on each fill. */
+.publicHome .brand {
+  color: #fff;
+}
+
+.publicHome .lnk {
+  color: #fff;
+}
+
+.publicHome .lnk:hover {
+  color: var(--lime);
+}
+
+.publicHome .btnPrimary {
+  color: #050505;
+}
+
+.publicHome .btnSecondary {
+  color: #fff;
+}
+
+.publicHome .btnSecondary:hover {
+  color: var(--lime);
+}
+
+.publicHome .apps .btnPrimary {
+  color: var(--lime);
+}
+
+.publicHome .apps .btnPrimary:hover {
+  color: #050505;
+}
+
+.publicHome .apps .btnSecondary {
+  color: #050505;
+}
+
+.publicHome .apps .btnSecondary:hover {
+  color: var(--lime);
+}
+
+@media (max-width: 420px) {
+  .publicHome .statusTxt em {
+    font-size: 13px;
+    letter-spacing: 0.2px;
+  }
+}
