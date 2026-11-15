@@ -114,7 +114,7 @@ describe("Home photo tiles", () => {
     expect(source.match(/href: "\//g)).toHaveLength(9);
     expect(source).toContain("grid-cols-2");
     const tile = fs.readFileSync(path.join(process.cwd(), "src/components/home/SparringLogTile.tsx"), "utf8");
-    expect(tile).toContain('href="/sparring"');
+    expect(tile).toContain('"/sparring"');
     expect(tile).toContain("Sparring Log");
     expect(tile).toContain("/tiles/sparring.webp");
     expect(tile).toContain("aspect-[4/3]");

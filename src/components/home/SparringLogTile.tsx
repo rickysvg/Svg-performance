@@ -10,15 +10,19 @@ export function SparringLogTile({
   hint,
   layout = "card",
   src = ART,
+  locked = false,
 }: {
   hint: string;
   layout?: "card" | "row";
   src?: string;
+  locked?: boolean;
 }) {
+  const href = locked ? "#trial-ended" : "/sparring";
   if (layout === "row") {
     return (
       <Link
-        href="/sparring"
+        href={href}
+        data-sparring-locked={locked ? "1" : undefined}
         data-sparring-tile
         data-sparring-layout="row"
         className="flex min-w-0 items-center gap-3 rounded-[1.25rem] bg-black px-3 py-3 text-white"
@@ -40,7 +44,8 @@ export function SparringLogTile({
 
   return (
     <Link
-      href="/sparring"
+      href={href}
+      data-sparring-locked={locked ? "1" : undefined}
       data-sparring-tile
       data-sparring-layout="card"
       className="relative block min-w-0 w-full aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-black ring-1 ring-[#cbf805]/40"

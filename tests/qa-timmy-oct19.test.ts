@@ -149,7 +149,7 @@ describe("Timmy Oct 19 sparring and coach surfaces", () => {
     expect(sparringNeedsEase(saved)).toBe(true);
     const checkIn = await writeRecoveryCheckIn(user.id, saved);
     expect(checkIn?.easeNote).toMatch(/body rating 2/);
-    expect(read("src/components/home/SparringLogTile.tsx")).toContain('href="/sparring"');
+    expect(read("src/components/home/SparringLogTile.tsx")).toContain('"/sparring"');
     expect(read("src/app/(member)/home/page.tsx")).toContain("<HomeQuickActions");
     expect(read("src/components/home/HomeQuickActions.tsx")).toContain("<SparringLogTile");
     expect(read("src/app/(member)/training/page.tsx")).not.toContain("<SparringLogTile");

@@ -1,4 +1,5 @@
 import { normalizePlanId, PLAN_CATALOG } from "@/lib/plans";
+import { APP_TIMEZONE, zonedCalendarDaysUntil } from "@/lib/timezone";
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Active",
@@ -26,17 +27,28 @@ export function subscriptionFace(plan: string, status: string) {
   return `${subscriptionPlanLabel(plan)} · ${subscriptionStatusLabel(status)}`;
 }
 
-export function trialDaysRemaining(trialEnd: Date | null | undefined, now = new Date()) {
+/**
+ * Days left to show for a trial that has not ended.
+ * A last calendar day in `timeZone` is 0, so the copy does not say "1 day left"
+ * on the same local day the trial ends. The end instant itself is unchanged.
+ */
+export function trialDaysRemaining(
+  trialEnd: Date | null | undefined,
+  now = new Date(),
+  timeZone = APP_TIMEZONE,
+) {
   if (!trialEnd || trialEnd.getTime() <= now.getTime()) return 0;
-  return Math.ceil((trialEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  const byClock = Math.ceil((trialEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  const byDate = zonedCalendarDaysUntil(now, trialEnd, timeZone);
+  return Math.min(byClock, Math.max(0, byDate));
 }
 
 /** "Nov 17" in the app timezone. */
-export function shortMonthDay(date: Date, timeZone = "America/Denver") {
+export function shortMonthDay(date: Date, timeZone = APP_TIMEZONE) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    timeZone,
+    timeZone: timeZone || APP_TIMEZONE,
   }).format(date);
 }
 
@@ -61,17 +73,22 @@ export function subscriptionScheduleLine(
     currentPeriodEnd?: Date | null;
   },
   now = new Date(),
+  timeZone = APP_TIMEZONE,
 ) {
   const parts = [subscriptionFace(input.plan, input.status)];
   if (input.status === "trialing" && input.trialEnd && input.trialEnd.getTime() > now.getTime()) {
-    const days = trialDaysRemaining(input.trialEnd, now);
-    const unit = days === 1 ? "day" : "days";
-    parts.push(`${days} ${unit} left`);
-    parts.push(`ends ${shortMonthDay(input.trialEnd)}`);
+    const days = trialDaysRemaining(input.trialEnd, now, timeZone);
+    if (days >= 1) {
+      const unit = days === 1 ? "day" : "days";
+      parts.push(`${days} ${unit} left`);
+      parts.push(`ends ${shortMonthDay(input.trialEnd, timeZone)}`);
+    } else {
+      parts.push("ends today");
+    }
   }
   const cancelOn = subscriptionCancelOn(input);
   if (cancelOn && (input.status === "active" || input.status === "trialing" || input.status === "past_due")) {
-    parts.push(`Cancels on ${shortMonthDay(cancelOn)}`);
+    parts.push(`Cancels on ${shortMonthDay(cancelOn, timeZone)}`);
   }
   return parts.join(" · ");
 }

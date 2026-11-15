@@ -32,9 +32,10 @@ export default async function MemberLayout({
   // Verified academy members get one Pro grant, started the first time we see them.
   await ensureMemberProMonth(user.id);
   const profile = await getProfileForUser(user.id);
+  const now = new Date();
   const [tier, trial, subscription] = await Promise.all([
-    getAppTier(user.id),
-    getTrialState(user.id),
+    getAppTier(user.id, now),
+    getTrialState(user.id, now),
     getLatestSubscription(user.id),
   ]);
   const pathname = (await headers()).get(PATH_HEADER);
@@ -70,8 +71,12 @@ export default async function MemberLayout({
         {subscription && subscriptionNeedsBillingBanner(subscription.status) && subscription.stripeCustomerId ? (
           <BillingProblemBanner status={subscription.status} />
         ) : null}
-        {pathname === "/home" && subscription?.status === "trialing" && subscription.trialEnd ? (
-          <StripeTrialBanner trialEnd={subscription.trialEnd} />
+        {pathname === "/home" &&
+        !accountLocked &&
+        subscription?.status === "trialing" &&
+        subscription.trialEnd &&
+        subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd) ? (
+          <StripeTrialBanner trialEnd={subscription.trialEnd} timeZone={trial.timeZone} />
         ) : null}
         {!trial.verified &&
         trial.trialActive &&

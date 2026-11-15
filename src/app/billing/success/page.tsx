@@ -2,11 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { LegalLinks } from "@/components/LegalLinks";
-import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
+import { BillingPlanStatus } from "@/components/billing/BillingPlanStatus";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { getCurrentUser } from "@/lib/session";
 import { getLatestSubscription } from "@/lib/access";
-import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { billingSuccessPlan } from "@/lib/billing-success";
+import { getEffectivePlanId } from "@/lib/entitlements";
+import { PLAN_CATALOG } from "@/lib/plans";
+import { getTrialState } from "@/lib/trial";
 
 export default async function BillingSuccessPage({
   searchParams,
@@ -19,20 +22,30 @@ export default async function BillingSuccessPage({
     redirect(`/api/stripe/checkout-return?session_id=${encodeURIComponent(sessionId)}`);
   }
   const user = await getCurrentUser();
-  const subscription = user ? await getLatestSubscription(user.id) : null;
-  const trial = user ? await getTrialState(user.id) : null;
-  const pending = Boolean(sessionId) && !subscription?.stripeCustomerId;
-  // Same plan line as Profile and Plan. An incomplete VIP checkout does not replace a Pro trial.
-  const planLine = user
-    ? currentPlanLine({
+  const now = new Date();
+  const loaded = user
+    ? await Promise.all([
+        getLatestSubscription(user.id),
+        getTrialState(user.id, now),
+        getEffectivePlanId(user.id, now),
+      ])
+    : null;
+  const subscription = loaded?.[0] ?? null;
+  const trial = loaded?.[1] ?? null;
+  const planId = loaded?.[2] ?? null;
+  const view = user
+    ? billingSuccessPlan({
+        sessionId,
+        synced: query.synced === "1",
         trialActive: Boolean(trial?.trialActive),
         trialDaysLeft: trial?.trialDaysLeft ?? 0,
         trialLengthDays: trial?.trialLengthDays,
         verified: trial?.verified,
-        planLabel: "waiting on Stripe",
+        timeZone: trial?.timeZone,
+        planLabel: planId ? PLAN_CATALOG[planId].label : "Trial ended",
         subscription,
       })
-    : "waiting on Stripe";
+    : { planLine: "Sign in to see your plan", confirming: false };
 
   return (
     <div className="min-h-full">
@@ -43,21 +56,20 @@ export default async function BillingSuccessPage({
           This page shows the checkout saved for your account. Stripe’s webhook confirms the same
           subscription. No refunds except billing errors.
         </p>
-        <p className="mt-4 text-sm" data-billing-plan>
-          Your plan:{" "}
-          {planLine}
-        </p>
-        {pending ? <BillingPendingNote /> : null}
+        {view.confirming ? (
+          <BillingPlanStatus sessionId={sessionId} />
+        ) : (
+          <p className="mt-4 text-sm" data-billing-plan data-billing-confirming="0">
+            Your plan: {view.planLine}
+          </p>
+        )}
         {subscription?.stripeCustomerId ? (
           <div className="mt-4">
             <ManageBillingButton />
           </div>
         ) : null}
         <LegalLinks className="mt-6" />
-        <Link
-          href={pending ? "/plan?billing=pending" : "/plan"}
-          className="mt-6 inline-flex text-accent underline"
-        >
+        <Link href="/plan" className="mt-6 inline-flex text-accent underline">
           Your plan
         </Link>
       </main>

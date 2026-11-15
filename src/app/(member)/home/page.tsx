@@ -45,8 +45,9 @@ export default async function HomePage({
   const fallbackQuote = DAILY_QUOTES[0];
   const profile = await homeLoad("profile", getProfileForUser(user.id), null);
   const tz = await timeZoneForUser(user.id, profile?.timeZone ?? null);
-  const selected = parseDayParam(params.day, new Date(), tz);
-  const planId = await getEffectivePlanId(user.id);
+  const now = new Date();
+  const selected = parseDayParam(params.day, now, tz);
+  const planId = await getEffectivePlanId(user.id, now);
   const coachChat = await getCoachChatAccess(user);
   const [today, reminderResult, quoteCard, guide, trial, showThirdWorkout, recentWeights, recentFat, sparringRating, telemetry, camp] =
     await Promise.all([
@@ -62,7 +63,7 @@ export default async function HomePage({
         teaser: teaserFromQuote(fallbackQuote),
       }),
       homeLoad("guide", getTodayGuide(user.id, selected, tz), emptyTodayGuide(selected, tz)),
-      getTrialState(user.id),
+      getTrialState(user.id, now),
       shouldShowThirdWorkoutCard(user.id, planId),
       homeLoad("weight", getRecentWeightsForUser(user.id, 8), []),
       homeLoad("bodyFat", getRecentBodyFatForUser(user.id, 2), []),
@@ -154,6 +155,7 @@ export default async function HomePage({
         canStartTrial={trial.canStartTrial && !trialEnded}
         trialDays={trial.trialLengthDays}
         formCheckLocked={formCheckLockedFor({ role: user.role, planId })}
+        sparringLocked={trialEnded}
       />
 
       {reminderResult.due.length > 0 ? (
@@ -183,25 +185,28 @@ export default async function HomePage({
       ) : null}
 
       <HomeToday guide={guide} locked={trialEnded} />
-      <div className="pt-2">
-        <LogPastWorkoutButton dayKey={dayKey} entry="home" label="Log a workout" timeZone={tz} />
-      </div>
-
-      {guide.today.outsideKind === "sparring" ? (
-        <SparringLogForm
-          dateKey={formatDayParam(guide.today.selected, tz)}
-          weekday={guide.today.planWeekday}
-          timeLabel={guide.today.outsideLabel.replace(/^Sparring\s*·\s*/, "")}
-          saved={guide.today.sparringLog}
-          coachName={coach.name}
-          coachImage={coach.circle}
-        />
-      ) : null}
+      {trialEnded ? null : (
+        <>
+          <div className="pt-2">
+            <LogPastWorkoutButton dayKey={dayKey} entry="home" label="Log a workout" timeZone={tz} />
+          </div>
+          {guide.today.outsideKind === "sparring" ? (
+            <SparringLogForm
+              dateKey={formatDayParam(guide.today.selected, tz)}
+              weekday={guide.today.planWeekday}
+              timeLabel={guide.today.outsideLabel.replace(/^Sparring\s*·\s*/, "")}
+              saved={guide.today.sparringLog}
+              coachName={coach.name}
+              coachImage={coach.circle}
+            />
+          ) : null}
+        </>
+      )}
 
       <HomeTelemetry data={telemetry} title={telemetryTitle} />
 
       <Link
-        href="/nutrition"
+        href={trialEnded ? "#trial-ended" : "/nutrition"}
         className="hc-panel flex min-h-14 items-center justify-between gap-3 px-4"
       >
         <span>
@@ -210,7 +215,7 @@ export default async function HomePage({
             {Math.round(today.foodToday.calories)} / {Math.round(today.targets.calories)} cal
           </span>
         </span>
-        <span className="font-semibold">Log food</span>
+        <span className="font-semibold">{trialEnded ? "Locked" : "Log food"}</span>
       </Link>
 
       <details className="hc-panel px-4 py-3">

@@ -5,8 +5,9 @@ import { type CatalogPlanId, type CatalogPlan, normalizePlanId, planAtLeast } fr
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { recomputeMembership } from "@/lib/gymdesk/recompute";
-import { subscriptionScheduleLine } from "@/lib/subscription-copy";
+import { shortMonthDay, subscriptionScheduleLine, trialDaysRemaining } from "@/lib/subscription-copy";
 import { subscriptionGrantsAccess } from "@/lib/subscription-access";
+import { memberDayTimeZone } from "@/lib/timezone";
 
 import {
   LEGACY_MEMBER_PRO_DAYS,
@@ -29,6 +30,8 @@ export type TrialState = {
   trialActive: boolean;
   trialDaysLeft: number;
   trialLengthDays: number;
+  /** Zone used for the days-left count and the ended date. */
+  timeZone: string;
   canStartTrial: boolean;
 };
 
@@ -40,6 +43,7 @@ export function isTrialActive(trialEndsAt: Date | null, now = new Date()) {
   return Boolean(trialEndsAt && trialEndsAt.getTime() > now.getTime());
 }
 
+/** Remaining 24-hour chunks. Access clocks use this. Plan copy uses trialDaysRemaining. */
 export function trialDaysLeft(trialEndsAt: Date | null, now = new Date()) {
   if (!trialEndsAt) return 0;
   const ms = trialEndsAt.getTime() - now.getTime();
@@ -64,6 +68,8 @@ export function currentPlanLine(input: {
   /** Set when the caller knows which clock is running. */
   trialLengthDays?: number;
   verified?: boolean;
+  /** Member zone for "ends today" and the Stripe trial date. */
+  timeZone?: string;
   subscription?: {
     plan: string;
     status: string;
@@ -74,7 +80,8 @@ export function currentPlanLine(input: {
   } | null;
 }) {
   const sub = input.subscription;
-  if (sub) {
+  // An incomplete VIP checkout is not a plan. Profile and Plan skip it the same way.
+  if (sub && sub.status !== "incomplete" && sub.status !== "incomplete_expired") {
     const planId = normalizePlanId(sub.plan);
     const paidLabel =
       planId !== "member_access" &&
@@ -83,9 +90,21 @@ export function currentPlanLine(input: {
         sub.status === "past_due" ||
         sub.status === "unpaid" ||
         sub.status === "canceled");
-    if (paidLabel) return subscriptionScheduleLine(sub);
+    if (paidLabel) {
+      return input.timeZone
+        ? subscriptionScheduleLine(sub, new Date(), input.timeZone)
+        : subscriptionScheduleLine(sub);
+    }
   }
   if (input.trialActive) {
+    if (input.trialDaysLeft <= 0) {
+      if (input.verified) {
+        const length = input.trialLengthDays ?? MEMBER_TRIAL_DAYS;
+        return `${length}-day free Pro, ends today`;
+      }
+      if (input.trialLengthDays) return `${input.trialLengthDays}-day Pro trial, ends today`;
+      return "Pro trial, ends today";
+    }
     const unit = input.trialDaysLeft === 1 ? "day" : "days";
     if (input.verified) {
       const length = input.trialLengthDays ?? MEMBER_TRIAL_DAYS;
@@ -99,7 +118,22 @@ export function currentPlanLine(input: {
   return input.planLabel;
 }
 
-export async function getTrialState(userId: string, now = new Date()): Promise<TrialState> {
+/** /plan sentence after the no-card trial ends. Downloads stay off; history stays visible. */
+export function trialEndedSummary(input: {
+  trialLengthDays: number;
+  trialEndsAt: Date | null;
+  timeZone?: string;
+}) {
+  const when = input.trialEndsAt ? shortMonthDay(input.trialEndsAt, input.timeZone) : "";
+  const ended = when ? `ended ${when}` : "ended";
+  return `Your ${input.trialLengthDays}-day Pro trial ${ended}. Subscribe to Pro to keep training in the app. History and progress stay visible. Downloads stay off.`;
+}
+
+export async function getTrialState(
+  userId: string,
+  now = new Date(),
+  timeZone?: string,
+): Promise<TrialState> {
   const profile = await prisma.profile.findUnique({
     where: { userId },
     select: {
@@ -111,11 +145,13 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
       memberProStartedAt: true,
       memberProDays: true,
       proTrialUsedAt: true,
+      timeZone: true,
     },
   });
   const verified = Boolean(profile?.gymMembershipVerified);
   const trialStartedAt = profile?.trialStartedAt ?? null;
   const trialEndsAt = profile?.trialEndsAt ?? null;
+  const zone = timeZone ?? memberDayTimeZone(profile?.timeZone ?? null);
   // Verified members get one Pro grant even if they used a nonmember trial before.
   // proTrialUsedAt blocks a second trial after Checkout, cancel, or a reused card.
   const trialUsed = verified
@@ -130,10 +166,11 @@ export async function getTrialState(userId: string, now = new Date()): Promise<T
     thirdWorkoutCardDismissedAt: profile?.thirdWorkoutCardDismissedAt ?? null,
     trialUsed,
     trialActive: active,
-    trialDaysLeft: active ? trialDaysLeft(trialEndsAt, now) : 0,
+    trialDaysLeft: active ? trialDaysRemaining(trialEndsAt, now, zone) : 0,
     trialLengthDays: profile?.memberProStartedAt
       ? memberProGrantDays(profile.memberProDays)
       : trialLengthDays(verified),
+    timeZone: zone,
     canStartTrial: !trialUsed,
   };
 }

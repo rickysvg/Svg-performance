@@ -91,17 +91,6 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
                 Done
               </p>
             ) : null}
-            {customResume ? (
-              <ResumeButton log={customResume} className={resumeClass} />
-            ) : otherResume ? (
-              <ResumeButton log={otherResume} className={resumeClass} />
-            ) : null}
-            {customResume && otherResume ? (
-              <ResumeButton
-                log={otherResume}
-                className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-              />
-            ) : null}
           </>
         ) : (
           <>
@@ -193,24 +182,6 @@ export function HomeToday({ guide, locked = false }: { guide: Guide; locked?: bo
             <p data-session-partial className="mt-4 font-display text-xs uppercase tracking-wide text-[#FF3B3B]">
               {visiblePartialLabel(resume?.ticked, resume?.planned)}
             </p>
-          ) : null}
-          {resume ? <ResumeButton log={resume} className={resumeClass} /> : null}
-          {customResume && customResume.id !== resume?.id ? (
-            <ResumeButton
-              log={customResume}
-              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-            />
-          ) : null}
-          {otherResume && otherResume.id !== customResume?.id ? (
-            <ResumeButton
-              log={otherResume}
-              className="touch-target mt-3 inline-flex items-center rounded-full border border-line px-5 text-sm"
-            />
-          ) : null}
-          {extra > 0 || customResume || otherResume ? (
-            <Link href="/training" className="mt-3 block text-sm text-muted" data-more-today={Math.max(extra, 1)}>
-              See the rest of today
-            </Link>
           ) : null}
         </>
       ) : firstDone ? (
