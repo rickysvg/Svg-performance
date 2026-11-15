@@ -45,6 +45,9 @@ export default async function PricingPage() {
               {currentPlanLine({
                 trialActive: Boolean(trial?.trialActive),
                 trialDaysLeft: trial?.trialDaysLeft ?? 0,
+                trialLengthDays: trial?.trialLengthDays,
+                verified: trial?.verified,
+                timeZone: trial?.timeZone,
                 planLabel: PLAN_CATALOG[currentPlan].label,
                 subscription,
               })}

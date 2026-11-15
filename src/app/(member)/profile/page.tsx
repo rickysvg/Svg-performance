@@ -72,6 +72,7 @@ export default async function ProfilePage({
               trialDaysLeft: trial.trialDaysLeft,
               trialLengthDays: trial.trialLengthDays,
               verified: trial.verified,
+              timeZone: trial.timeZone,
               planLabel: PLAN_CATALOG[planId].label,
               subscription,
             })}

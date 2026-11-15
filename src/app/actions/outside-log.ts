@@ -7,6 +7,7 @@ import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
 import { memberDayTimeZone, readTimeZoneCookie } from "@/lib/timezone";
+import { assertLoggingOpen } from "@/lib/log-access";
 
 export type SparringLogState = {
   error?: string;
@@ -31,6 +32,7 @@ export async function saveSparringLogAction(
 ): Promise<SparringLogState> {
   try {
     const user = await requireUserOrThrow();
+    await assertLoggingOpen(user);
     const profile = await getProfileForUser(user.id);
     const timeZone = memberDayTimeZone(profile?.timeZone ?? null, await readTimeZoneCookie());
     const log = await saveSparringLog(user.id, {
@@ -75,6 +77,7 @@ export async function deleteSparringLogAction(
 ): Promise<{ error?: string }> {
   try {
     const user = await requireUserOrThrow();
+    await assertLoggingOpen(user);
     await deleteSparringLog(user.id, String(formData.get("dateKey") ?? ""));
     revalidatePath("/home");
     revalidatePath("/sparring");

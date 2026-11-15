@@ -8,7 +8,7 @@ import { subscriptionScheduleLine } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
-import { currentPlanLine, getTrialState } from "@/lib/trial";
+import { currentPlanLine, getTrialState, trialEndedSummary } from "@/lib/trial";
 import { subscriptionBlocksCheckout, subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { LegalLinks } from "@/components/LegalLinks";
 
@@ -19,11 +19,12 @@ export default async function PlanPage({
 }) {
   const query = await searchParams;
   const user = await requireUser();
+  const now = new Date();
   const [entitlements, creditBundle, subscription, trial] = await Promise.all([
-    getMemberEntitlements(user.id),
+    getMemberEntitlements(user.id, now),
     creditsForCurrentPlan(user.id),
     getLatestSubscription(user.id),
-    getTrialState(user.id),
+    getTrialState(user.id, now),
   ]);
   const plan = entitlements.plan;
   const subscriptionLive = Boolean(
@@ -40,11 +41,20 @@ export default async function PlanPage({
             trialDaysLeft: trial.trialDaysLeft,
             trialLengthDays: trial.trialLengthDays,
             verified: trial.verified,
+            timeZone: trial.timeZone,
             planLabel: plan.label,
             subscription,
           })}
         </h1>
-        <p className="mt-2 text-sm text-muted">{plan.summary}</p>
+        <p className="mt-2 text-sm text-muted" data-plan-summary>
+          {entitlements.planId === "member_access"
+            ? trialEndedSummary({
+                trialLengthDays: trial.trialLengthDays,
+                trialEndsAt: trial.trialEndsAt,
+                timeZone: trial.timeZone,
+              })
+            : plan.summary}
+        </p>
         <AiDisclaimer className="mt-2" />
       </div>
 

@@ -118,6 +118,7 @@ export function HomeQuickActions({
   sparringRating = null,
   imagery = "",
   formCheckLocked = false,
+  sparringLocked = false,
 }: {
   locked?: { href: string; kind: "fuel" | "coach" }[];
   canStartTrial?: boolean;
@@ -125,6 +126,7 @@ export function HomeQuickActions({
   sparringRating?: number | null;
   imagery?: string | null;
   formCheckLocked?: boolean;
+  sparringLocked?: boolean;
 }) {
   const lockedMap = new Map(locked.map((item) => [item.href, item.kind]));
   return (
@@ -170,7 +172,11 @@ export function HomeQuickActions({
             </Link>
           );
         })}
-        <SparringLogTile hint={sparringTileHint(sparringRating)} src={tileSrc("/tiles/sparring.webp", imagery)} />
+        <SparringLogTile
+          hint={sparringTileHint(sparringRating, sparringLocked)}
+          src={tileSrc("/tiles/sparring.webp", imagery)}
+          locked={sparringLocked}
+        />
       </div>
     </section>
   );

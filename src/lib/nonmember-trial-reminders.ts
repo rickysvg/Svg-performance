@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { nonmemberTrialReminderStage } from "@/lib/checkout-trial";
 import { isSmtpConfigured, sendMail } from "@/lib/mail";
-import { trialDaysLeft } from "@/lib/trial";
+import { trialDaysRemaining } from "@/lib/subscription-copy";
+import { memberDayTimeZone } from "@/lib/timezone";
 import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { performanceAppOrigin } from "@/lib/reminders";
 
@@ -24,13 +25,16 @@ export async function runNonmemberTrialReminderCron(now = new Date()) {
     select: {
       userId: true,
       trialEndsAt: true,
+      timeZone: true,
       user: { select: { email: true } },
     },
   });
   let sent = 0;
   let skipped = 0;
   for (const profile of profiles) {
-    const stage = nonmemberTrialReminderStage(trialDaysLeft(profile.trialEndsAt, now));
+    const stage = nonmemberTrialReminderStage(
+      trialDaysRemaining(profile.trialEndsAt, now, memberDayTimeZone(profile.timeZone)),
+    );
     if (!stage) {
       skipped += 1;
       continue;

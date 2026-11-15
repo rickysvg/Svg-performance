@@ -220,6 +220,14 @@ export function startOfZonedDay(date: Date, timeZone: string): Date {
   return zonedCivilToUtc(year, month, day, timeZone);
 }
 
+/** Whole calendar dates from `now` until `end` in `timeZone`. Same date is zero. */
+export function zonedCalendarDaysUntil(now: Date, end: Date, timeZone: string) {
+  const zone = isValidTimeZone(timeZone) ? timeZone : "UTC";
+  const start = startOfZonedDay(now, zone).getTime();
+  const finish = startOfZonedDay(end, zone).getTime();
+  return Math.round((finish - start) / (24 * 60 * 60 * 1000));
+}
+
 export function endOfZonedDay(date: Date, timeZone: string): Date {
   const start = startOfZonedDay(date, timeZone);
   const { year, month, day } = zonedParts(start, timeZone);

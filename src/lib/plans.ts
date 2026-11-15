@@ -94,8 +94,8 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
     gymPriceLabel: "Pro required",
     nonmemberPriceLabel: "Pro required",
     summary:
-      `Your ${NONMEMBER_TRIAL_DAYS}-day Pro trial ended. Subscribe to Pro to keep training in the app. You can still view and export your past data.`,
-    includes: ["View your past workouts", "Export your data"],
+      `Your ${NONMEMBER_TRIAL_DAYS}-day Pro trial ended. Subscribe to Pro to keep training in the app. History and progress stay visible. Downloads stay off.`,
+    includes: ["View your past workouts", "View progress"],
     rank: 0,
     features: ["progress", "shop"],
     credits: {},

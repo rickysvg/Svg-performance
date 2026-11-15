@@ -6,7 +6,8 @@ import { creditsForCurrentPlan, creditsForPlan, startOfUtcMonth } from "@/lib/cr
 import { getVipPricingPhase } from "@/lib/vip-store";
 import { liveCoachingSub } from "@/lib/vip-coaching";
 import { subscriptionStatusIsCurrent } from "@/lib/subscription-status";
-import { currentPlanLine, startTrialForUser } from "@/lib/trial";
+import { billingSuccessPlan } from "@/lib/billing-success";
+import { startTrialForUser } from "@/lib/trial";
 import { SUPPORT_EMAIL_FALLBACK } from "@/lib/support";
 import { assignPlanForPilot } from "@/lib/billing";
 import { loggedSetVolume } from "@/lib/home-telemetry";
@@ -123,15 +124,28 @@ describe("Nov 10 QA — entitlement is the only VIP source", () => {
   });
 
   it("shows the Pro trial on billing success instead of an incomplete VIP row", () => {
+    const subscription = { plan: "coaching", status: "incomplete" as const, currentPeriodEnd: null };
     expect(
-      currentPlanLine({
+      billingSuccessPlan({
+        sessionId: "cs_test",
+        synced: true,
         trialActive: true,
         trialDaysLeft: 4,
         trialLengthDays: 7,
-        planLabel: "waiting on Stripe",
-        subscription: { plan: "coaching", status: "incomplete", currentPeriodEnd: null },
-      }),
+        planLabel: "Trial ended",
+        subscription,
+      }).planLine,
     ).toBe("7-day Pro trial, 4 days left");
+    expect(
+      billingSuccessPlan({
+        sessionId: "",
+        synced: false,
+        trialActive: false,
+        trialDaysLeft: 0,
+        planLabel: "Trial ended",
+        subscription,
+      }),
+    ).toEqual({ planLine: "Trial ended", confirming: false });
     expect(SUPPORT_EMAIL_FALLBACK).toBe("support@svgperformance.app");
   });
 
