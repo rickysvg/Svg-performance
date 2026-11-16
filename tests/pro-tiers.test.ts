@@ -277,6 +277,34 @@ describe("Pro tiers, member Pro month, and AI caps", () => {
     await consumeAiUse({ userId: admin.id, kind: "message", surface: "chat" });
   });
 
+  it("keeps Pro and coach chat while Stripe is still trialing after the in-app clock", async () => {
+    const user = await makeUser("stripe-trial-gap@example.com");
+    const now = new Date();
+    const inAppEnd = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const stripeEnd = new Date(now.getTime() + 18 * 60 * 60 * 1000);
+    const started = new Date(inAppEnd.getTime() - 7 * DAY);
+    await prisma.user.update({ where: { id: user.id }, data: { createdAt: started } });
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: { trialStartedAt: started, trialEndsAt: inAppEnd },
+    });
+    await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        plan: "performance",
+        status: "trialing",
+        currentPeriodEnd: stripeEnd,
+        trialEnd: stripeEnd,
+        source: "webhook",
+      },
+    });
+    expect(await getEffectivePlanId(user.id, now)).toBe("performance");
+    expect(await getAppTier(user.id, now)).toBe("pro");
+    expect(
+      await canUseCoachChat({ id: user.id, email: user.email, role: "member" }, now),
+    ).toBe(true);
+  });
+
   it("gives every new account a week of coach chat, then locks it", async () => {
     const fresh = await makeUser("week-fresh@example.com");
     const freshAccess = await getCoachChatAccess({

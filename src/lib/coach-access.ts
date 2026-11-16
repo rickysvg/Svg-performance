@@ -2,6 +2,7 @@ import { getLatestSubscription } from "@/lib/access";
 import { isDashboardAdmin } from "@/lib/admin-access";
 import { normalizePlanId, planIsPro } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
+import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { isTrialActive, trialDaysLeft } from "@/lib/trial";
 
 /** First week of AI coach chat. No card. */
@@ -41,14 +42,16 @@ export type CoachChatAccess = {
 
 async function hasPaidCoachPlan(userId: string, now: Date) {
   const subscription = await getLatestSubscription(userId);
-  if (subscription?.status !== "active") return false;
-  if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < now) return false;
+  if (!subscription || !subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd, now)) {
+    return false;
+  }
   return planIsPro(normalizePlanId(subscription.plan));
 }
 
 /**
- * SVG Coach chat: a paid Pro or VIP plan, an admin, or the free first week.
- * Academy dues and a lapsed free account do not include chat.
+ * SVG Coach chat: an active or trialing Pro or VIP plan, an admin, or the free first week.
+ * Academy dues and a lapsed free account do not include chat. A Stripe trial keeps
+ * chat open after the in-app clock ends, until that subscription trial ends.
  */
 export async function getCoachChatAccess(
   user: { id: string; role: string; email: string },
