@@ -1097,3 +1097,118 @@ BEGIN
     ALTER TABLE "WeeklyCheckIn" ADD COLUMN "memberNotes" TEXT NOT NULL DEFAULT '';
   END IF;
 END $$;
+
+-- First-touch attribution on Profile. Nullable. No defaults, no drops.
+-- No-ops until Profile exists (empty Neon is created later by db push).
+DO $$
+BEGIN
+  IF to_regclass('public."Profile"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'utmSource'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "utmSource" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'utmMedium'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "utmMedium" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'utmCampaign'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "utmCampaign" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'utmContent'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "utmContent" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'utmTerm'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "utmTerm" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'referrer'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "referrer" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'landingPath'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "landingPath" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'firstTouchAt'
+  ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "firstTouchAt" TIMESTAMP(3);
+  END IF;
+END $$;
+
+-- Same first-touch columns on the public waitlist backup. Nullable. No drops.
+DO $$
+BEGIN
+  IF to_regclass('public.waitlist_signups') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'utm_source'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "utm_source" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'utm_medium'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "utm_medium" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'utm_campaign'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "utm_campaign" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'utm_content'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "utm_content" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'utm_term'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "utm_term" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'referrer'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "referrer" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'landing_path'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "landing_path" TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'first_touch_at'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "first_touch_at" TIMESTAMP(3);
+  END IF;
+END $$;

@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Anton, Geist } from "next/font/google";
 import Script from "next/script";
 import { AppSplash } from "@/components/AppSplash";
+import { FirstTouchCapture } from "@/components/FirstTouchCapture";
+import { FIRST_TOUCH_BOOT_SCRIPT } from "@/lib/first-touch";
 import { telemetryFont } from "@/lib/telemetry-font";
 import "./globals.css";
 
@@ -52,6 +54,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script id="splash-seen" strategy="beforeInteractive">
           {`try{if(sessionStorage.getItem("svg_splash_seen")==="1")document.documentElement.dataset.splash="done"}catch(e){}`}
         </Script>
+        <Script id="first-touch" strategy="beforeInteractive">
+          {FIRST_TOUCH_BOOT_SCRIPT}
+        </Script>
+        <Suspense fallback={null}>
+          <FirstTouchCapture />
+        </Suspense>
         <AppSplash />
         {children}
       </body>

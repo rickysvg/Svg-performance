@@ -12,6 +12,7 @@ import { assertPasswordResetRateLimit } from "@/lib/password-reset-rate";
 import { isGymdeskSyncEnabled, LOGIN_RECHECK_MS } from "@/lib/gymdesk/config";
 import { matchUserToGymdesk } from "@/lib/gymdesk/match";
 import { toE164 } from "@/lib/gymdesk/crypto";
+import { persistUserFirstTouch } from "@/lib/first-touch-store";
 
 export { PASSWORD_RESET_GENERATION, PASSWORD_RESET_NEUTRAL_MESSAGE };
 
@@ -202,6 +203,9 @@ export async function registerAccount(input: {
       data: { status: "joined", joinedAt: new Date() },
     })
     .catch(() => undefined);
+
+  // Email/password is the account-creation path. Attribution must not fail signup.
+  await persistUserFirstTouch(user.id);
 
   return toPublicUser(user);
 }

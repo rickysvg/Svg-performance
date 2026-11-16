@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { AppError, isUniqueConstraintError } from "@/lib/errors";
 import { sendWaitlistWelcomeEmail } from "@/lib/waitlist-welcome";
+import { persistWaitlistFirstTouch } from "@/lib/first-touch-store";
 import {
   honeypotFilled,
   parseWaitlistBody,
@@ -261,6 +262,7 @@ export async function joinLaunchWaitlist(input: {
   }
 
   if (created) {
+    await persistWaitlistFirstTouch(value.email);
     try {
       await sendWaitlistWelcomeEmail({ to: value.email, firstName: value.firstName });
     } catch {
@@ -279,7 +281,22 @@ function csvCell(value: string) {
 
 export async function waitlistSignupsCsv() {
   const rows = await prisma.waitlistSignup.findMany({ orderBy: { createdAt: "asc" } });
-  const header = ["email", "first_name", "train", "member", "created_at", "source"];
+  const header = [
+    "email",
+    "first_name",
+    "train",
+    "member",
+    "created_at",
+    "source",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "referrer",
+    "landing_path",
+    "first_touch_at",
+  ];
   const lines = [header.join(",")];
   for (const row of rows) {
     lines.push(
@@ -290,6 +307,14 @@ export async function waitlistSignupsCsv() {
         csvCell(row.member),
         csvCell(row.createdAt.toISOString()),
         csvCell(row.source),
+        csvCell(row.utmSource ?? ""),
+        csvCell(row.utmMedium ?? ""),
+        csvCell(row.utmCampaign ?? ""),
+        csvCell(row.utmContent ?? ""),
+        csvCell(row.utmTerm ?? ""),
+        csvCell(row.referrer ?? ""),
+        csvCell(row.landingPath ?? ""),
+        csvCell(row.firstTouchAt ? row.firstTouchAt.toISOString() : ""),
       ].join(","),
     );
   }
