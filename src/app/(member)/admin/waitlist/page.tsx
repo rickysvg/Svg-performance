@@ -17,13 +17,25 @@ export default async function AdminWaitlistPage() {
       title="Waitlist"
       hint="Names and emails stay on this desk. Export CSV for the full list."
     >
-      <a
-        href="/api/admin/waitlist/export"
-        data-testid="waitlist-export"
-        className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-sm text-black"
-      >
-        Export CSV
-      </a>
+      <div className="flex flex-wrap gap-3">
+        <a
+          href="/api/admin/waitlist/export"
+          data-testid="waitlist-export"
+          className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-sm text-black"
+        >
+          Export CSV
+        </a>
+        <a
+          href="/api/admin/waitlist/live/preview"
+          data-testid="waitlist-live-preview"
+          className="touch-target inline-flex items-center justify-center rounded-full border border-line px-5 text-sm"
+        >
+          Preview live email
+        </a>
+      </div>
+      <p className="text-sm text-muted">
+        Preview opens the email in the browser. It does not send. A send stays a dry run until you confirm it.
+      </p>
       {clipped ? (
         <p className="text-sm text-muted">Showing the latest rows. Export CSV for the full list.</p>
       ) : null}

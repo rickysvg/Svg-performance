@@ -13,6 +13,10 @@ const DISPLAY_FONT = "Anton, Impact, 'Arial Black', Helvetica, Arial, sans-serif
 const BODY_FONT = "Arial, Helvetica, sans-serif";
 const PRIVACY_URL = `${WAITLIST_WELCOME_APP_URL}/privacy`;
 
+/** Hidden preheader tail. Stops clients from pulling the next line into the preview. */
+export const WAITLIST_PREHEADER_PAD =
+  "&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;";
+
 const EXPECTATIONS = [
   {
     title: "Strength that serves the fight",
@@ -44,7 +48,7 @@ const EXPECTATIONS = [
   },
 ] as const;
 
-function escapeHtml(value: string) {
+export function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -64,6 +68,11 @@ function cleanFirstName(firstName: string) {
 export function waitlistWelcomeGreeting(firstName: string) {
   const name = cleanFirstName(firstName);
   return name ? `Hey ${name},` : "Hey fighter,";
+}
+
+/** Greeting for HTML. The name is escaped. "Hey fighter," has nothing to escape. */
+export function waitlistWelcomeGreetingHtml(firstName: string) {
+  return escapeHtml(waitlistWelcomeGreeting(firstName));
 }
 
 function expectationHtml() {
@@ -156,7 +165,7 @@ function welcomeHtml(greetingHtml: string, support: string) {
 </head>
 <body class="outer" style="margin:0;padding:0;background-color:#07080a;width:100%;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#07080a;opacity:0;">
-    ${escapeHtml(WAITLIST_WELCOME_PREHEADER)}&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;&#847;&zwnj;
+    ${escapeHtml(WAITLIST_WELCOME_PREHEADER)}${WAITLIST_PREHEADER_PAD}
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="outer" bgcolor="#07080a" style="background-color:#07080a;margin:0;padding:0;width:100%;">
     <tr>
@@ -322,8 +331,7 @@ function welcomeText(greeting: string, support: string) {
 
 export function buildWaitlistWelcomeEmail(firstName: string) {
   const greeting = waitlistWelcomeGreeting(firstName);
-  const name = cleanFirstName(firstName);
-  const greetingHtml = name ? `Hey ${escapeHtml(name)},` : "Hey fighter,";
+  const greetingHtml = waitlistWelcomeGreetingHtml(firstName);
   const replyTo = supportEmail();
   return {
     subject: WAITLIST_WELCOME_SUBJECT,
