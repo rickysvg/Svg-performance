@@ -200,6 +200,16 @@ model Profile {
   proteinTargetG         Int      @default(140)
   carbsTargetG           Int      @default(220)
   fatTargetG             Int      @default(70)
+  /// First marketing touch. Null until a signup arrives with a stored touch.
+  utmSource              String?
+  utmMedium              String?
+  utmCampaign            String?
+  utmContent             String?
+  utmTerm                String?
+  /// External referrer, origin and path only. Query and fragment are never stored.
+  referrer               String?
+  landingPath            String?
+  firstTouchAt           DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
@@ -1549,6 +1559,16 @@ model WaitlistSignup {
   member    String   @default("No")
   createdAt DateTime @default(now()) @map("created_at")
   source    String   @default("waitlist")
+  /// First marketing touch. Null on rows created before this existed, and when the browser had none.
+  utmSource    String?   @map("utm_source")
+  utmMedium    String?   @map("utm_medium")
+  utmCampaign  String?   @map("utm_campaign")
+  utmContent   String?   @map("utm_content")
+  utmTerm      String?   @map("utm_term")
+  /// External referrer, origin and path only.
+  referrer     String?
+  landingPath  String?   @map("landing_path")
+  firstTouchAt DateTime? @map("first_touch_at")
 
   @@index([createdAt])
   @@map("waitlist_signups")
