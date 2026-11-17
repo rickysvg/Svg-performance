@@ -237,7 +237,7 @@ describe("Oct 22 partial saves", () => {
     expect(today).toMatchObject({ verb: "Resume", draftId: "partial-older", planned: 3 });
   });
 
-  it("drops a leftover draft on a day that already has a planned completion", () => {
+  it("resumes a newer saved draft on a day that already has a planned completion", () => {
     const sets = Array.from({ length: 4 }, () => ({
       exerciseName: "Goblet squat",
       completed: true,
@@ -270,14 +270,14 @@ describe("Oct 22 partial saves", () => {
           programDayId: "lift",
           plannedSetCount: 4,
           sets,
-          programDay: { exercises: [{ name: "Goblet squat", sets: 4 }] },
-        },
-      ],
-      "2026-10-22",
-      zone,
-    );
-    expect(open.has("lift")).toBe(false);
-  });
+        programDay: { exercises: [{ name: "Goblet squat", sets: 4 }] },
+      },
+    ],
+    "2026-10-22",
+    zone,
+  );
+  expect(open.get("lift")).toMatchObject({ id: "leftover", partial: false });
+});
 
   it("counts a blank-rep load as one rep and ignores an empty set", () => {
     expect(

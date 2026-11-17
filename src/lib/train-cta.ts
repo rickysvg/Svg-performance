@@ -5,7 +5,7 @@
  */
 
 export type TrainCta = {
-  verb: "Start" | "Resume";
+  verb: "Start" | "Resume" | "Start again";
   href: string;
 };
 
@@ -14,12 +14,26 @@ export function primaryTrainCta(input: {
   resumeHref?: string | null;
   /** Explicit start URL for the next session that is not finished. */
   startHref?: string | null;
+  /**
+   * Finished day. Opens a new draft for that program day.
+   * It does not point at the sealed session.
+   */
+  startAgainHref?: string | null;
 }): TrainCta | null {
   const resume = input.resumeHref?.trim();
   if (resume) return { verb: "Resume", href: resume };
   const start = input.startHref?.trim();
   if (start) return { verb: "Start", href: start };
+  const again = input.startAgainHref?.trim();
+  if (again) return { verb: "Start again", href: again };
   return null;
+}
+
+/** Start URL for another pass at a finished program day. Never the sealed session id. */
+export function startAgainHrefForDay(dayId: string, startHref?: string | null) {
+  const explicit = startHref?.trim();
+  if (explicit) return explicit;
+  return `/training/${dayId}/start`;
 }
 
 /** Day chips and calendar rows open the plan. They do not start a logger. */

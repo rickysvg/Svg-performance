@@ -40,27 +40,51 @@ export type PlanDose = {
   exercises?: readonly { name?: string | null; sets?: number | null }[];
 };
 
+export type NewestDaySession = {
+  id: string;
+  /**
+   * One label for Home, Train's day card, and Train's Today.
+   * resume: the newest session is an open draft or a partial bag/skill day.
+   * done: the newest session is finished (status complete, including a short dose).
+   */
+  label: "resume" | "done";
+  partial: boolean;
+  ticked: number;
+  planned: number;
+  progress?: string;
+};
+
 /**
- * Newest session on this civil day that is still open: a draft, a partial,
- * or a short save that did not finish the prescription. A finished day is omitted.
- * Sessions must be newest first. An empty draft, and a draft whose only numbers
- * are an unticked library prefill, never claim the day. A real partial save
- * still shows when a second tab started a newer blank draft.
+ * For each program day on this civil day, the newest session that counts wins.
+ * An open draft or a partial bag/skill day is in progress. A finished session
+ * is done, including a short dose. An empty draft and an abandoned row do not
+ * count, so a blank second tab does not hide a partial that is still open.
+ * Newest is the latest performedAt, then createdAt. Any input order is fine.
  * `planByDay` is the scaled dose from `calendarPlanDoses`.
  */
-export function openLogsByProgramDay(
+export function newestDaySession(
   sessions: ResumableLog[],
   onDay: string,
   timeZone: string,
   planByDay?: ReadonlyMap<string, PlanDose>,
   visibleEdits?: { edits: MemberExerciseEdits; anchor?: Date | null } | null,
 ) {
-  const map = new Map<string, OpenProgramLog>();
-  const finished = new Set<string>();
-  for (const session of sessions) {
+  const ordered = sessions
+    .map((session, index) => ({ session, index }))
+    .sort((a, b) => {
+      const performed = b.session.performedAt.getTime() - a.session.performedAt.getTime();
+      if (performed !== 0) return performed;
+      const created = (b.session.createdAt?.getTime() ?? 0) - (a.session.createdAt?.getTime() ?? 0);
+      if (created !== 0) return created;
+      return a.index - b.index;
+    })
+    .map((row) => row.session);
+  const map = new Map<string, NewestDaySession>();
+  for (const session of ordered) {
     if (!session.programDayId) continue;
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
     if (session.status === "abandoned") continue;
+    if (map.has(session.programDayId)) continue;
     const untouchedDraft = session.status === "draft" && !draftHasResumeWork(session.sets);
     if (untouchedDraft) continue;
     const exercises = session.programDay?.exercises ?? [];
@@ -90,22 +114,50 @@ export function openLogsByProgramDay(
       exercises: shown?.exercises ?? scaledExercises,
     });
     // Finish seals a full log and a short one. A Save draft is not sealed.
-    if (sessionFinishSealed(session) || (session.status === "complete" && progress.done)) {
-      finished.add(session.programDayId);
-      if (progress.done) {
-        const existing = map.get(session.programDayId);
-        if (existing && !existing.partial) map.delete(session.programDayId);
-      }
+    if (sessionFinishSealed(session)) {
+      map.set(session.programDayId, {
+        id: session.id,
+        label: "done",
+        partial: false,
+        ticked: progress.ticked,
+        planned: progress.planned,
+      });
       continue;
     }
-    if (finished.has(session.programDayId) || map.has(session.programDayId)) continue;
     const partial = session.status !== "draft";
     map.set(session.programDayId, {
       id: session.id,
+      label: "resume",
       partial,
       ticked: progress.ticked,
       planned: progress.planned,
       progress: partial ? progress.text : undefined,
+    });
+  }
+  return map;
+}
+
+/**
+ * Open logs only. A finished day is omitted. Same newest-session rule as
+ * `newestDaySession`: a newer saved draft stays resumable after a finish,
+ * and a newer finish hides an older draft.
+ */
+export function openLogsByProgramDay(
+  sessions: ResumableLog[],
+  onDay: string,
+  timeZone: string,
+  planByDay?: ReadonlyMap<string, PlanDose>,
+  visibleEdits?: { edits: MemberExerciseEdits; anchor?: Date | null } | null,
+) {
+  const map = new Map<string, OpenProgramLog>();
+  for (const [dayId, face] of newestDaySession(sessions, onDay, timeZone, planByDay, visibleEdits)) {
+    if (face.label !== "resume") continue;
+    map.set(dayId, {
+      id: face.id,
+      partial: face.partial,
+      ticked: face.ticked,
+      planned: face.planned,
+      progress: face.progress,
     });
   }
   return map;

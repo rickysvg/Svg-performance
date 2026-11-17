@@ -1,4 +1,5 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
+import { sessionCompletionDay } from "@/lib/performed-at";
 import { textIsBikeWorkout } from "@/lib/timer-session";
 import { bikeChoiceFromKey, bikeTimerRoundCount } from "@/lib/bike-chooser";
 import { bikeEffortSeconds } from "@/lib/bike-interval-timer";
@@ -28,6 +29,32 @@ export type WorkoutCompleteTile = {
 export function sessionOrdinal(sessionId: string, completeIdsInOrder: string[]) {
   const index = completeIdsInOrder.indexOf(sessionId);
   return index >= 0 ? index + 1 : completeIdsInOrder.length;
+}
+
+/**
+ * Session number on the finish screen. Counts sessions on that civil day only.
+ * The first one that day is 1. A day with a single session drops the number.
+ */
+export function daySessionOrdinal(
+  sessionId: string,
+  sessions: readonly { id: string; performedAt: Date }[],
+  timeZone: string,
+): number | null {
+  const mine = sessions.find((row) => row.id === sessionId);
+  if (!mine) return null;
+  const day = sessionCompletionDay(mine, timeZone);
+  const same = sessions
+    .filter((row) => sessionCompletionDay(row, timeZone) === day)
+    .sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime() || a.id.localeCompare(b.id));
+  if (same.length <= 1) return null;
+  const index = same.findIndex((row) => row.id === sessionId);
+  return index >= 0 ? index + 1 : null;
+}
+
+/** "TUE NOV 17" alone when this is the only session that day. */
+export function workoutCompleteSessionLine(dateLine: string, sessionNumber: number | null) {
+  if (sessionNumber == null) return dateLine;
+  return `${dateLine} · Session ${sessionNumber}`;
 }
 
 export function formatWorkoutCompleteDate(date: Date, timeZone?: string) {

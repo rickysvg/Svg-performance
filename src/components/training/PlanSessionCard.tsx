@@ -9,6 +9,7 @@ import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
 import { HoldToMove, WorkoutMoveButton } from "@/components/training/WorkoutMove";
 import { ContinueWorkoutButton } from "@/components/training/ContinueWorkoutButton";
+import { PendingWorkoutLink } from "@/components/training/PendingWorkoutControl";
 import type { OpenProgramLog } from "@/lib/today-start";
 import { visiblePartialLabel } from "@/lib/finish-plan";
 import type { LoggedSessionView } from "@/lib/logged-session-view";
@@ -45,6 +46,7 @@ export function PlanSessionCard({
   dateLabel,
   loggedView = null,
   dayKey,
+  startAgainHref,
 }: {
   session: ResolvedPlanSession;
   highlight?: boolean;
@@ -62,6 +64,8 @@ export function PlanSessionCard({
   loggedView?: LoggedSessionView | null;
   /** Civil day, so the detail page opens the same logged session. */
   dayKey?: string;
+  /** Finished today. Opens a new draft and leaves the sealed session alone. */
+  startAgainHref?: string;
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
@@ -263,6 +267,24 @@ export function PlanSessionCard({
             <ContinueWorkoutButton
               workoutId={resume.id}
               label="Resume"
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
+                highlight ? "bg-accent text-black" : "bg-accent text-black"
+              }`}
+            />
+          ) : resume && !completed ? (
+            <PendingWorkoutLink
+              href={`/training/log/${resume.id}`}
+              label="Resume"
+              data-resume-workout
+              className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
+                highlight ? "bg-accent text-black" : "bg-accent text-black"
+              }`}
+            />
+          ) : startAgainHref ? (
+            <PendingWorkoutLink
+              href={startAgainHref}
+              label="Start again"
+              data-start-again
               className={`touch-target inline-flex items-center justify-center rounded-full px-4 text-sm ${
                 highlight ? "bg-accent text-black" : "bg-accent text-black"
               }`}

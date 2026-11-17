@@ -12,7 +12,7 @@ import { SessionRecap } from "@/components/training/SessionRecap";
 import type { BackfillFormSeed } from "@/lib/backfill-workout";
 import type { SessionSummary } from "@/lib/session-summary";
 import { exerciseProgressStateWord } from "@/lib/logged-work";
-import { workoutCompleteHeadline, type WorkoutCompleteTile } from "@/lib/workout-complete";
+import { workoutCompleteHeadline, workoutCompleteSessionLine, type WorkoutCompleteTile } from "@/lib/workout-complete";
 import { renderShareCardBlob, shareOrDownloadCard } from "@/lib/share-card-render";
 import type { ShareStat } from "@/lib/share-card";
 import type { LoadUnit } from "@/lib/units";
@@ -46,7 +46,8 @@ export function WorkoutWinScreen({
   timeZone,
 }: {
   dateLine: string;
-  sessionNumber: number;
+  /** Null when this is the only session on that civil day. */
+  sessionNumber: number | null;
   tiles: WorkoutCompleteTile[];
   shareTitle: string;
   shareStats: ShareStat[];
@@ -153,8 +154,8 @@ export function WorkoutWinScreen({
             )}
           </div>
         </div>
-        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
-          {dateLine} · Session {sessionNumber}
+        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/55" data-session-line>
+          {workoutCompleteSessionLine(dateLine, sessionNumber)}
         </p>
         <h1 id="workout-win-title" className="font-display mt-2 text-3xl uppercase leading-none tracking-wide">
           {workoutCompleteHeadline()}
