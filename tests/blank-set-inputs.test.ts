@@ -1,6 +1,11 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { setsForBackfillExercises } from "@/lib/backfill-rules";
+import { LogPastWorkoutButton } from "@/components/training/LogPastWorkoutSheet";
+import type { BackfillPreview } from "@/lib/backfill-workout";
 import {
   prescriptionLogsTimeAndDistance,
   targetInputPlaceholder,
@@ -157,5 +162,62 @@ describe("logged set inputs stay empty", () => {
     expect(copied[0]).toMatchObject({ reps: 8, loadValue: 40 });
     const added = addedPrescriptionKey({ exerciseName: "Goblet squat", reps: "6", restSeconds: 90 });
     expect(added.startsWith("added|")).toBe(true);
+  });
+
+  it("does not let a failed save reset clear ticks the server kept", () => {
+    const form = fs.readFileSync(path.join(process.cwd(), "src/components/training/WorkoutLogForm.tsx"), "utf8");
+    expect(form).toMatch(/onReset=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)/);
+  });
+
+  it("opens Log a workout with blank done and reps, and the plan as placeholder", () => {
+    const preview: BackfillPreview = {
+      dayKey: "2026-10-21",
+      programs: [
+        {
+          programDayId: "day-1",
+          programSlug: "demo",
+          dayNumber: 1,
+          title: "Lift",
+          exercises: [
+            { name: "Goblet squat", sets: 4, done: 4, reps: "6", logMode: "load_reps" },
+          ],
+        },
+      ],
+      saved: [],
+      existing: [],
+      days: [{ key: "2026-10-21", label: "Wed" }],
+      roundTargets: {},
+      lastUsed: {},
+      bagRounds: 5,
+      units: "lb",
+      weightAccess: "gym",
+      shadowWeight: null,
+    };
+    const html = renderToStaticMarkup(
+      createElement(LogPastWorkoutButton, {
+        dayKey: "2026-10-21",
+        entry: "train",
+        label: "Log a workout",
+        timeZone: "America/Denver",
+        defaultOpen: true,
+        initialPreview: preview,
+      }),
+    );
+    expect(html).toContain('data-testid="log-past-workout-reps-0"');
+    expect(html).toContain('placeholder="6"');
+    expect(html).toContain('placeholder="4"');
+    expect(html).toMatch(/data-testid="log-past-workout-reps-0"[^>]*value=""/);
+    expect(html).toMatch(/data-testid="log-past-workout-done-0"[^>]*value=""/);
+    const built = setsForBackfillExercises(
+      [{ name: "Goblet squat", sets: 4, done: 4, reps: "", logMode: "load_reps" }],
+      "lb",
+    );
+    expect(built.sets.every((set) => set.reps == null)).toBe(true);
+    const typed = setsForBackfillExercises(
+      [{ name: "Goblet squat", sets: 4, done: 1, reps: "5", logMode: "load_reps" }],
+      "lb",
+    );
+    expect(typed.sets[0]).toMatchObject({ reps: 5, completed: true });
+    expect(typed.sets[1]).toMatchObject({ reps: null, completed: false });
   });
 });

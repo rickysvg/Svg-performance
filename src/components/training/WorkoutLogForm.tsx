@@ -1352,6 +1352,11 @@ export function WorkoutLogForm({
         ref={formRef}
         action={action}
         className="min-w-0 max-w-full space-y-5"
+        onReset={(event) => {
+          // A failed Save resets the form. That clear was unchecking ticks the
+          // draft on the server still has.
+          event.preventDefault();
+        }}
         onKeyDown={(event) => {
           if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
           const target = event.target;

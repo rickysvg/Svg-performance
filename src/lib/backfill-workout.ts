@@ -316,7 +316,7 @@ async function programOptionsForDay(userId: string, when: Date, timeZone: string
         exercises: day.exercises.map((exercise) => ({
           name: exercise.name,
           sets: Math.max(1, exercise.sets),
-          done: Math.max(1, exercise.sets),
+          done: 0,
           reps: exercise.reps,
           logMode: exercise.logMode,
           restSeconds: exercise.restSeconds,
@@ -349,7 +349,7 @@ export async function previewBackfillDay(userId: string, day: string, now = new 
         exercises: full.exercises.map((exercise) => ({
           name: exercise.name,
           sets: exercise.sets,
-          done: exercise.sets,
+          done: 0,
           reps: exercise.reps,
           logMode: exercise.logMode,
         })),
@@ -950,15 +950,16 @@ async function payloadFromKind(
       return {
         name: exercise.name,
         sets: planned,
-        done: posted ? posted.done : planned,
-        reps: exercise.reps,
+        done: posted ? posted.done : 0,
+        reps: (posted?.reps ?? "").trim(),
+        prescriptionReps: exercise.reps,
         logMode: exercise.logMode,
       };
     });
     const built = exercisePayload(exercises, unit, (exercise) =>
       prescriptionSlotKey({
         exerciseName: exercise.name,
-        reps: exercise.reps,
+        reps: exercise.prescriptionReps || exercise.reps,
         programSlug: day.program.slug,
         dayNumber: day.dayNumber,
       }),
@@ -982,8 +983,9 @@ async function payloadFromKind(
       return {
         name: exercise.name,
         sets: exercise.sets,
-        done: posted ? posted.done : exercise.sets,
-        reps: exercise.reps,
+        done: posted ? posted.done : 0,
+        reps: (posted?.reps ?? "").trim(),
+        prescriptionReps: exercise.reps,
         logMode: exercise.logMode,
       };
     });

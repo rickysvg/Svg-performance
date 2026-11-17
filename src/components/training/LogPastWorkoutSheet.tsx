@@ -33,7 +33,10 @@ type ExerciseRow = {
   name: string;
   sets: number;
   done: number;
+  /** What the member typed. Empty until they type, including on a fresh plan. */
   reps: string;
+  /** Plan text. Shown as placeholder only. */
+  prescription: string;
   logMode: string;
   prescriptionKey?: string;
   setNotes?: string;
@@ -183,18 +186,21 @@ function structureFor(kind: string, preview: Preview | null): IntervalStructure 
       };
     }
   }
+  return defaultStructure(kind, preview?.bagRounds ?? 5);
+}
+
+/** Previous session numbers. Applied only when the member taps Same as last. */
+function lastUsedStructure(kind: string, preview: Preview | null): IntervalStructure | null {
   const lastKey = kind === "shadow" || isRoundKind(kind) ? kind : null;
   const last = lastKey ? preview?.lastUsed[lastKey] : undefined;
-  if (last) {
-    return {
-      sets: Math.max(1, last.sets),
-      rounds: Math.max(1, last.rounds),
-      workSeconds: Math.max(5, last.workSeconds),
-      restSeconds: Math.max(0, last.restSeconds),
-      setRestSeconds: clampSetRestSeconds(last.setRestSeconds),
-    };
-  }
-  return defaultStructure(kind, preview?.bagRounds ?? 5);
+  if (!last) return null;
+  return {
+    sets: Math.max(1, last.sets),
+    rounds: Math.max(1, last.rounds),
+    workSeconds: Math.max(5, last.workSeconds),
+    restSeconds: Math.max(0, last.restSeconds),
+    setRestSeconds: clampSetRestSeconds(last.setRestSeconds),
+  };
 }
 
 /**
@@ -359,7 +365,19 @@ function LogPastWorkoutSheet({
   const [done, setDone] = useState(seededInterval ? seededInterval.done : openingStructure.sets * openingStructure.rounds);
   const [editingInterval, setEditingInterval] = useState(Boolean(seededInterval));
   const [intervalKind, setIntervalKind] = useState<RoundKind>(seededInterval?.kind ?? "bike");
-  const [rows, setRows] = useState<ExerciseRow[]>(() => (seed?.exercises ?? []).map(toRow));
+  const [rows, setRows] = useState<ExerciseRow[]>(() => {
+    if (seed?.exercises?.length) return seed.exercises.map((row) => loggedRow(row));
+    const kind = plannedKind(initialPreview);
+    if (initialPreview && (kind === "program" || kind === "saved")) {
+      return rowsFor(
+        kind,
+        initialPreview,
+        initialPreview.programs[0]?.programDayId ?? "",
+        initialPreview.saved[0]?.id ?? "",
+      );
+    }
+    return [];
+  });
   const [programId, setProgramId] = useState(initialPreview?.programs[0]?.programDayId ?? "");
   const [savedId, setSavedId] = useState(initialPreview?.saved[0]?.id ?? "");
   const [confirming, setConfirming] = useState(false);
@@ -414,7 +432,7 @@ function LogPastWorkoutSheet({
           setEditTitle(loaded.title);
           setNotes(loaded.notes);
           setRpe(loaded.sessionRpe != null ? String(loaded.sessionRpe) : "");
-          setRows(loaded.exercises.map((row) => ({ ...row, reps: row.reps ?? "" })));
+          setRows(loaded.exercises.map((row) => loggedRow(row)));
         }
         if (loaded.structure) {
           const next = {
@@ -544,7 +562,12 @@ function LogPastWorkoutSheet({
     Math.max(1, structure.sets * structure.rounds),
   ).totalSeconds;
   const overDuration = showingInterval && configuredSeconds > INTERVAL_SESSION_MAX_SECONDS;
-  const needsOneSet = showingInterval && done < 1;
+  const loggingExercises =
+    rows.length > 0 &&
+    !editingInterval &&
+    (mode === "edit" || kind === "program" || kind === "saved" || kind === "custom");
+  const needsOneSet =
+    (showingInterval && done < 1) || (loggingExercises && !rows.some((row) => row.done > 0));
   const lineState = showingInterval
     ? shorthandLineState(draft, structure, intervalClockKind(intervalType))
     : { error: "", matches: true, blocked: false };
@@ -739,6 +762,19 @@ function LogPastWorkoutSheet({
             {(mode === "create" && isStructureKind(kind)) || editingInterval ? (
               <>
                 {editingInterval ? <input type="hidden" name="intervalEdit" value="yes" /> : null}
+                {mode === "create" && lastUsedStructure(kind, preview) ? (
+                  <button
+                    type="button"
+                    data-same-as-last
+                    onClick={() => {
+                      const previous = lastUsedStructure(kind, preview);
+                      if (previous) applyStructure(previous, true);
+                    }}
+                    className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm font-semibold"
+                  >
+                    Same as last
+                  </button>
+                ) : null}
                 <IntervalStructureFields
                   shorthand={shorthand}
                   structure={structure}
@@ -842,7 +878,7 @@ function LogPastWorkoutSheet({
               <div className="space-y-2" data-testid="log-past-workout-exercises">
                 <input type="hidden" name="exerciseCount" value={rows.length} />
                 {rows.map((row, index) => (
-                  <div key={`${row.name}-${index}`} className="grid grid-cols-[1fr_4.5rem_4.5rem] items-end gap-2">
+                  <div key={`${row.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem_4.5rem] items-end gap-2">
                     <Field label={index === 0 ? "Exercise" : ""}>
                       <input
                         name={`exerciseName_${index}`}
@@ -866,13 +902,27 @@ function LogPastWorkoutSheet({
                       <input
                         name={`exerciseDone_${index}`}
                         data-testid={`log-past-workout-done-${index}`}
-                        value={row.done}
+                        value={row.done > 0 ? row.done : ""}
                         inputMode="numeric"
-                        onChange={(event) => updateRow(index, { done: Number(event.target.value) })}
-                        className={numberClass}
+                        placeholder={String(row.sets)}
+                        onChange={(event) => {
+                          const raw = event.target.value.trim();
+                          updateRow(index, { done: raw === "" ? 0 : Number(raw) });
+                        }}
+                        className={`${numberClass} placeholder:text-muted`}
                       />
                     </Field>
-                    <input type="hidden" name={`exerciseReps_${index}`} value={row.reps} />
+                    <Field label={index === 0 ? "Reps" : ""}>
+                      <input
+                        name={`exerciseReps_${index}`}
+                        data-testid={`log-past-workout-reps-${index}`}
+                        value={row.reps}
+                        inputMode="text"
+                        placeholder={row.prescription || undefined}
+                        onChange={(event) => updateRow(index, { reps: event.target.value })}
+                        className={`${textClass} placeholder:text-muted`}
+                      />
+                    </Field>
                     <input type="hidden" name={`exerciseMode_${index}`} value={row.logMode} />
                     <input type="hidden" name={`exerciseKey_${index}`} value={row.prescriptionKey ?? ""} />
                     <input type="hidden" name={`exerciseNotes_${index}`} value={row.setNotes ?? ""} />
@@ -882,7 +932,12 @@ function LogPastWorkoutSheet({
                   <button
                     type="button"
                     data-testid="log-past-workout-add-exercise"
-                    onClick={() => setRows((current) => [...current, { name: "", sets: 3, done: 3, reps: "8", logMode: "load_reps" }])}
+                    onClick={() =>
+                      setRows((current) => [
+                        ...current,
+                        { name: "", sets: 3, done: 0, reps: "", prescription: "", logMode: "load_reps" },
+                      ])
+                    }
                     className="text-sm font-semibold text-[#CBF805]"
                   >
                     + Add exercise
@@ -1058,19 +1113,40 @@ function TypeChip({
 function rowsFor(kind: BackfillKind, preview: Preview, programId: string, savedId: string): ExerciseRow[] {
   if (kind === "program") {
     const program = preview.programs.find((row) => row.programDayId === programId) ?? preview.programs[0];
-    return (program?.exercises ?? []).map(toRow);
+    return (program?.exercises ?? []).map((row) => blankLoggedRow(row));
   }
   if (kind === "saved") {
     const saved = preview.saved.find((row) => row.id === savedId) ?? preview.saved[0];
-    return (saved?.exercises ?? []).map(toRow);
+    return (saved?.exercises ?? []).map((row) => blankLoggedRow(row));
   }
   if (kind === "custom") {
-    return [{ name: "", sets: 3, done: 3, reps: "8", logMode: "load_reps" }];
+    return [{ name: "", sets: 3, done: 0, reps: "", prescription: "", logMode: "load_reps" }];
   }
   return [];
 }
 
-function toRow(exercise: {
+function blankLoggedRow(exercise: {
+  name: string;
+  sets: number;
+  reps?: string;
+  logMode?: string;
+  prescriptionKey?: string;
+  setNotes?: string;
+}): ExerciseRow {
+  return {
+    name: exercise.name,
+    sets: exercise.sets,
+    done: 0,
+    reps: "",
+    prescription: exercise.reps ?? "",
+    logMode: exercise.logMode ?? "",
+    prescriptionKey: exercise.prescriptionKey ?? "",
+    setNotes: exercise.setNotes ?? "",
+  };
+}
+
+/** An edit opens on the numbers already saved, not on the plan. */
+function loggedRow(exercise: {
   name: string;
   sets: number;
   done: number;
@@ -1080,12 +1156,9 @@ function toRow(exercise: {
   setNotes?: string;
 }): ExerciseRow {
   return {
-    name: exercise.name,
-    sets: exercise.sets,
+    ...blankLoggedRow(exercise),
     done: exercise.done,
     reps: exercise.reps ?? "",
-    logMode: exercise.logMode ?? "",
-    prescriptionKey: exercise.prescriptionKey ?? "",
-    setNotes: exercise.setNotes ?? "",
+    prescription: "",
   };
 }

@@ -55,6 +55,8 @@ export type BackfillExerciseInput = {
   sets: number;
   done: number;
   reps?: string;
+  /** Plan text for the slot key. Not written into the logged reps. */
+  prescriptionReps?: string;
   logMode?: string;
   /** Kept when the edit form posts an empty reps field. */
   durationSeconds?: number | null;
@@ -213,6 +215,7 @@ function keptSetSeconds(parsed: number | null, saved: number | null) {
     }
     return next;
   }
+  if (parsed == null && saved == null) return null;
   const requested = parsed ?? saved ?? 30;
   return Math.min(BACKFILL_MAX_SET_SECONDS, Math.max(1, Math.round(requested)));
 }
@@ -238,8 +241,12 @@ export function setsForBackfillExercises(
     const timed = isDurationMode(mode);
     const storedReps =
       exercise.storedReps != null && exercise.storedReps > 0 ? Math.round(exercise.storedReps) : null;
-    const reps = timed ? null : (defaultLoggedReps(repsText) ?? storedReps ?? 8);
-    const parsedDuration = timed ? parseDurationSeconds(repsText) : null;
+    // A blank box is not the prescription and is not an invented 8.
+    // An edit that clears the field keeps the number already stored.
+    // A typed count that is not a rep (over 100) keeps the old stored fallback.
+    const parsedReps = repsText ? defaultLoggedReps(repsText) : null;
+    const reps = timed ? null : parsedReps ?? (repsText ? (storedReps ?? 8) : storedReps);
+    const parsedDuration = timed && repsText ? parseDurationSeconds(repsText) : null;
     const savedDuration =
       timed && exercise.durationSeconds != null && exercise.durationSeconds > 0
         ? Math.round(exercise.durationSeconds)
