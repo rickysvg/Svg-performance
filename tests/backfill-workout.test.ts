@@ -2182,7 +2182,13 @@ describe("today and past interval logs", () => {
     expect(saved.ok).toBe(true);
     if (!saved.ok) return;
     const reopened = await reopenCompletedWorkoutForUser(user.id, saved.sessionId);
-    expect(reopened.status).toBe("draft");
+    // A completion from another day stays finished. The history save below
+    // still covers a draft that undo used to leave behind.
+    expect(reopened.status).toBe("complete");
+    await prisma.workoutSession.update({
+      where: { id: saved.sessionId },
+      data: { status: "draft", finishedAt: null, timerStartedAt: NOW },
+    });
     const loaded = await getBackfillForEdit(user.id, saved.sessionId, NOW);
     expect(loaded.structure).toMatchObject({ kind: "bike", rounds: 1, done: 1, workSeconds: 25 * 60 });
     const edited = await updateBackfillWorkout({

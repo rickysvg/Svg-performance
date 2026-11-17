@@ -174,7 +174,8 @@ export default async function TrainingDayPage({
           plannedNames.some((name) => loggedNameMatchesPlanned(name, set.exerciseName ?? "")),
       );
     }) ?? null;
-  const loggedView = loggedMatch ? loggedSessionView(loggedMatch) : null;
+  const loggedView =
+    loggedMatch && loggedMatch.status !== "complete" ? loggedSessionView(loggedMatch) : null;
   if (loggedView) {
     exercises = loggedView.names.map((name, index) => {
       const match = exercises.find((exercise) => exercise.name === name);

@@ -11,6 +11,7 @@ import {
 } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { sessionCompletionDay } from "@/lib/performed-at";
+import { startDraftSegment } from "@/lib/workout-timer-columns";
 import { timeZoneForUser } from "@/lib/profile";
 import { REPLACE_LOGGED_CONFIRM } from "@/lib/workout-sheet";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
@@ -290,10 +291,14 @@ export async function startSavedWorkoutForUser(input: {
     include: { sets: true },
   });
   const today = dayKey(now, input.timeZone);
-  const open = drafts.find((row) => sessionCompletionDay(row, input.timeZone) === today);
+  // Only today's in-progress draft. A completed session from last week stays finished.
+  const open = drafts.find(
+    (row) => row.status === "draft" && sessionCompletionDay(row, input.timeZone) === today,
+  );
   if (open) {
     await prisma.savedWorkout.update({ where: { id: saved.id }, data: { lastUsedAt: now } });
-    return open;
+    const clock = await startDraftSegment(open.id, prisma);
+    return { ...open, ...clock };
   }
   const setRows = setsForExercises(exercises, input.preferredUnits);
   const session = await prisma.workoutSession.create({
@@ -561,6 +566,13 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
     if (row.status !== "complete" && row.status !== "partial" && row.status !== "draft") continue;
     if (row.status === "draft" && !draftHasResumeWork(row.sets)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
+    if (row.status === "complete") {
+      // A completed log is not the resume target, even when it is short of the dose.
+      // Start this week creates a new session instead of reopening last week's.
+      if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
+      else partial.add(row.dayPlanId);
+      continue;
+    }
     if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
     else {
       partial.add(row.dayPlanId);
@@ -619,14 +631,19 @@ export async function startDayPlanForUser(input: {
     orderBy: { updatedAt: "desc" },
     include: { sets: true },
   });
-  const draft = drafts.find((row) => sessionCompletionDay(row, input.timeZone) === plan.dayKey);
+  const draft = drafts.find(
+    (row) => row.status === "draft" && sessionCompletionDay(row, input.timeZone) === plan.dayKey,
+  );
   if (plan.savedWorkoutId) {
     await prisma.savedWorkout.updateMany({
       where: { id: plan.savedWorkoutId, userId: input.userId },
       data: { lastUsedAt: now },
     });
   }
-  if (draft) return draft;
+  if (draft) {
+    const clock = await startDraftSegment(draft.id, prisma);
+    return { ...draft, ...clock };
+  }
   const exercises = readSnapshot(plan.exercisesJson);
   if (exercises.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");

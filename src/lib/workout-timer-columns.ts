@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { resumeStoredElapsed } from "@/lib/session-elapsed";
 
 /**
  * Header-timer columns are additive. Production can be serving this code
@@ -176,6 +177,27 @@ export async function readDraftTimerFields(
     if (typeof id === "string" && id) timers.set(id, asTimer(row));
   }
   return timers;
+}
+
+type ExecuteClient = RawClient & {
+  $executeRaw: PrismaClient["$executeRaw"];
+};
+
+/**
+ * Reuse of today's draft starts a new segment from the stored active time.
+ * The anchor is now, so hours since createdAt are not training time.
+ */
+export async function startDraftSegment(sessionId: string, client: ExecuteClient): Promise<WorkoutTimerFields> {
+  if (!(await workoutTimerColumnsAvailable(client))) return { ...EMPTY_TIMER };
+  const stored = await readWorkoutTimerFields(sessionId, client);
+  const elapsedSeconds = resumeStoredElapsed(stored.elapsedSeconds);
+  const timerStartedAt = new Date();
+  await client.$executeRaw`
+    UPDATE "WorkoutSession"
+    SET "elapsedSeconds" = ${elapsedSeconds}, "timerStartedAt" = ${timerStartedAt}, "finishedAt" = NULL
+    WHERE "id" = ${sessionId} AND "status" = 'draft'
+  `;
+  return { finishedAt: null, elapsedSeconds, timerStartedAt };
 }
 
 export async function attachWorkoutTimer<T extends { id: string }>(

@@ -448,7 +448,6 @@ describe("a workout is complete only after a logged save", () => {
       programDayId: program.days[0].id,
       preferredUnits: "lb",
     });
-    const started = session.sets.length;
     const one = session.sets[0];
     const mode =
       one?.logMode === "timed" ||
@@ -491,10 +490,11 @@ describe("a workout is complete only after a logged save", () => {
         preferredUnits: "lb",
       }),
     ]);
-    expect(results.some((result) => result.status === "fulfilled")).toBe(true);
+    expect(results.every((result) => result.status === "fulfilled")).toBe(true);
     const filled = await prisma.workoutSet.count({ where: { workoutSessionId: session.id } });
+    const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    expect(row.status).toBe("complete");
     expect(filled).toBeGreaterThan(1);
-    expect(filled).toBeLessThanOrEqual(started);
     await continuePartialWorkoutForUser({
       userId: user.id,
       workoutId: session.id,
@@ -546,12 +546,8 @@ describe("a workout is complete only after a logged save", () => {
     let expected = 100;
     for (let cycle = 0; cycle < 3; cycle += 1) {
       const before = Date.now();
-      await continuePartialWorkoutForUser({
-        userId: user.id,
-        workoutId: session.id,
-        preferredUnits: "lb",
-        timeZone: APP_TIMEZONE,
-      });
+      // Finished today. Undo starts a new segment. A past week's completion does not.
+      await reopenCompletedWorkoutForUser(user.id, session.id);
       const resumed = await readWorkoutTimerFields(session.id, prisma);
       const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
       expect(row.status).toBe("draft");
@@ -700,17 +696,19 @@ describe("a workout is complete only after a logged save", () => {
       timeZone: APP_TIMEZONE,
     });
     expect(again.id).toBe(first.id);
-    expect(again.status).toBe("draft");
-    expect(again.sets.length).toBeGreaterThan(1);
-    expect(again.sets.some((set) => set.exerciseName === removed!.exerciseName)).toBe(false);
-    const twice = await continuePartialWorkoutForUser({
+    expect(again.status).toBe("complete");
+    expect(again.sets.some((set) => set.exerciseName === "Goblet squat" && set.reps === 8)).toBe(true);
+    const started = await startWorkoutFromDay({
       userId: user.id,
-      workoutId: first.id,
+      programDayId: day.id,
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(twice.sets.length).toBe(again.sets.length);
-    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+    expect(started.id).not.toBe(first.id);
+    expect(started.status).toBe("draft");
+    expect((await prisma.workoutSession.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+      "complete",
+    );
   });
 
   it("starts the same session when a one-set save is still short of the dose", async () => {
@@ -751,8 +749,11 @@ describe("a workout is complete only after a logged save", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(again.id).toBe(first.id);
-    expect(await prisma.workoutSession.count({ where: { userId: user.id, programDayId: day.id } })).toBe(1);
+    expect(again.id).not.toBe(first.id);
+    expect(again.status).toBe("draft");
+    expect((await prisma.workoutSession.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+      "complete",
+    );
   });
 
   it("opens a new draft after that session is already complete today", async () => {
@@ -885,7 +886,7 @@ describe("a workout is complete only after a logged save", () => {
     ).toBe(1);
   });
 
-  it("keeps a second save on the already completed row", async () => {
+  it("keeps a second finish on its own row", async () => {
     const user = await makeUser("second-save@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -995,22 +996,27 @@ describe("a workout is complete only after a logged save", () => {
         },
       ],
     });
-    expect(saved.id).toBe(kept.id);
+    expect(saved.id).toBe(extra.id);
     const keptRow = await prisma.workoutSession.findUniqueOrThrow({
       where: { id: kept.id },
       include: { sets: true },
     });
     expect(keptRow.status).toBe("complete");
     const goblet = keptRow.sets.find((set) => set.exerciseName === "Goblet squat" && set.setNumber === 1);
-    expect(goblet?.reps).toBe(5);
-    expect(goblet?.loadValue).toBe(25);
-    expect(keptRow.sets.length).toBeGreaterThan(1);
-    const extraRow = await prisma.workoutSession.findUnique({ where: { id: extra.id } });
-    expect(extraRow?.status).toBe("draft");
+    expect(goblet?.reps).toBe(8);
+    expect(goblet?.loadValue).toBe(40);
+    const extraRow = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: extra.id },
+      include: { sets: true },
+    });
+    expect(extraRow.status).toBe("complete");
+    const extraGoblet = extraRow.sets.find((set) => set.exerciseName === "Goblet squat" && set.setNumber === 1);
+    expect(extraGoblet?.reps).toBe(5);
+    expect(extraGoblet?.loadValue).toBe(25);
     expect(await prisma.exerciseSwap.count({ where: { workoutSessionId: extra.id } })).toBe(1);
     expect(await prisma.exerciseRemoval.count({ where: { workoutSessionId: extra.id } })).toBe(1);
     expect(await prisma.exerciseSwap.findUnique({ where: { id: keptSwap.id } })).not.toBeNull();
-    expect(await prisma.workoutSession.count({ where: { userId: user.id, status: "complete" } })).toBe(1);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id, status: "complete" } })).toBe(2);
   });
 
   it("deletes the owner's sets and refuses another member", async () => {
@@ -1431,7 +1437,7 @@ describe("a workout is complete only after a logged save", () => {
       programDayId: program.days[0].id,
       preferredUnits: "lb",
     });
-    const performed = new Date("2026-10-19T16:00:00.000Z");
+    const performed = new Date();
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
@@ -1541,7 +1547,7 @@ describe("a workout is complete only after a logged save", () => {
         userId: user.id,
         programDayId: day!.id,
         title: "Cardio",
-        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        performedAt: new Date(),
         status: "complete",
         plannedSetCount: 1,
         sets: {

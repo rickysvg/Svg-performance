@@ -944,15 +944,22 @@ export function WorkoutLogForm({
             `[data-exercise-block="${typeof CSS !== "undefined" && CSS.escape ? CSS.escape(resting) : resting}"]`,
           )
         : null;
-      if (restingBlock) {
-        restingBlock.scrollIntoView({ block: "center" });
-      } else {
-        const focus = sets.find((set) => !set.completed);
-        if (focus) {
-          const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(focus.id) : focus.id;
-          formRef.current
-            ?.querySelector<HTMLElement>(`[data-set-row="${escaped}"]`)
-            ?.scrollIntoView({ block: "center" });
+      const focus = restingBlock
+        ? null
+        : sets.find((set) => !set.completed);
+      const focusRow = focus
+        ? formRef.current?.querySelector<HTMLElement>(
+            `[data-set-row="${typeof CSS !== "undefined" && CSS.escape ? CSS.escape(focus.id) : focus.id}"]`,
+          )
+        : null;
+      const target = restingBlock ?? focusRow ?? null;
+      // Resume used to scroll the first row to the center even when it was
+      // already on screen, so the logger jumped for a frame.
+      if (target) {
+        const box = target.getBoundingClientRect();
+        const header = formRef.current?.querySelector("[data-logger-chrome]")?.getBoundingClientRect().height ?? 0;
+        if (box.top < header || box.bottom > window.innerHeight) {
+          target.scrollIntoView({ block: "center" });
         }
       }
     }
