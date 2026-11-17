@@ -13,7 +13,7 @@ import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayK
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
 import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { draftHasResumeWork } from "@/lib/logged-work";
+import { draftHasResumeWork, sessionFinishSealed } from "@/lib/logged-work";
 import { calendarPlanDoses } from "@/lib/calendar";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -212,11 +212,23 @@ export default async function TrainingPage({
       logHref: session.logHref,
       startHref: session.startHref,
       minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
-      completed: session.dayId ? doneToday.has(session.dayId) : false,
+      completed: session.dayId
+        ? doneToday.has(session.dayId) || sealedToday.has(session.dayId)
+        : false,
     })),
     (dayId) => openToday.get(dayId),
   );
+  const sealedProgramDayIds = (day: string) => {
+    const ids = new Set<string>();
+    for (const row of resumable) {
+      if (!row.programDayId || !sessionFinishSealed(row)) continue;
+      if (sessionCompletionDay(row, tz) !== day) continue;
+      ids.add(row.programDayId);
+    }
+    return ids;
+  };
   const todayKey = dayKey(now, tz);
+  const sealedToday = sealedProgramDayIds(todayKey);
   const draftsOn = (day: string) => drafts.filter((row) => sessionCompletionDay(row, tz) === day);
   const todayDrafts = draftsOn(todayKey);
   const todayPlanDayIds = new Set(
@@ -344,7 +356,10 @@ export default async function TrainingPage({
         replaced: overlay.replaced,
         dayPlans: focusDayPlans,
         openOnDay,
-        doneIds: new Set(marks.completedByDay[focusParam] ?? []),
+        doneIds: new Set([
+          ...(marks.completedByDay[focusParam] ?? []),
+          ...sealedProgramDayIds(focusParam),
+        ]),
         isToday: focus.day.isToday,
         deload: campWeekIndex == null && isDeloadWeekIndex(focusWeekIndex),
         testing: isTestingWeekIndex(focusWeekIndex),
@@ -536,6 +551,10 @@ export default async function TrainingPage({
           data-prime-coach-audio
           className="relative z-30 flex w-full touch-target scroll-mt-20 items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
         />
+      ) : focus.isToday && sealedToday.size > 0 ? (
+        <p data-session-done className="font-display text-sm uppercase tracking-wide text-accent">
+          Done
+        </p>
       ) : null}
       <section className="space-y-3" data-selected-day-plan>
         <div data-session-phase="first">

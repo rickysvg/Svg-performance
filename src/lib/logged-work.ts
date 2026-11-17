@@ -433,6 +433,22 @@ export function sessionOpensFinishScreen(session: { status: string; backfilled?:
   return session.status === "complete" || session.status === "partial";
 }
 
+/**
+ * The member tapped Finish, or a past draft was closed out.
+ * `finishedAt` is that action. Status complete is the finish write even when
+ * the clock column is missing. A Save draft stays `draft` with no finish time,
+ * however many sets are logged, so it can still be resumed.
+ */
+export function sessionFinishSealed(session: {
+  status?: string | null;
+  finishedAt?: Date | string | number | null;
+}) {
+  if (!session.status || session.status === "draft" || session.status === "abandoned") return false;
+  if (session.status === "complete") return true;
+  if (session.finishedAt == null || session.finishedAt === "") return false;
+  return Number.isFinite(new Date(session.finishedAt).getTime());
+}
+
 /** History label. A short save reads partial, never complete. */
 export function completionListLabel(session: {
   status: string;

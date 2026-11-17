@@ -448,7 +448,6 @@ describe("a workout is complete only after a logged save", () => {
       programDayId: program.days[0].id,
       preferredUnits: "lb",
     });
-    const started = session.sets.length;
     const one = session.sets[0];
     const mode =
       one?.logMode === "timed" ||
@@ -491,10 +490,11 @@ describe("a workout is complete only after a logged save", () => {
         preferredUnits: "lb",
       }),
     ]);
-    expect(results.some((result) => result.status === "fulfilled")).toBe(true);
+    expect(results.every((result) => result.status === "fulfilled")).toBe(true);
     const filled = await prisma.workoutSet.count({ where: { workoutSessionId: session.id } });
+    const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
+    expect(row.status).toBe("complete");
     expect(filled).toBeGreaterThan(1);
-    expect(filled).toBeLessThanOrEqual(started);
     await continuePartialWorkoutForUser({
       userId: user.id,
       workoutId: session.id,
@@ -621,7 +621,6 @@ describe("a workout is complete only after a logged save", () => {
       where: { id: session.id },
       data: { createdAt, timerStartedAt: null, elapsedSeconds: 90, finishedAt: createdAt },
     });
-    const before = Date.now();
     await continuePartialWorkoutForUser({
       userId: user.id,
       workoutId: session.id,
@@ -630,22 +629,10 @@ describe("a workout is complete only after a logged save", () => {
     });
     const resumed = await readWorkoutTimerFields(session.id, prisma);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
-    expect(row.status).toBe("draft");
+    expect(row.status).toBe("partial");
     expect(resumed.elapsedSeconds).toBe(90);
-    expect(resumed.timerStartedAt).not.toBeNull();
-    expect(resumed.timerStartedAt!.getTime()).toBeGreaterThanOrEqual(before - 2000);
-    expect(
-      resolveSessionElapsed(
-        {
-          status: row.status,
-          createdAt: row.createdAt,
-          finishedAt: resumed.finishedAt,
-          elapsedSeconds: resumed.elapsedSeconds,
-          timerStartedAt: resumed.timerStartedAt,
-        },
-        new Date(resumed.timerStartedAt!.getTime() + 10_000),
-      ).seconds,
-    ).toBe(100);
+    expect(resumed.timerStartedAt).toBeNull();
+    expect(resumed.finishedAt).not.toBeNull();
   });
 
   it("reopens a short save in place instead of starting a second session", async () => {
@@ -696,17 +683,19 @@ describe("a workout is complete only after a logged save", () => {
       timeZone: APP_TIMEZONE,
     });
     expect(again.id).toBe(first.id);
-    expect(again.status).toBe("draft");
-    expect(again.sets.length).toBeGreaterThan(1);
-    expect(again.sets.some((set) => set.exerciseName === removed!.exerciseName)).toBe(false);
-    const twice = await continuePartialWorkoutForUser({
+    expect(again.status).toBe("complete");
+    expect(again.sets.some((set) => set.exerciseName === "Goblet squat" && set.reps === 8)).toBe(true);
+    const started = await startWorkoutFromDay({
       userId: user.id,
-      workoutId: first.id,
+      programDayId: day.id,
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(twice.sets.length).toBe(again.sets.length);
-    expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(1);
+    expect(started.id).not.toBe(first.id);
+    expect(started.status).toBe("draft");
+    expect((await prisma.workoutSession.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+      "complete",
+    );
   });
 
   it("starts the same session when a one-set save is still short of the dose", async () => {
@@ -747,8 +736,11 @@ describe("a workout is complete only after a logged save", () => {
       preferredUnits: "lb",
       timeZone: APP_TIMEZONE,
     });
-    expect(again.id).toBe(first.id);
-    expect(await prisma.workoutSession.count({ where: { userId: user.id, programDayId: day.id } })).toBe(1);
+    expect(again.id).not.toBe(first.id);
+    expect(again.status).toBe("draft");
+    expect((await prisma.workoutSession.findUniqueOrThrow({ where: { id: first.id } })).status).toBe(
+      "complete",
+    );
   });
 
   it("opens a new draft after that session is already complete today", async () => {

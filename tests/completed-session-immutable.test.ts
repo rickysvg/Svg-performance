@@ -13,6 +13,7 @@ import {
   startDayPlanForUser,
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
+import { getShareCardView } from "@/lib/share-card-data";
 import {
   continuePartialWorkoutForUser,
   recordWorkoutActivityForUser,
@@ -304,5 +305,172 @@ describe("a completed session stays finished when a later week starts", () => {
     const views = await listDayPlansForUser(user.id, ["2026-11-16"]);
     expect(views[0]?.draftId).toBe(started.id);
     await expectFrozen(finished.id);
+  });
+
+  async function finishProgramDay(
+    userId: string,
+    mode: "partial" | "full",
+  ) {
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.title.startsWith("Lift 1")) ?? program.days[0]!;
+    const session = await startWorkoutFromDay({
+      userId,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    const logged = mode === "full" ? session.sets : session.sets.slice(0, 2);
+    expect(logged.length).toBeGreaterThan(0);
+    const saved = await updateWorkoutSessionForUser({
+      userId,
+      workoutId: session.id,
+      title: "Lift 1",
+      performedAt: session.performedAt,
+      notes: "",
+      status: "complete",
+      elapsedSeconds: 58,
+      timeZone: APP_TIMEZONE,
+      sets: logged.map((set) => {
+        const logMode = isLogMode(set.logMode) ? set.logMode : "load_reps";
+        const timed = logMode === "timed" || logMode === "timed_round" || logMode === "load_timed";
+        return {
+          exerciseName: set.exerciseName,
+          setNumber: set.setNumber,
+          reps: timed && logMode !== "load_timed" ? null : 8,
+          loadValue: logMode === "reps_only" || logMode === "timed" || logMode === "timed_round" ? null : 40,
+          loadUnit: "lb" as const,
+          logMode,
+          durationSeconds: timed ? 30 : null,
+          completed: true,
+        };
+      }),
+    });
+    return { dayId: day.id, sessionId: session.id, saved };
+  }
+
+  it("keeps a partial finish sealed when Resume or Start runs", async () => {
+    const user = await makeUser("partial-finish@example.com");
+    const { dayId, sessionId, saved } = await finishProgramDay(user.id, "partial");
+    expect(saved.status).toBe("complete");
+    expect(saved.finishedAt).not.toBeNull();
+    const elapsed = saved.elapsedSeconds;
+    expect(elapsed).not.toBeNull();
+
+    const resumed = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: sessionId,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(resumed.id).toBe(sessionId);
+    expect(resumed.status).toBe("complete");
+    const clock = await readWorkoutTimerFields(sessionId, prisma);
+    expect(clock.elapsedSeconds).toBe(elapsed);
+    expect(clock.finishedAt).not.toBeNull();
+    expect(clock.timerStartedAt).toBeNull();
+
+    await expect(recordWorkoutActivityForUser({ userId: user.id, workoutId: sessionId })).rejects.toBeInstanceOf(
+      AppError,
+    );
+
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: dayId,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(started.id).not.toBe(sessionId);
+    expect(started.status).toBe("draft");
+    expect((await readWorkoutTimerFields(started.id, prisma)).finishedAt).toBeNull();
+
+    const done = await getShareCardView(user.id, sessionId);
+    expect(done?.session.status).toBe("complete");
+    const frozen = await prisma.workoutSession.findUniqueOrThrow({ where: { id: sessionId } });
+    const frozenClock = await readWorkoutTimerFields(sessionId, prisma);
+    expect(frozen.status).toBe("complete");
+    expect(frozenClock.elapsedSeconds).toBe(elapsed);
+    expect(frozenClock.timerStartedAt).toBeNull();
+  });
+
+  it("keeps a full finish sealed when Resume runs the same day", async () => {
+    const user = await makeUser("full-finish@example.com");
+    const { dayId, sessionId, saved } = await finishProgramDay(user.id, "full");
+    expect(saved.status).toBe("complete");
+    const elapsed = saved.elapsedSeconds;
+
+    const resumed = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: sessionId,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(resumed.status).toBe("complete");
+    const clock = await readWorkoutTimerFields(sessionId, prisma);
+    expect(clock.elapsedSeconds).toBe(elapsed);
+    expect(clock.timerStartedAt).toBeNull();
+
+    const undone = await reopenCompletedWorkoutForUser(user.id, sessionId);
+    expect(undone.status).toBe("draft");
+    expect((await readWorkoutTimerFields(sessionId, prisma)).elapsedSeconds).toBe(elapsed);
+
+    await prisma.workoutSession.update({
+      where: { id: sessionId },
+      data: { status: "complete", finishedAt: saved.finishedAt, timerStartedAt: null, elapsedSeconds: elapsed },
+    });
+    const started = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: dayId,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(started.id).not.toBe(sessionId);
+    expect(started.status).toBe("draft");
+    expect((await prisma.workoutSession.findUniqueOrThrow({ where: { id: sessionId } })).status).toBe(
+      "complete",
+    );
+  });
+
+  it("still resumes a save-draft that has logged sets", async () => {
+    const user = await makeUser("save-draft@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.title.startsWith("Lift 1")) ?? program.days[0]!;
+    const session = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    const one = session.sets[0]!;
+    const drafted = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: session.id,
+      title: session.title,
+      performedAt: session.performedAt,
+      notes: "",
+      status: "draft",
+      timeZone: APP_TIMEZONE,
+      sets: session.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        setNumber: set.setNumber,
+        reps: set.id === one.id ? 8 : null,
+        loadValue: set.id === one.id ? 40 : null,
+        loadUnit: "lb" as const,
+        logMode: isLogMode(set.logMode) ? set.logMode : "load_reps",
+        durationSeconds: null,
+        completed: set.id === one.id,
+      })),
+    });
+    expect(drafted.status).toBe("draft");
+    expect(drafted.finishedAt).toBeNull();
+
+    const again = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(again.id).toBe(session.id);
+    expect(again.status).toBe("draft");
+    expect(await prisma.workoutSession.count({ where: { userId: user.id, programDayId: day.id } })).toBe(1);
   });
 });

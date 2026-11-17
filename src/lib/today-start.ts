@@ -1,5 +1,5 @@
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { draftHasResumeWork, type TickedSet } from "@/lib/logged-work";
+import { draftHasResumeWork, sessionFinishSealed, type TickedSet } from "@/lib/logged-work";
 import { sessionProgress } from "@/lib/session-progress";
 import { visibleDoseForSession, type MemberExerciseEdits } from "@/lib/finish-plan";
 import { trainingBlockKey } from "@/lib/exercise-swap";
@@ -9,6 +9,8 @@ export type ResumableLog = {
   status: string;
   performedAt: Date;
   createdAt?: Date;
+  /** Set when Finish froze the clock. A draft save leaves this empty. */
+  finishedAt?: Date | string | null;
   programDayId: string | null;
   /** Applied My Workout log. It is not the free custom resume. */
   dayPlanId?: string | null;
@@ -87,10 +89,13 @@ export function openLogsByProgramDay(
       names: shown?.names ?? names,
       exercises: shown?.exercises ?? scaledExercises,
     });
-    if (session.status === "complete" && progress.done) {
+    // Finish seals a full log and a short one. A Save draft is not sealed.
+    if (sessionFinishSealed(session) || (session.status === "complete" && progress.done)) {
       finished.add(session.programDayId);
-      const existing = map.get(session.programDayId);
-      if (existing && !existing.partial) map.delete(session.programDayId);
+      if (progress.done) {
+        const existing = map.get(session.programDayId);
+        if (existing && !existing.partial) map.delete(session.programDayId);
+      }
       continue;
     }
     if (finished.has(session.programDayId) || map.has(session.programDayId)) continue;
@@ -123,6 +128,7 @@ export function openCustomLog(
     if (session.programDayId || session.dayPlanId) continue;
     if (sessionCompletionDay(session, timeZone) !== onDay) continue;
     if (session.status === "abandoned") continue;
+    if (sessionFinishSealed(session)) continue;
     if (session.status === "draft" && !draftHasResumeWork(session.sets)) continue;
     const progress = sessionProgress(session);
     if (session.status === "complete" && progress.done) continue;

@@ -71,10 +71,10 @@ import {
   loggedCountMessage,
   loggedSetSome,
   offPlanSessionDone,
-  prescribedSetTotal,
   prepareSetsForPersist,
   resolvedPlannedSetCount,
   sessionCountsAsPlannedCompletion,
+  sessionFinishSealed,
   sessionHasLoggedWork,
   sessionOpensFinishScreen,
   setCountsForTotals,
@@ -1197,8 +1197,13 @@ async function findSameDayProgramSession(
     include: SAME_DAY_SETS,
     orderBy: { createdAt: "asc" },
   });
+  const timers = await readTimerFieldsByIds(
+    rows.map((row) => row.id),
+    db,
+  );
   const same = rows.filter((row) => {
     if (sessionCivilDay(row, timeZone) !== today) return false;
+    if (sessionFinishSealed({ ...row, finishedAt: timers.get(row.id)?.finishedAt ?? null })) return false;
     if (row.sets.length === 0) return false;
     // A partial round-only log is finished for the logger. A mixed partial
     // still has Shadowbox or technique to tick, so Start reopens it.
@@ -1315,9 +1320,9 @@ function completedSessionIsFromAnotherDay(
 }
 
 /**
- * Reopen a short save and put the planned rows back on that same session.
- * A planned completion stays finished. Removed and swapped-out names are not re-added.
- * A completed session from another day is left untouched, including its clock.
+ * Reopen an unfinished partial and put the planned rows back on that same session.
+ * Finish seals a full log and a short one. Resume must not clear that clock.
+ * A Save draft has no finish time, so it can still be resumed.
  * Call this from the Resume action only. Viewing a log must not run it.
  */
 export async function continuePartialWorkoutForUser(input: {
@@ -1343,8 +1348,15 @@ export async function continuePartialWorkoutForUser(input: {
   }
   const zone = input.timeZone || APP_TIMEZONE;
   const now = new Date();
-  // Last week's finished Lift 1 is not this week's draft. Leave status and duration.
-  if (completedSessionIsFromAnotherDay(existing, zone, now)) return existing;
+  const storedClock = await readWorkoutTimerFields(existing.id, prisma);
+  // Finish sealed this row. Leave status, finishedAt, and elapsedSeconds.
+  // Prisma omits the clock columns, so the seal is read from the timer query.
+  if (
+    sessionFinishSealed({ ...existing, finishedAt: storedClock.finishedAt }) ||
+    completedSessionIsFromAnotherDay(existing, zone, now)
+  ) {
+    return { ...existing, ...storedClock };
+  }
   if (!existing.programDay) {
     if (existing.status !== "partial" && existing.status !== "complete") return existing;
     // A template log has no program day. A finished one used to skip the
@@ -1441,6 +1453,9 @@ export async function continuePartialWorkoutForUser(input: {
     });
     if (fresh.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
+    }
+    if (sessionFinishSealed({ ...fresh, finishedAt: (await readWorkoutTimerFields(fresh.id, tx)).finishedAt })) {
+      return fresh;
     }
     if (
       fresh.status === "complete" &&
@@ -1609,33 +1624,16 @@ export async function startWorkoutFromDay(input: {
     includePending: true,
   }).shown;
   const plannedNames = visible.map((exercise) => exercise.name);
-  const [sameDay, shortComplete] = await Promise.all([
-    findSameDayProgramSession(prisma, input.userId, rawDay.id, now, zone, plannedNames),
-    findCompletedSameDaySession(prisma, input.userId, rawDay.id, now, zone, plannedNames),
-  ]);
+  const sameDay = await findSameDayProgramSession(
+    prisma,
+    input.userId,
+    rawDay.id,
+    now,
+    zone,
+    plannedNames,
+  );
   if (sameDay) return sameDay;
-  if (shortComplete && !completedSessionIsFromAnotherDay(shortComplete, zone, now)) {
-    const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
-    const progress = sessionProgress(shortComplete, {
-      dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
-      names:
-        calendar && calendar.names.length > 0
-          ? [...calendar.names]
-          : visible.map((exercise) => exercise.name),
-      exercises:
-        calendar?.exercises && calendar.exercises.length > 0
-          ? calendar.exercises
-          : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
-    });
-    if (!progress.done) {
-      return continuePartialWorkoutForUser({
-        userId: input.userId,
-        workoutId: shortComplete.id,
-        preferredUnits: input.preferredUnits,
-        timeZone: zone,
-      });
-    }
-  }
+  // A finished full or partial log stays sealed. Start opens a new draft.
 
   const sets = visible.flatMap((exercise) => {
     const mode = resolveLogMode(exercise);
@@ -1678,29 +1676,6 @@ export async function startWorkoutFromDay(input: {
       visible.map((exercise) => exercise.name),
     );
     if (again) return again;
-    const shortAgain = await findCompletedSameDaySession(
-      tx,
-      input.userId,
-      rawDay.id,
-      now,
-      zone,
-      visible.map((exercise) => exercise.name),
-    );
-    if (shortAgain && !completedSessionIsFromAnotherDay(shortAgain, zone, now)) {
-      const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
-      const progress = sessionProgress(shortAgain, {
-        dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
-        names:
-          calendar && calendar.names.length > 0
-            ? [...calendar.names]
-            : visible.map((exercise) => exercise.name),
-        exercises:
-          calendar?.exercises && calendar.exercises.length > 0
-            ? calendar.exercises
-            : visible.map((exercise) => ({ name: exercise.name, sets: exercise.sets })),
-      });
-      if (!progress.done) return shortAgain;
-    }
     fresh = true;
     return tx.workoutSession.create({
       data: {
@@ -1716,17 +1691,7 @@ export async function startWorkoutFromDay(input: {
       include: { sets: true },
     });
   });
-  if (!fresh) {
-    if (created.status === "complete") {
-      return continuePartialWorkoutForUser({
-        userId: input.userId,
-        workoutId: created.id,
-        preferredUnits: input.preferredUnits,
-        timeZone: zone,
-      });
-    }
-    return created;
-  }
+  if (!fresh) return created;
   await bindPendingSwaps({
     userId: input.userId,
     programSlug: rawDay.program.slug,
@@ -2002,9 +1967,12 @@ export async function updateWorkoutSessionForUser(input: {
     if (!current || current.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
+    const currentClock = timerColumns
+      ? await readWorkoutTimerFields(current.id, tx)
+      : { finishedAt: null, elapsedSeconds: null, timerStartedAt: null };
     if (
       input.status === "draft" &&
-      (current.status === "complete" ||
+      (sessionFinishSealed({ ...current, finishedAt: currentClock.finishedAt }) ||
         (current.status === "partial" && keepsFinishedRoundLog(current.sets)))
     ) {
       return current;
@@ -2047,7 +2015,10 @@ export async function updateWorkoutSessionForUser(input: {
       if (
         saved &&
         input.status === "draft" &&
-        (saved.status === "complete" ||
+        (sessionFinishSealed({
+          ...saved,
+          finishedAt: (await readWorkoutTimerFields(saved.id, tx)).finishedAt,
+        }) ||
           (saved.status === "partial" && keepsFinishedRoundLog(saved.sets)))
       ) {
         return saved;

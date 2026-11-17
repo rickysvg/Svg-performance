@@ -73,7 +73,7 @@ describe("narrow workout session queries", () => {
     expect(drafts.some((row) => row.programDayId === day.id)).toBe(true);
     expect(drafts.some((row) => row.programDayId === otherDay.id)).toBe(true);
 
-    // The same-day short save is resumed once. Later starts are other days.
-    expect(await countWorkoutSessionsForUser(user.id)).toBe(4);
+    // Each finish stays sealed, so the next start of that day is a new row.
+    expect(await countWorkoutSessionsForUser(user.id)).toBe(5);
   });
 });

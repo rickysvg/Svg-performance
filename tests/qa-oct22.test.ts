@@ -51,15 +51,9 @@ describe("Oct 22 partial saves", () => {
     },
   ];
 
-  it("treats a short save as partial with ticked and planned counts", () => {
+  it("does not resume a finished short save, and still resumes a draft", () => {
     const open = openLogsByProgramDay(sessions, "2026-10-22", zone);
-    expect(open.get("lift")).toMatchObject({
-      id: "short",
-      partial: true,
-      ticked: 1,
-      planned: 7,
-      progress: "1/7 sets · Partial",
-    });
+    expect(open.has("lift")).toBe(false);
     expect(open.get("bag")).toMatchObject({ id: "draft", partial: false, progress: undefined });
     expect(open.has("shadow")).toBe(false);
     expect(partialSetsLine(1, 7)).toBe("1/7 sets · Partial");
@@ -90,13 +84,7 @@ describe("Oct 22 partial saves", () => {
       zone,
       new Map([["lift", { dose: 34, names: ["Goblet squat", "Row"] }]]),
     );
-    expect(open.get("lift")).toMatchObject({
-      id: "one",
-      partial: true,
-      ticked: 1,
-      planned: 34,
-      progress: "1/34 sets · Partial",
-    });
+    expect(open.has("lift")).toBe(false);
   });
 
   it("makes Today and the next action Resume for a partial and a draft", () => {
@@ -122,10 +110,9 @@ describe("Oct 22 partial saves", () => {
       ],
       (dayId) => logs.get(dayId),
     );
-    expect(today).toMatchObject({ verb: "Resume", draftId: "short", partial: true, ticked: 1, planned: 7 });
+    expect(today).toMatchObject({ verb: "Resume", dayId: "bag", draftId: "draft" });
     expect(todayStartLabel(today!)).toContain("Resume");
-    expect(todayStartLabel(today!)).not.toContain("Continue");
-    expect(todayStartLabel(today!)).toContain("1/7 sets · Partial");
+    expect(todayStartLabel(today!)).not.toContain("1/7 sets");
 
     const next = nextTrainAction(
       [
@@ -133,9 +120,9 @@ describe("Oct 22 partial saves", () => {
         { title: "Bag", kind: "skill", dayId: "bag" },
       ],
       (dayId) => logs.get(dayId),
-      (dayId) => dayId === "done",
+      (dayId) => dayId === "lift",
     );
-    expect(next).toMatchObject({ verb: "Resume", draftId: "short", progress: "1/7 sets · Partial" });
+    expect(next).toMatchObject({ verb: "Resume", draftId: "draft" });
   });
 
   it("does not Resume a finished day because a second tab left a draft", () => {
