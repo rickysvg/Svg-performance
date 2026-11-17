@@ -582,11 +582,12 @@ describe("past log first paint and finish time", () => {
         initialPreview: overCapPreview,
       }),
     );
-    expect(overCapHtml).toContain("Save · 10×30 @ 15:00/10:00");
+    expect(overCapHtml).toContain('data-interval-preset="last"');
+    expect(overCapHtml).toContain("Same as last");
+    expect(overCapHtml).toContain("Save · 2×8 @ 15/15");
+    expect(overCapHtml).not.toContain("Max 4:00:00");
     expect(overCapHtml).not.toContain("7590:00");
     expect(overCapHtml).not.toContain("7490:00");
-    expect(overCapHtml).toContain("Max 4:00:00");
-    expect(overCapHtml).toMatch(/data-testid="log-past-workout-save"[^>]*disabled/);
 
     const steadyPreview: BackfillPreview = {
       dayKey: sample!.key,
@@ -663,10 +664,10 @@ describe("past log first paint and finish time", () => {
         initialPreview: rejectedPreview,
       }),
     );
-    expect(rejectedHtml).toContain("2x8 @ 33:20/15 r60");
-    expect(rejectedHtml).toContain("Try 2x8 @ 15/15");
-    expect(rejectedHtml).not.toContain("Save · 2×8");
-    expect(rejectedHtml).toMatch(/data-testid="log-past-workout-save"[^>]*disabled/);
+    expect(rejectedHtml).not.toContain("33:20");
+    expect(rejectedHtml).toContain("Same as last");
+    expect(rejectedHtml).toContain("2x8 @ 15/15");
+    expect(rejectedHtml).toContain('data-testid="log-past-workout-save" class="font-display');
     expect(chipAfterDayPreview(null, true)).toBe("plan");
     expect(chipAfterDayPreview(null, false)).toBe("bike");
     expect(chipAfterDayPreview("bag", true)).toBe("bag");

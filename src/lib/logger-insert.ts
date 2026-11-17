@@ -2,7 +2,7 @@
  * Insert, reorder, and remove an exercise inside a logger without folding it
  * into a programmed row. Order is the first time each name appears.
  */
-import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
+import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { distinctExerciseName } from "@/lib/exercise-swap";
 import type { LibraryExercise } from "@/lib/exercise-library";
 import { catalogRestSeconds } from "@/lib/set-rest";
@@ -120,16 +120,13 @@ export function draftsForLibraryExercise(
     name: exerciseName,
     reps: exercise.reps,
   });
-  const timed = isDurationMode(logMode);
-  const reps = timed ? null : defaultLoggedReps(exercise.reps);
-  const durationSeconds = timed ? parseDurationSeconds(exercise.reps) : null;
   const count = defaultSetCount(exercise.sets);
   const restSeconds = catalogRestSeconds(exercise.restSeconds);
   return Array.from({ length: count }, (_, index) => ({
     exerciseName,
     setNumber: start + index + 1,
-    reps,
-    durationSeconds,
+    reps: null,
+    durationSeconds: null,
     logMode,
     restSeconds,
     prescriptionReps: exercise.reps,

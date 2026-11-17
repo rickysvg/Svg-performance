@@ -52,7 +52,9 @@ import {
   modeColumnLabel,
   modeHint,
   prescribedLbLabel,
+  prescriptionLogsTimeAndDistance,
   resolveLogMode,
+  targetInputPlaceholder,
   resolveLoggedSetMode,
   type LogMode,
 } from "@/lib/exercise-log-mode";
@@ -96,8 +98,6 @@ import {
   isDistanceDose,
   MAX_LOGGED_REPS,
   nextRepsEntry,
-  planWorkFromText,
-  repsTextFromPrescriptionKey,
   setHasLoggedWork,
   setIsUntickedPrefill,
   withEntryTick,
@@ -1061,6 +1061,9 @@ export function WorkoutLogForm({
     });
     const created = {
       ...newClientSet(session.id, exerciseName, group.length + 1, unit, mode),
+      reps: null,
+      loadValue: null,
+      durationSeconds: null,
       prescriptionKey:
         group[0]?.prescriptionKey || prescriptionSlotKey({ exerciseName, reps: planned?.reps }),
       rir: group[0]?.rir ?? "",
@@ -1131,28 +1134,8 @@ export function WorkoutLogForm({
     }
     const rawDuration = bike && completed ? loggedBikeSeconds(exerciseName, target?.prescriptionKey) : undefined;
     const durationSeconds = rawDuration == null ? undefined : Math.min(3600, Math.max(1, rawDuration));
-    const planned = session.programDay?.exercises.find(
-      (row) => gymExerciseKey(row.name) === gymExerciseKey(exerciseName),
-    );
-    const fromPlan = planWorkFromText(planned?.reps);
-    const fromKey = planWorkFromText(repsTextFromPrescriptionKey(target?.prescriptionKey));
-    const planWork = fromPlan.reps != null || fromPlan.seconds != null ? fromPlan : fromKey;
-    const distancePlan =
-      isDistanceDose(planned?.reps || "") ||
-      isDistanceDose(repsTextFromPrescriptionKey(target?.prescriptionKey));
-    const timedFill = isDurationMode(mode) || bike;
-    const emptyTick =
-      completed &&
-      !setHasLoggedWork({
-        reps: target?.reps,
-        loadValue: target?.loadValue,
-        durationSeconds: durationSeconds ?? target?.durationSeconds,
-      });
-    const fillReps = emptyTick && !timedFill && planWork.reps != null;
-    const fillSeconds = planWork.seconds ?? (timedFill ? planWork.reps : null);
-    const fillTime =
-      !distancePlan && emptyTick && timedFill && durationSeconds == null && fillSeconds != null;
     setActiveName(exerciseName);
+    // The next set stays empty. Checking this one does not copy the plan into either box.
     const nextSets = sets.map((set) =>
       set.id === setId
         ? {
@@ -1160,8 +1143,6 @@ export function WorkoutLogForm({
             completed,
             skipped: !completed,
             ...(durationSeconds != null ? { durationSeconds } : {}),
-            ...(fillReps ? { reps: planWork.reps } : {}),
-            ...(fillTime ? { durationSeconds: fillSeconds } : {}),
           }
         : set,
     );
@@ -1235,9 +1216,11 @@ export function WorkoutLogForm({
         draft.setNumber,
         defaultUnit,
         resolveLogMode({ logMode: draft.logMode, name: draft.exerciseName, reps: draft.prescriptionReps }),
-        draft.durationSeconds,
+        null,
       ),
-      reps: draft.reps,
+      reps: null,
+      loadValue: null,
+      durationSeconds: null,
       prescriptionKey: addedPrescriptionKey({
         exerciseName: draft.exerciseName,
         reps: draft.prescriptionReps,
@@ -1376,6 +1359,11 @@ export function WorkoutLogForm({
         ref={formRef}
         action={action}
         className="min-w-0 max-w-full space-y-5"
+        onReset={(event) => {
+          // A failed Save resets the form. That clear was unchecking ticks the
+          // draft on the server still has.
+          event.preventDefault();
+        }}
         onKeyDown={(event) => {
           if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
           const target = event.target;
@@ -1709,8 +1697,13 @@ export function WorkoutLogForm({
             ? bikeSession?.notes || ""
             : planned?.notes || bikeSession?.notes || "";
           const timed = isDurationMode(mode) && !bike;
-          const distance = isDistanceDose(doseReps || planned?.reps || "");
+          const doseText = doseReps || planned?.reps || "";
+          const timeAndDistance = timed && prescriptionLogsTimeAndDistance(doseText);
+          const distance = isDistanceDose(doseText) && !timeAndDistance;
           const workLabel = distance ? "m" : modeColumnLabel(mode);
+          const repHint = targetInputPlaceholder("reps", doseText);
+          const secondHint = targetInputPlaceholder("seconds", doseText);
+          const meterHint = targetInputPlaceholder("distance", doseText);
           const restSeconds = exerciseRestSeconds(name);
           const layout = loggerRowLayout(mode, name);
           const columns =
@@ -1720,12 +1713,15 @@ export function WorkoutLogForm({
                 ? "grid-cols-[minmax(0,1fr)_minmax(0,4.75rem)_1.5rem]"
                 : bike
                   ? "grid-cols-[1.5rem_minmax(0,1fr)_1.5rem]"
+                  : timeAndDistance
+                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(3.4rem,4.4rem)_minmax(3.4rem,4.4rem)_minmax(3.6rem,4.6rem)_1.5rem]"
                   : hidesLoad(mode)
                     ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(5.25rem,6.5rem)_1.5rem]"
                     : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(4.75rem,5.75rem)_minmax(4.75rem,5.75rem)_1.5rem]";
           const hint = modeHint(mode, name);
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);
+          const loadHint = pounds ?? "lbs";
           return (
             <Fragment key={name}>
             {loggerOpen ? (
@@ -2033,6 +2029,14 @@ export function WorkoutLogForm({
                     <span>Seconds</span>
                     <span>Lbs</span>
                   </>
+                ) : timeAndDistance ? (
+                  <>
+                    <span>Set</span>
+                    <span>Previous</span>
+                    <span>Sec</span>
+                    <span>m</span>
+                    <span>{loadHeader}</span>
+                  </>
                 ) : (
                   <>
                     <span>{bike || mode !== "timed_round" ? "Set" : "Rd"}</span>
@@ -2110,7 +2114,52 @@ export function WorkoutLogForm({
                           </button>
                         </>
                       )}
-                      {bike ? (
+                      {timeAndDistance ? (
+                        <>
+                          <label className="block">
+                            <span className="sr-only">Seconds</span>
+                            <input
+                              name={`sets.${index}.durationSeconds`}
+                              data-set-field={set.id}
+                              data-carry-seconds={set.id}
+                              type="number"
+                              min={0}
+                              max={3600}
+                              inputMode="numeric"
+                              placeholder={secondHint || undefined}
+                              value={set.durationSeconds ?? ""}
+                              onChange={(event) =>
+                                updateSet(set.id, {
+                                  durationSeconds:
+                                    event.target.value === "" ? null : Number(event.target.value),
+                                  logMode: mode,
+                                })
+                              }
+                              className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base placeholder:text-muted"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="sr-only">Distance in meters</span>
+                            <input
+                              name={`sets.${index}.reps`}
+                              data-carry-meters={set.id}
+                              type="number"
+                              min={0}
+                              max={5000}
+                              inputMode="numeric"
+                              placeholder={meterHint || undefined}
+                              value={set.reps ?? ""}
+                              onChange={(event) =>
+                                updateSet(set.id, {
+                                  reps: event.target.value === "" ? null : Number(event.target.value),
+                                  logMode: mode,
+                                })
+                              }
+                              className="h-11 w-full min-w-0 rounded-lg border border-line bg-background px-1 text-center text-base placeholder:text-muted"
+                            />
+                          </label>
+                        </>
+                      ) : bike ? (
                         <input
                           data-testid="workout-log-form-input-4"
                           type="hidden"
@@ -2137,6 +2186,7 @@ export function WorkoutLogForm({
                             min={0}
                             max={5000}
                             inputMode="numeric"
+                            placeholder={meterHint || undefined}
                             value={set.reps ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
@@ -2145,7 +2195,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base placeholder:text-muted"
                           />
                         </label>
                       ) : timed ? (
@@ -2160,7 +2210,7 @@ export function WorkoutLogForm({
                             min={0}
                             max={3600}
                             inputMode="numeric"
-                            placeholder={layout === "weighted_shadow" ? "sec" : undefined}
+                            placeholder={secondHint || (layout === "weighted_shadow" ? "sec" : undefined)}
                             value={set.durationSeconds ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
@@ -2169,7 +2219,7 @@ export function WorkoutLogForm({
                                 logMode: mode,
                               })
                             }
-                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base placeholder:text-muted"
                           />
                         </label>
                       ) : (
@@ -2183,6 +2233,7 @@ export function WorkoutLogForm({
                             max={MAX_LOGGED_REPS}
                             inputMode="numeric"
                             aria-invalid={repsError ? true : undefined}
+                            placeholder={repHint || undefined}
                             value={set.reps ?? ""}
                             onChange={(event) => {
                               const next = nextRepsEntry(event.currentTarget.value);
@@ -2192,7 +2243,7 @@ export function WorkoutLogForm({
                               setRepsError(next.error);
                               updateSet(set.id, { reps: next.reps });
                             }}
-                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                            className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base placeholder:text-muted"
                           />
                         </label>
                       )}
@@ -2209,7 +2260,7 @@ export function WorkoutLogForm({
                             max={2000}
                             step="0.5"
                             inputMode="decimal"
-                            placeholder={pounds ?? "lbs"}
+                            placeholder={loadHint}
                             value={set.loadValue ?? ""}
                             onChange={(event) =>
                               updateSet(set.id, {
@@ -2217,7 +2268,7 @@ export function WorkoutLogForm({
                                   event.target.value === "" ? null : Number(event.target.value),
                               })
                             }
-                            className="h-11 w-full min-w-0 rounded-lg border border-line bg-background px-1 text-center text-base"
+                            className="h-11 w-full min-w-0 rounded-lg border border-line bg-background px-1 text-center text-base placeholder:text-muted"
                           />
                         </label>
                       )}

@@ -391,22 +391,12 @@ export function repsTextFromPrescriptionKey(key: string | null | undefined) {
 }
 
 /**
- * A checked set with an empty load still counts when the plan already
- * named the reps. Bodyweight and "no pounds typed" stay savable.
+ * A tick does not copy the plan into the box.
+ * Reps, load, and time stay empty until the member types them.
+ * The prescription is a placeholder, so an empty check is not logged work.
  */
 export function withTickedPlanWork<T extends PersistSet>(set: T): T {
-  if (!set.completed || setHasLoggedWork(set)) return set;
-  const repsText = repsTextFromPrescriptionKey(set.prescriptionKey);
-  if (isDistanceDose(repsText)) return set;
-  const work = planWorkFromText(repsText);
-  const timed = set.logMode === "timed" || set.logMode === "timed_round" || set.logMode === "load_timed";
-  if (timed) {
-    const seconds = work.seconds ?? work.reps;
-    if (seconds == null) return set;
-    return { ...set, durationSeconds: seconds };
-  }
-  if (work.reps == null) return set;
-  return { ...set, reps: work.reps };
+  return set;
 }
 
 /** Timer logs use a different bike label than the day card. Other names stay on their gym key. */

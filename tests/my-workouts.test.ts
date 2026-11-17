@@ -433,6 +433,9 @@ describe("my workouts", () => {
     expect(fresh.savedWorkoutId).toBe(saved.id);
     expect(fresh.sets.length).toBeGreaterThan(0);
     expect(fresh.plannedSetCount).toBe(fresh.sets.length);
+    expect(
+      fresh.sets.every((set) => set.reps == null && set.loadValue == null && set.durationSeconds == null),
+    ).toBe(true);
   });
 
   it("drops an untouched custom draft when the day reverts to the program", async () => {

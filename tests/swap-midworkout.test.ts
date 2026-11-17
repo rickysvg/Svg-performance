@@ -102,7 +102,7 @@ describe("mid-workout swap", () => {
     ).toBe(30);
   });
 
-  it("prefills the prescribed seconds on every swapped timed set", () => {
+  it("leaves every swapped timed set empty so the seconds stay a placeholder", () => {
     const merged = mergeReplacementSets(
       [1, 2, 3].map((setNumber) => ({
         exerciseName: "Farmer carry",
@@ -125,7 +125,7 @@ describe("mid-workout swap", () => {
       { programSlug: "demo", dayNumber: 1, loadUnit: "lb" },
     );
     const rows = merged.filter((set) => set.exerciseName === "Zercher carry");
-    expect(rows.map((set) => set.durationSeconds)).toEqual([30, 30, 30, 30]);
+    expect(rows.map((set) => set.durationSeconds)).toEqual([null, null, null, null]);
     expect(rows.every((set) => set.completed === false && set.loadValue == null)).toBe(true);
     expect(rows.every((set) => set.logMode === "load_timed")).toBe(true);
   });

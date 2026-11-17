@@ -224,8 +224,7 @@ function parseSets(formData: FormData): WorkoutSetInput[] {
     const loadValue = loadRaw === "" ? null : Number(loadRaw);
     const durationSeconds = durationRaw === "" ? null : Number(durationRaw);
     // An emptied field is not a finished set, and it must not be refilled
-    // from the template on save. Ticking a blank set still writes the plan
-    // value into the field before this form is submitted.
+    // from the template on save. A tick does not write the plan into the box.
     const hasWork = setHasLoggedWork({ reps, loadValue, durationSeconds });
     sets.push({
       exerciseName: String(formData.get(`sets.${i}.exerciseName`) ?? ""),

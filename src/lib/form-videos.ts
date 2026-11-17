@@ -905,6 +905,21 @@ const FLOOR_MOVES_WITHOUT_CLIP = [
   "Single-arm cable curl",
   "Cable glute kickback",
   "Cable rotational punch",
+  "Standing dumbbell shoulder press",
+  "Dumbbell upright row",
+  "Dumbbell split squat",
+  "Dumbbell sumo squat",
+  "Dumbbell calf raise",
+  "Dumbbell clean",
+  "Kettlebell clean and press",
+  "Kettlebell around the world",
+  "Kettlebell high pull",
+  "Kettlebell single-arm row",
+  "Kettlebell single-leg deadlift",
+  "Kettlebell front rack squat",
+  "Overhead kettlebell carry",
+  "Kettlebell figure-8",
+  "Kettlebell Russian twist",
 ];
 for (const name of FLOOR_MOVES_WITHOUT_CLIP) {
   if (DEMO_FORM_VIDEOS[name]) continue;
