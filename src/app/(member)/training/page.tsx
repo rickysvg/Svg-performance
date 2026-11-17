@@ -11,9 +11,9 @@ import {
 } from "@/lib/workouts";
 import { completedSessionIdsByLocalDay, offPlanMarksByLocalDay, partialLocalDayKeys, partialProgramIdsByLocalDay } from "@/lib/chip-completion";
 import { chipDayRefs, chipMarksAfterPlans, chipPlanMarksByDay, withOverlaySessionIds } from "@/lib/chip-days";
-import { explicitStartHref, primaryTrainCta } from "@/lib/train-cta";
+import { explicitStartHref, primaryTrainCta, startAgainHrefForDay } from "@/lib/train-cta";
 import { sessionCompletionDay } from "@/lib/performed-at";
-import { draftHasResumeWork, sessionFinishSealed } from "@/lib/logged-work";
+import { draftHasResumeWork } from "@/lib/logged-work";
 import { calendarPlanDoses } from "@/lib/calendar";
 import { canUseFeature } from "@/lib/entitlements";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
@@ -56,7 +56,7 @@ import { SessionDetails } from "@/components/training/SessionDetails";
 import { EquipmentRow } from "@/components/training/EquipmentRow";
 import { equipmentForExercises, estimateSessionMinutes } from "@/lib/exercise-media";
 import { loggedSessionView } from "@/lib/logged-session-view";
-import { openLogsByProgramDay, todayStartAction } from "@/lib/today-start";
+import { newestDaySession, openLogsByProgramDay, todayStartAction } from "@/lib/today-start";
 import { withVisiblePlanExercises } from "@/lib/finish-plan";
 import { loadMemberExerciseEdits } from "@/lib/member-exercise-edits";
 import { trainingBlockKey } from "@/lib/exercise-swap";
@@ -201,17 +201,14 @@ export default async function TrainingPage({
       tz,
     ),
   );
-  const sealedProgramDayIds = (day: string) => {
-    const ids = new Set<string>();
-    for (const row of resumable) {
-      if (!row.programDayId || !sessionFinishSealed(row)) continue;
-      if (sessionCompletionDay(row, tz) !== day) continue;
-      ids.add(row.programDayId);
-    }
-    return ids;
-  };
   const todayKey = dayKey(now, tz);
-  const sealedToday = sealedProgramDayIds(todayKey);
+  const facesOn = (day: string) => newestDaySession(resumable, day, tz, planByDay, visibleEdits);
+  const todayFaces = facesOn(todayKey);
+  const sealedToday = new Set(
+    [...todayFaces].filter(([, face]) => face.label === "done").map(([id]) => id),
+  );
+  const newestIsDone = (programDayId: string | null | undefined) =>
+    Boolean(programDayId && todayFaces.get(programDayId)?.label === "done");
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -224,7 +221,8 @@ export default async function TrainingPage({
       startHref: session.startHref,
       minutes: session.day ? estimateSessionMinutes(session.day.exercises) : 0,
       completed: session.dayId
-        ? doneToday.has(session.dayId) || sealedToday.has(session.dayId)
+        ? todayFaces.get(session.dayId)?.label === "done" ||
+          (doneToday.has(session.dayId) && todayFaces.get(session.dayId)?.label !== "resume")
         : false,
     })),
     (dayId) => openToday.get(dayId),
@@ -236,14 +234,14 @@ export default async function TrainingPage({
   );
   const resumeDraft =
     todayDrafts.find(
-      (row) => draftHasResumeWork(row.sets) && (!row.programDayId || !doneToday.has(row.programDayId)),
+      (row) => draftHasResumeWork(row.sets) && !newestIsDone(row.programDayId),
     ) ?? null;
   const openPlanDraft =
     drafts.find(
       (row) =>
         row.programDayId != null &&
         todayPlanDayIds.has(row.programDayId) &&
-        !doneToday.has(row.programDayId) &&
+        !newestIsDone(row.programDayId) &&
         !isPastEmptyDraft(row, todayKey, tz) &&
         (sessionCompletionDay(row, tz) === todayKey || sameLocalDay(row.performedAt, now, tz)),
     ) ?? null;
@@ -304,6 +302,7 @@ export default async function TrainingPage({
       const focusPlanned = resolvePlanSessions(focusPlan, focusCatalog);
       const focusDayPlans = savedDayPlans.filter((plan) => plan.dayKey === focusParam);
       const overlay = applyPlansToProgramCards(focusPlanned, focusDayPlans);
+      const dayFaces = facesOn(focusParam);
       const openOnDay = openLogsByProgramDay(resumable, focusParam, tz, planByDay, visibleEdits);
       const cards = overlay.cards.map((session) => {
         const openId = session.dayId ? openOnDay.get(session.dayId)?.id : undefined;
@@ -357,8 +356,8 @@ export default async function TrainingPage({
         dayPlans: focusDayPlans,
         openOnDay,
         doneIds: new Set([
-          ...(marks.completedByDay[focusParam] ?? []),
-          ...sealedProgramDayIds(focusParam),
+          ...(marks.completedByDay[focusParam] ?? []).filter((id) => dayFaces.get(id)?.label !== "resume"),
+          ...[...dayFaces].filter(([, face]) => face.label === "done").map(([id]) => id),
         ]),
         isToday: focus.day.isToday,
         deload: campWeekIndex == null && isDeloadWeekIndex(focusWeekIndex),
@@ -491,20 +490,29 @@ export default async function TrainingPage({
         const replacement = focus.dayPlans.find((plan) => plan.mode === "replace");
         const openPlan = focus.dayPlans.find((plan) => !plan.complete && plan.draftId);
         const planResume = openPlan?.draftId;
+        const resumeHref = focus.replaced
+          ? planResume
+            ? `/training/log/${planResume}`
+            : null
+          : resumeId
+            ? `/training/log/${resumeId}`
+            : null;
+        const startHref = explicitStartHref({
+          replaced: focus.replaced,
+          plans: focus.dayPlans,
+          action: todayAction,
+        });
+        const finishedAgain = todaySessions.find(
+          (session) => session.dayId && todayFaces.get(session.dayId)?.label === "done",
+        );
         const trainCta = focus.isToday
           ? primaryTrainCta({
-              resumeHref: focus.replaced
-                ? planResume
-                  ? `/training/log/${planResume}`
-                  : null
-                : resumeId
-                  ? `/training/log/${resumeId}`
+              resumeHref,
+              startHref,
+              startAgainHref:
+                !resumeHref && !startHref && finishedAgain?.dayId
+                  ? startAgainHrefForDay(finishedAgain.dayId, finishedAgain.startHref)
                   : null,
-              startHref: explicitStartHref({
-                replaced: focus.replaced,
-                plans: focus.dayPlans,
-                action: todayAction,
-              }),
             })
           : null;
         const cards = dayPlan.active ? focus.cards : focus.cards.filter((session) => session.kind !== "rest");
@@ -531,6 +539,11 @@ export default async function TrainingPage({
           minutes={replacement ? 0 : (todayAction?.minutes ?? 0)}
         />
       ) : null}
+      {trainCta?.verb === "Start again" ? (
+        <p data-session-done className="font-display text-sm uppercase tracking-wide text-accent">
+          Done
+        </p>
+      ) : null}
       {trainCta?.verb === "Resume" &&
       (focus.replaced ? openPlan?.partial && openPlan.draftId : todayAction?.partial && todayAction.draftId) ? (
         <ContinueWorkoutButton
@@ -547,7 +560,8 @@ export default async function TrainingPage({
           label={trainCta.verb}
           data-primary-train-cta
           data-resume-workout={trainCta.verb === "Resume" ? "true" : undefined}
-          data-start-today={trainCta.verb === "Start" ? "true" : undefined}
+          data-start-today={trainCta.verb === "Start" || trainCta.verb === "Start again" ? "true" : undefined}
+          data-start-again={trainCta.verb === "Start again" ? "true" : undefined}
           data-prime-coach-audio
           className="relative z-30 flex w-full touch-target scroll-mt-20 items-center justify-center rounded-full bg-accent px-4 text-center font-display text-sm leading-tight text-black"
         />
@@ -635,11 +649,23 @@ export default async function TrainingPage({
               calendarWeekday={dayPlan.weekday}
               highlight={session.slot === "A" && focus.plannedCount > 1}
               resume={session.dayId ? focus.openOnDay.get(session.dayId) : undefined}
-              draftId={session.dayId ? draftsOn(focus.dayParam).find((row) => row.programDayId === session.dayId)?.id : undefined}
+              draftId={
+                session.dayId && focus.openOnDay.get(session.dayId) && !focus.openOnDay.get(session.dayId)?.partial
+                  ? focus.openOnDay.get(session.dayId)?.id
+                  : undefined
+              }
               completed={
                 session.dayId
-                  ? focus.doneIds.has(session.dayId) && !focus.openOnDay.get(session.dayId)?.partial
+                  ? focus.doneIds.has(session.dayId) && !focus.openOnDay.get(session.dayId)
                   : false
+              }
+              startAgainHref={
+                focus.isToday &&
+                session.dayId &&
+                focus.doneIds.has(session.dayId) &&
+                !focus.openOnDay.get(session.dayId)
+                  ? startAgainHrefForDay(session.dayId, session.startHref)
+                  : undefined
               }
               dateLabel={planDateLabel}
               loggedView={session.loggedView}

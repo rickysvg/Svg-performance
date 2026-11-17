@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getShareCardView } from "@/lib/share-card-data";
 import { getProfileForUser, timeZoneForUser } from "@/lib/profile";
-import { civilDayInstant } from "@/lib/performed-at";
-import { dayKey } from "@/lib/timezone";
+import { civilDayInstant, sessionCompletionDay } from "@/lib/performed-at";
+import { dayKey, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { memberFacingTitle } from "@/lib/member-copy";
 import { prescribedDayFocus, scaleBandFromPrefs } from "@/lib/training-scale";
 import { activePlanWeekIndex } from "@/lib/fight-camp";
@@ -12,8 +12,8 @@ import { defaultSavedWorkoutName } from "@/lib/my-workout-plan";
 import { detectNewPrsForSession, evaluateBadgesForUser, newPrExerciseCount } from "@/lib/progress-companion";
 import { parseUnlockQuery } from "@/lib/badge-unlocks";
 import {
+  daySessionOrdinal,
   formatWorkoutCompleteDate,
-  sessionOrdinal,
   workoutCompleteShareStats,
   workoutCompleteTiles,
 } from "@/lib/workout-complete";
@@ -128,15 +128,35 @@ export default async function WorkoutDonePage({
   });
   const partial = !progress.done;
   const unit = profile?.preferredUnits ?? "lb";
-  const [prs, completeIds, badges] = await Promise.all([
+  const performed = civilDayInstant(view.session.performedAt, tz);
+  const dayStart = startOfZonedDay(performed, tz);
+  const dayEnd = endOfZonedDay(performed, tz);
+  const dayPadMs = 36 * 60 * 60 * 1000;
+  const [prs, daySessions, badges] = await Promise.all([
     detectNewPrsForSession(user.id, sessionId, unit),
     prisma.workoutSession.findMany({
-      where: { userId: user.id, status: { in: ["complete", "partial"] }, sets: loggedSetSome },
-      select: { id: true },
+      where: {
+        userId: user.id,
+        status: { in: ["complete", "partial"] },
+        sets: loggedSetSome,
+        performedAt: {
+          gte: new Date(dayStart.getTime() - dayPadMs),
+          lt: new Date(dayEnd.getTime() + dayPadMs),
+        },
+      },
+      select: { id: true, performedAt: true },
       orderBy: { performedAt: "asc" },
     }),
     evaluateBadgesForUser(user.id, unit),
   ]);
+  const sameDaySessions = daySessions.some((row) => row.id === sessionId)
+    ? daySessions
+    : [...daySessions, { id: sessionId, performedAt: view.session.performedAt }];
+  const sessionNumber = daySessionOrdinal(
+    sessionId,
+    sameDaySessions.filter((row) => sessionCompletionDay(row, tz) === sessionCompletionDay(view.session, tz)),
+    tz,
+  );
   const unlockIds = parseUnlockQuery(query.pendingUnlock ?? query.unlock);
   const firstBadge = unlockIds
     .map((id) => badges.find((row) => row.id === id))
@@ -147,7 +167,6 @@ export default async function WorkoutDonePage({
     newPrCount: newPrExerciseCount(prs),
     planExercises: visible?.exercises ?? plan?.exercises ?? view.session.programDay?.exercises,
   });
-  const performed = civilDayInstant(view.session.performedAt, tz);
   const whenLabel =
     dayKey(performed, tz) === dayKey(new Date(), tz)
       ? "Today"
@@ -192,11 +211,8 @@ export default async function WorkoutDonePage({
   return (
     <main className="min-h-[50vh]">
       <WorkoutWinScreen
-        dateLine={formatWorkoutCompleteDate(civilDayInstant(view.session.performedAt, tz), tz)}
-        sessionNumber={sessionOrdinal(
-          sessionId,
-          completeIds.map((row) => row.id),
-        )}
+        dateLine={formatWorkoutCompleteDate(performed, tz)}
+        sessionNumber={sessionNumber}
         tiles={tiles}
         shareTitle={memberFacingTitle(view.session.title)}
         shareStats={workoutCompleteShareStats(tiles)}

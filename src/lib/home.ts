@@ -10,7 +10,7 @@ import {
   listResumableSessionsForUser,
   sessionMatchesPlannedDay,
 } from "@/lib/workouts";
-import { CUSTOM_HOME_RESUME, openCustomLog, openLogsByProgramDay } from "@/lib/today-start";
+import { CUSTOM_HOME_RESUME, newestDaySession, openCustomLog } from "@/lib/today-start";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { homePlanDayId, homeSessionsAfterPlans, type HomeDayPlan } from "@/lib/my-workout-plan";
 import { calendarPlanDoses } from "@/lib/calendar";
@@ -454,6 +454,12 @@ export async function getHomeToday(
     nextSession?.day ??
     plannedSessions[0]?.day ??
     null;
+  const dayFaces = sameLocalDay(selected, now, tz)
+    ? newestDaySession(resumable, todayKey, tz, planByDay, {
+        edits,
+        anchor: profile?.onboardingCompletedAt ?? null,
+      })
+    : new Map();
   const completedDayIds = [
     ...new Set([
       ...sessions
@@ -477,16 +483,25 @@ export async function getHomeToday(
         .map((session) => session.programDayId as string),
       ...homePlans.filter((plan) => plan.complete).map((plan) => homePlanDayId(plan.id)),
     ]),
-  ];
+  ].filter((id) => dayFaces.get(id)?.label !== "resume");
   const finishedToday = new Set(completedDayIds);
+  const dayIsFinished = (programDayId: string | null | undefined) => {
+    if (!programDayId) return false;
+    const face = dayFaces.get(programDayId);
+    if (face?.label === "resume") return false;
+    if (face?.label === "done") return true;
+    return finishedToday.has(programDayId);
+  };
   const resumeByDay: Record<string, { id: string; partial: boolean; ticked?: number; planned?: number }> = {};
   if (sameLocalDay(selected, now, tz)) {
-    for (const [dayId, log] of openLogsByProgramDay(resumable, todayKey, tz, planByDay, {
-      edits,
-      anchor: profile?.onboardingCompletedAt ?? null,
-    })) {
-      if (finishedToday.has(dayId) && !log.partial) continue;
-      resumeByDay[dayId] = { id: log.id, partial: log.partial, ticked: log.ticked, planned: log.planned };
+    for (const [dayId, face] of dayFaces) {
+      if (face.label !== "resume") continue;
+      resumeByDay[dayId] = {
+        id: face.id,
+        partial: face.partial,
+        ticked: face.ticked,
+        planned: face.planned,
+      };
     }
     const custom = openCustomLog(resumable, todayKey, tz);
     if (custom) {
@@ -503,7 +518,7 @@ export async function getHomeToday(
     }
     // A draft with no logged sets is still today's session. Resume it instead of Start.
     for (const row of drafts) {
-      if (!row.programDayId || finishedToday.has(row.programDayId) || resumeByDay[row.programDayId]) continue;
+      if (!row.programDayId || dayIsFinished(row.programDayId) || resumeByDay[row.programDayId]) continue;
       if (isPastEmptyDraft(row, todayKey, tz)) continue;
       if (!sameLocalDay(row.performedAt, now, tz)) continue;
       resumeByDay[row.programDayId] = { id: row.id, partial: false };
@@ -511,15 +526,13 @@ export async function getHomeToday(
   }
   const draft =
     drafts.find(
-      (row) =>
-        !isPastEmptyDraft(row, todayKey, tz) &&
-        !(row.programDayId && finishedToday.has(row.programDayId)),
+      (row) => !isPastEmptyDraft(row, todayKey, tz) && !dayIsFinished(row.programDayId),
     ) ??
     sessions.find(
       (row) =>
         row.status === "draft" &&
         !isPastEmptyDraft(row, todayKey, tz) &&
-        !(row.programDayId && finishedToday.has(row.programDayId)),
+        !dayIsFinished(row.programDayId),
     );
   const loggedOnSelected = sessions.find(
     (session) =>
@@ -619,7 +632,11 @@ export async function getHomeToday(
         profile?.onboardingCompletedAt ?? null,
       ),
       ...homePlans.filter((plan) => plan.partial && !plan.complete).map((plan) => homePlanDayId(plan.id)),
-    ],
+    ].filter((id) => {
+      const face = dayFaces.get(id);
+      if (!face) return true;
+      return face.label === "resume" && face.partial;
+    }),
     loggedOnSelected: loggedOnSelected ?? null,
     foodToday,
     foodNudge:
