@@ -18,11 +18,11 @@ const BODY_FONT = "Arial, Helvetica, sans-serif";
 
 const LIVE_UTM = "utm_source=waitlist&utm_medium=email&utm_campaign=launch_nov16";
 
-export const WAITLIST_LIVE_CTA_URL = `${WAITLIST_WELCOME_APP_URL}/login?${LIVE_UTM}&utm_content=live_cta`;
-export const WAITLIST_LIVE_LINK_URL = `${WAITLIST_WELCOME_APP_URL}/login?${LIVE_UTM}&utm_content=live_link`;
+export const WAITLIST_LIVE_CTA_URL = `${WAITLIST_WELCOME_APP_URL}/register?${LIVE_UTM}&utm_content=live_cta`;
+export const WAITLIST_LIVE_LINK_URL = `${WAITLIST_WELCOME_APP_URL}/register?${LIVE_UTM}&utm_content=live_link`;
 export const WAITLIST_LIVE_LOGO_URL = `${WAITLIST_WELCOME_APP_URL}?${LIVE_UTM}&utm_content=live_logo`;
 export const WAITLIST_LIVE_PRIVACY_URL = `${WAITLIST_WELCOME_APP_URL}/privacy?${LIVE_UTM}&utm_content=live_privacy`;
-export const WAITLIST_LIVE_LOGIN_LABEL = `${WAITLIST_WELCOME_APP_URL}/login`;
+export const WAITLIST_LIVE_REGISTER_LABEL = `${WAITLIST_WELCOME_APP_URL}/register`;
 
 const INSIDE = [
   {
@@ -111,7 +111,7 @@ function liveHtml(greetingHtml: string, support: string) {
   const link = escapeHtml(WAITLIST_LIVE_LINK_URL);
   const logo = escapeHtml(WAITLIST_LIVE_LOGO_URL);
   const privacy = escapeHtml(WAITLIST_LIVE_PRIVACY_URL);
-  const loginLabel = escapeHtml(WAITLIST_LIVE_LOGIN_LABEL);
+  const registerLabel = escapeHtml(WAITLIST_LIVE_REGISTER_LABEL);
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -243,7 +243,7 @@ ${bodyRow(escapeHtml(APPS_LINE), "8px")}
           <tr>
             <td class="muted px" style="padding:18px 32px 0;font-family:${BODY_FONT};font-size:13px;line-height:1.5;color:#9aa394;">
               If the button does not open, use this link:<br />
-              <a href="${link}" style="color:#CBF805;text-decoration:underline;word-break:break-all;">${loginLabel}</a>
+              <a href="${link}" style="color:#CBF805;text-decoration:underline;word-break:break-all;">${registerLabel}</a>
             </td>
           </tr>
           <tr>
@@ -317,7 +317,7 @@ function liveText(greeting: string, support: string) {
     "Start training",
     WAITLIST_LIVE_CTA_URL,
     "",
-    `If the button does not open, use this link: ${WAITLIST_LIVE_LOGIN_LABEL}`,
+    `If the button does not open, use this link: ${WAITLIST_LIVE_REGISTER_LABEL}`,
     WAITLIST_LIVE_LINK_URL,
     "",
     `Questions? Write us at ${support}.`,

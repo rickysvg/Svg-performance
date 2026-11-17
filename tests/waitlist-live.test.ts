@@ -23,7 +23,7 @@ import {
   sendWaitlistLiveEmail,
   WAITLIST_LIVE_CTA_URL,
   WAITLIST_LIVE_LINK_URL,
-  WAITLIST_LIVE_LOGIN_LABEL,
+  WAITLIST_LIVE_REGISTER_LABEL,
   WAITLIST_LIVE_LOGO_URL,
   WAITLIST_LIVE_PREHEADER,
   WAITLIST_LIVE_PRIVACY_URL,
@@ -170,9 +170,21 @@ describe("waitlist live template", () => {
       expect(mail.text).toContain(body);
     }
     expect(mail.html).toContain(">Start training<");
+    expect(WAITLIST_LIVE_CTA_URL).toBe(
+      `https://svgperformance.app/register?${UTM}&utm_content=live_cta`,
+    );
+    expect(WAITLIST_LIVE_LINK_URL).toBe(
+      `https://svgperformance.app/register?${UTM}&utm_content=live_link`,
+    );
+    expect(WAITLIST_LIVE_REGISTER_LABEL).toBe("https://svgperformance.app/register");
     expect(mail.html).toContain(`href="${WAITLIST_LIVE_CTA_URL.replaceAll("&", "&amp;")}"`);
     expect(mail.html).toContain(`href="${WAITLIST_LIVE_LINK_URL.replaceAll("&", "&amp;")}"`);
-    expect(mail.html).toContain(`>${WAITLIST_LIVE_LOGIN_LABEL}<`);
+    expect(mail.html).toContain(`>${WAITLIST_LIVE_REGISTER_LABEL}<`);
+    expect(mail.html).not.toContain("/login");
+    expect(mail.text).not.toContain("/login");
+    expect(mail.text).toContain(
+      "If the button does not open, use this link: https://svgperformance.app/register",
+    );
     expect(mail.html).toContain(`href="${WAITLIST_LIVE_LOGO_URL.replaceAll("&", "&amp;")}"`);
     expect(mail.html).toContain(`href="${WAITLIST_LIVE_PRIVACY_URL.replaceAll("&", "&amp;")}"`);
     expect(mail.html).toContain(UTM.replaceAll("&", "&amp;"));
