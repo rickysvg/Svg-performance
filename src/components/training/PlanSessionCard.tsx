@@ -4,6 +4,7 @@ import { TrainDayMobility } from "@/components/training/TrainDayMobility";
 import { lookupFormVideo } from "@/lib/form-videos";
 import { estimateSessionMinutes, exerciseCountLabel } from "@/lib/exercise-media";
 import { plannedSetLine } from "@/lib/exercise-log-mode";
+import { isOptionalPlanExercise } from "@/lib/training-scale";
 import { mobilityBookendsForSession } from "@/lib/mobility-train";
 import { planStructureGroups, planStructureLine } from "@/lib/plan-structure";
 import type { ResolvedPlanSession } from "@/lib/week-plan";
@@ -29,6 +30,7 @@ type DayExercise = {
   loadText: string;
   restSeconds: number;
   logMode?: string;
+  notes?: string;
   formVideoUrl: string;
   formVideoPending: boolean;
   planSlot?: string | null;
@@ -45,6 +47,8 @@ export function PlanSessionCard({
   dateLabel,
   loggedView = null,
   dayKey,
+  /** Deload week keeps the printed exercise list, not only the sets already ticked. */
+  fullPlan = false,
 }: {
   session: ResolvedPlanSession;
   highlight?: boolean;
@@ -62,10 +66,11 @@ export function PlanSessionCard({
   loggedView?: LoggedSessionView | null;
   /** Civil day, so the detail page opens the same logged session. */
   dayKey?: string;
+  fullPlan?: boolean;
 }) {
   const kind = KIND_LABEL[session.kind];
   const exercises = (session.day?.exercises ?? []) as DayExercise[];
-  const groups = loggedView ? [] : planStructureGroups(exercises);
+  const groups = loggedView && !fullPlan ? [] : planStructureGroups(exercises);
   const structure = planStructureLine(groups);
   const estimated = session.day ? estimateSessionMinutes(session.day.exercises) : 0;
   const minutes = loggedView && loggedView.minutes > 0 ? loggedView.minutes : estimated;
@@ -124,7 +129,7 @@ export function PlanSessionCard({
         {session.subtitle}
         {count > 0 ? ` · ${exerciseCountLabel(count)}` : ""}
       </p>
-      {loggedView && loggedView.names.length > 0 ? (
+      {loggedView && !fullPlan && loggedView.names.length > 0 ? (
         <ul className="mt-3 space-y-1 text-sm" data-logged-session>
           {loggedView.names.map((name) => (
             <li key={name} className="font-medium">
@@ -162,7 +167,12 @@ export function PlanSessionCard({
                           size={48}
                         />
                         <span className="min-w-0 break-words">
-                          <span className="font-medium">{exercise.name}</span>
+                          <span className="font-medium">
+                            {exercise.name}
+                            {isOptionalPlanExercise(exercise) ? (
+                              <span className="ml-2 text-xs font-semibold uppercase tracking-wide">Optional</span>
+                            ) : null}
+                          </span>
                           <span className={`block ${highlight ? "text-white/60" : "text-muted"}`}>
                             {plannedSetLine({
                               sets: exercise.sets,
@@ -201,7 +211,12 @@ export function PlanSessionCard({
                     size={48}
                   />
                   <span>
-                    <span className="font-medium">{exercise.name}</span>
+                    <span className="font-medium">
+                      {exercise.name}
+                      {isOptionalPlanExercise(exercise) ? (
+                        <span className="ml-2 text-xs font-semibold uppercase tracking-wide">Optional</span>
+                      ) : null}
+                    </span>
                     <span className={`block ${highlight ? "text-white/60" : "text-muted"}`}>
                       {plannedSetLine({
                         sets: exercise.sets,

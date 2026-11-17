@@ -35,6 +35,12 @@ const DURATION_REPS =
 const DISTANCE_REPS = /\b(meters?|metres?|yards?)\b|\d+\s*m\b|\d+\s*yd\b/i;
 const LOADED_CARRY_NAME =
   /\b(farmer|suitcase carry|overhead carry|rack carry|waiter carry|yoke|\bcarry\b|weighted hold|loaded hold)\b/i;
+
+/** Farmer and suitcase walks log a clock and a distance. Zercher holds stay on the clock. */
+export function logsCarryTimeAndDistance(name: string) {
+  if (/\bzercher\b/i.test(name)) return false;
+  return LOADED_CARRY_NAME.test(name);
+}
 const WEIGHTED_LIFT_NAME =
   /\b(goblet|deadlift|rdl|romanian|bench press|overhead press|push press|floor press|one-arm row|\brow\b|kettlebell|dumbbell|barbell|hip hinge|\blunge\b|landmine|cable|pulldown|machine|\bcurl\b|thruster|clean|snatch|jerk|good morning|shrug|split squat|zercher|sandbag|\bsquat\b|med-?ball|medicine ball)\b/i;
 const LOADED_OPTION_NAME = /\b(dumbbell|barbell|kettlebell|bench press|bar )\b/i;
@@ -265,6 +271,9 @@ export function modeHint(mode: LogMode, name?: string) {
   if (mode === "load_timed") {
     if (name && isWeightedShadowName(name)) {
       return "Log the round in seconds and the hand-weight lbs. Empty-hand shadow stays timed.";
+    }
+    if (name && logsCarryTimeAndDistance(name)) {
+      return "Log seconds, distance in meters, and lbs. Time and distance both save.";
     }
     return "Log seconds and lbs. Loaded carry / hold — no reps.";
   }

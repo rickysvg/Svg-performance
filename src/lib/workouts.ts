@@ -43,6 +43,7 @@ import {
   hidesLoad,
   isDurationMode,
   isLogMode,
+  logsCarryTimeAndDistance,
   resolveLogMode,
   resolveLoggedSetMode,
   type LogMode,
@@ -1459,9 +1460,12 @@ export async function continuePartialWorkoutForUser(input: {
       typeof fresh.plannedSetCount === "number" && fresh.plannedSetCount > 0
         ? fresh.plannedSetCount
         : null;
-    // The short save already holds the rows it was started with. Filling from
+    // A short save already holds the rows it was started with. Filling from
     // the profile scale on top of those rows stacks a second catalog.
-    const alreadyHeld = storedPlan != null && lockedSets.length >= storedPlan;
+    // A deload title used to store about 60% of the printed sets and then
+    // treat that short total as complete, so Resume never put the rest back.
+    const deloadSession = /\bdeload\b/i.test(`${fresh.title}\n${fresh.notes}`);
+    const alreadyHeld = !deloadSession && storedPlan != null && lockedSets.length >= storedPlan;
     const loggedBike = lockedSets.some(
       (set) => isBikeIntervalName(set.exerciseName) || textIsBikeWorkout(set.exerciseName),
     );
@@ -2110,15 +2114,18 @@ export async function updateWorkoutSessionForUser(input: {
               durationSeconds: set.durationSeconds,
             });
             const timed = isDurationMode(mode);
+            // Carries keep meters in reps and the clock in durationSeconds.
+            // A timed mode used to wipe the distance on save.
+            const carry = logsCarryTimeAndDistance(set.exerciseName);
             return {
               exerciseName: set.exerciseName.trim(),
               setNumber: set.setNumber,
               sortOrder: index,
-              reps: timed ? null : set.reps,
+              reps: timed && !carry ? null : set.reps,
               loadValue: hidesLoad(mode) ? null : set.loadValue,
               loadUnit: set.loadUnit,
               logMode: mode,
-              durationSeconds: timed ? set.durationSeconds ?? null : null,
+              durationSeconds: timed || carry ? set.durationSeconds ?? null : null,
               completed: Boolean(set.completed),
               skipped: Boolean(set.skipped),
               notes: (set.notes ?? "").slice(0, 200),

@@ -1,6 +1,6 @@
 import { isBikeIntervalName } from "@/lib/bike-sessions";
 import { historySessionText } from "@/lib/session-progress";
-import { isDurationMode, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
+import { isDurationMode, logsCarryTimeAndDistance, parseDurationSeconds, resolveLogMode } from "@/lib/exercise-log-mode";
 import { gymExerciseKey, loggedExerciseName } from "@/lib/gym-exercise";
 import { defaultLoggedReps, parseAddedPlan } from "@/lib/logger-insert";
 
@@ -259,6 +259,9 @@ export function isDistanceLoggedSet(set: {
   durationSeconds?: number | null;
 }) {
   if (isDistanceDose(prescriptionTextForSet(set.prescriptionKey))) return true;
+  // A carry can store meters and a clock on the same set. The clock must not
+  // shrink the distance cap back to a rep count.
+  if (logsCarryTimeAndDistance(set.exerciseName ?? "")) return true;
   if (set.logMode !== "load_timed") return false;
   if (set.durationSeconds != null && set.durationSeconds > 0) return false;
   const name = set.exerciseName ?? "";
