@@ -546,12 +546,8 @@ describe("a workout is complete only after a logged save", () => {
     let expected = 100;
     for (let cycle = 0; cycle < 3; cycle += 1) {
       const before = Date.now();
-      await continuePartialWorkoutForUser({
-        userId: user.id,
-        workoutId: session.id,
-        preferredUnits: "lb",
-        timeZone: APP_TIMEZONE,
-      });
+      // Finished today. Undo starts a new segment. A past week's completion does not.
+      await reopenCompletedWorkoutForUser(user.id, session.id);
       const resumed = await readWorkoutTimerFields(session.id, prisma);
       const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
       expect(row.status).toBe("draft");
@@ -1431,7 +1427,7 @@ describe("a workout is complete only after a logged save", () => {
       programDayId: program.days[0].id,
       preferredUnits: "lb",
     });
-    const performed = new Date("2026-10-19T16:00:00.000Z");
+    const performed = new Date();
     await updateWorkoutSessionForUser({
       userId: user.id,
       workoutId: session.id,
@@ -1541,7 +1537,7 @@ describe("a workout is complete only after a logged save", () => {
         userId: user.id,
         programDayId: day!.id,
         title: "Cardio",
-        performedAt: new Date("2026-10-21T18:00:00.000Z"),
+        performedAt: new Date(),
         status: "complete",
         plannedSetCount: 1,
         sets: {

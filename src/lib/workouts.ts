@@ -1302,8 +1302,22 @@ export async function recordWorkoutActivityForUser(input: {
 }
 
 /**
+ * True when this completed row belongs to a different civil day than `now`.
+ * Start and Resume must not reopen it. A short save from today still can.
+ */
+function completedSessionIsFromAnotherDay(
+  session: { status: string; performedAt: Date },
+  timeZone: string,
+  now: Date,
+) {
+  if (session.status !== "complete") return false;
+  return sessionCompletionDay(session, timeZone) !== dayKey(now, timeZone);
+}
+
+/**
  * Reopen a short save and put the planned rows back on that same session.
  * A planned completion stays finished. Removed and swapped-out names are not re-added.
+ * A completed session from another day is left untouched, including its clock.
  * Call this from the Resume action only. Viewing a log must not run it.
  */
 export async function continuePartialWorkoutForUser(input: {
@@ -1327,8 +1341,15 @@ export async function continuePartialWorkoutForUser(input: {
   if (!existing || existing.userId !== input.userId) {
     throw new NotFoundError("Workout not found.");
   }
+  const zone = input.timeZone || APP_TIMEZONE;
+  const now = new Date();
+  // Last week's finished Lift 1 is not this week's draft. Leave status and duration.
+  if (completedSessionIsFromAnotherDay(existing, zone, now)) return existing;
   if (!existing.programDay) {
     if (existing.status !== "partial" && existing.status !== "complete") return existing;
+    // A template log has no program day. A finished one used to skip the
+    // progress check, flip back to draft, and let the heartbeat add minutes.
+    if (existing.status === "complete" && sessionProgress(existing).done) return existing;
     const timerColumns = await workoutTimerColumnsAvailable(prisma);
     const stored = timerColumns ? await readWorkoutTimerFields(existing.id, prisma) : null;
     return prisma.workoutSession.update({
@@ -1350,14 +1371,13 @@ export async function continuePartialWorkoutForUser(input: {
   }
 
   const profile = await getProfileForUser(input.userId);
-  const zone = input.timeZone || APP_TIMEZONE;
-  const now = existing.performedAt;
+  const loggedAt = existing.performedAt;
   const band = scaleBandFromPrefs({
     experienceLevel: profile?.experienceLevel,
     competitionStatus: profile?.competitionStatus,
   });
-  const weekIndex = memberWeekIndex(now, profile?.onboardingCompletedAt ?? now, zone);
-  const camp = await getActiveCampSnapshot(input.userId, now, zone);
+  const weekIndex = memberWeekIndex(loggedAt, profile?.onboardingCompletedAt ?? loggedAt, zone);
+  const camp = await getActiveCampSnapshot(input.userId, loggedAt, zone);
   const rawDay = existing.programDay;
   const day = scaleProgramDay(
     {
@@ -1372,7 +1392,7 @@ export async function continuePartialWorkoutForUser(input: {
       campPhase: camp?.phase ?? null,
     },
   );
-  const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
+  const calendar = (await calendarPlanDoses(input.userId, loggedAt)).get(rawDay.id);
   const names =
     calendar && calendar.names.length > 0
       ? [...calendar.names]
@@ -1400,7 +1420,7 @@ export async function continuePartialWorkoutForUser(input: {
   });
   const swapped = applySwapsToExercises(day.exercises, swaps, {
     sessionId: existing.id,
-    blockKey: trainingBlockKey(now, zone, profile?.onboardingCompletedAt ?? null, weekIndex),
+    blockKey: trainingBlockKey(loggedAt, zone, profile?.onboardingCompletedAt ?? null, weekIndex),
     includePending: false,
   });
   const removals = await listRemovalsForDay({
@@ -1594,7 +1614,7 @@ export async function startWorkoutFromDay(input: {
     findCompletedSameDaySession(prisma, input.userId, rawDay.id, now, zone, plannedNames),
   ]);
   if (sameDay) return sameDay;
-  if (shortComplete) {
+  if (shortComplete && !completedSessionIsFromAnotherDay(shortComplete, zone, now)) {
     const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
     const progress = sessionProgress(shortComplete, {
       dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
@@ -1666,7 +1686,7 @@ export async function startWorkoutFromDay(input: {
       zone,
       visible.map((exercise) => exercise.name),
     );
-    if (shortAgain) {
+    if (shortAgain && !completedSessionIsFromAnotherDay(shortAgain, zone, now)) {
       const calendar = (await calendarPlanDoses(input.userId, now)).get(rawDay.id);
       const progress = sessionProgress(shortAgain, {
         dose: calendar && calendar.dose > 0 ? calendar.dose : prescribedSetTotal(visible),
@@ -2287,6 +2307,8 @@ export async function reopenEmptyCompletion<
 /**
  * Put a finished session back in the logger. Logged sets stay.
  * Used when SAVE fired by accident (for example Enter in the swap search).
+ * A completion from another civil day stays finished. Resume of this week's
+ * workout must not undo last week's log or move its clock.
  */
 export async function reopenCompletedWorkoutForUser(userId: string, workoutId: string) {
   const existing = assertOwnSession(
@@ -2297,6 +2319,11 @@ export async function reopenCompletedWorkoutForUser(userId: string, workoutId: s
     userId,
   );
   if (existing.status !== "complete" && existing.status !== "partial") {
+    return attachWorkoutTimer(existing, prisma);
+  }
+  const profile = await getProfileForUser(userId);
+  const zone = await timeZoneForUser(userId, profile?.timeZone ?? null);
+  if (existing.status === "complete" && completedSessionIsFromAnotherDay(existing, zone, new Date())) {
     return attachWorkoutTimer(existing, prisma);
   }
   const timerColumns = await workoutTimerColumnsAvailable(prisma);

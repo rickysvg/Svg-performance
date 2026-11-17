@@ -290,7 +290,10 @@ export async function startSavedWorkoutForUser(input: {
     include: { sets: true },
   });
   const today = dayKey(now, input.timeZone);
-  const open = drafts.find((row) => sessionCompletionDay(row, input.timeZone) === today);
+  // Only today's in-progress draft. A completed session from last week stays finished.
+  const open = drafts.find(
+    (row) => row.status === "draft" && sessionCompletionDay(row, input.timeZone) === today,
+  );
   if (open) {
     await prisma.savedWorkout.update({ where: { id: saved.id }, data: { lastUsedAt: now } });
     return open;
@@ -561,6 +564,13 @@ export async function listDayPlansForUser(userId: string, dayKeys: string[]): Pr
     if (row.status !== "complete" && row.status !== "partial" && row.status !== "draft") continue;
     if (row.status === "draft" && !draftHasResumeWork(row.sets)) continue;
     if (tickedSetCount(row.sets) === 0) continue;
+    if (row.status === "complete") {
+      // A completed log is not the resume target, even when it is short of the dose.
+      // Start this week creates a new session instead of reopening last week's.
+      if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
+      else partial.add(row.dayPlanId);
+      continue;
+    }
     if (sessionCountsAsPlannedCompletion(row, [])) complete.add(row.dayPlanId);
     else {
       partial.add(row.dayPlanId);
@@ -619,7 +629,9 @@ export async function startDayPlanForUser(input: {
     orderBy: { updatedAt: "desc" },
     include: { sets: true },
   });
-  const draft = drafts.find((row) => sessionCompletionDay(row, input.timeZone) === plan.dayKey);
+  const draft = drafts.find(
+    (row) => row.status === "draft" && sessionCompletionDay(row, input.timeZone) === plan.dayKey,
+  );
   if (plan.savedWorkoutId) {
     await prisma.savedWorkout.updateMany({
       where: { id: plan.savedWorkoutId, userId: input.userId },
