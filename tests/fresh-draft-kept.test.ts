@@ -109,7 +109,7 @@ describe("an in-progress draft stays until the member discards it", () => {
     expect(await prisma.workoutSession.findUnique({ where: { id: started.id } })).not.toBeNull();
   });
 
-  it("does not delete the open logger when a second save folds it into an earlier workout", async () => {
+  it("keeps a second finish on its own session", async () => {
     const user = await makeUser("fresh-source@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -165,14 +165,24 @@ describe("an in-progress draft stays until the member discards it", () => {
         },
       ],
     });
-    expect(saved.id).toBe(earlier.id);
+    expect(saved.id).toBe(fresh.id);
+    expect(saved.status).toBe("complete");
     expect(await prisma.workoutSession.count({ where: { userId: user.id } })).toBe(2);
-    expect(await prisma.workoutSession.findUnique({ where: { id: fresh.id } })).toMatchObject({
-      status: "draft",
+    const first = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: earlier.id },
+      include: { sets: true },
     });
-    expect(await prisma.workoutSession.findUnique({ where: { id: earlier.id } })).toMatchObject({
-      status: "complete",
+    const name = earlier.sets[0].exerciseName;
+    expect(first.status).toBe("complete");
+    expect(first.sets.some((set) => set.exerciseName === name && set.reps === 5)).toBe(false);
+    const second = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: fresh.id },
+      include: { sets: true },
     });
+    expect(second.status).toBe("complete");
+    expect(second.sets.some((set) => set.exerciseName === name && set.reps === 5 && set.completed)).toBe(
+      true,
+    );
   });
 
   it("only discards from the logger's explicit Cancel, not pagehide", () => {

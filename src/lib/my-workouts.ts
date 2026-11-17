@@ -11,6 +11,7 @@ import {
 } from "@/lib/logged-work";
 import { resolveLogMode } from "@/lib/exercise-log-mode";
 import { sessionCompletionDay } from "@/lib/performed-at";
+import { startDraftSegment } from "@/lib/workout-timer-columns";
 import { timeZoneForUser } from "@/lib/profile";
 import { REPLACE_LOGGED_CONFIRM } from "@/lib/workout-sheet";
 import { dayKey, zonedCivilToUtc } from "@/lib/timezone";
@@ -296,7 +297,8 @@ export async function startSavedWorkoutForUser(input: {
   );
   if (open) {
     await prisma.savedWorkout.update({ where: { id: saved.id }, data: { lastUsedAt: now } });
-    return open;
+    const clock = await startDraftSegment(open.id, prisma);
+    return { ...open, ...clock };
   }
   const setRows = setsForExercises(exercises, input.preferredUnits);
   const session = await prisma.workoutSession.create({
@@ -638,7 +640,10 @@ export async function startDayPlanForUser(input: {
       data: { lastUsedAt: now },
     });
   }
-  if (draft) return draft;
+  if (draft) {
+    const clock = await startDraftSegment(draft.id, prisma);
+    return { ...draft, ...clock };
+  }
   const exercises = readSnapshot(plan.exercisesJson);
   if (exercises.length === 0) {
     throw new AppError("WORKOUT", "Add at least one exercise before saving.");

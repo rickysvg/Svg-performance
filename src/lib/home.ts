@@ -8,6 +8,7 @@ import {
   listDraftSessionsForUser,
   listRecentSessionsForUser,
   listResumableSessionsForUser,
+  sessionMatchesPlannedDay,
 } from "@/lib/workouts";
 import { CUSTOM_HOME_RESUME, openCustomLog, openLogsByProgramDay } from "@/lib/today-start";
 import { listDayPlansForUser } from "@/lib/my-workouts";
@@ -355,6 +356,13 @@ function partialProgramDayIds(
             tz,
             anchor,
           );
+          if (
+            session.status === "complete" &&
+            planned?.day &&
+            sessionMatchesPlannedDay(session, planned.day)
+          ) {
+            return false;
+          }
           return progress.ticked > 0 && !(session.status === "complete" && progress.done);
         })
         .map((session) => session.programDayId as string),
@@ -462,7 +470,9 @@ export async function getHomeToday(
             tz,
             profile?.onboardingCompletedAt ?? null,
           );
-          return session.status === "complete" && progress.done;
+          if (session.status !== "complete") return false;
+          if (progress.done) return true;
+          return Boolean(planned?.day && sessionMatchesPlannedDay(session, planned.day));
         })
         .map((session) => session.programDayId as string),
       ...homePlans.filter((plan) => plan.complete).map((plan) => homePlanDayId(plan.id)),

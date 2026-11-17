@@ -14,6 +14,7 @@ import {
   startSavedWorkoutForUser,
 } from "@/lib/my-workouts";
 import { getShareCardView } from "@/lib/share-card-data";
+import { resolveSessionElapsed } from "@/lib/session-elapsed";
 import {
   continuePartialWorkoutForUser,
   recordWorkoutActivityForUser,
@@ -472,5 +473,139 @@ describe("a completed session stays finished when a later week starts", () => {
     expect(again.id).toBe(session.id);
     expect(again.status).toBe("draft");
     expect(await prisma.workoutSession.count({ where: { userId: user.id, programDayId: day.id } })).toBe(1);
+  });
+
+  it("keeps two same-day finishes as two sessions, and undo restores the first", async () => {
+    const user = await makeUser("two-finishes@example.com");
+    const { dayId, sessionId, saved } = await finishProgramDay(user.id, "partial");
+    const firstElapsed = saved.elapsedSeconds;
+    const firstSets = saved.sets.length;
+    expect(firstSets).toBeGreaterThan(0);
+
+    const second = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: dayId,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(second.id).not.toBe(sessionId);
+    const finishedSecond = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: second.id,
+      title: "Lift 1",
+      performedAt: second.performedAt,
+      notes: "",
+      status: "complete",
+      elapsedSeconds: 120,
+      timeZone: APP_TIMEZONE,
+      sets: second.sets.map((set) => {
+        const logMode = isLogMode(set.logMode) ? set.logMode : "load_reps";
+        const timed = logMode === "timed" || logMode === "timed_round" || logMode === "load_timed";
+        return {
+          exerciseName: set.exerciseName,
+          setNumber: set.setNumber,
+          reps: timed && logMode !== "load_timed" ? null : 8,
+          loadValue: logMode === "reps_only" || logMode === "timed" || logMode === "timed_round" ? null : 40,
+          loadUnit: "lb" as const,
+          logMode,
+          durationSeconds: timed ? 30 : null,
+          completed: true,
+        };
+      }),
+    });
+    expect(finishedSecond.id).toBe(second.id);
+    expect(finishedSecond.status).toBe("complete");
+    expect((await readWorkoutTimerFields(finishedSecond.id, prisma)).elapsedSeconds).toBe(120);
+
+    const first = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: sessionId },
+      include: { sets: true },
+    });
+    expect(first.status).toBe("complete");
+    expect(first.sets).toHaveLength(firstSets);
+    expect((await readWorkoutTimerFields(sessionId, prisma)).elapsedSeconds).toBe(firstElapsed);
+    expect(await prisma.workoutSession.findUnique({ where: { id: second.id } })).not.toBeNull();
+    expect(await getShareCardView(user.id, sessionId)).not.toBeNull();
+    expect(await getShareCardView(user.id, second.id)).not.toBeNull();
+
+    const created = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    await prisma.workoutSession.update({
+      where: { id: sessionId },
+      data: { createdAt: created },
+    });
+    const before = Date.now();
+    const undone = await reopenCompletedWorkoutForUser(user.id, sessionId);
+    expect(undone.id).toBe(sessionId);
+    expect(undone.status).toBe("draft");
+    expect(undone.sets).toHaveLength(firstSets);
+    expect(undone.elapsedSeconds).toBe(firstElapsed);
+    expect(undone.timerStartedAt).toBeInstanceOf(Date);
+    expect(undone.timerStartedAt!.getTime()).toBeGreaterThanOrEqual(before - 2000);
+    const ticking = resolveSessionElapsed(
+      {
+        status: undone.status,
+        createdAt: created,
+        elapsedSeconds: undone.elapsedSeconds,
+        timerStartedAt: undone.timerStartedAt,
+      },
+      new Date(undone.timerStartedAt!.getTime() + 5 * 60 * 1000),
+    );
+    expect(ticking.seconds).toBe((firstElapsed ?? 0) + 5 * 60);
+    expect((await prisma.workoutSession.findUniqueOrThrow({ where: { id: second.id } })).status).toBe(
+      "complete",
+    );
+  });
+
+  it("resumes today's template draft from stored time, not from when it was created", async () => {
+    const user = await makeUser("template-idle@example.com");
+    const saved = await createSavedWorkout({
+      userId: user.id,
+      name: "leg n upper- tier b",
+      exercises: [
+        {
+          name: "Goblet squat",
+          sets: 2,
+          reps: "8",
+          loadText: "",
+          restSeconds: 90,
+          rir: "",
+          logMode: "load_reps",
+          notes: "",
+        },
+      ],
+    });
+    const started = await startSavedWorkoutForUser({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    const created = new Date(Date.now() - (11 * 60 + 50) * 1000);
+    await prisma.workoutSession.update({
+      where: { id: started.id },
+      data: { createdAt: created, elapsedSeconds: 90, timerStartedAt: null, finishedAt: null },
+    });
+    const before = Date.now();
+    const again = await startSavedWorkoutForUser({
+      userId: user.id,
+      savedWorkoutId: saved.id,
+      preferredUnits: "lb",
+      timeZone: APP_TIMEZONE,
+    });
+    expect(again.id).toBe(started.id);
+    const clock = await readWorkoutTimerFields(again.id, prisma);
+    expect(clock.elapsedSeconds).toBe(90);
+    expect(clock.timerStartedAt).toBeInstanceOf(Date);
+    expect(clock.timerStartedAt!.getTime()).toBeGreaterThanOrEqual(before - 2000);
+    const view = resolveSessionElapsed(
+      {
+        status: "draft",
+        createdAt: created,
+        elapsedSeconds: clock.elapsedSeconds,
+        timerStartedAt: clock.timerStartedAt,
+      },
+      new Date(clock.timerStartedAt!.getTime() + 10_000),
+    );
+    expect(view.seconds).toBe(100);
   });
 });

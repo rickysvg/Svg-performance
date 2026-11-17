@@ -320,7 +320,7 @@ export default async function TrainingPage({
             sessionId: openId ?? logged?.id ?? "",
             includePending: !openId,
           }),
-          loggedView: logged ? loggedSessionView(logged) : null,
+          loggedView: logged && logged.status !== "complete" ? loggedSessionView(logged) : null,
         };
       });
       const plyo =

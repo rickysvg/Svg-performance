@@ -886,7 +886,7 @@ describe("a workout is complete only after a logged save", () => {
     ).toBe(1);
   });
 
-  it("keeps a second save on the already completed row", async () => {
+  it("keeps a second finish on its own row", async () => {
     const user = await makeUser("second-save@example.com");
     const program = await getDemoProgram();
     const day = program.days[0];
@@ -996,22 +996,27 @@ describe("a workout is complete only after a logged save", () => {
         },
       ],
     });
-    expect(saved.id).toBe(kept.id);
+    expect(saved.id).toBe(extra.id);
     const keptRow = await prisma.workoutSession.findUniqueOrThrow({
       where: { id: kept.id },
       include: { sets: true },
     });
     expect(keptRow.status).toBe("complete");
     const goblet = keptRow.sets.find((set) => set.exerciseName === "Goblet squat" && set.setNumber === 1);
-    expect(goblet?.reps).toBe(5);
-    expect(goblet?.loadValue).toBe(25);
-    expect(keptRow.sets.length).toBeGreaterThan(1);
-    const extraRow = await prisma.workoutSession.findUnique({ where: { id: extra.id } });
-    expect(extraRow?.status).toBe("draft");
+    expect(goblet?.reps).toBe(8);
+    expect(goblet?.loadValue).toBe(40);
+    const extraRow = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: extra.id },
+      include: { sets: true },
+    });
+    expect(extraRow.status).toBe("complete");
+    const extraGoblet = extraRow.sets.find((set) => set.exerciseName === "Goblet squat" && set.setNumber === 1);
+    expect(extraGoblet?.reps).toBe(5);
+    expect(extraGoblet?.loadValue).toBe(25);
     expect(await prisma.exerciseSwap.count({ where: { workoutSessionId: extra.id } })).toBe(1);
     expect(await prisma.exerciseRemoval.count({ where: { workoutSessionId: extra.id } })).toBe(1);
     expect(await prisma.exerciseSwap.findUnique({ where: { id: keptSwap.id } })).not.toBeNull();
-    expect(await prisma.workoutSession.count({ where: { userId: user.id, status: "complete" } })).toBe(1);
+    expect(await prisma.workoutSession.count({ where: { userId: user.id, status: "complete" } })).toBe(2);
   });
 
   it("deletes the owner's sets and refuses another member", async () => {

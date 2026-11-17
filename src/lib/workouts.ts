@@ -96,6 +96,7 @@ import {
   readDraftTimerFields,
   readTimerFieldsByIds,
   readWorkoutTimerFields,
+  startDraftSegment,
   workoutTimerColumnsAvailable,
   type WorkoutTimerFields,
 } from "@/lib/workout-timer-columns";
@@ -892,7 +893,6 @@ export async function logRoundSessionForUser(input: {
     plannedSetCount,
     sessionRpe: input.rpe === undefined ? undefined : input.rpe,
     retainEmptySets: keptCount > 0,
-    keepOwnSession: true,
   });
 }
 
@@ -1215,42 +1215,6 @@ async function findSameDayProgramSession(
 }
 
 /**
- * A second Save on the same day folds into the finished row when the work
- * is the same. A different kind of session (bike vs strength) stays its own log.
- */
-async function findCompletedSameDaySession(
-  db: Prisma.TransactionClient | typeof prisma,
-  userId: string,
-  programDayId: string,
-  performedAt: Date,
-  timeZone: string,
-  exerciseNames: string[],
-) {
-  const from = new Date(performedAt.getTime() - 36 * 60 * 60 * 1000);
-  const to = new Date(performedAt.getTime() + 36 * 60 * 60 * 1000);
-  const day = dayKey(performedAt, timeZone);
-  const wanted = new Set(exerciseNames.map((name) => gymExerciseKey(name)));
-  if (wanted.size === 0) return null;
-  const rows = await db.workoutSession.findMany({
-    where: {
-      userId,
-      programDayId,
-      status: "complete",
-      performedAt: { gte: from, lte: to },
-    },
-    include: SAME_DAY_SETS,
-    orderBy: { createdAt: "asc" },
-  });
-  return (
-    rows.find((row) => {
-      if (sessionCompletionDay(row, timeZone) !== day) return false;
-      if (row.sets.length === 0) return false;
-      return row.sets.some((set) => wanted.has(gymExerciseKey(set.exerciseName)));
-    }) ?? null
-  );
-}
-
-/**
  * Mark a live draft as active and fold the gap since the last mark.
  * A gap of ten minutes or less counts in full. A longer gap counts as ten
  * minutes. Partial and complete logs are rejected. This does not touch sets
@@ -1554,6 +1518,12 @@ export async function continuePartialWorkoutForUser(input: {
   });
 }
 
+async function armReusedDraftClock<T extends { id: string; status: string }>(session: T) {
+  if (session.status !== "draft") return attachWorkoutTimer(session, prisma);
+  const clock = await startDraftSegment(session.id, prisma);
+  return { ...session, ...clock };
+}
+
 export async function startWorkoutFromDay(input: {
   userId: string;
   programDayId: string;
@@ -1622,7 +1592,7 @@ export async function startWorkoutFromDay(input: {
     zone,
     plannedNames,
   );
-  if (sameDay) return sameDay;
+  if (sameDay) return armReusedDraftClock(sameDay);
   // A finished full or partial log stays sealed. Start opens a new draft.
 
   const sets = visible.flatMap((exercise) => {
@@ -1681,7 +1651,7 @@ export async function startWorkoutFromDay(input: {
       include: { sets: true },
     });
   });
-  if (!fresh) return created;
+  if (!fresh) return armReusedDraftClock(created);
   await bindPendingSwaps({
     userId: input.userId,
     programSlug: rawDay.program.slug,
@@ -1891,11 +1861,6 @@ export async function updateWorkoutSessionForUser(input: {
    * must not block it. Omit on a full save so every exercise is checked.
    */
   durationExerciseName?: string;
-  /**
-   * Leave this row as its own log. A shorter round save must not fold into
-   * today's finished session and replace that session's rounds.
-   */
-  keepOwnSession?: boolean;
 }): Promise<SavedWorkoutSession> {
   const existing = assertOwnSession(
     await prisma.workoutSession.findUnique({
@@ -1927,22 +1892,10 @@ export async function updateWorkoutSessionForUser(input: {
   if (Number.isNaN(input.performedAt.getTime())) {
     throw new AppError("WORKOUT", "Enter a valid date.");
   }
-  if (input.status === "complete" && existing.programDayId && !input.keepOwnSession) {
-    const canonical = await findCompletedSameDaySession(
-      prisma,
-      input.userId,
-      existing.programDayId,
-      input.performedAt,
-      input.timeZone || APP_TIMEZONE,
-      sets.map((set) => set.exerciseName),
-    );
-    if (canonical && canonical.id !== existing.id) {
-      // The numbers land on the finished row. The open draft stays so the
-      // logger the member is in does not 404. A later pass skips a day that
-      // already has a completed session, and only Cancel or Delete removes it.
-      return updateWorkoutSessionForUser({ ...input, workoutId: canonical.id });
-    }
-  }
+  // This id only. Main used to retarget a second finish onto today's completed
+  // row. That was harmless while Start reopened that same row. Start now opens
+  // a new draft, so the retarget would overwrite the sealed session and leave
+  // the new one unfinished.
 
   const timerColumns = await workoutTimerColumnsAvailable(prisma);
   const updated = await prisma.$transaction(async (tx) => {
