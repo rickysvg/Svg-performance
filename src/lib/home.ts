@@ -10,7 +10,6 @@ import {
   listResumableSessionsForUser,
 } from "@/lib/workouts";
 import { CUSTOM_HOME_RESUME, openCustomLog, openLogsByProgramDay } from "@/lib/today-start";
-import { sessionFinishSealed } from "@/lib/logged-work";
 import { listDayPlansForUser } from "@/lib/my-workouts";
 import { homePlanDayId, homeSessionsAfterPlans, type HomeDayPlan } from "@/lib/my-workout-plan";
 import { calendarPlanDoses } from "@/lib/calendar";
@@ -465,14 +464,6 @@ export async function getHomeToday(
           );
           return session.status === "complete" && progress.done;
         })
-        .map((session) => session.programDayId as string),
-      ...resumable
-        .filter(
-          (session) =>
-            Boolean(session.programDayId) &&
-            sameLocalDay(session.performedAt, selected, tz) &&
-            sessionFinishSealed(session),
-        )
         .map((session) => session.programDayId as string),
       ...homePlans.filter((plan) => plan.complete).map((plan) => homePlanDayId(plan.id)),
     ]),

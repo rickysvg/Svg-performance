@@ -621,6 +621,7 @@ describe("a workout is complete only after a logged save", () => {
       where: { id: session.id },
       data: { createdAt, timerStartedAt: null, elapsedSeconds: 90, finishedAt: createdAt },
     });
+    const before = Date.now();
     await continuePartialWorkoutForUser({
       userId: user.id,
       workoutId: session.id,
@@ -629,10 +630,22 @@ describe("a workout is complete only after a logged save", () => {
     });
     const resumed = await readWorkoutTimerFields(session.id, prisma);
     const row = await prisma.workoutSession.findUniqueOrThrow({ where: { id: session.id } });
-    expect(row.status).toBe("partial");
+    expect(row.status).toBe("draft");
     expect(resumed.elapsedSeconds).toBe(90);
-    expect(resumed.timerStartedAt).toBeNull();
-    expect(resumed.finishedAt).not.toBeNull();
+    expect(resumed.timerStartedAt).not.toBeNull();
+    expect(resumed.timerStartedAt!.getTime()).toBeGreaterThanOrEqual(before - 2000);
+    expect(
+      resolveSessionElapsed(
+        {
+          status: row.status,
+          createdAt: row.createdAt,
+          finishedAt: resumed.finishedAt,
+          elapsedSeconds: resumed.elapsedSeconds,
+          timerStartedAt: resumed.timerStartedAt,
+        },
+        new Date(resumed.timerStartedAt!.getTime() + 10_000),
+      ).seconds,
+    ).toBe(100);
   });
 
   it("reopens a short save in place instead of starting a second session", async () => {

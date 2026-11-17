@@ -144,7 +144,7 @@ describe("home aggregation and weekly activity", () => {
     const partialSave = await getHomeToday(user.id, now);
     expect(partialSave.loggedOnSelected).toBeNull();
     expect(partialSave.resumeByDay[program.days[0].id]).toBeUndefined();
-    expect(partialSave.completedDayIds).toContain(program.days[0].id);
+    expect(partialSave.completedDayIds).not.toContain(program.days[0].id);
     expect(
       await completedProgramDayIdsOnDay(user.id, [program.days[0].id], now, APP_TIMEZONE),
     ).toEqual([]);

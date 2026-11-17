@@ -1197,13 +1197,9 @@ async function findSameDayProgramSession(
     include: SAME_DAY_SETS,
     orderBy: { createdAt: "asc" },
   });
-  const timers = await readTimerFieldsByIds(
-    rows.map((row) => row.id),
-    db,
-  );
   const same = rows.filter((row) => {
     if (sessionCivilDay(row, timeZone) !== today) return false;
-    if (sessionFinishSealed({ ...row, finishedAt: timers.get(row.id)?.finishedAt ?? null })) return false;
+    if (sessionFinishSealed(row)) return false;
     if (row.sets.length === 0) return false;
     // A partial round-only log is finished for the logger. A mixed partial
     // still has Shadowbox or technique to tick, so Start reopens it.
@@ -1349,12 +1345,8 @@ export async function continuePartialWorkoutForUser(input: {
   const zone = input.timeZone || APP_TIMEZONE;
   const now = new Date();
   const storedClock = await readWorkoutTimerFields(existing.id, prisma);
-  // Finish sealed this row. Leave status, finishedAt, and elapsedSeconds.
-  // Prisma omits the clock columns, so the seal is read from the timer query.
-  if (
-    sessionFinishSealed({ ...existing, finishedAt: storedClock.finishedAt }) ||
-    completedSessionIsFromAnotherDay(existing, zone, now)
-  ) {
+  // Finish stores complete, including a short 2-of-27 log. Leave the clock.
+  if (sessionFinishSealed(existing) || completedSessionIsFromAnotherDay(existing, zone, now)) {
     return { ...existing, ...storedClock };
   }
   if (!existing.programDay) {
@@ -1454,9 +1446,7 @@ export async function continuePartialWorkoutForUser(input: {
     if (fresh.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
-    if (sessionFinishSealed({ ...fresh, finishedAt: (await readWorkoutTimerFields(fresh.id, tx)).finishedAt })) {
-      return fresh;
-    }
+    if (sessionFinishSealed(fresh)) return fresh;
     if (
       fresh.status === "complete" &&
       sessionProgress({ ...fresh, programDayId: existing.programDayId }, progressDose).done
@@ -1967,12 +1957,9 @@ export async function updateWorkoutSessionForUser(input: {
     if (!current || current.userId !== input.userId) {
       throw new NotFoundError("Workout not found.");
     }
-    const currentClock = timerColumns
-      ? await readWorkoutTimerFields(current.id, tx)
-      : { finishedAt: null, elapsedSeconds: null, timerStartedAt: null };
     if (
       input.status === "draft" &&
-      (sessionFinishSealed({ ...current, finishedAt: currentClock.finishedAt }) ||
+      (sessionFinishSealed(current) ||
         (current.status === "partial" && keepsFinishedRoundLog(current.sets)))
     ) {
       return current;
@@ -2015,10 +2002,7 @@ export async function updateWorkoutSessionForUser(input: {
       if (
         saved &&
         input.status === "draft" &&
-        (sessionFinishSealed({
-          ...saved,
-          finishedAt: (await readWorkoutTimerFields(saved.id, tx)).finishedAt,
-        }) ||
+        (sessionFinishSealed(saved) ||
           (saved.status === "partial" && keepsFinishedRoundLog(saved.sets)))
       ) {
         return saved;

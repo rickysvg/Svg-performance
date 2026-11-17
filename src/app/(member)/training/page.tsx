@@ -201,6 +201,17 @@ export default async function TrainingPage({
       tz,
     ),
   );
+  const sealedProgramDayIds = (day: string) => {
+    const ids = new Set<string>();
+    for (const row of resumable) {
+      if (!row.programDayId || !sessionFinishSealed(row)) continue;
+      if (sessionCompletionDay(row, tz) !== day) continue;
+      ids.add(row.programDayId);
+    }
+    return ids;
+  };
+  const todayKey = dayKey(now, tz);
+  const sealedToday = sealedProgramDayIds(todayKey);
   const todayAction = todayStartAction(
     todaySessions.map((session) => ({
       kind: session.kind,
@@ -218,17 +229,6 @@ export default async function TrainingPage({
     })),
     (dayId) => openToday.get(dayId),
   );
-  const sealedProgramDayIds = (day: string) => {
-    const ids = new Set<string>();
-    for (const row of resumable) {
-      if (!row.programDayId || !sessionFinishSealed(row)) continue;
-      if (sessionCompletionDay(row, tz) !== day) continue;
-      ids.add(row.programDayId);
-    }
-    return ids;
-  };
-  const todayKey = dayKey(now, tz);
-  const sealedToday = sealedProgramDayIds(todayKey);
   const draftsOn = (day: string) => drafts.filter((row) => sessionCompletionDay(row, tz) === day);
   const todayDrafts = draftsOn(todayKey);
   const todayPlanDayIds = new Set(

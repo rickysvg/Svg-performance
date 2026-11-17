@@ -434,19 +434,12 @@ export function sessionOpensFinishScreen(session: { status: string; backfilled?:
 }
 
 /**
- * The member tapped Finish, or a past draft was closed out.
- * `finishedAt` is that action. Status complete is the finish write even when
- * the clock column is missing. A Save draft stays `draft` with no finish time,
- * however many sets are logged, so it can still be resumed.
+ * The member tapped Finish. That write stores `complete` whether or not every
+ * set was logged. A `partial` row is still an open mixed day (bag rounds with
+ * Shadowbox left to tick). A Save draft stays `draft`. Set count is not the seal.
  */
-export function sessionFinishSealed(session: {
-  status?: string | null;
-  finishedAt?: Date | string | number | null;
-}) {
-  if (!session.status || session.status === "draft" || session.status === "abandoned") return false;
-  if (session.status === "complete") return true;
-  if (session.finishedAt == null || session.finishedAt === "") return false;
-  return Number.isFinite(new Date(session.finishedAt).getTime());
+export function sessionFinishSealed(session: { status?: string | null }) {
+  return session.status === "complete";
 }
 
 /** History label. A short save reads partial, never complete. */
