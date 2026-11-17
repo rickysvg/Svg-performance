@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { AppError, isUniqueConstraintError } from "@/lib/errors";
-import { sendWaitlistWelcomeEmail } from "@/lib/waitlist-welcome";
 import { persistWaitlistFirstTouch } from "@/lib/first-touch-store";
 import {
   honeypotFilled,
@@ -207,6 +206,7 @@ async function pushMailchimp(
   return outcome;
 }
 
+/** Not called by the public join route. That route is 410 and does not insert or email. */
 export async function joinLaunchWaitlist(input: {
   body: unknown;
   ip: string;
@@ -263,11 +263,6 @@ export async function joinLaunchWaitlist(input: {
 
   if (created) {
     await persistWaitlistFirstTouch(value.email);
-    try {
-      await sendWaitlistWelcomeEmail({ to: value.email, firstName: value.firstName });
-    } catch {
-      console.error("waitlist welcome email failed");
-    }
   }
 
   return { status: "subscribed", firstName: value.firstName };

@@ -74,8 +74,8 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
             <Link className={styles.lnk} href="#how">
               How it works
             </Link>
-            <Link className={styles.lnk} href="/waitlist">
-              Waitlist
+            <Link className={styles.lnk} href="/register">
+              Sign up
             </Link>
             <Link className={cn(styles.btn, styles.btnPrimary)} href="/login">
               Sign in
@@ -92,7 +92,7 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
               <p className={styles.deletedTitle}>Your account is gone</p>
               <p>
                 We erased your SVG Performance data and signed you out. You can create a new
-                preview account anytime.
+                account anytime.
               </p>
             </div>
           </section>
@@ -127,15 +127,15 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                 </div>
                 <div className={styles.statusTxt}>
                   <b>Sign in and train today.</b>
-                  <em>iPhone + Android very soon</em>
+                  <em>Native apps later</em>
                 </div>
               </div>
               <div className={styles.btns}>
                 <Link className={cn(styles.btn, styles.btnPrimary)} href="/login">
                   Sign in
                 </Link>
-                <Link className={cn(styles.btn, styles.btnSecondary)} href="/waitlist">
-                  Join the waitlist
+                <Link className={cn(styles.btn, styles.btnSecondary)} href="/register">
+                  Create an account
                 </Link>
               </div>
               <p className={styles.webLine}>
@@ -302,11 +302,10 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
 
         <section className={cn(styles.sec, styles.apps)}>
           <div className={styles.in}>
-            <span className={styles.kicker}>Apps coming soon</span>
-            <h2>iPhone and Android. Very soon.</h2>
+            <span className={styles.kicker}>Live on the web</span>
+            <h2>Train on the web today.</h2>
             <p className={styles.bandLead}>
-              iPhone and Android apps are on the way. Join the waitlist and we’ll email you the
-              moment they’re ready.
+              The app is live on the web. iPhone and Android apps are on the way.
             </p>
             <ul className={styles.cards}>
               <li>
@@ -317,19 +316,19 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                 </strong>
               </li>
               <li>
-                <b>Very soon</b>
-                <strong>iPhone and Android apps. Waitlist members hear first, by email.</strong>
+                <b>Native apps</b>
+                <strong>iPhone and Android apps are on the way.</strong>
               </li>
             </ul>
             <div className={styles.btns}>
-              <Link className={cn(styles.btn, styles.btnPrimary)} href="/waitlist">
-                Join the waitlist
+              <Link className={cn(styles.btn, styles.btnPrimary)} href="/register">
+                Create an account
               </Link>
               <Link className={cn(styles.btn, styles.btnSecondary)} href="/login">
                 Sign in on the web
               </Link>
             </div>
-            <p className={styles.small}>No spam. Unsubscribe anytime.</p>
+            <p className={styles.small}>Create an account and train in your browser today.</p>
           </div>
         </section>
 
@@ -340,15 +339,14 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
               Your next session is <span>waiting.</span>
             </h2>
             <p className={styles.lead}>
-              Sign in on the web and pick up your plan today. Not ready yet? Join the waitlist and
-              we’ll let you know when the iPhone and Android apps land.
+              The app is live on the web. Sign in and pick up your plan today, or create an account.
             </p>
             <div className={styles.btns}>
               <Link className={cn(styles.btn, styles.btnPrimary)} href="/login">
                 Sign in
               </Link>
-              <Link className={cn(styles.btn, styles.btnSecondary)} href="/waitlist">
-                Join the waitlist
+              <Link className={cn(styles.btn, styles.btnSecondary)} href="/register">
+                Create an account
               </Link>
             </div>
           </div>
@@ -375,7 +373,7 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                 <Link href="/login">Sign in</Link>
               </li>
               <li>
-                <Link href="/waitlist">Waitlist</Link>
+                <Link href="/register">Sign up</Link>
               </li>
               <li>
                 <Link href="/privacy">Privacy</Link>

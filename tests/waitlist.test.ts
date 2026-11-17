@@ -1,28 +1,23 @@
 import { createElement, type ReactNode } from "react";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import nextConfig from "../next.config";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
-import { POST } from "@/app/api/waitlist/route";
-import { GET } from "@/app/api/admin/waitlist/export/route";
-import { getCurrentUser } from "@/lib/session";
-import { WaitlistConfirmation } from "@/components/waitlist/WaitlistForm";
-import { WaitlistLanding } from "@/app/waitlist/page";
+import { GET as exportWaitlist } from "@/app/api/admin/waitlist/export/route";
+import { GET as getWaitlistApi, POST } from "@/app/api/waitlist/route";
+import { GET as getWaitlistPage, HEAD as headWaitlistPage } from "@/app/waitlist/route";
+import { PublicHome } from "@/components/marketing/PublicHome";
+import { setMailSenderForTests, type MailInput } from "@/lib/mail";
 import {
-  mailchimpSubscriberHash,
-  resetWaitlistRateLimitForTests,
-  WAITLIST_RATE_LIMIT,
-} from "@/lib/launch-waitlist";
-import {
-  isWaitlistLive,
-  WAITLIST_ALREADY_MESSAGE,
-  WAITLIST_EMAIL_ERROR,
-  WAITLIST_NAME_ERROR,
-  WAITLIST_RATE_MESSAGE,
-  WAITLIST_WEB_LINE,
-} from "@/lib/waitlist-shared";
+  PUBLIC_WAITLIST_REDIRECT,
+  publicWaitlistRedirect,
+  WAITLIST_CLOSED_MESSAGE,
+} from "@/lib/public-waitlist";
 import { shouldShowSplashOverlay } from "@/lib/splash";
+import { getCurrentUser } from "@/lib/session";
 
 vi.mock("next/image", () => ({
   default: ({ alt, src }: { alt?: string; src?: string }) =>
@@ -41,7 +36,10 @@ vi.mock("@/lib/session", () => ({
 const currentUser = vi.mocked(getCurrentUser);
 const env = process.env as Record<string, string | undefined>;
 
-function post(body: unknown, ip: string) {
+const APPROVED_WEB_LINE = "Train on the web. Open it on your phone, no download needed.";
+const APPROVED_APPS_LINE = "iPhone and Android apps are on the way.";
+
+function post(body: string, ip = "203.0.113.20") {
   return POST(
     new Request("https://svgperformance.app/api/waitlist", {
       method: "POST",
@@ -49,44 +47,46 @@ function post(body: unknown, ip: string) {
         "content-type": "application/json",
         "x-forwarded-for": ip,
       },
-      body: JSON.stringify(body),
+      body,
     }),
   );
 }
 
-function person(email: string, extra: Record<string, unknown> = {}) {
-  return { firstName: "Alex", email, train: "MMA", member: "No", ...extra };
-}
+describe("public waitlist redirect", () => {
+  it("sends /waitlist to /register with a 308 and keeps the query string", async () => {
+    const redirects = nextConfig.redirects;
+    if (!redirects) throw new Error("next.config redirects() is missing");
+    const rules = await redirects();
+    expect(rules).toContainEqual(PUBLIC_WAITLIST_REDIRECT);
+    expect(PUBLIC_WAITLIST_REDIRECT.permanent).toBe(true);
+    expect(PUBLIC_WAITLIST_REDIRECT.destination).toBe("/register");
+    expect(PUBLIC_WAITLIST_REDIRECT.destination).not.toContain("?");
 
-type Hit = { url: string; method: string; body?: string; auth: string };
+    const target = "https://svgperformance.app/waitlist?utm_source=instagram&utm_medium=social&utm_campaign=launch";
+    const redirect = publicWaitlistRedirect(target);
+    expect(redirect).toEqual({
+      status: 308,
+      location:
+        "https://svgperformance.app/register?utm_source=instagram&utm_medium=social&utm_campaign=launch",
+    });
 
-function installFetch(handler: (hit: Hit) => Response) {
-  const hits: Hit[] = [];
-  vi.stubGlobal("fetch", async (url: string | URL, init?: RequestInit) => {
-    const hit: Hit = {
-      url: String(url),
-      method: init?.method ?? "GET",
-      body: init?.body == null ? undefined : String(init.body),
-      auth: new Headers(init?.headers).get("authorization") ?? "",
-    };
-    hits.push(hit);
-    return handler(hit);
+    const response = getWaitlistPage(new Request(target));
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(redirect?.location);
+
+    const head = headWaitlistPage(new Request("https://svgperformance.app/waitlist/?utm_content=bio"));
+    expect(head.status).toBe(308);
+    expect(head.headers.get("location")).toBe("https://svgperformance.app/register?utm_content=bio");
+
+    const plain = getWaitlistPage(new Request("https://svgperformance.app/waitlist"));
+    expect(plain.status).toBe(308);
+    expect(plain.headers.get("location")).toBe("https://svgperformance.app/register");
   });
-  return hits;
-}
+});
 
-function useMailchimp(doubleOptIn = false) {
-  env.MAILCHIMP_API_KEY = "test-key-not-real";
-  env.MAILCHIMP_SERVER_PREFIX = "us21";
-  env.MAILCHIMP_AUDIENCE_ID = "abc123def4";
-  if (doubleOptIn) env.MAILCHIMP_DOUBLE_OPTIN = "true";
-  else delete env.MAILCHIMP_DOUBLE_OPTIN;
-}
-
-describe("waitlist", () => {
+describe("public waitlist join is closed", () => {
   beforeEach(async () => {
     await resetDatabase();
-    resetWaitlistRateLimitForTests();
     delete env.MAILCHIMP_API_KEY;
     delete env.MAILCHIMP_SERVER_PREFIX;
     delete env.MAILCHIMP_AUDIENCE_ID;
@@ -94,186 +94,80 @@ describe("waitlist", () => {
     delete env.ADMIN_EMAILS;
     currentUser.mockReset();
     currentUser.mockResolvedValue(null);
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    setMailSenderForTests(null);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    setMailSenderForTests(null);
   });
 
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  it("rejects a missing name and a bad email", async () => {
-    const missing = await post({ email: "alex@example.com" }, "203.0.113.1");
-    expect(missing.status).toBe(400);
-    expect(await missing.json()).toEqual({ ok: false, error: WAITLIST_NAME_ERROR });
-
-    const bad = await post({ firstName: "Alex", email: "not-an-email" }, "203.0.113.2");
-    expect(bad.status).toBe(400);
-    expect(await bad.json()).toEqual({ ok: false, error: WAITLIST_EMAIL_ERROR });
-
-    const discipline = await post(
-      person("alex@example.com", { train: "Karate" }),
-      "203.0.113.3",
-    );
-    expect(discipline.status).toBe(400);
-    expect(await prisma.waitlistSignup.count()).toBe(0);
-  });
-
-  it("stores a signup when Mailchimp is not configured and defaults member to No", async () => {
-    const response = await post(
-      { firstName: "  Alex  ", email: "Fighter@Example.com", train: "Muay Thai" },
-      "203.0.113.4",
-    );
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      ok: true,
-      status: "subscribed",
-      firstName: "Alex",
+  it("returns 410 and inserts nothing, including when mail would have sent", async () => {
+    const sent: MailInput[] = [];
+    setMailSenderForTests(async (input) => {
+      sent.push(input);
+      return { sent: true, reason: "sent" };
     });
-    const row = await prisma.waitlistSignup.findUnique({ where: { email: "fighter@example.com" } });
-    expect(row?.firstName).toBe("Alex");
-    expect(row?.train).toBe("Muay Thai");
-    expect(row?.member).toBe("No");
-    expect(row?.source).toBe("waitlist");
-  });
-
-  it("stores Yes when the academy toggle is on", async () => {
-    const response = await post(person("member@example.com", { member: "Yes" }), "203.0.113.5");
-    expect(response.status).toBe(200);
-    const row = await prisma.waitlistSignup.findUnique({ where: { email: "member@example.com" } });
-    expect(row?.member).toBe("Yes");
-  });
-
-  it("tells a duplicate they are already on the list", async () => {
-    expect((await post(person("alex@example.com"), "203.0.113.6")).status).toBe(200);
-    const again = await post(person("Alex@Example.com", { firstName: "Alexis" }), "203.0.113.6");
-    expect(again.status).toBe(409);
-    expect(await again.json()).toEqual({ ok: false, error: WAITLIST_ALREADY_MESSAGE });
-    expect(await prisma.waitlistSignup.count()).toBe(1);
-    expect((await prisma.waitlistSignup.findFirst())?.firstName).toBe("Alex");
-  });
-
-  it("drops a filled honeypot without storing it", async () => {
-    const hits = installFetch(() => {
+    const hits: string[] = [];
+    vi.stubGlobal("fetch", async (url: string | URL) => {
+      hits.push(String(url));
       throw new Error("mailchimp should not be called");
     });
-    useMailchimp();
-    const response = await post(
-      person("bot@example.com", { svg_hp: "https://spam.example" }),
-      "203.0.113.7",
-    );
-    expect(response.status).toBe(200);
-    expect((await response.json()).ok).toBe(true);
+
+    const body = JSON.stringify({
+      firstName: "Alex",
+      email: "fighter@example.com",
+      train: "MMA",
+      member: "Yes",
+    });
+    const created = await post(body);
+    expect(created.status).toBe(410);
+    expect(await created.json()).toEqual({ ok: false, error: WAITLIST_CLOSED_MESSAGE });
+
+    const again = await post(body, "203.0.113.21");
+    expect(again.status).toBe(410);
+    const invalid = await post("{", "203.0.113.22");
+    expect(invalid.status).toBe(410);
+    expect((await getWaitlistApi(new Request("https://svgperformance.app/api/waitlist"))).status).toBe(410);
+
     expect(await prisma.waitlistSignup.count()).toBe(0);
-    expect(hits).toHaveLength(0);
+    expect(sent).toEqual([]);
+    expect(hits).toEqual([]);
   });
 
-  it("rate-limits an address after repeated tries", async () => {
-    for (let i = 0; i < WAITLIST_RATE_LIMIT; i += 1) {
-      const response = await post(person(`rate-${i}@example.com`), "203.0.113.8");
-      expect(response.status).toBe(200);
-    }
-    const blocked = await post(person("rate-over@example.com"), "203.0.113.8");
-    expect(blocked.status).toBe(429);
-    expect(await blocked.json()).toEqual({ ok: false, error: WAITLIST_RATE_MESSAGE });
-    expect(await prisma.waitlistSignup.count()).toBe(WAITLIST_RATE_LIMIT);
-  });
-
-  it("subscribes through Mailchimp and keeps a backup row", async () => {
-    useMailchimp();
-    const hits = installFetch((hit) => {
-      if (hit.url.endsWith("/tags")) return new Response(null, { status: 204 });
-      if (hit.method === "PUT") return new Response("{}", { status: 200 });
-      return new Response("{}", { status: 404 });
+  it("does not add a row when one already exists", async () => {
+    await prisma.waitlistSignup.create({
+      data: {
+        email: "already@example.com",
+        firstName: "Alex",
+        train: "MMA",
+        member: "No",
+        source: "waitlist",
+      },
     });
-
     const response = await post(
-      { firstName: "Alex", email: "Fighter@Example.com", train: "MMA", member: "Yes" },
-      "203.0.113.9",
+      JSON.stringify({ firstName: "Alexis", email: "new@example.com", train: "BJJ", member: "Yes" }),
     );
-    expect(response.status).toBe(200);
-
-    const hash = mailchimpSubscriberHash("fighter@example.com");
-    const memberUrl = `https://us21.api.mailchimp.com/3.0/lists/abc123def4/members/${hash}`;
-    const put = hits.find((hit) => hit.method === "PUT");
-    expect(put?.url).toBe(memberUrl);
-    expect(JSON.parse(put?.body ?? "{}")).toEqual({
-      email_address: "fighter@example.com",
-      status_if_new: "subscribed",
-      merge_fields: { FNAME: "Alex", TRAIN: "MMA", MEMBER: "Yes" },
-    });
-    expect(Buffer.from(put?.auth.replace(/^Basic /, "") ?? "", "base64").toString()).toBe(
-      "svg:test-key-not-real",
-    );
-    const tag = hits.find((hit) => hit.url.endsWith("/tags"));
-    expect(tag?.method).toBe("POST");
-    expect(JSON.parse(tag?.body ?? "{}")).toEqual({
-      tags: [{ name: "waitlist", status: "active" }],
-    });
+    expect(response.status).toBe(410);
     expect(await prisma.waitlistSignup.count()).toBe(1);
+    expect(await prisma.waitlistSignup.findUnique({ where: { email: "new@example.com" } })).toBeNull();
   });
 
-  it("uses pending when double opt-in is on", async () => {
-    useMailchimp(true);
-    const hits = installFetch((hit) => {
-      if (hit.url.endsWith("/tags")) return new Response(null, { status: 204 });
-      if (hit.method === "PUT") return new Response("{}", { status: 200 });
-      return new Response("{}", { status: 404 });
+  it("still exports the saved list for an admin", async () => {
+    await prisma.waitlistSignup.create({
+      data: {
+        email: "export@example.com",
+        firstName: "Alex",
+        train: "BJJ",
+        member: "Yes",
+        source: "waitlist",
+      },
     });
-    expect((await post(person("optin@example.com"), "203.0.113.10")).status).toBe(200);
-    const put = hits.find((hit) => hit.method === "PUT");
-    expect(JSON.parse(put?.body ?? "{}").status_if_new).toBe("pending");
-  });
-
-  it("still confirms when Mailchimp fails and stores the backup", async () => {
-    useMailchimp();
-    installFetch((hit) => {
-      if (hit.method === "PUT") return new Response("down", { status: 500 });
-      return new Response("{}", { status: 404 });
-    });
-    const response = await post(person("fallback@example.com"), "203.0.113.11");
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true, status: "subscribed" });
-    const row = await prisma.waitlistSignup.findUnique({ where: { email: "fallback@example.com" } });
-    expect(row?.firstName).toBe("Alex");
-    expect(row?.member).toBe("No");
-  });
-
-  it("treats an existing Mailchimp member as already on the list and still backs them up", async () => {
-    useMailchimp();
-    const hits = installFetch((hit) => {
-      if (hit.method === "GET") {
-        return new Response(JSON.stringify({ status: "subscribed" }), { status: 200 });
-      }
-      if (hit.url.endsWith("/tags")) return new Response(null, { status: 204 });
-      throw new Error(`unexpected ${hit.method}`);
-    });
-    const response = await post(person("exists@example.com"), "203.0.113.12");
-    expect(response.status).toBe(409);
-    expect(await response.json()).toEqual({ ok: false, error: WAITLIST_ALREADY_MESSAGE });
-    expect(hits.some((hit) => hit.method === "PUT")).toBe(false);
-    expect(await prisma.waitlistSignup.findUnique({ where: { email: "exists@example.com" } })).toBeTruthy();
-  });
-
-  it("keeps a local duplicate off Mailchimp", async () => {
-    expect((await post(person("local@example.com"), "203.0.113.13")).status).toBe(200);
-    useMailchimp();
-    const hits = installFetch(() => {
-      throw new Error("should not call Mailchimp");
-    });
-    const again = await post(person("local@example.com"), "203.0.113.14");
-    expect(again.status).toBe(409);
-    expect(hits).toHaveLength(0);
-  });
-
-  it("exports CSV for an admin and refuses everyone else", async () => {
-    expect((await post(person("export@example.com", { train: "BJJ", member: "Yes" }), "203.0.113.15")).status).toBe(
-      200,
-    );
     await prisma.waitlistSignup.create({
       data: {
         email: "formula@example.com",
@@ -284,15 +178,15 @@ describe("waitlist", () => {
       },
     });
 
-    expect((await GET()).status).toBe(401);
+    expect((await exportWaitlist()).status).toBe(401);
 
     const member = await makeUser("waitlist-member@example.com");
     currentUser.mockResolvedValue(member);
-    expect((await GET()).status).toBe(403);
+    expect((await exportWaitlist()).status).toBe(403);
 
     const admin = await makeUser("waitlist-admin@example.com", false, "admin");
     currentUser.mockResolvedValue(admin);
-    const exported = await GET();
+    const exported = await exportWaitlist();
     expect(exported.status).toBe(200);
     expect(exported.headers.get("content-type")).toContain("text/csv");
     expect(exported.headers.get("content-disposition")).toContain("waitlist-signups.csv");
@@ -306,87 +200,98 @@ describe("waitlist", () => {
     const reviewer = await makeUser("ricky-waitlist@example.com");
     env.ADMIN_EMAILS = "ricky-waitlist@example.com";
     currentUser.mockResolvedValue(reviewer);
-    expect((await GET()).status).toBe(200);
+    expect((await exportWaitlist()).status).toBe(200);
+
+    const desk = readFileSync("src/app/(member)/admin/waitlist/page.tsx", "utf8");
+    expect(desk).toContain('href="/api/admin/waitlist/export"');
+    expect(desk).toContain("Export CSV");
+    const adminHome = readFileSync("src/app/(member)/admin/page.tsx", "utf8");
+    expect(adminHome).toContain('href="/admin/waitlist"');
+    expect(adminHome).toContain("Export the launch list");
+  });
+});
+
+describe("public waitlist links and copy", () => {
+  it("has no public links to /waitlist", () => {
+    const link = /href\s*=\s*(?:\{\s*)?["'`]\/waitlist(?:\?[^"'`]*)?["'`]/;
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (statSync(full).isDirectory()) {
+          if (name === "admin") continue;
+          walk(full);
+          continue;
+        }
+        if (!/\.(tsx|ts|jsx|js|css|md|html|txt|json|webmanifest)$/.test(name)) continue;
+        if (link.test(readFileSync(full, "utf8"))) hits.push(full);
+      }
+    };
+    walk("src");
+    walk("public");
+    expect(hits).toEqual([]);
+
+    const seoNames = ["sitemap.ts", "sitemap.js", "sitemap.xml", "robots.ts", "robots.js", "robots.txt"];
+    for (const name of seoNames) {
+      for (const root of [".", "src", "src/app", "public"]) {
+        const full = path.join(root, name);
+        try {
+          const text = readFileSync(full, "utf8");
+          expect(text, full).not.toMatch(/\/waitlist/);
+        } catch {
+          // These files are not in the app. Nothing there points at /waitlist.
+        }
+      }
+    }
   });
 
-  it("keeps /waitlist public and uses the page copy", () => {
+  it("points the public site at sign-up and keeps the approved lines", () => {
+    const home = readFileSync("src/components/marketing/PublicHome.tsx", "utf8");
+    const layout = readFileSync("src/app/layout.tsx", "utf8");
+    const landing = readFileSync("src/app/page.tsx", "utf8");
+    const login = readFileSync("src/app/login/page.tsx", "utf8");
+    const header = readFileSync("src/components/AppHeader.tsx", "utf8");
+    const register = readFileSync("src/app/register/page.tsx", "utf8");
+    const pricing = readFileSync("src/app/pricing/page.tsx", "utf8");
+
+    for (const file of [home, layout, landing, login, header, register, pricing]) {
+      expect(file).not.toMatch(/href=["'`]\/waitlist/);
+      expect(file.toLowerCase()).not.toContain("join the waitlist");
+      expect(file.toLowerCase()).not.toContain("coming soon");
+      expect(file.toLowerCase()).not.toContain("get notified");
+      expect(file.toLowerCase()).not.toContain("keep me notified");
+    }
+
+    expect(home).toContain('href="/register"');
+    expect(home).toContain(APPROVED_WEB_LINE);
+    expect(home).toContain(APPROVED_APPS_LINE);
+    expect(home).toContain("The app is live on the web.");
+    expect(home).not.toMatch(/\$\d/);
+    expect(home.toLowerCase()).not.toMatch(/\b(app store|google play|play store)\b/);
+    expect(home.match(/download/gi)).toEqual(["download"]);
+
+    expect(layout).toContain(APPROVED_WEB_LINE);
+    expect(layout).toContain("The app is live on the web.");
+    expect(layout.toLowerCase()).not.toContain("private preview");
+    expect(landing).toContain(APPROVED_WEB_LINE);
+    expect(login).toContain('href="/register"');
+    expect(header).toContain('href="/register"');
+    expect(register).toContain("Create an account");
+    expect(register).not.toContain("Create a preview account");
+
+    const html = renderToStaticMarkup(createElement(PublicHome))
+      .replaceAll("&#x27;", "'")
+      .replaceAll("&amp;", "&");
+    expect(html).toContain('href="/register"');
+    expect(html).not.toContain('href="/waitlist"');
+    expect(html).toContain("Sign up");
+    expect(html).toContain("Create an account");
+    expect(html).toContain(APPROVED_WEB_LINE);
+    expect(html).toContain(APPROVED_APPS_LINE);
+
     const proxy = readFileSync("src/proxy.ts", "utf8");
     expect(proxy).not.toMatch(/["']\/waitlist["']/);
     expect(shouldShowSplashOverlay({ stored: null, pathname: "/waitlist" })).toBe(false);
-
-    const example = readFileSync(".env.example", "utf8");
-    expect(example).toContain("MAILCHIMP_API_KEY=");
-    expect(example).toContain("MAILCHIMP_SERVER_PREFIX=");
-    expect(example).toContain("MAILCHIMP_AUDIENCE_ID=");
-    expect(example).toContain("MAILCHIMP_DOUBLE_OPTIN=");
-
-    const pages = [
-      "src/app/waitlist/page.tsx",
-      "src/components/waitlist/WaitlistForm.tsx",
-      "src/lib/waitlist-shared.ts",
-      "src/app/(member)/admin/waitlist/page.tsx",
-    ]
-      .map((file) => readFileSync(file, "utf8"))
-      .join("\n");
-    expect(pages).not.toMatch(/\$\d/);
-    expect(pages.toLowerCase()).not.toContain("trial");
-    expect(pages.toLowerCase()).not.toContain("price");
-    expect(pages).not.toContain("What will it cost");
-    expect(pages).not.toContain("FOR REVIEW");
-    expect(pages.match(/download/gi)).toEqual(["download"]);
-    expect(pages).toContain(WAITLIST_WEB_LINE);
-
-    const html = renderToStaticMarkup(createElement(WaitlistLanding))
-      .replaceAll("&#x27;", "'")
-      .replaceAll("&amp;", "&");
-    expect(html).toContain("BUILT AT SVG MMA ACADEMY · LAUNCHING NOV 16");
-    expect(html).toContain("Be ");
-    expect(html).toContain("first");
-    expect(html).toContain("Nov 16");
-    expect(html).toContain(
-      "Fighter-first training built around your class and sparring days: RIR-based S&C, themed bag rounds and five AI coaches in your corner. Get on the list and you're the first to know when it drops on ",
-    );
-    expect(html).toContain(">Monday, Nov 16<");
-    expect(html).toContain("JOIN THE WAITLIST");
-    expect(html).toContain("First name");
-    expect(html).toContain("you@email.com");
-    expect(html).toContain("What do you train?");
-    expect(html).toContain("Muay Thai");
-    expect(html).toContain("Do you train at SVG MMA Academy?");
-    expect(html).toContain("Your app account links to your membership automatically through Gymdesk.");
-    expect(html).toContain('href="/privacy"');
-    expect(html).toContain("We only use your email for SVG Performance launch and training updates.");
-    expect(html).toContain("What's in the app?");
-    expect(html).toContain("Do I have to train at SVG?");
-    expect(html).toContain("Who are the AI coaches?");
-    expect(html).toContain("Book with Ricky");
-    expect(html).toContain("iPhone and Android apps are on the way.");
-    expect(html).toContain("Know someone grinding without a plan? Send them this page.");
-    expect(html).not.toContain("What will it cost");
-    expect(html).not.toContain("$");
-    expect(html).not.toContain("START TRAINING TODAY");
-
-    const quiet = renderToStaticMarkup(
-      createElement(WaitlistConfirmation, { firstName: "Alex", live: false }),
-    ).replaceAll("&#x27;", "'");
-    expect(quiet).toContain("You're in, Alex. Stay ready.");
-    expect(quiet).toContain("You\u2019re on the list. When SVG Performance drops on ");
-    expect(quiet).toContain("Monday, Nov 16");
-    expect(quiet).toContain("you\u2019ll be first to know. Check your inbox for Ricky\u2019s welcome.");
-    expect(quiet).not.toContain("START TRAINING TODAY");
-
-    const live = renderToStaticMarkup(
-      createElement(WaitlistConfirmation, { firstName: "Alex", live: true }),
-    ).replaceAll("&#x27;", "'");
-    expect(live).toContain("START TRAINING TODAY");
-    expect(live).toContain('href="/register"');
-    expect(live).toContain(WAITLIST_WEB_LINE);
-
-    expect(isWaitlistLive(new Date("2026-11-15T23:30:00-05:00"))).toBe(false);
-    expect(isWaitlistLive(new Date("2026-11-16T00:30:00-05:00"))).toBe(true);
-
-    const desk = readFileSync("src/app/(member)/admin/page.tsx", "utf8");
-    expect(desk).toContain('href="/admin/waitlist"');
-    expect(desk).toContain("Export the launch list");
+    expect(readFileSync("src/lib/auth.ts", "utf8")).toContain("persistUserFirstTouch");
   });
 });
