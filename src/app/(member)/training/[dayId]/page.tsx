@@ -39,7 +39,8 @@ import { bagFocusLines } from "@/lib/bag-themes";
 import { MethodExplainer } from "@/components/training/MethodExplainer";
 import { RirHint } from "@/components/training/RirHint";
 import { hasRirCue } from "@/lib/rir";
-import { isDeloadWeekIndex, DELOAD_LABEL } from "@/lib/training-cycle";
+import { isDeloadWeekIndex, DELOAD_LABEL, planListForDeload } from "@/lib/training-cycle";
+import { isOptionalPlanExercise } from "@/lib/training-scale";
 import { BikeZoneNote } from "@/components/training/BikeZoneNote";
 import { bikeZoneForDayNumber } from "@/lib/train-extras";
 import { beginnerPlyoBlock, floorPlyoBlock, plyoBlockFor, PLYO_MINUTES } from "@/lib/training-emphasis";
@@ -175,7 +176,10 @@ export default async function TrainingDayPage({
       );
     }) ?? null;
   const loggedView = loggedMatch ? loggedSessionView(loggedMatch) : null;
-  if (loggedView) {
+  const deload = campWeek == null && isDeloadWeekIndex(weekIndex);
+  const showLoggedList =
+    loggedView != null && planListForDeload(exercises, deload, loggedView ? [] : null) !== exercises;
+  if (loggedView && showLoggedList) {
     exercises = loggedView.names.map((name, index) => {
       const match = exercises.find((exercise) => exercise.name === name);
       if (match) return match;
@@ -201,15 +205,15 @@ export default async function TrainingDayPage({
     });
   }
   const startHref = `/training/${day.id}/start${easedHalf ? "?half=1" : ""}`;
-  const slots = loggedView
-    ? swapSlotsFor(exercises, exercises)
-    : swapSlotsFor(omitted.programmed, omitted.shown);
+  const slots =
+    loggedView && showLoggedList
+      ? swapSlotsFor(exercises, exercises)
+      : swapSlotsFor(omitted.programmed, omitted.shown);
   const equipment = equipmentForExercises(exercises.map((exercise) => exercise.name));
   const minutes =
     loggedView && loggedView.minutes > 0 ? loggedView.minutes : estimateSessionMinutes(exercises);
   const kind = sessionKindLabel({ title: day.title, focus: day.focus });
   const startLabel = matched ? "Resume" : "Start Now";
-  const deload = campWeek == null && isDeloadWeekIndex(weekIndex);
   const zone = bikeZoneForDayNumber(day.dayNumber);
   const liftDay = day.program.slug === DEMO_PROGRAM_SLUG && isPlyoStrengthDay(day.dayNumber);
   const weightAccess = normalizeWeightAccess(profile?.weightAccess);
@@ -386,7 +390,14 @@ export default async function TrainingDayPage({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="leading-snug">{exercise.name}</h2>
+                    <h2 className="leading-snug">
+                      {exercise.name}
+                      {isOptionalPlanExercise(exercise) ? (
+                        <span className="ml-2 align-middle text-xs font-semibold uppercase tracking-wide text-muted">
+                          Optional
+                        </span>
+                      ) : null}
+                    </h2>
                     <ExerciseCardMenu
                       programSlug={day.program.slug}
                       dayNumber={day.dayNumber}

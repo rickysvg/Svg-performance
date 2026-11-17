@@ -46,5 +46,18 @@ export function deloadSetCount(sets: number) {
 }
 
 export const DELOAD_LABEL = "Deload week — same exercises. Log every prescribed set.";
+
+/**
+ * Deload keeps every planned exercise and its printed set count.
+ * A partial log must not replace that list with only the sets already ticked.
+ */
+export function planListForDeload<T>(
+  planned: readonly T[],
+  deload: boolean,
+  logged: readonly T[] | null,
+): readonly T[] {
+  if (deload) return planned;
+  return logged ?? planned;
+}
 export const TESTING_LABEL =
   "Testing Week — broad jump, a strength estimate, bike sprint, 5-minute bike, and the mobility check-in. Results are saved and compared.";

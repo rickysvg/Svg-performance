@@ -625,6 +625,7 @@ export default async function TrainingPage({
               dateLabel={planDateLabel}
               loggedView={session.loggedView}
               dayKey={focus.dayParam}
+              fullPlan={focus.deload}
             />
             {session.sessionKey && session.sourceWeekday && session.sourceWeekday !== dayPlan.weekday ? (
               <div className="mt-2">

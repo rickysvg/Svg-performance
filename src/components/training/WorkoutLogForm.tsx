@@ -49,6 +49,7 @@ import {
   isDurationMode,
   loggerCardLine,
   loggerRowLayout,
+  logsCarryTimeAndDistance,
   modeColumnLabel,
   modeHint,
   prescribedLbLabel,
@@ -1703,6 +1704,7 @@ export function WorkoutLogForm({
             : planned?.notes || bikeSession?.notes || "";
           const timed = isDurationMode(mode) && !bike;
           const distance = isDistanceDose(doseReps || planned?.reps || "");
+          const carryFields = logsCarryTimeAndDistance(name);
           const workLabel = distance ? "m" : modeColumnLabel(mode);
           const restSeconds = exerciseRestSeconds(name);
           const layout = loggerRowLayout(mode, name);
@@ -1713,9 +1715,11 @@ export function WorkoutLogForm({
                 ? "grid-cols-[minmax(0,1fr)_minmax(0,4.75rem)_1.5rem]"
                 : bike
                   ? "grid-cols-[1.5rem_minmax(0,1fr)_1.5rem]"
-                  : hidesLoad(mode)
-                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(5.25rem,6.5rem)_1.5rem]"
-                    : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(4.75rem,5.75rem)_minmax(4.75rem,5.75rem)_1.5rem]";
+                  : carryFields
+                    ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(3.25rem,4.25rem)_minmax(3.25rem,4.25rem)_minmax(3.5rem,4.5rem)_1.5rem]"
+                    : hidesLoad(mode)
+                      ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(5.25rem,6.5rem)_1.5rem]"
+                      : "grid-cols-[1.25rem_minmax(0,1fr)_minmax(4.75rem,5.75rem)_minmax(4.75rem,5.75rem)_1.5rem]";
           const hint = modeHint(mode, name);
           const current = name === cursor.exerciseName && !cursor.done;
           const pounds = prescribedLbLabel(planned?.loadText);
@@ -2030,7 +2034,14 @@ export function WorkoutLogForm({
                   <>
                     <span>{bike || mode !== "timed_round" ? "Set" : "Rd"}</span>
                     <span>Previous</span>
-                    {bike ? null : <span>{workLabel}</span>}
+                    {carryFields ? (
+                      <>
+                        <span>Sec</span>
+                        <span>m</span>
+                      </>
+                    ) : bike ? null : (
+                      <span>{workLabel}</span>
+                    )}
                     {bike || hidesLoad(mode) ? null : <span>{loadHeader}</span>}
                   </>
                 )}
@@ -2118,6 +2129,50 @@ export function WorkoutLogForm({
                               : ""
                           }
                         />
+                      ) : carryFields ? (
+                        <>
+                          <label className="block">
+                            <span className="sr-only">Seconds</span>
+                            <input
+                              name={`sets.${index}.durationSeconds`}
+                              data-set-field={set.id}
+                              data-carry-seconds={set.id}
+                              type="number"
+                              min={0}
+                              max={3600}
+                              inputMode="numeric"
+                              value={set.durationSeconds ?? ""}
+                              onChange={(event) =>
+                                updateSet(set.id, {
+                                  durationSeconds:
+                                    event.target.value === "" ? null : Number(event.target.value),
+                                  logMode: mode,
+                                })
+                              }
+                              className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="sr-only">Distance in meters</span>
+                            <input
+                              name={`sets.${index}.reps`}
+                              data-set-field={set.id}
+                              data-distance-meters={set.id}
+                              type="number"
+                              min={0}
+                              max={5000}
+                              inputMode="numeric"
+                              value={set.reps ?? ""}
+                              onChange={(event) =>
+                                updateSet(set.id, {
+                                  reps: event.target.value === "" ? null : Number(event.target.value),
+                                  logMode: mode,
+                                })
+                              }
+                              className="h-11 w-full min-w-0 scroll-mt-52 rounded-lg border border-line bg-background px-1 text-center text-base"
+                            />
+                          </label>
+                        </>
                       ) : timed && distance ? (
                         <label className="block">
                           <span className="sr-only">Distance in meters</span>

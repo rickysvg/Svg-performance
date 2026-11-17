@@ -9,7 +9,7 @@ import {
   isAdvancedLongBagDay,
 } from "@/lib/bag-sessions";
 import { campBikeBand, type CampPhase } from "@/lib/fight-camp";
-import { weekInBlock } from "@/lib/mesocycle";
+import { STRENGTH_DAY_BY_BLOCK, weekInBlock } from "@/lib/mesocycle";
 import { WEEK_MARKER, catalogMeta, catalogSlot, parseWeekDoses, stripWeekMarker } from "@/lib/v2-lifts";
 import { bagFocusLines, formatBagRoundNotes } from "@/lib/bag-themes";
 import {
@@ -184,8 +184,8 @@ const HARD_STRENGTH: Record<string, Partial<ScaleableExercise>> = {
     loadText: "2-4 RIR · Heavy dumbbells — knee tracks over the toes",
   },
   "Squat jump": {
-    sets: 3,
-    reps: "6",
+    sets: 4,
+    reps: "3",
     loadText: "3-5 RIR · Crisp landings",
   },
   "Front plank": {
@@ -532,7 +532,119 @@ export function scaleExercise(
   const scaled = scaleNamedExercise(named, input);
   const withVideo = gym.renamed ? { ...scaled, ...formVideoFieldsFor(gym.name) } : scaled;
   const next = input.weightAccess !== "none" ? withVideo : applyNoWeightVariant(withVideo, input.band);
-  return capDisplayedSetRest(next);
+  return capDisplayedSetRest(withAdvancedWorkingLoad(withSquatJumpDose(next), input.band));
+}
+
+/** Owner working loads from the Nov 15 recap. Advanced gym days only. */
+const ADVANCED_WORKING_LB: Record<string, number> = {
+  "Zercher squat": 155,
+  "Trap-bar jump": 135,
+  "Lat pulldown": 115,
+};
+
+function withAdvancedWorkingLoad<T extends ScaleableExercise>(exercise: T, band: ScaleBand): T {
+  if (band !== "advanced") return exercise;
+  const pounds = ADVANCED_WORKING_LB[exercise.name];
+  if (!pounds) return exercise;
+  const phrase = `Suggested working load ${pounds} lb.`;
+  const loadText = exercise.loadText?.includes(`${pounds} lb`)
+    ? exercise.loadText
+    : `${exercise.loadText ?? ""} · ${phrase}`.replace(/^\s*·\s*/, "").trim();
+  const notes = exercise.notes?.includes(phrase)
+    ? exercise.notes
+    : `${exercise.notes ?? ""} ${phrase}`.trim();
+  return { ...exercise, loadText, notes };
+}
+
+/** Squat jumps stay 4 × 3. A harder band does not turn them into a 3 × 6 grind. */
+function withSquatJumpDose<T extends ScaleableExercise>(exercise: T): T {
+  if (!/^(?:squat jumps?|jump squats?)$/i.test(exercise.name.trim())) return exercise;
+  if (exercise.sets === 4 && exercise.reps === "3") return exercise;
+  return { ...exercise, sets: 4, reps: "3" };
+}
+
+export function isOptionalPlanExercise(exercise: { name?: string | null; notes?: string | null }) {
+  return /\boptional\b/i.test(`${exercise.notes ?? ""}`);
+}
+
+const LIFT_1_DAYS = new Set(
+  (["A", "B", "C"] as const).map((block) => STRENGTH_DAY_BY_BLOCK[block].monday),
+);
+
+function isStrengthPlan(slug?: string) {
+  return slug === DEMO_PROGRAM_SLUG || slug === "strength";
+}
+
+function backSquatOptional(): ScaleableExercise {
+  return {
+    name: "Back squat",
+    sets: 3,
+    reps: "5",
+    loadText: effortLoadText("2-3", "Optional. Skip the set when the Zercher squat already did the work."),
+    restSeconds: 90,
+    logMode: "load_reps",
+    notes:
+      "Optional. The Zercher squat is the main squat today. The back squat stays on the plan at every level.",
+    planSlot: "strength",
+    ...formVideoFieldsFor("Back squat"),
+  };
+}
+
+function cableAccessory(name: string): ScaleableExercise {
+  return {
+    name,
+    sets: 3,
+    reps: "10-12",
+    loadText: effortLoadText("1-2", "Smooth reps. Leave 1 or 2 in the tank."),
+    restSeconds: 60,
+    logMode: "load_reps",
+    notes: "Arm and cable accessory.",
+    planSlot: "density",
+    ...formVideoFieldsFor(name),
+  };
+}
+
+function latPulldownAdvanced(): ScaleableExercise {
+  return withAdvancedWorkingLoad(
+    {
+      name: "Lat pulldown",
+      sets: 4,
+      reps: "8-10",
+      loadText: effortLoadText("1-2", "Pull to the chest. Control the return."),
+      restSeconds: 60,
+      logMode: "load_reps",
+      notes: "Upper pull.",
+      planSlot: "strength",
+      ...formVideoFieldsFor("Lat pulldown"),
+    },
+    "advanced",
+  );
+}
+
+/**
+ * Lift 1 extras from the owner's training recap.
+ * Back squat stays on a Zercher day at every level, marked optional.
+ * The arm and cable block, plus the lat pulldown load, is the advanced gym day.
+ */
+function lift1ExtraTemplates(
+  source: readonly ScaleableExercise[],
+  scaled: readonly ScaleableExercise[],
+  input: { band: ScaleBand; programSlug?: string; dayNumber?: number; weightAccess?: WeightAccess },
+): ScaleableExercise[] {
+  if (!isStrengthPlan(input.programSlug) || !LIFT_1_DAYS.has(input.dayNumber ?? -1)) return [];
+  const have = new Set(scaled.map((exercise) => exercise.name.toLowerCase()));
+  const extras: ScaleableExercise[] = [];
+  if (source.some((exercise) => /zercher squat/i.test(exercise.name)) && !have.has("back squat")) {
+    extras.push(backSquatOptional());
+    have.add("back squat");
+  }
+  if (input.band !== "advanced" || input.weightAccess === "none") return extras;
+  if (!have.has("lat pulldown")) extras.push(latPulldownAdvanced());
+  for (const name of ["Cable curl", "Leg extension", "Cable triceps pressdown"]) {
+    if (have.has(name.toLowerCase())) continue;
+    extras.push(cableAccessory(name));
+  }
+  return extras;
 }
 
 /** Between-set rest on lifts and bike blocks. Round-timer rest stays on its own clock. */
@@ -1073,11 +1185,16 @@ export function scaleExercises<T extends ScaleableExercise>(
   },
 ): Array<T & { planSlot?: string | null }> {
   const seen = new Set<string>();
-  return exercises
+  const scaled = exercises
     .filter((exercise) => keepForLevel(exercise, input.band, input.campPhase))
     .map((exercise) =>
       presentExercise({ ...exercise, ...scaleExercise(exercise, input) }, input.band, seen),
     );
+  const extras = lift1ExtraTemplates(exercises, scaled, input);
+  return [
+    ...scaled,
+    ...extras.map((exercise) => presentExercise(exercise as T, input.band, seen)),
+  ];
 }
 
 function keepForLevel(

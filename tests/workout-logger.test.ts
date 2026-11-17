@@ -3,12 +3,14 @@ import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { makeUser, resetDatabase } from "./helpers";
-import { getDemoProgram } from "@/lib/programs";
+import { DEMO_PROGRAM_SLUG, getDemoProgram } from "@/lib/programs";
 import {
+  continuePartialWorkoutForUser,
   getPreviousLoadsForUser,
   startWorkoutFromDay,
   updateWorkoutSessionForUser,
 } from "@/lib/workouts";
+import { scaleProgramDay } from "@/lib/training-scale";
 import {
   DEMO_EXERCISE_NAMES,
   equipmentForExercise,
@@ -361,5 +363,99 @@ describe("workout logger media and previous loads", () => {
     expect(pull[0]?.logMode).toBe("load_reps");
     expect(press[0]?.logMode).toBe("load_reps");
     expect(draft.notes).toMatch(/prescribed set/i);
+  });
+
+  it("restores the full deload set list after a short save", async () => {
+    const user = await makeUser("deload-full-list@example.com");
+    const anchor = new Date();
+    await prisma.profile.update({
+      where: { userId: user.id },
+      data: {
+        experienceLevel: "advanced",
+        competitionStatus: "pro",
+        weightAccess: "gym",
+        onboardingCompletedAt: anchor,
+      },
+    });
+    const program = await getDemoProgram();
+    const lift = program.days.find((row) => row.dayNumber === 12)!;
+    const scale = { experienceLevel: "advanced", competitionStatus: "pro", weightAccess: "gym" };
+    const draft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: lift.id,
+      preferredUnits: "lb",
+      scale,
+      deload: true,
+      planAnchor: anchor,
+      now: anchor,
+    });
+    const planned = scaleProgramDay(
+      { ...lift, exercises: lift.exercises },
+      { band: "advanced", programSlug: DEMO_PROGRAM_SLUG, weightAccess: "gym" },
+    );
+    const countNamed = (sets: { exerciseName: string }[]) => {
+      const counts = new Map<string, number>();
+      for (const set of sets) counts.set(set.exerciseName, (counts.get(set.exerciseName) ?? 0) + 1);
+      return counts;
+    };
+    const opened = countNamed(draft.sets);
+    for (const exercise of planned.exercises) {
+      expect(opened.get(exercise.name), exercise.name).toBe(exercise.sets);
+    }
+
+    await prisma.workoutSet.deleteMany({
+      where: { workoutSessionId: draft.id, setNumber: { gt: 1 } },
+    });
+    const short = await prisma.workoutSet.count({ where: { workoutSessionId: draft.id } });
+    expect(short).toBeLessThan(draft.sets.length);
+    await prisma.workoutSession.update({
+      where: { id: draft.id },
+      data: { status: "partial", plannedSetCount: short },
+    });
+    const resumed = await continuePartialWorkoutForUser({
+      userId: user.id,
+      workoutId: draft.id,
+      preferredUnits: "lb",
+    });
+    const restored = countNamed(resumed.sets);
+    for (const exercise of planned.exercises) {
+      expect(restored.get(exercise.name), exercise.name).toBeGreaterThanOrEqual(exercise.sets);
+    }
+  });
+
+  it("saves suitcase carry time and distance together", async () => {
+    const user = await makeUser("suitcase-carry@example.com");
+    const program = await getDemoProgram();
+    const day = program.days.find((row) => row.dayNumber === 11)!;
+    const draft = await startWorkoutFromDay({
+      userId: user.id,
+      programDayId: day.id,
+      preferredUnits: "lb",
+    });
+    const saved = await updateWorkoutSessionForUser({
+      userId: user.id,
+      workoutId: draft.id,
+      title: draft.title,
+      performedAt: new Date(),
+      notes: "",
+      status: "draft",
+      sets: [
+        {
+          exerciseName: "Suitcase carry",
+          setNumber: 1,
+          reps: 20,
+          loadValue: 50,
+          loadUnit: "lb",
+          logMode: "load_timed",
+          durationSeconds: 35,
+          completed: true,
+        },
+      ],
+    });
+    const carry = saved.sets.find((set) => set.exerciseName === "Suitcase carry" && set.setNumber === 1);
+    expect(carry?.logMode).toBe("load_timed");
+    expect(carry?.durationSeconds).toBe(35);
+    expect(carry?.reps).toBe(20);
+    expect(carry?.loadValue).toBe(50);
   });
 });

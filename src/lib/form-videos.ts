@@ -862,6 +862,15 @@ for (const [name, seed] of Object.entries(fighterFormVideoSeeds())) {
   DEMO_FORM_VIDEOS[name] = seed;
 }
 
+function aliasFormVideo(name: string, source: string) {
+  if (DEMO_FORM_VIDEOS[name] || !DEMO_FORM_VIDEOS[source]) return;
+  DEMO_FORM_VIDEOS[name] = DEMO_FORM_VIDEOS[source];
+}
+
+aliasFormVideo("Leg extension", "Leg extension machine");
+aliasFormVideo("Cable triceps pressdown", "Straight-bar triceps pushdown");
+aliasFormVideo("Lat pulldown", "Wide-grip lat pulldown");
+
 /** New floor moves with no verified short clip. Empty on purpose, not a pending review. */
 const FLOOR_MOVES_WITHOUT_CLIP = [
   "Wide push-up",
