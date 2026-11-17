@@ -802,7 +802,7 @@ describe("scaled dose agreement", () => {
     expect(form).toContain("<ExerciseCardMenu");
   });
 
-  it("saves a ticked set that only has the plan reps and an empty load", async () => {
+  it("does not save a ticked set that only has the plan and an empty load", async () => {
     await resetDatabase();
     const user = await makeUser("bodyweight-tick@example.com");
     const catalog = await findDemoTrainingCatalog();
@@ -816,31 +816,27 @@ describe("scaled dose agreement", () => {
     });
     const target = started.sets.find((set) => /\d/.test(set.prescriptionKey) && set.logMode !== "timed" && set.logMode !== "timed_round" && set.logMode !== "load_timed");
     expect(target).toBeTruthy();
-    const saved = await updateWorkoutSessionForUser({
-      userId: user.id,
-      workoutId: started.id,
-      title: started.title,
-      performedAt: started.performedAt,
-      notes: "",
-      status: "complete",
-      sets: started.sets.map((set) => ({
-        exerciseName: set.exerciseName,
-        setNumber: set.setNumber,
-        reps: null,
-        loadValue: null,
-        loadUnit: "lb" as const,
-        logMode: set.logMode === "load_reps" || set.logMode === "reps_only" ? set.logMode : undefined,
-        durationSeconds: null,
-        completed: set.id === target!.id,
-        prescriptionKey: set.prescriptionKey,
-      })),
-    });
-    const stored = saved.sets.find(
-      (set) => set.exerciseName === target!.exerciseName && set.setNumber === target!.setNumber,
-    );
-    expect(stored?.completed).toBe(true);
-    expect(stored?.reps).toBeGreaterThan(0);
-    expect(stored?.loadValue).toBeNull();
+    await expect(
+      updateWorkoutSessionForUser({
+        userId: user.id,
+        workoutId: started.id,
+        title: started.title,
+        performedAt: started.performedAt,
+        notes: "",
+        status: "complete",
+        sets: started.sets.map((set) => ({
+          exerciseName: set.exerciseName,
+          setNumber: set.setNumber,
+          reps: null,
+          loadValue: null,
+          loadUnit: "lb" as const,
+          logMode: set.logMode === "load_reps" || set.logMode === "reps_only" ? set.logMode : undefined,
+          durationSeconds: null,
+          completed: set.id === target!.id,
+          prescriptionKey: set.prescriptionKey,
+        })),
+      }),
+    ).rejects.toThrow(/empty check/i);
     await expect(
       updateWorkoutSessionForUser({
         userId: user.id,

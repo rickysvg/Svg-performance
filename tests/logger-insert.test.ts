@@ -40,7 +40,8 @@ describe("insert an exercise anywhere in the logger", () => {
       goblet!,
     );
     expect(drafts).toHaveLength(goblet!.sets);
-    expect(drafts.every((draft) => draft.reps === 6 && draft.restSeconds === 45)).toBe(true);
+    expect(drafts.every((draft) => draft.reps == null && draft.durationSeconds == null)).toBe(true);
+    expect(drafts.every((draft) => draft.prescriptionReps === "6" && draft.restSeconds === 45)).toBe(true);
     expect(drafts[0]?.exerciseName).toBe("Goblet squat");
 
     const inserted = insertSetsAtExercise(

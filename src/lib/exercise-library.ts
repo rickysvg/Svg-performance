@@ -119,6 +119,28 @@ function row(
 }
 
 /** Cable-stack row. Pounds stay on. */
+function bell(
+  name: string,
+  category: ExerciseCategory,
+  reps: string,
+  loadText: string,
+  restSeconds: number,
+  logMode: LogMode,
+  notes: string,
+  region: string,
+  pattern: string,
+  gear: "dumbbell" | "kettlebell",
+  swapsWith?: string[],
+): Row {
+  return {
+    ...row(name, category, "gym", 3, reps, loadText, restSeconds, logMode, notes),
+    region,
+    pattern,
+    gear,
+    swapsWith,
+  };
+}
+
 function cable(
   name: string,
   category: ExerciseCategory,
@@ -314,6 +336,22 @@ const BASE_LIBRARY: LibraryExercise[] = [
   cable("Single-arm cable curl", "upper_pull", "10 / side", "One handle from a low stack. Elbow stays by the ribs. Any level. Muscles: biceps.", "biceps", "curl", ["Cable curl", "Rope hammer curl"]),
   cable("Cable glute kickback", "lower", "12 / side", "Ankle cuff. Kick back without arching the low back. Any level. Muscles: glutes.", "glutes", "hinge", ["Cable pull-through", "Single-leg cable pull-through"]),
   cable("Cable rotational punch", "rotational", "6 / side", "Handle at the shoulder. Punch across. The hips turn, the fist finishes late. Any level. Stop when the punch gets sloppy. Muscles: core, shoulders.", "core", "rotational", ["Rotational cable press", "Standing cable rotation"]),
+
+  bell("Standing dumbbell shoulder press", "upper_push", "8", "1-3 RIR · Ribs down.", 75, "load_reps", "Stand tall. Press the bells without leaning back. Any level. Muscles: shoulders, triceps.", "shoulders", "overhead-push", "dumbbell", ["Seated dumbbell shoulder press", "Arnold press", "Single-arm overhead press"]),
+  bell("Dumbbell upright row", "upper_pull", "10", "2-4 RIR · Elbows lead.", 60, "load_reps", "Lead with the elbows and stop at chest height. Any level. Muscles: shoulders, traps.", "shoulders", "pull", "dumbbell", ["Cable upright row", "Dumbbell high pull"]),
+  bell("Dumbbell split squat", "lower", "8 / leg", "2-4 RIR · Front heel down.", 75, "load_reps", "Both feet on the floor. Bells at your sides. Drop straight down. Any level. Muscles: quads, glutes.", "quads", "lunge", "dumbbell", ["Split squat", "Dumbbell Bulgarian split squat", "Reverse lunge"]),
+  bell("Dumbbell sumo squat", "lower", "8", "2-4 RIR · Knees track out.", 75, "load_reps", "Wide stance, toes out. The bell hangs between the knees. Any level. Muscles: glutes, adductors, quads.", "glutes", "squat", "dumbbell", ["Goblet squat", "Sumo deadlift"]),
+  bell("Dumbbell calf raise", "lower", "12", "2-4 RIR · Pause at the top.", 45, "load_reps", "Bells at your sides. Rise onto the toes and pause. Any level. Muscles: calves.", "calves", "squat", "dumbbell", ["Dumbbell single-leg calf raise", "Seated calf raise"]),
+  bell("Dumbbell clean", "explosive", "5", "3-5 RIR · Hips snap.", 75, "load_reps", "Hips snap, then the bells land at the shoulders. Any level. Muscles: hips, shoulders, traps.", "full", "hinge", "dumbbell", ["Kettlebell clean", "Dumbbell high pull", "Dumbbell snatch"]),
+  bell("Kettlebell clean and press", "upper_push", "5 / side", "2-4 RIR · Rack, then press.", 75, "load_reps", "Clean to the rack, then press. Reset each rep. Any level. Muscles: hips, shoulders, triceps.", "shoulders", "overhead-push", "kettlebell", ["Kettlebell clean", "Kettlebell push press", "Kettlebell overhead press"]),
+  bell("Kettlebell around the world", "rotational", "8 / side", "2-4 RIR · Ribs quiet.", 45, "load_reps", "Pass the bell around the waist. The ribs stay quiet. Any level. Muscles: core, shoulders, grip.", "core", "rotational", "kettlebell", ["Kettlebell halo", "Kettlebell figure-8"]),
+  bell("Kettlebell high pull", "explosive", "6", "3-5 RIR · Elbows high.", 60, "load_reps", "Hips snap and the elbow stays high. Do not grind it like an upright row. Any level. Muscles: hips, shoulders, traps.", "full", "hinge", "kettlebell", ["Dumbbell high pull", "Kettlebell swing", "Kettlebell snatch"]),
+  bell("Kettlebell single-arm row", "upper_pull", "8 / side", "1-3 RIR · Elbow to the hip.", 75, "load_reps", "Free hand on a bench. Pull the bell to the hip. Any level. Muscles: back, biceps.", "back", "pull", "kettlebell", ["One-arm row", "Gorilla row"]),
+  bell("Kettlebell single-leg deadlift", "lower", "6 / leg", "1-3 RIR · Hips square.", 75, "load_reps", "Soft knee. Hips stay square. The bell stays close to the standing leg. Any level. Muscles: hamstrings, glutes.", "hamstrings", "hinge", "kettlebell", ["Single-leg RDL", "Kettlebell deadlift"]),
+  bell("Kettlebell front rack squat", "lower", "6", "1-3 RIR · Elbows in.", 90, "load_reps", "One bell in the rack. Elbows stay in. Sit between the hips. Any level. Muscles: quads, glutes, core.", "quads", "squat", "kettlebell", ["Double kettlebell front squat", "Goblet squat"]),
+  bell("Overhead kettlebell carry", "conditioning", "30 sec · 20 m", "2-3 RIR · Lock the bell out.", 60, "load_timed", "Bell locked out overhead. Ribs down. Walk tall. Any level. Log the time and the distance. Muscles: shoulders, core.", "shoulders", "carry", "kettlebell", ["Overhead carry (waiter walk)", "Front-rack kettlebell carry"]),
+  bell("Kettlebell figure-8", "rotational", "8", "2-4 RIR · Hinge, don't round.", 45, "load_reps", "Pass the bell through the legs in a figure-8. Hinge. Do not round the back. Any level. Muscles: hips, core, grip.", "core", "rotational", "kettlebell", ["Kettlebell around the world", "Kettlebell swing"]),
+  bell("Kettlebell Russian twist", "rotational", "8 / side", "2-4 RIR · Ribs turn.", 45, "load_reps", "Bell at the chest. Rotate the ribs, not the neck. Any level. Muscles: obliques.", "core", "rotational", "kettlebell", ["Russian twist", "Kettlebell woodchop"]),
 ];
 
 const COMBAT_ROWS = combatAsLibraryRows().filter(
@@ -370,6 +408,67 @@ const SEARCH_ALIASES: Record<string, readonly string[]> = {
   "Single-arm cable crossover (low to high)": ["cable fly", "cable flye", "crossover", "cross over", "low-high", "low to high", "single arm"],
   "Kneeling cable fly (high to low)": ["cable crossover", "crossover", "cable flye", "kneeling fly"],
   "Incline-bench cable fly": ["cable crossover", "crossover", "cable flye", "incline fly"],
+  "Dumbbell lateral raise": ["side raise", "side raises", "shoulder raise", "lateral raises", "db lateral raise"],
+  "Dumbbell front raise": ["front raise", "front raises", "db front raise"],
+  "Bent-over dumbbell reverse fly": ["rear-delt fly", "rear delt fly", "rear delt", "reverse fly", "dumbbell rear delt fly"],
+  "Seated dumbbell shoulder press": ["seated shoulder press", "seated db press", "seated dumbbell press"],
+  "Standing dumbbell shoulder press": ["standing shoulder press", "standing dumbbell press", "dumbbell shoulder press"],
+  "Single-arm overhead press": ["single-arm shoulder press", "single arm shoulder press", "one-arm shoulder press"],
+  "Dumbbell upright row": ["upright row", "db upright row"],
+  "Floor press": ["dumbbell floor press", "db floor press"],
+  "One-arm row": ["single-arm row", "single arm row", "dumbbell row", "db row"],
+  "Incline dumbbell press": ["incline press", "incline db press", "incline dumbbell bench"],
+  "Decline dumbbell press": ["decline press", "decline db press", "decline dumbbell bench"],
+  "Dumbbell chest fly": ["chest fly", "dumbbell fly", "db fly", "pec fly"],
+  "Hammer curl": ["dumbbell hammer curl", "db hammer curl"],
+  "Incline dumbbell curl": ["incline curl", "incline db curl"],
+  "Concentration curl": ["concentration curls", "db concentration curl"],
+  "Dumbbell overhead triceps extension": ["overhead triceps extension", "overhead extension", "db overhead extension"],
+  "Dumbbell skull crusher": ["skull crusher", "skullcrushers", "db skull crusher"],
+  "Dumbbell triceps kickback": ["kickback", "triceps kickback", "db kickback"],
+  "Dumbbell pullover": ["pullover", "db pullover"],
+  "Renegade row": ["renegade rows", "db renegade row"],
+  "Chest-supported dumbbell row": ["chest-supported row", "chest supported row"],
+  "Dumbbell Romanian deadlift": ["rdl", "dumbbell rdl", "db rdl"],
+  "Romanian deadlift": ["rdl", "barbell rdl"],
+  "Single-leg RDL": ["single-leg deadlift", "single leg deadlift", "single-leg rdl"],
+  "Kettlebell single-leg deadlift": ["single-leg deadlift", "single leg deadlift", "kb single-leg deadlift"],
+  "Goblet squat": ["kettlebell goblet squat", "kb goblet", "dumbbell goblet squat", "db goblet squat"],
+  "Dumbbell split squat": ["db split squat"],
+  "Dumbbell Bulgarian split squat": ["bulgarian split squat", "db bulgarian", "rear-foot-elevated split squat"],
+  "Dumbbell step-up": ["step-up", "step up", "db step-up"],
+  "Dumbbell sumo squat": ["sumo squat"],
+  "Dumbbell calf raise": ["calf raise", "standing calf raise", "db calf raise"],
+  "Farmer carry": ["farmers carry", "farmer's carry", "farmer walk"],
+  "Suitcase carry": ["suitcase walk", "one-arm carry"],
+  "Dumbbell snatch": ["db snatch"],
+  "Dumbbell clean": ["db clean", "dumbbell power clean"],
+  "Dumbbell thruster": ["db thruster"],
+  "Dumbbell woodchop": ["db woodchop", "dumbbell chop"],
+  "Kettlebell swing": ["two-hand swing", "two hand swing", "two-handed swing", "kettlebell swings", "kb swing"],
+  "Single-arm kettlebell swing": ["one-hand swing", "one hand swing", "one-arm swing", "one arm kettlebell swing", "kb swing"],
+  "Kettlebell clean": ["kb clean"],
+  "Kettlebell clean and press": ["clean and press", "clean & press", "kb clean and press"],
+  "Kettlebell snatch": ["kb snatch"],
+  "Kettlebell push press": ["kb push press"],
+  "Turkish get-up": ["tgu", "get-up", "get up", "turkish getup"],
+  "Kettlebell halo": ["halo", "kb halo"],
+  "Kettlebell around the world": ["around the world", "around-the-world", "atw"],
+  "Kettlebell windmill": ["windmill", "kb windmill"],
+  "Kettlebell high pull": ["kb high pull"],
+  "Kettlebell single-arm row": ["kettlebell row", "kb row", "single-arm kettlebell row"],
+  "Gorilla row": ["kettlebell gorilla row", "kb gorilla row"],
+  "Kettlebell deadlift": ["kb deadlift"],
+  "Double kettlebell front squat": ["front rack squat", "kettlebell front rack squat", "double kb front squat"],
+  "Kettlebell front rack squat": ["front rack squat", "kettlebell front squat", "kb front squat"],
+  "Front-rack kettlebell carry": ["front rack carry", "front-rack carry", "kb front rack carry"],
+  "Overhead carry (waiter walk)": ["overhead carry", "waiter walk", "waiter's walk"],
+  "Overhead kettlebell carry": ["overhead carry", "kettlebell overhead carry", "kb overhead carry", "waiter walk"],
+  "Bottoms-up kettlebell press": ["bottoms-up press", "bottoms up press", "bottoms-up"],
+  "Kettlebell figure-8": ["figure-8", "figure 8", "figure eight", "kb figure 8"],
+  "Kettlebell Russian twist": ["kb russian twist", "kettlebell twist"],
+  "Kettlebell woodchop": ["kb woodchop"],
+  "Arnold press": ["arnold", "arnold dumbbell press"],
 };
 
 /** "push ups" / "pushups" / "push-up", and "flye" / "low-high", all search the same way. */
@@ -382,10 +481,21 @@ function looseSearch(value: string) {
     .replace(/hightolow/g, "highlow");
 }
 
+const SEARCH_STOP = new Set(["a", "an", "and", "or", "the", "to", "of", "for", "with"]);
+
 function searchStems(query: string) {
   const loose = looseSearch(query);
   if (!loose) return [];
   return loose.endsWith("s") ? [loose, loose.slice(0, -1)] : [loose];
+}
+
+/** Words in a search, so "incline curl" still finds "Incline dumbbell curl". */
+function queryTokens(query: string) {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((part) => (part.endsWith("s") && part.length > 4 ? part.slice(0, -1) : part))
+    .filter((part) => part.length >= 3 && !SEARCH_STOP.has(part));
 }
 
 function searchHay(exercise: LibraryExercise) {
@@ -396,7 +506,11 @@ function matchesLibraryQuery(exercise: LibraryExercise, query: string) {
   const stems = searchStems(query);
   if (stems.length === 0) return true;
   const hay = searchHay(exercise);
-  return hay.some((text) => stems.some((stem) => stem.length > 0 && text.includes(stem)));
+  if (hay.some((text) => stems.some((stem) => stem.length > 0 && text.includes(stem)))) return true;
+  const tokens = queryTokens(query);
+  if (tokens.length < 2) return false;
+  const blob = hay.join(" ");
+  return tokens.every((token) => blob.includes(token));
 }
 
 /** Push-up names beat triceps pushdowns and push presses when the search is "push". */
@@ -404,6 +518,7 @@ function searchRank(name: string, query: string) {
   const stems = searchStems(query);
   if (stems.length === 0) return 1;
   const loose = looseSearch(name);
+  const aliasLoose = (SEARCH_ALIASES[name] ?? []).map(looseSearch);
   const stem = stems[stems.length - 1] ?? "";
   const pushupSearch = stem === "push" || stem.startsWith("pushup");
   const crossoverSearch = stem === "crossover" || stem === "cablefly" || stem === "fly";
@@ -411,6 +526,8 @@ function searchRank(name: string, query: string) {
   if (stems.some((item) => loose === item) || (pushupSearch && loose.includes("pushup"))) return 0;
   if (crossoverSearch && (loose.includes("crossover") || loose.includes("cablefly"))) return 0;
   if (angleSearch && loose.includes(stem)) return 0;
+  // An alias hit stays above a loose mention, under a name that is the search.
+  if (stems.some((item) => aliasLoose.includes(item))) return 1;
   if (loose.startsWith(stem)) return 1;
   return 2;
 }

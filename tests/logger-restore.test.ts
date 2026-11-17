@@ -99,7 +99,7 @@ describe("logger restore", () => {
 });
 
 describe("save payload", () => {
-  it("counts a ticked set when the plan already named the reps", () => {
+  it("does not copy a ticked plan into the logged numbers", () => {
     const key = prescriptionSlotKey({
       exerciseName: "Goblet squat",
       reps: "6 / side",
@@ -116,7 +116,7 @@ describe("save payload", () => {
         completed: true,
         prescriptionKey: key,
       }),
-    ).toMatchObject({ reps: 6, loadValue: null, completed: true });
+    ).toMatchObject({ reps: null, loadValue: null, completed: true });
     expect(
       withTickedPlanWork({
         exerciseName: "Goblet squat",
@@ -159,7 +159,20 @@ describe("save payload", () => {
         completed: true,
         prescriptionKey: minuteKey,
       }),
-    ).toMatchObject({ reps: null, durationSeconds: 60 });
+    ).toMatchObject({ reps: null });
+    expect(
+      withTickedPlanWork({
+        exerciseName: "Plank",
+        setNumber: 1,
+        reps: null,
+        loadValue: null,
+        loadUnit: "lb",
+        logMode: "timed",
+        durationSeconds: null,
+        completed: true,
+        prescriptionKey: minuteKey,
+      }).durationSeconds,
+    ).toBeNull();
     const setsKey = prescriptionSlotKey({
       exerciseName: "Bench press",
       reps: "3x5",
@@ -177,7 +190,7 @@ describe("save payload", () => {
         completed: true,
         prescriptionKey: setsKey,
       }),
-    ).toMatchObject({ reps: 5 });
+    ).toMatchObject({ reps: null });
     const clockKey = prescriptionSlotKey({
       exerciseName: "Shadowbox round 1 — empty hands",
       reps: "3:00",
@@ -195,7 +208,7 @@ describe("save payload", () => {
         completed: true,
         prescriptionKey: clockKey,
       }),
-    ).toMatchObject({ durationSeconds: 180 });
+    ).toMatchObject({ reps: null });
     const decimalKey = prescriptionSlotKey({
       exerciseName: "Plank",
       reps: "1.5 min",
@@ -213,7 +226,7 @@ describe("save payload", () => {
         completed: true,
         prescriptionKey: decimalKey,
       }),
-    ).toMatchObject({ durationSeconds: 90 });
+    ).toMatchObject({ reps: null });
     const setsTimeKey = prescriptionSlotKey({
       exerciseName: "Jump rope",
       reps: "2 x 30 sec",
@@ -231,7 +244,7 @@ describe("save payload", () => {
         completed: true,
         prescriptionKey: setsTimeKey,
       }),
-    ).toMatchObject({ durationSeconds: 30 });
+    ).toMatchObject({ reps: null });
   });
 
   it("saves typed sets from a bloated logger and drops empty copies", () => {

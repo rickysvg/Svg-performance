@@ -241,6 +241,36 @@ export function parseDurationSeconds(value: string | number | null | undefined):
   return n;
 }
 
+/**
+ * Grey hint for an empty logger box. The plan number is not a logged value.
+ * "8 / leg" hints 8. "30 sec" hints 30 seconds. "30 sec · 20 m" hints both.
+ */
+export function targetInputPlaceholder(
+  kind: "reps" | "seconds" | "distance",
+  plannedReps?: string | null,
+): string {
+  const raw = String(plannedReps ?? "").trim();
+  if (!raw) return "";
+  if (kind === "distance") {
+    const meters = raw.match(/(\d+(?:\.\d+)?)\s*(?:meters?|metres?|m)\b/i);
+    return meters?.[1] ?? "";
+  }
+  if (kind === "seconds") {
+    if (DISTANCE_REPS.test(raw) && !DURATION_REPS.test(raw)) return "";
+    const seconds = parseDurationSeconds(raw);
+    return seconds != null && seconds > 0 ? String(seconds) : "";
+  }
+  if (DURATION_REPS.test(raw) || DISTANCE_REPS.test(raw)) return "";
+  const match = raw.match(/(\d+)/);
+  return match?.[1] ?? "";
+}
+
+/** A carry dose that logs both the clock and the walk. Either one alone stays a single box. */
+export function prescriptionLogsTimeAndDistance(reps: string | null | undefined) {
+  const raw = String(reps ?? "");
+  return DISTANCE_REPS.test(raw) && DURATION_REPS.test(raw);
+}
+
 export function modeColumnLabel(mode: LogMode) {
   if (mode === "timed_round") return "Round";
   if (mode === "timed" || mode === "load_timed") return "Sec";
