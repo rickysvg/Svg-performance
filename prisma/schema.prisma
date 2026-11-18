@@ -1569,6 +1569,8 @@ model WaitlistSignup {
   referrer     String?
   landingPath  String?   @map("landing_path")
   firstTouchAt DateTime? @map("first_touch_at")
+  /// Set after the one-shot "We're live" email is accepted. Null means not sent.
+  liveEmailSentAt DateTime? @map("live_email_sent_at")
 
   @@index([createdAt])
   @@map("waitlist_signups")

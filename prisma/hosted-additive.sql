@@ -1212,3 +1212,19 @@ BEGIN
     ALTER TABLE "waitlist_signups" ADD COLUMN "first_touch_at" TIMESTAMP(3);
   END IF;
 END $$;
+
+-- Stamp for the one-shot "We're live" waitlist email. Nullable. Existing rows stay null.
+-- No drops, no type changes, no NOT NULL.
+DO $$
+BEGIN
+  IF to_regclass('public.waitlist_signups') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'waitlist_signups' AND column_name = 'live_email_sent_at'
+  ) THEN
+    ALTER TABLE "waitlist_signups" ADD COLUMN "live_email_sent_at" TIMESTAMP(3);
+  END IF;
+END $$;
