@@ -247,9 +247,14 @@ export function AppHeader({
             </form>
           </nav>
         ) : (
-          <Link href="/login" className={chipClass()}>
-            Log in
-          </Link>
+          <nav aria-label="Account" className="flex shrink-0 items-center gap-1.5">
+            <Link href="/register" className={chipClass()}>
+              Sign up
+            </Link>
+            <Link href="/login" className={chipClass()}>
+              Log in
+            </Link>
+          </nav>
         )}
       </div>
     </header>

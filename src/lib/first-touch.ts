@@ -310,7 +310,7 @@ export function captureBrowserFirstTouch(): void {
 }
 
 /**
- * Runs in the root document before hydration, including /, /waitlist, and /register.
+ * Runs in the root document before hydration, including / and /register.
  * A click on an internal link must not get there before the first touch is stored.
  */
 export const FIRST_TOUCH_BOOT_SCRIPT = `(function(){try{

@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { ensureDatabaseUrl } from "./src/lib/db-provider";
+import { PUBLIC_WAITLIST_REDIRECT } from "./src/lib/public-waitlist";
 
 ensureDatabaseUrl();
 
@@ -15,6 +16,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/history", destination: "/training/history", permanent: false },
       { source: "/train", destination: "/training", permanent: false },
+      PUBLIC_WAITLIST_REDIRECT,
     ];
   },
   async headers() {

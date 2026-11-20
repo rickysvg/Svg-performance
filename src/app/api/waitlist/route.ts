@@ -1,40 +1,27 @@
 import { NextResponse } from "next/server";
-import { AppError } from "@/lib/errors";
-import { joinLaunchWaitlist, waitlistClientIp } from "@/lib/launch-waitlist";
-import {
-  WAITLIST_ALREADY_MESSAGE,
-  WAITLIST_EMAIL_ERROR,
-  WAITLIST_GENERIC_ERROR,
-} from "@/lib/waitlist-shared";
+import { WAITLIST_CLOSED_MESSAGE } from "@/lib/public-waitlist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Public. No session. Mailchimp when configured, Postgres backup either way.
- *  A new signup also gets the welcome email when SMTP is configured. */
-export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: WAITLIST_EMAIL_ERROR }, { status: 400 });
-  }
+function gone() {
+  return NextResponse.json(
+    { ok: false, error: WAITLIST_CLOSED_MESSAGE },
+    { status: 410, headers: { "cache-control": "no-store" } },
+  );
+}
 
-  try {
-    const result = await joinLaunchWaitlist({ body, ip: waitlistClientIp(request) });
-    if (result.status === "already") {
-      return NextResponse.json({ ok: false, error: WAITLIST_ALREADY_MESSAGE }, { status: 409 });
-    }
-    return NextResponse.json({
-      ok: true,
-      status: "subscribed",
-      firstName: result.firstName,
-    });
-  } catch (error) {
-    if (error instanceof AppError) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
-    }
-    console.error("waitlist join failed");
-    return NextResponse.json({ ok: false, error: WAITLIST_GENERIC_ERROR }, { status: 500 });
-  }
+/** Drop the payload so a signup body is never parsed. */
+async function closed(request?: Request) {
+  await request?.body?.cancel().catch(() => undefined);
+  return gone();
+}
+
+/** Public join is closed. Does not insert a row or send mail. */
+export function POST(request: Request) {
+  return closed(request);
+}
+
+export function GET(request: Request) {
+  return closed(request);
 }

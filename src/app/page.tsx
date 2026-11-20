@@ -9,7 +9,7 @@ import { NONMEMBER_TRIAL_DAYS, proAccessSummary } from "@/lib/pricing";
 
 const PUBLIC_TITLE = "SVG Performance | Strength and conditioning built for fighters";
 const PUBLIC_DESCRIPTION =
-  "Strength, conditioning and fight training built for combat athletes. Train on the web. Open it on your phone, no download needed.";
+  "Strength, conditioning and fight training built for combat athletes. The app is live on the web. Train on the web. Open it on your phone, no download needed.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const user = await getCurrentUser();
@@ -68,7 +68,7 @@ export default async function MarketingPage({
             <h2 className="mt-1 text-2xl">Your account is gone</h2>
             <p className="mt-2 text-sm">
               We erased your SVG Performance data and signed you out. You can
-              create a new preview account anytime.
+              create a new account anytime.
             </p>
           </section>
         ) : null}
@@ -102,7 +102,7 @@ export default async function MarketingPage({
                   href="/register"
                   className="touch-target inline-flex items-center justify-center rounded-full bg-accent px-5 text-base text-black"
                 >
-                  Create a preview account
+                  Create an account
                 </Link>
                 <Link
                   href="/login"
