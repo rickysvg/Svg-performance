@@ -15,6 +15,8 @@ import {
   getStripe,
 } from "@/lib/stripe";
 import { AppError } from "@/lib/errors";
+import { storeAppBlocksWebBilling } from "@/lib/native-app-server";
+import { STORE_APP_BILLING_NOTE } from "@/lib/native-app";
 import { publicErrorMessage } from "@/lib/errors";
 import { joinWaitlist } from "@/lib/waitlist";
 
@@ -26,6 +28,9 @@ export async function startCheckoutAction(
 ): Promise<BillingActionState> {
   try {
     const user = await requireUserOrThrow();
+    if (await storeAppBlocksWebBilling()) {
+      return { error: STORE_APP_BILLING_NOTE };
+    }
     const planRaw = String(formData.get("plan") ?? "");
     if (!isPlanId(planRaw)) {
       throw new AppError("BILLING", "Pick a valid plan.");

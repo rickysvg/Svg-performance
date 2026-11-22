@@ -79,6 +79,7 @@ import {
   type RestTimerState,
 } from "@/lib/rest-timer";
 import { nextIncompleteSetId } from "@/lib/logger-progress";
+import { nativeImpact } from "@/lib/native-app";
 import { fieldEnterFinishesWorkout } from "@/lib/workout-form-submit";
 import {
   ACTIVITY_HEARTBEAT_MS,
@@ -1166,6 +1167,8 @@ export function WorkoutLogForm({
         : set,
     );
     setSets(nextSets);
+    // Store app only: a short haptic tap when a set is checked off. No-op on the web.
+    if (completed) nativeImpact("MEDIUM");
     let nextRest = restTimer;
     if (completed) {
       const started = restTimerAfterSetDone({

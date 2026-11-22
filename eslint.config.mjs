@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "prisma/migrations/**",
     "e2e/**",
+    // Capacitor store-app shell (own package.json, generated native projects).
+    "mobile/**",
   ]),
 ]);
 

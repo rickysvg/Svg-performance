@@ -3,10 +3,15 @@ import { requireUserOrThrow } from "@/lib/session";
 import { getLatestSubscription } from "@/lib/access";
 import { billingOriginFromRequest, createBillingPortalSession, getStripe } from "@/lib/stripe";
 import { publicErrorMessage } from "@/lib/errors";
+import { storeAppBlocksWebBilling } from "@/lib/native-app-server";
+import { STORE_APP_BILLING_NOTE } from "@/lib/native-app";
 
 export async function POST() {
   try {
     const user = await requireUserOrThrow();
+    if (await storeAppBlocksWebBilling()) {
+      return NextResponse.json({ error: STORE_APP_BILLING_NOTE }, { status: 403 });
+    }
     const subscription = await getLatestSubscription(user.id);
     const customerId = subscription?.stripeCustomerId?.trim() ?? "";
     if (!customerId) {
