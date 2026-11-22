@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import { startCheckoutAction, type BillingActionState } from "@/app/actions/billing";
 import { StatusBanner } from "@/components/StatusBanner";
 import type { CheckoutSkuId } from "@/lib/plans";
+import { StoreAppBillingNote } from "@/components/native/StoreAppBillingNote";
+import { useStoreBillingBlocked } from "@/components/native/useStoreBillingBlocked";
 
 export function CheckoutButton({
   plan,
@@ -20,6 +22,10 @@ export function CheckoutButton({
     startCheckoutAction,
     {} as BillingActionState,
   );
+  const storeBillingBlocked = useStoreBillingBlocked();
+  if (storeBillingBlocked) {
+    return <StoreAppBillingNote />;
+  }
   if (disabledReason) {
     return (
       <div className="space-y-1">

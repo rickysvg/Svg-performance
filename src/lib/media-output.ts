@@ -1,3 +1,5 @@
+import { nativeVibrate } from "@/lib/native-app";
+
 /**
  * Haptics only.
  *
@@ -11,6 +13,8 @@
  * itself cannot buzz an iPhone. Callers pair this with a visual cue.
  */
 export function vibratePattern(pattern: number | number[]) {
+  // Inside the store app the native Haptics plugin buzzes iPhones too.
+  if (nativeVibrate(pattern)) return;
   try {
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
       navigator.vibrate(pattern);

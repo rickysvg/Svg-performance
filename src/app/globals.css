@@ -1116,3 +1116,8 @@ h3,
     font-size: max(16px, 1em);
   }
 }
+
+/* Store app only: two hidden checkout buttons in a row leave one billing note. */
+[data-store-app-billing-note] + [data-store-app-billing-note] {
+  display: none;
+}

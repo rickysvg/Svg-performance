@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/constants";
 import { PATH_HEADER } from "@/lib/locked-paths";
+import {
+  nativePlatformFromUserAgent,
+  STORE_APP_BILLING_REDIRECTS,
+  storeBillingBlocksWebCheckout,
+} from "@/lib/native-app";
 
 // Public pages are not in this list, so no session and no paywall.
 // /admin/waitlist stays behind the admin session below.
@@ -36,6 +41,14 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PUBLIC_FILE.test(pathname)) {
     return NextResponse.next();
+  }
+  // Store app only: pages that exist to sell a subscription go to the plan page.
+  const storeAppTarget = STORE_APP_BILLING_REDIRECTS[pathname];
+  if (
+    storeAppTarget &&
+    storeBillingBlocksWebCheckout(nativePlatformFromUserAgent(request.headers.get("user-agent")))
+  ) {
+    return NextResponse.redirect(new URL(storeAppTarget, request.url));
   }
   const isProtected = PROTECTED.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
@@ -94,5 +107,7 @@ export const config = {
     "/form-check",
     "/vip/:path*",
     "/vip",
+    // Store app billing redirect only; the website passes straight through.
+    "/pricing",
   ],
 };

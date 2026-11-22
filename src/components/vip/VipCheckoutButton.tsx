@@ -3,9 +3,15 @@
 import { useActionState } from "react";
 import { startVipCheckoutAction, type VipActionState } from "@/app/actions/vip";
 import { StatusBanner } from "@/components/StatusBanner";
+import { StoreAppBillingNote } from "@/components/native/StoreAppBillingNote";
+import { useStoreBillingBlocked } from "@/components/native/useStoreBillingBlocked";
 
 export function VipCheckoutButton({ label = "Continue to checkout" }: { label?: string }) {
   const [state, action, pending] = useActionState(startVipCheckoutAction, {} as VipActionState);
+  const storeBillingBlocked = useStoreBillingBlocked();
+  if (storeBillingBlocked) {
+    return <StoreAppBillingNote />;
+  }
   return (
     <form data-testid="vip-checkout-vip-checkout" action={action} className="space-y-3" data-vip-checkout="1">
       <StatusBanner error={state.error} success={state.message} />

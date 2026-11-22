@@ -1,0 +1,27 @@
+{
+  "name": "svg-performance-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor shell for the SVG Performance iOS and Android store apps. Loads https://svgperformance.app.",
+  "scripts": {
+    "icons": "python3 scripts/make_brand_assets.py && npx capacitor-assets generate --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000' --splashBackgroundColor '#000000' --splashBackgroundColorDark '#000000'",
+    "sync": "npx cap sync",
+    "android:debug": "npx cap sync android && cd android && ./gradlew assembleDebug",
+    "android:release": "npx cap sync android && cd android && ./gradlew bundleRelease",
+    "check": "node scripts/check-config.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/push-notifications": "^8.1.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2"
+  }
+}

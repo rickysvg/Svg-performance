@@ -1,0 +1,63 @@
+# Store-app shell builds (Capacitor, /mobile).
+#
+# Compile checks only: an unsigned Android debug APK and an unsigned iOS
+# simulator build. Nothing is signed, uploaded, or submitted to a store.
+# Standard GitHub-hosted runners (including macOS) are free on public repos.
+
+name: Mobile shell
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npx cap sync android
+      - name: Build debug APK
+        run: cd android && ./gradlew --no-daemon assembleDebug
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Build for the iOS simulator (unsigned)
+        run: |
+          xcodebuild -version
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 50

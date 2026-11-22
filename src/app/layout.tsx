@@ -4,6 +4,7 @@ import { Anton, Geist } from "next/font/google";
 import Script from "next/script";
 import { AppSplash } from "@/components/AppSplash";
 import { FirstTouchCapture } from "@/components/FirstTouchCapture";
+import { NativeAppBridge } from "@/components/native/NativeAppBridge";
 import { FIRST_TOUCH_BOOT_SCRIPT } from "@/lib/first-touch";
 import { telemetryFont } from "@/lib/telemetry-font";
 import "./globals.css";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <FirstTouchCapture />
         </Suspense>
         <AppSplash />
+        <NativeAppBridge />
         {children}
       </body>
     </html>

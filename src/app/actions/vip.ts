@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { requireDashboardAdminOrThrow } from "@/lib/admin-access";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
+import { storeAppBlocksWebBilling } from "@/lib/native-app-server";
+import { STORE_APP_BILLING_NOTE } from "@/lib/native-app";
 import { getLatestSubscription } from "@/lib/access";
 import { normalizePlanId } from "@/lib/plans";
 import { subscriptionBlocksCheckout } from "@/lib/subscription-access";
@@ -96,6 +98,9 @@ export async function startVipCheckoutAction(
   void prev;
   void formData;
   const user = await requireUserOrThrow();
+  if (await storeAppBlocksWebBilling()) {
+    return { error: STORE_APP_BILLING_NOTE };
+  }
   const existing = await getLatestSubscription(user.id);
   if (
     existing &&

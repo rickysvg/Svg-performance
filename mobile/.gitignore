@@ -1,0 +1,11 @@
+node_modules/
+# Signing material and store service files never go in git.
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+keystore.properties
+*-keystore.properties
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
