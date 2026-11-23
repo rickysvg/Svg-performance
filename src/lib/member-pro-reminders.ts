@@ -1,3 +1,4 @@
+import { adminReminderKeys, isAdminReminderRecipient } from "@/lib/admin-emails";
 import { prisma } from "@/lib/prisma";
 import { loggedSetSome } from "@/lib/logged-work";
 import { sendPushToUser } from "@/lib/weekly-checkin-push";
@@ -83,13 +84,24 @@ export type MemberProCronResult = { checked: number; sent: number; skipped: numb
 export async function runMemberProReminderCron(now = new Date()): Promise<MemberProCronResult> {
   const lookbackDays = Math.max(MEMBER_PRO_DAYS, LEGACY_MEMBER_PRO_DAYS) + 7;
   const earliest = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
+  const adminKeys = await adminReminderKeys();
   const profiles = await prisma.profile.findMany({
     where: { gymMembershipVerified: true, memberProStartedAt: { gte: earliest } },
-    select: { userId: true, memberProStartedAt: true, memberProDays: true },
+    select: {
+      userId: true,
+      memberProStartedAt: true,
+      memberProDays: true,
+      user: { select: { email: true, role: true } },
+    },
   });
   let sent = 0;
   let skipped = 0;
   for (const profile of profiles) {
+    // Role admins, ADMIN_EMAILS, and plus-aliases of those mailboxes get no Pro push.
+    if (isAdminReminderRecipient(profile.user, adminKeys)) {
+      skipped += 1;
+      continue;
+    }
     const grantDays = memberProGrantDays(profile.memberProDays);
     const stage = memberProStage(memberProDay(profile.memberProStartedAt, now), grantDays);
     if (!stage) {

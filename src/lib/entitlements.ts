@@ -1,3 +1,4 @@
+import { userIsDashboardAdmin } from "@/lib/admin-emails";
 import { getLatestSubscription } from "@/lib/access";
 import {
   type CatalogPlanId,
@@ -17,6 +18,9 @@ export function previewEntitlementsOpen() {
 }
 
 export async function getEffectivePlanId(userId: string, now = new Date()): Promise<CatalogPlanId> {
+  // Role admins and ADMIN_EMAILS stay on VIP Coaching. One role/email read, then stop.
+  // Plus-aliases are not admins here, so QA accounts still hit the paywall.
+  if (await userIsDashboardAdmin(userId)) return "coaching";
   const subscription = await getLatestSubscription(userId);
   if (subscription && subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd, now)) {
     const plan = normalizePlanId(subscription.plan);
