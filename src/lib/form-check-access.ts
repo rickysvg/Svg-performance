@@ -1,21 +1,7 @@
-import { normalizeEmail } from "@/lib/auth";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { planHasFeature, type CatalogPlanId } from "@/lib/plans";
 
-/** Comma, semicolon, or newline separated reviewer emails. */
-export function adminEmailsFromEnv(raw = process.env.ADMIN_EMAILS): string[] {
-  if (!raw) return [];
-  const emails = raw
-    .split(/[,;\n]+/)
-    .map((part) => normalizeEmail(part))
-    .filter((email) => email.includes("@"));
-  return [...new Set(emails)];
-}
-
-export function isFormCheckReviewer(user: { role: string; email: string }) {
-  if (user.role === "admin") return true;
-  return adminEmailsFromEnv().includes(normalizeEmail(user.email));
-}
+export { adminEmailsFromEnv, isDashboardAdminAccount as isFormCheckReviewer } from "@/lib/admin-emails";
 
 /** Admins and coaches keep Form Check even when their plan is not VIP Coaching. */
 export function formCheckStaffBypass(role: string) {

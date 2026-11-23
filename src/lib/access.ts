@@ -1,3 +1,4 @@
+import { userIsDashboardAdmin } from "@/lib/admin-emails";
 import { prisma } from "@/lib/prisma";
 import { billingPlanFromStored, referencesRetiredAnnual } from "@/lib/pro-annual-record";
 import { normalizePlanId, planHasFeature } from "@/lib/plans";
@@ -25,8 +26,8 @@ export async function hasWebhookGrantedAccess(userId: string) {
 }
 
 /**
- * Fuel needs the academy tier (verified member) or Pro
- * (subscription, 7-day trial, or the member Pro grant).
+ * Fuel needs the academy tier (verified member), Pro
+ * (subscription, 7-day trial, or the member Pro grant), or a dashboard admin.
  * SVG Coach chat is separate: Pro, VIP Coaching, an active Pro trial, or an admin.
  * A nonmember whose trial ended gets the paywall. Missing Stripe keys do not unlock those tools.
  */
@@ -34,6 +35,9 @@ export async function canUseMemberTools(userId: string): Promise<{
   allowed: boolean;
   reason: "subscribed" | "paywall";
 }> {
+  if (await userIsDashboardAdmin(userId)) {
+    return { allowed: true, reason: "subscribed" };
+  }
   const subscription = await getLatestSubscription(userId);
   if (
     subscription &&

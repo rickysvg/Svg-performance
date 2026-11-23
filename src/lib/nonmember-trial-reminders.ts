@@ -1,3 +1,4 @@
+import { adminReminderKeys, isAdminReminderRecipient } from "@/lib/admin-emails";
 import { prisma } from "@/lib/prisma";
 import { nonmemberTrialReminderStage } from "@/lib/checkout-trial";
 import { isSmtpConfigured, sendMail } from "@/lib/mail";
@@ -16,6 +17,7 @@ export function nonmemberTrialReminderCopy(stage: "2d" | "1d") {
 
 export async function runNonmemberTrialReminderCron(now = new Date()) {
   if (!isSmtpConfigured()) return { checked: 0, sent: 0, skipped: 0, email: "not_configured" as const };
+  const adminKeys = await adminReminderKeys();
   const profiles = await prisma.profile.findMany({
     where: {
       gymMembershipVerified: false,
@@ -26,12 +28,17 @@ export async function runNonmemberTrialReminderCron(now = new Date()) {
       userId: true,
       trialEndsAt: true,
       timeZone: true,
-      user: { select: { email: true } },
+      user: { select: { email: true, role: true } },
     },
   });
   let sent = 0;
   let skipped = 0;
   for (const profile of profiles) {
+    // Role admins, ADMIN_EMAILS, and plus-aliases of those mailboxes get no trial email.
+    if (isAdminReminderRecipient(profile.user, adminKeys)) {
+      skipped += 1;
+      continue;
+    }
     const stage = nonmemberTrialReminderStage(
       trialDaysRemaining(profile.trialEndsAt, now, memberDayTimeZone(profile.timeZone)),
     );
