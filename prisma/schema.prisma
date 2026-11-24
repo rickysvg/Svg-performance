@@ -79,6 +79,8 @@ model User {
   vipApplications          VipApplication[]
   vipCheckoutGrants        VipCheckoutGrant[]
   vipUpsellEvents          VipUpsellEvent[]
+  nativePushTokens         NativePushToken[]
+  coachReplyReports        CoachReplyReport[]
 }
 
 model Session {
@@ -210,6 +212,8 @@ model Profile {
   referrer               String?
   landingPath            String?
   firstTouchAt           DateTime?
+  /// Set when the member agrees to send coach messages and training context to OpenAI.
+  aiCoachConsentAt       DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
@@ -671,12 +675,69 @@ model Subscription {
   cancelAtPeriodEnd    Boolean  @default(false)
   /// Stripe cancel_at. When set, the subscription ends at this time.
   cancelAt             DateTime?
+  /// stripe | app_store | play_store. Existing rows are Stripe.
+  store                String   @default("stripe")
+  /// Store product id, for example svg_pro_monthly or svg_pro:monthly.
+  storeProductId       String   @default("")
+  /// App Store or Play original transaction. Empty on Stripe rows.
+  storeOriginalTransactionId String @default("")
+  /// RevenueCat app user id. The SVG user id when the purchase was synced.
+  revenueCatAppUserId  String   @default("")
+  /// production | sandbox. Sandbox rows are ignored unless REVENUECAT_ACCEPT_SANDBOX=1.
+  environment          String   @default("production")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   @@index([userId])
   @@index([stripeSubscriptionId])
   @@index([founding, status])
+  @@index([store, storeOriginalTransactionId])
+}
+
+/// Idempotency row for a RevenueCat webhook event id.
+model RevenueCatEvent {
+  id          String    @id
+  type        String
+  appUserId   String    @default("")
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([appUserId])
+}
+
+/// Device token for the store apps. Android tokens go to FCM. iOS tokens go to APNs.
+model NativePushToken {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// ios | android
+  platform    String
+  token       String   @unique
+  appVersion  String   @default("")
+  /// production | sandbox. Selects the APNs host for iOS.
+  environment String   @default("production")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastError   String   @default("")
+
+  @@index([userId])
+}
+
+/// A member's report of one AI coach reply. One report per member per message.
+model CoachReplyReport {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageId String
+  /// offensive | harmful | wrong | other
+  reason    String
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  /// open | reviewed
+  status    String   @default("open")
+
+  @@unique([userId, messageId])
+  @@index([status, createdAt])
 }
 
 model ReminderPrefs {

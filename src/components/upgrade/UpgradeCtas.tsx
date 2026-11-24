@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
+import { WebOnly } from "@/components/native/WebOnly";
 import { startTrialAction } from "@/app/actions/trial";
 
 export function UpgradeCtas({
@@ -33,9 +34,11 @@ export function UpgradeCtas({
     <div className="space-y-2">
       <CheckoutButton plan="performance_monthly" label={`${upgradeLabel} · $9.99/mo`} />
       <CheckoutButton plan="performance_year" label={`${upgradeLabel} · $72.99/yr`} />
-      <Link href="/pricing" className="inline-flex text-sm text-accent underline">
-        Compare plans
-      </Link>
+      <WebOnly>
+        <Link href="/pricing" className="inline-flex text-sm text-accent underline">
+          Compare plans
+        </Link>
+      </WebOnly>
     </div>
   );
 }

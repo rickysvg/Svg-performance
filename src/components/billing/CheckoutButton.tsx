@@ -4,8 +4,9 @@ import { useActionState } from "react";
 import { startCheckoutAction, type BillingActionState } from "@/app/actions/billing";
 import { StatusBanner } from "@/components/StatusBanner";
 import type { CheckoutSkuId } from "@/lib/plans";
-import { StoreAppBillingNote } from "@/components/native/StoreAppBillingNote";
+import { NativeProPaywallSlot } from "@/components/native/NativeProPaywall";
 import { useStoreBillingBlocked } from "@/components/native/useStoreBillingBlocked";
+import { storeAppPurchaseSurface } from "@/lib/native-app";
 
 export function CheckoutButton({
   plan,
@@ -24,7 +25,8 @@ export function CheckoutButton({
   );
   const storeBillingBlocked = useStoreBillingBlocked();
   if (storeBillingBlocked) {
-    return <StoreAppBillingNote />;
+    if (storeAppPurchaseSurface(plan) === "pro") return <NativeProPaywallSlot />;
+    return null;
   }
   if (disabledReason) {
     return (

@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { registerAccount } from "@/lib/auth";
 
 export async function resetDatabase() {
+  await prisma.coachReplyReport.deleteMany();
+  await prisma.nativePushToken.deleteMany();
+  await prisma.revenueCatEvent.deleteMany();
   await prisma.waitlistSignup.deleteMany();
   await prisma.memberProReminderLog.deleteMany();
   await prisma.aiUsageEvent.deleteMany();
@@ -91,6 +94,10 @@ export async function makeUser(
     displayName: email.split("@")[0],
     isAdultConfirmed: true,
     claimsGymMembership,
+  });
+  await prisma.profile.update({
+    where: { userId: user.id },
+    data: { aiCoachConsentAt: new Date("2026-11-01T00:00:00.000Z") },
   });
   if (role !== "member") {
     await prisma.user.update({ where: { id: user.id }, data: { role } });

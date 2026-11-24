@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { getMemberEntitlements } from "@/lib/entitlements";
 import { creditsForCurrentPlan } from "@/lib/credits";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription, getLatestStripeSubscription } from "@/lib/access";
 import { PLAN_CATALOG } from "@/lib/plans";
 import { subscriptionScheduleLine } from "@/lib/subscription-copy";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
@@ -11,6 +11,11 @@ import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
 import { currentPlanLine, getTrialState, trialEndedSummary } from "@/lib/trial";
 import { subscriptionBlocksCheckout, subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { LegalLinks } from "@/components/LegalLinks";
+import { WebOnly } from "@/components/native/WebOnly";
+import { NativeOnly } from "@/components/native/NativeOnly";
+import { NativeProPaywallSlot } from "@/components/native/NativeProPaywall";
+import { PlanBillingSource } from "@/components/native/PlanBillingSource";
+import { ManageStoreSubscriptionButton } from "@/components/native/ManageStoreSubscriptionButton";
 
 export default async function PlanPage({
   searchParams,
@@ -20,10 +25,11 @@ export default async function PlanPage({
   const query = await searchParams;
   const user = await requireUser();
   const now = new Date();
-  const [entitlements, creditBundle, subscription, trial] = await Promise.all([
+  const [entitlements, creditBundle, subscription, stripeSubscription, trial] = await Promise.all([
     getMemberEntitlements(user.id, now),
     creditsForCurrentPlan(user.id),
-    getLatestSubscription(user.id),
+    getEffectiveSubscription(user.id, now),
+    getLatestStripeSubscription(user.id),
     getTrialState(user.id, now),
   ]);
   const plan = entitlements.plan;
@@ -46,15 +52,33 @@ export default async function PlanPage({
             subscription,
           })}
         </h1>
-        <p className="mt-2 text-sm text-muted" data-plan-summary>
-          {entitlements.planId === "member_access"
-            ? trialEndedSummary({
-                trialLengthDays: trial.trialLengthDays,
-                trialEndsAt: trial.trialEndsAt,
-                timeZone: trial.timeZone,
-              })
-            : plan.summary}
-        </p>
+        <WebOnly>
+          <p className="mt-2 text-sm text-muted" data-plan-summary>
+            {entitlements.planId === "member_access"
+              ? trialEndedSummary({
+                  trialLengthDays: trial.trialLengthDays,
+                  trialEndsAt: trial.trialEndsAt,
+                  timeZone: trial.timeZone,
+                })
+              : plan.summary}
+          </p>
+        </WebOnly>
+        <NativeOnly>
+          <p className="mt-2 text-sm text-muted" data-plan-summary>
+            {entitlements.planId === "performance"
+              ? "SVG Pro. The price is shown by the App Store or Google Play."
+              : entitlements.planId === "coaching"
+                ? "VIP Coaching includes Pro. It stays billed on the web."
+                : entitlements.planId === "member_access"
+                  ? trialEndedSummary({
+                      trialLengthDays: trial.trialLengthDays,
+                      trialEndsAt: trial.trialEndsAt,
+                      timeZone: trial.timeZone,
+                    })
+                  : plan.summary.replace(/\$[0-9.,]+\/(?:mo|yr|month|year)/g, "").replace(/\s{2,}/g, " ").trim()}
+          </p>
+        </NativeOnly>
+        <PlanBillingSource store={subscription?.store} />
         <AiDisclaimer className="mt-2" />
       </div>
 
@@ -68,30 +92,53 @@ export default async function PlanPage({
             : trial.verified && trial.trialActive && !subscription
             ? `Verified SVG Academy member. Your ${trial.trialLengthDays} days of free Pro are active. After they end you go back to the core app included with your dues. You are never auto-billed.`
             : trial.verified && entitlements.planId === "academy"
-              ? "Verified SVG Academy member. The core app is included with your dues. AI coach chat is free for your first week, then it is on Pro. Pro is $9.99/mo or $72.99/yr."
+              ? "Verified SVG Academy member. The core app is included with your dues. AI coach chat is free for your first week, then it is on Pro."
             : trial.trialActive
               ? `Your ${trial.trialLengthDays}-day Pro trial is active. No card. When it ends unpaid, history stays read-only and training locks until you subscribe.`
             : "Your trial ended. Subscribe to keep training. History and progress stay visible. Downloads stay off."}
         </p>
         {subscription &&
         (subscriptionLive || subscriptionBlocksCheckout(subscription.status)) ? null : (
-          <Link
-            href="/pricing"
-            className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
-          >
-            Subscribe on Pricing
-          </Link>
+          <>
+            <WebOnly>
+              <Link
+                href="/pricing"
+                className="touch-target mt-4 inline-flex items-center rounded-full bg-accent px-5 text-black"
+              >
+                Subscribe on Pricing
+              </Link>
+            </WebOnly>
+            <NativeOnly>
+              <div className="mt-4">
+                <NativeProPaywallSlot />
+              </div>
+            </NativeOnly>
+          </>
         )}
       </section>
 
-      {subscription?.stripeCustomerId ? (
+      {subscription && (subscription.store === "app_store" || subscription.store === "play_store") ? (
+        <NativeOnly>
+          <section className="rounded-2xl border border-line bg-card p-5">
+            <h2>Billing</h2>
+            <p className="mt-2 text-sm text-muted">
+              This subscription is billed by {subscription.store === "play_store" ? "Google Play" : "the App Store"}. Manage or cancel it in your device settings. Deleting the account does not cancel it.
+            </p>
+            <div className="mt-4">
+              <ManageStoreSubscriptionButton />
+            </div>
+          </section>
+        </NativeOnly>
+      ) : null}
+
+      {stripeSubscription?.stripeCustomerId ? (
         <section className="rounded-2xl border border-line bg-card p-5" data-manage-billing="1">
           <h2>Billing</h2>
           <p className="mt-2 text-sm text-muted">
             Update your card, see invoices, or cancel at the end of the period. You can add a card and make it the default. The card on an open subscription stays on file. No refunds except billing errors.
           </p>
           <div className="mt-4">
-            <ManageBillingButton />
+            <ManageBillingButton store={stripeSubscription.store} />
           </div>
         </section>
       ) : query.billing === "pending" ? (
@@ -139,9 +186,11 @@ export default async function PlanPage({
           Book with Ricky
         </Link>
         {" · "}
-        <Link href="/pricing" className="text-accent underline-offset-4 hover:underline">
-          Pricing
-        </Link>
+        <WebOnly>
+          <Link href="/pricing" className="text-accent underline-offset-4 hover:underline">
+            Pricing
+          </Link>
+        </WebOnly>
       </p>
     </main>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { UpgradeCtas } from "@/components/upgrade/UpgradeCtas";
+import { WebOnly } from "@/components/native/WebOnly";
 
 function trialBlurb(trialDays: number, rest: string) {
   const days = trialDays > 0 ? trialDays : 7;
@@ -129,9 +130,11 @@ export function UpgradePreview({
           </button>
         ) : null}
       </div>
-      <p className={`mt-3 text-xs ${carbon ? "text-white/60" : "text-muted"}`}>
-        Pro is $9.99/mo or $72.99/yr, save 39%.
-      </p>
+      <WebOnly>
+        <p className={`mt-3 text-xs ${carbon ? "text-white/60" : "text-muted"}`}>
+          Pro is $9.99/mo or $72.99/yr, save 39%.
+        </p>
+      </WebOnly>
     </section>
   );
 }

@@ -159,6 +159,13 @@ export default async function AdminPage() {
           icon="waitlist"
           tone="idle"
         />
+        <AdminTile
+          href="/admin/coach-reports"
+          label="AI reports"
+          hint="Review reported coach replies"
+          icon="feedback"
+          tone="idle"
+        />
       </section>
     </main>
   );

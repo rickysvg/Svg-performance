@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
+import { WebOnly } from "@/components/native/WebOnly";
 import { continueFreePlanAction, startTrialAction } from "@/app/actions/trial";
 
 export function PlanChoiceForm({
@@ -39,11 +40,14 @@ export function PlanChoiceForm({
         <CheckoutButton plan="performance_monthly" label="Subscribe · $9.99/mo" />
         <CheckoutButton plan="performance_year" label="Subscribe · $72.99/yr" />
         <p className="text-sm text-muted">
-          One trial per person. Subscribing during your trial keeps the remaining days when more than 48 hours remain. Want VIP Coaching?{" "}
-          <Link href="/pricing" className="text-accent underline">
-            See pricing
-          </Link>
-          .
+          One trial per person. Subscribing during your trial keeps the remaining days when more than 48 hours remain.{" "}
+          <WebOnly>
+            Want VIP Coaching?{" "}
+            <Link href="/pricing" className="text-accent underline">
+              See pricing
+            </Link>
+            .
+          </WebOnly>
         </p>
       </div>
     );
@@ -58,7 +62,7 @@ export function PlanChoiceForm({
         </h1>
         <p className="mt-3 text-sm text-muted">
           A {trialDays}-day Pro trial opens the full app. No card. After it ends unpaid, history
-          stays read-only and training locks until you subscribe. Pro is $9.99/mo or $72.99/yr.
+          stays read-only and training locks until you subscribe. <WebOnly>Pro is $9.99/mo or $72.99/yr.</WebOnly>
           Train at SVG Academy? Verified members keep the core app with their dues.
         </p>
       </div>

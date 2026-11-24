@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { nonmemberTrialReminderStage } from "@/lib/checkout-trial";
+import { WebOnly } from "@/components/native/WebOnly";
 
 export function NonmemberTrialReminderBanner({ daysLeft }: { daysLeft: number }) {
   const stage = nonmemberTrialReminderStage(daysLeft);
@@ -10,7 +11,8 @@ export function NonmemberTrialReminderBanner({ daysLeft }: { daysLeft: number })
       <p className="font-display text-xs uppercase tracking-[0.06em] text-black">SVG Pro</p>
       <h2 className="mt-1 text-lg text-black">{title}</h2>
       <p className="mt-1 text-sm text-black">
-        No card is on file. When the trial ends, history stays visible and training, logging, timers, the coach, and downloads lock until you subscribe. Pro is $9.99/mo or $72.99/yr.
+        No card is on file. When the trial ends, history stays visible and training, logging, timers, the coach, and downloads lock until you subscribe.{" "}
+        <WebOnly>Pro is $9.99/mo or $72.99/yr.</WebOnly>
       </p>
       <Link
         href="/pricing"

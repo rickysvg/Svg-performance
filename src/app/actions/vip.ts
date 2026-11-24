@@ -6,8 +6,8 @@ import { requireDashboardAdminOrThrow } from "@/lib/admin-access";
 import { publicErrorMessage } from "@/lib/errors";
 import { requireUserOrThrow } from "@/lib/session";
 import { storeAppBlocksWebBilling } from "@/lib/native-app-server";
-import { STORE_APP_BILLING_NOTE } from "@/lib/native-app";
-import { getLatestSubscription } from "@/lib/access";
+import { STORE_APP_VIP_NOTE } from "@/lib/native-app";
+import { getEffectiveSubscription, getLatestStripeSubscription } from "@/lib/access";
 import { normalizePlanId } from "@/lib/plans";
 import { subscriptionBlocksCheckout } from "@/lib/subscription-access";
 import { billingOriginFromRequest, getStripe } from "@/lib/stripe";
@@ -99,9 +99,12 @@ export async function startVipCheckoutAction(
   void formData;
   const user = await requireUserOrThrow();
   if (await storeAppBlocksWebBilling()) {
-    return { error: STORE_APP_BILLING_NOTE };
+    return { error: STORE_APP_VIP_NOTE };
   }
-  const existing = await getLatestSubscription(user.id);
+  const [existing, stripeRow] = await Promise.all([
+    getEffectiveSubscription(user.id),
+    getLatestStripeSubscription(user.id),
+  ]);
   if (
     existing &&
     normalizePlanId(existing.plan) === "coaching" &&
@@ -122,7 +125,7 @@ export async function startVipCheckoutAction(
     stripe: stripe ? (stripe as unknown as VipBillingClient) : null,
     draft: view.draft,
     email: user.email,
-    customerId: existing?.stripeCustomerId,
+    customerId: stripeRow?.stripeCustomerId,
     successUrl: `${origin}/api/stripe/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${origin}/vip/checkout`,
   });

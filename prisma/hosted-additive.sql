@@ -1212,3 +1212,106 @@ BEGIN
     ALTER TABLE "waitlist_signups" ADD COLUMN "first_touch_at" TIMESTAMP(3);
   END IF;
 END $$;
+
+-- Store billing, native push, AI coach consent, and AI reply reports.
+-- Additive only. Defaults keep existing subscription rows on Stripe.
+-- No DROP, no type changes. Empty databases are filled by db push.
+DO $$
+BEGIN
+  IF to_regclass('public."Profile"') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'Profile' AND column_name = 'aiCoachConsentAt'
+     ) THEN
+    ALTER TABLE "Profile" ADD COLUMN "aiCoachConsentAt" TIMESTAMP(3);
+  END IF;
+
+  IF to_regclass('public."Subscription"') IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'Subscription' AND column_name = 'store'
+    ) THEN
+      ALTER TABLE "Subscription" ADD COLUMN "store" TEXT NOT NULL DEFAULT 'stripe';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'Subscription' AND column_name = 'storeProductId'
+    ) THEN
+      ALTER TABLE "Subscription" ADD COLUMN "storeProductId" TEXT NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'Subscription' AND column_name = 'storeOriginalTransactionId'
+    ) THEN
+      ALTER TABLE "Subscription" ADD COLUMN "storeOriginalTransactionId" TEXT NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'Subscription' AND column_name = 'revenueCatAppUserId'
+    ) THEN
+      ALTER TABLE "Subscription" ADD COLUMN "revenueCatAppUserId" TEXT NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'Subscription' AND column_name = 'environment'
+    ) THEN
+      ALTER TABLE "Subscription" ADD COLUMN "environment" TEXT NOT NULL DEFAULT 'production';
+    END IF;
+    CREATE INDEX IF NOT EXISTS "Subscription_store_storeOriginalTransactionId_idx"
+      ON "Subscription"("store", "storeOriginalTransactionId");
+  END IF;
+
+  IF to_regclass('public."User"') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('public."RevenueCatEvent"') IS NULL THEN
+    CREATE TABLE "RevenueCatEvent" (
+      "id" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "appUserId" TEXT NOT NULL DEFAULT '',
+      "receivedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "processedAt" TIMESTAMP(3),
+      CONSTRAINT "RevenueCatEvent_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "RevenueCatEvent_appUserId_idx" ON "RevenueCatEvent"("appUserId");
+  END IF;
+
+  IF to_regclass('public."NativePushToken"') IS NULL THEN
+    CREATE TABLE "NativePushToken" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "platform" TEXT NOT NULL,
+      "token" TEXT NOT NULL,
+      "appVersion" TEXT NOT NULL DEFAULT '',
+      "environment" TEXT NOT NULL DEFAULT 'production',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL,
+      "lastError" TEXT NOT NULL DEFAULT '',
+      CONSTRAINT "NativePushToken_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "NativePushToken_token_key" ON "NativePushToken"("token");
+    CREATE INDEX "NativePushToken_userId_idx" ON "NativePushToken"("userId");
+    ALTER TABLE "NativePushToken"
+      ADD CONSTRAINT "NativePushToken_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF to_regclass('public."CoachReplyReport"') IS NULL THEN
+    CREATE TABLE "CoachReplyReport" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "messageId" TEXT NOT NULL,
+      "reason" TEXT NOT NULL,
+      "note" TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "status" TEXT NOT NULL DEFAULT 'open',
+      CONSTRAINT "CoachReplyReport_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "CoachReplyReport_userId_messageId_key" ON "CoachReplyReport"("userId", "messageId");
+    CREATE INDEX "CoachReplyReport_status_createdAt_idx" ON "CoachReplyReport"("status", "createdAt");
+    ALTER TABLE "CoachReplyReport"
+      ADD CONSTRAINT "CoachReplyReport_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

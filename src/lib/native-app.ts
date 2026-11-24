@@ -29,7 +29,22 @@ export function storeBillingBlocksWebCheckout(platform: NativePlatform | null): 
   return platform !== null;
 }
 
-export const STORE_APP_BILLING_NOTE = "Subscriptions aren't available in the app yet. Your current plan works here as usual.";
+export const STORE_APP_BILLING_NOTE =
+  "This app doesn't open web checkout. Subscribe with the in-app options.";
+
+/** VIP Coaching stays on the website. The store apps never sell it or link out to buy it. */
+export const STORE_APP_VIP_NOTE = "VIP Coaching isn't offered in the app.";
+
+/**
+ * Pro SKUs use the native paywall. VIP and every other SKU stay hidden in the store apps.
+ * The website still uses Stripe for all of them.
+ */
+export function storeAppPurchaseSurface(sku: string): "pro" | "hidden" {
+  if (sku === "performance_monthly" || sku === "performance_year" || sku.startsWith("performance_")) {
+    return "pro";
+  }
+  return "hidden";
+}
 
 /** Paths that only exist to sell a subscription. The store apps redirect these. */
 export const STORE_APP_BILLING_REDIRECTS: Record<string, string> = {
@@ -44,6 +59,7 @@ type CapacitorGlobal = {
   getPlatform?: () => string;
   isPluginAvailable?: (name: string) => boolean;
   nativePromise?: NativeCall;
+  getConfig?: () => { plugins?: { SVG?: { pushReady?: boolean } } };
   Plugins?: Record<string, { addListener?: (event: string, cb: (data: unknown) => void) => unknown } | undefined>;
 };
 
@@ -67,6 +83,26 @@ export function nativePlatform(): NativePlatform | null {
 
 export function isNativeApp(): boolean {
   return nativePlatform() !== null;
+}
+
+/** True when this native build included google-services.json. Android must not register without it. */
+export function nativePushReady(): boolean {
+  try {
+    return capacitor()?.getConfig?.()?.plugins?.SVG?.pushReady === true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativeInvoke<T>(plugin: string, method: string, options?: Record<string, unknown>): Promise<T | null> {
+  const cap = capacitor();
+  if (!cap?.nativePromise) return Promise.resolve(null);
+  if (cap.isPluginAvailable && !cap.isPluginAvailable(plugin)) return Promise.resolve(null);
+  try {
+    return cap.nativePromise(plugin, method, options).then((value) => value as T).catch(() => null);
+  } catch {
+    return Promise.resolve(null);
+  }
 }
 
 function nativeCall(plugin: string, method: string, options?: Record<string, unknown>): boolean {

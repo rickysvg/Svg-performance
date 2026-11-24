@@ -38,6 +38,8 @@ export function useCoachStream() {
     let liveOffline = false;
     let liveReason: FallbackReason | undefined;
     let blocked: PaywallReason | null = null;
+    let messageId = "";
+    let consentRequired = false;
 
     try {
       const response = await fetch("/api/coach/stream", {
@@ -46,14 +48,36 @@ export function useCoachStream() {
         body: JSON.stringify(body),
         signal: controller.signal,
       });
-      if (response.status === 402 || response.status === 403) {
+      if (response.status === 403) {
+        const payload = (await response.json().catch(() => null)) as { code?: string; error?: string } | null;
+        if (payload?.code === "ai_consent") {
+          consentRequired = true;
+          setError(payload.error || "Agree to the AI coach disclosure before SVG Coach can reply.");
+          return {
+            content: "",
+            offline: false,
+            fallbackReason: undefined,
+            paywall: null,
+            messageId: "",
+            consentRequired: true,
+          };
+        }
+      }
+      if (response.status === 402) {
         const payload = (await response.json().catch(() => null)) as {
           error?: string;
           paywall?: PaywallReason;
         } | null;
         const reason = payload?.paywall ?? "locked";
         setPaywall(reason);
-        return { content: "", offline: false, fallbackReason: undefined, paywall: reason };
+        return {
+          content: "",
+          offline: false,
+          fallbackReason: undefined,
+          paywall: reason,
+          messageId: "",
+          consentRequired: false,
+        };
       }
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -97,6 +121,7 @@ export function useCoachStream() {
           } else if (event.type === "meta") {
             liveOffline = event.offline;
             liveReason = event.fallbackReason;
+            if (event.messageId) messageId = event.messageId;
             setOffline(event.offline);
             setFallbackReason(event.fallbackReason);
           }
@@ -107,6 +132,8 @@ export function useCoachStream() {
         offline: liveOffline,
         fallbackReason: liveReason,
         paywall: blocked,
+        messageId,
+        consentRequired,
       };
     } catch (caught) {
       if (controller.signal.aborted) {
@@ -116,12 +143,26 @@ export function useCoachStream() {
             ? `${assembled}${STREAM_STOPPED_MARKER}`
             : assembled;
         setPartial(kept);
-        return { content: kept, offline: liveOffline, fallbackReason: liveReason, paywall: blocked };
+        return {
+          content: kept,
+          offline: liveOffline,
+          fallbackReason: liveReason,
+          paywall: blocked,
+          messageId,
+          consentRequired,
+        };
       }
       const message =
         caught instanceof Error ? caught.message : STREAM_FAIL_COPY;
       setError(message);
-      return { content: "", offline: liveOffline, fallbackReason: liveReason, paywall: blocked };
+      return {
+        content: "",
+        offline: liveOffline,
+        fallbackReason: liveReason,
+        paywall: blocked,
+        messageId,
+        consentRequired,
+      };
     } finally {
       setStreaming(false);
       abortRef.current = null;

@@ -1,4 +1,4 @@
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription } from "@/lib/access";
 import {
   type CatalogPlanId,
   type FeatureId,
@@ -17,7 +17,7 @@ export function previewEntitlementsOpen() {
 }
 
 export async function getEffectivePlanId(userId: string, now = new Date()): Promise<CatalogPlanId> {
-  const subscription = await getLatestSubscription(userId);
+  const subscription = await getEffectiveSubscription(userId, now);
   if (subscription && subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd, now)) {
     const plan = normalizePlanId(subscription.plan);
     if (plan !== "member_access" && plan !== "academy") return plan;

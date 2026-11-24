@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { LegalLinks } from "@/components/LegalLinks";
+import { WebOnly } from "@/components/native/WebOnly";
 import { AiDisclaimer } from "@/components/billing/AiDisclaimer";
 import { PricingCatalog } from "@/components/pricing/PricingCatalog";
 import { getCurrentUser } from "@/lib/session";
 import { getProfileForUser } from "@/lib/profile";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription } from "@/lib/access";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
 import {
@@ -21,7 +22,7 @@ import { getVipPricingPhase } from "@/lib/vip-store";
 export default async function PricingPage() {
   const user = await getCurrentUser();
   const profile = user ? await getProfileForUser(user.id) : null;
-  const subscription = user ? await getLatestSubscription(user.id) : null;
+  const subscription = user ? await getEffectiveSubscription(user.id) : null;
   const currentPlan = user ? await getEffectivePlanId(user.id) : null;
   const verified = Boolean(profile?.gymMembershipVerified);
   const trial = user ? await getTrialState(user.id) : null;
@@ -82,12 +83,12 @@ export default async function PricingPage() {
         <section className="mt-10 rounded-2xl border border-line bg-card p-6">
           <h2 className="text-lg text-foreground">Pricing FAQ</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground">
-            <li>Nonmembers get a {NONMEMBER_TRIAL_DAYS}-day Pro trial with no card. After it ends unpaid, history and progress stay viewable (read-only). Training, logging, timers, the AI coach, and downloads stay off until you subscribe. Pro is $9.99/mo or $72.99/yr.</li>
+            <li>Nonmembers get a {NONMEMBER_TRIAL_DAYS}-day Pro trial with no card. After it ends unpaid, history and progress stay viewable (read-only). Training, logging, timers, the AI coach, and downloads stay off until you subscribe. <WebOnly>Pro is $9.99/mo or $72.99/yr.</WebOnly></li>
             <li>Verified SVG Academy members get the core app with their dues (checked with the Gymdesk member match), plus Pro free for {MEMBER_PRO_DAYS} days. On day {MEMBER_PRO_DAYS + 1} you go back to the included tier. You are never auto-billed. AI coach chat is not part of the academy tier after the first week.</li>
             <li>AI coach chat is free for your first week from signup, no card. After that week it stays open on Pro, VIP Coaching, and an active {NONMEMBER_TRIAL_DAYS}-day Pro trial. The academy Pro grant does not extend chat.</li>
-            <li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li>
+            <WebOnly><li>Pro is $9.99/month or $72.99/year (save 39%) for everyone, academy members included.</li></WebOnly>
             <li>Pro fair use: {PRO_AI_MESSAGES_PER_DAY} AI messages a day.</li>
-            <li>VIP Coaching is $249/month and includes Pro. Limited spots. Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30. Ricky replies within 48 hours.</li>
+            <WebOnly><li>VIP Coaching is $249/month and includes Pro. Limited spots. Verified academy members pay $149 the first month, then $249. Pro subscribers who are not academy members can get a one-time credit of up to $30. Ricky replies within 48 hours.</li></WebOnly>
             <li>Logging, timers, and class programming stay open for academy members and Pro subscribers. Nonmembers have full access during the {NONMEMBER_TRIAL_DAYS}-day trial. After that, history stays viewable (read-only) until they subscribe.</li>
             <li>Academy Gymdesk dues are billed by the gym and are not changed here.</li>
             <li>Weight-cut services are not sold here.</li>

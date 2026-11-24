@@ -1,4 +1,4 @@
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription } from "@/lib/access";
 import { isDashboardAdmin } from "@/lib/admin-access";
 import { normalizePlanId, planIsPro } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +41,7 @@ export type CoachChatAccess = {
 };
 
 async function hasPaidCoachPlan(userId: string, now: Date) {
-  const subscription = await getLatestSubscription(userId);
+  const subscription = await getEffectiveSubscription(userId, now);
   if (!subscription || !subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd, now)) {
     return false;
   }

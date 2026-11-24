@@ -15,7 +15,7 @@ import { isFeedbackAdmin } from "@/lib/feedback-access";
 import { getOrCreateReminderPrefs } from "@/lib/reminders";
 import { EmptyState } from "@/components/EmptyState";
 import { currentPlanLine, getTrialState } from "@/lib/trial";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription, getLatestStripeSubscription } from "@/lib/access";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { BillingPendingNote } from "@/components/billing/BillingPendingNote";
 import { MEMBER_PRO_DAYS } from "@/lib/pricing";
@@ -28,6 +28,8 @@ import { prisma } from "@/lib/prisma";
 import { shortBuildSha } from "@/lib/build-info";
 import { LegalLinks } from "@/components/LegalLinks";
 import { isGymdeskSyncEnabled } from "@/lib/gymdesk/config";
+import { PlanBillingSource } from "@/components/native/PlanBillingSource";
+import { WithdrawAiCoachConsent } from "@/components/coach/AiCoachConsent";
 
 export default async function ProfilePage({
   searchParams,
@@ -36,7 +38,7 @@ export default async function ProfilePage({
 }) {
   const query = await searchParams;
   const user = await requireUser();
-  const [profile, prefs, trial, verifiedEvent, planId, subscription] = await Promise.all([
+  const [profile, prefs, trial, verifiedEvent, planId, subscription, stripeSubscription] = await Promise.all([
     getProfileForUser(user.id),
     getOrCreateReminderPrefs(user.id),
     getTrialState(user.id),
@@ -45,7 +47,8 @@ export default async function ProfilePage({
       orderBy: { at: "desc" },
     }),
     getEffectivePlanId(user.id),
-    getLatestSubscription(user.id),
+    getEffectiveSubscription(user.id),
+    getLatestStripeSubscription(user.id),
   ]);
   const timeZone = await timeZoneForUser(user.id, profile?.timeZone ?? null);
   if (!profile) {
@@ -78,6 +81,7 @@ export default async function ProfilePage({
             })}
           </strong>
         </p>
+        <PlanBillingSource store={subscription?.store} />
       </div>
 
       <details className="rounded-2xl border border-line bg-card">
@@ -101,13 +105,13 @@ export default async function ProfilePage({
       <details className="rounded-2xl border border-line bg-card">
         <summary className="cursor-pointer px-4 py-4 text-lg font-semibold">Account</summary>
         <div className="space-y-6 px-4 pb-4">
-      {subscription?.stripeCustomerId ? (
+      {stripeSubscription?.stripeCustomerId ? (
         <div className="pt-2" data-manage-billing="1">
           <p className="text-sm text-muted">
             Add a card, set the default, see invoices, or cancel at period end. The card on an open subscription stays on file.
           </p>
           <div className="mt-3">
-            <ManageBillingButton />
+            <ManageBillingButton store="stripe" />
           </div>
         </div>
       ) : query.billing === "pending" ? (
@@ -177,6 +181,14 @@ export default async function ProfilePage({
             Log out
           </button>
         </form>
+      </section>
+      <section className="space-y-3 rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-lg">Privacy</h2>
+        <p className="text-sm text-muted">
+          SVG Coach sends your message and training context to OpenAI only after you agree.
+          {profile.aiCoachConsentAt ? " You have agreed." : " You have not agreed yet."}
+        </p>
+        {profile.aiCoachConsentAt ? <WithdrawAiCoachConsent /> : null}
       </section>
       <YourDataSection locked={tierForPlan(planId) === "locked" && user.role === "member"} />
 

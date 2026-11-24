@@ -16,7 +16,7 @@ import { StripeTrialBanner } from "@/components/upgrade/StripeTrialBanner";
 import { BillingProblemBanner } from "@/components/billing/BillingProblemBanner";
 import { getAppTier } from "@/lib/entitlements";
 import { ensureMemberProMonth, getTrialState } from "@/lib/trial";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription, getLatestStripeSubscription } from "@/lib/access";
 import { subscriptionGrantsAccess, subscriptionNeedsBillingBanner } from "@/lib/subscription-access";
 import { isOpenWhenLocked, PATH_HEADER } from "@/lib/locked-paths";
 import { SubscribeToTrainBanner } from "@/components/upgrade/SubscribeToTrainBanner";
@@ -33,10 +33,11 @@ export default async function MemberLayout({
   await ensureMemberProMonth(user.id);
   const profile = await getProfileForUser(user.id);
   const now = new Date();
-  const [tier, trial, subscription] = await Promise.all([
+  const [tier, trial, subscription, stripeSubscription] = await Promise.all([
     getAppTier(user.id, now),
     getTrialState(user.id, now),
-    getLatestSubscription(user.id),
+    getEffectiveSubscription(user.id, now),
+    getLatestStripeSubscription(user.id),
   ]);
   const pathname = (await headers()).get(PATH_HEADER);
   const dashboardAdmin = isDashboardAdmin(user);
@@ -68,15 +69,18 @@ export default async function MemberLayout({
         coachChatLocked={!coachChat.allowed}
       >
         {accountLocked ? <SubscribeToTrainBanner /> : null}
-        {subscription && subscriptionNeedsBillingBanner(subscription.status) && subscription.stripeCustomerId ? (
-          <BillingProblemBanner status={subscription.status} />
+        {stripeSubscription &&
+        subscriptionNeedsBillingBanner(stripeSubscription.status) &&
+        stripeSubscription.stripeCustomerId &&
+        !(subscription && subscription.store !== "stripe" && subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd)) ? (
+          <BillingProblemBanner status={stripeSubscription.status} />
         ) : null}
         {pathname === "/home" &&
         !accountLocked &&
-        subscription?.status === "trialing" &&
-        subscription.trialEnd &&
-        subscriptionGrantsAccess(subscription.status, subscription.currentPeriodEnd) ? (
-          <StripeTrialBanner trialEnd={subscription.trialEnd} timeZone={trial.timeZone} />
+        stripeSubscription?.status === "trialing" &&
+        stripeSubscription.trialEnd &&
+        subscriptionGrantsAccess(stripeSubscription.status, stripeSubscription.currentPeriodEnd) ? (
+          <StripeTrialBanner trialEnd={stripeSubscription.trialEnd} timeZone={trial.timeZone} />
         ) : null}
         {!trial.verified &&
         trial.trialActive &&

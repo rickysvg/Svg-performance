@@ -1121,3 +1121,8 @@ h3,
 [data-store-app-billing-note] + [data-store-app-billing-note] {
   display: none;
 }
+
+/* One Pro paywall when monthly and annual checkout buttons sit next to each other. */
+[data-native-pro-paywall] ~ [data-native-pro-paywall] {
+  display: none;
+}

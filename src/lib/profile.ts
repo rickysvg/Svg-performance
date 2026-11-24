@@ -81,6 +81,7 @@ export type ProfileRecord = {
   coachingStyle: string;
   coachMotivation: boolean;
   coachChoiceAt: Date | null;
+  aiCoachConsentAt: Date | null;
   trainingEmphasis: string;
   weightAccess: WeightAccess;
   trainingFocus: string;
@@ -152,6 +153,7 @@ export function toProfileRecord(row: {
   coachingStyle?: string;
   coachMotivation?: boolean;
   coachChoiceAt?: Date | null;
+  aiCoachConsentAt?: Date | null;
   trainingEmphasis?: string;
   weightAccess?: string;
   trainingFocus?: string;
@@ -207,6 +209,7 @@ export function toProfileRecord(row: {
     coachingStyle: row.coachingStyle ?? "",
     coachMotivation: row.coachMotivation !== false,
     coachChoiceAt: row.coachChoiceAt ?? null,
+    aiCoachConsentAt: row.aiCoachConsentAt ?? null,
     trainingEmphasis:
       row.trainingEmphasis === "striker" || row.trainingEmphasis === "grappler"
         ? row.trainingEmphasis
