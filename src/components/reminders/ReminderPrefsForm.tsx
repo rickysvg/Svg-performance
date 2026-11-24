@@ -6,6 +6,7 @@ import {
   type ReminderActionState,
 } from "@/app/actions/reminders";
 import { StatusBanner } from "@/components/StatusBanner";
+import { NativeReminderButton } from "@/components/native/NativeReminderButton";
 
 export function ReminderPrefsForm({
   prefs,
@@ -28,6 +29,7 @@ export function ReminderPrefsForm({
   );
 
   return (
+    <>
     <form action={action} className="space-y-4 rounded-2xl border border-line bg-card p-5">
       <h2 className="text-lg">Reminders</h2>
       <p className="text-sm text-muted">
@@ -97,5 +99,7 @@ export function ReminderPrefsForm({
         {pending ? "Saving…" : "Save reminders"}
       </button>
     </form>
+    <NativeReminderButton />
+    </>
   );
 }

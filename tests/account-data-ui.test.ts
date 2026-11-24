@@ -32,7 +32,7 @@ describe("account data UI copy", () => {
     expect(confirm).toContain("Permanently delete account");
     expect(confirm).not.toMatch(/\bbouts?\b/);
     expect(deletePage).toContain(
-      "Your plan and membership status on this app. Any subscription is canceled, so you won&apos;t be charged again.",
+      "Your plan and membership status on this app. A subscription billed on the web is canceled. App Store and Google Play subscriptions are not canceled by deleting the account.",
     );
     expect(deletePage).not.toMatch(/Stripe|\bTEST\b|keys/i);
     expect(section).not.toMatch(/Stripe|\bTEST\b|keys/i);

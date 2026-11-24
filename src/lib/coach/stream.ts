@@ -26,6 +26,7 @@ import {
   streamCoachCompletion,
 } from "@/lib/coach/llm";
 import { coachLaneForExercise, upsertExerciseNoteForUser } from "@/lib/exercise-notes";
+import { AI_CONSENT_CODE, AI_CONSENT_REQUIRED, assertAiCoachConsent } from "@/lib/coach/consent";
 import { plannedSetLine, resolveLogMode } from "@/lib/exercise-log-mode";
 import type { PublicUser } from "@/lib/auth";
 import {
@@ -202,6 +203,7 @@ export async function runCoachChatStream(input: {
   if (!(await canUseCoachChat(user))) {
     throw new AiCapError("locked", COACH_CHAT_LOCKED);
   }
+  await assertAiCoachConsent(user.id);
   const message = String(input.body.message ?? "").trim().slice(0, 2000);
   if (!message) {
     throw new AppError("VALIDATION", "Type a message first.");
@@ -380,6 +382,7 @@ export async function runCoachNoteStream(input: {
     programDayId: input.body.programDayId,
     body,
   });
+  await assertAiCoachConsent(user.id);
   // The note is always saved (logging is never locked). The AI reply uses the same cap as chat.
   try {
     await consumeAiUse({ userId: user.id, kind: "message", surface: "note" });
@@ -554,6 +557,11 @@ export async function coachStreamResponse(
   const kind = body.kind === "note" ? "note" : "chat";
   if (kind === "chat" && !(await canUseCoachChat(user))) {
     return Response.json({ error: COACH_CHAT_LOCKED, paywall: "locked" }, { status: 402 });
+  }
+  try {
+    await assertAiCoachConsent(user.id);
+  } catch {
+    return Response.json({ error: AI_CONSENT_REQUIRED, code: AI_CONSENT_CODE }, { status: 403 });
   }
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

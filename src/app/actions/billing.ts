@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUserOrThrow } from "@/lib/session";
 import { assertCanCheckoutPlan, isPlanId } from "@/lib/billing";
 import { CHECKOUT_SKUS } from "@/lib/plans";
-import { getLatestSubscription } from "@/lib/access";
+import { getLatestStripeSubscription } from "@/lib/access";
 import { accountTrialAlreadyUsed, checkoutTrialSpec } from "@/lib/checkout-trial";
 import { prisma } from "@/lib/prisma";
 import {
@@ -52,7 +52,7 @@ export async function startCheckoutAction(
           proTrialUsedAt: true,
         },
       }),
-      getLatestSubscription(user.id),
+      getLatestStripeSubscription(user.id),
       prisma.subscription.findMany({
         where: { userId: user.id },
         select: { trialStart: true, trialWillEnd: true, status: true },

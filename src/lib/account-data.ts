@@ -401,6 +401,8 @@ export async function deleteAccountForUser(user: PublicUser | null, confirmation
   }
 
   await cancelStripeSubscriptions(signedIn.id);
+  const { deleteRevenueCatSubscriber } = await import("@/lib/revenuecat");
+  await deleteRevenueCatSubscriber(signedIn.id).catch(() => undefined);
   await deleteProgressPhotoMediaForUser(signedIn.id);
   await deleteWeeklyCheckInMediaForUser(signedIn.id);
   await deleteFormCheckMediaForUser(signedIn.id);

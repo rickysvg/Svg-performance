@@ -9,6 +9,12 @@ export function LegalLinks({ className = "" }: { className?: string }) {
       <Link href="/terms" className="text-accent underline-offset-4 hover:underline">
         Terms
       </Link>
+      <Link href="/support" className="text-accent underline-offset-4 hover:underline">
+        Support
+      </Link>
+      <Link href="/delete-account" className="text-accent underline-offset-4 hover:underline">
+        Delete account
+      </Link>
     </nav>
   );
 }

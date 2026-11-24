@@ -101,6 +101,7 @@ export default async function CoachPage() {
         </div>
       ) : null}
       <CoachLiveThread
+        needsConsent={!profile?.aiCoachConsentAt}
         threadId={thread.id}
         viewerRole={user.role}
         coachName={coach.name}

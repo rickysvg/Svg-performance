@@ -17,7 +17,7 @@ import {
   planAtLeast,
 } from "@/lib/plans";
 import { readPriceEnv } from "@/lib/stripe-prices";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription, getLatestStripeSubscription } from "@/lib/access";
 import { subscriptionBlocksCheckout } from "@/lib/subscription-access";
 import { getVipCheckoutView } from "@/lib/vip-store";
 import { upsertSubscriptionFromWebhook } from "@/lib/stripe-webhook";
@@ -54,7 +54,13 @@ export async function assertCanCheckoutPlan(userId: string, plan: CheckoutSkuId)
       );
     }
   }
-  const existing = await getLatestSubscription(userId);
+  const [stripeRow, effective] = await Promise.all([
+    getLatestStripeSubscription(userId),
+    getEffectiveSubscription(userId),
+  ]);
+  const existing = [effective, stripeRow].find(
+    (row) => row && subscriptionBlocksCheckout(row.status),
+  );
   if (existing && subscriptionBlocksCheckout(existing.status)) {
     const current = normalizePlanId(existing.plan);
     const target = sku.catalogId;

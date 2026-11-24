@@ -14,6 +14,7 @@ import {
   isOpenAiConfigured,
 } from "@/lib/coach/llm";
 import { timeZoneForUser } from "@/lib/profile";
+import { assertAiCoachConsent } from "@/lib/coach/consent";
 import { athleteLocalDayLine } from "@/lib/timezone";
 import { authoringCoachId } from "@/lib/coach/author";
 
@@ -147,6 +148,7 @@ export async function sendCoachMessage(input: {
   if (!message) {
     throw new Error("Type a message first.");
   }
+  await assertAiCoachConsent(input.userId);
   const topic = input.topic;
   const art = input.topic === "martial_art" ? input.art : "";
   const thread = await getOrCreateThread(input.userId, { topic, art });

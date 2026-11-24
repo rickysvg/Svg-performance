@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { LOGO_BADGE_SRC } from "@/components/Logo";
+import { WebOnly } from "@/components/native/WebOnly";
 import { supportEmail } from "@/lib/support";
 import styles from "./public-home.module.css";
 
@@ -120,16 +121,18 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                 plan between classes, tracked set by set.
                 <strong>Train smarter. Fight sharper.</strong>
               </p>
-              <div className={styles.status}>
-                <div className={styles.statusChip}>
-                  <b>WEB</b>
-                  <small>Live</small>
+              <WebOnly>
+                <div className={styles.status}>
+                  <div className={styles.statusChip}>
+                    <b>WEB</b>
+                    <small>Live</small>
+                  </div>
+                  <div className={styles.statusTxt}>
+                    <b>Sign in and train today.</b>
+                    <em>Native apps later</em>
+                  </div>
                 </div>
-                <div className={styles.statusTxt}>
-                  <b>Sign in and train today.</b>
-                  <em>Native apps later</em>
-                </div>
-              </div>
+              </WebOnly>
               <div className={styles.btns}>
                 <Link className={cn(styles.btn, styles.btnPrimary)} href="/login">
                   Sign in
@@ -138,9 +141,11 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
                   Create an account
                 </Link>
               </div>
-              <p className={styles.webLine}>
-                Train on the web. Open it on your phone, no download needed.
-              </p>
+              <WebOnly>
+                <p className={styles.webLine}>
+                  Train on the web. Open it on your phone, no download needed.
+                </p>
+              </WebOnly>
             </div>
           </div>
         </section>
@@ -300,6 +305,7 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
           </div>
         </section>
 
+        <WebOnly>
         <section className={cn(styles.sec, styles.apps)}>
           <div className={styles.in}>
             <span className={styles.kicker}>Live on the web</span>
@@ -331,6 +337,7 @@ export function PublicHome({ deleted = false }: { deleted?: boolean }) {
             <p className={styles.small}>Create an account and train in your browser today.</p>
           </div>
         </section>
+        </WebOnly>
 
         <section className={cn(styles.sec, styles.final)}>
           <div className={styles.in}>

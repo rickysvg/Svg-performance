@@ -5,6 +5,7 @@ import { resolveAiCoach, resolveCoachingStyle } from "@/lib/coaches";
 import { synthesizeCoachSpeech } from "@/lib/coach/tts";
 import { coachVoiceEnabled } from "@/lib/coach/config";
 import { AiCapError, consumeAiUse, estimateSpeechSeconds } from "@/lib/ai-usage";
+import { AI_CONSENT_CODE, AI_CONSENT_REQUIRED, hasAiCoachConsent } from "@/lib/coach/consent";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,12 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in to hear your coach." }, { status: 401 });
+  }
+  if (!(await hasAiCoachConsent(user.id))) {
+    return NextResponse.json(
+      { error: AI_CONSENT_REQUIRED, code: AI_CONSENT_CODE },
+      { status: 403 },
+    );
   }
   let body: { text?: string };
   try {

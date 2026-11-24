@@ -39,10 +39,8 @@ export async function runNonmemberTrialReminderCron(now = new Date()) {
       skipped += 1;
       continue;
     }
-    const sub = await prisma.subscription.findFirst({
-      where: { userId: profile.userId },
-      orderBy: { updatedAt: "desc" },
-    });
+    const { getEffectiveSubscription } = await import("@/lib/access");
+    const sub = await getEffectiveSubscription(profile.userId, now);
     if (sub && subscriptionGrantsAccess(sub.status, sub.currentPeriodEnd, now)) {
       skipped += 1;
       continue;

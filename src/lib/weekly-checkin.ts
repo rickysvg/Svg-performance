@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription } from "@/lib/access";
 import { subscriptionGrantsAccess } from "@/lib/subscription-access";
 import { getAppTier } from "@/lib/entitlements";
 import { isFormCheckReviewer } from "@/lib/form-check-access";
@@ -18,6 +18,7 @@ import { sparringLogsForWeek, type SparringLog } from "@/lib/outside-log";
 import { addZonedDays, mondayOfZoned } from "@/lib/timezone";
 import { resolveTrainingDays } from "@/lib/week-plan";
 import { checkInAiEnabled, generateCheckInDraft } from "@/lib/weekly-checkin-ai";
+import { hasAiCoachConsent } from "@/lib/coach/consent";
 import { sendPushToUser } from "@/lib/weekly-checkin-push";
 import {
   checkInWeekKey,
@@ -88,7 +89,7 @@ export async function weeklyCheckInAllowed(userId: string, now = new Date()) {
 /** VIP Coaching (or an admin override): Ricky reviews and replies. */
 export async function weeklyCheckInReviewed(userId: string, now = new Date()) {
   const [subscription, profile] = await Promise.all([
-    getLatestSubscription(userId),
+    getEffectiveSubscription(userId, now),
     prisma.profile.findUnique({
       where: { userId },
       select: { weeklyCheckInOverride: true },
@@ -333,10 +334,12 @@ export async function submitWeeklyCheckIn(input: CheckInSubmitInput) {
     }
   }
 
-  const draft = await generateCheckInDraft({
-    ...scores,
-    displayName: snapshot.displayName,
-  });
+  const draft = (await hasAiCoachConsent(input.userId))
+    ? await generateCheckInDraft({
+        ...scores,
+        displayName: snapshot.displayName,
+      })
+    : fallbackCheckInDraft(scores);
   row = await prisma.weeklyCheckIn.update({
     where: { id: row.id },
     data: {

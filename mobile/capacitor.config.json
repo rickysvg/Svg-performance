@@ -51,6 +51,9 @@
         "sound",
         "alert"
       ]
+    },
+    "SVG": {
+      "pushReady": false
     }
   }
 }

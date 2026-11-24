@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { NATIVE_APP_UA_MARKER } from "@/lib/native-app";
+import { sendNativePush } from "@/lib/native-push";
 
 export type PushPayload = {
   title: string;
@@ -25,21 +27,34 @@ function statusCodeOf(error: unknown) {
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload) {
+  const native = await sendNativePush(userId, payload);
   const config = vapidConfig();
   if (!config.configured) {
-    return { sent: 0, failed: 0, removed: 0, configured: false };
+    return {
+      sent: native.sent,
+      failed: native.failed,
+      removed: native.removed,
+      configured: native.configured,
+    };
   }
   const subs = await prisma.pushSubscription.findMany({ where: { userId } });
+  const skipAppWeb = native.configured && native.attempted > 0;
   if (subs.length === 0) {
-    return { sent: 0, failed: 0, removed: 0, configured: true };
+    return {
+      sent: native.sent,
+      failed: native.failed,
+      removed: native.removed,
+      configured: true,
+    };
   }
   const webpush = (await import("web-push")).default;
   webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
   const body = JSON.stringify(payload);
-  let sent = 0;
-  let failed = 0;
-  let removed = 0;
+  let sent = native.sent;
+  let failed = native.failed;
+  let removed = native.removed;
   for (const sub of subs) {
+    if (skipAppWeb && sub.userAgent.includes(NATIVE_APP_UA_MARKER)) continue;
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },

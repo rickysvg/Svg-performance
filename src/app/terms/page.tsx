@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { LegalLinks } from "@/components/LegalLinks";
+import { WebOnly } from "@/components/native/WebOnly";
 import { getCurrentUser } from "@/lib/session";
 import { supportEmail } from "@/lib/support";
 
@@ -16,7 +17,7 @@ export default async function TermsPage() {
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
         <p className="font-display text-xs uppercase tracking-[0.06em] text-accent">Legal</p>
         <h1 className="text-3xl">Terms of use</h1>
-        <p className="text-sm text-muted">Last updated November 8, 2026.</p>
+        <p className="text-sm text-muted">Last updated November 24, 2026.</p>
         <section className="space-y-3 text-sm leading-relaxed">
           <p>
             These terms cover SVG Performance, the training log at{" "}
@@ -47,19 +48,27 @@ export default async function TermsPage() {
             <li>
               One Pro trial per person. It is not stacked, and it is not offered again after you cancel and subscribe again. If you have never started a trial and you begin at checkout, that checkout can include the one trial (7 days, or 14 days for a verified academy member). Subscribing while that trial is still running keeps the remaining days when more than 48 hours are left. VIP Coaching has no trial.
             </li>
+            <WebOnly>
             <li>
               Pro is $9.99 per month or $72.99 per year. You can cancel in Manage billing at the end of the current period. No refunds, except when we made a billing error.
             </li>
+            </WebOnly>
             <li>
               Verified SVG Academy members get the core app with their gym dues, plus Pro free for 14 days, with no card and no automatic charge for that grant. After those days the account returns to the included tier unless you subscribe to Pro.
             </li>
+            <WebOnly>
             <li>
               VIP Coaching is $249 per month and includes Pro. It is billed today. There is no free trial. Verified academy members pay $149 the first month, then $249. A Pro subscriber who is not an academy member can get a one-time credit of up to $30. Academy members do not get that credit. Academy gym dues are billed by the gym and are not changed in this app.
             </li>
+            </WebOnly>
             <li>
               Stripe processes the payment. Access after checkout is confirmed by Stripe’s webhook, not by the browser page you return to. Paid features lock as soon as a subscription is past due, unpaid, or canceled. Add a card in Manage billing. Access opens again when the payment succeeds.
             </li>
           </ul>
+          <h2 className="pt-2 text-lg">Subscriptions bought in the iPhone or Android app</h2>
+          <p>
+            SVG Pro bought in the iPhone app is billed by Apple. SVG Pro bought in the Android app is billed by Google. The price and period are shown by the store before you confirm. The subscription renews until you cancel. Cancel in your device settings at least 24 hours before the period ends. Refunds follow Apple&apos;s or Google&apos;s policy. Access is shared across the website and the apps on the same SVG Performance account. VIP Coaching is not sold in the apps. Restore Purchases is on the paywall and in Profile.
+          </p>
           <h2 className="pt-2 text-lg">Acceptable use</h2>
           <p>
             Do not misuse the app, attempt to access another member’s data, or upload anything you do

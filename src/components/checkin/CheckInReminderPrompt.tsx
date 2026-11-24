@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NativeReminderButton } from "@/components/native/NativeReminderButton";
+import { nativePlatform } from "@/lib/native-app";
 
-type Phase = "loading" | "on" | "off" | "denied" | "ios" | "unsupported" | "unconfigured";
+type Phase = "loading" | "on" | "off" | "denied" | "ios" | "unsupported" | "unconfigured" | "native";
 
 function isIos() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
@@ -30,6 +32,10 @@ export function CheckInReminderPrompt() {
   useEffect(() => {
     let cancelled = false;
     async function look() {
+      if (nativePlatform()) {
+        if (!cancelled) setPhase("native");
+        return;
+      }
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
         if (!cancelled) setPhase(isIos() && !isStandalone() ? "ios" : "unsupported");
         return;
@@ -92,6 +98,8 @@ export function CheckInReminderPrompt() {
       setPending(false);
     }
   }
+
+  if (phase === "native") return <NativeReminderButton />;
 
   if (phase === "loading" || phase === "unsupported") return null;
 

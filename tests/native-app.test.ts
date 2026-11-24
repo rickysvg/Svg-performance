@@ -8,6 +8,7 @@ import {
   nativeImpact,
   nativePlatformFromUserAgent,
   nativeVibrate,
+  storeAppPurchaseSurface,
   storeBillingBlocksWebCheckout,
 } from "@/lib/native-app";
 import { proxy } from "@/proxy";
@@ -53,6 +54,13 @@ describe("store app detection", () => {
     expect(storeBillingBlocksWebCheckout("ios")).toBe(true);
     expect(storeBillingBlocksWebCheckout("android")).toBe(true);
     expect(storeBillingBlocksWebCheckout(null)).toBe(false);
+  });
+
+  it("offers the native Pro paywall and hides VIP inside the store apps", () => {
+    expect(storeAppPurchaseSurface("performance_monthly")).toBe("pro");
+    expect(storeAppPurchaseSurface("performance_year")).toBe("pro");
+    expect(storeAppPurchaseSurface("coaching_monthly")).toBe("hidden");
+    expect(storeAppPurchaseSurface("coaching")).toBe("hidden");
   });
 
   it("is a no-op on the website", () => {

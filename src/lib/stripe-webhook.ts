@@ -161,9 +161,12 @@ export async function upsertSubscriptionFromWebhook(
       where: { userId: input.userId },
       orderBy: { updatedAt: "desc" },
     });
+    const stripeRows = rows.filter(
+      (row) => (row.store ?? "stripe") === "stripe" && row.source !== "revenuecat",
+    );
     existing =
-      rows.find((row) => !row.stripeSubscriptionId || row.stripeSubscriptionId.startsWith("cs_")) ??
-      rows[0] ??
+      stripeRows.find((row) => !row.stripeSubscriptionId || row.stripeSubscriptionId.startsWith("cs_")) ??
+      stripeRows[0] ??
       null;
   }
 

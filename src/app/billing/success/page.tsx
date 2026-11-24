@@ -5,7 +5,7 @@ import { LegalLinks } from "@/components/LegalLinks";
 import { BillingPlanStatus } from "@/components/billing/BillingPlanStatus";
 import { ManageBillingButton } from "@/components/billing/ManageBillingButton";
 import { getCurrentUser } from "@/lib/session";
-import { getLatestSubscription } from "@/lib/access";
+import { getEffectiveSubscription } from "@/lib/access";
 import { billingSuccessPlan } from "@/lib/billing-success";
 import { getEffectivePlanId } from "@/lib/entitlements";
 import { PLAN_CATALOG } from "@/lib/plans";
@@ -25,7 +25,7 @@ export default async function BillingSuccessPage({
   const now = new Date();
   const loaded = user
     ? await Promise.all([
-        getLatestSubscription(user.id),
+        getEffectiveSubscription(user.id),
         getTrialState(user.id, now),
         getEffectivePlanId(user.id, now),
       ])

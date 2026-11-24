@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { PublicHome } from "@/components/marketing/PublicHome";
 import { getCurrentUser } from "@/lib/session";
 import { NONMEMBER_TRIAL_DAYS, proAccessSummary } from "@/lib/pricing";
+import { WebOnly } from "@/components/native/WebOnly";
 
 const PUBLIC_TITLE = "SVG Performance | Strength and conditioning built for fighters";
 const PUBLIC_DESCRIPTION =
@@ -138,10 +139,12 @@ export default async function MarketingPage({
               not unlock member pricing — an admin verifies gym membership
               separately.
             </li>
+            <WebOnly>
             <li>
               Pro is $9.99/mo or $72.99/yr. {proAccessSummary()} VIP Coaching is $249/mo and
               includes Pro. Subscribe from pricing. VIP Coaching is billed today with no trial.
             </li>
+            </WebOnly>
             <li>
               SVG Coach chat is free for your first week from signup, no card. After that week
               it stays on Pro and VIP Coaching, and on an active {NONMEMBER_TRIAL_DAYS}-day Pro

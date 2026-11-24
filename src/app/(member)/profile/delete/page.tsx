@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { DeleteAccountForm } from "@/components/profile/DeleteAccountForm";
+import { getEffectiveSubscription, memberStoreBilling } from "@/lib/access";
 
 export default async function DeleteAccountPage() {
   const user = await requireUser();
+  const subscription = await getEffectiveSubscription(user.id);
+  const store = memberStoreBilling(subscription);
 
   return (
     <main className="space-y-6">
@@ -24,7 +27,7 @@ export default async function DeleteAccountPage() {
           <li>Your profile, intake answers, and gym-membership checkbox / verify flags.</li>
           <li>Workout logs and sets, notes, nutrition, heart samples, photos, and clips.</li>
           <li>Coach chat history, journal entries, reminders, and bookings.</li>
-          <li>Your plan and membership status on this app. Any subscription is canceled, so you won&apos;t be charged again.</li>
+          <li>Your plan and membership status on this app. A subscription billed on the web is canceled. App Store and Google Play subscriptions are not canceled by deleting the account.</li>
         </ul>
         <p className="text-sm text-muted">
           Other members’ accounts stay. You will be signed out and sent to the
@@ -32,7 +35,7 @@ export default async function DeleteAccountPage() {
         </p>
       </section>
 
-      <DeleteAccountForm email={user.email} />
+      <DeleteAccountForm email={user.email} store={store} />
 
       <p className="text-sm">
         <Link href="/profile" className="font-semibold underline-offset-4 hover:underline">

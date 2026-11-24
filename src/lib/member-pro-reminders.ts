@@ -116,7 +116,7 @@ export async function runMemberProReminderCron(now = new Date()): Promise<Member
     const daysLeft = day == null ? 0 : Math.max(0, grantDays - day);
     const recap = await memberProRecap(profile.userId, profile.memberProStartedAt!);
     const copy = memberProCopy(stage, recap, daysLeft);
-    await sendPushToUser(profile.userId, { title: copy.title, body: copy.body, url: "/pricing" });
+    await sendPushToUser(profile.userId, { title: copy.title, body: copy.body, url: "/plan" });
     await prisma.memberProReminderLog.create({
       data: { userId: profile.userId, stage, channel: "push" },
     });
@@ -126,9 +126,13 @@ export async function runMemberProReminderCron(now = new Date()): Promise<Member
 }
 
 async function hasPaidPro(userId: string, now: Date) {
-  const sub = await prisma.subscription.findFirst({
-    where: { userId, status: "active" },
-    orderBy: { updatedAt: "desc" },
-  });
-  return Boolean(sub && !(sub.currentPeriodEnd && sub.currentPeriodEnd < now));
+  const { getEffectiveSubscription } = await import("@/lib/access");
+  const { subscriptionGrantsAccess } = await import("@/lib/subscription-access");
+  const { normalizePlanId, planIsPro } = await import("@/lib/plans");
+  const sub = await getEffectiveSubscription(userId, now);
+  return Boolean(
+    sub &&
+      subscriptionGrantsAccess(sub.status, sub.currentPeriodEnd, now) &&
+      planIsPro(normalizePlanId(sub.plan)),
+  );
 }

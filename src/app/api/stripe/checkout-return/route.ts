@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
-import { getLatestSubscription } from "@/lib/access";
+import { getLatestStripeSubscription } from "@/lib/access";
 import { fulfillCheckoutReturnForUser } from "@/lib/checkout-return";
 
 /** Syncs Checkout off the success page, then redirects. revalidatePath is legal here. */
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(login);
   }
   if (sessionId.startsWith("cs_")) {
-    const existing = await getLatestSubscription(user.id);
+    const existing = await getLatestStripeSubscription(user.id);
     await fulfillCheckoutReturnForUser({
       userId: user.id,
       sessionId,

@@ -11,6 +11,8 @@ import { coachReplyLabel, isAiCoachId, resolveAiCoach } from "@/lib/coaches";
 import { COACH_SUGGESTIONS, COACH_WELCOME } from "@/lib/coach/welcome";
 import { CoachSpeakButton } from "@/components/coach/CoachSpeakButton";
 import { CoachMarkdown } from "@/components/coach/CoachMarkdown";
+import { AiCoachConsent } from "@/components/coach/AiCoachConsent";
+import { ReportCoachReply } from "@/components/coach/ReportCoachReply";
 
 type ChatBubble = {
   id: string;
@@ -71,6 +73,7 @@ export function CoachBubble({
   coachName = COACH_PUBLIC_NAME,
   coachId,
   audioRef,
+  messageId,
 }: {
   speaker: "user" | "assistant";
   content: string;
@@ -84,6 +87,7 @@ export function CoachBubble({
   coachThumb?: string;
   coachId?: string;
   audioRef?: RefObject<HTMLAudioElement | null>;
+  messageId?: string;
 }) {
   const mine = speaker === "user";
   const quick = speaker === "assistant" && Boolean(offline);
@@ -139,6 +143,7 @@ export function CoachBubble({
             {speaker === "assistant" && coachId && audioRef ? (
               <CoachSpeakButton text={content} coachId={coachId} audioRef={audioRef} />
             ) : null}
+            {speaker === "assistant" && messageId ? <ReportCoachReply messageId={messageId} /> : null}
           </div>
         </div>
       </div>
@@ -155,6 +160,7 @@ export function CoachLiveThread({
   timeZone = "",
   initialMessages,
   remainingLabel = null,
+  needsConsent = false,
 }: {
   threadId: string;
   viewerRole?: UserRole;
@@ -172,6 +178,7 @@ export function CoachLiveThread({
     authorCoachId?: string;
   }>;
   remainingLabel?: string | null;
+  needsConsent?: boolean;
 }) {
   const [messages, setMessages] = useState<ChatBubble[]>(
     initialMessages.map((message) => ({
@@ -185,6 +192,7 @@ export function CoachLiveThread({
     })),
   );
   const [draft, setDraft] = useState("");
+  const [consentOpen, setConsentOpen] = useState(needsConsent);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { streaming, partial, error, offline, fallbackReason, paywall, setPaywall, start, stop } =
@@ -198,6 +206,10 @@ export function CoachLiveThread({
   async function sendText(raw: string) {
     const message = raw.trim();
     if (!message || streaming) return;
+    if (needsConsent) {
+      setConsentOpen(true);
+      return;
+    }
     setDraft("");
     // Optimistic ids are minted when the member sends, not while the thread renders.
     // eslint-disable-next-line react-hooks/purity
@@ -207,13 +219,17 @@ export function CoachLiveThread({
       { id: userId, role: "user", content: message, createdAt: new Date().toISOString() },
     ]);
     const result = await start({ kind: "chat", message, threadId });
+    if (result.consentRequired) {
+      setConsentOpen(true);
+      return;
+    }
     if (result.paywall) return;
     const reply = result.content;
     if (reply) {
       setMessages((current) => [
         ...current,
         {
-          id: `local-assistant-${Date.now()}`,
+          id: result.messageId || `local-assistant-${Date.now()}`,
           role: "assistant",
           content: reply,
           createdAt: new Date().toISOString(),
@@ -266,6 +282,7 @@ export function CoachLiveThread({
                   coachName={coachName}
                   coachId={message.authorCoachId || undefined}
                   audioRef={audioRef}
+                  messageId={message.role === "assistant" ? message.id : undefined}
                 />
               </div>
             );
@@ -320,6 +337,7 @@ export function CoachLiveThread({
             {remainingLabel}
           </p>
         ) : null}
+        <AiCoachConsent open={consentOpen} onClose={() => setConsentOpen(false)} />
         <StatusBanner error={error} />
         {paywall ? <AiPaywallPrompt reason={paywall} onDismiss={() => setPaywall(null)} /> : null}
         <div className="flex items-end gap-2">
